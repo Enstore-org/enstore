@@ -751,7 +751,7 @@ if __name__ == "__main__":
     config_port = "7500"
     config_list = 0
     list = 0
-    summon = 0
+    summon = 1
     debug = 0
 
     # see what the user has specified. bomb out if wrong options specified
@@ -766,8 +766,8 @@ if __name__ == "__main__":
             config_list = 1
         elif opt == "--list":
             list = 1
-        elif opt == "--summon":
-            summon = 1
+        elif opt == "--nosummon":
+            summon = 0
         elif opt == "--help":
             print "python ",sys.argv[0], options, "library"
             print "   do not forget the '--' in front of each option"
