@@ -31,6 +31,7 @@ struct sembuf		trc_sem_get_s, trc_sem_put_s;
 pid_t			trc_pid;
 int			trc_tid;
 
+
 
 void
 trace_init(  const char	*name )
@@ -87,34 +88,56 @@ trace_init(  const char	*name )
 
 
 void
-trace(  int lvl
+trace_(  int lvl
       , const char	*msg
       , ... )
 {
-	va_list	ap;
-	int	ii, idx;
-
-    if (   trc_cntl_sp->mode
-	&& (trc_cntl_sp->lvl_a[trc_tid]&(1<<lvl)))
-    {   semop( trc_sem_id, &trc_sem_get_s, 1 );
-	idx = trc_cntl_sp->head_idx;
-	if (++trc_cntl_sp->head_idx > trc_cntl_sp->last_idx)
-	    trc_cntl_sp->head_idx = 0;
-	if      (trc_cntl_sp->full_flg)
-	    trc_cntl_sp->tail_idx = trc_cntl_sp->head_idx;
-	else if (trc_cntl_sp->head_idx == trc_cntl_sp->tail_idx)
-	    trc_cntl_sp->full_flg = 1;
-	gettimeofday( &(trc_ent_sp+idx)->time, 0 ); /* to prevent out of order times */
-	semop( trc_sem_id, &trc_sem_put_s, 1 );
+    if (trc_cntl_sp->lvl_a[trc_tid] & (1<<lvl))
+    {   va_list	ap;
+	int	idx, have_time_flg=0;
+	if (trc_cntl_sp->mode & 1)
+	{   int	ii;
+	    semop( trc_sem_id, &trc_sem_get_s, 1 );
+	    idx = trc_cntl_sp->head_idx;
+	    if (++trc_cntl_sp->head_idx > trc_cntl_sp->last_idx)
+		trc_cntl_sp->head_idx = 0;
+	    if      (trc_cntl_sp->full_flg)
+		trc_cntl_sp->tail_idx = trc_cntl_sp->head_idx;
+	    else if (trc_cntl_sp->head_idx == trc_cntl_sp->tail_idx)
+		trc_cntl_sp->full_flg = 1;
+	    gettimeofday( &(trc_ent_sp+idx)->time, 0 ); /* to prevent out of order times */
+	    have_time_flg = 1;
+	    semop( trc_sem_id, &trc_sem_put_s, 1 );
 	
-	strncpy( (trc_ent_sp+idx)->msg_a, msg, TRC_MAX_MSG );
-	va_start( ap, msg );
-	for (ii=0; ii<TRC_MAX_PARAMS; ii++)
-	    (trc_ent_sp+idx)->params[ii] = va_arg(ap,int);
-	va_end( ap );
-	(trc_ent_sp+idx)->pid = trc_pid;
-	(trc_ent_sp+idx)->tid = trc_tid;
-	(trc_ent_sp+idx)->lvl = lvl;
+	    strncpy( (trc_ent_sp+idx)->msg_a, msg, TRC_MAX_MSG );
+	    va_start( ap, msg );
+	    for (ii=0; ii<TRC_MAX_PARAMS; ii++)
+		(trc_ent_sp+idx)->params[ii] = va_arg(ap,int);
+	    va_end( ap );
+	    (trc_ent_sp+idx)->pid = trc_pid;
+	    (trc_ent_sp+idx)->tid = trc_tid;
+	    (trc_ent_sp+idx)->lvl = lvl;
+	}
+	if (trc_cntl_sp->mode & 2)
+	{   char 	buf[TRC_MAX_MSG+200]; /* abritrary amount of space for
+						 (potential) formatting of
+						 arguments */
+	    char 	traceLvlStr[33]="                                ";
+	    struct timeval	tt, *tp;
+
+	    if (have_time_flg)
+	    {   tp = &(trc_ent_sp+idx)->time;
+	    }
+	    else
+	    {   tp = &tt;
+		gettimeofday( tp, 0 );
+	    }
+	    sprintf(  buf, "utime: %10u %s%s\n", tp->tv_usec
+		    , &traceLvlStr[31-lvl], msg );
+	    va_start( ap, msg );
+	    vprintf( buf, ap );
+	    va_end( ap );
+	}
     }
 }
 
