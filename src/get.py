@@ -254,6 +254,34 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             #Log the error and return.
             Trace.log(e_errors.ERROR, str(mover_done_ticket['status']))
             return work_ticket
+
+        #Before continueing, double check the number bytes said to be
+        # moved by the mover and encp.
+        encp_size = work_ticket.get('exfer', {}).get('bytes', None)
+        mover_size = work_ticket.get('fc', {}).get('size', None)
+        if encp_size == None:
+            work_ticket['status'] = (e_errors.UNKNOWN,
+                                     "Get does not know number of bytes"
+                                     " transfered.")
+            return
+        elif mover_size == None:
+            work_ticket['status'] = (e_errors.UNKNOWN,
+                                     "Mover did not report how many bytes"
+                                     " where transfered.")
+            return
+        elif long(encp_size) != long(mover_size):
+            #We get here if the two sizes to not match.  This is a very bad
+            # thing to occur.
+            msg = (e_errors.CONFLICT,
+                   "Encp bytes read (%s) do not match the mover "
+                   "bytes written (%s)." % (encp_size, mover_size))
+            work_ticket['status'] = (e_errors.CONFLICT, msg)
+        else:
+            if work_ticket['file_size'] == None:
+                #If the number of bytes transfered is consistant with Get and
+                # the mover, then set this value.  This is only necessary
+                # when no file information is available.
+                work_ticket['file_size'] = long(encp_size)
         
         #Check the crc.
         encp.check_crc(work_ticket, e, out_fd)
