@@ -42,8 +42,8 @@ if __name__ == "__main__":		# main
 	print time.ctime(t0)
 
 	# databases
-	# dbs = ['file', 'volume']
-	dbs = ['volume']
+
+	dbs = ['file', 'volume']
 
 	# retriving the backup
 
@@ -114,11 +114,11 @@ if __name__ == "__main__":		# main
 
 	if status:	# corrupted!
 		print "stamping entire backup as corrupted ...",
-		os.system("enrsh -n "+bckHost+" touch "+ps.path.join(bckDir, 'CORRUPTED'))
+		os.system("enrsh -n "+bckHost+" touch "+os.path.join(bckDir, 'CORRUPTED'))
 		print "done"
 	else:
 		print "certify entire backup ...",
-		os.system("enrsh -n "+bckHost+" touch "+ps.path.join(bckDir, 'CERTIFIED'))
+		os.system("enrsh -n "+bckHost+" touch "+os.path.join(bckDir, 'CERTIFIED'))
 		print "done"
 
 	t1 = time.time()
