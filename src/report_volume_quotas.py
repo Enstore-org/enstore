@@ -63,13 +63,13 @@ class OpSGDB:
                 sgs[(lib,sg)]['deleted'] = []
                     
             if sg != 'none':
-                if ff == 'none' or (vol['sum_wr_access'] == 0 and vol['system_inhibit'][0] != e_errors.DELETED):  # blank volume
+                if ff == 'none' or (vol['non_del_files'] == 0 and vol['system_inhibit'][0] != e_errors.DELETED):  # blank volume
                     sgs[(lib,sg)]['blank'] = sgs[(lib,sg)]['blank']+1
                 if vol['system_inhibit'][0] == e_errors.DELETED:
                     if vol['volume'] not in sgs[(lib,sg)]['deleted']:
                         # count the same volume onlu once
                         sgs[(lib,sg)]['deleted'].append(vol['volume']) 
-                if vol['sum_wr_access'] != 0:
+                if vol['non_del_files'] != 0:
                     sgs[(lib,sg)]['used'] = sgs[(lib,sg)]['used']+1
                     sgs[(lib,sg)]['total'] = sgs[(lib,sg)]['total'] + vol['capacity_bytes']*1. - vol['remaining_bytes']*1.
         return sgs
