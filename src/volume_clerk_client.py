@@ -73,7 +73,36 @@ def my_atol(s):
     x = float(s)*mult
     return(long(x))
             
+# to sum up an object -- as an integrity assurance
+#
+# currently it only deal with numerical, string, list and dictionary
+#
+def sumup(a):
+	# symple type?
+	if type(a) == type(1) or type(a) == type(1L) or \
+		type(a) == type(1.0):	# number
+		return a
+	elif type(a) == type("a"):	# string or character
+		if len(a) == 1:		# character
+			return ord(a)
+		else:			# string
+			sum = 0
+			for i in a:
+				sum = sum + ord(i)
+			return sum
+	elif type(a) == type([]):	# list
+		sum = 0
+		for i in a:
+			sum = sum + sumup(i)
+		return sum
+	elif type(a) == type({}):	# dictionary
+		sum = 0
+		for i in a.keys():
+			sum = sum + sumup(i) + sumup(a[i])
+		return sum
 
+	return 0
+		
 class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
 
@@ -629,6 +658,8 @@ def do_work(intf):
                 if status[0] == e_errors.OK:
                     # !!! need to generate a key to prevent fake import
                     # dump it now
+                    volume['key'] = 0
+                    volume['key'] = sumup(volume) * -1
                     f = open('vol.'+intf.export+'.obj', 'w')
                     cPickle.dump(volume, f)
                     f.close()
