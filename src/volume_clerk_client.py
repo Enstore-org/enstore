@@ -574,7 +574,7 @@ def do_work(intf):
                                    ticket['system_inhibit'],
                                    ticket['user_inhibit'])
     elif intf.add:
-        print repr(intf.args)
+        print intf.add, repr(intf.args)
         cookie = 'none'
         if intf.vol1ok:
             cookie = '0000_000000000_0000001'
