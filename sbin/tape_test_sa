@@ -7,7 +7,7 @@ drives=${home}/drive_list
 setup enstore
 cat $drives | while read drive tape media size; do
  echo $drive $tape $media $size
- ${ENSTORE_DIR}/sbin/check_drive.py $drive $tape $media $size > $tape.chk &
+ ${ENSTORE_DIR}/sbin/check_drive_sa.py $drive $tape $media $size > $tape.chk &
 done
 wait
 exit 0
