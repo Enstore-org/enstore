@@ -103,6 +103,15 @@ class EnstoreStatus:
 	return regsub.gsub("\'", "", string)
         Trace.trace(12,"}unquote ")
 
+    # translate time.time output to a person readable format.
+    # strip off the day and reorganize things a little
+    def format_time(self, theTime):
+	ftime = time.strftime("%c", time.localtime(theTime))
+	(dow, mon, day, tod, year) = string.split(ftime)
+	ntime = "%s-%s-%s %s" % (year, mon, day, tod)
+	return ntime
+
+    # parse the library manager queues returned from "getwork"
     def parse_lm_queues(self, work, spacing, prefix):
 	Trace.trace(13,"{parse_lm_queues")
 	for mover in work:
@@ -150,16 +159,18 @@ class EnstoreStatus:
 	             repr(encp['curpri'])+",  BASE "+repr(encp['basepri'])+\
 	             ",  DELTA "+repr(encp['delpri'])+"  and  AGETIME: "+\
 	             repr(encp['agetime'])
-	    string = string+spacing+"JOB SUBMITTED: "+repr(times['t0'])
+	    string = string+spacing+"JOB SUBMITTED: "+\
+	             self.format_time(times['t0'])
 	    # not found in pending work
 	    try:
-	        string = string+",  DEQUEUED: "+repr(times['lm_dequeued'])
+	        string = string+",  DEQUEUED: "+\
+	                 self.format_time(times['lm_dequeued'])
 	    except:
 	        pass
 	    # not found in reads
 	    try:
 	        string = string+spacing+"FILE MODIFIED: "+\
-	                 repr(wrapper['mtime'])
+	                 self.format_time(wrapper['mtime'])
 	    except:
 	        pass
 	string = string+"\n"
@@ -170,7 +181,7 @@ class EnstoreStatus:
     def format_lm_queues(self, ticket):
         Trace.trace(12,"{format_lm_queues "+repr(ticket))
 	string = "    Work for: "
-	spacing = "\n              "
+	spacing = "\n          "
 	work = ticket['at movers']
 	if len(work) != 0:
 	    string = self.parse_lm_queues(work, spacing, string)
@@ -189,10 +200,11 @@ class EnstoreStatus:
     # parse the library manager moverlist ticket
     def parse_lm_moverlist(self, work):
         Trace.trace(13,"{parse_lm_moverlist")
-	string = "    KNOWN MOVER           PORT    STATE         LAST CHECKED      TRY COUNT\n"
+	string = "    KNOWN MOVER           PORT    STATE         LAST CHECKED         TRY COUNT\n"
 	for mover in work:
 	    (address, port) = mover['address']
-	    string = string+"    %(m)-18.18s    %(p)-4.4d    %(s)-10.10s    %(lc)-15.3f    %(tc)-3d\n" % {'m':mover['mover'], 'p':port, 's':mover['state'], 'lc':mover['last_checked'], 'tc':mover['summon_try_cnt']}
+	    time = self.format_time(mover['last_checked'])
+	    string = string+"    %(m)-18.18s    %(p)-4.4d    %(s)-10.10s    %(lc)-20.20s    %(tc)-3d\n" % {'m':mover['mover'], 'p':port, 's':mover['state'], 'lc':time, 'tc':mover['summon_try_cnt']}
 
 	string = string+"\n"
         Trace.trace(13,"}parse_lm_moverlist")
@@ -202,7 +214,7 @@ class EnstoreStatus:
     def format_lm_moverlist(self, ticket):
         Trace.trace(12,"{format_lm_moverlist "+repr(ticket))
 	string = "    Known Movers: "
-	spacing = "\n                    "
+	spacing = "\n                 "
 	work = ticket['moverlist']
 	if len(work) != 0:
 	    string = self.parse_lm_moverlist(work)
