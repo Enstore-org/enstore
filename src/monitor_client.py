@@ -109,7 +109,7 @@ class MonitorServerClient(generic_client.GenericClient):
         if not r :
 	    if not self.summary:
 		print "passive open did not hear back from monitor server via TCP"
-                ##raise  errno.errorcode[errno.ETIMEDOUT]
+                raise  errno.errorcode[errno.ETIMEDOUT]
 
         #simulate the control socket between encp and the mover
         ms_socket, address = self.c_socket.accept()
