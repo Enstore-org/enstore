@@ -98,7 +98,7 @@ def int32(v):
 ############################################################################
 
 class EncpError(Exception):
-    def __init__(self, e_errno, e_message, e_type, e_ticket=None):
+    def __init__(self, e_errno, e_message, e_type, e_ticket={}):
 
         Exception.__init__(self)
 
@@ -546,6 +546,14 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         outputfile = outputfile[0]
     if type(inputfile) == type([]) and len(inputfile) == 1:
         inputfile = inputfile[0]
+
+    #Secondary information source to use.
+    if not inputfile and ticket.get('infile', None):
+        inputfile = ticket['infile']
+    if not outputfile and ticket.get('outfile', None):
+        outputfile = ticket['outfile']
+    if not filesize and ticket.get('filesize', None):
+        filesize = ticket['filesize']
         
     if not data_access_layer_requested and status != e_errors.OK:
         out=sys.stderr
@@ -2466,6 +2474,18 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 #Support functions for writes.
 ############################################################################
 
+#Verifies that the state of the files, like existance and permissions,
+# are accurate.
+def verify_write_file_consistancy(request_list, e):
+
+    for request in request_list:
+
+        #Verify that everything with the files (existance, permissions,
+        # etc) is good to go.
+        inputfile_check(request['infile'])
+        outputfile_check(request['infile'], request['outfile'], e.put_cache)
+
+
 #Args:
 # Takes a list of request tickets.
 #Returns:
@@ -2478,8 +2498,8 @@ def verify_write_request_consistancy(request_list, e):
 
         #Verify that everything with the files (existance, permissions,
         # etc) is good to go.
-        inputfile_check(request['infile'])
-        outputfile_check(request['infile'], request['outfile'], e.put_cache)
+        #inputfile_check(request['infile'])
+        #outputfile_check(request['infile'], request['outfile'], e.put_cache)
 
         #Consistancy check for valid pnfs tag values.  These values are
         # placed inside the 'vc' sub-ticket.
@@ -2496,17 +2516,18 @@ def verify_write_request_consistancy(request_list, e):
             except (ValueError, AttributeError, TypeError,
                     IndexError, KeyError), msg:
                     msg = "Error checking tag %s: %s" % (key, str(msg))
-                    request['status'] = (e_errors.USERERROR, msg)
-                    print_data_access_layer_format(request['infile'],
-                                                   request['outfile'],
-                                                   request['file_size'],
-                                                   request)
-                    quit() #Harsh, but necessary.
-            except EncpError, msg:
-                print_data_access_layer_format(
-                    request['infile'],request['outfile'],request['file_size'],
-                    {'status':(msg.type, msg.strerror)})
-                quit() #Harsh, but necessary.
+                    raise EncpError(None, str(msg), e_errors.USERERROR)
+                    #request['status'] = (e_errors.USERERROR, msg)
+                    #print_data_access_layer_format(request['infile'],
+                    #                               request['outfile'],
+                    #                               request['file_size'],
+                    #                               request)
+                    #quit() #Harsh, but necessary.
+            #except EncpError, msg:
+            #    print_data_access_layer_format(
+            #        request['infile'],request['outfile'],request['file_size'],
+            #        {'status':(msg.type, msg.strerror)})
+            #    quit() #Harsh, but necessary.
 
         #Verify that the file family width is in fact a non-
         # negitive integer.
@@ -2518,17 +2539,17 @@ def verify_write_request_consistancy(request_list, e):
         except ValueError:
             msg="Pnfs tag, %s, requires a non-negitive integer value."\
                  % ("file_family_width",)
-            request['status'] = (e_errors.USERERROR, msg)
-
-            print_data_access_layer_format(request['infile'],
-                                           request['outfile'],
-                                           request['file_size'],
-                                           request)
-            quit() #Harsh, but necessary.
+            raise EncpError(None, str(msg), e_errors.USERERROR)
+            #request['status'] = (e_errors.USERERROR, msg)
+            #print_data_access_layer_format(request['infile'],
+            #                               request['outfile'],
+            #                               request['file_size'],
+            #                               request)
+            #quit() #Harsh, but necessary.
 
         #Where does this really belong???
-        if not e.put_cache: #Skip this for dcache transfers.
-            create_zero_length_files(request['outfile'])
+        #if not e.put_cache: #Skip this for dcache transfers.
+        #    create_zero_length_files(request['outfile'])
 
 ############################################################################
 
@@ -2843,6 +2864,13 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
             ticket = combine_dict(result_dict, ticket, work_ticket)
             return ticket
 
+        #Be parinoid.  Check this the ticket again.
+        try:
+            verify_write_request_consistancy([ticket], e)
+        except EncpError, msg:
+            msg.ticket['status'] = (msg.type, msg.strerror)
+            return msg.ticket
+
         #This should be redundant error check.
         if not control_socket or not data_path_socket:
 	    ticket = combine_dict({'status':(e_errors.NET_ERROR, "No socket")},
@@ -3040,7 +3068,18 @@ def write_to_hsm(e, tinfo):
         quit()
 
     #This will halt the program if everything isn't consistant.
-    verify_write_request_consistancy(request_list, e)
+    try:
+        verify_write_file_consistancy(request_list, e)
+        verify_write_request_consistancy(request_list, e)
+    except EncpError, msg:
+        msg.ticket['status'] = (msg.type, msg.strerror)
+        print_data_access_layer_format("", "", "", msg.ticket)
+        quit()
+
+    #Where does this really belong???
+    if not e.put_cache: #Skip this for dcache transfers.
+        for request in request_list:
+            create_zero_length_files(request['outfile'])
 
     #Set the max attempts that can be made on a transfer.
     max_attempts(request_list[0]['vc']['library'], e)
@@ -3172,6 +3211,18 @@ def sort_cookie(r1, r2):
     else:
         #The location cookie is a disk cookie.
         return 0
+
+#Verifies that the state of the files, like existance and permissions,
+# are accurate.
+def verify_read_file_consistancy(requests_per_vol, e):
+    vols = requests_per_vol.keys()
+    vols.sort()
+    for vol in vols:
+        request_list = requests_per_vol[vol]
+        for request in request_list:
+            inputfile_check(request['infile'])
+            outputfile_check(request['infile'], request['outfile'],e.put_cache)
+
     
 #Args:
 # Takes in a dictionary of lists of transfer requests sorted by volume.
@@ -3198,16 +3249,17 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 IndexError, KeyError), msg:
             msg = "Error insuring consistancy with request list for " \
                   "volume %s." % (vol,)
-            status = (e_errors.EPROTO, msg)
-            print_data_access_layer_format("", "", 0, {'status':status})
-            quit() #Harsh, but necessary.
+            status = (e_errors.CONFLICT, msg)
+            raise EncpError(None, msg, e_errors.CONFLICT, {'status':status})
+            #print_data_access_layer_format("", "", 0, {'status':status})
+            #quit() #Harsh, but necessary.
             
         for request in request_list:
 
             #Verify that everything with the files (existance, permissions,
             # etc) is good to go.
-            inputfile_check(request['infile'])
-            outputfile_check(request['infile'], request['outfile'],e.put_cache)
+            #inputfile_check(request['infile'])
+            #outputfile_check(request['infile'], request['outfile'],e.put_cache)
 
             try:
                 #Verify that file clerk and volume clerk returned the same
@@ -3219,21 +3271,26 @@ def verify_read_request_consistancy(requests_per_vol, e):
                                     "conflicting volumes. VC_V=%s  FC_V=%s" % \
                                     (request['vc']['external_label'],
                                      request['fc']['external_label']),
-                                    e_errors.EPROTO)
-            except EncpError:
-                    request['status'] = (e_errors.USERERROR, msg)
-                    print_data_access_layer_format(request['infile'],
-                                                   request['outfile'],
-                                                   request['file_size'],
-                                                   request)
-                    quit() #Harsh, but necessary.
+                                    e_errors.CONFLICT, request)
+            #except EncpError:
+            #        request['status'] = (e_errors.USERERROR, msg)
+            #        print_data_access_layer_format(request['infile'],
+            #                                       request['outfile'],
+            #                                       request['file_size'],
+            #                                       request)
+            #        quit() #Harsh, but necessary.
             except (ValueError, AttributeError, TypeError,
                     IndexError, KeyError), msg:
-                print_data_access_layer_format("", "", 0, {'status':
+                raise EncpError(None,
                                 "Unrecoverable read list consistancy error " \
                                 "for volume %s on external_label check." %
-                                (vol,)})
-                quit() #Harsh, but necessary.
+                                (vol,), e_errors.KEYERROR, request)
+                                
+            #    print_data_access_layer_format("", "", 0, {'status':
+            #                    "Unrecoverable read list consistancy error " \
+            #                    "for volume %s on external_label check." %
+            #                    (vol,)})
+            #    quit() #Harsh, but necessary.
 
             #If no layer 4 is present, then report the error, raise an alarm,
             # but continue with the transfer.
@@ -3241,12 +3298,14 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 p = pnfs.Pnfs(request['wrapper']['pnfsFilename'])
                 p.get_xreference()
             except (OSError, IOError), msg:
-                request['status'] = (errno.errorcode[
-                    getattr(msg, "errno", errno.EIO)], str(msg))
-                print_data_access_layer_format(request['infile'],
-                                               request['outfile'],
-                                               request['file_size'], request)
-                quit() #Harsh, but necessary.
+                raise EncpError(getattr(msg, "errno", errno.EIO),
+                                str(msg), e_errors.PNFS_ERROR, request)
+                #request['status'] = (errno.errorcode[
+                #    getattr(msg, "errno", errno.EIO)], str(msg))
+                #print_data_access_layer_format(request['infile'],
+                #                               request['outfile'],
+                #                               request['file_size'], request)
+                #quit() #Harsh, but necessary.
 
             #Get the database information.
             try:
@@ -3260,13 +3319,16 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 db_bfid = request['fc']['bfid']
             except (ValueError, AttributeError, TypeError,
                     IndexError, KeyError), msg:
-                request['status'] = (e_errors.KEYERROR,
-                                     "Unable to obtain database information: "\
-                                     + str(msg))
-                print_data_access_layer_format(request['infile'],
-                                               request['outfile'],
-                                               request['file_size'], request)
-                quit() #Harsh, but necessary.
+                raise EncpError(
+                    None, "Unable to obtain database information: " + str(msg),
+                    e_errors.KEYERROR, request)
+                #request['status'] = (e_errors.KEYERROR,
+                #                     "Unable to obtain database information: "\
+                #                     + str(msg))
+                #print_data_access_layer_format(request['infile'],
+                #                               request['outfile'],
+                #                               request['file_size'], request)
+                #quit() #Harsh, but necessary.
             
             if (p.volume == pnfs.UNKNOWN or
                 p.location_cookie == pnfs.UNKNOWN or
@@ -3323,22 +3385,26 @@ def verify_read_request_consistancy(requests_per_vol, e):
                         'pnfs_bfid':p.bfid,
                         'status':"Probable database conflict with pnfs."}
                 Trace.alarm(e_errors.ERROR, e_errors.CONFLICT, rest)
-                request['status'] = (e_errors.CONFLICT, rest['status'])
-                print_data_access_layer_format(request['infile'],
-                                               request['outfile'],
-                                               request['file_size'], request)
-                quit() #Harsh, but necessary.
+                raise EncpError(None,
+                                "Probable database conflict with pnfs.",
+                                e_errors.CONFLICT, request)
+                #request['status'] = (e_errors.CONFLICT, rest['status'])
+                #print_data_access_layer_format(request['infile'],
+                #                               request['outfile'],
+                #                               request['file_size'], request)
+                #quit() #Harsh, but necessary.
 
             #Test to verify that all the brands are the same.  If not exit.
             # If so, then the system will function.  If this was not true,
             # then a lot of file clerk key errors could occur.
             if extract_brand(db_bfid) != extract_brand(bfid_brand):
                 msg = "All bfids must have the same brand."
-                request['status'] = (e_errors.USERERROR, msg)
-                print_data_access_layer_format(request['infile'],
-                                               request['outfile'],
-                                               request['file_size'], request)
-                quit() #Harsh, but necessary.
+                raise EncpError(None, str(msg), e_errors.USERERROR, request)
+                #request['status'] = (e_errors.USERERROR, msg)
+                #print_data_access_layer_format(request['infile'],
+                #                               request['outfile'],
+                #                               request['file_size'], request)
+                #quit() #Harsh, but necessary.
 
             #sum up the size to verify there is sufficent disk space.
             sum_size = sum_size + request['file_size']
@@ -3350,16 +3416,17 @@ def verify_read_request_consistancy(requests_per_vol, e):
             if  bytes_free < sum_size:
                 msg = "Disk is full.  %d bytes available for %d requested." % \
                       (bytes_free, sum_size)
-                request['status'] = (e_errors.USERERROR, msg)
-                print_data_access_layer_format(request['infile'],
-                                               request['outfile'],
-                                               request['file_size'], request)
-                quit() #Harsh, but necessary.
+                raise EncpError(None, str(msg), e_errors.USERERROR, request)
+                #request['status'] = (e_errors.USERERROR, msg)
+                #print_data_access_layer_format(request['infile'],
+                #                               request['outfile'],
+                #                               request['file_size'], request)
+                #quit() #Harsh, but necessary.
 
         #Create the zero length file entry.
-        for request in request_list:
-            #Where does this really belong???
-            create_zero_length_files(request['outfile'])
+        #for request in request_list:
+        #    #Where does this really belong???
+        #    create_zero_length_files(request['outfile'])
 
 #######################################################################
 
@@ -3664,6 +3731,31 @@ def read_hsm_files(listen_socket, route_server, submitted,
             failed_requests.append(request_ticket)
             continue
 
+        #Be parinoid.  Check this the ticket again.
+        try:
+            verify_read_request_consistancy(
+               {request_ticket.get("external_label","label"):[request_ticket]},
+               e)
+        except EncpError, msg:
+            msg.ticket['status'] = (msg.type, msg.strerror)
+            result_dict = handle_retries(request_list, msg.ticket,
+                                         msg.ticket, None, None, None, e)
+
+            if e_errors.is_resendable(result_dict['status']):
+                continue
+            #if result_dict['status'][0]== e_errors.RETRY or \
+            #   result_dict['status'][0]== e_errors.RESUBMITTING:
+            #    continue
+            elif result_dict['status'][0]== e_errors.TOO_MANY_RESUBMITS:
+                for n in range(files_left):
+                    failed_requests.append(request_ticket)
+                files_left = 0
+                continue
+            elif e_errors.is_non_retriable(result_dict['status'][0]):
+                files_left = result_dict['queue_size']
+                failed_requests.append(request_ticket)
+                continue
+
         Trace.message(TRANSFER_LEVEL, "Mover called back.  elapsed=%s" %
                       (time.time() - tinfo['encp_start_time'],))
         Trace.message(TICKET_LEVEL, "REQUEST:")
@@ -3883,7 +3975,19 @@ def read_from_hsm(e, tinfo):
         quit()
 
     #This will halt the program if everything isn't consistant.
-    verify_read_request_consistancy(requests_per_vol, e)
+    try:
+        verify_read_file_consistancy(requests_per_vol, e)
+        verify_read_request_consistancy(requests_per_vol, e)
+    except EncpError, msg:
+        msg.ticket['status'] = (msg.type, msg.strerror)
+        print_data_access_layer_format("", "", "", msg.ticket)
+        quit()
+
+    #Create the zero length file entry.
+    for vol in requests_per_vol.keys():
+        #Where does this really belong???
+        for request in requests_per_vol[vol]:
+            create_zero_length_files(request['outfile'])
     
     #Set the max attempts that can be made on a transfer.
     check_lib = requests_per_vol.keys()    
