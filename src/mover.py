@@ -3277,7 +3277,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.ERROR, msg)
 
     def send_client_done(self, ticket, status, error_info=None):
-        if self.control_socket is None:
+        if self.control_socket == None:
             return
         ticket['status'] = (status, error_info)
         Trace.trace(10, "send_client_done: %s"%(ticket))
@@ -3855,6 +3855,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ###XXX aml-specific hack! Media changer should provide a layer of abstraction
         ### on top of media changer error returns, but it doesn't  :-(
         elif status[-1] == "the drive did not contain an unloaded volume":
+            self.asc.log_finish_dismount_err(self.current_volume)
             if self.draining:
                 #self.state = OFFLINE
                 self.offline()
@@ -3864,18 +3865,59 @@ class Mover(dispatching_worker.DispatchingWorker,
 ##            self.error(status[-1], status[0])
             
             self.asc.log_finish_dismount_err(self.current_volume)
-            broken = "dismount failed: %s %s" %(status[-1], status[0])
+            Trace.log(e_errors.ERROR, "dismount %s: %s" % (self.current_volume, status))
+            self.last_error = status
+            broken = None
+               
+            if ((status[1] in (e_errors.MC_VOLNOTHOME, e_errors.MC_NONE,
+                              e_errors.MC_FAILCHKVOL, e_errors.MC_VOLNOTFOUND,
+                              e_errors.MC_DRVNOTEMPTY)) or
+                (status[0] == e_errors.TIMEDOUT)):          
+                # mover is all right
+                # error is only tape or MC related
+                # send error to LM and go into the IDLE state
+                if ((status[1] in (e_errors.MC_NONE,
+                                   e_errors.MC_FAILCHKVOL,
+                                   e_errors.MC_DRVNOTEMPTY)) or
+                    (status[0] == e_errors.TIMEDOUT)):
+                    err_source = ROBOT
+                else:
+                    err_source = TAPE
+                if status[0] == e_errors.TIMEDOUT:
+                    s_status = status
+                else:
+                    s_status = (status[1], status[2])
+                # send error message only to LM that called us
+                self.send_error_msg(error_info = s_status,
+                                    error_source=err_source,
+                                    returned_work=None)
+                if self.control_socket:
+                    self.send_client_done(self.current_work_ticket, e_errors.MOUNTFAILED, s_status[0])
+                    self.net_driver.close()
+                Trace.alarm(e_errors.ERROR, "dismount %s failed: %s" % (self.current_volume, status))
+                self.last_error = s_status
+                return
+            else:    
+                broken = "dismount %s failed: %s" % (self.current_volume, status)
             if self.current_volume:
                 try:
-                    #self.vcc.set_system_noaccess(self.current_volume)
+                    #self.vcc.set_system_noaccess(volume_label)
                     self.set_volume_noaccess(self.current_volume)
                 except:
                     exc, msg, tb = sys.exc_info()
                     broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)
-            self.broken(broken)
+            if broken:
+                # error out and do not allow dismount as nothing has
+                # been mounted yet
+                self.transfer_failed(exc=e_errors.DISMOUNTFAILED, msg=broken,error_source=ROBOT, dismount_allowed=0)
+                self.broken(broken, e_errors.DISMOUNTFAILED) # this is to address AML2 dismount failures
             time.sleep(3)
             self.offline()
         return
+
+
+
+    
     
     def mount_volume(self, volume_label, after_function=None):
         self.dismount_time = None
@@ -3883,6 +3925,17 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.current_volume:
             old_volume = self.current_volume
             self.dismount_volume()
+            # see if dismount completed successfully
+            if self.state in (ERROR, OFFLINE):
+                # return work to lm
+                self.current_volume = volume_label
+                self.send_error_msg(error_info = (e_errors.MOUNTFAILED,volume_label),
+                                    error_source=ROBOT,
+                                    returned_work=None)
+                
+                #self.return_work_to_lm(self.current_work_ticket)
+                return
+                
             # tell lm that previously mounted volume is dismounted
             vinfo = self.vcc.inquire_vol(old_volume)
             volume_status = (vinfo.get('system_inhibit',['Unknown', 'Unknown']),
