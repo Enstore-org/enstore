@@ -32,8 +32,6 @@ case `uname -n` in
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 ait.library_manager   &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 mam.library_manager   &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 dlt.library_manager   &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red50.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red20.library_manager &"; doit
     ;;
 
    rip1*)
@@ -67,6 +65,8 @@ case `uname -n` in
     cmd="traceMode 7"; doit
     cmd="traceReset"; doit
     cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 STK.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red50.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red20.library_manager &"; doit
     cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk1.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk2.mover &"; doit
     ;;
