@@ -1,7 +1,0 @@
-<client_cfg>
-   <Client port="19996" host="ngop"  name="NCSClnt"/>
-   <Client port="8080"  host="ngop"  name="CnfgClnt"/>
-   <CfgXml cvsRep='configxml' wrkDir='.ngop' 
-           cvsRoot=':pserver:ngop@ndem.fnal.gov:/home/ngop/Repository' 
-           version="ngop_b0_7" name="CfgXmlNC"/>
-</client_cfg>
