@@ -544,7 +544,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
         return rtn
 
     def ping_event_relay(self, servers_timed_out):
-        if self.event_relay.sent_own_alive >= 2 or servers_timed_out:
+        if 0 and self.event_relay.sent_own_alive >= 2 or servers_timed_out: ##XXX cgw
             # we have sent several alive messages to the event relay and have gotten
             # nothing back.  mark it as dead
             self.mark_event_relay(DEAD)
