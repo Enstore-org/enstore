@@ -38,7 +38,11 @@ def find_config_file():
     else:
         filename = '/etc/enstore.conf'
     filename = os.environ.get("ENSTORE_CONF", filename)
-    if os.path.exists(filename):
+    #Make sure that the specified file exists and is a regular file.
+    #Note: If the $ENSTORE_CONF environmental variable specifies a file
+    # that exists and is not an actual enstore.conf file, there will be
+    # some serious problems later on.
+    if os.path.exists(filename) and os.path.isfile(filename):
         return filename
     return None
 
