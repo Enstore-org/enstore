@@ -122,7 +122,8 @@ def dismount(volume, drive, media_type,view_first=1):
             return 'BAD', stat, 'drive %s not found'%(drive,)
         if drvstate.volser == "": # look for any tape mounted in this drive
             if volume!="Unknown":
-                return 'BAD',8888,'Drive %s is empty. Thought volume %s was there.'%(drive,volume)
+                #return 'BAD',8888,'Drive %s is empty. Thought volume %s was there.'%(drive,volume)
+                return 'ok',0,'Drive %s is empty. Thought volume %s was there.'%(drive,volume)  #FIXME: mover calling with tape when there is none in drive. Return OK for now
             else: #don't know the volume on startup
                 status=0
                 return status_table[status][0], status, status_table[status][1]    
