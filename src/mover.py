@@ -648,6 +648,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 drivestat.ds_set_character_field(ds, self.current_volume, drivestat.TAPE_VOLSER)
                 drivestat.ds_set_character_field(ds, self.config['host'],drivestat.HOST)
                 st = drivestat.ds_translate_ftt_stats(ds, stats.b, drivestat.INIT)
+                Trace.trace(15, "init_stat %s"%(st,))
                 if st != -1:
                     try:
                         drivestat.ds_print(ds,self.stat_file)  
@@ -816,6 +817,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver = null_driver.NullDriver()
         elif self.driver_type == 'FTTDriver':
             self.stat_file = self.config.get('statistics_path', None)
+            Trace.log(e_errors.INFO,"statsitics path %s"%(self.stat_file,))
 	    if self.stat_file:
                 os.putenv('DS_SERVER_HOST', 'fncdug1.fnal.gov')
                 os.putenv('DS_SERVER_PORT', '5001')
