@@ -522,6 +522,8 @@ class Request_Queue:
     # flag next indicates whether to get a first highest request
     # or keep getting requsts for specified label
     def get(self, label='',location='', next=0, use_admin_queue=1):
+        Trace.trace(21,'label %s location %s next %s use_admin_queue ad_q %s'%
+                    (label, location, next,use_admin_queue, self.admin_rq_returned))
         a,w,r=self.get_queue()
         #Trace.trace(21,"admin %s"%(a,))
         Trace.trace(21,"read %s"%(r,))
