@@ -1,5 +1,5 @@
 #!/bin/sh
-#  Edit-Time-stamp: <1998-07-15 13:04:58 bakken>
+#  Edit-Time-stamp: <1998-09-22 10:53:45 bakken>
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
@@ -21,6 +21,9 @@ options="hard,intr,rw"
 #esac
 
 mp="enstore"
+if [ `uname -n | grep -c airedale` -ne 0 ] ; then 
+  mp="enstore d0sam d0ola cdftst"
+fi
 
 if [ -z "${1-}" -o  "${1:-x}" = "mount" ] ; then
   for i in $mp; do
