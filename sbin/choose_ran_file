@@ -1,0 +1,35 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+HTTP=http://www-d0en.fnal.gov
+COUNT=${1:-1}
+
+wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED 2>/dev/null
+rc=$?; if [ $rc -ne 0 ]; then echo "wget VOLUMES_DEFINED FAILED"l exit $rc;fi
+
+cat VOLUMES_DEFINED | egrep -v 'CLN|null|^Date|^label' >V_D
+rm VOLUMES_DEFINED
+N=`wc V_D| awk '{print $1}'`
+
+done=$COUNT
+loops=0
+while [ $done -gt 0 ]; do
+  loops=`expr $loops + 1`
+  if [ $loops -ge 1000 ]; then echo "TOO MANY LOOPS = $loops, EXIT"; exit 1; fi
+  ran=`python -c "import whrandom;print whrandom.randint(1,"$N")"`
+  tape=`head -n $ran V_D|tail -n 1| awk '{print $1}'`
+  wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null
+  rc=$?; if [ $rc -ne 0 ]; then echo "wget $tape FAILED "l exit $rc;fi
+  if [ `egrep -c 'NOACCESS|NOTALLOWED' $tape` -ne 0 ]; then continue; fi
+  grep /pnfs $tape | grep -v deleted > ${tape}_
+  rm $tape
+  NF=`wc ${tape}_| awk '{print $1}'`
+  if [ $NF -le 0 ]; then continue; fi
+  ran=`python -c "import whrandom;print whrandom.randint(1,"$NF")"`
+  file=`head -n $ran ${tape}_|tail -n 1| awk '{print $NF,$1,$3,$4}'`
+  echo $file
+  rm ${tape}_
+  done=`expr $done - 1`
+done
+rm V_D
