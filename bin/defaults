@@ -28,7 +28,7 @@ fi
 
 if [ `uname -n | grep -c fntt1` -eq 1 ] ; then
   enstore_libraries="8500library.library_manager"
-  enstore_media_changers="RDD.media_changer"
+  enstore_media_changers=""
   enstore_movers="exa0.mover"
 fi
 
