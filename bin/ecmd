@@ -67,9 +67,6 @@ case $cmd in
   restart)
     $ENSTORE_DIR/bin/enstore-stop
     $ENSTORE_DIR/bin/enstore-start
-    sleep 1
-    $ENSTORE_DIR/bin/enstore-start --ping
-    stat=$?
     ;;
 
   encp)

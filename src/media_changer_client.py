@@ -99,8 +99,6 @@ if __name__ == "__main__" :
     volume = args[1]
     drive = args[2]
 
-    if list :
-        pprint.pprint(args)
     mlc = MediaLoaderClient(csc, media_changer_type)
     if alive:
         ticket = mlc.alive()
