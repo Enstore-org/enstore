@@ -78,7 +78,8 @@ def trace(severity, msg):
 
 def log( severity, msg, msg_type=MSG_DEFAULT, doprint=1 ):
     if  log_func:
-        log_func( time.time(), os.getpid(), logname, (severity,msg_type+msg))
+        log_func( time.time(), os.getpid(), logname, (severity,"%s %s" % (msg_type,msg)))
+
     if doprint and print_levels.has_key(severity):
         print msg
         sys.stdout.flush()
