@@ -429,7 +429,7 @@ class XferGnuFile(enstore_files.EnFile):
     def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
 	self.openfile.write("set output '"+outfile2+"'\n"+ \
 	                   "set terminal postscript color solid\n"+ \
-	                   "set title 'Individual Transfer Activity "+plot_time()+"'\n"+ \
+	                   "set title 'Individual Transfer Activity (no null mvs)"+plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
 	                   "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
 	                   "set xdata time\n"+ \
@@ -491,7 +491,7 @@ class BpdGnuFile(enstore_files.EnFile):
 				 enstore_constants.BPD_FILE_W)
 	self.openfile.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color solid\n"+ \
-	                   "set title 'Total Bytes Transferred Per Day "+plot_time()+"'\n"+ \
+	                   "set title 'Total Bytes Transferred Per Day (no null mvs) "+plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
 	                   "set timefmt \"%Y-%m-%d\"\n"+ \
 	                   "set xdata time\n"+ \
@@ -507,7 +507,7 @@ class BpdGnuFile(enstore_files.EnFile):
 	                   "plot '"+ptsfile+"' using 1:2 t 'reads' w impulses lw 20 3 1, '"+ptsfile+\
 			          "' using 1:4 t 'writes' w impulses lw 20 1 1\n"+
 			    "set output '"+psfiler+"'\n"+ \
-			    "set title 'Total Bytes Read Per Day "+plot_time()+"'\n"+ \
+			    "set title 'Total Bytes Read Per Day (no null mvs) "+plot_time()+"'\n"+ \
 			    "set pointsize 2\n"+ \
 			    "set key right top Right samplen 1 title \"Total Bytes : "+\
 			      "%.2e"%(total,)+"\\n Number of Xfers : "+\
@@ -515,7 +515,7 @@ class BpdGnuFile(enstore_files.EnFile):
 			    "plot '"+ptsfile+"' using 1:2 t 'total' w points 4 7, '"+ptsfile+\
 			          "' using 1:3 t 'reads' w impulses lw 20 1 1\n"+
 			    "set output '"+psfilew+"'\n"+ \
-			    "set title 'Total Bytes Written Per Day "+plot_time()+"'\n"+ \
+			    "set title 'Total Bytes Written Per Day (no null mvs) "+plot_time()+"'\n"+ \
 			    "set key right top Right samplen 1 title \"Total Bytes : "+\
 			       "%.2e"%(total,)+"\\n Number of Xfers : "+\
 			       repr(write_xfers)+"\"\n"+\
