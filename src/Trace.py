@@ -111,13 +111,14 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
     if  log_func:
         try:
 	    # build up message
-            if not msg_type == MSG_DEFAULT:
+            if  msg_type != MSG_DEFAULT:
                 new_msg = "%s %s" % (msg_type, msg)
             else:
                 new_msg = msg
             log_func(time.time(), os.getpid(), logname, (severity, new_msg))
-        except: #XXX what to do?
-            pass
+        except:
+            exc, detail, tb = sys.exc_info()
+            print "Failure writing message to log", msg, detail
         
     if doprint and print_levels.has_key(severity):
         try:
