@@ -1,4 +1,4 @@
-import time
+GGGGGimport time
 import copy
 from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
@@ -168,8 +168,8 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # go through the volumes and find one we can use for this request
         vol = {}
-        for k in dict.keys() :
-            v = copy.deepcopy(dict[k])
+        for label in dict.keys() :
+            v = copy.deepcopy(dict[label])
             if v["library"] != library :
                 continue
             if v["file_family"] != file_family :
@@ -192,14 +192,13 @@ class VolumeClerkMethods(DispatchingWorker) :
                 totb = v["capacity_bytes"]/1.
                 if totb != 0 :
                     waste = left/totb*100.
-                print k,"is now full, bytes remaining = ",left,\
+                print label,"is now full, bytes remaining = ",left,\
                       "wasted=",waste,"%"
-                dict[k] = copy.deepcopy(v)
+                dict[label] = copy.deepcopy(v)
                 continue
             vetoed = 0
-            extl = v["external_label"]
             for veto in vol_veto_list :
-                if extl == veto :
+                if label == veto :
                     vetoed = 1
                     break
             if vetoed :
@@ -224,8 +223,8 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # nothing was available - see if we can assign a blank one.
         vol = {}
-        for k in dict.keys() :
-            v = copy.deepcopy(dict[k])
+        for label in dict.keys() :
+            v = copy.deepcopy(dict[label])
             if v["library"] != library :
                 continue
             if v["file_family"] != "none" :
@@ -237,9 +236,9 @@ class VolumeClerkMethods(DispatchingWorker) :
             if v["remaining_bytes"] < min_remaining_bytes :
                 continue
             vetoed = 0
-            extl = v["external_label"]
+            label = v["external_label"]
             for veto in vol_veto_list :
-                if extl == veto :
+                if label == veto :
                     vetoed = 1
                     break
             if vetoed :
@@ -248,8 +247,8 @@ class VolumeClerkMethods(DispatchingWorker) :
             # supposed to return first blank volume found?
             if first_found:
                 v["file_family"] = file_family
-                print "Assigning blank volume",k,"to",library,file_family
-                dict[k] = copy.deepcopy(v)
+                print "Assigning blank volume",label,"to",library,file_family
+                dict[label] = copy.deepcopy(v)
                 v["status"] = "ok"
                 self.reply_to_caller(v)
                 return
@@ -261,9 +260,10 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # return blank volume we found
         if len(vol) != 0:
+            label = vol['external_label']
             vol["file_family"] = file_family
-            print "Assigning blank volume",k,"to",library,file_family
-            dict[k] = copy.deepcopy(vol)
+            print "Assigning blank volume",label,"to family",file_family
+            dict[label] = copy.deepcopy(vol)
             vol["status"] = "ok"
             self.reply_to_caller(vol)
             return
