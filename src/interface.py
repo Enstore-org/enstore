@@ -126,7 +126,7 @@ class Interface:
 
     def missing_parameter(self, param):
         Trace.trace(13,"ERROR: missing parameter %s"%(param,))
-        print "ERROR: missing parameter %s"%(param,)
+        sys.stderr.write("ERROR: missing parameter %s\n"%(param,))
 
     def parameters(self):
 	return " "
@@ -148,12 +148,12 @@ class Interface:
             self.config_port = port
 
     def print_help(self):
-        print "USAGE:\n"+self.help_line()+"\n"
+        sys.stderr.write("USAGE: %s\n"%(self.help_line(),))
 
     def print_usage_line(self, opts=[]):
         if not opts:
             opts = self.options()
-        print "["+self.format_options(opts, " ")+"] "+self.parameters()+"\n"
+        sys.stderr.write("["+self.format_options(opts, " ")+"] "+self.parameters()+"\n")
 
     def parse_config_host(self, value):
         try:
@@ -186,7 +186,7 @@ class Interface:
                                             self.options())
         except getopt.error, detail:
             Trace.trace(9, "ERROR: getopt error %s"%(detail,))
-            print "error: ", detail
+            sys.stderr.write("error: %s\n"%(detail,))
             self.print_help()
 	    sys.exit(1)
 	    
@@ -393,12 +393,12 @@ class Interface:
             elif opt == "--test_mode":
                 file = globals().get('__file__', "")
                 if file == "<frozen>":
-                    print "test-mode not allowed in frozen binary"
+                    sys.stderr.write("test-mode not allowed in frozen binary\n")
                     sys.exit(-1)
                 self.test_mode = 1
             elif opt == "--bytes":
                 if not self.test_mode:
-                    print "bytecount may only be specified in test mode"
+                    sys.stderr.write("bytecount may only be specified in test mode\n")
                     sys.exit(-1)
                 self.bytes = int(value)
             elif opt == "--get_crcs":
