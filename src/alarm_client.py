@@ -185,6 +185,6 @@ if __name__ == "__main__" :
     Trace.init(MY_NAME)
     Trace.trace(6,"alrmc called with args "+repr(sys.argv))
     # fill in interface
-    intf = AlarmClientInterface()
+    intf = AlarmClientInterface(user_mode=0)
 
     do_work(intf)

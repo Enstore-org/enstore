@@ -207,6 +207,6 @@ if __name__ == "__main__":
     Trace.init(MY_NAME)
 
     # fill in interface
-    intf = ConfigurationClientInterface()
+    intf = ConfigurationClientInterface(user_mode=0)
 
     do_work(intf)
