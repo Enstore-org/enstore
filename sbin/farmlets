@@ -17,12 +17,13 @@ CHECK="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -c -r -l -p -o -g -
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
+if [ "$gang" != "ripe" ]; then  basenode=rip2; else basenode=${gang}srv1;fi
 
 if $FIX; then
     $UPDATE  d0ensrv1:/usr/local/etc/farmlets/d0*  /usr/local/etc/farmlets/
     $UPDATE stkensrv1:/usr/local/etc/farmlets/stk* /usr/local/etc/farmlets/
     $UPDATE cdfensrv1:/usr/local/etc/farmlets/cdf* /usr/local/etc/farmlets/
-    $UPDATE ${gang}srv1:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/
+    $UPDATE ${basenode}:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/
 fi
 
 ND0=9999
@@ -33,7 +34,7 @@ NENS=9999
 D0="`$CHECK  d0ensrv1:/usr/local/etc/farmlets/d0*  /usr/local/etc/farmlets/ 2>/dev/null`"
 STK="`$CHECK stkensrv1:/usr/local/etc/farmlets/stk* /usr/local/etc/farmlets/ 2>/dev/null`"
 CDF="`$CHECK cdfensrv1:/usr/local/etc/farmlets/cdf* /usr/local/etc/farmlets/ 2>/dev/null`"
-ENS="`$CHECK ${gang}srv1:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/ 2>/dev/null`"
+ENS="`$CHECK ${basenode}:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/ 2>/dev/null`"
 
 ND0=`echo "$D0"  |awk '/Number of files transferred:/ {print $NF}'`
 NSTK=`echo "$STK"|awk '/Number of files transferred:/ {print $NF}'`
@@ -66,7 +67,7 @@ fi
 
 # now check the cron.x jobs and make sure they match, too
 for f in /etc/cron.*; do 
-  CHK="`$CHECK ${gang}srv1:$f/ $f/ 2>/dev/null`"
+  CHK="`$CHECK ${basenode}:$f/ $f/ 2>/dev/null`"
   NCHK=`echo "$CHK"  |awk '/Number of files transferred:/ {print $NF}'`
   if [ $NCHK  != 0 ]; then echo $f "$CHK" 
     msg="`date` BAD CONFIGURATION: irectory  $f NCHK=$NCHK"
