@@ -132,11 +132,15 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                media_type) :        
         if 0: print external_label, drive, media_type, self.keys()
         pass
+	
+    def getNretry(self) :
+        numberOfRetries = 2
+        return numberOfRetries
 
     # Do the forking and call the function which will be load or unload
     def DoWork(self, function, ticket):
 
-        Trace.trace(10, '>dowork')
+        Trace.trace(10, '>mcDoWork')
         self.logc.send(e_errors.INFO, 2,"REQUESTED "+ticket['function']+" "  +\
                                           ticket['vol_ticket']['external_label']+" "  +\
                                           ticket['drive_id']+" "  +\
@@ -158,31 +162,32 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             pipe = os.pipe()
             if not os.fork() :
                 # if in child process
-                Trace.trace(10, '>forked')
+                Trace.trace(10, 'mcDoWork>forked')
                 #self.enprint( "FORKED"+repr(ticket))
                 os.close(pipe[0])
                 # do the work, if this is a mount, dismount first
                 if ticket['function'] == "mount":
-                    Trace.trace(10, '>dismount for mount')
+                    Trace.trace(10, 'mcDoWork>dismount for mount')
                     #self.enprint( "PREPARE"+repr(ticket))
 		    sts=self.prepare(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
 
-                Trace.trace(10, '>>> '+ticket['function'])
+                Trace.trace(10, 'mcDoWork>>> '+ticket['function'])
                 #self.enprint( "MOUNT"+repr(ticket))
-                count=2
+                count = self.getNretry()
                 sts=("",0)
 		while count > 0 and sts[0] != e_errors.OK:
 		    count = count - 1
+                    Trace.trace(10, 'mcDoWork >>> call fn '+repr(count))
 		    sts = function(
 			ticket['vol_ticket']['external_label'],
 			ticket['drive_id'],
 			ticket['vol_ticket']['media_type'])
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
                 #self.enprint( "STS"+repr(ticket))
-                Trace.trace(10, '<<< sts'+repr(sts))
+                Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"			# so dispatching_worker calls WorkDone
                 ticket["status"]=sts
                 os.write(pipe[1], repr(('0','0',ticket) ))
@@ -195,7 +200,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                 os.close(pipe[1])
                 # add entry to outstanding work 
                 self.work_list.append(ticket)
-                Trace.trace(10, '<<< Parent')
+                Trace.trace(10, 'mcDoWork<<< Parent')
     
     def WorkDone(self, ticket):
         # dispatching_worker sends "WorkDone" ticket here and we reply_to_caller
@@ -209,7 +214,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                                           ticket['drive_id']+" "  +\
                                           repr(ticket['status']) )
         # report back to original client - probably a mover
-        Trace.trace(10, '<<< WorkDone')
+        Trace.trace(10, '<<< mcWorkDone')
         # reply_with_address uses the "ra" entry in the ticket
         self.reply_with_address(ticket)
 
@@ -535,7 +540,7 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
 	    status = 0
 	else :
 	    status = 1
-            Trace.log(e_errors.ERROR, "ERROR:Shelf load exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:Shelf load exit fnst=%s %s %s" % (status, fnstatus, self.status_message[fnstatus][1]) )
         return self.status_message[fnstatus][0], status, self.status_message[fnstatus][1]
 
     def unload(self, external_label, drive, media_type):
@@ -544,14 +549,19 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
      	fnstatus = self.deallocateOCSdrive(drive)
         Trace.log(e_errors.INFO, "Shelf unload deallocate exit fnstatus=%s" % fnstatus)
 	if fnstatusTmp != 'OK' :
-            Trace.log(e_errors.ERROR, "ERROR:Shelf unload deall exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:Shelf unload deall exit fnst=%s %s %s" % (status, fnstatus, self.status_message[fnstatus][1]) )
 	    fnstatus = fnstatusTmp
 	if fnstatus == 'OK' :
 	    status = 0
 	else :
 	    status = 1
-            Trace.log(e_errors.ERROR, "ERROR:Shelf unload exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:Shelf unload exit fnst=%s %s %s" % (status, fnstatus, self.status_message[fnstatus][1]) )
         return self.status_message[fnstatus][0], status, self.status_message[fnstatus][1]
+
+    def getNretry(self) :
+        numberOfRetries = 1
+        return numberOfRetries
+
 	
 class MediaLoaderInterface(generic_server.GenericServerInterface):
 
