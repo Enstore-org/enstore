@@ -649,7 +649,9 @@ def get_routing_callback_addr(encp_intf, udps=None):
         udps = udp_server.UDPServer(None,
                                     receive_timeout=encp_intf.mover_timeout)
     else:
-        udps.__init__(None, receive_timeout=encp_intf.mover_timeout)
+	addr = udps.server_address
+	udps.__del__()  #Close file descriptors and such.
+        udps.__init__(addr, receive_timeout=encp_intf.mover_timeout)
         
     route_callback_addr = (udps.server_address[0], udps.server_address[1])
     
@@ -1161,7 +1163,8 @@ def get_einfo(e):
 
 def open_routing_socket(route_server, unique_id_list, encp_intf):
 
-    Trace.message(INFO_LEVEL, "Setting up routing table.")
+    Trace.message(e_errors.INFO, "Waiting for routing callback.")
+
     route_ticket = None
 
     if not route_server:
@@ -1190,6 +1193,9 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
     else:
         raise EncpError(errno.ETIMEDOUT,
                         "Mover did not call back.", e_errors.TIMEDOUT)
+
+    #If requested print a message.
+    Trace.message(INFO_LEVEL, "Setting up routing table.")
 
     #Determine if reading or writing.  This only has importance on
     # mulithomed machines were an interface needs to be choosen based
@@ -1887,17 +1893,17 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             request_dictionary = combine_dict(socket_dict, request_dictionary)
 
     #The volume clerk set the volume NOACCESS.
-    if vc_status[0] != e_errors.OK:
+    if not e_errors.is_ok(vc_status):  #[0] != e_errors.OK:
         status = vc_status
     #Set status if there was an error recieved from control socket.
-    elif socket_status[0] != e_errors.OK:
+    elif not e_errors.is_ok(socket_status): #[0] != e_errors.OK:
         status = socket_status
     #Use the ticket status.
     else:
         status = dict_status
         
     #If there is no error, then don't do anything
-    if status == (e_errors.OK, None):
+    if e_errors.is_ok(status): # == (e_errors.OK, None):
         result_dict = {'status':(e_errors.OK, None), 'retry':retry,
                        'resubmits':resubmits,
                        'queue_size':len(request_list)}
@@ -2698,12 +2704,13 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         if e_errors.is_resendable(result_dict['status'][0]):
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
-            ticket = combine_dict(result_dict, ticket)
+            ticket = combine_dict(result_dict, ticket, work_ticket)
             return ticket
 
         #This should be redundant error check.
         if not control_socket or not data_path_socket:
-            ticket['status'] = (e_errors.NET_ERROR, "No socket")
+	    ticket = combine_dict({'status':(e_errors.NET_ERROR, "No socket")},
+				   work_ticket)
             return ticket #This file failed.
 
         Trace.message(TRANSFER_LEVEL, "Mover called back.  elapsed=%s" %
