@@ -392,6 +392,8 @@ def swap_metadata(bfid1, src, bfid2, dst):
 	p1.bfid = p2.bfid
 	p1.drive = p2.drive
 	p1.complete_crc = p2.complete_crc
+	# should we?
+	# the best solution is to have encp ignore sanity check on file_family
 	p1.file_family = p2.file_family
 	p1.update()
 	# p1.show()
@@ -601,6 +603,36 @@ def nulify_pnfs(p):
 	for i in [1,2,4]:
 		f = open(p1.layer_file(i), 'w')
 		f.close()
-	
+
+# usage() -- help
+def usage():
+	print "usage: %s <file list>"%(sys.argv[0])
+	print "       %s --bfids <bfid list>"%(sys.argv[0])
+	print "       %s --vol <volume list>"%(sys.argv[0])	
+	print "       %s --infile <file>"%(sys.argv[0])
+
 if __name__ == '__main__':
 	init()
+	if len(sys.argv) < 2 or sys.argv[1] == "--help":
+		usage()
+		sys.exit(0)
+
+	if sys.argv[1] == "--vol":
+		for i in sys.argv[2:]:
+			migrate_volume(i)
+	elif sys.argv[1] == "--bfids":
+		files = []
+		for i in sys.argv[2:]:
+			files.append(i)
+		migrate(files)
+	else:	# assuming all are files
+		files = []
+		for i in sys.argv[2:]:
+			try:
+				f = pnfs.File(i)
+				files.append(f.bfid)
+			except:
+				# abort on error
+				error_log("can not find bifd of", i)
+				sys.exit(1)
+		migrate(files)
