@@ -4179,14 +4179,18 @@ initEXfer()
 
 static int pages_in_core(char* abspath)
 {
-#if defined ( __linux__ ) || defined ( __sun )
+#if defined ( __linux__ ) || defined ( __sun ) || defined ( __MACOSX__ )
    struct stat file_info;
    size_t size;
    void *mmap_ptr;
    int fd;
    size_t page_size;
    unsigned long vector_size;
+#ifdef __linux__
    unsigned char *vec;
+#else
+   char *vec;
+#endif
    unsigned long in_core = 0;
    unsigned long i;
 
