@@ -629,9 +629,11 @@ def do_work(intf):
         ticket = vcc.new_library(intf.args[0],         # volume name
                                  intf.new_library)     # new library name
     elif intf.delete:
-        ticket = vcc.delete(intf.delete,intf.force)   # name of this volume
+        # ticket = vcc.delete(intf.delete,intf.force)   # name of this volume
+        ticket = vcc.delete_volume(intf.delete)   # name of this volume
     elif intf.restore:
-        ticket = vcc.restore(intf.restore, intf.all)  # name of volume
+        # ticket = vcc.restore(intf.restore, intf.all)  # name of volume
+        ticket = vcc.restore_volume(intf.restore)  # name of volume
     elif intf.clear:
         nargs = len(intf.args)
         what = None
