@@ -776,7 +776,9 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 			case 0x2e:
 			    /* stk Tape Alert page */
+			    if (0 == strncmp(d->prod_id,"9840",4)) {
 			    (void)decrypt_ls(b,buf,0x15,FTT_CLEANING_BIT,1.0);
+                            }
 			    break;
 
 			case 0x30:
