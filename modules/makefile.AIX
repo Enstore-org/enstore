@@ -5,6 +5,6 @@ LDOPTS = -bM:SRE -T512 -H512  -bI:$(PYTHONMOD)/python.exp
 .SUFFIXES : .c .so
 
 .c.so :
-	cc $(CCOPTS) $< -o $*.o
+	$(CC) $(CCOPTS) $< -o $*.o
 	ld $(LDOPTS) -bE:$*.exp -einit$* $*.o -o $*.so
 	rm $*.o

@@ -1,10 +1,11 @@
+.SUFFIXES:
+.SUFFIXES: .c .so
+
+
 CCOPTS = -ansiposix -c 
 LDOPTS = -shared
 
-.SUFFIXES:
-.SUFFIXES : .c .so
-
 .c.so :
-	cc $(CCOPTS) -I$(PYTHONINC) $< -o $*.o
+	$(CC) $(CCOPTS) -I$(PYTHONINC) $< -o $*.o
 	ld $(LDOPTS)                 $*.o -o  $*.so
 	rm $*.o
