@@ -689,7 +689,8 @@ def write_to_hsm(input, output, output_file_family='',
 					     done_ticket["fc"]["external_label"],
 					     tinfo1["rate"+repr(i)], 
 					     tinfo1["transrate"+repr(i)],
-					     time.time()-t0) )
+					     time.time()-t0),
+                      Trace.MSG_ENCP_XFER )
 	    retry = 0
 
 
@@ -1555,7 +1556,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 					 done_ticket["fc"]["external_label"],
 					 tinfo["rate"+repr(j)], 
 					 tinfo["transrate"+repr(j)],
-					 time.time()-t0) )
+					 time.time()-t0),
+                  Trace.MSG_ENCP_XFER )
 	# remove file requests if transfer completed succesfuly
 	if (done_ticket["status"][0] == e_errors.OK):
 	    os.rename(tempname, requests[j]['outfile'])
