@@ -254,6 +254,7 @@ def check(mover):
 
 def main(reset_on_error=0):
     movers = get_movers()
+    strikes = {}
     while 1:
         print time.ctime(time.time())
         scheduled = get_sched()
@@ -266,11 +267,14 @@ def main(reset_on_error=0):
                 continue
             noreset = 1
             err, reason = check(mover)
+            if err=0:
+                strikes[mover]=0
             if err:
                 all_ok=0
             if err == -1: #ERROR state
                 if reset_on_error:
                     noreset = 0
+                    strikes[mover]=0
                     reset(mover, reason)
             elif err < -1: #Some other error - timeout?
                 #Check to see if there's a single process in D state
@@ -284,13 +288,24 @@ def main(reset_on_error=0):
                         print mover, lines[0]
                         if reset_on_error:
                             noreset = 0
+                            strikes[mover]=0
                             reset(mover,reason="Uninterruptible I/O wait.\nProcess status: %s" % lines[0])
                 if len(lines)==0:
                     if reset_on_error:
                         noreset = 0
+                        strikes[mover]=0
                         start(mover,reason="No mover process was running")
+            
             if err and noreset:
-                print "error on", mover, "not resetting"
+                n_strikes = strikes.get(mover,0) + 1
+                strikes[mover] = n_strikes
+                if n_strikes > 3:
+                    strikes[mover] = 0
+                    reset(mover,reason=
+                          "%d sequential errors getting mover status"
+                          %n_strikes)
+                else:
+                    print "error on", mover, "not resetting (%d)"%n_strikes
         if all_ok:
             print "All Movers OK"
         print "Sleeping"
