@@ -82,7 +82,7 @@ def copy_cgi_files(files, dir):
     os.system("cp %s/enstore_utils_cgi.py %s/log"%(dir, dir))
     os.system("mv %s/enstore_log_file_search_cgi.py %s/log"%(dir, dir))
 
-def fix_cgi_url(web_dir, file, url):
+def fix_cgi_url(web_dir, file, url, extra_dir=""):
     # edit the named file and change the url for the cgi script to the value in 'url'
     # we will need the name of the file to construct the name of the cgi file
     (filename, ext) = string.split(file, ".")
@@ -90,7 +90,7 @@ def fix_cgi_url(web_dir, file, url):
 
     #define target and replacement patterns
     target = re.compile("ACTION=\"[^\"]+\"")
-    replacement = "ACTION=\"%s/enstore/%s_cgi.py\""%(url, filename)
+    replacement = "ACTION=\"%s/enstore/%s%s_cgi.py\""%(url, extra_dir, filename)
     
     #get at the source text
     infile = open(file, 'r')
@@ -133,7 +133,7 @@ if __name__ == "__main__" :
 	    if  cgi_url:
 		print "Changing the url for the cgi scripts to %s"%(cgi_url,)
 		fix_cgi_url(web_dir, "enstore_user.html", cgi_url)
-		fix_cgi_url(web_dir, "enstore_log_file_search.html", "%s/log"%(cgi_url,))
+		fix_cgi_url(web_dir, "enstore_log_file_search.html", cgi_url, "log/")
 		fix_cgi_url(web_dir, "enstore_alarm_search.html", cgi_url)
 		
 	# make an enstore subdir in the cgi area
