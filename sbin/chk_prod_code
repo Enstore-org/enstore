@@ -1,6 +1,15 @@
 #!/bin/sh
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+# this is cheap argument processing. Must be in this order when checking.
+mailto=$ENSTORE_MAIL
+if [ "${1:-}" = "-M" ] ; then mailto=""; shift; fi
+if [ "${1:-}" = "-m" ] ; then mailto=${2:-$ENSTORE_MAIL}; shift; shift; fi
+if [ "${1:-}" = "-n" ] ; then ALARM=0; shift; else ALARM=1; fi
+
+#echo \"$mailto\"
+#echo $ALARM
+#exit 1
 
 gang=`gang`
 out=/tmp/chk_prod_code
@@ -21,9 +30,13 @@ if [ $changes -ne 0 ]; then
    echo "" >> ${out}_1
    echo "" >> ${out}_1
    echo "SUMMARY:$msg" >> ${out}_1
-   echo enstore alarm --raise --severity "A" --root-error "$msg"
-        enstore alarm --raise --severity "A" --root-error "$msg"
-   /usr/bin/Mail -s "$gang not running latest production code.  Developer Primary check and fix and restart." $ENSTORE_MAIL <${out}_1
+   if [ $ALARM -eq 1 ]; then
+      echo enstore alarm --raise --severity "A" --root-error "$msg"
+           enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+   if [ "$mailto" -nes "" ]; then
+      /usr/bin/Mail -s "$gang not running latest production code.  Developer Primary check and fix and restart." $mailto <${out}_1
+   fi
 fi
 
 cat ${out}_1
