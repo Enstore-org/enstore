@@ -482,3 +482,7 @@ class Interface:
 		self.subscribe = 1
 	    elif opt == "--no-mail":
 		self.no_mail = 1
+            elif opt == "--dbHome":
+                self.dbHome = value
+            elif opt == "--jouHome":
+                self.jouHome = value
