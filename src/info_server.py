@@ -67,7 +67,20 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		# start our heartbeat to the event relay process
 		self.erc.start_heartbeat(enstore_constants.INFO_SERVER, 
 			self.alive_interval)
+		self.set_error_handler(self.info_error_handler)
 		return
+
+	def info_error_handler(self, exc, msg, tb):
+		if exc == edb.pg.error or msg == "no connection to the server":
+			self.reconnect(msg)
+		self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
+			'exc_type':str(exc), 'exc_value':str(msg)} )
+
+
+	# reconnect() -- re-establish connection to database
+	def reconnect(self, msg="unknown reason"):
+		Trace.alarm(e_errors.WARNING, "reconnect to database due to "+msg)
+		self.dict.reconnect()
 
 	# The following are local methods
 
@@ -674,6 +687,9 @@ if __name__ == '__main__':
 		try:
 			Trace.log(e_errors.INFO, "Info Server (re)starting")
 			infoServer.serve_forever()
+		except edb.pg.error, exp:
+			infoServer.reconnect(exp)
+			continue
 		except SystemExit, exit_code:
 			infoServer.db.close()
 			sys.exit(exit_code)
