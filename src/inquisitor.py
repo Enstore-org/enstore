@@ -41,7 +41,7 @@ def default_file_dir():
 
 class EnstoreSystemStatusFile:
 
-    def __init__(self, dir="/tmp", list=0):
+    def __init__(self, dir=default_file_dir(), list=0):
         Trace.trace(10,'{__init__ essfile')
 	if dir == "":
 	    dir = "/tmp"
@@ -57,24 +57,33 @@ class EnstoreSystemStatusFile:
             self.file = open(self.file_name, 'w')
             if list :
                 print "opened for write"
+        Trace.trace(10,'}__init__')
 
     # output the passed alive status
     def output_alive(self, host, tag, status):
+        Trace.trace(12,"{output_alive "+repr(tag)+" "+repr(host))
 	str = tag+self.unquote(status['work'])+" at "+self.format_ip_address(host, status['address'])+" is "+self.format_status(status['status'])+"\n"
 	self.file.write(str)
+        Trace.trace(12,"}output_alive")
 
     # format the status, just use the first element
     def format_status(self, status):
+        Trace.trace(12,"{format_status "+repr(status))
 	return self.unquote(status[0])
+        Trace.trace(12,"}format_status ")
 
     # format the ip address - replace the ip address with the actual host name
     def format_ip_address(self, host, address):
+        Trace.trace(12,"{format_ip_address "+repr(host)+" "+repr(address))
 	return "("+self.unquote(host)+", "+repr(address[1])+")"
+        Trace.trace(12,"}format_ip_address ")
 
     # output the timeout error
     def output_etimedout(self, address, tag):
+        Trace.trace(12,"{output_etimedout "+repr(tag)+" "+repr(address))
 	stat = tag + "timed out at "+self.unquote(repr(address))+"\n"
 	self.file.write(stat)
+        Trace.trace(12,"}output_etimedout")
 
     # get the current time and output it
     def output_time(self):
@@ -86,31 +95,84 @@ class EnstoreSystemStatusFile:
 
     # output the library manager queues
     def output_lmqueues(self, ticket):
+        Trace.trace(12,"{output_lmqueues "+repr(ticket))
 	self.file.write(self.format_lmc_queues(ticket))
+        Trace.trace(12,"}output_lmqueues ")
 
     # output the library manager mover list
     def output_lmmoverlist(self, ticket):
+        Trace.trace(12,"{output_lmmoverlist "+repr(ticket))
 	self.file.write(self.format_lmc_moverlist(ticket))
+        Trace.trace(12,"}output_lmmoverlist ")
 
     # output the name of the server
     def output_name(self, name):
+        Trace.trace(12,"{output_name "+repr(name))
 	self.file.write(self.unquote(name))
+        Trace.trace(12,"}output_name ")
 
     # remove all single quotes
     def unquote(self, string):
+        Trace.trace(12,"{unquote "+repr(string))
 	return regsub.gsub("\'", "", string)
+        Trace.trace(12,"}unquote ")
 
     # format the library manager work queues for output
     def format_lmc_queues(self, ticket):
-	return "      "+pprint.pformat(ticket)+"\n"
+        Trace.trace(12,"{format_lmc_queues "+repr(ticket))
+	spacing = "\n                    "
+	string = ""
+	work = ticket['at movers']
+	if len(work) != 0:
+	    for mover in work:
+	        callback_addr = mover['callback_addr']
+	        encp = mover['encp']
+	        fc = mover['fc']
+	        times = mover['times']
+	        vc = mover['vc']
+	        wrapper = mover['wrapper']
+	        machine = wrapper['machine']
+
+                # now format it all up	
+	        string = string+"    Work at "+mover['mover']+": "
+	        if mover['work'] == 'write_to_hsm':
+		    string = string+" WRITE to "
+	        else:
+		    string = string+"READ from "
+	        string = string+wrapper['fullname']+" ("+\
+	               repr(wrapper['size_bytes'])+" bytes)"
+	        string = string+spacing+"on device labeled: "+\
+	                 fc['external_label']
+	        string = string+spacing+"from "+self.unquote(machine[1])+" ("+\
+	                 self.unquote(machine[0])+") port "+\
+	                 repr(callback_addr[1])
+	        string = string+spacing+"with a current priority of "+\
+	                 repr(encp['curpri'])+", base priority of "+\
+	                 repr(encp['basepri'])+","+spacing+\
+	                 "   delta priority of "+repr(encp['delpri'])+\
+	                 ", and agetime of "+repr(encp['agetime'])
+	        string = string+spacing+"file family is "+vc['file_family']+\
+	                 " and file family width is "+\
+	                 repr(vc['file_family_width'])
+	        string = string+spacing+"job submitted at "+repr(times['t0'])+\
+	                 ", dequeued at "+repr(times['lm_dequeued'])+spacing+\
+	                 "   and file modified at "+repr(wrapper['mtime'])+"\n"
+	else:
+	    string = "    No pending work on queue\n"
+	return string
+        Trace.trace(12,"}format_lmc_queues ")
 
     # format the library manager mover list for output
     def format_lmc_moverlist(self, ticket):
+        Trace.trace(12,"{format_lmc_moverlist "+repr(ticket))
 	return "      "+pprint.pformat(ticket)+"\n"
+        Trace.trace(12,"}format_lmc_moverlist ")
 
     # flush everything to the file
     def flush(self):
+        Trace.trace(10,'{flush')
 	self.file.flush()
+        Trace.trace(10,'}flush')
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
