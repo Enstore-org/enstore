@@ -32,6 +32,26 @@ case `uname -n` in
     (sleep 2;ecmd mcc --alive adicr1.media_changer; if [ $? -ne 0 ]; then echo ADICR1.MEDIA_CHANGER DEAD; else echo adicr1.media_changer alive; fi) &
     ;;
 
+   rip11*)
+    stopit; starttrc
+    cmd="python /home/bakken/enstore/src/mover.py DE13DLT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py DM18AIT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py DM19AIT.mover &"; doit
+    (sleep 2;ecmd mvc --alive DE13DLT.mover; if [ $? -ne 0 ]; then echo DE13DLT.MOVER DEAD; else echo de13dlt.mover alive; fi) &
+    (sleep 2;ecmd mvc --alive DM18AIT.mover; if [ $? -ne 0 ]; then echo DM18AIT.MOVER DEAD; else echo dm18ait.mover alive; fi) &
+    (sleep 2;ecmd mvc --alive DM19AIT.mover; if [ $? -ne 0 ]; then echo DM19AIT.MOVER DEAD; else echo dm19ait.mover alive; fi) &
+    ;;
+
+   rip12*)
+    stopit; starttrc
+    cmd="python /home/bakken/enstore/src/mover.py DE14DLT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py DC15MAM.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py DM15MAM.mover &"; doit
+    (sleep 2;ecmd mvc --alive DE14DLT.mover; if [ $? -ne 0 ]; then echo DE14DLT.MOVER DEAD; else echo de14dlt.mover alive; fi) &
+    (sleep 2;ecmd mvc --alive DC15MAM.mover; if [ $? -ne 0 ]; then echo DC15MAM.MOVER DEAD; else echo dc15mam.mover alive; fi) &
+    (sleep 2;ecmd mvc --alive DC16MAM.mover; if [ $? -ne 0 ]; then echo DC16MAM.MOVER DEAD; else echo dc16mam.mover alive; fi) &
+    ;;
+
    rip6*)
     stopit; starttrc
     cmd="python /home/bakken/enstore/src/volume_clerk.py &"; doit
@@ -54,14 +74,6 @@ case `uname -n` in
 
    rip1*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/mover.py DE01DLT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py DE02DLT.mover &"; doit
-    (sleep 2;ecmd mvc --alive DE01DLT.mover; if [ $? -ne 0 ]; then echo DE01DLT.MOVER DEAD; else echo de01dlt.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DE02DLT.mover; if [ $? -ne 0 ]; then echo DE02DLT.MOVER DEAD; else echo de02dlt.mover alive; fi) &
-    ;;
-
-   rip2*)
-    stopit; starttrc
     cmd="python /home/bakken/enstore/src/mover.py DC03MAM.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py DC04MAM.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py DC05MAM.mover &"; doit
@@ -71,6 +83,15 @@ case `uname -n` in
     (sleep 2;ecmd mvc --alive DC05MAM.mover; if [ $? -ne 0 ]; then echo DC05MAM.MOVER DEAD; else echo dc06mam.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DC06MAM.mover; if [ $? -ne 0 ]; then echo DC06MAM.MOVER DEAD; else echo dc07mam.mover alive; fi) &
     ;;
+
+   rip2*)
+    stopit; starttrc
+    cmd="python /home/bakken/enstore/src/mover.py DE01DLT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py DE02DLT.mover &"; doit
+    (sleep 2;ecmd mvc --alive DE01DLT.mover; if [ $? -ne 0 ]; then echo DE01DLT.MOVER DEAD; else echo de01dlt.mover alive; fi) &
+    (sleep 2;ecmd mvc --alive DE02DLT.mover; if [ $? -ne 0 ]; then echo DE02DLT.MOVER DEAD; else echo de02dlt.mover alive; fi) &
+    ;;
+
 
    rip7*)
     stopit; starttrc
@@ -160,26 +181,6 @@ case `uname -n` in
     (sleep 2;ecmd lmc --alive samdlt.library_manager; if [ $? -ne 0 ]; then echo SAMDLT.LIBRARY_MANAGER DEAD; else echo samdlt.library_manager alive; fi) &
     (sleep 2;ecmd lmc --alive sammam.library_manager; if [ $? -ne 0 ]; then echo SAMMAM.LIBRARY_MANAGER DEAD; else echo sammam.library_manager alive; fi) &
     (sleep 2;ecmd mcc --alive adicr2.media_changer;   if [ $? -ne 0 ]; then echo ADICR2.MEDIA_CHANGER DEAD;   else echo adicr2.media_changer alive;   fi) &
-    ;;
-
-   rip11*)
-    stopit; starttrc
-    cmd="python /home/bakken/enstore/src/mover.py DE13DLT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py DM18AIT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py DM19AIT.mover &"; doit
-    (sleep 2;ecmd mvc --alive DE13DLT.mover; if [ $? -ne 0 ]; then echo DE13DLT.MOVER DEAD; else echo de13dlt.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DM18AIT.mover; if [ $? -ne 0 ]; then echo DM18AIT.MOVER DEAD; else echo dm18ait.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DM19AIT.mover; if [ $? -ne 0 ]; then echo DM19AIT.MOVER DEAD; else echo dm19ait.mover alive; fi) &
-    ;;
-
-   rip12*)
-    stopit; starttrc
-    cmd="python /home/bakken/enstore/src/mover.py DE14DLT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py DC15MAM.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py DM15MAM.mover &"; doit
-    (sleep 2;ecmd mvc --alive DE14DLT.mover; if [ $? -ne 0 ]; then echo DE14DLT.MOVER DEAD; else echo de14dlt.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DC15MAM.mover; if [ $? -ne 0 ]; then echo DC15MAM.MOVER DEAD; else echo dc15mam.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DC16MAM.mover; if [ $? -ne 0 ]; then echo DC16MAM.MOVER DEAD; else echo dc16mam.mover alive; fi) &
     ;;
 
    *)

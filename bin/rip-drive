@@ -58,12 +58,12 @@ fi
 
 case $drive in
 
-  de01) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-  de02) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
-  dc03) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-  dc04) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
-  dc05) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
-  dc06) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
+  de01) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
+  de02) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
+  dc03) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
+  dc04) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
+  dc05) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
+  dc06) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
   dm07) cmd="rsh $rip5   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
   dm08) cmd="rsh $rip5   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
   dm09) cmd="rsh $rip5   'mt -f /dev/rmt/tps2d5n $command 2>&1; echo \$?'" ;;
