@@ -916,8 +916,9 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		 'forked_state' : self.client_obj_inst.hsm_driver.user_state_get(),
 		 'state'        : self.client_obj_inst.state,
 		 'no_xfers'     : self.client_obj_inst.hsm_driver.no_xfers,
-		 'rd_bytes'     : self.client_obj_inst.hsm_driver.rd_bytes_get(),
+		 # try getting wr_bytes 1st to prevent writing ahead of reading
 		 'wr_bytes'     : self.client_obj_inst.hsm_driver.wr_bytes_get(),
+		 'rd_bytes'     : self.client_obj_inst.hsm_driver.rd_bytes_get(),
 		 # from "work ticket"
 		 'bytes_to_xfer': self.client_obj_inst.bytes_to_xfer,
 		 'files'        : self.client_obj_inst.files,
