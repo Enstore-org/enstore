@@ -21,7 +21,7 @@ set -u  # force better programming and ability to use check for not set
 
 rm -f writer.pids
 echo $$ > writer.pids
-p=`echo $$``uname -n`
+p=`uname -n``echo $$`
 
 while /bin/true; do
     cat $write_list | while read f; do
