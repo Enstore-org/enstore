@@ -79,7 +79,7 @@ def inq_file_name():
 
 TRUE = 1
 FALSE = 0
-MAX_ENCP_LINES = 25
+MAX_ENCP_LINES = 50
 LOGFILE_DIR = "logfile_dir"
 LOG_PREFIX = "LOG-"
 START_TIME = "start_time"
