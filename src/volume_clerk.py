@@ -281,8 +281,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             
         # mandatory keys
         for key in  ['external_label','media_type', 'library',
-                     'eod_cookie', 'storage_group',
-                     'capacity_bytes']:
+                     'eod_cookie', 'capacity_bytes']:
             try:
                 record[key] = ticket[key]
             except KeyError, detail:
