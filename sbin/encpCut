@@ -176,6 +176,9 @@ if [ $# -gt 0 ] ; then
              gotc=1
              opt=""
              ;;
+         -q) QUALIFIERS="-q $optarg"
+             opt=""
+             ;;
          -s) STEPS=`for i in \`echo $optarg | sed -e 's/,/ /g'\` ; do
                 if x=\`expr $i : '\(.*\)-'\` ; then
                    y=\`expr $i : '.*-\(.*\)'\`
@@ -515,49 +518,49 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
        11) echo "Step $Step:  ups undeclare -f $FLAVOR $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
               if [ $puntUPS -ne 1 ]; then
-                a=`$UPS_DIR/bin/ups undeclare  -f $FLAVOR $product $REV 2>&1`
+                a=`$UPS_DIR/bin/ups undeclare $QUALIFIERS -f $FLAVOR $product $REV 2>&1`
                 stat=$?
                 if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
                   check_status $stat $a
                 fi
               else
-                echo "PUNTING: ups undeclare  -f $FLAVOR $product $REV"
+                echo "PUNTING: ups undeclare  $QUALIFIERS -f $FLAVOR $product $REV"
               fi
            fi
            ;;
 
-       12) echo "Step $Step:  ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV    `starting`"
+       12) echo "Step $Step:  ups declare $CHAIN $QUALIFIERS -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
               if [ $puntUPS -ne 1 ]; then
-                 $UPS_DIR/bin/ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
+                 $UPS_DIR/bin/ups declare $CHAIN $QUALIFIERS -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
                  check_status $? "ups declare"
               else
-                 echo "PUNTING: ups declare $CHAIN -f $FLAVOR -r \`pwd\` -M \`pwd\`${productUps} -m $product.table $product $REV"
+                 echo "PUNTING: ups declare $CHAIN $QUALIFIERS -f $FLAVOR -r \`pwd\` -M \`pwd\`${productUps} -m $product.table $product $REV"
               fi
            fi
            ;;
 
-       13) echo "Step $Step:  upd delproduct -H $FLAVOR -f $FLAVOR  $product $REV   `starting`"
+       13) echo "Step $Step:  upd delproduct $QUALIFIERS -H $FLAVOR -f $FLAVOR  $product $REV   `starting`"
            if [ "$try" = "doit" ] ; then
               if [ $puntUPS -ne 1 ]; then
-                a=`$UPD_DIR/bin/upd delproduct  -H $FLAVOR -f $FLAVOR $product $REV 2>&1`
+                a=`$UPD_DIR/bin/upd delproduct $QUALIFIERS -H $FLAVOR -f $FLAVOR $product $REV 2>&1`
                 stat=$?
                 if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
                   check_status $stat $a
                 fi
               else
-                echo "PUNTING: upd delproduct  -H $FLAVOR -f $FLAVOR $product $REV"
+                echo "PUNTING: upd delproduct $QUALIFIERS -H $FLAVOR -f $FLAVOR $product $REV"
               fi
            fi
            ;;
 
-       14) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV   `starting`"
+       14) echo "Step $Step:  upd addproduct $CHAIN $QUALIFIERS -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV   `starting`"
            if [ "$try" = "doit" ] ; then
               if [ $puntUPS -ne 1 ]; then
-                $UPD_DIR/bin/upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
+                $UPD_DIR/bin/upd addproduct $CHAIN $QUALIFIERS -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
                 check_status $? "upd addproduct"
               else
-                echo "PUNTING: upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r \`pwd\` -M \`pwd\`${productUps} -m $product.table $product $REV"
+                echo "PUNTING: upd addproduct $CHAIN $QUALIFIERS -H $FLAVOR -f $FLAVOR -r \`pwd\` -M \`pwd\`${productUps} -m $product.table $product $REV"
               fi
            fi
            ;;
