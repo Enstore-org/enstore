@@ -2,15 +2,16 @@
 
 print_usage()
 {
-    echo "Usage: " $0 "<input_file> <output_file>"
+    echo "Usage: " $0 "<pnfs_path>"
 }
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 1 ]; then
     print_usage
     exit 1
 fi
 
-encp --check $*
+#echo encp --verbose -1 --check $* /dev/null 
+encp --verbose -1 --check $* /dev/null 
 rtn=$?
 
 exit $rtn
