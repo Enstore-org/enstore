@@ -107,17 +107,6 @@ readable:
 	chmod -R a+r .
 	chmod -R a+rx bin
 
-clean:
-	rm -f $(PREFIX)	
-
-spotless:
-
-test: proddir_is_set FORCE
-	sh test/TestScript
-
-regression: proddir_is_set clean FORCE
-	sh test/TestScript
-
 # test: runs regression tests 
 # regression: runs tests on "clean" product
 #      some religious discussions have centered on whether we should
