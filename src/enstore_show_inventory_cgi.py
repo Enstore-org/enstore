@@ -7,9 +7,6 @@ import socket
 
 inv_dir = "/enstore/tape_inventory"
 
-# this is a hack
-cheat_dir = "/diska/tape-inventory"
-
 host = string.split(socket.gethostname(), '.')[0]
 if host[:3] == "rip":
 	cluster = "rip"
@@ -20,9 +17,10 @@ elif host[:3] == "d0e":
 else:
 	cluster = "unknown"
 
-special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED', 'VOLUME_QUOTAS', 'VOLUME_SIZE', 'LAST_ACCESS', 'NOACCESS']
+special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED', 'VOLUME_QUOTAS', 'VOLUME_SIZE', 'LAST_ACCESS']
 
 if cluster == "d0en":
+	special.append('NOACCESS')
 	special.append('CLEANING')
 	special.append('AML2-VOLUMES.html')
 elif cluster == "stken":
@@ -32,19 +30,18 @@ elif cluster == "stken":
 
 catalog = {}
 
-cmd = 'ls '+cheat_dir
+cmd = '. /usr/local/etc/setups.sh; setup enstore; enstore vol --labels'
+# cmd = 'enstore vol --labels'
 
 for i in os.popen(cmd).readlines():
-	f = os.path.basename(string.strip(i))
-        # skipping deleted volumes
-        if f[-8:] != '.deleted':
-		if not f in special:
-			prefix = f[:3]
-			if catalog.has_key(prefix):
-				catalog[prefix].append(f)
-			else:
-				catalog[prefix] = [f]
-
+	f = string.strip(i)
+	if f[-8:] != '.deleted':
+		prefix = f[:3]
+		if catalog.has_key(prefix):
+			catalog[prefix].append(f)
+		else:
+			catalog[prefix] = [f]
+	
 # in the beginning ...
 
 print "Content-type: text/html"
@@ -81,7 +78,7 @@ for i in keys:
 	print '<h2><a name="'+i+'"><font color="#aa0000">'+i+'</font></a></h2>'
 	for j in catalog[i]:
 		# print '<a href="'+os.path.join(inv_dir, j)+'">', j, '</a>&nbsp;&nbsp;'
-		print '<a href=/cgi-bin/show_volume_cgi.py?'+j+'>', j, '</a>&nbsp;&nbsp;'
+		print '<a href=/cgi-bin/enstore/show_volume_cgi.py?volume='+j+'>', j, '</a>&nbsp;&nbsp;'
 
 # the end
 print '</body>'
