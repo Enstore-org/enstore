@@ -92,10 +92,8 @@
     char ptr[128];
 
     SWIG_MakePtr(ptr, $source, "_struct_aci_vol_desc_p");
+    $target = return_list($target, PyString_FromString(ptr));
 }
-
-
-
 
 
 /* this is here rather than in aci_typedefs.h so it doesn't get copied
