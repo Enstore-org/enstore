@@ -944,11 +944,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		v = self.vcc.set_at_mover(w['fc']['external_label'], 
 					  'mounting', mticket["mover"])
 		if v['status'][0] != e_errors.OK:
+                    state,mover=v.get('at_mover')
 		    format = "cannot change to 'mounting' vol=%s mover=%s state=%s"
-		    Trace.log(e_errors.INFO, format%\
+		    Trace.log(e_errors.ERROR, format%\
 				   (w["fc"]["external_label"],
-				    v['at_mover'][1], 
-				    v['at_mover'][0]))
+				    mover, 
+				    state))
 		    self.reply_to_caller({"work" : "nowork"})
 		    return
 		else:
@@ -1118,11 +1119,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    'unmounting', 
 				    mticket["mover"])
 		if v['status'][0] != e_errors.OK:
+                    state,mover=v.get('at_mover')
 		    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
 		    Trace.log(e_errors.INFO, format%\
 			      (mticket['vc']['external_label'],
-			       v['at_mover'][1], 
-			       v['at_mover'][0]))
+			       mover, 
+			       state))
 		
 		format = "unbind vol %s mover=%s"
 		Trace.log(e_errors.INFO, format %\
@@ -1162,11 +1164,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    'unmounting', 
 				    ticket["mover"])
 		if v['status'][0] != e_errors.OK:
+                    state,mover=v.get('at_mover')
 		    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
 		    Trace.log(e_errors.INFO, format %\
 			      (ticket['external_label'],
-			      v['at_mover'][1], 
-			      v['at_mover'][0]))
+			      mover, 
+			      state))
                     self.reply_to_caller({"work" : "nowork"})
 		else:
 		    timer_task.msg_cancel_tr(summon_mover, 
