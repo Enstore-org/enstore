@@ -11,7 +11,7 @@ N=/dev/null
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 case $node in
   stken*) gang=stken
-          NODES="stkensrv0 stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
+          NODES="stkensrv0: stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
                  stkenmvr1a: stkenmvr1b: stkenmvr2a: stkenmvr2b: stkenmvr3a: stkenmvr3b: \
                  stkenmvr4a: stkenmvr4b: stkenmvr5a: stkenmvr5b: stkenmvr6a: stkenmvr6b: \
 		 stkenmvr7a: stkenmvr8a: \
@@ -206,6 +206,10 @@ del*)
 ################################################################################
 quickcheck*)
 
+complain=3
+CF_current() { if [ ! -r $CF ]; then CF_set 0 ; fi;  cat $CF; }
+CF_set() { rm -fr $CF; echo $1 > $CF ; }
+
 black=#000000
 white=#FFFFFF
 
@@ -260,6 +264,8 @@ Rate test between various nodes and `uname -n`
 EOF
     for knode in $NODES; do
       node=`echo $knode | cut -f1 -d:`
+      CF=/tmp/routes_quickcheck_$node
+      current=`CF_current`
       production=`echo $knode|grep -c :`
       if [ $production -ne 0 ]; then
          color=$blue
@@ -281,20 +287,27 @@ EOF
          if [ $production -ne 0 ]; then
 	   msg="Node $node has rate=$i.  FIX, or disable its mover"
 	   enstore alarm --raise --severity 'A' --root_error="$msg"
-	   #enstore sched --override enstore --saagStatus red
-           /usr/bin/Mail -s "$msg" $ENSTORE_MAIL <<EOF
+           flag2="CHECK"
+	   current=`expr $current + 1`
+           if [ $current -gt $complain ]; then 
+	     #enstore sched --override enstore --saagStatus red
+             /usr/bin/Mail -s "$msg" $ENSTORE_MAIL <<EOF
 `date`
 $msg
 EOF
-           flag2="CHECK"
+	     current=0
+	   fi
          else
            flag2="yes"
+	   current=0
          fi
       else
          fcolor=$color
          flag=""
          flag2=""
+	 current=0
       fi
+      CF_set $current
       echo $node:  ${v} x 10^6 bits/S $flag
       echo "<td align=center><font color=\"$color\">$v</font></td>" >> $storit
       echo "<td align=center><font color=\"$fcolor\">$flag2</font></td>" >> $storit
