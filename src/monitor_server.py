@@ -7,6 +7,7 @@ import sys
 import string
 import types
 import os
+import socket
 import traceback
 import pprint
 
