@@ -4,6 +4,5 @@ all:
 	@echo nothing to build
 
 clean:
-	for d in test doc ; do (cd $$d; make clean) ; done
-	rm -f *~
+	@ ../bin/enstoreClean
 	rm -f *.pyc
