@@ -163,7 +163,7 @@ class ConfigurationClient(generic_client.GenericClient):
         Trace.trace(16,'}get_movers')
 	
     #get list of library managers
-    def get_library_managers(self, ticket):
+    def get_library_managers(self, ticket, timeout=0, retry=0):
         Trace.trace(10,"{get_library_managers")
         ret = []
         request = {'work': 'get_library_managers'}
