@@ -15,6 +15,8 @@ import re
 import rexec
 #import signal
 import errno
+import gc
+
 
 #enstore imports
 import enstore_display
@@ -538,7 +540,7 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
         try:
             mover_list = csc.get_movers(lm_dict[lm]['name'])
         except TypeError:
-            sys.stderr.write(str(lm_dict[lm]))
+            #sys.stderr.write(str(lm_dict[lm]))
             continue
 
         try:
@@ -1023,6 +1025,13 @@ def main(intf):
             pass #If the window is already destroyed (i.e. user closed it)
                  # then this error will occur.
         del display
+
+        #Force garbage collection while the display is off while awaiting
+        # initialization.
+        uncollectable_count = gc.collect()
+        del gc.garbage[:]
+        if uncollectable_count > 0:
+            Trace.trace(0, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
 
     #Perform the following two deletes explicitly to avoid obnoxios
     # tkinter warning messages printed to the terminal when using
