@@ -18,6 +18,9 @@ QUALIFIERS = ""
         setupOptional("tgif")
         setupOptional("htmldoc")
 
+	# setup the lint tool if it is present
+	setupOptional("gadfly")
+
         setupRequired("ftt")
 
 	# aci is the EMASS tape library and admin tool product
