@@ -18,7 +18,7 @@ import string
 # message types.  a message type will be appended to every message so that
 # identifying which message is which will be easier.  messages logged without
 # a message type will have MSG_DEFAULT appended.
-MSG_DICT_DFLT = ""
+MSG_DICT_DFLT = {}
 MSG_DICT = "MSG_DICT:"
 MSG_TYPE_DFLT = ""
 MSG_TYPE = "MSG_TYPE="
@@ -37,11 +37,13 @@ mode   = Ptrace.mode
 def log( severity, msg, msg_dict = MSG_DICT_DFLT, msg_type = MSG_TYPE_DFLT ):
     # CHECK TO SEE IF THERE IS A VALID DICTIONARY. IF THERE IS,
     # BASE64(CPICKLE) IT AND ATTACH TO END OF MESSAGE.
-    if type(msg_dict) == type({}):
+    if len(msg_dict) > 0:
         tmp_dict = base64.encodestring(cPickle.dumps(msg_dict))
         tmp_dict = string.split(tmp_dict, "\n")
         tmp_dict = string.joinfields(tmp_dict, "")
         msg_dict = "%s%s" % (MSG_DICT, tmp_dict)
+    else:
+        msg_dict = ""
 
     # SEE IF USER ENTERED HIS OWN 'MSG_TYPE' MESSAGE. IF HE DID,
     # ATTACH TO END OF MESSAGE.
