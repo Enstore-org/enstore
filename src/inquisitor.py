@@ -42,7 +42,7 @@ server_map = {"log_server" : enstore_constants.LOGS,
 	      "media" : ""}
 server_keys = server_map.keys()
 
-# start of global declarations
+# start of global variables
 UP = 1
 DOWN = 2
 OUTAGE = 3
