@@ -296,6 +296,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 class EMASS_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self, medch, maxwork, csc)
+	import EMASS
+        self.load=EMASS.mount
+        self.unload=EMASS.dismount
+        self.prepare=EMASS.dismount
+
 	# robot choices are 'R1', 'R2' or 'Both'
 	if self.mc_config.has_key('RobotArm'):   # error if robot not in config
 	    self.robotArm = string.strip(self.mc_config['RobotArm'])
@@ -311,10 +316,6 @@ class EMASS_MediaLoader(MediaLoaderMethods):
 	    return
 	if self.mc_config.has_key('IdleHomeTime'):
 	    self.idleTimeLimit = int(string.strip(self.mc_config['IdleTimeHome']))
-        import EMASS
-        self.load=EMASS.mount
-        self.unload=EMASS.dismount
-        self.prepare=EMASS.dismount
         self.robotHome=EMASS.robotHome
         self.robotStatus=EMASS.robotStatus
         self.robotStart=EMASS.robotStart
