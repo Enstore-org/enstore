@@ -8,6 +8,7 @@ import types				# see if eod_str is string
 import string				# atoi use on loc_cookie
 import time
 
+##Enstore imports
 import FTT
 import EXfer
 import IPC
@@ -325,6 +326,26 @@ class  FTTDriver(GenericDriver) :
 	FTT.close()
 	return None
 
+    def check_header( self ):
+        ## This sucks.
+        blocksize=FTT.get_blocksize()
+        FTT.set_blocksize(80)
+        if debug_paranoia:  print "check_header"
+        try:
+            label=self.read(80)
+            if debug_paranoia:  print "label=",label,"len(label)=", len(label)
+            if len(label)!=80:
+                typ,val="INVALID","INVALID"
+            else:
+                typ=label[:4]
+                val=string.split(label[4:])[0]
+        except:
+            typ,val = None,None
+        if debug_paranoia:  print "check_header: return",typ,val
+        FTT.set_blocksize(blocksize)
+        return typ, val
+        
+        
     def get_allStats( self, device="" ):
         statistics = FTT.get_statsAll()
 	if statistics['remain_tape'] == None:
@@ -343,6 +364,7 @@ class  FTTDriver(GenericDriver) :
 	statistics['device'] = device
 	
 	return statistics
+
 
     def offline( self, device ):
 	x = 2;
@@ -515,17 +537,19 @@ class  FTTDriver(GenericDriver) :
 	self.remaining_bytes = self.remaining_bytes - len( buffer )
 	return None
 
-    def close( self ):
+
+    def close( self, skip=1 ):
         self.statisticsClose = self.get_allStats()
         Trace.log(e_errors.INFO,"Gathering statistics: close")
 	if self.mode == 'r':
-	    FTT.skip_fm( 1 )
-	    # this is making an assumption and should be changed to use
-	    # FTT.get_stats() (which is broken as of 2-25-99) and setting
-	    # the block_loc (in addition to the file location)
-	    pp,bb,ff = loc2int( self, self.cur_loc_cookie )
-	    self.cur_loc_cookie = int2loc( self, (pp,bb,ff+1) )
-	    pass
+            if skip:
+                FTT.skip_fm( 1 )
+                # this is making an assumption and should be changed to use
+                # FTT.get_stats() (which is broken as of 2-25-99) and setting
+                # the block_loc (in addition to the file location)
+                pp,bb,ff = loc2int( self, self.cur_loc_cookie )
+                self.cur_loc_cookie = int2loc( self, (pp,bb,ff+1) )
+                pass
 	return FTT.close()
 
     def loc_compare( self, loc1, loc2 ):
