@@ -420,8 +420,6 @@ class Interface:
                 self.output = value
             elif opt == "--output-dir":
                 self.output_dir = value
-            elif opt == "--plot":
-                self.plot = 1
             elif opt == "--pnfs-mount-point":
                 self.pnfs_mount_point = value
             elif opt == "--prefix":

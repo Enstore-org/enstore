@@ -10,12 +10,11 @@ import www_server
 import e_errors
 import Trace
 
-DEFAULT_REFRESH = 1000
 MY_NAME = "Plotter"
 
 class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 
-    def __init__(self, csc, rcv_timeout, rcv_retry, refresh, logfile_dir, 
+    def __init__(self, csc, rcv_timeout, rcv_retry, logfile_dir, 
 		 start_time, stop_time, media_changer, keep,
 		 keep_dir, output_dir, html_file):
 	# we need to get information from the configuration server
@@ -61,11 +60,6 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	    plot_file = "%s/%s"%(self.html_dir,
 				 enstore_files.plot_html_file_name())
 
-	# if no html refresh was entered on the command line, get it from
-        # the configuration file.
-        if refresh == -1:
-            refresh = self.inquisitor.get("refresh", DEFAULT_REFRESH)
-
         self.system_tag = self.www_server.get(www_server.SYSTEM_TAG, 
                                               www_server.SYSTEM_TAG_DEFAULT)
 
@@ -82,8 +76,6 @@ class PlotterInterface(generic_client.GenericClientInterface):
         self.restricted_opts = opts
         self.alive_rcv_timeout = 5
         self.alive_retries = 1
-	self.refresh = DEFAULT_REFRESH
-	self.plot = 0
 	self.logfile_dir = None
 	self.start_time = None
 	self.stop_time = None
@@ -103,8 +95,7 @@ class PlotterInterface(generic_client.GenericClientInterface):
             return self.restricted_opts
         else:
             return self.client_options() +[
-                "refresh=", "plot", "logfile-dir=",
-                "start-time=", "stop-time=", "media-changer=", "keep",
+                "logfile-dir=", "start-time=", "stop-time=", "keep",
                 "keep-dir=", "output-dir=", "encp", "mount", "sg"]
 
 if __name__ == "__main__":
@@ -116,7 +107,7 @@ if __name__ == "__main__":
     # get the plotter
     plotter = Plotter((intf.config_host, intf.config_port), 
 		      intf.alive_rcv_timeout, intf.alive_retries,
-		      intf.refresh, intf.logfile_dir, intf.start_time, 
+		      intf.logfile_dir, intf.start_time, 
 		      intf.stop_time, intf.media_changer, intf.keep, 
 		      intf.keep_dir, intf.output_dir, intf.html_file)
 
