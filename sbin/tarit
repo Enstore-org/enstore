@@ -9,7 +9,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 bang=`echo -e "\041"`
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
-case $node in
+case $gang in
   stken) op="-ne"
           ;;
    d0en) op="-eq"
