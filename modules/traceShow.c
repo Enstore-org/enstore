@@ -468,6 +468,7 @@ traceOnOff( int on, char *id_s, unsigned lvl1, unsigned lvl2 )
     if (end_p != (id_s+strlen(id_s)))	/* check if conversion worked */
     {   /* did not work - id_s must not have a pure number -
 	   check for name */
+	char	int i;
 
 	/* first check special case */
 	if (  (strcmp(id_s,"global")==0)
