@@ -1810,6 +1810,16 @@ class Tag:
         else:
             print os.strerror(errno.EINVAL) + ": Incorrect owner field"
             return 1
+
+        #If the user and group are ids, convert them to integers.
+        try:
+            uid = int(uid)
+        except ValueError:
+            pass
+        try:
+            gid = int(gid)
+        except ValueError:
+            pass
         
         if uid and type(uid) != types.IntType:
             try:
