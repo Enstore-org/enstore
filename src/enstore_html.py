@@ -16,6 +16,9 @@ import enstore_constants
 import mover_constants
 import safe_dict
 
+YES = 1
+NO = 0
+
 FUSCHIA  = "#FF00FF"
 YELLOW   = "#FFFFF0"
 AQUA     = "#DFF0FF"
@@ -23,6 +26,8 @@ BRICKRED = "#770000"
 DARKBLUE = "#000066"
 TIMED_OUT_COLOR = "#FF9966"
 SERVER_ERROR_COLOR = "#FFFF00"
+
+INFOTXT = "files"
 
 NAV_TABLE_COLOR = YELLOW
 NBSP = "&nbsp;"
@@ -113,6 +118,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     # this is the base class for all of the html generated enstore documents
     def __init__(self, refresh=0, background="enstore.gif", help_file="", system_tag=""):
+	self.align = YES
 	self.textcolor = DARKBLUE
 	self.background = background
 	if self.background:
@@ -205,9 +211,13 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	    tr.append(td)	    
 	    fl_table.append(tr)
 
-	table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table)), 
-				  cellspacing=0, cellpadding=0, align="LEFT",
-				  width="800")
+	if self.align == YES:
+	    table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table)), 
+				      cellspacing=0, cellpadding=0, align="LEFT",
+				      width="800")
+	else:
+	    table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table)), 
+				      cellspacing=0, cellpadding=0)
 	table.append(empty_row())
 	td = HTMLgen.TD(HTMLgen.HR(size=2, noshade=1))
 	self.table_top_b(table, td)
@@ -723,13 +733,15 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
                   "HARDWARE FAILURE, Read Error"              : "READ_ERROR",
                   "HARDWARE FAILURE, Write Error"             : "WRITE_ERROR",
                   "TAPE TROUBLE, IO error, retrying"          : "BROKENPIPE",
-                  "USER ERROR, No Local Disk Space"           : "ENOSPC"
+                  "USER ERROR, No Local Disk Space"           : "ENOSPC",
+		  "LIBRARY MANAGER LOCKED"                    : "locked for external access"
                   }
 # too general     "USER ERROR"                                : "USERERROR",
 
     def __init__(self, refresh=120, system_tag=""):
 	EnBaseHtmlDoc.__init__(self, refresh=refresh, help_file="encpHelp.html",
 			       system_tag=system_tag)
+	self.align = NO
 	self.title = "ENSTORE Encp History"
 	self.script_title_gif = "encph.gif"
 	self.source_server = THE_INQUISITOR
@@ -741,6 +753,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
     #        [["10:43:49", "d0ensrv1.fnal.gov", "bakken", "55,255", "samnull-1", "3.5", "0.035"]]
     def body(self, data_list):
 	table = self.table_top()
+	self.append(table)
 	# now create the table with the data in it, first do the row with
 	# the headings
 	tr = HTMLgen.TR(valign="CENTER")
@@ -750,29 +763,34 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	for hding in headings:
 	    tr.append(self.make_th(hding))
 	en_table = HTMLgen.TableLite(tr, border=1, bgcolor=AQUA, width="100%",
-				     cols=7, cellspacing=5, cellpadding=CELLP,
-				     align="CENTER")
+				     cols=7, cellspacing=5, cellpadding=CELLP)
 	num_errors = 0
 	errors = []
+	num_successes = 0
+	self.encp_files = []
 	for row in data_list:
-            ##  XXX HACK: skip error messages that should not have gotten logged,
-            ## due to a mistake in encp
-            if len(row)==4 and (row[3][:5] in ('Fatal', 'Error')):
-                    continue
-                ##XXX end hack cgw
-	    ## another hack which can be removed when encp is recut (efb - aug, 02, 2000)
+
+	    ## hack which can be removed when encp is recut (efb - aug, 02, 2000)
 	    if string.find(row[3], "impostor") != -1:
 		# found it, ignore this row
 		continue
-	    ## endof second hack
+	    ## endof hack
 
 	    tr = HTMLgen.TR(HTMLgen.TD(row[0]))
 	    # remove .fnal.gov from the node
 	    row[1] = enstore_functions.strip_node(row[1])
 	    if  len(row) != 4:
+		num_successes = num_successes + 1
 		# this is a normal encp data transfer row
-		for item in row[1:]:
-		    tr.append(HTMLgen.TD(item))
+		tr.append(HTMLgen.TD(row[1]))
+		tr.append(HTMLgen.TD(row[2]))
+		tr.append(HTMLgen.TD(HTMLgen.Href("#%s%s"%(INFOTXT, num_successes), 
+						  "%s (%s)"%(row[3], 
+							     HTMLgen.Bold(num_successes)))))
+		self.encp_files.append([row[7], row[8]])
+		tr.append(HTMLgen.TD(row[4]))
+		tr.append(HTMLgen.TD(row[5]))
+		tr.append(HTMLgen.TD(row[6]))
 	    else:
 		# this row is an error row
 		tr.append(HTMLgen.TD(row[1]))
@@ -794,7 +812,19 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 						  HTMLgen.Bold("%s (%s)"%(etxt, num_errors,))),
 				     colspan=(num_headings-3)))
 	    en_table.append(tr)
-	table.append(HTMLgen.TR(HTMLgen.TD(en_table)))
+	self.append(en_table)
+	# now make the table with the file information
+	en_table = HTMLgen.TableLite()
+	for i in range(num_successes):
+	    si = "%s"%(i+1,)
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(si), size="+2")))
+	    tr.append(HTMLgen.TD(HTMLgen.Name("%s%s"%(INFOTXT, si), 
+					      "%s -> %s"%(self.encp_files[i][0], 
+							  self.encp_files[i][1]))))
+	    en_table.append(tr)
+	    en_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR(), colspan=2)))
+	self.append(en_table)
+
 	# now make the table with the error information
 	en_table = HTMLgen.TableLite()
 	for i in range(num_errors):
@@ -803,9 +833,8 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(HTMLgen.Name(si, errors[i])))
 	    en_table.append(tr)
 	    en_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR(), colspan=2)))
-	table.append(HTMLgen.TR(HTMLgen.TD(en_table)))
-	self.trailer(table)
-	self.append(table)							 
+	self.trailer(en_table)
+	self.append(en_table)
 
 class EnConfigurationPage(EnBaseHtmlDoc):
 
