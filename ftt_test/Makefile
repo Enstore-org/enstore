@@ -35,7 +35,7 @@ libftt_test.a: $(OBJ)
 	rm -f libftt_test.a
 	ar qv libftt_test.a $(OBJ)
 
-ftt_test: ftt_test.c libftt_test.a ../lib/libftt.a 
+ftt_test: ftt_test.c libftt_test.a ../ftt_lib/libftt.a 
 	$(CC) $(CFLAGS) -o ftt_test ftt_test.c  $(LIBS)
 
 ftt_random: ftt_random.c libftt_test.a ../lib/libftt.a 

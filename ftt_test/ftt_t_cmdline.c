@@ -686,13 +686,13 @@ if (g_sigint_flag >= g_sigint_flag_max)
        (g_sigint_old.sa_handler != SIG_DFL) &&
        (g_sigint_flag == g_sigint_flag_max))
       {
-      g_sigint_old.sa_handler();
+      g_sigint_old.sa_handler(0);
       }
 
    /* If we're still here, then restore the default handler so we exit */
    sigemptyset(&act.sa_mask);
    act.sa_flags = 0;
-   act.sa_handler = (void (*)())SIG_DFL;
+   act.sa_handler = (void (*)(int))SIG_DFL;
    sigaction(SIGINT, &act, NULL);
    raise(SIGINT);
    }
@@ -748,7 +748,7 @@ ED_OFF(&g_ed_savearg);
 */
 sigemptyset(&act.sa_mask);
 act.sa_flags = 0;
-act.sa_handler = (void (*)())ftt_t_cmdcont;
+act.sa_handler = (void (*)(int))ftt_t_cmdcont;
 sigaction(SIGCONT, &act, &g_sigcont_old);   /* Continue from CTRL Z interrupt */
 
 /*
@@ -798,7 +798,7 @@ struct sigaction    act;
 */
 sigemptyset(&act.sa_mask);
 act.sa_flags = 0;
-act.sa_handler = (void (*)())ftt_t_cmdtstp;
+act.sa_handler = (void (*)(int))ftt_t_cmdtstp;
 sigaction(SIGTSTP, &act, &g_sigtstp_old);    /* CTRL Z interrupt */
 
 /*
@@ -890,31 +890,31 @@ g_sigint_flag_max = a_cnt;
 
 /* Set SIGINT handler (if we're not already the handler) */
 sigaction(SIGINT, NULL, &curHndlr);		/* Get current handler */
-if (curHndlr.sa_handler != (void (*)())ftt_t_cmdint)
+if (curHndlr.sa_handler != (void (*)(int))ftt_t_cmdint)
    {
    sigemptyset(&act.sa_mask);
    act.sa_flags = 0;
-   act.sa_handler = (void (*)())ftt_t_cmdint;
+   act.sa_handler = (void (*)(int))ftt_t_cmdint;
    sigaction(SIGINT, &act, &g_sigint_old);	/* CTRL C interrupt */
    }
 
 /* Set SIGTSTP handler (if we're not already the handler) */
 sigaction(SIGTSTP, NULL, &curHndlr);		/* Get current handler */
-if (curHndlr.sa_handler != (void (*)())ftt_t_cmdtstp)
+if (curHndlr.sa_handler != (void (*)(int))ftt_t_cmdtstp)
    {
    sigemptyset(&act.sa_mask);
    act.sa_flags = 0;
-   act.sa_handler = (void (*)())ftt_t_cmdtstp;
+   act.sa_handler = (void (*)(int))ftt_t_cmdtstp;
    sigaction(SIGTSTP, &act, &g_sigtstp_old);   /* CTRL Z interrupt */
    }
 
 /* Set SIGTERM handler (if we're not already the handler) */
 sigaction(SIGTERM, NULL, &curHndlr);		/* Get current handler */
-if (curHndlr.sa_handler != (void (*)())ftclCmd_TERM)
+if (curHndlr.sa_handler != (void (*)(int))ftclCmd_TERM)
    {
    sigemptyset(&act.sa_mask);
    act.sa_flags = 0;
-   act.sa_handler = (void (*)())ftclCmd_TERM;
+   act.sa_handler = (void (*)(int))ftclCmd_TERM;
    sigaction(SIGTERM, &act, &g_sigterm_old);   /* KILL */
    }
 }
