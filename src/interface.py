@@ -477,4 +477,5 @@ class Interface:
                 self.vol1ok = 1
             elif opt == "--web-host":
                 self.web_host = value
-
+	    elif opt == "--subscribe":
+		self.subscribe = 1
