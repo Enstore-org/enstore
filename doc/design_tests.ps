@@ -1,0 +1,2972 @@
+%!PS-Adobe-3.0
+%%BoundingBox: (atend)
+%%Pages: (atend)
+%%PageOrder: (atend)
+%%DocumentFonts: (atend)
+%%Creator: Frame 4.0
+%%DocumentData: Clean7Bit
+%%EndComments
+%%BeginProlog
+%
+% Frame ps_prolog 4.0, for use with Frame 4.0 products
+% This ps_prolog file is Copyright (c) 1986-1993 Frame Technology
+% Corporation.  All rights reserved.  This ps_prolog file may be
+% freely copied and distributed in conjunction with documents created
+% using FrameMaker, FrameBuilder and FrameViewer as long as this 
+% copyright notice is preserved.
+%
+% Frame products normally print colors as their true color on a color printer
+% or as shades of gray, based on luminance, on a black-and white printer. The
+% following flag, if set to True, forces all non-white colors to print as pure
+% black. This has no effect on bitmap images.
+/FMPrintAllColorsAsBlack             false def
+%
+% Frame products can either set their own line screens or use a printer's 
+% default settings. Three flags below control this separately for no 
+% separations, spot separations and process separations. If a flag
+% is true, then the default printer settings will not be changed. If it is
+% false, Frame products will use their own settings from a table based on
+% the printer's resolution.
+/FMUseDefaultNoSeparationScreen      true  def
+/FMUseDefaultSpotSeparationScreen    true  def
+/FMUseDefaultProcessSeparationScreen false def
+%
+% For any given PostScript printer resolution, Frame products have two sets of 
+% screen angles and frequencies for printing process separations, which are 
+% recomended by Adobe. The following variable chooses the higher frequencies
+% when set to true or the lower frequencies when set to false. This is only
+% effective if the appropriate FMUseDefault...SeparationScreen flag is false.
+/FMUseHighFrequencyScreens true def
+%
+% PostScript Level 2 printers contain an "Accurate Screens" feature which can
+% improve process separation rendering at the expense of compute time. This 
+% flag is ignored by PostScript Level 1 printers.
+/FMUseAcccurateScreens true def
+%
+% The following PostScript procedure defines the spot function that Frame
+% products will use for process separations. You may un-comment-out one of
+% the alternative functions below, or use your own.
+%
+% Dot function
+/FMSpotFunction {abs exch abs 2 copy add 1 gt 
+		{1 sub dup mul exch 1 sub dup mul add 1 sub }
+		{dup mul exch dup mul add 1 exch sub }ifelse } def
+%
+% Line function
+% /FMSpotFunction { pop } def
+%
+% Elipse function
+% /FMSpotFunction { dup 5 mul 8 div mul exch dup mul exch add 
+%		sqrt 1 exch sub } def
+%
+%
+/FMversion (4.0) def 
+/FMLevel1 /languagelevel where {pop languagelevel} {1} ifelse 2 lt def
+/FMPColor
+	FMLevel1 {
+		false
+		/colorimage where {pop pop true} if
+	} {
+		true
+	} ifelse
+def
+/FrameDict 400 dict def 
+systemdict /errordict known not {/errordict 10 dict def
+		errordict /rangecheck {stop} put} if
+% The readline in PS 23.0 doesn't recognize cr's as nl's on AppleTalk
+FrameDict /tmprangecheck errordict /rangecheck get put 
+errordict /rangecheck {FrameDict /bug true put} put 
+FrameDict /bug false put 
+mark 
+% Some PS machines read past the CR, so keep the following 3 lines together!
+currentfile 5 string readline
+00
+0000000000
+cleartomark 
+errordict /rangecheck FrameDict /tmprangecheck get put 
+FrameDict /bug get { 
+	/readline {
+		/gstring exch def
+		/gfile exch def
+		/gindex 0 def
+		{
+			gfile read pop 
+			dup 10 eq {exit} if 
+			dup 13 eq {exit} if 
+			gstring exch gindex exch put 
+			/gindex gindex 1 add def 
+		} loop
+		pop 
+		gstring 0 gindex getinterval true 
+		} bind def
+	} if
+/FMshowpage /showpage load def
+/FMquit /quit load def
+/FMFAILURE { 
+	dup = flush 
+	FMshowpage 
+	/Helvetica findfont 12 scalefont setfont
+	72 200 moveto
+	show FMshowpage 
+	FMquit 
+	} def 
+/FMVERSION {
+	FMversion ne {
+		(Frame product version does not match ps_prolog!) FMFAILURE
+		} if
+	} def 
+/FMBADEPSF { 
+	(PostScript Lang. Ref. Man., 2nd Ed., H.2.4 says EPS must not call X              )
+	dup dup (X) search pop exch pop exch pop length 
+	4 -1 roll 
+	putinterval 
+	FMFAILURE
+	} def
+/FMLOCAL {
+	FrameDict begin
+	0 def 
+	end 
+	} def 
+/concatprocs
+	{
+	/proc2 exch cvlit def/proc1 exch cvlit def/newproc proc1 length proc2 length add array def
+	newproc 0 proc1 putinterval newproc proc1 length proc2 putinterval newproc cvx
+}def
+FrameDict begin 
+/FMnone 0 def
+/FMcyan 1 def
+/FMmagenta 2 def
+/FMyellow 3 def
+/FMblack 4 def
+/FMcustom 5 def
+/FrameNegative false def 
+/FrameSepIs FMnone def 
+/FrameSepBlack 0 def
+/FrameSepYellow 0 def
+/FrameSepMagenta 0 def
+/FrameSepCyan 0 def
+/FrameSepRed 1 def
+/FrameSepGreen 1 def
+/FrameSepBlue 1 def
+/FrameCurGray 1 def
+/FrameCurPat null def
+/FrameCurColors [ 0 0 0 1 0 0 0 ] def 
+/FrameColorEpsilon .001 def	
+/eqepsilon {		
+	sub dup 0 lt {neg} if
+	FrameColorEpsilon le
+} bind def
+/FrameCmpColorsCMYK { 
+	2 copy 0 get exch 0 get eqepsilon {
+		2 copy 1 get exch 1 get eqepsilon {
+			2 copy 2 get exch 2 get eqepsilon {
+				3 get exch 3 get eqepsilon
+			} {pop pop false} ifelse
+		}{pop pop false} ifelse
+	} {pop pop false} ifelse
+} bind def
+/FrameCmpColorsRGB { 
+	2 copy 4 get exch 0 get eqepsilon {
+		2 copy 5 get exch 1 get eqepsilon {
+			6 get exch 2 get eqepsilon
+		}{pop pop false} ifelse
+	} {pop pop false} ifelse
+} bind def
+/RGBtoCMYK { 
+	1 exch sub 
+	3 1 roll 
+	1 exch sub 
+	3 1 roll 
+	1 exch sub 
+	3 1 roll 
+	3 copy 
+	2 copy 
+	le { pop } { exch pop } ifelse 
+	2 copy 
+	le { pop } { exch pop } ifelse 
+	dup dup dup 
+	6 1 roll 
+	4 1 roll 
+	7 1 roll 
+	sub 
+	6 1 roll 
+	sub 
+	5 1 roll 
+	sub 
+	4 1 roll 
+} bind def
+/CMYKtoRGB { 
+	dup dup 4 -1 roll add 						  
+	5 1 roll 3 -1 roll add 						  
+	4 1 roll add 								  
+	1 exch sub dup 0 lt {pop 0} if 3 1 roll 	  
+	1 exch sub dup 0 lt {pop 0} if exch 	      
+	1 exch sub dup 0 lt {pop 0} if exch	  		  
+} bind def
+/FrameSepInit {
+	1.0 RealSetgray
+} bind def
+/FrameSetSepColor { 
+	/FrameSepBlue exch def
+	/FrameSepGreen exch def
+	/FrameSepRed exch def
+	/FrameSepBlack exch def
+	/FrameSepYellow exch def
+	/FrameSepMagenta exch def
+	/FrameSepCyan exch def
+	/FrameSepIs FMcustom def
+	setCurrentScreen	
+} bind def
+/FrameSetCyan {
+	/FrameSepBlue 1.0 def
+	/FrameSepGreen 1.0 def
+	/FrameSepRed 0.0 def
+	/FrameSepBlack 0.0 def
+	/FrameSepYellow 0.0 def
+	/FrameSepMagenta 0.0 def
+	/FrameSepCyan 1.0 def
+	/FrameSepIs FMcyan def
+	setCurrentScreen	
+} bind def
+ 
+/FrameSetMagenta {
+	/FrameSepBlue 1.0 def
+	/FrameSepGreen 0.0 def
+	/FrameSepRed 1.0 def
+	/FrameSepBlack 0.0 def
+	/FrameSepYellow 0.0 def
+	/FrameSepMagenta 1.0 def
+	/FrameSepCyan 0.0 def
+	/FrameSepIs FMmagenta def
+	setCurrentScreen
+} bind def
+ 
+/FrameSetYellow {
+	/FrameSepBlue 0.0 def
+	/FrameSepGreen 1.0 def
+	/FrameSepRed 1.0 def
+	/FrameSepBlack 0.0 def
+	/FrameSepYellow 1.0 def
+	/FrameSepMagenta 0.0 def
+	/FrameSepCyan 0.0 def
+	/FrameSepIs FMyellow def
+	setCurrentScreen
+} bind def
+ 
+/FrameSetBlack {
+	/FrameSepBlue 0.0 def
+	/FrameSepGreen 0.0 def
+	/FrameSepRed 0.0 def
+	/FrameSepBlack 1.0 def
+	/FrameSepYellow 0.0 def
+	/FrameSepMagenta 0.0 def
+	/FrameSepCyan 0.0 def
+	/FrameSepIs FMblack def
+	setCurrentScreen
+} bind def
+ 
+/FrameNoSep { 
+	/FrameSepIs FMnone def
+	setCurrentScreen
+} bind def
+/FrameSetSepColors { 
+	FrameDict begin
+	[ exch 1 add 1 roll ]
+	/FrameSepColors  
+	exch def end
+	} bind def
+/FrameColorInSepListCMYK { 
+	FrameSepColors {  
+       		exch dup 3 -1 roll 
+       		FrameCmpColorsCMYK 
+       		{ pop true exit } if
+    	} forall 
+	dup true ne {pop false} if
+	} bind def
+/FrameColorInSepListRGB { 
+	FrameSepColors {  
+       		exch dup 3 -1 roll 
+       		FrameCmpColorsRGB 
+       		{ pop true exit } if
+    	} forall 
+	dup true ne {pop false} if
+	} bind def
+/RealSetgray /setgray load def
+/RealSetrgbcolor /setrgbcolor load def
+/RealSethsbcolor /sethsbcolor load def
+end 
+/setgray { 
+	FrameDict begin
+	FrameSepIs FMnone eq
+		{ RealSetgray } 
+		{ 
+		FrameSepIs FMblack eq 
+			{ RealSetgray } 
+			{ FrameSepIs FMcustom eq 
+			  FrameSepRed 0 eq and
+			  FrameSepGreen 0 eq and
+			  FrameSepBlue 0 eq and {
+			  	RealSetgray
+			  } {
+				1 RealSetgray pop 
+			  } ifelse
+			} ifelse
+		} ifelse
+	end
+} bind def
+/setrgbcolor { 
+	FrameDict begin
+	FrameSepIs FMnone eq
+	{  RealSetrgbcolor }
+	{
+		3 copy [ 4 1 roll ] 
+		FrameColorInSepListRGB
+		{
+				FrameSepBlue eq exch 
+			 	FrameSepGreen eq and exch 
+			 	FrameSepRed eq and
+			 	{ 0 } { 1 } ifelse
+		}
+		{
+			FMPColor {
+				RealSetrgbcolor
+				currentcmykcolor
+			} {
+				RGBtoCMYK
+			} ifelse
+			FrameSepIs FMblack eq
+			{1.0 exch sub 4 1 roll pop pop pop} {
+			FrameSepIs FMyellow eq
+			{pop 1.0 exch sub 3 1 roll pop pop} {
+			FrameSepIs FMmagenta eq
+			{pop pop 1.0 exch sub exch pop } {
+			FrameSepIs FMcyan eq
+			{pop pop pop 1.0 exch sub } 
+			{pop pop pop pop 1} ifelse } ifelse } ifelse } ifelse 
+		} ifelse
+		RealSetgray
+	} 
+	ifelse
+	end
+} bind def
+/sethsbcolor {
+	FrameDict begin
+	FrameSepIs FMnone eq 
+	{ RealSethsbcolor } 
+	{
+		RealSethsbcolor 
+		currentrgbcolor  
+		setrgbcolor 
+	} 
+	ifelse
+	end
+} bind def
+FrameDict begin
+/setcmykcolor where {
+	pop /RealSetcmykcolor /setcmykcolor load def
+} {
+	/RealSetcmykcolor {
+		4 1 roll
+		3 { 3 index add 0 max 1 min 1 exch sub 3 1 roll} repeat 
+		setrgbcolor pop
+	} bind def
+} ifelse
+userdict /setcmykcolor { 
+		FrameDict begin
+		FrameSepIs FMnone eq
+		{ RealSetcmykcolor } 
+		{
+			4 copy [ 5 1 roll ]
+			FrameColorInSepListCMYK
+			{
+				FrameSepBlack eq exch 
+				FrameSepYellow eq and exch 
+				FrameSepMagenta eq and exch 
+				FrameSepCyan eq and 
+				{ 0 } { 1 } ifelse
+			}
+			{
+				FrameSepIs FMblack eq
+				{1.0 exch sub 4 1 roll pop pop pop} {
+				FrameSepIs FMyellow eq
+				{pop 1.0 exch sub 3 1 roll pop pop} {
+				FrameSepIs FMmagenta eq
+				{pop pop 1.0 exch sub exch pop } {
+				FrameSepIs FMcyan eq
+				{pop pop pop 1.0 exch sub } 
+				{pop pop pop pop 1} ifelse } ifelse } ifelse } ifelse 
+			} ifelse
+			RealSetgray
+		}
+		ifelse
+		end
+	} bind put
+FMLevel1 not { 
+	
+	/patProcDict 5 dict dup begin
+		<0f1e3c78f0e1c387> { 3 setlinewidth -1 -1 moveto 9 9 lineto stroke 
+											4 -4 moveto 12 4 lineto stroke
+											-4 4 moveto 4 12 lineto stroke} bind def
+		<0f87c3e1f0783c1e> { 3 setlinewidth -1 9 moveto 9 -1 lineto stroke 
+											-4 4 moveto 4 -4 lineto stroke
+											4 12 moveto 12 4 lineto stroke} bind def
+		<8142241818244281> { 1 setlinewidth -1 9 moveto 9 -1 lineto stroke
+											-1 -1 moveto 9 9 lineto stroke } bind def
+		<03060c183060c081> { 1 setlinewidth -1 -1 moveto 9 9 lineto stroke 
+											4 -4 moveto 12 4 lineto stroke
+											-4 4 moveto 4 12 lineto stroke} bind def
+		<8040201008040201> { 1 setlinewidth -1 9 moveto 9 -1 lineto stroke 
+											-4 4 moveto 4 -4 lineto stroke
+											4 12 moveto 12 4 lineto stroke} bind def
+	end def
+	/patDict 15 dict dup begin
+		/PatternType 1 def		
+		/PaintType 2 def		
+		/TilingType 3 def		
+		/BBox [ 0 0 8 8 ] def 	
+		/XStep 8 def			
+		/YStep 8 def			
+		/PaintProc {
+			begin
+			patProcDict bstring known {
+				patProcDict bstring get exec
+			} {
+				8 8 true [1 0 0 -1 0 8] bstring imagemask
+			} ifelse
+			end
+		} bind def
+	end def
+} if
+/combineColor {
+    FrameSepIs FMnone eq
+	{
+		graymode FMLevel1 or not {
+			
+			[/Pattern [/DeviceCMYK]] setcolorspace
+			FrameCurColors 0 4 getinterval aload pop FrameCurPat setcolor
+		} {
+			FrameCurColors 3 get 1.0 ge {
+				FrameCurGray RealSetgray
+			} {
+				FMPColor graymode and {
+					0 1 3 { 
+						FrameCurColors exch get
+						1 FrameCurGray sub mul
+					} for
+					RealSetcmykcolor
+				} {
+					4 1 6 {
+						FrameCurColors exch get
+						graymode {
+							1 exch sub 1 FrameCurGray sub mul 1 exch sub
+						} {
+							1.0 lt {FrameCurGray} {1} ifelse
+						} ifelse
+					} for
+					RealSetrgbcolor
+				} ifelse
+			} ifelse
+		} ifelse
+	} { 
+		FrameCurColors 0 4 getinterval aload
+		FrameColorInSepListCMYK {
+			FrameSepBlack eq exch 
+			FrameSepYellow eq and exch 
+			FrameSepMagenta eq and exch 
+			FrameSepCyan eq and
+			FrameSepIs FMcustom eq and
+			{ FrameCurGray } { 1 } ifelse
+		} {
+			FrameSepIs FMblack eq
+			{FrameCurGray 1.0 exch sub mul 1.0 exch sub 4 1 roll pop pop pop} {
+			FrameSepIs FMyellow eq
+			{pop FrameCurGray 1.0 exch sub mul 1.0 exch sub 3 1 roll pop pop} {
+			FrameSepIs FMmagenta eq
+			{pop pop FrameCurGray 1.0 exch sub mul 1.0 exch sub exch pop } {
+			FrameSepIs FMcyan eq
+			{pop pop pop FrameCurGray 1.0 exch sub mul 1.0 exch sub } 
+			{pop pop pop pop 1} ifelse } ifelse } ifelse } ifelse 
+		} ifelse
+		graymode FMLevel1 or not {
+			
+			[/Pattern [/DeviceGray]] setcolorspace
+			FrameCurPat setcolor
+		} { 
+			graymode not FMLevel1 and {
+				
+				dup 1 lt {pop FrameCurGray} if
+			} if
+			RealSetgray
+		} ifelse
+	} ifelse
+} bind def
+/savematrix {
+	orgmatrix currentmatrix pop
+	} bind def
+/restorematrix {
+	orgmatrix setmatrix
+	} bind def
+/dmatrix matrix def
+/dpi    72 0 dmatrix defaultmatrix dtransform
+    dup mul exch   dup mul add   sqrt def
+	
+/freq dpi dup 72 div round dup 0 eq {pop 1} if 8 mul div def
+/sangle 1 0 dmatrix defaultmatrix dtransform exch atan def
+/dpiranges   [  2540    2400    1693     1270    1200     635      600      0      ] def
+/CMLowFreqs  [ 100.402  94.8683 89.2289 100.402  94.8683  66.9349  63.2456 47.4342 ] def
+/YLowFreqs   [  95.25   90.0    84.65    95.25   90.0     70.5556  66.6667 50.0    ] def
+/KLowFreqs   [  89.8026 84.8528 79.8088  89.8026 84.8528  74.8355  70.7107 53.033  ] def
+/CLowAngles  [  71.5651 71.5651 71.5651 71.5651  71.5651  71.5651  71.5651 71.5651 ] def
+/MLowAngles  [  18.4349 18.4349 18.4349 18.4349  18.4349  18.4349  18.4349 18.4349 ] def
+/YLowTDot    [  true    true    false    true    true     false    false   false   ] def
+/CMHighFreqs [ 133.87  126.491 133.843  108.503 102.523  100.402   94.8683 63.2456 ] def
+/YHighFreqs  [ 127.0   120.0   126.975  115.455 109.091   95.25    90.0    60.0    ] def
+/KHighFreqs  [ 119.737 113.137 119.713  128.289 121.218   89.8026  84.8528 63.6395 ] def
+/CHighAngles [  71.5651 71.5651 71.5651  70.0169 70.0169  71.5651  71.5651 71.5651 ] def
+/MHighAngles [  18.4349 18.4349 18.4349  19.9831 19.9831  18.4349  18.4349 18.4349 ] def
+/YHighTDot   [  false   false   true     false   false    true     true    false   ] def
+/PatFreq     [	10.5833 10.0     9.4055  10.5833 10.0	  10.5833  10.0	   9.375   ] def
+/screenIndex {
+	0 1 dpiranges length 1 sub { dup dpiranges exch get 1 sub dpi le {exit} {pop} ifelse } for
+} bind def
+/getCyanScreen {
+	FMUseHighFrequencyScreens { CHighAngles CMHighFreqs} {CLowAngles CMLowFreqs} ifelse
+		screenIndex dup 3 1 roll get 3 1 roll get /FMSpotFunction load
+} bind def
+/getMagentaScreen {
+	FMUseHighFrequencyScreens { MHighAngles CMHighFreqs } {MLowAngles CMLowFreqs} ifelse
+		screenIndex dup 3 1 roll get 3 1 roll get /FMSpotFunction load
+} bind def
+/getYellowScreen {
+	FMUseHighFrequencyScreens { YHighTDot YHighFreqs} { YLowTDot YLowFreqs } ifelse
+		screenIndex dup 3 1 roll get 3 1 roll get { 3 div
+			{2 { 1 add 2 div 3 mul dup floor sub 2 mul 1 sub exch} repeat
+			FMSpotFunction } } {/FMSpotFunction load } ifelse
+			0.0 exch
+} bind def
+/getBlackScreen  {
+	FMUseHighFrequencyScreens { KHighFreqs } { KLowFreqs } ifelse
+		screenIndex get 45.0 /FMSpotFunction load 
+} bind def
+/getSpotScreen {
+	getBlackScreen
+} bind def
+/getCompositeScreen {
+	getBlackScreen
+} bind def
+/FMSetScreen 
+	FMLevel1 { /setscreen load 
+	}{ {
+		8 dict begin
+		/HalftoneType 1 def
+		/SpotFunction exch def
+		/Angle exch def
+		/Frequency exch def
+		/AccurateScreens FMUseAcccurateScreens def
+		currentdict end sethalftone
+	} bind } ifelse
+def
+/setDefaultScreen {
+	FMPColor {
+		orgrxfer cvx orggxfer cvx orgbxfer cvx orgxfer cvx setcolortransfer
+	}
+	{
+		orgxfer cvx settransfer
+	} ifelse
+	orgfreq organgle orgproc cvx setscreen
+} bind def
+/setCurrentScreen {
+	FrameSepIs FMnone eq {
+		FMUseDefaultNoSeparationScreen {
+			setDefaultScreen
+		} {
+			getCompositeScreen FMSetScreen
+		} ifelse
+	} {
+		FrameSepIs FMcustom eq {
+			FMUseDefaultSpotSeparationScreen {
+				setDefaultScreen
+			} {
+				getSpotScreen FMSetScreen
+			} ifelse
+		} {
+			FMUseDefaultProcessSeparationScreen {
+				setDefaultScreen
+			} {
+				FrameSepIs FMcyan eq {
+					getCyanScreen FMSetScreen
+				} {
+					FrameSepIs FMmagenta eq {
+						getMagentaScreen FMSetScreen
+					} {
+						FrameSepIs FMyellow eq {
+							getYellowScreen FMSetScreen
+						} {
+							getBlackScreen FMSetScreen
+						} ifelse
+					} ifelse
+				} ifelse
+			} ifelse
+		} ifelse
+	} ifelse 
+} bind def
+end
+	/gstring FMLOCAL
+	/gfile FMLOCAL
+	/gindex FMLOCAL
+	/orgrxfer FMLOCAL
+	/orggxfer FMLOCAL
+	/orgbxfer FMLOCAL
+	/orgxfer FMLOCAL
+	/orgproc FMLOCAL
+	/orgrproc FMLOCAL
+	/orggproc FMLOCAL
+	/orgbproc FMLOCAL
+	/organgle FMLOCAL
+	/orgrangle FMLOCAL
+	/orggangle FMLOCAL
+	/orgbangle FMLOCAL
+	/orgfreq FMLOCAL
+	/orgrfreq FMLOCAL
+	/orggfreq FMLOCAL
+	/orgbfreq FMLOCAL
+	/yscale FMLOCAL
+	/xscale FMLOCAL
+	/edown FMLOCAL
+	/manualfeed FMLOCAL
+	/paperheight FMLOCAL
+	/paperwidth FMLOCAL
+/FMDOCUMENT { 
+	array /FMfonts exch def 
+	/#copies exch def
+	FrameDict begin
+	0 ne /manualfeed exch def
+	/paperheight exch def
+	/paperwidth exch def
+	0 ne /FrameNegative exch def 
+	0 ne /edown exch def 
+	/yscale exch def
+	/xscale exch def
+	FMLevel1 {
+		manualfeed {setmanualfeed} if
+		/FMdicttop countdictstack 1 add def 
+		/FMoptop count def 
+		setpapername 
+		manualfeed {true} {papersize} ifelse 
+		{manualpapersize} {false} ifelse 
+		{desperatepapersize} {false} ifelse 
+		{ (Can't select requested paper size for Frame print job!) FMFAILURE } if
+		count -1 FMoptop {pop pop} for
+		countdictstack -1 FMdicttop {pop end} for 
+		}
+		{{1 dict dup /PageSize [paperwidth paperheight]put setpagedevice}stopped
+		{ (Can't select requested paper size for Frame print job!) FMFAILURE } if
+		 {1 dict dup /ManualFeed manualfeed put setpagedevice } stopped pop }
+	ifelse 
+	
+	FMPColor {
+		currentcolorscreen
+			cvlit /orgproc exch def
+				  /organgle exch def 
+				  /orgfreq exch def
+			cvlit /orgbproc exch def
+				  /orgbangle exch def 
+				  /orgbfreq exch def
+			cvlit /orggproc exch def
+				  /orggangle exch def 
+				  /orggfreq exch def
+			cvlit /orgrproc exch def
+				  /orgrangle exch def 
+				  /orgrfreq exch def
+			currentcolortransfer 
+			FrameNegative {
+				1 1 4 { 
+					pop { 1 exch sub } concatprocs 4 1 roll
+				} for
+				4 copy
+				setcolortransfer
+			} if
+			cvlit /orgxfer exch def
+			cvlit /orgbxfer exch def
+			cvlit /orggxfer exch def
+			cvlit /orgrxfer exch def
+	} {
+		currentscreen 
+			cvlit /orgproc exch def
+				  /organgle exch def 
+				  /orgfreq exch def
+				  
+		currenttransfer 
+		FrameNegative {
+			{ 1 exch sub } concatprocs
+			dup settransfer
+		} if 
+		cvlit /orgxfer exch def
+	} ifelse
+	end 
+} def 
+/pagesave FMLOCAL
+/orgmatrix FMLOCAL
+/landscape FMLOCAL
+/pwid FMLOCAL
+/FMBEGINPAGE { 
+	FrameDict begin 
+	/pagesave save def
+	3.86 setmiterlimit
+	/landscape exch 0 ne def
+	landscape { 
+		90 rotate 0 exch dup /pwid exch def neg translate pop 
+	}{
+		pop /pwid exch def
+	} ifelse
+	edown { [-1 0 0 1 pwid 0] concat } if
+	0 0 moveto paperwidth 0 lineto paperwidth paperheight lineto 
+	0 paperheight lineto 0 0 lineto 1 setgray fill
+	xscale yscale scale
+	/orgmatrix matrix def
+	gsave 
+} def 
+/FMENDPAGE {
+	grestore 
+	pagesave restore
+	end 
+	showpage
+	} def 
+/FMFONTDEFINE { 
+	FrameDict begin
+	findfont 
+	ReEncode 
+	1 index exch 
+	definefont 
+	FMfonts 3 1 roll 
+	put
+	end 
+	} def 
+/FMFILLS {
+	FrameDict begin dup
+	array /fillvals exch def
+	dict /patCache exch def
+	end 
+	} def 
+/FMFILL {
+	FrameDict begin
+	 fillvals 3 1 roll put
+	end 
+	} def 
+/FMNORMALIZEGRAPHICS { 
+	newpath
+	0.0 0.0 moveto
+	1 setlinewidth
+	0 setlinecap
+	0 0 0 sethsbcolor
+	0 setgray 
+	} bind def
+	/fx FMLOCAL
+	/fy FMLOCAL
+	/fh FMLOCAL
+	/fw FMLOCAL
+	/llx FMLOCAL
+	/lly FMLOCAL
+	/urx FMLOCAL
+	/ury FMLOCAL
+/FMBEGINEPSF { 
+	end 
+	/FMEPSF save def 
+	/showpage {} def 
+% See Adobe's "PostScript Language Reference Manual, 2nd Edition", page 714.
+% "...the following operators MUST NOT be used in an EPS file:" (emphasis ours)
+	/banddevice {(banddevice) FMBADEPSF} def
+	/clear {(clear) FMBADEPSF} def
+	/cleardictstack {(cleardictstack) FMBADEPSF} def 
+	/copypage {(copypage) FMBADEPSF} def
+	/erasepage {(erasepage) FMBADEPSF} def
+	/exitserver {(exitserver) FMBADEPSF} def
+	/framedevice {(framedevice) FMBADEPSF} def
+	/grestoreall {(grestoreall) FMBADEPSF} def
+	/initclip {(initclip) FMBADEPSF} def
+	/initgraphics {(initgraphics) FMBADEPSF} def
+	/initmatrix {(initmatrix) FMBADEPSF} def
+	/quit {(quit) FMBADEPSF} def
+	/renderbands {(renderbands) FMBADEPSF} def
+	/setglobal {(setglobal) FMBADEPSF} def
+	/setpagedevice {(setpagedevice) FMBADEPSF} def
+	/setshared {(setshared) FMBADEPSF} def
+	/startjob {(startjob) FMBADEPSF} def
+	/lettertray {(lettertray) FMBADEPSF} def
+	/letter {(letter) FMBADEPSF} def
+	/lettersmall {(lettersmall) FMBADEPSF} def
+	/11x17tray {(11x17tray) FMBADEPSF} def
+	/11x17 {(11x17) FMBADEPSF} def
+	/ledgertray {(ledgertray) FMBADEPSF} def
+	/ledger {(ledger) FMBADEPSF} def
+	/legaltray {(legaltray) FMBADEPSF} def
+	/legal {(legal) FMBADEPSF} def
+	/statementtray {(statementtray) FMBADEPSF} def
+	/statement {(statement) FMBADEPSF} def
+	/executivetray {(executivetray) FMBADEPSF} def
+	/executive {(executive) FMBADEPSF} def
+	/a3tray {(a3tray) FMBADEPSF} def
+	/a3 {(a3) FMBADEPSF} def
+	/a4tray {(a4tray) FMBADEPSF} def
+	/a4 {(a4) FMBADEPSF} def
+	/a4small {(a4small) FMBADEPSF} def
+	/b4tray {(b4tray) FMBADEPSF} def
+	/b4 {(b4) FMBADEPSF} def
+	/b5tray {(b5tray) FMBADEPSF} def
+	/b5 {(b5) FMBADEPSF} def
+	FMNORMALIZEGRAPHICS 
+	[/fy /fx /fh /fw /ury /urx /lly /llx] {exch def} forall 
+	fx fw 2 div add fy fh 2 div add  translate
+	rotate
+	fw 2 div neg fh 2 div neg translate
+	fw urx llx sub div fh ury lly sub div scale 
+	llx neg lly neg translate 
+	/FMdicttop countdictstack 1 add def 
+	/FMoptop count def 
+	} bind def
+/FMENDEPSF {
+	count -1 FMoptop {pop pop} for 
+	countdictstack -1 FMdicttop {pop end} for 
+	FMEPSF restore
+	FrameDict begin 
+	} bind def
+FrameDict begin 
+/setmanualfeed {
+%%BeginFeature *ManualFeed True
+	 statusdict /manualfeed true put
+%%EndFeature
+	} bind def
+/max {2 copy lt {exch} if pop} bind def
+/min {2 copy gt {exch} if pop} bind def
+/inch {72 mul} def
+/pagedimen { 
+	paperheight sub abs 16 lt exch 
+	paperwidth sub abs 16 lt and
+	{/papername exch def} {pop} ifelse
+	} bind def
+	/papersizedict FMLOCAL
+/setpapername { 
+	/papersizedict 14 dict def 
+	papersizedict begin
+	/papername /unknown def 
+		/Letter 8.5 inch 11.0 inch pagedimen
+		/LetterSmall 7.68 inch 10.16 inch pagedimen
+		/Tabloid 11.0 inch 17.0 inch pagedimen
+		/Ledger 17.0 inch 11.0 inch pagedimen
+		/Legal 8.5 inch 14.0 inch pagedimen
+		/Statement 5.5 inch 8.5 inch pagedimen
+		/Executive 7.5 inch 10.0 inch pagedimen
+		/A3 11.69 inch 16.5 inch pagedimen
+		/A4 8.26 inch 11.69 inch pagedimen
+		/A4Small 7.47 inch 10.85 inch pagedimen
+		/B4 10.125 inch 14.33 inch pagedimen
+		/B5 7.16 inch 10.125 inch pagedimen
+	end
+	} bind def
+/papersize {
+	papersizedict begin
+		/Letter {lettertray letter} def
+		/LetterSmall {lettertray lettersmall} def
+		/Tabloid {11x17tray 11x17} def
+		/Ledger {ledgertray ledger} def
+		/Legal {legaltray legal} def
+		/Statement {statementtray statement} def
+		/Executive {executivetray executive} def
+		/A3 {a3tray a3} def
+		/A4 {a4tray a4} def
+		/A4Small {a4tray a4small} def
+		/B4 {b4tray b4} def
+		/B5 {b5tray b5} def
+		/unknown {unknown} def
+	papersizedict dup papername known {papername} {/unknown} ifelse get
+	end
+	statusdict begin stopped end 
+	} bind def
+/manualpapersize {
+	papersizedict begin
+		/Letter {letter} def
+		/LetterSmall {lettersmall} def
+		/Tabloid {11x17} def
+		/Ledger {ledger} def
+		/Legal {legal} def
+		/Statement {statement} def
+		/Executive {executive} def
+		/A3 {a3} def
+		/A4 {a4} def
+		/A4Small {a4small} def
+		/B4 {b4} def
+		/B5 {b5} def
+		/unknown {unknown} def
+	papersizedict dup papername known {papername} {/unknown} ifelse get
+	end
+	stopped 
+	} bind def
+/desperatepapersize {
+	statusdict /setpageparams known
+		{
+		paperwidth paperheight 0 1 
+		statusdict begin
+		{setpageparams} stopped 
+		end
+		} {true} ifelse 
+	} bind def
+/DiacriticEncoding [
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/.notdef /.notdef /.notdef /.notdef /space /exclam /quotedbl
+/numbersign /dollar /percent /ampersand /quotesingle /parenleft
+/parenright /asterisk /plus /comma /hyphen /period /slash /zero /one
+/two /three /four /five /six /seven /eight /nine /colon /semicolon
+/less /equal /greater /question /at /A /B /C /D /E /F /G /H /I /J /K
+/L /M /N /O /P /Q /R /S /T /U /V /W /X /Y /Z /bracketleft /backslash
+/bracketright /asciicircum /underscore /grave /a /b /c /d /e /f /g /h
+/i /j /k /l /m /n /o /p /q /r /s /t /u /v /w /x /y /z /braceleft /bar
+/braceright /asciitilde /.notdef /Adieresis /Aring /Ccedilla /Eacute
+/Ntilde /Odieresis /Udieresis /aacute /agrave /acircumflex /adieresis
+/atilde /aring /ccedilla /eacute /egrave /ecircumflex /edieresis
+/iacute /igrave /icircumflex /idieresis /ntilde /oacute /ograve
+/ocircumflex /odieresis /otilde /uacute /ugrave /ucircumflex
+/udieresis /dagger /.notdef /cent /sterling /section /bullet
+/paragraph /germandbls /registered /copyright /trademark /acute
+/dieresis /.notdef /AE /Oslash /.notdef /.notdef /.notdef /.notdef
+/yen /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/ordfeminine /ordmasculine /.notdef /ae /oslash /questiondown
+/exclamdown /logicalnot /.notdef /florin /.notdef /.notdef
+/guillemotleft /guillemotright /ellipsis /.notdef /Agrave /Atilde
+/Otilde /OE /oe /endash /emdash /quotedblleft /quotedblright
+/quoteleft /quoteright /.notdef /.notdef /ydieresis /Ydieresis
+/fraction /currency /guilsinglleft /guilsinglright /fi /fl /daggerdbl
+/periodcentered /quotesinglbase /quotedblbase /perthousand
+/Acircumflex /Ecircumflex /Aacute /Edieresis /Egrave /Iacute
+/Icircumflex /Idieresis /Igrave /Oacute /Ocircumflex /.notdef /Ograve
+/Uacute /Ucircumflex /Ugrave /dotlessi /circumflex /tilde /macron
+/breve /dotaccent /ring /cedilla /hungarumlaut /ogonek /caron
+] def
+/ReEncode { 
+	dup 
+	length 
+	dict begin 
+	{
+	1 index /FID ne 
+		{def} 
+		{pop pop} ifelse 
+	} forall 
+	0 eq {/Encoding DiacriticEncoding def} if 
+	currentdict 
+	end 
+	} bind def
+FMPColor 
+	
+	{
+	/BEGINBITMAPCOLOR { 
+		BITMAPCOLOR} def
+	/BEGINBITMAPCOLORc { 
+		BITMAPCOLORc} def
+	/BEGINBITMAPTRUECOLOR { 
+		BITMAPTRUECOLOR } def
+	/BEGINBITMAPTRUECOLORc { 
+		BITMAPTRUECOLORc } def
+	}
+	
+	{
+	/BEGINBITMAPCOLOR { 
+		BITMAPGRAY} def
+	/BEGINBITMAPCOLORc { 
+		BITMAPGRAYc} def
+	/BEGINBITMAPTRUECOLOR { 
+		BITMAPTRUEGRAY } def
+	/BEGINBITMAPTRUECOLORc { 
+		BITMAPTRUEGRAYc } def
+	}
+ifelse
+/K { 
+	FMPrintAllColorsAsBlack {
+		dup 1 eq 2 index 1 eq and 3 index 1 eq and not
+			{7 {pop} repeat 0 0 0 1 0 0 0} if
+	} if 
+	FrameCurColors astore 
+	pop combineColor
+} bind def
+/graymode true def
+	/bwidth FMLOCAL
+	/bpside FMLOCAL
+	/bstring FMLOCAL
+	/onbits FMLOCAL
+	/offbits FMLOCAL
+	/xindex FMLOCAL
+	/yindex FMLOCAL
+	/x FMLOCAL
+	/y FMLOCAL
+/setPatternMode {
+	FMLevel1 {
+		/bwidth  exch def
+		/bpside  exch def
+		/bstring exch def
+		/onbits 0 def  /offbits 0 def
+		freq sangle landscape {90 add} if 
+			{/y exch def
+			 /x exch def
+			 /xindex x 1 add 2 div bpside mul cvi def
+			 /yindex y 1 add 2 div bpside mul cvi def
+			 bstring yindex bwidth mul xindex 8 idiv add get
+			 1 7 xindex 8 mod sub bitshift and 0 ne FrameNegative {not} if
+			 {/onbits  onbits  1 add def 1}
+			 {/offbits offbits 1 add def 0}
+			 ifelse
+			}
+			setscreen
+		offbits offbits onbits add div FrameNegative {1.0 exch sub} if
+		/FrameCurGray exch def
+	} { 
+		pop pop
+		dup patCache exch known {
+			patCache exch get
+		} { 
+			dup
+			patDict /bstring 3 -1 roll put
+			patDict 
+			9 PatFreq screenIndex get div dup matrix scale
+			makepattern
+			dup 
+			patCache 4 -1 roll 3 -1 roll put
+		} ifelse
+		/FrameCurGray 0 def
+		/FrameCurPat exch def
+	} ifelse
+	/graymode false def
+	combineColor
+} bind def
+/setGrayScaleMode {
+	graymode not {
+		/graymode true def
+		FMLevel1 {
+			setCurrentScreen
+		} if
+	} if
+	/FrameCurGray exch def
+	combineColor
+} bind def
+/normalize {
+	transform round exch round exch itransform
+	} bind def
+/dnormalize {
+	dtransform round exch round exch idtransform
+	} bind def
+/lnormalize { 
+	0 dtransform exch cvi 2 idiv 2 mul 1 add exch idtransform pop
+	} bind def
+/H { 
+	lnormalize setlinewidth
+	} bind def
+/Z {
+	setlinecap
+	} bind def
+	
+/PFill {
+	graymode FMLevel1 or not {
+		gsave 1 setgray eofill grestore
+	} if
+} bind def
+/PStroke {
+	graymode FMLevel1 or not {
+		gsave 1 setgray stroke grestore
+	} if
+	stroke
+} bind def
+	/fillvals FMLOCAL
+/X { 
+	fillvals exch get
+	dup type /stringtype eq
+	{8 1 setPatternMode} 
+	{setGrayScaleMode}
+	ifelse
+	} bind def
+/V { 
+	PFill gsave eofill grestore
+	} bind def
+/Vclip {
+	clip
+	} bind def
+/Vstrk {
+	currentlinewidth exch setlinewidth PStroke setlinewidth
+	} bind def
+/N { 
+	PStroke
+	} bind def
+/Nclip {
+	strokepath clip newpath
+	} bind def
+/Nstrk {
+	currentlinewidth exch setlinewidth PStroke setlinewidth
+	} bind def
+/M {newpath moveto} bind def
+/E {lineto} bind def
+/D {curveto} bind def
+/O {closepath} bind def
+	/n FMLOCAL
+/L { 
+ 	/n exch def
+	newpath
+	normalize
+	moveto 
+	2 1 n {pop normalize lineto} for
+	} bind def
+/Y { 
+	L 
+	closepath
+	} bind def
+	/x1 FMLOCAL
+	/x2 FMLOCAL
+	/y1 FMLOCAL
+	/y2 FMLOCAL
+/R { 
+	/y2 exch def
+	/x2 exch def
+	/y1 exch def
+	/x1 exch def
+	x1 y1
+	x2 y1
+	x2 y2
+	x1 y2
+	4 Y 
+	} bind def
+	/rad FMLOCAL
+/rarc 
+	{rad 
+	 arcto
+	} bind def
+/RR { 
+	/rad exch def
+	normalize
+	/y2 exch def
+	/x2 exch def
+	normalize
+	/y1 exch def
+	/x1 exch def
+	mark
+	newpath
+	{
+	x1 y1 rad add moveto
+	x1 y2 x2 y2 rarc
+	x2 y2 x2 y1 rarc
+	x2 y1 x1 y1 rarc
+	x1 y1 x1 y2 rarc
+	closepath
+	} stopped {x1 y1 x2 y2 R} if 
+	cleartomark
+	} bind def
+/RRR { 
+	/rad exch def
+	normalize /y4 exch def /x4 exch def
+	normalize /y3 exch def /x3 exch def
+	normalize /y2 exch def /x2 exch def
+	normalize /y1 exch def /x1 exch def
+	newpath
+	normalize moveto 
+	mark
+	{
+	x2 y2 x3 y3 rarc
+	x3 y3 x4 y4 rarc
+	x4 y4 x1 y1 rarc
+	x1 y1 x2 y2 rarc
+	closepath
+	} stopped
+	 {x1 y1 x2 y2 x3 y3 x4 y4 newpath moveto lineto lineto lineto closepath} if
+	cleartomark
+	} bind def
+/C { 
+	grestore
+	gsave
+	R 
+	clip
+	setCurrentScreen
+} bind def
+/CP { 
+	grestore
+	gsave
+	Y 
+	clip
+	setCurrentScreen
+} bind def
+	/FMpointsize FMLOCAL
+/F { 
+	FMfonts exch get
+	FMpointsize scalefont
+	setfont
+	} bind def
+/Q { 
+	/FMpointsize exch def
+	F 
+	} bind def
+/T { 
+	moveto show
+	} bind def
+/RF { 
+	rotate
+	0 ne {-1 1 scale} if
+	} bind def
+/TF { 
+	gsave
+	moveto 
+	RF
+	show
+	grestore
+	} bind def
+/P { 
+	moveto
+	0 32 3 2 roll widthshow
+	} bind def
+/PF { 
+	gsave
+	moveto 
+	RF
+	0 32 3 2 roll widthshow
+	grestore
+	} bind def
+/S { 
+	moveto
+	0 exch ashow
+	} bind def
+/SF { 
+	gsave
+	moveto
+	RF
+	0 exch ashow
+	grestore
+	} bind def
+/B { 
+	moveto
+	0 32 4 2 roll 0 exch awidthshow
+	} bind def
+/BF { 
+	gsave
+	moveto
+	RF
+	0 32 4 2 roll 0 exch awidthshow
+	grestore
+	} bind def
+/G { 
+	gsave
+	newpath
+	normalize translate 0.0 0.0 moveto 
+	dnormalize scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	closepath 
+	PFill fill
+	grestore
+	} bind def
+/Gstrk {
+	savematrix
+    newpath
+    2 index 2 div add exch 3 index 2 div sub exch 
+    normalize 2 index 2 div sub exch 3 index 2 div add exch 
+    translate
+    scale 
+    0.0 0.0 1.0 5 3 roll arc 
+    restorematrix
+    currentlinewidth exch setlinewidth PStroke setlinewidth
+    } bind def
+/Gclip { 
+	newpath
+	savematrix
+	normalize translate 0.0 0.0 moveto 
+	dnormalize scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	closepath 
+	clip newpath
+	restorematrix
+	} bind def
+/GG { 
+	gsave
+	newpath
+	normalize translate 0.0 0.0 moveto 
+	rotate 
+	dnormalize scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	closepath
+	PFill
+	fill
+	grestore
+	} bind def
+/GGclip { 
+	savematrix
+	newpath
+    normalize translate 0.0 0.0 moveto 
+    rotate 
+    dnormalize scale 
+    0.0 0.0 1.0 5 3 roll arc 
+    closepath
+	clip newpath
+	restorematrix
+	} bind def
+/GGstrk { 
+	savematrix
+    newpath
+    normalize translate 0.0 0.0 moveto 
+    rotate 
+    dnormalize scale 
+    0.0 0.0 1.0 5 3 roll arc 
+    closepath 
+	restorematrix
+    currentlinewidth exch setlinewidth PStroke setlinewidth
+	} bind def
+/A { 
+	gsave
+	savematrix
+	newpath
+	2 index 2 div add exch 3 index 2 div sub exch 
+	normalize 2 index 2 div sub exch 3 index 2 div add exch 
+	translate 
+	scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	restorematrix
+	PStroke
+	grestore
+	} bind def
+/Aclip {
+	newpath
+	savematrix
+	normalize translate 0.0 0.0 moveto 
+	dnormalize scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	closepath 
+	strokepath clip newpath
+	restorematrix
+} bind def
+/Astrk {
+	Gstrk
+} bind def
+/AA { 
+	gsave
+	savematrix
+	newpath
+	
+	3 index 2 div add exch 4 index 2 div sub exch 
+	
+	normalize 3 index 2 div sub exch 4 index 2 div add exch
+	translate 
+	rotate 
+	scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	restorematrix
+	PStroke
+	grestore
+	} bind def
+/AAclip {
+	savematrix
+	newpath
+    normalize translate 0.0 0.0 moveto 
+    rotate 
+    dnormalize scale 
+    0.0 0.0 1.0 5 3 roll arc 
+    closepath
+	strokepath clip newpath
+	restorematrix
+} bind def
+/AAstrk {
+	GGstrk
+} bind def
+	/x FMLOCAL
+	/y FMLOCAL
+	/w FMLOCAL
+	/h FMLOCAL
+	/xx FMLOCAL
+	/yy FMLOCAL
+	/ww FMLOCAL
+	/hh FMLOCAL
+	/FMsaveobject FMLOCAL
+	/FMoptop FMLOCAL
+	/FMdicttop FMLOCAL
+/BEGINPRINTCODE { 
+	/FMdicttop countdictstack 1 add def 
+	/FMoptop count 7 sub def 
+	/FMsaveobject save def
+	userdict begin 
+	/showpage {} def 
+	FMNORMALIZEGRAPHICS 
+	3 index neg 3 index neg translate
+	} bind def
+/ENDPRINTCODE {
+	count -1 FMoptop {pop pop} for 
+	countdictstack -1 FMdicttop {pop end} for 
+	FMsaveobject restore 
+	} bind def
+/gn { 
+	0 
+	{	46 mul 
+		cf read pop 
+		32 sub 
+		dup 46 lt {exit} if 
+		46 sub add 
+		} loop
+	add 
+	} bind def
+	/str FMLOCAL
+/cfs { 
+	/str sl string def 
+	0 1 sl 1 sub {str exch val put} for 
+	str def 
+	} bind def
+/ic [ 
+	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0223
+	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0223
+	0
+	{0 hx} {1 hx} {2 hx} {3 hx} {4 hx} {5 hx} {6 hx} {7 hx} {8 hx} {9 hx}
+	{10 hx} {11 hx} {12 hx} {13 hx} {14 hx} {15 hx} {16 hx} {17 hx} {18 hx}
+	{19 hx} {gn hx} {0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}
+	{13} {14} {15} {16} {17} {18} {19} {gn} {0 wh} {1 wh} {2 wh} {3 wh}
+	{4 wh} {5 wh} {6 wh} {7 wh} {8 wh} {9 wh} {10 wh} {11 wh} {12 wh}
+	{13 wh} {14 wh} {gn wh} {0 bl} {1 bl} {2 bl} {3 bl} {4 bl} {5 bl} {6 bl}
+	{7 bl} {8 bl} {9 bl} {10 bl} {11 bl} {12 bl} {13 bl} {14 bl} {gn bl}
+	{0 fl} {1 fl} {2 fl} {3 fl} {4 fl} {5 fl} {6 fl} {7 fl} {8 fl} {9 fl}
+	{10 fl} {11 fl} {12 fl} {13 fl} {14 fl} {gn fl}
+	] def
+	/sl FMLOCAL
+	/val FMLOCAL
+	/ws FMLOCAL
+	/im FMLOCAL
+	/bs FMLOCAL
+	/cs FMLOCAL
+	/len FMLOCAL
+	/pos FMLOCAL
+/ms { 
+	/sl exch def 
+	/val 255 def 
+	/ws cfs 
+	/im cfs 
+	/val 0 def 
+	/bs cfs 
+	/cs cfs 
+	} bind def
+400 ms 
+/ip { 
+	is 
+	0 
+	cf cs readline pop 
+	{	ic exch get exec 
+		add 
+		} forall 
+	pop 
+	
+	} bind def
+/rip { 
+	   
+	  
+	  bis ris copy pop 
+      is
+      0
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+	  pop pop 
+	  ris gis copy pop 
+	  dup is exch 
+	  
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+	  pop pop
+	  gis bis copy pop 
+	  dup add is exch 
+	  
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+      pop 
+      
+      } bind def
+/wh { 
+	/len exch def 
+	/pos exch def 
+	ws 0 len getinterval im pos len getinterval copy pop
+	pos len 
+	} bind def
+/bl { 
+	/len exch def 
+	/pos exch def 
+	bs 0 len getinterval im pos len getinterval copy pop
+	pos len 
+	} bind def
+/s1 1 string def
+/fl { 
+	/len exch def 
+	/pos exch def 
+	/val cf s1 readhexstring pop 0 get def
+	pos 1 pos len add 1 sub {im exch val put} for
+	pos len 
+	} bind def
+/hx { 
+	3 copy getinterval 
+	cf exch readhexstring pop pop 
+	} bind def
+	/h FMLOCAL
+	/w FMLOCAL
+	/d FMLOCAL
+	/lb FMLOCAL
+	/bitmapsave FMLOCAL
+	/is FMLOCAL
+	/cf FMLOCAL
+/wbytes { 
+      dup dup
+      24 eq { pop pop 3 mul }
+      { 8 eq {pop} {1 eq {7 add 8 idiv} {3 add 4 idiv} ifelse} ifelse } ifelse
+	} bind def
+/BEGINBITMAPBWc { 
+	1 {} COMMONBITMAPc
+	} bind def
+/BEGINBITMAPGRAYc { 
+	8 {} COMMONBITMAPc
+	} bind def
+/BEGINBITMAP2BITc { 
+	2 {} COMMONBITMAPc
+	} bind def
+/COMMONBITMAPc { 
+		 
+	/r exch def
+	/d exch def
+	gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/h exch def /w exch def
+	/lb w d wbytes def 
+	sl lb lt {lb ms} if 
+	/bitmapsave save def 
+	r                    
+	/is im 0 lb getinterval def 
+	ws 0 lb getinterval is copy pop 
+	/cf currentfile def 
+	w h d [w 0 0 h neg 0 h] 
+	{ip} image 
+	bitmapsave restore 
+	grestore
+	} bind def
+/BEGINBITMAPBW { 
+	1 {} COMMONBITMAP
+	} bind def
+/BEGINBITMAPGRAY { 
+	8 {} COMMONBITMAP
+	} bind def
+/BEGINBITMAP2BIT { 
+	2 {} COMMONBITMAP
+	} bind def
+/COMMONBITMAP { 
+	/r exch def
+	/d exch def
+	gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/h exch def /w exch def
+	/bitmapsave save def 
+	r                    
+	/is w d wbytes string def
+	/cf currentfile def 
+	w h d [w 0 0 h neg 0 h] 
+	{cf is readhexstring pop} image
+	bitmapsave restore 
+	grestore
+	} bind def
+/ngrayt 256 array def
+/nredt 256 array def
+/nbluet 256 array def
+/ngreent 256 array def
+	/gryt FMLOCAL
+	/blut FMLOCAL
+	/grnt FMLOCAL
+	/redt FMLOCAL
+	/indx FMLOCAL
+	/cynu FMLOCAL
+	/magu FMLOCAL
+	/yelu FMLOCAL
+	/k FMLOCAL
+	/u FMLOCAL
+FMLevel1 {
+/colorsetup {
+	currentcolortransfer
+	/gryt exch def
+	/blut exch def
+	/grnt exch def
+	/redt exch def
+	0 1 255 {
+		/indx exch def
+		/cynu 1 red indx get 255 div sub def
+		/magu 1 green indx get 255 div sub def
+		/yelu 1 blue indx get 255 div sub def
+		/k cynu magu min yelu min def
+		/u k currentundercolorremoval exec def
+%		/u 0 def
+		nredt indx 1 0 cynu u sub max sub redt exec put
+		ngreent indx 1 0 magu u sub max sub grnt exec put
+		nbluet indx 1 0 yelu u sub max sub blut exec put
+		ngrayt indx 1 k currentblackgeneration exec sub gryt exec put
+	} for
+	{255 mul cvi nredt exch get}
+	{255 mul cvi ngreent exch get}
+	{255 mul cvi nbluet exch get}
+	{255 mul cvi ngrayt exch get}
+	setcolortransfer
+	{pop 0} setundercolorremoval
+	{} setblackgeneration
+	} bind def
+}
+{
+/colorSetup2 {
+	[ /Indexed /DeviceRGB 255 
+		{dup red exch get 255 div 
+		 exch dup green exch get 255 div 
+		 exch blue exch get 255 div}
+	] setcolorspace
+} bind def
+} ifelse
+	/tran FMLOCAL
+/fakecolorsetup {
+	/tran 256 string def
+	0 1 255 {/indx exch def 
+		tran indx
+		red indx get 77 mul
+		green indx get 151 mul
+		blue indx get 28 mul
+		add add 256 idiv put} for
+	currenttransfer
+	{255 mul cvi tran exch get 255.0 div}
+	exch concatprocs settransfer
+} bind def
+/BITMAPCOLOR { 
+	/d 8 def
+	gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/h exch def /w exch def
+	/bitmapsave save def
+	FMLevel1 {	
+		colorsetup
+		/is w d wbytes string def
+		/cf currentfile def 
+		w h d [w 0 0 h neg 0 h] 
+		{cf is readhexstring pop} {is} {is} true 3 colorimage 
+	} {
+		colorSetup2
+		/is w d wbytes string def
+		/cf currentfile def 
+		7 dict dup begin
+			/ImageType 1 def
+			/Width w def
+			/Height h def
+			/ImageMatrix [w 0 0 h neg 0 h] def
+			/DataSource {cf is readhexstring pop} bind def
+			/BitsPerComponent d def
+			/Decode [0 255] def
+		end image	
+	} ifelse
+	bitmapsave restore 
+	grestore
+	} bind def
+/BITMAPCOLORc { 
+	/d 8 def
+	gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/h exch def /w exch def
+	/lb w d wbytes def 
+	sl lb lt {lb ms} if 
+	/bitmapsave save def 
+	FMLevel1 {	
+		colorsetup
+		/is im 0 lb getinterval def 
+		ws 0 lb getinterval is copy pop 
+		/cf currentfile def 
+		w h d [w 0 0 h neg 0 h] 
+		{ip} {is} {is} true 3 colorimage
+	} {
+		colorSetup2
+		/is im 0 lb getinterval def 
+		ws 0 lb getinterval is copy pop 
+		/cf currentfile def 
+		7 dict dup begin
+			/ImageType 1 def
+			/Width w def
+			/Height h def
+			/ImageMatrix [w 0 0 h neg 0 h] def
+			/DataSource {ip} bind def
+			/BitsPerComponent d def
+			/Decode [0 255] def
+		end image	
+	} ifelse
+	bitmapsave restore 
+	grestore
+	} bind def
+/BITMAPTRUECOLORc { 
+	/d 24 def
+        gsave
+ 	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/h exch def /w exch def
+	/lb w d wbytes def 
+	sl lb lt {lb ms} if 
+        /bitmapsave save def 
+        
+	/is im 0 lb getinterval def	
+	/ris im 0 w getinterval def	
+	/gis im w w getinterval def	
+	/bis im w 2 mul w getinterval def 
+        
+        ws 0 lb getinterval is copy pop 
+        /cf currentfile def 
+        w h 8 [w 0 0 h neg 0 h] 
+        {w rip pop ris} {gis} {bis} true 3 colorimage
+        bitmapsave restore 
+        grestore
+        } bind def
+/BITMAPTRUECOLOR { 
+        gsave
+		
+		3 index 2 div add exch	
+		4 index 2 div add exch	
+		translate		
+		rotate			
+		1 index 2 div neg	
+		1 index 2 div neg	
+		translate		
+		scale			
+		/h exch def /w exch def
+        /bitmapsave save def 
+        /is w string def
+        /gis w string def
+        /bis w string def
+        /cf currentfile def 
+        w h 8 [w 0 0 h neg 0 h] 
+        { cf is readhexstring pop } 
+        { cf gis readhexstring pop } 
+        { cf bis readhexstring pop } 
+        true 3 colorimage 
+        bitmapsave restore 
+        grestore
+        } bind def
+/BITMAPTRUEGRAYc { 
+	/d 24 def
+        gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/h exch def /w exch def
+	/lb w d wbytes def 
+	sl lb lt {lb ms} if 
+        /bitmapsave save def 
+        
+	/is im 0 lb getinterval def	
+	/ris im 0 w getinterval def	
+	/gis im w w getinterval def	
+	/bis im w 2 mul w getinterval def 
+        ws 0 lb getinterval is copy pop 
+        /cf currentfile def 
+        w h 8 [w 0 0 h neg 0 h] 
+        {w rip pop ris gis bis w gray} image
+        bitmapsave restore 
+        grestore
+        } bind def
+/ww FMLOCAL
+/r FMLOCAL
+/g FMLOCAL
+/b FMLOCAL
+/i FMLOCAL
+/gray { 
+        /ww exch def
+        /b exch def
+        /g exch def
+        /r exch def
+        0 1 ww 1 sub { /i exch def r i get .299 mul g i get .587 mul
+			b i get .114 mul add add r i 3 -1 roll floor cvi put } for
+        r
+        } bind def
+/BITMAPTRUEGRAY { 
+        gsave
+		
+		3 index 2 div add exch	
+		4 index 2 div add exch	
+		translate		
+		rotate			
+		1 index 2 div neg	
+		1 index 2 div neg	
+		translate		
+		scale			
+		/h exch def /w exch def
+        /bitmapsave save def 
+        /is w string def
+        /gis w string def
+        /bis w string def
+        /cf currentfile def 
+        w h 8 [w 0 0 h neg 0 h] 
+        { cf is readhexstring pop 
+          cf gis readhexstring pop 
+          cf bis readhexstring pop w gray}  image
+        bitmapsave restore 
+        grestore
+        } bind def
+/BITMAPGRAY { 
+	8 {fakecolorsetup} COMMONBITMAP
+	} bind def
+/BITMAPGRAYc { 
+	8 {fakecolorsetup} COMMONBITMAPc
+	} bind def
+/ENDBITMAP {
+	} bind def
+end 
+	/ALDsave FMLOCAL
+	/ALDmatrix matrix def ALDmatrix currentmatrix pop
+/StartALD {
+	/ALDsave save def
+	 savematrix
+	 ALDmatrix setmatrix
+	} bind def
+/InALD {
+	 restorematrix
+	} bind def
+/DoneALD {
+	 ALDsave restore
+	} bind def
+/I { setdash } bind def
+/J { [] 0 setdash } bind def
+%%EndProlog
+%%BeginSetup
+(4.0) FMVERSION
+1 1 0 0 612 792 0 1 8 FMDOCUMENT
+0 0 /Times-Roman FMFONTDEFINE
+1 0 /Times-Bold FMFONTDEFINE
+2 0 /Times-Italic FMFONTDEFINE
+3 0 /Courier FMFONTDEFINE
+32 FMFILLS
+0 0 FMFILL
+1 0.1 FMFILL
+2 0.3 FMFILL
+3 0.5 FMFILL
+4 0.7 FMFILL
+5 0.9 FMFILL
+6 0.97 FMFILL
+7 1 FMFILL
+8 <0f1e3c78f0e1c387> FMFILL
+9 <0f87c3e1f0783c1e> FMFILL
+10 <cccccccccccccccc> FMFILL
+11 <ffff0000ffff0000> FMFILL
+12 <8142241818244281> FMFILL
+13 <03060c183060c081> FMFILL
+14 <8040201008040201> FMFILL
+16 1 FMFILL
+17 0.9 FMFILL
+18 0.7 FMFILL
+19 0.5 FMFILL
+20 0.3 FMFILL
+21 0.1 FMFILL
+22 0.03 FMFILL
+23 0 FMFILL
+24 <f0e1c3870f1e3c78> FMFILL
+25 <f0783c1e0f87c3e1> FMFILL
+26 <3333333333333333> FMFILL
+27 <0000ffff0000ffff> FMFILL
+28 <7ebddbe7e7dbbd7e> FMFILL
+29 <fcf9f3e7cf9f3f7e> FMFILL
+30 <7fbfdfeff7fbfdfe> FMFILL
+%%EndSetup
+%%Page: "21" 1
+%%BeginPaperSize: Letter
+%%EndPaperSize
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+J
+0 0 0 1 0 0 0 K
+396 36 486 54 R
+7 X
+0 0 0 1 0 0 0 K
+V
+0 10 Q
+0 X
+(October 1) 406.33 47.18 T
+(1, 1995) 445.67 47.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 F
+(DRAFT) 315.78 47.3 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+72 63 540 63 2 L
+1 H
+2 Z
+N
+522 36 540 54 R
+7 X
+V
+0 12 Q
+0 X
+(21) 528 45.82 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 10 Q
+(FTT Design) 54 37.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 18 Q
+(8) 54 708 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(T) 90 708 T
+(est Suite) 100.35 708 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 16 Q
+(8.1    Overview) 54 672.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+-0.6 (The test software for ftt must be able to test each command or a series of commands in a user de\336ned order) 54 648 P
+-0.6 (.) 555 648 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+-0.01 (This user de\336ned order can either be in a script \336le or typed in interactively at the command line. Like ftt) 54 634 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0.34 (itself, this command interpreter needs to be lightweight and easy to port; therefore, it cannot be very so-) 54 620 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1.05 (phisticated. Errors will simply be reported to stderr) 54 606 P
+1.05 (. Only ftt commands themselves will be supported:) 305.99 606 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(there will be no \337ow control \050if-then-else, for) 54 592 T
+(, e.t.c.\051 constructs.) 271.48 592 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0.04 (W) 54 572 P
+0.04 (e can then use this interpreter as the fundamental building block for a series of scripts to verify both an) 64.37 572 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0.39 (ftt port to a particular platform and drive type and to test that a particular drive is behaving as expected.) 54 558 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(These series of scripts will be provided as part of the testing portion of ftt.) 54 544 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 16 Q
+(8.2    ftt interpr) 54 511.33 T
+(eter \050ftt_test\051) 158.58 511.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+-0.08 (In the ftt interpreter) 54 487 P
+-0.08 (, ftt_test, only a single device can be open at any given time. This greatly simplies the) 147.6 487 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0.76 (user interface. ftt_test will support the following commands either entered via a script or the command) 54 473 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(line. If no corresponding library routine exists, the routine is described here.) 54 459 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+4.15 (All commands will write any errors to stderr) 54 439 P
+4.15 (. If a particular routine returns any data as well) 296.04 439 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+-0.62 (\050e.g.,get_status\051 that information is also written to stderr unless otherwise indicated. If a command invokes) 54 425 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+-0.5 (a corresponding ftt library routine, refer to the library section for a detailed description of what the speci\336c) 54 411 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(command does.) 54 397 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.1    ftt_open <basename> [-r) 54 367.67 T
+(eadonly]) 243.13 367.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+-0.37 (calls the corresponding ftt_open library routine using) 54 346 P
+2 F
+-0.37 (basename) 309.72 346 P
+0 F
+-0.37 (as the input \336lename.) 360.34 346 P
+2 F
+-0.37 (-r) 464.52 346 P
+-0.37 (eadonly) 472.74 346 P
+0 F
+-0.37 ( will open) 510.74 346 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0.28 (the \336le for read only access. W) 54 332 P
+0.28 (ithout this \337ag, the device is opened for read/write access. The ftt \336le de-) 204.14 332 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(scriptor is stored in a global variable for all other accesses on this device by the test routines.) 54 318 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.2    ftt_close) 54 288.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 267 T
+(.) 489.28 267 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.3    ftt_open_dev) 54 237.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 216 T
+(.) 489.28 216 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.4    ftt_close_dev) 54 186.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 165 T
+(.) 489.28 165 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.5    ftt_writefm) 54 135.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 114 T
+(.) 489.28 114 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "21" 1
+%%Page: "22" 2
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+126 36 216 54 R
+7 X
+0 0 0 1 0 0 0 K
+V
+0 10 Q
+0 X
+(October 1) 136.33 47.18 T
+(1, 1995) 175.67 47.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 F
+(DRAFT) 261.78 47.3 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+540 63 72 63 2 L
+1 H
+2 Z
+N
+72 36 90 54 R
+7 X
+V
+0 12 Q
+0 X
+(22) 78 45.82 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 10 Q
+(FTT Design) 54 37.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.6    ftt_status [-timeout nsecs]) 54 710.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.08 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 689 P
+0.08 (. The user can) 490.44 689 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(specify a timeout of) 54 675 T
+2 F
+(nsecs) 152.65 675 T
+0 F
+(. If no timeout is speci\336ed, the default value is 0.) 178.64 675 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.7    ftt_allow_async [level]) 54 645.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.23 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 624 P
+0.23 (. V) 492.54 624 P
+0.23 (alid values) 506.11 624 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0.92 (for) 54 610 P
+2 F
+0.92 (level) 71.91 610 P
+0 F
+0.92 ( are: FTT_SYNC, FTT_ASYNC, and FTT_NOW) 94.57 610 P
+0.92 (AIT) 337.49 610 P
+0.92 (. W) 356.6 610 P
+0.92 (ith no ar) 374.37 610 P
+0.92 (guments, it prints the current) 415.99 610 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(async level) 54 596 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.8    ftt_skip_to_double_fm [-async level]) 54 566.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.63 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor where) 54 545 P
+2 F
+0.63 (level) 535.34 545 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 F
+2.59 (indicates the asychronous level of the command. V) 54 531 P
+2.59 (alid values are FTT_SYNC, FTT_ASYNC, and) 316.08 531 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_NOW) 54 517 T
+(AIT) 108.66 517 T
+(. If no level is speci\336ed, the command is issued synchronously) 127.76 517 T
+(.) 426.96 517 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.9    ftt_skip_fm <n\336lemarks> [-async level]) 54 487.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.63 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor where) 54 466 P
+2 F
+0.63 (level) 535.34 466 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 F
+2.59 (indicates the asychronous level of the command. V) 54 452 P
+2.59 (alid values are FTT_SYNC, FTT_ASYNC, and) 316.08 452 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_NOW) 54 438 T
+(AIT) 108.66 438 T
+(. If no level is speci\336ed, the command is issued synchronously) 127.76 438 T
+(.) 426.96 438 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.10    ftt_skip_r) 54 408.67 T
+(ec <nr) 161.86 408.67 T
+(ecords> [-async level]) 199.52 408.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.63 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor where) 54 387 P
+2 F
+0.63 (level) 535.34 387 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 F
+2.59 (indicates the asychronous level of the command. V) 54 373 P
+2.59 (alid values are FTT_SYNC, FTT_ASYNC, and) 316.08 373 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_NOW) 54 359 T
+(AIT) 108.66 359 T
+(. If no level is speci\336ed, the command is issued synchronously) 127.76 359 T
+(.) 426.96 359 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.1) 54 329.67 T
+(1    ftt_r) 81.23 329.67 T
+(ewind [-async level]) 129.18 329.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.63 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor where) 54 308 P
+2 F
+0.63 (level) 535.34 308 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 F
+2.59 (indicates the asychronous level of the command. V) 54 294 P
+2.59 (alid values are FTT_SYNC, FTT_ASYNC, and) 316.08 294 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_NOW) 54 280 T
+(AIT) 108.66 280 T
+(. If no level is speci\336ed, the command is issued synchronously) 127.76 280 T
+(.) 426.96 280 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.12    ftt_r) 54 250.67 T
+(etension [-async level]) 129.95 250.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.63 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor where) 54 229 P
+2 F
+0.63 (level) 535.34 229 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 F
+2.59 (indicates the asychronous level of the command. V) 54 215 P
+2.59 (alid values are FTT_SYNC, FTT_ASYNC, and) 316.08 215 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_NOW) 54 201 T
+(AIT) 108.66 201 T
+(. If no level is speci\336ed, the command is issued synchronously) 127.76 201 T
+(.) 426.96 201 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.13    ftt_erase [-async level]) 54 171.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.63 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor where) 54 150 P
+2 F
+0.63 (level) 535.34 150 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 F
+2.59 (indicates the asychronous level of the command. V) 54 136 P
+2.59 (alid values are FTT_SYNC, FTT_ASYNC, and) 316.08 136 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_NOW) 54 122 T
+(AIT) 108.66 122 T
+(. If no level is speci\336ed, the command is issued synchronously) 127.76 122 T
+(.) 426.96 122 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "22" 2
+%%Page: "23" 3
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+396 36 486 54 R
+7 X
+0 0 0 1 0 0 0 K
+V
+0 10 Q
+0 X
+(October 1) 406.33 47.18 T
+(1, 1995) 445.67 47.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 F
+(DRAFT) 315.78 47.3 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+72 63 540 63 2 L
+1 H
+2 Z
+N
+522 36 540 54 R
+7 X
+V
+0 12 Q
+0 X
+(23) 528 45.82 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 10 Q
+(FTT Design) 54 37.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.14    ftt_unload [-async level]) 54 710.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.63 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor where) 54 689 P
+2 F
+0.63 (level) 535.34 689 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 F
+2.59 (indicates the asychronous level of the command. V) 54 675 P
+2.59 (alid values are FTT_SYNC, FTT_ASYNC, and) 316.08 675 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_NOW) 54 661 T
+(AIT) 108.66 661 T
+(. If no level is speci\336ed, the command is issued synchronously) 127.76 661 T
+(.) 426.96 661 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.15    ftt_wait) 54 631.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 610 T
+(.) 489.28 610 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.16    ftt_check) 54 580.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 559 T
+(.) 489.28 559 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.17    ftt_get_position) 54 529.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.44 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 508 P
+0.44 (. The current) 495.47 508 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(\336le and block number is written to stderr) 54 494 T
+(.) 248.99 494 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.18    ftt_list_all) 54 464.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+-0.27 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 443 P
+-0.27 (. The list of de-) 485.44 443 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(vice node pathnames is written to stderr) 54 429 T
+(.) 244.64 429 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.19    ftt_chall <uid> <gid> <mode>) 54 399.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+-0.13 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 378 P
+-0.13 (. The user id is) 487.51 378 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(speci\336ed in) 54 364 T
+2 F
+(uid) 112 364 T
+0 F
+(, the group id in) 127.33 364 T
+2 F
+(gid) 206.66 364 T
+0 F
+(, and the mode in) 222 364 T
+2 F
+(mode) 307.99 364 T
+0 F
+(.) 333.98 364 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.20    ftt_avail_mode <-density d> <-mode m> [-blocksize b]) 54 334.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.4 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 313 P
+0.4 (. The density) 494.87 313 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0.34 (and mode must be speci\336ed in) 54 299 P
+2 F
+0.34 (d) 204.72 299 P
+0 F
+0.34 ( and) 210.72 299 P
+2 F
+0.34 (m) 234.73 299 P
+0 F
+0.34 ( respectively) 243.39 299 P
+0.34 (. If the blocksize is not speci\336ed, variable block will) 303.94 299 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(be assumed. The device node is printed to stderr) 54 285 T
+(.) 284.96 285 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.21    ftt_mode <-density d> <-mode m> [-blocksize b]) 54 255.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.43 (calls the ftt_get_mode library routine if no ar) 54 234 P
+0.43 (guments are speci\336ed. otherwise calls ftt_set_mode library) 273.11 234 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+-0.37 (routine using the global variable for the ftt \336le descriptor) 54 220 P
+-0.37 (. If no blocksize is speci\336ed, variable block mode) 322.99 220 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(is assumed.) 54 206 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.22    ftt_get_mode_dev [devname]) 54 176.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.4 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 155 P
+0.4 (. Node infor-) 494.88 155 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(mation is written to stderr) 54 141 T
+(.) 177.34 141 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.23    ftt_set_mode_dev <devname> [-for) 54 111.67 T
+(ce]) 311.54 111.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+-0.56 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 90 P
+-0.56 (.) 481.46 90 P
+2 F
+-0.56 (-for) 486.9 90 P
+-0.56 (ce) 504.46 90 P
+0 F
+-0.56 ( will turn) 515.11 90 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(the force \337ag on. It is of) 54 76 T
+(f by default.) 169.43 76 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "23" 3
+%%Page: "24" 4
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+126 36 216 54 R
+7 X
+0 0 0 1 0 0 0 K
+V
+0 10 Q
+0 X
+(October 1) 136.33 47.18 T
+(1, 1995) 175.67 47.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 F
+(DRAFT) 261.78 47.3 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+540 63 72 63 2 L
+1 H
+2 Z
+N
+72 36 90 54 R
+7 X
+V
+0 12 Q
+0 X
+(24) 78 45.82 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 10 Q
+(FTT Design) 54 37.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.24    ftt_get_basename) 54 710.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 689 T
+(.) 489.28 689 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.25    ftt_eprintf <string>) 54 659.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 638 T
+(.) 489.28 638 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.26    ftt_get_err) 54 608.67 T
+(or) 167.26 608.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.36 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 587 P
+0.36 (. Information) 494.32 587 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(is written to stderr) 54 573 T
+(.) 141 573 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.27    ftt_get_stats) 54 543.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.36 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 522 P
+0.36 (. Information) 494.32 522 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(is written to stderr) 54 508 T
+(.) 141 508 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.28    ftt_extract_stats <stat>) 54 478.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.36 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 457 P
+0.36 (. Information) 494.32 457 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(is written to stderr) 54 443 T
+(. V) 141 443 T
+(alid values for) 154.33 443 T
+2 F
+(stat) 225.98 443 T
+0 F
+( are:) 243.32 443 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+3 10 Q
+(FTT_VENDOR_ID) 72 424.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_PRODUCT_ID) 72 412.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_FIRMWARE) 72 400.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_SERIAL_NUM) 72 388.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_HOURS_ON) 72 376.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_CLEANING_BIT) 72 364.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_READ_COUNT) 72 352.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_WRITE_COUNT) 72 340.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_READ_ERRORS) 72 328.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_WRITE_ERRORS) 72 316.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DENSITY) 72 304.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_COMPRESSION) 72 292.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_FILE_NUMBER) 72 280.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_BLOCK_NUMBER) 72 268.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_BOT) 72 256.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_READY) 72 244.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_WRITE_PROT) 72 232.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_MEDIA_TYPE) 72 220.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_BLOCK_SIZE) 72 208.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_REMAIN_TAPE) 72 196.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_USER_READ) 72 184.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_USER_WRITE) 72 172.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.29    ftt_verify_vol_label [-timeout nsecs]) 54 143.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.36 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 122 P
+0.36 (. Information) 494.32 122 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(is writted to stderr) 54 108 T
+(. This command will wait) 141 108 T
+2 F
+(nsecs) 267 108 T
+0 F
+( for the drive to come online. The default value is 0.) 292.99 108 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "24" 4
+%%Page: "25" 5
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+396 36 486 54 R
+7 X
+0 0 0 1 0 0 0 K
+V
+0 10 Q
+0 X
+(October 1) 406.33 47.18 T
+(1, 1995) 445.67 47.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 F
+(DRAFT) 315.78 47.3 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+72 63 540 63 2 L
+1 H
+2 Z
+N
+522 36 540 54 R
+7 X
+V
+0 12 Q
+0 X
+(25) 528 45.82 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 10 Q
+(FTT Design) 54 37.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.30    ftt_write_vol_label [-type type] <label>) 54 710.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+-0.7 (calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 689 P
+-0.7 (. The valid value) 479.45 689 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(for) 54 675 T
+2 F
+(type) 70.99 675 T
+0 F
+( are:) 90.98 675 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+3 10 Q
+(FTT_ANSI_HEADER) 72 656.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_FMB) 72 644.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_TAR) 72 632.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_CPIO) 72 620.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(If not speci\336ed, FTT_ANSI_HEADER is assumed.) 54 601 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.31    ftt_init_stats) 54 571.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 550 T
+(.) 489.28 550 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.32    ftt_update_stats) 54 520.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 499 T
+(.) 489.28 499 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.33    ftt_dump_stats) 54 469.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 448 T
+(.) 489.28 448 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.34    ftt_describe_node) 54 418.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 397 T
+(.) 489.28 397 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.35    ftt_list_all) 54 367.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(calls the corresponding ftt library routine using the global variable for the ftt \336le descriptor) 54 346 T
+(.) 489.28 346 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.36    ftt_write_test_block -nr) 54 316.67 T
+(ecords n -size nbytes [-delta ndbytes] [-alignment) 244.65 316.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(nalign] [-delay nsec]) 54 300.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+0.43 (write n test blocks of size nbytes. If ndbytes is speci\336ed, the writes will be of random size of nbytes +/-) 54 279 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+-0.1 (ndbytes. If alignment is speci\336ed, random size records must will be adjusted to this byte alignment. V) 54 265 P
+-0.1 (alid) 540 265 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+-0.37 (values for nalign are 1, 2, or 4. If delay is speci\336ed, a random delay of 0 to nsec will occur between writes.) 54 251 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.37    ftt_dump -nr) 54 221.67 T
+(ecords n -format format -\336le \336lename \050or r) 180.91 221.67 T
+(edir) 436.09 221.67 T
+(ection?\051) 459.94 221.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(do ever need to read using an odd byte count?) 54 200 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.38    ftt_undump -\336le \336lename \050or r) 54 170.67 T
+(edir) 285.52 170.67 T
+(ection?\051) 309.37 170.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(8.2.39    date) 54 140.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(output current date to stderr) 54 119 T
+(.) 186.65 119 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "25" 5
+%%Page: "26" 6
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+126 36 216 54 R
+7 X
+0 0 0 1 0 0 0 K
+V
+0 10 Q
+0 X
+(October 1) 136.33 47.18 T
+(1, 1995) 175.67 47.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 F
+(DRAFT) 261.78 47.3 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+540 63 72 63 2 L
+1 H
+2 Z
+N
+72 36 90 54 R
+7 X
+V
+0 12 Q
+0 X
+(26) 78 45.82 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 10 Q
+(FTT Design) 54 37.18 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.2.40    echo [string]) 54 710.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+(print string to stderr) 54 689 T
+(.) 149 689 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 16 Q
+(8.3    SCSI Pass Thr) 54 656.33 T
+(ough Commands) 190.18 656.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 12 Q
+-0.33 (The scsi test suite is implemented in a second interpreter called ftt_scsi_test. As with ftt_test, only one de-) 54 632 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0.39 (vice can be open at a time, and all errors and command output will be written to stderr unless otherwise) 54 618 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(indicated. The following commands are supported:) 54 604 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 14 Q
+(8.3.1    ftt_get_scsi_devname [devname]) 54 574.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(8.3.2    ftt_scsi_open [devname]) 54 544.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(8.3.3    ftt_scsi_close) 54 514.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(8.3.4    ftt_scsi_command -r) 54 484.67 T
+(ead -write -cmd_length clength -data_length dlength -) 218.22 484.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(commad \322 \322 -data \322 -timeout nsec) 54 468.67 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "26" 6
+%%Trailer
+%%BoundingBox: 0 0 612 792
+%%PageOrder: Ascend
+%%Pages: 6
+%%DocumentFonts: Times-Roman
+%%+ Times-Bold
+%%+ Times-Italic
+%%+ Courier
+%%EOF

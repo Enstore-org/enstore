@@ -1,0 +1,5174 @@
+%!PS-Adobe-3.0
+%%BoundingBox: (atend)
+%%Pages: (atend)
+%%PageOrder: (atend)
+%%DocumentFonts: (atend)
+%%Creator: Frame 5.0
+%%DocumentData: Clean7Bit
+%%EndComments
+%%BeginProlog
+%
+% Frame ps_prolog 5.0, for use with Frame 5.0 products
+% This ps_prolog file is Copyright (c) 1986-1995 Frame Technology
+% Corporation.  All rights reserved.  This ps_prolog file may be
+% freely copied and distributed in conjunction with documents created
+% using FrameMaker, FrameMaker/SGML and FrameViewer as long as this 
+% copyright notice is preserved.
+%
+% FrameMaker users specify the proper paper size for each print job in the
+% "Print" dialog's "Printer Paper Size" "Width" and "Height~ fields.  If the
+% printer that the PS file is sent to does not support the requested paper
+% size, or if there is no paper tray of the proper size currently installed, 
+% then the job will not be printed.  The following flag, if set to true, will
+% cause the job to print on the default paper in such cases.
+/FMAllowPaperSizeMismatch            false def
+%
+% Frame products normally print colors as their true color on a color printer
+% or as shades of gray, based on luminance, on a black-and white printer. The
+% following flag, if set to true, forces all non-white colors to print as pure
+% black. This has no effect on bitmap images.
+/FMPrintAllColorsAsBlack             false def
+%
+% Frame products can either set their own line screens or use a printer's 
+% default settings. Three flags below control this separately for no 
+% separations, spot separations and process separations. If a flag
+% is true, then the default printer settings will not be changed. If it is
+% false, Frame products will use their own settings from a table based on
+% the printer's resolution.
+/FMUseDefaultNoSeparationScreen      true  def
+/FMUseDefaultSpotSeparationScreen    true  def
+/FMUseDefaultProcessSeparationScreen false def
+%
+% For any given PostScript printer resolution, Frame products have two sets of 
+% screen angles and frequencies for printing process separations, which are 
+% recomended by Adobe. The following variable chooses the higher frequencies
+% when set to true or the lower frequencies when set to false. This is only
+% effective if the appropriate FMUseDefault...SeparationScreen flag is false.
+/FMUseHighFrequencyScreens true def
+%
+% The following is a set of predefined optimal frequencies and angles for various
+% common dpi settings. This is taken from "Advances in Color Separation Using
+% PostScript Software Technology," from Adobe Systems (3/13/89 P.N. LPS 0043)
+% and corrolated with information which is in various PPD (4.0) files.
+%
+% The "dpiranges" figure is the minimum dots per inch device resolution which
+% can support this setting. The "low" and "high" values are controlled by the
+% setting of the FMUseHighFrequencyScreens flag above. The "TDot" flags control
+% the use of the "Yellow Triple Dot" feature whereby the frequency id divided by
+% three, but the dot function is "trippled" giving a block of 3x3 dots per cell.
+%
+% PatFreq is a compromise pattern frequency for ps Level 2 printers which is close
+% to the ideal WYSIWYG pattern frequency of 9 repetitions/inch but does not beat
+% (too badly) against the screen frequencies of any separations for that DPI.
+/dpiranges   [  2540    2400    1693     1270    1200     635      600      0      ] def
+/CMLowFreqs  [ 100.402  94.8683 89.2289 100.402  94.8683  66.9349  63.2456 47.4342 ] def
+/YLowFreqs   [  95.25   90.0    84.65    95.25   90.0     70.5556  66.6667 50.0    ] def
+/KLowFreqs   [  89.8026 84.8528 79.8088  89.8026 84.8528  74.8355  70.7107 53.033  ] def
+/CLowAngles  [  71.5651 71.5651 71.5651 71.5651  71.5651  71.5651  71.5651 71.5651 ] def
+/MLowAngles  [  18.4349 18.4349 18.4349 18.4349  18.4349  18.4349  18.4349 18.4349 ] def
+/YLowTDot    [  true    true    false    true    true     false    false   false   ] def
+/CMHighFreqs [ 133.87  126.491 133.843  108.503 102.523  100.402   94.8683 63.2456 ] def
+/YHighFreqs  [ 127.0   120.0   126.975  115.455 109.091   95.25    90.0    60.0    ] def
+/KHighFreqs  [ 119.737 113.137 119.713  128.289 121.218   89.8026  84.8528 63.6395 ] def
+/CHighAngles [  71.5651 71.5651 71.5651  70.0169 70.0169  71.5651  71.5651 71.5651 ] def
+/MHighAngles [  18.4349 18.4349 18.4349  19.9831 19.9831  18.4349  18.4349 18.4349 ] def
+/YHighTDot   [  false   false   true     false   false    true     true    false   ] def
+/PatFreq     [	10.5833 10.0     9.4055  10.5833 10.0	  10.5833  10.0	   9.375   ] def
+%
+% PostScript Level 2 printers contain an "Accurate Screens" feature which can
+% improve process separation rendering at the expense of compute time. This 
+% flag is ignored by PostScript Level 1 printers.
+/FMUseAcccurateScreens true def
+%
+% The following PostScript procedure defines the spot function that Frame
+% products will use for process separations. You may un-comment-out one of
+% the alternative functions below, or use your own.
+%
+% Dot function
+/FMSpotFunction {abs exch abs 2 copy add 1 gt 
+		{1 sub dup mul exch 1 sub dup mul add 1 sub }
+		{dup mul exch dup mul add 1 exch sub }ifelse } def
+%
+% Line function
+% /FMSpotFunction { pop } def
+%
+% Elipse function
+% /FMSpotFunction { dup 5 mul 8 div mul exch dup mul exch add 
+%		sqrt 1 exch sub } def
+%
+%
+/FMversion (5.0) def 
+/fMLevel1 /languagelevel where {pop languagelevel} {1} ifelse 2 lt def
+/FMPColor
+	fMLevel1 {
+		false
+		/colorimage where {pop pop true} if
+	} {
+		true
+	} ifelse
+def
+/FrameDict 400 dict def 
+systemdict /errordict known not {/errordict 10 dict def
+		errordict /rangecheck {stop} put} if
+% The readline in PS 23.0 doesn't recognize cr's as nl's on AppleTalk
+FrameDict /tmprangecheck errordict /rangecheck get put 
+errordict /rangecheck {FrameDict /bug true put} put 
+FrameDict /bug false put 
+mark 
+% Some PS machines read past the CR, so keep the following 3 lines together!
+currentfile 5 string readline
+00
+0000000000
+cleartomark 
+errordict /rangecheck FrameDict /tmprangecheck get put 
+FrameDict /bug get { 
+	/readline {
+		/gstring exch def
+		/gfile exch def
+		/gindex 0 def
+		{
+			gfile read pop 
+			dup 10 eq {exit} if 
+			dup 13 eq {exit} if 
+			gstring exch gindex exch put 
+			/gindex gindex 1 add def 
+		} loop
+		pop 
+		gstring 0 gindex getinterval true 
+		} bind def
+	} if
+/FMshowpage /showpage load def
+/FMquit /quit load def
+/FMFAILURE { 
+	dup = flush 
+	FMshowpage 
+	/Helvetica findfont 12 scalefont setfont
+	72 200 moveto show
+	72 220 moveto show
+	FMshowpage 
+	FMquit 
+	} def 
+/FMVERSION {
+	FMversion ne {
+		(Frame product version does not match ps_prolog!  Check installation;)
+		(also check ~/fminit and ./fminit for old versions) FMFAILURE
+		} if
+	} def 
+/FMBADEPSF { 
+	(Adobe's PostScript Language Reference Manual, 2nd Edition, section H.2.4)
+	(says your EPS file is not valid, as it calls X              )
+	dup dup (X) search pop exch pop exch pop length 
+	5 -1 roll 
+	putinterval 
+	FMFAILURE
+	} def
+/fmConcatProcs
+	{
+	/proc2 exch cvlit def/proc1 exch cvlit def/newproc proc1 length proc2 length add array def
+	newproc 0 proc1 putinterval newproc proc1 length proc2 putinterval newproc cvx
+}def
+FrameDict begin [
+	/ALDsave
+	/FMdicttop
+	/FMoptop
+	/FMpointsize
+	/FMsaveobject
+	/b
+	/bitmapsave
+	/blut
+	/bpside
+	/bs
+	/bstring
+	/bwidth
+	/c
+	/cf
+	/cs
+	/cynu
+	/depth
+	/edown
+	/fh
+	/fillvals
+	/fw
+	/fx
+	/fy
+	/g
+	/gfile
+	/gindex
+	/grnt
+	/gryt
+	/gstring
+	/height
+	/hh
+	/i
+	/im
+	/indx
+	/is
+	/k
+	/kk
+	/landscape
+	/lb
+	/len
+	/llx
+	/lly
+	/m
+	/magu
+	/manualfeed
+	/n
+	/offbits
+	/onbits
+	/organgle
+	/orgbangle
+	/orgbfreq
+	/orgbproc
+	/orgbxfer
+	/orgfreq
+	/orggangle
+	/orggfreq
+	/orggproc
+	/orggxfer
+	/orgmatrix
+	/orgproc
+	/orgrangle
+	/orgrfreq
+	/orgrproc
+	/orgrxfer
+	/orgxfer
+	/pagesave
+	/paperheight
+	/papersizedict
+	/paperwidth
+	/pos
+	/pwid
+	/r
+	/rad
+	/redt
+	/sl
+	/str
+	/tran
+	/u
+	/urx
+	/ury
+	/val
+	/width
+	/width
+	/ws
+	/ww
+	/x
+	/x1
+	/x2
+	/xindex
+	/xpoint
+	/xscale
+	/xx
+	/y
+	/y1
+	/y2
+	/yelu
+	/yindex
+	/ypoint
+	/yscale
+	/yy
+] { 0 def } forall
+/FmBD {bind def} bind def
+systemdict /pdfmark known {
+	/fMAcrobat true def
+	
+	/FmPD /pdfmark load def
+	
+	
+	/FmPT /show load def
+	
+	
+	currentdistillerparams /CoreDistVersion get 2000 ge {
+	
+		
+		/FmPD2 /pdfmark load def
+		
+		
+		
+		
+		
+		/FmPA { mark exch /Dest exch 5 3 roll 
+				/View [ /XYZ null 6 -2 roll FmDC exch pop null] /DEST FmPD 
+		}FmBD
+	} {
+		
+		/FmPD2 /cleartomark load def
+		/FmPA {pop pop pop}FmBD
+	} ifelse
+} {
+	
+	/fMAcrobat false def
+	/FmPD /cleartomark load def
+	/FmPD2 /cleartomark load def
+	/FmPT /pop load def
+	/FmPA {pop pop pop}FmBD
+} ifelse
+/FmDC {
+	transform fMDefaultMatrix itransform cvi exch cvi exch
+}FmBD
+/FmBx {
+	dup 3 index lt {3 1 roll exch} if 
+	1 index 4 index lt {4 -1 roll 3 1 roll exch 4 1 roll} if
+}FmBD
+/FMnone 0 def
+/FMcyan 1 def
+/FMmagenta 2 def
+/FMyellow 3 def
+/FMblack 4 def
+/FMcustom 5 def
+/fMNegative false def 
+/FrameSepIs FMnone def 
+/FrameSepBlack 0 def
+/FrameSepYellow 0 def
+/FrameSepMagenta 0 def
+/FrameSepCyan 0 def
+/FrameSepRed 1 def
+/FrameSepGreen 1 def
+/FrameSepBlue 1 def
+/FrameCurGray 1 def
+/FrameCurPat null def
+/FrameCurColors [ 0 0 0 1 0 0 0 ] def 
+/FrameColorEpsilon .001 def	
+/eqepsilon {		
+	sub dup 0 lt {neg} if
+	FrameColorEpsilon le
+} bind def
+/FrameCmpColorsCMYK { 
+	2 copy 0 get exch 0 get eqepsilon {
+		2 copy 1 get exch 1 get eqepsilon {
+			2 copy 2 get exch 2 get eqepsilon {
+				3 get exch 3 get eqepsilon
+			} {pop pop false} ifelse
+		}{pop pop false} ifelse
+	} {pop pop false} ifelse
+} bind def
+/FrameCmpColorsRGB { 
+	2 copy 4 get exch 0 get eqepsilon {
+		2 copy 5 get exch 1 get eqepsilon {
+			6 get exch 2 get eqepsilon
+		}{pop pop false} ifelse
+	} {pop pop false} ifelse
+} bind def
+/RGBtoCMYK { 
+	1 exch sub 
+	3 1 roll 
+	1 exch sub 
+	3 1 roll 
+	1 exch sub 
+	3 1 roll 
+	3 copy 
+	2 copy 
+	le { pop } { exch pop } ifelse 
+	2 copy 
+	le { pop } { exch pop } ifelse 
+	dup dup dup 
+	6 1 roll 
+	4 1 roll 
+	7 1 roll 
+	sub 
+	6 1 roll 
+	sub 
+	5 1 roll 
+	sub 
+	4 1 roll 
+} bind def
+/CMYKtoRGB { 
+	dup dup 4 -1 roll add 						  
+	5 1 roll 3 -1 roll add 						  
+	4 1 roll add 								  
+	1 exch sub dup 0 lt {pop 0} if 3 1 roll 	  
+	1 exch sub dup 0 lt {pop 0} if exch 	      
+	1 exch sub dup 0 lt {pop 0} if exch	  		  
+} bind def
+/FrameSepInit {
+	1.0 RealSetgray
+} bind def
+/FrameSetSepColor { 
+	/FrameSepBlue exch def
+	/FrameSepGreen exch def
+	/FrameSepRed exch def
+	/FrameSepBlack exch def
+	/FrameSepYellow exch def
+	/FrameSepMagenta exch def
+	/FrameSepCyan exch def
+	/FrameSepIs FMcustom def
+	setCurrentScreen	
+} bind def
+/FrameSetCyan {
+	/FrameSepBlue 1.0 def
+	/FrameSepGreen 1.0 def
+	/FrameSepRed 0.0 def
+	/FrameSepBlack 0.0 def
+	/FrameSepYellow 0.0 def
+	/FrameSepMagenta 0.0 def
+	/FrameSepCyan 1.0 def
+	/FrameSepIs FMcyan def
+	setCurrentScreen	
+} bind def
+ 
+/FrameSetMagenta {
+	/FrameSepBlue 1.0 def
+	/FrameSepGreen 0.0 def
+	/FrameSepRed 1.0 def
+	/FrameSepBlack 0.0 def
+	/FrameSepYellow 0.0 def
+	/FrameSepMagenta 1.0 def
+	/FrameSepCyan 0.0 def
+	/FrameSepIs FMmagenta def
+	setCurrentScreen
+} bind def
+ 
+/FrameSetYellow {
+	/FrameSepBlue 0.0 def
+	/FrameSepGreen 1.0 def
+	/FrameSepRed 1.0 def
+	/FrameSepBlack 0.0 def
+	/FrameSepYellow 1.0 def
+	/FrameSepMagenta 0.0 def
+	/FrameSepCyan 0.0 def
+	/FrameSepIs FMyellow def
+	setCurrentScreen
+} bind def
+ 
+/FrameSetBlack {
+	/FrameSepBlue 0.0 def
+	/FrameSepGreen 0.0 def
+	/FrameSepRed 0.0 def
+	/FrameSepBlack 1.0 def
+	/FrameSepYellow 0.0 def
+	/FrameSepMagenta 0.0 def
+	/FrameSepCyan 0.0 def
+	/FrameSepIs FMblack def
+	setCurrentScreen
+} bind def
+ 
+/FrameNoSep { 
+	/FrameSepIs FMnone def
+	setCurrentScreen
+} bind def
+/FrameSetSepColors { 
+	FrameDict begin
+	[ exch 1 add 1 roll ]
+	/FrameSepColors  
+	exch def end
+	} bind def
+/FrameColorInSepListCMYK { 
+	FrameSepColors {  
+       		exch dup 3 -1 roll 
+       		FrameCmpColorsCMYK 
+       		{ pop true exit } if
+    	} forall 
+	dup true ne {pop false} if
+	} bind def
+/FrameColorInSepListRGB { 
+	FrameSepColors {  
+       		exch dup 3 -1 roll 
+       		FrameCmpColorsRGB 
+       		{ pop true exit } if
+    	} forall 
+	dup true ne {pop false} if
+	} bind def
+/RealSetgray /setgray load def
+/RealSetrgbcolor /setrgbcolor load def
+/RealSethsbcolor /sethsbcolor load def
+end 
+/setgray { 
+	FrameDict begin
+	FrameSepIs FMnone eq
+		{ RealSetgray } 
+		{ 
+		FrameSepIs FMblack eq 
+			{ RealSetgray } 
+			{ FrameSepIs FMcustom eq 
+			  FrameSepRed 0 eq and
+			  FrameSepGreen 0 eq and
+			  FrameSepBlue 0 eq and {
+			  	RealSetgray
+			  } {
+				1 RealSetgray pop 
+			  } ifelse
+			} ifelse
+		} ifelse
+	end
+} bind def
+/setrgbcolor { 
+	FrameDict begin
+	FrameSepIs FMnone eq
+	{  RealSetrgbcolor }
+	{
+		3 copy [ 4 1 roll ] 
+		FrameColorInSepListRGB
+		{
+				FrameSepBlue eq exch 
+			 	FrameSepGreen eq and exch 
+			 	FrameSepRed eq and
+			 	{ 0 } { 1 } ifelse
+		}
+		{
+			FMPColor {
+				RealSetrgbcolor
+				currentcmykcolor
+			} {
+				RGBtoCMYK
+			} ifelse
+			FrameSepIs FMblack eq
+			{1.0 exch sub 4 1 roll pop pop pop} {
+			FrameSepIs FMyellow eq
+			{pop 1.0 exch sub 3 1 roll pop pop} {
+			FrameSepIs FMmagenta eq
+			{pop pop 1.0 exch sub exch pop } {
+			FrameSepIs FMcyan eq
+			{pop pop pop 1.0 exch sub } 
+			{pop pop pop pop 1} ifelse } ifelse } ifelse } ifelse 
+		} ifelse
+		RealSetgray
+	} 
+	ifelse
+	end
+} bind def
+/sethsbcolor {
+	FrameDict begin
+	FrameSepIs FMnone eq 
+	{ RealSethsbcolor } 
+	{
+		RealSethsbcolor 
+		currentrgbcolor  
+		setrgbcolor 
+	} 
+	ifelse
+	end
+} bind def
+FrameDict begin
+/setcmykcolor where {
+	pop /RealSetcmykcolor /setcmykcolor load def
+} {
+	/RealSetcmykcolor {
+		4 1 roll
+		3 { 3 index add 0 max 1 min 1 exch sub 3 1 roll} repeat 
+		RealSetrgbcolor pop
+	} bind def
+} ifelse
+userdict /setcmykcolor { 
+		FrameDict begin
+		FrameSepIs FMnone eq
+		{ RealSetcmykcolor } 
+		{
+			4 copy [ 5 1 roll ]
+			FrameColorInSepListCMYK
+			{
+				FrameSepBlack eq exch 
+				FrameSepYellow eq and exch 
+				FrameSepMagenta eq and exch 
+				FrameSepCyan eq and 
+				{ 0 } { 1 } ifelse
+			}
+			{
+				FrameSepIs FMblack eq
+				{1.0 exch sub 4 1 roll pop pop pop} {
+				FrameSepIs FMyellow eq
+				{pop 1.0 exch sub 3 1 roll pop pop} {
+				FrameSepIs FMmagenta eq
+				{pop pop 1.0 exch sub exch pop } {
+				FrameSepIs FMcyan eq
+				{pop pop pop 1.0 exch sub } 
+				{pop pop pop pop 1} ifelse } ifelse } ifelse } ifelse 
+			} ifelse
+			RealSetgray
+		}
+		ifelse
+		end
+	} bind put
+fMLevel1 { 
+	
+	
+	
+	/patScreenDict 7 dict dup begin
+		<0f1e3c78f0e1c387> [ 45  { pop } {exch pop} 		.5   2 sqrt] FmBD
+		<0f87c3e1f0783c1e> [ 135 { pop } {exch pop}			.5   2 sqrt] FmBD
+		<cccccccccccccccc> [ 0   { pop } dup				.5   2	   ] FmBD
+		<ffff0000ffff0000> [ 90  { pop } dup				.5   2	   ] FmBD
+		<8142241818244281> [ 45  { 2 copy lt {exch} if pop}	dup .75  2 sqrt] FmBD
+		<03060c183060c081> [ 45  { pop } {exch pop}			.875 2 sqrt] FmBD
+		<8040201008040201> [ 135 { pop } {exch pop}			.875 2 sqrt] FmBD
+	end def
+} { 
+	
+	/patProcDict 5 dict dup begin
+		<0f1e3c78f0e1c387> { 3 setlinewidth -1 -1 moveto 9 9 lineto stroke 
+											4 -4 moveto 12 4 lineto stroke
+											-4 4 moveto 4 12 lineto stroke} bind def
+		<0f87c3e1f0783c1e> { 3 setlinewidth -1 9 moveto 9 -1 lineto stroke 
+											-4 4 moveto 4 -4 lineto stroke
+											4 12 moveto 12 4 lineto stroke} bind def
+		<8142241818244281> { 1 setlinewidth -1 9 moveto 9 -1 lineto stroke
+											-1 -1 moveto 9 9 lineto stroke } bind def
+		<03060c183060c081> { 1 setlinewidth -1 -1 moveto 9 9 lineto stroke 
+											4 -4 moveto 12 4 lineto stroke
+											-4 4 moveto 4 12 lineto stroke} bind def
+		<8040201008040201> { 1 setlinewidth -1 9 moveto 9 -1 lineto stroke 
+											-4 4 moveto 4 -4 lineto stroke
+											4 12 moveto 12 4 lineto stroke} bind def
+	end def
+	/patDict 15 dict dup begin
+		/PatternType 1 def		
+		/PaintType 2 def		
+		/TilingType 3 def		
+		/BBox [ 0 0 8 8 ] def 	
+		/XStep 8 def			
+		/YStep 8 def			
+		/PaintProc {
+			begin
+			patProcDict bstring known {
+				patProcDict bstring get exec
+			} {
+				8 8 true [1 0 0 -1 0 8] bstring imagemask
+			} ifelse
+			end
+		} bind def
+	end def
+} ifelse
+/combineColor {
+    FrameSepIs FMnone eq
+	{
+		graymode fMLevel1 or not {
+			
+			[/Pattern [/DeviceCMYK]] setcolorspace
+			FrameCurColors 0 4 getinterval aload pop FrameCurPat setcolor
+		} {
+			FrameCurColors 3 get 1.0 ge {
+				FrameCurGray RealSetgray
+			} {
+				fMAcrobat not FMPColor graymode and and {
+					0 1 3 { 
+						FrameCurColors exch get
+						1 FrameCurGray sub mul
+					} for
+					RealSetcmykcolor
+				} {
+					4 1 6 {
+						FrameCurColors exch get
+						graymode {
+							1 exch sub 1 FrameCurGray sub mul 1 exch sub
+						} {
+							1.0 lt {FrameCurGray} {1} ifelse
+						} ifelse
+					} for
+					RealSetrgbcolor
+				} ifelse
+			} ifelse
+		} ifelse
+	} { 
+		FrameCurColors 0 4 getinterval aload
+		FrameColorInSepListCMYK {
+			FrameSepBlack eq exch 
+			FrameSepYellow eq and exch 
+			FrameSepMagenta eq and exch 
+			FrameSepCyan eq and
+			FrameSepIs FMcustom eq and
+			{ FrameCurGray } { 1 } ifelse
+		} {
+			FrameSepIs FMblack eq
+			{FrameCurGray 1.0 exch sub mul 1.0 exch sub 4 1 roll pop pop pop} {
+			FrameSepIs FMyellow eq
+			{pop FrameCurGray 1.0 exch sub mul 1.0 exch sub 3 1 roll pop pop} {
+			FrameSepIs FMmagenta eq
+			{pop pop FrameCurGray 1.0 exch sub mul 1.0 exch sub exch pop } {
+			FrameSepIs FMcyan eq
+			{pop pop pop FrameCurGray 1.0 exch sub mul 1.0 exch sub } 
+			{pop pop pop pop 1} ifelse } ifelse } ifelse } ifelse 
+		} ifelse
+		graymode fMLevel1 or not {
+			
+			[/Pattern [/DeviceGray]] setcolorspace
+			FrameCurPat setcolor
+		} { 
+			graymode not fMLevel1 and {
+				
+				dup 1 lt {pop FrameCurGray} if
+			} if
+			RealSetgray
+		} ifelse
+	} ifelse
+} bind def
+/savematrix {
+	orgmatrix currentmatrix pop
+	} bind def
+/restorematrix {
+	orgmatrix setmatrix
+	} bind def
+/fMDefaultMatrix matrix defaultmatrix def
+/fMatrix2 matrix def
+/dpi    72 0 fMDefaultMatrix dtransform
+    dup mul exch   dup mul add   sqrt def
+	
+/freq dpi dup 72 div round dup 0 eq {pop 1} if 8 mul div def
+/sangle 1 0 fMDefaultMatrix dtransform exch atan def
+	sangle fMatrix2 rotate 
+	fMDefaultMatrix fMatrix2 concatmatrix 
+	dup 0 get /sflipx exch def
+	    3 get /sflipy exch def
+/screenIndex {
+	0 1 dpiranges length 1 sub { dup dpiranges exch get 1 sub dpi le {exit} {pop} ifelse } for
+} bind def
+/getCyanScreen {
+	FMUseHighFrequencyScreens { CHighAngles CMHighFreqs} {CLowAngles CMLowFreqs} ifelse
+		screenIndex dup 3 1 roll get 3 1 roll get /FMSpotFunction load
+} bind def
+/getMagentaScreen {
+	FMUseHighFrequencyScreens { MHighAngles CMHighFreqs } {MLowAngles CMLowFreqs} ifelse
+		screenIndex dup 3 1 roll get 3 1 roll get /FMSpotFunction load
+} bind def
+/getYellowScreen {
+	FMUseHighFrequencyScreens { YHighTDot YHighFreqs} { YLowTDot YLowFreqs } ifelse
+		screenIndex dup 3 1 roll get 3 1 roll get { 3 div
+			{2 { 1 add 2 div 3 mul dup floor sub 2 mul 1 sub exch} repeat
+			FMSpotFunction } } {/FMSpotFunction load } ifelse
+			0.0 exch
+} bind def
+/getBlackScreen  {
+	FMUseHighFrequencyScreens { KHighFreqs } { KLowFreqs } ifelse
+		screenIndex get 45.0 /FMSpotFunction load 
+} bind def
+/getSpotScreen {
+	getBlackScreen
+} bind def
+/getCompositeScreen {
+	getBlackScreen
+} bind def
+/FMSetScreen 
+	fMLevel1 { /setscreen load 
+	}{ {
+		8 dict begin
+		/HalftoneType 1 def
+		/SpotFunction exch def
+		/Angle exch def
+		/Frequency exch def
+		/AccurateScreens FMUseAcccurateScreens def
+		currentdict end sethalftone
+	} bind } ifelse
+def
+/setDefaultScreen {
+	FMPColor {
+		orgrxfer cvx orggxfer cvx orgbxfer cvx orgxfer cvx setcolortransfer
+	}
+	{
+		orgxfer cvx settransfer
+	} ifelse
+	orgfreq organgle orgproc cvx setscreen
+} bind def
+/setCurrentScreen {
+	FrameSepIs FMnone eq {
+		FMUseDefaultNoSeparationScreen {
+			setDefaultScreen
+		} {
+			getCompositeScreen FMSetScreen
+		} ifelse
+	} {
+		FrameSepIs FMcustom eq {
+			FMUseDefaultSpotSeparationScreen {
+				setDefaultScreen
+			} {
+				getSpotScreen FMSetScreen
+			} ifelse
+		} {
+			FMUseDefaultProcessSeparationScreen {
+				setDefaultScreen
+			} {
+				FrameSepIs FMcyan eq {
+					getCyanScreen FMSetScreen
+				} {
+					FrameSepIs FMmagenta eq {
+						getMagentaScreen FMSetScreen
+					} {
+						FrameSepIs FMyellow eq {
+							getYellowScreen FMSetScreen
+						} {
+							getBlackScreen FMSetScreen
+						} ifelse
+					} ifelse
+				} ifelse
+			} ifelse
+		} ifelse
+	} ifelse 
+} bind def
+end
+	
+/FMDOCUMENT { 
+	array /FMfonts exch def 
+	/#copies exch def
+	FrameDict begin
+	0 ne /manualfeed exch def
+	/paperheight exch def
+	/paperwidth exch def
+	0 ne /fMNegative exch def 
+	0 ne /edown exch def 
+	/yscale exch def
+	/xscale exch def
+	fMLevel1 {
+		manualfeed {setmanualfeed} if
+		/FMdicttop countdictstack 1 add def 
+		/FMoptop count def 
+		setpapername 
+		manualfeed {true} {papersize} ifelse 
+		{manualpapersize} {false} ifelse 
+		{desperatepapersize} {false} ifelse 
+		{papersizefailure} if
+		count -1 FMoptop {pop pop} for
+		countdictstack -1 FMdicttop {pop end} for 
+		}
+		{2 dict
+		 dup /PageSize [paperwidth paperheight] put
+		 manualfeed {dup /ManualFeed manualfeed put} if
+		 {setpagedevice} stopped {papersizefailure} if
+		}
+	ifelse 
+	
+	FMPColor {
+		currentcolorscreen
+			cvlit /orgproc exch def
+				  /organgle exch def 
+				  /orgfreq exch def
+			cvlit /orgbproc exch def
+				  /orgbangle exch def 
+				  /orgbfreq exch def
+			cvlit /orggproc exch def
+				  /orggangle exch def 
+				  /orggfreq exch def
+			cvlit /orgrproc exch def
+				  /orgrangle exch def 
+				  /orgrfreq exch def
+			currentcolortransfer 
+			fMNegative {
+				1 1 4 { 
+					pop { 1 exch sub } fmConcatProcs 4 1 roll
+				} for
+				4 copy
+				setcolortransfer
+			} if
+			cvlit /orgxfer exch def
+			cvlit /orgbxfer exch def
+			cvlit /orggxfer exch def
+			cvlit /orgrxfer exch def
+	} {
+		currentscreen 
+			cvlit /orgproc exch def
+				  /organgle exch def 
+				  /orgfreq exch def
+				  
+		currenttransfer 
+		fMNegative {
+			{ 1 exch sub } fmConcatProcs
+			dup settransfer
+		} if 
+		cvlit /orgxfer exch def
+	} ifelse
+	end 
+} def 
+/FMBEGINPAGE { 
+	FrameDict begin 
+	/pagesave save def
+	3.86 setmiterlimit
+	/landscape exch 0 ne def
+	landscape { 
+		90 rotate 0 exch dup /pwid exch def neg translate pop 
+	}{
+		pop /pwid exch def
+	} ifelse
+	edown { [-1 0 0 1 pwid 0] concat } if
+	0 0 moveto paperwidth 0 lineto paperwidth paperheight lineto 
+	0 paperheight lineto 0 0 lineto 1 setgray fill
+	xscale yscale scale
+	/orgmatrix matrix def
+	gsave 
+} def 
+/FMENDPAGE {
+	grestore 
+	pagesave restore
+	end 
+	showpage
+	} def 
+/FMFONTDEFINE { 
+	FrameDict begin
+	findfont 
+	ReEncode 
+	1 index exch 
+	definefont 
+	FMfonts 3 1 roll 
+	put
+	end 
+	} def 
+/FMFILLS {
+	FrameDict begin dup
+	array /fillvals exch def
+	dict /patCache exch def
+	end 
+	} def 
+/FMFILL {
+	FrameDict begin
+	 fillvals 3 1 roll put
+	end 
+	} def 
+/FMNORMALIZEGRAPHICS { 
+	newpath
+	1 setlinewidth
+	0 setlinecap
+	0 0 0 sethsbcolor
+	0 setgray 
+	} bind def
+/FMBEGINEPSF { 
+	end 
+	/FMEPSF save def 
+	/showpage {} def 
+% See Adobe's "PostScript Language Reference Manual, 2nd Edition", page 714.
+% "...the following operators MUST NOT be used in an EPS file:" (emphasis ours)
+	/banddevice {(banddevice) FMBADEPSF} def
+	/clear {(clear) FMBADEPSF} def
+	/cleardictstack {(cleardictstack) FMBADEPSF} def 
+	/copypage {(copypage) FMBADEPSF} def
+	/erasepage {(erasepage) FMBADEPSF} def
+	/exitserver {(exitserver) FMBADEPSF} def
+	/framedevice {(framedevice) FMBADEPSF} def
+	/grestoreall {(grestoreall) FMBADEPSF} def
+	/initclip {(initclip) FMBADEPSF} def
+	/initgraphics {(initgraphics) FMBADEPSF} def
+	/quit {(quit) FMBADEPSF} def
+	/renderbands {(renderbands) FMBADEPSF} def
+	/setglobal {(setglobal) FMBADEPSF} def
+	/setpagedevice {(setpagedevice) FMBADEPSF} def
+	/setshared {(setshared) FMBADEPSF} def
+	/startjob {(startjob) FMBADEPSF} def
+	/lettertray {(lettertray) FMBADEPSF} def
+	/letter {(letter) FMBADEPSF} def
+	/lettersmall {(lettersmall) FMBADEPSF} def
+	/11x17tray {(11x17tray) FMBADEPSF} def
+	/11x17 {(11x17) FMBADEPSF} def
+	/ledgertray {(ledgertray) FMBADEPSF} def
+	/ledger {(ledger) FMBADEPSF} def
+	/legaltray {(legaltray) FMBADEPSF} def
+	/legal {(legal) FMBADEPSF} def
+	/statementtray {(statementtray) FMBADEPSF} def
+	/statement {(statement) FMBADEPSF} def
+	/executivetray {(executivetray) FMBADEPSF} def
+	/executive {(executive) FMBADEPSF} def
+	/a3tray {(a3tray) FMBADEPSF} def
+	/a3 {(a3) FMBADEPSF} def
+	/a4tray {(a4tray) FMBADEPSF} def
+	/a4 {(a4) FMBADEPSF} def
+	/a4small {(a4small) FMBADEPSF} def
+	/b4tray {(b4tray) FMBADEPSF} def
+	/b4 {(b4) FMBADEPSF} def
+	/b5tray {(b5tray) FMBADEPSF} def
+	/b5 {(b5) FMBADEPSF} def
+	FMNORMALIZEGRAPHICS 
+	[/fy /fx /fh /fw /ury /urx /lly /llx] {exch def} forall 
+	fx fw 2 div add fy fh 2 div add  translate
+	rotate
+	fw 2 div neg fh 2 div neg translate
+	fw urx llx sub div fh ury lly sub div scale 
+	llx neg lly neg translate 
+	/FMdicttop countdictstack 1 add def 
+	/FMoptop count def 
+	} bind def
+/FMENDEPSF {
+	count -1 FMoptop {pop pop} for 
+	countdictstack -1 FMdicttop {pop end} for 
+	FMEPSF restore
+	FrameDict begin 
+	} bind def
+FrameDict begin 
+/setmanualfeed {
+%%BeginFeature *ManualFeed True
+	 statusdict /manualfeed true put
+%%EndFeature
+	} bind def
+/max {2 copy lt {exch} if pop} bind def
+/min {2 copy gt {exch} if pop} bind def
+/inch {72 mul} def
+/pagedimen { 
+	paperheight sub abs 16 lt exch 
+	paperwidth sub abs 16 lt and
+	{/papername exch def} {pop} ifelse
+	} bind def
+/setpapername { 
+	/papersizedict 14 dict def 
+	papersizedict begin
+	/papername /unknown def 
+		/Letter 8.5 inch 11.0 inch pagedimen
+		/LetterSmall 7.68 inch 10.16 inch pagedimen
+		/Tabloid 11.0 inch 17.0 inch pagedimen
+		/Ledger 17.0 inch 11.0 inch pagedimen
+		/Legal 8.5 inch 14.0 inch pagedimen
+		/Statement 5.5 inch 8.5 inch pagedimen
+		/Executive 7.5 inch 10.0 inch pagedimen
+		/A3 11.69 inch 16.5 inch pagedimen
+		/A4 8.26 inch 11.69 inch pagedimen
+		/A4Small 7.47 inch 10.85 inch pagedimen
+		/B4 10.125 inch 14.33 inch pagedimen
+		/B5 7.16 inch 10.125 inch pagedimen
+	end
+	} bind def
+/papersize {
+	papersizedict begin
+		/Letter {lettertray letter} def
+		/LetterSmall {lettertray lettersmall} def
+		/Tabloid {11x17tray 11x17} def
+		/Ledger {ledgertray ledger} def
+		/Legal {legaltray legal} def
+		/Statement {statementtray statement} def
+		/Executive {executivetray executive} def
+		/A3 {a3tray a3} def
+		/A4 {a4tray a4} def
+		/A4Small {a4tray a4small} def
+		/B4 {b4tray b4} def
+		/B5 {b5tray b5} def
+		/unknown {unknown} def
+	papersizedict dup papername known {papername} {/unknown} ifelse get
+	end
+	statusdict begin stopped end 
+	} bind def
+/manualpapersize {
+	papersizedict begin
+		/Letter {letter} def
+		/LetterSmall {lettersmall} def
+		/Tabloid {11x17} def
+		/Ledger {ledger} def
+		/Legal {legal} def
+		/Statement {statement} def
+		/Executive {executive} def
+		/A3 {a3} def
+		/A4 {a4} def
+		/A4Small {a4small} def
+		/B4 {b4} def
+		/B5 {b5} def
+		/unknown {unknown} def
+	papersizedict dup papername known {papername} {/unknown} ifelse get
+	end
+	stopped 
+	} bind def
+/desperatepapersize {
+	statusdict /setpageparams known
+		{
+		paperwidth paperheight 0 1 
+		statusdict begin
+		{setpageparams} stopped 
+		end
+		} {true} ifelse 
+	} bind def
+/papersizefailure {
+	FMAllowPaperSizeMismatch not
+		{
+(The requested paper size is not available in any currently-installed tray)
+(Edit the PS file to "FMAllowPaperSizeMismatch true" to use default tray)
+		 FMFAILURE } if
+	} def
+/DiacriticEncoding [
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/.notdef /.notdef /.notdef /.notdef /space /exclam /quotedbl
+/numbersign /dollar /percent /ampersand /quotesingle /parenleft
+/parenright /asterisk /plus /comma /hyphen /period /slash /zero /one
+/two /three /four /five /six /seven /eight /nine /colon /semicolon
+/less /equal /greater /question /at /A /B /C /D /E /F /G /H /I /J /K
+/L /M /N /O /P /Q /R /S /T /U /V /W /X /Y /Z /bracketleft /backslash
+/bracketright /asciicircum /underscore /grave /a /b /c /d /e /f /g /h
+/i /j /k /l /m /n /o /p /q /r /s /t /u /v /w /x /y /z /braceleft /bar
+/braceright /asciitilde /.notdef /Adieresis /Aring /Ccedilla /Eacute
+/Ntilde /Odieresis /Udieresis /aacute /agrave /acircumflex /adieresis
+/atilde /aring /ccedilla /eacute /egrave /ecircumflex /edieresis
+/iacute /igrave /icircumflex /idieresis /ntilde /oacute /ograve
+/ocircumflex /odieresis /otilde /uacute /ugrave /ucircumflex
+/udieresis /dagger /.notdef /cent /sterling /section /bullet
+/paragraph /germandbls /registered /copyright /trademark /acute
+/dieresis /.notdef /AE /Oslash /.notdef /.notdef /.notdef /.notdef
+/yen /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+/ordfeminine /ordmasculine /.notdef /ae /oslash /questiondown
+/exclamdown /logicalnot /.notdef /florin /.notdef /.notdef
+/guillemotleft /guillemotright /ellipsis /.notdef /Agrave /Atilde
+/Otilde /OE /oe /endash /emdash /quotedblleft /quotedblright
+/quoteleft /quoteright /.notdef /.notdef /ydieresis /Ydieresis
+/fraction /currency /guilsinglleft /guilsinglright /fi /fl /daggerdbl
+/periodcentered /quotesinglbase /quotedblbase /perthousand
+/Acircumflex /Ecircumflex /Aacute /Edieresis /Egrave /Iacute
+/Icircumflex /Idieresis /Igrave /Oacute /Ocircumflex /.notdef /Ograve
+/Uacute /Ucircumflex /Ugrave /dotlessi /circumflex /tilde /macron
+/breve /dotaccent /ring /cedilla /hungarumlaut /ogonek /caron
+] def
+/ReEncode { 
+	dup 
+	length 
+	dict begin 
+	{
+	1 index /FID ne 
+		{def} 
+		{pop pop} ifelse 
+	} forall 
+	0 eq {/Encoding DiacriticEncoding def} if 
+	currentdict 
+	end 
+	} bind def
+FMPColor 
+	
+	{
+	/BEGINBITMAPCOLOR { 
+		BITMAPCOLOR} def
+	/BEGINBITMAPCOLORc { 
+		BITMAPCOLORc} def
+	/BEGINBITMAPTRUECOLOR { 
+		BITMAPTRUECOLOR } def
+	/BEGINBITMAPTRUECOLORc { 
+		BITMAPTRUECOLORc } def
+	/BEGINBITMAPCMYK { 
+		BITMAPCMYK } def
+	/BEGINBITMAPCMYKc { 
+		BITMAPCMYKc } def
+	}
+	
+	{
+	/BEGINBITMAPCOLOR { 
+		BITMAPGRAY} def
+	/BEGINBITMAPCOLORc { 
+		BITMAPGRAYc} def
+	/BEGINBITMAPTRUECOLOR { 
+		BITMAPTRUEGRAY } def
+	/BEGINBITMAPTRUECOLORc { 
+		BITMAPTRUEGRAYc } def
+	/BEGINBITMAPCMYK { 
+		BITMAPCMYKGRAY } def
+	/BEGINBITMAPCMYKc { 
+		BITMAPCMYKGRAYc } def
+	}
+ifelse
+/K { 
+	FMPrintAllColorsAsBlack {
+		dup 1 eq 2 index 1 eq and 3 index 1 eq and not
+			{7 {pop} repeat 0 0 0 1 0 0 0} if
+	} if 
+	FrameCurColors astore 
+	pop combineColor
+} bind def
+/graymode true def
+fMLevel1 {
+	/fmGetFlip {
+		fMatrix2 exch get mul 0 lt { -1 } { 1 } ifelse
+	} FmBD
+} if
+/setPatternMode {
+	fMLevel1 {
+		2 index patScreenDict exch known {
+			pop pop
+			patScreenDict exch get aload pop 
+			freq 								
+			mul									
+			5 2 roll							
+			fMatrix2 currentmatrix 1 get 0 ne {
+				3 -1 roll 90 add 3 1 roll 		
+				sflipx 1 fmGetFlip sflipy 2 fmGetFlip neg mul
+			} {  								
+				sflipx 0 fmGetFlip sflipy 3 fmGetFlip mul 
+			} ifelse
+			0 lt {exch pop} {pop} ifelse 		
+			fMNegative { 
+				{neg} fmConcatProcs 			
+			} if
+			bind
+			
+			
+			
+			systemdict /setscreen get exec		
+			/FrameCurGray exch def
+		} {
+			/bwidth  exch def
+			/bpside  exch def
+			/bstring exch def
+			/onbits 0 def  /offbits 0 def
+			freq sangle landscape {90 add} if 
+				{/ypoint exch def
+				 /xpoint exch def
+				 /xindex xpoint 1 add 2 div bpside mul cvi def
+				 /yindex ypoint 1 add 2 div bpside mul cvi def
+				 bstring yindex bwidth mul xindex 8 idiv add get
+				 1 7 xindex 8 mod sub bitshift and 0 ne fMNegative {not} if
+				 {/onbits  onbits  1 add def 1}
+				 {/offbits offbits 1 add def 0}
+				 ifelse
+				}
+				setscreen
+			offbits offbits onbits add div fMNegative {1.0 exch sub} if
+			/FrameCurGray exch def
+		} ifelse
+	} { 
+		pop pop
+		dup patCache exch known {
+			patCache exch get
+		} { 
+			dup
+			patDict /bstring 3 -1 roll put
+			patDict 
+			9 PatFreq screenIndex get div dup matrix scale
+			makepattern
+			dup 
+			patCache 4 -1 roll 3 -1 roll put
+		} ifelse
+		/FrameCurGray 0 def
+		/FrameCurPat exch def
+	} ifelse
+	/graymode false def
+	combineColor
+} bind def
+/setGrayScaleMode {
+	graymode not {
+		/graymode true def
+		fMLevel1 {
+			setCurrentScreen
+		} if
+	} if
+	/FrameCurGray exch def
+	combineColor
+} bind def
+/normalize {
+	transform round exch round exch itransform
+	} bind def
+/dnormalize {
+	dtransform round exch round exch idtransform
+	} bind def
+/lnormalize { 
+	0 dtransform exch cvi 2 idiv 2 mul 1 add exch idtransform pop
+	} bind def
+/H { 
+	lnormalize setlinewidth
+	} bind def
+/Z {
+	setlinecap
+	} bind def
+	
+/PFill {
+	graymode fMLevel1 or not {
+		gsave 1 setgray eofill grestore
+	} if
+} bind def
+/PStroke {
+	graymode fMLevel1 or not {
+		gsave 1 setgray stroke grestore
+	} if
+	stroke
+} bind def
+/X { 
+	fillvals exch get
+	dup type /stringtype eq
+	{8 1 setPatternMode} 
+	{setGrayScaleMode}
+	ifelse
+	} bind def
+/V { 
+	PFill gsave eofill grestore
+	} bind def
+/Vclip {
+	clip
+	} bind def
+/Vstrk {
+	currentlinewidth exch setlinewidth PStroke setlinewidth
+	} bind def
+/N { 
+	PStroke
+	} bind def
+/Nclip {
+	strokepath clip newpath
+	} bind def
+/Nstrk {
+	currentlinewidth exch setlinewidth PStroke setlinewidth
+	} bind def
+/M {newpath moveto} bind def
+/E {lineto} bind def
+/D {curveto} bind def
+/O {closepath} bind def
+/L { 
+ 	/n exch def
+	newpath
+	normalize
+	moveto 
+	2 1 n {pop normalize lineto} for
+	} bind def
+/Y { 
+	L 
+	closepath
+	} bind def
+/R { 
+	/y2 exch def
+	/x2 exch def
+	/y1 exch def
+	/x1 exch def
+	x1 y1
+	x2 y1
+	x2 y2
+	x1 y2
+	4 Y 
+	} bind def
+/rarc 
+	{rad 
+	 arcto
+	} bind def
+/RR { 
+	/rad exch def
+	normalize
+	/y2 exch def
+	/x2 exch def
+	normalize
+	/y1 exch def
+	/x1 exch def
+	mark
+	newpath
+	{
+	x1 y1 rad add moveto
+	x1 y2 x2 y2 rarc
+	x2 y2 x2 y1 rarc
+	x2 y1 x1 y1 rarc
+	x1 y1 x1 y2 rarc
+	closepath
+	} stopped {x1 y1 x2 y2 R} if 
+	cleartomark
+	} bind def
+/RRR { 
+	/rad exch def
+	normalize /y4 exch def /x4 exch def
+	normalize /y3 exch def /x3 exch def
+	normalize /y2 exch def /x2 exch def
+	normalize /y1 exch def /x1 exch def
+	newpath
+	normalize moveto 
+	mark
+	{
+	x2 y2 x3 y3 rarc
+	x3 y3 x4 y4 rarc
+	x4 y4 x1 y1 rarc
+	x1 y1 x2 y2 rarc
+	closepath
+	} stopped
+	 {x1 y1 x2 y2 x3 y3 x4 y4 newpath moveto lineto lineto lineto closepath} if
+	cleartomark
+	} bind def
+/C { 
+	grestore
+	gsave
+	R 
+	clip
+	setCurrentScreen
+} bind def
+/CP { 
+	grestore
+	gsave
+	Y 
+	clip
+	setCurrentScreen
+} bind def
+/F { 
+	FMfonts exch get
+	FMpointsize scalefont
+	setfont
+	} bind def
+/Q { 
+	/FMpointsize exch def
+	F 
+	} bind def
+/T { 
+	moveto show
+	} bind def
+/RF { 
+	rotate
+	0 ne {-1 1 scale} if
+	} bind def
+/TF { 
+	gsave
+	moveto 
+	RF
+	show
+	grestore
+	} bind def
+/P { 
+	moveto
+	0 32 3 2 roll widthshow
+	} bind def
+/PF { 
+	gsave
+	moveto 
+	RF
+	0 32 3 2 roll widthshow
+	grestore
+	} bind def
+/S { 
+	moveto
+	0 exch ashow
+	} bind def
+/SF { 
+	gsave
+	moveto
+	RF
+	0 exch ashow
+	grestore
+	} bind def
+/B { 
+	moveto
+	0 32 4 2 roll 0 exch awidthshow
+	} bind def
+/BF { 
+	gsave
+	moveto
+	RF
+	0 32 4 2 roll 0 exch awidthshow
+	grestore
+	} bind def
+/G { 
+	gsave
+	newpath
+	normalize translate 0.0 0.0 moveto 
+	dnormalize scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	closepath 
+	PFill fill
+	grestore
+	} bind def
+/Gstrk {
+	savematrix
+    newpath
+    2 index 2 div add exch 3 index 2 div sub exch 
+    normalize 2 index 2 div sub exch 3 index 2 div add exch 
+    translate
+    scale 
+    0.0 0.0 1.0 5 3 roll arc 
+    restorematrix
+    currentlinewidth exch setlinewidth PStroke setlinewidth
+    } bind def
+/Gclip { 
+	newpath
+	savematrix
+	normalize translate 0.0 0.0 moveto 
+	dnormalize scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	closepath 
+	clip newpath
+	restorematrix
+	} bind def
+/GG { 
+	gsave
+	newpath
+	normalize translate 0.0 0.0 moveto 
+	rotate 
+	dnormalize scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	closepath
+	PFill
+	fill
+	grestore
+	} bind def
+/GGclip { 
+	savematrix
+	newpath
+    normalize translate 0.0 0.0 moveto 
+    rotate 
+    dnormalize scale 
+    0.0 0.0 1.0 5 3 roll arc 
+    closepath
+	clip newpath
+	restorematrix
+	} bind def
+/GGstrk { 
+	savematrix
+    newpath
+    normalize translate 0.0 0.0 moveto 
+    rotate 
+    dnormalize scale 
+    0.0 0.0 1.0 5 3 roll arc 
+    closepath 
+	restorematrix
+    currentlinewidth exch setlinewidth PStroke setlinewidth
+	} bind def
+/A { 
+	gsave
+	savematrix
+	newpath
+	2 index 2 div add exch 3 index 2 div sub exch 
+	normalize 2 index 2 div sub exch 3 index 2 div add exch 
+	translate 
+	scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	restorematrix
+	PStroke
+	grestore
+	} bind def
+/Aclip {
+	newpath
+	savematrix
+	normalize translate 0.0 0.0 moveto 
+	dnormalize scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	closepath 
+	strokepath clip newpath
+	restorematrix
+} bind def
+/Astrk {
+	Gstrk
+} bind def
+/AA { 
+	gsave
+	savematrix
+	newpath
+	
+	3 index 2 div add exch 4 index 2 div sub exch 
+	
+	normalize 3 index 2 div sub exch 4 index 2 div add exch
+	translate 
+	rotate 
+	scale 
+	0.0 0.0 1.0 5 3 roll arc 
+	restorematrix
+	PStroke
+	grestore
+	} bind def
+/AAclip {
+	savematrix
+	newpath
+    normalize translate 0.0 0.0 moveto 
+    rotate 
+    dnormalize scale 
+    0.0 0.0 1.0 5 3 roll arc 
+    closepath
+	strokepath clip newpath
+	restorematrix
+} bind def
+/AAstrk {
+	GGstrk
+} bind def
+/BEGINPRINTCODE { 
+	/FMdicttop countdictstack 1 add def 
+	/FMoptop count 7 sub def 
+	/FMsaveobject save def
+	userdict begin 
+	/showpage {} def 
+	FMNORMALIZEGRAPHICS 
+	3 index neg 3 index neg translate
+	} bind def
+/ENDPRINTCODE {
+	count -1 FMoptop {pop pop} for 
+	countdictstack -1 FMdicttop {pop end} for 
+	FMsaveobject restore 
+	} bind def
+/gn { 
+	0 
+	{	46 mul 
+		cf read pop 
+		32 sub 
+		dup 46 lt {exit} if 
+		46 sub add 
+		} loop
+	add 
+	} bind def
+/cfs { 
+	/str sl string def 
+	0 1 sl 1 sub {str exch val put} for 
+	str def 
+	} bind def
+/ic [ 
+	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0223
+	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0223
+	0
+	{0 hx} {1 hx} {2 hx} {3 hx} {4 hx} {5 hx} {6 hx} {7 hx} {8 hx} {9 hx}
+	{10 hx} {11 hx} {12 hx} {13 hx} {14 hx} {15 hx} {16 hx} {17 hx} {18 hx}
+	{19 hx} {gn hx} {0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}
+	{13} {14} {15} {16} {17} {18} {19} {gn} {0 wh} {1 wh} {2 wh} {3 wh}
+	{4 wh} {5 wh} {6 wh} {7 wh} {8 wh} {9 wh} {10 wh} {11 wh} {12 wh}
+	{13 wh} {14 wh} {gn wh} {0 bl} {1 bl} {2 bl} {3 bl} {4 bl} {5 bl} {6 bl}
+	{7 bl} {8 bl} {9 bl} {10 bl} {11 bl} {12 bl} {13 bl} {14 bl} {gn bl}
+	{0 fl} {1 fl} {2 fl} {3 fl} {4 fl} {5 fl} {6 fl} {7 fl} {8 fl} {9 fl}
+	{10 fl} {11 fl} {12 fl} {13 fl} {14 fl} {gn fl}
+	] def
+/ms { 
+	/sl exch def 
+	/val 255 def 
+	/ws cfs 
+	/im cfs 
+	/val 0 def 
+	/bs cfs 
+	/cs cfs 
+	} bind def
+400 ms 
+/ip { 
+	is 
+	0 
+	cf cs readline pop 
+	{	ic exch get exec 
+		add 
+		} forall 
+	pop 
+	
+	} bind def
+/rip { 
+	   
+	  
+	  bis ris copy pop 
+      is
+      0
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+	  pop pop 
+	  ris gis copy pop 
+	  dup is exch 
+	  
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+	  pop pop
+	  gis bis copy pop 
+	  dup add is exch 
+	  
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+      pop 
+      
+      } bind def
+/rip4 { 
+	   
+	  
+	  kis cis copy pop 
+      is
+      0
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+	  pop pop 
+	  cis mis copy pop 
+	  dup is exch 
+	  
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+	  pop pop
+	  mis yis copy pop 
+	  dup dup add is exch 
+	  
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+	  pop pop
+	  yis kis copy pop 
+	  3 mul is exch 
+	  
+      cf cs readline pop 
+      {       ic exch get exec 
+              add 
+              } forall 
+      pop 
+      
+      } bind def
+/wh { 
+	/len exch def 
+	/pos exch def 
+	ws 0 len getinterval im pos len getinterval copy pop
+	pos len 
+	} bind def
+/bl { 
+	/len exch def 
+	/pos exch def 
+	bs 0 len getinterval im pos len getinterval copy pop
+	pos len 
+	} bind def
+/s1 1 string def
+/fl { 
+	/len exch def 
+	/pos exch def 
+	/val cf s1 readhexstring pop 0 get def
+	pos 1 pos len add 1 sub {im exch val put} for
+	pos len 
+	} bind def
+/hx { 
+	3 copy getinterval 
+	cf exch readhexstring pop pop 
+	} bind def
+/wbytes { 
+      dup dup
+      8 gt { pop 8 idiv mul }
+      { 8 eq {pop} {1 eq {7 add 8 idiv} {3 add 4 idiv} ifelse} ifelse } ifelse
+	} bind def
+/BEGINBITMAPBWc { 
+	1 {} COMMONBITMAPc
+	} bind def
+/BEGINBITMAPGRAYc { 
+	8 {} COMMONBITMAPc
+	} bind def
+/BEGINBITMAP2BITc { 
+	2 {} COMMONBITMAPc
+	} bind def
+/COMMONBITMAPc { 
+		 
+	/cvtProc exch def
+	/depth exch def
+	gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/height exch def /width exch def
+	/lb width depth wbytes def 
+	sl lb lt {lb ms} if 
+	/bitmapsave save def 
+	cvtProc                
+	/is im 0 lb getinterval def 
+	ws 0 lb getinterval is copy pop 
+	/cf currentfile def 
+	width height depth [width 0 0 height neg 0 height] 
+	{ip} image 
+	bitmapsave restore 
+	grestore
+	} bind def
+/BEGINBITMAPBW { 
+	1 {} COMMONBITMAP
+	} bind def
+/BEGINBITMAPGRAY { 
+	8 {} COMMONBITMAP
+	} bind def
+/BEGINBITMAP2BIT { 
+	2 {} COMMONBITMAP
+	} bind def
+/COMMONBITMAP { 
+	/cvtProc exch def
+	/depth exch def
+	gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/height exch def /width exch def
+	/bitmapsave save def 
+	cvtProc              
+	/is width depth wbytes string def
+	/cf currentfile def 
+	width height depth [width 0 0 height neg 0 height] 
+	{cf is readhexstring pop} image
+	bitmapsave restore 
+	grestore
+	} bind def
+/ngrayt 256 array def
+/nredt 256 array def
+/nbluet 256 array def
+/ngreent 256 array def
+fMLevel1 {
+/colorsetup {
+	currentcolortransfer
+	/gryt exch def
+	/blut exch def
+	/grnt exch def
+	/redt exch def
+	0 1 255 {
+		/indx exch def
+		/cynu 1 red indx get 255 div sub def
+		/magu 1 green indx get 255 div sub def
+		/yelu 1 blue indx get 255 div sub def
+		/kk cynu magu min yelu min def
+		/u kk currentundercolorremoval exec def
+%		/u 0 def
+		nredt indx 1 0 cynu u sub max sub redt exec put
+		ngreent indx 1 0 magu u sub max sub grnt exec put
+		nbluet indx 1 0 yelu u sub max sub blut exec put
+		ngrayt indx 1 kk currentblackgeneration exec sub gryt exec put
+	} for
+	{255 mul cvi nredt exch get}
+	{255 mul cvi ngreent exch get}
+	{255 mul cvi nbluet exch get}
+	{255 mul cvi ngrayt exch get}
+	setcolortransfer
+	{pop 0} setundercolorremoval
+	{} setblackgeneration
+	} bind def
+}
+{
+/colorSetup2 {
+	[ /Indexed /DeviceRGB 255 
+		{dup red exch get 255 div 
+		 exch dup green exch get 255 div 
+		 exch blue exch get 255 div}
+	] setcolorspace
+} bind def
+} ifelse
+/fakecolorsetup {
+	/tran 256 string def
+	0 1 255 {/indx exch def 
+		tran indx
+		red indx get 77 mul
+		green indx get 151 mul
+		blue indx get 28 mul
+		add add 256 idiv put} for
+	currenttransfer
+	{255 mul cvi tran exch get 255.0 div}
+	exch fmConcatProcs settransfer
+} bind def
+/BITMAPCOLOR { 
+	/depth 8 def
+	gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/height exch def /width exch def
+	/bitmapsave save def
+	fMLevel1 {	
+		colorsetup
+		/is width depth wbytes string def
+		/cf currentfile def 
+		width height depth [width 0 0 height neg 0 height] 
+		{cf is readhexstring pop} {is} {is} true 3 colorimage 
+	} {
+		colorSetup2
+		/is width depth wbytes string def
+		/cf currentfile def 
+		7 dict dup begin
+			/ImageType 1 def
+			/Width width def
+			/Height height def
+			/ImageMatrix [width 0 0 height neg 0 height] def
+			/DataSource {cf is readhexstring pop} bind def
+			/BitsPerComponent depth def
+			/Decode [0 255] def
+		end image	
+	} ifelse
+	bitmapsave restore 
+	grestore
+	} bind def
+/BITMAPCOLORc { 
+	/depth 8 def
+	gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/height exch def /width exch def
+	/lb width depth wbytes def 
+	sl lb lt {lb ms} if 
+	/bitmapsave save def 
+	fMLevel1 {	
+		colorsetup
+		/is im 0 lb getinterval def 
+		ws 0 lb getinterval is copy pop 
+		/cf currentfile def 
+		width height depth [width 0 0 height neg 0 height] 
+		{ip} {is} {is} true 3 colorimage
+	} {
+		colorSetup2
+		/is im 0 lb getinterval def 
+		ws 0 lb getinterval is copy pop 
+		/cf currentfile def 
+		7 dict dup begin
+			/ImageType 1 def
+			/Width width def
+			/Height height def
+			/ImageMatrix [width 0 0 height neg 0 height] def
+			/DataSource {ip} bind def
+			/BitsPerComponent depth def
+			/Decode [0 255] def
+		end image	
+	} ifelse
+	bitmapsave restore 
+	grestore
+	} bind def
+/BITMAPTRUECOLORc { 
+	/depth 24 def
+        gsave
+ 	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/height exch def /width exch def
+	/lb width depth wbytes def 
+	sl lb lt {lb ms} if 
+	/bitmapsave save def 
+        
+	/is im 0 lb getinterval def	
+	/ris im 0 width getinterval def	
+	/gis im width width getinterval def	
+	/bis im width 2 mul width getinterval def 
+        
+	ws 0 lb getinterval is copy pop 
+	/cf currentfile def 
+	width height 8 [width 0 0 height neg 0 height] 
+	{width rip pop ris} {gis} {bis} true 3 colorimage
+	bitmapsave restore 
+	grestore
+	} bind def
+/BITMAPCMYKc { 
+	/depth 32 def
+        gsave
+ 	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/height exch def /width exch def
+	/lb width depth wbytes def 
+	sl lb lt {lb ms} if 
+	/bitmapsave save def 
+        
+	/is im 0 lb getinterval def	
+	/cis im 0 width getinterval def	
+	/mis im width width getinterval def	
+	/yis im width 2 mul width getinterval def 
+	/kis im width 3 mul width getinterval def 
+        
+	ws 0 lb getinterval is copy pop 
+	/cf currentfile def 
+	width height 8 [width 0 0 height neg 0 height] 
+	{width rip4 pop cis} {mis} {yis} {kis} true 4 colorimage
+	bitmapsave restore 
+	grestore
+	} bind def
+/BITMAPTRUECOLOR { 
+        gsave
+		
+		3 index 2 div add exch	
+		4 index 2 div add exch	
+		translate		
+		rotate			
+		1 index 2 div neg	
+		1 index 2 div neg	
+		translate		
+		scale			
+		/height exch def /width exch def
+        /bitmapsave save def 
+        /is width string def
+        /gis width string def
+        /bis width string def
+        /cf currentfile def 
+        width height 8 [width 0 0 height neg 0 height] 
+        { cf is readhexstring pop } 
+        { cf gis readhexstring pop } 
+        { cf bis readhexstring pop } 
+        true 3 colorimage 
+        bitmapsave restore 
+        grestore
+        } bind def
+/BITMAPCMYK { 
+        gsave
+		
+		3 index 2 div add exch	
+		4 index 2 div add exch	
+		translate		
+		rotate			
+		1 index 2 div neg	
+		1 index 2 div neg	
+		translate		
+		scale			
+		/height exch def /width exch def
+        /bitmapsave save def 
+        /is width string def
+        /mis width string def
+        /yis width string def
+        /kis width string def
+        /cf currentfile def 
+        width height 8 [width 0 0 height neg 0 height] 
+        { cf is readhexstring pop } 
+        { cf mis readhexstring pop } 
+        { cf yis readhexstring pop } 
+        { cf kis readhexstring pop } 
+        true 4 colorimage 
+        bitmapsave restore 
+        grestore
+        } bind def
+/BITMAPTRUEGRAYc { 
+	/depth 24 def
+        gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/height exch def /width exch def
+	/lb width depth wbytes def 
+	sl lb lt {lb ms} if 
+        /bitmapsave save def 
+        
+	/is im 0 lb getinterval def	
+	/ris im 0 width getinterval def	
+	/gis im width width getinterval def	
+	/bis im width 2 mul width getinterval def 
+        ws 0 lb getinterval is copy pop 
+        /cf currentfile def 
+        width height 8 [width 0 0 height neg 0 height] 
+        {width rip pop ris gis bis width gray} image
+        bitmapsave restore 
+        grestore
+        } bind def
+/BITMAPCMYKGRAYc { 
+	/depth 32 def
+        gsave
+	
+	3 index 2 div add exch	
+	4 index 2 div add exch	
+	translate		
+	rotate			
+	1 index 2 div neg	
+	1 index 2 div neg	
+	translate		
+	scale			
+	/height exch def /width exch def
+	/lb width depth wbytes def 
+	sl lb lt {lb ms} if 
+        /bitmapsave save def 
+        
+	/is im 0 lb getinterval def	
+	/cis im 0 width getinterval def	
+	/mis im width width getinterval def	
+	/yis im width 2 mul width getinterval def 
+	/kis im width 3 mul width getinterval def 
+        ws 0 lb getinterval is copy pop 
+        /cf currentfile def 
+        width height 8 [width 0 0 height neg 0 height] 
+        {width rip pop cis mis yis kis width cgray} image
+        bitmapsave restore 
+        grestore
+        } bind def
+/cgray { 
+        /ww exch def
+        /k exch def
+        /y exch def
+        /m exch def
+        /c exch def
+        0 1 ww 1 sub { /i exch def c i get m i get y i get k i get CMYKtoRGB
+				.144 mul 3 1 roll .587 mul 3 1 roll .299 mul add add
+				c i 3 -1 roll floor cvi put } for
+        c
+ 		} bind def
+/gray { 
+        /ww exch def
+        /b exch def
+        /g exch def
+        /r exch def
+        0 1 ww 1 sub { /i exch def r i get .299 mul g i get .587 mul
+			b i get .114 mul add add r i 3 -1 roll floor cvi put } for
+        r
+        } bind def
+/BITMAPTRUEGRAY { 
+        gsave
+		
+		3 index 2 div add exch	
+		4 index 2 div add exch	
+		translate		
+		rotate			
+		1 index 2 div neg	
+		1 index 2 div neg	
+		translate		
+		scale			
+		/height exch def /width exch def
+        /bitmapsave save def 
+        /is width string def
+        /gis width string def
+        /bis width string def
+        /cf currentfile def 
+        width height 8 [width 0 0 height neg 0 height] 
+        { cf is readhexstring pop 
+          cf gis readhexstring pop 
+          cf bis readhexstring pop width gray}  image
+        bitmapsave restore 
+        grestore
+        } bind def
+/BITMAPCMYKGRAY { 
+        gsave
+		
+		3 index 2 div add exch	
+		4 index 2 div add exch	
+		translate		
+		rotate			
+		1 index 2 div neg	
+		1 index 2 div neg	
+		translate		
+		scale			
+		/height exch def /width exch def
+        /bitmapsave save def 
+        /is width string def
+        /yis width string def
+        /mis width string def
+        /kis width string def
+        /cf currentfile def 
+        width height 8 [width 0 0 height neg 0 height] 
+        { cf is readhexstring pop 
+          cf mis readhexstring pop 
+          cf yis readhexstring pop 
+          cf kis readhexstring pop width cgray}  image
+        bitmapsave restore 
+        grestore
+        } bind def
+/BITMAPGRAY { 
+	8 {fakecolorsetup} COMMONBITMAP
+	} bind def
+/BITMAPGRAYc { 
+	8 {fakecolorsetup} COMMONBITMAPc
+	} bind def
+/ENDBITMAP {
+	} bind def
+end 
+	/ALDmatrix matrix def ALDmatrix currentmatrix pop
+/StartALD {
+	/ALDsave save def
+	 savematrix
+	 ALDmatrix setmatrix
+	} bind def
+/InALD {
+	 restorematrix
+	} bind def
+/DoneALD {
+	 ALDsave restore
+	} bind def
+/I { setdash } bind def
+/J { [] 0 setdash } bind def
+%%EndProlog
+%%BeginSetup
+(5.0) FMVERSION
+1 1 0 0 612 792 0 1 20 FMDOCUMENT
+0 0 /Helvetica-Bold FMFONTDEFINE
+1 0 /Times-Bold FMFONTDEFINE
+2 0 /Times-Italic FMFONTDEFINE
+3 0 /Times-Roman FMFONTDEFINE
+4 0 /Courier-Bold FMFONTDEFINE
+5 0 /Courier FMFONTDEFINE
+6 0 /Courier-Oblique FMFONTDEFINE
+7 0 /Times-BoldItalic FMFONTDEFINE
+32 FMFILLS
+0 0 FMFILL
+1 0.1 FMFILL
+2 0.3 FMFILL
+3 0.5 FMFILL
+4 0.7 FMFILL
+5 0.9 FMFILL
+6 0.97 FMFILL
+7 1 FMFILL
+8 <0f1e3c78f0e1c387> FMFILL
+9 <0f87c3e1f0783c1e> FMFILL
+10 <cccccccccccccccc> FMFILL
+11 <ffff0000ffff0000> FMFILL
+12 <8142241818244281> FMFILL
+13 <03060c183060c081> FMFILL
+14 <8040201008040201> FMFILL
+16 1 FMFILL
+17 0.9 FMFILL
+18 0.7 FMFILL
+19 0.5 FMFILL
+20 0.3 FMFILL
+21 0.1 FMFILL
+22 0.03 FMFILL
+23 0 FMFILL
+24 <f0e1c3870f1e3c78> FMFILL
+25 <f0783c1e0f87c3e1> FMFILL
+26 <3333333333333333> FMFILL
+27 <0000ffff0000ffff> FMFILL
+28 <7ebddbe7e7dbbd7e> FMFILL
+29 <fcf9f3e7cf9f3f7e> FMFILL
+30 <7fbfdfeff7fbfdfe> FMFILL
+%%EndSetup
+%%Page: "20" 1
+%%BeginPaperSize: Letter
+%%EndPaperSize
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+J
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+0 X
+0 0 0 1 0 0 0 K
+(Drive Description T) 189 685.65 T
+(ab) 261.71 685.65 T
+(les) 270.97 685.65 T
+1 12 Q
+(20) 72 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+3 9 Q
+(FTT_DO_O5RS) 202.74 591.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(look for Exabyte 8x05 status \336elds) 310.74 591.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_LSR) 202.74 576.98 T
+(W) 256.75 576.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Perform Log Sense for Read/Write op/error counts) 310.74 576.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_RP) 202.74 561.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Perform Read Position) 310.74 561.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_RP_SOMETIM) 202.74 546.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(ES) 202.74 535.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+-0.29 (Perform Read Position, b) 310.74 546.98 P
+-0.29 (ut its okay if it f) 400.7 546.98 P
+-0.29 (ails -- this is for) 456.93 546.98 P
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(EXB-85xx dri) 310.74 535.98 T
+(v) 361.77 535.98 T
+(es, which support Read Position only in) 366.13 535.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(high density mode...) 310.74 524.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_MS_Px10) 202.74 509.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Perform a Mode Sense with page code 0x10 for com-) 310.74 509.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(pression information.) 310.74 498.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_LSC) 202.74 483.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Perform a Log Sense for Compression information) 310.74 483.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+(T) 202.74 629.31 T
+(ABLE 5.) 206.91 629.31 T
+1 10 Q
+(Statistics operation table bit\336elds) 239.81 629.31 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 9 Q
+(Name) 202.74 606.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Description) 310.74 606.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+196.74 622.98 520.74 622.98 2 L
+V
+0.5 H
+0 Z
+N
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "20" 1
+%%Page: "19" 2
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(19) 528 99.79 T
+540 113.98 90 113.98 2 L
+0.25 H
+2 Z
+N
+0 8 Q
+(De) 207 685.65 T
+(vice Node Descriptions) 217.1 685.65 T
+540 671.98 90 671.98 2 L
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+4 11 Q
+(\245) 207 622.67 T
+1 10 Q
+-0.39 (hwdens) 220.74 622.67 P
+3 F
+-0.39 ( is the density number actually reported by the dri) 252.98 622.67 P
+-0.39 (v) 448.34 622.67 P
+-0.39 (e, as by a SCSI Mode) 453.19 622.67 P
+(Sense command.) 220.74 610.33 T
+4 11 Q
+(\245) 207 594.67 T
+1 10 Q
+-0.09 (passthru) 220.74 594.67 P
+3 F
+-0.09 ( is a \337ag which says that this de) 257.98 594.67 P
+-0.09 (vice can be used for SCSI passthrough) 383.69 594.67 P
+(calls.) 220.74 582.33 T
+4 11 Q
+(\245) 207 566.67 T
+1 10 Q
+(\336xed) 220.74 566.67 T
+3 F
+( is a \337ag which says this de) 241.3 566.67 T
+(vice node does \336x) 350.21 566.67 T
+(ed-block I/O.) 422.55 566.67 T
+4 11 Q
+(\245) 207 550.67 T
+1 10 Q
+(r) 220.74 550.67 T
+(ewind) 225.01 550.67 T
+3 F
+( is a \337ag which says that closing this de) 250.57 550.67 T
+(vice causes a de) 408.36 550.67 T
+(vice re) 472.25 550.67 T
+(wind.) 498.93 550.67 T
+4 11 Q
+(\245) 207 534.67 T
+1 10 Q
+(\336rst) 220.74 534.67 T
+3 F
+( is a \337ag which says that this entry is the \336rst one with this) 237.96 534.67 T
+1 F
+(de) 474.35 534.67 T
+(vice_name) 484.2 534.67 T
+3 F
+(string.  It is only used in calls lik) 220.74 522.33 T
+(e) 351.48 522.33 T
+1 F
+(ftt_list_all) 358.42 522.33 T
+3 F
+(\050\051 which deal with lists of de) 401.76 522.33 T
+(vice) 515.93 522.33 T
+(names.) 220.74 510.33 T
+4 11 Q
+(\245) 207 494.67 T
+1 10 Q
+-0.41 (max_blocksize) 220.74 494.67 P
+3 F
+-0.41 ( is the size of the lar) 282.96 494.67 P
+-0.41 (gest blocksize supported by this dri) 360.88 494.67 P
+-0.41 (v) 499.98 494.67 P
+-0.41 (e on this) 504.83 494.67 P
+(platform.  It should be the minimum of the maximum blocksize supported by) 220.74 482.33 T
+-0.19 (the dri) 220.74 470.33 P
+-0.19 (v) 246.13 470.33 P
+-0.19 (e, and the maximum blocksize supported by the O.S.  Writes with block-) 250.98 470.33 P
+(sizes lar) 220.74 458.33 T
+(ger than this amount should be e) 253.05 458.33 T
+(xpected to f) 382.89 458.33 T
+(ail, as should reads lar) 430.01 458.33 T
+(ger) 518.97 458.33 T
+(than this amount.) 220.74 446.33 T
+-0.26 (It should be noted that if a gi) 207 422.33 P
+-0.26 (v) 320.17 422.33 P
+-0.26 (en de) 325.02 422.33 P
+-0.26 (vice node supports both \336x) 345.88 422.33 P
+-0.26 (ed and v) 453 422.33 P
+-0.26 (ariable mode) 486.1 422.33 P
+(operation, tw) 207 410.33 T
+(o entries are requried here to describe it.  Furthermore, if it supports) 259.67 410.33 T
+-0.15 (both \336x) 207 398.33 P
+-0.15 (ed and v) 237.54 398.33 P
+-0.15 (ariable, and compressed and uncompressed mode,) 270.86 398.33 P
+1 F
+-0.15 (f) 472.66 398.33 P
+-0.15 (our) 475.74 398.33 P
+3 F
+-0.15 ( entries will) 490.74 398.33 P
+-0.16 (be requrired, etc.  In such an instance, only the \336rst such entry should ha) 207 386.33 P
+-0.16 (v) 494.25 386.33 P
+-0.16 (e the) 499.1 386.33 P
+1 F
+-0.16 (\336rst) 520.44 386.33 P
+3 F
+(\337ag set, this allo) 207 374.33 T
+(ws the code to a) 272.31 374.33 T
+(v) 336.54 374.33 T
+(oid gratuitous string compares.) 341.34 374.33 T
+(*** Examples!!! ***) 207 350.33 T
+1 11 Q
+(Dri) 207 319.67 T
+(v) 222.77 319.67 T
+(e Statistics T) 228.16 319.67 T
+(ables) 287.04 319.67 T
+3 10 Q
+(The) 207 302.33 T
+1 F
+( ftt_stat_op_tab) 225.05 302.33 T
+3 F
+( array has pairs of dri) 292.54 302.33 T
+(v) 377.54 302.33 T
+(e-id strings and \337ags which indicate) 382.39 302.33 T
+(SCSI commands which are supported for obtaining statistics.) 207 290.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+(T) 220.74 266.33 T
+(ABLE 5.) 224.91 266.33 T
+1 10 Q
+(Statistics operation table bit\336elds) 257.81 266.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 9 Q
+(Name) 220.74 244 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Description) 328.74 244 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+3 F
+(FTT_DO_TUR) 220.74 229 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Perform a T) 328.74 229 T
+(est Unit Ready command) 371.6 229 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_INQ) 220.74 214 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Perform an Inquiry command) 328.74 214 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_MS) 220.74 199 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Perform a plain Mode Sense command) 328.74 199 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_RS) 220.74 184 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Perform a plain Request Sense command) 328.74 184 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_EXBRS) 220.74 169 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Look for Exabyte v) 328.74 169 T
+(endor speci\336c statistics) 398.85 169 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_DO_SN) 220.74 154 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Perform an Inquiry with the serial number page) 328.74 154 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+214.74 260 538.74 260 2 L
+V
+0.5 H
+0 Z
+N
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "19" 2
+%%Page: "18" 3
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+0 X
+0 0 0 1 0 0 0 K
+(Drive Description T) 189 685.65 T
+(ab) 261.71 685.65 T
+(les) 270.97 685.65 T
+1 12 Q
+(18) 72 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+1 11 Q
+(The densitytrans \336eld) 189 628.64 T
+3 10 Q
+-0.13 (The) 189 603.31 P
+1 F
+-0.13 (densitytrans) 206.92 603.31 P
+3 F
+-0.13 ( \336eld points to an array of strings which are the names for the v) 259.7 603.31 P
+-0.13 (ar-) 510.9 603.31 P
+(ious dri) 189 591.31 T
+(v) 219.03 591.31 T
+(e densities this dri) 223.88 591.31 T
+(v) 296.13 591.31 T
+(e has.  F) 300.98 591.31 T
+(or e) 334.16 591.31 T
+(xample, the DL) 349.28 591.31 T
+(T 4000 has 5 dif) 410.85 591.31 T
+(ferent den-) 476.15 591.31 T
+-0.06 (sity settings, The table is inde) 189 579.31 P
+-0.06 (x) 307.43 579.31 P
+-0.06 (ed by the) 312.28 579.31 P
+1 F
+-0.06 (ftt) 351.26 579.31 P
+3 F
+-0.06 ( density plus one, so that the name for a) 361.25 579.31 P
+(density v) 189 567.31 T
+(alue of -1 is speci\336ed in the table \050usualy \322unkno) 225.14 567.31 T
+(wn\323\051, follo) 421.25 567.31 T
+(wed by a) 464.88 567.31 T
+(string name for each of the v) 189 555.31 T
+(alid densities, and a null pointer which terminates the) 303.72 555.31 T
+(list.) 189 543.31 T
+1 11 Q
+(Dri) 189 512.64 T
+(v) 204.77 512.64 T
+(e name con) 210.16 512.64 T
+(v) 262.27 512.64 T
+(ersion strings) 267.66 512.64 T
+1 10 Q
+(basecon) 191.5 487.31 T
+(v_in) 224.99 487.31 T
+3 F
+( and) 243.33 487.31 T
+1 F
+(basecon) 262.77 487.31 T
+(v_out) 296.26 487.31 T
+3 F
+( are) 320.15 487.31 T
+5 F
+(sscanf\050\051) 337.36 487.31 T
+3 F
+( and s) 385.36 487.31 T
+5 F
+(printf\050\051) 408.69 487.31 T
+3 F
+( format strings) 456.69 487.31 T
+(used to recognize and generate) 189 475.31 T
+1 F
+(ftt) 314.79 475.31 T
+3 F
+( dri) 324.78 475.31 T
+(v) 338.14 475.31 T
+(e basenames. The) 342.99 475.31 T
+1 F
+(ncon) 416.3 475.31 T
+(v) 436.46 475.31 T
+3 F
+( \336eld describes the) 441.46 475.31 T
+(e) 189 463.31 T
+(xpected v) 193.29 463.31 T
+(alue sscanf\050\051 should return when) 231.64 463.31 T
+1 F
+( basecon) 364.66 463.31 T
+(v_in) 400.65 463.31 T
+3 F
+( is used on a matching) 418.99 463.31 T
+(de) 189 451.31 T
+(vice string.   Thus doing a sprintf\050out,) 198.19 451.31 T
+1 F
+(basecon) 349.57 451.31 T
+(v_in,...) 383.06 451.31 T
+3 F
+(\051 with the v) 411.4 451.31 T
+(alues returned) 456.98 451.31 T
+(from sscanf\050in,) 189 439.31 T
+1 F
+(basecon) 249.54 439.31 T
+(v_in,...) 283.03 439.31 T
+3 F
+(,\051 strips a de) 311.37 439.31 T
+(vice to its basename.) 360 439.31 T
+1 11 Q
+(Dri) 189 408.64 T
+(v) 204.77 408.64 T
+(e identifcation command) 210.16 408.64 T
+3 10 Q
+(The) 189 383.31 T
+1 F
+(dri) 207.05 383.31 T
+(vidcmd) 219.73 383.31 T
+3 F
+( speci\336es the te) 251.4 383.31 T
+(xt of a shell script as a sprintf\050\051 format string that) 312.63 383.31 T
+(should be e) 189 371.31 T
+(x) 234.4 371.31 T
+(ecuted to determine the dri) 239.25 371.31 T
+(v) 346.2 371.31 T
+(e-id string, based on the v) 351.05 371.31 T
+(alues e) 454.12 371.31 T
+(xtracted) 481.46 371.31 T
+(with scanf\050in,) 189 359.31 T
+1 F
+(basecon) 246.49 359.31 T
+(v_in,) 279.98 359.31 T
+3 F
+(...\051.) 300.82 359.31 T
+1 11 Q
+(De) 189 328.64 T
+(vice node descriptions:) 201.66 328.64 T
+1 10 Q
+(ftt_de) 189 303.31 T
+(vinf) 213.84 303.31 T
+(o) 230.26 303.31 T
+3 F
+( describes each de) 235.26 303.31 T
+(vice node associated with the instance, where each) 307.48 303.31 T
+(item in the) 189 291.31 T
+1 F
+(ftt_de) 234.28 291.31 T
+(vinf) 259.12 291.31 T
+(o) 275.54 291.31 T
+3 F
+( table has se) 280.54 291.31 T
+(v) 328.89 291.31 T
+(eral members.) 333.74 291.31 T
+4 11 Q
+(\245) 189 272.64 T
+1 10 Q
+(de) 202.74 272.64 T
+(vice_name) 212.6 272.64 T
+3 F
+( is a sprintf\050\051 format string, which is gi) 257.58 272.64 T
+(v) 412.04 272.64 T
+(en the v) 416.89 272.64 T
+(alues obtained) 448.3 272.64 T
+(using sccanf\050in,) 202.74 260.31 T
+1 F
+(basecon) 268.57 260.31 T
+(v_in,...) 302.05 260.31 T
+3 F
+(\051 and then run with) 330.39 260.31 T
+1 F
+(popen\050\051) 408.99 260.31 T
+3 F
+( to obtain a de) 441.77 260.31 T
+(vice-) 498.18 260.31 T
+-0.05 (id string, which is read from the command\325) 202.74 248.31 P
+-0.05 (s standard output.  This command is) 375.14 248.31 P
+(run by the) 202.74 236.31 T
+1 F
+( ftt_suid) 243.29 236.31 T
+3 F
+( e) 278.58 236.31 T
+(x) 285.36 236.31 T
+(ecutable, and therefore should reset the en) 290.21 236.31 T
+(vironment v) 458.38 236.31 T
+(ari-) 506.73 236.31 T
+(bles) 202.74 224.31 T
+1 F
+(IFS) 221.35 224.31 T
+3 F
+( and) 236.91 224.31 T
+1 F
+(P) 256.36 224.31 T
+(A) 261.73 224.31 T
+(TH) 267.99 224.31 T
+3 F
+( before doing an) 282.45 224.31 T
+(ything else.) 347.55 224.31 T
+4 11 Q
+(\245) 189 208.64 T
+1 10 Q
+(density) 202.74 208.64 T
+3 F
+( is an) 233.3 208.64 T
+1 F
+(ftt) 256.92 208.64 T
+3 F
+( density number) 269.4 208.64 T
+(, where the dri) 333.44 208.64 T
+(v) 390.95 208.64 T
+(e f) 395.8 208.64 T
+(amilies lo) 405.97 208.64 T
+(west density is) 444.89 208.64 T
+(numbered 0, and higher densities are gi) 202.74 196.31 T
+(v) 359.96 196.31 T
+(en the ne) 364.82 196.31 T
+(xt higher inte) 400.77 196.31 T
+(ger v) 453.95 196.31 T
+(alue.) 473.96 196.31 T
+4 11 Q
+(\245) 189 180.64 T
+1 10 Q
+(mode) 202.74 180.64 T
+3 F
+( is a compression \337ag, with 1 indicating compression turned on, and 0) 226.07 180.64 T
+(indicating it turned of) 202.74 168.31 T
+(f.  At some point, this may allo) 289.43 168.31 T
+(w other v) 413.36 168.31 T
+(alues to describe) 450.88 168.31 T
+(multiple compression types.) 202.74 156.31 T
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "18" 3
+%%Page: "17" 4
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(17) 528 99.79 T
+540 113.98 90 113.98 2 L
+0.25 H
+2 Z
+N
+0 8 Q
+(De) 207 685.65 T
+(vice Node Descriptions) 217.1 685.65 T
+540 671.98 90 671.98 2 L
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+1 11 Q
+(The scsi_ops Field) 207 622.67 T
+3 10 Q
+(The) 207 597.33 T
+1 F
+(scsi_ops) 225.05 597.33 T
+3 F
+( \336eld is a bitmask describing which) 259.5 597.33 T
+1 F
+(ftt) 403.66 597.33 T
+3 F
+( operations should be per-) 413.65 597.33 T
+(formed by SCSI pass-through, rather than system calls, so turning all the bits on) 207 585.33 T
+(indicates that all operations on this de) 207 573.33 T
+(vice should be done via pass-through.  The) 357.85 573.33 T
+(operation numbers, and corresponding bit\336eld v) 207 561.33 T
+(alues are described belo) 398.95 561.33 T
+(w:) 494.5 561.33 T
+1 11 Q
+(The err) 207 218.67 T
+(ortrans \336eld) 242.54 218.67 T
+3 10 Q
+( The) 207 193.33 T
+1 F
+(err) 227.55 193.33 T
+(ortrans) 240.69 193.33 T
+3 F
+( \336eld points to an error translation table as described in the pre) 272.35 193.33 T
+(vi-) 522.06 193.33 T
+(ous section.) 207 181.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+(T) 220.74 513.33 T
+(ABLE 4.) 224.91 513.33 T
+1 10 Q
+(Operation codes in ftt) 257.81 513.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 9 Q
+(Name) 220.74 491 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Description) 328.74 491 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+3 F
+(FTT_OP_READ) 220.74 476 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(A block is read from the tape) 328.74 476 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_WRITE) 220.74 461 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(A block is written to the tape) 328.74 461 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_WRITEFM) 220.74 446 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(A \336lemark is written on the tape) 328.74 446 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_SKIPREC) 220.74 431 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(F) 328.74 431 T
+(orw) 333.61 431 T
+(ard mo) 347.52 431 T
+(v) 372.63 431 T
+(ement just past blocks) 376.99 431 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_SKIPFM) 220.74 416 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(F) 328.74 416 T
+(orw) 333.61 416 T
+(ard mo) 347.52 416 T
+(v) 372.63 416 T
+(ement just past \336lemarks) 376.99 416 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_REWIND) 220.74 401 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(The tape is mo) 328.74 401 T
+(v) 381.85 401 T
+(ed backw) 386.22 401 T
+(ards to BO) 420.36 401 T
+(T) 459 401 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_UNLO) 220.74 386 T
+(AD) 281.93 386 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(The tape is ejected from the dri) 328.74 386 T
+(v) 440.99 386 T
+(e) 445.36 386 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_RETENSION) 220.74 371 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(The tape is re) 328.74 371 T
+(w) 377.26 371 T
+(ound and skipped forw) 383.66 371 T
+(ard repeatedly) 466.31 371 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_ERASE) 220.74 356 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(The tape is erased and re) 328.74 356 T
+(w) 417.74 356 T
+(ound) 424.14 356 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_ST) 220.74 341 T
+(A) 266.92 341 T
+(TUS) 272.41 341 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Dri) 328.74 341 T
+(v) 340.52 341 T
+(e status is obtained) 344.88 341 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_ASYNC) 220.74 326 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(An asynchronous task is created to do I/O on the de) 328.74 326 T
+(vice) 514.49 326 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_P) 220.74 311 T
+(ASSTHR) 261.42 311 T
+(U) 295.57 311 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(A ra) 328.74 311 T
+(w SCSI command is sent to the dri) 344.35 311 T
+(v) 469.38 311 T
+(e) 473.74 311 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_CHALL) 220.74 296 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Permissions on the de) 328.74 296 T
+(vice nodes are changed) 407.27 296 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_OPEN) 220.74 281 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(A de) 328.74 281 T
+(vice node is opened) 345.76 281 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_RSKIPREC) 220.74 266 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Backw) 328.74 266 T
+(ard mo) 353.65 266 T
+(v) 378.76 266 T
+(ement just before blocks) 383.12 266 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_OP_RSKIPFM) 220.74 251 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Backw) 328.74 251 T
+(ard mo) 353.65 251 T
+(v) 378.76 251 T
+(ement just before \336lemarks) 383.12 251 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+214.74 507 538.74 507 2 L
+V
+0.5 H
+0 Z
+N
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "17" 4
+%%Page: "16" 5
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+0 X
+0 0 0 1 0 0 0 K
+(Drive Description T) 189 685.65 T
+(ab) 261.71 685.65 T
+(les) 270.97 685.65 T
+1 12 Q
+(16) 72 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+3 F
+(The code searches the) 189 629.31 T
+1 F
+(de) 279.52 629.31 T
+(vtable) 289.37 629.31 T
+3 F
+( array in order from lo) 315.48 629.31 T
+(west inde) 404.37 629.31 T
+(x to highest, and) 442.27 629.31 T
+(tak) 189 617.31 T
+(es the \336rst match.  This means that if you ha) 201.12 617.31 T
+(v) 377.85 617.31 T
+(e entries that are pre\336x) 382.7 617.31 T
+(es of one) 474.19 617.31 T
+(another) 189 605.31 T
+(, you) 218.59 605.31 T
+1 F
+(must) 241.09 605.31 T
+3 F
+( put the longer one \336rst.  It also means that the generic-system,) 262.2 605.31 T
+-0.41 (generic-dri) 189 593.31 P
+-0.41 (v) 232.62 593.31 P
+-0.41 (e entry) 237.47 593.31 P
+-0.41 (, which has empty strings for both dri) 263.9 593.31 P
+-0.41 (v) 410.76 593.31 P
+-0.41 (e-id and operating system,) 415.61 593.31 P
+(must be last in the table, since an) 189 581.31 T
+(y entries that came after it w) 321.06 581.31 T
+(ould ne) 434.82 581.31 T
+(v) 464.29 581.31 T
+(er be found.) 469.14 581.31 T
+1 11 Q
+(The Contr) 189 550.64 T
+(oller string) 237.99 550.64 T
+3 10 Q
+(The) 189 525.31 T
+1 F
+(contr) 207.05 525.31 T
+(oller) 229.64 525.31 T
+3 F
+( string is the controller name passed back to the user upon request.) 249.08 525.31 T
+(It is deduced from operating system, de) 189 513.31 T
+(vice basename, and dri) 346.78 513.31 T
+(v) 438.17 513.31 T
+(e-id matches.) 443.02 513.31 T
+1 11 Q
+(The Flags w) 189 482.64 T
+(ord) 245.73 482.64 T
+3 10 Q
+-0.17 ( The) 189 457.31 P
+1 F
+-0.17 (\337ags) 209.21 457.31 P
+3 F
+-0.17 ( \336eld is a bitmask describing v) 228.66 457.31 P
+-0.17 (arious beha) 349.63 457.31 P
+-0.17 (vioral dif) 395.08 457.31 P
+-0.17 (ferences which can be) 431.6 457.31 P
+(allo) 189 445.31 T
+(wed for in the) 203.75 445.31 T
+1 F
+(ftt) 262.07 445.31 T
+3 F
+( code, which are described belo) 272.06 445.31 T
+(w) 397.88 445.31 T
+(.  If beha) 404.45 445.31 T
+(vior changes are) 439.79 445.31 T
+(required for a ne) 189 433.31 T
+(w dri) 255.11 433.31 T
+(v) 275.69 433.31 T
+(e type or platform type, the) 280.54 433.31 T
+(y should be encoded as bits into) 389.26 433.31 T
+(this \336eld, rather than being #ifdef-ed into the code.) 189 421.31 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+(T) 202.74 397.31 T
+(ABLE 3.) 206.91 397.31 T
+1 10 Q
+(ftt_de) 239.81 397.31 T
+(vinf) 264.65 397.31 T
+(o \337ags \336eld v) 281.07 397.31 T
+(alues) 336.26 397.31 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 9 Q
+(Name) 202.74 374.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Description) 346.74 374.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+3 F
+(FTT_FLA) 202.74 359.98 T
+(G_CHK_BO) 239.89 359.98 T
+(T_A) 286.53 359.98 T
+(T_FMK) 302.02 359.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Check for being at BO) 346.74 359.98 T
+(T after writing a) 427.87 359.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(\336lemark, indicating unintentional re) 346.74 348.98 T
+(winds.) 476.01 348.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_FLA) 202.74 333.98 T
+(G_FSF_A) 239.89 333.98 T
+(T_EOF) 275.9 333.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(A forw) 346.74 333.98 T
+(ard \336le skip is required to get past a) 372.39 333.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(\336lemark when read\050\051 returns 0) 346.74 322.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_FLA) 202.74 307.98 T
+(GO_REOPEN_A) 239.89 307.98 T
+(T_EOF) 302.38 307.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(A de) 346.74 307.98 T
+(vice open/close is required to get past a) 363.76 307.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(\336lemark when read\050\051 returns 0) 346.74 296.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_FLA) 202.74 281.98 T
+(G_HOLD_SIGN) 239.89 281.98 T
+(ALS) 301.06 281.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(The sighold\050\051 and sigrelse\050\051 calls should be) 346.74 281.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(used around reads and writes) 346.74 270.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_FLA) 202.74 255.98 T
+(G_REOPEN_R_W) 239.89 255.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(The system de) 346.74 255.98 T
+(vice should be closed and) 398.51 255.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(reopened to switch from reading to writing) 346.74 244.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_FLA) 202.74 229.98 T
+(G_SUID_SCSI) 239.89 229.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Y) 346.74 229.98 T
+(ou must be root to do scsi pass-through) 352.25 229.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_FLA) 202.74 214.98 T
+(G_BSIZE_AFTER) 239.89 214.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Blocksize must be set after open\050\051ing the) 346.74 214.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(de) 346.74 203.98 T
+(vice, rather than before.) 355.02 203.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+196.74 390.98 520.74 390.98 2 L
+V
+0.5 H
+0 Z
+N
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "16" 5
+%%Page: "15" 6
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(15) 528 99.79 T
+540 113.98 90 113.98 2 L
+0.25 H
+2 Z
+N
+0 8 Q
+(De) 207 685.65 T
+(vice Node Descriptions) 217.1 685.65 T
+540 671.98 90 671.98 2 L
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+207 627 540 630 C
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+207 629.16 540 629.16 2 L
+0.25 H
+2 Z
+0 X
+0 0 0 1 0 0 0 K
+N
+36 72 576 720 C
+2 14 Q
+0 X
+0 0 0 1 0 0 0 K
+(De) 207 617.67 T
+(vice Node Descriptions) 223.11 617.67 T
+3 10 Q
+-0.14 (These tables tak) 207 596.33 P
+-0.14 (e up the majority of the) 271.04 596.33 P
+5 F
+-0.35 (ftt_tables.c) 366.27 596.33 P
+3 F
+-0.14 ( \336le,  and are perhaps the) 438.27 596.33 P
+(hardest to read.  The format of the table is an array of structures:) 207 584.33 T
+5 F
+(typedef struct {) 207 554.33 T
+(    char *os;) 207 542.33 T
+(    char *drivid;) 207 530.33 T
+(    char *controller;) 207 518.33 T
+(    long flags;) 207 506.33 T
+(    long scsi_ops;) 207 494.33 T
+(    int **errortrans;) 207 482.33 T
+(    char **densitytrans;) 207 470.33 T
+(    char *baseconv_in;) 207 458.33 T
+(    char *baseconv_out;) 207 446.33 T
+(    int nconv;) 207 434.33 T
+(    char *drividcmd;) 207 422.33 T
+(    ftt_devinfo devs[MAXDEVSLOTS];) 207 410.33 T
+(} ftt_dev_entry;) 207 398.33 T
+(extern ftt_dev_entry devtable[];) 207 374.33 T
+3 F
+-0.09 (Where each such entry in the table describes the appearance of a gi) 207 338.33 P
+-0.09 (v) 473.87 338.33 P
+-0.09 (en type of tape) 478.72 338.33 P
+-0.3 (dri) 207 326.33 P
+-0.3 (v) 217.86 326.33 P
+-0.3 (e \050identi\336ed the) 222.71 326.33 P
+1 F
+-0.3 (dri) 287.09 326.33 P
+-0.3 (vid) 299.77 326.33 P
+3 F
+-0.3 ( string\051, on a gi) 313.11 326.33 P
+-0.3 (v) 372.51 326.33 P
+-0.3 (en operating system \050identi\336ed by the) 377.36 326.33 P
+1 F
+-0.3 (os) 528.91 326.33 P
+3 F
+(string\051, attached to a gi) 207 314.33 T
+(v) 298.68 314.33 T
+(en type of peripheral controller \050identi\336ed by the) 303.53 314.33 T
+1 F
+(contr) 501.27 314.33 T
+(ol-) 523.86 314.33 T
+(ler) 207 302.33 T
+3 F
+( string\051.  W) 218.66 302.33 T
+(e will shortly e) 263.41 302.33 T
+(xamine each of these remaining \336elds in more detail,) 322.98 302.33 T
+-0.26 (b) 207 290.33 P
+-0.26 (ut \336rst let us discuss the meaning of these strings, and the signi\336g) 211.8 290.33 P
+-0.26 (ance of the order) 471.08 290.33 P
+(of entries in the table.) 207 278.33 T
+1 11 Q
+(Operating System and Dri) 207 247.67 T
+(v) 330.64 247.67 T
+(e id strings) 336.03 247.67 T
+3 10 Q
+(The) 207 230.33 T
+1 F
+(ftt) 225.05 230.33 T
+3 F
+( Users Guide describes that dri) 235.04 230.33 T
+(v) 357.82 230.33 T
+(e id\325) 362.67 230.33 T
+(s and operating system names are) 380.17 230.33 T
+-0.13 (matched on a pre\336x basis -- that is if one string is a pre\336x of the other) 207 218.33 P
+-0.13 (, the) 483.34 218.33 P
+-0.13 (y are con-) 500.28 218.33 P
+(sidered to match.  So if you are looking for \322OSF1+V3.2D\323 in the table, and you) 207 206.33 T
+(\336nd \322OSF1\323, that is considered a match.  Similarly if you are looking for the dri) 207 194.33 T
+(v) 527 194.33 T
+(e) 531.85 194.33 T
+(id string \322EXB-8500N) 207 182.33 T
+(ANQX\323 and you \336nd \322EXB-85\323 in the table, that w) 297.2 182.33 T
+(ould be) 504.29 182.33 T
+(considered a match.) 207 170.33 T
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "15" 6
+%%Page: "14" 7
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+0 X
+0 0 0 1 0 0 0 K
+(Drive Description T) 189 685.65 T
+(ab) 261.71 685.65 T
+(les) 270.97 685.65 T
+1 12 Q
+(14) 72 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+189 632.98 522 635.98 C
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+189 635.13 522 635.13 2 L
+0.25 H
+2 Z
+0 X
+0 0 0 1 0 0 0 K
+N
+36 72 576 720 C
+2 14 Q
+0 X
+0 0 0 1 0 0 0 K
+(Err) 189 623.64 T
+(or T) 207.82 623.64 T
+(r) 230.78 623.64 T
+(anslation T) 236.01 623.64 T
+(ables) 298.13 623.64 T
+3 10 Q
+(These tables are the simplest tables to describe, and the hardest ones to \336ll in prop-) 189 602.31 T
+(erly) 189 590.31 T
+(.  As mentioned eariler) 203.9 590.31 T
+(, the) 294.87 590.31 T
+(y con) 311.94 590.31 T
+(v) 333.48 590.31 T
+(ert) 338.33 590.31 T
+2 F
+(\050oper) 351.38 590.31 T
+(ation, errno\051) 372.89 590.31 T
+3 F
+( pairs to) 424 590.31 T
+1 F
+(ftt) 458.72 590.31 T
+3 F
+( error num-) 468.71 590.31 T
+-0.21 (bers.  The format is of arrays to arrays; which is to say for a gi) 189 578.31 P
+-0.21 (v) 434.96 578.31 P
+-0.21 (en platform, there is) 439.81 578.31 P
+-0.11 (an array of pointers to arrays of inte) 189 566.31 P
+-0.11 (gers inde) 331.62 566.31 P
+-0.11 (x) 367.74 566.31 P
+-0.11 (ed by) 372.59 566.31 P
+2 F
+-0.11 (oper) 396.8 566.31 P
+-0.11 (ation) 414.98 566.31 P
+3 F
+-0.11 (, where each element) 435.54 566.31 P
+(of that array points to an array of inte) 189 554.31 T
+(gers inde) 338.26 554.31 T
+(x) 374.49 554.31 T
+(ed by) 379.34 554.31 T
+2 F
+( errno) 401.28 554.31 T
+3 F
+(, and these inte) 426 554.31 T
+(gers are) 485.84 554.31 T
+(the) 189 542.31 T
+1 F
+(ftt) 203.72 542.31 T
+3 F
+( error numbers.  This arrangement allo) 213.71 542.31 T
+(ws the same second le) 367.59 542.31 T
+(v) 456.21 542.31 T
+(el table to be) 461.06 542.31 T
+(shared by numerous) 189 530.31 T
+2 F
+(oper) 272.04 530.31 T
+(ations) 290.22 530.31 T
+3 F
+( on a v) 314.67 530.31 T
+(arious platforms, and drastically cuts do) 341.36 530.31 T
+(wn) 501.09 530.31 T
+(on the size of the tables.) 189 518.31 T
+1 11 Q
+(Initial Err) 189 487.64 T
+(or T) 237.39 487.64 T
+(ranslation T) 257.05 487.64 T
+(ables) 313.8 487.64 T
+3 10 Q
+(F) 189 470.31 T
+(or a  ne) 194.41 470.31 T
+(w platform, it is probably simplest to cop) 223.87 470.31 T
+(y the error table of an e) 388.77 470.31 T
+(xisting) 481.92 470.31 T
+(platform as a good \336rst guess, and then correct it as testing and re) 189 458.31 T
+(vie) 450.93 458.31 T
+(w of the plat-) 462.9 458.31 T
+(form\325) 189 446.31 T
+(s documentation point out an) 211.22 446.31 T
+(y errors in the translation.) 327.18 446.31 T
+1 11 Q
+(Updating Err) 189 415.64 T
+(or T) 252.67 415.64 T
+(ables) 272.13 415.64 T
+3 10 Q
+(The) 189 398.31 T
+1 F
+(ftt) 207.05 398.31 T
+3 F
+( test suite tests that v) 217.04 398.31 T
+(arious errors are reported correctly) 299.85 398.31 T
+(, especially things) 438.03 398.31 T
+(lik) 189 386.31 T
+(e attempts to skip backw) 199.46 386.31 T
+(ards past BO) 298.24 386.31 T
+(T) 349.5 386.31 T
+(, forw) 354.87 386.31 T
+(ards past EO) 378.65 386.31 T
+(T) 429.35 386.31 T
+(, or to skip records) 434.72 386.31 T
+(past a \336lemark.  Some errors are not easily tested in a test suite, so a re) 189 374.31 T
+(vie) 471.48 374.31 T
+(w of the) 483.45 374.31 T
+-0.21 (platform\325) 189 362.31 P
+-0.21 (s documentation of error codes returned by tape I/O, opening de) 226.22 362.31 P
+-0.21 (vices, etc.) 480.21 362.31 P
+(is also reccomended.) 189 350.31 T
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "14" 7
+%%Page: "13" 8
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(13) 528 99.79 T
+540 108 90 108 2 L
+0.5 H
+2 Z
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+540 423 90 423 2 L
+0.5 H
+N
+90 621 198 621 2 L
+N
+0 10 Q
+0.37 (CHAPTER 3) 90 608.68 S
+2 24 Q
+-0.88 (Drive Description T) 207 608.68 S
+-0.88 (ables) 381.29 608.68 S
+207 406.69 540 409.69 C
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+207 408.84 540 408.84 2 L
+0.25 H
+2 Z
+0 X
+0 0 0 1 0 0 0 K
+N
+36 72 576 720 C
+2 14 Q
+0 X
+0 0 0 1 0 0 0 K
+(Overvie) 207 397.35 T
+(w) 251.1 397.35 T
+3 10 Q
+(The) 207 376.02 T
+1 F
+(ftt) 225.05 376.02 T
+3 F
+( product is lar) 235.04 376.02 T
+(gely table dri) 290.13 376.02 T
+(v) 342.65 376.02 T
+(en.  While there are some code dif) 347.5 376.02 T
+(ferences) 484.43 376.02 T
+-0.37 (betweeen platforms, as described in the pre) 207 364.02 P
+-0.37 (vious chapter) 377.54 364.02 P
+-0.37 (, the majority of the code is) 430.38 364.02 P
+-0.11 (common, and controlled by tables.  The) 207 352.02 P
+1 F
+-0.11 (ftt) 367.58 352.02 P
+3 F
+-0.11 ( tables reside in) 377.57 352.02 P
+5 F
+-0.27 ( ftt_tables.c) 439.72 352.02 P
+3 F
+-0.11 (and) 523.17 352.02 P
+(can be described as follo) 207 340.02 T
+(ws:) 305.61 340.02 T
+4 11 Q
+(\245) 207 321.35 T
+3 10 Q
+(Error translation tables:  These tables map an) 220.74 321.35 T
+2 F
+(\050oper) 404.04 321.35 T
+(ation, errno\051) 425.55 321.35 T
+3 F
+( pair to an) 476.66 321.35 T
+1 F
+(ftt) 519.43 321.35 T
+3 F
+(error number) 220.74 309.02 T
+(, allo) 272.83 309.02 T
+(wing the v) 292.58 309.02 T
+(ariances in v) 334.55 309.02 T
+(arious platforms error returns to be) 384.83 309.02 T
+(corrected.) 220.74 297.02 T
+4 11 Q
+(\245) 207 281.35 T
+3 10 Q
+(De) 220.74 281.35 T
+(vice node descriptions: F) 232.15 281.35 T
+(or each \050) 332.27 281.35 T
+2 F
+(platform, driveid\051) 367.25 281.35 T
+3 F
+( pair) 438.36 281.35 T
+(, this table gi) 456.01 281.35 T
+(v) 507.43 281.35 T
+(es) 512.28 281.35 T
+(beha) 220.74 269.02 T
+(viour \337ags, a generic basename format, a dri) 239.43 269.02 T
+(v) 417.18 269.02 T
+(e identi\336cation command,) 422.04 269.02 T
+(and a list of de) 220.74 257.02 T
+(vice node formats with corresponding beha) 279.38 257.02 T
+(vior information.) 452.2 257.02 T
+(This table also has v) 220.74 245.02 T
+(arious forms of \322generic\323 entries describing ho) 302.15 245.02 T
+(w to handle) 489.64 245.02 T
+(unk) 220.74 233.02 T
+(o) 235.65 233.02 T
+(wn) 240.4 233.02 T
+2 F
+(driveid) 255.12 233.02 T
+3 F
+( and) 283.45 233.02 T
+2 F
+(platform) 302.89 233.02 T
+3 F
+(v) 339.83 233.02 T
+(alues.) 344.58 233.02 T
+4 11 Q
+(\245) 207 217.35 T
+3 10 Q
+-0.17 (Dri) 220.74 217.35 P
+-0.17 (v) 233.82 217.35 P
+-0.17 (e statistics tables: F) 238.68 217.35 P
+-0.17 (or each) 316.06 217.35 P
+2 F
+-0.17 (driveid) 347.37 217.35 P
+3 F
+-0.17 ( this table gi) 375.7 217.35 P
+-0.17 (v) 424.1 217.35 P
+-0.17 (es a description of what sta-) 428.95 217.35 P
+-0.18 (tistics commands \050usually SCSI Mode Select/Mode Sense commands\051 are a) 220.74 205.02 P
+-0.18 (v) 521.92 205.02 P
+-0.18 (ail-) 526.67 205.02 P
+(able on the dri) 220.74 193.02 T
+(v) 277.98 193.02 T
+(e.) 282.83 193.02 T
+-0.39 (The remainder of the chapter will describe these tables in detail, and describe where) 207 169.02 P
+(to \336nd the information needed to \336ll them in.) 207 157.02 T
+FMENDPAGE
+%%EndPage: "13" 8
+%%Page: "12" 9
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+0 X
+0 0 0 1 0 0 0 K
+(Platf) 189 685.65 T
+(orm Speci\336c Sour) 206.18 685.65 T
+(ces) 274.48 685.65 T
+1 12 Q
+(12) 72 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+4 11 Q
+(\245) 189 628.64 T
+3 10 Q
+(ftt_get_hwdens\050\051 Get the hardw) 202.74 628.64 T
+(are density associated with the current def) 330.11 628.64 T
+(ault) 498.3 628.64 T
+1 F
+-0.14 (ftt) 202.74 616.31 P
+3 F
+-0.14 ( de) 212.74 616.31 P
+-0.14 (vice node.  On platforms where there is only one density associated with a) 224.29 616.31 P
+(de) 202.74 604.31 T
+(vice node, this routine simply returns the density associated with that de) 211.93 604.31 T
+(vice) 499.99 604.31 T
+(node.) 202.74 592.31 T
+(Note that the only platform currently requiring the last 4 calls to do much of an) 189 568.31 T
+(y-) 505.2 568.31 T
+(thing is AIX, or an implementation that does e) 189 556.31 T
+(v) 374.57 556.31 T
+(erything by e) 379.42 556.31 T
+(xplicit ra) 432.04 556.31 T
+(w SCSI calls.) 467.72 556.31 T
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "12" 9
+%%Page: "11" 10
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(11) 528 99.79 T
+540 113.98 90 113.98 2 L
+0.25 H
+2 Z
+N
+0 8 Q
+(Miscelleneous Platf) 207 685.65 T
+(orm Dependant Routines) 281.09 685.65 T
+540 671.98 90 671.98 2 L
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+3 10 Q
+(There are e) 207 623.33 T
+(xample ftt_mtio.h \336les for each of the v) 251.82 623.33 T
+(arious platforms.  Y) 410.44 623.33 T
+(ou should) 489.33 623.33 T
+(de\336ne all of these symbols to some inte) 207 611.33 T
+(ger v) 364.9 611.33 T
+(alue, e) 384.92 611.33 T
+(v) 410.77 611.33 T
+(en if you are not using them) 415.62 611.33 T
+-0.22 (because you are doing operations via scsi pass-through.  Most of the e) 207 599.33 P
+-0.22 (xisting imple-) 484.38 599.33 P
+(mentations de\336ne the v) 207 587.33 T
+(alue as -1 if the option doesn\325) 299.8 587.33 T
+(t e) 418.49 587.33 T
+(xist or is not used.) 428.06 587.33 T
+207 545 540 548 C
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+207 547.16 540 547.16 2 L
+0.25 H
+2 Z
+0 X
+0 0 0 1 0 0 0 K
+N
+36 72 576 720 C
+2 14 Q
+0 X
+0 0 0 1 0 0 0 K
+(Miscelleneous Platform Dependant Routines) 207 535.67 T
+3 10 Q
+(There are a fe) 207 514.33 T
+(w other routines clumped into) 261.99 514.33 T
+5 F
+(ftt_machdep.c) 384.48 514.33 T
+3 F
+( which are used to) 462.48 514.33 T
+(perform v) 207 502.33 T
+(arious operations that) 246.46 502.33 T
+1 F
+(ftt) 335.06 502.33 T
+3 F
+( is called upon to perform, for e) 345.05 502.33 T
+(xample:) 471.54 502.33 T
+4 11 Q
+(\245) 207 483.67 T
+3 10 Q
+(ftt_status\050\051 returns a byte with se) 220.74 483.67 T
+(v) 351.86 483.67 T
+(eral status bits bitwise-or) 356.71 483.67 T
+(-ed together to say) 456.78 483.67 T
+-0.35 (whether the tape dri) 220.74 471.33 P
+-0.35 (v) 299.14 471.33 P
+-0.35 (e is in v) 303.99 471.33 P
+-0.35 (arious states.  Most implementations of tape dri) 334.07 471.33 P
+-0.35 (v) 521.34 471.33 P
+-0.35 (ers) 526.19 471.33 P
+-0.25 (pro) 220.74 459.33 P
+-0.25 (vide a status ioctl call which gi) 233.93 459.33 P
+-0.25 (v) 356.08 459.33 P
+-0.25 (es this data in some format or other) 360.93 459.33 P
+-0.25 (, on other) 500.18 459.33 P
+(platforms \050lik) 220.74 447.33 T
+(e AIX\051 this information can only be obtained via SCSI pass-) 275.36 447.33 T
+(through.  This should set the follo) 220.74 435.33 T
+(wing bits if appropriate:) 355.77 435.33 T
+4 11 Q
+(\245) 207 281.67 T
+3 10 Q
+(ftt_set_hwdens\050\051 Set the dri) 220.74 281.67 T
+(v) 331.31 281.67 T
+(e density code with a SCSI mode_select or equi) 336.16 281.67 T
+(v) 527 281.67 T
+(a-) 531.75 281.67 T
+-0.17 (lent.  This is a separate call because on some platforms you set a property of the) 220.74 269.33 P
+(de) 220.74 257.33 T
+(vice dri) 229.93 257.33 T
+(v) 259.95 257.33 T
+(er) 264.8 257.33 T
+(, so that future opens will use that density) 272.17 257.33 T
+(.  This routine is a no-op) 437.9 257.33 T
+(on platforms where the density is selected entirely by choosing a de) 220.74 245.33 T
+(vice node.) 491.29 245.33 T
+4 11 Q
+(\245) 207 229.67 T
+3 10 Q
+-0.46 (ftt_set_compression\050\051 Similar to set_hwdens b) 220.74 229.67 P
+-0.46 (ut speci\336cally set compression on) 404.81 229.67 P
+(or of) 220.74 217.33 T
+(f. This routine is a no-op on platforms where compression is selected) 239.65 217.33 T
+(entirely by selecting a de) 220.74 205.33 T
+(vice node.) 320.48 205.33 T
+4 11 Q
+(\245) 207 189.67 T
+3 10 Q
+(ftt_set_blocksize\050\051 Set the blocksize to be used on this de) 220.74 189.67 T
+(vice.  Setting the) 449.63 189.67 T
+(blocksize to zero means to do v) 220.74 177.33 T
+(ariable-block i/o.   This routine is a no-op on) 346.58 177.33 T
+(platforms where the blocksize is selected entirely by the de) 220.74 165.33 T
+(vice node.) 456.83 165.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+(T) 220.74 411.33 T
+(ABLE 2.) 224.91 411.33 T
+1 10 Q
+(ftt_status r) 257.81 411.33 T
+(etur) 304.56 411.33 T
+(n code bits) 322.18 411.33 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 9 Q
+(Name) 220.74 389 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Description) 364.74 389 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+3 F
+(FTT_B) 220.74 374 T
+(USY) 247.16 374 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(T) 364.74 374 T
+(ape in use by another process) 369.52 374 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_ABO) 220.74 359 T
+(T) 259.89 359 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(T) 364.74 359 T
+(ape is at re) 369.52 359 T
+(w) 408.04 359 T
+(ound, or at BO) 414.44 359 T
+(T) 467.58 359 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_AEO) 220.74 344 T
+(T) 259.38 344 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(T) 364.74 344 T
+(ape is at end of tape) 369.52 344 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_EW) 220.74 329 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(T) 364.74 329 T
+(ape is at ANSI early w) 369.52 329 T
+(arning mark) 451.16 329 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_ONLINE) 220.74 314 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Dri) 364.74 314 T
+(v) 376.52 314 T
+(e has a tape loaded) 380.88 314 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_WRITE_PR) 220.74 299 T
+(O) 284.89 299 T
+(T) 291.03 299 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(T) 364.74 299 T
+(ape is write protected) 369.52 299 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+214.74 405 502.74 405 2 L
+V
+0.5 H
+0 Z
+N
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "11" 10
+%%Page: "10" 11
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+0 X
+0 0 0 1 0 0 0 K
+(Platf) 189 685.65 T
+(orm Speci\336c Sour) 206.18 685.65 T
+(ces) 274.48 685.65 T
+1 12 Q
+(10) 72 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+3 F
+(The OSF1 implementation also points out an important tactic for platforms which) 189 629.31 T
+(do not ha) 189 617.31 T
+(v) 226.02 617.31 T
+(e separate de) 230.87 617.31 T
+(vice nodes for dif) 282.26 617.31 T
+(ferent SCSI tar) 352.27 617.31 T
+(get id\325) 412.08 617.31 T
+(s -- namely making) 437.36 617.31 T
+(up pseudo-de) 189 605.31 T
+(vice-names so that you can specify in the string passed into) 242.35 605.31 T
+5 F
+(ftt_scsi_open\050\051) 189 593.31 T
+3 F
+( a name for the de) 279 593.31 T
+(vice, e) 350.67 593.31 T
+(v) 376.52 593.31 T
+(en if there is no such name in the) 381.37 593.31 T
+-0.05 (\336lesystem.  This is important for other non-tape packages which use this code, lik) 189 581.31 P
+-0.05 (e) 515.11 581.31 P
+(the) 189 569.31 T
+1 F
+(juk) 203.72 569.31 T
+(e) 218.07 569.31 T
+3 F
+( package.) 222.51 569.31 T
+189 526.98 522 529.98 C
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+189 529.13 522 529.13 2 L
+0.25 H
+2 Z
+0 X
+0 0 0 1 0 0 0 K
+N
+36 72 576 720 C
+2 14 Q
+0 X
+0 0 0 1 0 0 0 K
+(Making mtio\0507\051 style i/o work) 189 517.64 T
+3 10 Q
+(Most UNIX style platforms ha) 189 496.31 T
+(v) 311.01 496.31 T
+(e some v) 315.86 496.31 T
+(ariation on the original mtio\0507\051 interf) 351.16 496.31 T
+(ace) 499.1 496.31 T
+-0.01 (a) 189 484.31 P
+-0.01 (v) 193.24 484.31 P
+-0.01 (aliable for tape operations lik) 197.99 484.31 P
+-0.01 (e re) 315.03 484.31 P
+-0.01 (winds, \336le skips, etc.) 329.48 484.31 P
+1 F
+-0.01 (ftt) 418.29 484.31 P
+3 F
+-0.01 ( tak) 428.28 484.31 P
+-0.01 (es adv) 442.89 484.31 P
+-0.01 (antage of the) 467.89 484.31 P
+(similarities between these implementations to use common code for these opera-) 189 472.31 T
+(tions by ha) 189 460.31 T
+(ving a set of) 232.69 460.31 T
+1 F
+(ftt) 284.35 460.31 T
+3 F
+(-speci\336c symbols de\336ned, so that the follo) 294.34 460.31 T
+(wing code) 463.25 460.31 T
+(fragment should to w) 189 448.31 T
+(ork re) 274.17 448.31 T
+(wind the tape dri) 297.52 448.31 T
+(v) 364.76 448.31 T
+(e attached to \336le descriptor) 369.61 448.31 T
+5 F
+(fd) 480.42 448.31 T
+3 F
+(.) 492.42 448.31 T
+5 F
+(struct tapeop buf;) 189 430.31 T
+(buf.tape_op = FTT_TAPE_REW;) 189 418.31 T
+(buf.tape_count = 1;) 189 406.31 T
+(ioctl\050fd,FTT_TAPE_OP,&buf\051;) 189 394.31 T
+3 F
+(The v) 189 370.31 T
+(arious operation codes lik) 211.8 370.31 T
+(e) 314.74 370.31 T
+5 F
+(FTT_TAPE_REW) 321.68 370.31 T
+3 F
+(are de\336ned as follo) 399.68 370.31 T
+(ws:) 475.8 370.31 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+(T) 202.74 346.31 T
+(ABLE 1.) 206.91 346.31 T
+1 10 Q
+(ftt_mtio.h tape operation names) 239.81 346.31 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 9 Q
+(Name) 202.74 323.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Description) 346.74 323.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+3 F
+(FTT_T) 202.74 308.98 T
+(APE_NOP) 227.91 308.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Does nothing) 346.74 308.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_T) 202.74 293.98 T
+(APE_RETEN) 227.91 293.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Retension tape) 346.74 293.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_T) 202.74 278.98 T
+(APE_ERASE) 227.91 278.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Erase tape) 346.74 278.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_T) 202.74 263.98 T
+(APE_REW) 227.91 263.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Re) 346.74 263.98 T
+(wind tape) 356.52 263.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_T) 202.74 248.98 T
+(APE_RSF) 227.91 248.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Re) 346.74 248.98 T
+(v) 356.52 248.98 T
+(erse skip \336lemark) 360.88 248.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_T) 202.74 233.98 T
+(APE_FSF) 227.91 233.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(F) 346.74 233.98 T
+(orw) 351.61 233.98 T
+(ard skip \336lemark) 365.52 233.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_T) 202.74 218.98 T
+(APE_RSR) 227.91 218.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(Re) 346.74 218.98 T
+(v) 356.52 218.98 T
+(erse skip record) 360.88 218.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_T) 202.74 203.98 T
+(APE_FSR) 227.91 203.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(F) 346.74 203.98 T
+(orw) 351.61 203.98 T
+(ard skip record) 365.52 203.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_T) 202.74 188.98 T
+(APE_WEOF) 227.91 188.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(write \336lemark) 346.74 188.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(FTT_T) 202.74 173.98 T
+(APE_UNLO) 227.91 173.98 T
+(AD) 274.09 173.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+(unload tape) 346.74 173.98 T
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+196.74 339.98 484.74 339.98 2 L
+V
+0.5 H
+0 Z
+N
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "10" 11
+%%Page: "9" 12
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(9) 534 99.79 T
+540 113.98 90 113.98 2 L
+0.25 H
+2 Z
+N
+0 8 Q
+(SCSI I/O r) 207 685.65 T
+(outines) 243.74 685.65 T
+540 671.98 90 671.98 2 L
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+3 10 Q
+(After the scsi command has been sent, you should call the routine) 207 623.33 T
+5 F
+(ftt_scsi_check\050\051) 207 611.33 T
+3 F
+(with the follo) 309 611.33 T
+(wing parameters:) 362.64 611.33 T
+4 11 Q
+(\245) 207 592.67 T
+3 10 Q
+(The SCSI descriptor you were gi) 220.74 592.67 T
+(v) 351.86 592.67 T
+(en) 356.71 592.67 T
+4 11 Q
+(\245) 207 576.67 T
+3 10 Q
+-0.36 (The descripti) 220.74 576.67 P
+-0.36 (v) 272.62 576.67 P
+-0.36 (e string you were gi) 277.47 576.67 P
+-0.36 (v) 355.2 576.67 P
+-0.36 (en  \050these are the same \336rst tw) 360.05 576.67 P
+-0.36 (o ar) 478.78 576.67 P
+-0.36 (guments as) 493.5 576.67 P
+(were passed in to this routine\051) 220.74 564.33 T
+4 11 Q
+(\245) 207 548.67 T
+3 10 Q
+(the SCSI status code \0500 == success, 2 == de) 220.74 548.67 T
+(vice not ready) 395.81 548.67 T
+(, etc.\051) 451.81 548.67 T
+4 11 Q
+(\245) 207 532.67 T
+3 10 Q
+-0.34 (The amount of data actually read/written into the read/write b) 220.74 532.67 P
+-0.34 (uf) 463.78 532.67 P
+-0.34 (fer) 471.86 532.67 P
+-0.34 (, in bytes, or a) 482.56 532.67 P
+(suitable lie. \050Note: if an) 220.74 520.33 T
+(yone \336gures out ho) 315.3 520.33 T
+(w to actually get this number on) 391.99 520.33 T
+(Solaris, send me a patch!\051) 220.74 508.33 T
+(The) 207 484.33 T
+5 F
+( ftt_scsi_check) 222.55 484.33 T
+3 F
+(\050\051 routine wil return a standard error code for the action) 312.55 484.33 T
+-0.36 (which your routine should then return to its caller) 207 472.33 P
+-0.36 (.  The ftt_scsi_check\050\051 routine that) 401.9 472.33 P
+(comes with) 207 460.33 T
+1 F
+(ftt) 255.33 460.33 T
+3 F
+( mainly prints a detailed error message with ftt_eprintf\050\051 and sets) 265.32 460.33 T
+(ftt_errno, and returns -1 on errors.) 207 448.33 T
+(As mentioned earlier) 207 424.33 T
+(,) 290.47 424.33 T
+5 F
+(ftt_scsi_command\050\051) 295.47 424.33 T
+3 F
+( will be called with some sort of) 403.47 424.33 T
+(descriptor for a SCSI de) 207 412.33 T
+(vice.  As the programmer for this portion of the code, you) 303.4 412.33 T
+(get to decide what this descriptor should be, \050either a long inte) 207 400.33 T
+(ger v) 456.26 400.33 T
+(alue, or a) 476.28 400.33 T
+(pointer to some data structure type-cast to a long inte) 207 388.33 T
+(ger\051.  Y) 419.32 388.33 T
+(ou manuf) 449.04 388.33 T
+(acture the) 486.99 388.33 T
+(descriptor for a gi) 207 376.33 T
+(v) 278.12 376.33 T
+(en de) 282.97 376.33 T
+(vice in the) 304.1 376.33 T
+5 F
+(ftt_scsi_open\050\051) 348.26 376.33 T
+3 F
+( routine.  In the case) 438.26 376.33 T
+(where you simply open an operating system de) 207 364.33 T
+(vice, this routine will simply call) 394.78 364.33 T
+(open\050\051 with the right ar) 207 352.33 T
+(guments and return a \336le descriptor) 299.58 352.33 T
+(.  If you need to mak) 440.95 352.33 T
+(e a) 523.89 352.33 T
+-0.21 (series of calls and \336ll out a data structure, etc.  you should allocate the structure, \336ll) 207 340.33 P
+(it in, and return a pointer to it.  W) 207 328.33 T
+(e will discuss ho) 340.91 328.33 T
+(w these descriptors get cleaned) 407.05 328.33 T
+(back up in the ne) 207 316.33 T
+(xt section) 275.17 316.33 T
+(After SCSI i/o is completed on a gi) 207 292.33 T
+(v) 347.58 292.33 T
+(en de) 352.43 292.33 T
+(vice,) 373.56 292.33 T
+1 F
+(ftt) 395.22 292.33 T
+3 F
+( will call your routine) 405.21 292.33 T
+5 F
+(ftt_scsi_close\050\051) 207 280.33 T
+3 F
+(, whose job is to close an) 303 280.33 T
+(y system de) 403.12 280.33 T
+(vices that are opened,) 450.09 280.33 T
+(free up an) 207 268.33 T
+(y allocated memory) 246.83 268.33 T
+(, etc.) 325.61 268.33 T
+1 F
+(ftt) 349.77 268.33 T
+3 F
+( passes it the ar) 359.76 268.33 T
+(gument of the scsi descriptor) 420.68 268.33 T
+(created by) 207 256.33 T
+5 F
+(ftt_scsi_open\050\051) 250.87 256.33 T
+3 F
+(, so that your code can clean back up after it.) 340.87 256.33 T
+(Examples of se) 207 232.33 T
+(v) 267.85 232.33 T
+(eral v) 272.7 232.33 T
+(ariations on these routines are in the) 294.94 232.33 T
+1 F
+(ftt) 441.86 232.33 T
+3 F
+( distrib) 451.85 232.33 T
+(ution.  F) 479.71 232.33 T
+(or) 513.18 232.33 T
+(e) 207 220.33 T
+(xample, the AIX v) 211.29 220.33 T
+(ersion does a \050slightly modi\336ed\051 open\050\051 call, and uses a re) 285.57 220.33 T
+(gular) 516.77 220.33 T
+(AIX \336le descriptor for the SCSI descriptor) 207 208.33 T
+(.  The IRIX v) 376.98 208.33 T
+(ersion uses a v) 430.43 208.33 T
+(endor pro-) 488.88 208.33 T
+-0.12 (vided library which allocates a descriptor with dsopen\050\051, and cleans it back up with) 207 196.33 P
+(dsclose\050\051, and performs operations using that pointer as a descriptor) 207 184.33 T
+(.  The OSF1) 477.51 184.33 T
+(implmentation shares access to a global /de) 207 172.33 T
+(v/cam de) 380.06 172.33 T
+(vice, and k) 416.19 172.33 T
+(eeps a descriptor) 459.69 172.33 T
+(which identi\336es SCSI b) 207 160.33 T
+(us number) 301.53 160.33 T
+(, tar) 343.07 160.33 T
+(get id, etc.  and a reference count on the) 358.44 160.33 T
+(shared system de) 207 148.33 T
+(vice so we kno) 275.07 148.33 T
+(w when to close it.) 334.53 148.33 T
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "9" 12
+%%Page: "8" 13
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+0 X
+0 0 0 1 0 0 0 K
+(Platf) 189 685.65 T
+(orm Speci\336c Sour) 206.18 685.65 T
+(ces) 274.48 685.65 T
+1 12 Q
+(8) 72 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+4 11 Q
+(\245) 189 628.64 T
+5 10 Q
+-0.18 (libs) 202.74 628.64 P
+3 F
+-0.07 ( contains special compiler \337ags to allo) 226.74 628.64 P
+-0.07 (w the code to be link) 379.37 628.64 P
+-0.07 (ed on this plat-) 462.5 628.64 P
+(form.) 202.74 616.31 T
+(These 4 \336les comprise the entirety of the platform speci\336c code in) 189 592.31 T
+1 F
+(ftt) 456.18 592.31 T
+3 F
+( for each plat-) 466.17 592.31 T
+(form.  W) 189 580.31 T
+(e will e) 224.58 580.31 T
+(xamine each of these \336les and their corresponding routines in this) 253.87 580.31 T
+(chapter) 189 568.31 T
+(.) 217.88 568.31 T
+189 525.98 522 528.98 C
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+189 528.13 522 528.13 2 L
+0.25 H
+2 Z
+0 X
+0 0 0 1 0 0 0 K
+N
+36 72 576 720 C
+2 14 Q
+0 X
+0 0 0 1 0 0 0 K
+(SCSI I/O r) 189 516.64 T
+(outines) 247.48 516.64 T
+3 10 Q
+(The v) 189 495.31 T
+(arious SCSI Input/Output routines are k) 211.8 495.31 T
+(ept in) 370.86 495.31 T
+5 F
+(ftt_scsi.c) 395.86 495.31 T
+3 F
+( in the platform) 455.86 495.31 T
+(dependant routines directory) 189 483.31 T
+(. The main routine that needs w) 302.77 483.31 T
+(ork to de\336ne on an) 429.04 483.31 T
+(y) 503.88 483.31 T
+(gi) 189 471.31 T
+(v) 196.53 471.31 T
+(en platform is) 201.38 471.31 T
+5 F
+(ftt_scsi_command\050\051) 259.43 471.31 T
+3 F
+( which sends a SCSI command to a) 367.43 471.31 T
+(tar) 189 459.31 T
+(get de) 199.37 459.31 T
+(vice, and returns an) 223.28 459.31 T
+(y data requested.  On some platforms there are clearly) 301.44 459.31 T
+-0.09 (documented) 189 447.31 P
+5 F
+-0.22 (ioctl\050\051) 240.29 447.31 P
+3 F
+-0.09 ( calls to normal tape SCSI de) 282.29 447.31 P
+-0.09 (vice nodes to perform this sort) 398.13 447.31 P
+(of i/o, while on others  a separate de) 189 435.31 T
+(vice node is called for) 333.44 435.31 T
+(.) 421.2 435.31 T
+-0.04 (The) 189 411.31 P
+5 F
+-0.1 (ftt_scsi_command\050\051) 207.01 411.31 P
+3 F
+-0.04 ( routine tak) 315.01 411.31 P
+-0.04 (e se) 360.37 411.31 P
+-0.04 (v) 375.35 411.31 P
+-0.04 (eral ar) 380.2 411.31 P
+-0.04 (guments, describing the data) 405.24 411.31 P
+(tobe sent, where to put recei) 189 399.31 T
+(v) 301.5 399.31 T
+(ed data, timeouts, etc. The) 306.35 399.31 T
+(y are:) 411.46 399.31 T
+4 11 Q
+(\245) 189 380.64 T
+3 10 Q
+(A \336le handle for the scsi de) 202.74 380.64 T
+(vice in question.  This may be a re) 312.47 380.64 T
+(gular UNIX \336le) 449.8 380.64 T
+-0.08 (descriptor) 202.74 368.31 P
+-0.08 (, a pointer to a structure, etc.  depending what sort of information you) 242.34 368.31 P
+-0.37 (need to k) 202.74 356.31 P
+-0.37 (eep around to mak) 238.57 356.31 P
+-0.37 (e SCSI calls.  This will be a v) 311.51 356.31 P
+-0.37 (alue you returned from) 426.92 356.31 P
+5 F
+(ftt_scsi_open\050\051) 202.74 344.31 T
+4 11 Q
+(\245) 189 328.64 T
+3 10 Q
+(A string that the upper le) 202.74 328.64 T
+(v) 302.2 328.64 T
+(el code passes in that you should print in an) 307.05 328.64 T
+(y deb) 481.61 328.64 T
+(ug-) 503.35 328.64 T
+(ging messages to indicate what is going on.) 202.74 316.31 T
+4 11 Q
+(\245) 189 300.64 T
+3 10 Q
+(a character pointer and length for the SCSI CDB -- the command descriptor) 202.74 300.64 T
+(bytes that tell the de) 202.74 288.31 T
+(vice what to do.) 283.05 288.31 T
+4 11 Q
+(\245) 189 272.64 T
+3 10 Q
+(a character pointer and length for a read/write b) 202.74 272.64 T
+(uf) 393.03 272.64 T
+(fer to put either data being) 401.11 272.64 T
+(sent to the de) 202.74 260.31 T
+(vice, or data being recei) 255.54 260.31 T
+(v) 351.1 260.31 T
+(ed.) 355.95 260.31 T
+4 11 Q
+(\245) 189 244.64 T
+3 10 Q
+(a timeout v) 202.74 244.64 T
+(alue \050in inte) 247.49 244.64 T
+(ger seconds\051 of ho) 295.11 244.64 T
+(w long to w) 368.45 244.64 T
+(ait for the command to) 415.85 244.64 T
+(complete.) 202.74 232.31 T
+4 11 Q
+(\245) 189 216.64 T
+3 10 Q
+(A \337ag that is 1 if this command has write data in the read/write b) 202.74 216.64 T
+(uf) 462.51 216.64 T
+(fer) 470.59 216.64 T
+(.) 481.14 216.64 T
+(The) 189 192.31 T
+5 F
+(ftt_scsi_command\050\051) 209.55 192.31 T
+3 F
+( call should tak) 317.55 192.31 T
+(e this information, and mak) 378.28 192.31 T
+(e the) 488.45 192.31 T
+(appropriate call or calls to send the scsi frame to the tar) 189 180.31 T
+(get de) 410.16 180.31 T
+(vice, and recei) 434.07 180.31 T
+(v) 491.85 180.31 T
+(e an) 496.7 180.31 T
+(y) 512.93 180.31 T
+(data to be returned.  It should then perform some error translation, as described in) 189 168.31 T
+(the ne) 189 156.31 T
+(xt paragraph.) 213.01 156.31 T
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "8" 13
+%%Page: "7" 14
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(7) 534 99.79 T
+540 108 90 108 2 L
+0.5 H
+2 Z
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+540 423 90 423 2 L
+0.5 H
+N
+90 621 198 621 2 L
+N
+0 10 Q
+0.37 (CHAPTER 2) 90 608.68 S
+2 24 Q
+-0.88 (Platform Speci\336c Sour) 207 608.68 S
+-0.88 (ces) 404.84 608.68 S
+3 10 Q
+(The Fermi T) 207 403.02 T
+(ape T) 256.75 403.02 T
+(ools product has se) 278.44 403.02 T
+(v) 354.57 403.02 T
+(eral platform speci\336c source \336les for each) 359.42 403.02 T
+(supported platform.  The) 207 391.02 T
+(y are in the) 306.28 391.02 T
+6 F
+($FTT_DIR/ftt_lib/PLATFORM) 353.49 391.02 T
+3 F
+(direc-) 509.49 391.02 T
+(tory for platform PLA) 207 379.02 T
+(TFORM.  Each such directory contains se) 294.49 379.02 T
+(v) 462.27 379.02 T
+(eral source \336les:) 467.12 379.02 T
+4 11 Q
+(\245) 207 360.35 T
+6 10 Q
+(ftt_scsi.c) 220.74 360.35 T
+3 F
+( contains de\336nitions of routines to allo) 280.74 360.35 T
+(w SCSI command frames) 434.38 360.35 T
+(to be sent to SCSI connected dri) 220.74 348.02 T
+(v) 349.38 348.02 T
+(es.  It de\336nes the routines:) 354.23 348.02 T
+0 8 Q
+(1.) 234 333.02 T
+5 10 Q
+(ftt_scsi_open\050\051) 240.67 333.02 T
+0 8 Q
+(2.) 234 318.02 T
+5 10 Q
+(ftt_scsi_close\050\051) 240.67 318.02 T
+0 8 Q
+(3.) 234 303.02 T
+5 10 Q
+(ftt_scsi_command\050\051) 240.67 303.02 T
+4 11 Q
+(\245) 207 272.35 T
+5 10 Q
+(ftt_machdep.c) 220.74 272.35 T
+3 F
+( contains subroutine de\336nitions for se) 298.74 272.35 T
+(v) 448.76 272.35 T
+(eral internal) 453.61 272.35 T
+1 F
+(ftt) 504.15 272.35 T
+3 F
+( calls,) 514.14 272.35 T
+(including:) 220.74 260.02 T
+0 8 Q
+(1.) 234 245.02 T
+5 10 Q
+(ftt_status\050\051) 240.67 245.02 T
+0 8 Q
+(2.) 234 230.02 T
+5 10 Q
+(ftt_set_hwdens\050\051) 240.67 230.02 T
+0 8 Q
+(3.) 234 215.02 T
+5 10 Q
+(ftt_set_compression\050\051) 240.67 215.02 T
+0 8 Q
+(4.) 234 200.02 T
+5 10 Q
+(ftt_set_blocksize\050\051) 240.67 200.02 T
+0 8 Q
+(5.) 234 185.02 T
+5 10 Q
+(ftt_get_hwdens\050\051) 240.67 185.02 T
+4 11 Q
+(\245) 207 169.35 T
+5 10 Q
+-1.11 (ftt_mtio.h) 220.74 169.35 P
+3 F
+-0.46 (contains de\336nitions of preprocessor symbols to allo) 285.63 169.35 P
+-0.46 (w consistent) 488.71 169.35 P
+(use of) 220.74 157.02 T
+5 F
+(mtio\0507\051) 247.4 157.02 T
+3 F
+( style calls to perform re) 289.4 157.02 T
+(winds, etc. on the v) 386.64 157.02 T
+(arious platforms.) 464.15 157.02 T
+FMENDPAGE
+%%EndPage: "7" 14
+%%Page: "6" 15
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 8 Q
+0 X
+0 0 0 1 0 0 0 K
+(Over) 189 685.65 T
+(vie) 207.31 685.65 T
+(w) 218.31 685.65 T
+1 12 Q
+(6) 72 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "6" 15
+%%Page: "5" 16
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(5) 534 99.79 T
+540 108 90 108 2 L
+0.5 H
+2 Z
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+540 423 90 423 2 L
+0.5 H
+N
+90 621 198 621 2 L
+N
+0 10 Q
+0.37 (CHAPTER 1) 90 608.68 S
+2 24 Q
+-0.88 (Overvie) 207 608.68 S
+-0.88 (w) 276.4 608.68 S
+3 10 Q
+(The Fermi T) 207 403.02 T
+(ape T) 256.75 403.02 T
+(ools \050) 278.44 403.02 T
+1 F
+(ftt) 300.94 403.02 T
+3 F
+(\051 product is a softw) 310.93 403.02 T
+(are interf) 388.04 403.02 T
+(ace to tape dri) 424.31 403.02 T
+(v) 480.43 403.02 T
+(es which is) 485.28 403.02 T
+(independant of dri) 207 391.02 T
+(v) 280.07 391.02 T
+(e type and operatng system.  It is designed to be portable to) 284.92 391.02 T
+(numerous platforms and tape dri) 207 379.02 T
+(v) 336.73 379.02 T
+(e types, although most of the e) 341.58 379.02 T
+(xisting w) 463.92 379.02 T
+(ork is for) 500.77 379.02 T
+(SCSI connected tape dri) 207 364.35 T
+(v) 303.68 364.35 T
+(es on UNIX) 308.53 364.35 T
+3 8 Q
+(1) 356.85 368.35 T
+3 10 Q
+(systems.  This book is a guide to getting ftt) 362.85 364.35 T
+(running on  ne) 207 352.35 T
+(w platforms and ne) 264.8 352.35 T
+(w dri) 341.48 352.35 T
+(v) 362.06 352.35 T
+(e types.  F) 366.91 352.35 T
+(olks who w) 407.87 352.35 T
+(ant to learn more) 453.88 352.35 T
+(about using ftt should refer to the) 207 340.35 T
+1 F
+(F) 342.82 340.35 T
+(ermi T) 348.68 340.35 T
+(ape T) 376.92 340.35 T
+(ools \050ftt\051 Library User\325) 400.17 340.35 T
+(s Guide) 497.83 340.35 T
+3 F
+(.) 530.34 340.35 T
+(The portability claims of) 207 316.35 T
+1 F
+(ftt) 308.66 316.35 T
+3 F
+( are based on the f) 318.65 316.35 T
+(act that the information re) 391.58 316.35 T
+(g) 495.3 316.35 T
+(arding) 500.25 316.35 T
+(system and dri) 207 304.35 T
+(v) 265.08 304.35 T
+(e dif) 269.93 304.35 T
+(ferences currently reside in a v) 287.73 304.35 T
+(ery fe) 410.59 304.35 T
+(w system speci\336c source) 433.38 304.35 T
+(\336les, and a central table whiich allo) 207 292.35 T
+(ws) 348.67 292.35 T
+1 F
+(ftt) 362.28 292.35 T
+3 F
+( to be a) 372.27 292.35 T
+(w) 401.28 292.35 T
+(are of things lik) 408.4 292.35 T
+(e de) 471.35 292.35 T
+(vice naming) 487.48 292.35 T
+-0.19 (con) 207 280.35 P
+-0.19 (v) 221.04 280.35 P
+-0.19 (entions and supported tape densities for all of the systems it currently supports.) 225.89 280.35 P
+(The remainder of the book will concentrate on the platform speci\336c parts of) 207 256.35 T
+1 F
+(ftt) 512.77 256.35 T
+3 F
+(, as) 522.76 256.35 T
+-0.4 (well as the table structure which describes supported dri) 207 244.35 P
+-0.4 (v) 427.98 244.35 P
+-0.4 (es and operating modes on) 432.83 244.35 P
+(dif) 207 232.35 T
+(ferent platforms.) 217.86 232.35 T
+207 176.66 540 196.66 C
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+207 184.66 333 184.66 2 L
+0.25 H
+2 Z
+0 X
+0 0 0 1 0 0 0 K
+N
+36 72 576 720 C
+3 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(1.) 207 169.99 T
+(UNIX is a trademark of Netw) 214.5 169.99 T
+(are Inc.) 333.53 169.99 T
+FMENDPAGE
+%%EndPage: "5" 16
+%%Page: "iv" 17
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 12 Q
+0 X
+0 0 0 1 0 0 0 K
+(i) 72 99.79 T
+(v) 75.22 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "iv" 17
+%%Page: "iii" 18
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(iii) 529.99 99.79 T
+540 113.98 90 113.98 2 L
+0.25 H
+2 Z
+N
+540 671.98 90 671.98 2 L
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+0 10 Q
+0.37 (CHAPTER 1) 207 620.67 S
+2 14 Q
+(Overvie) 324 620.67 T
+(w) 368.1 620.67 T
+7 F
+(5) 391.44 620.67 T
+0 10 Q
+0.37 (CHAPTER 2) 207 584.67 S
+2 14 Q
+(Platform Speci\336c Sour) 324 584.67 T
+(ces) 450.25 584.67 T
+7 F
+(7) 482.13 584.67 T
+3 10 Q
+(SCSI I/O routines) 324 564.33 T
+1 F
+(8) 405.67 564.33 T
+3 F
+(Making mtio\0507\051 style i/o w) 324 550.33 T
+(ork) 431.68 550.33 T
+1 F
+(10) 455.01 550.33 T
+3 F
+(Miscelleneous Platform Dependant Routines) 324 536.33 T
+1 F
+(11) 513.15 536.33 T
+0 F
+0.37 (CHAPTER 3) 207 499.67 S
+2 14 Q
+(Drive Description T) 324 499.67 T
+(ables) 435.48 499.67 T
+7 F
+(13) 479.04 499.67 T
+3 10 Q
+(Ov) 324 479.33 T
+(ervie) 336.07 479.33 T
+(w) 355.81 479.33 T
+1 F
+(13) 373.03 479.33 T
+3 F
+(Error T) 324 465.33 T
+(ranslation T) 353.36 465.33 T
+(ables) 400.61 465.33 T
+1 F
+(14) 431.16 465.33 T
+2 9 Q
+(Initial Err) 336.02 453 T
+(or T) 372.38 453 T
+(r) 387.14 453 T
+(anslation T) 390.5 453 T
+(ables) 430.43 453 T
+7 F
+(14) 458.43 453 T
+2 F
+(Updating Err) 336.02 441 T
+(or T) 384.37 441 T
+(ables) 398.8 441 T
+7 F
+(14) 426.8 441 T
+3 10 Q
+(De) 324 427.33 T
+(vice Node Descriptions) 335.41 427.33 T
+1 F
+(15) 439.28 427.33 T
+2 9 Q
+(Oper) 336.02 415 T
+(ating System and Drive id strings) 354.38 415 T
+7 F
+(15) 483.63 415 T
+2 F
+(The Contr) 336.02 403 T
+(oller string) 372.38 403 T
+7 F
+(16) 421.63 403 T
+2 F
+(The Fla) 336.02 391 T
+(gs wor) 364.18 391 T
+(d) 388.11 391 T
+7 F
+(16) 401.61 391 T
+2 F
+(The scsi_ops F) 336.02 379 T
+(ield) 389.62 379 T
+7 F
+(17) 412.12 379 T
+2 F
+(The err) 336.02 367 T
+(ortr) 362.37 367 T
+(ans \336eld) 376.24 367 T
+7 F
+(17) 415.48 367 T
+2 F
+(The densitytr) 336.02 355 T
+(ans \336eld) 383.14 355 T
+7 F
+(18) 422.39 355 T
+2 F
+(Drive name con) 336.02 343 T
+(ver) 393.15 343 T
+(sion strings) 404.55 343 T
+7 F
+(18) 455.31 343 T
+2 F
+(Drive identifcation command) 336.02 331 T
+7 F
+(18) 450.51 331 T
+2 F
+(De) 336.02 319 T
+(vice node descriptions:) 346.38 319 T
+7 F
+(18) 438.87 319 T
+2 F
+(Drive Statistics T) 336.02 307 T
+(ables) 397.7 307 T
+7 F
+(19) 425.7 307 T
+0 0 0 1 0 0 0 K
+FMENDPAGE
+%%EndPage: "iii" 18
+%%Page: "ii" 19
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+1 12 Q
+0 X
+0 0 0 1 0 0 0 K
+(ii) 72 99.79 T
+2 10 Q
+(F) 189 99.79 T
+(ermi T) 194.36 99.79 T
+(ape T) 219.83 99.79 T
+(ools P) 241.41 99.79 T
+(orting Guide) 265.89 99.79 T
+522 696.68 72 696.68 2 L
+2 H
+2 Z
+N
+522 113.98 72 113.98 2 L
+0.25 H
+N
+522 671.98 72 671.98 2 L
+N
+3 F
+(.) 189 629.31 T
+(Cop) 189 409.31 T
+(yright 1989 by Uni) 205.57 409.31 T
+(v) 281.71 409.31 T
+(ersities Research Association.) 286.56 409.31 T
+(All rights reserv) 189 387.31 T
+(ed.) 253.84 387.31 T
+(ISBN) 189 277.31 T
+FMENDPAGE
+%%EndPage: "ii" 19
+%%Page: "i" 20
+612 792 0 FMBEGINPAGE
+[0 0 0 1 0 0 0]
+[ 0 1 1 0 1 0 0]
+[ 1 0 1 0 0 1 0]
+[ 1 1 0 0 0 0 1]
+[ 1 0 0 0 0 1 1]
+[ 0 1 0 0 1 0 1]
+[ 0 0 1 0 1 1 0]
+ 7 FrameSetSepColors
+FrameNoSep
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+0 0 0 1 0 0 0 K
+2 10 Q
+0 X
+0 0 0 1 0 0 0 K
+(F) 207 99.79 T
+(ermi T) 212.36 99.79 T
+(ape T) 237.83 99.79 T
+(ools P) 259.41 99.79 T
+(orting Guide) 283.89 99.79 T
+1 12 Q
+(i) 536.66 99.79 T
+540 108 90 108 2 L
+0.5 H
+2 Z
+N
+540 696.68 90 696.68 2 L
+2 H
+N
+540 423 90 423 2 L
+0.5 H
+N
+2 30 Q
+-1.1 (The F) 90 604.68 S
+-1.1 (ermi T) 153.06 604.68 S
+-1.1 (ape T) 222.85 604.68 S
+-1.1 (ools \050ftt\051 P) 282.07 604.68 S
+-1.1 (orting Guide) 394.77 604.68 S
+0 13 Q
+(b) 90 520.01 T
+(y Mar) 97.68 520.01 T
+(c W) 131.38 520.01 T
+(. Meng) 153.45 520.01 T
+(el, Fermilab) 194.75 520.01 T
+FMENDPAGE
+%%EndPage: "i" 20
+%%Trailer
+%%BoundingBox: 0 0 612 792
+%%PageOrder: Descend
+%%Pages: 20
+%%DocumentFonts: Helvetica-Bold
+%%+ Times-Bold
+%%+ Times-Italic
+%%+ Times-Roman
+%%+ Courier-Bold
+%%+ Courier
+%%+ Courier-Oblique
+%%+ Times-BoldItalic
+%%EOF
