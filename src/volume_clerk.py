@@ -875,17 +875,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 self.reply_to_caller(ticket)
                 return
 
-        #TEMPORARY TRY BLOCK - all new volumes should already have the non_del_files key
-        try:
-            non_del_files = record['non_del_files']
-        except KeyError:
-            record['non_del_files'] = record['sum_wr_access']-record['sum_wr_err']
-
-        # update the non-deleted file count if we wrote to the tape
-        # this key gets decremented when we delete files
-        if not ticket.get('wr_err',0):
-            record['non_del_files'] = record['non_del_files'] + \
-                                      ticket['wr_access']
         # record our changes
         self.dict[external_label] = record  
         record["status"] = (e_errors.OK, None)
@@ -1061,7 +1050,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        # add fields
+        # add fields XXX is this still necessary? -cgw
         try:
             at_mover = record['at_mover']
         except KeyError:
