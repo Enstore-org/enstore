@@ -213,12 +213,15 @@ class FTTDriver(driver.Driver):
         return self.fd
 
     def flush(self):
+        if not self.ftt:
+            return 0
         Trace.trace(25, "flushing %s" % (self.ftt))
         now=time.time()
         Trace.trace(25, "transferred %s bytes in %s seconds"%(
             self._bytes_transferred, now-self._start_time))
         if now>self._start_time and self._bytes_transferred:
             Trace.trace(25,  "rate: %.3g MB/sec" % (self._bytes_transferred/(now-self._start_time)/MB))
+        
         try:
             #Trace.trace(42, "ftt.close_dev()")
             r = self.ftt.close_dev()
