@@ -110,6 +110,7 @@ forked_state = [ 'forked',
 def sigterm( sig, stack ):
     # must just try: b/c may get "AttributeError: hsm_driver" which causes
     # forked process to become server via dispatching working exception handling
+    #print '%d sigterm called'%os.getpid()
     try: del mvr_srvr.client_obj_inst.hsm_driver.shm
     except: pass			# wacky things can happen with forking
     try: del mvr_srvr.client_obj_inst.hsm_driver.sem
@@ -125,7 +126,9 @@ def sigterm( sig, stack ):
 	time.sleep(3)
 	posix.waitpid( mvr_srvr.client_obj_inst.pid, posix.WNOHANG )
 	pass
-    sys.exit( 0x80 | sig )
+    sys.exit( 0x80 | sig ) # Without this, this process exits, but only - 
+    # after a "select.error: (4, 'Interrupted system call')" exception (with
+    # associated traceback tty output).
     return None
 
 def sigint( sig, stack ):
