@@ -63,56 +63,60 @@ class Relay:
             
     def mainloop(self):
         last_heartbeat = 0
-        while 1:
-            readable, junk, junk = select.select([self.listen_socket], [], [], 15)
-            now = time.time()
-            if now - last_heartbeat > heartbeat_interval:
-                self.send_message(self.alive_msg, 'alive', now)
-		last_heartbeat = now
-            if not readable:
-                continue
-            msg = self.listen_socket.recv(1024)
+	try:
+	    while 1:
+		readable, junk, junk = select.select([self.listen_socket], [], [], 15)
+		now = time.time()
+		if now - last_heartbeat > heartbeat_interval:
+		    self.send_message(self.alive_msg, 'alive', now)
+		    last_heartbeat = now
+		if not readable:
+		    continue
+		msg = self.listen_socket.recv(1024)
 
-            if not msg:
-                continue
-            tok = string.split(msg)
-            if not tok:
-                continue
-            if tok[0]==NOTIFY:
-                try:
-                    ip = tok[1]
-                    port = int(tok[2])
-                    # the rest of the message is the list of message types the
-                    # client is interested in.  if there is no list, the client
-                    # wants all message types
-                    filter_d = get_message_filter_dict(tok)
-                    self.clients[(ip, port)] = (now, filter_d)
-		    ### debugging log message
-		    msg = "Subscribe request for %s, (port: %s) for %s."%(ip, port,
-									  filter_d)
-		    Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
-                except:
-		    msg = "cannot handle request %s"%(msg,)
-		    ### debugging log message
-		    Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
-                    print msg
-		    traceback.print_exc()
+		if not msg:
+		    continue
+		tok = string.split(msg)
+		if not tok:
+		    continue
+		if tok[0]==NOTIFY:
+		    try:
+			ip = tok[1]
+			port = int(tok[2])
+			# the rest of the message is the list of message types the
+			# client is interested in.  if there is no list, the client
+			# wants all message types
+			filter_d = get_message_filter_dict(tok)
+			self.clients[(ip, port)] = (now, filter_d)
+			### debugging log message
+			msg = "Subscribe request for %s, (port: %s) for %s."%(ip, port,
+									      filter_d)
+			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+		    except:
+			msg = "cannot handle request %s"%(msg,)
+			### debugging log message
+			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+			print msg
+			traceback.print_exc()
 
-            elif tok[0] == UNSUBSCRIBE:
-                try:
-                    ip = tok[1]
-                    port = int(tok[2])
-                    del self.clients[(ip, port)]
-		    ### debugging log message
-		    msg = "Unsubscribe request for %s, (port: %s)"%(ip, port)
-		    Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
-                except:
-		    msg = "cannot handle request %s"%(msg,)
-		    ### debugging log message
-		    Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
-                    print msg
-            else:
-                self.send_message(msg, tok[0], now)
+		elif tok[0] == UNSUBSCRIBE:
+		    try:
+			ip = tok[1]
+			port = int(tok[2])
+			del self.clients[(ip, port)]
+			### debugging log message
+			msg = "Unsubscribe request for %s, (port: %s)"%(ip, port)
+			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+		    except:
+			msg = "cannot handle request %s"%(msg,)
+			### debugging log message
+			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+			print msg
+		else:
+		    self.send_message(msg, tok[0], now)
+	except:
+	    Trace.handle_error()
+	    break
         
     def send_message(self, msg, msg_type, now):
         """Send the message to all clients who care about it"""
