@@ -580,11 +580,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    t = self.csc.get("log_server")
 	    lfd = t["log_file_path"]
 
+        out_dir = ticket.get("out_dir", lfd)
+
         keep = ticket.get("keep", 0)
         pts_dir = ticket.get("keep_dir", "")
         
-	self.encp_plot(ticket, lfd, keep, pts_dir)
-	self.mount_plot(ticket, lfd, keep, pts_dir)
+	self.encp_plot(ticket, lfd, keep, pts_dir, out_dir)
+	self.mount_plot(ticket, lfd, keep, pts_dir, out_dir)
 	ret_ticket = { 'status'   : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
 
@@ -697,8 +699,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.send_reply(ticket)
 
     # make the mount plots (mounts per hour and mount latency
-    def mount_plot(self, ticket, lfd, keep, pts_dir):
-	ofn = lfd+"/mount_lines.txt"
+    def mount_plot(self, ticket, lfd, keep, pts_dir, out_dir):
+	ofn = out_dir+"/mount_lines.txt"
 
 	# parse the log files to get the media changer mount/dismount
 	# information, put this info in a separate file
@@ -723,14 +725,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # only do the plotting if we have some data
         if mountfile.data:
             # create the data files
-            mphfile = enstore_plots.MphDataFile(lfd)
+            mphfile = enstore_plots.MphDataFile(out_dir)
             mphfile.open()
             mphfile.plot(mountfile.data)
             mphfile.close()
             mphfile.install(self.html_dir)
             mphfile.cleanup(keep, pts_dir)
 
-            mlatfile = enstore_plots.MlatDataFile(lfd)
+            mlatfile = enstore_plots.MlatDataFile(out_dir)
             mlatfile.open()
             mlatfile.plot(mountfile.data)
             mlatfile.close()
@@ -739,8 +741,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # make the total transfers per unit of time and the bytes moved per day
     # plot
-    def encp_plot(self, ticket, lfd, keep, pts_dir):
-	ofn = lfd+"/bytes_moved.txt"
+    def encp_plot(self, ticket, lfd, keep, pts_dir, out_dir):
+	ofn = out_dir+"/bytes_moved.txt"
 
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
@@ -762,13 +764,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         # only do the plotting if we have some data
         if encpfile.data:
-            bpdfile = enstore_plots.BpdDataFile(lfd)
+            bpdfile = enstore_plots.BpdDataFile(out_dir)
             bpdfile.open()
             bpdfile.plot(encpfile.data)
             bpdfile.close()
             bpdfile.install(self.html_dir)
 
-            xferfile = enstore_plots.XferDataFile(lfd, bpdfile.ptsfile)
+            xferfile = enstore_plots.XferDataFile(out_dir, bpdfile.ptsfile)
             xferfile.open()
             xferfile.plot(encpfile.data)
             xferfile.close()
