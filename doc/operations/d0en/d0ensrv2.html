@@ -73,6 +73,7 @@ before you do this.) can be loaded by
 <br>
 Logger
 <ul>
+
 <li> <a
 href="http://www-hppc.fnal.gov/enstore/design.html#log_server">
 Detailed Information </a> on the Enstore Logger is available from the
@@ -96,22 +97,77 @@ files on d0ensrv2:/diska/enstore-log.  An easy way to understand what
 is currently going on in the Enstore system is to "tail -f &lt
 log_file &gt.
 
+
+<p>
+<li> Logs are backed up every 15 minutes to the d0ensrv3.
+
 </ul>
 
 <br>
 <br>
 <br>
 Alarm Server
+
 <ul>
-<p>
-<li>
+<li> <a
+href="http://www-hppc.fnal.gov/enstore/design.html#alarm_server">
+Detailed Information </a> on the Alarm server is available from the
+<a href="http://www-hppc.fnal.gov/enstore/design.html"> Enstore
+Technical Document.</a> Command details are covered there.
+
+<p> <li> <a href="http://d0ensrv2/enstore/enstore_alarms.html">
+Current Alarms </a> need to be checked and corrected by an
+administrator since enstore attempts error recovery whenever
+possible. Any alarms will need human intervention to correct the
+problem.
+
 </ul>
 
 <br>
 <br>
 <br>
 Inquisitor
+
 <ul>
+
+<li> <a
+href="http://www-hppc.fnal.gov/enstore/design.html#inquisitor">
+Detailed Information </a> on the Inqusitor server is available from
+the <a href="http://www-hppc.fnal.gov/enstore/design.html"> Enstore
+Technical Document.</a> Command details are covered there.
+
+<li> The inquistor is <it>the source</it> for <a
+href="http://www-d0en:/enstore/enstore_system.html"> Information </a>
+about what is happening in Enstore.  It queries and checks everything
+possible. There is no reason for user's to do check anything else.
+
+<li> To reduce load and traffic, the inquisitor performs its checks
+periodically. These values are tunable.  Information on the web pages
+may be several minutes old and not represent exactly what is
+happening.
+
+<li> If the inquisitor discovers that a Enstore component is not
+responding to pings, it will try to restart it.  If it can't it will
+generate an alarm.
+
+<p>
+<li> There are several actions done on d0ensrv2 because the inquisitor
+is running and it needs local files to present the data:
+ <ul>
+
+   <li> A <a href="http://d0ensrv2/enstore/tape_inventory/"> Tape
+   Inventory </a> is made every night and stored to
+   /diska/tape-inventory.
+
+   <li> The <a href="http://d0ensrv2.fnal.gov:/enstore/aml2log.html">
+   AML/2 Log </a> files are fetched every 15 minutes.
+
+   <li> A whole series of <a
+   href="http://d0ensrv2/enstore/misc_enstore_system.html">
+   Miscellaneous Status </a> commands are executed to give the user
+   more information about the d0en cluster.
+ </ul>
+
 </ul>
 
 
@@ -121,8 +177,17 @@ Inquisitor
 <br>
 Patrol
 <ul>
+
+<li> <a
+href="http://www-hppc.fnal.gov/enstore/design.html#patrol">
+Detailed Information </a> on Patrol  is available from the
+<a href="http://www-hppc.fnal.gov/enstore/design.html"> Enstore
+Technical Document.</a>
+
 <p>
-<li>
+<li> Patrol gathers information from the Alarm Server and generates a
+patrol page that can be centrally monitored. WHO IS MONITORING THE
+PATROL PAGE?
 </ul>
 
 
@@ -130,9 +195,26 @@ Patrol
 <br>
 <br>
 Web Server
+
 <ul>
+
+<li> The standard apache web server, from KITS, is user to provide
+Enstore's web pages.
+
 <p>
-<li>
+<li> The web server must be running on the same node as the inqusitor runs.
+
+<p>
+<li> The web page should be accessed by using the alias www-d0en and
+not d0ensrv2. This allows us to change the web server node without changing the
+web address.
+
+<p>
+<li> The enstore pages are rooted at /local/ups/prd/www_pages/enstore,
+the patrol pages at /local/ups/prd/www_pages/patrol, and apache's own
+log at /local/ups/prd/www_pages/logs and/var/adm/www/d0en
+
+
 </ul>
 
 
@@ -142,71 +224,37 @@ Web Server
 Cron jobs executing on d0ensrv1:
 <ul>
 
-<li> user root - plog.  If this fails, either you are out of disk
-space on /diska for the pnfs logs or else something is not configured
-correctly. (This cronjob runs in the pnfs framework, not the enstore
-one).
+<li> user enstore - log-stash. If this fails, ?
 
-<li> user root - pnfsFastBackup. If this fails either you are out of
-disk space on /diska for the backups, or the backup node, d0ensrv3, is
-down or out of disk space, or the network connection to the backup
-node is down. (This cronjob runs in the pnfs framework, not the
-enstore one).
+<li> user enstore - tape_inventory.  If this fails, most likely the
+file and/or the volume clerk are not working.
 
-<li> user root - delfile. If this fails, there is probably with the
-file clerk.
+<li> user enstore - inqPlotUpdate. If this fails, mostly likely the
+inqusitor is not working.
 
-<li> user root - rsync. If this fails, there are problems with the
-raid disks, /diska or /diskb.
+<li> user enstore - aml2logs.  If this fails, most likely the AML/2
+OS/2 node, adic2, or its network connection is not working.
 
-<li> user enstore backup.  If this fails either you are out of disk
-space on /diskb for the backups, or the backup node, d0ensrv3, is down
-or out of disk space, or the network connection to the backup node is
-down.
+<li> user enstore - rdist-log. If this fails, mostly likely the backup
+node, d0ensrv3, or its network connection is not working.
 
-<li> user enstore - checkfile. This doesn't work right now.
 
-<li> user enstore - checkvolume. This doesn't work right now.
+<li> user patrol - patrol.job.  If this fails, ?
+
+<li> user root - monthlystats.  This always fails and needs to be
+deleted or fixed!
 
 <li> user root - tarit. If this fails, the most likely reason is
 because either rip8 (the backup node for the ide system disk) or the
 network connection to rip8 is down.
 
-</ul>
+<li> user root - chkcrons. If this fails, the most likely reason is
+because one of the d0en nodes, or its network connection, is down.
 
 
-
-<br>
-<br>
-<br>
-Raid Software
-<ul>
-
-<li> Mirroring has been disabled in the standard linux kernel.  To
-re-enable it, a patch from
-ftp://ftp.kernel.org/pub/linux/daemons/raid/alpha/raid0145-19990824-2.2.11.patch
-was applied to the 2.2.13 linux kernel.  This went smoothly.
-
-<li> Up to date raid tools, not available via the standard
-distribution, also had to be installed to make mirroring work
-properly. These raidtools were gotten from the same place as the raid
-patch,
-ftp://ftp.kernel.org/pub/linux/daemons/raid/alpha/raidtools-19990824-0.90.tar.gz
-
-<li> The raid devices are declared in /etc/raidtab (not the older
-/etc/mdtab). There are 2 raid disks on d0ensrv1 and each one is
-composed of 2 9 GB scsi disks to form 1 9 GB scsi disk.  There are no
-spare disks in the configuration.
-
-<li> You can check the <a
-href="http://www-d0en.fnal.gov/enstore/d0ensrv1_raid_status.txt"> Raid Status
-Page </a> to look for errors.  This page is updated every few
-minutes. You can also log into d0ensrv1 and type "raidinfo" to get
-current values.  One needs to pay particular attention to the 1st few
-lines that show the disk's current state.
+0 4 * * * /local/ups/prd/httpd/admin/monthlystats >/dev/null 2>/dev/null
 
 </ul>
-
 
 
 <br>
@@ -215,15 +263,11 @@ lines that show the disk's current state.
 Bootup
 <ul>
 
-<li> Raidstart is invoked.
-
-<li> Each raid disk has e2fsck run on it to correct any errors
-
-<li> The pnfs servers are started.
-
 <li> The Enstore servers are started.
 
 <li> FTT makes /dev/rmt scsi devices.
+
+<li> The apache web server is started.
 
 <li> The BMC watchdog is armed and deadman is started at real-time
 priority.
@@ -236,6 +280,8 @@ priority.
 <br>
 Some Details:
 <ul>
+
+<li> 2 apache related accounts, wsrvd0en and wadmd0en, are needed.
 
 </ul>
 
