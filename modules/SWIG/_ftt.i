@@ -399,4 +399,26 @@ int ftt_set_last_operation(ftt_descriptor, int);
 #define FTT_OPN_RSKIPFM		17
 #define FTT_OPN_SETDENSITY	18
 #define FTT_OPN_SETCOMPRESSION	19
+
+/* operation masks */
+#define FTT_OP_READ 		(1 <<  FTT_OPN_READ )
+#define FTT_OP_WRITE 		(1 <<  FTT_OPN_WRITE )
+#define FTT_OP_WRITEFM 		(1 <<  FTT_OPN_WRITEFM )
+#define FTT_OP_SKIPREC 		(1 <<  FTT_OPN_SKIPREC )
+#define FTT_OP_SKIPFM 		(1 <<  FTT_OPN_SKIPFM )
+#define FTT_OP_REWIND 		(1 <<  FTT_OPN_REWIND )
+#define FTT_OP_UNLOAD 		(1 <<  FTT_OPN_UNLOAD )
+#define FTT_OP_RETENSION 	(1 <<  FTT_OPN_RETENSION )
+#define FTT_OP_ERASE 		(1 <<  FTT_OPN_ERASE )
+#define FTT_OP_STATUS 		(1 <<  FTT_OPN_STATUS )
+#define FTT_OP_GET_STATUS 	(1 <<  FTT_OPN_GET_STATUS )
+#define FTT_OP_ASYNC 		(1 <<  FTT_OPN_ASYNC )
+#define FTT_OP_PASSTHRU      	(1 <<  FTT_OPN_PASSTHRU )
+#define FTT_OP_CHALL           	(1 <<  FTT_OPN_CHALL )
+#define FTT_OP_OPEN            	(1 <<  FTT_OPN_OPEN )
+#define FTT_OP_RSKIPREC		(1 <<  FTT_OPN_RSKIPREC)
+#define FTT_OP_RSKIPFM		(1 <<  FTT_OPN_RSKIPFM)
+#define FTT_OP_SETDENSITY	(1 <<  FTT_OPN_SETDENSITY)
+#define FTT_OP_SETCOMPRESSION	(1 <<  FTT_OPN_SETCOMPRESSION)
+
 /* end HACK*/

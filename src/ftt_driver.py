@@ -223,6 +223,11 @@ class FTTDriver(driver.Driver):
         r=0
         try:
             r = self.ftt.writefm()
+            #### XXX Hack! Avert your eyes, innocent ones!
+            ## We don't want a subsequent "close" to write extra filemarks.
+            ## ftt_close_dev is being too helpful in the case where the last operation
+            ## was a writefm.  So we tell a lie to ftt...
+            ftt._ftt.ftt_set_last_operation(self.ftt.d, ftt.OP_SKIPFM)
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.errno))
         if r==-1:
