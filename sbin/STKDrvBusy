@@ -54,7 +54,7 @@ set nokey
 plot \"$busy\" using 1:2 t \"9840 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plot9840.ps $plot9840.jpg
-	 convert -rotate 90 -geometry 120x120 -modulate -20 $plot9840.jpg $plot9840_stamp.jpg
+	 convert -rotate 90 -geometry 120x120 -modulate -20 $plot9840.jpg ${plot9840}_stamp.jpg
 
          rm -f $pltcmd
          echo "set output \"$plot9940.ps\"
@@ -72,7 +72,7 @@ set nokey
 plot \"$busy\" using 1:4 t \"9940 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plot9940.ps $plot9940.jpg
-	 convert -rotate 90 -geometry 120x120 -modulate -20 $plot9940.jpg $plot9940_stamp.jpg
+	 convert -rotate 90 -geometry 120x120 -modulate -20 $plot9940.jpg ${plot9940}_stamp.jpg
 
         else
          echo \"$0 $command\" can only be run on $plotnode because that is the only one that has a web server
