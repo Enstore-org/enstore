@@ -139,4 +139,14 @@ enrcp \$F $node:$SPECIAL
   ls -l $SPECIAL
 fi
 
+#On the servers, there are extra files that also need to be backed up
+if [ `echo $node | grep -c mvr` -eq 0 ]; then
+  SPECIAL=$BACKUP/enstore/$gang/special/$node.extra.tgz
+  T=/tmp/`basename $SPECIAL`
+  rm -f $T
+  tar -czf $T /home/bakken/P /local/ups/db/pnfs /local/ups/prd/pnfs /boot /usr/src/ /lib/modules
+  # I don't know how to get just the /pnfs... mountpoints or /diska /diskb... mountpoints
+  cp $T $SPECIAL
+fi
+
 umount $BACKUP
