@@ -410,12 +410,13 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
     vq_file.write("Date this listing was generated: %s\n" % \
                   time.asctime(time.localtime(time.time())))
     
-    vq_file.write("%-10s %-15s %-11s %-12s %-6s %-9s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
+    vq_file.write("   %-15s %-15s %-11s %-12s %-6s %-9s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
           ("Library", "Storage Group", "Req. Alloc.",
            "Auth. Alloc.", "Quota", "Allocated",
            "Blank Vols", "Written Vols", "Deleted Vols", "Space Used",
            "Active Files", "Deleted Files", "Unknown Files"))
 
+    libraries = quotas['libraries'].keys()
     quotas = volume_quotas.keys()
     
     top = []
@@ -447,21 +448,24 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
         if keys not in top + bottom:
             middle.append(keys)
 
+    count = 0
     for quotas in (top, middle, bottom):
         quotas.sort()
         for keys in quotas:
-            if volume_quotas[keys][1] == "none":
-                formated_storage_group = "none: emergency"
+            count = count + 1
+            if keys[0] in libraries and \
+                volume_quotas[keys][1] == "none":
+                formated_storage_group = "none: <font color=#ff0000>emergency</font>"
             else:
                 formated_storage_group = volume_quotas[keys][1]
-            formated_tuple = (volume_quotas[keys][0],) + \
+            formated_tuple = (count, volume_quotas[keys][0],) + \
                              (formated_storage_group,) + \
                              authorized_tapes.get(volume_quotas[keys][:2],
                                                   ("N/A", "N/A")) + \
                              volume_quotas[keys][2:7] + \
                              format_storage_size(volume_quotas[keys][7]) + \
                              volume_quotas[keys][8:]
-            vq_file.write("%-10s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
+            vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
                           % formated_tuple)
         vq_file.write("\n") #insert newline between sections
     vq_file.close()
@@ -512,11 +516,13 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file):
     # it have the same format.
     keys = library_dict.keys()
     keys.sort()
+    count = 0
     for key in keys:
-        formated_tuple = library_dict[key][0:9] + \
+        count = count + 1
+        formated_tuple = (count,) + library_dict[key][0:9] + \
                          format_storage_size(library_dict[key][9]) + \
                          library_dict[key][10:]
-        vq_file.write("%-10s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
+        vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
                       % formated_tuple)
     vq_file.write("\n") #insert newline between sections
 
