@@ -15,7 +15,7 @@ extern int getopt(int, char * const *, const char *);
 extern char *optarg;
 extern int optind;
 
-char *volumeName = NULL;
+extern char *volumeName;
 
 int copyfile(int src, int dest, size_t bufsize, off_t *size)
 {

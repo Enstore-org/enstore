@@ -33,6 +33,9 @@ all $(TARGET):
 		AIX) \
 			$(MAKE) -f Makefile.alpha $@ ; \
 			;; \
+                OSF1) \
+                        $(MAKE) -f Makefile.alpha $@ ; \
+                        ;; \
 		CYGWIN*) \
 			$(MAKE) -f Makefile.w32 $@ ;\
 			;; \

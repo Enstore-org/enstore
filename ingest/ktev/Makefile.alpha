@@ -7,7 +7,7 @@
 #
 
 #CC = 
-CFLAGS = -g -I. -DNOT_THREAD_SAFE -std1 -DBSD_SYSCALLS
+CFLAGS = -g -I. -I$(DCAP_DIR)/include -DNOT_THREAD_SAFE -std1 -DBSD_SYSCALLS
 
 MAKEDEP = $(CC) -M
 

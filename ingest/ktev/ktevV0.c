@@ -15,7 +15,7 @@ extern int getopt(int, char * const *, const char *);
 extern char *optarg;
 extern int optind;
 
-char *volumeName = NULL;
+extern char *volumeName = NULL;
 
 int get_record(char *buffer, int buffer_size, int src)
 {
@@ -25,6 +25,17 @@ int get_record(char *buffer, int buffer_size, int src)
   n = dc_read(src, &record_length, sizeof(int));
   n = dc_read(src, buffer, record_length);
   n = dc_read(src, &record_length, sizeof(int));
+  return n>0?record_length:n;
+}
+
+int put_record(char *buffer, int buffer_size, int dest)
+{
+
+  int n;
+  int record_length;
+  n = dc_write(dest, &record_length, sizeof(int));
+  n = dc_write(dest, buffer, record_length);
+  n = dc_write(dest, &record_length, sizeof(int));
   return n>0?record_length:n;
 }
 
@@ -78,17 +89,22 @@ int getFile(char *volumeName, char fileName[FILENAME_LEN])
   if(dir) 
     {
       dirent = readdir(dir);
-      strncpy(fileName, path, FILENAME_LEN);
-      strncat(fileName, dirent->d_name, FILENAME_LEN);
-      stat(fileName, &stat_buf);
-      while(dirent && S_ISDIR(stat_buf.st_mode) )
+      if(dirent)
 	{
-	  dirent = readdir(dir);
 	  strncpy(fileName, path, FILENAME_LEN);
 	  strncat(fileName, dirent->d_name, FILENAME_LEN);
 	  stat(fileName, &stat_buf);
+	  while(dirent && S_ISDIR(stat_buf.st_mode) )
+	    {
+	      dirent = readdir(dir);
+	      strncpy(fileName, path, FILENAME_LEN);
+	      strncat(fileName, dirent->d_name, FILENAME_LEN);
+	      stat(fileName, &stat_buf);
+	    }
+	  return (int)dirent;
 	}
-      return (int)dirent;
+      else
+	return -2;
     }
   else 
     {
@@ -118,7 +134,7 @@ main(int argc, char *argv[])
 
   printf("Going to process volume: %s\n", volumeName);
 
-  while(getFile(volumeName, fileName))
+  while(getFile(volumeName, fileName) > 0)
     {
       printf("Found file: %s\n", fileName );
       src = dc_open(fileName,O_RDONLY | O_BINARY );
