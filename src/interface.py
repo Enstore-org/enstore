@@ -306,14 +306,10 @@ class Interface:
                 self.update = value
             elif opt == "--timestamp" :
                 self.timestamp = 1
-            elif opt == "--max_ascii_size" :
-                self.max_ascii_size = int(value)
             elif opt == "--max_encp_lines" :
                 self.max_encp_lines = int(value)
             elif opt == "--get_max_encp_lines" :
                 self.get_max_encp_lines = 1
-            elif opt == "--get_max_ascii_size" :
-                self.get_max_ascii_size = 1
             elif opt == "--crc":
                 self.chk_crc = 1
             elif opt == "--priority" :

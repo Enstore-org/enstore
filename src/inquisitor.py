@@ -86,13 +86,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def alive_status(self, client, (host, port), prefix, time, key):
 	stat = client.alive(key, self.alive_rcv_timeout, self.alive_retries)
 	if not stat['status'] == ('TIMEDOUT', None):
-	    self.asciifile.output_alive(host, prefix, stat, time, key)
 	    self.htmlfile.output_alive(host, prefix, stat, time, key)
 	    self.last_alive[key] = time
 	else:
             last_time = self.last_alive.get(key, -1)
-	    self.asciifile.output_etimedout((host, port), prefix, time, key, 
-                                            last_time)
 	    self.htmlfile.output_etimedout((host, port), prefix, time, key, 
 	                                   last_time)
             Trace.trace(14,"alive_status - ERROR, alive timed out")
@@ -113,7 +110,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 t = self.csc.get_uncached(key, self.alive_rcv_timeout,
                                           self.alive_retries)
             except errno.errorcode[errno.ETIMEDOUT]:
-                self.asciifile.output_noconfigdict(prefix, time, key)
                 self.htmlfile.output_noconfigdict(prefix, time, key)
                 Trace.trace(13,"alive_and_restart - ERROR, getting config dict timed out ")
                 return TIMED_OUT
@@ -212,7 +208,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(prefix, time, key)
 	    self.htmlfile.output_noconfigdict(prefix, time, key)
             Trace.trace(13,"do_alive_check - ERROR, getting config dict timed out ")
 	    return TIMED_OUT
@@ -310,11 +305,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def suspect_vols(self, lm, (host, port), key, time):
 	try:
 	    stat = lm.get_suspect_volumes()
-	    self.asciifile.output_suspect_vols(stat, key)
 	    self.htmlfile.output_suspect_vols(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.asciifile.output_etimedout((host, port), TIMED_OUT_SP, time,
-                                            key)
 	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
                                            key)
 	    Trace.trace(13, "suspect_vols - ERROR, timed out")
@@ -323,11 +315,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def work_queue(self, lm, (host, port), key, time):
 	try:
 	    stat = lm.getwork()
-	    self.asciifile.output_lmqueues(stat, key)
 	    self.htmlfile.output_lmqueues(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.asciifile.output_etimedout((host, port), TIMED_OUT_SP, time,
-                                            key)
 	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
                                            key)
 	    Trace.trace(13, "work_queue - ERROR, timed out")
@@ -336,11 +325,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def mover_list(self, lm, (host, port), key, time):
 	try:
 	    stat = lm.getmoverlist()
-	    self.asciifile.output_lmmoverlist(stat, key)
 	    self.htmlfile.output_lmmoverlist(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.asciifile.output_etimedout((host, port), TIMED_OUT_SP, time,
-                                            key)
 	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
                                            key)
 	    Trace.trace(13, "mover_list - ERROR, timed out")
@@ -349,11 +335,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def mover_status(self, movc, (host, port), key, time):
 	try:
 	    stat = movc.status(self.alive_rcv_timeout, self.alive_retries)
-	    self.asciifile.output_moverstatus(stat, key)
 	    self.htmlfile.output_moverstatus(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.asciifile.output_etimedout((host, port), TIMED_OUT_SP, time,
-                                            key)
 	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
                                            key)
 	    Trace.trace(13, "mover_status - ERROR, timed out")
@@ -370,7 +353,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(key+TRAILER, time, key)
 	    self.htmlfile.output_noconfigdict(key+TRAILER, time, key)
 	    Trace.trace(12,"update_library_manager - ERROR, getting config dict timed out")
 	    return
@@ -394,7 +376,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(key+TRAILER, time, key)
 	    self.htmlfile.output_noconfigdict(key+TRAILER, time, key)
             Trace.trace(12,"update_mover - ERROR, getting config dict timed out")
 	    return
@@ -413,7 +394,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(key+TRAILER, time, key)
 	    self.htmlfile.output_noconfigdict(key+TRAILER, time, key)
             Trace.trace(12,"update_media_changer - ERROR, getting config dict timed out")
 	    return
@@ -461,7 +441,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(IN_PREFIX, time, key)
 	    self.htmlfile.output_noconfigdict(IN_PREFIX, time, key)
             Trace.trace(12,"update_inquisitor - ERROR, getting config dict timed out")
 	    return
@@ -475,8 +454,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         work_ticket = { 'work' : "alive",
                         'address' : (t['host'], t['port']), 
                         'status' : (e_errors.OK, None)}
-	self.asciifile.output_alive(t['host'], IN_PREFIX, work_ticket,
-                                    time, key)
 	self.htmlfile.output_alive(t['host'], IN_PREFIX, work_ticket,
                                    time, key)
 
@@ -507,6 +484,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # update any encp information from the log files
     def update_encp(self, key, time):
         encplines = []
+	parsed_file = "%s%s"%(enstore_status.default_dir, "parsed")
 	# look to see if the log server LOGs are accessible to us.  if so we
 	# will need to parse them to get encp information.
         try:
@@ -520,7 +498,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # log file.
         if logfile and os.path.exists(logfile):
             encpfile = enstore_status.EnDataFile(logfile,
-                                                 self.parsed_file+".encp",
+                                                 parsed_file+".encp",
                                                  "-e %s"%Trace.MSG_ENCP_XFER,
                                                  "", "|sort -r")
             encpfile.open('r')
@@ -541,14 +519,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    logfile2 = t.get('last_logfile_name', "")
 	    if (logfile2 != logfile) and logfile2 and os.path.exists(logfile2):
 	        encpfile2 = enstore_status.EnDataFile(logfile2,
-                                                  self.parsed_file+".encp2",
+                                                  parsed_file+".encp2",
                                                   "-e %s"%Trace.MSG_ENCP_XFER,
 	                                          "", "|sort -r")
 	        encpfile2.open('r')
 	        encplines = encplines + encpfile2.read(self.max_encp_lines-i)
 	        encpfile2.close()
 	# now we have some info, output it
-	self.asciifile.output_encp(encplines, key)
 	self.encpfile.output_encp(encplines, key)
 
     # get the information about the blocksizes
@@ -556,12 +533,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(BL_PREFIX, time, key)
 	    self.htmlfile.output_noconfigdict(BL_PREFIX, time, key)
             Trace.trace(12,"update_blocksizes - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
-	    self.asciifile.output_blocksizes(t, BL_PREFIX, key)
 	    self.htmlfile.output_blocksizes(t, BL_PREFIX, key)
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
@@ -587,7 +562,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             pass
         if self.forked.has_key(key):
             del self.forked[key]
-	self.asciifile.remove_key(key)
 	self.htmlfile.remove_key(key)
 	self.encpfile.remove_key(key)
 
@@ -647,7 +621,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        if a_key != "config_server" and a_key != "encp" and\
                    a_key != "update_commands":
 	            del self.intervals[a_key]
-	            self.asciifile.remove_key(a_key)
 	            self.htmlfile.remove_key(a_key)
 	# if there was no encp, config_server or update_commands intervals
         # specified in the 
@@ -661,7 +634,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # flush the files we have been writing to
     def flush_files(self):
-	self.asciifile.flush()
 	self.htmlfile.flush()
 	self.encpfile.flush()
 
@@ -672,22 +644,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# anything), then this information is not to be displayed anyway.
 	ticket = self.csc.get(server)
 	if not ticket.has_key("inq_ignore"):
-	    self.asciifile.output_nofunc(server)
 	    self.htmlfile.output_nofunc(server)
 	else:
 	    # we should not display this info, however we may have been
 	    # displaying it until recently, so we need to remove it from the
 	    # file info.
-	    self.asciifile.remove_key(server)
 	    self.htmlfile.remove_key(server)
 	    self.encpfile.remove_key(server)
 
     # update the enstore system status information
     def do_update(self, do_all=0):
-
-	# check the ascii file and see if it has gotten too big and needs to be
-	# backed up and opened fresh.
-	self.asciifile.timestamp()
 
 	# open the html files and output the header to them
 	self.htmlfile.open()
@@ -838,7 +804,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(11, "reset       - %s"%self.reset)
 	Trace.trace(11, "htmlfile_orig - %s"%self.htmlfile_orig)
 	Trace.trace(11, "encpfile_orig - %s"%self.encpfile_orig)
-	Trace.trace(11, "parsed_file - %s"%self.parsed_file)
 	self.send_reply(ticket)
 
     # set the select timeout
@@ -881,12 +846,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             del self.reset[ticket[SERVER_KEYWORD]]
 	self.send_reply(ticket)
 
-    # set a new timestamp value
-    def set_maxi_size(self, ticket):
-        ticket["status"] = (e_errors.OK, None)
-        self.asciifile.set_max_ascii_size(ticket['max_ascii_size'])
-	self.send_reply(ticket)
-
     # set a new refresh value for the html files
     def set_refresh(self, ticket):
         ticket["status"] = (e_errors.OK, None)
@@ -912,12 +871,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         ticket["max_encp_lines"] = self.max_encp_lines
 	self.send_reply(ticket)
 
-    # timestamp the current ascii file, and open a new one
-    def do_timestamp(self, ticket):
-	ticket['status'] = (e_errors.OK, None)
-	self.asciifile.timestamp(enstore_status.FORCE)
-	self.send_reply(ticket)
-
     # get the current interval value
     # if a server keyword was entered, get the ping interval value for that
     # server.  else, get the interval for the inq server in the udp select.
@@ -931,12 +884,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                            SERVER_KEYWORD  : ticket[SERVER_KEYWORD], 
                            'status'  : (e_errors.DOESNOTEXIST, None) }
 	self.send_reply(ret_ticket)
-
-    # get the current maximum ascii file size
-    def get_maxi_size(self, ticket):
-	ticket['max_ascii_size'] = self.asciifile.get_max_ascii_size()
-	ticket['status'] = (e_errors.OK, None)
-	self.send_reply(ticket)
 
     # make the mount plots (mounts per hour and mount latency
     def mount_plot(self, ticket, lfd, keep, pts_dir, out_dir):
@@ -1023,9 +970,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
-    def __init__(self, csc, timeout=-1, ascii_file="", 
-                 html_file="", alive_rcv_to=-1, alive_retries=-1, 
-	         max_ascii_size=-1, max_encp_lines=-1, refresh=-1):
+    def __init__(self, csc, timeout=-1, html_file="", alive_rcv_to=-1, 
+		 alive_retries=-1, max_encp_lines=-1, refresh=-1):
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)
 	self.name = MY_NAME
@@ -1070,11 +1016,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	else:
 	    self.alive_retries = alive_retries
 
-	# if no max file size was entered on the command line, get it from the 
-	# configuration file.
-	if max_ascii_size == -1:
-            max_ascii_size = keys.get('max_ascii_size', max_ascii_size)
-
 	# if no max number of encp lines was entered on the command line, get 
 	# it from the configuration file.
 	if max_encp_lines == -1:
@@ -1082,14 +1023,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                                            default_max_encp_lines())
 	else:
 	    self.max_encp_lines = max_encp_lines
-
-	# get the ascii output file.  this should be in the configuration file.
-	if not ascii_file:
-            if keys.has_key('ascii_file'):
-	        self.parsed_file = keys['ascii_file']+"/"+\
-                                   enstore_status.ascii_file_name()
-	    else:
-	        self.parsed_file = enstore_status.default_ascii_file()
 
 	# get the directory where the files we create will go.  this should
 	# be in the configuration file.
@@ -1115,11 +1048,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         # the configuration file.
         if refresh == -1:
             refresh = keys.get('refresh', refresh)
-
-	# get an ascii system status file, and open it
-	self.asciifile = enstore_status.AsciiStatusFile(self.parsed_file, 
-                                                        max_ascii_size)
-	self.asciifile.open()
 
 	# add a suffix to the html file because we will write to this file and 
 	# maintain another copy of the file (with the user entered name) to
@@ -1175,12 +1103,10 @@ class InquisitorInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
 	# fill in the defaults for possible options
-	self.ascii_file = ""
 	self.html_file = ""
 	self.alive_rcv_timeout = -1
 	self.alive_retries = -1
 	self.inq_timeout = -1
-	self.max_ascii_size = -1
 	self.max_encp_lines = -1
 	self.refresh = -1
 	generic_server.GenericServerInterface.__init__(self)
@@ -1188,8 +1114,7 @@ class InquisitorInterface(generic_server.GenericServerInterface):
     # define the command line options that are valid
     def options(self):
 	return generic_server.GenericServerInterface.options(self)+\
-	       ["ascii_file=","html_file=","inq_timeout=",
-                "max_ascii_size=", "max_encp_lines=", "refresh="]+\
+	       ["html_file=","inq_timeout=", "max_encp_lines=", "refresh="]+\
 	       self.alive_rcv_options()
 
 if __name__ == "__main__":
@@ -1201,9 +1126,9 @@ if __name__ == "__main__":
 
     # get the inquisitor
     inq = Inquisitor((intf.config_host, intf.config_port), 
-                     intf.inq_timeout, intf.ascii_file, intf.html_file,
+                     intf.inq_timeout,intf.html_file,
                      intf.alive_rcv_timeout, intf.alive_retries,
-	             intf.max_ascii_size, intf.max_encp_lines,intf.refresh)
+	             intf.max_encp_lines,intf.refresh)
     # we no longer need the interface
     del intf
 
