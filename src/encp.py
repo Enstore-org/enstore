@@ -930,6 +930,7 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
 			 encp, ninput, retry, verbose, unique_id, retry_flag):
 
     t2 = time.time() #--------------------------------------------Lap-Start
+    rq_list = []
     Trace.trace(7,"{submit_read_requests="+repr(inputlist)+" t2="+repr(t2))
     Qd=""
     current_library = ''
@@ -969,64 +970,98 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
                            "unique_id"         : unique_id[i]
                            }
 
-            # send ticket to file clerk who sends it to right library manger
+
+            # send tickets to library manger
             Trace.trace(8,"submit_read_requests q'ing:"+repr(work_ticket))
 
             # get the library manager
             library = vinfo[i]['library']
-            # get LM info from Config Server only if it is different
-            if (current_library != library):
-                current_library = library
-                Trace.trace(8,"submit_read_requests calling config server\
-                to find "+current_library+".library_manager")
-                if verbose > 3:
-                    print "calling Config. Server to get LM info for", \
-                          current_library
-                lmticket = client['csc'].get(current_library+".library_manager")
-                Trace.trace(8,"submit_read_requests "+ current_library+\
-                            ".library_manager at host="+\
-                            repr(lmticket["hostip"])+\
-                            " port="+repr(lmticket["port"]))
-                if lmticket["status"][0] != e_errors.OK:
-                    pprint.pprint(lmticket)
-                    Trace.trace(0,"submit_read_requests "+ \
-                                repr(lmticket["status"]))
 
-            # send to library manager and tell user
-            ticket = client['u'].send(work_ticket, (lmticket['hostip'], lmticket['port']))
-            if verbose > 3:
-                print "ENCP:read_from_hsm FC read_from_hsm returned"
-                pprint.pprint(ticket)
-            if ticket['status'][0] != "ok" :
-		print_d0sam_format(inputlist[i], outputlist[i], file_size[i],
+	    rq = {"work_ticket": work_ticket,
+		  "infile"     : inputlist[i],
+		  "bfid"       : bfid[i],
+		  "library"    : vinfo[i]['library'],
+		  "index"      : i
+		  }
+	    rq_list.append(rq)
+
+    # now when we have request list per volume lets sort it
+    # according file location
+    #print "BEFORE SORTING"
+    #for j in range(0, len(rq_list)):
+	#print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
+    rq_list.sort(compare_location)
+    #print "AFTER SORTING"
+    #for j in range(0, len(rq_list)):
+	#print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
+
+    # submit requests
+    for j in range(0, len(rq_list)):
+	# send tickets to library manger
+	Trace.trace(8,"submit_read_requests q'ing:"+repr(rq_list[j]["work_ticket"]))
+		
+
+	# get LM info from Config Server only if it is different
+	if (current_library != rq_list[j]["library"]):
+	    current_library = rq_list[j]["library"]
+	    Trace.trace(8,"submit_read_requests calling config server\
+	    to find "+rq_list[j]["library"]+".library_manager")
+	if verbose > 3:
+	    print "calling Config. Server to get LM info for", \
+		  current_library
+	lmticket = client['csc'].get(current_library+".library_manager")
+	Trace.trace(8,"submit_read_requests "+ current_library+\
+		    ".library_manager at host="+\
+		    repr(lmticket["hostip"])+\
+		    " port="+repr(lmticket["port"]))
+	if lmticket["status"][0] != e_errors.OK:
+	    pprint.pprint(lmticket)
+	    Trace.trace(0,"submit_read_requests "+ \
+			repr(lmticket["status"]))
+
+	# send to library manager and tell user
+	ticket = client['u'].send(rq_list[j]["work_ticket"], 
+				  (lmticket['hostip'], lmticket['port']))
+	if verbose > 3:
+	    print "ENCP:read_from_hsm FC read_from_hsm returned"
+	    pprint.pprint(ticket)
+	if ticket['status'][0] != "ok" :
+	    print_d0sam_format(rq_list[j]["infile"], 
+			       rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
+			       rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
 			       ticket)
-                print_error(errno.errorcode[errno.EPROTO],\
-                       " encp.read_from_hsm: from"\
-                       +"u.send to LM at "+lmticket['hostip']+"/"\
-                       +repr(lmticket['port']) +", ticket[\"status\"]="\
-                       +repr(ticket["status"]))
-		continue
-	    submitted = submitted+1
+	    print_error(errno.errorcode[errno.EPROTO],\
+			" encp.read_from_hsm: from"\
+			+"u.send to LM at "+lmticket['hostip']+"/"\
+			+repr(lmticket['port']) +", ticket[\"status\"]="\
+			+repr(ticket["status"]))
+	    continue
+	submitted = submitted+1
 
-            tinfo["send_ticket"+repr(i)] = time.time() - t2 #------Lap-End
-            if verbose :
-                if len(Qd)==0:
-                    format = "  Q'd: %s %s bytes: %d on %s %s "\
-                             "dt: %f   cumt=%f"
-                    Qd = format %\
-                         (inputlist[i],bfid[i],file_size[i],\
-                          finfo[i]["external_label"],\
-                          finfo[i]["location_cookie"],\
-                          tinfo["send_ticket"+repr(i)], \
-			  time.time()-tinfo['abs_start'])
-                else:
-                    Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s "\
-                         "dt: %f   cumt=%f" %\
-                         (Qd,inputlist[i],bfid[i],file_size[i],\
-                          finfo[i]["external_label"],\
-                          finfo[i]["location_cookie"],\
-                          tinfo["send_ticket"+repr(i)], \
-			  time.time()-tinfo['abs_start'])
+	tinfo["send_ticket"+repr(rq_list[j]["index"])] = time.time() - t2 #------Lap-End
+	if verbose :
+	    if len(Qd)==0:
+		format = "  Q'd: %s %s bytes: %d on %s %s "\
+			 "dt: %f   cumt=%f"
+		Qd = format %\
+		     (rq_list[j]["work_ticket"]["wrapper"]["fullname"],\
+		      rq_list[j]["bfid"],\
+		      rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],\
+		      rq_list[j]["work_ticket"]["fc"]["external_label"],\
+		      rq_list[j]["work_ticket"]["fc"]["location_cookie"],\
+		      tinfo["send_ticket"+repr(rq_list[j]["index"])], \
+		      time.time()-tinfo['abs_start'])
+	    else:
+		Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s "\
+		     "dt: %f   cumt=%f" %\
+		     (Qd,\
+		      rq_list[j]["work_ticket"]["wrapper"]["fullname"],\
+		      rq_list[j]["bfid"],\
+		      rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],\
+		      rq_list[j]["work_ticket"]["fc"]["external_label"],\
+		      rq_list[j]["work_ticket"]["fc"]["location_cookie"],\
+		      tinfo["send_ticket"+repr(rq_list[j]["index"])], \
+		      time.time()-tinfo['abs_start'])
     
     Trace.trace(7,"}submit_read_requests. submitted="+repr(submitted)+ \
 		" Qd:"+repr(Qd))
@@ -1353,6 +1388,15 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
     Trace.trace(7,"}read_hsm_files. files left=:"+repr(files_left))
     return files_left, bytes
 	    
+##############################################################################
+   # A call back for sort, highest file location should be first.
+def compare_location(t1,t2):
+    if t1["work_ticket"]["fc"]["external_label"] == t2["work_ticket"]["fc"]["external_label"]:
+	if t1["work_ticket"]["fc"]["location_cookie"] > t2["work_ticket"]["fc"]["location_cookie"]:
+	    return 1
+	if t1["work_ticket"]["fc"]["location_cookie"] < t2["work_ticket"]["fc"]["location_cookie"]:
+	    return -1
+    return -1
 ##############################################################################
 
 # log the error to the logger and print it to the stderr
