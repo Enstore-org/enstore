@@ -1261,6 +1261,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.check_written_file() and self.driver_type == 'FTTDriver':
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
                 Trace.trace(22, "position media")
+                Trace.log(e_errors.INFO, "compression %s"%(self.compression,))
                 have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
                 self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
                 save_location = self.tape_driver.tell()
@@ -1830,7 +1831,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                  "attempt to label write protected tape",
                                                  error_source=TAPE)
                             return 0
-                    vol1_label = 'VOL1'+ volume_label
+                    vol1_label = 'VOL1'+ volume_label[0:6]
                     vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
                     Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
                     self.tape_driver.write(vol1_label, 0, 80)
