@@ -725,7 +725,7 @@ def open_control_socket(listen_socket, mover_timeout, verbose):
         if verbose > 3:
             print msg
         Trace.log(e_errors.NET_ERROR, msg)
-        raise e_errors.NET_ERROR, (e_errors.NET_ERROR, msg)
+        raise socket.error, (errno.ENOTCONN, os.strerror(errno.ENOTCONN))
     
     control_socket, address = listen_socket.accept()
 
@@ -735,7 +735,7 @@ def open_control_socket(listen_socket, mover_timeout, verbose):
         if verbose > 3:
             print msg
         Trace.log(e_errors.NET_ERROR, msg)
-        raise e_errors.NET_ERROR, (e_errors.NET_ERROR, msg)
+        raise socket.error, (errno.EACCES, os.strerror(errno.EACCES))
 
     try:
         ticket = callback.read_tcp_obj(control_socket)
@@ -744,7 +744,7 @@ def open_control_socket(listen_socket, mover_timeout, verbose):
         if verbose > 3:
             print msg
         Trace.log(e_errors.NET_ERROR, msg)
-        raise e_errors.NET_ERROR, (e_errors.NET_ERROR, msg)
+        raise socket.error, (errno.EPROTO, os.strerror(errno.EPROTO))
 
     return control_socket, address, ticket
     
@@ -833,19 +833,19 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
             ticket = {'status':(exc, msg)}
-            message = exc + ":", msg
+            message = str(exc) + ": " + str(msg)
             Trace.log(e_errors.INFO, "Investigating malformed bug: mover_handshake: except control_socket: socket.error")
             Trace.log(e_errors.INFO, message)
             #Since an error occured, just return it.
             return None, None, ticket
 
-        except (e_errors.NET_ERROR,), detail:
-            exc, msg, tb = sys.exc_info()
-            ticket = {'status':(exc, msg)}
-            message = exc + ":", msg
-            Trace.log(e_errors.INFO, message)
-            #Since an error occured, just return it.
-            return None, None, ticket
+        #except (e_errors.NET_ERROR,), detail:
+        #    exc, msg, tb = sys.exc_info()
+        #    ticket = {'status':(exc, msg)}
+        #    message = str(exc) + ":" + str(msg)
+        #    Trace.log(e_errors.INFO, message)
+        #    #Since an error occured, just return it.
+        #    return None, None, ticket
 
         if verbose > 4:
             print "MOVER HANDSHAKE"
@@ -891,20 +891,20 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
             ticket = {'status':(exc, msg)}
-            message = exc + ":", msg
+            message = str(exc) + ": " + str(msg)
             Trace.log(e_errors.INFO, "Investigating malformed bug: mover_handshake: except data_path_socket: socket.error")
             Trace.log(e_errors.INFO, message)
             
             #Since an error occured, just return it.
             return None, None, ticket
-        except (e_errors.NET_ERROR,), detail:
-            exc, msg, tb = sys.exc_info()
-            ticket = {'status':(exc, msg)}
-            message = exc + ":", msg
-            Trace.log(e_errors.INFO, message)
-            
-            #Since an error occured, just return it.
-            return None, None, ticket
+        #except (e_errors.NET_ERROR,), detail:
+        #    exc, msg, tb = sys.exc_info()
+        #    ticket = {'status':(exc, msg)}
+        #    message = str(exc) + ": " + str(msg)
+        #    Trace.log(e_errors.INFO, message)
+        #    
+        #    #Since an error occured, just return it.
+        #    return None, None, ticket
 
         #If we got here then the status is OK.
         ticket['status'] = (e_errors.OK, None)
