@@ -12,6 +12,7 @@ prototypes and necessary headers for the volume import package
 #include <string.h>
 
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <sys/mtio.h>
 #include <sys/time.h>
 
