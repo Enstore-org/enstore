@@ -1201,7 +1201,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # advanced alarm
                 # if the head room is less than 3 volumes or the count
                 # exceeds 95%
-                dq = qouta - vol_count
+                dq = quota - vol_count
                 if dq < 3 or dq < (quota * 0.05):
                    msg = "(%s, %s) is approaching its quota limit (%d/%d)"%(library, storage_group, vol_count, qouta)
                    Trace.alarm(e_errors.INFO, msg)
