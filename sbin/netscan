@@ -1,30 +1,36 @@
 #!/bin/sh
+set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
 # this is cheap argument processing. Must be in this order when checking.
 if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
 if [ "${1:-}" = "-q" ] ; then QUIET=1; shift; else QUIET=0; fi
 if [ "${1:-}" = "-i" ] ; then IPMI=0; shift; else IPMI=1; fi
 
+set +u
 . /usr/local/etc/setups.sh
 setup enstore
+set -u
 
 # Things checked:
 # . Correct configuration files
 # . Correct ntp time sync (allow * and ~ on 1st line)
 # . Check for open LISTEN sockets
 ## . Check that two processors are active
-## . Check that less than 90% full on mounted disks.
+## . Check that less than 90% full on mounted disks
 # . Check that eth1 is working (if present)
 # . Check that the farmlets match the base node farmlets.
 # . Check that crontab directories match the base node of the farmlet
-# . Check that root's crontab has reset of watchdog, ntpset and netscan running.
+# . Check that root's crontab has reset of watchdog, ntpset and netscan running
 # . Check that ipmisrv is running and has NO_DOG option
 # . Check that watchdog action is to do nothing
 # . Check that there are less than N processes running on the node
 # . If file or volume clerk are running, then db_checkpoint and db_deadlock are running, too
 # . Check that web servers are running on right nodes and not elsewhere
+# . Check cgi scripts on web server nodes
+# . Check enstore scripts in /etc/rc.d/init.d
 # . Check that rc.local contains boot_cleanup
-# . Check the /etc/krb5.keytab and /local/ups/kt/enstorekt files for legal values.
+# . Check the /etc/krb5.keytab and /local/ups/kt/enstorekt files for legal values
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -41,8 +47,7 @@ setup enstore
 # . RPM - could be modified
 #        Too many exceptions in rpm -Va to be useful...
 
-set -u  # force better programming and ability to use check for not set
-
+ENSTORE=/home/enstore/enstore
 
 # List of binaries/scripts used in checking.
 # In principle, these should be loaded onto the machine each time to prevent hacker tampering
@@ -73,17 +78,16 @@ fi
 DF="/bin/df"
 SED="/bin/sed"
 RPM="/bin/rpm"
-IFDOWN="/etc/sysconfig/network-scripts/ifdown"
 IFUP="/etc/sysconfig/network-scripts/ifup"
-FARMLETS="/home/enstore/enstore/sbin/farmlets"
-KEYTAB_CHECK="/home/enstore/enstore/sbin/keytab_check"
+IFDOWN="/etc/sysconfig/network-scripts/ifdown"
 KILL="/bin/kill"
 SLEEP="/bin/sleep"
 MKDIR="/bin/mkdir"
-KTUTIL="/usr/krb5/sbin/ktutil"
+FARMLETS="$ENSTORE/sbin/farmlets"
+KEYTAB_CHECK="$ENSTORE/sbin/keytab_check"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
-gang=`/home/enstore/enstore/sbin/gang`
+gang=`$ENSTORE/sbin/gang`
 RELAX=0
 
 # we need to report errors on devel machines to a production place that is watched
@@ -101,103 +105,132 @@ ACTIVE=/root/CRON/netscanACTIVE
 
 # function to log messages, optionally print the ps state
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
-          if [ "${2:-}"x = "psx" ]; then
-             $ECHO "${PSfirst:-}" >>$LOG 2>&1
-          fi
-          $ECHO "$1"
-        }
+	  if [ "${2:-}"x = "psx" ]; then
+	     $ECHO "${PSfirst:-}" >>$LOG 2>&1
+	  fi
+	  $ECHO "$1"
+	}
+
+# function to parse file mode from terse output of stat(1)
+getfilemode() { if [ $# -eq 15 ]; then
+		   case "$4" in
+		   81ed) # 0x8000 => regular file  
+		   	 # 0x01ed == 0755 (octal)
+		   	 $ECHO 0755
+		   	 ;;
+		      *) ;;			   
+		   esac
+		else
+		   # probably an older stat, w/o -t option
+		   $ECHO "$9" | $CUT -f2 -d\( | $CUT -f1 -d/
+		fi
+	      }
 
 # function to compare files and complain if they are not the same
 right_file() { if [ ! -r $1 -o ! -r $2 ]; then
-                  msg1="BAD CONFIGURATION: $1 $2 do not both exist"
-                  logit "$msg1"
-                  if [ $ALARM -eq 1 ]; then
-                    enstore alarm --raise --severity "A" --root-error "$msg1"
-                  fi
-               elif ! $CMP $1 $2 2>/dev/null; then
-                  msg1="BAD CONFIGURATION: $1 $2 do not match"
-                  logit "$msg1"
-                  if [ $ALARM -eq 1 ]; then
-                    enstore alarm --raise --severity "A" --root-error "$msg1"
-                  fi
-               else
-                  if [ $QUIET -ne 1 ]; then
-                    logit "Matching version of $1, ok"
-                  fi
-               fi
-             }
+		  msg1="BAD CONFIGURATION: $1 $2 do not both exist"
+		  logit "$msg1"
+		  if [ $ALARM -eq 1 ]; then
+		     enstore alarm --raise --severity "A" --root-error "$msg1"
+		  fi
+	       elif ! $CMP $1 $2 2>/dev/null; then
+		  msg1="BAD CONFIGURATION: $1 $2 do not match"
+		  logit "$msg1"
+		  if [ $ALARM -eq 1 ]; then
+		     enstore alarm --raise --severity "A" --root-error "$msg1"
+		  fi
+	       else
+		  if [ $QUIET -ne 1 ]; then
+		     logit "Matching version of $1, ok"
+		  fi
+		  if [ $# -eq 3 ]; then
+		     case "$3" in
+		      755) fstat=`stat -t $2 2> /dev/null`
+		           fmode=`getfilemode $fstat`	  
+		           if [ $fmode -ne $3 ]; then
+		              chmod $3 $2
+		           fi
+		           ;;
+		        *) chmod $3 $2 # just force this
+		     	   ;;
+		     esac
+		  fi
+	       fi
+	     }
 
+# function to check for a string within a file
 filecheck() { thefile=${2:-/var/spool/cron/root}
-              if [ `$EGREP -c "$1" $thefile` -ne 1 ]; then
-                msg="$thefile is missing $1 or it is misconfigured"
-                logit "$msg"
-                if [ $ALARM -eq 1 ]; then
-                  enstore alarm --raise --severity "A" --root-error "$msg"
-                fi
-              elif [ $QUIET -ne 1 ]; then
-                logit "$1 $thefile ok"
-              fi
-            }
+	      if [ `$EGREP -c "$1" $thefile` -ne 1 ]; then
+		msg="$thefile is missing $1 or it is misconfigured"
+		logit "$msg"
+		if [ $ALARM -eq 1 ]; then
+		  enstore alarm --raise --severity "A" --root-error "$msg"
+		fi
+	      elif [ $QUIET -ne 1 ]; then
+		logit "$1 $thefile ok"
+	      fi
+	    }
 
 # function to check for allowed services and complain if not allowed
 allow() { tt=$1
-          for i in $ALLOW; do
-            t=`$ECHO $i | $CUT -f1 -d,`
-            if [ -z ${t-} ]; then echo $i; fi
-            if [ $t != $tt ]; then continue; fi
-            a=`$ECHO $i | $CUT -f2 -d,`
-            b=`$ECHO $i | $CUT -f3 -d,`
-            c=`$ECHO $i | $CUT -f4 -d,`
-            p=`$ECHO $i | $CUT -f5 -d,`
-            if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"` -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
-              if [ $p != "x" ]; then
-                 psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
-                 if [ `$ECHO $psline | $EGREP -c '\[.*\]'` -ne 0 ]; then
-                    logit "Swapped out $node $tt $command $pid $rest -> $psline"
-                    return 0
-                 elif [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
-                    msg1="UNAUTHORIZED NETWORK SERVICE, type 1! $node $tt $command $pid $rest"
-                    logit "$msg1"
-                    logit "$psline" "ps"
-                    if [ $ALARM -eq 1 ]; then
-                      enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
-                    fi
-                    return 2
-                 fi
-              else
-                p=""
-              fi
-              if [ $QUIET -ne 1 ]; then
-                logit "Allowing $node $c $tt $a $b $p, ok"
-              fi
-              return 0
-            fi
-          done
-          msg1="UNAUTHORIZED NETWORK SERVICE, type 2! $node $tt $command $pid $rest"
-          psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
-          logit "$msg1"
-          logit "$psline" "ps"
-          if [ $ALARM -eq 1 ]; then
-            enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
-         fi
-          return 1
-         }
+	  for i in $ALLOW; do
+	    t=`$ECHO $i | $CUT -f1 -d,`
+	    if [ -z ${t-} ]; then echo $i; fi
+	    if [ $t != $tt ]; then continue; fi
+	    a=`$ECHO $i | $CUT -f2 -d,`
+	    b=`$ECHO $i | $CUT -f3 -d,`
+	    c=`$ECHO $i | $CUT -f4 -d,`
+	    p=`$ECHO $i | $CUT -f5 -d,`
+	    if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"` -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
+	      if [ $p != "x" ]; then
+		 psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
+		 if [ `$ECHO $psline | $EGREP -c '\[.*\]'` -ne 0 ]; then
+		    logit "Swapped out $node $tt $command $pid $rest -> $psline"
+		    return 0
+		 elif [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
+		    msg1="UNAUTHORIZED NETWORK SERVICE, type 1! $node $tt $command $pid $rest"
+		    logit "$msg1"
+		    logit "$psline" "ps"
+		    if [ $ALARM -eq 1 ]; then
+		      enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
+		    fi
+		    return 2
+		 fi
+	      else
+		p=""
+	      fi
+	      if [ $QUIET -ne 1 ]; then
+		logit "Allowing $node $c $tt $a $b $p, ok"
+	      fi
+	      return 0
+	    fi
+	  done
+	  msg1="UNAUTHORIZED NETWORK SERVICE, type 2! $node $tt $command $pid $rest"
+	  psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
+	  logit "$msg1"
+	  logit "$psline" "ps"
+	  if [ $ALARM -eq 1 ]; then
+	    enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
+	  fi
+	  return 1
+	 }
 
+if [ -r "/etc/inetd.conf" ]; then
+       INETD=inetd
+elif [ -r "/etc/xinetd.conf" ]; then
+       INETD=xinetd
+else
+       INETD=unknown
+fi
 # We allow these everywhere
 ALLOW_BASE="
-       LISTEN,inetd,:ftp,TCP,x
-       LISTEN,inetd,:telnet,TCP,x
-       LISTEN,inetd,:kshell,TCP,x
-       LISTEN,inetd,:klogin,TCP,x
-       LISTEN,inetd,:eklogin,TCP,x
-       LISTEN,inetd,:netperf,TCP,x
-       LISTEN,xinetd,:ftp,TCP,x
-       LISTEN,xinetd,:telnet,TCP,x
-       LISTEN,xinetd,:kshell,TCP,x
-       LISTEN,xinetd,:klogin,TCP,x
-       LISTEN,xinetd,:eklogin,TCP,x
-       LISTEN,xinetd,:netperf,TCP,x
-       LISTEN,python,:,TCP,/home/enstore/enstore/(bin|src)|/home/petravic/Zope|inquisitor|ftpcp.py
+       LISTEN,$INETD,:ftp,TCP,x
+       LISTEN,$INETD,:telnet,TCP,x
+       LISTEN,$INETD,:kshell,TCP,x
+       LISTEN,$INETD,:klogin,TCP,x
+       LISTEN,$INETD,:eklogin,TCP,x
+       LISTEN,$INETD,:netperf,TCP,x
+       LISTEN,python,:,TCP,$ENSTORE/(bin|src)|/home/petravic/Zope|ftpcp.py
        LISTEN,dccp,:,TCP,x
        LISTEN,netserver,:,TCP,x
        LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh
@@ -206,50 +239,50 @@ ALLOW_BASE="
        LISTEN,grep,inet,TCP,MSG_TYPE|enstore
        LISTEN,sort,inet,TCP,MSG_TYPE|enstore
        LISTEN,ALARM_CLIENT,inet,TCP,x
-       UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
-       UDP,python,:,UDP,/home/enstore/enstore/(bin/encp|src/(monitor_server|volume_assert|mover).py|ngop/cronjobAgent.py)|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py
+       UDP,python,:7499,UDP,$ENSTORE/src/monitor_server.py
+       UDP,python,:,UDP,$ENSTORE/(bin/encp|src/(monitor_server|volume_assert|mover).py|ngop/cronjobAgent.py)|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py
        UDP,xntpd,:ntp,UDP,x
        UDP,tee,:UDP,tee /dev/tty
-       TCP,klogind,:eklogin,TCP,x
        TCP,xemacs,:x11,TCP,x
        TCP,rsh,:kshell,TCP,x
        TCP,rsh,:,TCP,/usr/krb5/bin/rsh
        TCP,kshd,:kshell,TCP,x
        TCP,kshd,:,TCP,kshd kshd -5c
+       TCP,klogind,:eklogin,TCP,x
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
-       TCP,python,:,TCP,/home/enstore/enstore/(bin/encp|src/monitor_server|mover).py
+       TCP,python,:,TCP,$ENSTORE/(bin/encp|src/monitor_server|mover).py
        TCP,netserver,TCP,:netperf,x
 "
-#       LISTEN,autorpm,:,TCP,perl /usr/sbin/autorpm
+#      LISTEN,autorpm,:,TCP,perl /usr/sbin/autorpm
 
 # Extra for srv5
 ALLOW_SRV5="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
        LISTEN,conserver,:console,TCP,x
-       LISTEN,conserver,:listen,TCP,x
-       LISTEN,conserver,:nterm,TCP,x
        LISTEN,conserver,:,TCP,conserver -d
        LISTEN,X,:x11,TCP,x
        UDP,portmap,:sunrpc,UDP,x
-       TCP,conserver,:nterm,TCP,x
-       TCP,netscape-,:http,TCP,x
-       TCP,console,console,TCP,x
-       TCP,console,nterm,TCP,x
+       TCP,console,:console,TCP,x
 "
 
 # Extra for srv3
 ALLOW_SRV3="$ALLOW_SRV5
        LISTEN,rpc.mount,:,TCP,rpc.mountd
        LISTEN,rpc.nfsd,:2049,TCP,x
-       LISTEN,perl,d0ensrv3p.fnal.gov:,TCP,mirror everything:adic2.fnal.gov
+       LISTEN,rpc.nfsd,:nfs,TCP,x
        UDP,rpc.mount,:mount,UDP,x
        UDP,rpc.nfsd,:nfs,UDP,x
 "
 
 # Extra for srv2
 ALLOW_SRV2="$ALLOW_BASE
-       LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
        LISTEN,sendmail,:smtp,TCP,x
+       LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
+       LISTEN,mv,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,mv
+       LISTEN,sh,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sh
+       LISTEN,grep,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,grep
+       LISTEN,sort,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sort
+       LISTEN,python,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,$ENSTORE/src/inquisitor.py
 "
 
 # Extra for srv1
@@ -265,27 +298,44 @@ ALLOW_SRV0="$ALLOW_BASE
        LISTEN,postmaste,:postgres,TCP,x
 "
 
+# Extra for d0ensrv2
+ALLOW_DSRV2="$ALLOW_SRV2
+       LISTEN,mirror,d0ensrv2p.fnal.gov:,TCP,mirror logs:adic2.fnal.gov
+"
+
+# Extra for d0ensrv3
+ALLOW_DSRV3="$ALLOW_SRV3
+       LISTEN,perl,d0ensrv3p.fnal.gov:,TCP,mirror everything:adic2.fnal.gov
+"
+
 # Extra for d0ensrv4 - portmapper is needed for adic calls
 ALLOW_DSRV4="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
        LISTEN,dasadmin,:663,TCP,x
-       LISTEN,rsh,:1015,TCP,fntt -l acsss echo
+       LISTEN,dasadmin,:,TCP,dasadmin
+       LISTEN,rsh,:,TCP,fntt -l acsss echo
+"
+
+# Extra for stkensrv2
+ALLOW_SSRV2="$ALLOW_SRV2
+       LISTEN,portmap,:sunrpc,TCP,x
+       LISTEN,rpc.mount,:,TCP,rpc.mountd
 "
 
 # Extra for stkensrv4
 ALLOW_SSRV4="$ALLOW_BASE
-       LISTEN,rsh,:1015,TCP,fntt -l acsss echo
+       LISTEN,rsh,:,TCP,fntt -l acsss echo
 "
 
 # Extra for cdfensrv4
 ALLOW_CSRV4="$ALLOW_BASE
-       LISTEN,rsh,:1015,TCP,fntt2 -l acsss echo
+       LISTEN,rsh,:,TCP,fntt2 -l acsss echo
 "
 
 # Extra for dcache
 # Allowing swapped out java's is not good, but I don't know what else to do right now.
 ALLOW_DCA="$ALLOW_BASE
-       LISTEN,httpd,:http,TCP,/local/ups/prd/
+       LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
        LISTEN,java,:,TCP,/home/enstore/dcache/run/diskCache|[java]|dmg.cells.services.Domain
 "
 
@@ -297,15 +347,18 @@ ALLOW_MVR="$ALLOW_BASE
 case $node in
        *srv0|rip1) ALLOW=$ALLOW_SRV0;  logit "Comparing to srv0";;
        *srv1|rip6) ALLOW=$ALLOW_SRV1;  logit "Comparing to srv1";;
+    d0ensrv2)      ALLOW=$ALLOW_DSRV2; logit "Comparing to d0ensrv2";;
+   stkensrv2)      ALLOW=$ALLOW_SSRV2; logit "Comparing to stkensrv2";;
        *srv2|rip7) ALLOW=$ALLOW_SRV2;  logit "Comparing to srv2";;
+    d0ensrv3)      ALLOW=$ALLOW_DSRV3; logit "Comparing to d0ensrv3";;
        *srv3)      ALLOW=$ALLOW_SRV3;  logit "Comparing to srv3";;
     d0ensrv4)      ALLOW=$ALLOW_DSRV4; logit "Comparing to d0ensrv4";;
    stkensrv4)      ALLOW=$ALLOW_SSRV4; logit "Comparing to stkensrv4";;
    cdfensrv4)      ALLOW=$ALLOW_CSRV4; logit "Comparing to cdfensrv4";;
- *srv5|*srv7)      ALLOW=$ALLOW_SRV5;  logit "Comparing to srv5";;
+    *srv[57])      ALLOW=$ALLOW_SRV5;  logit "Comparing to srv5";;
        *mvr*|rip*) ALLOW=$ALLOW_MVR;   logit "Comparing to mvr";;
        *dca*)      ALLOW=$ALLOW_DCA;   logit "Comparing to dca";;
-           *)      ALLOW=$ALLOW_BASE;  logit "Comparing to base";;
+	   *)      ALLOW=$ALLOW_BASE;  logit "Comparing to base";;
 esac
 
 
@@ -315,25 +368,25 @@ if [ $? -ne 0 ] ; then
    # ok, this is terrible..., but I don't know what else to do.  Dang kerberos!
    # the most likely thing that has failed, or hung is the task that access the net.  Kill it.
    # kill the farmlets task
-   $PS axwww | $EGREP "farmlets"|$EGREP -v grep| while read pid line; do
+   $PS axwww | $EGREP "farmlets" | $EGREP -v grep | while read pid line; do
       $ECHO `$DATE` $KILL -9 $pid $line >>$LOG 2>&1
-      $ECHO `$DATE` $KILL -9 $pid $line
-      $KILL -9 $pid
-   done;
-   $SLEEP 30
-   # kill any remaining rsyncs that check the cron area
-   $PS axwww | $EGREP "farmlets|rsync"|$EGREP -v grep| $EGREP cron | while read pid line; do
-      $ECHO $KILL -9 $pid $line >>$LOG 2>&1
       $ECHO $KILL -9 $pid $line
       $KILL -9 $pid
-   done;
+   done
+   $SLEEP 30
+   # kill any remaining rsyncs that check the cron area
+   $PS axwww | $EGREP "farmlets|rsync" | $EGREP -v grep | $EGREP cron | while read pid line; do
+      $ECHO `$DATE` $KILL -9 $pid $line >>$LOG 2>&1
+      $ECHO $KILL -9 $pid $line
+      $KILL -9 $pid
+   done
    $SLEEP 30
    $MKDIR $ACTIVE 1>/dev/null 2>/dev/null
    if [ $? -ne 0 ] ; then
      msg="ERROR: netscan on $node already ACTIVE... exiting"
      logit "$msg"
      if [ $ALARM -eq 1 ]; then
-        enstore alarm --raise --severity "A" --root-error "$msg"
+	enstore alarm --raise --severity "A" --root-error "$msg"
      fi
      exit 1
    else
@@ -345,36 +398,47 @@ fi
 
 
 # check these files
-right_file /home/enstore/enstore/etc/$gang.enstore.k5login /home/enstore/.k5login
-right_file /home/enstore/enstore/sbin/routes /root/routes
-right_file /home/enstore/enstore/sbin/gettkt /home/enstore/gettkt
-right_file /home/enstore/enstore/etc/root.k5login /root/.k5login
-right_file /home/enstore/enstore/etc/$gang.hosts.allow /etc/hosts.allow
-right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
-right_file /home/enstore/enstore/etc/hosts /etc/hosts
-right_file /home/enstore/enstore/etc/sudoers /etc/sudoers
-chmod 440 /etc/sudoers # just force this
-right_file /home/enstore/enstore/bin/enstore-boot /etc/rc.d/init.d/enstore-boot
-chmod 755 /etc/rc.d/rc.local # just force this
-chmod 755 /etc/rc.d/rc.sysinit # just force this
-chmod 755 /etc/rc.d/init.d/enstore-boot # just force this
-# there needs to be more login for xinetd or inetd files
-if [ -r "/etc/inetd.conf" ]; then
-    right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
-elif [ -r "/etc/xinetd.conf" ]; then
-    right_file /home/enstore/enstore/etc/xinetd.conf /etc/xinetd.conf
-    right_file /home/enstore/enstore/etc/eklogin /etc/xinetd.d/eklogin
-    right_file /home/enstore/enstore/etc/ftp /etc/xinetd.d/ftp
-    right_file /home/enstore/enstore/etc/klogin /etc/xinetd.d/klogin
-    right_file /home/enstore/enstore/etc/kshell /etc/xinetd.d/kshell
-    right_file /home/enstore/enstore/etc/telnet /etc/xinetd.d/telnet
+right_file $ENSTORE/sbin/routes			/root/routes
+right_file $ENSTORE/sbin/gettkt			/home/enstore/gettkt
+right_file $ENSTORE/etc/root.k5login		/root/.k5login
+right_file $ENSTORE/etc/$gang.enstore.k5login	/home/enstore/.k5login
+right_file $ENSTORE/etc/$gang.hosts.allow	/etc/hosts.allow
+right_file $ENSTORE/etc/hosts.deny		/etc/hosts.deny
+right_file $ENSTORE/etc/hosts			/etc/hosts
+right_file $ENSTORE/etc/sudoers			/etc/sudoers 440
+right_file $ENSTORE/bin/enstore-boot		/etc/rc.d/init.d/enstore-boot 755
+
+chmod 755 /etc/rc.d/rc.sysinit	# just force this
+chmod 755 /etc/rc.d/rc.local	# just force this
+
+# there needs to be more logic for xinetd or inetd files
+if [ "$INETD" = unknown ]; then
+  # neither file existed, this is a problem
+  enstore alarm --raise --severity "A" --root-error "MISSING CONFIGURATION: no inetd.conf or xinetd.conf in /etc"
 else
-    # neither file existed, this is a problem
-    enstore alarm --raise --severity "A" --root-error "MISSING CONFIGURATION: no inetd.conf or xinetd.conf in /etc"
+  right_file $ENSTORE/etc/${INETD}.conf		/etc/${INETD}.conf
+  if [ "$INETD" = xinetd ]; then
+    right_file $ENSTORE/etc/ftp			/etc/xinetd.d/ftp
+    right_file $ENSTORE/etc/klogin		/etc/xinetd.d/klogin
+    right_file $ENSTORE/etc/kshell		/etc/xinetd.d/kshell
+    right_file $ENSTORE/etc/telnet		/etc/xinetd.d/telnet
+    right_file $ENSTORE/etc/eklogin		/etc/xinetd.d/eklogin
+  fi
 fi
-right_file /home/enstore/enstore/etc/enstore.bashrc /home/enstore/.bashrc
-right_file /home/enstore/enstore/etc/enstore.bash_profile /home/enstore/.bash_profile
-right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
+
+right_file $ENSTORE/etc/enstore.bashrc	  	/home/enstore/.bashrc
+right_file $ENSTORE/etc/enstore.bash_profile	/home/enstore/.bash_profile
+right_file $ENSTORE/etc/$gang.step-tickers	/etc/ntp/step-tickers
+
+# check these files only on srv0 nodes
+case $node in
+  d0ensrv0|stkensrv0|cdfensrv0)
+    right_file $ENSTORE/sbin/enstore-drivestat	/etc/rc.d/init.d/enstore-drivestat 755
+    right_file $ENSTORE/sbin/enstore-pgdb	/etc/rc.d/init.d/enstore-pgdb 755
+    ;;
+  *)
+    ;;
+esac
 
 
 # check that no rpm binaries have been tampered with
@@ -400,7 +464,7 @@ fi
 
 # check that ntp is working, fix if not, complain if down more than once
 # check only in this job.  Separate cronjob sets time if needed.
-msg=`/home/enstore/enstore/sbin/ntpset -a -c 2>&1`
+msg=`$ENSTORE/sbin/ntpset -a -c 2>&1`
 if [ $QUIET -ne 1 ]; then
    logit "$msg"
 fi
@@ -452,18 +516,17 @@ if [ $IPMI -eq 1 ]; then
       msg="/etc/watchdog_reset is missing"
       logit "$msg"
       if [ $ALARM -eq 1 ]; then
-         enstore alarm --raise --severity "A" --root-error "$msg"
+	 enstore alarm --raise --severity "A" --root-error "$msg"
       fi
    elif [ $QUIET -ne 1 ]; then
       logit "/etc/watchdog_reset, ok"
    fi
 fi
 
-# check that we special jobs are running in crontab, or other files
+# check that special jobs are listed in root crontab, or other files
 filecheck "check_watchdog_reset.py"
 filecheck "ntpset"
 filecheck "netscan -a -q" # not so dumb, because we can run netscan manually, too
-#filecheck "ekill -v -9"
 filecheck "ekill -v -9 \"sdrread\|selread\|chip2\|Chip2\|netperf\|dog\|selbit\|selclear\|netstat\|Nodeinfo\|biterror\""
 filecheck "boot_cleanup" /etc/rc.d/rc.local
 
@@ -473,7 +536,7 @@ if [ $IPMI -eq 1 ]; then
       msg="ipmisrv NO_DOG not running or misconfigured"
       logit "$msg"
       if [ $ALARM -eq 1 ]; then
-         enstore alarm --raise --severity "A" --root-error "$msg"
+	 enstore alarm --raise --severity "A" --root-error "$msg"
       fi
    elif [ $QUIET -ne 1 ]; then
       logit "ipmisrv running, ok"
@@ -485,7 +548,7 @@ if [ $IPMI -eq 1 ]; then
       msg="watchdog action is $ACTION. Should be 00"
       logit "$msg"
       if [ $ALARM -eq 1 ]; then
-         enstore alarm --raise --severity "A" --root-error "$msg"
+	 enstore alarm --raise --severity "A" --root-error "$msg"
       fi
       # disable the action
       /home/enstore/ipmi/dogdisarm
@@ -523,7 +586,7 @@ if [ `$PS axuwww|$EGREP python|$EGREP -v 'grep'|$EGREP -c 'file_clerk.py|volume_
        msg="$need not running (or more than 1 running) and file/volume clerk are running."
        logit "$msg"
        if [ $ALARM -eq 1 ]; then
-         enstore alarm --raise --severity "A" --root-error "$msg"
+	 enstore alarm --raise --severity "A" --root-error "$msg"
        fi
      elif [ $QUIET -ne 1 ]; then
        logit "$need running, ok"
@@ -533,25 +596,28 @@ elif [ $QUIET -ne 1 ]; then
   logit "file/volume clerk not running, no db_deadlock or db_checkpoint check, ok"
 fi
 
-# web servers need to be running on certain nodes.
+# web servers need to be running on certain nodes
 case $node in
   rip7|d0ensrv2|stkensrv2|cdfensrv2|d0endca3a|stkendca3a)
     if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP apache|$EGREP -c 'httpd'` -eq 0 ]; then
        msg="httpd Web server not running"
        logit "$msg"
        if [ $ALARM -eq 1 ]; then
-         enstore alarm --raise --severity "A" --root-error "$msg"
+	 enstore alarm --raise --severity "A" --root-error "$msg"
        fi
     elif [ $QUIET -ne 1 ]; then
        logit "httpd web server running, ok"
     fi
+    for i in $ENSTORE/src/*_cgi.py; do
+       right_file $i /local/ups/prd/httpd/cgi-bin/enstore/`basename $i` 755
+    done
     ;;
   *)
     if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP apache|$EGREP -c 'httpd'` -ne 0 ]; then
        msg="httpd Web server running on illegal node"
        logit "$msg"
        if [ $ALARM -eq 1 ]; then
-         enstore alarm --raise --severity "A" --root-error "$msg"
+	 enstore alarm --raise --severity "A" --root-error "$msg"
        fi
     elif [ $QUIET -ne 1 ]; then
        logit "httpd web server not running, ok"
@@ -587,21 +653,21 @@ $ECHO "$N" | while read command pid rest; do
       allow LISTEN
     elif [ `$ECHO $rest | $EGREP -c "UDP"` -ne 0 ]; then
       if [ $QUIET -ne 1 ]; then
-         logit "Ignoring open UDP connections $command $pid $rest ..."
+	 logit "Ignoring open UDP connections $command $pid $rest ..."
       fi
     elif [ `$ECHO $rest | $EGREP -c "TCP"` -ne 0 ]; then
       if [ $QUIET -ne 1 ]; then
-         logit "Ignoring open TCP connections $command $pid $rest ..."
+	 logit "Ignoring open TCP connections $command $pid $rest ..."
       fi
     fi
 done
 
 
-#+++++++++++++++++++++++ tasks that go over network. Can hang sometimes. Do this last.
+#++++++++++++++++ tasks that go over network. Can hang sometimes. Do this last.
 
 # check that farmlets match
 if [ $gang != "rip" ]; then
-  msg="`$FARMLETS` 2>&1"
+  msg="`$FARMLETS 2>&1`"
   if [ $? -ne 0 ]; then
      logit "$msg"
   elif [ $QUIET -ne 1 ]; then
