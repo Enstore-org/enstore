@@ -221,7 +221,8 @@ def send_user_done( self, ticket, error_info ):
 # ticket received.
 #
 class MoverClient:
-    def __init__( self, csc ):
+    def __init__( self, config, csc ):
+        self.config = config
         self.csc = csc
 	self.state = 'idle'
 	# needs to be initialized for status
@@ -971,7 +972,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
             libm_config_dict[lib].update( self.csc.get_uncached(lib) )
             pass        
 
-	self.client_obj_inst = MoverClient( self.csc )
+	self.client_obj_inst = MoverClient( mvr_config, self.csc )
 	self.client_obj_inst.log_name = self.log_name # duplicate for do_fork
 	self.summoned_while_busy = []
         Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
