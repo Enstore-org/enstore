@@ -18,6 +18,7 @@
 #include <Python.h>		/* all the Py.... stuff */
 #include <assert.h>             /* assert */
 #include <errno.h>
+#include <signal.h>		/* sigaction() and struct sigaction */
 #if 1
 # include <ftt.h>		/* ftt_read/write */
 #else
@@ -50,11 +51,15 @@ enum e_mtype
   , DatCrc
   , DatByt
   , Err
+  , Eof
+};
+struct s_msgdat
+{   int		data;
+    char	*c_p;
 };
 struct s_msg
-{
-    enum e_mtype	mtype;	/* see man msgsnd */
-    int			data;
+{   enum e_mtype	mtype;	/* see man msgsnd or msgop(2) */
+    struct s_msgdat	md;
 };
 
 
@@ -73,7 +78,7 @@ static PyObject *EXErrObject;
 static PyObject *
 raise_exception( char *msg )
 {
-	char		*buf[200];
+	char		buf[200];
         PyObject	*v;
         int		i = errno;
 
@@ -235,7 +240,7 @@ EXto_HSM(  PyObject	*self
     msgqid = msgget( IPC_PRIVATE, IPC_CREAT|0x1ff );
     msgbuf_s.mtype = WrtSiz;
     msgctl( msgqid, IPC_STAT, &msgctl_s );
-    msgctl_s.msg_qbytes = (rd_ahead+1) * sizeof(msgbuf_s.data);
+    msgctl_s.msg_qbytes = (rd_ahead+1) * sizeof(msgbuf_s.md.data);
     msgctl( msgqid, IPC_SET, &msgctl_s );
 
     /* create 1 semaphore for writer-to-allow-read   */
@@ -292,8 +297,8 @@ EXto_HSM(  PyObject	*self
 		{   
 		    perror( "EXfer.to_HSM - read" );
 		    msgbuf_s.mtype = Err;
-		    msgbuf_s.data = errno;
-		    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.data),0) == -1) /* normal blocking send */
+		    msgbuf_s.md.data = errno;
+		    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.md.data),0) == -1) /* normal blocking send */
 			perror( "msgsnd - read" );
 		    exit (0);
 		}
@@ -302,9 +307,9 @@ EXto_HSM(  PyObject	*self
 	    }
 
 	    run_dat_byts += dat_byts;
-	    msgbuf_s.data = shm_byts;
+	    msgbuf_s.md.data = shm_byts;
 	    /*printf( "EXfer reader sending %d bytes to writer\n", shm_byts );*/
-	    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.data),0) == -1) /* normal blocking send */
+	    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.md.data),0) == -1) /* normal blocking send */
 		                                      perror( "msgsnd - read" );
 
 	    /* do crc here -- snd answer as last msg */
@@ -322,8 +327,8 @@ EXto_HSM(  PyObject	*self
 						      , san_crc );
 		    san_crc = PyInt_AsLong( attrObj1_p );
 		    msgbuf_s.mtype = SanCrc;
-		    msgbuf_s.data = san_crc;
-		    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.data),0) == -1) /* normal blocking send */
+		    msgbuf_s.md.data = san_crc;
+		    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.md.data),0) == -1) /* normal blocking send */
 			perror( "msgsnd - read" );
 		    msgbuf_s.mtype = WrtSiz; /* reset */
 		}
@@ -343,12 +348,12 @@ EXto_HSM(  PyObject	*self
 	}
 
 	msgbuf_s.mtype = DatCrc;
-	msgbuf_s.data = dat_crc;
-	if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(sts),0) == -1) /* normal blocking send */
+	msgbuf_s.md.data = dat_crc;
+	if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.md.data),0) == -1) /* normal blocking send */
 	    perror( "msgsnd - read" );
 	msgbuf_s.mtype = DatByt;
-	msgbuf_s.data = run_dat_byts;
-	if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(sts),0) == -1) /* normal blocking send */
+	msgbuf_s.md.data = run_dat_byts;
+	if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.md.data),0) == -1) /* normal blocking send */
 	    perror( "msgsnd - read" );
 	exit( 0 );
     }
@@ -357,7 +362,7 @@ EXto_HSM(  PyObject	*self
 	/* read fifo - normal (blocking) */
 	do
 	{   sts = msgrcv(  msgqid, (struct msgbuf *)&msgbuf_s
-			 , sizeof(msgbuf_s.data), 0, 0 );
+			 , sizeof(msgbuf_s.md.data), 0, 0 );
 	    if ((sts==-1) && (errno!=EINTR))
 	    {   perror( "semop - wr_rd2wr" );
 		/* exit with error??? */
@@ -374,29 +379,29 @@ EXto_HSM(  PyObject	*self
 	    if (fd_a[To_]) /* if fd ... else fp */
 	    {
 		if (   (to_Func_p[To_])( fd_a[To_], shmaddr+(inc_size*ahead_idx)
-					,msgbuf_s.data)
-		    != msgbuf_s.data)
+					,msgbuf_s.md.data)
+		    != msgbuf_s.md.data)
 		    perror( "write" );
 	    }
 	    else
 	    {
-		if (   (to_Func_p[To_])(  shmaddr+(inc_size*ahead_idx), 1, msgbuf_s.data
+		if (   (to_Func_p[To_])(  shmaddr+(inc_size*ahead_idx), 1, msgbuf_s.md.data
 					, fp_a[To_] )
-		    != msgbuf_s.data)
+		    != msgbuf_s.md.data)
 		    perror( "write" );
 	    }
 #	    endif
-	    *bytes_xferred_p += msgbuf_s.data;
-	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.data );*/
+	    *bytes_xferred_p += msgbuf_s.md.data;
+	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.md.data );*/
 	    if (semop(semid,&sops_wr_wr2rd,1) == -1) perror( "semop - read" );
 	    if (++ahead_idx == rd_ahead) ahead_idx = 0;
 	    break;
 	case SanCrc:
-	    san_crc = msgbuf_s.data;
+	    san_crc = msgbuf_s.md.data;
 	    break;
 	case DatCrc:
-	    /*printf( "EXfer crc is %d\n", msgbuf_s.data );*/
-	    dat_crc = msgbuf_s.data;
+	    /*printf( "EXfer crc is %d\n", msgbuf_s.md.data );*/
+	    dat_crc = msgbuf_s.md.data;
 	    break;
 	case Err:
 	    semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
@@ -404,11 +409,11 @@ EXto_HSM(  PyObject	*self
 	    (void)shmdt( shmaddr );
 	    (void)shmctl( shmid, IPC_RMID, 0 );
 	    (void)msgctl( msgqid, IPC_RMID, 0 );
-	    errno = msgbuf_s.data;
+	    errno = msgbuf_s.md.data;
 	    return raise_exception( "error reading from user" );
 	    break;
 	default:		/* assume DatByt */
-	    dat_byts = msgbuf_s.data;
+	    dat_byts = msgbuf_s.md.data;
 	    writing_flg = 0;	/* DONE! */
 	    if (waitpid(pid,&sts,0) == -1)
 		perror( "EXfer usrTo_ waitpid" );
@@ -508,7 +513,7 @@ EXusrTo_(  PyObject	*self
     msgqid = msgget( IPC_PRIVATE, IPC_CREAT|0x1ff );
     msgbuf_s.mtype = WrtSiz;
     msgctl( msgqid, IPC_STAT, &msgctl_s );
-    msgctl_s.msg_qbytes = (rd_ahead+1) * sizeof(msgbuf_s.data);
+    msgctl_s.msg_qbytes = (rd_ahead+1) * sizeof(msgbuf_s.md.data);
     msgctl( msgqid, IPC_SET, &msgctl_s );
 
     /* create 1 semaphore for writer-to-allow-read   */
@@ -567,9 +572,9 @@ EXusrTo_(  PyObject	*self
 	    }
 
 	    run_dat_byts += dat_byts;
-	    msgbuf_s.data = shm_byts;
+	    msgbuf_s.md.data = shm_byts;
 	    /*printf( "EXfer reader sending %d bytes to writer\n", shm_byts );*/
-	    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.data),0) == -1) /* normal blocking send */
+	    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.md.data),0) == -1) /* normal blocking send */
 		                                      perror( "msgsnd - read" );
 
 	    /* do crc here -- snd answer as last msg */
@@ -585,38 +590,38 @@ EXusrTo_(  PyObject	*self
 	}
 
 	msgbuf_s.mtype = DatCrc;
-	msgbuf_s.data = dat_crc;
-	if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(sts),0) == -1) /* normal blocking send */
+	msgbuf_s.md.data = dat_crc;
+	if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.md.data),0) == -1) /* normal blocking send */
 	    perror( "msgsnd - read" );
 	msgbuf_s.mtype = DatByt;
-	msgbuf_s.data = run_dat_byts;
-	if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(sts),0) == -1) /* normal blocking send */
+	msgbuf_s.md.data = run_dat_byts;
+	if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.md.data),0) == -1) /* normal blocking send */
 	    perror( "msgsnd - read" );
 	exit( 0 );
     }
     while (writing_flg)
     {
 	/* read fifo - normal (blocking) */
-	if (msgrcv(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.data),0,0) == -1)
+	if (msgrcv(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.md.data),0,0) == -1)
 	                                         perror( "semop - wr_rd2wr" );
 	switch (msgbuf_s.mtype)
 	{
 	case WrtSiz:
 	    if (   (to_Func_p[To_])( fd_a[To_], shmaddr+(inc_size*ahead_idx)
-				    ,msgbuf_s.data)
-		!= msgbuf_s.data)
+				    ,msgbuf_s.md.data)
+		!= msgbuf_s.md.data)
 		perror( "write" );
-	    *filesize_p += msgbuf_s.data;
-	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.data );*/
+	    *filesize_p += msgbuf_s.md.data;
+	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.md.data );*/
 	    if (semop(semid,&sops_wr_wr2rd,1) == -1) perror( "semop - read" );
 	    if (++ahead_idx == rd_ahead) ahead_idx = 0;
 	    break;
 	case DatCrc:
-	    /*printf( "EXfer crc is %d\n", msgbuf_s.data );*/
-	    dat_crc = msgbuf_s.data;
+	    /*printf( "EXfer crc is %d\n", msgbuf_s.md.data );*/
+	    dat_crc = msgbuf_s.md.data;
 	    break;
 	default:		/* assume DatByt */
-	    dat_byts = msgbuf_s.data;
+	    dat_byts = msgbuf_s.md.data;
 	    writing_flg = 0;	/* DONE! */
 	    if (waitpid(pid,&sts,0) == -1)
 		perror( "EXfer usrTo_ waitpid" );
@@ -634,6 +639,265 @@ EXusrTo_(  PyObject	*self
 }   /* EXusrTo_ */
 
 
+/******************************************************************************
+ * @+Public+@
+ * ROUTINE: EXfd_xfer:  Added by ron on 01-May-1998
+ *
+ * DESCRIPTION:		read data from 1st fd, write to second
+ *
+ * RETURN VALUE:	int - crc
+ *
+ *****************************************************************************/
+
+char		*g_shmaddr_p;
+int		 g_shmsize;
+struct sigaction g_oldSigAct_s;
+union semun	 g_semun_u;
+int		 g_shmid;
+int		 g_semid;
+int		 g_msgqid;
+
+void
+send_writer(  int	mtype
+	    , int	d1
+	    , char	*c1 )
+{
+	int		sts;
+	struct s_msg	msg_s;
+
+    msg_s.mtype = mtype;
+    msg_s.md.data = d1; /* may not be used */
+    msg_s.md.c_p = c1; /* may not be used */
+    sts = msgsnd( g_msgqid,(struct msgbuf *)&msg_s,sizeof(struct s_msgdat),0 );
+    if (sts == -1) perror( "reader_error" ); /* can not do much more */
+    return;
+}
+
+void
+do_read(  int 		rd_fd
+	, int 		no_bytes
+	, int 		blk_size 
+	, PyObject	*crc_obj_tp )
+{
+	struct sembuf	 sops_rd_wr2rd;
+	struct s_msg	 msgbuf_s;
+	int		 crc_i=0;
+	int		 shm_off=0;
+
+    msgbuf_s.mtype = WrtSiz;
+
+    sops_rd_wr2rd.sem_num = 0;  /* 1st and only sem */
+    sops_rd_wr2rd.sem_op  = -1; /* reader dec's, writer inc's */
+    sops_rd_wr2rd.sem_flg = 0;  /* default - block behavior */
+
+    /* (nice the reading to make sure writing has higher priority???) */
+    nice( 10 );
+
+    while (no_bytes)
+    {
+	int	sts;
+	/* gain access to *blk* of shared mem */
+ semop_try:
+	sts = semop( g_semid, &sops_rd_wr2rd, 1 );
+	if ((sts==-1) && (errno==EINTR))
+	{   printf( "interrupted system call; assume debugger attach???\n" );
+	    goto semop_try;
+	}
+	if (sts == -1) { send_writer( Err, errno, 0 ); exit( 1 ); }
+
+	/* Do not worry about reading an exact block as this is sending to
+	   tape. Note: sts may be less than blk_size when reading from net,
+	   but this should not cause reader to overwrite data previously
+	   given to the writer. I could loop till I read a complete
+	   blocksize - this would allow reader to further ahead of writer. */
+	sts = read(  rd_fd, g_shmaddr_p+shm_off
+		   , (no_bytes<blk_size)?no_bytes:blk_size );
+	if (sts == -1) { send_writer( Err, errno, 0 ); exit( 1 ); }
+	if (sts == 0) { send_writer( Eof, errno, 0 ); exit( 1 ); }
+
+	send_writer( WrtSiz, sts, g_shmaddr_p+shm_off );
+
+	if (crc_obj_tp)
+	{   PyObject	*rr;
+	    rr = PyObject_CallFunction(  crc_obj_tp, "s#i", g_shmaddr_p+shm_off
+				       , sts, crc_i );
+	    crc_i = PyInt_AsLong( rr );
+	}
+
+	no_bytes -= sts;
+	shm_off += sts;
+	if ((shm_off+blk_size) > g_shmsize) shm_off = 0;
+    }
+
+    /* could I check for eof??? - probably not if reading from net */
+
+    send_writer( DatCrc, crc_i, 0 );
+
+    exit (0);
+    return;
+}
+
+void
+g_ipc_cleanup( void )
+{
+    g_semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
+    (void)semctl( g_semid, 0, IPC_RMID, g_semun_u );
+    (void)shmdt(  g_shmaddr_p );
+    (void)shmctl( g_shmid, IPC_RMID, 0 );
+    (void)msgctl( g_msgqid, IPC_RMID, 0 );
+
+    return;
+}
+
+void
+fd_xfer_SigHand( int xx )	/* sighand used below to get back to prompt -*/
+{				/* when icc communication gets "stuck" 	     */
+    printf( "fd_xfer_SigHand called\n" );
+    xx = 0;
+
+    g_ipc_cleanup();
+
+    (g_oldSigAct_s.sa_handler)( 0 );
+
+    return;
+}
+
+static char EXfd_xfer_Doc[] = "fd_xfer( fr_fd,to_fd,no_bytes,blk_siz,crc_fun )";
+
+static PyObject *
+EXfd_xfer(  PyObject	*self
+	 , PyObject	*args )
+{							/* @-Public-@ */
+	int		 fr_fd;
+	int		 to_fd;
+	int		 no_bytes;
+	int		 blk_size;
+	PyObject	*crc_obj_tp;
+
+	int		 sts;
+	struct sigaction newSigAct_s;
+	int		 rd_ahead_i;
+	int		 crc_i;
+	PyObject	*rr;
+	int		 pid;
+	struct msqid_ds	 msgctl_s;
+	struct sembuf	 sops_wr_wr2rd;  /* allows read */
+
+    sts = PyArg_ParseTuple(  args, "iiiiO", &fr_fd, &to_fd, &no_bytes
+			   , &blk_size, &crc_obj_tp );
+    if (!sts) return (NULL);
+
+    /* see if we are crc-ing */
+    if ((crc_obj_tp==Py_None) || PyInt_Check(crc_obj_tp)) crc_obj_tp = 0;
+
+    /* set up the signal handler b4 we get the ipc stuff */
+    newSigAct_s.sa_handler = fd_xfer_SigHand;
+    newSigAct_s.sa_flags   = 0;
+    sigemptyset( &newSigAct_s.sa_mask );
+#   define DOSIGACT 0
+#   if DOSIGACT == 1
+    sigaction( SIGINT, &newSigAct_s, &g_oldSigAct_s );
+#   endif
+
+    assert( blk_size < 0x400000 );
+    rd_ahead_i = 0x400000 / blk_size; /* do integer arithmatic */
+    g_shmsize = blk_size * rd_ahead_i;
+    g_shmid = shmget( IPC_PRIVATE, g_shmsize, IPC_CREAT|0x1ff/*or w/9bit perm*/ );
+    g_shmaddr_p = shmat( g_shmid, 0, 0 );	/* no addr hint, no flags */
+    if (g_shmaddr_p == (char *)-1)
+	return (raise_exception("fd_xfer shmat"));
+
+    /* create msg Q for reader to send info to writer */
+    g_msgqid = msgget( IPC_PRIVATE, IPC_CREAT|0x1ff );
+    msgctl( g_msgqid, IPC_STAT, &msgctl_s );
+    msgctl_s.msg_qbytes = (rd_ahead_i+1) * sizeof(struct s_msgdat);
+    msgctl( g_msgqid, IPC_SET, &msgctl_s );
+
+    /* create 1 semaphore for writer-to-allow-read   */
+    g_semid = semget( IPC_PRIVATE, 1, IPC_CREAT|0x1ff );
+
+    /* == NOW DO THE WORK ===================================================*/
+
+    sops_wr_wr2rd.sem_num = 0;  /* 1st and only sem */
+    sops_wr_wr2rd.sem_op  = 1;  /* reader dec's, writer inc's */
+    sops_wr_wr2rd.sem_flg = 0;  /* default - block behavior */
+
+    /* init wr2rd */
+    sts = sops_wr_wr2rd.sem_op;		/* save */
+    sops_wr_wr2rd.sem_op  = rd_ahead_i;
+    semop( g_semid, &sops_wr_wr2rd, 1 );
+    sops_wr_wr2rd.sem_op  = sts;	/* restore to saved */
+
+    /* fork off read (from) */
+    if ((pid=fork()) == 0) do_read(  fr_fd, no_bytes, blk_size, crc_obj_tp );
+    else
+    {   int		 writing_flg=1;
+	struct s_msg	 msg_s;
+	
+	while (writing_flg)
+	{   /* read fifo - normal (blocking) */
+	    sts = msgrcv(  g_msgqid, (struct s_msg *)&msg_s
+			 , sizeof(struct s_msgdat), 0, 0 );
+	    if (sts == -1) return (raise_exception("fd_xfer - writer msgrcv"));
+
+	    switch (msg_s.mtype)
+	    {
+	    case WrtSiz:
+		sts = 0;
+		do
+		{   msg_s.md.data -= sts;
+		    sts = write( to_fd, msg_s.md.c_p, msg_s.md.data );
+		    if (sts == -1)
+		    {   g_ipc_cleanup();
+			return (raise_exception("fd_xfer - write"));
+		    }
+		} while (sts != msg_s.md.data);
+
+		sts = semop( g_semid, &sops_wr_wr2rd, 1 );
+		if (sts == -1)
+		{   g_ipc_cleanup();
+		    return (raise_exception("fd_xfer - write - semop"));
+		}
+		break;
+	    case Err:
+		g_ipc_cleanup();
+		errno = msg_s.md.data;
+		return (raise_exception("fd_xfer - read error"));
+		break;
+	    case Eof:
+		g_ipc_cleanup();
+		return (raise_exception("fd_xfer - read EOF unexpected"));
+		break;
+	    default:		/* assume DatCrc */
+		writing_flg = 0;	/* DONE! */
+		crc_i = msg_s.md.data;
+		break;
+	    }
+	}
+    }
+    /* == DONE WITH THE WORK - CLEANUP ======================================*/
+
+    g_semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
+    (void)semctl( g_semid, 0, IPC_RMID, g_semun_u );
+    (void)shmdt(  g_shmaddr_p );
+    (void)shmctl( g_shmid, IPC_RMID, 0 );
+    (void)msgctl( g_msgqid, IPC_RMID, 0 );
+
+#   if DOSIGACT == 1
+    sigaction( SIGINT, &g_oldSigAct_s, (void *)0 );
+#   endif
+
+    if (waitpid(pid,&sts,0) == -1)
+	return (raise_exception("fd_xfer - waitpid"));
+
+    if (crc_obj_tp)
+	rr = Py_BuildValue( "i", crc_i );
+    else
+	rr = Py_BuildValue( "" );
+    return (rr);
+}   /* EXfd_xfer */
+
+
 /* = = = = = = = = = = = = = = -  Python Module Definitions = = = = = = = = = = = = = = - */
 
 /*  Module Methods table. 
@@ -649,6 +913,7 @@ EXusrTo_(  PyObject	*self
 static PyMethodDef EXfer_Methods[] = {
     { "usrTo_",  EXusrTo_,  1, EXusrTo__Doc},
     { "to_HSM",  EXto_HSM,  1, EXto_HSM_Doc},
+    { "fd_xfer",  EXfd_xfer,  1, EXfd_xfer_Doc},
     { 0, 0}        /* Sentinel */
 };
 
