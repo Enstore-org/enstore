@@ -3,16 +3,16 @@
 #
 # system imports
 import sys
-import os
-import time
-import copy
-import traceback
+#import os
+#import time
+#import copy
+#import traceback
 
 #enstore imports
-import timeofday
+#import timeofday
 import callback
 import log_client
-import dict_to_a
+#import dict_to_a
 import configuration_client
 import dispatching_worker
 import generic_server
@@ -21,6 +21,9 @@ import db
 import dbutil
 import Trace
 import e_errors
+
+dictV="" #quiet lint
+dictF="" #quiet lint
 
 class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
    def select(self,ticket):
@@ -42,7 +45,7 @@ class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
             dict=dictF
         else :
            ticket["status"] = (e_errors.DOESNOTEXIST, \
-                               "wrong name "+dbname+"for database table")
+                               "wrong name "+ticket['dbname']+"for database table")
            self.reply_to_caller(ticket)
            return
         criteria=self.modifyOpt(ticket['criteria'])
@@ -63,6 +66,7 @@ class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
                 if dict.is_index(k):
                    index=k
                    break
+           if 0: print val # quiet lint
            if index != None:
                 for main_crt in criteria[index]:
                         for  key in dict.index(index,main_crt) :
@@ -100,6 +104,7 @@ class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
         self.control_socket.close()
         return
    def modifyOpt(self,criteria):
+        if 0: print self #quiet lint
         if criteria.has_key('first_access'):
            criteria['first_access']=dbutil.timeOper(criteria['first_access'])
         if criteria.has_key('last_access'):
@@ -112,6 +117,7 @@ class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
            criteria['rem_bytes']=dbutil.numOper( criteria['rem_bytes'])
         return criteria
    def find_item(self,value,criteria,main_crt=""):
+        if 0: print self #quiet lint
         found=1
         for k,v in  criteria.items():
            if k==main_crt:
@@ -138,6 +144,7 @@ class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
         ticket["admin_clerk_callback_port"] = admin_clerk_port
         self.control_socket = callback.user_callback_socket(ticket)
         data_socket, address = listen_socket.accept()
+        if 0: print address # quiet lint
         self.data_socket = data_socket
         listen_socket.close()
 
@@ -172,7 +179,7 @@ class AdminClerkInterface(generic_server.GenericServerInterface):
     pass
 
 if __name__=="__main__":
-    import string
+    #import string
     Trace.init("AdminClerk")
     Trace.trace(1,"Admin Clerk called with args "+repr(sys.argv))
 
