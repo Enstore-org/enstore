@@ -18,9 +18,11 @@ def main(argv):
     bdb=bfid_db.BfidDb(dbHome)
 
     d.cursor('open')
+    print "open cursor"
     vol,data = d.cursor('first')
-
+    print "cursor ok"
     while vol:
+        print "retrive key for",vol
         data=d[vol]
         if data.has_key('bfids'):
             print "clobbering bfids for volume", vol
