@@ -5033,25 +5033,25 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         #        {'status':(msg.type, msg.strerror)})
         #    quit(1)
 
-        try:
-            #Get the system information from the clerks.
-            bfids_dict = fcc.get_bfids(e.volume)
-        except (ValueError, KeyError, TypeError, AttributeError), msg:
-            rest = {'volume':e.volume}
-            raise EncpError(None,
-                    "Unable to obtain information about volume %s." % e.volume,
-                            e_errors.NOVOLUME, rest) 
+        #try:
+        #    #Get the system information from the clerks.
+        #    bfids_dict = fcc.get_bfids(e.volume)
+        #except (ValueError, KeyError, TypeError, AttributeError), msg:
+        #    rest = {'volume':e.volume}
+        #    raise EncpError(None,
+        #            "Unable to obtain information about volume %s." % e.volume,
+        #                    e_errors.NOVOLUME, rest) 
             #print_data_access_layer_format(
             #    e.input, e.output, 0,
             #    {'status':(msg.type, msg.strerror)})
             #quit(1)
 
-        if e_errors.is_ok(bfids_dict):
-            bfids_list = bfids_dict['bfids']
-        else:
-            rest = {'volume':e.volume}
-            raise EncpError(None, bfids_dict['status'][1],
-                            bfids_dict['status'][0], rest)
+        #if e_errors.is_ok(bfids_dict):
+        #    bfids_list = bfids_dict['bfids']
+        #else:
+        #    rest = {'volume':e.volume}
+        #    raise EncpError(None, bfids_dict['status'][1],
+        #                    bfids_dict['status'][0], rest)
             #print_data_access_layer_format(
             #    e.input, e.output, 0, {'status':bfids_dict['status']})
             #quit(1)
@@ -5124,7 +5124,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 #quit(1)
 
         else:        
-            number_of_files = len(bfids_dict['bfids'])
+            #number_of_files = len(bfids_dict['bfids'])
+            number_of_files = len(tape_ticket['tape_list'])
             #Always say one (for the ticket to send to the LM) when the
             # number of files is unknown.
             if number_of_files == 0:
@@ -5394,7 +5395,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 #continue
 
             try:
-                bfid = bfids_list[i] #Set this alias...
+                #bfid = bfids_list[i] #Set this alias...
+                bfid = fc_reply['bfid']
             except IndexError:
                 #If we get here then there is no metadata for the volume
                 # for a tape read.  Set dummy values.
