@@ -23,7 +23,6 @@ class LM_Queue:
 
     # return the priority of a ticket
     def priority(self,ticket):
-	if 0: print self.keys() # lint fix
 	if ticket["encp"]["adminpri"] >= 0:
 	    return ticket["encp"]["adminpri"]
 	p = ticket["encp"]["basepri"]
@@ -37,7 +36,6 @@ class LM_Queue:
    
     # A call back for sort, highest priority should be first.
     def compare_priority(self,t1,t2):
-	if 0: print self.keys() # lint fix
 	if t1["encp"]["curpri"] < t2["encp"]["curpri"]:
 	    return 1
 	if t1["encp"]["curpri"] > t2["encp"]["curpri"]:
@@ -51,7 +49,6 @@ class LM_Queue:
    
     # A call back for sort, highest file location should be first.
     def compare_location(self,t1,t2):
-	if 0: print self.keys() # lint fix
 	# compare location is not appliable for write requests
 	if t1["work"] == "write_to_hsm" or t2["work"] == "write_to_hsm":
 	    return 0

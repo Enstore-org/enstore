@@ -413,7 +413,6 @@ class LoggerClient(generic_client.GenericClient):
 	self.lock = LoggerLock() 
 
     def log_func( self, time, pid, name, args ):
-        if 0: print time   # lint fix
 	#prevent log func from calling itself recursively
 	if self.lock.test_and_set():
             return
@@ -440,7 +439,6 @@ class LoggerClient(generic_client.GenericClient):
 	return 	self.lock.unlock()
 
     def send( self, severity, priority, format, *args ):
-        if 0: print self, priority  # lint fix
 	if args != (): format = format%args
 	Trace.log( severity, format )
 	return {"status" : (e_errors.OK, None)}

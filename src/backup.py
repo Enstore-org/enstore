@@ -17,11 +17,6 @@ import interface		# to get default host and port
 import e_errors                 # error information
 import log_client               # for getting info into the log
 
-dbHome=""    # quiet lint
-dir_bck=""   # quiet lint
-bckHome=""   # quiet lint
-hst_bck=""   # quiet lint
-hst_local="" # quiet lint
 
 # get_size(dbFile) -- get the number of records and size of a dbFile
 

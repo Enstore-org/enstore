@@ -18,7 +18,6 @@ import Trace
 import e_errors
 import configuration_client
 
-dict="" # quiet lint
 
 MY_NAME = "file_clerk"
 

@@ -25,7 +25,6 @@ def setmode(newmode):
     tdb.mode = newmode
 
 def saver(frame, type, arg) :
-    if 0 : print type, arg #quiet the linter
     if tdb.mode is MODE_TRACE_ALL :
         tdb.simple = { 't': threading.currentThread(), 'frame' : frame }
         return saver
@@ -195,14 +194,12 @@ class TdbMonitor(threading.Thread) :
     def cmd_import(self, args):
         if len(args) is not 1 : raise Help
         m = args[0]
-        if 0 : print self #quiet the linter
         tdb.__dict__[m]=__import__(m)
 
     def line_cmd_eval(self, e):
         self.writeln(eval(e))
 
     def line_cmd_exec(self, e):
-        if 0 : print self #linter
         exec e
 
     def cmd_modules(self, args):
@@ -240,7 +237,6 @@ class TdbMonitor(threading.Thread) :
         self.writeln("quit")
     
     def cmd_quit(self, args) :
-        if 0 : print self, args # quiet the linter
         raise Quit
         
 class TdbListener(threading.Thread):
@@ -257,7 +253,6 @@ class TdbListener(threading.Thread):
         s.listen(2)
         while  1 :
             ns, who = s.accept()
-            if 0 : print who # for the linter
             tm = TdbMonitor()
             tm.inFile = ns.makefile('r')
             tm.outFile  = ns.makefile('w')
