@@ -404,11 +404,11 @@ class Mover(  dispatching_worker.DispatchingWorker,
     #This got moved back inside the class so that it would have access to "self.fork"
     #derived from the base class Dispatching_worker
     #IMO, all "out-of-class" methods should get pulled back inside the classes
-    #and methods which are callable via a work ticket should be distinguished via
-    #some prefix like "work_". - cgw
+    #
+    # ok, I went ahead and moved them back in. - cgw
     def do_fork( self, ticket, mode ):
-        # if self.state != 'idle':
-        #     something is wrong...
+        if self.state != 'idle':
+            Trace.log(e_errors.ERROR, "mover: do_fork called when mover already forked")
         ticket['mover'] = self.mvr_config
         if mode == 'w' or mode == 'r':
             # get vcc and fcc for this xfer
@@ -989,7 +989,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 pass
             except:
                 # unanticipated exception: guess a cause and hope we can continue
-                traceback.print_exc()
+                #traceback.print_exc()
+                e_errors.handle_error()
                 media_error = 1
                 wr_err,rd_err,wr_access,rd_access = (0,1,0,1)
 
