@@ -1,17 +1,22 @@
-import libtpshelve
+# system imports
 import os
 import time
 import copy
+
+# enstore imports
 import log_client
-from  journal import JournalDict
-from table import Index
+import journal
+import table
+
+import libtpshelve
 
 JOURNAL_LIMIT=1000 
 backup_flag=1
 cursor_open=0
-class myIndex(Index):
+
+class myIndex(table.Index):
   def __init__(self,db,name):
-	Index.__init__(self,db,name)
+	table.Index.__init__(self,db,name)
   def valToStr(self,val):
 	if val==None:
 		return None
@@ -20,6 +25,7 @@ class myIndex(Index):
 	if str==None:
 		return None
 	return str
+
 class dBTable:
   def __init__(self,dbname,logc,indlst=[]):
     try:
@@ -33,7 +39,7 @@ class dBTable:
     self.inx={}
     for name in indlst :
     	self.inx[name]=myIndex(self.dbindex,name)
-    self.jou=JournalDict({},dbname+".jou")
+    self.jou=journal.JournalDict({},dbname+".jou")
     self.count=0
     self.name=dbname
     self.logc=logc
@@ -190,7 +196,7 @@ class dBTable:
                         os.environ['ENSTORE_DB'] +"/"+self.name+".jou."+ \
                         repr(time.time())
      os.system(cmd)
-     self.jou = JournalDict({},self.name+".jou")
+     self.jou = journal.JournalDict({},self.name+".jou")
      self.count=0
      self.logc.send(log_client.INFO, 1, "End checkpoint for "+self.name)
   def start_backup(self):
@@ -230,17 +236,3 @@ if __name__=="__main__":
 	import sys
 	dict= dBTable(sys.argv[1],0)
 	dict.dump()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
