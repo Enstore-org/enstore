@@ -1334,9 +1334,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             try:
                 record['sum_'+key] = record['sum_'+key] + ticket[key]
             except KeyError, detail:
-                if key == 'mounts' and ticket.has_key('mounts'):
-                    # make a new dictionary entry for the old tape records
-                    record['sum_mounts'] = ticket[key]
+                if key == 'mounts':
+                    # FIX ME LATER!!!
+                    if ticket.has_key('mounts'):
+                        # make a new dictionary entry for the old tape records
+                        record['sum_mounts'] = ticket[key]
                 else:
                     msg= "Volume Clerk: key %s is missing" % (detail,)
                     ticket["status"] = (e_errors.KEYERROR, msg)
