@@ -8,6 +8,9 @@
 #                                                                       #
 #########################################################################
 
+#system imports
+import sys
+
 #enstore imports
 import configuration_client
 import udp_client
@@ -112,7 +115,6 @@ class MediaChangerClientInterface(interface.Interface):
         generic_cs.enprint("        --getwork          List oprations in progress")
         
 if __name__ == "__main__" :
-    import sys
     Trace.init("medch cli")
     Trace.trace(1,"mcc called with args "+repr(sys.argv))
 

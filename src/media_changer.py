@@ -15,6 +15,7 @@
 
 # system imports
 import os
+import sys
 
 # enstore imports
 import configuration_client
@@ -259,7 +260,6 @@ class MediaLoaderInterface(interface.Interface):
 
 
 if __name__ == "__main__" :
-    import sys
     Trace.init("medchanger")
     Trace.trace(1,"media changer called with args "+repr(sys.argv))
 
