@@ -595,7 +595,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(\
 	     HTMLgen.Name("blocksizes", "Blocksizes")), size="+1")))
 	blsizes = self.data_dict.get(enstore_status.BLOCKSIZES, {})
-	if blkeys:
+	if blsizes:
 	    blkeys = blsizes.keys()
 	    blkeys.sort()
 	    bl_table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
