@@ -194,22 +194,21 @@ if __name__ == "__main__" :
     # here we need to define what is the class of the media changer
     # and create an object of that class based on the value of args[0]
     # for now there is just one possibility
+
+    # THIS NEEDS TO BE FIXED -- WE CAN'T BE CHECKING FOR EACH KIND!!!
     if args[0] == 'STK.media_changer' :
         mls =  STK_MediaLoader((keys['host'], keys['port']),
                                STK_MediaLoaderMethods)
-        ml_name = 'ML_STK'
     elif args[0] == 'FTT.media_changer' :
         mls =  FTT_MediaLoader((keys['host'], keys['port']),
                                FTT_MediaLoaderMethods)
-        ml_name = 'ML_FTT'
     else :
         mls =  RDD_MediaLoader((keys['host'], keys['port']),
                                MediaLoaderMethods)
-        ml_name = 'ML_RDD'
     mls.set_csc(csc)
 
     # create a log client
-    logc = log_client.LoggerClient(csc, ml_name, 'logserver', 0)
+    logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
     logc.send(log_client.INFO, "Starting Media Changer. Type=%s", args[0])
     mls.set_logc(logc)
 

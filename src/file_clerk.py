@@ -260,12 +260,12 @@ if __name__ == "__main__" :
     #   remember, in a system, there is only one bfs
     #   get our port and host from the name server
     #   exit if the host is not this machine
-    ticket = csc.get("file_clerk")
-    cs = FileClerk( (ticket["host"], ticket["port"]), FileClerkMethods)
+    keys = csc.get("file_clerk")
+    cs = FileClerk( (keys["host"], keys["port"]), FileClerkMethods)
     cs.set_csc(csc)
 
     # get a logger
-    logc = log_client.LoggerClient(csc, 'FILC', 'logserver', 0)
+    logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
     cs.set_logc(logc)
 
     while 1:

@@ -227,7 +227,7 @@ class Mover :
         bof_space_cookie = 0
         sanity_crc = 0
         complete_crc = 0
-        pnfs = ticket["pnfsfile_info"]
+        pnfs = ticket["pnfs_info"]
         inode = 0
 
         # call the user and announce that your her mover

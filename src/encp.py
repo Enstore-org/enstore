@@ -110,7 +110,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
               "file_family"        : p.file_family,
               "file_family_width"  : p.file_family_width,
               "orig_filename"      : unixfile,
-              "pnfsfile_info"      : pinfo,
+              "pnfs_info"          : pinfo,
               "user_info"          : uinfo,
               "mtime"              : int(time.time()),
               "size_bytes"         : fsize,
@@ -269,11 +269,12 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
             #print done_formatted
 
         format = "%s -> %s : %d bytes copied to %s in  %f seconds "+\
-                 "at %f MB/S    cum= %f seconds"
+                 "at %f MB/S requestor:%s   cum= %f seconds"
         logticket = logc.send(log_client.INFO, format, uinfo["fullname"],
                               p.pnfsFilename, p.file_size,
                               done_ticket["external_label"], tinfo["total"],
-                              done_ticket["MB_per_S"], time.time()-t0)
+                              done_ticket["MB_per_S"], uinfo["uname"],
+                              time.time()-t0)
 
     else :
         jraise(errno.errorcode[errno.EPROTO],"encp.write_to_hsm: "\
@@ -514,10 +515,11 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
             #print done_formatted
 
         format = "%s -> %s : %d bytes copied from %s in  %f seconds at "+\
-                     "%s MB/S    cum= %f"
+                     "%s MB/S  requestor:%s     cum= %f"
         logticket = logc.send(log_client.INFO, format, p.pnfsFilename,
                               uinfo["fullname"], fsize,
                               done_ticket["external_label"], tinfo["total"],
+                              uinfo["uname"],
                               done_ticket["MB_per_S"], time.time()-t0)
 
     else :

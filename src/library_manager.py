@@ -156,12 +156,24 @@ class LibraryManagerMethods(DispatchingWorker) :
     def write_to_hsm(self, ticket):
         ticket["status"] = "ok"
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        format = "write Q'd %s -> %s : library=%s family=%s requestor:%s"
+        logticket = self.logc.send(log_client.INFO, format,
+                                   repr(ticket["user_info"]["fullname"]),
+                                   ticket["pnfs_info"]["pnfsFilename"],
+                                   ticket["library"],ticket["file_family"],
+                                   ticket["user_info"]["uname"])
         queue_pending_work(ticket)
 
 
     def read_from_hsm(self, ticket):
         ticket["status"] = "ok"
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        format = "read Q'd %s -> %s : vol=%s bfid=%s requestor:%s"
+        logticket = self.logc.send(log_client.INFO, format,
+                                   ticket["pnfs_info"]["pnfsFilename"],
+                                   repr(ticket["user_info"]["fullname"]),
+                                   ticket["external_label"],ticket["bfid"],
+                                   ticket["user_info"]["uname"])
         queue_pending_work(ticket)
 
 
@@ -177,6 +189,12 @@ class LibraryManagerMethods(DispatchingWorker) :
         # ok, we have some work - bind the volume
         elif w["status"] == "ok" :
             # reply now to avoid deadlocks
+            format = "bind vol=%s work=%s mover=%s requestor:%s"
+            logticket = self.logc.send(log_client.INFO, format,
+                                       w["external_label"],
+                                       w["work"],
+                                       mticket["mover"],
+                                       w["user_info"]["uname"])
             self.reply_to_caller({"work"           : "bind_volume",
                                   "external_label" : w["external_label"] })
             # put it into our bind queue and take it out of pending queue
@@ -198,6 +216,12 @@ class LibraryManagerMethods(DispatchingWorker) :
         # from the list and  return
         w = get_awaiting_work(mticket["external_label"])
         if w :
+            format = "%s awaiting work on vol=%s mover=%s requestor:%s"
+            logticket = self.logc.send(log_client.INFO, format,
+                                       w["work"],
+                                       w["external_label"],
+                                       mticket["mover"],
+                                       w["user_info"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks
             work_awaiting_bind.remove(w)
             w['mover'] = mticket['mover']
@@ -207,6 +231,12 @@ class LibraryManagerMethods(DispatchingWorker) :
         # otherwise, see if this volume will do for any other work pending
         w = next_work_this_volume(mticket)
         if w["status"] == "ok" :
+            format = "%s next work on vol=%s mover=%s requestor:%s"
+            logticket = self.logc.send(log_client.INFO, format,
+                                       w["work"],
+                                       w["external_label"],
+                                       mticket["mover"],
+                                       w["user_info"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks
             pending_work.remove(w)
             w['mover'] = mticket['mover']
@@ -215,6 +245,9 @@ class LibraryManagerMethods(DispatchingWorker) :
 
         # if the pending work queue is empty, then we're done
         elif  w["status"] == "nowork" :
+            format = "unbind vol mover=%s"
+            logticket = self.logc.send(log_client.INFO, format,
+                                       mticket["mover"])
             self.reply_to_caller({"work" : "unbind_volume"})
 
         # alas
@@ -349,7 +382,7 @@ if __name__ == "__main__" :
     lm.set_csc(csc)
 
     # get a logger
-    logc = log_client.LoggerClient(csc, 'LIBM', 'logserver', 0)
+    logc = log_client.LoggerClient(keys["logname"], 'LIBM', 'logserver', 0)
     lm.set_logc(logc)
 
     while 1:
