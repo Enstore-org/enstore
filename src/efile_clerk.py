@@ -110,7 +110,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # look up in our dictionary the request bit field id
         record = self.dict[bfid] 
         if not record:
-            "File Clerk: bfid %s not found"%(bfid,)
+            msg = "File Clerk: bfid %s not found"%(bfid,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
