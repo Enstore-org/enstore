@@ -942,7 +942,7 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
             continue
 
         # skipping volumes that were not accessed in last two days
-        if vv['last_access'] != -1 and vv['last_access'] < two_day_ago:
+        if vv['last_access'] < two_day_ago:
             vk, vv = vc.next()
             continue
 
