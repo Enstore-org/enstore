@@ -519,6 +519,7 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
                 if with_system:
                     data[i] = data[i] + "@" + "ENSTORE"
             mf_fp.close()
+            data.sort()
             return data  #Return from here on success.
         except (OSError, IOError), msg:
             print str(msg)
@@ -541,6 +542,7 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
                     m_name = m_name + "@" + enstore_system
                 mover_list.append(m_name)
 
+        mover_list.sort()
         return mover_list
 
     #If necessary, do this the long way without using the cached config.
