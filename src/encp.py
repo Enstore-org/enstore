@@ -28,6 +28,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # first check the unix file the user specified
     # Note that the unix file remains open
     t1 = time.time()
+    if list:
+        print "Checking",unixfile
     in_file = open(unixfile, "r")
     statinfo = os.stat(unixfile)
     major = 0
@@ -39,9 +41,13 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         raise errorcode[EPERM],"encp.write_to_hsm: "\
               +unixfile+" is not a regular file"
     tinfo["filecheck"] = time.time() - t1
+    if list:
+        print unixfile,"ok, dt:",tinfo["filecheck"]
 
     # check the output pnfs file next
     t1 = time.time()
+    if list:
+        print "Checking",pnfsfile
     p = pnfs.pnfs(pnfsfile)
     if p.valid != pnfs.valid :
         raise errorcode[EINVAL],"encp.write_to_hsm: "\
@@ -54,6 +60,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         raise errorcode[EACCES],"encp.write_to_hsm: "\
               +pnfsfile+", NO write access to directory"
     tinfo["pnfscheck"] = time.time() - t1
+    if list:
+        print pnfsfile,"ok, dt:",tinfo["pnfscheck"]
 
     # make the pnfs dictionary that will be part of the ticket
     pinfo = {}
@@ -75,9 +83,13 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
 
     # get a port to talk on and listen for connections
     t1 = time.time()
+    if list:
+        print "Requesting callback ports"
     host, port, listen_socket = get_callback()
     listen_socket.listen(4)
     tinfo["get_callback"] = time.time() - t1
+    if list:
+        print host,port,"ok, dt:",tinfo["get_callback"]
 
     # generate the work ticket
     ticket = {"work"               : "write_to_hsm",
@@ -97,11 +109,17 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
 
     # ask configuration server what port the right library manager is using
     t1 = time.time()
+    if list:
+        print "Calling Config Server to find",p.library+".library_manager"
     vticket = csc.get(p.library+".library_manager")
     tinfo["get_libman"] = time.time() - t1
+    if list:
+        print vticket["host"],vticket["port"],"ok, dt:",tinfo["get_libman"]
 
     # send the work ticket to the library manager
     t1 = time.time()
+    if list:
+        print "Sending ticket to",p.library+".library_manager"
     tinfo["tot_to_send_ticket"] = t1 -t0
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
     tinfo["send_ticket"] = time.time() - t1
@@ -119,6 +137,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # and make sure that is it calling _us_ back, and not some sort of old
     # call-back to this very same port. It is dicey to time out, as it
     # is probably legitimate to wait for hours....
+    if list:
+        print "Waiting for mover to call back"
     while 1 :
         control_socket, address = listen_socket.accept()
         new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
@@ -138,9 +158,15 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # If the system has called us back with our own  unique id, call back
     # the mover on the mover's port and send the file on that port.
     t1 = time.time()
-    tinfo["tot_to_mover_callback"] = t1 - t0
     data_path_socket = mover_callback_socket(ticket)
+    tinfo["tot_to_mover_callback"] = t1 - t0
+    if list:
+        print ticket["mover_callback_host"],ticket["mover_callback_port"],\
+              "mover called back, cum_time:",tinfo["tot_to_mover_callback"]
+
     t1 = time.time()
+    if list:
+        print "Sending data"
     while 1:
         buf = in_file.read(min(fsize, 65536*4))
         l = len(buf)
@@ -149,6 +175,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     t2 = time.time()
     tinfo["sent_bytes"] = t2-t1
     tinfo["tot_to_sent_bytes"] = t2-t0
+    if list:
+        print "Data sent, bytes:",fsize,"dt:",tinfo["sent_bytes"]
 
     data_path_socket.close()
     in_file.close()
@@ -156,13 +184,23 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # File has been sent - wait for final dialog with mover. We know the file
     # has hit some sort of media.... when this occurs. Create a file in pnfs
     # namespace with information about transfer.
+    t1 = time.time()
+    if list:
+        print "Waiting for final mover dialog"
     done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
     control_socket.close()
+    tinfo["final_dialog"] = time.time()-t1
+    if list:
+        print "Dialog complete, dt:",tinfo["final_dialog"]
 
     if done_ticket["status"] == "ok" :
         t1 = time.time()
+        if list:
+            print "Adding file to pnfs"
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"])
         tinfo["pnfsupdate"] = time.time() - t1
+        if list:
+            print "pnfs updated, dt:",tinfo["pnfsupdate"]
 
         tinfo["total"] = time.time()-t0
         done_ticket["tinfo"] = tinfo
@@ -172,8 +210,14 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         else:
             done_ticket["MB_per_S"] = 0.0
 
+        t1 = time.time()
+        if list:
+            print "Adding transaction log to pnfs"
         done_formatted  = pprint.pformat(done_ticket)
         p.writelayer(3,done_formatted)
+        t2 = time.time() - t1
+        if list:
+            print "pnfs logged, dt:",t2
 
         if list :
             fticket=done_ticket["file_clerk"]
