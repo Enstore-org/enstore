@@ -302,6 +302,7 @@ class Buffer:
                     raise "WRAPPER_ERROR"
                 data_ptr = header_size
                 bytes_for_cs = min(bytes_read - header_size, self.bytes_for_crc)
+            self.first_block = 0
         if do_crc:
             crc_error = 0
             try:
@@ -311,9 +312,7 @@ class Buffer:
                                                        data,
                                                        data_ptr, bytes_for_cs)
                 Trace.trace(22,"block_read: complete_crc %s" % (self.complete_crc,))
-                Trace.trace(22,"first_block %s, sanity_bytes %s"%(self.first_block,self.sanity_bytes))
-                if self.first_block and self.sanity_bytes < SANITY_SIZE:
-		    self.first_block = 0
+                if self.sanity_bytes < SANITY_SIZE:
                     nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
                     self.sanity_crc = checksum.adler32_o(self.sanity_crc,
                                                          data,
@@ -322,6 +321,7 @@ class Buffer:
                     Trace.trace(22, "block_read: sanity cookie %s sanity_crc %s sanity_bytes %s" %
                                 (self.sanity_cookie, self.sanity_crc,
                                  self.sanity_bytes))
+                else:
                     # compare sanity crc
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
                         Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, sanity CRC %s" %
@@ -335,8 +335,6 @@ class Buffer:
             if crc_error:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 raise "CRC_ERROR"
-        else:
-           self.first_block = 0 
                 
 ##        Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
         if data and fill_buffer:
@@ -372,6 +370,7 @@ class Buffer:
                     bytes_for_cs = bytes_for_cs - self.header_size
                     if len(data) <= self.header_size:
                         raise "WRAPPER_ERROR"
+                    self.first_block = 0
                 if self.bytes_written == self.file_size:
                     # last block
                     bytes_for_cs = bytes_for_cs - self.trailer_size
@@ -385,8 +384,8 @@ class Buffer:
                                                            data_ptr, bytes_for_cs)
                     Trace.trace(22,"complete crc %s"%(self.complete_crc,))
                     
-                    if self.first_block and self.sanity_bytes < SANITY_SIZE:
-                        self.first_block = 0
+                    #if self.first_block and self.sanity_bytes < SANITY_SIZE:
+                    if self.sanity_bytes < SANITY_SIZE:
                         nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
                         self.sanity_crc = checksum.adler32_o(self.sanity_crc,
                                                              data,
