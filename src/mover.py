@@ -375,6 +375,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.state = HAVE_BOUND
                     Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                     self.dismount_time = time.time() + self.default_dismount_delay
+                else:
+                    have_tape=0
             self.tape_driver.close()
             if not have_tape:
                 Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
