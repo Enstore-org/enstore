@@ -340,7 +340,7 @@ for try in list doit; do
               cvs update -A get.py
               check_status $? "cvs update -A get.py"
               getnew=/tmp/$productCut.getnew
-              sed -e "s+version_string = \".*  CVS +version_string = \"$REV  CVS +" $ENSTORE_DIR/src/get.py > $getpnew
+              sed -e "s+version_string = \".*  CVS +version_string = \"$REV  CVS +" $ENSTORE_DIR/src/get.py > $getnew
               check_status $? "sed bump version to $REV"
               diff $ENSTORE_DIR/src/get.py $getnew
               cp $getnew $ENSTORE_DIR/src/get.py
