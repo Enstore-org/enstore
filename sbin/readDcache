@@ -55,9 +55,11 @@ case $gang in
   d0en*) namespace=/pnfs/sam/dzero
 	 weak_port=24126
 	 strong_port=24127
-         date_string_d() { date +"%Y/%m" --date="1 week ago" ; }
-	 place=$namespace/`date_string_d`
-         file=`find $place -type f -print | head -n 1`
+         #date_string_d() { date +"%Y/%m" --date="1 week ago" ; }
+	 #place=$namespace/`date_string_d`
+         #file=`find $place -type f -print | head -n 1`
+	 # new file once/day, asumming the head of directory is constant (bad assumption)
+         file=`find $namespace -type f -size +0 -print | head -n $N | tail -n 1` 2>/dev/null
          f2=`echo $file | sed -e 's%/pnfs%%'`
          f3=`echo $file | sed -e 's%/pnfs/archive%%'`
          w=/pnfs/archive/dcache-tests/$N.dcache
