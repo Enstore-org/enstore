@@ -381,7 +381,16 @@ def set_route(dest, interface_ip):
 	return
 
     #Attempt to set the new route.
-    err=enroute.routeAdd(dest, gateway, if_name)
+    try:
+        err=enroute.routeAdd(dest, gateway, if_name)
+    except TypeError:
+        #If we get here, then it is likely that the changes in enroute
+        # and enroute2 have not been compiled recently.  This is likely
+        # due to the change to support passing the local interface to be
+        # used from encp to enroute2.
+        sys.stderr.write("Unable to change route.  Update, recompile and"
+                         " try again.\n")
+        return
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
 	raise OSError(errno.EPERM, "Routing:" + enroute.errstr(err))
@@ -413,7 +422,15 @@ def update_route(dest, interface_ip):
 	return
 
     #Attempt to reset an existing route.
-    err=enroute.routeChange(dest, gateway, if_name)
+    try:
+        err=enroute.routeChange(dest, gateway, if_name)
+    except TypeError:
+        #If we get here, then it is likely that the changes in enroute
+        # and enroute2 have not been compiled recently.  This is likely
+        # due to the change to support passing the local interface to be
+        # used from encp to enroute2.
+        sys.stderr.write("Unable to change route.  Update, recompile and"
+                         " try again.\n")
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
 	raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
@@ -437,7 +454,15 @@ def unset_route(dest):
         return
 
     #Attempt to remove the route.
-    err=enroute.routeDel(dest)
+    try:
+        err=enroute.routeDel(dest)
+    except TypeError:
+        #If we get here, then it is likely that the changes in enroute
+        # and enroute2 have not been compiled recently.  This is likely
+        # due to the change to support passing the local interface to be
+        # used from encp to enroute2.
+        sys.stderr.write("Unable to change route.  Update, recompile and"
+                         " try again.\n")
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
 	raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
