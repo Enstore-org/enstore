@@ -1,5 +1,11 @@
 import string
 
+def makeTapelogFilename(tapeLabel, filemark,run,frame,ccd):
+    return "idTapeLog-00" + run + "-" + ccd + "-000" + frame + ".fit"
+    
+def makeTarlogFilename(tapeLabel, filemark,contents,id):
+    return string.lower(contents) + "." + id + ".tar"
+
 def parseFile(filename, tapeLabel):
     filelist = []
     f = open(filename)
@@ -17,9 +23,5 @@ def parseFile(filename, tapeLabel):
 
     return filelist
     
-def makeTapelogFilename(tapeLabel, filemark,run,frame,ccd):
-    return "idTapeLog-00" + run + "-" + ccd + "-000" + frame + ".fit"
-    
-def makeTarlogFilename(tapeLabel, filemark,contents,id):
-    return string.lower(contents) + "." + id + ".tar"
+
 
