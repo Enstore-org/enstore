@@ -338,7 +338,10 @@ class LoggerClient(generic_client.GenericClient):
             ln = self.log_name
         else:
             ln = name
-	if severity > e_errors.MISC: severity = e_errors.MISC
+	if severity > e_errors.MISC:
+            msg = '%s %s' % (severity, msg)
+            severity = e_errors.MISC
+            
 
         if string.find(msg, Trace.MSG_TYPE) < 0:
 	    try:
