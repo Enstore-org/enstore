@@ -18,6 +18,8 @@ NAV_TABLE_COLOR = YELLOW
 NBSP = "&nbsp;"
 CELLP = 3
 MAX_SROW_TDS = 5
+AT_MOVERS = 0
+PENDING = AT_MOVERS + 1
 
 MEDIA_CHANGERS = "Media Changers"
 MEDIA_CHANGER = "media_changer"
@@ -299,12 +301,28 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(kmover[4]))
 	    table.append(tr)
 
+    # given the type of work and the type of queue, return the text to be displayed to
+    # describe this queue element
+    def get_intro_text(self, work, queue):
+	if queue == AT_MOVERS:
+	    if work == enstore_status.WRITE:
+		text = "Writing%stape"%(NBSP,)
+	    else:
+		text = "Reading%stape"%(NBSP,)
+	else:
+	    if work == enstore_status.WRITE:
+		text = "Pending%sTape%sWrite"%(NBSP,NBSP)
+	    else:
+		text = "Pending%sTape%sRead"%(NBSP,NBSP)
+	return text
+
     # put together the rows for either lm queue
     def lm_queue_rows(self, lm, queue, intro):
 	table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
 				  align="LEFT", bgcolor=YELLOW, width="100%")
 	for qelem in self.data_dict[lm][queue]:
-	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(intro, color=BRICKRED, html_escape='OFF')))
+	    text = self.get_intro_text(qelem[enstore_status.WORK], intro)
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(text, color=BRICKRED, html_escape='OFF')))
 	    if qelem.has_key(enstore_status.MOVER):
 		tr.append(HTMLgen.TD(qelem[enstore_status.MOVER]))
 	    else:
@@ -363,10 +381,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(HTMLgen.Font("Agetime", color=BRICKRED)))
 	    tr.append(HTMLgen.TD(qelem[enstore_status.AGETIME]))
 	    table.append(tr)
-	    if qelem[enstore_status.WORK] == enstore_status.READ:
-		tr = HTMLgen.TR(self.spacer_data("Read%sfrom"%(NBSP,)))
-	    else:
-		tr = HTMLgen.TR(self.spacer_data("Write%sto"%(NBSP,)))
+	    tr = HTMLgen.TR(self.spacer_data("Local%sfile"%(NBSP,)))
 	    tr.append(HTMLgen.TD(qelem[enstore_status.FILE], colspan=4))
 	    table.append(tr)
 	    tr = HTMLgen.TR(self.spacer_data("Bytes"))
@@ -387,10 +402,10 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# WORK, NODE, PORT, FILE, FILE_FAMILY, FILE_FAMILY_WIDTH, SUBMITTED,
 	# DEQUEUED, MODIFICATION, CURRENT, BASE, DELTA, AGETIME, FILE, BYTES, 
 	# ID
-	if self.data_dict[lm].has_key(enstore_status.WORK) and \
-	   not self.data_dict[lm][enstore_status.WORK] == \
-	       enstore_status.NO_WORK:
-	    row = self.lm_queue_rows(lm, enstore_status.WORK, "Work%sfor"%(NBSP,))
+	the_work = self.data_dict[lm].get(enstore_status.WORK,
+					  enstore_status.NO_WORK)
+	if not the_work == enstore_status.NO_WORK:
+	    row = self.lm_queue_rows(lm, enstore_status.WORK, AT_MOVERS)
 	else:
 	    row = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_status.NO_WORK,
 						     color=BRICKRED), 
@@ -402,11 +417,10 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# These are the keys used in pending work
 	# NODE, PORT, FILE, FILE_FAMILY, FILE_FAMILY_WIDTH, SUBMITTED,
 	# CURRENT, BASE, DELTA, AGETIME, FILE, BYTES, ID
-	if self.data_dict[lm].has_key(enstore_status.PENDING) and \
-	   not self.data_dict[lm][enstore_status.PENDING] == \
-	       enstore_status.NO_PENDING:
-	    row = self.lm_queue_rows(lm, enstore_status.PENDING,
-				     "Pending%sWork"%(NBSP,))
+	the_work = self.data_dict[lm].get(enstore_status.PENDING,
+					  enstore_status.NO_PENDING)
+	if not the_work == enstore_status.NO_PENDING:
+	    row = self.lm_queue_rows(lm, enstore_status.PENDING, PENDING)
 	else:
 	    row = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_status.NO_PENDING,
 						     color=BRICKRED),
