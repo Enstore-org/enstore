@@ -1337,10 +1337,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             w = rq.ticket
 
             format = "%s next work on vol=%s mover=%s requester:%s"
-            Trace.log(e_errors.INFO, format%(w["work"],
-                                             w["vc"]["external_label"],
-                                             mticket["mover"],
-                                             w["wrapper"]["uname"]))
+            try:
+                Trace.log(e_errors.INFO, format%(w["work"],
+                                                 w["vc"]["external_label"],
+                                                 mticket["mover"],
+                                                 w["wrapper"]["uname"]))
+            except KeyError:
+                Trace.log(e_erros.ERROR, "mover_bound_volume: Bad ticket: %s"%(w,))
+                raise KeyError
             w['times']['lm_dequeued'] = time.time()
             if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s %s to mover %s %s DEL_DISM %s"%
