@@ -1,53 +1,57 @@
-extract_logical   11 ftt_lib/AIX/ftt_machdep.c extract_logical(
-ftt_get_hwdens   199 ftt_lib/AIX/ftt_machdep.c ftt_get_hwdens(
-ftt_set_blocksize 134 ftt_lib/AIX/ftt_machdep.c ftt_set_blocksize(
-ftt_set_compression 130 ftt_lib/AIX/ftt_machdep.c ftt_set_compression(
-ftt_set_hwdens    60 ftt_lib/AIX/ftt_machdep.c ftt_set_hwdens(
-ftt_status        56 ftt_lib/AIX/ftt_machdep.c ftt_status(
-ftt_scsi_close    74 ftt_lib/AIX/ftt_scsi.c ftt_scsi_close(
-ftt_scsi_command 102 ftt_lib/AIX/ftt_scsi.c ftt_scsi_command(
-ftt_scsi_open     52 ftt_lib/AIX/ftt_scsi.c ftt_scsi_open(
-ftt_scsi_close   122 ftt_lib/VMS/ftt_scsi.c ftt_scsi_close(
-ftt_scsi_command 178 ftt_lib/VMS/ftt_scsi.c ftt_scsi_command(
-ftt_scsi_open     42 ftt_lib/VMS/ftt_scsi.c ftt_scsi_open(
-demo_with_delay   12 ftt_lib/asyncdemo.c demo_with_delay(
-main              59 ftt_lib/asyncdemo.c main(
-ftt_check         81 ftt_lib/ftt_async.c ftt_check(
-ftt_fork          24 ftt_lib/ftt_async.c ftt_fork(
-ftt_report       137 ftt_lib/ftt_async.c ftt_report(
-ftt_wait         100 ftt_lib/ftt_async.c ftt_wait(
 ftt_check_table   18 ftt_lib/ftt_checktable.c void ftt_check_table(
 main              11 ftt_lib/ftt_checktable.c main(
-ftt_partbuf       94 ftt_lib/ftt_common.h } *ftt_partbuf;
+demo_with_delay   12 ftt_lib/asyncdemo.c demo_with_delay(
+main              59 ftt_lib/asyncdemo.c main(
+ftt_check         90 ftt_lib/ftt_async.c ftt_check(
+ftt_fork          24 ftt_lib/ftt_async.c ftt_fork(
+ftt_report       146 ftt_lib/ftt_async.c ftt_report(
+ftt_wait         109 ftt_lib/ftt_async.c ftt_wait(
+ftt_alloc_parts    8 ftt_lib/ftt_partition.c ftt_alloc_parts(
+ftt_cur_part     211 ftt_lib/ftt_partition.c ftt_cur_part(
+ftt_dump_partitions 296 ftt_lib/ftt_partition.c ftt_dump_partitions(
+ftt_extract_maxparts  28 ftt_lib/ftt_partition.c ftt_extract_maxparts(
+ftt_extract_nparts  23 ftt_lib/ftt_partition.c ftt_extract_nparts(
+ftt_extract_part_size  33 ftt_lib/ftt_partition.c ftt_extract_part_size(
+ftt_free_parts    18 ftt_lib/ftt_partition.c ftt_free_parts(
+ftt_get_partitions  68 ftt_lib/ftt_partition.c ftt_get_partitions(
+ftt_locate_part  231 ftt_lib/ftt_partition.c ftt_locate_part(
+ftt_set_mount_partition 329 ftt_lib/ftt_partition.c ftt_set_mount_partition(
+ftt_set_nparts    43 ftt_lib/ftt_partition.c ftt_set_nparts(
+ftt_set_part_size  53 ftt_lib/ftt_partition.c ftt_set_part_size(
+ftt_skip_part    222 ftt_lib/ftt_partition.c ftt_skip_part(
+ftt_undump_partitions 310 ftt_lib/ftt_partition.c ftt_undump_partitions(
+ftt_write_partitions 114 ftt_lib/ftt_partition.c ftt_write_partitions(
+pack              62 ftt_lib/ftt_partition.c #define pack(
+ftt_partbuf       94 ftt_lib/ftt_common.h } ftt_partition_table, *ftt_partbuf;
 ftt_debug_dump    53 ftt_lib/ftt_debug.c ftt_debug_dump(
 ftt_dump           7 ftt_lib/ftt_debug.c ftt_dump(
-BITFLD           354 ftt_lib/ftt_do_scsi.c #define BITFLD(
+BITFLD           378 ftt_lib/ftt_do_scsi.c #define BITFLD(
 ftt_all_scsi     227 ftt_lib/ftt_do_scsi.c ftt_all_scsi(
 ftt_close_scsi_dev  77 ftt_lib/ftt_do_scsi.c ftt_close_scsi_dev(
 ftt_do_scsi_command  34 ftt_lib/ftt_do_scsi.c ftt_do_scsi_command(
-ftt_format_ait   507 ftt_lib/ftt_do_scsi.c int ftt_format_ait(
+ftt_format_ait   531 ftt_lib/ftt_do_scsi.c int ftt_format_ait(
 ftt_get_scsi_devname 207 ftt_lib/ftt_do_scsi.c ftt_get_scsi_devname(
-ftt_inquire      484 ftt_lib/ftt_do_scsi.c int ftt_inquire(
-ftt_logsense     693 ftt_lib/ftt_do_scsi.c int ftt_logsense(
-ftt_modesense    644 ftt_lib/ftt_do_scsi.c int ftt_modesense(
+ftt_inquire      508 ftt_lib/ftt_do_scsi.c int ftt_inquire(
+ftt_logsense     664 ftt_lib/ftt_do_scsi.c int ftt_logsense(
+ftt_modesense    615 ftt_lib/ftt_do_scsi.c int ftt_modesense(
 ftt_open_scsi_dev  52 ftt_lib/ftt_do_scsi.c ftt_open_scsi_dev(
 ftt_scsi_check    97 ftt_lib/ftt_do_scsi.c ftt_scsi_check(
-ftt_scsi_locate  329 ftt_lib/ftt_do_scsi.c ftt_scsi_locate(
+ftt_scsi_locate  330 ftt_lib/ftt_do_scsi.c ftt_scsi_locate(
 ftt_scsi_set_compression 246 ftt_lib/ftt_do_scsi.c ftt_scsi_set_compression(
 ftt_set_transfer_length  27 ftt_lib/ftt_do_scsi.c ftt_set_transfer_length(
 geteuid           13 ftt_lib/ftt_do_scsi.c #define geteuid(
-hex              383 ftt_lib/ftt_do_scsi.c #define hex(
-hprint           389 ftt_lib/ftt_do_scsi.c hprint(
-inqdata          381 ftt_lib/ftt_do_scsi.c } inqdata;
-printinq         430 ftt_lib/ftt_do_scsi.c printinq(
-ftt_WIN_error    296 ftt_lib/ftt_error.c ftt_WIN_error 
-ftt_describe_error 266 ftt_lib/ftt_error.c ftt_describe_error(
-ftt_describe_error_WIN 437 ftt_lib/ftt_error.c ftt_describe_error_WIN(
+hex              407 ftt_lib/ftt_do_scsi.c #define hex(
+hprint           413 ftt_lib/ftt_do_scsi.c hprint(
+inqdata          405 ftt_lib/ftt_do_scsi.c } inqdata;
+printinq         454 ftt_lib/ftt_do_scsi.c printinq(
+ftt_WIN_error    295 ftt_lib/ftt_error.c ftt_WIN_error 
+ftt_describe_error 265 ftt_lib/ftt_error.c ftt_describe_error(
+ftt_describe_error_WIN 436 ftt_lib/ftt_error.c ftt_describe_error_WIN(
 ftt_eprintf       22 ftt_lib/ftt_error.c ftt_eprintf(
 ftt_get_error     32 ftt_lib/ftt_error.c ftt_get_error(
 ftt_translate_error 154 ftt_lib/ftt_error.c ftt_translate_error(
-ftt_translate_error_WIN 366 ftt_lib/ftt_error.c 	ftt_translate_error_WIN(
-main             466 ftt_lib/ftt_error.c main(
+ftt_translate_error_WIN 365 ftt_lib/ftt_error.c 	ftt_translate_error_WIN(
+main             465 ftt_lib/ftt_error.c main(
 ftt_find_last_part 155 ftt_lib/ftt_find.c ftt_find_last_part(
 ftt_findslot      51 ftt_lib/ftt_find.c ftt_findslot 
 ftt_get_driveid  186 ftt_lib/ftt_find.c ftt_get_driveid(
@@ -56,18 +60,18 @@ ftt_make_os_name  43 ftt_lib/ftt_find.c ftt_make_os_name(
 ftt_strip_to_basename  88 ftt_lib/ftt_find.c ftt_strip_to_basename(
 geteuid           11 ftt_lib/ftt_find.c #define geteuid(
 ftt_alloc_stats  210 ftt_lib/ftt_higher.c ftt_alloc_stats(
-ftt_clear_unrecovered 528 ftt_lib/ftt_higher.c ftt_clear_unrecovered(
+ftt_clear_unrecovered 530 ftt_lib/ftt_higher.c ftt_clear_unrecovered(
 ftt_describe_dev 142 ftt_lib/ftt_higher.c ftt_describe_dev(
-ftt_dump_stats   329 ftt_lib/ftt_higher.c ftt_dump_stats(
-ftt_first_supported 380 ftt_lib/ftt_higher.c ftt_first_supported(
+ftt_dump_stats   331 ftt_lib/ftt_higher.c ftt_dump_stats(
+ftt_first_supported 382 ftt_lib/ftt_higher.c ftt_first_supported(
 ftt_free_stats   225 ftt_lib/ftt_higher.c ftt_free_stats(
 ftt_init_stats   194 ftt_lib/ftt_higher.c ftt_init_stats(
-ftt_list_supported 402 ftt_lib/ftt_higher.c ftt_list_supported(
-ftt_next_supported 386 ftt_lib/ftt_higher.c ftt_next_supported(
-ftt_retry        497 ftt_lib/ftt_higher.c ftt_retry(
-ftt_undump_stats 347 ftt_lib/ftt_higher.c ftt_undump_stats(
+ftt_list_supported 404 ftt_lib/ftt_higher.c ftt_list_supported(
+ftt_next_supported 388 ftt_lib/ftt_higher.c ftt_next_supported(
+ftt_retry        499 ftt_lib/ftt_higher.c ftt_retry(
+ftt_undump_stats 349 ftt_lib/ftt_higher.c ftt_undump_stats(
 ftt_update_stats 232 ftt_lib/ftt_higher.c ftt_update_stats(
-ftt_verify_blank 537 ftt_lib/ftt_higher.c ftt_verify_blank(
+ftt_verify_blank 539 ftt_lib/ftt_higher.c ftt_verify_blank(
 ftt_verify_vol_label  18 ftt_lib/ftt_higher.c ftt_verify_vol_label(
 ftt_write_vol_label 109 ftt_lib/ftt_higher.c ftt_write_vol_label(
 geteuid           10 ftt_lib/ftt_higher.c #define geteuid(
@@ -107,6 +111,7 @@ ftt_open_set_blocksize 301 ftt_lib/ftt_open.c ftt_open_set_blocksize
 ftt_open_set_mode 315 ftt_lib/ftt_open.c ftt_open_set_mode 
 ftt_open_status  240 ftt_lib/ftt_open.c ftt_open_status 
 ftt_setdev       472 ftt_lib/ftt_open.c ftt_setdev(
+ftt_do_suid_scsi_command   3 ftt_lib/ftt_suid_scsi.c ftt_do_suid_scsi_command(
 ftt_get_position  19 ftt_lib/ftt_rdwr.c ftt_get_position(
 ftt_read          44 ftt_lib/ftt_rdwr.c ftt_read(
 ftt_write        129 ftt_lib/ftt_rdwr.c ftt_write(
@@ -124,39 +129,50 @@ ftt_write2fm     444 ftt_lib/ftt_skip.c ftt_write2fm(
 ftt_write_fm_if_needed 416 ftt_lib/ftt_skip.c ftt_write_fm_if_needed(
 ftt_writefm      351 ftt_lib/ftt_skip.c ftt_writefm(
 geteuid           18 ftt_lib/ftt_skip.c #define geteuid(
-bit              239 ftt_lib/ftt_stats.c #define bit(
-decrypt_ls       247 ftt_lib/ftt_stats.c decrypt_ls(
-ftt_add_stats    190 ftt_lib/ftt_stats.c ftt_add_stats(
-ftt_alloc_stat    30 ftt_lib/ftt_stats.c ftt_alloc_stat(
-ftt_clear_stats  785 ftt_lib/ftt_stats.c ftt_clear_stats(
-ftt_dtoa          79 ftt_lib/ftt_stats.c ftt_dtoa(
-ftt_extract_stats 848 ftt_lib/ftt_stats.c ftt_extract_stats(
-ftt_free_stat     46 ftt_lib/ftt_stats.c ftt_free_stat(
-ftt_get_prod_id   25 ftt_lib/ftt_stats.c ftt_get_prod_id(
-ftt_get_stat_ops 276 ftt_lib/ftt_stats.c ftt_get_stat_ops(
-ftt_get_stats    292 ftt_lib/ftt_stats.c ftt_get_stats(
-ftt_itoa          71 ftt_lib/ftt_stats.c ftt_itoa(
-ftt_itoa_Large    63 ftt_lib/ftt_stats.c 	ftt_itoa_Large(
-ftt_stats_status 863 ftt_lib/ftt_stats.c ftt_stats_status(
-ftt_sub_stats    210 ftt_lib/ftt_stats.c ftt_sub_stats(
-geteuid           13 ftt_lib/ftt_stats.c #define geteuid(
-pack             236 ftt_lib/ftt_stats.c #define pack(
-set_stat          91 ftt_lib/ftt_stats.c set_stat(
-main              24 ftt_lib/ftt_suid.c main(
+bit              242 ftt_lib/ftt_stats.c #define bit(
+decrypt_ls       250 ftt_lib/ftt_stats.c decrypt_ls(
+ftt_add_stats    193 ftt_lib/ftt_stats.c ftt_add_stats(
+ftt_alloc_stat    31 ftt_lib/ftt_stats.c ftt_alloc_stat(
+ftt_clear_stats  797 ftt_lib/ftt_stats.c ftt_clear_stats(
+ftt_dtoa          80 ftt_lib/ftt_stats.c ftt_dtoa(
+ftt_extract_stats 860 ftt_lib/ftt_stats.c ftt_extract_stats(
+ftt_free_stat     47 ftt_lib/ftt_stats.c ftt_free_stat(
+ftt_get_prod_id   26 ftt_lib/ftt_stats.c ftt_get_prod_id(
+ftt_get_stat_ops 279 ftt_lib/ftt_stats.c ftt_get_stat_ops(
+ftt_get_stats    295 ftt_lib/ftt_stats.c ftt_get_stats(
+ftt_itoa          72 ftt_lib/ftt_stats.c ftt_itoa(
+ftt_itoa_Large    64 ftt_lib/ftt_stats.c 	ftt_itoa_Large(
+ftt_stats_status 875 ftt_lib/ftt_stats.c ftt_stats_status(
+ftt_sub_stats    213 ftt_lib/ftt_stats.c ftt_sub_stats(
+geteuid           14 ftt_lib/ftt_stats.c #define geteuid(
+pack             239 ftt_lib/ftt_stats.c #define pack(
+set_stat          92 ftt_lib/ftt_stats.c set_stat(
+main              28 ftt_lib/ftt_suid.c main(
 usage             12 ftt_lib/ftt_suid.c usage(
-ftt_do_suid_scsi_command   3 ftt_lib/ftt_suid_scsi.c ftt_do_suid_scsi_command(
-ftt_descriptor    62 ftt_lib/ftt_types.h } ftt_descriptor_buf, *ftt_descriptor;
-ftt_dev_entry    145 ftt_lib/ftt_types.h } ftt_dev_entry;
-ftt_devinfo       26 ftt_lib/ftt_types.h } ftt_devinfo;
-ftt_stat_buf     122 ftt_lib/ftt_types.h } ftt_stat, *ftt_stat_buf;
-ftt_stat_entry   152 ftt_lib/ftt_types.h } ftt_stat_entry;
 ftt_descriptor    43 ftt_lib/ftt_types.old.h } ftt_descriptor_buf, *ftt_descriptor;
 ftt_dev_entry    133 ftt_lib/ftt_types.old.h } ftt_dev_entry;
 ftt_devinfo       16 ftt_lib/ftt_types.old.h } ftt_devinfo;
 ftt_stat_buf      98 ftt_lib/ftt_types.old.h } ftt_stat, *ftt_stat_buf;
 ftt_stat_entry   140 ftt_lib/ftt_types.old.h } ftt_stat_entry;
+ftt_descriptor    62 ftt_lib/ftt_types.h } ftt_descriptor_buf, *ftt_descriptor;
+ftt_dev_entry    145 ftt_lib/ftt_types.h } ftt_dev_entry;
+ftt_devinfo       26 ftt_lib/ftt_types.h } ftt_devinfo;
+ftt_stat_buf     122 ftt_lib/ftt_types.h } ftt_stat, *ftt_stat_buf;
+ftt_stat_entry   152 ftt_lib/ftt_types.h } ftt_stat_entry;
 ftt_descriptor     6 ftt_lib/ftt_voidtypes.h typedef void *ftt_descriptor;
 ftt_stat_buf       7 ftt_lib/ftt_voidtypes.h typedef void *ftt_stat_buf;
+extract_logical   11 ftt_lib/AIX/ftt_machdep.c extract_logical(
+ftt_get_hwdens   199 ftt_lib/AIX/ftt_machdep.c ftt_get_hwdens(
+ftt_set_blocksize 134 ftt_lib/AIX/ftt_machdep.c ftt_set_blocksize(
+ftt_set_compression 130 ftt_lib/AIX/ftt_machdep.c ftt_set_compression(
+ftt_set_hwdens    60 ftt_lib/AIX/ftt_machdep.c ftt_set_hwdens(
+ftt_status        56 ftt_lib/AIX/ftt_machdep.c ftt_status(
+ftt_scsi_close    74 ftt_lib/AIX/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command 102 ftt_lib/AIX/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     52 ftt_lib/AIX/ftt_scsi.c ftt_scsi_open(
+ftt_scsi_close   122 ftt_lib/VMS/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command 178 ftt_lib/VMS/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     42 ftt_lib/VMS/ftt_scsi.c ftt_scsi_open(
 main               5 ftt_lib/listdemo.c main(
 ftt_get_hwdens    56 ftt_lib/IRIX+4/ftt_machdep.c ftt_get_hwdens(
 ftt_set_blocksize  28 ftt_lib/IRIX+4/ftt_machdep.c ftt_set_blocksize(
@@ -224,31 +240,9 @@ ulong              6 ftt_lib/WIN32/ftt_mtio.h typedef unsigned long	ulong;
 ftt_scsi_close    23 ftt_lib/WIN32/ftt_scsi.c ftt_scsi_close(
 ftt_scsi_command  29 ftt_lib/WIN32/ftt_scsi.c ftt_scsi_command(
 ftt_scsi_open     15 ftt_lib/WIN32/ftt_scsi.c ftt_scsi_open(
-ftt_alloc_parts    8 ftt_lib/ftt_partition.c ftt_alloc_parts(
-ftt_cur_part     180 ftt_lib/ftt_partition.c ftt_cur_part(
-ftt_dump_partitions 253 ftt_lib/ftt_partition.c ftt_dump_partitions(
-ftt_extract_maxparts  28 ftt_lib/ftt_partition.c ftt_extract_maxparts(
-ftt_extract_nparts  23 ftt_lib/ftt_partition.c ftt_extract_nparts(
-ftt_extract_part_size  33 ftt_lib/ftt_partition.c ftt_extract_part_size(
-ftt_free_parts    18 ftt_lib/ftt_partition.c ftt_free_parts(
-ftt_get_partitions  68 ftt_lib/ftt_partition.c ftt_get_partitions(
-ftt_load_partition 280 ftt_lib/ftt_partition.c ftt_load_partition(
-ftt_locate_part  220 ftt_lib/ftt_partition.c ftt_locate_part(
-ftt_set_nparts    43 ftt_lib/ftt_partition.c ftt_set_nparts(
-ftt_set_part_size  53 ftt_lib/ftt_partition.c ftt_set_part_size(
-ftt_skip_part    197 ftt_lib/ftt_partition.c ftt_skip_part(
-ftt_undump_partitions 266 ftt_lib/ftt_partition.c ftt_undump_partitions(
-ftt_write_partitions 112 ftt_lib/ftt_partition.c ftt_write_partitions(
-pack              62 ftt_lib/ftt_partition.c #define pack(
+main              33 ftt_test/ftt_random.c void main(
 FTT_ERROR_REPORT  25 ftt_test/ftt_copy.c #define FTT_ERROR_REPORT(
 main              33 ftt_test/ftt_copy.c void main(
-main              33 ftt_test/ftt_random.c void main(
-PACK              30 ftt_test/ftt_t_block.c #define PACK(
-UNPACK            31 ftt_test/ftt_t_block.c #define UNPACK(
-ftt_t_block_dump 108 ftt_test/ftt_t_block.c void ftt_t_block_dump(
-ftt_t_block_fill  40 ftt_test/ftt_t_block.c void ftt_t_block_fill 
-ftt_t_block_undump 121 ftt_test/ftt_t_block.c int ftt_t_block_undump(
-ftt_t_block_verify  61 ftt_test/ftt_t_block.c int ftt_t_block_verify(
 ED_OFF           136 ftt_test/ftt_t_cmdline.c #define ED_OFF(
 ED_ON            135 ftt_test/ftt_t_cmdline.c #define ED_ON(
 ftclCmd_TERM     876 ftt_test/ftt_t_cmdline.c static void ftclCmd_TERM
@@ -263,6 +257,22 @@ ftt_t_interrupt_chk 1007 ftt_test/ftt_t_cmdline.c int ftt_t_interrupt_chk
 ftt_t_interrupt_dec 936 ftt_test/ftt_t_cmdline.c void ftt_t_interrupt_dec 
 ftt_t_linestart  185 ftt_test/ftt_t_cmdline.c void ftt_t_linestart 
 ftt_t_procchar   315 ftt_test/ftt_t_cmdline.c int ftt_t_procchar 
+PACK              30 ftt_test/ftt_t_block.c #define PACK(
+UNPACK            31 ftt_test/ftt_t_block.c #define UNPACK(
+ftt_t_block_dump 108 ftt_test/ftt_t_block.c void ftt_t_block_dump(
+ftt_t_block_fill  40 ftt_test/ftt_t_block.c void ftt_t_block_fill 
+ftt_t_block_undump 121 ftt_test/ftt_t_block.c int ftt_t_block_undump(
+ftt_t_block_verify  61 ftt_test/ftt_t_block.c int ftt_t_block_verify(
+ftt_t_cur_part    27 ftt_test/ftt_t_partition.c int	ftt_t_cur_part 
+ftt_t_dump_partitions 130 ftt_test/ftt_t_partition.c ftt_t_dump_partitions(
+ftt_t_get_partitions 143 ftt_test/ftt_t_partition.c int ftt_t_get_partitions(
+ftt_t_locate_part  59 ftt_test/ftt_t_partition.c int	ftt_t_locate_part	
+ftt_t_set_mount_partition 229 ftt_test/ftt_t_partition.c ftt_t_set_mount_partition(
+ftt_t_set_nparts 200 ftt_test/ftt_t_partition.c ftt_t_set_nparts(
+ftt_t_set_part_size 182 ftt_test/ftt_t_partition.c ftt_t_set_part_size(
+ftt_t_skip_part   97 ftt_test/ftt_t_partition.c int	ftt_t_skip_part	
+ftt_t_undump_partitions 216 ftt_test/ftt_t_partition.c int ftt_t_undump_partitions(
+ftt_t_write_partitions 163 ftt_test/ftt_t_partition.c int ftt_t_write_partitions(
 ftt_cmd_edithndl  25 ftt_test/ftt_t_cmdline.h typedef struct ftt_cmd_edithndl
 ftt_cmd_edithndl_t  37 ftt_test/ftt_t_cmdline.h    } ftt_cmd_edithndl_t;
 ftt_cmd_t         20 ftt_test/ftt_t_cmdline.h typedef char ftt_cmd_t[
@@ -380,13 +390,4 @@ ftt_t_unload     1037 ftt_test/ftt_t_wrap.c int	ftt_t_unload
 ftt_t_verify_tblock 1197 ftt_test/ftt_t_wrap.c int	ftt_t_verify_tblock 
 ftt_t_write_tblock 1104 ftt_test/ftt_t_wrap.c int	ftt_t_write_tblock 
 ftt_t_writefm    1074 ftt_test/ftt_t_wrap.c int	ftt_t_writefm 
-main              84 ftt_test/ftt_test.c void main(
-ftt_t_cur_part    27 ftt_test/ftt_t_partition.c int	ftt_t_cur_part 
-ftt_t_dump_partitions 129 ftt_test/ftt_t_partition.c ftt_t_dump_partitions(
-ftt_t_get_partitions 141 ftt_test/ftt_t_partition.c int ftt_t_get_partitions(
-ftt_t_locate_part  59 ftt_test/ftt_t_partition.c int	ftt_t_locate_part	
-ftt_t_set_nparts 198 ftt_test/ftt_t_partition.c ftt_t_set_nparts(
-ftt_t_set_part_size 180 ftt_test/ftt_t_partition.c ftt_t_set_part_size(
-ftt_t_skip_part   97 ftt_test/ftt_t_partition.c int	ftt_t_skip_part	
-ftt_t_undump_partitions 214 ftt_test/ftt_t_partition.c int ftt_t_undump_partitions(
-ftt_t_write_partitions 161 ftt_test/ftt_t_partition.c int ftt_t_write_partitions(
+main              85 ftt_test/ftt_test.c void main(
