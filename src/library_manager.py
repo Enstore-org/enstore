@@ -70,6 +70,8 @@ def convert_version(version):
             if l < 0:
                 break
     return ipart+fract
+
+
     
 def get_storage_group(dict):
     sg = dict.get('storage_group', None)
@@ -1518,7 +1520,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 version=ticket['version'].split()[0]
             else:
                 version = ''
-            if convert_version(legal_version) > convert_version(version):
+            if legal_version > version:
                 ticket['status'] = (e_errors.VERSION_MISMATCH,
                                     "encp version too old: %s. Must be not older than %s"%(version, legal_version,))
                 return 1
@@ -1534,7 +1536,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         else:
             version = ''
         if self.legal_encp_version[0]:
-            if self.legal_encp_version[1] > convert_version(version):
+            if self.legal_encp_version[0] > version:
                 ticket['status'] = (e_errors.VERSION_MISMATCH,
                                     "encp version too old: %s. Must be not older than %s"%(version, self.legal_encp_version[0],))
                 self.reply_to_caller(ticket)
@@ -1551,7 +1553,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # older than 2_14
         fn = ticket['outfile'].split('/')
         if 'sdss' in fn:
-            if convert_version('v2_14') > convert_version(version):
+            if version <= 'v2_14':
                 ticket['status'] = (e_errors.VERSION_MISMATCH,
                                     "encp version too old: %s. Must be not older than %s"%(version, 'v2_14',))
                 self.reply_to_caller(ticket)
@@ -1694,7 +1696,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         else:
             version = ''
         if self.legal_encp_version[0]:
-            if self.legal_encp_version[1] > convert_version(version):
+            if self.legal_encp_version[0] > version:
                 ticket['status'] = (e_errors.VERSION_MISMATCH,
                                     "encp version too old: %s. Must be not older than %s"%(version, self.legal_encp_version[0],))
                 self.reply_to_caller(ticket)
@@ -1704,7 +1706,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # older than 2_14
         fn = ticket['infile'].split('/')
         if 'sdss' in fn:
-            if convert_version('v2_14') > convert_version(version):
+            if version <= 'v2_14':
                 ticket['status'] = (e_errors.VERSION_MISMATCH,
                                     "encp version too old: %s. Must be not older than %s"%(version, 'v2_14',))
                 self.reply_to_caller(ticket)
