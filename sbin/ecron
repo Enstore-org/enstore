@@ -106,7 +106,7 @@ products=
 job=
 cwd=`pwd`
 
-while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ]
+while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ]
 do
 	case $1 in
 	-setup)
@@ -116,20 +116,25 @@ do
 		else
 			products=${products},$2
 		fi
+		shift
 		;;
 	-D)
 		var=`echo $2 | cut -f 1 -d '='`
 		eval $2
 		export $var
+		shift
 		;;
 	-p)
 		job=$2
+		shift
 		;;
 	-d)
 		cwd=$2
+		shift
 		;;
+	-l)
+		logit=1
 	esac
-	shift
 	shift
 done
 
@@ -141,6 +146,8 @@ then
 else
 	procName=$1
 fi
+
+log_name=${procName}
 
 procInfos=$HOME/CRON/$procName
 activeFlag=${procInfos}ACTIVE
@@ -189,15 +196,28 @@ rm -f $procMail
 # make sure procName is set to $1 again
 procName=$1
 
+# log it?
+if [ -n "${logit}" ]
+then
+	tag=`$ENSTORE_DIR/src/log_start_event.py ${log_name}`
+fi
+
 shift
 echo  Executing: $procName $*
 
 eval $procName $*  >$procOutput 2>&1
 problem=$?
+
+if [ -n "${logit}" ]
+then
+	$ENSTORE_DIR/src/log_finish_event.py ${tag} ${problem}
+fi
+
 # adjust the exit code so that it does not disappear off of the cron job plot
 if [ $problem -gt 5 -o $problem -lt -5 ] ; then
    problem=7
 fi
+
 if [ $problem -ne 0 ] ; then
    echo "" >$procMail
    echo "  RC = $problem">>$procMail
