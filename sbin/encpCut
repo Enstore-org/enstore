@@ -274,7 +274,7 @@ for try in list doit; do
       STEPS="`expr \"$STEPS\" : '[^ ]* \(.*\)'`"
       case $Step in
 
-        1) echo "Step $Step:  cvs directory check for `pwd`    `starting`"
+        1) echo "Step $Step:   cvs directory check for `pwd`    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR
               check_status $? "cd $ENSTORE_DIR"
@@ -290,7 +290,7 @@ for try in list doit; do
            fi
            ;;
 
-        2) echo "Step $Step:  bump encp version number to $REV in encp.py   `starting`"
+        2) echo "Step $Step:   bump encp version number to $REV in encp.py   `starting`"
            if [ "$try" = "doit" ] ; then
               encpnew=`mktemp /tmp/$productCut.XXXXXXX`
               check_status $? "encpnew mktemp /tmp/$productCut.XXXXXXX"
@@ -307,7 +307,7 @@ for try in list doit; do
            fi
            ;;
 
-        3) echo "Step $Step:  cd modules and make clean all   `starting`"
+        3) echo "Step $Step:   cd modules and make clean all   `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/modules
               check_status $? "cd $ENSTORE_DIR/modules"
@@ -316,7 +316,7 @@ for try in list doit; do
            fi
            ;;
 
-        4) echo "Step $Step:  cd src and make clean encp    `starting`"
+        4) echo "Step $Step:   cd src and make clean encp    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/src
               check_status $? "cd $ENSTORE_DIR/src"
@@ -325,7 +325,7 @@ for try in list doit; do
            fi
            ;;
 
-        5) echo "Step $Step:  cd volume_import and make clean enstore_tape    `starting`"
+        5) echo "Step $Step:   cd volume_import and make clean enstore_tape    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/volume_import
               check_status $? "cd $ENSTORE_DIR/volume_import"
@@ -347,7 +347,7 @@ for try in list doit; do
            fi
            ;;
 
-        7) echo "Step $Step:  compileall python source   `starting`"
+        7) echo "Step $Step:   compileall python source   `starting`"
            if [ "$try" = "doit" ] ; then
              find $ENSTORE_DIR -name "*\.pyc" | xargs -r rm
              check_status $? "rm of old pyc files"
@@ -366,7 +366,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
            fi
            ;;
 
-        8) echo "Step $Step:  cvs tag $TAG    `starting`"
+        8) echo "Step $Step:   cvs tag $TAG    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR
               check_status $? "cd $ENSTORE_DIR"
@@ -375,7 +375,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
            fi
            ;;
 
-        9) echo "Step $Step:  install $product into $INSTALLDIR    `starting`"
+        9) echo "Step $Step:   install $product into $INSTALLDIR    `starting`"
            if [ "$try" = "doit" ] ; then
               # check if directory doesn't exist
               if [ ! -d $INSTALLDIR ] ; then
