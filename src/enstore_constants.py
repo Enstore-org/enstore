@@ -5,9 +5,11 @@ BPD = "bpd"
 XFER = "xfer"
 MLAT = "mlat"
 MPH = "mph"
+MPD = "mpd_total"
 LOG = ".log"
 
 MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)
+MPD_FILE = "%s%s"%(FILE_PREFIX, MPD)
 MLAT_FILE = "%s%s"%(FILE_PREFIX, MLAT)
 BPD_FILE = "%s%s"%(FILE_PREFIX, BPD)
 XFER_FILE = "%s%s"%(FILE_PREFIX, XFER)
