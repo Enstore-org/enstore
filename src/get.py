@@ -422,7 +422,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             #First check that everything is okay.
             if e_errors.is_ok(tape_ticket):
                 #Locate the record for this file based on its location.
-                for item in tape_ticket.get("tape_list", {}).values():
+                for item in tape_ticket.get("tape_list", []):
                     if item.get('location_cookie', "no_lc") == \
                        work_ticket.get('fc', {}).get('location_cookie', None):
 
