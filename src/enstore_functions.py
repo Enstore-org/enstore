@@ -14,11 +14,16 @@ import e_errors
 
 DEFAULTHTMLDIR = "."
 
+# format the mail
+def format_mail(goal, question, metric): 
+    return "\n\n  GOAL: %s\n\n  QUESTION: %s\n\n  METRIC: %s"%(goal, question,
+							       metric)
+
 # send mail
 def send_mail(server, message, subject):
     mail_file = tempfile.mktemp()
     os.system("date >> %s"%(mail_file,))
-    os.system('echo "\tFrom: %s\n\n" >> %s' % (server, mail_file))
+    os.system('echo "\n\tFrom: %s\n" >> %s' % (server, mail_file))
     os.system('echo "\t%s" >> %s' % (message, mail_file))
     os.system("/usr/bin/Mail -s \"%s\" $ENSTORE_MAIL < %s"%(subject, mail_file))
     os.system("rm %s"%(mail_file,))
