@@ -2548,7 +2548,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.current_work_ticket['vc'].update(self.vol_info)
         else:
             Trace.log(e_errors.ERROR, "setup_transfer: volume label=%s" % (volume_label,))
-        if self.vol_info['status'][0] != 'ok':
+        if self.vol_info['status'][0] != e_errors.OK:
             msg =  ({READ: e_errors.READ_NOTAPE, WRITE: e_errors.WRITE_NOTAPE}.get(
                 self.setup_mode, e_errors.EPROTO), self.vol_info['status'][1])
             Trace.log(e_errors.ERROR, "Volume clerk reply %s" % (msg,))
@@ -3092,8 +3092,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.config['driver']=='NullDriver':
             fc_ticket['complete_crc']=0L
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
-            if self.gid: fc_ticket['gid'] = self.gid
-            if self.uid: fc_ticket['uid'] = self.uid
+        if self.gid: fc_ticket['gid'] = self.gid
+        if self.uid: fc_ticket['uid'] = self.uid
             
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
                                             'fc'  : fc_ticket
