@@ -1286,7 +1286,8 @@ def status_to_request( client_obj_inst, exit_status ):
 	else:
 	    next_req_to_lm = have_bound_volume_next( client_obj_inst )
 	    pass
-	next_req_to_lm['state'] = 'idle'
+        if next_req_to_lm['state'] != 'draining':
+            next_req_to_lm['state'] = 'idle'
     elif m_err[exit_status] == e_errors.ENCP_GONE:
 	if client_obj_inst.vol_info['external_label'] == '':
 	    # This is the case where a just started mover determines ENCP_GONE
@@ -1295,7 +1296,8 @@ def status_to_request( client_obj_inst, exit_status ):
 	else:
 	    next_req_to_lm = have_bound_volume_next( client_obj_inst )
 	    pass
-	next_req_to_lm['state'] = 'idle'
+        if next_req_to_lm['state'] != 'draining':
+            next_req_to_lm['state'] = 'idle'
     elif m_err[exit_status] == e_errors.WRITE_ERROR:
 	next_req_to_lm = offline_drive( client_obj_inst, m_err[exit_status] )
     elif m_err[exit_status] == e_errors.READ_ERROR:
