@@ -139,7 +139,7 @@ def freeze_tape_in_drive( self, error_info ):
     return offline_drive( self, error_info )
 
 def offline_drive( self, error_info ):	# call directly for READ_ERROR
-    logc.send( log_client.ERROR, 1, "MOVER OFFLINE"+str(error_info) )
+    logc.send( log_client.ERROR, 1, "MOVER OFFLINE "+str(error_info) )
 
     if error_info == e_errors.READ_ERROR:
 	if self.read_error[1]:
@@ -409,7 +409,9 @@ def forked_write_to_hsm( self, ticket ):
 
         #except EWHATEVER_NET_ERROR:
 	except (FTT.error, EXfer.error), err_msg:
-	    traceback.print_exc()
+            logc.send(log_client.INFO,2,
+		      "FTT or Exfer exception: "+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
+	    #traceback.print_exc()
 	    # err_msg is <type 'instance'>
 	    if str(err_msg) == "(0, 'fd_xfer - read EOF unexpected - Success')":
 		# assume encp dissappeared
@@ -575,7 +577,10 @@ def forked_read_from_hsm( self, ticket ):
             Trace.trace(11,'closed')
 	    wr_err,rd_err       = stats['wr_err'],stats['rd_err']
 	    wr_access,rd_access = stats['wr_access'],stats['rd_access']
-        except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
+        #except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
+	except (FTT.error, EXfer.error), err_msg:
+            logc.send(log_client.INFO,2,
+		      "FTT or Exfer exception: "+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    traceback.print_exc()
 	    self.usr_driver.close()
 	    send_user_done( self, ticket, e_errors.READ_ERROR )
