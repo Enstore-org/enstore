@@ -136,7 +136,7 @@ def init():
 	errors = 0
 
 	# check for no_log commands
-	if len(sys.argv) > 2 and not sys.argv in no_log_commands:
+	if len(sys.argv) > 2 and not sys.argv in no_log_command:
 		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 	return
 
@@ -956,7 +956,7 @@ if __name__ == '__main__':
 
 	# log command line
 	cmd = string.join(sys.argv)
-	if len(sys.argv) > 2 and not sys.argv in no_log_commands:
+	if len(sys.argv) > 2 and not sys.argv in no_log_command:
 		log("COMMAND LINE:", cmd)
 
 	if sys.argv[1] == "--vol":
