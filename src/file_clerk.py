@@ -373,16 +373,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.log(e_errors.ERROR, msg)
                 return "ENOTDELETED", msg
 
-        # get file_family
-        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-        vol = vcc.inquire_vol(record['external_label'])
-        if vol['status'][0] != e_errors.OK:
-            msg = "File %s does not belong to a valid volume"%(bfid)
-            Trace.log(vol['status'][0], msg)
-            return vol['status']
-
         # find file_family
         if not file_family: 
+            vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+            vol = vcc.inquire_vol(record['external_label'])
+            if vol['status'][0] != e_errors.OK:
+                msg = "File %s does not belong to a valid volume"%(bfid)
+                Trace.log(vol['status'][0], msg)
+                return vol['status']
             file_family = volume_family.extract_file_family(vol['volume_family'])
         record['file_family'] = file_family
         pf = pnfs.File(record)
