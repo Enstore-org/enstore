@@ -34,7 +34,7 @@ if [ -r $halt ]; then echo `date` ERROR: $halt exists ... trouble; exit 0; fi
 if [ -r $done ]; then 
     echo `date` $tape already migrated 
     #exit 0
-    break
+    continue
 fi
 
 if [ -r $copy ]; then
@@ -43,7 +43,7 @@ if [ -r $copy ]; then
    if [ $rc -eq  0 ]; then
       echo `date` $tape already ready for migrating
       #exit 0
-      break
+      continue
    else
       echo `date` $tape NOT ready, but copy2b file found. doing rm $copy
       rm $copy
@@ -56,7 +56,7 @@ if [ $rc -eq 0 ]; then
    echo `date` $tape already ready for migrating
    touch $copy
    #exit 0
-   break
+   continue
 fi
 
 echo `date` Starting to get files from $tape
@@ -82,17 +82,17 @@ while [ $try -le $max_try ]; do
   if [ $rc -eq 0 ]; then
      touch $copy
      touch $gotit
-     break
+     continue
   fi
 done
 
 if [ -r $gotit ]; then
     rm $gotit
     #exit 0
-    break
+    continue
 else
     #exit 1
-    break
+    continue
 fi
 
 done
