@@ -130,7 +130,7 @@ class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
         result = os.system(command)
         #    analyze the results
 	for line in result.readlines():
-           if string.find(line, "completed successfully") ! -1 :
+           if string.find(line, "completed successfully") != -1 :
                 out_ticket = {"status" : (e_errors.OK, None)}
                 self.logc.send(log_client.INFO, 4, "Mnt returned ok")
                 for line in result:
@@ -164,7 +164,7 @@ class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
                 out_ticket = {"status" : (e_errors.OK, None)}
                 self.logc.send(log_client.INFO, 4, "UMnt returned ok:")
                 for line in result:
-                    {self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
+                    self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
                 break
         # log the error
         self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+command)
