@@ -41,7 +41,7 @@ ftt_density_to_name(ftt_descriptor d, int density){
 }
 
 int
-ftt_name_to_density(ftt_descriptor d, char *name){
+ftt_name_to_density(ftt_descriptor d, const char *name){
     int res;
 
     ENTERING("ftt_name_to_density");
@@ -246,7 +246,7 @@ ftt_get_mode_dev(ftt_descriptor d, char *devname, int *density,
 }
 
 int 
-ftt_set_mode_dev(ftt_descriptor d, char *devname, int force) {
+ftt_set_mode_dev(ftt_descriptor d, const char *devname, int force) {
     int i;
 
     ENTERING("ftt_set_mode_dev");
@@ -265,6 +265,7 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int force) {
 	}
     }
     if (force) { 
+
 	/* not found in table, but force bit was set... */
 
         if (i >= MAXDEVSLOTS - 1){
@@ -279,7 +280,8 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int force) {
 	    d->density_is_set = 0;
 	}
 	/* so add it to the table */
-	d->devinfo[i].device_name = devname;
+     
+	d->devinfo[i].device_name = strdup(devname);
 	d->which_is_default = i;
 
 	/* and we know/set nothing ... */

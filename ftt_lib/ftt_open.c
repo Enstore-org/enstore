@@ -1,5 +1,5 @@
 static char rcsid[] = "@(#)$Id$";
-extern char[] ftt_version;
+extern char ftt_version[];
 static char *rcslink = ftt_version;
 #include <stdio.h>
 #include <string.h>
@@ -63,7 +63,7 @@ ftt_open(const char *name, int rdonly) {
 **		a prefix of the other
 */
 int
-ftt_matches( char *s1, char *s2 ) {
+ftt_matches( const char *s1, const char *s2 ) {
     DEBUG3(stderr, "Matching '%s' against '%s'\n", s1, s2);
     while( 0 != *s1 && 0 != *s2 && tolower(*s1) == tolower(*s2)){
         s1++;

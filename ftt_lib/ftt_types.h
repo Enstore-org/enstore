@@ -168,7 +168,7 @@ extern ftt_stat_entry ftt_stat_op_tab[];
 #define FTT_DO_MS_Px0f     	0x00010000 /* do a ModeSense p.0x0f to set density */
 
 extern int ftt_write_fm_if_needed(ftt_descriptor);
-extern int ftt_matches(char*, char*);
+extern int ftt_matches(const char*, const char*);
 extern int ftt_do_scsi_command(ftt_descriptor, char *,unsigned char *, 
 				int, unsigned char *, int, int, int);
 extern int ftt_set_hwdens(ftt_descriptor, int); 
