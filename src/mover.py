@@ -1214,7 +1214,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return 1
             else:
                 return 0
-        elif self.just_mounted and self.check_first_written_enabled:
+        if self.just_mounted and self.check_first_written_enabled:
             self.just_mounted = 0
             return 1
         else:
