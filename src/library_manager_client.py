@@ -190,7 +190,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
             listen_socket.close()
             raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
         ticket = callback.read_tcp_obj_new(control_socket)
-        control_socket.close()
 
         if ticket["status"][0] != e_errors.OK:
             return ticket

@@ -123,7 +123,6 @@ class FileClient(generic_client.GenericClient,
             raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
 
         ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
 
         if ticket["status"][0] != e_errors.OK:
             return ticket
