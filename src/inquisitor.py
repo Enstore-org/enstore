@@ -545,11 +545,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    msg = "Error while getting suspect vols from %s (%s)"%(lib_man.name,
 								   detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
-	    return
+	    return None
 	except errno.errorcode[errno.ETIMEDOUT], detail:
 	    msg = "Timeout while getting suspect vols from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
-	    return
+	    return None
 
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 		 "get new suspect vol list from %s"%(lib_man.name,))
@@ -560,8 +560,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "suspect_vols - ERROR, timed out")
+            return None
         elif not enstore_functions.is_ok(state):
             self.handle_lmc_error(lib_man, time, state)
+        return 1
 
     check_nodes = ["d0olc",]
 
@@ -570,6 +572,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    ff_dict = ff_d
 	else:
 	    ff_dict = {}
+        enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
+                                   "num in queue = %s"%(len(queue),))
 	for elem in queue:
 	    if elem['work'] == "write_to_hsm" and \
 	       enstore_functions.strip_node(elem['wrapper']['machine'][1]) == node:
@@ -581,6 +585,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		else:
 		    ff_dict[ff] = {FF_W : elem['vc']['file_family_width']}
 		    ff_dict[ff][NUM_IN_Q] = 1
+                    
+        enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
+                                   "return from num_in_queue")
 	return ff_dict
 
     def get_stalled_q_mail_key(self, server_name, node, ff):
@@ -676,11 +683,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting sorted work queue from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
-	    return
+	    return None
 	except errno.errorcode[errno.ETIMEDOUT], detail:
 	    msg = "Timeout while getting sorted work queue from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
-	    return
+	    return None
 
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				  "get new work queue from %s"%(lib_man.name,))
@@ -693,8 +700,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "work_queue - ERROR, timed out")
+            return None
         elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
             self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
+        return 1
 
     # get the library manager active_volumes and output it
     def active_volumes(self, lib_man, time):
@@ -703,11 +712,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting active volumes from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
-	    return
+	    return None
 	except errno.errorcode[errno.ETIMEDOUT], detail:
 	    msg = "Timeout while getting active volumes from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
-	    return
+	    return None
 
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				  "get new active volumes from %s"%(lib_man.name,))
@@ -719,8 +728,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "active volumes - ERROR, timed out")
+            return None
         elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
             self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
+        return 1
 
     # get the library manager state and output it
     def lm_state(self, lib_man, time):
@@ -729,11 +740,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting state from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
-	    return
+	    return None
 	except errno.errorcode[errno.ETIMEDOUT], detail:
 	    msg = "Timeout while getting state from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
-	    return
+	    return None
 
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "get new state from %s"%(lib_man.name,))
@@ -745,19 +756,21 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "lm_state - ERROR, timed out")
+            return None
         elif not enstore_functions.is_ok(state):
             self.handle_lmc_error(lib_man, time, state)
+        return 1
 
     # get the information from the library manager(s)
     def update_library_manager(self, lib_man):
         # get a client and then check if the server is alive
         now = time.time()
-        self.lm_state(lib_man, now)
-        self.suspect_vols(lib_man, now)
-        self.work_queue(lib_man, now)
-	self.active_volumes(lib_man, now)
-	self.check_for_stalled_queue(lib_man)
-        self.new_server_status = 1
+        if self.lm_state(lib_man, now):
+            if self.suspect_vols(lib_man, now):
+                if self.work_queue(lib_man, now):
+                    if self.active_volumes(lib_man, now):
+                        self.check_for_stalled_queue(lib_man)
+                        self.new_server_status = 1
         return
 
     # get the information from the mover
@@ -1070,10 +1083,19 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # just output the inquisitor alive info, if we are doing this, we are alive.
         self.server_is_alive(self.inquisitor.name)
         # see if there are any servers in cardiac arrest (no heartbeat)
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+				   "periodic timeout - check last alive")
         self.check_last_alive()
         # check if we have received an event relay message recently
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+				   "periodic timeout - check event relay alive")
         self.check_event_relay_last_alive()
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+				   "periodic timeout - write server status file")
         self.write_server_status_file()
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+				   "periodic timeout - end")
+
 
     def encp_periodic_tasks(self, reason_called=TIMEOUT):
         # the encp web page is updated when notice of an encp transfer is received, but
