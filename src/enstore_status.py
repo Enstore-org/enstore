@@ -408,6 +408,7 @@ class EnStatus:
         else:
             got_vol = 0
             m = ""
+            p = "Unknown State : "
 
         if got_vol:
             v = ",  Volume : "+ticket['tape']
@@ -418,9 +419,10 @@ class EnStatus:
             mfile = ""
 
 	aString = aString+",  Current State : "+ticket["state"]+m
-	aString = aString+spacing+p+" Read "+\
-	             repr(ticket["rd_bytes"])+" bytes,  Wrote "+\
-	             repr(ticket["wr_bytes"])+" bytes"+v
+        if p:
+            aString = aString+spacing+p+" Read "+\
+                      repr(ticket["rd_bytes"])+" bytes,  Wrote "+\
+                      repr(ticket["wr_bytes"])+" bytes"+v
         return aString+mfile+"\n\n"
 
 class EnFile:
@@ -638,7 +640,6 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
                    "<meta http-equiv=\"Refresh\" content=\""
     html_header2 = "\">\n"+\
                    "<body bgcolor=\""+BG_COLOR+"\">\n"
-    html_header3 = "<pre>\n"
 
     def __init__(self, file, refresh):
         EnStatusFile.__init__(self, file)
@@ -703,6 +704,26 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 
     def add_2nd_button(self):
         return status_html_file_name()+'">ENSTORE'
+
+class HTMLLogFile(EnStatusFile, EnHTMLFile):
+
+    html_header1 = "<title>Enstore Log Files</title>\n"+\
+                   "<meta http-equiv=\"Refresh\" content=\""
+    html_header2 = "\">\n"+\
+                   "<body bgcolor=\""+BG_COLOR+"\">\n"
+
+    def __init__(self, file, refresh):
+	EnStatusFile.__init__(self, file)
+	EnHTMLFile.__init__(self, refresh)
+	self.trailer = "</body>\n"
+
+    # open the file and write the header to the file
+    def open(self):
+        Trace.trace(12,"open "+self.header)
+	EnStatusFile.open(self)
+        if self.filedes:
+            self.filedes.write(self.header)
+
 
 class EnDataFile(EnFile):
 
