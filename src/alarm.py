@@ -3,6 +3,7 @@
 import time
 import string
 import errno
+import os
 
 import rexec
 _rexec = rexec.RExec()
@@ -21,7 +22,9 @@ SHORT_TEXT = "short_text"
 
 DEFAULT_PID = -1
 DEFAULT_UID = ""
-DEFAULT_SOURCE = "None"
+DEFAULT_SOURCE = None
+DEFAULT_CONDITION = None
+DEFAULT_TYPE = None
 
 SEVERITY = "severity"
 
@@ -45,11 +48,18 @@ class GenericAlarm:
         self.pid = DEFAULT_PID
         self.uid = DEFAULT_UID
         self.source = DEFAULT_SOURCE
+        self.condition = DEFAULT_CONDITION
+        self.type = DEFAULT_TYPE
         self.severity = e_errors.DEFAULT_SEVERITY
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
         self.alarm_info = {}
         self.patrol = 0
 	self.num_times_raised = 1L
+        self.ticket_generated = None
+
+    def set_ticket(self, condition, type):
+        self.condition = condition
+        self.type = type
 
     def split_severity(self, sev):
 	l = string.split(sev)
@@ -69,6 +79,24 @@ class GenericAlarm:
         self.patrol = 0
         return alarm
 
+    # generate a ticket in remedy for this alarm
+    def ticket(self):
+        if not self.ticket_generated and self.condition:
+            # this is for testing, the real value is
+            # system_name = self.host
+            system_name = "stkensrv42"
+            condition = self.condition
+            short_message = self.root_error
+            long_message = self.list_alarm()
+            submitter = "MSS"
+            user = "MSS"
+            password = "find_this_outXXX"
+            category = "MSS"
+            type = self.type
+            item = "ALARM"
+            os.system('. /usr/local/etc/setups.sh;setup enstore; $ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, long_message, submitter, user, password, category, type, item))
+            self.ticket_generated = "YES"
+            
     def seen_again(self):
 	try:
 	    self.num_times_raised = self.num_times_raised + 1
@@ -79,20 +107,13 @@ class GenericAlarm:
     def list_alarm(self):
 	return [self.id, self.host, self.pid, self.uid, 
 		"%s (%s)"%(self.severity, self.num_times_raised),
-		self.source, self.root_error, self.alarm_info]
+		self.source, self.root_error,
+                self.condition, self.type,
+                self.ticket_generated, self.alarm_info]
 
     # output the alarm
     def __repr__(self):
-        # format ourselves to be a straight ascii line of the same format as
-        # mentioned above
-        if self.patrol:
-            host = string.split(self.host,".")
-            # enstore's severities must be mapped to patrols'
-            sev = PATROL_SEVERITY[self.severity]
-            return string.join((host[0], "Enstore" , sev, self.short_text(),
-                                "\n"))
-        else:
-            return repr(self.list_alarm())
+        return repr(self.list_alarm())
 
     # format the alarm as a simple, short text string to use to signal
     # that there is something wrong that needs further looking in to
@@ -109,11 +130,14 @@ class GenericAlarm:
                                                             self.alarm_info))
 
     # compare the passed in info to see if it the same as that of the alarm
-    def compare(self, host, severity, root_error, source, alarm_info):
+    def compare(self, host, severity, root_error, source, alarm_info,
+                condition, remedy_type):
         if (self.host == host and 
             self.root_error == root_error and
             self.severity == severity and
-            self.source == source):
+            self.source == source and
+            self.condition == condition and
+            self.type == remedy_type):
 	    # now that all that is done we can compare the dictionary to see
 	    # if it is the same
 	    if len(alarm_info) == len(self.alarm_info):
@@ -141,7 +165,7 @@ class GenericAlarm:
 class Alarm(GenericAlarm):
 
     def __init__(self, host, severity, root_error, pid, uid, source,
-                 alarm_info=None):
+                 condition, remedy_type, alarm_info=None):
         GenericAlarm.__init__(self)
 
         if alarm_info is None:
@@ -153,6 +177,8 @@ class Alarm(GenericAlarm):
         self.uid = uid
         self.source = source
         self.alarm_info = alarm_info
+        self.condition = condition
+        self.type = remedy_type
 
 class AsciiAlarm(GenericAlarm):
 
@@ -164,8 +190,16 @@ class AsciiAlarm(GenericAlarm):
 	    [self.id, self.host, self.pid, self.uid, sev,
 	     self.source, self.root_error, self.alarm_info] = eval(text)
 	    self.severity, self.num_times_raised = self.split_severity(sev)
-	except TypeError:
-	    self.id = 0    # not a valid alarm
+	except ValueError:
+            # try the new format with the remedy ticket information in it
+            try:
+                [self.id, self.host, self.pid, self.uid, sev,
+                 self.source, self.root_error,
+                 self.condition, self.type,
+                 self.ticket_generated, self.alarm_info] = eval(text)
+                self.severity, self.num_times_raised = self.split_severity(sev)
+            except TypeError:
+                self.id = 0    # not a valid alarm
 
 class LogFileAlarm(GenericAlarm):
 

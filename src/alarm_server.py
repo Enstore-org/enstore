@@ -38,46 +38,33 @@ SEVERITY = alarm.SEVERITY
 
 class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
+    def get_from_ticket(self, ticket, key, default):
+        if ticket.has_key(key):
+            rtn = ticket[key]
+            # remove this entry from the dictionary, so if won't be included
+            # as part of alarm_info
+            del ticket[key]
+        else:
+            rtn = default
+        return rtn;
+
     # pull out alarm info from the ticket and raise the alarm
     def post_alarm(self, ticket):
-        if ticket.has_key(SEVERITY):
-            severity = ticket[SEVERITY]
-            # remove this entry from the dictionary, so if won't be included
-            # as part of alarm_info
-            del ticket[SEVERITY]
-        else:
-            severity = e_errors.DEFAULT_SEVERITY
-        if ticket.has_key(enstore_constants.ROOT_ERROR):
-            root_error = ticket[enstore_constants.ROOT_ERROR]
-            # remove this entry from the dictionary, so if won't be included
-            # as part of alarm_info
-            del ticket[enstore_constants.ROOT_ERROR]
-        else:
-            root_error = e_errors.DEFAULT_ROOT_ERROR
-        if ticket.has_key(enstore_constants.PID):
-            pid = ticket[enstore_constants.PID]
-            # remove this entry from the dictionary
-            del ticket[enstore_constants.PID]
-        else:
-            pid = alarm.DEFAULT_PID
-        if ticket.has_key(enstore_constants.UID):
-            uid = ticket[enstore_constants.UID]
-            # remove this entry from the dictionary
-            del ticket[enstore_constants.UID]
-        else:
-            uid = alarm.DEFAULT_UID
-        if ticket.has_key(enstore_constants.SOURCE):
-            source = ticket[enstore_constants.SOURCE]
-            # remove this entry from the dictionary
-            del ticket[enstore_constants.SOURCE]
-        else:
-            source = alarm.DEFAULT_SOURCE
+        severity = self.get_from_ticket(ticket, SEVERITY, e_errors.DEFAULT_SEVERITY)
+        root_error = self.get_from_ticket(ticket, enstore_constants.ROOT_ERROR,
+                                          e_errors.DEFAULT_ROOT_ERROR)
+        pid = self.get_from_ticket(ticket, enstore_constants.PID, alarm.DEFAULT_PID)
+        uid = self.get_from_ticket(ticket, enstore_constants.UID, alarm.DEFAULT_UID)
+        source = self.get_from_ticket(ticket, enstore_constants.SOURCE, alarm.DEFAULT_SOURCE)
+        remedy_type = self.get_from_ticket(ticket, enstore_constants.REMEDY_TYPE, alarm.DEFAULT_TYPE)
+        condition = self.get_from_ticket(ticket, enstore_constants.CONDITION, alarm.DEFAULT_CONDITION)
         # remove this entry from the dictionary, so it won't be included
         # as part of alarm_info
         if ticket.has_key("work"):
             del ticket["work"]
 
-        theAlarm = self.alarm(severity, root_error, pid, uid, source, ticket)
+        theAlarm = self.alarm(severity, root_error, pid, uid, source, condition,
+                              remedy_type, ticket)
 
         # send the reply to the client
         ret_ticket = { 'status' : (e_errors.OK, None),
@@ -93,6 +80,8 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             # in the old one and rewrite the web pages
 	    theAlarm.seen_again()
 
+        # generate a ticket if supposed to
+        theAlarm.ticket()
         # write it to the persistent alarm file
         self.write_alarm_file(theAlarm)
         # write it to the web page
@@ -136,17 +125,18 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             # no specified action, do the default
             self.default_action(theAlarm, isNew)
 
-    def find_alarm(self, host, severity, root_error, source, alarm_info):
+    def find_alarm(self, host, severity, root_error, source, alarm_info,
+                   condition, remedy_type):
         # find the alarm that matches the above information
         ids = self.alarms.keys()
         for id in ids:
             if self.alarms[id].compare(host, severity, root_error, source, \
-                                       alarm_info) == alarm.MATCH:
+                                       alarm_info, condition, remedy_type) == alarm.MATCH:
                 return self.alarms[id]
         ids = self.info_alarms.keys()
         for id in ids:
             if self.info_alarms[id].compare(host, severity, root_error, source, \
-                                            alarm_info) == alarm.MATCH:
+                                            alarm_info, condition, remedy_type) == alarm.MATCH:
                 return self.info_alarms[id]
         return
         
@@ -155,7 +145,10 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY,
               root_error=e_errors.DEFAULT_ROOT_ERROR,
               pid=alarm.DEFAULT_PID, uid=alarm.DEFAULT_UID,
-              source=alarm.DEFAULT_SOURCE, alarm_info=None):
+              source=alarm.DEFAULT_SOURCE,
+              condition=alarm.DEFAULT_CONDITION,
+              remedy_type=alarm.DEFAULT_TYPE,
+              alarm_info=None):
         if alarm_info is None:
             alarm_info = {}
         # find out where the alarm came from
@@ -163,14 +156,17 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         # we should only get a new alarm if this is not the same alarm as
         # one we already have
         theAlarm = self.find_alarm(host, severity, root_error, source,
-                                   alarm_info)
+                                   alarm_info, condition, remedy_type)
         if not theAlarm:
             # get a new alarm
             theAlarm = alarm.Alarm(host, severity, root_error, pid, uid,
-                                   source, alarm_info)
+                                   source, condition, remedy_type, alarm_info)
             # process the alarm depending on the action
             self.process_alarm(theAlarm, 1)
 	else:
+            # this may be the same as an old alarm except now we need
+            # to generate a ticket
+            theAlarm.set_ticket(condition, remedy_type)
             # process the alarm depending on the action
             self.process_alarm(theAlarm, 0)
 

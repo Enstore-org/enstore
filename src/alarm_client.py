@@ -15,6 +15,7 @@ import generic_client
 import udp_client
 import option
 import enstore_constants
+import alarm
 import Trace
 import e_errors
 
@@ -60,7 +61,7 @@ class AlarmClient(generic_client.GenericClient):
         self.alarm_func_lock = Lock() 
         
     def alarm_func(self, time, pid, name, root_error, 
-		   severity, args):
+		   severity, condition, remedy_type, args):
         # prevent infinite recursion (i.e if some function call by this
         # function does a trace and the alarm bit is set
         if self.alarm_func_lock.test_and_set(): return None
@@ -75,6 +76,8 @@ class AlarmClient(generic_client.GenericClient):
         ticket[enstore_constants.SOURCE] = name
 	ticket[enstore_constants.SEVERITY] = severity
 	ticket[enstore_constants.ROOT_ERROR] = root_error
+        ticket[enstore_constants.CONDITION] = condition
+        ticket[enstore_constants.REMEDY_TYPE] = remedy_type
 	ticket['text'] = args
 	log_msg = "%s, %s (severity : %s)"%(root_error, args, severity)
 
@@ -85,10 +88,11 @@ class AlarmClient(generic_client.GenericClient):
 
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
               root_error=e_errors.DEFAULT_ROOT_ERROR,
-              alarm_info=None):
+              alarm_info=None, condition=None,
+              remedy_type=None):
         if alarm_info is None:
             alarm_info = {}
-        Trace.alarm(severity, root_error, alarm_info )
+        Trace.alarm(severity, root_error, alarm_info, condition, remedy_type )
 
     def resolve(self, id):
         # this alarm has been resolved.  we need to tell the alarm server
@@ -119,6 +123,8 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
         self.get_patrol_file = 0
         self.client_name = ""
         self.message = ""
+        self.condition = alarm.DEFAULT_CONDITION
+        self.remedy_type = alarm.DEFAULT_TYPE
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -133,6 +139,12 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_LABEL:"client_name",
                         option.USER_LEVEL:option.ADMIN,
                         },
+        option.CONDITION:{option.HELP_STRING:"condition used when generating a remedy ticket",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"condition",
+                          option.USER_LEVEL:option.ADMIN,
+                          },
         option.DUMP:{option.HELP_STRING:
                         "print (stdout) alarms the alarm server has in memory",
                      option.DEFAULT_TYPE:option.INTEGER,
@@ -176,6 +188,12 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
                          option.VALUE_LABEL:"severity",
                          option.USER_LEVEL:option.ADMIN,
                          },
+        option.REMEDY_TYPE:{option.HELP_STRING:"type used when generating a remedy ticket",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_LABEL:"remedy_type",
+                            option.USER_LEVEL:option.ADMIN,
+                            },
         }
 
 def do_work(intf):
@@ -199,7 +217,8 @@ def do_work(intf):
         ticket = alc.dump()
 
     elif intf.alarm:
-        alc.alarm(intf.severity, intf.root_error, intf.message)
+        alc.alarm(intf.severity, intf.root_error, intf.message,
+                  intf.condition, intf.remedy_type)
         ticket = {}
 
     else:

@@ -155,11 +155,12 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
         except:
             pass
         
-def alarm(severity, root_error, rest={}):
+def alarm(severity, root_error, rest={},
+          condition=None, remedy_type=None):
     #log(severity, root_error, MSG_ALARM)
     if alarm_func:
         alarm_func(time.time(), os.getpid(), logname, root_error, severity,
-		   rest)
+		   condition, remedy_type, rest)
     if print_levels.has_key(severity):
         try:
             print root_error
@@ -209,7 +210,8 @@ def set_log_func(func):
 
 # defaults (templates) -- called from trace
 
-def default_alarm_func(time, pid, name, root_error, severity, args):
+def default_alarm_func(time, pid, name, root_error, severity,
+                       condition, remedy_type, args):
     print "default alarm_func", args
     #lvl = args[0]
     #msg = args[1]

@@ -2007,20 +2007,16 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	self.title = "ENSTORE Alarms"
 	self.script_title_gif = "en_act_alarms.gif"
 	self.source_server = THE_ALARM_SERVER
-	self.description = "%s may also be displayed.%s%s are available.  %s   %s%sAlso a %s"%(str(HTMLgen.Bold(HTMLgen.Href('enstore_alarm_search.html', 'Previous alarms'))), 
-								  str(HTMLgen.BR()),
-		  str(HTMLgen.Bold(HTMLgen.Href('FARenstore-opens-forISAgroup.html',
-						'Open Enstore tickets'))),
-		  str(HTMLgen.Href('FARenstore-opens-forISAgroup.text', '(text version)')),
-                  str(HTMLgen.Href('FARenstore-opens-forISAgroup.rtf', '(rtf version)')),
-		  str(HTMLgen.BR()), 
+	self.description = "%s may also be displayed.%sAnd a %s."%(str(HTMLgen.Bold(HTMLgen.Href('enstore_alarm_search.html', 'Previous alarms'))), 
+                                                                   str(HTMLgen.BR()),
                   str(HTMLgen.Bold(HTMLgen.Href("volume_audit.html", "volume audit"))))
 
     def alarm_table(self, alarms):
 	tr = HTMLgen.TR()
-	for hdr in ["Key", "Time", "Node", "PID", "User", "Severity", 
-		    "Process", "Error", "Additional Information"]:
-	    tr.append(self.make_th(hdr))
+        for hdr in ["Key", "Time", "Node", "PID", "User", "Severity", 
+                    "Process", "Error", "Condition", "Type", "Ticket Generated",
+                    "Additional Information"]:
+            tr.append(self.make_th(hdr))
 	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5, 
 				  cellpadding=CELLP, align="LEFT", bgcolor=AQUA)
 	i = 0
