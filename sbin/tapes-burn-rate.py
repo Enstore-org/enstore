@@ -7,7 +7,7 @@ import sys
 #&columns=Mb_User_Write%2C%20Tape_Volser%2C%20time_stamp
 #&orders=Tape_Volser%20Asc%0D%0A
 
-cmd = 'rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.html'
+cmd = '/bin/rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.html'
 print cmd
 os.system(cmd)
 
