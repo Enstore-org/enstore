@@ -284,7 +284,8 @@ class DispatchingWorker:
                   'Exception during request from '+str(client_address)+\
                   ' request:'+str(request))
 	import traceback
-	traceback.print_exception(exc, value, tb)
+	for l in traceback.format_exception( exc, value, tb ):
+	    Trace.log( e_errors.INFO, l[0:len(l)-1] )
 	Trace.log(e_errors.INFO,'-'*40)
 	self.reply_to_caller( {'status':(str(sys.exc_info()[0]), \
 					    str(sys.exc_info()[1]),'error'), \
