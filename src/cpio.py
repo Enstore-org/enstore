@@ -140,24 +140,26 @@ class Cpio :
 	header = driver.read( 110 )
 
 	# determine/save info
+	self.file_size   = string.atoi( header[54:62], 16 )
+
 	self.filename_size = string.atoi( header[94:102], 16 )
-	pad = (4-((110+self.filename_size)%4)) % 4
-	self.data_size   = string.atoi( header[62:70],  16 )
-	self.header_size = 110+self.filename_size+pad
+	header_pad = (4-((110+self.filename_size)%4)) % 4
+	self.header_size = 110+self.filename_size+header_pad
 
 	# now just index to first part of real data
-	buffer = driver.read( self.filename_size+pad )
+	buffer = driver.read( self.filename_size+header_pad )
 	return
 
 
     def read_post_data( self, driver, info ):
 	dat_crc = info['data_crc']
-	pad_data = (4-(self.data_size%4)) % 4
+	data_size = self.header_size + self.file_size
+	pad_data = (4-(data_size%4)) % 4
 	pad_crc  = (4-((110+self.filename_size+4+8)%4)) % 4
 	# read the rest (padd), (crc_trailer) and trailer
 	length = pad_data + (110+self.filename_size+3+8+pad_crc) + (110+0xb)
 	trailer = driver.read( length )
-	
+
 	recorded_crc = encrc( trailer[pad_data:] )
         if recorded_crc != dat_crc :
             raise IOError, "CRC Mismatch, read "+repr(dat_crc)+\
@@ -397,7 +399,6 @@ def trailers( siz, head_crc, data_crc, trailer ):
         # first need to pad data
         padd = (4-(size%4)) %4
         size = size + padd
-        #generic_cs.enprint("ronDBG - padd = "+repr(padd))
 
         # next is header for crc file, 8 bytes of crc info, and padding
         size = size + len(head_crc) + 8
