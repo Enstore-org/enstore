@@ -72,18 +72,8 @@ End of enstore pnfs help description
 "
               echo "$usage"; }
 
-#internal routine only
-p_error()   { echo ERROR, Usage: enstore pnfs $1; exit 1; }
+. pnfs_common
 
-#internal routine only
-p_cmd()     { echo "\"`dirname $1`/$2(`basename $1`)\"" ; }
-
-#internal routine only
-p_use()     { if [ -z "${2-}" ] ; then c=".(use)(1)"; else c=".(use)($2)"; fi
-              p_cmd $1 $c ; }
-
-pcat()      { if [ -z "${1-}" ] ; then p_error "cat filename [level]"; fi
-              eval cat  `p_use $@` ; }
 pmore()     { if [ -z "${1-}" ] ; then p_error "more filename [level]"; fi
               eval more `p_use $@` ; }
 pless()     { if [ -z "${1-}" ] ; then p_error "less filename [level]"; fi
@@ -92,16 +82,6 @@ pless()     { if [ -z "${1-}" ] ; then p_error "less filename [level]"; fi
 pbfid()     { pcat $1 1 ; }
 pparked()   { pcat $1 2 ; }
 pdebug()    { pcat $1 3 ; }
-pxref()     { pcat $1 4 ; }
-
-#internal routine only
-pinfo_helper()  { choice=$1
-                  c=0
-                  echo "$xref" | while read x; do
-                    c=`expr $c + 1`
-                    if [ $c -gt 9 ] ; then echo "parse-error"; break; fi
-                    if [ $c -eq $choice ] ; then echo $x; break; fi
-                  done ; }
 
 pinfo()     { if [ -z "${1-}" ] ; then p_error "info filename"; fi
               bfid=`pbfid $@` # this should be deleted after everyone starts using the new code - the bfid is also in layer 4
@@ -169,82 +149,8 @@ pid()       { if [ -z "${1-}" ] ; then p_error "id filename"; fi
 
 pconst()    { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               eval cat   `p_cmd $dir ".(const)"` ; }
-
-#internal routine only
-# For routines that use an id, I either need to have my cwd in pnfs, or I
-#  I need to specify a (fake) path that begins with /pnfs.  Look at mounted
-#  file system and return 1st pnfs filesystem - this works for both cases
-#  but, I should not use the /pnfs/fs admin root mounted from localhost
-p_pnfs()    { df | grep -v localhost | grep  /pnfs/ | sed -e 's%.*/pnfs/%/pnfs/%' -e 's%$%/%' | cut -d"
-" -f1; }
-
 pshowid()   { if [ -z "${1-}" ] ; then p_error "showid id"; fi
               eval cat  "\"`p_pnfs`.(showid)($1)\"" ; }
-
-pnameof()   { if [ -z "${1-}" ] ; then p_error "nameof id"; fi
-              eval cat  "\"`p_pnfs`.(nameof)($1)\"" ; }
-
-pparent()   { if [ -z "${1-}" ] ; then p_error "parent id"; fi
-              eval cat  "\"`p_pnfs`.(parent)($1)\"" ; }
-
-ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
-              filename=""
-              id=$1
-              while /bin/true;  do
-                #echo $filename
-                filename=`pnameof $id 2>/dev/null`/$filename
-                if [ $? -ne 0 ] ; then break; fi
-                id=`pparent $id`
-              done
-              #echo $filename
-              #filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
-	      if [ `echo $filename | grep -c 'root/fs/usr'` -ne 1 ] ; then
-                echo "PNFS PROTECTION ERROR: admin should chmod go+rx /pnfs/fs/usr and subdirs"
-	      else
- 	        filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr/%%' -e 's%/$%%'`
-              fi
-              if [ -z "$filename" ] ; then
-                filename="NO_SUCH_FILE"
-                echo $filename
-	      else
-	        mp=`echo $filename | cut -f2 -d/`
-  	        #echo $mp
-		cat /etc/mtab | grep pnfs | grep -v localhost | while read remote local rest; do
-		  rem=`echo $remote | sed -e 's%.*:/%%'`
-		  if [ $rem = $mp ] ; then 
-		    cmd="echo $filename | sed -e 's%/$mp%$local%'"
-		    #echo $cmd
- 		    filename=`eval $cmd`
-		    echo $filename
-		    break
- 		  fi
-                done
-              fi
-            }
-
-#pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
-#              for i in $1/*; do
-#                eval `pnfsa info $i`
-#                if [ $filename != "NO_SUCH_FILE" ]; then
-#                  ls -l $filename
-#                else
-#                  a=`ls -l $map_file`
-#                  echo $a $filename
-#                fi
-#              done; }
-
-pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
-              for i in $1/*; do
-	        a=`pnfsa cat $i 4`
-		pnfsid=`echo $a | awk '{print $7}'`
-		filename=`pnfsa path $pnfsid`
-                if [ $filename != "NO_SUCH_FILE" ]; then
-                  ls -l $filename
-                else
-                  a=`ls -l $map_file`
-                  echo $a $filename
-                fi
-              done; }
 
 pvolume()   { if [ -z "${1-}" ] ; then p_error "volume volume_name"; fi
               find /pnfs -name $1; }
@@ -286,77 +192,10 @@ pcursor()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
 pio()       { if [ -z "${1-}" ] ; then p_error "io filename"; fi
               eval touch  "\"`dirname $1`/.(fset)(`basename $1`)(io)\"" ; }
 
-
-#internal routine only
-p_tag()     { if [ -z "${2-}" ] ; then dir=`pwd`; else dir=$2; fi
-              echo "\"$dir/.(tag)($1)\"" ; }
-
-ptagcat()   { if [ -z "${1-}" ] ; then p_error "tagcat tag"; fi
-              echo "$@"
-              eval cat  `p_tag $@`; echo "" ; }
 ptagmore()  { if [ -z "${1-}" ] ; then p_error "tagmore tag"; fi
               eval more `p_tag $@` ; }
 ptagless()  { if [ -z "${1-}" ] ; then p_error "tagless tag"; fi
               eval less `p_tag $@` ; }
-
-ptags()     { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
-              for i in `cat "$dir/.(tags)(all)"`; do v=`eval cat '$dir/$i'`; echo $i " = " $v; done ; 
-	      for i in `cat "$dir/.(tags)(all)"`; do ls -l $dir/$i; done ; }
-
-ptagecho()  { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "tagecho text tagname"; fi
-              pt="$1"
-              shift 1
-              eval echo -n "$pt" \>\| `p_tag $@` ; }
-
-ptagrm()    { echo "The attempt to remove a tag results in an unpredictable behavior and may corrupt the entire directory"
-              echo "If you insist on doing this, try   eval echo -n \"\" >| `p_tag tagname`" ; }
-
-plibrary()  { if [ -z "${1-}" ] ; then
-                ptagcat library
-              else
-                ptagecho "$1" library
-              fi; }
-
-pfile_family()
-            { if [ -z "${1-}" ] ; then
-                ptagcat file_family
-              else
-                ptagecho "$1" file_family
-              fi; }
-
-pfile_family_wrapper()
-
-            { default_wrapper=cpio_odc
-	      wrappers=`eval echo "cpio_odc cpio_crc cpio_newc cpio_custom cpio_eurostore"`
-	      if [ -z "${1-}" ] ; then
-                ptagcat file_family_wrapper
-              else
-	        matched=0
-	        for i in $wrappers; do if [ $1 = $i ]; then matched=1; break; fi; done;
-		if [ $matched -ne 0 ]; then ptagecho "$1" file_family_wrapper
-		else echo only $wrappers wrappers are allowed
-		fi;
-              fi; }
-
-pfile_family_width()
-            { if [ -z "${1-}" ] ; then
-                ptagcat file_family_width
-              else
-                ptagecho "$1" file_family_width
-              fi; }
-
-
-penstore_state()  
-            { disabled="`p_pnfs`.(config)(flags)/disabled" 
-              if [ -r "$disabled" ] ; then
-	        why=`cat "$disabled"`
-		echo "Enstore disabled: $why"
-                exit 1
-              else
-	        echo "Enstore enabled"
-		exit 0
-              fi; }
-
 ppnfs_state() 
             { if [ -z "${1-}" ] ; then p_error "pnfs_state"; fi
               if [ -n "${2-}" ] ; then jtime=$2; else jtime=10; fi
@@ -379,9 +218,7 @@ if [ -z "${1-}" ] ; then
   cmd="phelp"
 else
   cmd=p$1
-#    echo "KLG: ${1-}"
   shift
-#    echo "KLG: ${1-},"
 fi
 
 
