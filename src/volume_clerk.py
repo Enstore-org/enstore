@@ -576,6 +576,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
+        # This is a restricted service
+        status = self.restricted_access()
+        if status:
+            msg = "attempt to add volume %s from %s"%(external_label, self.reply_address[0])
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = status
+            self.reply_to_caller(ticket)
+            return
+
         # can't have 2 with same external_label
         if self.dict.has_key(external_label):
             msg="Volume Clerk: volume %s already exists" % (external_label,)
@@ -739,6 +748,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
         
+        # This is a restricted service
+        status = self.restricted_access()
+        if status:
+            msg = "attempt to remove volume entry %s from %s"%(external_label, self.reply_address[0])
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = status
+            self.reply_to_caller(ticket)
+            return
+
         # get the current entry for the volume
         try:
             record = self.dict[external_label]
