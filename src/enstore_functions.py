@@ -14,6 +14,16 @@ import e_errors
 
 DEFAULTHTMLDIR = "."
 
+# return a string version of a list
+def print_list(aList, sep=" "):
+    str = ""
+    for item in aList:
+	str = "%s%s%s"%(str, item, sep)
+    else:
+	# remove the last separator
+	str = str[0:-1]
+    return str
+
 # format the mail
 def format_mail(goal, question, metric): 
     return "\n\n  GOAL: %s\n\n  QUESTION: %s\n\n  METRIC: %s"%(goal, question,
