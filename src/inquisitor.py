@@ -145,6 +145,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}suspect_vols - ERROR, timed out")
 	    return
+        try:
+            # send the new info to the alarm server
+            self.alc.ens_status({"suspect_volumes" : stat['suspect_volumes']},
+                                key)
+	except errno.errorcode[errno.ETIMEDOUT]:
+            Trace.trace(14, "Could not contact the alarm server")
         Trace.trace(13,"}suspect_vols")
 
     # get the library manager work queue and output it
@@ -411,15 +417,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.server_keys.sort()
         Trace.trace(12,"}prepare_keys")
 
-    # delete the key (server) from the main looping hash and from the text	   # output to the various files
+    # delete the key (server) from the main looping dict and from the text
+    # output to the various files
     def remove_key(self, key):
 	Trace.trace(12,"{remove_key")
-	i = 0
-	for item in self.server_keys:
+        for item in self.server_keys[:]:
 	    if item == key:
-	        del self.server_keys[i]
-	    else:
-	        i = i + 1
+	        self.server_keys.remove(item)
 	self.asciifile.remove_key(key)
 	self.htmlfile.remove_key(key)
 	self.encpfile.remove_key(key)
