@@ -340,7 +340,7 @@ class EnStatus:
 		    self.text[key][FILES] = "%s --> %s"%(ticket['files'][0],
 							 ticket['files'][1])
         else:
-	    self.text[key][STATE] = "unknown"
+	    self.text[key][STATE] = ticket["state"]
 
     # output the library manager mover list
     def output_lmmoverlist(self, ticket, key):
