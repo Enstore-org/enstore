@@ -806,7 +806,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if pipeObj:
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
-            if len(result) >= 1:
+            if len(result) > 1:
                 Trace.alarm(e_errors.ERROR,"mover is already running, can not restart: %s"%(result,))
                 time.sleep(2)
                 sys.exit(-1)
