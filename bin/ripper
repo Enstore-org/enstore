@@ -34,10 +34,10 @@ case `uname -n` in
 
    rip11*)
     stopit; starttrc
-    cmd="python /home/jurgenst/enstore/sam/src/mover.py DE13DLT.mover &"; doit
+   #cmd="python /home/jurgenst/enstore/sam/src/mover.py DE13DLT.mover &"; doit
     cmd="python /home/jurgenst/enstore/sam/src/mover.py DM18AIT.mover &"; doit
     cmd="python /home/jurgenst/enstore/sam/src/mover.py DM19AIT.mover &"; doit
-    (sleep 2;ecmd mvc --alive DE13DLT.mover; if [ $? -ne 0 ]; then echo DE13DLT.MOVER DEAD; else echo de13dlt.mover alive; fi) &
+   #(sleep 2;ecmd mvc --alive DE13DLT.mover; if [ $? -ne 0 ]; then echo DE13DLT.MOVER DEAD; else echo de13dlt.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DM18AIT.mover; if [ $? -ne 0 ]; then echo DM18AIT.MOVER DEAD; else echo dm18ait.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DM19AIT.mover; if [ $? -ne 0 ]; then echo DM19AIT.MOVER DEAD; else echo dm19ait.mover alive; fi) &
     ;;
