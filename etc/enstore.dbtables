@@ -125,21 +125,6 @@ create table option (
 
 insert into option (key, value) values ('quota', 'disabled');
 
-create table encp_error(
-	date		timestamp without time zone not null,
-	node		varchar not null,
-	pid		int not null,
-	username	varchar not null,
-	encp_id		varchar,
-	version		varchar not null,
-	type		varchar not null,
-	error		varchar not null,
-	src		varchar,
-	dst		varchar,
-	size		bigint
-);
-
-
 create table migration (
 	src_bfid varchar unique references file(bfid) on delete cascade,
 	dst_bfid varchar unique references file(bfid) on delete cascade,
