@@ -263,9 +263,11 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
 	thisparam = pack(0,0,page[0],page[1]);
 	thislength = page[3];
 	value = 0.0;
-	for(i = 0; i < thislength ; i++) {
-	    value = value * 256 + page[4+i];
-	}
+        if (thislength < 8) {
+	    for(i = 0; i < thislength ; i++) {
+		value = value * 256 + page[4+i];
+	    }
+        }
 	DEBUG3(stderr, "parameter %d, length %d value %g\n", thisparam, thislength, value);
 	if ( thisparam == param ) {
 	    if ( value / divide > 1.0e+127 ) {
@@ -301,6 +303,7 @@ int
 ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     int res;
 
+    int current_partition = 0;
 
 #ifndef WIN32
     int hwdens;
@@ -402,6 +405,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	set_stat(b,FTT_TUR_STATUS,ftt_itoa((long)-res), 0);
 	if (res < 0) {
 	    set_stat(b,FTT_READY,"0",0);
+	    set_stat(b,FTT_TNP,"1",0);
 	} else {
 	    set_stat(b,FTT_READY,"1",0);
 	}
@@ -410,8 +414,20 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     if (stat_ops & FTT_DO_RS) {
 	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   18, 0x00};
 
-	/* request sense data */
-	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 18, 10, 0);
+        /* 
+	** if the request sense data from the test unit ready is negative 
+        ** then ftt_do_scsi_command already did a request sense, and
+        ** the data is in the global ftt_sensebuf.
+	** otherwise we need to do one...
+        */
+  
+        if (res < 0) {
+            extern char ftt_sensebuf[18];
+	    memcpy(buf, ftt_sensebuf, 18);   
+	    res = 0;
+        } else {
+	    res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 18, 10, 0);
+        }
 	if(res < 0){
 	    failures++;
 	} else {
@@ -441,7 +457,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    ** it is not clear that this has ever actually happened,
 	    ** but we wanted to be complete.
 	    */
-	    switch( pack(0,0,buf[12],buf[13]) ){
+	    switch( pack(0,0,buf[12],buf[13]) ) {
 	    case 0x0005: /* peot */
 			set_stat(b,FTT_PEOT,"1",0);
 			break;
@@ -585,6 +601,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_WRITE_PROT,  ftt_itoa((long)bit(7,buf[2])),0);
 	    set_stat(b,FTT_MEDIA_TYPE,  ftt_itoa((long)buf[1]), 0);
 
+
+	    n_blocks =     pack(0,buf[5],buf[6],buf[7]);
+	    block_length = pack(0,buf[9],buf[10],buf[11]);
+	    tape_size =    n_blocks;
+
 	    if (0 == b->value[FTT_TNP]) {
 		if (hwdens == 0) {
 		   set_stat(b,FTT_TNP,  "1", 0);
@@ -592,10 +613,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		   set_stat(b,FTT_TNP,  "0", 0);
 		}
             }
-
-	    n_blocks =     pack(0,buf[5],buf[6],buf[7]);
-	    block_length = pack(0,buf[9],buf[10],buf[11]);
-	    tape_size =    n_blocks;
 
 	    set_stat(b,FTT_BLOCK_SIZE,  ftt_itoa((long)block_length),0);
 	    set_stat(b,FTT_BLOCK_TOTAL, ftt_itoa((long)n_blocks),    0);
@@ -673,21 +690,44 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_TRANS_COMPRESS,    ftt_itoa( bit(6,buf[7])), 0);
 	}
     }
+    if (stat_ops & FTT_DO_RP || stat_ops & FTT_DO_RP_SOMETIMES) {
+	static unsigned char cdb_read_position[]= {0x34, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00};
+
+	res = ftt_do_scsi_command(d,"Read Position", cdb_read_position, 10, 
+				  buf, 20, 10, 0);
+	
+	if (!(stat_ops & FTT_DO_RP_SOMETIMES)) {
+	    if (res < 0) {
+	       set_stat(b,FTT_TNP,  "1", 0);
+	    } else {
+	       set_stat(b,FTT_TNP,  "0", 0);
+	    }
+	} 
+        if ( res >= 0 ) {
+	    set_stat(b,FTT_BOT,     ftt_itoa(bit(7,buf[0])), 0);
+	    set_stat(b,FTT_PEOT,    ftt_itoa(bit(6,buf[0])), 0);
+	    set_stat(b,FTT_BLOC_LOC,ftt_itoa(pack(buf[4],buf[5],buf[6],buf[7])),0);
+	    set_stat(b,FTT_CUR_PART,ftt_itoa(buf[1]),0);
+            current_partition = buf[1];
+	}
+    }
     if (stat_ops & FTT_DO_LS) {
  	int npages;
-	static char buf2[128];
+	static char buf2[1028];
 	static unsigned char cdb_log_sense[]= {0x4d, 0x00, 0x00, 0x00, 0x00, 
-						   0x00, 0x00, 0, 128, 0};
+						   0x00, 0x00, 0, 1028, 0};
 
 
         /* check supported page list, we want 0x32 or 0x39... */
 	cdb_log_sense[2] = 0;
 	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sense, 10, 
-				  buf2, 128, 10, 0);
+				  buf2, 1028, 10, 0);
 
         npages = pack(0,0,buf2[2],buf2[3]);
 	for( i = 0; i <= npages; i++ ) {
 	    int do_page;
+            int slot;
 
 	    do_page = buf2[4+i];
             switch( do_page ) {
@@ -699,7 +739,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 		    cdb_log_sense[2] = 0x40 | do_page;
 		    res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sense, 10, 
-					      buf, 128, 10, 0);
+					      buf, 1028, 10, 0);
 		    if(res < 0) {
 		    	failures++;
 		    } else { 
@@ -713,7 +753,47 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    (void)decrypt_ls(b,buf,5,FTT_READ_COUNT,1024);
 			    break;
 		        case 0x31:
-			    (void)decrypt_ls(b,buf,1,FTT_REMAIN_TAPE,1);
+			    /* 
+			    ** we want the remaining tape of the
+                            ** current partition if we can get it. 
+			    ** this computes a log sense slot based on
+			    ** slot  part  data
+			    ** ----  ----  -----
+			    **   1      0  remain
+			    **   2      1  remain
+			    **   3      0  max
+			    **   4      1  max
+			    **   5      2  remain
+			    **   6      3  remain
+			    **   7      2  max
+			    **   8      3  max
+			    **  ...
+			    ** 125     62  remain
+			    ** 126     63  remain
+			    ** 127     62  max
+			    ** 128     63  max
+			    ** So looking at this, it's easier to compute
+			    ** the parameter - 1 and then add 1 to it.
+			    ** (i.e. so that 0 -> 0)
+			    ** So there are 64/2 chunks, each with 4
+			    ** parameters, (2 remain and 2 max).
+	                    ** so we take the chunk number which is
+			    **   part / 2
+			    ** or bit-bashing:
+			    **   (part & 0x7f) >> 1
+                            ** and convert it to the parameter slot
+			    **   ((part & 0x7f) >> 1) << 2)
+                            ** which simplifies to
+			    **   (part & 0x7f) << 1
+			    ** and then or-in the slot in that chunk
+		            ** which is either 0 or 1, or the low bit,
+			    ** since we never want the max values
+			    */
+
+			    slot = ((current_partition & 0x7f) << 1) |
+				    (current_partition & 0x01);
+			    (void)decrypt_ls(b,buf,slot+1,FTT_REMAIN_TAPE,1);
+			    break;
 		        case 0x32:
 			    (void)decrypt_ls(b,buf,0,FTT_READ_COMP,1);
 			    (void)decrypt_ls(b,buf,1,FTT_WRITE_COMP,1);
@@ -721,6 +801,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    (void)decrypt_ls(b,buf,5,FTT_CMP_READ,1);
 			    (void)decrypt_ls(b,buf,7,FTT_UNC_WRITE,1);
 			    (void)decrypt_ls(b,buf,9,FTT_CMP_WRITE,1);
+                            break;
 		        case 0x39: {
 			    double uw, ur, cw, cr;
 			    uw = decrypt_ls(b,buf,5,FTT_UNC_WRITE,1024);
@@ -729,10 +810,16 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    cr = decrypt_ls(b,buf,8,FTT_CMP_READ,1024);
                             if (ur != 0.0) {
 			       set_stat(b,FTT_READ_COMP,  ftt_itoa((long)(100.0*cr/ur)), 0);
-			    }
+			    } else {
+			       set_stat(b,FTT_READ_COMP,  "100", 0);
+                            }
                             if (uw != 0.0) {
-			       set_stat(b,FTT_WRITE_COMP, ftt_itoa((long)(100.0*cw/uw)), 0);}
+			       set_stat(b,FTT_WRITE_COMP, ftt_itoa((long)(100.0*cw/uw)), 0);
+			    } else {
+			       set_stat(b,FTT_WRITE_COMP,  "100", 0);
 			    }
+			    }
+                            break;
 		        }
                     }
 		    break;
@@ -740,24 +827,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	
         }
 	
-    }
-    if (stat_ops & FTT_DO_RP || stat_ops & FTT_DO_RP_SOMETIMES) {
-	static unsigned char cdb_read_position[]= {0x34, 0x00, 0x00, 0x00, 0x00,
-						0x00, 0x00, 0x00, 0x00, 0x00};
-
-	res = ftt_do_scsi_command(d,"Read Position", cdb_read_position, 10, 
-				  buf, 20, 10, 0);
-	
-	if (res < 0) {
-	    if (!(stat_ops & FTT_DO_RP_SOMETIMES)) {
-		ftt_errno = FTT_EPARTIALSTAT;
-	    }
-	} else {
-	    set_stat(b,FTT_BOT,     ftt_itoa(bit(7,buf[0])), 0);
-	    set_stat(b,FTT_PEOT,    ftt_itoa(bit(6,buf[0])), 0);
-	    set_stat(b,FTT_BLOC_LOC,ftt_itoa(pack(buf[4],buf[5],buf[6],buf[7])),0);
-	    set_stat(b,FTT_CUR_PART,ftt_itoa(buf[1]),0);
-	}
     }
     if (stat_ops & FTT_DO_MS_Px21 ) {
 	static unsigned char cdb_ms21[6] = {0x1a, DBD, 0x21, 0x00, 10, 0x00};
@@ -878,7 +947,7 @@ ftt_clear_stats(ftt_descriptor d) {
 }
 
 char *
-ftt_extract_stats(ftt_stat_buf b, int stat){
+ftt_extract_stats(ftt_stat_buf b, int stat) {
 
     ENTERING("ftt_extract_stats");
     PCKNULL("statistics buffer pointer",b);

@@ -32,7 +32,7 @@ ftt_set_transfer_length( unsigned char *cdb, int n ) {
 
 int
 ftt_do_scsi_command(ftt_descriptor d,char *pcOp,unsigned char *pcCmd, 
-	int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite){
+	int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite) {
     int res;
 
     ENTERING("ftt_do_scsi_command");
@@ -93,6 +93,8 @@ ftt_close_scsi_dev(ftt_descriptor d) {
     return 0;
 }
 
+unsigned char ftt_sensebuf[18];
+
 int
 ftt_scsi_check(scsi_handle n,char *pcOp, int stat, int len) {
     int res;
@@ -101,10 +103,9 @@ ftt_scsi_check(scsi_handle n,char *pcOp, int stat, int len) {
 	"ftt_scsi_command: %s command returned  a %d, \n\
 request sense data: \n\
 %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n";
-    static unsigned char acSensebuf[18];
 
     static unsigned char acReqSense[]={ 0x03, 0x00, 0x00, 0x00, 
-				     sizeof(acSensebuf), 0x00 };
+				     sizeof(ftt_sensebuf), 0x00 };
 
     DEBUG2(stderr, "ftt_scsi_check called with status %d len %d\n", stat, len);
 
@@ -127,46 +128,46 @@ device which was not ready");
             if (!recursive) {
 	        recursive = 1; /* keep from recursing if sense fails */
 	        res = ftt_scsi_command(n,"sense",acReqSense, sizeof(acReqSense),
-	  		               acSensebuf, sizeof(acSensebuf),5,0);
+	  		               ftt_sensebuf, sizeof(ftt_sensebuf),5,0);
 		DEBUG3(stderr,"request sense returns res %d:\n", res);
 		DEBUG3(stderr, errmsg, pcOp, stat,
-			acSensebuf[0], acSensebuf[1],
-			acSensebuf[2], acSensebuf[3],
-			acSensebuf[4], acSensebuf[5],
-			acSensebuf[6], acSensebuf[7],
-			acSensebuf[8], acSensebuf[9],
-			acSensebuf[10], acSensebuf[12],
-			acSensebuf[13], acSensebuf[14],
-			acSensebuf[15]);
+			ftt_sensebuf[0], ftt_sensebuf[1],
+			ftt_sensebuf[2], ftt_sensebuf[3],
+			ftt_sensebuf[4], ftt_sensebuf[5],
+			ftt_sensebuf[6], ftt_sensebuf[7],
+			ftt_sensebuf[8], ftt_sensebuf[9],
+			ftt_sensebuf[10], ftt_sensebuf[12],
+			ftt_sensebuf[13], ftt_sensebuf[14],
+			ftt_sensebuf[15]);
 		recursive = 0;
 	    } else {
 		return 0;
 	    }
 	    ftt_eprintf(errmsg, pcOp, stat,
-		    acSensebuf[0], acSensebuf[1],
-		    acSensebuf[2], acSensebuf[3],
-		    acSensebuf[4], acSensebuf[5],
-		    acSensebuf[6], acSensebuf[7],
-		    acSensebuf[8], acSensebuf[9],
-		    acSensebuf[10], acSensebuf[12],
-		    acSensebuf[13], acSensebuf[14],
-		    acSensebuf[15]);
-	    switch(acSensebuf[2]& 0xf) {
+		    ftt_sensebuf[0], ftt_sensebuf[1],
+		    ftt_sensebuf[2], ftt_sensebuf[3],
+		    ftt_sensebuf[4], ftt_sensebuf[5],
+		    ftt_sensebuf[6], ftt_sensebuf[7],
+		    ftt_sensebuf[8], ftt_sensebuf[9],
+		    ftt_sensebuf[10], ftt_sensebuf[12],
+		    ftt_sensebuf[13], ftt_sensebuf[14],
+		    ftt_sensebuf[15]);
+	    switch(ftt_sensebuf[2]& 0xf) {
 	    default:
 	    case 0x0:
-		    if ( (acSensebuf[2]&0x20) && (acSensebuf[0]&0x80) ) {
+		    if ( (ftt_sensebuf[2]&0x20) && (ftt_sensebuf[0]&0x80) ) {
 			/* we have a valid, incorrect length indication */
-			len -=  (acSensebuf[3] << 24) + 
-				(acSensebuf[4] << 16) + 
-				(acSensebuf[5] <<  8) +
-				acSensebuf[6];
+			len -=  (ftt_sensebuf[3] << 24) + 
+				(ftt_sensebuf[4] << 16) + 
+				(ftt_sensebuf[5] <<  8) +
+				ftt_sensebuf[6];
 		        ftt_errno =  FTT_SUCCESS;
 			/* XXX -- does this work in block mode? */
-		    } else if ((acSensebuf[2]&0x80) && (acSensebuf[0]&0x80)){
+		    } else if ((ftt_sensebuf[2]&0x80) && (ftt_sensebuf[0]&0x80)){
 			/* we read a filemark */
 			len = 0;
 		        ftt_errno =  FTT_SUCCESS;
-		    } else if ((acSensebuf[2]&0x40) && (acSensebuf[0]&0x80)){
+		    } else if ((ftt_sensebuf[2]&0x40) && (ftt_sensebuf[0]&0x80)){
 			/* we hit end of tape */
 		        ftt_errno =  FTT_ENOSPC;
 		    } else {

@@ -69,52 +69,6 @@ ftt_set_part_size(ftt_partbuf p,int n,long sz) {
 
 #include "ftt_dbd.h"
 
-int		
-ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
-    static unsigned char buf[BD_SIZE+136];
-    static unsigned char cdb_modsen11[6] = {0x1a, DBD, 0x11, 0x00,140, 0x00};
-    int res;
-    int i;
-
-    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
-	ftt_close_dev(d);
-	switch(ftt_fork(d)){
-	case -1:
-		return -1;
-
-	case 0:  /* child */
-		fflush(stdout);	/* make async_pf stdout */
-		fflush(d->async_pf_parent);
-		close(1);
-		dup2(fileno(d->async_pf_parent),1);
-		fclose(d->async_pf_parent);
-
-		if (ftt_debug) {
-		    execlp("ftt_suid", "ftt_suid", "-x",  "-p", d->basename, 0);
-		} else {
-		     execlp("ftt_suid", "ftt_suid", "-p", d->basename, 0);
-		}
-		break;
-
-	default: /* parent */
-		ftt_undump_partitions(p,d->async_pf_child);
-		res = ftt_wait(d);
-	}
-
-    } else {
-
-	res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, BD_SIZE+136, 10, 0);
-	if (res < 0) return res;
-	p->max_parts = buf[BD_SIZE+2];
-	p->n_parts = buf[BD_SIZE+3];
-	for( i = 0 ; i <= p->n_parts; i++ ) {
-	    p->partsizes[i] = pack(0,0,buf[BD_SIZE+8+2*i],buf[BD_SIZE+8+2*i+1]);
-	}
-	return 0;
-   }
-}
-
-
 static unsigned char wp_buf[BD_SIZE+136];
 
 int
@@ -160,6 +114,53 @@ int ftt_part_util_set(ftt_descriptor d,  ftt_partbuf p ) {
     res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, wp_buf, len, 3600, 1);
     return res;
 }
+
+int		
+ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
+    static unsigned char buf[BD_SIZE+136];
+    static unsigned char cdb_modsen11[6] = {0x1a, DBD, 0x11, 0x00,140, 0x00};
+    int res;
+    int i;
+
+    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
+	ftt_close_dev(d);
+	switch(ftt_fork(d)){
+	case -1:
+		return -1;
+
+	case 0:  /* child */
+		fflush(stdout);	/* make async_pf stdout */
+		fflush(d->async_pf_parent);
+		close(1);
+		dup2(fileno(d->async_pf_parent),1);
+		fclose(d->async_pf_parent);
+
+		if (ftt_debug) {
+		    execlp("ftt_suid", "ftt_suid", "-x",  "-p", d->basename, 0);
+		} else {
+		     execlp("ftt_suid", "ftt_suid", "-p", d->basename, 0);
+		}
+		break;
+
+	default: /* parent */
+		ftt_undump_partitions(p,d->async_pf_child);
+		res = ftt_wait(d);
+	}
+
+    } else {
+
+        ftt_part_util_get(d);
+	if (res < 0) return res;
+	p->max_parts = wp_buf[BD_SIZE+2];
+	p->n_parts = wp_buf[BD_SIZE+3];
+	for( i = 0 ; i <= p->n_parts; i++ ) {
+	    p->partsizes[i] = pack(0,0,wp_buf[BD_SIZE+8+2*i],wp_buf[BD_SIZE+8+2*i+1]);
+	}
+	return 0;
+   }
+}
+
+
 
 int		
 ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
@@ -448,23 +449,18 @@ ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table *pb) {
         /* switch device into native AIT mode */
         ait_conf_buf[0] = 0x00;                        /* reserved */
         ait_conf_buf[1] = 0x00;                        /* reserved */
-        ait_conf_buf[2] = 0x7f;                        /* reserved */
-        ait_conf_buf[5] = 0x00;                        /* reserved */
-        ait_conf_buf[6] = 0x00;                        /* reserved */
-        ait_conf_buf[7] = 0x00;                        /* reserved */
-        ait_conf_buf[8] = 0x00;                        /* reserved */
         ait_conf_buf[4+8+0] &= 0x3f;                   /* reserved */
         if ( on ) {
           if ((ait_conf_buf[4+8+4] & 0x80) != 0 ) {
             /* volume has a MIC */
-            ait_conf_buf[4+8+2] = 0xf3;               /* enable full AIT mode */
+            ait_conf_buf[4+8+2] |= 0xf3;               /* enable full AIT mode */
           } else {
             /* volume has no MIC */
-            ait_conf_buf[4+8+2] = 0xc0;               /* enable AIT mode */
+            ait_conf_buf[4+8+2] |= 0xe0;               /* enable AIT mode */
           }
-          ait_conf_buf[4+8+4] &= 0x80;                /* reserved */
        } else {
-          ait_conf_buf[4+8+2] &= ~0xf3;             /* disable AIT mode */
+          ait_conf_buf[4+8+2] &= ~0xc0;             /* disable AIT mode */
+          ait_conf_buf[4+8+2] |=  0x10;             /* turn on ULPBOT */
        }
 
         /* set the AIT Device Configuration page and switch format mode */
