@@ -453,7 +453,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		 totb = v["capacity_bytes"]/1.
 		 if totb != 0:
 		     waste = left/totb*100.
-		 self.enprint(label+" is now full, bytes remaining = "+\
+		 self.enprint(external_label+" is now full, bytes remaining = "+\
 			      repr(left)+" wasted = "+repr(waste)+"%")
 		 dict[external_label] = copy.deepcopy(v)
 		 ticket["status"] = (e_errors.WRITE_EOT, \
@@ -463,7 +463,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	     return
 	 else:
 	     ticket["status"] = (e_errors.NOACCESS,'None')
-	     self.reply_to_caller(record)
+	     self.reply_to_caller(ticket)
 	     Trace.trace(0,"}can_write_volume "+repr(ticket["status"]))
 	     return
      except KeyError:
