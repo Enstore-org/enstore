@@ -47,11 +47,23 @@ Enstore library managers and movers running on Linux, Irix and AIX platforms</LI
 
 <H2>
 Test Results</H2>
-The most significant test results were obtained using the two AIX machines
-with fibre channel connection and the Redwood tape drives. Enstore repeatedly
-wrote eight cartridges (50 GB each) or 400 GB of random data in in approximately
-60 hours. Eight cartridges was the number available for the test and there
-is no reason to believe enstore could not have continued.
+
+<H3>
+Initial Testing</H3>
+Initial testing was done using pcfarm4 as a sever node (pnfs, bit file,
+volume clerk, and log server). Fndapr, willow, fntt1, and hppc ran encp&nbsp;
+and movers.&nbsp; They&nbsp; read and wrote data until their disks
+<BR>were full and then they continued reading data.&nbsp;&nbsp; This continued
+for several days until it was stopped.
+<BR>The point was to test the design of the system and the robustness of
+the servers under load.
+<H3>
+Performance Testing</H3>
+The most significant performance test results were obtained using the two
+AIX machines with fibre channel connection and the Redwood tape drives.
+Enstore repeatedly wrote eight cartridges (50 GB each) or 400 GB of random
+data in in approximately 60 hours. Eight cartridges was the number available
+for the test and there is no reason to believe enstore could not have continued.
 
 <P>The test was run with a mover on fntt2, a RS6000/F50-a fast modern machine,
 writing to a Redwood tape drive and encp on fntt1, a RS6000/370 -a slow
@@ -63,7 +75,7 @@ transfer.
 not over an external network. During this test the limit was the speed
 of the disk from which encp was reading.
 <H3>
-Test Summary</H3>
+Performance Test Summary</H3>
 
 <PRE>TEST&nbsp; FILE SIZE DATA XFR TIME&nbsp;&nbsp;&nbsp; RATE&nbsp;&nbsp;&nbsp; TOTAL TIME&nbsp;&nbsp; RATE</PRE>
 
@@ -75,22 +87,36 @@ the data not including tape mount times (~50 sec). The TOTAL TIME and RATE
 is from the start of encp until it is notified the data is on tape. Logs
 of the <A HREF="#redwoodfiber">network transfer </A>and the <A HREF="#redwoodlocal">local
 transfer</A> show all of the detail.
-
+<H3>
+Performance Optimization</H3>
+Initially the movers did all data manipulation in python with no concurrency
+of network transfers
+<BR>with disk and tape reading and writing.&nbsp;&nbsp; The mover and encp
+code were rewritten using C modules
+<BR>that overlapped reading and writing.&nbsp;&nbsp; At this point we lost
+our Redwood system and the fibre channel.&nbsp; This code was tested on
+a 166MHz Pentium running encp and mover code and writing to a Mammoth
+<BR>tape drive&nbsp; to which we typically write 2.8MB/sec from memory
+.&nbsp;&nbsp;&nbsp; The data transfer rate with
+<BR>the optimized code was 2.5 MB/sec&nbsp;
+<BR>&nbsp;
+<H3>
+Components Tested</H3>
+The testing exercised all components of Enstore including pnfs, encp, configuration
+server, library manager, file clerk, volume clerk, media changer, and mover.&nbsp;&nbsp;
+At different times these components all ran on all of the platforms.
 <H3>
 Error Conditions and Recovery</H3>
 Error conditions did not occur during testing of the prototype. Tape and
 network errors are known to cause file transfers to fail and not be retried.
 These errors and many others must be handled in a production system but
 the prototype did run continuously for days with out error conditions.
-
 <H3>
 Performance and Bottlenecks</H3>
 The ultimate bottlenecks of the system are currently unknown because we
 were not worried about performance in the prototype and we were limited
-by disk performance in the tests. Work was done to understand and improve
-the performance of network file transfers but its performance could not
-be tested because of the slow speed of the disks.
-
+by disk performance in the tests.
+<BR>&nbsp;
 <H2>
 <A NAME="redwoodfiber"></A>Network Transfer Log</H2>
 
