@@ -2,21 +2,31 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+# script to return a random file name(s) for tapes in the current inventory
+
 HTTP=http://www-d0en.fnal.gov
 COUNT=${1:-1}
 
+here=`pwd`
+
+# first go get the volumes that are defined in the inventory
 wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED 2>/dev/null
 rc=$?; if [ $rc -ne 0 ]; then echo "wget VOLUMES_DEFINED FAILED"l exit $rc;fi
-
 cat VOLUMES_DEFINED | egrep -v 'CLN|null|^Date|^label' >V_D
 rm VOLUMES_DEFINED
 N=`wc V_D| awk '{print $1}'`
 
+
 done=$COUNT
 loops=0
+
 while [ $done -gt 0 ]; do
+
+  cd $here
   loops=`expr $loops + 1`
   if [ $loops -ge 1000 ]; then echo "TOO MANY LOOPS = $loops, EXIT"; exit 1; fi
+
+  # choose a random volume from the list
   ran=`python -c "import whrandom;print whrandom.randint(1,"$N")"`
   tape=`head -n $ran V_D|tail -n 1| awk '{print $1}'`
   wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null
@@ -26,10 +36,32 @@ while [ $done -gt 0 ]; do
   rm $tape
   NF=`wc ${tape}_| awk '{print $1}'`
   if [ $NF -le 0 ]; then continue; fi
+
+  # choose a random file on the random volume
   ran=`python -c "import whrandom;print whrandom.randint(1,"$NF")"`
-  file=`head -n $ran ${tape}_|tail -n 1| awk '{print $NF,$1,$3,$4}'`
+  file=`head -n $ran ${tape}_|tail -n 1| awk '{print $NF,$1,$3,$4,$2}'`
+  F=`echo $file | awk '{print $1}'`
+  R=`echo $file | awk '{print $2,$3,$4,$5}'`
+
+  # user could have renamed it - find current name using pnfsid
+  if [ ! -r $F ]; then
+    bfid=`echo $file | awk '{print $NF}'`
+    info=`enstore file --bfid $bfid 2>/dev/null`
+    if [ $rc -ne 0 ]; then continue; fi
+    pnfsid=`echo $info | sed -e "s/.*pnfsid': '//" -e "s/'.*//"`
+    cd `dirname $F 2>/dev/null`
+    if [ $rc -ne 0 ]; then continue; fi
+    FN=`cat ".(nameof)($pnfsid)" 2>/dev/null`
+    if [ $rc -ne 0 ]; then continue; fi
+    if [ ! -r $FN ]; then continue; fi
+    file="$F $R"
+  fi
+
+  # ok, just tell the user the name of the file and do another if needed
   echo $file
   rm ${tape}_
   done=`expr $done - 1`
 done
+
 rm V_D
+cd $here
