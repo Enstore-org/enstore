@@ -2,8 +2,8 @@
 # src/$RCSfile$   $Revision$
 #
 
-import sys
-import string
+#import sys
+#import string
 import types
 
 OK         = 'ok'
@@ -332,33 +332,40 @@ stypedict = { "died"               : "DIED",
               "u"                  : "USERERR",
               "m"                  : "MISCERR" }
 
-#Return true if the value is the same as e_errors.OK, false otherwise.
-def is_ok(e):
-    if type(e) == types.StringType:
-        error = e
-    elif type(e) == types.TupleType and len(e) == 2:
-        error = e[0]
-    elif type(e) == types.DictionaryType and e.get('status', None):
-        error = e['status'][0]
+def _get_error(obj):
+    if type(obj) == types.StringType:
+        error = obj
+    elif type(obj) == types.TupleType and len(obj) == 2:
+        error = obj[0]
+    elif type(obj) == types.DictionaryType and obj.get('status', None):
+        error = obj['status'][0]
     else:
-        error = e
+        error = obj
+
+    return error
+
+#Return true if the status is the same as e_errors.OK, false otherwise.
+def is_ok(e):
+    error = _get_error(e)
         
     if error == OK:
         return 1
     return 0
 
-#Return true if the value is in error but not in non_retriable or raise_alarm
+#Return true if the status is the same as e_errors.OK, false otherwise.
+def is_timedout(e):
+    error = _get_error(e)
+    
+    if error == TIMEDOUT:
+        return 1
+
+    return 0
+
+#Return true if the status is in error but not in non_retriable or raise_alarm
 # status.  Return false otherwise.
 def is_retriable(e):
-    if type(e) == types.StringType:
-        error = e
-    elif type(e) == types.TupleType and len(e) == 2:
-        error = e[0]
-    elif type(e) == types.DictionaryType and e.get('status', None):
-        error = e['status'][0]
-    else:
-        error = e
-
+    error = _get_error(e)
+    
     if is_ok(error):
         return 0
     elif error in non_retriable_errors:
@@ -371,15 +378,8 @@ def is_retriable(e):
 
 #If the value is in non_retriable or raise alarm return 1.  False otherwise.
 def is_non_retriable(e):
-    if type(e) == types.StringType:
-        error = e
-    elif type(e) == types.TupleType and len(e) == 2:
-        error = e[0]
-    elif type(e) == types.DictionaryType and e.get('status', None):
-        error = e['status'][0]
-    else:
-        error = e
-
+    error = _get_error(e)
+    
     if error in non_retriable_errors:
         return 1
     elif error in raise_alarm_errors:
@@ -390,15 +390,8 @@ def is_non_retriable(e):
 
 #If the value is alarmable, return 1 otherwise false.
 def is_alarmable(e):
-    if type(e) == types.StringType:
-        error = e
-    elif type(e) == types.TupleType and len(e) == 2:
-        error = e[0]
-    elif type(e) == types.DictionaryType and e.get('status', None):
-        error = e['status'][0]
-    else:
-        error = e
-        
+    error = _get_error(e)
+    
     if error in raise_alarm_errors:
         return 1
     elif error in email_alarm_errors:
@@ -407,30 +400,16 @@ def is_alarmable(e):
 
 #If the value is emailable, return 1 otherwise false.
 def is_emailable(e):
-    if type(e) == types.StringType:
-        error = e
-    elif type(e) == types.TupleType and len(e) == 2:
-        error = e[0]
-    elif type(e) == types.DictionaryType and e.get('status', None):
-        error = e['status'][0]
-    else:
-        error = e
-        
+    error = _get_error(e)
+    
     if error in email_alarm_errors:
         return 1
     return 0
 
 #If the value is RETRY or RESUBMITTING return 1 otherwise 0.
 def is_resendable(e):
-    if type(e) == types.StringType:
-        error = e
-    elif type(e) == types.TupleType and len(e) == 2:
-        error = e[0]
-    elif type(e) == types.DictionaryType and e.get('status', None):
-        error = e['status'][0]
-    else:
-        error = e
-
+    error = _get_error(e)
+    
     if error == RETRY:
         return 1
     elif error == RESUBMITTING:
