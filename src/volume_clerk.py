@@ -1304,8 +1304,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
 
         Trace.log(e_errors.INFO,"determine dbHome and jouHome")
         try:
-            dbInfo = configuration_client.ConfigurationClient(
-		(intf.config_host, intf.config_port)).get('database')
+            dbInfo = configuration_client.ConfigurationClient(csc).get('database')
             dbHome = dbInfo['db_dir']
             try:  # backward compatible
                 jouHome = dbInfo['jou_dir']
