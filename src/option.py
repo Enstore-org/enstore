@@ -282,7 +282,6 @@ RAISE = "raise"                              #alarm
 READ_ONLY = "read-only"                      #volume
 REBUILD_SG_COUNT = "rebuild-sg-count"        #volume
 RECYCLE = "recycle"                          #volume
-REMEDY_TICKET = "remedy_ticket"              #alarm_server
 REMEDY_TYPE = "remedy_type"                  #alarm_server
 RESET_LIB = "reset-lib"                      #volume
 RESOLVE = "resolve"                          #alarm
@@ -394,7 +393,7 @@ valid_option_list = [
     POSITION, PREFIX, PRIORITY, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH,
-    REMEDY_TICKET, REMEDY_TYPE, RESET_LIB, RESOLVE,
+    REMEDY_TYPE, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG,
