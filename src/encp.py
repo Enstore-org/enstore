@@ -4115,7 +4115,7 @@ def main():
     start_line = "Start time: %s" % time.ctime(encp_start_time)
     command_line = "Command line: %s" % (string.join(sys.argv),)
     version_line = "Version: %s" % (encp_client_version().strip(),)
-    id_line = "User: %s(%d)  Group: (%s)%d  Euser: (%s)%d  Egroup: (%s)%d" %\
+    id_line = "User: %s(%d)  Group: %s(%d)  Euser: %s(%d)  Egroup: %s(%d)" %\
               (real_name, os.getuid(), real_group, os.getgid(),
                user_name, os.geteuid(), user_group, os.getegid())
     tag_line = "Library: %s  Storage Group: %s  File Family: %s  " \
