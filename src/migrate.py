@@ -565,6 +565,11 @@ def migrating():
 				res = encp.encp(cmd)
 				if res:
 					error_log(MY_TASK, "failed to copy %s %s %s"%(bfid, src, tmp))
+					# delete the target and retry once
+					try:
+						os.remove(dst)
+					except:
+						pass
 					job = copy_queue.get(True)
 					continue
 
