@@ -17,15 +17,21 @@ mail_victims = os.environ.get("ENSTORE_MAIL", "enstore-auto@fnal.gov")
 config = eval(os.popen("enstore config --show",'r').read())
 
 prog = sys.argv[0]
-host = os.uname()[1]
+thishost = os.uname()[1]
 
+def tod():
+    return time.ctime(time.time())
 
+def sleep(sleep_time):
+    print "Sleeping for",sleep_time,"seconds",tod()
+    time.sleep(sleep_time)
+    return 
 
 class Logfile:
     def __init__(self, filename):
         self.outfile = open(filename, 'a+')
-        now = time.ctime(time.time())
-        self.outfile.write("mover-nanny starting at %s" % (now,))
+        now = tod()
+        self.outfile.write("mover-nanny starting at %s\n" % (now,))
         self.outfile.flush()
     def close(self):
         self.outfile.close()
@@ -44,14 +50,14 @@ sys.stderr = sys.stdout
 def sendmail(subject, reason):
     # I know the hardware doesn't work.  Disable all mail till it does.
     # disable all mail 11/16/00 J Bakken
-    print time.ctime(time.time()), subject, reason
+    print tod(), subject, reason
     return
     mail_cmd = '/bin/mail -s "%s" %s'%(subject,mail_victims)
     p=os.popen(mail_cmd, 'w')
     p.write('reason: %s\n' % (reason,))
     p.write('\n\n')
     p.write("This message sent at %s by %s running on %s\n\n" %
-            (time.ctime(time.time()), prog, host))
+            (tod(), prog, thishost))
     p.close()
 
 def hms(s):
@@ -77,8 +83,11 @@ def is_mover(s):
     return endswith(s, '.mover')
 
 def get_movers():
+    print 'Getting configuration'
+    config = eval(os.popen("enstore config --show",'r').read())
     movers = filter(is_mover, config.keys())
     movers.sort()
+    print 'Found movers:',pprint.pprint(movers)
     return movers
 
 def ssh(host, cmd):
@@ -99,13 +108,16 @@ def getps(mover):
         line = string.strip(line)
         if line:
             ret.append(line)
+    pprint.pprint(ret)
     return ret
 
 def get_sched():
+    print 'Getting schedule',tod()
     sched_dict = {}
     key = None
-    lines = ssh(os.environ['ENSTORE_CONFIG_HOST'],
-                '. /usr/local/etc/setups.sh;setup enstore;enstore sched --show')
+    p = os.popen('enstore sched --show','r')
+    lines = p.read()
+    s = p.close()
     lines = string.split(lines,'\n')
     for line in lines:
         words = string.split(line)
@@ -120,10 +132,11 @@ def get_sched():
         else:
             if key:
                 sched_dict[key] = sched_dict.get(key,[]) + [words[0]]
+    pprint.pprint(sched_dict)
     return sched_dict
 
 def get_status(mover):    
-    p = os.popen("enstore mov --status --timeout=60 --retries=1 %s" % mover)
+    p = os.popen("enstore mov --status --timeout=60 --retries=1 %s" % mover,'r')
     r = p.read()
     s = p.close()
     l = string.split(r,'\n')
@@ -158,14 +171,16 @@ def reboot(mover):
         if state in ('ERROR', 'OFFLINE'):
             continue
         else:
-            print ssh(host,'. /usr/local/etc/setups.sh; setup enstore; enstore mov --start-draining=1 %s' % (other,))
+            p = os.popen('enstore mov --start-draining=1 %s' % (other,),'r')
+            print p.read()
+            s = p.close()
             print ssh(host, "rm /tmp/enstore/root/mover_lock")
             draining.append(other)
 
     time.sleep(1)
     retry = 120
     while draining and retry>0:
-        time.sleep(15)
+        sleep(15)
         still_draining = []
         for other in draining:
             d = get_status(other)
@@ -179,14 +194,16 @@ def reboot(mover):
         retry = retry-1
     print ssh(host, "rm -f /tmp/enstore/root/mover_lock")
     print ssh(host, "/sbin/shutdown -r now")
-    time.sleep(30)
+    sleep(30)
 
     
 def start(mover, reason=None):
     conf = config[mover]
     host = conf['host']
     print ssh(host, "rm -f /tmp/enstore/root/mover_lock")
-    print ssh(host, '. /usr/local/etc/setups.sh; setup enstore; enstore Estart %s "--just %s"' % (host, mover))
+    p = os.popen('enstore Estart %s "--just %s"' % (host, mover),'r')
+    print p.read()
+    s = p.close()
     if reason:
         sendmail("mover %s has been started"%mover, reason=reason)
         
@@ -211,7 +228,7 @@ def stop(mover):
                     print ssh(host, "kill %s" % (pid,))
                 else:
                     print ssh(host, "kill -9 %s" % (pid,))
-        time.sleep(10)
+        sleep(10)
         
     lines = getps(mover)
     if not lines:
@@ -273,10 +290,10 @@ def check(mover):
     
 
 def main(reset_on_error=0):
-    movers = get_movers()
     strikes = {}
     while 1:
-        print time.ctime(time.time())
+        movers = get_movers()
+        print tod()
         scheduled = get_sched()
         known_down = scheduled.get('known',[])
         all_ok = 1
@@ -326,12 +343,7 @@ def main(reset_on_error=0):
                           %n_strikes)
                 else:
                     print "error on", mover, "not resetting (%d)"%n_strikes
-        if all_ok:
-            print "All Movers OK"
-        print "Sleeping"
-        time.sleep(60)
+        sleep(60)
     
 if __name__=='__main__':
     main(reset_on_error=1)
-    
-
