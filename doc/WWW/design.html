@@ -5207,7 +5207,7 @@ tapes outside of Enstore and import them into the system, and to write tapes
 inside of Enstore and remove them from the system. In this way, for example,
 Enstore can be used as a kind of tape copy facility.
 
-<p> What follows are draft design notions, importing and exporting are 
+<p> What follows are draft design notions; importing and exporting are 
 not yet fully implemented.
 
 <h3><a name="volexp">
@@ -5255,9 +5255,9 @@ administration tool.
 
 </ul>
 
-An experiment can make tapes in the Enstore system at Fermilab, and
+An experiment can make tapes in the Enstore system at Fermilab and
 give the volumes to an experimenter, who can read the tapes anywhere.
-Experimenters can optionally generate a metadata file which is provides a
+Experimenters can optionally generate a metadata file which provides a
 map of the exported tape. However,
 some tape formats, such as CPIO,  are sufficiently self-describing so that the tape may
 be dumped to disk with standard utilities.
@@ -5290,7 +5290,7 @@ done
 5.2 Volume Import
 </h3>
 
-Volume import is a good implementation for repeated and sizeable
+Volume import is suitable for repeated and sizeable
 transfers of data. Volume import is not as easy as export and, therefore, it is not a good choice for small, occasional
 transfers.
 
@@ -5299,7 +5299,7 @@ Tapes in a robot require special labels so that can be automatically
 scanned and placed in the robot. The labels must be unique within a robot and
 within an Enstore system. You will need to procure tape volumes with labels
 meeting these requirements. Imported tapes are read-only in Enstore. (Details
-of these requirements are TBD, after the serial media working group
+of these requirements are TBD, pending the serial media working group
 decision). 
 
 <p> Although it is not mandatory, an Enstore tool will very likely have to be produced to get good
@@ -5321,9 +5321,9 @@ to fit into the Enstore name space.
  <li> Identify a file structuring method that is compatible with Enstore and
         your experiment's data interchange standards.
  <li> Files should be written with a blocksize yielding good performance.
-	(precise recommendation is TBD, after SMWG decision).
+	(Precise recommendation is TBD, pending SMWG decision).
  <li> Files should be written with the recommended partitioning.
-	(precise recommendation is TBD, after SMWG decision).
+	(Precise recommendation is TBD, pending SMWG decision).
 
 </ul>
 
@@ -5356,7 +5356,7 @@ determine the metadata and this defeats the purpose if importing volumes!
 <li> A path for the file in the <em>pnfs</em> namespace.
 </ul>
 
-<p> The procedure the user would follow is:
+<p> The procedure the user would follow to create an importable volume is:
 
 <ul>
  <li>Identify the files you want to put on a tape.
@@ -5379,8 +5379,8 @@ The procedure for importing a volume is:
   <li> Deliver the volume to the data center.
 
   <li> Use an Enstore administration utility to make a record for the volume
-  in the volume table, using the volume metadata, and physical
-  location as the shelf library.
+  in the volume table using the volume metadata and to set the physical
+  location as the "shelf" library.
 
   <li> Use an Enstore administration utility to place the metadata for
   each file into the file table and <em>pnfs</em> namespace.
