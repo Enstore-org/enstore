@@ -37,6 +37,7 @@ import configuration_client
 import udp_server
 import EXfer
 import interface
+import option
 import e_errors
 import hostaddr
 import host_config
@@ -55,6 +56,7 @@ import accounting_client
 
 # forward declaration. It is assigned in get_clerks()
 acc = None
+__csc = None
 
 #Constants for the max file size.  Currently this assumes the max for the
 # cpio_odc wrapper format.  The -1s are necessary since that is the size
@@ -473,7 +475,34 @@ def e_access(path, mode):
 
 #Return the correct configuration server client based on the 'brand' (if
 # present) of the bfid.
+#
+#If called during a write, we go with the default csc.  On reads, it
+# is a little more complicated.  The exes are situations where the listed
+# function calls call get_csc().  All the reads with exes should be called
+# with a bfid passed in (seperated to lower group).  These function also tend
+# to be called during writes, but there should not be a bfid in the ticket,
+# yet anyway (these writes shown with asterisks).  Normal writes with exes
+# should not be a problem since wites assume default configuration host.
+# Dashes indicate that the function should not be called for those situations,
+# event though the calling function does use it (for the other read/write).
+# Pluses indicate the function is called before any great initialization
+# occurs.
+#
+# get_csc()                     read              write
+# -----------------------------------------------------
+# set_pnfs_settings()                               x
+# max_attempts()                  x                 x
+# clients()                       +                 +
+# wrappersize_check()             -                 x
+# librarysize_check()             -                 x
+#
+# get_clerks()  (bfid)            x                 *
+# submit_one_request()  (dict)    x                 *
+# handle_retries()  (dict)        x                 *
+#
 def get_csc(ticket_or_bfid=None):
+    global __csc  #For remembering.
+    
     # get a configuration server
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
@@ -499,7 +528,7 @@ def get_csc(ticket_or_bfid=None):
             return csc
     else:  #Nothing valid, just return the default csc.
         return csc
-
+    
     #Before checking other systems, check the current system.
     if brand == fcc.get_brand():
         return csc
@@ -511,6 +540,12 @@ def get_csc(ticket_or_bfid=None):
     else:
         return csc
 
+    #Check the last used non-default brand for performance reasons.
+    if __csc != None:
+        test_fcc = file_clerk_client.FileClient(__csc)
+        if brand == test_fcc.get_brand():
+            return __csc
+    
     #Loop through systems for the brand that matches the one we're looking for.
     for server in config_servers.keys():
         try:
@@ -520,7 +555,9 @@ def get_csc(ticket_or_bfid=None):
 
             #Get the next file clerk client and its brand.
             fcc_test = file_clerk_client.FileClient(csc_test,
-                                                    timeout=10, tries=1)
+                                                    rcv_timeout=5, rcv_tries=2)
+                                                    #timeout=5, tries=2)
+
             system_brand = fcc_test.get_brand()
 
             #If things match then use this system.
@@ -537,6 +574,9 @@ def get_csc(ticket_or_bfid=None):
             exc, msg, tb = sys.exc_info()
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
+    #If we make it this far, set this as the new last used non-default csc.
+    __csc = csc
+
     return csc
             
 def max_attempts(library, encp_intf):
@@ -550,7 +590,25 @@ def max_attempts(library, encp_intf):
 
     # get a configuration server
     csc = get_csc()
-    lm = csc.get(lib)
+    lm = csc.get(lib, 5, 5)
+
+    #Due to the possibility of branding, check other systems.
+
+    if lm['status'][0] == e_errors.KEYERROR:
+        #If we get here, then check the other enstore config servers.
+        # be prepared to find the correct system if necessary.
+        kcs = csc.get("known_config_servers", 5, 5)
+        kcs[socket.gethostname()] = (socket.getfqdn(),
+                              int(os.environ.get('ENSTORE_CONFIG_PORT', 7500)))
+        for item in kcs.values():
+            _csc = configuration_client.ConfigurationClient(address = item)
+            lm = _csc.get(lib, 5, 5)
+            if e_errors.is_ok(lm):
+                break
+
+    #If the library does not have the following entries (or the library name
+    # was not found in config file(s)... very unlikely) then go with
+    # the defaults.
 
     if encp_intf.max_retry == None:
         encp_intf.max_retry = lm.get('max_encp_retries',
@@ -1141,7 +1199,7 @@ def get_clerks(bfid=None):
     # file clerk where the file was stored.  This is determined based on
     # the bfid's brand.
     csc = get_csc(bfid)
-
+    
     #Get the file clerk information.
     fcc = file_clerk_client.FileClient(csc, bfid)
     if not fcc:
@@ -1984,23 +2042,23 @@ def check_crc(done_ticket, encp_intf, fd=None):
             done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
             return
 
-    #If the user wants a parinoid crc check of the new output file (reads
+    #If the user wants a paranoid crc check of the new output file (reads
     # only) calculate it and compare.
     if encp_intf.ecrc:
         #If passed a file descriptor, make sure it is to a regular file.
         if fd and (type(fd) == types.IntType) and \
            stat.S_ISREG(os.fstat(fd)[stat.ST_MODE]):
             try:
-                parinoid_crc = EXfer.ecrc(fd)
+                paranoid_crc = EXfer.ecrc(fd)
             except EXfer.error, msg:
-                done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, str(msg))
+                done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, str(msg))
                 return
 
             #If we have a valid crc value returned, compare it.
-            if parinoid_crc != mover_crc:
-                msg = "Parinoid CRC mismatch: %d != %d" % (mover_crc,
-                                                           parinoid_crc)
-                done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
+            if paranoid_crc != mover_crc:
+                msg = "Paranoid CRC mismatch: %d != %d" % (mover_crc,
+                                                           paranoid_crc)
+                done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
                 return
                 
 
@@ -2253,8 +2311,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             print_data_access_layer_format(infile, outfile, file_size,
                                            error_dictionary)
 
+        if e_errors.is_emailable(status[0]):
+            Trace.alarm(e_errors.EMAIL, status[0], {
+                'infile':infile, 'outfile':outfile, 'status':status[1]})
         if e_errors.is_alarmable(status[0]):
-            Trace.alarm(e_errors.WARNING, status[0], {
+            Trace.alarm(e_errors.ERROR, status[0], {
                 'infile':infile, 'outfile':outfile, 'status':status[1]})
 
         try:
@@ -3062,7 +3123,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
             ticket = combine_dict(result_dict, ticket, work_ticket)
             return ticket
 
-        #Be parinoid.  Check this the ticket again.
+        #Be paranoid.  Check this the ticket again.
         try:
             verify_write_request_consistancy([ticket])
         except EncpError, msg:
@@ -3779,7 +3840,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
             #only do this the first time.
             if not vcc or not fcc:
-                vcc, fcc = get_clerks(e.input[i])
+                vcc, fcc = get_clerks(bfid)
 
             try:
                 #Get the system information from the clerks.
@@ -3970,7 +4031,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
             failed_requests.append(request_ticket)
             continue
 
-        #Be parinoid.  Check this the ticket again.
+        #Be paranoid.  Check this the ticket again.
         try:
             verify_read_request_consistancy(
               {request_ticket.get("external_label","label"):[request_ticket]},)
@@ -4309,6 +4370,332 @@ def read_from_hsm(e, tinfo):
 ##############################################################################
 ##############################################################################
 
+class EncpInterface(option.Interface):
+    def __init__(self, args=sys.argv, user_mode=0):
+
+        #This is flag is accessed via a global variable.
+        global pnfs_is_automounted
+
+        #priority options
+        self.chk_crc = 1           # we will check the crc unless told not to
+        self.ecrc = 0              # do a paranoid check if told to
+        self.priority = 1          # lowest priority
+        self.delpri = 0            # priority doesn't change
+        self.admpri = -1           # quick fix to check HiPri functionality
+        self.age_time = 0          # priority doesn't age
+        self.delayed_dismount = None # minutes to wait before dismounting
+        
+        #messages for user options
+        self.data_access_layer = 0 # no special listings
+        self.verbose = 0           # higher the number the more is output
+        self.version = 0           # print out the encp version
+
+        #EXfer optimimazation options
+        self.buffer_size = 262144  # 256K: the buffer size
+	self.array_size = 3        # the number of 'bins' for threaded trans.
+        self.mmap_size = 100663296 # 96M: the mmap offset size
+	self.direct_io = 0         # true if direct i/o should be used
+	self.mmap_io = 0           # true if memory mapped i/o should be used
+	self.threaded_exfer = 0    # true if EXfer should run multithreaded
+        
+        #options effecting encp retries and resubmits
+        self.max_retry = None      # number of times to try again
+        self.max_resubmit = None   # number of times to try again
+        self.mover_timeout = 15*60 # seconds to wait for mover to call back,
+                                   # before resubmitting req. to lib. mgr.
+                                   # 15 minutes
+
+        #misc.
+        self.output_file_family = '' # initial set for use with --ephemeral or
+                                     # or --file-family
+        #self.bytes = None          #obsolete???
+        #self.test_mode = 0         #obsolete???
+        self.pnfs_is_automounted = 0 # true if pnfs is automounted.
+
+        #Special options for operation with a disk cache layer.
+        #self.dcache = 0            #obsolete???
+        self.put_cache = 0         # true if dcache is writing by pnfs_id
+        self.get_cache = 0         # true if dcache is reading by pnfs_id
+        self.get_bfid = None       # true if dcache is reading by bfid
+        self.pnfs_mount_point = "" # For dcache, used to specify which pnfs
+                                   # mount point to use.  Naively, one can
+                                   # not try them all.  If the wrong mount
+                                   # point is tried it could hang encp.
+        self.shortcut = 0          # If true, don't extrapolate full file path.
+        self.storage_info = None   # Not used yet.
+
+        option.Interface.__init__(self, args=args, user_mode=user_mode)
+
+        # parse the options
+        #self.parse_options()
+
+        # This is accessed globally...
+        pnfs_is_automounted = self.pnfs_is_automounted
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.encp_options)
+    
+    #  define our specific parameters
+    parameters = ["<source file> <destination file>",
+                 "<source file> [source file [...]] <destination directory>"]
+
+    def print_version(self):
+        print encp_client_version()
+        sys.exit(0)
+
+    encp_options = {
+        option.AGE_TIME:{option.HELP_STRING:"Affects the current job priority."
+                         "  Only knowledgeable users should set this.",
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_TYPE:option.INTEGER,
+                         option.USER_LEVEL:option.USER,},
+        option.ARRAY_SIZE:{option.HELP_STRING:
+                           "The number of 'bins' to use for when --threaded "
+                           "is used. (default = 3)",
+                           option.VALUE_USAGE:option.REQUIRED,
+                           option.VALUE_TYPE:option.INTEGER,
+                           option.USER_LEVEL:option.USER,},
+        option.BUFFER_SIZE:{option.HELP_STRING:
+                            "The amount of data to transfer at one time in "
+                            "bytes. (default = 256k)",
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_TYPE:option.INTEGER,
+                            option.USER_LEVEL:option.USER,},
+        option.DATA_ACCESS_LAYER:{option.HELP_STRING:
+                                  "Format all final output for SAM.",
+                                  option.DEFAULT_TYPE:option.INTEGER,
+                                  option.DEFAULT_VALUE:1,
+                                  option.USER_LEVEL:option.USER,},
+        option.DELAYED_DISMOUNT:{option.HELP_STRING:
+                                 "Specifies time to wait (in minutes) that "
+                                 "the mover should wait before dismounting "
+                                 "the tape in the event that another request "
+                                 "will arrive for that tape.",
+                                 option.VALUE_USAGE:option.REQUIRED,
+                                 option.VALUE_TYPE:option.INTEGER,
+                                 option.USER_LEVEL:option.USER,},
+        option.DELPRI:{option.HELP_STRING:"Affects the current job priority."
+                       "  Only knowledgeable users should set this.",
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.VALUE_TYPE:option.INTEGER,
+                       option.USER_LEVEL:option.USER,},
+        option.DIRECT_IO:{option.HELP_STRING:
+                          "Use direct i/o for disk access on supporting "
+                          "filesystems.",
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.DEFAULT_VALUE:1,
+                          option.USER_LEVEL:option.USER,},
+        option.ECRC:{option.HELP_STRING:
+                          "Perform paranoid ecrc check after read operation.",
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.DEFAULT_VALUE:1,
+                          option.USER_LEVEL:option.USER,},
+        option.GET_BFID:{option.HELP_STRING:
+                         "Specifies that dcache requested the file and that "
+                         "the first 'filename' is really the file's bfid.",
+                         option.DEFAULT_TYPE:option.INTEGER,
+                         option.DEFAULT_VALUE:1,
+                         option.USER_LEVEL:option.ADMIN,},
+        option.GET_CACHE:{option.HELP_STRING:
+                          "Specifies that dcache requested the file and that "
+                          "the first 'filename' is really the file's pnfs id.",
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.DEFAULT_VALUE:1,
+                          option.USER_LEVEL:option.ADMIN,},
+        option.MAX_RETRY:{option.HELP_STRING:
+                          "Specifies number of non-fatal errors that can "
+                          "occur before encp gives up. (default = 3)",
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_TYPE:option.INTEGER,
+                          option.USER_LEVEL:option.ADMIN,},
+        option.MAX_RESUBMIT:{option.HELP_STRING:
+                             "Specifies number of resubmitions encp makes "
+                             "when mover does not callback. (default = never)",
+                             option.VALUE_USAGE:option.REQUIRED,
+                             option.VALUE_TYPE:option.INTEGER,
+                             option.USER_LEVEL:option.ADMIN,},
+        option.MMAP_IO:{option.HELP_STRING:
+                        "Use memory mapped i/o for disk access on supporting "
+                        "filesystems.",
+                        option.DEFAULT_TYPE:option.INTEGER,
+                        option.DEFAULT_VALUE:1,
+                        option.USER_LEVEL:option.USER,},
+        option.MMAP_SIZE:{option.HELP_STRING:
+                          "The amount of data to transfer at one time in "
+                          "bytes. (default = 96M)",
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_TYPE:option.INTEGER,
+                          option.USER_LEVEL:option.USER,},
+        option.NO_CRC:{option.HELP_STRING:"Do not perform CRC check.",
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.DEFAULT_VALUE:0,
+                       option.USER_LEVEL:option.USER,},
+        option.PNFS_IS_AUTOMOUNTED:{option.HELP_STRING:
+                                    "Set this when the pnfs filesystem is "
+                                    "auto-mounted.",
+                                    option.DEFAULT_TYPE:option.INTEGER,
+                                    option.DEFAULT_VALUE:1,
+                                    option.USER_LEVEL:option.USER,},
+        option.PNFS_MOUNT_POINT:{option.HELP_STRING:"Tells encp which pnfs "
+                                 "mount point to use. (dcache only)",
+                                 option.VALUE_USAGE:option.REQUIRED,
+                                 option.VALUE_TYPE:option.STRING,
+                                 option.USER_LEVEL:option.ADMIN,},
+        option.PRIORITY:{option.HELP_STRING:"Sets the initial job priority."
+                         "  Only knowledgeable users should set this.",
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_TYPE:option.INTEGER,
+                         option.USER_LEVEL:option.USER,},
+        option.PUT_CACHE:{option.HELP_STRING:
+                          "Specifies that dcache requested the file and that "
+                          "the first 'filename' is really the file's pnfs id.",
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.DEFAULT_VALUE:1,
+                          option.USER_LEVEL:option.ADMIN,},
+        option.SHORTCUT:{option.HELP_STRING:
+                         "Used with dcache transfers to avoid pathname "
+                         "lookups of pnfs ids on reads.",
+                         option.DEFAULT_TYPE:option.INTEGER,
+                         option.DEFAULT_VALUE:1,
+                         option.USER_LEVEL:option.ADMIN,},
+        option.THREADED:{option.HELP_STRING:
+                         "Multithread the actual data transfer.",
+                         option.DEFAULT_TYPE:option.INTEGER,
+                         option.DEFAULT_VALUE:1,
+                         option.USER_LEVEL:option.USER,},
+        option.VERBOSE:{option.HELP_STRING:"Print out information.",
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.USER_LEVEL:option.USER,},
+        option.VERSION:{option.HELP_STRING:
+                        "Display encp version information.",
+                        option.DEFAULT_TYPE:option.INTEGER,
+                        option.DEFAULT_VALUE:1,
+                        option.USER_LEVEL:option.USER,},
+        }
+
+    ##########################################################################
+    # parse the options from the command line
+    def parse_options(self):
+        # normal parsing of options
+        option.Interface.parse_options(self)
+
+        #Process these at the beginning.
+        if getattr(self, "help") and self.help:
+            ret = self.print_help()
+        if getattr(self, "usage") and self.usage:
+            ret = self.print_usage()
+        if getattr(self, "version") and self.version:
+            ret = self.print_version()
+
+        # bomb out if we don't have an input and an output
+        self.arglen = len(self.args)
+        if self.arglen < 2 :
+            print_error(e_errors.USERERROR, "not enough arguments specified")
+            self.print_usage()
+            sys.exit(1)
+
+        if self.get_bfid:
+            local_file = sys.argv[-1]
+            remote_file = sys.argv[-2]
+            if local_file[:6] == "/pnfs/":
+                print_data_access_layer_format(
+                    local_file, remote_file, 0,
+                    {'status':(e_errors.USERERROR,
+                               "Local file cannot begin with '/pnfs/'.")})
+                quit()
+            self.args[0:2] = [remote_file, local_file]
+            self.input = [self.args[0]]
+            self.output = [self.args[self.arglen-1]]
+            self.intype = "hsmfile"
+            self.outtype = "unixfile"
+            return #Don't continue.
+        if self.get_cache and self.shortcut:
+            pnfs_id = sys.argv[-2]
+            local_file = sys.argv[-1]
+            if local_file[:6] == "/pnfs/":
+                print_data_access_layer_format(
+                    local_file, remote_file, 0,
+                    {'status':(e_errors.USERERROR,
+                               "Local file cannot begin with '/pnfs/'.")})
+                quit()
+            remote_file = os.path.join(self.pnfs_mount_point,
+                                       ".(access)(%s)" % pnfs_id)
+            self.args[0:2] = [remote_file, local_file]
+            self.input = [self.args[0]]
+            self.output = [self.args[self.arglen-1]]
+            self.intype = "hsmfile"
+            self.outtype = "unixfile"
+            return #Don't continue.
+        elif self.get_cache:
+            pnfs_id = sys.argv[-2]
+            local_file = sys.argv[-1]
+            #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
+            #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
+            try:
+                p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
+                p.get_path()
+                remote_file = p.path
+            except (OSError, IOError), msg:
+                print_data_access_layer_format(
+                    local_file, pnfs_id, 0,
+                    {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
+                               str(msg))})
+                quit()
+                
+            #self.args[0:2] = [remote_file[0][:-1], local_file]
+            self.args[0:2] = [remote_file, local_file]
+        if self.put_cache:
+            pnfs_id = sys.argv[-2]
+            local_file = sys.argv[-1]
+            #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
+            #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
+            try:
+                p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
+                p.get_path()
+                remote_file = p.path
+            except (OSError, IOError), msg:
+                print_data_access_layer_format(
+                    local_file, pnfs_id, 0,
+                    {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
+                               str(msg))})
+                quit()
+            #self.args[0:2] = [local_file, remote_file[0][:-1]]
+            self.args[0:2] = [local_file, remote_file]
+
+        # get fullpaths to the files
+        p = []
+        for i in range(0,self.arglen):
+            (machine, fullname, dir, basename) = fullpath(self.args[i])
+            self.args[i] = os.path.join(dir,basename)
+            p.append(string.find(dir,"/pnfs"))
+        # all files on the hsm system have /pnfs/ as 1st part of their name
+        # scan input files for /pnfs - all have to be the same
+        p1 = p[0]
+        p2 = p[self.arglen-1]
+        self.input = [self.args[0]]
+        self.output = [self.args[self.arglen-1]]
+        for i in range(1,len(self.args)-1):
+            if p[i]!=p1:
+                msg = "Not all input_files are %s files"
+                if p1:
+                    print_error(e_errors.USERERROR, msg % "/pnfs/...")
+                else:
+                    print_error(e_errors.USERERROR, msg % "unix")
+                quit()
+            else:
+                self.input.append(self.args[i])
+
+        if p1 == 0:
+            self.intype="hsmfile"
+        else:
+            self.intype="unixfile"
+        if p2 == 0:
+            self.outtype="hsmfile"
+        else:
+            self.outtype="unixfile"
+
+
 class encp(interface.Interface):
 
     deprecated_options = ['--crc']
@@ -4520,9 +4907,10 @@ def main():
             sys.argv.remove(opt)
     
     # use class to get standard way of parsing options
-    e = encp()
-    if e.test_mode:
-        print "WARNING: running in test mode"
+    #e = encp()
+    e = EncpInterface(sys.argv, 0) # zero means admin
+    #if e.test_mode:
+    #    print "WARNING: running in test mode"
 
     for x in xrange(6, e.verbose+1):
         Trace.do_print(x)
