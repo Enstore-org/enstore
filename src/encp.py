@@ -356,7 +356,7 @@ def inputfile_check(input_files, bytecount=None):
 # generate names based on input list if required
 #"inputlist" is the list of input files.  "output" is a list with one element.
 
-def outputfile_check(inputlist, output):
+def outputfile_check(inputlist, output, dcache):
     # can only handle 1 input file copied to 1 output file
     # or multiple input files copied to 1 output directory or /dev/null
     if len(output)>1:
@@ -426,11 +426,20 @@ def outputfile_check(inputlist, output):
             except ValueError:
                 pass  #There is no error.
 
-        except (e_errors.USERERROR, e_errors.EEXIST, e_errors.UNKNOWN):
+        except (e_errors.USERERROR, e_errors.UNKNOWN):
             exc, msg, tb = sys.exc_info()
             print_data_access_layer_format(ifullname, ofullname, 0,
                                            {'status':(exc, msg)})
             quit()
+        except (e_errors.EEXIST,), detail:
+            if not dcache:
+                exc, msg, tb = sys.exc_info()
+                print_data_access_layer_format(ifullname, ofullname, 0,
+                                               {'status':(exc, msg)})
+                quit()
+            else: #dache
+                return outputlist
+                
 
     if outputlist[0] == "/dev/null":
         return outputlist
@@ -1536,8 +1545,8 @@ def write_to_hsm(e, client, tinfo):
     
     # check the input unix files. if files don't exits, 
     # we bomb out to the user
-    if e.dcache: #XXX
-        input_files = [input_files]
+    #if e.put_cache: #XXX
+    #    input_files = [input_files]
         
     inputlist, file_size = inputfile_check(e.input, bytecount)
     ninput = len(inputlist)
@@ -1557,7 +1566,7 @@ def write_to_hsm(e, client, tinfo):
         
     # check (and generate) the output pnfs files(s) names
     # bomb out if they exist already
-    outputlist = outputfile_check(e.input, e.output)
+    outputlist = outputfile_check(e.input, e.output, e.put_cache)
 
     if e.verbose > 4:
         print "outputlist=",outputlist
@@ -2302,7 +2311,7 @@ def read_from_hsm(e, client, tinfo):
 
     # check (and generate) the output files(s)
     # bomb out if they exist already
-    outputlist = outputfile_check(e.input, e.output)
+    outputlist = outputfile_check(e.input, e.output, e.get_cache)
 
     if e.verbose > 4:
         print "outputlist=",outputlist
@@ -2459,7 +2468,7 @@ class encp(interface.Interface):
         return self.config_options()+[
             "verbose=","no-crc","priority=","delpri=","age-time=",
             "delayed-dismount=", "file-family=", "ephemeral",
-#            "get-cache", "put-cache", "storage-info=",
+            "get-cache", "put-cache", "storage-info=",
             "data-access-layer"] + self.help_options()
 
     
@@ -2495,6 +2504,18 @@ class encp(interface.Interface):
             print_error(e_errors.USERERROR, "not enough arguments specified")
             self.print_help()
             sys.exit(1)
+
+        if self.get_cache:
+            pnfs_id = sys.argv[-2]
+            local_file = sys.argv[-1]
+            remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
+            self.args[0:2] = [remote_file[0][:-1], local_file]
+
+        if self.put_cache:
+            pnfs_id = sys.argv[-2]
+            local_file = sys.argv[-1]
+            remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
+            self.args[0:2] = [local_file, remote_file[0][:-1]]
 
         #if not client: 
         #    clients(self.config_host, self.config_port)
@@ -2568,25 +2589,17 @@ def main():
 
     #Special handling for use with dcache - not yet enabled
     if e.get_cache:
-        pnfs_id = sys.argv[-2]
-        local_file = sys.argv[-1]
-        done_ticket = read_from_hsm(pnfs_id, local_file, client,
-                                    e.verbose, e.chk_crc,
-                                    e.priority, e.delpri,
-                                    e.age_time,
-                                    e.delayed_dismount, encp_start_time,
-                                    dcache=1)
-        
+        #pnfs_id = sys.argv[-2]
+        #local_file = sys.argv[-1]
+        #print "pnfsid", pnfs_id
+        #print "local file", local_file
+        done_ticket = read_from_hsm(e, client, tinfo)
+
+    #Special handling for use with dcache - not yet enabled
     elif e.put_cache:
-        pnfs_id = sys.argv[-2]
-        local_file = sys.argv[-1]
-        done_ticket = write_to_hsm(local_file, pnfs_id, client,
-                                   e.output_file_family,
-                                   e.verbose, e.chk_crc,
-                                   e.priority, e.delpri, e.age_time,
-                                   e.delayed_dismount, encp_start_time,
-                                   e.bytes, dcache=1,
-                                   storage_info=e.storage_info)
+        #pnfs_id = sys.argv[-2]
+        #local_file = sys.argv[-1]
+        done_ticket = write_to_hsm(e, client, tinfo)
         
     ## have we been called "encp unixfile hsmfile" ?
     elif e.intype=="unixfile" and e.outtype=="hsmfile" :
