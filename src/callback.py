@@ -135,7 +135,7 @@ def admin_server_callback_socket(ticket) :
 
 # send ticket/message on user tcp socket and return user tcp socket
 def user_callback_socket(ticket) :
-    host, port = ticket['uinfo']['callback_addr']
+    host, port = ticket['encp']['callback_addr']
     Trace.trace(16,'{user_callback_socket host='+\
                 repr(host)+" port="+\
                 repr(port))
@@ -147,7 +147,7 @@ def user_callback_socket(ticket) :
 
 # send ticket/message on tcp socket
 def send_to_user_callback(ticket) :
-    host, port = ticket['uinfo']['callback_addr']
+    host, port = ticket['encp']['callback_addr']
     Trace.trace(16,'{send_to_user_callback host='+\
                 repr(host)+" port="+\
                 repr(port))
