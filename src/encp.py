@@ -663,7 +663,7 @@ def read_from_hsm(input, output,
     # call file clerk and get file info about each bfid
     for i in range(0,ninput):
         t2 = time.time() # -------------------------------------------Lap-Start
-        unique_id.append(0) # will be set later when submitted
+        #unique_id.append(0) # will be set later when submitted
         Trace.trace(7,"read_from_hsm calling file clerk for bfid="+\
                     repr(bfid[i]))
         binfo  = client['u'].send({'work': 'bfid_info', 'bfid': bfid[i]},
@@ -694,11 +694,13 @@ def read_from_hsm(input, output,
     t1 = time.time() #----------------------------------------------------Start
 
     total_bytes = 0
+
     # loop over all volumes that are needed and submit all requests for
     # that volume. Read files from each volume before submitting requests
     # for different volumes.
 
     files_left = ninput
+    retry_flag = 0
     while files_left:
 
 	for vol in vols_needed.keys():
@@ -710,7 +712,7 @@ def read_from_hsm(input, output,
 							 volume, finfo, 
 							 vinfo, encp, files_left,
 							 retry,
-							 list)
+							 list, unique_id, retry_flag)
 
 
 	    tinfo["send_ticket"] = time.time() - t1 #---------------------------End
@@ -733,6 +735,8 @@ def read_from_hsm(input, output,
 					       tinfo, wrapper, chk_crc, d0sam,
 					       encp, maxretry, retry, list)
 	    print "FILES_LEFT ", files_left
+	    if files_left > 0:
+	      retry_flag = 1
 
     # we are done transferring - close out the listen socket
     listen_socket.close()
@@ -770,21 +774,21 @@ def read_from_hsm(input, output,
 
 def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size, 
 			 pinfo, client, tinfo, vol, volume, finfo, vinfo, 
-			 encp, ninput, retry, list):
+			 encp, ninput, retry, list, unique_id, retry_flag):
 
     t2 = time.time() #--------------------------------------------Lap-Start
     Trace.trace(7,"{submit_read_requests="+repr(inputlist)+" t2="+repr(t2))
     Qd=""
     current_library = ''
     submitted = 0
-    unique_id = []
     # create the time subticket
     times = {}
     times["t0"] = tinfo["abs_start"]
 
     for i in range(0,ninput):
         if volume[i]==vol:
-            unique_id.append(time.time())  # note that this is down to mS
+	    if not retry_flag:
+               unique_id.append(time.time())  # note that this is down to mS
             wrapper["fullname"] = outputlist[i]
             wrapper["sanity_size"] = 65535
             wrapper["size_bytes"] = file_size[i]
@@ -908,12 +912,10 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                             " address="+repr(address))
                 break
             else:
-                print ("read_hsm_files: imposter called us back, "\
-                       +"trying again")
                 Trace.trace(8,"read_hsm_files: mover imposter called us "+\
                             "control_socket="+repr(control_socket)+\
                             " address="+repr(address))
-                control_socket.close()
+                #control_socket.close()
 		break
 
         # ok, we've been called back with a matched id - how's the status?

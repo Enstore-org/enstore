@@ -141,9 +141,10 @@ def busy_vols_in_family (family_name):
             vols.append(w["fc"]["external_label"])
      except:
 	Trace.trace(0,"}busy_vols_in_family "+str(sys.exc_info()[0])+\
-                     str(sys.exc_info()[1])) 
-        pprint.pprint(w)
-        pprint.pprint(work_at_movers)
+                     str(sys.exc_info()[1]))
+	if debug: 
+           pprint.pprint(w)
+           pprint.pprint(work_at_movers)
         os._exit(222)
     Trace.trace(4,"}busy_vols_in_family ")
     return vols
@@ -225,9 +226,9 @@ def next_work_any_volume(csc):
         else:
 	    Trace.trace(0,"}next_work_any_volume \
 	    assertion error in next_work_any_volume w="+ repr(w))
-            #import pprint
-            print "assertion error in next_work_any_volume w="
-            pprint.pprint(w)
+	    if debug:
+               print "assertion error in next_work_any_volume w="
+               pprint.pprint(w)
             raise "assertion error"
         w=pending_work.get_next()
     # if the pending work queue is empty, then we're done
@@ -321,16 +322,19 @@ def idle_mover_next(self):
 # send a regret
 def send_regret(ticket):
     # fork off the regret sender
-    if list:
+    if debug:
 	print "FORKING REGRET SENDER"
     ret = os.fork()
     if ret == 0:
+	if debug: print "SENDING REGRET ", ticket
 	Trace.trace(3,"{send_regret "+repr(ticket))
 	callback.send_to_user_callback(ticket)
 	Trace.trace(3,"}send_regret ")
+	if debug: print "REGRET SENDER EXITS"
 	os._exit(0)
     else:
-	print "CHILD ID=", ret
+	if debug:
+	 print "CHILD ID=", ret
 
 
 class LibraryManager(dispatching_worker.DispatchingWorker,
@@ -352,10 +356,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	Trace.trace(3,"{handle_timeout")
 	global mover_cnt
 	global mover_index
-	if debug: 
-	    print "PROCESSING TO"
-	    print "summon queue"
-	    pprint.pprint(self.summon_queue)
+	#if debug: 
+	    #print "PROCESSING TO"
+	    #print "summon queue"
+	    #pprint.pprint(self.summon_queue)
 	t = time.time()
 	"""
 	if mover state did not change from being summoned then
@@ -388,12 +392,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    mover_index = mover_cnt - 1
 				
 
-	if debug: 
+	#if debug: 
 	    #print "movers queue after processing TO"
 	    #print 'mover count ', mover_cnt
 	    #pprint.pprint(movers)
-	    print "summon queue after processing TO"
-	    pprint.pprint(self.summon_queue)
+	    #print "summon queue after processing TO"
+	    #pprint.pprint(self.summon_queue)
 	Trace.trace(3,"}handle_timeout")
 	
     def write_to_hsm(self, ticket):
@@ -440,11 +444,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	requests from another encp clients TO did not work even if
 	movers being summoned did not respond
 	"""
-	if debug: print "read_from_hsm"
-	if list:
-	    print "read_from_hsm", ticket
+	if debug: print "read_from_hsm", ticket
+
 	Trace.trace(3,"{read_from_hsm " + repr(ticket))
 	self.handle_timeout()
+	if debug: print "MOVERS", movers
 	if movers:
 	    ticket["status"] = (e_errors.OK, None)
 	else:
@@ -495,8 +499,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         w = self.schedule()
 	if debug: 
-	    print "SHEDULE RETURNED"
-	    pprint.pprint(w)
+	    print "SHEDULE RETURNED ", w
 
         # no work means we're done
 	if list: print "status ", w['status']
@@ -507,7 +510,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # ok, we have some work - bind the volume
 	elif w["status"][0] == e_errors.OK:
 	    # check if the volume for this work had failed on this mover
-	    print "SUSPECT_VOLS", self.suspect_volumes
+	    if debug: print "SUSPECT_VOLS", self.suspect_volumes
 	    for item in self.suspect_volumes:
 		if (w['fc']['external_label'] == item['external_label']):
 		    if debug: print "FOUND volume ", item['external_label']
@@ -730,6 +733,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    summon_mover(self, next_mover)
 	else:
 	    w['status'] = (e_errors.NOMOVERS, None)
+	    pending_work.delete_job(w)
 	    send_regret(w)
 	Trace.trace(3,"}unilateral_unbind ")
 

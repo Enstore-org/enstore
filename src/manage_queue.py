@@ -40,9 +40,12 @@ class Queue:
    def delete_job(self,ticket):
       for w in self.queue:
          if w["unique_id"] == ticket["unique_id"]:
-	    ticket['times']['in_queue'] = time.time() - \
-					  ticket['times']['job_queued']
-	    del(ticket['times']['job_queued'])
+	    if ticket['times'].has_key('job_queued'):
+	    	ticket['times']['in_queue'] = time.time() - \
+					      ticket['times']['job_queued']
+	        del(ticket['times']['job_queued'])
+	    else:
+		ticket['times']['in_queue'] = 0
             self.queue.remove(w)
             return
 
