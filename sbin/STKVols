@@ -63,6 +63,18 @@ cat << EOF >>$output
 </body>
 EOF
 
+silos="`egrep ' STK' $volfile | cut -c30-36|sort | uniq`"
+IFSave="$IFS"
+IFS="
+"
+for silo in $silos; do 
+  s=`echo $silo| sed -e 's/ //g' -e 's/,$//'`
+  n="`egrep ' STK' $volfile | grep "$silo"|wc|awk '{print $1}'`"
+  echo `date` $s $n >>/tmp/"$s" 
+done
+IFS="$IFSave"
+
+
 else
   f=STK-VOLUMES.html
   rm /tmp/$f
