@@ -493,3 +493,5 @@ class Interface:
                 self.sendto = string.split(value)
             elif opt == "--notify":    # for mailing (notification)
                 self.notify = string.split(value)
+            elif opt == "--skip-pnfs": # for super_remove
+                self.skip_pnfs = 1
