@@ -85,8 +85,8 @@ $lastmonday -5
      rm $file
      rm $file2
      $convert -rotate 90 $f.ps $f.jpg
-#     $convert -rotate 90 -geometry 120x120  -modulate 80 $f.ps ${f}_stamp.jpg
-     $convert -rotate 90 -geometry 120x120  -modulate -20 $f.ps ${f}_stamp.jpg
+     $convert -rotate 90 -geometry 120x120  -modulate 80 $f.ps ${f}_stamp.jpg
+#     $convert -rotate 90 -geometry 120x120  -modulate -20 $f.ps ${f}_stamp.jpg
   done
   rm -f *HISTOGRAM  >/dev/null 2>&1
 done
