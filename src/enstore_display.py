@@ -1029,9 +1029,9 @@ class Display(Tkinter.Canvas):
             window_width = int(re.search("^[0-9]+", geometry).group(0))
             window_height = re.search("[x][0-9]+", geometry).group(0)
             window_height = int(window_height.replace("x", " "))
-            x_position = re.search("[+][0-9]+[+]", geometry).group(0)
+            x_position = re.search("[+][-]{0,1}[0-9]+[+]", geometry).group(0)
             x_position = int(x_position.replace("+", ""))
-            y_position = re.search("[+][0-9]+$", geometry).group(0)
+            y_position = re.search("[+][-]{0,1}[0-9]+$", geometry).group(0)
             y_position = int(y_position.replace("+", ""))
         
         #If the initial size is larger than the screen size, use the
