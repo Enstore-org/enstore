@@ -320,6 +320,13 @@ class VolumeClerkClient(generic_client.GenericClient,\
         x = self.send(ticket)
         return x
 
+    # set system inhibit to none
+    def set_system_none(self, external_label):
+        ticket= { 'work'           : 'set_system_none',
+                  'external_label' : external_label }
+        x = self.send(ticket)
+        return x
+
     # mark volume as noaccess
     def set_at_mover(self, external_label, flag, mover, force=None):
 	if force: f = 1
