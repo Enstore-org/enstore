@@ -63,7 +63,7 @@ def get_callback_port(start,end,use_multiple=0,fixed_ip=None):
     else:
         interface_tab = [(ips[0], 1)]
 
-    # First acquire the hunt lock.  Once we have it, we have the exlusive right
+    # First acquire the hunt lock.  Once we have it, we have the exclusive right
     # to hunt for a port.  Hunt lock will (I hope) properly serlialze the
     # waiters so that they will be services in the order of arrival.
     # Because we use file locks instead of semaphores, the system will
