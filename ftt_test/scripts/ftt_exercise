@@ -21,7 +21,7 @@ echo "excersizing $FTT_TAPE"
 echo "==============================================================="
 echo "write test"
 echo "==============================================================="
-$FTT_DIR/ftt_test/scripts/write
+$FTT_DIR/ftt_test/scripts/twrite
 
 echo "==============================================================="
 echo "verify test"
