@@ -1,8 +1,25 @@
+#!/bin/sh
+
 # Declare some new volumes
-ecmd addvol --list --config_list activelibrary family_raw      floppy  flop1  1400000 1400000
-ecmd addvol --list --config_list activelibrary family_raw      floppy  flop2  1400000 1400000
-ecmd addvol --list --config_list activelibrary family_process  floppy  flop22 1400000 1400000
-ecmd addvol --list --config_list shelf         family_reserved floppy  flop3  1400000 1400000
-ecmd addvol --list --config_list shelf         family_reserved floppy  flop4  1400000 1400000
-ecmd addvol --list --config_list red50library  family_redwood  redwood 000007 50000000000 50000000000
-ecmd vcc --list --config_list --vols
+
+
+volumes="
+activelibrary family_raw      floppy  flop1      1400000     1400000
+activelibrary family_raw      floppy  flop2      1400000     1400000
+activelibrary family_process  floppy  flop22     1400000     1400000
+shelf         family_reserved floppy  flop3      1400000     1400000
+shelf         family_reserved floppy  flop4      1400000     1400000
+red50library  family_redwood  redwood 000007 50000000000 50000000000
+"
+
+oldifs="${IFS}"
+IFS="
+"
+for vol in $volumes; do
+  echo ecmd addvol $vol
+       ecmd addvol $vol
+  if [ $? != 0 ] ; then echo \'ERROR\'; fi
+done
+IFS="${oldifs}"
+
+ecmd vcc --list --vols

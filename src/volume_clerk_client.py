@@ -26,23 +26,41 @@ class VolumeClerkClient :
                remaining_bytes,       #
                eod_cookie  = "none",  # code for seeking to eod
                user_inhibit  = "none",# "none" | "readonly" | "all"
-               error_inhibit = "none" # "none" | "readonly" | "all" | "writing"
+               error_inhibit = "none",# "none" | "readonly" | "all" | "writing"
                                       # lesser access is specified as
                                       #       we find media errors,
                                       # writing means that a mover is
                                       #       appending or that a mover
                                       #       crashed while writing
+               last_access = -1,      # last accessed time
+               first_access = -1,     # first accessed time
+               declared = -1,         # time volume was declared to system
+               sum_wr_err = 0,        # total number of write errors
+               sum_rd_err = 0,        # total number of read errors
+               sum_wr_mnt = 0,        # total number of write mounts
+               sum_rd_mnt = 0,        # total number of read mounts
+               wrapper = "cpio",      # kind of wrapper for volume
+               blocksize = -1         # blocksize (-1 =  media type specifies)
                ) :
         ticket = { 'work'            : 'addvol',
                    'library'         : library,
                    'file_family'     : file_family,
                    'media_type'      : media_type,
+                   'external_label'  : external_label,
                    'capacity_bytes'  : capacity_bytes,
                    'remaining_bytes' : remaining_bytes,
                    'eod_cookie'      : eod_cookie,
-                   'external_label'  : external_label,
                    'user_inhibit'    : user_inhibit,
-                   'error_inhibit'   : error_inhibit
+                   'error_inhibit'   : error_inhibit,
+                   'last_access'     : last_access,
+                   'first_access'    : first_access,
+                   'declared'        : declared,
+                   'sum_wr_err'      : sum_wr_err,
+                   'sum_rd_err'      : sum_rd_err,
+                   'sum_wr_mnt'      : sum_wr_mnt,
+                   'sum_rd_mnt'      : sum_rd_mnt,
+                   'wrapper'         : wrapper,
+                   'blocksize'       : blocksize,
                    }
         return self.send(ticket)
 
@@ -176,7 +194,9 @@ if __name__ == "__main__" :
         ticket = vcc.delvol(args[0])              # name of this volume
 
     if ticket['status'] != 'ok' :
-        print "Bad status"
+        print "Bad status:",ticket['status']
         pprint.pprint(ticket)
+        sys.exit(1)
     elif list:
         pprint.pprint(ticket)
+        sys.exit(0)
