@@ -357,7 +357,16 @@ class  FTTDriver(GenericDriver) :
 	    #       skip over. This is why we can not "skip" to the beginning
 	    #       of a tape; we must "rewind" to get to BOT
 	    #if filenum == 0: FTT.locate( 0 ) # higher probability for problems
-	    if filenum == 0: FTT.rewind()
+	    if filenum == 0:
+		FTT.rewind()
+		ss = FTT.get_stats()  # block_loc should be 0
+		if ss['bloc_loc'] != None:
+		    if ss['bloc_loc'] != 0: raise "seek error"
+		    pass
+		else:
+		    Trace.log( e_errors.ERROR, "FTT.get_stats - no block_loc" )
+		    pass
+		pass
 	    else:
 		skip = filenum - loc2int(self,self.cur_loc_cookie)[2]
 		if skip < 0: skip = skip - 1# if neg, make more neg
@@ -366,7 +375,17 @@ class  FTTDriver(GenericDriver) :
 		ss = FTT.get_stats()  # update block_loc if we can
 		if ss['bloc_loc'] != None:
 		    Trace.trace( 19, 'after seek: bloc_loc=%s'%ss['bloc_loc'] )
+		    # THE FOLLOWING 'if block_loc" CODE GOES ALONG WITH AN
+		    # "and 0" INSERTED IN THE "if block_loc" STATEMENT
+		    # ABOVE; IF THERE IS NO "and 0" IN THE "if block_loc"
+		    # STATEMENT ABOVE, THE "if block_loc" CODE BELOW
+		    # IS BOGUS.
+		    if block_loc and block_loc != string.atoi(ss['bloc_loc']):
+			raise "seek error"
 		    block_loc = string.atoi(ss['bloc_loc'])
+		    pass
+		else:
+		    Trace.log( e_errors.ERROR, "FTT.get_stats - no block_loc" )
 		    pass
 		pass
 	    pass
