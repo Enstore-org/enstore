@@ -28,12 +28,12 @@ cat $f | while read tape; do
   echo `date` Starting tape $tape
 
   enstore fil --ls-active $tape | sed -e  's$/pnfs/fs/usr/$/pnfs/$g' > $files 2>&1
-  cat $files
+  #cat $files
+  n=`wc $files|awk '{print $1}'`
   
   echo "encp --delayed=3 --priority=300000 "          >> $command
   n=0
   cat $files | while read f; do
-    n=`expr $n + 1`
     echo $f " " >>$command
   done
   echo "/dev/null" >>$command
@@ -41,7 +41,8 @@ cat $f | while read tape; do
   cmd=`cat $command`
   rm -f $command $files 2>/dev/null
 
-  echo `date` $cmd
+  #echo `date` $cmd
+  echo `date` encp \"$n files\" /dev/null
   eval        $cmd 2>&1
   rc=$?
   if [ $rc -ne 0 ]; then
