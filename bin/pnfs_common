@@ -120,7 +120,7 @@ pfile_family()
 pfile_family_wrapper()
 
             { default_wrapper=cpio_odc
-	      wrappers=`eval echo "cpio_odc cpio_crc cpio_newc cpio_custom cpio_eurostore"`
+	      wrappers=`eval echo "cpio_odc cpio_crc cpio_newc cpio_custom cpio_eurostore null"`
 	      if [ -z "${1-}" ] ; then
                 ptagcat file_family_wrapper
               else
