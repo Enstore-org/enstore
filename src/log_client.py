@@ -174,6 +174,7 @@ class LoggerClientInterface(interface.Interface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.get_logfile_name = 0
+	self.get_last_logfile_name = 0
 	self.got_server_verbose = 0
         interface.Interface.__init__(self)
 
