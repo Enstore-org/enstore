@@ -55,6 +55,8 @@ plot '$j' using 1:2 t '$title' with points
      gnuplot $file
      rm $file
      $convert $f.pbm $f.jpg
+     $convert -geometry 120x120 -modulate -20 $f.pbm $f_stamp.jpg
+     $convert $f.pbm $f.ps
      rm $f.pbm
   done
   rm -f *HISTOGRAM  >/dev/null 2>&1
