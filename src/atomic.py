@@ -36,6 +36,7 @@ def _open2(pathname,mode=0666):
     fd_tmp = os.open(tmpname, os.O_CREAT|os.O_RDWR, mode)
 
     ok = 0
+    s = None #initalize
     delete_at_exit.register(pathname)
     try:
         os.link(tmpname, pathname)
@@ -59,15 +60,18 @@ def _open2(pathname,mode=0666):
         return fd
     else:
         delete_at_exit.unregister(pathname)
-        s = os.stat(tmpname)
-        if s:
+        if s and s[stat.ST_NLINK] > 2:
+            msg = os.strerror(errno.EMLINK) + ": " + str(s[stat.ST_NLINK])
+            rtn_errno = errno.EMLINK
+        elif s:
             msg = os.strerror(errno.ENOLINK) + ": " + str(s[stat.ST_NLINK])
+            rtn_errno = errno.ENOLINK
         else:
             msg = os.strerror(errno.ENOLINK) + ": " + "Unknown"
+            rtn_errno = errno.ENOLINK
         os.close(fd_tmp)
         #return -(detail.errno) #return errno values as negative.
-        os_exception = exceptions.OSError(errno.ENOLINK, msg)
-        raise OSError, os_exception
+        raise OSError(rtn_errno, msg)
             
 open = _open2
 
