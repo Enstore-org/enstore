@@ -245,6 +245,9 @@ class Interface:
             elif opt == "--rm_suspect_vol" :
                 self.suspect_volume = value
                 self.rm_suspect_vol = 1
+            elif opt == "--rm_active_vol" :
+                self.active_volume = value
+                self.rm_active_vol = 1
             elif opt == "--change_priority" :
                 self.change_priority = 1
             elif opt == "--poll" :
