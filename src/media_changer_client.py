@@ -40,7 +40,7 @@ class MediaChangerClient(generic_client.GenericClient):
     #      should really be a function of which media changer we are talking to.
     # If tries is set to 0, then we only try once -- which we should never do
     # with udp.
-    def send (self, ticket, rcv_timeout=60, tries=10) :
+    def send (self, ticket, rcv_timeout=300, tries=10) :
         vticket = self.csc.get(self.media_changer)
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
