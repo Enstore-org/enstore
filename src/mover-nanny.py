@@ -20,11 +20,30 @@ prog = sys.argv[0]
 host = os.uname()[1]
 
 
+
+class Logfile:
+    def __init__(self, filename):
+        self.outfile = open(filename, 'a+')
+        now = time.ctime(time.time())
+        self.outfile.write("mover-nanny starting at %s" % (now,))
+        self.outfile.flush()
+    def close(self):
+        self.outfile.close()
+    def write(self, stuff):
+        self.outfile.write(stuff)
+    def flush(self):
+        self.outfile.flush()
+        
+_stdout = sys.stdout
+_stderr = sys.stderr
+
+sys.stdout = Logfile("/home/enstore/mover-nanny.log")
+sys.stderr = sys.stdout
+
 def sendmail(subject, reason):
     # I know the hardware doesn't work.  Disable all mail till it does.
-    # disable all mail 11/16/00 J Bakken 
-    if 1:
-        return
+    # disable all mail 11/16/00 J Bakken
+    return
     mail_cmd = '/bin/mail -s "%s" %s'%(subject,mail_victims)
     p=os.popen(mail_cmd, 'w')
     p.write('reason: %s\n' % (reason,))
@@ -32,7 +51,6 @@ def sendmail(subject, reason):
     p.write("This message sent at %s by %s running on %s\n\n" %
             (time.ctime(time.time()), prog, host))
     p.close()
-
 
 def hms(s):
     s = int(s)
