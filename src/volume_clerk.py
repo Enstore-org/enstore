@@ -211,7 +211,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              Trace.log(e_errors.ERROR, "failed to rename %s to %s"%(old, new))
              return r['status']
 
-         self.bfid_db.rename_volume(old_label,new_label)
+         self.bfid_db.rename_volume(old,new)
          Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old, new))
          return e_errors.OK, None
 
