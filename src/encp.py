@@ -19,10 +19,11 @@ import pdb
 import string
 import traceback
 import select
+import signal
 
 # enstore modules
 
-import setpath #cgw
+import setpath 
 
 import Trace
 import pnfs
@@ -34,21 +35,40 @@ import EXfer
 import interface
 import e_errors
 import hostaddr
+import host_config
+import atomic
+import multiple_interface
 import library_manager_client
+import delete_at_exit
+import runon
+import enroute
 
+
+def signal_handler(sig, frame):
+    try:
+        sys.stderr.write("Caught signal %s, exiting\n" % sig)
+        sys.stderr.flush()
+    except:
+        pass
+    quit(1)
+
+for sig in range(signal.NSIG):
+    if sig not in (signal.SIGTSTP, signal.SIGCONT, signal.SIGCHLD):
+        try:
+            signal.signal(sig, signal_handler)
+        except:
+            pass
+    
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
-    ##You can edit it manually, but DO NOT CHANGE THE SYNTAX
-    version_string = "v1_11  CVS $Revision$ "
+    ##You can edit it manually, but do not change the syntax
+    version_string = "v2_5  CVS $Revision$ "
     file = globals().get('__file__', "")
     if file: version_string = version_string + file
     return version_string
 
-
 #seconds to wait for mover to call back, before resubmitting req. to lib. mgr.
 mover_timeout = 15*60  #15 minutes
-
-
 
 data_access_layer_format = """INFILE=%s
 OUTFILE=%s
@@ -61,9 +81,6 @@ MOUNT_TIME=%f
 QWAIT_TIME=%f
 TIME2NOW=%f
 STATUS=%s\n"""
-
-
-
 
 class Flag:
     def __init__(self):
@@ -79,9 +96,10 @@ class Flag:
     
 data_access_layer_requested=Flag()
 
-
-def quit(exit_code=1) :
-    sys.exit(exit_code)
+        
+def quit(exit_code=1):
+    delete_at_exit.delete()
+    os._exit(exit_code)
 
 
 def print_error(errcode,errmsg,fatal=0) :
@@ -168,8 +186,7 @@ def clients(config_host,config_port):
     rcv_timeout = 20
     alive_retries = 10
     try:
-        stati = csc.alive(configuration_client.MY_SERVER, rcv_timeout,
-                          alive_retries)
+        stati = csc.alive(configuration_client.MY_SERVER, rcv_timeout, alive_retries)
     except:
         stati={}
         stati["status"] = (e_errors.CONFIGDEAD,"Config at %s port=%s"%
@@ -214,17 +231,15 @@ def clients(config_host,config_port):
 
 def fullpath(filename):
     machine = hostaddr.gethostinfo()[0]
+    if not filename:
+        return None, None, None, None
+    filename = os.path.expandvars(filename)
+    filename = os.path.expanduser(filename)
+    if filename[0]!='/':
+        filename = os.path.join(os.getcwd(), filename)
+    filename = os.path.normpath(filename)
     dirname, file = os.path.split(filename)
-
-    # if the directory is empty - get the users current working directory
-    if dirname == '' :
-        dirname = os.getcwd()
-
-    dirname=os.path.expandvars(dirname)
-    dirname=os.path.expanduser(dirname)
-    dirname=os.path.normpath(dirname)
     filename = os.path.join(dirname,file)
-
     return machine, filename, dirname, file
 
 ##############################################################################
@@ -240,9 +255,8 @@ def inputfile_check(input_files, bytecount=None):
     ninput = len(inputlist)
 
     if bytecount != None and ninput != 1:
-        print_data_access_layer_format(inputlist[0],'',0,
-                                       {'status':('EPROTO',"Cannot specify --bytes with multiple files")}
-                                       )
+        print_data_access_layer_format(inputlist[0],'',0,{'status':(
+            'EPROTO',"Cannot specify --bytes with multiple files")})
         quit()
 
     # we need to know how big each input file is
@@ -257,9 +271,8 @@ def inputfile_check(input_files, bytecount=None):
 
         # input files must exist
         if not os.access(inputlist[i], os.R_OK):
-            print_data_access_layer_format(inputlist[i],
-                                           '',0,
-                                           {'status':('USERERROR','Cannot read file %s'%(inputlist[i],))}) 
+            print_data_access_layer_format(inputlist[i], '',0,{'status':(
+                'USERERROR','Cannot read file %s'%(inputlist[i],))})
             quit()
 
         # get the file size
@@ -272,8 +285,9 @@ def inputfile_check(input_files, bytecount=None):
 
         # input files can't be directories
         if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
-            print_data_access_layer_format(inputlist[i],'',0,{'status':('USERERROR',
-                                                                        'Not a regular file %s'%(inputlist[i],))})
+            print_data_access_layer_format(inputlist[i],'',0,{'status':(
+                'USERERROR',
+                'Not a regular file %s'%(inputlist[i],))})
             quit()
 
     # we cannot allow 2 input files to be the same
@@ -281,11 +295,12 @@ def inputfile_check(input_files, bytecount=None):
     for i in range(0,ninput):
         for j in range(i+1,ninput):
             if inputlist[i] == inputlist[j]:
-                print_data_access_layer_format(inputlist[j],'',0,{'status':('USERERROR',
-                                                                            'Duplicated entry %s'%(inputlist[i],))})
+                print_data_access_layer_format(inputlist[j],'',0,{'status':(
+                    'USERERROR',
+                    'Duplicated entry %s'%(inputlist[i],))})
                 quit()
 
-    return (ninput, inputlist, file_size)
+    return (inputlist, file_size)
 
 
 
@@ -294,25 +309,26 @@ def inputfile_check(input_files, bytecount=None):
 # check the output file list for consistency
 # generate names based on input list if required
 
-def outputfile_check(ninput,inputlist,output):
-    # can only handle 1 input file  copied to 1 output file
-    #  or      multiple input files copied to 1 output directory
+def outputfile_check(inputlist,output):
+    # can only handle 1 input file copied to 1 output file
+    # or multiple input files copied to 1 output directory
     # this is just the current policy - nothing fundamental about it
     if len(output)>1:
-        print_data_access_layer_format('',output[0],0,{'status':('USERERROR','Cannot have multiple output files')})
+        print_data_access_layer_format('',output[0],0,{'status':(
+            'USERERROR','Cannot have multiple output files')})
         quit()
 
-
-
-    # if user specified multiple input files, then output must be a directory
+    # if user specified multiple input files, then output must be a directory or /dev/nulll
     outputlist = []
-    if ninput!=1:
+    if len(inputlist)!=1:
         if not os.path.exists(output[0]):
-            print_data_access_layer_format('',output[0],0,{'status':('USERERROR','No such directory %s'%(output[0],))})
+            print_data_access_layer_format('',output[0],0,{'status':(
+                'USERERROR','No such directory %s'%(output[0],))})
             quit()
 
-        if not os.path.isdir(output[0]):
-            print_data_access_layer_format('',output[0],0,{'status':('USERERROR','Not a directory %s'%(output[0],))})  
+        if output[0]!='/dev/null' and not os.path.isdir(output[0]):
+            print_data_access_layer_format('',output[0],0, {'status':(
+                'USERERROR','Not a directory %s'%(output[0],))})  
             quit()
 
 
@@ -320,7 +336,7 @@ def outputfile_check(ninput,inputlist,output):
 
     # Make sure we can open the files. If we can't, we bomb out to user
     # loop over all input files and generate full output file names
-    for i in range(0,ninput):
+    for i in range(0,len(inputlist)):
         outputlist.append(output[0])
 
         if outputlist[i] == '/dev/null':
@@ -333,11 +349,8 @@ def outputfile_check(ninput,inputlist,output):
             omachine, ofullname, odir, obasename = fullpath(outputlist[i])
             if not os.path.exists(odir):
                 # directory doesn't exist - error
-                print_data_access_layer_format(inputlist[i],
-                                               outputlist[i],
-                                               0,
-                                               {'status':
-                                                ('USERERROR', "No such directory %s"%(odir,))})
+                print_data_access_layer_format(inputlist[i], outputlist[i],0,{'status': (
+                    'USERERROR', "No such directory %s"%(odir,))})
                 quit()
 
         else:
@@ -354,56 +367,62 @@ def outputfile_check(ninput,inputlist,output):
                 # need to make sure generated filename doesn't exist
                 if os.path.exists(outputlist[i]):
                     # generated filename already exists - error
-                    print_data_access_layer_format(inputlist[i],
-                                                   outputlist[i], 0, {'status':
-                                                            ('EEXIST', "File %s already exists"%(outputlist[i],))})
+                    print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status': (
+                        'EEXIST', "File %s already exists"%(outputlist[i],))})
                     quit()
-
             # filename already exists - error
             else:
-                print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status':
-                                                                      ('EEXIST', "File %s already exists"%
-                                                                       (outputlist[i],))})
+                print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status':(
+                    'EEXIST', "File %s already exists"%(outputlist[i],))})
                 quit()
 
         # need to check that directory is writable
         # since all files go to one output directory, one check is enough
         if i==0 and outputlist[0]!='/dev/null':
             if not os.access(odir,os.W_OK):
-                print_data_access_layer_format("",odir,0,{'status':('USERERROR',"No write access to %s"%(odir,))})
+                print_data_access_layer_format("",odir,0,{'status':(
+                    'USERERROR',"No write access to %s"%(odir,))})
                 quit()
 
-    # we can not allow 2 output files to be the same
+    # we cannot allow 2 output files to be the same
     # this will cause the 2nd to just overwrite the 1st
     # In principle, this is already taken care of in the inputfile_check, but
-    #  do it again just to make sure in case someone changes protocol
-    for i in range(0,ninput):
-        for j in range(i+1,ninput):
-            if outputlist[i] == outputlist[j]:
-                print_data_access_layer_format('',outputlist[j],0,
-                                               {'status':('USERERROR',"Duplicated entry %s"%(outputlist[j],))})
+    # do it again just to make sure in case someone changes protocol
+    for i in range(0,len(outputlist)):
+        for j in range(i+1,len(outputlist)):
+            if outputlist[i] == outputlist[j] and outputlist[i]!='/dev/null':
+                print_data_access_layer_format('',outputlist[j],0,{'status':(
+                    'USERERROR',"Duplicated entry %s"%(outputlist[j],))})
                 quit()
 
+    #now try to atomically create each file
+    for f in outputlist:
+        if f=='/dev/null':
+            continue
+        err = 0
+        try:
+            fd = atomic.open(f, mode=0666)
+            if fd<0:
+                err = 1
+            else:
+                os.close(fd)
+        except:
+            err = 1
+        if err:
+            if os.path.exists(f):
+                print_data_access_layer_format('', f, 0, {'status':(
+                    'EEXIST', "File %s already exists"%(f,))})
+            else:
+                print_data_access_layer_format("",f,0,{'status':(
+                    'USERERROR',"No write access to %s"%(f,))})
+            quit()
     return outputlist
 
-##############################################################################
-# check if the system is still running by checking the wormhole file
-
-def system_enabled(p):                 # p is a  pnfs object
-    running = p.check_pnfs_enabled()
-    if running != pnfs.ENABLED :
-        print_data_access_layer_format("","","",{'status':("EACCES", "Pnfs disabled")})
-        quit()
-
-    Trace.trace(10,"system_enabled running= "+running)
-
-
-    
 #######################################################################
 # return pnfs information,
-# and an open pnfs object so you can check if  the system is enabled.
+# and an open pnfs object so you can check if the system is enabled.
 
-def pnfs_information(filelist,nfiles,write=1):
+def pnfs_information(filelist,write=1):
     bfid = []
     pinfo = []
     library = []
@@ -414,22 +433,36 @@ def pnfs_information(filelist,nfiles,write=1):
     if write: details = 1
     else: details = 0
 
-    for i in range(0,nfiles):
-        p = pnfs.Pnfs(filelist[i], get_details = details)  # get the pnfs object
-        bfid.append(p.bit_file_id)         # get the bit file id
+    for file in filelist:
+        p = pnfs.Pnfs(file, get_details = details)
+        if not write:
+            ## validate pnfs info
+            if p.bit_file_id == pnfs.UNKNOWN:
+                return (e_errors.USERERROR, "no bit file id"), None
+            bfid.append(p.bit_file_id)  
+            
         if write:
+            ## validate additional pnfs info
+            if p.library == pnfs.UNKNOWN:
+                return (e_errors.USERERROR, "no library"), None
             library.append(p.library)          # get the library
+            if p.file_family == pnfs.UNKNOWN:
+                return (e_errors.USERERROR, "no file family"), None
             file_family.append(p.file_family)  # get the file family
             try:
                 ff_wrapper.append(p.file_family_wrapper)  # get the file family wrapper
             except:
                 ff_wrapper.append("cpio_odc")  # default
+            if p.file_family_width == pnfs.ERROR:
+                return (e_errors.USERERROR, "no file family width"), None
+            elif p.file_family_width <= 0:
+                return (e_errors.USERERROR, "invalid file family width %s"%(p.file_family_width)), None
             width.append(p.file_family_width)  # get the width
             try:
                 storage_group.append(p.storage_group) # get the storage group
             except:
                 storage_group.append('none')   # default
-
+                
         # get some debugging info for the ticket
         pinf = {}
         for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',
@@ -445,13 +478,56 @@ def pnfs_information(filelist,nfiles,write=1):
     Trace.trace(16,"pnfs_information bfid=%s library=%s file_family=%s \
     wrapper_type=%s width=%s storage_group=%s pinfo=%s p=%s" %
                 (bfid, library, file_family, ff_wrapper, width, storage_group, pinfo, p))
-    return (bfid,library,file_family,ff_wrapper,width,storage_group,pinfo,p)
+    return (e_errors.OK, None), (bfid,library,file_family,ff_wrapper,width,storage_group,pinfo,p)
 
-    
-##############################################################################
+def check_load_balance(mode, dest):
+    #mode should be 0 or 1 for "read" or "write"
+    config = host_config.get_config()
+    if not config:
+        return
+    interface_dict = config.get('interface')
+    if not interface_dict:
+        return
+
+    interfaces = interface_dict.keys()
+    if not interfaces:
+        return
+    Trace.log(e_errors.INFO, "probing network to select interface")
+    rate_dict = multiple_interface.rates(interfaces)
+    choose = []
+    for interface in interfaces:
+        weight = interface_dict[interface].get('weight', 1)
+        send_rate, recv_rate = rate_dict[interface]
+        send_rate = send_rate/weight
+        recv_rate = recv_rate/weight
+        if mode==1:
+            choose.append((send_rate, interface))
+        else:
+            choose.append((recv_rate, interface))
+    choose.sort()
+    rate, interface = choose[0]
+    Trace.log(e_errors.INFO, "chose interface %s, %s rate=%s" % (
+        interface, {0:"recv",1:"send"}.get(mode,"?"), rate))
+    interface_details = interface_dict[interface]
+    cpu = interface_details.get('cpu')
+    if cpu is not None:
+        err = runon.runon(cpu)
+        if err:
+            Trace.log(e_errors.ERROR, "runon(%s): failed, err=%s" % (cpu, err))
+
+    gw = interface_details.get('gw')
+    if gw is not None:
+        err=enroute.routeDel(gw)
+        if err:
+            Trace.log(e_errors.INFO, "enroute.routeDel(%s) returns %s" % (gw, err))
+        err=enroute.routeAdd(dest, gw)
+        if err:
+            Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s) returns %s" % (dest,gw, err))
+
+    return interface_details
     
 def write_to_hsm(input_files, output, output_file_family='',
-                 verbose=0, chk_crc=0, use_IPC=0,
+                 verbose=0, chk_crc=0,
                  pri=1, delpri=0, agetime=0, delayed_dismount=0,
                  t0=0, bytecount=None):
     if t0==0:
@@ -466,7 +542,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     t1 = time.time() #-------------------------------------------Start
 
     # initialize - and get config, udp and log clients
-    maxretry = 2
+    maxretry = 3
     unique_id = []
 
 
@@ -511,8 +587,8 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     # check the input unix files. if files don't exits, 
     # we bomb out to the user
-    ninput, inputlist, file_size = inputfile_check(input_files, bytecount)
-    if (ninput>1) and (delayed_dismount == 0):
+    inputlist, file_size = inputfile_check(input_files, bytecount)
+    if (len(inputlist)>1) and (delayed_dismount == 0):
         delayed_dismount = 1
     #else:
         #delayed_dismount = 0
@@ -521,7 +597,6 @@ def write_to_hsm(input_files, output, output_file_family='',
     if verbose>2:
         print "  dt:",tinfo["filecheck"], "   cumt=",time.time()-t0
     if verbose>3:
-        print "ninput=",ninput
         print "inputlist=",inputlist
         print "file_size=",file_size
         print "delayed_dismount=",delayed_dismount
@@ -532,11 +607,18 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     # check (and generate) the output pnfs files(s) names
     # bomb out if they exist already
-    outputlist = outputfile_check(ninput,inputlist,output)
-    junk,library,file_family,ff_wrapper,width,storage_group,pinfo,p=pnfs_information(outputlist,ninput)
+    outputlist = outputfile_check(inputlist,output)
+    status, info = pnfs_information(outputlist,write=1)
+    if status[0] != e_errors.OK:
+        print_data_access_layer_format('','',0,{'status':status})
+        print_error(status[0], status[1], fatal=1)
+        quit()
+        
+    junk,library,file_family,ff_wrapper,width,storage_group,pinfo,p=info
+    
 
     if output_file_family != "":
-        for i in range(0,ninput):
+        for i in range(0,len(outputlist)):
             file_family[i] = output_file_family
             width[i] = 1
 
@@ -545,7 +627,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     #       all file families are the same
     #       all widths are the same
     # be cautious and check to make sure this is indeed correct
-    for i in range(1,ninput):
+    for i in range(1,len(outputlist)):
         if (library[i]!=library[0] or 
             file_family[i]!=file_family[0] or 
             width[i]!=width[0] or 
@@ -578,7 +660,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     # get a port to talk on and listen for connections
     Trace.trace(10,'write_to_hsm calling callback.get_callback')
-    host, port, listen_socket = callback.get_callback(use_multiple=0,verbose=verbose)
+    host, port, listen_socket = callback.get_callback(verbose=verbose)
     callback_addr = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'write_to_hsm got callback host=%s port=%s listen_socket=%s'%
@@ -611,8 +693,7 @@ def write_to_hsm(input_files, output, output_file_family='',
         print "  dt:", tinfo["get_fileclerk"], "   cumt=",time.time()-t0
 
     # ask configuration server what port the volume clerk is using
-    Trace.trace(10,"write_to_hsm calling config server to find "\
-                "volume clerk")
+    Trace.trace(10,"write_to_hsm calling config server to find volume clerk")
     vcticket = csc.get("volume_clerk")
     if vcticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, vcticket)
@@ -639,6 +720,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     # 1 output directory
     lib_mgr = library[0]+'.library_manager'
     Trace.trace(10,"write_to_hsm calling config server to find %s"%(lib_mgr,))
+    ### XXX rename this to something sane
     vticket = csc.get(lib_mgr)
     if vticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, vticket)
@@ -655,6 +737,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     file_fam = None
     # loop on all input files sequentially
+    ninput = len(input_files)
     for i in range(0,ninput):
         unique_id.append(0) # will be set later when submitted
 
@@ -724,14 +807,9 @@ def write_to_hsm(input_files, output, output_file_family='',
             
             reply_read=0
             while not reply_read:
-                # currently we have another way to determine if pnfs is enabled
-                # do not use system_enabled, but leave the code in for
-                # later potential use
-                #system_enabled(p) # make sure system still enabled before submitting
                 ##start of resubmit block
                 Trace.trace(7,"write_to_hsm q'ing: %s"%(work_ticket,))
-                ticket = u.send(work_ticket, (vticket['hostip'], 
-                                              vticket['port']))
+                ticket = u.send(work_ticket, (vticket['hostip'], vticket['port']))
                 if verbose > 3:
                     print "ENCP: write_to_hsm LM returned"
                     pprint.pprint(ticket)
@@ -768,7 +846,6 @@ def write_to_hsm(input_files, output, output_file_family='',
                     read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],
                                                              mover_timeout)
 
-
                     if not read_fds:
                         #timed out
                         if verbose:
@@ -789,9 +866,11 @@ def write_to_hsm(input_files, output, output_file_family='',
                         reply_read=1
                         break
                     else:
-                        Trace.log(e_errors.INFO,"write_to_hsm mover impostor called us, \
- control_socket=%s address=%s, got id %s expected %s\nticket=%s" %(control_socket,address,
-                                                                   callback_id, unique_id[i],ticket))
+                        Trace.log(e_errors.INFO,
+                                  "write_to_hsm mover impostor called\
+                                  control_socket=%s address=%s, got id %s expected %s\nticket=%s" %
+                                  (control_socket,address,
+                                   callback_id, unique_id[i],ticket))
                         reply_read=0
                         control_socket.close()
                 if timedout:
@@ -823,11 +902,34 @@ def write_to_hsm(input_files, output, output_file_family='',
 
             fsize = file_size[i]
 
-
+            mover_addr = ticket['mover']['callback_addr']
+            #Set up any network load-balancing voodoo
+            interface=check_load_balance(mode=1, dest=mover_addr[0])
             # Call back mover on mover's port and send file on that port
-
             data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            data_path_socket.connect(ticket['mover']['callback_addr'])
+            if interface:
+                ip = interface.get('ip')
+                if ip:
+                    try:
+                        data_path_socket.bind((ip, 0))
+                        Trace.log(e_errors.INFO, "bind %s" % (ip,))
+                    except socket.error, msg:
+                        Trace.log(e_errors.ERROR, "bind: %s %s" % (ip, msg))
+            try:
+                data_path_socket.connect(mover_addr)
+            except socket.error, msg:
+                Trace.log(e_errors.ERROR, "connect: %s %s" % (mover_addr, msg))
+
+                print_error('EPROTO',
+                            "failed to transfer: socket error %s" %(msg,), 0)
+
+                retry = retry - 1
+                if retry>0:
+                    sys.stderr.write("Retrying\n")
+                    control_socket.close()
+                    continue
+                else:
+                    quit()
 
             in_file = open(inputlist[i], "r")
             mycrc = 0
@@ -844,15 +946,14 @@ def write_to_hsm(input_files, output, output_file_family='',
                 quit()
 
             try:
-                if chk_crc: crc_flag = 1
-                else:       crc_flag = 0
-                if use_IPC: ipc_flag = 1
-                else:       ipc_flag = "no"
+                if chk_crc:
+                    crc_flag = 1
+                else:
+                    crc_flag = 0
                 mycrc = EXfer.fd_xfer( in_file.fileno(),
                                        data_path_socket.fileno(), 
-                                       fsize, bufsize, crc_flag, 0, ipc_flag )
+                                       fsize, bufsize, crc_flag, 0)
             except EXfer.error, msg:
-                # this error used to be a 0
                 Trace.trace(6,"write_to_hsm EXfer error: %s %s"%
                             (sys.argv, msg))
 
@@ -874,9 +975,9 @@ def write_to_hsm(input_files, output, output_file_family='',
                         #                               file_size[i], done_ticket)
                         # exit here
                         print_data_access_layer_format(inputlist[i],outputlist[i],0,
-                                                       {'status':('EPROTO',
-                                                                  'Network problem or mover crash')}) ##XXX RENAME
-                                                                                                                             ## disconnected
+                                                       {'status':(
+                            'EPROTO', 'Network problem or mover crash')}) ##XXX RENAME
+                        ## disconnected
                         quit()
 
                     control_socket.close()
@@ -931,8 +1032,23 @@ def write_to_hsm(input_files, output, output_file_family='',
             # when this occurs. Create a file in pnfs namespace with
             #information about transfer.
             Trace.trace(10,"write_to_hsm waiting for final mover dialog on %s"%(control_socket,))
-            ### CGW need try here... can get "TCP connection closed"
-            done_ticket = callback.read_tcp_obj(control_socket)
+            try:
+                done_ticket = callback.read_tcp_obj(control_socket)
+
+            except:
+                exc, msg, tb = sys.exc_info()
+                Trace.log(e_errors.ERROR, "waiting for final mover dialog: %s %s" % (exc, msg))
+                try:
+                    control_socket.close()
+                except:
+                    pass
+                retry = retry - 1
+                if retry:
+                    sys.stderr.write("Retrying\n")
+                    continue
+                else:
+                    quit()
+
             control_socket.close()
             Trace.trace(10,"write_to_hsm final dialog recieved")
 
@@ -957,10 +1073,19 @@ def write_to_hsm(input_files, output, output_file_family='',
             if chk_crc:
                 mover_crc = done_ticket["fc"]["complete_crc"]
                 if mover_crc is None:
-                    sys.stderr.write(
-                        "warning: mover did not return CRC; skipping CRC check\n")
+                    msg =   "warning: mover did not return CRC; skipping CRC check"
+                    Trace.alarm(e_errors.WARNING, msg, {
+                        'infile':inputlist[i],
+                        'outfile':outputlist[i]})
+                    sys.stderr.write(msg+'\n')
                     
                 elif mover_crc != mycrc :
+                    msg = "CRC mismatch"
+                    sys.stderr.write(msg+'\n')
+                    Trace.alarm(e_errors.WARNING, e_errors.CRC_ERROR, {
+                        'infile':inputlist[i],
+                        'outfile':outputlist[i]})
+
                     done_ticket['status']=('EPROTO', "CRC mismatch")
                     print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
                     quit()
@@ -980,6 +1105,14 @@ def write_to_hsm(input_files, output, output_file_family='',
             p=pnfs.Pnfs(outputlist[i])
             # save the bfid and set the file size
             p.set_bit_file_id(done_ticket["fc"]["bfid"],file_size[i])
+            delete_at_exit.unregister(outputlist[i])
+            try:
+                perms = os.stat(inputlist[i])[stat.ST_MODE]
+                os.chmod(outputlist[i], perms)
+            except:
+                exc, msg, tb = sys.exc_info()
+                Trace.log(e_errors.INFO, "chmod %s failed: %s %s" % (outputlist[i], exc, msg))
+            
             # create volume map and store cross reference data
             try:
                 p.set_xreference(done_ticket["fc"]["external_label"],
@@ -987,18 +1120,18 @@ def write_to_hsm(input_files, output, output_file_family='',
                                  done_ticket["fc"]["size"])
             except:
                 exc,msg,tb=sys.exc_info()
-                print  "Trouble with pnfs.set_xreference",str(exc),str(msg), "continuing..."
+                Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s, continuing" %(exc,msg))
             # add the pnfs ids and filenames to the file clerk ticket and store it
             done_ticket["fc"]["pnfsid"] = p.id
             done_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
             done_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
             done_ticket["fc"]["pnfs_mapname"] = p.mapfile
             done_ticket["work"] = "set_pnfsid"
-            binfo  = u.send(done_ticket, (fticket['hostip'], 
-                                          fticket['port']))
+            fc_reply = u.send(done_ticket, (fticket['hostip'], 
+                                             fticket['port']))
             if verbose > 3:
                 print "ENCP: write_to_hsm FC returned"
-                pprint.pprint(binfo)
+                pprint.pprint(fc_reply)
             if done_ticket['status'][0] != e_errors.OK :
                 print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
                 quit()
@@ -1124,12 +1257,13 @@ def compare_location(t1,t2):
     
 #######################################################################
 # submit read_from_hsm requests
-def submit_read_requests(requests, client, tinfo, vols, ninput, verbose, 
+def submit_read_requests(requests, client, tinfo, vols, verbose, 
                          retry_flag):
 
 
   t2 = time.time() #--------------------------------------------Lap-Start
   rq_list = []
+  ninput = len(requests)
   for rq in requests: 
       msg="submit_read_requests: %s t2=%s"%(rq['infile'],t2)
       if verbose>1:
@@ -1149,8 +1283,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
     for i in range(0,ninput):
         if requests[i]['volume']==vol:
             if not retry_flag:
-                id = "%s-%f-%d" \
-                     % (thishost, time.time(), pid)
+                id = "%s-%f-%d" % (thishost, time.time(), pid)
 
                 requests[i]['unique_id'] = id  # note that this is down to mS
             
@@ -1168,8 +1301,8 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
             work_ticket = {"work"              : "read_from_hsm",
                            "wrapper"           : requests[i]['wrapper'],
                            "callback_addr"     : client['callback_addr'],
-                           "fc"                : requests[i]['finfo'],
-                           "vc"                : requests[i]['vinfo'],
+                           "fc"                : requests[i]['fc'],
+                           "vc"                : requests[i]['vc'],
                            "encp"              : requests[i]['encp'],
                            "retry_cnt"         : requests[i]['retry'],
                            "times"             : times,
@@ -1181,12 +1314,12 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
             Trace.trace(8,"submit_read_requests q'ing: %s"%(work_ticket,))
 
             # get the library manager
-            library = requests[i]['vinfo']['library']
+            library = requests[i]['vc']['library']
 
             rq = {"work_ticket": work_ticket,
                   "infile"     : requests[i]['infile'],
                   "bfid"       : requests[i]['bfid'],
-                  "library"    : requests[i]['vinfo']['library'],
+                  "library"    : requests[i]['vc']['library'],
                   "index"      : i
                   }
             rq_list.append(rq)
@@ -1214,8 +1347,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
           Trace.trace(8,"submit_read_requests calling config server to find"+
                       rq_list[j]["library"]+".library_manager")
       if verbose > 3:
-          print "calling Config. Server to get LM info for", \
-                current_library
+          print "calling Config. Server to get LM info for", current_library
       lmticket = client['csc'].get(current_library+".library_manager")
       if lmticket["status"][0] != e_errors.OK:
           pprint.pprint(lmticket)
@@ -1277,14 +1409,17 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 #############################################################################
 # read hsm files in the loop after read requests have been submitted
 
-def read_hsm_files(listen_socket, submitted, ninput,requests,  
-                   tinfo, t0, chk_crc, use_IPC, maxretry, verbose):
+def read_hsm_files(listen_socket, submitted, requests,  
+                   tinfo, t0, chk_crc, maxretry, verbose):
+    ninput = len(requests)
     for rq in requests: 
         Trace.trace(7,"read_hsm_files: %s"%(rq['infile'],))
     files_left = ninput
     bytes = 0
-    control_socket_closed = 0
+    control_socket_closed = 1
     data_path_socket_closed = 1
+    out_fd = None
+    out_fd_closed = 1
     error = 0
     
     for waiting in range(0,submitted):
@@ -1308,6 +1443,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 return files_left, bytes, error
                 
             control_socket, address = listen_socket.accept()
+            control_socket_closed = 0
             ticket = callback.read_tcp_obj(control_socket)
             if verbose > 3:
                 print "ENCP:read_from_hsm MV called back with", ticket
@@ -1372,43 +1508,59 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         if verbose: print "Receiving data for file ", requests[j]['outfile'],\
            "   cumt=",time.time()-t0
 
-        tempname = requests[j]['outfile']
-        if tempname != '/dev/null':
-            tempname = tempname+'.'+requests[j]['unique_id']
+        localname = requests[j]['outfile']
 
         t2 = time.time() #----------------------------------------Lap-Start
 
         l = 0
         mycrc = 0
         bufsize = 65536*4
-
-
-
+        mover_addr = ticket['mover']['callback_addr']
+        #set up any special network load-balancing voodoo
+        interface=check_load_balance(mode=0, dest=mover_addr[0])
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['mover']['callback_addr'])
-
+        if interface:
+            ip = interface.get('ip')
+            if ip:
+                try:
+                    data_path_socket.bind((ip, 0))
+                    Trace.log(e_errors.INFO, "bind %s" % (ip,))
+                except socket.error, msg:
+                    Trace.log(e_errors.ERROR, "bind: %s %s" % (ip, msg))
+        try:
+            data_path_socket.connect(mover_addr)
+            error = 0
+        except socket.error, msg:
+            msg = "socket error connecting to %s: %s" % (mover_addr,msg,)
+            Trace.log(e_errors.ERROR, msg)
+            done_ticket = {'status':(e_errors.NET_ERROR, msg)}
+            error = e_errors.NET_ERROR
         data_path_socket_closed = 0
         try:
-            _f_ = open(tempname,"w")
+            if localname == '/dev/null':
+                out_fd = os.open(localname,"w")
+                out_fd_closed = 0
+            else:
+                out_fd = os.open(localname, os.O_CREAT|os.O_EXCL, 0)
         except:
             error = e_errors.USERERROR
-            done_ticket  = {'status':(error,"Can't write %s"%(tempname,))}
+            done_ticket = {'status':(error,"Can't write %s"%(localname,))}
 
 
         Trace.trace(8,"read_hsm_files: reading data to file %s, socket=%s, bufsize=%s, chk_crc=%s"%
-                    (tempname,data_path_socket.getsockname(),bufsize,chk_crc))
+                    (localname,data_path_socket.getsockname(),bufsize,chk_crc))
 
         # read file, crc the data if user has request crc check
         if not error:
             try:
-                if chk_crc != 0: crc_flag = 1
-                else:            crc_flag = 0
-                if use_IPC: ipc_flag = 1
-                else:       ipc_flag = "no"
+                if chk_crc != 0:
+                    crc_flag = 1
+                else:
+                    crc_flag = 0
                 mycrc = EXfer.fd_xfer( data_path_socket.fileno(),
-                                       _f_.fileno(),
+                                       out_fd,
                                        requests[j]['file_size'], bufsize,
-                                       crc_flag, 0, ipc_flag )
+                                       crc_flag, 0)
             except EXfer.error, msg: 
 
                 Trace.trace(6,"read_from_hsm EXfer error: %s %s"%
@@ -1418,16 +1570,15 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
                 if msg.args[1]==errno.ENOSPC:
                     try:
-                        if tempname!="/dev/null":
-                            os.unlink(tempname)
+                        if localname!="/dev/null":
+                            os.unlink(localname)
                     except:
                         pass
                     print_data_access_layer_format(
                         requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
                         {'status':("ENOSPC", "No space left on device")})
                     quit()
-                ###XXX we shouldn't be matching literal strings here... this is really wrong                        
-                if msg.args[0] == "fd_xfer - read EOF unexpected":
+                ###XXX we shouldn't be matching literal strings here... this is really wrong 
                     error = 1
                     data_path_socket.close()
                     try:
@@ -1442,17 +1593,17 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                                        {'status':("EPROTO",
                                                                   "Network problem or mover crash")})
                         try:
-                            if tempname!="/dev/null":
-                                os.unlink(tempname)
+                            if localname!="/dev/null":
+                                os.unlink(localname)
                         except:
                             pass
                         quit()
 
                     control_socket.close()
-                    print_data_access_layer_format(  requests[j]['infile'],  
-                                                     requests[j]['outfile'], 
-                                                     requests[j]['file_size'], 
-                                                     done_ticket )
+                    print_data_access_layer_format(requests[j]['infile'],  
+                                                   requests[j]['outfile'], 
+                                                   requests[j]['file_size'], 
+                                                   done_ticket )
                     if not e_errors.is_retriable(done_ticket["status"][0]):
                         del(requests[j])
                         if files_left > 0: files_left = files_left - 1
@@ -1485,7 +1636,9 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
             fsize = fsize + len(buf)
             if not data_path_socket_closed:
                 data_path_socket.close()
-                if not error: _f_.close()
+                if not out_fd_closed:
+                    out_fd_closed=1
+                    os.close(out_fd)
                 data_path_socket_closed = 1 
                 pass
 
@@ -1496,17 +1649,19 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         # File has been read - wait for final dialog with mover.
         Trace.trace(8,"read_hsm_files waiting for final mover dialog on %s"%(control_socket,))
         ## CGW need a try here (can get TCP connection closed)
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        control_socket_closed = 1
-        Trace.trace(8,"read_hsm_files final dialog recieved")
-
+        try:
+            done_ticket = callback.read_tcp_obj(control_socket)
+            control_socket.close()
+            control_socket_closed = 1
+            Trace.trace(8,"read_hsm_files final dialog recieved")
+        except:
+            exc, msg, tb = sys.exc_info()
+            Trace.log(e_errors.ERRROR, "recv final dialog %s %s" %(exc, msg))
+            done_ticket = {'status': ( e_errors.RETRY, "%s %s" % (exc, msg))}
+            
         # make sure the mover thinks the transfer went ok
         if done_ticket["status"][0] != e_errors.OK:
             error = 1
-            if tempname!="/dev/null":
-                try: os.unlink(tempname)
-                except: pass #XXX
             # print error to stdout in data_access_layer format
             print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
                                            requests[j]['file_size'], done_ticket)
@@ -1542,13 +1697,20 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         if chk_crc :
             mover_crc = done_ticket["fc"]["complete_crc"]
             if mover_crc is None:
-                sys.stderr.write(
-                    "warning: mover did not return CRC; skipping CRC check\n")
+                msg =   "warning: mover did not return CRC; skipping CRC check"
+                Trace.alarm(e_errors.WARNING, msg, {
+                    'infile':requests[j]['infile'],
+                    'outfile':requests[j]['outfile']})
+                sys.stderr.write(msg+'\n')
                 
             elif mover_crc != mycrc :
                 error = 1
                 # print error to stdout in data_access_layer format
-                done_ticket['status'] = (e_errors.READ_COMPCRC,'crc mismatch')
+                Trace.alarm(e_errors.WARNING, e_errors.CRC_ERROR, {
+                    'infile':requests[j]['infile'],
+                    'outfile':requests[j]['outfile']})
+                                                                   
+                done_ticket['status'] = (e_errors.CRC_ERROR,"%s != %s" %((mycrc, mover_crc)))
                 print_data_access_layer_format(requests[j]['infile'], 
                                                requests[j]['outfile'], 
                                                requests[j]['file_size'],
@@ -1561,11 +1723,6 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 # no retry for this case
                 bytes = bytes+requests[j]['file_size']
                 requests.remove(requests[j])
-                if tempname!="/dev/null":
-                    try: os.unlink(tempname)
-                    except os.error:
-                        print_error('EACCES',
-                                "cannot remove temporary file %s"%(tempname,),fatal=0)
                 if files_left > 0:
                     files_left = files_left - 1
 
@@ -1590,18 +1747,13 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         outfile = requests[j]['outfile']
         # remove file requests if transfer completed succesfuly
         if done_ticket["status"][0] == e_errors.OK:
-            if tempname != outfile:
-                try:  #the directory or file may have been deleted!
-                    os.rename(tempname, outfile)
-                except:
-                    try:
-                        if tempname!="/dev/null":
-                            os.unlink(tempname)
-                    except:
-                        pass
-                    error = e_errors.USERERROR
-                    done_ticket['status']= (error,"Can't remove %s"%(tempname,))
-                
+            delete_at_exit.unregister(localname)
+            try:
+                perms = os.stat(requests[j]['infile'])[stat.ST_MODE]
+                os.chmod(localname, perms)
+            except:
+                exc, msg, tb = sys.exc_info()
+                Trace.log(e_errors.INFO, "chmod %s failed: %s %s" % (localname, exc, msg))
                 
             bytes = bytes+requests[j]['file_size']
             del(requests[j])
@@ -1612,16 +1764,15 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         ##or if it was asked for explicitly
 
         if done_ticket['status'][0]==e_errors.OK:
-            if tempname == '/dev/null':
-               statinfo = os.stat(infile)
+            if localname == '/dev/null':
+                statinfo = os.stat(infile)
             else:
                 statinfo = os.stat(outfile)
             fsize = statinfo[stat.ST_SIZE]
         else:
             fsize=0
         if data_access_layer_requested or done_ticket['status'][0] != e_errors.OK:
-            print_data_access_layer_format(infile, outfile, 
-                                           fsize, done_ticket)
+            print_data_access_layer_format(infile, outfile, fsize, done_ticket)
 
         if done_ticket['status'][0] == e_errors.OK:
            
@@ -1668,15 +1819,22 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
             print "Done"
             pprint.pprint(done_ticket)
     
-    if not data_path_socket_closed: data_path_socket.close(); _f_.close()
-    if not control_socket_closed: control_socket.close()
+    if not data_path_socket_closed:
+        data_path_socket.close();
+        data_path_socket_closed = 1
+    if not out_fd_closed:
+        os.close(out_fd)
+        out_fd_closed=1
+    if not control_socket_closed:
+        control_socket.close()
+        control_socket_closed=1
     return files_left, bytes, error
 
     
 
 #######################################################################
 def read_from_hsm(input_files, output,
-                  verbose=0, chk_crc=0, use_IPC=0,
+                  verbose=0, chk_crc=0, 
                   pri=1, delpri=0, agetime=0, delayed_dismount=None,
                   t0=0):
     if t0==0:
@@ -1696,8 +1854,16 @@ def read_from_hsm(input_files, output,
     t1 =  time.time() #---------------------------------------------------Start
 
     #check the input unix files. if files don't exits, we bomb out to the user
-    (ninput, inputlist, file_size) = inputfile_check(input_files)
-    (bfid,junk,junk,junk,junk,junk,pinfo,p)=pnfs_information(inputlist,ninput,0)
+    (inputlist, file_size) = inputfile_check(input_files)
+    ninput = len(inputlist)
+    status, info = pnfs_information(inputlist,write=0)
+    if status[0] != e_errors.OK:
+        print_error(status[0], status[1], fatal=1)
+        #XXX data_access_layer?
+        quit()
+
+        
+    (bfid,junk,junk,junk,junk,junk,pinfo,p)= info
 
     tinfo["pnfscheck"] = time.time() - t1 #--------------------------------End
     if verbose>2:
@@ -1716,7 +1882,7 @@ def read_from_hsm(input_files, output,
 
     # check (and generate) the output files(s)
     # bomb out if they exist already
-    outputlist = outputfile_check(ninput,inputlist,output)
+    outputlist = outputfile_check(inputlist,output)
 
     tinfo["filecheck"] = time.time() - t1 #--------------------------------End
     if verbose>2:
@@ -1788,15 +1954,19 @@ def read_from_hsm(input_files, output,
         t2 = time.time() # -------------------------------------------Lap-Start
         Trace.trace(7,"read_from_hsm calling file clerk for bfid=%s"%(bfid[i],))
 
-        binfo  = client['u'].send({'work': 'bfid_info', 'bfid': bfid[i]},
-                        (fticket['hostip'],fticket['port']))
-        if binfo['status'][0]!=e_errors.OK:
-            print_data_access_layer_format('', '', 0, binfo)
+        ###XXX should use fcc method here
+        fc_reply = client['u'].send({'work': 'bfid_info', 'bfid': bfid[i]},
+                                 (fticket['hostip'],fticket['port']))
+
+        #file clerk reply also contains vol information
+        
+        if fc_reply['status'][0]!=e_errors.OK:
+            print_data_access_layer_format('', '', 0, fc_reply)
             quit()
 
         Trace.trace(7,"read_from_hsm on volume=%s"%
-                    (binfo['fc']['external_label'],))
-        inhibit = binfo['vc']['system_inhibit'][0]
+                    (fc_reply['fc']['external_label'],))
+        inhibit = fc_reply['vc']['system_inhibit'][0]
         if len(outputlist)==len(inputlist):
             ofile=outputlist[i]
         else:
@@ -1806,30 +1976,30 @@ def read_from_hsm(input_files, output,
                 msg="Volume is marked NOACCESS"
             else:
                 msg="Volume is marked NOTALLOWED"
-            binfo['status'] = (inhibit, msg)
-            print_data_access_layer_format(inputlist[i], ofile, 0, binfo)
+            fc_reply['status'] = (inhibit, msg)
+            print_data_access_layer_format(inputlist[i], ofile, 0, fc_reply)
             continue
-        inhibit = binfo['vc']['user_inhibit'][0]
+        inhibit = fc_reply['vc']['user_inhibit'][0]
         if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
             if inhibit==e_errors.NOACCESS:
                 msg="Volume is marked NOACCESS"
             else:
                 msg="Volume is marked NOTALLOWED"
-            binfo['status'] = (inhibit, msg)
-            print_data_access_layer_format(inputlist[i], ofile, 0, binfo)
+            fc_reply['status'] = (inhibit, msg)
+            print_data_access_layer_format(inputlist[i], ofile, 0, fc_reply)
             continue
-        if binfo["fc"]["deleted"] == "yes":
-            binfo['status'] = (e_errors.DELETED, "File has been deleted")
-            print_data_access_layer_format(inputlist[i], ofile, 0, binfo)
+        if fc_reply["fc"]["deleted"] == "yes":
+            fc_reply['status'] = (e_errors.DELETED, "File has been deleted")
+            print_data_access_layer_format(inputlist[i], ofile, 0, fc_reply)
             continue
 
 
         request = {}
-        binfo['vc']['address'] = volume_clerk_address
-        binfo['fc']['address'] = file_clerk_address
-        request['vinfo'] = binfo['vc']
-        request['finfo'] = binfo['fc']
-        request['volume'] = binfo['fc']['external_label']
+        fc_reply['vc']['address'] = volume_clerk_address
+        fc_reply['fc']['address'] = file_clerk_address
+        request['vc'] = fc_reply['vc']
+        request['fc'] = fc_reply['fc']
+        request['volume'] = fc_reply['fc']['external_label']
         request['bfid'] = bfid[i]
         request['infile'] = inputlist[i]
         request['outfile'] = outputlist[i]
@@ -1838,7 +2008,7 @@ def read_from_hsm(input_files, output,
         request['retry'] = 0
         request['unique_id'] = ''
 
-        label = binfo['fc']['external_label']
+        label = fc_reply['fc']['external_label']
         wr = {}
         for key in client['uinfo'].keys():
             wr[key] = client['uinfo'][key]
@@ -1868,8 +2038,9 @@ def read_from_hsm(input_files, output,
         nfiles = nfiles+1
         tinfo['fc%d'%(i,)] = time.time() - t2 #------------------------Lap--End
 
-    if (nfiles == 0): sys.exit(1)
-    tinfo['fc'] =  time.time() - t1 #-------------------------------End
+    if (nfiles == 0):
+        quit()
+    tinfo['fc'] = time.time() - t1 #-------------------------------End
     if verbose>1:
         print "  dt:",tinfo["fc"], "   cumt=",time.time()-t0
 
@@ -1888,10 +2059,6 @@ def read_from_hsm(input_files, output,
     bytes = 0
     while files_left:
 
-        # currently we have another way to determine if pnfs is enabled
-        # do not use system_enabled, but leave the code in for
-        # later potential use
-        #system_enabled(p) # make sure system is still enabled before submitting
         (submitted,Qd) = submit_read_requests(request_list,
                                               client, tinfo, 
                                               vols_needed.keys(),
@@ -1915,7 +2082,7 @@ def read_from_hsm(input_files, output,
         if submitted != 0:
             files_left, brcvd, error = read_hsm_files(listen_socket, submitted,
                                                       files_left, request_list,
-                                                      tinfo, t0, chk_crc, use_IPC, 
+                                                      tinfo, t0, chk_crc, 
                                                       maxretry, verbose)
             bytes = bytes + brcvd
             if verbose: print "FILES_LEFT ", files_left
@@ -1967,12 +2134,11 @@ class encp(interface.Interface):
         self.delpri = 0            # priority doesn't change
         self.age_time = 0          # priority doesn't age
         self.data_access_layer = 0 # no special listings
-        self.verbose = 0           # no output yet
+        self.verbose = 0 
 
-        self.delayed_dismount = 0  # delayed dismount time is set to 0
-        self.use_IPC = 0
+        self.delayed_dismount = 0
         self.output_file_family = '' # initial set for use with --ephemeral or
-                                     # or --file_family
+                                     # or --file-family
 
         self.bytes = None
         self.test_mode = 0
@@ -1984,24 +2150,19 @@ class encp(interface.Interface):
     ##########################################################################
     # define the command line options that are valid
     def options(self):
-        the_options = self.config_options()+[
-                      "verbose=","crc","priority=","delpri=","age_time=",
-                      "delayed_dismount=", "file_family=", "ephemeral",
-                      "data_access_layer","bytes=", "test_mode", "use_IPC"
-                      ] + self.help_options()
-
-        return the_options
-
+        return self.config_options()+[
+            "verbose=","crc","priority=","delpri=","age-time=",
+            "delayed-dismount=", "file-family=", "ephemeral",
+            "data-access-layer"] + self.help_options()
+    
     ##########################################################################
     #  define our specific help
     def help_line(self):
         prefix = self.help_prefix()
-        the_help = "%s%s\n or\n %s%s%s" % (
+        return "%s%s\n or\n %s%s%s" % (
             prefix, self.parameters1(),
             prefix, self.parameters2(),
-            self.format_options(self.options(), "\n\t\t")
-            )
-        return the_help
+            self.format_options(self.options(), "\n\t\t"))
 
     ##########################################################################
     #  define our specific parameters
@@ -2036,7 +2197,6 @@ class encp(interface.Interface):
             (machine, fullname, dir, basename) = fullpath(self.args[i])
             self.args[i] = os.path.join(dir,basename)
             p.append(string.find(dir,"/pnfs"))
-
         # all files on the hsm system have /pnfs/ as 1st part of their name
         # scan input files for /pnfs - all have to be the same
         p1 = p[0]
@@ -2052,6 +2212,7 @@ class encp(interface.Interface):
                 quit()
             else:
                 self.input.append(self.args[i])
+
         if p1 == 0:
             self.intype="hsmfile"
         else:
@@ -2084,34 +2245,30 @@ if __name__  ==  "__main__" :
     ## have we been called "encp unixfile hsmfile" ?
     if e.intype=="unixfile" and e.outtype=="hsmfile" :
         write_to_hsm(e.input,  e.output, e.output_file_family,
-                     e.verbose, e.chk_crc, e.use_IPC,
+                     e.verbose, e.chk_crc,
                      e.priority, e.delpri, e.age_time,
                      e.delayed_dismount, t0, e.bytes)
 
     ## have we been called "encp hsmfile unixfile" ?
     elif e.intype=="hsmfile" and e.outtype=="unixfile" :
         read_from_hsm(e.input, e.output,
-                      e.verbose, e.chk_crc, e.use_IPC,
+                      e.verbose, e.chk_crc,
                       e.priority, e.delpri, e.age_time,
                       e.delayed_dismount, t0)
 
     ## have we been called "encp unixfile unixfile" ?
     elif e.intype=="unixfile" and e.outtype=="unixfile" :
-        emsg="encp copies to/from tape. It is not involved in copying %s to %s" %   (e.intype, e.outtype)
+        emsg="encp copies to/from tape. It is not involved in copying %s to %s" % (e.intype, e.outtype)
         print_error('USERERROR', emsg,1)
         if data_access_layer_requested:
             print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
 
-
     ## have we been called "encp hsmfile hsmfile?
     elif e.intype=="hsmfile" and e.outtype=="hsmfile" :
         emsg=  "encp tape to tape is not implemented. Copy file to local disk and them back to tape"
-        print_error('USERERROR',
-                    emsg,
-                    1)
+        print_error('USERERROR', emsg, 1)
         if data_access_layer_requested:
             print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
-
 
     else:
         emsg = "ERROR: Can not process arguments %s"%(e.args,)
@@ -2120,5 +2277,3 @@ if __name__  ==  "__main__" :
         quit()
 
     Trace.trace(10,"encp finished at %s"%(time.time(),))
-
-
