@@ -240,6 +240,7 @@ if __name__ == "__main__" :
 
     elif intf.tape_list:
         ticket = fcc.tape_list(intf.tape_list)
+        print ticket['tape_list']
         aticket = fcc.alive(intf.alive_rcv_timeout,intf.alive_retries) #clear out any zombies from the forked file clerk
 
     elif intf.bfid:
