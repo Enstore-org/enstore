@@ -67,7 +67,7 @@ def find_mover_by_name(mover, mover_list):
 
 # summon mover
 def summon_mover(self, mover, ticket):
-    if mover['state'] == 'summoned': return      ## no need to summon already summoned mover
+    #if mover['state'] == 'summoned': return      ## no need to summon already summoned mover
     # update mover info
     mover['last_checked'] = time.time()
     mover['state'] = 'summoned'
