@@ -286,7 +286,7 @@ if __name__ == "__main__":
                         sst[group])
         plot_file.close()     #Close this file so gnuplot can read it.
 
-        os.system("gnuplot < %s" % plot_filename[group])
+        os.system("gnuplot < %s >& /dev/null" % plot_filename[group])
         
         os.system("convert -rotate 90  %s %s\n" % (ps_filename[group],
                                                    jpg_filename[group]))
