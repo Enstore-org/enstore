@@ -786,9 +786,10 @@ class Pnfs:
 
     def log_err(self,func_name):
         exc,msg,tb=sys.exc_info()
-        Trace.log(e_errors.ERROR,"pnfs %s %s %s %s"%(
+        Trace.log(e_errors.INFO,"pnfs %s %s %s %s"%(
                 func_name, self.file, exc,msg))
-        
+        ##Note:  I had e_errors.ERROR, and lots of non-fatal errors
+        ##were showing up in the weblog
 ##############################################################################
 
 # this routine returns a list of (filenames,bit_file_ids) given a list of file
