@@ -1963,6 +1963,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "ASSERT failed %s" % (self.current_work_ticket['status'],))
             self.current_work_ticket['status'] = (e_errors.MOUNTFAILED, None)
             callback.write_tcp_obj(self.control_socket, ticket)
+            self.control_socket.close()
             return
         #At this point the media changer claims the correct volume is loaded;
         have_tape = 0
@@ -2452,7 +2453,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if dism_allowed:
             self.dismount_volume(after_function=after_dismount_function)
         if not ftt_eio:
-            Trace.log(e_errors.INFO,"NEED LM UPDATE") #remove
             self.send_error_msg(error_info = (exc, msg),error_source=error_source)
             self.need_lm_update = (1, ERROR, 1, error_source)
             
@@ -2704,6 +2704,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                               (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
                     self.del_udp_client(u)
                     #del u
+                    # just for a case
+                    try:
+                        control_socket.close()
+                        listen_socket.close()
+                    except:
+                        pass
                     self.control_socket, self.client_socket = None, None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
@@ -2727,6 +2733,13 @@ class Mover(dispatching_worker.DispatchingWorker,
 		else:
 		    Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
 			      (ticket['callback_addr'], os.strerror(detail)))
+                    # just for a case
+                    try:
+                        control_socket.close()
+                        listen_socket.close()
+                    except:
+                        pass
+
 		    self.control_socket, self.client_socket = None, None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
@@ -2740,6 +2753,13 @@ class Mover(dispatching_worker.DispatchingWorker,
 	    else:
                 Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
                           (ticket['callback_addr'], os.strerror(errno.ETIMEDOUT)))
+                # just for a case
+                try:
+                    control_socket.close()
+                    listen_socket.close()
+                except:
+                    pass
+
                 self.control_socket, self.client_socket = None, None
                 self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                 return
@@ -2747,6 +2767,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             if rtn != 0:
                 Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
                           (ticket['callback_addr'], os.strerror(rtn)))
+                # just for a case
+                try:
+                    control_socket.close()
+                    listen_socket.close()
+                except:
+                    pass
+
                 self.control_socket, self.client_socket = None, None
                 self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                 return
@@ -2784,6 +2811,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log (e_errors.INFO,"SENDING %s"%(ticket,))
                 callback.write_tcp_obj(control_socket, ticket)
                 if null_err:
+                    # just for a case
+                    try:
+                        control_socket.close()
+                        listen_socket.close()
+                    except:
+                        pass
+                    
                     self.control_socket, self.client_socket = None, None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
@@ -2797,6 +2831,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR,"error in connect_client: %s" % (detail,))
+                # just for a case
+                try:
+                    control_socket.close()
+                    listen_socket.close()
+                except:
+                    pass
                 self.control_socket, self.client_socket = None, None
                 self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                 return
@@ -2808,8 +2848,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, "accepting client connection")
                 client_socket, address = listen_socket.accept()
                 if not hostaddr.allow(address):
-                    client_socket.close()
-                    listen_socket.close()
+                    # just for a case
+                    try:
+                        control_socket.close()
+                        listen_socket.close()
+                        client_socket.close()
+                    except:
+                        pass
 		    self.control_socket, self.client_socket = None, None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
@@ -2829,6 +2874,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             else:
                 Trace.log(e_errors.ERROR, "timeout on waiting for client connect")
+                # just for a case
+                try:
+                    control_socket.close()
+                    listen_socket.close()
+                except:
+                    pass
                 self.control_socket, self.client_socket = None, None
                 self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                 return
@@ -2836,6 +2887,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             exc, msg, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "connect_client:  %s %s %s"%
                       (exc, msg, traceback.format_tb(tb)))
+            # just for a case
+            try:
+                control_socket.close()
+                listen_socket.close()
+            except:
+                pass
             self.control_socket, self.client_socket = None, None
             self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
     
