@@ -39,7 +39,8 @@ MDEV = 4
 MPID = 5
 MVOLUME = 6
 MSTART = 7
-MDICTS = 8
+MDRIVEID = 8
+MDICTS = 9
 
 default_dir = "./"
 
@@ -586,8 +587,13 @@ class EnMountDataFile(EnDataFile):
     # parse the mount line
     def parse_line(self, line):
 	try:
-	    [etime, enode, epid, euser, estatus, mover, type, request, volume] = \
-		    string.split(line, None, 8)
+            field_l = string.split(line, None)
+            if len(field_l) == 9:
+                # old format
+                [etime, enode, epid, euser, estatus, mover, type, request, volume] = field_l
+                drive_id = ""
+            else:
+                [etime, enode, epid, euser, estatus, mover, type, request, volume, drive_id] = field_l
 	except ValueError:
 	    # this line has a bad syntax, ignore it
 	    Trace.trace(enstore_constants.INQPLOTDBG, "Plot line has evil syntax (%s)"%(line,))
@@ -606,8 +612,8 @@ class EnMountDataFile(EnDataFile):
 
 	    # pull out any dictionaries from the rest of the message
 	    #msg_dicts = enstore_status.get_dict(erest)
-	    msg_dicts = {}        # this needs to be fixed NOTE: efb
-	    return [etime, enode, euser, estatus, mover, epid, volume, start, msg_dicts]
+            msg_dicts = {}     # to be fixed NOTE: efb
+	    return [etime, enode, euser, estatus, mover, epid, volume, start, drive_id, msg_dicts]
 	else:
 	    return []
 
@@ -618,7 +624,8 @@ class EnMountDataFile(EnDataFile):
             minfo = self.parse_line(line)
             if minfo and (not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs)):
                 self.data.append([minfo[MDEV], minfo[MPID], minfo[MVOLUME],
-                                  string.replace(minfo[0], prefix, ""), minfo[MSTART]])
+                                  string.replace(minfo[0], prefix, ""), minfo[MSTART],
+                                  minfo[MDRIVEID]])
 
 class EnEncpDataFile(EnDataFile):
 

@@ -74,6 +74,7 @@ RESOLVEALL = "Resolve All"
 RESOLVESELECTED = "Resolve Selected"
 
 PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour (no null mvs)"],
+	     [enstore_constants.D_MPD_FILE, "Mounts/Day (no null mvs as of 8/1/01)"],
 	     [enstore_constants.MPD_FILE, "Mounts/Day (no null mvs as of 8/1/01)"],
 	     [enstore_constants.MPD_MONTH_FILE, "Mounts/Day (30 days) (no null mvs)"],
 	     [enstore_constants.MLAT_FILE, "Mount Latency (no null mvs)"],
@@ -2138,6 +2139,9 @@ class EnPlotPage(EnBaseHtmlDoc):
 			return "%s %s"%(self.mount_label, file_label[1])
 		    else:
 			return file_label[1]
+                elif file_label[0] == enstore_constants.D_MPD_FILE:
+                    # we must add in the drive type
+                    return "%s %s"%(text[0:index], file_label[1])
 		else:
 		    return file_label[1]
         else:

@@ -74,6 +74,8 @@ class InquisitorPlots:
             mphfile = enstore_plots.MphDataFile(dir=self.output_dir, 
 						mount_label=self.mount_label)
             mphfile.open()
+            # we need to do this because this is where the latency is
+            # calculated
             mphfile.plot(mountfile.data)
             mphfile.close()
 	    # we aren't using these plots, so do not create them.
@@ -91,7 +93,7 @@ class InquisitorPlots:
 	    # overall total mount plot
 	    mpdfile = enstore_plots.MpdDataFile(self.output_dir, self.mount_label)
             mpdfile.open()
-            mpdfile.plot(mphfile.total_mounts)
+            mpdfile.plot(mphfile.total_mounts, mphfile.drive_type_d)
             mpdfile.close()
             mpdfile.install(self.html_dir)
 
@@ -273,22 +275,26 @@ class InquisitorPlots:
 	alt_logs = ld.get("msg_type_logs", {})
 
 	if encp:
-	    Trace.trace(1, "Creating inq transfer plots")
+	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
+                                       "Creating inq transfer plots")
 	    alt_key = string.strip(Trace.MSG_ENCP_XFER)
 	    self.encp_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
 	if mount:
-	    Trace.trace(1, "Creating inq mount plots")
+	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
+                                       "Creating inq mount plots")
 	    alt_key = string.strip(Trace.MSG_MC_LOAD_REQ)
 	    self.mount_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
 	if sg:
-	    Trace.trace(1, "Creating inq storage group plots")
+	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
+                                       "Creating inq storage group plots")
 	    alt_key = string.strip(Trace.MSG_ADD_TO_LMQ)
 	    self.sg_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
 	if total_bytes:
-	    Trace.trace(1, "Creating inq total bytes summary plot")
+	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
+                                       "Creating inq total bytes summary plot")
 	    self.total_bytes_plot()
 
 	# update the inquisitor plots web page
 	if not self.no_plot_html:
-	    Trace.trace(1, "Creating the inq plot web page")
+	    Trace.trace(11, "Creating the inq plot web page")
 	    self.make_plot_html_page()
