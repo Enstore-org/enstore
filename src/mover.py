@@ -122,7 +122,7 @@ class Buffer:
         return len(self._buf) == 0
 
     def low(self):
-        return self.empty() or self._buf_bytes <= self.min_bytes
+        return self.empty() or self._buf_bytes < self.min_bytes
     
     def set_min_bytes(self, min_bytes):
         self.min_bytes = min_bytes
@@ -476,7 +476,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
 
             if self.buffer.full():
-                Trace.log(15, "read_client: buffer full %s/%s" % (self.buffer.nbytes(), self.buffer.max_bytes))
+                Trace.trace(15, "read_client: buffer full %s/%s" % (self.buffer.nbytes(), self.buffer.max_bytes))
                 self.buffer.read_ok.clear()
                 self.buffer.read_ok.wait(1)
                 continue
