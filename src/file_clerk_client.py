@@ -224,6 +224,35 @@ class FileClient(generic_client.GenericClient,
 		       "restore_dir"    : restore_dir } )
 	return r
 
+    # rename a volume
+
+    def rename_volume2(self, old, new):
+        r = self.send({"work"           : "rename_volume2",
+		       "external_label" : old,
+		       "new_external_label" : new } )
+	return r
+
+    # delete a volume
+
+    def delete_volume(self, vol):
+        r = self.send({"work"           : "delete_volume",
+		       "external_label" : vol } )
+	return r
+
+    # erase a volume
+
+    def erase_volume(self, vol):
+        r = self.send({"work"           : "erase_volume",
+		       "external_label" : vol } )
+	return r
+
+    # restore a volume
+
+    def restore_volume(self, vol):
+        r = self.send({"work"           : "restore_volume",
+		       "external_label" : vol } )
+	return r
+
     # rename volume and volume map
     def restore(self, file_name, restore_dir="no"):
         r = self.send({"work"           : "restore_file",
