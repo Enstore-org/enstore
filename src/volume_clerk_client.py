@@ -240,7 +240,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                 vlist = vlist+v['volume']+" "
             print vlist
                 
-
+        ticket['volumes'] = volumes['volumes']
         return ticket
 
     # remove deleted volumes
