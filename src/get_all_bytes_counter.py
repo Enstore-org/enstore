@@ -108,7 +108,7 @@ if __name__ == "__main__":
 	    str = ""
 	# output the total count
 	file = open(TOTAL_FILE, 'w')
-	file.write("%s %s %s\n"%(total, UNITS, str))
+	file.write("%.3f %s %s\n"%(total, UNITS, str))
 	file.close()
 
         file = open(TOTAL_BYTES_FILE, 'w')
