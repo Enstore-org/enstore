@@ -11,11 +11,6 @@ import pwd
 import grp
 import string
 import time
-import fcntl
-import pprint
-import pdb
-import traceback
-import select
 
 # enstore imports
 import Trace
