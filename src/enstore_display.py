@@ -1252,7 +1252,30 @@ class Connection:
         # middle of left side of mover
         mx,my = self.mover.x, self.mover.y + self.mover.height/2.0
         self.path.extend([mx,my])
-        # if multiple columns are used, go in between.           
+
+        # if multiple columns are used, go in between.
+        if self.mover.column == 2:
+            mx = self.display.mover_columns[1]
+            my = self.mover.y + self.mover.height/2.0
+            self.path.extend([mx,my])
+            
+            mx = (self.display.mover_columns[0] + self.mover.width)
+            mx = (mx + self.display.mover_columns[1]) / 2.0
+            my = self.mover.y + self.mover.height/2.0
+            self.path.extend([mx,my])
+
+            mx = (self.display.mover_columns[0] + self.mover.width)
+            mx = (mx + self.display.mover_columns[1]) / 2.0
+            my = self.mover.y - 2
+            self.path.extend([mx,my])
+
+            mx = (self.display.mover_columns[0] + self.mover.width)
+            my = self.mover.y - 2
+            self.path.extend([mx,my])
+            
+            mx = self.display.mover_columns[0]
+            my = self.mover.y - 2
+            self.path.extend([mx,my])
         if self.mover.column == 1:
             mx = self.display.mover_columns[0]
             self.path.extend([mx,my])
