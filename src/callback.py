@@ -33,16 +33,17 @@ HUNT_PORT_LOCK=os.path.join(HUNT_PORT_LOCK_DIR, HUNT_PORT_LOCK_FILE)
 
 # see if we can bind to the selected tcp host/port
 def try_a_port(host, port) :
+    Trace.trace(16, "try_a_port: trying TCP port %s %s" % (host, port))
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(host, port)
-    except:
+    except socket.error, detail:
 	try:
             sock.close()
         except:
             pass
-        Trace.trace(16,'try_a_port FAILURE')
+        Trace.trace(16,'try_a_port FAILURE %s'%detail)
         return (0 , 0)
     return 1 , sock
 
