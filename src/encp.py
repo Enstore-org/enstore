@@ -1983,6 +1983,17 @@ def write_to_hsm(e, client, tinfo):
 #Support function for reads.
 #######################################################################
 
+#######################################################################
+
+# same_cookie(c1, c2) -- to see if c1 and c2 are the same
+
+def same_cookie(c1, c2):
+    try: # just to be paranoid
+        return string.split(c1, '_')[-1] == string.split(c2, '_')[-1]
+    except:
+        return 0
+
+
 #Args:
 # Takes in a dictionary of lists of transfer requests sorted by volume.
 #Rerturns:
@@ -2048,17 +2059,6 @@ def verify_read_request_consistancy(requests_per_vol):
                                                request['outfile'],
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
-
-
-#######################################################################
-
-# same_cookie(c1, c2) -- to see if c1 and c2 are the same
-
-def same_cookie(c1, c2):
-    try: # just to be paranoid
-        return string.split(c1, '_')[-1] == string.split(c2, '_')[-1]
-    except:
-        return 0
 
 
 #######################################################################
