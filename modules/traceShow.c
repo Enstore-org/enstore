@@ -25,6 +25,11 @@ traceShow*
 #include <unistd.h>		/* isatty */
 #include <termios.h>		/* ICANON */
 #include <sys/ioctl.h>		/* ioctl */
+
+#ifdef OSF1
+#include <sys/termio.h>         /* struct termio */
+#endif
+
 #include <sys/ipc.h>		/* semop, shmget */
 #include <sys/sem.h>		/* semop */
 
