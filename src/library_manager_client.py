@@ -81,7 +81,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                    fn = at_list[i]["wrapper"]["fullname"]
                    vol = at_list[i]["vc"]["external_label"]
                    if (host == node) or (not node):
-                       print "%s %s %s %s %s %s M" % (host,self.name, user,pnfsfn,fn, vol)
+                       print "%s %s %s %s %s M %s" % (host,self.name, user,pnfsfn,fn, vol)
                        if at_list[i]["work"] == "read_from_hsm":
                           active_read_cnt = active_read_cnt + 1
                        elif at_list[i]["work"] == "write_to_hsm":
