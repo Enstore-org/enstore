@@ -855,7 +855,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # update the fields that have changed
         ll = list(record['at_mover'])
-        ll[0]= self.get_media_changer_state(record["library"],
+        library_manager = record["library"]+".library_manger"
+        ll[0]= self.get_media_changer_state(library_manager,
 					    record["external_label"],
                                             record["media_type"])
 
@@ -900,7 +901,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	    # update the fields that have changed
 	    record ["system_inhibit"] = "none"
 	    ll = list(record['at_mover'])
-	    ll[0]= self.get_media_changer_state(record["library"],
+            library_manager = record['library'] + '.library_manager'
+	    ll[0]= self.get_media_changer_state(library_manager,
 						record["external_label"], 
 						record["media_type"])
 	    record['at_mover']=tuple(ll)
@@ -914,7 +916,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def get_media_changer_state(self, libMgr, volume, m_type):
 
         m_changer = self.csc.get_media_changer(libMgr) 
-
         if not m_changer:
             Trace.trace(8," vc.get_media_changer_state: ERROR: no media changer found %s" % volume)
             return 'unknown'
