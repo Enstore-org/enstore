@@ -13,6 +13,7 @@ import os
 import stat
 import signal
 import threading
+import socket 
 
 # enstore imports
 import setpath
