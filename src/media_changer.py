@@ -383,15 +383,11 @@ class AML2_MediaLoader(MediaLoaderMethods):
                 self.cleanTapeFileFamily,self.cleanTapeFileWrapper = None,None
 
 	if self.mc_config.has_key('IdleTimeHome'):
-	    temp = self.mc_config['IdleTimeHome']
-            if type(temp) == types.IntType:
-	        if temp < 20:   # wait at least 20 seconds
-	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
-                    Trace.log(e_errors.ERROR, "ERROR:mc:aml2 IdleHomeTimeTooSmall(>20), default used")
-		else:
-	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
+            if (type(self.mc_config['IdleTimeHome']) == types.IntType and
+                self.mc_config['IdleTimeHome'] > 20):
+                self.idleTimeLimit = self.mc_config['IdleTimeHome']
 	    else:
-                Trace.log(e_errors.ERROR, "ERROR:mc:aml2 IdleHomeTimeNotAnInt, default used")
+                Trace.log(e_errors.INFO, "mc:aml2 IdleHomeTime is not defined or too small, default used")
 
 	import aml2
         
