@@ -240,7 +240,7 @@ class XferDataFile(EnPlot):
 
 class BpdGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile, ptsfile, total, meansize):
+    def write(self, outfile, ptsfile, total, meansize, xfers):
 	self.filedes.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day'\n"+ \
@@ -254,7 +254,8 @@ class BpdGnuFile(enstore_files.EnFile):
 	                   "set format x \"%m-%d\"\n"+ \
 			   "set key right top Right title \"Total Bytes : "+\
 			      "%.2e"%(total,)+"\\nMean Xfer Size : "+
-			      "%.2e"%(meansize,)+"\"\n"+\
+			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
+			      repr(xfers)+"\"\n"+\
 	                   "plot '"+ptsfile+"' using 1:2 t '' w impulses lw 20\n")
 
 class BpdDataFile(EnPlot):
@@ -317,7 +318,7 @@ class BpdDataFile(EnPlot):
 	# we must create our gnu plot command file too
 	gnucmds = BpdGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers)
+	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, numxfers)
 	gnucmds.close()
 
     # init the following hash from the first date given to the last date
