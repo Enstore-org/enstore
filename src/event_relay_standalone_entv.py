@@ -9,7 +9,7 @@ import sys
 
 import enstore_constants
 import Trace
-import log_client
+#import log_client
 import option
 import e_errors
 import cleanUDP
@@ -77,7 +77,7 @@ class Relay:
         self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
 	### debugger messages
 	csc = (option.default_host(), option.default_port())
-	self.logc = log_client.LoggerClient(csc, LOG_NAME, 'log_server')
+	#self.logc = log_client.LoggerClient(csc, LOG_NAME, 'log_server')
 	self.do_print = 0
 	Trace.init(LOG_NAME)
         if self.use_command_store:
