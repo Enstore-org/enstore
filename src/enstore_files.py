@@ -488,27 +488,33 @@ class ScheduleFile(EnFile):
         EnFile.__init__(self, "%s/%s"%(dir, name))
 
     def read(self):
-	# get the contents of the file by just importing it
-	sys.path.append(self.html_dir)
 	try:
-	    import enstore_outage
+            self.open('r')
+            if self.openfile:
+                code=string.join(self.openfile.readlines(),'')
+                exec(code)
+            else:
+                outage = {}
+                offline = {}
+                seen_down = {}
 	    try:
-		outage_d = enstore_outage.outage
+		outage_d = outage
 	    except AttributeError:
 		outage_d = {}
 	    try:
-		offline_d = enstore_outage.offline
+		offline_d = offline
 	    except AttributeError:
 		offline_d = {}
 	    try:
-		seen_down_d = enstore_outage.seen_down
+		seen_down_d = seen_down
 	    except AttributeError:
 		seen_down_d = {}
-	except ImportError:
+	except:
 	    # can't find the module
 	    outage_d = {}
 	    offline_d = {}
 	    seen_down_d = {}
+        self.close()
         return outage_d, offline_d, seen_down_d
 
     # turn the dictionary into python code to be written out to the file
