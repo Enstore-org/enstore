@@ -640,6 +640,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         self.config['device'] = os.path.expandvars(self.config['device'])
         self.state = IDLE
+        self.force_clean = 1
         # check if device exists
         if not os.path.exists(self.config['device']):
             Trace.alarm(e_errors.ERROR, "Cannot start. Device %s does not exist"%(self.config['device'],))
@@ -1198,6 +1199,16 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
+                # bail out gracefuly
+
+                # set volume to readlonly
+                Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly" %
+                            (self.current_volume,))
+                self.vcc.set_system_readonly(self.current_volume)
+                # trick ftt_close, so that it does not attempt to write FM
+                self.tape_driver.ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
+                #initiate cleaning
+                self.force_clean = 1
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 failed = 1
                 break
@@ -1279,10 +1290,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         b_read = self.buffer.block_read(nbytes, driver)
 
                         # clean buffer
-                        Trace.trace(22,"write_tape: clean buffer")
+                        #Trace.trace(22,"write_tape: clean buffer")
                         self.buffer._writing_block = self.buffer.pull()
                         if self.buffer._writing_block:
-                            Trace.trace(22,"write_tape: freeing block")
+                            #Trace.trace(22,"write_tape: freeing block")
                             self.buffer._freespace(self.buffer._writing_block)
                         
                     except "CRC_ERROR":
@@ -1989,7 +2000,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         #self.update_lm()
             
     def maybe_clean(self):
-        needs_cleaning = self.tape_driver.get_cleaning_bit()
+        if self.force_clean:
+             needs_cleaning = 1
+             Trace.log(e_errors.INFO, "Force clean is set")
+        else:
+            needs_cleaning = self.tape_driver.get_cleaning_bit()
+        self.force_clean = 0
         did_cleaning = 0
         if needs_cleaning:
             if not self.do_cleaning:
