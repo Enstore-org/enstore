@@ -841,7 +841,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             msg = "%s %s"(msg, expected_keys)
         msg = "%s %s"%(msg, ticket)
         if verbose: print msg
-        Trace.log(e_errrors.ERROR, msg)
+        Trace.log(e_errors.ERROR, msg)
 
     def send_client_done( self, ticket, status, error_info=None):
         ticket['status'] = (status, error_info)
