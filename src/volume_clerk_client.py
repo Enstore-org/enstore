@@ -329,6 +329,54 @@ class VolumeClerkClient(generic_client.GenericClient,
         ticket['volumes'] = volumes.get('volumes',{})
         return ticket
 
+    # get a list of all volumes
+    def get_vol_list(self):
+        # get a port to talk on and listen for connections
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"          : "get_vol_list",
+                  "callback_addr" : (host, port)}
+
+        # send the work ticket to the library manager
+        ticket = self.send(ticket)
+        if ticket['status'][0] != e_errors.OK:
+            Trace.log( e_errors.ERROR,
+                       'vcc.get_vol_liat: sending ticket: %s'%(ticket,) )
+            return ticket
+
+        r,w,x = select.select([listen_socket], [], [], 15)
+        if not r:
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for volume clerk callback"
+        
+        control_socket, address = listen_socket.accept()
+        
+        if not hostaddr.allow(address):
+            control_socket.close()
+            listen_socket.close()
+            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+        
+        ticket = callback.read_tcp_obj(control_socket)
+
+        listen_socket.close()
+
+        if ticket["status"][0] != e_errors.OK:
+            return ticket
+
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
+        ticket= callback.read_tcp_obj(data_path_socket)
+        volumes = callback.read_tcp_obj_new(data_path_socket)
+        data_path_socket.close()
+
+        # Work has been read - wait for final dialog with volume clerk
+        done_ticket = callback.read_tcp_obj(control_socket)
+        control_socket.close()
+        if done_ticket["status"][0] != e_errors.OK:
+            return done_ticket
+
+        ticket['volumes'] = volumes
+        return ticket
+
     # what is the current status of a specified volume?
     def inquire_vol(self, external_label):
         ticket= { 'work'           : 'inquire_vol',
@@ -626,6 +674,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.clear = ""
         self.backup = 0
         self.vols = 0
+        self.vol_labels = 0
         self.in_state = 0
         self.next = 0
         self.vol = ""
@@ -843,6 +892,12 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
+        option.VOL_LABELS:{
+                option.HELP_STRING:"list all volume labels",
+                option.DEFAULT_VALUE:option.DEFAULT,
+                option.DEFAULT_TYPE:option.INTEGER,
+                option.VALUE_USAGE:option.IGNORED,
+                option.USER_LEVEL:option.ADMIN},
         option.VOLS:{option.HELP_STRING:"list all volumes",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
@@ -896,6 +951,11 @@ def do_work(intf):
             key = None
             in_state = None 
         ticket = vcc.get_vols(key, in_state, not_cond)
+    elif intf.vol_labels:
+        ticket = vcc.get_vol_list()
+        if ticket['status'][0] == e_errors.OK:
+            for i in ticket['volumes']:
+                print i
     elif intf.next:
         ticket = vcc.next_write_volume(intf.args[0], #library
                                        string.atol(intf.args[1]), #min_remaining_byte
