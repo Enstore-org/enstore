@@ -80,7 +80,8 @@ def check(f):
     # drive
     if fr.has_key('drive'):	# some do not have this field
         if pf.drive != fr['drive']:
-            msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
+            if pf.drive != 'imported' or fr['drive'] != 'unknown:unknown':
+                msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
     # path
     if pf.path != fr['pnfs_name0']:
         p1 = string.split(pf.path, '/')
