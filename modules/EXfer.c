@@ -137,13 +137,14 @@ struct profile
 **************************************************************************/
 
 /*checksumming is now being done here, instead of calling another module,
-  in order to save a strcpy  -  cgw 1990428 */
+  in order to save a strcpy  -  cgw 19990428 */
 unsigned int adler32(unsigned int, char *, int);
 
 #ifndef STAND_ALONE
 void initEXfer(void);
 static PyObject * raise_exception(char *msg);
 static PyObject * EXfd_xfer(PyObject *self, PyObject *args);
+static PyObject * EXfd_ecrc(PyObject *self, PyObject *args);
 #endif
 void do_read_write_threaded(struct transfer *reads, struct transfer *writes);
 void do_read_write(struct transfer *reads, struct transfer *writes);
@@ -209,6 +210,8 @@ static char EXfer_Doc[] =  "EXfer is a module which Xfers data";
 
 static char EXfd_xfer_Doc[] = "\
 fd_xfer(fr_fd, to_fd, no_bytes, blk_siz, crc_flag[, crc])";
+static char EXfd_ecrc_Doc[] = "\
+unsigned int ecrc(crc, &start_addr, memory_size)";
 
 /*  Module Methods table. 
 
@@ -222,6 +225,7 @@ fd_xfer(fr_fd, to_fd, no_bytes, blk_siz, crc_flag[, crc])";
 
 static PyMethodDef EXfer_Methods[] = {
     { "fd_xfer",  EXfd_xfer,  1, EXfd_xfer_Doc},
+    { "ecrc", EXfd_ecrc, 1, EXfd_ecrc_Doc},
     { 0, 0}        /* Sentinel */
 };
 
@@ -2397,6 +2401,67 @@ raise_exception2(struct transfer *rtn_val)
 	Py_DECREF(v);
     }
     return NULL;
+}
+
+static PyObject *
+EXfd_ecrc(PyObject *self, PyObject *args)
+{
+  int buffer_size=1024*1024;  /*buffer size for the data blocks*/
+  unsigned int crc = 0;       /*used to hold the crc as it is updated*/
+  long nb, rest, i;           /*loop control variables*/
+  struct stat stat_info;      /*used with fstat()*/
+  int fd;                     /*the file descriptor*/
+  char buffer[1024*1024];     /*the data buffer*/
+  int sts;                    /*system call return status*/
+  int rtn;
+
+  /* Get the parameter. */
+  sts = PyArg_ParseTuple(args, "i", &fd);
+  if (!sts)
+    return(raise_exception("fd_ecrc - invalid parameter"));
+
+  if(fstat(fd, &stat_info) < 0)   /* To get the filesize. */
+    return(raise_exception("fd_ecrc - file fstat failed"));
+  if(lseek(fd, 0, SEEK_SET) != 0) /* Set to beginning of file. */
+    return(raise_exception("fd_ecrc - file lseek failed"));
+
+  /*Initialize values used looping through reading in the file.*/
+  nb = stat_info.st_size / buffer_size;
+  rest = stat_info.st_size % buffer_size;
+  
+#ifdef O_DIRECT
+  /* If O_DIRECT was used on the file descriptor, we need to turn it off. */
+  
+  /*Get the current file descriptor flags.*/
+  if((rtn = fcntl(fd, F_GETFL, 0)) < 0)
+    return(raise_exception("fd_ecrc - file fcntl failed"));
+  sts = (rtn & O_DIRECT) ? (rtn ^ O_DIRECT) : rtn;  /* turn off O_DIRECT */
+  /*Set the new file descriptor flags.*/
+  if(fcntl(fd, F_SETFL, sts) < 0)
+    return(raise_exception("fd_ecrc - file fcntl failed"));
+#endif
+
+  /*Read in the file in 'buf_size' sized blocks and calculate CRC.*/
+  for (i = 0;i < nb; i++)
+  {
+    if((rtn = read(fd, buffer, buffer_size)) < 0)   /* test for error */
+      return(raise_exception("fd_ecrc - file read failed"));
+    else if(rtn != buffer_size)                     /* test for amount read */
+      return(raise_exception("fd_ecrc - partial buffer read"));
+    
+    crc = adler32(crc, buffer, buffer_size);  /* calc. the crc */
+  }
+  if (rest)
+  {
+    if((rtn = read(fd, buffer, rest)) < 0)          /* test for error */
+      return(raise_exception("fd_ecrc - file read failed"));
+    else if(rtn != rest)                            /* test for amount read */
+      return(raise_exception("fd_ecrc - partial buffer read"));
+
+    crc = adler32(crc, buffer, rest);  /* calc. the crc */
+  }
+
+  return PyLong_FromUnsignedLong((unsigned long)crc);
 }
 
 static PyObject *
