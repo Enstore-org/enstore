@@ -216,7 +216,7 @@ if [ -z "${INSTALLDIR-}" ] ; then
       ripsgi*)   INSTALLDIR=/usr/products/$product;;
       rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2
                  setrev=0;;
-      d0ola*)    INSTALLDIR=/home/bakken/enstore/$product #this stinks! but I don't know what else to do
+      d0ola*)    INSTALLDIR=$ENSTORE_DIR/$product #this stinks! but I don't know what else to do
 		 FLAVOR="OSF1+V4"
 	         puntUPS=1;;
       *)         check_status 1 "Don't know where to install ups product $product on `uname -n`";;
@@ -462,9 +462,9 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
              check_status $? "chmod 555 $INSTALLDIR"
 
              if [ $puntUPS -eq 1 ]; then
-	        rm -f ~/${product}_$REV.tar
-		tar -cf ~/${product}_$REV.tar $INSTALLDIR
-                check_status $? "tar -cf ~/${product}_$REV.tar $INSTALLDIR"
+	        rm -f $HOME/${product}_$REV.tar
+		tar -cf $HOME/${product}_$REV.tar $INSTALLDIR
+                check_status $? "tar -cf $HOME/${product}_$REV.tar $INSTALLDIR"
              fi
            fi
            ;;
