@@ -1238,7 +1238,12 @@ if __name__ == '__main__':
         except:
             try:
                 exc, msg, tb = sys.exc_info()
-                Trace.log(e_errors.INFO, "%s %s restarting" % (exc, msg))
+                full_tb = traceback.format_exception(exc,msg,tb))
+                for l in full_tb:
+                    Trace.log(e_errors.ERROR, l[:-1], {}, "TRACEBACK")
+                Trace.log(e_errors.INFO, "restarting after exception")
+            except:
+                pass
             except:
                 pass
             
