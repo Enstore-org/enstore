@@ -89,7 +89,68 @@ def int32(v):
         return long(v)
     else:
         return v
+    
+############################################################################
 
+class EncpError(Exception):
+    def __init__(self, e_errno, e_message, e_type, e_ticket=None):
+
+        Exception.__init__(self)
+
+        #Handle the errno (if a valid one passed in).
+        if e_errno in errno.errorcode.keys():
+            self.errno = e_errno
+        else:
+            self.errno = None
+
+        #Handel the message if not given.
+        if e_message == None:
+            if e_errno: #By now this is None or a valid errno.
+                self.message = os.strerror(self.errno)
+            else:
+                self.message = None
+        elif type(e_message) == type(""):
+            self.message = e_message #There was a string message passed.
+        else:
+            self.message = None
+
+        #Type should be from e_errors.py.  If not specified, use errno code.
+        if not e_type:
+            try:
+                self.type = errno.errorcode[self.errno]
+            except KeyError:
+                self.type = e_errors.UNKNOWN
+        else:
+            self.type = e_type
+
+        self.ticket = e_ticket
+
+        #Generate the string that stringifying this obeject will give.
+        self._string()
+
+        #Is this duplicated from calling Exception.__init__(self)?
+        #self.args = [self.errno, self.message, self.type]
+
+    def __str__(self):
+        self._string()
+        return self.strerror
+
+    def __repr__(self):
+        return "EncpError"
+
+    def _string(self):
+        if self.errno in errno.errorcode.keys():
+            errno_name = errno.errorcode[self.errno]
+            errno_description = os.strerror(self.errno)
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
+                                                        self.errno,
+                                                        errno_description,
+                                                        self.message)
+        else:
+            self.strerror = self.message
+
+        return self.strerror
+    
 ############################################################################
 
 def signal_handler(sig, frame):
@@ -98,7 +159,7 @@ def signal_handler(sig, frame):
         sys.stderr.flush()
     except:
         pass
-    
+
     if sig != signal.SIGTERM: #If they kill, don't do anything.
         quit(1)
 
@@ -392,6 +453,9 @@ def clients(config_host,config_port):
     try:
         stati = csc.alive(configuration_client.MY_SERVER,
                           rcv_timeout, alive_retries)
+    except KeyboardInterrupt:
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
     except:
         stati={}
         stati["status"] = (e_errors.CONFIGDEAD,"Config at %s port=%s"%
@@ -437,10 +501,10 @@ def filename_check(filename):
     # less than 200 characters.
     for directory in filename.split("/"):
         if len(directory) > 199:
-            status = ('USERERROR',
-                      'Filepath segment %s exceeds 199 characters with %s' %
-                      (directory, len(directory)))
-            return status
+            raise EncpError(errno.ENAMETOOLONG,
+                            "%s: %s" % (os.strerror(errno.ENAMETOOLONG),
+                                        directory),
+                            e_errors.USERERROR)
 
     #limit the usable characters for a filename.
     if not charset.is_in_filenamecharset(filename):
@@ -448,11 +512,9 @@ def filename_check(filename):
         for ch in filename: #grab all illegal characters.
             if ch not in charset.filenamecharset:
                 st = st + ch
-        status = ('USERERROR',
-                  'Filepath uses non-printable characters: %s' % (st,))
-        return status
-
-    return (e_errors.OK, None)
+        raise EncpError(errno.EILSEQ,
+                        'Filepath uses non-printable characters: %s' % (st,),
+                        e_errors.USERERROR)
 
 #Make sure that the filesystem can handle the filesize.
 def filesystem_check(target_filesystem, inputfile):
@@ -486,9 +548,10 @@ def filesystem_check(target_filesystem, inputfile):
     
     #Compare the max sizes.
     if size > filesystem_max:
-        raise e_errors.USERERROR, \
-              "Filesize (%s) larger than filesystem allows (%s)." \
-              % (size, filesystem_max)
+        raise EncpError(errno.EFBIG,
+                        "Filesize (%s) larger than filesystem allows (%s)." \
+                        % (size, filesystem_max),
+                        e_errors.USERERROR)
 
 #Make sure that the wrapper can handle the filesize.
 def wrappersize_check(target_filepath, inputfile):
@@ -498,7 +561,7 @@ def wrappersize_check(target_filepath, inputfile):
 
     #Get the remote pnfs wrapper.  If the maximum size of the
     # wrapper isn't in the configuration file, assume 2GB-1.
-    pout = pnfs.Pnfs(target_filepath)
+    pout = pnfs.Tag((os.path.dirname(target_filepath)))
     pout.get_file_family_wrapper()
     # get a configuration server and the max filesize the wrappers allow.
     csc = get_csc()
@@ -507,9 +570,10 @@ def wrappersize_check(target_filepath, inputfile):
                                    MAX_FILE_SIZE)
     
     if size > wrapper_max:
-        raise e_errors.USERERROR, \
-              "Filesize (%s) larger than wrapper (%s) allows (%s)." \
-              % (size, pout.file_family_wrapper, wrapper_max)
+        raise EncpError(errno.EFBIG,
+                        "Filesize (%s) larger than wrapper (%s) allows (%s)." \
+                        % (size, pout.file_family_wrapper, wrapper_max),
+                        e_errors.USERERROR)
     
 #Make sure that the library can handle the filesize.
 def librarysize_check(target_filepath, inputfile):
@@ -518,7 +582,7 @@ def librarysize_check(target_filepath, inputfile):
     size = get_file_size(inputfile)
 
     #Determine the max allowable size for the given library.
-    pout = pnfs.Pnfs(target_filepath)
+    pout = pnfs.Tag(os.path.dirname(target_filepath))
     pout.get_library()
     csc = get_csc()
     library = csc.get(pout.library + ".library_manager", {})
@@ -526,13 +590,13 @@ def librarysize_check(target_filepath, inputfile):
     
     #Compare the max sizes allowed for these various conditions.
     if size > library_max:
-        raise e_errors.USERERROR, \
-              "Filesize (%s) larger than library (%s) allows (%s)." \
-              % (size, pout.library, library_max)
-
+        raise EncpError(errno.EFBIG,
+                        "Filesize (%s) larger than library (%s) allows (%s)." \
+                        % (size, pout.library, library_max),
+                        e_errors.USERERROR)
 
 # check the input file list for consistency
-def inputfile_check(input_files, bytecount=None):
+def inputfile_check(input_files):
     # create internal list of input unix files even if just 1 file passed in
     if type(input_files)==type([]):
         inputlist=input_files
@@ -549,57 +613,56 @@ def inputfile_check(input_files, bytecount=None):
         machine, fullname, dirname, basename = fullpath(inputlist[i])
         inputlist[i] = fullname
 
-        #check to make sure that the filename string doesn't have any
-        # wackiness to it.
-        status = filename_check(inputlist[i])
-        if status != (e_errors.OK, None):
-            print_data_access_layer_format(inputlist[i], '', 0,
-                                           {'status':status})
-            quit()
-
-        # input files must exist - also handle automounting.
-        if not access_check(inputlist[i], os.F_OK):
-            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-                'USERERROR',
-                'No such file or directory: %s' % (inputlist[i],))})
-            quit()
-
-        # input files must have read permissions.
-        if not os.access(inputlist[i], os.R_OK):
-            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-                'USERERROR', "Permission denied: no read access")})
-            quit()
-
-        #Since, the file exists, we can get its stats.
-        statinfo = os.stat(inputlist[i])
-
-        # input files can't be directories
-        if not stat.S_ISREG(statinfo[stat.ST_MODE]):
-            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-                'USERERROR', 'Not a regular file: %s'%(inputlist[i],))})
-            quit()
-
-        # get the file size
-        if "/pnfs/" == inputlist[i][:6]:
-            p = pnfs.Pnfs(inputlist[i])
-            p.get_file_size()
-            file_size.append(p.file_size)
-	#This would work if pnfs supported NFS version 3.  Untill it does and
-	# all the files have their pnfs layer 2s cleared out, this can not
-	# be used in conjuction with large file support.
-        else:
-            file_size.append(long(statinfo[stat.ST_SIZE]))
-
-        # we cannot allow 2 input files to be the same
-        # this will cause the 2nd to just overwrite the 1st
         try:
-            match_index = inputlist[:i].index(inputlist[i])
+            #check to make sure that the filename string doesn't have any
+            # wackiness to it.
+            filename_check(inputlist[i])
             
-            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-                'USERERROR', 'Duplicated entry %s'%(inputlist[match_index],))})
+            # input files must exist - also handle automounting.
+            if not access_check(inputlist[i], os.F_OK):
+                raise EncpError(errno.ENOENT, inputlist[i], e_errors.USERERROR)
+
+            # input files must have read permissions.
+            if not os.access(inputlist[i], os.R_OK):
+                raise EncpError(errno.EACCES, inputlist[i], e_errors.USERERROR)
+
+            #Since, the file exists, we can get its stats.
+            statinfo = os.stat(inputlist[i])
+
+            # input files can't be directories
+            if not stat.S_ISREG(statinfo[stat.ST_MODE]):
+                raise EncpError(errno.EISDIR, inputlist[i], e_errors.USERERROR)
+
+            # get the file size
+            if "/pnfs/" == inputlist[i][:6]:
+                p = pnfs.Pnfs(inputlist[i])
+                p.get_file_size()
+                file_size.append(p.file_size)
+	    #This would work if pnfs supported NFS version 3.  Untill it does
+            # this can not be used in conjuction with large file support.
+            else:
+                file_size.append(long(statinfo[stat.ST_SIZE]))
+
+            # we cannot allow 2 input files to be the same
+            # this will cause the 2nd to just overwrite the 1st
+            try:
+                match_index = inputlist[:i].index(inputlist[i])
+                
+                raise EncpError(None,
+                                'Duplicate entry %s'%(inputlist[match_index],),
+                                e_errors.USERERROR)
+            except ValueError:
+                pass  #There is no error.
+
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
+        except EncpError, detail:
+            exc, msg, tb = sys.exc_info()
+            size = get_file_size(inputlist[i])
+            print_data_access_layer_format(inputlist[i], "", size,
+                                           {'status':(msg.type, msg.strerror)})
             quit()
-        except ValueError:
-            pass  #There is no error.
 
     return (inputlist, file_size)
 
@@ -611,9 +674,12 @@ def outputfile_check(inputlist, output, dcache):
     # can only handle 1 input file copied to 1 output file
     # or multiple input files copied to 1 output directory or /dev/null
     if len(output)>1:
-        print_data_access_layer_format('',output[0],0,{'status':(
-            'USERERROR','Cannot have multiple output files')})
-        quit()
+        raise EncpError(None,
+                        'Cannot have multiple output files',
+                        e_errors.USERERROR)
+        #print_data_access_layer_format('',output[0],0,{'status':(
+        #    'USERERROR','Cannot have multiple output files')})
+        #quit()
 
     nfiles = len(inputlist)
     outputlist = []
@@ -621,58 +687,75 @@ def outputfile_check(inputlist, output, dcache):
     # Make sure we can open the files. If we can't, we bomb out to user
     # loop over all input files and generate full output file names
     for i in range(nfiles):
-        outputlist.append(output[0])
-        if outputlist[i] == '/dev/null':
+
+        #If output location is /dev/null, skip the checks.
+        if output[0] == '/dev/null':
+            outputlist.append(output[0])
             continue
 
         try:
             imachine, ifullname, idir, ibasename = fullpath(inputlist[i])
-            omachine, ofullname, odir, obasename = fullpath(outputlist[i])
+            omachine, ofullname, odir, obasename = fullpath(output[0])
+
+            #If the output location is a directory, put the name on the end.
+            #If it already is the full file name, check to see if the parent
+            # directory exits.
+            if access_check(ofullname, os.F_OK):
+                if os.path.isdir(ofullname):
+                    #Reset the ofullname and related variables with the
+                    # basname included.
+                    ofullname=os.path.join(ofullname, ibasename)
+                    omachine, ofullname, odir, obasename = fullpath(ofullname)
+            elif not access_check(os.path.dirname(odir), os.F_OK):
+                #If the directory does not exist, raise error.
+                raise EncpError(errno.ENOENT, odir, e_errors.USERERROR)
 
             #check to make sure that the filename string doesn't have any
             # wackiness to it.
-            status = filename_check(outputlist[i])
-            if status != (e_errors.OK, None):
-                print_data_access_layer_format('', outputlist[i], 0,
-                                               {'status':status})
-                quit()
+            filename_check(ofullname)
 
-            #In this if...elif...else determine if the user entered in
-            # valid file or directory names appropriately.
-            if access_check(outputlist[i], os.W_OK):
-                #File or directory exists with write permissions.
-                if os.path.isdir(outputlist[i]):
-                    outputlist[i] = os.path.join(outputlist[i], ibasename)
+            #There are four (4) possible senerios for the following test(s).
+            #The two conditions are:
+            # 1) If dache involked encp.
+            # 2) If the file does not exist or not.
+
+            #Test case when used by a user and the file does not exist (as is
+            # should be).
+            if not access_check(ofullname, os.F_OK) and not dcache:
+                #Check if the filesystem is corrupted.
+                if ofullname in os.listdir(odir):
+                    raise EncpError(getattr(errno, 'EFSCORRUPTED', 'EIO'),
+                                    "Filesystem is corrupt.", e_errors.OSERROR)
+                #Check for permissions.
+                elif access_check(odir, os.W_OK):
+                    outputlist.append(ofullname)
                 else:
-                    #Non-directory that exists with permission.
-                    if len(inputlist) > 1:
-                        #With mulitiple input files, the output is wrong.
-                        raise e_errors.USERERROR, \
-                              'Not a directory: %s' % (output[0],)
-                    else:
-                        #It is a file that already exists.
-                        raise e_errors.EEXIST, \
-                              "File exists: %s" % (outputlist[i],)
-            elif access_check(odir, os.W_OK) and len(inputlist) == 1:
-                #Output is not a directory.  If one level up (odir) is a
-                # valid directory and the number of input files is 1, then
-                # the full name is the valid name of a one file transfer.
-                if not os.path.isdir(ofullname):
-                    outputlist[i] = ofullname
+                    raise EncpError(errno.EACCES,ofullname,e_errors.USERERROR)
+                
+            #File exists when run by a normal user.
+            elif access_check(ofullname, os.F_OK) and not dcache:
+                raise EncpError(errno.EEXIST, ofullname, e_errors.USERERROR)
+
+            #The file does not already exits and it is a dcache transfer.
+            elif not access_check(ofullname, os.F_OK) and dcache:
+                #Check if the filesystem is corrupted.
+                if ofullname in os.listdir(odir):
+                    raise EncpError(getattr(errno, 'EFSCORRUPTED', 'EIO'),
+                                    "Filesystem is corrupt.", e_errors.OSERROR)
                 else:
-                    outputlist[i] = os.path.join(outputlist[i], ibasename)
+                    raise EncpError(errno.ENOENT,ofullname,e_errors.USERERROR)
+
+            #The file exits, as it should, for a dache transfer.
+            elif access_check(ofullname, os.F_OK) and dcache:
+                #Check for permissions.
+                if access_check(ofullname, os.W_OK):
+                    outputlist.append(ofullname)
+                else:
+                    raise EncpError(errno.EACCES,ofullname,e_errors.USERERROR)
             else:
-                #only error conditions left
-
-                if access_check(outputlist[i], os.F_OK):
-                    #Path exists, but without write permissions.
-                    raise e_errors.USERERROR, \
-                          "Permission denied: no write access"
-                elif not access_check(outputlist[i], os.F_OK):
-                    raise e_errors.USERERROR, \
-                          "No such file or directory: %s" % (outputlist[i],)
-                else:
-                    raise e_errors.UNKNOWN, e_errors.UNKNOWN
+                raise EncpError(None,
+                                "Failed outputfile check for: %s" % ofullname,
+                                e_errors.UNKNOWN)
 
             #Make sure the output file system can handle a file as big as
             # the input file.  Also, make sure that the maximum size that
@@ -692,36 +775,18 @@ def outputfile_check(inputlist, output, dcache):
             # someone changes protocol
             try:
                 match_index = inputlist[:i].index(inputlist[i])
-                raise e_errors.USERERROR,  \
-                      'Duplicated entry %s'%(inputlist[match_index],)
-
+                raise EncpError(None,
+                                'Duplicate entry %s'%(inputlist[match_index],),
+                                e_errors.USERERROR)
             except ValueError:
                 pass  #There is no error.
 
-        except (e_errors.USERERROR, e_errors.UNKNOWN):
+        except EncpError:
             exc, msg, tb = sys.exc_info()
             size = get_file_size(ifullname)
-            print_data_access_layer_format(ifullname, ofullname, size,
-                                           {'status':(exc, msg)})
+            print_data_access_layer_format('', ofullname, size,
+                                           {'status':(msg.type, msg.strerror)})
             quit()
-        except (e_errors.EEXIST,), detail:
-            if not dcache:
-                exc, msg, tb = sys.exc_info()
-                size = get_file_size(ifullname)
-                print_data_access_layer_format(ifullname, ofullname, size,
-                                               {'status':(exc, msg)})
-                quit()
-            else: #dache
-                #Since, the file exists, we can get its file size.
-                size = get_file_size(ofullname)
-                if size:
-                    msg = "disk cache requires zero length file"
-                    print_data_access_layer_format(ifullname, ofullname, size,
-                                                   {'status':(e_errors.EEXIST,
-                                                              msg)})
-                    quit()
-                else:
-                    return outputlist
 
     if outputlist[0] == "/dev/null":
         return outputlist
@@ -733,8 +798,7 @@ def outputfile_check(inputlist, output, dcache):
                 if fd<0:
                     #The return code is the negitive return value.
                     error = int(math.fabs(fd))
-                    os_exception = exceptions.OSError(error,os.strerror(error))
-                    raise exceptions.OSError, os_exception
+                    raise OSError(error,os.strerror(error))
 
                 os.close(fd)
 
@@ -771,104 +835,48 @@ def file_check(e):
 
 #######################################################################
 
-def get_server_info(library = None, bfid = None):
+def get_clerks(bfid=None):
 
-    #Get the appropriate configuration server client.
+    #Snag the configuration server client for the system that contains the
+    # file clerk where the file was stored.  This is determined based on
+    # the bfid's brand.
     csc = get_csc(bfid)
 
-    #Get the file clerk configuration info.
-    fc_ticket = csc.get("file_clerk")
-    if fc_ticket['status'][0] != e_errors.OK:
-        print_data_access_layer_format('', '', 0, fc_ticket)
-        quit()
+    #Get the file clerk information.
+    fcc = file_clerk_client.FileClient(csc, bfid)
+    if not fcc:
+        raise EncpError(errno.ENOPROTOOPT,
+                        "File clerk not available",
+                        e_errors.NET_ERROR)
+        
+    #Get the volume clerk information.
+    vcc = volume_clerk_client.VolumeClerkClient(csc)
+    if not vcc:
+        raise EncpError(errno.ENOPROTOOPT,
+                        "File clerk not available",
+                        e_errors.NET_ERROR)
 
-    #Get the volume clerk configuration info.
-    vc_ticket = csc.get("volume_clerk")
-    if vc_ticket['status'][0] != e_errors.OK:
-        print_data_access_layer_format('', '', 0, vc_ticket)
-        quit()
-
-    #Get the library manager configuration info. (if necessary)
-    if library:
-        lm_ticket = csc.get(library + '.library_manager')
-        if lm_ticket['status'][0] != e_errors.OK:
-            print_data_access_layer_format('', '', 0, lm_ticket)
-            quit()
-    else:
-        lm_ticket = {}
-
-    return fc_ticket, vc_ticket, lm_ticket
-
-#######################################################################
-# return pnfs information,
-
-def pnfs_information(filelist,write=1):
-    bfid = []
-    pinfo = []
-    library = []
-    file_family = []
-    width = []
-    ff_wrapper = []
-    storage_group = []
-    if write: details = 1
-    else: details = 0
-
-    for file in filelist:
-
-        p = pnfs.Pnfs(file, get_details = details)
-
-        if not write:
-            ## validate pnfs info
-            if p.bit_file_id == pnfs.UNKNOWN:
-                return (e_errors.USERERROR, "no bit file id"), None
-            bfid.append(p.bit_file_id)
-
-        if write:
-            ## validate additional pnfs info
-            if p.library == pnfs.UNKNOWN:
-                return (e_errors.USERERROR, "no library"), None
-            library.append(p.library)          # get the library
-            if p.file_family == pnfs.UNKNOWN:
-                return (e_errors.USERERROR, "no file family"), None
-            file_family.append(p.file_family)  # get the file family
-            try:
-                ff_wrapper.append(p.file_family_wrapper)  # get the file family wrapper
-            except:
-                ff_wrapper.append("cpio_odc")  # default
-            if p.file_family_width == pnfs.ERROR:
-                return (e_errors.USERERROR, "no file family width"), None
-            elif p.file_family_width <= 0:
-                return (e_errors.USERERROR, "invalid file family width %s"%(p.file_family_width)), None
-            width.append(p.file_family_width)  # get the width
-            try:
-                storage_group.append(p.storage_group) # get the storage group
-            except:
-                storage_group.append('none')   # default
-
-        # get some debugging info for the ticket
-        pinf = {}
-        for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',
-                   'major','minor','rmajor','rminor',
-                   'mode','pstat' ] :
-            try:
-                pinf[k]=getattr(p,k)
-            except AttributeError:
-                pinf[k]="None"
-        pinf['inode'] = 0                  # cpio wrapper needs this also
-        pinfo.append(pinf)
-
-    Trace.trace(16,"pnfs_information bfid=%s library=%s file_family=%s \
-    wrapper_type=%s width=%s storage_group=%s pinfo=%s p=%s" %
-                (bfid, library, file_family, ff_wrapper, width, storage_group, pinfo, p))
-    return (e_errors.OK, None), (bfid,library,file_family,ff_wrapper,width,storage_group,pinfo,p)
-
+    return vcc, fcc
 
 ############################################################################
 
+def get_pinfo(p):
+    # get some debugging info for the ticket
+    pinf = {}
+    for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',
+               'major','minor','rmajor','rminor',
+               'mode','pstat' ] :
+        try:
+            pinf[k]=getattr(p,k)
+        except AttributeError:
+            pinf[k]="None"
+    pinf['inode'] = 0                  # cpio wrapper needs this also
+
+    return pinf
 
 ############################################################################
 
-def open_control_socket(listen_socket, mover_timeout, verbose):
+def open_control_socket(listen_socket, mover_timeout):
 
     read_fds,write_fds,exc_fds=select.select([listen_socket], [],
                                              [listen_socket], mover_timeout)
@@ -892,7 +900,7 @@ def open_control_socket(listen_socket, mover_timeout, verbose):
     except e_errors.TCP_EXCEPTION:
         msg = e_errors.TCP_EXCEPTION
         Trace.message(ERROR_LEVEL, msg)
-        raise socket.error, (errno.NET_ERROR, msg)
+        raise socket.error, (e_errors.NET_ERROR, msg)
 
     #try:
     #    a = ticket['mover']['callback_addr']
@@ -906,14 +914,14 @@ def open_control_socket(listen_socket, mover_timeout, verbose):
     
 ##############################################################################
 
-def open_data_socket(mover_addr, mode=0):
+def open_data_socket(mover_addr, mode):
     data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     flags = fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_GETFL)
     fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL,
                 flags | FCNTL.O_NONBLOCK)
 
     #set up any special network load-balancing voodoo
-    interface=host_config.check_load_balance(mode=0, dest=mover_addr[0])
+    interface=host_config.check_load_balance(mode=mode, dest=mover_addr[0])
     #load balencing...
     if interface:
         ip = interface.get('ip')
@@ -930,7 +938,7 @@ def open_data_socket(mover_addr, mode=0):
     except socket.error, msg:
         #We have seen that on IRIX, when the connection succeds, we
         # get an ISCONN error.
-        if hasattr(errno, 'ISCONN') and msg[0] == errno.ISCONN:
+        if hasattr(errno, 'EISCONN') and msg[0] == errno.EISCONN:
             pass
         #The TCP handshake is in progress.
         elif msg[0] == errno.EINPROGRESS:
@@ -975,17 +983,16 @@ def open_data_socket(mover_addr, mode=0):
 #Returns:
 # (control_socket, 
 
-def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
-                    verbose):
+def mover_handshake(listen_socket, work_tickets, mover_timeout):
     ##19990723:  resubmit request after 15minute timeout.  Since the
     # unique_id is unchanged the library manager should not get
     # confused by duplicate requests.
-    timedout=0
+    #timedout=0
     while 1:  ###not (timedout or reply_read):
         #Attempt to get the control socket connected with the mover.
         try:
             control_socket, mover_address, ticket = open_control_socket(
-                listen_socket, mover_timeout, verbose)
+                listen_socket, mover_timeout)
 
         except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
@@ -1075,7 +1082,7 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
 
 ############################################################################
 
-def submit_one_request(ticket, verbose):
+def submit_one_request(ticket):
     ##start of resubmit block
     #Trace.trace(17,"write_to_hsm q'ing: %s"%(ticket,))
 
@@ -1139,7 +1146,7 @@ def open_local_file(filename, mode):
 
 ############################################################################
 
-def receive_final_dialog(control_socket, work_ticket):
+def receive_final_dialog(control_socket):
     # File has been sent - wait for final dialog with mover. 
     # We know the file has hit some sort of media.... 
     # when this occurs. Create a file in pnfs namespace with
@@ -1183,7 +1190,7 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
     #Even though the functionality is there for this to be done in
     # handle requests, this should be recieved outside since there must
     # be one... not only receiving one on error.
-    done_ticket = receive_final_dialog(control_socket, request)
+    done_ticket = receive_final_dialog(control_socket)
 
     if not e_errors.is_retriable(done_ticket['status'][0]):
         return done_ticket, 0
@@ -1304,8 +1311,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                                   [], [], 15)
         #check control socket for error.
         if read_fd:
-            socket_dict = receive_final_dialog(control_socket,
-                                               request_dictionary)
+            socket_dict = receive_final_dialog(control_socket)
             socket_status = socket_dict.get('status', (e_errors.OK , None))
             request_dictionary = combine_dict(socket_dict, request_dictionary)
 
@@ -1405,7 +1411,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                         pass
 
                 #Since a retriable error occured, resubmit the ticket.
-                lm_responce = submit_one_request(req, verbose)
+                lm_responce = submit_one_request(req)
 
             except KeyboardInterrupt:
                 exc, msg, tb = sys.exc_info()
@@ -1457,7 +1463,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                     pass
                 
             #Since a retriable error occured, resubmit the ticket.
-            lm_responce = submit_one_request(request_dictionary, verbose)
+            lm_responce = submit_one_request(request_dictionary)
 
         except KeyError:
             sys.stderr.write("Error processing resubmition of %s.\n" %
@@ -1495,7 +1501,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
 
 ############################################################################
 
-def calculate_rate(done_ticket, tinfo, verbose):
+def calculate_rate(done_ticket, tinfo):
     # calculate some kind of rate - time from beginning to wait for
     # mover to respond until now. This doesn't include the overheads
     # before this, so it isn't a correct rate. I'm assuming that the
@@ -1561,7 +1567,8 @@ def calculate_rate(done_ticket, tinfo, verbose):
                         done_ticket["mover"]["serial_num"],
                         done_ticket["mover"]["vendor_id"],
                         done_ticket["mover"]["name"],
-                        done_ticket["mover"]["media_changer"],
+                        done_ticket["mover"].get("media_changer",
+                                                 e_errors.UNKNOWN),
                         time.time() - tinfo["encp_start_time"])
 
         log_values = (done_ticket['work'],
@@ -1578,7 +1585,8 @@ def calculate_rate(done_ticket, tinfo, verbose):
                       done_ticket["mover"]["serial_num"],
                       done_ticket["mover"]["vendor_id"],
                       time.time() - tinfo["encp_start_time"],
-                      done_ticket["mover"]["media_changer"],
+                      done_ticket["mover"].get("media_changer",
+                                               e_errors.UNKNOWN),
                       #socket.gethostbyaddr(done_ticket["mover"]["hostip"])[0],
 		      done_ticket["mover"].get('data_ip',
 					       done_ticket["mover"]['host']),
@@ -1666,10 +1674,13 @@ def verify_write_request_consistancy(request_list):
 
     for request in request_list:
 
-        #Consistancy check for valid pnfs tag values.
-        for key in request['pnfs'].keys():
+        #Consistancy check for valid pnfs tag values.  These values are
+        # placed inside the 'vc' sub-ticket.
+        tags = ["file_family", "wrapper", "file_family_width",
+                "storage_group", "library"]
+        for key in tags:
             #check for values that contain letters, digits and _.
-            if not charset.is_in_charset(str(request['pnfs'][key])):
+            if not charset.is_in_charset(str(request['vc'][key])):
                 msg="Pnfs tag, %s, contains invalid characters." % (key,)
                 request['status'] = (e_errors.USERERROR, msg)
 
@@ -1682,10 +1693,10 @@ def verify_write_request_consistancy(request_list):
         #Verify that the file family width is in fact a non-
         # negitive integer.
         try:
-            expression = int(request['pnfs']['file_family_width']) < 0
+            expression = int(request['vc']['file_family_width']) < 0
             if expression:
                 raise ValueError,(e_errors.USERERROR,
-                                  request['pnfs']['file_family_width'])
+                                  request['vc']['file_family_width'])
         except ValueError:
             msg="Pnfs tag, %s, requires a non-negitive integer value."\
                  % ("file_family_width",)
@@ -1697,27 +1708,14 @@ def verify_write_request_consistancy(request_list):
                                            request)
             quit() #Harsh, but necessary.
 
-        #Consistancy check with respect to wrapper and driver.  If
-        # they don't match everything gets confused and breaks.
-        if request['vc']['wrapper'] != \
-           request['pnfs']['file_family_wrapper']:
-            msg = "Volume clerk and pnfs returned conflicting wrappers." \
-                  " VC_W=%s  PNFS_W=%s"%\
-                  (request['vc']['wrapper'],
-                   request['pnfs']['file_family_wrapper'])
-            request['status'] = (e_errors.USERERROR, msg)
-
-            print_data_access_layer_format(request['infile'],
-                                           request['outfile'],
-                                           request['file_size'], request)
-            quit() #Harsh, but necessary.
-        
 ############################################################################
 
-def set_pnfs_settings(ticket, verbose):
+def set_pnfs_settings(ticket):
+
     # create a new pnfs object pointing to current output file
     Trace.trace(20,"write_to_hsm adding to pnfs "+ ticket['outfile'])
     p=pnfs.Pnfs(ticket['outfile'])
+    t=pnfs.Tag(os.path.dirname(ticket['outfile']))
 
     try:
         # save the bfid and set the file size
@@ -1732,14 +1730,24 @@ def set_pnfs_settings(ticket, verbose):
         ticket['status'] = (str(exc), str(msg))
         return
         
-    # create volume map and store cross reference data
+    # store cross reference data
     mover_ticket = ticket.get('mover', {})
     drive = "%s:%s" % (mover_ticket.get('device', 'Unknown'),
                        mover_ticket.get('serial_num','Unknown'))
     try:
+        t.get_file_family()
+        p.get_bit_file_id()
+        p.get_id()
+
         p.set_xreference(ticket["fc"]["external_label"],
                          ticket["fc"]["location_cookie"],
                          ticket["fc"]["size"],
+                         t.file_family,
+                         p.pnfsFilename,
+                         "", #p.volume_filepath,
+                         p.id,
+                         "", #p.volume_fileP.id,
+                         p.bit_file_id,
                          drive)
     except KeyboardInterrupt:
         exc, msg, tb = sys.exc_info()
@@ -1756,9 +1764,9 @@ def set_pnfs_settings(ticket, verbose):
         fc_ticket = {}
         fc_ticket["fc"] = ticket['fc'].copy()
         fc_ticket["fc"]["pnfsid"] = p.id
-        fc_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
+        fc_ticket["fc"]["pnfsvid"] = "" #p.volume_fileP.id
         fc_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
-        fc_ticket["fc"]["pnfs_mapname"] = p.mapfile
+        fc_ticket["fc"]["pnfs_mapname"] = "" #p.mapfile
         fc_ticket["fc"]["drive"] = drive
 
         csc = get_csc()
@@ -1791,107 +1799,133 @@ def set_pnfs_settings(ticket, verbose):
     except:
         exc, msg, tb = sys.exc_info()
 	ticket['status'] = (str(exc), str(msg))
-        
+
 ############################################################################
 #Functions for writes.
 ############################################################################
 
-def create_write_request(input_file, output_file,
-                       file_size, library, file_family,
-                       ff_wrapper, width, storage_group,
-                       pinfo, pnfs, client, file_clerk_address,
-                       volume_clerk_address, callback_addr, e, tinfo):
+def create_write_requests(callback_addr, e, tinfo):
 
-    # make the part of the ticket that encp knows about (there's 
-    # more later)
-    encp = {}
-    encp["basepri"] = e.priority
-    encp["adminpri"] = e.admpri
-    encp["delpri"] = e.delpri
-    encp["agetime"] = e.age_time
-    encp["delayed_dismount"] = e.delayed_dismount
+    request_list = []
 
-    times = {'t0':tinfo['encp_start_time']}
-    
-    #If the environmental variable exists, send it to the lm.
+    ninput, file_size, inputlist, outputlist = file_check(e)
+
+    #Obtain the pnfs tag information.
     try:
-        encp_daq = os.environ['ENCP_DAQ']
-    except KeyError:
-        encp_daq = None
+        t=pnfs.Tag(os.path.dirname(outputlist[0]))
 
-    uinfo = {}
-    uinfo['uid'] = os.getuid()
-    uinfo['gid'] = os.getgid()
-    try:
-        uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
-    except:
-        uinfo['gname'] = 'unknown'
+        Trace.message(TICKET_LEVEL, "library=" + str(t.get_library()))
+        Trace.message(TICKET_LEVEL, "file family=" + str(t.get_file_family()))
+        Trace.message(TICKET_LEVEL,
+                      "wrapper =" + str(t.get_file_family_wrapper()))
+        Trace.message(TICKET_LEVEL, "width=" + str(t.get_file_family_width()))
+        Trace.message(TICKET_LEVEL,
+                      "storage group=" + str(t.get_storage_group()))
+    except (OSError, IOError), detail:
+        print_data_access_layer_format('', '', 0,
+                                       {'status':(errno.errorcode[detail.errno]
+                                                  ,detail.strerror)})
+        quit()
+
+
+    #Create the list of file requests that will be sent to the library manager.
+    for i in range(0, len(inputlist)):
+
+        #The pnfs file family may be overridden with the options --ephemeral
+        # or --file-family.  
+        if e.output_file_family:
+            file_fam = e.output_file_family
+        else:
+            file_fam = t.get_file_family()
+        
+        # make the part of the ticket that encp knows about (there's 
+        # more later)
+        encp = {}
+        encp["basepri"] = e.priority
+        encp["adminpri"] = e.admpri
+        encp["delpri"] = e.delpri
+        encp["agetime"] = e.age_time
+        encp["delayed_dismount"] = e.delayed_dismount
+
+        times = {'t0':tinfo['encp_start_time']}
+
+        #If the environmental variable exists, send it to the lm.
         try:
-            uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
-        except:
-            uinfo['uname'] = 'unknown'
-    uinfo['machine'] = os.uname()
+            encp_daq = os.environ['ENCP_DAQ']
+        except KeyError:
+            encp_daq = None
 
-    # create the wrapper subticket - copy all the user info 
-    # into for starters
-    wrapper = {}
+        uinfo = {}
+        uinfo['uid'] = os.getuid()
+        uinfo['gid'] = os.getgid()
+        try:
+            uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
+        except (ValueError, AttributeError, TypeError, IndexError):
+            uinfo['gname'] = 'unknown'
+            try:
+                uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
+            except (ValueError, AttributeError, TypeError, IndexError):
+                uinfo['uname'] = 'unknown'
+        uinfo['machine'] = os.uname()
 
-    # store the pnfs information info into the wrapper
-    for key in pinfo.keys():
-        wrapper[key] = pinfo[key]
+        p=pnfs.Pnfs(outputlist[i])
+        p.pstatinfo()
+        pinfo = get_pinfo(p)
 
-    # the user key takes precedence over the pnfs key
-    for key in uinfo.keys():
-        wrapper[key] = uinfo[key]
+        # create the wrapper subticket - copy all the user info 
+        # into for starters
+        wrapper = {}
 
-    wrapper["fullname"] = input_file
-    wrapper["type"] = ff_wrapper
-    #file permissions from PNFS are junk, replace them
-    #with the real mode
-    wrapper['mode']=os.stat(input_file)[stat.ST_MODE]
-    wrapper["sanity_size"] = 65536
-    wrapper["size_bytes"] = file_size
-    wrapper["mtime"] = int(time.time())
+        # store the pnfs information info into the wrapper
+        for key in pinfo.keys():
+            wrapper[key] = pinfo[key]
 
-    pnfs.get_file_family()
-    pnfs.get_file_family_width()
-    pnfs.get_file_family_wrapper()
-    pnfs.get_library()
-    pnfs.get_storage_group()
+        # the user key takes precedence over the pnfs key
+        for key in uinfo.keys():
+            wrapper[key] = uinfo[key]
 
-    volume_clerk = {"library"            : library,
-                    "file_family"        : file_family,
-                    # technically width does not belong here,
-                    # but it associated with the volume
-                    "file_family_width"  : width,
-                    "wrapper"            : ff_wrapper,
-                    "storage_group"      : storage_group,
-                    "address"            : volume_clerk_address}
-    file_clerk = {"address": file_clerk_address}
+        wrapper["fullname"] = inputlist[i]
+        wrapper["type"] = t.get_file_family_wrapper(), #ff_wrapper
+        #file permissions from PNFS are junk, replace them
+        #with the real mode
+        wrapper['mode']=os.stat(inputlist[i])[stat.ST_MODE]
+        wrapper["sanity_size"] = 65536
+        wrapper["size_bytes"] = file_size[i]
+        wrapper["mtime"] = int(time.time())
 
-    work_ticket = {}
-    work_ticket['callback_addr'] = callback_addr
-    work_ticket['client_crc'] = e.chk_crc
-    work_ticket['encp'] = encp
-    work_ticket['encp_daq'] = encp_daq
-    work_ticket['fc'] = file_clerk
-    work_ticket['file_size'] = file_size
-    work_ticket['infile'] = input_file
-    work_ticket['outfile'] = output_file
-    work_ticket['pnfs'] = {'file_family':pnfs.file_family,
-                           'file_family_width':pnfs.file_family_width,
-                           'file_family_wrapper':pnfs.file_family_wrapper,
-                           'library':pnfs.library,
-                           'storage_group':pnfs.storage_group}
-    work_ticket['retry'] = 0 #retry,
-    work_ticket['times'] = times
-    work_ticket['unique_id'] = generate_unique_id()
-    work_ticket['vc'] = volume_clerk
-    work_ticket['version'] = encp_client_version()
-    work_ticket['work'] = "write_to_hsm"
-    work_ticket['wrapper'] = wrapper
+        #Get the information needed to contact the file clerk, volume clerk and
+        # the library manager.
+        vcc, fcc = get_clerks()
+        volume_clerk = {"address"            : vcc.server_address,
+                        "library"            : t.get_library(),
+                        "file_family"        : file_fam,  #might be overridden
+                        # technically width does not belong here,
+                        # but it associated with the volume
+                        "file_family_width"  : t.get_file_family_width(),
+                        "wrapper"            : t.get_file_family_wrapper(),
+                        "storage_group"      : t.get_storage_group(),}
+        file_clerk = {"address" : fcc.server_address}
+
+        work_ticket = {}
+        work_ticket['callback_addr'] = callback_addr
+        work_ticket['client_crc'] = e.chk_crc
+        work_ticket['encp'] = encp
+        work_ticket['encp_daq'] = encp_daq
+        work_ticket['fc'] = file_clerk
+        work_ticket['file_size'] = file_size[i]
+        work_ticket['infile'] = inputlist[i]
+        work_ticket['outfile'] = outputlist[i]
+        work_ticket['retry'] = 0 #retry,
+        work_ticket['times'] = times
+        work_ticket['unique_id'] = generate_unique_id()
+        work_ticket['vc'] = volume_clerk
+        work_ticket['version'] = encp_client_version()
+        work_ticket['work'] = "write_to_hsm"
+        work_ticket['wrapper'] = wrapper
+
+        request_list.append(work_ticket)
     
-    return work_ticket
+    return request_list
 
 ############################################################################
 
@@ -1908,7 +1942,7 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
         ##start of resubmit block
         Trace.trace(17,"write_to_hsm q'ing: %s"%(work_ticket,))
 
-        ticket = submit_one_request(work_ticket, encp_intf.verbose)
+        ticket = submit_one_request(work_ticket)
         
         Trace.message(TICKET_LEVEL, "LIBRARY MANAGER")
         Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
@@ -1944,8 +1978,7 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
 
         #Open the control and mover sockets.
         control_socket, data_path_socket, ticket = mover_handshake(
-            listen_socket, [work_ticket], e.mover_timeout, e.max_retry,
-            e.verbose)
+            listen_socket, [work_ticket], e.mover_timeout)
 
         #Handle any possible errors occured so far.
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
@@ -2070,7 +2103,7 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
             
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
-        set_pnfs_settings(done_ticket, e.verbose)
+        set_pnfs_settings(done_ticket)
 
         #Verify that the pnfs info was set correctly.
         result_dict = handle_retries([work_ticket], work_ticket,
@@ -2110,111 +2143,42 @@ def write_to_hsm(e, tinfo):
     bytecount=None #Test moe only
     storage_info=None #DCache only
     unique_id = []
-
-    ninput, file_size, inputlist, outputlist = file_check(e)
-
-    #Snag the pnfs_information and verify that everything matches.
-    status, info = pnfs_information(outputlist,write=1)
-    if status[0] != e_errors.OK:
-        print_data_access_layer_format('','',0,{'status':status})
-        print_error(status[0], status[1])
-        quit()
-    junk,library,file_family,ff_wrapper,width,storage_group,pinfo,p=info
-
-    Trace.message(TICKET_LEVEL, "library=" + str(library))
-    Trace.message(TICKET_LEVEL, "file_family=" + str(file_family))
-    Trace.message(TICKET_LEVEL, "wrapper type=" + str(ff_wrapper))
-    Trace.message(TICKET_LEVEL, "width=" + str(width))
-    Trace.message(TICKET_LEVEL, "storage_group=" + str(storage_group))
-    Trace.message(TICKET_LEVEL, "pinfo=" + str(pinfo))
-    
-    if e.output_file_family != "":
-        for i in range(0,len(outputlist)):
-            file_family[i] = e.output_file_family
-            width[i] = 1
-
-    # note: Since multiple input files all go to 1 directory:
-    #       all libraries are the same
-    #       all file families are the same
-    #       all widths are the same
-    # be cautious and check to make sure this is indeed correct
-    for i in range(1,len(outputlist)):
-        if (library[i]!=library[0] or 
-            file_family[i]!=file_family[0] or 
-            width[i]!=width[0] or 
-            ff_wrapper[i] != ff_wrapper[0]):
-            print "library=",library
-            print "file_family=",file_family
-            print "wrapper type=",ff_wrapper
-            print "width=",width
-            print "storage_group",storage_group
-            msg =  "library, file_family, width not all the same"
-            print_data_access_layer_format('', '', 0,
-                                           {'status':(e_errors.USERERROR,msg)})
-            quit()
-
-    #Set the max attempts that can be made on a transfer.
-    max_attempts(library[0], e)
-    
-    # get a port to talk on and listen for connections
-    Trace.trace(20,'write_to_hsm calling callback.get_callback')
-    host, port, listen_socket = callback.get_callback(verbose=e.verbose)
-    callback_addr = (host, port)
-    listen_socket.listen(4)
-    Trace.trace(20,'write_to_hsm got callback host=%s port=%s listen_socket=%s'
-                % (host,port,listen_socket))
-
-    Trace.message(CONFIG_LEVEL,
-                  "Waiting for mover(s) to call back on (%s, %s)." %
-                  (host, port))
-
-    #Get the information needed to contact the file clerk, volume clerk and
-    # the library manager.
-    fc_ticket, vc_ticket, lm_ticket = get_server_info()
-    
-    file_clerk_address = (fc_ticket["hostip"], fc_ticket["port"])
-    volume_clerk_address = (vc_ticket["hostip"], vc_ticket["port"])
-
-    Trace.message(CONFIG_LEVEL,
-                  "File clerk address: " + str(file_clerk_address))
-    Trace.message(CONFIG_LEVEL,
-                  "Volume clerk address: " + str(volume_clerk_address))
-    
-    file_fam = None
-    #ninput = len(input_files)
-    #files_left = ninput
     bytes = 0L
     exit_status = 0 #Used to determine the final message text.
 
+    # get a port to talk on and listen for connections
+    (host, port, listen_socket) = callback.get_callback(verbose=e.verbose)
+    callback_addr = (host, port)
+    listen_socket.listen(4)
+
+    Trace.message(CONFIG_LEVEL,
+                  "Waiting for mover(s) to call back on (%s, %s)." %
+                  callback_addr)
+
+    #Build the dictionary, work_ticket, that will be sent to the
+    # library manager.
+    request_list = create_write_requests(callback_addr, e, tinfo)
+
+    #This will halt the program if everything isn't consistant.
+    verify_write_request_consistancy(request_list)
+
+    #Set the max attempts that can be made on a transfer.
+    #max_attempts(t.get_library(), e)
+
     # loop on all input files sequentially
-    for i in range(0,ninput):
+    for i in range(0,len(request_list)):
         lap_start = time.time() #------------------------------------Lap Start
 
-        Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % str(ninput - i))
+        Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % str(len(request_list)-i))
 
-        if file_fam: ###???
-            rq_file_family = file_fam
-        else:
-            rq_file_family = file_family[i]
-
-
-        #Build the dictionary, work_ticket, that will be sent to the
-        # library manager.
-        work_ticket = create_write_request(inputlist[i], outputlist[i],
-                           file_size[i], library[i], rq_file_family,
-                           ff_wrapper[i], width[i], storage_group[i],
-                           pinfo[i], p, callback_addr, file_clerk_address,
-                           volume_clerk_address, callback_addr, e, tinfo)
-
+        work_ticket = request_list[i]
         Trace.message(TICKET_LEVEL, "WORK_TICKET")
         Trace.message(TICKET_LEVEL, pprint.pformat(work_ticket))
 
-        #This will halt the program if everything isn't consistant.
-        verify_write_request_consistancy([work_ticket])
 
         Trace.message(TRANSFER_LEVEL,
-                      "Sending ticket to %s.library manager,  elapsed=%s" %
-                      (library[i], time.time() - tinfo['encp_start_time']))
+                      "Sending ticket to library manager,  elapsed=%s" %
+                      (time.time() - tinfo['encp_start_time'],))
 
         #Send the request to write the file to the library manager.
         done_ticket = submit_write_request(work_ticket, tinfo, e)
@@ -2224,7 +2188,9 @@ def write_to_hsm(e, tinfo):
 
         Trace.message(TRANSFER_LEVEL,
               "File queued: %s library: %s family: %s bytes: %d elapsed=%s" %
-                      (inputlist[i], library[i], rq_file_family, file_size[i],
+                      (work_ticket['infile'], work_ticket['vc']['library'],
+                       work_ticket['vc']['file_family'],
+                       long(work_ticket['file_size']),
                        time.time() - tinfo['encp_start_time']))
 
         #handle_retries() is not required here since submit_write_request()
@@ -2247,11 +2213,11 @@ def write_to_hsm(e, tinfo):
 
         bytes = bytes + done_ticket['file_size']
 
-        if (i == 0 and rq_file_family == "ephemeral"):
-            file_fam = string.split(done_ticket["vc"]["file_family"], ".")[0]
+        if (i == 0 and e.output_file_family):  # == "ephemeral"):
             Trace.message(DONE_LEVEL,
                           "New file family %s has been created for "
-                          "--ephemeral RQ" % (file_fam,))
+                          "--ephemeral or --file-family request." %
+                          (e.output_file_family,))
 
         tstring = '%s_elapsed_finished' % done_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_start #-------------------------End
@@ -2263,18 +2229,19 @@ def write_to_hsm(e, tinfo):
         # neglected are small so the quoted rate is close
         # to the right one.  In any event, I calculate an 
         # overall rate at the end of all transfers
-        calculate_rate(done_ticket, tinfo, e.verbose)
+        calculate_rate(done_ticket, tinfo)
         
     # we are done transferring - close out the listen socket
     close_descriptors(listen_socket)
 
     #Finishing up with a few of these things.
-    calc_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
+    calc_ticket = calculate_final_statistics(bytes, len(request_list),
+                                             exit_status, tinfo)
 
     #If applicable print new file family.
-    if file_family[0] == "ephemeral":
+    if e.output_file_family:
         ff = string.split(done_ticket["vc"]["file_family"], ".")
-        Trace.message(DONE_LEVEL, "New File Family Created: %s" % ff[0])
+        Trace.message(DONE_LEVEL, "New File Family Created: %s" % ff)
 
     Trace.message(TICKET_LEVEL, "DONE TICKET")
     Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
@@ -2294,7 +2261,7 @@ def write_to_hsm(e, tinfo):
 def same_cookie(c1, c2):
     try: # just to be paranoid
         return string.split(c1, '_')[-1] == string.split(c2, '_')[-1]
-    except:
+    except (ValueError, AttributeError, TypeError, IndexError):
         return 0
 
 
@@ -2314,7 +2281,7 @@ def verify_read_request_consistancy(requests_per_vol):
         request_list = requests_per_vol[vol]
 
         #Only aquire the first loop.  This might be a performance hit for
-        # a large number of requests.
+        # a large number of requests otherwise.
         if not bfid_brand:
             bfid_brand = requests_per_vol[vol][0]['fc']['bfid']
 
@@ -2373,7 +2340,8 @@ def verify_read_request_consistancy(requests_per_vol):
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
 
-            if request['fc']['bfid'] != bfid_brand:
+            if request['fc']['bfid'][:4] != bfid_brand[:4]:
+                print request['fc']['bfid'], bfid_brand
                 msg = "All bfids must have the same brand."
                 request['status'] = (e_errors.USERERROR, msg)
                 print_data_access_layer_format(request['infile'],
@@ -2383,69 +2351,34 @@ def verify_read_request_consistancy(requests_per_vol):
 
 #######################################################################
 
-def get_clerks_info(bfid):
+def get_clerks_info(vcc, fcc, bfid):
 
-    #Snag the configuration server client for the system that contains the
-    # file clerk where the file was stored.  This is determined based on
-    # the bfid's brand.
-    csc = get_csc(bfid)
+    fc_ticket = fcc.bfid_info(bfid=bfid)
 
-    #Get the file clerk information.
-    fcc = file_clerk_client.FileClient(csc, bfid)
-    fc_ticket = fcc.bfid_info()
-
-    if fc_ticket['status'][0] != e_errors.OK:
-        print_data_access_layer_format('', '', 0, fc_ticket)
-        quit()
-        
-    #Get the volume clerk information.
-    vcc = volume_clerk_client.VolumeClerkClient(csc)
     vc_ticket = vcc.inquire_vol(fc_ticket['external_label'])
-
-    if vc_ticket['status'][0] != e_errors.OK:
-        print_data_access_layer_format('', '', 0, vc_ticket)
-        quit()
-
-    Trace.trace(17,"read_from_hsm on volume=%s"%
-                (fc_ticket['external_label'],))
     
+
     inhibit = vc_ticket['system_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        msg = "volume is marked " + inhibit
-        vc_ticket['status'] = inhibit, msg
-        #if inhibit==e_errors.NOACCESS:
-        #    msg="Volume is marked NOACCESS"
-        #else:
-        #    msg="Volume is marked NOTALLOWED"
-        #raise inhibit, msg
-        
+        raise EncpError(None,
+                        "volume %s is marked %s"%(fc_ticket['external_label'],
+                                                  inhibit),
+                        inhibit, vc_ticket)
+
     inhibit = vc_ticket['user_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        msg = "volume is marked " + inhibit
-        vc_ticket['status'] = inhibit, msg
-        #if inhibit==e_errors.NOACCESS:
-        #    msg="Volume is marked NOACCESS"
-        #else:
-        #    msg="Volume is marked NOTALLOWED"
-        #raise inhibit, msg
-        
+        raise EncpError(None,
+                        "volume %s is marked %s"%(fc_ticket['external_label'],
+                                                  inhibit),
+                        inhibit, vc_ticket)
+
     if fc_ticket["deleted"] == "yes":
-        #raise (e_errors.DELETED, "File has been deleted")
-        fc_ticket['status'] = (e_errors.DELETED, "File has been deleted")
+        raise EncpError(None,
+                        "volume %s is marked %s"%(fc_ticket['external_label'],
+                                                  e_errors.DELETED),
+                        e_errors.DELETED, vc_ticket)
 
-    #Verify that the external labels named by the file clerk and volume
-    # clerk are the same.
-    if vc_ticket['external_label'] != fc_ticket['external_label']:
-        msg = "External labels retrieved from file and volume clerks " \
-              "are not the same.\n" \
-              "From file clerk: %s\n" \
-              "From volume clerk: %s\n" % \
-              (fc_ticket['external_label'],
-               vc_ticket['external_label'])
-        #raise (e_errors.BROKEN, msg)
-        fc_ticket['status'] = vc_ticket['status'] = (e_errors.BROKEN, msg)
-
-    return fc_ticket, vc_ticket
+    return vc_ticket, fc_ticket
 
 ############################################################################
 
@@ -2491,41 +2424,35 @@ def verify_file_size(ticket):
 #Functions for reads.
 #######################################################################
 
-def create_read_requests(inputlist, outputlist, file_size,
-                         callback_addr, tinfo, e, bfid, pinfo,
-                         file_clerk_address, volume_clerk_address):
+def create_read_requests(callback_addr, tinfo, e):
 
     nfiles = 0
     requests_per_vol = {}
+
+    vcc = fcc = None #Initialize these, so that they can be set only once.
+
+    ninput, file_size, inputlist, outputlist = file_check(e)
+    
     #Create the list of file requests that will be sent to the library manager.
     for i in range(0, len(inputlist)):
-        
-        Trace.trace(17,"read_from_hsm calling file clerk for bfid=%s"%(bfid[i],))
 
-        #Get the information from the file and volume clerks.
         try:
-            fc_reply = {}
-            vc_reply = {}
-            fc_reply, vc_reply = get_clerks_info(bfid[i])
+            p = pnfs.Pnfs(inputlist[i])
+            p.pstatinfo()
+            bfid = p.get_bit_file_id()
+            pinfo = get_pinfo(p)
+        except (OSError, IOError), detail:
+            continue
 
-            if fc_reply['status'][0] != e_errors.OK:
-                error_ticket = {'fc':fc_reply, 'vc':vc_reply}
-                error_ticket['status'] = fc_reply['status']
-                print_data_access_layer_format(inputlist[i], outputlist[i],
-                                              error_ticket['fc'].get('size',0),
-                                               error_ticket)
-                raise fc_reply['status'][0]
+        #only do this the first time.
+        if not vcc or not fcc:
+            vcc, fcc = get_clerks(bfid)
 
-            elif vc_reply['status'][0] != e_errors.OK:
-                error_ticket = {'fc':fc_reply, 'vc':vc_reply}
-                error_ticket['status'] = vc_reply['status']
-                print_data_access_layer_format(inputlist[i], outputlist[i],
-                                              error_ticket['fc'].get('size',0),
-                                               error_ticket)
-                raise vc_reply['status'][0]
-
-        except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED,
-                e_errors.BROKEN):
+        try:
+            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
+            fc_reply['address'] = fcc.server_address
+            vc_reply['address'] = vcc.server_address
+        except EncpError, detail:
             continue
 
         Trace.message(TICKET_LEVEL, "FILE CLERK:")
@@ -2535,7 +2462,7 @@ def create_read_requests(inputlist, outputlist, file_size,
 
         try:
             # comment this out not to confuse the users
-            # if fc_reply.has_key("fc") or fc_reply.has_key("vc"):
+            #if fc_reply.has_key("fc") or fc_reply.has_key("vc"):
             #    sys.stderr.write("Old file clerk format detected.\n")
             del fc_reply['fc'] #Speed up debugging by removing these.
             del fc_reply['vc']
@@ -2563,34 +2490,42 @@ def create_read_requests(inputlist, outputlist, file_size,
 
         label = fc_reply['external_label']
         vf = vc_reply['volume_family']
-        vc_reply['address'] = volume_clerk_address
+        #vc_reply['address'] = volume_clerk_address
         vc_reply['storage_group']=volume_family.extract_storage_group(vf)
         vc_reply['file_family'] = volume_family.extract_file_family(vf)
         vc_reply['wrapper'] = volume_family.extract_wrapper(vf)
-        fc_reply['address'] = file_clerk_address
+        #fc_reply['address'] = file_clerk_address
 
         uinfo = {}
         uinfo['uid'] = os.getuid()
         uinfo['gid'] = os.getgid()
         try:
             uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
-        except:
+        except (ValueError, AttributeError, TypeError, IndexError):
             uinfo['gname'] = 'unknown'
             try:
                 uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
-            except:
+            except (ValueError, AttributeError, TypeError, IndexError):
                 uinfo['uname'] = 'unknown'
         uinfo['machine'] = os.uname()
         #uinfo['fullname'] = "" # will be filled in later for each transfer
-        
-        #pnfs.get_file_family()
-        #pnfs.get_file_family_width()
-        #pnfs.get_file_family_wrapper()
-        #pnfs.get_library()
-        #pnfs.get_storage_group()
+
+        wrapper = {}
+
+        # store the pnfs information info into the wrapper
+        for key in pinfo.keys():
+            wrapper[key] = pinfo[key]
+
+        # the user key takes precedence over the pnfs key
+        for key in uinfo.keys():
+            wrapper[key] = uinfo[key]
+
+        wrapper['fullname'] = outputlist[i]
+        wrapper['sanity_size'] = 65536
+        wrapper['size_bytes'] = file_size[i]
         
         request = {}
-        request['bfid'] = bfid[i]
+        request['bfid'] = bfid
         request['callback_addr'] = callback_addr
         request['client_crc'] = e.chk_crc
         request['encp'] = encp_el
@@ -2599,11 +2534,6 @@ def create_read_requests(inputlist, outputlist, file_size,
         request['file_size'] = file_size[i]
         request['infile'] = inputlist[i]
         request['outfile'] = outputlist[i]
-        #request['pnfs'] = {'file_family':pnfs.file_family,
-        #                   'file_family_width':pnfs.file_family_width,
-        #                   'file_family_wrapper':pnfs.file_family_wrapper,
-        #                   'library':pnfs.library,
-        #                   'storage_group':pnfs.storage_group}
         request['retry'] = 0
         request['times'] = times
         request['unique_id'] = generate_unique_id()
@@ -2611,19 +2541,7 @@ def create_read_requests(inputlist, outputlist, file_size,
         request['version'] = encp_client_version()
         request['volume'] = label
         request['work'] = 'read_from_hsm'
-        request['wrapper'] = {}
-
-        # store the pnfs information info into the wrapper
-        for key in pinfo[i].keys(): #request['pinfo'].keys():
-            request['wrapper'][key] = pinfo[i][key] #request['pinfo'][key]
-
-        # the user key takes precedence over the pnfs key
-        for key in uinfo.keys():
-            request['wrapper'][key] = uinfo[key]
-
-        request['wrapper']['fullname'] = request['outfile']
-        request['wrapper']['sanity_size'] = 65536
-        request['wrapper']['size_bytes'] = request['file_size']
+        request['wrapper'] = wrapper
 
         requests_per_vol[label] = requests_per_vol.get(label,[]) + [request]
         nfiles = nfiles+1
@@ -2648,7 +2566,7 @@ def submit_read_requests(requests, tinfo, encp_intf):
 
             Trace.trace(18, "submit_read_requests queueing:%s"%(req,))
 
-            ticket = submit_one_request(req, encp_intf.verbose)
+            ticket = submit_one_request(req)
 
             Trace.message(TICKET_LEVEL, "LIBRARY MANAGER")
             Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
@@ -2702,9 +2620,7 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         control_socket, data_path_socket, request_ticket = mover_handshake(
             listen_socket,
             request_list,
-            e.mover_timeout,
-            e.max_retry,
-            e.verbose)
+            e.mover_timeout)
 
         done_ticket = request_ticket #Make sure this exists by this point.
         result_dict = handle_retries(request_list, request_ticket,
@@ -2840,7 +2756,7 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         # overheads I've neglected are small so the quoted rate is close
         # to the right one.  In any event, I calculate an overall rate at
         # the end of all transfers
-        calculate_rate(done_ticket, tinfo, e.verbose)
+        calculate_rate(done_ticket, tinfo)
 
         #With the transfer a success, we can now add the ticket to the list
         # of succeses.
@@ -2901,19 +2817,6 @@ def read_from_hsm(e, tinfo):
 
     ninput, file_size, inputlist, outputlist = file_check(e)
 
-    #Get the pnfs information.
-    #Both status and info are tuples.
-    status, info = pnfs_information(inputlist,write=0)
-    if status[0] != e_errors.OK:
-        print_data_access_layer_format('', '', 0, {'status':status})
-        print_error(status[0], status[1])
-        quit()
-    (bfid,junk,junk,junk,junk,junk,pinfo,p)= info
-
-    Trace.message(TICKET_LEVEL, "bfid=%s" % bfid)
-    Trace.message(TICKET_LEVEL, "pinfo=%s" % pinfo)
-    Trace.message(TICKET_LEVEL, "p=%s" % p)
-
     # get a port to talk on and listen for connections
     Trace.trace(20,'read_from_hsm calling callback.get_callback')
     host, port, listen_socket = callback.get_callback(verbose = e.verbose)
@@ -2924,26 +2827,10 @@ def read_from_hsm(e, tinfo):
                   "Waiting for mover(s) to call back on (%s, %s)." %
                   (host, port))
 
-    #Contact the configuration server for the file clerk, volume clerk and
-    # library manager addresses.  To support bfid branding, this will also
-    # take a branded bfid.  This assumes that all the bifds in the transfer,
-    # have the same brand, which is checked in verify_read_request_consistancy.
-    fc_ticket, vc_ticket, lm_ticket = get_server_info(bfid=bfid[0])
-
-    file_clerk_address = (fc_ticket["hostip"], fc_ticket["port"])
-    volume_clerk_address = (vc_ticket["hostip"], vc_ticket["port"])
-
-    Trace.message(CONFIG_LEVEL,
-                  "File clerk address: %s" % str(file_clerk_address))
-    Trace.message(CONFIG_LEVEL,
-                  "Volume clerk address: %s" % str(volume_clerk_address))
-
     #Create all of the request dictionaries.
-    requests_per_vol = create_read_requests(inputlist, outputlist, file_size,
-                                            callback_addr, tinfo, e, bfid,
-                                            pinfo, file_clerk_address,
-                                            volume_clerk_address)
+    requests_per_vol = create_read_requests(callback_addr, tinfo, e)
 
+    #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
         quit()
 
@@ -3109,7 +2996,8 @@ class encp(interface.Interface):
             pnfs_id = sys.argv[-2]
             local_file = sys.argv[-1]
             #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
-            p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
+            #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
+            p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
             p.get_path()
             remote_file = p.path
             #self.args[0:2] = [remote_file[0][:-1], local_file]
@@ -3118,7 +3006,8 @@ class encp(interface.Interface):
             pnfs_id = sys.argv[-2]
             local_file = sys.argv[-1]
             #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
-            p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
+            #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
+            p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
             p.get_path()
             remote_file = p.path
             #self.args[0:2] = [local_file, remote_file[0][:-1]]
@@ -3259,7 +3148,7 @@ def main():
             Trace.message(DONE_LEVEL, str(status[1]))
 
     except ValueError:
-        exc, msg, tb = sys.exc_inf()
+        exc, msg, tb = sys.exc_info()
         sys.stderr.write("Error (main): %s: %s\n" % (str(exc), str(msg)))
         sys.stderr.write("Exit status: %s\n", exit_status)
 
