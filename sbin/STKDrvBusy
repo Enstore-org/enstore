@@ -45,10 +45,10 @@ case $command in
 	 n9940b=`grep "T9940B" $dinfo | grep "   0, 0," | grep -c "in use"`
 	 a9940b=`grep "T9940B" $dinfo | grep "   0, 0," | grep -c "online"`
 	 echo "$now $n9840 $a9840 $n9940a $a9940a $n9940b $a9940b" >>$busy
-	 n9940a=`grep "T9940A" $dinfo | grep "   1, 0," | grep -c "in use"`
-	 a9940a=`grep "T9940A" $dinfo | grep "   1, 0," | grep -c "online"`
-	 n9940b=`grep "T9940B" $dinfo | grep "   1, 0," | grep -c "in use"`
-	 a9940b=`grep "T9940B" $dinfo | grep "   1, 0," | grep -c "online"`
+	 n9940a=`grep "T9940A" $dinfo | grep "   1, 1," | grep -c "in use"`
+	 a9940a=`grep "T9940A" $dinfo | grep "   1, 1," | grep -c "online"`
+	 n9940b=`grep "T9940B" $dinfo | grep "   1, [01]," | grep -c "in use"`
+	 a9940b=`grep "T9940B" $dinfo | grep "   1, [01]," | grep -c "online"`
 	 echo "$now $n9940a $a9940a $n9940b $a9940b" >>$busy_d0
 
 	elif [ $node = $getnode_cdf ] ; then
