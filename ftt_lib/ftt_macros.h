@@ -35,7 +35,7 @@
 	return;							\
     }
 
-#define CKOK(d,name,writes,recovers) \
+#define CKOK(d,name,writes,recovers) 					\
     char *_name = name;							\
 									\
     DEBUG1(stderr, "Entering %s\n", _name);	 			\
@@ -45,6 +45,11 @@
     }									\
     if ( d && d->unrecovered_error && !recovers )  {			\
 	ftt_errno = FTT_EUNRECOVERED;					\
+	return -1;							\
+    }									\
+    if (d && d->async_pid != 0) {					\
+	ftt_errno = FTT_EBUSY;						\
+	ftt_eprintf("%s: Returning FTT_EBUSY because an asynchronous operation is still pending, pid %d", _name, d->async_pid);				\
 	return -1;							\
     }									\
     if ( d && d->unrecovered_error && recovers )  {			\

@@ -55,8 +55,8 @@ ftt_set_hwdens_blocksize(ftt_descriptor d, int hwdens, int blocksize) {
 	DEBUG3(stderr,"Looking for last / in %s, found %s\n", d->basename, logical);
 	if (logical != 0) {
 	    logical++;
-	    sprintf(cmd, "chdev -l %s -a block_size=%d >/dev/null 2>&1\n", 
-			logical, blocksize);
+	    sprintf(cmd, "chdev -l %s -a block_size=%d -a density_set_2=%d >/dev/null 2>&1\n", 
+			logical, blocksize, hwdens);
 	    DEBUG3(stderr,"Running \"%s\" to change blocksize\n", cmd);
 	    system(cmd);
 	}

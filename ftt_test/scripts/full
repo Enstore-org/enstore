@@ -17,6 +17,6 @@ ftt_rewind
 
 ftt_max_error 2
 ftt_write_tblock -nblock 1000000 -bsize 65534 
-ftt_status -FTT_AEOT
+ftt_test_status -FTT_AEOT
 ftt_close
 EOD

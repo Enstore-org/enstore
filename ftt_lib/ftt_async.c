@@ -67,7 +67,10 @@ ftt_fork(ftt_descriptor d) {
 int
 ftt_check(ftt_descriptor d) {
     
-    CKOK(d,"ftt_check",0,0);
+    /*
+    ** can't use CKOK 'cause it fails when theres an unwaited for task!
+    */
+    ENTERING("ftt_check");
     CKNULL("ftt_descriptor", d);
 
     DEBUG3(stderr,"looking for pid %d\n", d->async_pid);
@@ -84,6 +87,9 @@ int
 ftt_wait(ftt_descriptor d) {
     int len;
 
+    /*
+    ** can't use CKOK 'cause it fails when theres an unwaited for task!
+    */
     ENTERING("ftt_wait");
     CKNULL("ftt_descriptor", d);
 
@@ -116,7 +122,11 @@ void
 ftt_report(ftt_descriptor d) {
     int e; char *p;
 
-    char *_name = "ftt_report";
+    /*
+    ** Can't use CKOK or ENTERING macro, 'cause it clears the errors we 
+    ** want to report!
+    */
+    char *_name = "ftt_report";			
     DEBUG1(stderr,"Entering ftt_report");
     VCKNULL("ftt_descriptor", d);
 

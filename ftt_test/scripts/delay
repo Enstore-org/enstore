@@ -16,9 +16,9 @@ ftt_test << EOD
 ftt_open
 ftt_rewind
 
-ftt_write_tblock -nblock 10000 -bsize 8096 -delta 8096 -delay 5
+ftt_write_tblock -nblock 1000 -bsize 8096 -delta 8096 -delay 5
 ftt_rewind
-ftt_verify_tblock -nblock 10000 -delay 5
+ftt_verify_tblock -nblock 1000 -delay 5
 ftt_rewind
 ftt_close
 EOD

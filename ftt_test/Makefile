@@ -13,12 +13,18 @@ OBJ= ftt_t_cmdline.o ftt_t_cmdloop.o ftt_t_cmdproc.o ftt_t_parse.o \
 # CFLAGS=-I. -I../ftt_lib -g -xansi -fullwarn 
 CFLAGS=-I. -I../ftt_lib -g 
 
-all: ftt_test
+all: ftt_test ftt_random
 
 install: all
 	cp libftt_test.a $(FTT_DIR)/lib
+	-mv $(FTT_DIR)/test $(FTT_DIR)/test.bak
+	-mv $(FTT_DIR)/random $(FTT_DIR)/random.bak
 	cp ftt_test $(FTT_DIR)/test
+	cp ftt_random $(FTT_DIR)/random
+	-mv $(FTT_DIR)/bin/ftt_test $(FTT_DIR)/bin/ftt_test.bak
+	-mv $(FTT_DIR)/bin/ftt_random $(FTT_DIR)/bin/ftt_random.bak
 	cp ftt_test $(FTT_DIR)/bin
+	cp ftt_random $(FTT_DIR)/bin
 
 libftt_test.a: $(OBJ)
 	rm -f libftt_test.a
@@ -26,3 +32,6 @@ libftt_test.a: $(OBJ)
 
 ftt_test: ftt_test.c libftt_test.a ../lib/libftt.a 
 	$(CC) $(CFLAGS) -o ftt_test ftt_test.c  $(LIBS)
+
+ftt_random: ftt_random.c libftt_test.a ../lib/libftt.a 
+	$(CC) $(CFLAGS) -o ftt_random ftt_random.c  $(LIBS)

@@ -47,6 +47,7 @@ slides.ps: $(PRINTEM)
 
 install: all
 	cp libftt.a $(FTT_DIR)/lib
+	cp local/libs $(FTT_DIR)/lib
 	rm -f $(FTT_DIR)/bin/ftt_suid
 	cp ftt_suid $(FTT_DIR)/bin
 	cp ftt.h ftt_common.h ftt_scsi.h ftt_voidtypes.h ftt_defines.h \

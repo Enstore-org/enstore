@@ -241,6 +241,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     CKNULL("statistics buffer pointer", b);
 
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
+	ftt_close_dev(d);
 	switch(ftt_fork(d)){
 	case -1:
 		return -1;
@@ -330,6 +331,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_MS) {
+
 	static unsigned char cdb_mode_sense[]= {0x1a, 0x00, 0x00, 0x00,   18, 0x00};
 
 	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 18, 10, 0);
@@ -360,6 +362,19 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		    break;
 		}
 	    }
+	}
+    }
+    if (stat_ops & FTT_DO_SCSI2_MS) {
+	static unsigned char cdb_s2_mode_sense[]= 
+			{ 0x1a, 0x08, 0x10, 0x00,   20, 0x00};
+
+	res = ftt_do_scsi_command(d,"mode sense",cdb_s2_mode_sense, 
+				  6, buf, 20, 10, 0);
+	if(res < 0){
+	    ftt_errno = FTT_EPARTIALSTAT;
+	    return res;
+	} else {
+	    set_stat(b,FTT_TRANS_COMPRESS,     itoa((long)buf[18]), 0);
 	}
     }
     if (stat_ops & FTT_DO_RS) {
@@ -449,7 +464,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		*/
 #define 	EXB_FUDGE_FACTOR 1279
 		error_count = pack(0,buf[16],buf[17],buf[18]);
-		if (d->data_direction == FTT_DIR_READING) {
+		
+		if (d->data_direction ==  FTT_DIR_READING) {
 		    set_stat(b,FTT_READ_ERRORS,itoa(error_count),0);
 		    set_stat(b,FTT_READ_COUNT,itoa(
 			tape_size - remain_tape - EXB_FUDGE_FACTOR),0);
@@ -462,7 +478,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		    set_stat(b,FTT_READ_ERRORS,"0",0);
 		    set_stat(b,FTT_READ_COUNT,"0",0);
 		}
-	        set_stat(b,FTT_COUNT_ORIGIN,"Exabyte Extended Sense",0);
+	        set_stat(b,FTT_COUNT_ORIGIN,"Exabyte_Extended_Sense",0);
 	    }
 	    if (stat_ops & FTT_DO_05RS) {
 		set_stat(b,FTT_TRACK_RETRY, itoa((long)buf[26]), 0);
@@ -501,7 +517,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    decrypt_ls(b,buf,3,FTT_WRITE_ERRORS,1);
 	    decrypt_ls(b,buf,5,FTT_WRITE_COUNT,1024);
 	}
-	set_stat(b,FTT_COUNT_ORIGIN,"Log Sense",0);
+	set_stat(b,FTT_COUNT_ORIGIN,"Log_Sense",0);
     }
     if (stat_ops & FTT_DO_LSC) {
 	static unsigned char cdb_log_sensec[]= {0x4d, 0x00, 0x72, 0x00, 0x00, 

@@ -37,7 +37,7 @@ FTT_TAPE=${FTT_TAPE:?"No device specified"}
 
 echo "==============================================================="
 echo "doing all of the fast ftt tests using $FTT_TAPE. This will be "
-echo "VERY slow. It may echo "take several hours"
+echo "VERY slow. It may take several hours"
 echo "==============================================================="
 
 echo "==============================================================="

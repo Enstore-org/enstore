@@ -325,7 +325,7 @@ ftt_undump_stats(ftt_stat_buf b, FILE *pf) {
 	** line we have read in is that stat we set it
 	** and get the next line.
 	*/
-	fscanf(pf, "%s is %s\n", name, value);
+	fscanf(pf, "%s is %[a-zA-Z0-9 ]\n", name, value);
 	for( i = 0 ; i < FTT_MAX_STAT; i++ ) {
 	    if (0 != b->value[i]) {
 		free(b->value[i]);

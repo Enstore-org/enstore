@@ -116,7 +116,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	}
 	res = write(d->file_descriptor, buf, length);
 	d->last_operation = FTT_OP_WRITE;
-	res = ftt_translate_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write() system call",1);
+	res = ftt_translate_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write() system call",0);
     }
     if (res > 0) {
 	d->writelo += res;

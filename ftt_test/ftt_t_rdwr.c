@@ -99,6 +99,7 @@ FTT_T_CHECK_ESTATUS (estatus_str, estatus);	/* check expected status opt */
 /* do the write(s)
    --------------- */
 
+srandom ((int) time(NULL));
 for (i = 0; i < nblock; i++)
    {
    int fileno, blockno;
@@ -195,6 +196,7 @@ else
 /* do the read(s)
    --------------- */
 
+srandom ((int) time(NULL));
 for (i = 0; i < nblock; i++)
    {
    int fileno, blockno;
