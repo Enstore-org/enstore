@@ -171,7 +171,7 @@ case $cmd in
     ;;
 
   Estop)
-    if [ -z "${1-}" ] ; then farmlet=enstore-down; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estop"    
+    if [ -z "${1-}" ] ; then farmlet=enstore-down; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estop"
     stat=$?
     ;;
 
@@ -186,7 +186,11 @@ case $cmd in
     ;;
 
   Esys)
-    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "ps auxww | egrep 'python|ecmd|encp|reader|writer|dasadmin|mt |db_'" 
+    # yes, I need 3 \'s because of all the durn evals
+    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet \
+	"if   [ \\\`uname\\\` = Linux ]; then ps auxww |  egrep 'python|ecmd|encp|reader|writer|dasadmin|mt |db_';
+	 elif [ \\\`uname\\\` = SunOS ]; then ps -ef   |  egrep 'python|ecmd|encp|reader|writer|dasadmin|mt |db_';
+         fi"
     stat=$?
     ;;
 
