@@ -343,7 +343,6 @@ class Mover:
 
         # open the hsm file for reading and read it
         try:
-	    print "Trying to open file" 
             self.driver.open_file_read(ticket["file_clerk"]["bof_space_cookie"])
             (bytes_sent, complete_crc) = self.wrapper.read(sanity_cookie)
              #print "cpio.read  size:",wr_size,"crc:",complete_crc
@@ -402,7 +401,6 @@ class Mover:
         ticket["driver"] = dinfo
 
         # tell user
-        pprint.pprint(ticket)
         self.logc.send(log_client.INFO,2,"READ"+str(ticket))
         self.send_user_last(ticket)
 

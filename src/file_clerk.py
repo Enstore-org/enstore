@@ -90,9 +90,6 @@ class FileClerkMethods(DispatchingWorker) :
         # everything is based on bfid - make sure we have this
         try:
             key="bfid"
-	    print "FILE CLERK"
-	    pprint.pprint(ticket["file_clerk"])
-	    print "=========================="
             bfid = ticket["file_clerk"][key]
             #bfid = ticket[key]
         except KeyError:
