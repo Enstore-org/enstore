@@ -30,9 +30,9 @@ NCDF=9999
 NENS=9999
 
 D0="`$CHECK  d0ensrv1:/usr/local/etc/farmlets/d0*  /usr/local/etc/farmlets/ 2>/dev/null`"
-STK=`$CHECK stkensrv1:/usr/local/etc/farmlets/stk* /usr/local/etc/farmlets/ 2>/dev/null`"
-CDF=`$CHECK cdfensrv1:/usr/local/etc/farmlets/cdf* /usr/local/etc/farmlets/ 2>/dev/null`"
-ENS=`$CHECK ${gang}srv1:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/ 2>/dev/null`
+STK="`$CHECK stkensrv1:/usr/local/etc/farmlets/stk* /usr/local/etc/farmlets/ 2>/dev/null`"
+CDF="`$CHECK cdfensrv1:/usr/local/etc/farmlets/cdf* /usr/local/etc/farmlets/ 2>/dev/null`"
+ENS="`$CHECK ${gang}srv1:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/ 2>/dev/null`"
 
 ND0=`echo "$D0"  |awk '/Number of files transferred:/ {print $NF}'`
 NSTK=`echo "$STK"|awk '/Number of files transferred:/ {print $NF}'`
@@ -43,6 +43,7 @@ if [ $ND0  != 0 ]; then echo "$D0" ; fi
 if [ $NSTK != 0 ]; then echo "$STK"; fi
 if [ $NCDF != 0 ]; then echo "$CDF"; fi
 if [ $NENS != 0 ]; then echo "$ENS"; fi
+echo ND0=$ND0 NSTK=$NSTK NCDF=$NCDF NENS=$NENS
 
 if [ $ND0 != 0 -o  $NSTK != 0 -o $NCDF != 0 -o $NENS != 0 ]; then
     msg="`date` BAD CONFIGURATION: Farmlet mismatch ND0=$ND0 NSTK=$NSTK NCDF=$NCDF NENS=$NENS"
