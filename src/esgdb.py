@@ -104,5 +104,13 @@ class SGDb:
 			keys.append((lib, sg))
 		return keys
 
+	def list_sg_count(self):
+		q = "select library || '.' || storage_group, count from sg_count;"
+		res = {}
+		res2 = self.db.query(q).getresult()
+		for i in res2:
+			res[i[0]] = i[1]
+		return res
+
 	def __len__(self):
 		return self.db.query('select * from %s;'%(self.table)).ntuples()
