@@ -97,7 +97,7 @@ else
          fi
          chmod 644 $asc
 #         nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc $arpt
-         nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc
+#         nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc
 #         chmod 644 $arpt
       fi
     fi
