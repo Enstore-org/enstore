@@ -148,6 +148,8 @@ check_owner() { theUsr=${2:-enstore}
 #
 # Also check file mode against 3rd argument, if present, and
 # confirm that files under /etc or /root are owned by root.
+# Note that the 3rd argument, if specified, must be in octal,
+# with a leading 0 (for example, 0755).
 right_file() { if [ ! -r $1 -o ! -r $2 ]; then
 		  msg1="BAD CONFIGURATION: $1 $2 do not both exist"
 		  logit "$msg1"
@@ -653,7 +655,7 @@ case $node in
        logit "httpd web server running, ok"
     fi
     for i in $ENSTORE/src/*_cgi.py; do
-       right_file $i /local/ups/prd/httpd/cgi-bin/enstore/`basename $i` 755
+       right_file $i /local/ups/prd/httpd/cgi-bin/enstore/`basename $i` 0755
     done
     ;;
 # web servers may be running on these nodes, but don't need to be
