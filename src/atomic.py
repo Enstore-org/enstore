@@ -8,6 +8,7 @@ import stat
 import errno
 import delete_at_exit
 import exceptions
+import time
 
 def _open1(pathname,mode=0666):
     delete_at_exit.register(pathname)
