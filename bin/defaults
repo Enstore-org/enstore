@@ -12,9 +12,9 @@ enstore_media_changers="STK.media_changer RDD.media_changer"
 enstore_movers="fd0.mover stk0.mover exa0.mover"
 
 enstore_db=$ENSTORE_DIR/etc
-enstore_start_config=1
-enstore_start_fileclerk=1
-enstore_start_volumeclerk=1
+enstore_start_config=0
+enstore_start_fileclerk=0
+enstore_start_volumeclerk=0
 
 if [ `uname -n | grep -c pcfarm4` -eq 1 ] ; then
   enstore_db=/bakken/bakken/enstore_db

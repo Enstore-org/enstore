@@ -16,6 +16,8 @@ class configuration_client :
 
     def __init__(self, config_host="localhost", config_port=7500):
         self.clear()
+        if config_host == "localhost" :
+            (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
         self.config_address=(config_host,config_port)
         self.u = UDPClient()
 

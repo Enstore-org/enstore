@@ -1,3 +1,4 @@
+import errno
 from SocketServer import *
 
 dict = {}
@@ -70,4 +71,14 @@ class DispatchingWorker:
     # request and then send to the user
     def reply_with_list(self, list) :
         dict[self.current_id] = list
+        badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+        if badsock != 0 :
+            print "dispatching_worker reply_with_list, pre-sendto error:",\
+                  errno.errorcode[badsock]
         self.socket.sendto(repr(list), self.reply_address)
+        badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+        if badsock != 0 :
+            print "dispatching_worker reply_with_list, post-sendto error:",\
+                  errno.errorcode[badsock]
+
+

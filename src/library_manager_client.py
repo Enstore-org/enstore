@@ -53,7 +53,17 @@ class LibraryManagerClient :
         # is probably legitimate to wait for hours....
         while 1 :
             control_socket, address = listen_socket.accept()
+            badsock = control_socket.getsockopt(socket.SOL_SOCKET,
+                                                socket.SO_ERROR)
+            if badsock != 0 :
+                print "library_manager, getwork mover callback, ",\
+                      "pre-recv error:", errno.errorcode[badsock]
             new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
+            badsock = control_socket.getsockopt(socket.SOL_SOCKET,
+                                                socket.SO_ERROR)
+            if badsock != 0 :
+                print "library_manager, getwork mover callback, ",\
+                      "post-recv error:", errno.errorcode[badsock]
             if ticket["unique_id"] == new_ticket["unique_id"] :
                 listen_socket.close()
                 break
@@ -80,7 +90,15 @@ class LibraryManagerClient :
         worklist = a_to_dict(workmsg)
 
         # Work has been read - wait for final dialog with library manager.
+        badsock = control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if badsock != 0 :
+            print "library_manager, getwork mover dialog, ",\
+                  "pre-recv error:", errno.errorcode[badsock]
         done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
+        badsock = control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if badsock != 0 :
+            print "library_manager, getwork mover dialog, ",\
+                  "post-recv error:", errno.errorcode[badsock]
         control_socket.close()
         if done_ticket["status"] != "ok" :
             raise errorcode[EPROTO],"lmc.getwork: "\

@@ -20,6 +20,8 @@ class Mover :
         # useful when a "library" is really one robot with multiple uses, or
         # when we need to manually load balance movers attached to virtual
         # library.  So we need to keep track of configuration server.
+        if config_host == "localhost" :
+            (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
         self.config_host = config_host
         self.config_port = config_port
         self.csc = configuration_client(self.config_host,self.config_port)

@@ -55,7 +55,15 @@ class UDPClient:
         # send the udp message until we get a response that it was sent
         number = 0  # impossible number
         while number != self.number:
+            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+            if badsock != 0 :
+                print "udp_client send, pre-sendto error:", \
+		      errno.errorcode[badsock]
             self.socket.sendto (message, address)
+            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+            if badsock != 0 :
+                print "udp_client send, post-sendto error:", \
+                  errno.errorcode[badsock]
 
             # check for a response
             f  = self.socket.fileno()
@@ -69,7 +77,17 @@ class UDPClient:
             # something there - read it and see if we have response that
             # matches the number we sent out
             if r :
+                badsock = self.socket.getsockopt(socket.SOL_SOCKET,
+                                                 socket.SO_ERROR)
+                if badsock != 0 :
+                    print "udp_client send, ", "pre-recv error:",\
+			  errno.errorcode[badsock]
                 reply , server = self.socket.recvfrom(TRANSFER_MAX)
+                badsock = self.socket.getsockopt(socket.SOL_SOCKET,
+                                                 socket.SO_ERROR)
+                if badsock != 0 :
+                    print "udp_client send, ", "post-recv error:",\
+			  errno.errorcode[badsock]
                 try :
                     exec ("number,  out  = "  + reply)
                 # did we read entire message (bigger than TRANSFER_MAX?)
