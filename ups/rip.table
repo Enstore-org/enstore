@@ -9,5 +9,5 @@ QUALIFIERS = ""
         # "control" environmental variables
         envSet(ENSTORE_CONFIG_FILE, "${UPS_PROD_DIR}/etc/rip.conf")
         envSet(ENSTORE_CONFIG_PORT, 7500)
-        envSet(ENSTORE_CONFIG_HOST, rip10.fnal.gov)
+        envSet(ENSTORE_CONFIG_HOST, rip7.fnal.gov)
 
