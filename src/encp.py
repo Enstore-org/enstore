@@ -2116,7 +2116,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
 
 ############################################################################
 
-def calculate_rate(done_ticket, tinfo, intf_encp):
+def calculate_rate(done_ticket, tinfo):
     # calculate some kind of rate - time from beginning to wait for
     # mover to respond until now. This doesn't include the overheads
     # before this, so it isn't a correct rate. I'm assuming that the
@@ -2161,14 +2161,6 @@ def calculate_rate(done_ticket, tinfo, intf_encp):
         else:
             disk_time = elapsed_time
 
-    #Note MWZ 9-19-2002: These lines are hacks.  They are evil.  Fix EXfer.c
-    # write time calculation bug.
-    if done_ticket['work'] == "read_from_hsm":
-        nsa = 0;
-        dsa = intf_encp.bufsize;
-    else:
-        nsa = intf_encp.bufsize;
-        dsa = 0
     
     if e_errors.is_ok(done_ticket['status'][0]):
 
@@ -2177,7 +2169,7 @@ def calculate_rate(done_ticket, tinfo, intf_encp):
         else:
             tinfo['overall_rate_%s'%(id,)] = 0.0
         if network_time != 0:
-            tinfo['network_rate_%s'%(id,)] = (MB_transfered-nsa) / network_time
+            tinfo['network_rate_%s'%(id,)] = MB_transfered / network_time
         else:
             tinfo['network_rate_%s'%(id,)] = 0.0            
         if drive_time != 0:
@@ -2185,7 +2177,7 @@ def calculate_rate(done_ticket, tinfo, intf_encp):
         else:
             tinfo['drive_rate_%s'%(id,)] = 0.0
         if disk_time != 0:
-            tinfo['disk_rate_%s'%(id,)] = (MB_transfered-dsa) / disk_time
+            tinfo['disk_rate_%s'%(id,)] = MB_transfered / disk_time
         else:
             tinfo['disk_rate_%s'%(id,)] = 0.0
             
@@ -2955,7 +2947,7 @@ def write_to_hsm(e, tinfo):
         # neglected are small so the quoted rate is close
         # to the right one.  In any event, I calculate an 
         # overall rate at the end of all transfers
-        calculate_rate(done_ticket, tinfo, e)
+        calculate_rate(done_ticket, tinfo)
 
     # we are done transferring - close out the listen socket
     close_descriptors(listen_socket)
@@ -3597,7 +3589,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         # overheads I've neglected are small so the quoted rate is close
         # to the right one.  In any event, I calculate an overall rate at
         # the end of all transfers
-        calculate_rate(done_ticket, tinfo, e)
+        calculate_rate(done_ticket, tinfo)
 
         #With the transfer a success, we can now add the ticket to the list
         # of succeses.
