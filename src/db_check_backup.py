@@ -1,4 +1,33 @@
 #!/usr/bin/env python
+'''
+db_check_backup.py -- check the integrity of a backup
+
+restore.py can be invoked with no arguments other than normal enstore
+common arguments (--config-host, ... etc.) or with a specific time
+as argument. In the former case, db_check_backup.py checks the last
+backup, while in the latter case, it checks the first backup that was
+taken after the specified time.
+
+The usage is as follows:
+
+db_check_backup.py [enstore-arguments] [month day time [year]]
+
+If a time is specified, at least month day and time must be specified.
+year is optional and is only useful if you take backup from previous
+years, which is unlikely available.
+
+The format of time could be one of the followings:
+
+hh, hh:mm, hh:mm:ss
+
+Since backup is taken at 10 minutes after each hour, hh is sufficient.
+The other formats are good for restoring from non-scheduled backup,
+such as the ones that were done manually for maintanence reasons.
+
+When the check is done, if the backup is good, it certifies a backup by
+putting an empty file named 'CERTIFIED' in the backup directory. If the
+backup is corrupted, it puts 'CORRUPTED'
+'''
 
 import restore
 import db
@@ -48,7 +77,7 @@ if __name__ == "__main__":		# main
 	# retriving the backup
 
 	print "Retriving database from backup ..."
-	bckFile = restore.retriveBackup(dbHome, None, bckHost, bckHome, bckTime)
+	bckFile = restore.retrieveBackup(dbHome, None, bckHost, bckHome, bckTime)
 	bckDir = os.path.dirname(bckFile)
 
 	print "done retriving database from backup ..."
