@@ -200,6 +200,8 @@ class Interface:
                 self.nextvol = 1
             elif opt == "--vol" :
                 self.vol = value
+            elif opt == "--view" :
+                self.view = value
             elif opt == "--newlib" :
                 self.newlib = 1
             elif opt == "--rdovol" :

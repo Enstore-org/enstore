@@ -88,6 +88,13 @@ class MediaChangerClient(generic_client.GenericClient):
 		return rt
         return rt
 
+    def viewvol(self, vol_ticket):
+        ticket = {'work'           : 'viewvol',
+                  'vol_ticket' : vol_ticket
+                  }
+	rt = self.send(ticket)
+        return rt
+
     def MaxWork(self, maxwork):
         ticket = {'work'           : 'maxwork',
                   'maxwork'        : maxwork
@@ -108,13 +115,14 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.getwork=0
         self.maxwork=-1
         self.volume = 0
+	self.view = 0
         self.drive = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["config_file=","maxwork=","getwork"]
+               ["config_file=","maxwork=","view=","getwork"]
 
     #  define our specific help
     def parameters(self):
@@ -130,9 +138,11 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
             sys.exit(1)
         else:
             self.media_changer = self.args[0]
-        if (self.alive == 0) and (self.verbose == 0) and (self.maxwork==-1) and (self.getwork==0):
+        if (self.alive == 0) and (self.verbose == 0) and (self.maxwork==-1) and \
+           (self.getwork==0) and (self.view == 0):
             # bomb out if we number of arguments is wrong
             self.print_help()
+	    sys.exit(1)
 
     # print out our extended help
     def print_help(self):
@@ -154,6 +164,14 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = mcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+    elif intf.view:
+        # get a volume clerk client
+        vcc = volume_clerk_client.VolumeClerkClient(0,intf.verbose,intf.config_host, intf.config_port)
+        ticket = vcc.inquire_vol(intf.view)
+	v_ticket=mcc.viewvol(ticket)
+	print v_ticket['viewvol']
+	del vcc
+        msg_id = generic_cs.CLIENT
     elif intf.verbose:
         ticket = mcc.set_verbose(intf.verbose, intf.alive_rcv_timeout,\
 	                         intf.alive_retries)

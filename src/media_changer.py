@@ -74,6 +74,14 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         ticket["function"] = "dismount"
         return self.DoWork( self.unload, ticket)
 
+    # wrapper method for client - server communication
+    def viewvol(self, ticket):
+        Trace.trace(10, '>view')
+        rl = self.view(ticket["vol_ticket"]["external_label"], ticket["vol_ticket"]["media_type"])
+        ticket["viewvol"] = rl
+	ticket["status"] =  (e_errors.OK, 0, None) 
+        self.reply_to_caller(ticket)
+
     def maxwork(self,ticket):
         self.MaxWork = ticket["maxwork"]
         self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
@@ -106,6 +114,13 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
 	    self.enprint("remove tape "+external_label+" from drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
+	return (e_errors.OK, 0, None)
+
+    # view volume in the drive;  default overridden for other media changers
+    def view(self,
+               external_label,  # volume external label
+	       media_type) :         # drive id
+        if 0: print media_type #lint fix
 	return (e_errors.OK, 0, None)
 
     # prepare is overridden by dismount for mount; i.e. for tape drives we always dismount before mount
@@ -206,6 +221,7 @@ class EMASS_MediaLoader(MediaLoaderMethods) :
         import EMASS
         self.load=EMASS.mount
         self.unload=EMASS.dismount
+        self.view=EMASS.view
         self.prepare=EMASS.dismount
 
 
