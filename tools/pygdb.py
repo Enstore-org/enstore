@@ -11,9 +11,7 @@ from getline import getline
 
 class PyGdb(Gdb):
     def dgdb_command(self, args):
-        print args
         r=self.gdb_command(args)
-        print r
         return r
         
     def __init__(self, args):
@@ -145,14 +143,22 @@ class PyGdb(Gdb):
 
     def backtrace(self):
         if self.at_gdb_breakpoint() != 1:
+            pass
 ##            return ['Not at a Python source line, printing C backtrace'] + \
 ##                   self.gdb_command('where')
-            self.gdb_command("cont")
-        
-        frame_expr = 'f'
+##            self.gdb_command("cont")
+
+        frame_expr="f"
+        rsp=self.dgdb_command("print %s"%frame_expr)
+        while rsp[0][:2]=="No":
+            self.dgdb_command("up")
+            print "DIAG: searching for frame, going up"
+            rsp=self.dgdb_command("print %s"%frame_expr)
+        print "DIAG: found frame"
         ret = []
         depth  = 0
         while 1:
+            print "DIAG: extracting python call stack"
             file = self.c_string_expr(frame_expr+'->f_code->co_filename')
             line = self.c_numeric_expr(frame_expr+'->f_lineno')
             if depth==0:
@@ -181,17 +187,28 @@ class PyGdb(Gdb):
         return ret
     
     def command(self,cmd):
-        if self.gdb_mode:
-            if cmd[:2]== 'py':
-                self.gdb_mode = 0
-                self.prompt = self.pygdb_prompt
-                return ['Entering pygdb mode']
-            else:
-                return self.dgdb_command(cmd)
-
         tok = string.split(cmd)
         ntok = len(tok)
         cmd_chr = tok[0][0]
+        
+        if self.gdb_mode:
+            if cmd[:2]== 'py':
+                if ntok == 1:
+                    self.gdb_mode = 0
+                    self.prompt = self.pygdb_prompt
+                    self.dgdb_command("enable 1")
+                    return ['Entering pygdb mode']
+                else:
+                    tok=tok[1:]
+                    ntok=ntok-1
+                    cmd_chr=tok[0][0]
+                    #fall through to py cmd
+            elif cmd[0]=='q':
+                sys.exit(0)
+                
+            else:
+                return self.dgdb_command(cmd)
+
         if cmd_chr == 'b':
             if ntok<2:
                 return ['b needs an argument']
@@ -253,6 +270,7 @@ class PyGdb(Gdb):
             else:
                 self.gdb_mode = 1
                 self.prompt = self.gdb_prompt
+                self.dgdb_command("disable 1")
                 return ['Entering gdb mode']
             
         else:
