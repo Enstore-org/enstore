@@ -111,7 +111,7 @@ fi
 if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
    logit "ONLY 1 PROCESSOR RUNNING"
     if [ $QUIET -ne 1 ]; then
-      enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING""
+      enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
     fi
 fi   
 
