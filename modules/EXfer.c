@@ -115,9 +115,12 @@ send_writer(  int	mtype
     msg_s.mtype = mtype;
     msg_s.md.data = d1; /* may not be used */
     msg_s.md.c_p = c1; /* may not be used */
-    do
-    {   sts = msgsnd( g_msgqid,(struct msgbuf *)&msg_s,sizeof(struct s_msgdat),0 );
-    } while (0 && (sts==-1) && (errno==EINTR)); /* gdb looks like cntl-C */
+ re_snd:
+    sts = msgsnd( g_msgqid,(struct msgbuf *)&msg_s,sizeof(struct s_msgdat),0 );
+    if ((sts==-1) && (errno==EINTR))
+    {   printf( "redoing reader snd after interruption\n" );
+	goto re_snd;
+    }
     if (sts == -1) perror( "reader_error" ); /* can not do much more */
     return;
 }
@@ -204,14 +207,17 @@ g_ipc_cleanup( void )
 }
 
 static void
-fd_xfer_SigHand( int xx )	/* sighand used below to get back to prompt -*/
-{				/* when icc communication gets "stuck" 	     */
+fd_xfer_SigHand( int sig )
+{
     printf( "fd_xfer_SigHand called\n" );
-    xx = 0;
 
     g_ipc_cleanup();
 
-    (g_oldSigAct_s.sa_handler)( 0 );
+    if (  (g_oldSigAct_s.sa_handler!=SIG_DFL)
+	&&(g_oldSigAct_s.sa_handler!=SIG_IGN) )
+	(g_oldSigAct_s.sa_handler)( sig );
+    else
+	exit( (1<<8) | sig );
 
     return;
 }
@@ -257,7 +263,7 @@ EXfd_xfer(  PyObject	*self
     newSigAct_s.sa_handler = fd_xfer_SigHand;
     newSigAct_s.sa_flags   = 0;
     sigemptyset( &newSigAct_s.sa_mask );
-#   define DOSIGACT 0
+#   define DOSIGACT 1
 #   if DOSIGACT == 1
     sigaction( SIGINT, &newSigAct_s, &g_oldSigAct_s );
 #   endif
@@ -327,8 +333,13 @@ EXfd_xfer(  PyObject	*self
 	
 	while (writing_flg)
 	{   /* read fifo - normal (blocking) */
+ re_rcv:
 	    sts = msgrcv(  g_msgqid, (struct s_msg *)&msg_s
-			 , sizeof(struct s_msgdat), 0, 0 );
+			     , sizeof(struct s_msgdat), 0, 0 );
+	    if ((sts==-1) && (errno==EINTR))
+	    {   /*printf( "redoing writer rcv after interruption\n" );*/
+		goto re_rcv;
+	    }
 	    if (sts == -1) return (raise_exception("fd_xfer - writer msgrcv"));
 
 	    switch (msg_s.mtype)
@@ -373,7 +384,8 @@ EXfd_xfer(  PyObject	*self
 
     if (!shm_obj_tp) g_ipc_cleanup();
 
-#   if DOSIGACT == 1
+#   if DOSIGACT == 0
+    /* MUST DO IN FORKED PROCESS ALSO??? */
     sigaction( SIGINT, &g_oldSigAct_s, (void *)0 );
 #   endif
 

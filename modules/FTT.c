@@ -593,8 +593,13 @@ FTT_fd_xfer(  PyObject *self
 	
 	while (writing_flg)
 	{   /* read fifo - normal (blocking) */
+ re_rcv:
 	    sts = msgrcv(  g_msgqid, (struct s_msg *)&msg_s
 			 , sizeof(struct s_msgdat), 0, 0 );
+	    if ((sts==-1) && (errno==EINTR))
+	    {   /*printf( "redoing writer rcv after interruption\n" );*/
+		goto re_rcv;
+	    }
 	    if (sts == -1) return (raise_exception("fd_xfer - writer msgrcv"));
 
 	    switch (msg_s.mtype)
