@@ -20,17 +20,21 @@ problem has been identified it is expected that the more complete and detailed v
 <A HREF="active_monitor.html">network</A> and the <A HREF="enstore_alarms.html">alarms</A>
 will be examined.
 <P>
-There are 3 levels of status represented on this page -<BR>
+There are 4 levels of status represented on this page -<BR>
 <ul>
 <li><I>No problems</I> indicated by a <IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0">
 <li><I>Minor problem</I> indicated by a <IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0">
 <li><I>Major problem</I> indicated by a <IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0">
+<li><I>Situation under investigation</I> indicated by a <IMG src="star.gif" height="15" width="15" alt="star.gif" border="0">
 </ul>
 
 In general a <I>Minor problem</I> will indicate that the Enstore system is still operational as a
 whole but some piece of it has a problem which should be investigated.  A <I>Major problem</I>
 will imply that the Enstore system is not operational.  <I>Minor problems</I> may escalate to
-major ones and should not be ignored.
+major ones and should not be ignored.  When a server (or enstore) is marked with a 
+<IMG src="star.gif" height="15" width="15" alt="star.gif" border="0"> it means that
+an unusual situation has been detected and will be monitored.  No mail will be sent until the
+situation has been escalated to a problem.
 <P>
 In addition to showing the status of the system, this page will indicate when
 pieces of the Enstore system will be undergoing a scheduled outage by placing a 
@@ -51,28 +55,31 @@ defines what the different status levels mean for each of the sub-systems.<BR>
 
 <TABLE align="CENTER" cellpadding="3" cellspacing="5" border="2" width="100%" bgcolor="#DFF0FF">
 <CAPTION><FONT color="#770000" size="+2"><STRONG>Status Levels </FONT></CAPTION>
-<TR><TH>Sub-System</TH><TH><IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TH><TH><IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0"></TH><TH><IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0"></TH></TR>
+<TR><TH>Sub-System</TH><TH><IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TH><TH><IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0"></TH><TH><IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0"></TH><TH><IMG src="star.gif" height="15" width="15" alt="star.gif" border="0"></TH></TR>
 <TR><TD>enstore</TD>
     <TD>All elements are marked <IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TD>
     <TD><ul>
 	<li>The Inquisitor is down
 	<li>Some Movers are down (less than half) for a Library Manager
-	</ul>
+	</ul></TD>
     <TD><ul>
 	<li>At least one of the following is down : Alarm Server, Configuration Server, File 
 		Clerk, Logger, Volume Clerk
 	<li>More than one half of all Movers (for a Library Manager) are down
-	</ul>
+	</ul></TD>
+    <TD>At least one element is marked <IMG src="star.gif" height="15" width="15" alt="star.gif" border="0"></TD>
 </TR>
 <TR><TD>network</TD>
     <TD>All elements of the network are marked <IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TD>
     <TD>&nbsp;</TD>
     <TD>At least one element of the network is marked <IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0"></TD>
+    <TD>&nbsp;</TD>
 </TR>
 <TR><TD>alarms</TD>
     <TD>No alarms have been raised</TD>
     <TD>&nbsp;</TD>
     <TD>One or more alarms have been raised</TD>
+    <TD>&nbsp;</TD>
 </TR>
 </TABLE>
 <P>
@@ -80,63 +87,80 @@ A <IMG src="checkmark.gif" height="15" width="15" alt="checkmark.gif" border="0"
 these sub-systems, indicates the entire sub-system will be unavailable.  The approximate time
 when the outage will begin is included underneath the server in parenthesis.
 <P>
-If one of these sub-systems is <strike>crossed out</strike>, the entire system can be considered to be
-down.
+If one of these sub-systems is <strike>crossed out</strike>, the entire sub-system can be 
+considered to be down.
 
 <h1>Enstore Individual Server Status</h1>
-This section presents the status of each individual server in Enstore.<BR><BR>
+This section presents the status of each individual server in Enstore. Individual servers are
+checked to see if they are alive.  A server is not reported as being dead until it has been
+found to be not alive for a configurable number of times (this number is set in the 
+<A HREF="config_enstore_system.html">configuration file</A> under the key <I>system</I> and
+<I>allowed_down</I>).  If a server does not seem to be alive, it is marked with a 
+<IMG src="star.gif" height="15" width="15" alt="star.gif" border="0"> until the number of times
+it is seen dead is greater than the number specified in the configuration file as mentioned
+above.  In the following table, <I>n</I> represents this number.
+<BR><BR>
 
 <TABLE align="CENTER" cellpadding="3" cellspacing="5" border="2" width="100%" bgcolor="#DFF0FF">
 <CAPTION><FONT color="#770000" size="+2"><STRONG>Status Levels </FONT></CAPTION>
-<TR><TH>Sub-System</TH><TH><IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TH><TH><IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0"></TH><TH><IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0"></TH></TR>
+<TR><TH>Sub-System</TH><TH><IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TH><TH><IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0"></TH><TH><IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0"></TH><TH><IMG src="star.gif" height="15" width="15" alt="star.gif" border="0"></TH></TR>
 <TR><TD>Alarm Server</TD>
-    <TD>Responds to an <I>alive</I> request
+    <TD>Responds to an <I>alive</I> request</TD>
     <TD>&nbsp;</TD>
-    <TD>Does not respond to an <I>alive</I> request
+    <TD>Does not respond to an <I>alive</I> request after n tries</TD>
+    <TD>Does not respond to an <I>alive</I> request before n tries</TD>
 </TR>
 <TR><TD>Configuration Server</TD>
-    <TD>Responds to an <I>alive</I> request
+    <TD>Responds to an <I>alive</I> request</TD>
     <TD>&nbsp;</TD>
-    <TD>Does not respond to an <I>alive</I> request
+    <TD>Does not respond to an <I>alive</I> request after n tries</TD>
+    <TD>Does not respond to an <I>alive</I> request before n tries</TD>
 </TR>
 <TR><TD>File Clerk</TD>
-    <TD>Responds to an <I>alive</I> request
+    <TD>Responds to an <I>alive</I> request</TD>
     <TD>&nbsp;</TD>
-    <TD>Does not respond to an <I>alive</I> request
+    <TD>Does not respond to an <I>alive</I> request after n tries</TD>
+    <TD>Does not respond to an <I>alive</I> request before n tries</TD>
 </TR>
 <TR><TD>Logger</TD>
-    <TD>Responds to an <I>alive</I> request
+    <TD>Responds to an <I>alive</I> request</TD>
     <TD>&nbsp;</TD>
-    <TD>Does not respond to an <I>alive</I> request
+    <TD>Does not respond to an <I>alive</I> request after n tries</TD>
+    <TD>Does not respond to an <I>alive</I> request before n tries</TD>
 </TR>
 <TR><TD>Inquisitor</TD>
-    <TD>Responds to an <I>alive</I> request
+    <TD>Responds to an <I>alive</I> request</TD>
     <TD>&nbsp;</TD>
-    <TD>Does not respond to an <I>alive</I> request
+    <TD>Does not respond to an <I>alive</I> request after n tries</TD>
+    <TD>Does not respond to an <I>alive</I> request before n tries</TD>
 </TR>
 <TR><TD>Volume clerk</TD>
-    <TD>Responds to an <I>alive</I> request
+    <TD>Responds to an <I>alive</I> request</TD>
     <TD>&nbsp;</TD>
-    <TD>Does not respond to an <I>alive</I> request
+    <TD>Does not respond to an <I>alive</I> request after n tries</TD>
+    <TD>Does not respond to an <I>alive</I> request before n tries</TD>
 </TR>
 <TR><TD>All Library Managers</TD>
-    <TD>Responds to an <I>alive</I> request
+    <TD>Responds to an <I>alive</I> request</TD>
     <TD><UL>
 	<LI>More than half of the associated Movers are marked <IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0">
 	<LI>In an <I>offline</I> state 
 	<LI>In a <I>draining</I> state.
 	</UL></TD>
-    <TD>Does not respond to an <I>alive</I> request
+    <TD>Does not respond to an <I>alive</I> request after n tries</TD>
+    <TD>Does not respond to an <I>alive</I> request before n tries</TD>
 </TR>
 <TR><TD>All Media Changers</TD>
-    <TD>Responds to an <I>alive</I> request
+    <TD>Responds to an <I>alive</I> request</TD>
     <TD>&nbsp;</TD>
-    <TD>Does not respond to an <I>alive</I> request
+    <TD>Does not respond to an <I>alive</I> request after n tries</TD>
+    <TD>Does not respond to an <I>alive</I> request before n tries</TD>
 </TR>
 <TR><TD>All Movers</TD>
-    <TD>Responds to an <I>alive</I> request
+    <TD>Responds to an <I>alive</I> request</TD>
     <TD>Is in a <I>draining</I> state</TD>
-    <TD>Does not respond to an <I>alive</I> request
+    <TD>Does not respond to an <I>alive</I> request after n tries</TD>
+    <TD>Does not respond to an <I>alive</I> request before n tries</TD>
 </TR>
 
 
@@ -153,7 +177,7 @@ the data transfer rate between the two is 0.0, then the node is marked as <IMG s
     <hr>
 <!-- Created: Tue May  9 11:01:16 CDT 2000 -->
 <!-- hhmts start -->
-Last modified: Mon May 22 09:38:15 CDT 2000
+Last modified: Fri Jun  9 16:34:56 CDT 2000
 <!-- hhmts end -->
   </body>
 </html>
