@@ -50,10 +50,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def get_queue(self, node=None, lm=None):
         if not lm: lmname = "library_manager"
         else: lmname = lm
-        pending_assert_cnt = 0
         pending_read_cnt = 0
         pending_write_cnt = 0
-        active_assert_cnt = 0
         active_read_cnt = 0
         active_write_cnt = 0
         keys = self.csc.get_keys()
@@ -65,9 +63,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
                at_list = lst["at movers"]
                pend_writes = []
                pend_reads = []
-               pend_assert = []
-
-               #Seperate the pending work based on work type.
                for work in pw_list:
                    if work["work"] == "read_from_hsm":
                        pending_read_cnt = pending_read_cnt + 1
@@ -75,11 +70,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
                    elif work["work"] == "write_to_hsm":
                        pending_write_cnt = pending_write_cnt + 1
                        pend_writes.append(work)
-                   elif work['work'] == "volume_assert":
-                       pending_assert_cnt = pending_assert_cnt + 1
-                       pend_assert.append(work)
-
-               #Print out pending read requests.
                if pending_read_cnt:
                    print "Pending read requests"
                    for work in pend_reads:
@@ -99,11 +89,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                            if vol:
                                vol_msg='VOL %s' % (vol,)
                        if (host == node) or (not node):
-                           print "%s %s %s %s %s P %d %s %s %s" % \
-                                 (host,self.name,user,pnfsfn,fn, at_top,
-                                  reject_reason[0], reject_reason[1], vol_msg)
-
-               #Print out pending write requests.
+                           print "%s %s %s %s %s P %d %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg)
                if pending_write_cnt:
                    print "Pending write requests"
                    for work in pend_writes:
@@ -123,70 +109,40 @@ class LibraryManagerClient(generic_client.GenericClient) :
                            vol_msg='VOL %s' % (vol,)
                        ff_msg = ''
                        if work['vc'].has_key('file_family'):
-                           ff_msg = string.join((ff_msg, "FF",
-                                                 work['vc']['file_family']),
-                                                ' ')
+                           ff_msg = string.join((ff_msg,"FF",work['vc']['file_family']),' ')
                        if work['vc'].has_key('file_family_width'):
-                           ff_msg = string.join((ff_msg, "FF_W",
-                                             work['vc']['file_family_width']),
-                                                ' ')
+                           ff_msg = string.join((ff_msg,"FF_W %s"%(work['vc']['file_family_width'],)),' ')
                        if (host == node) or (not node):
-                           print "%s %s %s %s %s P %d %s %s %s %s" % \
-                                 (host,self.name,user,fn,pnfsfn, at_top,
-                                  reject_reason[0], reject_reason[1], vol_msg,
-                                  ff_msg)
-
-               #Print out pending assert requests.
-               if pending_assert_cnt:
-                   print "Pending assert requests"
-                   for work in pend_assert:
-                       vol = work['vc']['external_label']
-                       print "VOL", vol
-
-                       
-               #Print out active requests.
-               if at_list:
-                   print "Active requests"
-                   for work in at_list:
-                       #For the volume assert requests print the necessary info
-                       if work['work'] == "volume_assert":
-                           vol = work['vc']['external_label']
-                           print "VOL", vol, "M", work.get('mover', "")
-                           active_assert_cnt = active_assert_cnt + 1
-                           continue
-
-                       #For the read and write requests do the necessary steps.
-                       host = work["wrapper"]["machine"][1]
-                       user = work["wrapper"]["uname"]
-                       pnfsfn = work["wrapper"]["pnfsFilename"]
-                       fn = work["wrapper"]["fullname"]
-                       if work["vc"].has_key("external_label"):
-                           vol = work["vc"]["external_label"]
-                       else:
-                           vol = work["fc"]["external_label"]
-                       if work.has_key("mover"):
-                           mover = work["mover"]
-                       else:
-                           mover = ''
-                       if (host == node) or (not node):
-                           if work["work"] == "read_from_hsm":
-                              active_read_cnt = active_read_cnt + 1
-                              f1 = pnfsfn
-                              f2 = fn
-                           elif work["work"] == "write_to_hsm":
-                               active_write_cnt = active_write_cnt + 1
-                               f1 = fn
-                               f2 = pnfsfn
-                           print "%s %s %s %s %s M %s %s" % (host, self.name,
-                                                             user, f1,f2,
-                                                             mover, vol)
+                           print "%s %s %s %s %s P %d %s %s %s %s" % (host,self.name,user,fn,pnfsfn, at_top, reject_reason[0], reject_reason[1], vol_msg, ff_msg)
+                           
+               for work in at_list:
+                   host = work["wrapper"]["machine"][1]
+                   user = work["wrapper"]["uname"]
+                   pnfsfn = work["wrapper"]["pnfsFilename"]
+                   fn = work["wrapper"]["fullname"]
+                   if work["vc"].has_key("external_label"):
+                       vol = work["vc"]["external_label"]
+                   else:
+                       vol = work["fc"]["external_label"]
+                   if work.has_key("mover"):
+                       mover = work["mover"]
+                   else:
+                       mover = ''
+                   if (host == node) or (not node):
+                       if work["work"] == "read_from_hsm":
+                          active_read_cnt = active_read_cnt + 1
+                          f1 = pnfsfn
+                          f2 = fn
+                       elif work["work"] == "write_to_hsm":
+                           active_write_cnt = active_write_cnt + 1
+                           f1 = fn
+                           f2 = pnfsfn
+                       print "%s %s %s %s %s M %s %s" % (host,self.name, user,f1,f2, mover, vol)
 
         print "Pending read requests: ", pending_read_cnt
         print "Pending write requests: ", pending_write_cnt
-        print "Pending assert requests: ", pending_assert_cnt
         print "Active read requests: ", active_read_cnt
         print "Active write requests: ", active_write_cnt
-        print "Active assert requests: ", active_assert_cnt
                            
         return {"status" :(e_errors.OK, None)}
 

@@ -1241,6 +1241,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.restrictor = discipline.Restrictor(self.csc, self.name)
         self.set_udp_client()
 
+        self.volume_assert_list = []
+
     # check startup flag
     def is_starting(self):
         if self.startup_flag:
@@ -1664,27 +1666,29 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if status[0] == e_errors.NOWORK:
             ##Before actually saying we are done, if any volume assert
             # requests are pending, handle them.
-            volume_assert_list = self.pending_work.assert_queue.get_queue()
-            if volume_assert_list:
-                for i in range(len(volume_assert_list)):
+            if self.volume_assert_list:
+                for i in range(len(self.volume_assert_list)):
                     external_label = \
-                         volume_assert_list[i]['vc'].get('external_label',None)
+                         self.volume_assert_list[i]['vc'].get('external_label',
+                                                              None)
                     if external_label:
                         if not self.volumes_at_movers.is_vol_busy(
                             external_label):
                             #Add the volume and mover to the list of currently
                             # busy volumes and movers.
-                            volume_assert_list[i]['mover'] = mticket['mover']
-                            self.work_at_movers.append(volume_assert_list[i])
+                            self.volume_assert_list[i]['mover'] = \
+                                                              mticket['mover']
+                            self.work_at_movers.append(
+                                self.volume_assert_list[i])
                             self.volumes_at_movers.put(mticket)
                             #Record this action in log file.
                             Trace.log(e_errors.INFO,
                                       "IDLE:sending %s to mover" %
-                                      (volume_assert_list[i],))
+                                      (self.volume_assert_list[i],))
                             #Tell the mover it has something to do.
-                            self.reply_to_caller(volume_assert_list[i])
+                            self.reply_to_caller(self.volume_assert_list[i])
                             #Remove the job from the list of volumes to check.
-                            self.remove_work(volume_assert_list[i])
+                            del self.volume_assert_list[i]
                             break
                         else:
                             self.reply_to_caller({'work': 'no_work'})
@@ -2002,10 +2006,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rticket = {}
             rticket["status"] = (e_errors.OK, None)
             rticket["at movers"] = self.work_at_movers.list
-            adm_queue, write_queue, read_queue, assert_queue = \
-                       self.pending_work.get_queue()
-            rticket["pending_work"] = \
-                       adm_queue + write_queue + read_queue + assert_queue
+            adm_queue, write_queue, read_queue = self.pending_work.get_queue()
+            rticket["pending_work"] = adm_queue + write_queue + read_queue
             callback.write_tcp_obj_new(self.data_socket,rticket)
             self.data_socket.close()
             callback.write_tcp_obj_new(self.control_socket,ticket)
@@ -2030,12 +2032,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rticket = {}
             rticket["status"] = (e_errors.OK, None)
             rticket["at movers"] = self.work_at_movers.list
-            adm_queue, write_queue, read_queue, assert_queue = \
-                       self.pending_work.get_queue()
+            adm_queue, write_queue, read_queue = self.pending_work.get_queue()
             rticket["pending_works"] = {'admin_queue': adm_queue,
                                         'write_queue': write_queue,
-                                        'read_queue':  read_queue,
-                                        'assert_queue': assert_queue}
+                                        'read_queue':  read_queue
+                                        }
             callback.write_tcp_obj_new(self.data_socket,rticket)
             self.data_socket.close()
             callback.write_tcp_obj_new(self.control_socket,ticket)
@@ -2095,7 +2096,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def remove_work(self, ticket):
         id = ticket["unique_id"]
         rq = self.pending_work.find(id)
-        
         if not rq:
             self.reply_to_caller({"status" : (e_errors.NOWORK,"No such work")})
         else:
@@ -2186,8 +2186,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # reply to the vol_assert client
     def volume_assert(self, ticket):
-        rq, status = self.pending_work.put(ticket)
-        ticket['status'] = (e_errors.OK, None)
+        self.volume_assert_list.append(ticket)
         self.reply_to_caller(ticket) # reply now to avoid deadlock
 
     # remove volume from suspect volume list
