@@ -47,9 +47,12 @@ import volume_clerk_client
 import file_clerk_client
 import enstore_constants
 
-ONE_G = 1048576 * 1024
-TWO_G = ONE_G - 1 + ONE_G               # actually, 2G - 1
-MAX_FILE_SIZE = ONE_G - 2048 + ONE_G    # don't get overflow
+#Constants for the max file size.  Currently this assumes the max for the
+# cpio_odc wrapper format.  The -1s are necessary since that is the size
+# that fits in signed integer variables.
+ONE_G = 1024 * 1024 * 1024
+TWO_G = long(ONE_G) - 1     #Used in int32()
+MAX_FILE_SIZE = long(ONE_G) * 8 - 1    # don't get overflow
 
 #############################################################################
 # verbose: Roughly, five verbose levels are used.
@@ -334,9 +337,9 @@ def filename_check(filename):
     #pnfs (v3.1.7) only supports filepaths segments that are
     # less than 200 characters.
     for directory in filename.split("/"):
-        if len(directory) > 200:
+        if len(directory) > 199:
             status = ('USERERROR',
-                      'Filepath segment %s exceeds 200 characters with %s' %
+                      'Filepath segment %s exceeds 199 characters with %s' %
                       (directory, len(directory)))
             return status
 
@@ -398,11 +401,11 @@ def inputfile_check(input_files, bytecount=None):
                 'USERERROR', 'Not a regular file %s'%(inputlist[i],))})
             quit()
 
-        # input files can't be larger than 2G
-        #if statinfo[stat.ST_SIZE] > MAX_FILE_SIZE:
-        #    print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-        #        'USERERROR', 'file %s exceeds file size limit of %d bytes'%(inputlist[i],MAX_FILE_SIZE))})
-        #    quit()
+        # input files can't be larger than 8G
+        if statinfo[stat.ST_SIZE] > MAX_FILE_SIZE:
+            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
+                'USERERROR', 'file %s exceeds file size limit of %d bytes'%(inputlist[i],MAX_FILE_SIZE))})
+            quit()
 
         # get the file size
 	p = pnfs.Pnfs(inputlist[i])
@@ -1038,8 +1041,7 @@ def transfer_file(input_fd, output_fd, control_socket, request, e):
         Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" % (msg,))
 
     # File has been read - wait for final dialog with mover.
-    Trace.trace(8,"read_hsm_files waiting for final mover dialog on %s" %
-                (control_socket,))
+    Trace.message(3,"Waiting for final mover dialog.")
 
     #Even though the functionality is there for this to be done in
     # handle requests, this should be recieved outside since there must
@@ -1389,7 +1391,9 @@ def calculate_rate(done_ticket, tinfo, verbose):
                       done_ticket["mover"]["vendor_id"],
                       time.time() - tinfo["encp_start_time"],
                       done_ticket["mover"]["media_changer"],
-                      socket.gethostbyaddr(done_ticket["mover"]["hostip"])[0],
+                      #socket.gethostbyaddr(done_ticket["mover"]["hostip"])[0],
+		      done_ticket["mover"].get('data_ip',
+					       done_ticket["mover"]['host']),
                       done_ticket["mover"]["driver"])
         
         Trace.message(1, print_format % print_values)
@@ -2228,18 +2232,29 @@ def get_clerks_info(bfid, client):
 ############################################################################
 
 def verify_file_size(ticket):
+    #Don't worry about checking when outfile is /dev/null.
     if ticket['outfile'] == '/dev/null':
-        filename = ticket['infile']
-    else:
-        filename = ticket['outfile']
+	p = pnfs.Pnfs(ticket['infile'])
+	p.get_file_size()
+	return p.file_size
+        #filename = ticket['infile']
+
+    filename = ticket['outfile']
     file_size = 0 #quick hack
+    
     try:
         #Get the stat info to 
         statinfo = os.stat(filename)
-
+	
         file_size = statinfo[stat.ST_SIZE]
+	
+        #Until pnfs supports NFS version 3 (for large file support) make sure
+	# we are using the correct file_size for the pnfs side.
+	p = pnfs.Pnfs(ticket['infile'])
+	p.get_file_size()
+	real_size = p.file_size
 
-        if file_size != ticket['file_size']:
+	if file_size != real_size: #ticket['file_size']:
             msg = "Expected file size (%s) not equal to actuall file size " \
                   "(%s) for file %s." % \
                   (ticket['file_size'], file_size, filename)
@@ -2419,9 +2434,9 @@ def submit_read_requests(requests, client, tinfo, encp_intf):
 
             Trace.message(5, "LIBRARY MANAGER\n%s\n." % pprint.pformat(ticket))
                          
-            #if encp_intf.verbose > 4:
-            #    print "LIBRARY MANAGER"
-            #    pprint.pprint(ticket)
+	    if encp_intf.verbose > 4:
+                print "LIBRARY MANAGER"
+                pprint.pprint(ticket)
 
             result_dict = handle_retries(requests_to_submit, req, ticket,
                                          None, encp_intf)
