@@ -9,8 +9,14 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
     if pnfsd_s[len(pnfsd_s)-1] != tapeLabel:
         pnfsDir = os.path.join(pnfsDir,tapeLabel)
     output_s = os.path.split(outputDir)
-    if output_s[len(output_s)-1] != tapeLabel:
-        outputDir = os.path.join(outputDir,tapeLabel)
+    out_is_null = 0
+    # aalow output to go to /dev/null
+    if len(output_s) == 2 and output_s[0].find("/dev") != -1 and output_s[1].find("null") != -1:
+        out_is_null = 1
+        pass
+    else:
+        if output_s[len(output_s)-1] != tapeLabel:
+            outputDir = os.path.join(outputDir,tapeLabel)
     print "pnfsd %s out_d %s"%(pnfsDir, outputDir)
     
     fname = tempfile.mktemp()
@@ -47,7 +53,8 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
         sys.stderr.write("Unable to find get executable.\n")
         sys.exit(70)
         
-    os.system("mkdir -p %s"%(outputDir,))
+    if not out_is_null:
+        os.system("mkdir -p %s"%(outputDir,))
     os.system("mkdir -p %s"%(pnfsDir,))
     if (not os.path.exists(pnfsDir)):
         sys.stderr.write("%s does not exist\n"%(pnfsDir,))
@@ -55,7 +62,6 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
     if (not os.path.exists(outputDir)):
         sys.stderr.write("%s does not exist\n"%(outputDir,))
         sys.exit(70)
-    
     
     #args = (path, "--verbose", "4", "--list", fname, tapeLabel,
     #        pnfsDir, outputDir)
