@@ -181,13 +181,4 @@ if __name__ == "__main__" :
         pprint.pprint(ticket['fc'])
         pprint.pprint(ticket['vc'])
 
-    if ticket['status'][0] == e_errors.OK:
-        if intf.verbose:
-            pprint.pprint(ticket)
-        Trace.trace(1,"fcc exit ok")
-        sys.exit(0)
-    else:
-        print "BAD STATUS:",ticket['status']
-        pprint.pprint(ticket)
-        Trace.trace(0,"fcc BAD STATUS - "+repr(ticket['status']))
-        sys.exit(1)
+    fcc.check_ticket("fcc", ticket)

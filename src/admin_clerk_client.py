@@ -190,11 +190,5 @@ if __name__ == "__main__" :
 
     del acc.csc.u
     del acc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if ticket['status'][0] != e_errors.OK :
-        print "Bad status:",ticket['status']
-       	pprint.pprint(ticket)
-        Trace.trace(0,"acc BAD STATUS - "+repr(ticket['status']))
-        sys.exit(1)
-    else :
-        pprint.pprint(ticket)
-        Trace.trace(1,"acc exit ok")
+
+    acc.check_ticket("acc", ticket)

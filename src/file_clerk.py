@@ -356,14 +356,6 @@ if __name__ == "__main__":
             fc.logc.send(log_client.INFO, 1, "File Clerk (re)starting")
             fc.serve_forever()
         except:
-            traceback.print_exc()
-            format = timeofday.tod()+" "+\
-                     str(sys.argv)+" "+\
-                     str(sys.exc_info()[0])+" "+\
-                     str(sys.exc_info()[1])+" "+\
-                     "file clerk serve_forever continuing"
-            print format
-            fc.logc.send(log_client.ERROR, 1, format)
-            Trace.trace(0,format)
+	    fc.serve_forever_error("file clerk", fc.logc)
             continue
     Trace.trace(1,"File Clerk finished (impossible)")

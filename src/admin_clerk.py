@@ -201,15 +201,7 @@ if __name__=="__main__":
             ac.logc.send(log_client.INFO, 1, "Admin Clerk (re)starting")
             ac.serve_forever()
         except:
-            traceback.print_exc()
-            format = timeofday.tod()+" "+\
-                     str(sys.argv)+" "+\
-                     str(sys.exc_info()[0])+" "+\
-                     str(sys.exc_info()[1])+" "+\
-                     "admin clerk serve_forever continuing"
-            print format
-            ac.logc.send(log_client.ERROR, 1, format)
-            Trace.trace(0,"Admin Clerk error"+format)
+	    ac.serve_forever_error("admin clerk", ac.logc)
             continue
 
     Trace.trace(1,"Admin Clerk finished") # impossible
