@@ -62,13 +62,6 @@ def do_work(intf):
     # this is where the work is really done
     # get the list of stamps and jpg files
     (jpgs, stamps, pss) = do_the_walk(intf.input_dir)
-    print jpgs
-    print "---------------------------------"
-    print stamps
-    print "---------------------------------"
-    print pss
-    print "---------------------------------"
-
     html_page = enstore_html.EnPlotPage(intf.title, intf.title_gif, 
 					intf.description)
     html_page.body(jpgs, stamps, pss)
