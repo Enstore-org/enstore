@@ -425,7 +425,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.state != self._last_state:
                 Trace.trace(10, "Send %s to %s" % (ticket, addr))
             self.udpc.send_no_wait(ticket, addr)
-        self._last_state=self.state
+        self._last_state = self.state
         self.check_dismount_timer()
 
     def check_dismount_timer(self):
@@ -695,9 +695,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                                   ##what does the flag really mean?
         self.delay = max(delay, self.default_dismount_delay)
         self.fcc = file_clerk_client.FileClient( self.csc, bfid=0,
-                                                 server_addr=fc['address'] )
+                                                 server_address=fc['address'] )
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                                                         server_addr=vc['address'])
+                                                         server_address=vc['address'])
         volume_label = fc['external_label']
         self.current_work_ticket = ticket
         
