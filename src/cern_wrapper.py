@@ -660,3 +660,9 @@ def headers(dummy):
 def header_size(hdr):
     return 0
 
+if __name__ == '__main__':            
+    ticket = {'minor': '5', 'type': 'cern', 'fullname': '/home/moibenko/enstore/src/aci.py', 'mode': '33204', 'version': 'v2_14  CVS $Revision$ ', 'gname': 'hppc', 'machine': "('Linux', 'happy.fnal.gov', '2.2.17-14', '#1 Mon Feb 5 18:48:50 EST 2001', 'i686')", 'serial_num': '0060112307', 'product_id': 'EXB-89008E000112', 'compression': '0', 'rminor': '0', 'sanity_size': '65536', 'inode': '0', 'size_bytes': '1434', 'rmajor': '0', 'pstat': '(33204, 71373968, 5L, 1, 6849, 5440, 0, 1007762232, 1007762232, 1007762232)', 'uname': 'moibenko', 'uid': '6849', 'mtime': '1007762233', 'vendor_id': 'EXABYTE', 'blocksize': '131072', 'gid': '5440', 'pnfsFilename': '/pnfs/rip6/happy/mam/cern_wrap/aci.py', 'major': '0'}
+    header_labels = hdr_labels(ticket)
+    print "Header Labels", header_labels
+    eofs =  eof_labels(0)
+    print "EOF Labels", eofs
