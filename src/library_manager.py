@@ -95,7 +95,7 @@ class AtMovers:
         Trace.trace(13, "AtMovers delete. before: %s" % (self.at_movers,))
         mover = mover_info['mover']
         if self.at_movers.has_key(mover):
-            Trace.log(11, "MOVER %s" % (self.at_movers[mover],))
+            Trace.trace(11, "MOVER %s" % (self.at_movers[mover],))
             storage_group = volume_family.extract_storage_group(self.at_movers[mover]['volume_family'])
             vol_family = self.at_movers[mover]['volume_family']
             self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family) 
@@ -372,7 +372,6 @@ class LibraryManagerMethods:
         v = self.vcc.next_write_volume (rq.ticket["vc"]["library"],
                                         rq.ticket["wrapper"]["size_bytes"],
                                         vol_family, 
-                                        rq.ticket["vc"]["wrapper"],
                                         vol_veto_list,
                                         first_found)
         # volume clerk returned error
@@ -1192,7 +1191,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # this will be raplaced with error handlers!!!!!!!!!!!!!!!!
     def mover_error(self, mticket):
         Trace.trace(11,"MOVER ERROR RQ %s"%(mticket,))
-        self.volumes_at_movers.delete(mticket)
+        self.volumes_at_movers.put(mticket)
         # get the work ticket for the volume
         w = self.get_work_at_movers(mticket["external_label"])
         if w:
