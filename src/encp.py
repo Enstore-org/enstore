@@ -1150,13 +1150,13 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
 	ticket = client['u'].send(rq_list[j]["work_ticket"], 
 				  (lmticket['hostip'], lmticket['port']))
 	if verbose > 3:
-	    print "ENCP:read_from_hsm FC read_from_hsm returned"
+	    print "ENCP:read_from_hsm. LM read_from_hsm returned"
 	    pprint.pprint(ticket)
 	if ticket['status'][0] != "ok" :
 	    print_data_access_layer_format(rq_list[j]["infile"], 
                                            rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
                                            rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
-                                           lmticket)
+                                           ticket)
 	    print_error(errno.errorcode[errno.EPROTO],\
 			" encp.read_from_hsm: from"\
 			+"u.send to LM at "+lmticket['hostip']+"/"\
