@@ -21,10 +21,13 @@ import EXfer
 
 ##############################################################################
 
-def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
+def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
     t0 = time.time()
     tinfo = {}
     tinfo["abs_start"] = t0
+
+    unixfile = input[0]
+    pnfsfile = output[0]
 
     # first check the unix file the user specified
     t1 = time.time()
@@ -311,10 +314,13 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
 
 ##############################################################################
 
-def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
+def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
     t0 = time.time()
     tinfo = {}
     tinfo["abs_start"] = t0
+
+    pnfsfile = input[0]
+    outfile = output[0]
 
     # first check the input pnfs file - this will also provide the bfid
     t1 =  time.time()
@@ -578,7 +584,7 @@ def fullpath(filename):
     dir, file = os.path.split(filename)
     if dir == '' :
         dir = os.getcwd()
-    command="cd "+dir+";pwd"
+    command="(cd "+dir+";pwd)"
     try:
         dir = regsub.sub("\012","",os.popen(command,'r').readlines()[0])
         return (machine, dir+"/"+file, dir, file)
@@ -626,8 +632,11 @@ if __name__  ==  "__main__" :
     config_port = string.atoi(config_port)
 
     # bomb out if we don't have an input and an output
-    if len(args) < 2 :
+    arglen = len(args)
+    if arglen < 2 :
         print "python",sys.argv[0], options, "inputfilename outputfilename"
+        print "-or-"
+        print "python",sys.argv[0], options, "inputfilename1 ... inputfilenameN outputdirectory"
         print "   do not forget the '--' in front of each option"
         sys.exit(1)
 
@@ -641,42 +650,70 @@ if __name__  ==  "__main__" :
     logc = log_client.LoggerClient(csc, 'ENCP', 'logserver', 0)
 
     # get fullpaths to the files
-    (machine0, fullname0, dir0, basename0) = fullpath(args[0])
-    (machine1, fullname1, dir1, basename1) = fullpath(args[1])
-    if basename1=='.':
-        basename1=basename0
-    args[0] = dir0+'/'+basename0
-    args[1] = dir1+'/'+basename1
+    machine = []
+    fullname = []
+    dir = []
+    basename = []
+    p = []
+    for i in range(0,arglen):
+        (xmachine, xfullname, xdir, xbasename) = fullpath(args[i])
+        machine.append(xmachine)
+        fullname.append(xfullname)
+        dir.append(xdir)
+        basename.append(xbasename)
+        args[i] = dir[i]+'/'+basename[i]
+        p.append(string.find(dir[i],"/pnfs/"))
+
+    # if in out syntax used, fix up output if basename missing or if '.'
+    if arglen==2:
+        if basename[1]=='.' or len(basename[1])==0:
+            basename[1] = basename[0]
+        else:
+            try:
+                statinfo = os.stat(args[1])
+                if stat.S_ISDIR(statinfo[stat.ST_MODE]) :
+                    dir[1] = dir[1]+'/'+basename[1]
+                    basename[1] = basename[0]
+            except:
+                pass
+        args[1] = dir[1]+'/'+basename[i]
+        p[1] = string.find(dir[1],"/pnfs/")
 
     # all files on the hsm system have /pnfs/ as the 1st part of their name
-    p1 = string.find(args[0],"/pnfs/")
-    p2 = string.find(args[1],"/pnfs/")
-
+    # scan input files for /pnfs - all have to be the same
+    p1 = p[0]
+    p2 = p[arglen-1]
+    input = [args[0]]
+    output = [args[arglen-1]]
+    for i in range(1,len(args)-1):
+        if p[i]!=p1:
+            if p1:
+                print "ERROR: Not all input files are /pnfs/... files"
+            else:
+                print "ERROR: Not all input files are unix files"
+            sys.exit(1)
+        else:
+            input.append(args[i])
+    print input
+    print output
     # have we been called "encp unixfile hsmfile" ?
     if p1==-1 and p2==0 :
-        write_to_hsm(args[0], args[1], u, csc, logc, list, chk_crc)
-        if list > 1 :
-            p=pnfs.pnfs(args[1],1)
-            p.dump()
+        write_to_hsm(input, output, u, csc, logc, list, chk_crc)
 
     # have we been called "encp hsmfile unixfile" ?
     elif p1==0 and p2==-1 :
-        if list > 1 :
-            p=pnfs.pnfs(args[0],1)
-            p.dump()
-        read_from_hsm(args[0], args[1], u, csc, logc, list, chk_crc)
+        read_from_hsm(input, output, u, csc, logc, list, chk_crc)
 
     # have we been called "encp unixfile unixfile" ?
     elif p1==-1 and p2==-1 :
         print "encp copies to/from hsm. It is not involved in copying "\
-              +args[0]," to ",args[1]
+              +input," to ",output
 
-    # have we been called "encp unixfile unixfile" ?
+    # have we been called "encp hsmfile hsmfile?
     elif p1==0 and p2==0 :
         print "encp hsm to hsm is not functional. "\
               +"copy hsmfile to local disk and them back to hsm"
 
     else:
-        print "ERROR: Can not process arguments "\
-              +args[0]," to ",args[1]
+        print "ERROR: Can not process arguments "+args
 
