@@ -18,6 +18,8 @@ MODE_PDB = 3
 
     
 tdb.mode = MODE_TRACE_ALL
+tdb.save_stdin= None
+tdb.save_stdout = None
 
 def setmode(newmode):
     tdb.mode = newmode
@@ -60,6 +62,11 @@ class Tdb(pdb.Pdb) :
 	except bdb.BdbQuit:
 	   pass
         # now, "all " have to do is to notify the telnet thread...
+        sys.stdin = tdb.save_stdin
+        sys.stdout = tdb.save_stdout
+        tdb.save_stdin= None
+        tdb.save_stdout = None
+        tdb.pdb_done.set()
         install()
 	tdb.mode = MODE_TRACE_ALL
 	return None	
@@ -207,15 +214,15 @@ class TdbMonitor(threading.Thread) :
         if len(args) is not 0 : raise Help
 	h = Hackio()
 	h.outFile = self.outFile
+        tdb.save_stdin = sys.stdin
+        tdb.save_stdout = sys.stdout
 	sys.stdout = h
 	sys.stdin  = self.inFile
+        tdb.pdb_done = threading.Event()
         print "***** Quitting the debugger crashes the program** "
         print "***** This is as far as I am ** "
         tdb.setmode(MODE_PDB)
-
-        #pdb.set_trace()
-        while 1:
-            time.sleep(1000)
+        tdb.pdb_done.wait()
         
     def cmd_help(self, args=()) :
         if len(args) is not 0 : raise Help
@@ -283,3 +290,14 @@ if __name__ == "__main__":
     tdb.setmode(MODE_TRACE_CALL)
     I_()
     
+
+
+
+
+
+
+
+
+
+
+
