@@ -19,7 +19,6 @@ import select
 import exceptions
 import traceback
 
-
 # enstore modules
 import generic_server
 import interface
@@ -41,7 +40,7 @@ def print_args(*args):
 
 verbose=0
     
-#Trace.trace = print_args
+Trace.trace = print_args
 
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
@@ -241,7 +240,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
         for lib, addr in self.libraries:
             if verbose or self.state != self._last_state:
                 print "Send", ticket, "to", addr
-                Trace.log(e_errors.INFO, "SEND %s" % (ticket,))    ### REMOVE
             self.udpc.send_no_wait(ticket, addr)
         self._last_state=self.state
         if reset_timer:
