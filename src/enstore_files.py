@@ -201,7 +201,7 @@ class HTMLExtraPages:
     def write(self, doc):
 	if doc.extra_queue_pages:
 	    for extra_page_key in doc.extra_queue_pages.keys():
-		filename = "%s"%(doc.extra_queue_pages[extra_page_key][1],)
+		filename = "%s/%s"%(self.html_dir, doc.extra_queue_pages[extra_page_key][1],)
 		extra_file = HTMLFile(filename,
 			      doc.extra_queue_pages[extra_page_key][0].refresh,
 			      doc.extra_queue_pages[extra_page_key][0].system_tag)
