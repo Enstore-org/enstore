@@ -100,6 +100,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(13,"}do_alive_check ")
 	return ret
 
+    # get the library manager suspect volume list and output it
+    def suspect_vols(self, lm, (host, port), key, verbose):
+        Trace.trace(13,"{suspect_vols "+repr(host)+" "+repr(port))
+	try:
+	    stat = lm.get_suspect_volumes()
+	    self.essfile.output_suspect_vols(stat, key, verbose)
+	    self.htmlfile.output_suspect_vols(stat, key, verbose)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.essfile.output_etimedout((host, port), "    ", key)
+	    self.htmlfile.output_etimedout((host, port), "    ", key)
+	    Trace.trace(13, "}suspect_vols - ERROR, timed out")
+	    return
+        Trace.trace(13,"}suspect_vols")
+
     # get the library manager work queue and output it
     def work_queue(self, lm, (host, port), key, verbose):
         Trace.trace(13,"{work_queue "+repr(host)+" "+repr(port))
@@ -158,6 +172,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	ret = self.alive_status(lmc, (t['host'], t['port']), key+self.trailer,\
 	                        time, key)
 	if ret == self.did_it:
+	    self.suspect_vols(lmc, (t['host'], t['port']), key, verbose)
 	    self.mover_list(lmc, (t['host'], t['port']), key, verbose)
 	    self.work_queue(lmc, (t['host'], t['port']), key, verbose)
         Trace.trace(12,"}update_library_manager ")

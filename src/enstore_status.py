@@ -212,6 +212,26 @@ class EnstoreStatus:
         Trace.trace(12,"}format_lm_queues ")
 	return string
 
+    def format_lm_suspect_vols(self, ticket):
+        Trace.trace(12,"{format_lm_suspect_vols "+repr(ticket))
+	str =       "    SUSPECT VOLUMES : "
+	spacing = "\n                      "
+	ctr = 0
+	movers = ticket['suspect_volumes']
+	if len(movers) != 0:
+	    for mover in movers:
+	        ctr = ctr + 1
+	        if ctr > 2:
+	            str = str + "\n"+spacing
+	            ctr = 1
+	        else:
+	            str = str + ", "
+	        str = str + mover 
+	else:
+	    str = str + "NONE"
+        Trace.trace(12,"}format_lm_suspect_vols ")
+	return str+"\n\n"
+
     # parse the library manager moverlist ticket
     def parse_lm_moverlist(self, work):
         Trace.trace(13,"{parse_lm_moverlist")
@@ -290,6 +310,15 @@ class EnstoreStatus:
 	str = key+" : NOT SUPPORTED IN INQUISITOR\n"
 	self.text[key] = str
         Trace.trace(12,"}output_nofunc")
+
+    # output the library manager suspect volume list
+    def output_suspect_vols(self, ticket, key, verbose):
+        Trace.trace(12,"{output_suspect_vols "+repr(ticket))
+	sm = self.format_lm_suspect_vols(ticket)
+	if verbose:
+	  pprint.pprint(sm)
+	self.text[key] = self.text[key]+sm
+        Trace.trace(12,"}output_suspect_vols")
 
     # output the library manager queues
     def output_lmqueues(self, ticket, key, verbose):
