@@ -11,6 +11,7 @@ import exceptions
 import errno
 import sys
 import binascii
+import pprint
 
 # enstore imports
 import interface
@@ -160,6 +161,11 @@ class UDPClient:
                      % (host, port, time.time(), os.getpid() )
         self.sendport = 7
         self.where_sent = {}
+	try:
+	    x = os.environ['ENSTORE_UDP_PP']
+	    self.pp = 1
+	except:
+	    self.pp = 0
         Trace.trace(10,'{__init__ udpclient '+repr(self.ident))
 
     def __del__(self):
@@ -175,9 +181,12 @@ class UDPClient:
         Trace.trace(10,'__del__ udpclient')
 
     # this (generally) is received/processed by dispatching worker
-    def send( self, text, address, rcv_timeout=0, tries=0):
-        Trace.trace( 20, 'send add='+repr(address)+' text='+repr(text)+
-                     ' tmo='+repr(rcv_timeout)+' tries='+repr(tries))
+    def send( self, text, address, rcv_timeout=0, tries=0 ):
+        Trace.trace( 20, 'send add='+repr(address)+' text='+repr(text) )
+	if self.pp and text['work']!='idle_moverx':
+	    x=sys.stdout;sys.stdout=sys.stderr
+	    print "\nreq/cmd to address:",address," from:",self.ident; pprint.pprint(text)
+	    sys.stdout=x
 
 	if rcv_timeout:
             if tries==0:
@@ -243,12 +252,21 @@ class UDPClient:
             else:
                 Trace.trace(0,"send no reply after tries="+repr(ntries))
 
+	if self.pp and (not 'work' in out.keys() or out['work']!='noworkx'):
+	    x=sys.stdout;sys.stdout=sys.stderr
+	    print "\nrsp - sent to:",self.ident; pprint.pprint(out)
+	    sys.stdout=x
 	Trace.trace(20,"}send "+repr(out))
         return out
 
     # send message without waiting for reply and resend
     def send_no_wait(self, text, address) :
         Trace.trace(20,'send_no_wait add='+repr(address)+' text='+repr(text))
+	if self.pp:
+	    x=sys.stdout;sys.stdout=sys.stderr
+	    print "\nmsg/cmd to address:",address," from:",self.ident; pprint.pprint(text)
+	    sys.stdout=x
+
         # make a new message number - response needs to match this number
         self.number = self.number + 1
 
