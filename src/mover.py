@@ -3110,7 +3110,7 @@ class DiskMover(Mover):
         self.max_failures = self.config.get("max_failures", self.max_failures)
         self.failure_interval = self.config.get("failure_interval", self.failure_interval)
         
-        self.default_dismount_delay = self.config.get('dismount_delay', 60)
+        self.default_dismount_delay = self.config.get('dismount_delay', 0)
         if self.default_dismount_delay < 0:
             self.default_dismount_delay = 31536000 #1 year
         self.max_dismount_delay = max(
