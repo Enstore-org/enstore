@@ -77,7 +77,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.sgdb = None
         self.paused_lms = {}
         self.ignored_sg_file = None
-        self.set_error_handler(vol_error_handler)
+        self.set_error_handler(self.vol_error_handler)
         return
 
     def vol_error_handler(self, exc, msg, tb):
