@@ -258,9 +258,7 @@ class Mover :
         eod_cookie = self.driver.get_eod_cookie()
         remaining_bytes = self.driver.get_eod_remaining_bytes()
         wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
-
         vcc = VolumeClerkClient(self.csc)
-
         # check for errors and inform volume clerk
         if wr_size != ticket["size_bytes"] :
             user_send_error = 1
@@ -522,6 +520,8 @@ if __name__ == "__main__" :
             mv = Mover(config_host,config_port)
             mv.move_forever (args[0])
         except:
+            import traceback
+            traceback.print_exc()
             format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\
