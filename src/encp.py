@@ -221,21 +221,21 @@ MOUNT_TIME=%.02f
 QWAIT_TIME=%.02f
 TIME2NOW=%.02f
 STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
-    
+
     out.write(data_access_layer_format % (inputfile, outputfile, filesize,
                                           external_label,location_cookie,
                                           device, device_sn,
                                           transfer_time, seek_time,
                                           mount_time, in_queue,
                                           total, status))
-    
+
     out.write('\n')
     out.flush()
     if msg:
         msg=str(msg)
         sys.stderr.write(msg+'\n')
         sys.stderr.flush()
-    
+
     try:
         format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s LOCATION=%s " +\
                  "DRIVE=%s DRIVE_SN=%s TRANSFER_TIME=%.02f "+ \
@@ -540,13 +540,15 @@ def pnfs_information(filelist,write=1):
     else: details = 0
 
     for file in filelist:
+
         p = pnfs.Pnfs(file, get_details = details)
+
         if not write:
             ## validate pnfs info
             if p.bit_file_id == pnfs.UNKNOWN:
                 return (e_errors.USERERROR, "no bit file id"), None
             bfid.append(p.bit_file_id)
-            
+
         if write:
             ## validate additional pnfs info
             if p.library == pnfs.UNKNOWN:
@@ -568,7 +570,7 @@ def pnfs_information(filelist,write=1):
                 storage_group.append(p.storage_group) # get the storage group
             except:
                 storage_group.append('none')   # default
-                
+
         # get some debugging info for the ticket
         pinf = {}
         for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',
@@ -670,12 +672,13 @@ def open_control_socket(listen_socket, mover_timeout, verbose):
         Trace.message(4, msg)
         raise socket.error, (errno.NET_ERROR, msg)
 
-    try:
-        a = ticket['mover']['callback_addr']
-    except KeyError:
-        msg = "mover did not return mover info."
-        Trace.message(4, msg)
-        raise socket.error, (errno.EPROTO, msg )
+    #try:
+    #    a = ticket['mover']['callback_addr']
+    #except KeyError:
+    #    msg = "mover did not return mover info.  " + \
+    #          str(ticket.get("status", None))
+    #    Trace.message(4, msg)
+    #    raise socket.error, (errno.EPROTO, msg )
 
     return control_socket, address, ticket
     
@@ -761,11 +764,12 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         try:
             control_socket, mover_address, ticket = open_control_socket(
                 listen_socket, mover_timeout, verbose)
-        except (socket.error,), detail:
+        except (socket.error,):
+            exc, msg, tb = sys.exc_info()
             if detail.args[0] == errno.ETIMEDOUT:
                 ticket = {'status':(e_errors.RESUBMITTING, None)}
             else:
-                ticket = {'status':(e_errors.NET_ERROR, detail.args)}
+                ticket = {'status':(exc, msg)}
                 
             #Trace.log(e_errors.INFO, e_errors.RESUBMITTING)
 
@@ -805,7 +809,7 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
             return None, None, ticket
 
         mover_addr = ticket['mover']['callback_addr']
-        
+
         #Attempt to get the data socket connected with the mover.
         try:
             data_path_socket = open_data_socket(mover_addr)
@@ -820,7 +824,7 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
             
             #Since an error occured, just return it.
             return None, None, ticket
-        
+
         #If we got here then the status is OK.
         ticket['status'] = (e_errors.OK, None)
         #Include new info from mover.
@@ -997,7 +1001,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     
     dict_status = error_dictionary.get('status', (e_errors.OK, None))
 
-
     #Get volume info from the volume clerk.
     #Need to check if the volume has been marked NOACCESS since it
     # was checked last.  This should only apply to reads.
@@ -1055,7 +1058,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     if max_retries != None and retry >= max_retries:
         Trace.message(3,"To many retries for %s -> %s."%(infile,outfile))
         status = (e_errors.TOO_MANY_RETRIES, status)
-    
+
     #If the error is not retriable, remove it from the request queue.  There
     # are two types of non retriable errors.  Those that cause the transfer
     # to be aborted, and those that in addition to abborting the transfer
@@ -1075,7 +1078,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         if status[0] in e_errors.raise_alarm_errors:
             Trace.alarm(e_errors.WARNING, status[0], {
                 'infile':infile, 'outfile':outfile, 'status':status[1]})
-        
+
         try:
             #Try to delete the request.  In the event that the connection
             # didn't let us determine which request failed, don't worry.
@@ -1758,9 +1761,9 @@ def write_to_hsm(e, client, tinfo):
     bytecount=None #Test moe only
     storage_info=None #DCache only
     unique_id = []
-    
+
     ninput, file_size, inputlist, outputlist = file_check(e)
-    
+
     #Snag the pnfs_information and verify that everything matches.
     status, info = pnfs_information(outputlist,write=1)
     if status[0] != e_errors.OK:
@@ -1775,7 +1778,7 @@ def write_to_hsm(e, client, tinfo):
     Trace.message(5, "width=" + str(width))
     Trace.message(5, "storage_group=" + str(storage_group))
     Trace.message(5, "pinfo=" + str(pinfo))
-        
+    
     if e.output_file_family != "":
         for i in range(0,len(outputlist)):
             file_family[i] = e.output_file_family
@@ -2284,7 +2287,6 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
             continue
-            
 
         Trace.message(2, "Mover called back.  elapsed=%s" %
                       (time.time() - tinfo['encp_start_time'],))
@@ -2434,7 +2436,7 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
                 del unknown_failed_transfers[0] #shorten this list.
             except IndexError:
                 pass
-            
+
             print_data_access_layer_format(transfer['infile'],
                                            transfer['outfile'],
                                            transfer['file_size'],
@@ -2451,7 +2453,7 @@ def read_from_hsm(e, client, tinfo):
                                       e.chk_crc, tinfo['encp_start_time']))
 
     #requests_per_vol = {}
-    
+
     ninput, file_size, inputlist, outputlist = file_check(e)
 
     #Get the pnfs information.
@@ -2721,8 +2723,10 @@ def main():
     if e.test_mode:
         print "WARNING: running in test mode"
 
-    for x in xrange(0, e.verbose+1):
+    for x in xrange(6, e.verbose+1):
         Trace.do_print(x)
+    for x in xrange(1, e.verbose+1):
+        Trace.do_message(x)
 
     #Dictionary with configuration server, clean udp and other info.
     client = clients(e.config_host, e.config_port)
