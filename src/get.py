@@ -29,7 +29,7 @@ import option
 #Completion status field values.
 SUCCESS = "SUCCESS"
 FAILURE = "FAILURE"
-EOD = "EOD"  #Don't stop until EOD is reached.
+#EOD = "EOD"  #Don't stop until EOD is reached.
 
 TIME_LEVEL = encp.TIME_LEVEL
 
@@ -808,7 +808,7 @@ def requests_outstanding(request_list):
 
     for request in request_list:
         completion_status = request.get('completion_status', None)
-        if completion_status == None or completion_status == EOD: 
+        if completion_status == None: # or completion_status == EOD: 
             files_left = files_left + 1
 
     return files_left
