@@ -13,3 +13,4 @@ econ()   { python $ENSTORE_DIR/src/configuration_client.py $@ ; }
 bfid()   { python $ENSTORE_DIR/src/file_clerk_client.py $@ ; }
 
 rddt()   { python $ENSTORE_DIR/src/driver.py $@ ; }
+clbk()   { python $ENSTORE_DIR/src/callback.py $@ ; }

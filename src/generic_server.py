@@ -1,4 +1,4 @@
-# Generic server class for the hsm
+# Generic server class for enstore
 
 import socket
 

@@ -33,3 +33,6 @@ rddt [--size= --device= --eod_cookie= --list --help]
         --device  name of disk file
         --eod_cookie  end-of-data cookie
         --list
+
+clbk <no options>
+        just checks to see if you call allocate callback ports on your node
