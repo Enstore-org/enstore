@@ -844,7 +844,6 @@ class Mover(dispatching_worker.DispatchingWorker,
     # restart itselfs
     def restart(self):
         cmd = '/usr/bin/at now+1minute'
-        #fn = os.path.join(os.environ.get("ENSTORE_DIR"),'src/mover.py')
         ecmd = "enstore Estart %s '--just %s'\n"%(self.config['host'],self.name) 
         p=os.popen(cmd, 'w')
         p.write(ecmd)
@@ -2591,7 +2590,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(out_ticket)
         ## XXX here we need to check if tape is mounted
         ## if yes go to have bound, NOT idle AM
+        Trace.trace(11,"check lockfile %s"%(self.check_lockfile(),))
         self.remove_lockfile()
+        Trace.trace(11,"check lockfile %s"%(self.check_lockfile(),))
         Trace.log(e_errors.INFO,"restarting %s"% (self.name,))
         self.restart()
         #self.idle()
