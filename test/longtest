@@ -2,8 +2,7 @@
 
 while /bin/true; do
     cat $ENSTORE_DIR/test/files.in | while read f; do
-        rm -f loop_longtest.pids
-        echo $$ > loop_longtest.pids
+        if [ -e $ENSTORE_DIR/test/longstop ] ; then exit 0; fi
         rm -f longtest.out
         ecmd encp $f longtest.out;
         diff longtest.out $ENSTORE_DIR/test/data/`basename $f` ;

@@ -18,3 +18,6 @@ data
 9
 *_pids
 read_list.*
+readstop
+writestop
+longstop

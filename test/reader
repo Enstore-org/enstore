@@ -13,17 +13,12 @@ fi
 set -u  # force better programming and ability to use check for not set
 
 read_list=./reader_list.$$
-rm -f reader.pids
-echo $$ > reader.pids
 
 while /bin/true; do
-    rm -f readerWT.pids
-    echo $! > readerWT.pids
     rm -fr $read_list
     find $base/ -type f -print >> $read_list
     cat $read_list | while read f; do
-        rm -f readerWC.pids
-        echo $! > readerWC.pids
+        if [ -e $ENSTORE_DIR/test/readstop ] ; then exit 0; fi
         rm -f reader.out
         ecmd encp $f reader.out
     done
