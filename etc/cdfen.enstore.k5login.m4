@@ -29,9 +29,6 @@ enstore/cd/cdfenmvr20a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr21a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr22a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr23a.fnal.gov@FNAL.GOV
-enstore/cd/fcdfcaf055.fnal.gov@FNAL.GOV
-enstore/cd/fcdfcaf304.fnal.gov@FNAL.GOV
-enstore/cd/fcdfcaf305.fnal.gov@FNAL.GOV
 aik@FNAL.GOV
 alcorn@FNAL.GOV
 baisley@FNAL.GOV
