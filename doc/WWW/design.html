@@ -102,7 +102,7 @@ The system can instruct <em>encp</em> to retry if it needs to back out
 of an operation.
 
 <h2><a name="pnfs">
-1.1 pnfs Namespace
+1.1 Pnfs Namespace
 </h2>
 The DESY <a href=http://mufasa.desy.de/pnfs/Welcome.html><em>pnfs</em>
 (http://mufasa.desy.de/pnfs/Welcome.html) </a>package implements an <em>nfs</em> daemon and
@@ -157,6 +157,25 @@ Enstore uses pnfs for three different kinds of access and information:
      where the file was copied to or transfer rates, are stored in a different
      layer of the same pnfs file.
 </ol>
+
+Pnfs was tested in the prototype with very good results. The code was run
+on a 200 MHz Pentium Pro Linux with scsi disks.  The pnfs code had not been
+run extensively on linux machines before and there a few minor glitches
+were found during initial running. Support from DESY was outstanding and
+all problems were solved quickly.
+
+As a test of pnfs' capabilities, the current set of 250K HPSS filenames
+were put into pnfs. Approximately 30 pnfs databases were used for this
+test, with each database corresponding to a HPSS "experimental"
+separation. [That is, D0 had its own database, SDSS had its own, and so
+forth.] Name lookup was done on each database simultaneously from 3
+machines (IRIX, Linux, and AIT) for several days.  Pnfs performed
+flawlessly and was able to provide names at a rate of 3-15 names/sec. The
+database can be further optimized, but this performance is already adequate
+for Enstore.
+
+
+
 <h2><a name="encp">
 1.2 ENCP
 </h2>
