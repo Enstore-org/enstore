@@ -112,7 +112,7 @@ set format x \"%m-%d\"
 set nokey
 set label \"Plotted `date` \" at graph .99,0 rotate font \"Helvetica,10\"
 set label \"$nleft Free\" at graph .2,.9 font \"Helvetica,80\"
-plot \"/tmp/used\" using 1:3 t \"Used Slots\" w impulses, \"/tmp/used\"  using 1:2 w impulses" > /tmp/stk.us.gnu 
+plot \"/tmp/used\" using 1:3 t \"Used Slots\" w impulses linetype 2, \"/tmp/used\"  using 1:2 w impulses linetype 1" > /tmp/stk.us.gnu 
      #cat /tmp/stk.us.gnu 
      gnuplot /tmp/stk.us.gnu 
      convert -rotate 90 /tmp/silo.$silo.ps /tmp/silo.$silo.jpg
