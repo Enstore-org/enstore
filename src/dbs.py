@@ -28,7 +28,7 @@ CMDc = ";echo >>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\
 CMD1 = "%s%s%s"%(CMDa, "database", CMDb)
 #CMD1 = "%s%s%s"%(CMDa, "database", CMDc)
 # the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
-CMD2 = " 2>&1 |tee /dev/console>>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1) 1>&- 2>&- <&-"
+CMD2 = " 2>&1 |tee /dev/console>>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1) 1>&- 2>&- <&- &"
 
 def send_dbs_cmd(intf, farmlet, db):
     # build the command and send it to the correct node
