@@ -40,7 +40,7 @@ def print_args(*args):
 
 verbose=0
     
-Trace.trace = print_args
+#Trace.trace = print_args
 
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
@@ -545,7 +545,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                            vol_info.get('user_inhibit',['Unknown', 'Unknown']))
 
     def clear_volume_status(self):
-        self.volume_status = (['none', 'none'], ['none','none')
+        self.volume_status = (['none', 'none'], ['none','none'])
         self.vol_info = None
         
     def prepare_volume(self, volume_label, iomode, location=None):
