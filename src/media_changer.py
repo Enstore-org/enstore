@@ -676,7 +676,7 @@ class STK_MediaLoader(MediaLoaderMethods):
                     break
             except:
                 exc,val,tb = e_errors.handle_error()
-                return exc,0,""
+                return str(exc),0,""
         return sts
     
     # load volume into the drive;
