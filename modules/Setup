@@ -66,8 +66,6 @@ IPC IPC.c
 
 Devcodes Devcodes.c
 
-ECRC ECRC.c
-
 # STK is not build unless STK_DIR is defined ; see Makefile
 STK STK.c -I. -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
 
