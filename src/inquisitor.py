@@ -149,8 +149,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    # Check on server status but wait a long time
 	    timeout = t.get("hung_rcv_timeout", self.get_hung_to(key))
 	    retries = t.get("hung_retries", self.get_hung_retries(key))
-	    timeout = 5
-	    retries = 1
 	    stat = client.alive(key, timeout, retries)
 	    if enstore_functions.is_timedout(stat):
 		# if we raise an alarm we need to include the following info.
@@ -361,8 +359,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
                 self.lm_state(lmc, (t['host'], t['port']), key, time)
 	        self.suspect_vols(lmc, (t['host'], t['port']), key, time)
 	        self.work_queue(lmc, (t['host'], t['port']), key, time)
-	    # get rid of this in preparation for the next time through
-	    del lmc.u
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
 
@@ -380,8 +376,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
                                          time, key)
 	    if ret == DID_IT:
 	        self.mover_status(movc, (t['host'], t['port']), key, time)
-	    # get rid of this in preparation for the next time through
-	    del movc.u
 
     # get the information from the media changer(s)
     def update_media_changer(self, key, time):
@@ -395,8 +389,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    # get a client and then check if the server is alive
 	    mcc = media_changer_client.MediaChangerClient(self.csc, key)
 	    self.alive_and_restart(mcc, (t['host'], t['port']), time, key)
-	    # get rid of this in preparation for the next time through
-	    del mcc.u
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
 
@@ -418,6 +410,16 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
 
     # this is the routine that is called when a message arrives from the event relay.
+    # this is what this routine does:
+    #     read the message from the passed in descriptor
+    #     decode the message
+    #     update the internal information based on the info in the message
+    #     if this message is from a mover - send a message to the mover for a more
+    #                                       detailed status
+    #     if this message is from a library_manager - send a message to the lib_man
+    #                                       for it's state, suspect volume list and
+    #                                       queue list.
+    #     if the timeout handler has not been called in awhile, call it.
     def event_message_arrived(self, fd):
 	pass
 
