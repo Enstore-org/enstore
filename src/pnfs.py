@@ -1,7 +1,11 @@
 #!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import sys
 import os
@@ -130,8 +134,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
                  #get_details=1, get_pinfo=0, timeit=0, mount_point=""):
 
-        self.print_id = "PNFS"
+        #self.print_id = "PNFS"
         self.mount_point = mount_point
+        #Make sure self.id exists.  __init__ should set it correctly
+        # if necessary a little later on.
+        self.id = None
 
         if mount_point:
             self.dir = mount_point
@@ -147,7 +154,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.id = pnfsFilename
             try:
                 pnfsFilename = self.get_path(self.id)
-            except (OSError, IOError):
+            except (OSError, IOError, AttributeError, ValueError):
                 #No longer do just the following: pnfsFilename = ""
                 # on an exception.  Attempt to get the ".(access)(<pnfs id>)"
                 # version of the filename.
@@ -417,10 +424,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             use_dir = self.dir
 
-        if id:
-            use_id = id
+        if id != None:
+            if is_pnfsid(id):
+                use_id = id
+            else:
+                raise ValueError("The pnfs id (%s) is not valid." % id)
+        elif self.id != None:
+            if is_pnfsid(self.id):
+                use_id = self.id
+            else:
+                raise ValueError("The pnfs id (%s) is not valid." % self.id)
         else:
-            use_id = self.id
+            raise ValueError("No valid pnfs id.")
 
         ###Note: The filepath should be munged with the mountpoint.
         search_path = os.path.join("/", use_dir.split("/")[0])
@@ -1060,7 +1075,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError), detail:
             print str(detail)
             return 1
-        except (AttributeError,), detail:
+        except (AttributeError, ValueError), detail:
             print "A valid pnfs id was not entered."
             return 1
         

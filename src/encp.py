@@ -4581,7 +4581,7 @@ def set_pnfs_settings(ticket, intf_encp):
                     ticket['outfile'] = path
                 else:  #is_read() for "get".
                     ticket['infile'] = path
-            except OSError:
+            except (OSError, IOError, AttributeError, ValueError):
                 ticket['status'] = (e_errors.USERERROR,
                                     "PNFS file %s has been removed." %
                                     ticket['wrapper']['pnfsFilename'])
@@ -5317,15 +5317,17 @@ def write_to_hsm(e, tinfo):
         #request_list = create_write_requests(callback_addr, udp_callback_addr,
         #                                     e, tinfo)
         request_list = create_write_requests(callback_addr, None, e, tinfo)
-    except (OSError, IOError, EncpError), msg:
+    except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
         if isinstance(msg, EncpError):
             e_ticket = msg.ticket
             if e_ticket.get('status', None) == None:
                 e_ticket['status'] = (msg.type, str(msg))
         elif isinstance(msg, OSError):
             e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
-        else:
+        elif isinstance(msg, IOError):
             e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
+        else:
+            e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
 
         #Print the error and exit.
         #print_data_access_layer_format("", "", 0, e_ticket)
@@ -6371,7 +6373,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                     # file currently has.
                     p = pnfs.Pnfs(pnfsid, orignal_directory)
                     ifullname = p.get_path() #pnfsid, orignal_directory)
-                except (OSError, KeyError, AttributeError):
+                except (OSError, KeyError, AttributeError, ValueError):
                     sys.stdout.write("Location %s is active, but the "
                                      "file has been deleted.\n" % lc)
 
@@ -6475,7 +6477,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             else:
                 try:
                     ifullname = p.get_path()
-                except (OSError, IOError):
+                except (OSError, IOError, AttributeError, ValueError):
                     ifullname = os.path.join(e.pnfs_mount_point,
                                              ".(access)(%s)" % pnfsid)
 
@@ -7103,7 +7105,7 @@ def read_from_hsm(e, tinfo):
         #requests_per_vol = create_read_requests(callback_addr,
         #                                        udp_callback_addr, tinfo, e)
         requests_per_vol = create_read_requests(callback_addr, None, tinfo, e)
-    except (OSError, IOError, EncpError), msg:
+    except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
         if isinstance(msg, EncpError):
             e_ticket = msg.ticket
             #print "e_ticket['status']:", e_ticket['status']
@@ -7112,8 +7114,10 @@ def read_from_hsm(e, tinfo):
             e_ticket['status'] = (msg.type, str(msg))
         elif isinstance(msg, OSError):
             e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
-        else:
+        elif isinstance(msg, IOError):
             e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
+        else:
+            e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
 
         #Print the error and exit.
         #print_data_access_layer_format("", "", 0, e_ticket)
