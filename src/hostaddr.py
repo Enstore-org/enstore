@@ -6,10 +6,10 @@
 
 #system imports
 import os, sys
-import stat
+#import stat
 import socket
 import string,re
-import time
+#import time
 
 
 #Enstore imports

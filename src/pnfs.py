@@ -11,16 +11,16 @@ import pwd
 import grp
 import string
 import time
-import re
+#import re
 import types
 
 # enstore imports
 import Trace
 import e_errors
-try:
-    import Devcodes # this is a compiled enstore module
-except ImportError:
-    Trace.log(e_errors.INFO, "Devcodes unavailable")
+#try:
+#    import Devcodes # this is a compiled enstore module
+#except ImportError:
+#    Trace.log(e_errors.INFO, "Devcodes unavailable")
 import option
 import enstore_constants
 import hostaddr
