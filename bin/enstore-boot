@@ -22,10 +22,13 @@ case "$1" in
         n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\.fnal\.gov//'`
         n2=`uname -n | sed -e 's/\.fnal\.gov//'`
         if [ "$n1" != "$n2" ]; then
-          if [ `ping -c 1 $ENSTORE_CONFIG_HOST | grep -c "0% packet loss"` -eq 1 ]; then
+          if [ `ping -c 1 $ENSTORE_CONFIG_HOST | grep -c ", 0% packet loss"` -eq 1 ]; then
+            echo "`date`: $ENSTORE_CONFIG_HOST responds to pings" 2>&1 | tee /dev/console >>$output
             for server in config log alarm; do
+	      echo "`date`: checking if $server is alive"  2>&1 | tee /dev/console >>$output
               enstore $server --alive --timeout=$timeout --retries=2 2>&1 | tee /dev/console >>$output
               estat=$?
+	      echo "`date`:  ... status returned=$estat" 2>&1 | tee /dev/console >>$output
               if [ $estat -ne 0 ] ; then
                 echo "`date`: $server not responding, can not continue..." 2>&1 | tee /dev/console >>$output
                 break
@@ -39,8 +42,10 @@ case "$1" in
         if [ $estat -eq 0 ]; then
           # we should be enstore when we start this up (at least not root)
           if [ "`whoami`" = "root" ] ; then
+	    echo "`date`: su-ing to enstore and doing an enstore Estart $n2" 2>&1 | tee /dev/console >>$output
             su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore Estart $n2"  
           else
+            echo "`date`: doing enstore Estart $n2" 2>&1 | tee /dev/console >>$output
             enstore Estart $n2 
           fi
        
