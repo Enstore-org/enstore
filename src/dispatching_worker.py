@@ -46,11 +46,8 @@ signal.signal(3,dodebug)
 
 # check for any children that have exitted (zombies) and collect them
 def collect_children():
-    count = 0
     try:
         pid, status = os.waitpid(0, os.WNOHANG)
-        if (pid!=0):
-            count = count+1
     except os.error, msg:
         if msg.errno != errno.ECHILD:
             Trace.trace(6,"collect_children %s"%(msg,))
@@ -80,7 +77,7 @@ class DispatchingWorker:
         
         # set this socket to be closed in case of an exec
         fcntl.fcntl(self.socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
-
+        self.do_collect = 1 # allow clients to override the "collect_children"
         self.server_bind()
 
     def fork(self):
@@ -104,12 +101,14 @@ class DispatchingWorker:
         Trace.trace(16,"server_bind add="+repr(self.server_address))
         self.socket.bind(self.server_address)
 
+    
     def serve_forever(self):
         """Handle one request at a time until doomsday, unless we are in a child process"""
         ###XXX should have a global exception handler here
         while not self.is_child:
             self.handle_request()
-            collect_children()
+            if self.do_collect:
+                collect_children()
         if self.is_child:
             Trace.trace(6,"server_forever, child process exiting")
             os._exit(0) ## in case the child process doesn't explicitly exit
@@ -259,9 +258,6 @@ class DispatchingWorker:
         Trace.trace(6,"process_request function="+repr(function_name))
         apply(function, (ticket,))
         
-        # check for any zombie children and get rid of them
-        collect_children()
-
     def enable_call_trace(self, ticket):
         import Ptrace
         sys.setprofile(Ptrace.profile)
