@@ -14,19 +14,17 @@ esac
 
 bang=`echo -e "\041"`
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-case $node in
-  stken*|rip9|rip10)
-          gang=stken
-          pnfson=stkensrv1
+gang=`gang`
+case $gang in
+  stken) pnfson=stkensrv1
           ;;
-   d0en*) gang=d0en
-          pnfson=d0ensrv1
+   d0en) pnfson=d0ensrv1
           ;;
-   rip[1-8])
-          gang=rip
-          pnfson=rip6
+  cdfen) pnfson=cdfensrv1
           ;;
-       *) gang=UNKNOWN
+   rip) pnfson=rip6
+          ;;
+     *) pnfson=UNKNOWN
           ;;
 esac
 

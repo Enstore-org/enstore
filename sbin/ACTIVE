@@ -5,15 +5,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # $Id$
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-
-case $node in
-  stken*) gang=stken
-          ;;
-   d0en*) gang=d0en
-          ;;
-       *) gang=UNKNOWN
-          ;;
-esac
+gang=`gang`
 
 if [ "${1:-x}" = "local" ]; then gang=$node; fi
 

@@ -8,19 +8,17 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 bang=`echo -e "\041"`
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
 case $node in
-  stken*|rip9|rip10)
-          gang=stken
-          op="-ne"
+  stken) op="-ne"
           ;;
-   d0en*) gang=d0en
-          op="-eq"
+   d0en) op="-eq"
           ;;
-   rip[1-8])
-          echo `date` NOT backing up rip nodes - Policy choice.
+  cdfen) op="-eq"
+          ;;
+      *) echo `date` NOT backing up nodes - Policy choice.
           exit 0
           ;;
-       *) gang=UNKNOWN
           ;;
 esac
 

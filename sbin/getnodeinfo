@@ -3,17 +3,11 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-
-case $node in
-  stken*|rip9*|rip10*) gangfile=/usr/local/etc/farmlets/stken-alla
-          ;;
-   d0en*) gangfile=/usr/local/etc/farmlets/d0en-alla
-          ;;
-   ripe*) gangfile=/usr/local/etc/farmlets/ripe
-          ;;
-       *) gang=UNKNOWN
-          ;;
-esac
+gang=`gang`
+if [ $gang = "rip" ]; then
+    gangfile=/usr/local/etc/farmlets/ripe
+else
+    gangfile=/usr/local/etc/farmlets/${gang}-alla
 
 
 output=${1:-/dev/tty}

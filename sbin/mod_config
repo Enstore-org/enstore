@@ -12,16 +12,9 @@ if [ `whoami` = "root" -o `whoami` = "enstore" ]; then
 fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
 case $node in
-  stken*) gang=stken
-          ;;
-   d0en*) gang=d0en
-          ;;
-       *) gang=UNKNOWN
-          ;;
-esac
-case $node in
-   stkensrv2|d0ensrv2)
+   stkensrv2|d0ensrv2|cdfensrv2)
           loadit=1
           ;;
    *)     loadit=0

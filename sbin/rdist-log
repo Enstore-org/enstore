@@ -4,14 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # information specific to Fermilab
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-case $node in
-  stken*) gang=stken
-          ;;
-   d0en*) gang=d0en
-          ;;
-       *) gang=UNKNOWN
-          ;;
-esac
+gang=`gang`
 thisNode=${gang}srv2
 rdistNode=${gang}srv3.fnal.gov
 filePath='/diska'

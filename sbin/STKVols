@@ -3,14 +3,15 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-case $node in
-  stken*) gang=stken
-          robot="PowderHorn 9310"
+gang=`gang`
+case $gang in
+  stken) robot="PowderHorn 9310"
           ;;
-   d0en*) gang=d0en
-          robot="UNKNOWN"
+  cdfen) robot="PowderHorn 9310"
           ;;
-       *) gang=UNKNOWN
+   d0en*) robot="UNKNOWN"
+          ;;
+       *) robot="UNKNOWN"
           ;;
 esac
 

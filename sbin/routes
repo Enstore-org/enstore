@@ -9,9 +9,9 @@ netperf=/opt/netperf/netperf
 N=/dev/null
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
 case $node in
-  stken*) gang=stken
-          NODES="stkensrv0: stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
+  stken*) NODES="stkensrv0: stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
                  stkenmvr1a: stkenmvr1b: \
                  stkenmvr2a: stkenmvr2b: \
                  stkenmvr3a: stkenmvr3b: \
@@ -32,8 +32,7 @@ case $node in
                  rip9: rip10:"
           ;;
 
-   d0en*) gang=d0en
-          NODES="d0ensrv0: d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5: \
+   d0en*) NODES="d0ensrv0: d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5: \
                  d0enmvr1a: d0enmvr1b: \
                  d0enmvr2a: d0enmvr2b: \
                  d0enmvr3a: d0enmvr3b: \
@@ -50,8 +49,7 @@ case $node in
                  d0enmvr24a: d0enmvr24b:"
           ;;
 
-   cdfen*) gang=cdfen
-          NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4: cdfensrv5: \
+   cdfen*) NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4: cdfensrv5: \
                  cdfenmvr3a: \
                  cdfenmvr5a: \
                  cdfenmvr6a: \
@@ -59,8 +57,7 @@ case $node in
                  cdfenmvr9a: "
           ;;
 
-       *) gang=UNKNOWN
-          NODE=UNKNOWN
+       *) NODES=UNKNOWN
           ;;
 esac
 

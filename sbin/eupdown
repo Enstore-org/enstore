@@ -7,13 +7,7 @@ output=${1:-/dev/tty}
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
 case $node in
-  stken*) gang=stken
-          ;;
-   d0en*) gang=d0en
-          ;;
-       *) gang=UNKNOWN
-          ;;
-esac
+gang=`gang`
 
 cat << EOF
 <html> <head> <title>$gang Cluster Enstore UP/DOWN Status Page</title> </head>

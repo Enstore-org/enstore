@@ -5,15 +5,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 output=${1:-/dev/tty}
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-
-case $node in
-  stken*) gang=stken
-          ;;
-   d0en*) gang=d0en
-          ;;
-       *) gang=UNKNOWN
-          ;;
-esac
+gang=`gang`
 
 cat << EOF >$output
 <html> <head> <title>$gang Cluster UDP Clogup Status Page</title> </head>

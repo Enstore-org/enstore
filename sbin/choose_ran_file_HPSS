@@ -7,14 +7,7 @@ if [ "${1:-}" = "-C" ] ; then copyit=1; shift; else copyit=0; fi
 # script to return a random file name(s) for tapes in the current inventory
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-case $node in
-  stken*) gang=stken
-          ;;
-   d0en*) gang=d0en
-          ;;
-       *) gang=UNKNOWN
-          ;;
-esac
+gang=`gang`
 
 HTTP=http://${gang}srv2.fnal.gov
 COUNT=${1:-1}

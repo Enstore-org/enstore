@@ -5,14 +5,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # sbin/$RCSfile$  $Revision$
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-case $node in
-  stken*) gang=stken
-          ;;
-   d0en*) gang=d0en
-          ;;
-       *) gang=UNKNOWN
-          ;;
-esac
+gang=`gang`
 
 here=`pwd`
 thisYear=`date +%Y`

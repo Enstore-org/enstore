@@ -3,15 +3,13 @@
 BASEPATH=/fnal/ups/prd/www_pages/enstore
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-case $node in
-  stken*) gang=stken
-          robot="AML/J"
+gang=`gang`
+case $gang in
+  stken) robot="AML/J"
           ;;
-   d0en*) gang=d0en
-          robot="AML/2"
+   d0en) robot="AML/2"
           ;;
-       *) gang=UNKNOWN
-          robot=UNKNOWN
+       *) robot=UNKNOWN
           ;;
 esac
 
