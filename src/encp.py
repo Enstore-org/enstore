@@ -1056,7 +1056,7 @@ def get_fcc(parameter = None):
 def get_vcc(parameter = None):
     global __vcc
     global __csc
-    print type(parameter), parameter
+
     if not parameter:
         if __vcc != None: #No volume, but have cached vcc.
             return __vcc
@@ -5240,6 +5240,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     # right way it is possible for this entry to not exist.
                     try:
                         pnfsid = fc_reply['pnfsid']
+                        if pnfsid == None:
+                            raise KeyError("pnfsid")
                     except KeyError:
                         #If we get here, then a file does not have all
                         # the information in the file database, but does
