@@ -23,7 +23,7 @@ EOF
 if [ -z "${2-}" ] ; then
   for i in `cat $farmlet`; do
    date > $filebase$i
-   enrsh $i '. /fnal/ups/etc/setups.sh;setup enstore;$ENSTORE_DIR/sbin/ekill -9 $IPMI_DIR/selread; $IPMI_DIR/selread ' >> $filebase$i &
+   enrsh $i '. /fnal/ups/etc/setups.sh;setup ipmi; $IPMI_DIR/selread ' >> $filebase$i &
   done
   #wait
   sleep 30 # wait doesn't work if rsh fails ???
