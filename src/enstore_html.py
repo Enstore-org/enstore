@@ -176,7 +176,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	td.append(HTMLgen.Font(self.description, html_escape='OFF', size="+2"))
 	td.append(HTMLgen.Font(" (Last Updated: %s)"%(enstore_functions.format_time(time.time())), 
 			       html_escape='OFF', size="+1"))
-	td.append(HTMLgen.HR())
+	td.append(HTMLgen.HR(size=2, noshade=1))
 	table.append(HTMLgen.TR(td))
 	table.append(empty_row())
 	return table
@@ -192,7 +192,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 				  cellspacing=0, cellpadding=0, align="LEFT",
 				  width="800")
 	table.append(empty_row())
-	td = HTMLgen.TD(HTMLgen.HR())
+	td = HTMLgen.TD(HTMLgen.HR(size=2, noshade=1))
 	self.table_top_b(table, td)
 	return table
 
@@ -1206,8 +1206,8 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         of performance data we must fill in
         """
 	self.title = "ENSTORE Active Network Monitoring"
-	self.script_title_gif = None
-	self.description = "%s%sRecent network monitoring results"%(NBSP, NBSP)
+	self.script_title_gif = "en_net_mon.gif"
+	self.description = "%s%sRecent network monitoring results."%(NBSP, NBSP)
         EnBaseHtmlDoc.__init__(self, refresh)
         
         #add standard header to  html page
@@ -1233,7 +1233,7 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
 	head_row = HTMLgen.TR(valign="CENTER")
         self.perf_table.append(head_row)
         for h in headings:
-            head_row.append(HTMLgen.TD(h))
+            head_row.append(self.make_th(h))
 
     "override the one in the base class, it does not update the data ach time we write"
     def table_top_b(self, table, td):
