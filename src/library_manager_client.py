@@ -227,12 +227,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return ticket
             
     def storage_groups(self):
-        ticket = self.send({"work":"storage_groups"})
-        print "%-14s %-12s" % ('storage group', 'limit')
-        for sg in ticket['storage_groups']['limits'].keys():
-            print "%-14s %-12s" % (sg, ticket['storage_groups']['limits'][sg])
-                         
-        return ticket
+        return self.send({"work":"storage_groups"})
         
 
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
@@ -342,6 +337,9 @@ def do_work(intf):
         ticket = lmc.get_active_volumes()
     elif intf.storage_groups:
         ticket = lmc.storage_groups()
+	print "%-14s %-12s" % ('storage group', 'limit')
+	for sg in ticket['storage_groups']['limits'].keys():
+	    print "%-14s %-12s" % (sg, ticket['storage_groups']['limits'][sg])
 
     elif intf.get_queue != None:
         ticket = lmc.get_queue(intf.get_queue, intf.name)
