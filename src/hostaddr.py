@@ -18,7 +18,7 @@ import Trace
 hostinfo=None
 
 #Only allow connections from these domains
-valid_domains = ('131.225', '127.0')
+valid_domains = ('131.225', '127.0', '198.124.212', '198.124.213')
 
 
 ####  XXX Get preferred interface from config file if present, else use hostname.
