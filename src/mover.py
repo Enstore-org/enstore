@@ -761,11 +761,19 @@ def forked_read_from_hsm( self, ticket ):
 	    wr_access,rd_access = 0,1
         #except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
 	except (FTT.error, EXfer.error), err_msg:
+            # XXX
+            # Check for a broken pipe.
+
+            if err_msg.args[2] == "Broken pipe": #XXX should compare ints rather than strings
+                err = e_errors.BROKENPIPE
+                ticket['status']=(e_errors.BROKENPIPE,None)
+            else:
+                err = e_errors.READ_ERROR
+                traceback.print_exc()
             Trace.log( e_errors.ERROR,
 		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
-	    traceback.print_exc()
 	    self.usr_driver.close()
-	    send_user_done( self, ticket, e_errors.READ_ERROR )
+	    send_user_done( self, ticket, err)
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
         except:
 	    traceback.print_exc()
@@ -1001,7 +1009,8 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		 'drive_sn'     : self.client_obj_inst.hsm_drive_sn,
 		 #
 		 'crc_flag'     : str(self.client_obj_inst.crc_flag),
-		 'forked_state' : self.client_obj_inst.hsm_driver.user_state_get(),
+		 'forked_state' : forked_state[
+            self.client_obj_inst.hsm_driver.user_state_get()],
 		 'state'        : self.client_obj_inst.state,
 		 'no_xfers'     : self.client_obj_inst.no_xfers,
 		 'local_mover'  : self.client_obj_inst.local_mover_enable,
