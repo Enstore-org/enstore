@@ -47,7 +47,10 @@ def formatedv(vol):
 	t = string.split(vol['volume_family'], '.')
 	storage_group = t[0]
 	file_family = t[1]
-	wrapper = t[2]
+	if len(t) > 2:
+		wrapper = t[2]
+	else:
+		wrapper = 'none'
 	if vol.has_key('comment'):
 		comment = vol['comment']
 	else:
