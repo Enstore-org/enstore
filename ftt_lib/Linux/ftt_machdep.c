@@ -123,10 +123,11 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
        recursing = 1;
        if (ftt_open_dev(d)) {
             recursing = 0;
+
 	    buf.mt_op = MTSETDENSITY;
 	    buf.mt_count = hwdens;
 	    res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
-#ifdef IT_WOULD_BE_NICE_IF_THIS_WORKED
+#ifdef 1
 	    res = ftt_translate_error(d,FTT_OPN_STATUS,
 				    "an MTIOCTOP/MTSETDENSITY ioctl()", res,
 				"an ftt_open_dev",1);
@@ -160,17 +161,11 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     }
     recursing = 0;
 
-#ifdef BUFFER_MADNESS
-    /* first clear all the buffering flags... */
-    buf.mt_op = MTSETDRVBUFFER;
-    buf.mt_count = MT_ST_BOOLEANS | 0;  /* clear all the buffering flags! */
-    res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
-#endif
-
     buf.mt_op = MTSETBLK;
     buf.mt_count = blocksize;
     res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
-#ifdef IT_WOULD_BE_NICE_IF_THIS_WORKED
+
+#ifdef 1
     res = ftt_translate_error(d,FTT_OPN_STATUS,
 				"an MTIOCTOP/MTSETBLK ioctl()", res,
 				"an ftt_open_dev",1);
@@ -200,7 +195,7 @@ ftt_get_hwdens(ftt_descriptor d, char *devname) {
     if (res < 0) return res;
 
     res = ioctl(d->file_descriptor, MTIOCGET, &buf);
-#ifdef IT_WOULD_BE_NICE_IF_THIS_WORKED
+#ifdef 1
     res = ftt_translate_error(d,FTT_OPN_STATUS,
 				"an MTIOCGET ioctl()", res,
 				"an ftt_open_dev",1);

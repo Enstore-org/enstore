@@ -247,14 +247,16 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	mod_sel10[6] = { 0x15, 0x10, 0x00, 0x00, 28, 0x00},
 	mod_sen0f[6] = { 0x1a, 0x00, 0x0f, 0x00, 28, 0x00},
 	mod_sel0f[6] = { 0x15, 0x0f, 0x00, 0x00, 28, 0x00},
-	buf [28];
+	buf [28],
+        opbuf[512];
     int res = 0;
 
     ENTERING("ftt_set_compression");
     CKNULL("ftt_descriptor", d);
+    sprintf( opbuf , "2%s", d->prod_id);
 
     if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
-	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_MS_Px0f) {
+	if (ftt_get_stat_ops(opbuf) & FTT_DO_MS_Px0f) {
 	    DEBUG2(stderr, "Using SCSI Mode sense 0x0f page to set compression\n");
 	    res = ftt_open_scsi_dev(d);        
 	    if(res < 0) return res;
@@ -270,7 +272,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
 	}
-	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_MS_Px10) {
+	if (ftt_get_stat_ops(opbuf) & FTT_DO_MS_Px10) {
 	    DEBUG2(stderr, "Using SCSI Mode sense 0x10 page to set compression\n");
 	    res = ftt_open_scsi_dev(d);        
 	    if(res < 0) return res;

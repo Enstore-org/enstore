@@ -235,15 +235,13 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 #   define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
 			|FTT_OP_READ)
 
-    if ( -1 == res && ((1<<opn)&CHECKS) ) {
-	    /*  if we didn't do a SCSI read ourselves, and we're at BOT,  */
-	    /*  but we do do some scsi operations,			  */
-	    /*  have verify_blank double check the report so we know it's */
-	    /*  not a mis-diagnosed error.                                */
+    if ( -1 == res && ((1<<opn)&CHECKS) && keep_errno == 5 ) {
+
+	 /* good old catch-all errno 5 -- figure out what really happened... */
 
 	 DEBUG3(stderr, "Checking for blank tape on other error\n");
 	 ftt_get_stats(d, &sbuf);
-         ftt_errno = save2;
+         ftt_errno = save1;
 
 	 if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY)) && 8 == atoi(p)) {
 	     DEBUG3(stderr, "Saw blank check sense key\n");
@@ -252,6 +250,9 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 
 	 } else if (0 != (p = ftt_extract_stats(&sbuf,FTT_EOM)) && 1 == atoi(p)) {
 	     ftt_errno = FTT_EBLANK;
+	     res = -1;
+	 } else if (0 != (p = ftt_extract_stats(&sbuf,FTT_BOT)) && 1 == atoi(p)) {
+	     ftt_errno = FTT_ELEADER;
 	     res = -1;
 	 } else {
 
@@ -263,10 +264,14 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 
 		save1 = ftt_errno;
 		res = ftt_verify_blank(d);
+		ftt_errno = save1;
 		if ( 0 <= res && ftt_errno == FTT_SUCCESS) {
 		     ftt_errno = FTT_EIO;
 		     res = -1;
 		}
+	    } else {
+	         ftt_errno = FTT_EIO;
+		 res = -1;
 	    }
         }
     }
