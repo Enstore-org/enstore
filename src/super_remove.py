@@ -16,13 +16,14 @@ class Interface(generic_client.GenericClientInterface):
 	def __init__(self):
 		self.delete = None
 		self.force = 0
+		self.skip_pnfs = 0
 		generic_client.GenericClientInterface.__init__(self)
 
 	def options(self):
-		return(['delete=', 'force'])
+		return(['delete=', 'force', 'skip-pnfs'])
 
 def usage():
-	print "usage: %s [[--force] --delete] vol"%(sys.argv[0])
+	print "usage: %s [[--skip-pnfs] [--force] --delete] vol"%(sys.argv[0])
 
 if __name__ == '__main__':
 	# use GenericClientInterface to get basic environment
@@ -53,7 +54,9 @@ if __name__ == '__main__':
 		files = bfiddb.get_all_bfids(vol)
 	except:
 		print 'can not find files for', vol
-		sys.exit(1)
+		if not intf.force:
+			sys.exit(1)
+		files = []
 
 	# get info for every file
 	file_list = {}
@@ -68,46 +71,66 @@ if __name__ == '__main__':
 	error = 0
 	for i in file_list.keys():
 		fileInfo = file_list[i]
-		volmap = fileInfo['pnfs_mapname']
-		external_label = fileInfo['external_label']
-		pnfsname = fileInfo['pnfs_name0']
-		pnfsdir, pnfsfile = os.path.split(pnfsname)
-		volmapdir, volmapfile = os.path.split(volmap)
-		volmapdpd, junk = os.path.split(volmapdir)
-		# check access permission to pnfs files
-		if not os.access(pnfsdir, os.W_OK):
-			if os.access(pnfsdir, os.F_OK):
-				print 'No write permission to', pnfsdir
-			else:
-				print pnfsdir, 'does not exist'
+		if fileInfo['external_label'] != vol:
+			print i, 'is not in', vol, `fileInfo`
 			error = error + 1
-		if not os.access(pnfsname, os.W_OK):
-			if os.access(pnfsname, os.F_OK):
-				print 'No write permission to', pnfsname
+		if not intf.skip_pnfs:
+			try:
+				volmap = fileInfo['pnfs_mapname']
+			except KeyError, detail:
+				print (Warning), i, 'does not have key', detail
+				volmap = None
+			external_label = fileInfo['external_label']
+			try:
+				pnfsname = fileInfo['pnfs_name0']
+			except KeyError, detail:
+				print (Warning), i, 'does not have key', detail
+				pnfsname = None
+			if pnfsname:
+				pnfsdir, pnfsfile = os.path.split(pnfsname)
 			else:
-				print pnfsname, 'does not exist'
-			error = error + 1
-		if not os.access(volmapdpd, os.W_OK):
-			if os.access(volmapdpd, os.F_OK):
-				print 'No write permission to', volmapdpd
+				pnfsdir = None
+				pnfsfile = None
+			if volmap:
+				volmapdir, volmapfile = os.path.split(volmap)
+				volmapdpd, junk = os.path.split(volmapdir)
+			else:
+				volmapdir = None
+				volmapdpd = None
+			# check access permission to pnfs files
+			if pnfsdir and not os.access(pnfsdir, os.W_OK):
+				if os.access(pnfsdir, os.F_OK):
+					print 'No write permission to', pnfsdir
+				else:
+					print pnfsdir, 'does not exist'
 				error = error + 1
-			else:
-				print '(Warning)', volmapdpd, 'does not exist'
-				# ignore it
-		if not os.access(volmapdir, os.W_OK):
-			if os.access(volmapdir, os.F_OK):
-				print 'No write permission to', volmapdir
+			if pnfsname and not os.access(pnfsname, os.W_OK):
+				if os.access(pnfsname, os.F_OK):
+					print 'No write permission to', pnfsname
+				else:
+					print pnfsname, 'does not exist'
 				error = error + 1
-			else:
-				print '(Warning)', volmapdir, 'does not exist'
-				# ignore it
-		if not os.access(volmap, os.W_OK):
-			if os.access(volmap, os.F_OK):
-				print 'No write permission to', volmap
-				error = error + 1
-			else:
-				print '(Warning)', volmap, 'does not exist'
-				# ignore it
+			if volmapdpd and not os.access(volmapdpd, os.W_OK):
+				if os.access(volmapdpd, os.F_OK):
+					print 'No write permission to', volmapdpd
+					error = error + 1
+				else:
+					print '(Warning)', volmapdpd, 'does not exist'
+					# ignore it
+			if volmapdir and not os.access(volmapdir, os.W_OK):
+				if os.access(volmapdir, os.F_OK):
+					print 'No write permission to', volmapdir
+					error = error + 1
+				else:
+					print '(Warning)', volmapdir, 'does not exist'
+					# ignore it
+			if volmap and not os.access(volmap, os.W_OK):
+				if os.access(volmap, os.F_OK):
+					print 'No write permission to', volmap
+					error = error + 1
+				else:
+					print '(Warning)', volmap, 'does not exist'
+					# ignore it
 
 	if error:
 		if intf.force:
@@ -126,17 +149,24 @@ if __name__ == '__main__':
 
 	# try to find "delfile"
 
-	delfile = os.path.join(os.environ['ENSTORE_DIR'], 'sbin', 'delfile')
-	if not os.access(delfile, os.X_OK):
-		print 'can not find executable', delfile
-		sys.exit(0)
+	if not intf.skip_pnfs:
+		delfile = os.path.join(os.environ['ENSTORE_DIR'], 'sbin', 'delfile')
+		if not os.access(delfile, os.X_OK):
+			print 'can not find executable', delfile
+			sys.exit(0)
 
 	print 'volume =', vol
 	for i in file_list.keys():
 		fileInfo = file_list[i]
-		volmap = fileInfo['pnfs_mapname']
+		try:
+			volmap = fileInfo['pnfs_mapname']
+		except KeyError, detail:
+			volmap = '*No volmap*'
 		external_label = fileInfo['external_label']
-		pnfsname = fileInfo['pnfs_name0']
+		try:
+			pnfsname = fileInfo['pnfs_name0']
+		except KeyError:
+			pnfsname = '*no pnfs name*'
 		# check access permission to pnfs files
 		print external_label, i, pnfsname, volmap
 
@@ -147,56 +177,74 @@ if __name__ == '__main__':
 
 	# now, it is for real. Don't try this at home!
 
-	error = 0
-	volmapdir = '/tmp/none'
-	for i in file_list.keys():
-		fileInfo = file_list[i]
-		volmap = fileInfo['pnfs_mapname']
-		external_label = fileInfo['external_label']
-		pnfsname = fileInfo['pnfs_name0']
-		pnfsdir, pnfsfile = os.path.split(pnfsname)
-		volmapdir, volmapfile = os.path.split(volmap)
-		volmapdpd, junk = os.path.split(volmapdir)
-		# check access permission to pnfs files
-		if os.access(pnfsname, os.W_OK):
-			print 'removing', pnfsname, '...',
+	if not intf.skip_pnfs:
+		error = 0
+		volmapdir = '/tmp/none'
+		for i in file_list.keys():
+			fileInfo = file_list[i]
 			try:
-				os.unlink(pnfsname)
-				print 'done'
-			except:
-				print 'failed'
-				error = error + 1
-		if os.access(volmap, os.W_OK):
-			print 'removing', volmap, '...',
+				volmap = fileInfo['pnfs_mapname']
+			except KeyError, detail:
+				volmap = None
+			external_label = fileInfo['external_label']
 			try:
-				os.unlink(volmap)
+				pnfsname = fileInfo['pnfs_name0']
+			except KeyError, detail:
+				pnfsname = None
+			if pnfsname:
+				pnfsdir, pnfsfile = os.path.split(pnfsname)
+			else:
+				pnfsdir = None
+				pnfsfile = None
+			if volmap:
+				volmapdir, volmapfile = os.path.split(volmap)
+			else:
+				volmapdir = None
+				volmapfile = None
+			if volmapdir:
+				volmapdpd, junk = os.path.split(volmapdir)
+			else:
+				volmapdpd = None
+			# check access permission to pnfs files
+			if pnfsname and os.access(pnfsname, os.W_OK):
+				print 'removing', pnfsname, '...',
+				try:
+					os.unlink(pnfsname)
+					print 'done'
+				except:
+					print 'failed'
+					error = error + 1
+			if volmap and os.access(volmap, os.W_OK):
+				print 'removing', volmap, '...',
+				try:
+					os.unlink(volmap)
+					print 'done'
+				except:
+					print 'failed'
+					error = error + 1
+
+		# now remove the volmap directory, too
+
+		if volmapdir and os.access(volmapdir, os.W_OK):
+			print 'removing', volmapdir, '...',
+			try:
+				os.unlink(volmapdir)
 				print 'done'
 			except:
 				print 'failed'
 				error = error + 1
 
-	# now remove the volmap directory, too
+		if error:
+			print 'having trouble with /pnfs permission ... stop'
+			sys.exit(1)
 
-	if os.access(volmapdir, os.W_OK):
-		print 'removing', volmapdir, '...',
-		try:
-			os.unlink(volmapdir)
-			print 'done'
-		except:
+		# run delfile to clean it up
+
+		print 'running', delfile, 'to clean up ...',
+		if os.system(delfile):
 			print 'failed'
-			error = error + 1
-
-	if error:
-		print 'having trouble with /pnfs permission ... stop'
-		sys.exit(1)
-
-	# run delfile to clean it up
-
-	print 'running', delfile, 'to clean up ...',
-	if os.system(delfile):
-		print 'failed'
-	else:
-		print 'done'
+		else:
+			print 'done'
 
 	# delete from file database
 
