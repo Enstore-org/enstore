@@ -167,7 +167,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     (self.dir, self.file) = os.path.split(self.pnfsFilename)
                 elif os.path.isdir(self.pnfsFilename): #is directory
                     self.dir = self.pnfsFilename #os.path.abspath(directory)
-                    self.file = "" #file
+                    self.file = os.path.basename(self.pnfsFilename) #file
                 else: #File doesn't exist (yet).
                     (self.dir, self.file) = os.path.split(self.pnfsFilename)
             elif pnfsDirectory:
