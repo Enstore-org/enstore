@@ -55,7 +55,7 @@ class BaseDefaults:
 	return ["config_host=", "config_port="]
 
     def list_options(self):
-        return ["list", "verbose"]
+        return ["list", "verbose="]
 
     def help_line(self):
         return "python"+repr(sys.argv[0])+repr(self.options())
