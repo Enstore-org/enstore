@@ -864,7 +864,6 @@ def read_from_hsm(input, output,
                    +" can not get info on bfid"+repr(bfid[i]))
         Trace.trace(7,"read_from_hsm on volume="+\
                     repr(binfo['fc']['external_label']))
-	print "BINFO",binfo
 	if binfo['vc']['system_inhibit'] == e_errors.NOACCESS:
 	    binfo['status'] = (e_errors.NOACCESS, None)
 	    print_data_access_layer_format('', '', 0, binfo)
