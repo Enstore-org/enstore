@@ -2,17 +2,13 @@
 # system import
 import sys
 import time
-import copy
-import errno
 import regsub
 import string
 import os
 import stat
 
 # enstore imports
-import traceback
 import Trace
-import e_errors
 import generic_cs
 import log_client
 
@@ -53,10 +49,6 @@ html_header2 = "\">\n"+\
                "<body bgcolor=\""+bg_color+"\">\n"
 html_header3 = "<pre>\n"
 
-# format the timestamp value
-def get_ts():
-    return format_time(time.time(), "_")
-
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
 def format_time(theTime, sep=" "):
@@ -64,6 +56,10 @@ def format_time(theTime, sep=" "):
     ftime = time.strftime("%Y-%b-%d"+sep+"%H:%M:%S", time.localtime(theTime))
     Trace.trace(12,"}format_time ")
     return ftime
+
+# format the timestamp value
+def get_ts():
+    return format_time(time.time(), "_")
 
 # strip off anything before the '/'
 def strip_file_dir(str):
@@ -346,7 +342,6 @@ class EnStatus:
     def format_lm_moverlist(self, ticket):
         Trace.trace(12,"{format_lm_moverlist "+repr(ticket))
 	string = "    Known Movers: "
-	spacing = "\n                 "
 	work = ticket['moverlist']
 	if len(work) != 0:
 	    string = self.parse_lm_moverlist(work)
@@ -408,7 +403,7 @@ class EnStatusFile(EnFile):
         Trace.trace(10,'}__init__')
 
     # open the file
-    def open(self, mode='a', verbose=0):
+    def open(self, verbose=0):
         Trace.trace(12,"{open "+self.file_name)
 	generic_cs.enprint("opening " + self.file_name, generic_cs.SERVER, \
 	                    verbose)
@@ -444,7 +439,7 @@ class EnStatusFile(EnFile):
 
 class EnHTMLFile:
 
-    def __init__(self, refresh, verbose=0):
+    def __init__(self, refresh):
         Trace.trace(10,'{__init__ enhtmlfile ')
 	if refresh == -1:
 	    self.refresh = 120
@@ -481,10 +476,10 @@ class EnHTMLFile:
 class EncpFile:
 
     # output the encp info
-    def output_encp(self, lines, key, verbose):
+    def output_encp(self, lines, key):
 	Trace.trace(12,"{output_html_encp ")
 	if lines != []:
-	    str = self.format_encp(lines, key)
+	    str = self.format_encp(lines)
 	else:
 	    str = self.format_no_encp()
 	self.text[key] = str+"\n"
@@ -497,10 +492,10 @@ class EncpFile:
 
 class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
 
-    def __init__(self, file, refresh, verbose=0):
+    def __init__(self, file, refresh):
         Trace.trace(10,'{__init__ htmlstatusfile ')
 	EnStatusFile.__init__(self, file)
-	EnHTMLFile.__init__(self, refresh, verbose)
+	EnHTMLFile.__init__(self, refresh)
 	self.header2 = html_header3
 	self.trailer = "</pre></body>\n"
         Trace.trace(10,'}__init__')
@@ -515,7 +510,7 @@ class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
 
 class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 
-    def __init__(self, file, max_ascii_size, verbose=0):
+    def __init__(self, file, max_ascii_size):
         Trace.trace(10,'{__init__ asciifile ')
 	self.max_ascii_size = max_ascii_size
 	EnStatusFile.__init__(self, file)
@@ -575,10 +570,10 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 
 class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 
-    def __init__(self, file, refresh, verbose=0):
+    def __init__(self, file, refresh):
         Trace.trace(10,'{__init__ encpstatusfile ')
 	EnStatusFile.__init__(self, file)
-	EnHTMLFile.__init__(self, refresh, verbose)
+	EnHTMLFile.__init__(self, refresh)
 	self.trailer = "</body>\n"
         Trace.trace(10,'}__init__')
 
@@ -595,7 +590,7 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	return "<br><pre>\n\n"+EncpFile.format_no_encp(self)+"</pre>"
 
     # format the encp info taken from the log file
-    def format_encp(self, lines, key):
+    def format_encp(self, lines):
 	Trace.trace(13,"{format_encp ")
 	str = "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
 	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
@@ -728,7 +723,6 @@ class EnMountDataFile(EnDataFile):
 	if erest[0:10] == "Requesting":
 	    # this is the request for the mount
 	    start = MREQUEST
-            [etmp, estat] = string.splitfields(erest, "(")
 	else:
 	    start = MMOUNT
 	# parse out the file directory , a remnant from the grep in the time 

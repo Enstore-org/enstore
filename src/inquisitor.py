@@ -360,8 +360,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        encplines = encplines + encpfile2.read(self.max_encp_lines-i)
 	        encpfile2.close()
 	# now we have some info, output it
-	self.asciifile.output_encp(encplines, key, self.verbose)
-	self.encpfile.output_encp(encplines, key, self.verbose)
+	self.asciifile.output_encp(encplines, key)
+	self.encpfile.output_encp(encplines, key)
 
     # get the default server timeout, either from the inquisitor config dict
     # or from the routine
@@ -977,17 +977,17 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# get an ascii system status file, and open it
 	self.parsed_file = ascii_file
 	self.asciifile = enstore_status.AsciiStatusFile(ascii_file, \
-	                                              max_ascii_size, verbose)
+	                                              max_ascii_size)
 	self.asciifile.open(verbose)
 
 	# add a suffix to it because we will write to this file and 
 	# maintain another copy of the file (with the user entered name) to
 	# be displayed
 	self.htmlfile = enstore_status.HTMLStatusFile(html_file+self.suffix,\
-	                                              refresh, verbose)
+	                                              refresh)
 	self.htmlfile_orig = html_file
 	self.encpfile = enstore_status.EncpStatusFile(encp_file+self.suffix,\
-	                                              refresh, verbose)
+	                                              refresh)
 	self.encpfile_orig = encp_file
 
 	# get the timeout for each of the servers from the configuration file.
