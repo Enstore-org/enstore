@@ -1991,6 +1991,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                           (self.current_location, prev_loc))
                                 #self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_NODATA, error_source=TAPE)
                                 self.send_error_msg(error_info=(e_errors.READ_ERROR, e_errors.READ_NODATA), error_source=TAPE)
+                                self.current_work_ticket['status'] = (e_errors.READ_ERROR, e_errors.READ_NODATA)
                                 failed = 1
                                 break
                     elif detail == 'FTT_EBLANK':
