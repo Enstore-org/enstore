@@ -810,6 +810,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 fd.write("UNDERRUN:               %s\n"%(stats[ftt.UNDERRUN],))
                 
             if self.send_stats:
+                print 
                 self.dsc.log_stat(stats[ftt.SERIAL_NUM],
                                   stats[ftt.VENDOR_ID],
                                   stats[ftt.PRODUCT_ID],
@@ -827,8 +828,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   long(stats[ftt.WRITE_COUNT])/1024.,
                                   long(stats[ftt.READ_ERRORS]),
                                   long(stats[ftt.WRITE_ERRORS]),
-                                  long(stats[ftt.TRACK_RETRY]),
-                                  long(stats[ftt.UNDERRUN]),
+                                  stats[ftt.TRACK_RETRY],
+                                  stats[ftt.UNDERRUN],
                                   0,
                                   int(stats[ftt.WRITE_PROT]))
                 
