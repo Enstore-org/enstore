@@ -17,6 +17,7 @@ UTIL = "Utilization"
 SG = "sg"
 LOG = ".log"
 LOG_PREFIX = "LOG-"
+MAX_LOG_FILE_SIZE = "max_log_file_size"
 
 ALIVE = 1
 DEAD = 0
