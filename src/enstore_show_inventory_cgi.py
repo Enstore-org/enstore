@@ -23,6 +23,7 @@ special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED', 'VOLUME_QUOTAS',
 
 if cluster == "d0en":
 	special.append('AML2-VOLUMES.html')
+	sepcial.append('VOLUME_CROSS_CHECK')
 elif cluster == "stken":
 	special.append('VOLUME_QUOTAS_UPDATE')
 	special.append('AMLJ-VOLUMES.html')
