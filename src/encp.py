@@ -1583,7 +1583,10 @@ def check_library(library, e):
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
     fc_ticket = ticket.get('fc', {})
-    external_label = fc_ticket.get('external_label', ticket.get('volume',''))
+    vc_ticket = ticket.get('vc', {})
+    external_label = fc_ticket.get('external_label',
+                                   vc_ticket.get('external_label',
+                                                 ticket.get('volume', "")))
     location_cookie = fc_ticket.get('location_cookie', "")
     mover_ticket = ticket.get('mover', {})
     device = mover_ticket.get('device', '')
@@ -5968,10 +5971,12 @@ def get_volume_clerk_info(volume):
     # Determine if the information returned is complete.
     
     if vc_ticket == None or not e_errors.is_ok(vc_ticket):
-        raise EncpError(None,
-                        "Failed to obtain information for external label %s."
-                        % volume,
-                        vc_ticket.get('status', e_errors.EPROTO), vc_ticket)
+        vc_status = vc_ticket.get('status', (e_errors.EPROTO, None))
+        if vc_status[0] == e_errors.KEYERROR:
+            #If the error from the volume clerk is KEYERROR, change it to
+            # say NOVOLUME.
+            vc_status = (e_errors.NOVOLUME, vc_status[1])
+        raise EncpError(None, vc_status[1], vc_status[0], {'vc' : vc_ticket})
     if not vc_ticket.get('system_inhibit', None):
         raise EncpError(None,
                         "Volume %s did not contain system_inhibit information."
