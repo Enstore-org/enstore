@@ -695,9 +695,12 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
 class EnEncpStatusPage(EnBaseHtmlDoc):
 
-    error_text = {"USER ERROR"       : "STATUS=USERERROR",
-                  "USER ERROR-Access": "STATUS=EACCES",
-                  "USER ERROR Access": "Fatal error:EACCES" }
+    error_text = {"USER ERROR"                     : "STATUS=USERERROR",
+                  "USER ERROR-NO Read Access"      : "STATUS=EACCES",
+                  "USER ERROR NO Read Access"      : "Fatal error:EACCES",
+                  "USER ERROR-NO Local Disk Space" : "STATUS=ENOSPC",
+                  "USER ERROR NO Local Disk Space" : "Fatal error:ENOSPC"
+                  }
 
     def __init__(self, refresh = 120):
 	EnBaseHtmlDoc.__init__(self, refresh)
