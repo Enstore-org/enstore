@@ -558,7 +558,7 @@ def do_work(intf):
 			pprint.pprint(ticket)
 			ticket['status'] = status
 	elif intf.check:
-		ticket = vcc.inquire_vol(intf.check)
+		ticket = ifc.inquire_vol(intf.check)
 		# guard against error
 		if ticket['status'][0] == e_errors.OK:
 			print "%-10s  %s %s %s" % (ticket['external_label'],
