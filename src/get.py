@@ -800,7 +800,7 @@ def main(e):
                 try:
                     p = pnfs.Pnfs(request['infile'])
                     pnfs_bfid = p.get_bit_file_id()
-                except (IOError, OSError):
+                except (IOError, OSError, TypeError):
                     Trace.message(5, "Updating metadata for %s." %
                                   request['infile'])
                     set_metadata(request, e)
