@@ -52,10 +52,12 @@ def delete():
                 Trace.log(e_errors.ERROR, "Can not delete file %s.\n" % (f,))
                 sys.stderr.write("Can not delete file %s.\n" % (f,))
 
-    # get a configuration server and file clerk
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host,config_port))
+    if _deletion_list_bfids:
+        # get a configuration server and file clerk
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
 
     # Delete registered bfids.
     for b in _deletion_list_bfids:
