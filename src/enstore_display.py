@@ -91,13 +91,31 @@ color_dict = {
 def colors(what_color): # function that controls colors
     return color_dict.get(what_color, rgbtohex(0,0,0))
 
+def endswith(s1,s2):
+    return s1[-len(s2):] == s2
 
-   
-def strip_domain(hostname):
-    parts = string.split(hostname, '.')
-    if parts[-1]=='gov' and parts[-2]=='fnal':
-        parts = parts[:-2]
-    return string.join(parts,'.')
+def normalize_name(hostname):
+    ## Clean off any leading or trailing garbage
+    while hostname and hostname[0] not in string.letters+string.digits:
+        hostname = hostname[1:]
+    while hostname and hostname[-1] not in string.letters+string.digits:
+        hostname = hostname[:-1]
+
+    ## Empty string?
+    if not hostname:
+        return '???'
+
+    ## If it's numeric, try to look it up
+    if hostname[0] in string.digits:
+        try:
+            hostname = socket.gethostbyaddr(hostname)[0]
+        except:
+            print "Can't resolve address", hostname
+
+    ## If it ends with .fnal.gov, cut that part out
+    if endswith(hostname, '.fnal.gov'):
+        hostname = hostname[:-9]
+    return hostname
 
 _image_cache = {} #key is filename, value is (modtime, img)
 
@@ -776,17 +794,7 @@ class Display(Tkinter.Canvas):
 
         # command does not require a mover name, will only put clients in a queue
         if words[0]=='client':
-            client_name = strip_domain(words[1])
-            ##XXX we are working around a bug in the library manager.
-            # Remove this code once library manager sends correct message
-            if client_name[0] == '(':                   
-                client_name = client_name[2:-2]
-                try:
-                    client_name = socket.gethostbyaddr(client_name)[0]
-                    client_name = strip_domain(client_name)
-                except:
-                    print "Can't resolve address", client_name
-            #XXX end hack
+            client_name = normalize_name(words[1])
             client = self.clients.get(client_name) 
             if client is None: #it's a new client
                 client = Client(client_name, self)
@@ -832,7 +840,7 @@ class Display(Tkinter.Canvas):
             mover.t0 = time.time()
             mover.b0 = 0
             mover.show_progress(None)
-            #print "refcount now=", sys.getrefcount(client)-1
+
             return
 
         # command requires 3 words
@@ -853,7 +861,7 @@ class Display(Tkinter.Canvas):
             return
         
         if words[0]== 'connect':
-            client_name = strip_domain(words[2])
+            client_name = normalize_name(words[2])
             #print "connecting with ",  client_name
             client = self.clients.get(client_name)
             if not client: ## New client, we must add it
