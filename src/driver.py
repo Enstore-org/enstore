@@ -43,6 +43,7 @@ class GenericDriver:
         return repr(self.eod)
 
     def get_errors(self) :
+         # return error count and # of files accesses
         return (self.wr_err, self.rd_err, self.wr_access, self.rd_access)
 
 
@@ -61,7 +62,7 @@ class  FTTDriver(GenericDriver) :
         self.position = 0;
 
     def open_file_read(self, file_location_cookie) :
-        loc = eval(file_location_cookie)
+        loc = eval(file_location_cookie[0])
         move = loc - self.position
         if move < 0 :
            move = move-1
@@ -71,21 +72,29 @@ class  FTTDriver(GenericDriver) :
 
     def close_file_read(self) :
         self.position = self.position + 1
-        return ETape.ET_CloseRead(self.ETdesc)
+        stats = ETape.ET_CloseRead(self.ETdesc)
+        self.rd_access = stats[1]
+        self.rd_err = stats[2]
 
     def read_block(self):
         x = ETape.ET_ReadBlock (self.ETdesc)
         return x
 
     def open_file_write(self):
+        self.bod = self.eod
+        print  self.eod,self.position
         self.ETdesc = ETape.ET_OpenWrite(self.device, self.eod-self.position, self.blocksize)
+        self.position = self.eod
 
     def close_file_write(self):
-        errcnt = ETape.ET_CloseWrite(self.ETdesc)
+        stats = ETape.ET_CloseWrite(self.ETdesc)
+            # stats[0] is KBytes - mover wants bytes-1MB  , drop the L
         self.eod = self.eod + 1
         self.position = self.eod
-        self.remaining_bytes = errcnt['Remain']
-        return errcnt
+        self.remaining_bytes = repr(1024L * (eval(stats[0])-1024) )[:-1]
+        self.wr_access = stats[1]
+        self.wr_err = stats[2]
+        return (repr(self.bod), repr(stats[3]))
 
     def write_block(self, data):
        ETape.ET_WriteBlock(self.ETdesc, data)
