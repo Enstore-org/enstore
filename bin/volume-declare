@@ -122,6 +122,16 @@ case $1 in
                       CA2253
                       CA2254
                       CA2255
+                      CA2256
+                      CA2257
+                      CA2258
+                      CA2259
+                      CA2260
+                      CA2261
+                      CA2262
+                      CA2263
+                      CA2264
+                      CA2265
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
@@ -130,6 +140,16 @@ case $1 in
                       mam   none 8MM     CA2253 21474836480 21474836480
                       mam   none 8MM     CA2254 21474836480 21474836480
                       mam   none 8MM     CA2255 21474836480 21474836480
+                      mam   none 8MM     CA2256 21474836480 21474836480
+                      mam   none 8MM     CA2257 21474836480 21474836480
+                      mam   none 8MM     CA2258 21474836480 21474836480
+                      mam   none 8MM     CA2259 21474836480 21474836480
+                      mam   none 8MM     CA2260 21474836480 21474836480
+                      mam   none 8MM     CA2261 21474836480 21474836480
+                      mam   none 8MM     CA2262 21474836480 21474836480
+                      mam   none 8MM     CA2263 21474836480 21474836480
+                      mam   none 8MM     CA2264 21474836480 21474836480
+                      mam   none 8MM     CA2265 21474836480 21474836480
                      "
          ;;
   dlt)   rm -fr /pnfs/grau/dlt/*
@@ -139,6 +159,16 @@ case $1 in
                       CA2503
                       CA2504
                       CA2505
+                      CA2506
+                      CA2507
+                      CA2508
+                      CA2509
+                      CA2510
+                      CA2511
+                      CA2512
+                      CA2513
+                      CA2514
+                      CA2515
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
@@ -147,6 +177,16 @@ case $1 in
                       dlt   none DECDLT  CA2503 35003983462 35003983462
                       dlt   none DECDLT  CA2504 35003983462 35003983462
                       dlt   none DECDLT  CA2505 35003983462 35003983462
+                      dlt   none DECDLT  CA2506 35003983462 35003983462
+                      dlt   none DECDLT  CA2507 35003983462 35003983462
+                      dlt   none DECDLT  CA2508 35003983462 35003983462
+                      dlt   none DECDLT  CA2509 35003983462 35003983462
+                      dlt   none DECDLT  CA2510 35003983462 35003983462
+                      dlt   none DECDLT  CA2511 35003983462 35003983462
+                      dlt   none DECDLT  CA2512 35003983462 35003983462
+                      dlt   none DECDLT  CA2513 35003983462 35003983462
+                      dlt   none DECDLT  CA2514 35003983462 35003983462
+                      dlt   none DECDLT  CA2515 35003983462 35003983462
                      "
          ;;
   rip6)  rm -fr /pnfs/rip6/*
