@@ -24,12 +24,8 @@ class ConfigurationClient(generic_client.GenericClient):
     def __init__(self, address):
         self.clear()
 	self.print_id = MY_NAME
-        self.config_address=address
+        self.server_address=address
         self.u = udp_client.UDPClient()
-    
-    # return the address of the configuration server
-    def get_address(self):
-	return self.config_address
 
     # get rid of all cached values - go back to server for information
     def clear(self):
