@@ -125,7 +125,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                       ticket['vol_ticket']['external_label'] + " " + ticket['drive_id'])
         # otherwise, we can do this
         else:
-            self.enprint( "DOWORK"+repr(ticket))
+            #self.enprint( "DOWORK"+repr(ticket))
             # set the reply address - note this could be a general thing in dispatching worker
             ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
             # if this a duplicate request, drop it
@@ -137,25 +137,25 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             if not os.fork() :
                 # if in child process
                 Trace.trace(10, '>forked')
-                self.enprint( "FORKED"+repr(ticket))
+                #self.enprint( "FORKED"+repr(ticket))
                 os.close(pipe[0])
                 # do the work, if this is a mount, dismount first
                 if ticket['function'] == "mount":
                     Trace.trace(10, '>dismount for mount')
-                    self.enprint( "PREPARE"+repr(ticket))
+                    #self.enprint( "PREPARE"+repr(ticket))
 		    sts=self.prepare(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
 
                 Trace.trace(10, '>>> '+ticket['function'])
-                self.enprint( "MOUNT"+repr(ticket))
+                #self.enprint( "MOUNT"+repr(ticket))
                 sts = function(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
                 # send status back to MC parent via pipe to dispatching_worker
-                self.enprint( "STS"+repr(ticket))
+                #self.enprint( "STS"+repr(ticket))
                 Trace.trace(10, '<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"
                 ticket["status"]=sts
