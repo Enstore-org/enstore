@@ -190,7 +190,7 @@ FTT_open(  PyObject *self
     if (g_ftt_desc_tp) return (raise_exception("FTT_Open - already open"));
 
     if (mode_s[0] == 'r')
-    {   g_ftt_desc_tp = ftt_open( dev_s, FTT_RDWR );
+    {   g_ftt_desc_tp = ftt_open( dev_s, FTT_RDONLY );
 	g_mode_c = 'r';
     }
     else /* assume write */
