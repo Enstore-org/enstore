@@ -252,6 +252,8 @@ class Interface:
                     self.verbose = self.verbose | string.atoi(value)
             elif opt == "--status":
                 self.status = 1
+            elif opt == "--maxwork":
+                self.maxwork = string.atoi(value)
             elif opt == "--refresh":
                 self.refresh = string.atoi(value)
             elif opt == "--get_refresh":
