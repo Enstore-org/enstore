@@ -127,7 +127,9 @@ if [ $local_host = $ENSTORE_CONFIG_HOST ];then
 fi
 
 timeout=5
+save_timeout=$timeout
 tries=5
+save_tries=$tries
 
 ###################################################################################################################################
 
@@ -472,11 +474,15 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" != "" ];then
    	    if [ ! "${opt_async-}" ]; then check_server $i $PID_DIR/`uname -n`-$i-mover_pid; fi
 
         else         
+#         if the mover has to dismount a tape, it could take some time to respond to us
+          timeout=10
+          tries=12
  	  check_server $i $PID_DIR/`uname -n`-$i-mover_pid &
+          timeout=$save_timeout
+          tries=$save_tries
         fi
 
     done
-
 fi
 
 ###################################################################################################################################
