@@ -303,6 +303,7 @@ class Volume:
         x, y = self.x, self.y
         if x is None or y is None:
             return
+        print "drawing", self.name, 'loaded=', self.loaded, 'ejected=', self.ejected
         if self.loaded:
             tape_color, label_color = 'orange', 'white'
         else:
@@ -639,7 +640,10 @@ class Display(Canvas):
         if words[0]=='transfer':
             num_bytes = my_atof(words[2])
             total_bytes = my_atof(words[3])
-            percent_done = abs(int(100 * num_bytes/total_bytes))
+            if total_bytes==0:
+                percent_done = 100
+            else:
+                percent_done = abs(int(100 * num_bytes/total_bytes))
             mover.show_progress(percent_done)
             rate = mover.transfer_rate(num_bytes, total_bytes) / (256*1024)
             if mover.connection:
