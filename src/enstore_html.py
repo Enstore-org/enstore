@@ -496,12 +496,13 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # add input and output files 
     def add_files(self, moverd, table):
 	if moverd.has_key(enstore_status.FILES):
-	    tr = HTMLgen.TR(HTMLgen.TD(moverd[enstore_status.FILES], colspan=4, 
-				       align="CENTER"))
 	    # we need to make the table able to hold a long file name
 	    table.width = "100%"
 	    table.append(self.empty_row(4))
-	    table.append(tr)
+	    for i in [0, 1]:
+		tr = HTMLgen.TR(HTMLgen.TD(moverd[enstore_status.FILES][i], colspan=4, 
+					   align="CENTER"))
+		table.append(tr)
 	    table.append(self.empty_row(4))
 	else:
 	    table.width = "40%"
