@@ -25,7 +25,7 @@ def next_minute(t=None):
     if m==0:
         h=(h+1)%24
         if h==0:
-            d=d+1
+            D=D+1
             wd=wd+1
             jd=jd+1
             ##I'm not going to worry about end-of-month.  Sue me!
