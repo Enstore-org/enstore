@@ -915,7 +915,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     def quit(self, ticket):
-	# self.dict.close()
+	self.dict.close()
 	dispatching_worker.DispatchingWorker.quit(self, ticket)
 
 
