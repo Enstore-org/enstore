@@ -49,6 +49,18 @@ fi
 timeout=1
 tries=10
 
+# function to redirect input/output when there is not a controlling terminal
+output() { tty -s
+           if [ $? -ne 0 ] ; then
+             if [ -z "${1-}" ] ; then
+               echo "< /dev/null > /dev/null 2>&1"
+             else
+               echo " < /dev/null > $1.out 2>&1"
+             fi
+           fi
+         }
+
+
 ###################################################################################################################################
 
 # the configuration server needs to be the 1st thing started
@@ -60,8 +72,10 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
         echo "Configuration Server on $ENSTORE_CONFIG_HOST already started"
       else
         echo "Starting Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT, using file $ENSTORE_CONFIG_FILE"
+        out=$PID_DIR/configuration_server
+        rm -f $out
         cmd="python $ENSTORE_DIR/src/configuration_server.py \
-            --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --config_file=$ENSTORE_CONFIG_FILE"
+            --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --config_file=$ENSTORE_CONFIG_FILE `output $out`"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|conf' >/dev/null; then
             title="Enstore Config Server"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
@@ -146,7 +160,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
         echo "Log Server already started"
       else
         echo "Starting Log Server"
-        cmd="python $ENSTORE_DIR/src/log_server.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT"
+        out=$PID_DIR/log_server
+        rm -f $out
+        cmd="python $ENSTORE_DIR/src/log_server.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT `output $out`"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|log' >/dev/null; then
             title="Enstore Log Server"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
@@ -177,7 +193,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
         echo "Volume Clerk already started"
       else
         echo "Starting Volume Clerk"
-        cmd="python $ENSTORE_DIR/src/volume_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT"
+        out=$PID_DIR/volume_clerk
+        rm -f $out
+        cmd="python $ENSTORE_DIR/src/volume_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT `output $out`"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|vol' >/dev/null; then
             title="Enstore Volume Clerk"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
@@ -208,7 +226,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
         echo "File Clerk already started"
       else
         echo "Starting File Clerk"
-        cmd="python $ENSTORE_DIR/src/file_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT"
+        out=$PID_DIR/file_clerk
+        rm -f $out
+        cmd="python $ENSTORE_DIR/src/file_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT `output $out`"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|fil' >/dev/null; then
             title="Enstore File Clerk"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
@@ -240,8 +260,10 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
                 echo "Library Manager already started"
             else
                 echo "Starting $i Library Manager"
+                out=$PID_DIR/library_manager_$i
+                rm -f $out
                 cmd="python $ENSTORE_DIR/src/library_manager.py \
-                    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
+                    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i `output $out`"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|lib' >/dev/null; then
                     title="Enstore Library Manager $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
@@ -273,8 +295,10 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
                 echo "Media Changer already started"
             else
                 echo "Starting $i Media Changer"
+                out=$PID_DIR/media_changer_$i
+                rm -f $out
                 cmd="python $ENSTORE_DIR/src/media_changer.py \
-                    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
+                    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i `output $out`"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|med' >/dev/null; then
                     title="Enstore Media Changer $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
@@ -306,7 +330,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
                 echo "$i Mover already started"
             else
                 echo "Starting $i Mover"
-                cmd="python $ENSTORE_DIR/src/mover.new.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
+                out=$PID_DIR/mover_$i
+                rm -f $out
+                cmd="python $ENSTORE_DIR/src/mover.new.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i `output $out`"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|mov' >/dev/null; then
                     title="Enstore Mover $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
@@ -332,7 +358,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
         echo "Inquisitor already started"
       else
         echo "Starting Inquisitor"
-        cmd="python $ENSTORE_DIR/src/inquisitor.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT"
+        out=$PID_DIR/inquisitor
+        rm -f $out
+        cmd="python $ENSTORE_DIR/src/inquisitor.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT `output $out`"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|inq' >/dev/null; then
             title="Enstore Inquisitor"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
@@ -363,15 +391,24 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
                 echo "DB Admin Server already started"
             else
                 echo "Starting database checkpoint daemon  on `hostname`"
-                db_checkpoint -h $ENSTORE_DB  -p 5 &
+		out=$PID_DIR/db_checkpoint
+		rm -f $out
+                cmd="db_checkpoint -h $ENSTORE_DB  -p 5 `output $out`"
+		eval "$cmd &"
                 echo $! >> $PID_DIR/`uname -n`-db_check_pids
 
                 echo "Starting database deadlock daemon  on `hostname`"
-                db_deadlock -h $ENSTORE_DB  -t 1 &
+		out=$PID_DIR/db_deadlock
+		rm -f $out
+                cmd="db_deadlock -h $ENSTORE_DB  -t 1 `output $out`"
+		eval "$cmd &"
                 echo $! >> $PID_DIR/`uname -n`-db_dlck_pids
 
                 echo "Starting DB Admin Server"
-                python $ENSTORE_DIR/src/admin_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT &
+		out=$PID_DIR/admin_server
+		rm -f $out
+                cmd="python $ENSTORE_DIR/src/admin_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT `output $out`"
+		eval "$cmd &"
                 echo $! >> $PID_DIR/`uname -n`-admin_pids
             fi
         else
