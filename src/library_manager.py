@@ -54,7 +54,7 @@ def busy_vols_in_family (family_name):
     for w in work_at_movers + work_awaiting_bind:
      try:
         if w["fc"]["file_family"] == family_name:
-            vols.append(w["external_label"])
+            vols.append(w["fc"]["external_label"])
      except:
         import pprint
         pprint.pprint(w)
@@ -67,7 +67,7 @@ def busy_vols_in_family (family_name):
 # check if a particular volume with given label is busy
 def is_volume_busy(external_label):
     for w in work_at_movers + work_awaiting_bind:
-        if w["external_label"] == external_label:
+        if w["fc"]["external_label"] == external_label:
             return 1
     return 0
 
@@ -116,7 +116,7 @@ def next_work_any_volume(csc):
             first_found = 0
             t1 = time.time()
             v = vc.next_write_volume (w["fc"]["library"], w["uinfo"]\
-				      ["size_bytes"],\
+                                      ["size_bytes"],\
                                       w["fc"]["file_family"], vol_veto_list,\
                                       first_found)
             t2 = time.time()-t1
@@ -147,14 +147,13 @@ def next_work_this_volume(v):
 
     # look in pending work queue for reading or writing work
     for w in pending_work:
-
         # writing to this volume?
-        if (w["work"]                == "write_to_hsm"         and
-            w["fc"]["file_family"]   == v["fc"]["file_family"] and
-            v["user_inhibit"]        == "none"                 and
-            v["system_inhibit"]      == "none"                 and
+        if (w["work"]                == "write_to_hsm"   and
+            w["fc"]["file_family"]   == v["file_family"] and
+            v["user_inhibit"]        == "none"           and
+            v["system_inhibit"]      == "none"           and
             w["uinfo"]["size_bytes"] <= v["remaining_bytes"]):
-            w["external_label"] = v["external_label"]
+            w["fc"]["external_label"] = v["external_label"]
             # ok passed criteria, return write work ticket
             return w
 
@@ -193,7 +192,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                    ticket["pinfo"]["pnfsFilename"],
                                    repr(ticket["uinfo"]["fullname"]),
                                    ticket["fc"]["external_label"],
-				   ticket["fc"]["bfid"],
+                                   ticket["fc"]["bfid"],
                                    ticket["uinfo"]["uname"])
         queue_pending_work(ticket)
 
@@ -218,7 +217,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                        w["uinfo"]["uname"])
             self.reply_to_caller({"work"           : "bind_volume",
                                   "external_label" : w["fc"]\
-				  ["external_label"] })
+                                  ["external_label"] })
             # put it into our bind queue and take it out of pending queue
             work_awaiting_bind.append(w)
             pending_work.remove(w)
