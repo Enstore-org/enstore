@@ -32,7 +32,7 @@ ecmd addvol  [--config_list --vols  --vol=  --verbose --help'] library file_fami
 ecmd delvol  [--config_list --vols  --vol=  --verbose --help'] volume_name
 ecmd clrvol  [--config_list --vols  --vol=  --verbose --help'] volume_name
 
-ecmd log    [--test --alive  --verbose --help]
+ecmd log    [--test --alive  --verbose --logit --help]
 
 
 ecmd pnfs    [--test --status --file= --verbose --help]

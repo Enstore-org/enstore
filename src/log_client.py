@@ -14,6 +14,7 @@ import time
 import select
 import exceptions
 import errno
+import socket
 from configuration_client import configuration_client
 from udp_client import UDPClient
 import pprint
@@ -33,6 +34,40 @@ sevdict = { ERROR      : 'E', \
             MISC       : 'M'
             }
 
+log_priority = 1
+
+def set_logpriority(priority):
+    global log_priority
+    log_priority = priority
+
+def get_logpriority():
+    global log_priority
+    return log_priority
+
+# send a message to the logger
+def logit(message="HELLO", logname="LOGIT",priority=10,config_host="", config_port=7510):
+    global log_priority
+
+    if priority < log_priority :
+        return
+
+    try:
+        if config_host == "" :
+            (config_host,ca,ci) = socket.gethostbyaddr("pcfarm4.fnal.gov")
+
+        csc = configuration_client(config_host,config_port)
+
+        # get a logger
+        logc = LoggerClient(csc,logname,  'logserver', 0)
+
+        # send the message
+        return logc.send(INFO, message)
+
+    except:
+        return  str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])
+
+
+
 class LoggerClient:
 
     def __init__(self,
@@ -47,8 +82,8 @@ class LoggerClient:
         self.i_am = i_am_a
         self.pid = os.getpid()
         self.uid = os.getuid()
-	pwdb_entry = pwd.getpwuid(self.uid)
-	self.uname = pwdb_entry[0]
+        pwdb_entry = pwd.getpwuid(self.uid)
+        self.uname = pwdb_entry[0]
         self.logger = servername
         self.debug = debug
 
@@ -99,10 +134,11 @@ if __name__ == "__main__" :
     list = 0
     alive = 0
     test = 0
+    logit1 = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_file=","config_list",
-               "test","list","verbose","alive","help"]
+               "test","list","logit=","verbose","alive","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -115,6 +151,9 @@ if __name__ == "__main__" :
             test = 1
         elif opt == "--alive" :
             alive = 1
+        elif opt == "--logit" :
+            logit1 = 1
+            logmsg = value
         elif opt == "--list" or opt == "--verbose":
             list = 1
         elif opt == "--help" :
@@ -146,6 +185,9 @@ if __name__ == "__main__" :
     elif test:
         ticket = logc.send(ERROR, "This is a test message %s %d", 'TEST', 3456)
         #ticket = logc.send(INFO, "this is an INFO message")
+
+    elif logit:
+        ticket = logit(logmsg)
 
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']
