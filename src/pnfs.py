@@ -366,8 +366,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError):
             raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
                                                     "Not a valid pnfs id"))
+        #Loop through the pnfs ids to find each ids parent until the "root"
+        # id is found.  The comparison for the use_id is to prevent some
+        # random directory named 'root' in the users path from being selected
+        # as the real "root" directory.  Of course this only works if the
+        # while uses an 'or' and not an 'and'.  Silly programmer error...
+        # Grrrrrrr.
         name = ""  # compoent name of a directory.
-        while name != "root" and use_id != "000000000000000000001020":
+        while name != "root" or use_id != "000000000000000000001020":
             use_id = self.get_parent(use_id, use_dir) #get parent id
             name = self.get_nameof(use_id, use_dir) #get nameof parent id
             filepath = os.path.join(name, filepath) #join filepath together
