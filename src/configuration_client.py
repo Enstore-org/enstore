@@ -22,8 +22,7 @@ MY_SERVER = "configuration_server"
 class ConfigurationClient(generic_client.GenericClient):
 
     def __init__(self, address):
-        self.clear()
-	self.print_id = MY_NAME
+        self.print_id = MY_NAME
         self.server_address=address
         self.u = udp_client.UDPClient()
 
