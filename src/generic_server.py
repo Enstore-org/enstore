@@ -78,7 +78,7 @@ class GenericServer(generic_client.GenericClient):
        traceback.print_exc()
        format = "%s %s %s %s %s: serve_forever continuing" % (
            timeofday.tod(),sys.argv,exc,msg,id)
-       Trace.log(e_errors.ERROR, repr(format))
+       Trace.log(e_errors.ERROR, str(format))
 
    # send back our response
    def send_reply(self, t):
