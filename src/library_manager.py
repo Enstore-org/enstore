@@ -1505,13 +1505,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(30, "restrict_host_access(%s,%s,%s %s)"%
                     (storage_group, host, max_permitted, rq_host))
         for w in self.work_at_movers.list:
-            if (w['vc']['storage_group'] == storage_group and
-                re.search(host, w['wrapper']['machine'][1])):
-                if rq_host:
-                    if  w['wrapper']['machine'][1] == rq_host:
+            try:
+                if (w['vc']['storage_group'] == storage_group and
+                    re.search(host, w['wrapper']['machine'][1])):
+                    if rq_host:
+                        if  w['wrapper']['machine'][1] == rq_host:
+                            active = active + 1
+                    else:
                         active = active + 1
-                else:
-                    active = active + 1
+            except KeyError,detail:
+                Trace.log(e_errors.ERROR,"restrict_host_access:%s....%s"%(detail, w))
         Trace.trace(30, "restrict_host_access(%s,%s)"%
                     (active, max_permitted))
         return active >= max_permitted
@@ -1870,8 +1873,20 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                               # do better 
                 break
         if found:
+            mover_rq_unique_id = mticket.get('unique_id',None)
+            work_at_mover_unique_id = wt.get('unique_id', None)
+            method = wt.get('method', None)
+            if method == 'read_tape_start':
+                # this was a tape copy request
+                # it requires a special way of comparing request ids
+                if mover_rq_unique_id:
+                    s1 = mover_rq_unique_id.split("-")
+                    mover_rq_unique_id = string.join(s1[:-1], "-")
+                s1 = work_at_mover_unique_id.split("-")
+                work_at_mover_unique_id = string.join(s1[:-1], "-")
+                Trace.trace(11, "m_id %s w_id %s"%(mover_rq_unique_id,work_at_mover_unique_id))  
             # check if it is a backed up request
-            if mticket['unique_id'] and mticket['unique_id'] != wt['unique_id']:
+            if mover_rq_unique_id != work_at_mover_unique_id:
                 Trace.trace(15,"found backed up mover %s" % (mticket['mover'],))
                 self.reply_to_caller({'work': 'no_work'})
                 return
