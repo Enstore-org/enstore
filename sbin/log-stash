@@ -37,8 +37,8 @@ for log in $logfiles; do
   if [ $year  -lt $thisYear  ]; then stash=1;fi
   if [ $month -lt $thisMonth ]; then stash=1;fi
   if [ $stash -eq 0 ]; then continue; fi
-  mkdir -p $HISTORY/$year/$month  
-  mv $log $HISTORY/$year/$month  
+  mkdir -p $HISTORY/$year/$month
+  mv $log $HISTORY/$year/$month
 done
 
 cd $HISTORY
@@ -72,21 +72,25 @@ fi
 
 logfiles=`ls -1 log*.ascii`
 for log in $logfiles; do
-  year=$thisYear  # THIS IS A PROBLEM WHEN THE YEAR ROLLS OVER!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  year=`tail -n 1 $log|cut -f1 -d/`
   month=`echo $log | cut -b6-7`
   day=`  echo $log | cut -b4-5`
   stash=0
   if [ $year  -lt $thisYear  ]; then stash=1;fi
   if [ $month -lt $thisMonth ]; then stash=1;fi
   if [ $stash -eq 0 ]; then continue; fi
-  mkdir -p $HISTORY/$year/$month  
-  mv $log $HISTORY/$year/$month  
+  mkdir -p $HISTORY/$year/$month
+  # cp the file, don't mv it since another cron job will just go get it again.
+  cp $log $HISTORY/$year/$month
 done
 
 cd $HISTORY
 find . -type f -name "log*.ascii" -exec gzip {} \; 2>/dev/null
+# if the .gz file already exists, we end up with a ascii file laying around 
+#    just delete these files.
+find . -type f -name "log*.ascii" -exec rm {} \; 2>/dev/null
 
-if [ -d $RPTS ]; then 
+if [ -d $RPTS ]; then
   cd $RPTS
   find . -name "*.rpt" -daystart -mtime +14 -exec rm -fr {} \;
 fi
