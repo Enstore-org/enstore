@@ -1,16 +1,10 @@
-#!/bin/ksh
+#
 # @(#) $Id$
 # =============================================================
 # Randomly generated test script to test ftt functionality
-# File created on <
+# File created on 
 # =============================================================
-# 
-# Get the tape device by looking in $1. If that's not set,
-# try FTT_TAPE. If that's not set either, then exit.
-export FTT_TAPE
-FTT_TAPE=${1:-${FTT_TAPE:-""}}
-FTT_TAPE=${FTT_TAPE:?"No device specified"}
-# =============================================================
+ftt_open
 # =============================================================
 # Write the test data 
 # =============================================================
@@ -101,5 +95,6 @@ ftt_verify_tblock -nblock 1
 ftt_skip_rec 367
 ftt_verify_position 3 979
 ftt_verify_tblock -nblock 1
+ftt_close
 quit
-EOD
+

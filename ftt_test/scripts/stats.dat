@@ -1,18 +1,9 @@
-#!/bin/ksh
+#
 # @(#) $Id$
 #===============================================================================
 # This will test the statistics routine.
 #===============================================================================
  
-#===============================================================================
-# Get the tape device by looking in $1. If that's not set,
-# try FTT_TAPE. If that's not set either, then exit.
-export FTT_TAPE
-FTT_TAPE=${1:-${FTT_TAPE:-""}}
-FTT_TAPE=${FTT_TAPE:?"No device specified"}
-#===============================================================================
- 
-ftt_test << EOD
 ftt_open
 ftt_rewind
 ftt_echo "this is output of all the statistics. seem reasonable?"
@@ -47,4 +38,4 @@ ftt_close_dev
 ftt_update_stats -part_display
 ftt_close
 quit
-EOD
+

@@ -1,21 +1,15 @@
-#!/bin/ksh
+#
 # @(#) $Id$
+#
 #===============================================================================
 # This will test positioning withing a test tape.
 # It assumes that the tape has been written with twrite
 #===============================================================================
  
-#===============================================================================
-# Get the tape device by looking in $1. If that's not set,
-# try FTT_TAPE. If that's not set either, then exit.
-export FTT_TAPE
-FTT_TAPE=${1:-${FTT_TAPE:-""}}
-FTT_TAPE=${FTT_TAPE:?"No device specified"}
-#===============================================================================
- 
-ftt_test << EOD
 ftt_open -readonly
+
 ftt_rewind
+
 ftt_test_status -FTT_ABOT
 #===============================================================================
 # first check to see if when we forward skip a file we are where
@@ -88,7 +82,9 @@ ftt_verify_tblock -filemark
 ftt_verify_tblock -filemark -status FTT_EBLANK
 ftt_echo "look at output. next line should say File no: 5 block no: 0"
 ftt_get_position
+
 ftt_rewind
+
 ftt_close
 quit
-EOD
+

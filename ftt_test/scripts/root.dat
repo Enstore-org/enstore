@@ -1,0 +1,11 @@
+#
+# @(#) $Id$
+#==============================================================================
+# This will change all the protections of a device file
+#==============================================================================
+#
+ftt_open
+ftt_verify_exist
+ftt_chall votava products 777
+ftt_close
+quit
