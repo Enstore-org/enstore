@@ -298,7 +298,7 @@ for try in list doit; do
               a=`$UPS_DIR/bin/ups undeclare  -f $FLAVOR $product $REV 2>&1`
               stat=$?
               if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
-                check_status $? $a
+                check_status $stat $a
               fi
            fi
            ;;
@@ -315,7 +315,7 @@ for try in list doit; do
               a=`$UPD_DIR/bin/upd delproduct  -H $FLAVOR -f $FLAVOR $product $REV 2>&1`
               stat=$?
               if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
-                check_status $? $a
+                check_status $stat $a
               fi
            fi
            ;;
