@@ -59,8 +59,11 @@
 *shared*
 # dbm dbmmodule.c
 
+EXFER_THREADED = IGNORE_ME_PLEASE
+
 # EXfer EXfer.c  -D`uname` -DTHREADED adler32.a
-EXfer EXfer.c  -D`uname` $(EXFER_THREADED) adler32.a
+EXfer EXfer.c  -D`uname` -D$(EXFER_THREADED) adler32.a
+# EXfer EXfer.c  -D`uname` adler32.a
 
 # NOTE: "=" can not be on the same line with module definition
 FTT_DEF=FTT_DIR=
