@@ -34,18 +34,16 @@ def gethostinfo(verbose=0):
 def get_interface_file_name():
     hostname, junk, junk = gethostinfo()
     filename = "%s.interface.conf"%hostname
-    fullpath = None
-    if "ENSTORE_DIR" in os.environ.keys():
-        enstore_dir=os.environ['ENSTORE_DIR']
-        trypath=os.path.join(enstore_dir,'etc')
-        trypath=os.path.join(trypath,filename)
+    trydirs = []
+    for envvar in "ENSTORE_DIR", "ENCP_DIR":
+        if envvar in os.environ.keys():
+            trydirs.append(os.path.join(os.environ[envvar], "etc"))
+    trydirs.append("/etc") # fallback
+    for trydir in trydirs:
+        trypath=os.path.join(trydir, filename)
         if access.access(trypath, access.R_OK):
-            fullpath = trypath
-    if not fullpath:
-        trypath=os.path.join("/etc", filename)
-        if access.access(trypath, access.R_OK):
-            fullpath = trypath
-    return fullpath
+            return trypath
+    return None
         
         
 multi_interface_table=None
