@@ -226,7 +226,7 @@ esac
 
 
 # try to start - but if one netscan already running, then exit
-mkdir -p $ACTIVE 1>/dev/null 2>/dev/null
+mkdir $ACTIVE 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ] ; then
    msg="ERROR: netscan on $node already ACTIVE... exiting"
    logit "$msg"
