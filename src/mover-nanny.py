@@ -201,6 +201,8 @@ def check(mover):
         if int(time_in_state)>1200:
             if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND']:
                 return -1, "Mover in state %s for %s" % (state, hms(time_in_state))
+        if int(time_in_state)>7200 and state == 'ACTIVE':
+            return -1, "Mover in state %s for %s" % (state, hms(time_in_state))
     else:
         print
 
