@@ -77,8 +77,11 @@ class UDPClient:
         if not tsd:
             for key, value in self.tsd.items():
                 #Clean up resources of exited threads
-                if not value.thread.isAlive():
-                    del self.tsd[key]
+                try:
+                    if not value.thread.isAlive():
+                        del self.tsd[key]
+                    except:
+                        pass # another thread could have done the cleanup...
             tsd = self.reinit()
         return tsd
     
