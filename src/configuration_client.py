@@ -21,10 +21,10 @@ MY_SERVER = "configuration_server"
 
 class ConfigurationClient(generic_client.GenericClient):
 
-    def __init__(self, csc):
+    def __init__(self, address):
         self.clear()
 	self.print_id = MY_NAME
-        self.config_address=csc
+        self.config_address=address
         self.u = udp_client.UDPClient()
 
     def send (self, ticket,  rcv_timeout=0, tries=0):
