@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 import copy
 import callback
@@ -579,12 +580,12 @@ class VolumeClerkMethods(DispatchingWorker) :
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket) :
+        ticket["status"] = "ok"
         try:
-            self.reply_to_caller({"status" : "ok"})
+            self.reply_to_caller(ticket)
         # even if there is an error - respond to caller so he can process it
         except:
             ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
-            pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             return
 
@@ -593,10 +594,9 @@ class VolumeClerkMethods(DispatchingWorker) :
         if os.fork() != 0:
             return
         self.get_user_sockets(ticket)
-        rticket = {}
-        rticket["status"] = "ok"
-        rticket["vols"] = repr(dict.keys())
-        callback.write_tcp_socket(self.data_socket,rticket,
+        ticket["status"] = "ok"
+        ticket["vols"] = repr(dict.keys())
+        callback.write_tcp_socket(self.data_socket,ticket,
                                   "volume_clerk get_vols, datasocket")
         self.data_socket.close()
         callback.write_tcp_socket(self.control_socket,ticket,
@@ -606,7 +606,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # get a port for the data transfer
-    # tell the user I'm your library manager and here's your ticket
+    # tell the user I'm your volume clerk and here's your ticket
     def get_user_sockets(self, ticket) :
         volume_clerk_host, volume_clerk_port, listen_socket =\
                            callback.get_callback()

@@ -57,6 +57,13 @@ def library_manager_callback_socket(ticket) :
                  ticket['library_manager_callback_port'])
     return sock
 
+# return a library manager tcp socket
+def volume_clerk_callback_socket(ticket) :
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(ticket['volume_clerk_callback_host'], \
+                 ticket['volume_clerk_callback_port'])
+    return sock
+
 # send ticket/message on user tcp socket and return user tcp socket
 def user_callback_socket(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

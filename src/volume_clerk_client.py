@@ -1,4 +1,5 @@
 import time
+import callback
 from configuration_client import configuration_client
 from udp_client import UDPClient
 
@@ -93,7 +94,8 @@ class VolumeClerkClient :
         while 1 :
             control_socket, address = listen_socket.accept()
             new_ticket = callback.read_tcp_socket(control_socket, "volume"+\
-			          "clerk client get_vols,  vc call back")
+                                  "clerk client get_vols,  vc call back")
+            import pprint
             if ticket["unique_id"] == new_ticket["unique_id"] :
                 listen_socket.close()
                 break
@@ -110,7 +112,7 @@ class VolumeClerkClient :
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
         # work queues on that port.
-        data_path_socket = callback.volume_client_callback_socket(ticket)
+        data_path_socket = callback.volume_clerk_callback_socket(ticket)
         worklist = callback.read_tcp_socket(data_path_socket,"volume clerk "+\
                                     "client get_vols, reading worklist")
         data_path_socket.close()

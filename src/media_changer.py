@@ -59,7 +59,7 @@ class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
         print 'I am unload function and my type is IBM3494'
         self.reply_to_caller({'status' : 'ok'})
 
-# FTT tape drives with no robot 
+# FTT tape drives with no robot
 class FTT_MediaLoaderMethods(MediaLoaderMethods) :
 
     # assumes volume is in drive
@@ -97,7 +97,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                 out_ticket = {"status" : "ok"}
                 break
         # send reply to caller
-	print out_ticket
+        print out_ticket
         self.reply_to_caller(out_ticket)
         if list: print "status " + out_ticket["status"]
 
@@ -190,15 +190,15 @@ if __name__ == "__main__" :
     if args[0] == 'STK.media_changer' :
         mls =  STK_MediaLoader((keys['host'], keys['port']),
                                STK_MediaLoaderMethods)
-	ml_name = 'ML_STK'
+        ml_name = 'ML_STK'
     elif args[0] == 'FTT.media_changer' :
         mls =  FTT_MediaLoader((keys['host'], keys['port']),
                                FTT_MediaLoaderMethods)
-	ml_name = 'ML_FTT'
+        ml_name = 'ML_FTT'
     else :
         mls =  RDD_MediaLoader((keys['host'], keys['port']),
                                MediaLoaderMethods)
-	ml_name = 'ML_RDD'
+        ml_name = 'ML_RDD'
     mls.set_csc(csc)
 
     # create a log client
@@ -211,5 +211,3 @@ if __name__ == "__main__" :
         except:
             print sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
-
-

@@ -108,7 +108,7 @@ if __name__ == "__main__" :
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list",
-	       "getwork","list","verbose","alive","help"]
+               "getwork","list","verbose","alive","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :

@@ -48,7 +48,7 @@ class UDPClient:
 
         # stringify message and check if it is too long
         message = `(self.ident, self.number, text)`
-	##print message
+        ##print message
         if len(message) > TRANSFER_MAX :
             raise errno.errorcode[errno.EMSGSIZE],"UDPClient.send:message "+\
                   "too big. Size = ",+repr(len(message))+" Max = "+\
@@ -122,7 +122,7 @@ class UDPClient:
                   +repr(len(message))+" Max = "+repr(TRANSFER_MAX)+" ",message
 
         # send the udp message
-	self.socket.sendto (message, address)
+        self.socket.sendto (message, address)
 
 if __name__ == "__main__" :
     import getopt
@@ -171,6 +171,3 @@ if __name__ == "__main__" :
         print "Read back:\n",back
 
     sys.exit(status)
-
-
-
