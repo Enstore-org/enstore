@@ -68,7 +68,8 @@ class UDPServer:
         # used to recognize UDP retries
         self.request_dict = {}
         # keep requests in request dict for this many seconds
-        self.request_dict_ttl = 1800
+        #self.request_dict_ttl = 1800
+        self.request_dict_ttl = 1000
         
         self.rexec = rexec.RExec()
         
