@@ -28,6 +28,13 @@ class InquisitorPlots:
 
     # make the mount plots (mounts per hour and mount latency
     def mount_plot(self):
+	# get the config file so we can not plot null mover data
+	config = enstore_functions.get_config_dict()
+	if config:
+	    config = config.configdict
+	else:
+	    config = {}
+
 	ofn = self.output_dir+"/mount_lines.txt"
 
         # parse the log files to get the media changer mount/dismount
@@ -39,7 +46,7 @@ class InquisitorPlots:
                                                   "* /dev/null", ofn, 
                                         "-e %s -e %s"%(Trace.MSG_MC_LOAD_REQ,
                                                        Trace.MSG_MC_LOAD_DONE),
-                                                   self.logfile_dir)
+                                                   self.logfile_dir, "", config)
 
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.

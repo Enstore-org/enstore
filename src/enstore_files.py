@@ -5,7 +5,6 @@ import time
 import string
 import os
 import stat
-import string
 
 # enstore imports
 import Trace
@@ -22,6 +21,12 @@ FALSE = 0
 TMP = ".tmp"
 START_TIME = "start_time"
 STOP_TIME = "stop_time"
+
+NO_THRESHOLD = 0
+NO_THRESHOLDS = [NO_THRESHOLD, NO_THRESHOLD, NO_THRESHOLD]
+SERVER_PAGE = 0
+FULL_PAGE = 1
+LM_PAGE = 2
 
 # message is either a mount request or an actual mount
 MREQUEST = 0
@@ -74,13 +79,30 @@ def default_status_html_file():
 
 class EnFile:
 
-    def __init__(self, file, system_tag=""):
+    def set_filename(self, file):
         self.file_name = file 
         self.real_file_name = file 
+	self.lockfile = "%s.lock"%(file,)
+
+    def __init__(self, file, system_tag=""):
+	self.set_filename(file)
         self.openfile = 0
 	self.opened = 0
         self.system_tag = system_tag
-	self.lockfile = "%s.lock"%(file,)
+
+    def get_lock(self):
+	# first check if we can get a lockfile for this
+	try:
+	    for attempt in [1,2,3,4,5]:
+		os.stat(self.lockfile)
+		# oops file exists, wait awhile then try again
+		time.sleep(1)
+	    else:
+		return None
+	except OSError:
+	    # file does not exist, create it
+	    os.system("touch %s"%(self.lockfile,))
+	    return 1
 
     def open(self, mode='w'):
         try:
@@ -166,30 +188,83 @@ class EnStatusFile(EnFile):
     def get_refresh(self):
         return self.refresh
 
-class HTMLLMQFile(EnStatusFile, enstore_status.EnStatus):
+class HTMLFile(EnStatusFile, enstore_status.EnStatus):
 
 
     def __init__(self, file, refresh, system_tag=""):
         EnStatusFile.__init__(self, file, system_tag)
         self.file_name = "%s.new"%(file,)
         self.refresh = refresh
+
+class HTMLExtraPages:
 
     def write(self, doc):
-        if self.openfile:
-	    self.do_write(str(doc))
+	if doc.extra_queue_pages:
+	    for extra_page_key in doc.extra_queue_pages.keys():
+		filename = "%s"%(doc.extra_queue_pages[extra_page_key][1],)
+		extra_file = HTMLFile(filename,
+			      doc.extra_queue_pages[extra_page_key][0].refresh,
+			      doc.extra_queue_pages[extra_page_key][0].system_tag)
+		extra_file.open()
+		try:
+		    extra_file.write(str(doc.extra_queue_pages[extra_page_key][0]))
+		except IOError, detail:
+		    msg = "Error writing %s (%s)"%(filename, detail)
+		    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+		extra_file.close()
+		extra_file.install()
 
-class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
+class HTMLLmFullStatusFile(EnStatusFile, HTMLExtraPages):
 
     def __init__(self, file, refresh, system_tag=""):
         EnStatusFile.__init__(self, file, system_tag)
         self.file_name = "%s.new"%(file,)
         self.refresh = refresh
 
-    def dont_monitor(self, key, host, port):
+
+class HTMLLmStatusFile(EnStatusFile):
+
+    def __init__(self, file, refresh, system_tag=""):
+        EnStatusFile.__init__(self, file, system_tag)
+        self.file_name = "%s.new"%(file,)
+        self.refresh = refresh
+
+class HTMLMoverStatusFile(EnStatusFile):
+
+    def __init__(self, file, refresh, system_tag=""):
+        EnStatusFile.__init__(self, file, system_tag)
+        self.file_name = "%s.new"%(file,)
+        self.refresh = refresh
+
+class HTMLFileListFile(EnStatusFile):
+
+    def __init__(self, file, refresh, system_tag=""):
+        EnStatusFile.__init__(self, file, system_tag)
+        self.file_name = "%s.new"%(file,)
+        self.refresh = refresh
+
+
+class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
+
+    def __init__(self, file, refresh, system_tag="", page_thresholds=NO_THRESHOLDS):
+        EnStatusFile.__init__(self, file, system_tag)
+        self.file_name = "%s.new"%(file,)
+	self.html_dir = enstore_functions.get_dir(file)
+        self.refresh = refresh
+	self.page_thresholds = page_thresholds
+	self.mover_file = HTMLMoverStatusFile("%s/enstore_movers.html"%(self.html_dir,), 
+					      refresh, system_tag)
+	self.filelist_file = HTMLFileListFile("%s/enstore_files.html"%(self.html_dir,),
+					      refresh, system_tag)
+								  
+	self.filelist = []
+	self.docs_to_install = []
+
+    def dont_monitor(self, key, host):
         self.text[key] = {}
-        self.text[key][enstore_constants.STATUS] = ["not monitoring", self.format_host(host),
-                                                    repr(port), 
-                                                    enstore_functions.format_time(time.time())]
+        self.text[key][enstore_constants.STATUS] = [enstore_constants.NOT_MONITORING,
+					 self.format_host(host), 
+                                         enstore_functions.format_time(time.time())]
 
     def set_alive_error_status(self, key):
         try:
@@ -198,34 +273,97 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
             # the 'update_commands' for example does not have a STATUS
             pass
 
-    # write the status info to the file
-    def write(self, max_lm_pendingq_rows={}, max_lm_atworkq_rows={}):
+    def get_file_list(self, lm, name):
+	# we may have gotten an error while trying to get the info, 
+	# so check for a piece of it first
+	if lm.has_key(enstore_constants.LMSTATE):
+	    wam_q = lm.get(enstore_constants.WORK, None)
+	    if not wam_q is enstore_constants.NO_WORK:
+		for wam_elem in wam_q:
+		    self.filelist.append([wam_elem[enstore_constants.NODE], 
+					  wam_elem[enstore_constants.FILE], name, 
+					  wam_elem[enstore_constants.DEVICE]])		
+	    pend_q = lm.get(enstore_constants.PENDING, None)
+	    if pend_q:
+		pread_q = pend_q[enstore_constants.READ]
+		if pread_q:
+		    for pread_elem in pread_q:
+			self.filelist.append([pread_elem[enstore_constants.NODE], 
+					      pread_elem[enstore_constants.FILE], name, 
+					      pread_elem[enstore_constants.DEVICE]])
+		pwrite_q = pend_q[enstore_constants.WRITE]
+		if pwrite_q:
+		    for pwrite_elem in pwrite_q:
+			self.filelist.append([pwrite_elem[enstore_constants.NODE], 
+					      pwrite_elem[enstore_constants.FILE], name, 
+					      None])
+			
+    # write the status info to the files
+    def write(self):
         if self.openfile:
+	    self.docs_to_install = []
             doc = enstore_html.EnSysStatusPage(self.refresh, self.system_tag,
-                                               max_lm_pendingq_rows,
-                                               max_lm_atworkq_rows)
+                                               self.page_thresholds)
             doc.body(self.text)
 	    self.do_write(str(doc))
-            # check for are any extra pages that should be generated. this happens if
-            # the libman queue was too long and the extra should be written to another
-            # file
-            if doc.extra_lm_queue_pages:
-                html_dir = enstore_functions.get_html_dir()
-                for extra_page_key in doc.extra_lm_queue_pages.keys():
-                    filename = "%s/%s"%(html_dir, 
-                                   doc.extra_lm_queue_pages[extra_page_key][1])
-                    extra_file = HTMLLMQFile(filename,
-                                   doc.extra_lm_queue_pages[extra_page_key][0].refresh,
-                                   doc.extra_lm_queue_pages[extra_page_key][0].system_tag)
-                    extra_file.open()
-		    try:
-			extra_file.write(doc.extra_lm_queue_pages[extra_page_key][0])
-		    except IOError, detail:
-			msg = "Error writing %s (%s)"%(filename, detail)
-			Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
-                    extra_file.close()
-                    extra_file.install()
-                                             
+	    HTMLExtraPages.write(self, doc)
+
+	    # now make the individual library manager pages
+	    status_keys = self.text.keys()
+	    self.filelist = []
+	    for key in status_keys:
+		if enstore_functions.is_library_manager(key) and \
+		   not self.text[key][enstore_constants.STATUS][0] == \
+		                 enstore_constants.NOT_MONITORING:
+		    doc = enstore_html.EnLmFullStatusPage(key, self.refresh, 
+							  self.system_tag, 
+							  self.page_thresholds.get(key, 
+									 NO_THRESHOLDS)[FULL_PAGE])
+		    doc.body(self.text[key])
+		    # save the file info for the filelist page
+		    self.get_file_list(self.text[key], key)
+		    # this is the page with the full lm queue on it (old one)
+		    lm_q_file = HTMLLmFullStatusFile("%s/%s-full.html"%(self.html_dir, key),
+						     self.refresh, self.system_tag)
+		    lm_q_file.open()
+		    lm_q_file.write(doc)
+		    lm_q_file.close()
+		    self.docs_to_install.append(lm_q_file)
+		    HTMLExtraPages.write(self, doc)
+		    doc = enstore_html.EnLmStatusPage(key, self.refresh, 
+						      self.system_tag, 
+						      self.page_thresholds.get(key, 
+								NO_THRESHOLDS)[LM_PAGE])
+		    doc.body(self.text[key])
+		    lm_file = HTMLLmStatusFile("%s/%s.html"%(self.html_dir, key), 
+					       self.refresh, self.system_tag)
+		    lm_file.open()
+		    lm_file.write(doc)
+		    lm_file.close()
+		    self.docs_to_install.append(lm_file)
+		    HTMLExtraPages.write(self, doc)
+	    # now make the mover page
+	    doc = enstore_html.EnMoverStatusPage(self.refresh, self.system_tag)
+	    doc.body(self.text)
+	    self.mover_file.open()
+	    self.mover_file.write(doc)
+	    self.mover_file.close()
+	    self.docs_to_install.append(self.mover_file)
+	    # now make the file list page
+	    doc = enstore_html.EnFileListPage(self.refresh, self.system_tag, 
+					      self.page_thresholds[enstore_constants.FILE_LIST])
+	    doc.body(self.filelist)
+	    self.filelist_file.open()
+	    self.filelist_file.write(doc)
+	    self.filelist_file.close()
+	    self.docs_to_install.append(self.filelist_file)
+	    HTMLExtraPages.write(self, doc)
+
+    def install(self):
+	EnStatusFile.install(self)
+	for doc in self.docs_to_install:
+	    doc.install()
+	
 
 class HTMLEncpStatusFile(EnStatusFile):
 
@@ -389,31 +527,58 @@ class EnDataFile(EnFile):
 
 class EnMountDataFile(EnDataFile):
 
+    def __init__(self, inFile, oFile, text, indir="", fproc="", config={}):
+	EnDataFile.__init__(self, inFile, oFile, text, indir, fproc)
+	self.config = config
+	self.servers = self.config.keys()
+
+    # find out if this is a null mover
+    def is_null_mover(self, mover_log_name):
+	for server in self.servers:
+	    if self.config[server].has_key('logname') and \
+	       self.config[server]['logname'] == mover_log_name:
+		if self.config[server]['driver'] == 'NullDriver':
+		    # this is a null mover
+		    rtn = 1
+		    break
+		else:
+		    # this is not a null mover
+		    rtn = 0
+		    break
+	else:
+	    # assume this is not a null mover
+	    rtn = 0
+	return rtn
+
     # parse the mount line
     def parse_line(self, line):
         [etime, enode, epid, euser, estatus, mover, type, request, volume] = \
                                                    string.split(line, None, 8)
-        if type == string.rstrip(Trace.MSG_MC_LOAD_REQ) :
-            # this is the request for the mount
-            start = MREQUEST
-        else:
-            start = MMOUNT
+	# if this is a null mover, ignore it
+	if not self.is_null_mover(mover):
+	    if type == string.rstrip(Trace.MSG_MC_LOAD_REQ) :
+		# this is the request for the mount
+		start = MREQUEST
+	    else:
+		start = MMOUNT
 
-        # parse out the file directory , a remnant from the grep in the time 
-        # field
-        etime = enstore_functions.strip_file_dir(etime)
+	    # parse out the file directory , a remnant from the grep in the time 
+	    # field
+	    etime = enstore_functions.strip_file_dir(etime)
 
-        # pull out any dictionaries from the rest of the message
-        #msg_dicts = enstore_status.get_dict(erest)
-	msg_dicts = {}        # this needs to be fixed NOTE: efb
-        return [etime, enode, euser, estatus, mover, epid, volume, start, msg_dicts]
+	    # pull out any dictionaries from the rest of the message
+	    #msg_dicts = enstore_status.get_dict(erest)
+	    msg_dicts = {}        # this needs to be fixed NOTE: efb
+	    return [etime, enode, euser, estatus, mover, epid, volume, start, msg_dicts]
+	else:
+	    return []
 
     # pull out the plottable data from each line that is from one of the
     # specified movers
     def parse_data(self, mcs):
         for line in self.lines:
             minfo = self.parse_line(line)
-            if not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs):
+            if minfo and (not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs)):
                 self.data.append([minfo[MDEV], minfo[MPID], minfo[MVOLUME],
                                   string.replace(minfo[0],
                                                  enstore_constants.LOG_PREFIX,
@@ -429,7 +594,8 @@ class EnEncpDataFile(EnDataFile):
                 if not mcs or enstore_status.mc_in_list(encp_line.mc, mcs):
                     etime = enstore_functions.strip_file_dir(encp_line.time)
                     self.data.append([string.replace(etime, 
-                                                     enstore_constants.LOG_PREFIX, ""), 
+                                                     enstore_constants.LOG_PREFIX, 
+						     ""), 
                                       encp_line.bytes, encp_line.direction])
 
 class HtmlAlarmFile(EnFile):
@@ -451,27 +617,6 @@ class HtmlAlarmFile(EnFile):
         if self.openfile:
             doc = enstore_html.EnAlarmPage(system_tag=self.system_tag)
             doc.body(data, www_host)
-	    self.do_write(str(doc))
-
-class HTMLPatrolFile(EnFile):
-
-    # we need to save both the file name passed to us and the one we will
-    # write to.  we will create the temp one and then move it to the real
-    # one.
-    def __init__(self, name, system_tag=""):
-        EnFile.__init__(self, name+TMP, system_tag)
-        self.real_file_name = name
-
-    # we need to close the open file and move it to the real file name
-    def close(self):
-        EnFile.close(self)
-        os.rename(self.file_name, self.real_file_name)
-
-    # format the file name and write it to the file
-    def write(self, data):
-        if self.openfile:
-            doc = enstore_html.EnPatrolPage(system_tag=self.system_tag)
-            doc.body(data)
 	    self.do_write(str(doc))
 
 class EnAlarmFile(EnFile):
@@ -509,37 +654,6 @@ class EnAlarmFile(EnFile):
             line = repr(alarm)+"\n"
 	    self.do_write(line)
 
-class EnPatrolFile(EnFile):
-
-    # we need to save both the file name passed to us and the one we will
-    # write to.  we will create the temp one and then move it to the real
-    # one.
-    def __init__(self, name):
-        EnFile.__init__(self, name+TMP)
-        self.real_file_name = name
-        self.lines = []
-
-    # we need to close the open file and move it to the real file name
-    def close(self):
-        EnFile.close(self)
-        os.rename(self.file_name, self.real_file_name)
-
-    # write out the alarm
-    def write(self, alarm):
-        if self.openfile:
-            # tell the alarm that this is going to patrol so the alarm
-            # can add the patrol expected header
-	    self.do_write(alarm.prepr())
-
-    # rm the file
-    def remove(self):
-        try:
-            if self.real_file_name and os.path.exists(self.real_file_name):
-                os.remove(self.real_file_name)
-        except IOError:
-            # file does not exist
-            pass
-
 class HtmlSaagFile(EnFile):
 
     # we need to save both the file name passed to us and the one we will
@@ -556,38 +670,14 @@ class HtmlSaagFile(EnFile):
         if self.openfile:
             doc = enstore_html.EnSaagPage(system_tag=self.system_tag)
             media = enstore_functions.get_from_config_file(www_server.WWW_SERVER,
-                                                           www_server.MEDIA_TAG,
-                                                           www_server.MEDIA_TAG_DEFAULT)
+                                                       www_server.MEDIA_TAG,
+                                                       www_server.MEDIA_TAG_DEFAULT)
             doc.body(enstore_contents, network_contents, media_contents, 
                      alarm_contents, node_contents, outage, offline, media,
 		     status_file_name)
 	    # save the status of the enstore ball
 	    self.enstore_ball = enstore_contents[enstore_constants.ENSTORE]
 	    self.do_write(str(doc))
-
-    def install(self):
-	# if the enstore ball is red, then move the file just created to
-	# a different file name and move the page with the big red ball to the
-	# normal saag file name
-	if self.enstore_ball == enstore_constants.DOWN:
-	    dir = enstore_functions.get_dir(self.file_name)
-	    enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
-				  "Tmp file: %s, real file: %s/%s"%(self.file_name,
-				          dir, enstore_constants.REALSAAGHTMLFILE))
-	    if os.path.exists(self.file_name):
-		os.system("mv %s %s/%s"%(self.file_name, dir,
-					 enstore_constants.REALSAAGHTMLFILE))
-		os.system("cp %s/%s %s"%(dir, enstore_constants.REDSAAGHTMLFILE,
-					 self.real_file_name))
-
-	else:
-	    # move the file we created to the real file name
-	    enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
-		                   "Tmp file: %s, real file: %s"%(self.file_name, 
-							      self.real_file_name))
-	    if (not self.real_file_name == self.file_name) and \
-	       os.path.exists(self.file_name):
-		os.system("mv %s %s"%(self.file_name, self.real_file_name))
 
 
 class ScheduleFile(EnFile):
@@ -597,23 +687,15 @@ class ScheduleFile(EnFile):
         EnFile.__init__(self, "%s/%s"%(dir, name))
 
     def open(self, mode='w'):
-	# first check if we can get a lockfile for this
-	try:
-	    for attempt in [1,2,3,4,5]:
-		os.stat(self.lockfile)
-		# oops file exists, wait awhile then try again
-		time.sleep(1)
-	    else:
-		Trace.log(e_errors.ERROR,
-			"Could not create outage file lock file (%s)"%(self.lockfile,))
-	except OSError:
-	    # file does not exist, create it
-	    os.system("touch %s"%(self.lockfile,))
+	if self.get_lock():
 	    EnFile.open(self, mode)
+	else:
+	    Trace.log(e_errors.ERROR,
+		      "Could not create outage file lock file (%s)"%(self.lockfile,))
 
     def close(self):
 	EnFile.close(self)
-	# get rid of the lock file first
+	# get rid of the lock file
 	os.system("rm %s"%(self.lockfile,))
 
     def read(self):
