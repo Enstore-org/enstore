@@ -62,11 +62,12 @@ ftt_set_part_size(ftt_partbuf p,int n,long sz) {
 #define pack(a,b,c,d) \
      (((unsigned long)(a)<<24) + ((unsigned long)(b)<<16) + ((unsigned long)(c)<<8) + (unsigned long)(d))
 
+#include "ftt_dbd.h"
 
 int		
 ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
-    static char buf[136];
-    static unsigned char cdb_modsen11[6] = {0x1a, 0x08, 0x11, 0x00,140, 0x00};
+    static unsigned char buf[BD_SIZE+136];
+    static unsigned char cdb_modsen11[6] = {0x1a, DBD, 0x11, 0x00,140, 0x00};
     int res;
     int i;
 
@@ -95,22 +96,23 @@ ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
 
     } else {
 
-	res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, 140, 10, 0);
+	res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, BD_SIZE+136, 10, 0);
 	if (res < 0) return res;
-	p->n_parts = buf[4+3];
-	p->max_parts = buf[4+2];
+	p->n_parts = buf[BD_SIZE+3];
+	p->max_parts = buf[BD_SIZE+2];
 	for( i = 0 ; i <= p->n_parts; i++ ) {
-	    p->partsizes[i] = pack(0,0,buf[4+8+2*i],buf[4+8+2*i+1]);
+	    p->partsizes[i] = pack(0,0,buf[BD_SIZE+8+2*i],buf[BD_SIZE+8+2*i+1]);
 	}
 	return 0;
    }
 }
 
+
 int		
 ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
-    static unsigned char buf[140];
-    static unsigned char cdb_modsen11[6] = {0x1a, 0x08, 0x11, 0x00,140, 0x00};
-    static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00,140, 0x00};
+    static unsigned char buf[BD_SIZE+136];
+    static unsigned char cdb_modsen11[6] = {0x1a, DBD, 0x11, 0x00,BD_SIZE+136, 0x00};
+    static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00,BD_SIZE+136, 0x00};
     int res, i;
     int len;
 
@@ -142,23 +144,28 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 	}
 
     } else {
-	res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, 140, 10, 0);
+	res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, BD_SIZE+136, 10, 0);
 	if (res < 0) return res;
 
 	buf[0] = 0;
 	buf[1] = 0;
 
-	len = buf[4+1] + 6;
+	len = buf[BD_SIZE+1] + BD_SIZE + 2;
+
+        cdb_modsel[4] = len;
+
+        DEBUG3(stderr,"Got length of %d\n", len);
+
 	/* set number of partitions */
-	buf[4+3] = p->n_parts;
+	buf[BD_SIZE+3] = p->n_parts;
 
 	/* set to write initiator defined partitions, in MB */
-	buf[4+4] = 0x20 | 0x10;
+	buf[BD_SIZE+4] = 0x20 | 0x10;
 
 	/* fill in partition sizes... */
 	for( i = 0 ; i <= p->n_parts; i++ ) {
-	    buf[4+8 + 2*i + 0] = (p->partsizes[i] & 0xff00) >> 8;
-	    buf[4+8 + 2*i + 1] = p->partsizes[i] & 0x00ff;
+	    buf[BD_SIZE+8 + 2*i + 0] = (p->partsizes[i] & 0xff00) >> 8;
+	    buf[BD_SIZE+8 + 2*i + 1] = p->partsizes[i] & 0x00ff;
 	}
 	res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, buf, len, 3600, 1);
 	return res;
@@ -189,15 +196,22 @@ ftt_skip_part(ftt_descriptor d,int nparts) {
     static unsigned char 
         locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
+    d->data_direction = FTT_DIR_READING;
+    d->current_block = 0;
+    d->current_file = 0;
+    d->current_valid = 1;
+    d->last_pos = -1;   /* we skipped backwards, so this can't be valid */
+
     cur = ftt_cur_part(d);
     cur += nparts;
     locate_cmd[1] = 0x02;
     locate_cmd[8] = cur;
-    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,60,0);
+    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
     res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
 
     return res;
 }
+
 int		
 ftt_locate_part(ftt_descriptor d, int blockno, int part) {
     int cur;
@@ -211,8 +225,17 @@ ftt_locate_part(ftt_descriptor d, int blockno, int part) {
     locate_cmd[5] = (blockno >> 8)  & 0xff; 
     locate_cmd[6] = blockno & 0xff;
     locate_cmd[8] = part;
+    if ( blockno == 0 ) {
+	d->current_block = 0;
+	d->current_file = 0;
+	d->current_valid = 1;
+    } else {
+	d->current_valid = 0;
+    }
+    d->data_direction = FTT_DIR_READING;
+    d->last_pos = -1;   /* we skipped backwards, so this can't be valid */
 
-    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,60,0);
+    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
     res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
 
     return res;
@@ -221,7 +244,7 @@ ftt_locate_part(ftt_descriptor d, int blockno, int part) {
 /* shared printf formats for dump/undump */
 char *curfmt = "Cur: %d\n";
 char *maxfmt = "Max: %d\n";
-char *parfmt = "P%d: %d MB\n";
+char *parfmt = "P%d: %u MB\n";
 
 ftt_dump_partitions(ftt_partbuf parttab, FILE *pf) {
     int i;
@@ -244,7 +267,46 @@ ftt_undump_partitions(ftt_partbuf p, FILE *pf) {
     fgets(buf,80,pf);
     fscanf(pf, curfmt, &(p->n_parts));
     fscanf(pf, maxfmt, &(p->max_parts));
-    for( i = 0 ; i < p->n_parts; i++ ) {
+    for( i = 0 ; i <= p->n_parts; i++ ) {
 	fscanf(pf, parfmt, &junk, &(p->partsizes[i]));
     }
+}
+
+int		
+ftt_load_partition(ftt_descriptor d, int partno) {
+    int res = 0;
+    ftt_partbuf p;
+    static unsigned char buf[10];
+    static unsigned char cdb_modsense[6] = {0x1a, DBD, 0x21, 0x00, 10, 0x00};
+    static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00, 10, 0x00};
+    int len;
+    int max;
+
+    /* get maximum number of partitions.. */
+    p = ftt_alloc_parts();
+    ftt_get_partitions(d,p);
+    max = ftt_extract_maxparts(p);
+    ftt_free_parts(p);
+
+    /* -1 means highest supported partition */
+    if ( partno < 0 || partno > max ) partno = max;
+
+    res = ftt_do_scsi_command(d,"Mode Sense, 0x21", cdb_modsense, 6, buf, 10, 10, 0);
+    if (res < 0) return res;
+
+    buf[0] = 0;
+    buf[1] = 0;
+
+    len = buf[BD_SIZE+1] + BD_SIZE + 2;
+
+    /* set load partition */
+    buf[BD_SIZE+3] = (partno << 1) & 0x7e;
+
+    /* reserved fields */
+    buf[BD_SIZE+2] = 0;
+    buf[BD_SIZE+4] = 0;
+    buf[BD_SIZE+5] = 0;
+
+    res = ftt_do_scsi_command(d,"Mode Select, 0x21", cdb_modsel, 6, buf, len, 10, 1);
+    return res;
 }
