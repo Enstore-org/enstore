@@ -71,14 +71,15 @@ class LibraryManagerClient(generic_client.GenericClient) :
                        fn = work["wrapper"]["fullname"]
                        at_top = work["at_the_top"]
                        reject_reason = ("","")
+                       vol_msg = ''
                        if work.has_key('reject_reason'):
                            reject_reason = work['reject_reason']
-                       vol = ''
-                       if work['fc'].has_key('external_label'):
-                           vol = work['vc']['external_label']
-                       vol_msg = ''
-                       if vol:
-                           vol_msg='VOL %s' % (vol,)
+                       else:
+                           vol = ''
+                           if work['fc'].has_key('external_label'):
+                               vol = work['vc']['external_label']
+                           if vol:
+                               vol_msg='VOL %s' % (vol,)
                        if (host == node) or (not node):
                            print "%s %s %s %s %s P %d %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg)
                if pending_write_cnt:
@@ -98,8 +99,13 @@ class LibraryManagerClient(generic_client.GenericClient) :
                        vol_msg = ''
                        if vol:
                            vol_msg='VOL %s' % (vol,)
+                       ff_msg = ''
+                       if work['vc'].has_key('file_family'):
+                           ff_msg = string.join((ff_msg,"FF",work['vc']['file_family']),' ')
+                       if work['vc'].has_key('file_family_width'):
+                           ff_msg = string.join((ff_msg,"FF_W %s"%(work['vc']['file_family_width'],)),' ')
                        if (host == node) or (not node):
-                           print "%s %s %s %s %s P %d %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg)
+                           print "%s %s %s %s %s P %d %s %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg, ff_msg)
                            
                for work in at_list:
                    host = work["wrapper"]["machine"][1]
