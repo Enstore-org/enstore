@@ -112,7 +112,8 @@ if [ $MAKE_LOCAL_COPY -eq 1 -o $READ_TO_DEV_NULL -eq 1 ]; then
 cat $files | while read file; do
   echo `dirname $file` >>$dirs
   if [ `echo $file | grep -c ^/pnfs/cdfen/filesets` -ne 1 ]; then
-     echo `date` ERROR. Not configured to handle $file
+     echo echo `date` ERROR. Not configured to handle $file on $tape | /usr/bin/Mail -s "$tape +++++++++MIGRATION ERROR +++++++++++" enstore-admin@fnal.gov 
+     echo echo `date` ERROR. Not configured to handle $file on $tape 
      clean
      exit 1
   fi
