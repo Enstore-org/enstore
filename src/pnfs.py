@@ -218,7 +218,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         dirs = os.listdir("/pnfs/")
         if self.mount_point: #A mount point was given by the user.
             mount_points = [self.mount_point]
-        if os.getcwd()[:6] == "/pnfs/": #Determine the mount point of cwd.
+        elif os.getcwd()[:6] == "/pnfs/": #Determine the mount point of cwd.
             mount = "/"
             for dir in string.split(os.getcwd(), "/")[1:]:
                 mount = os.path.join(mount, dir)
@@ -266,8 +266,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             return
         elif len(matched_id_list) == 1:
             #print "One reverence"
-            self.check_valid_pnfs_filename(matched_id_list[0],
-                                           matched_mp_list[0])
+            #Don't use check_valid_pnfs_filename() here.  This function tries
+            # to determine that the file really exists.  Since, the directory
+            # isn't known yet, (because that is what is being determined)
+            # this would always return unknown status.
+            self.file = matched_id_list[0]
+            self.dir = matched_mp_list[0]
         else:
             #print "Too many references"
             self.check_valid_pnfs_filename("", "")
