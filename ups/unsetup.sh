@@ -12,3 +12,5 @@ fi
 unset PYTHONLIB
 unset PYTHONINC
 unset PYTHONMOD
+
+unset TRACE_KEY

@@ -4,3 +4,5 @@ setenv PYTHONPATH `dropit -d':' -p"$PYTHONPATH" /enstore`
 unsetenv PYTHONLIB
 unsetenv PYTHONINC
 unsetenv PYTHONMOD
+
+unsetenv TRACE_KEY

@@ -1,4 +1,5 @@
 PATH="$PATH:${ENSTORE_DIR}/bin"
+PATH="$PATH:${ENSTORE_DIR}/sbin"
 export PATH
 
 if [ "${PYTHONPATH:-1}" = "1" ]; then
@@ -23,5 +24,8 @@ export ENSTORE_CONFIG_PORT
 
 ENSTORE_CONFIG_HOST=pcfarm9.fnal.gov
 export ENSTORE_CONFIG_HOST
+
+TRACE_KEY=$ENSTORE_DIR/etc
+export TRACE_KEY
 
 . $ENSTORE_DIR/etc/defaults

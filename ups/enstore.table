@@ -5,8 +5,7 @@ PRODUCT=enstore
 #
 FLAVOR = ANY
 QUALIFIERS = ""
-
-  ACTION=SETUP
+    ACTION=SETUP
 	setupEnv()
 	proddir()
 	pathAppend(PATH, ${UPS_PROD_DIR}/bin)
@@ -27,6 +26,10 @@ QUALIFIERS = ""
 	envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/willow.conf)
 	envSet(ENSTORE_CONFIG_PORT, 7510)
 	envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
+	envSet( TRACE_KEY, ${UPS_PROD_DIR}/etc )
 	sourceRequired(${UPS_PROD_DIR}/etc/defaults, NO_UPS_ENV)
 	envUnset(ver)
 	envUnset(PVER)
+	pathAppend( PATH, ${UPS_PROD_DIR}/sbin )
+
+

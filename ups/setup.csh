@@ -1,4 +1,5 @@
 set path=($path ${ENSTORE_DIR}/bin)
+set path=($path ${ENSTORE_DIR}/sbin)
 rehash
 
 if ("${?PYTHONPATH}" == "0") then
@@ -17,5 +18,7 @@ unsetenv PVER
 setenv ENSTORE_CONFIG_FILE $ENSTORE_DIR/etc/willow.conf
 setenv ENSTORE_CONFIG_PORT 7510
 setenv ENSTORE_CONFIG_HOST pcfarm9.fnal.gov
+
+setenv TRACE_KEY $ENSTORE_DIR/etc
 
 #source $ENSTORE_DIR/etc/defaults
