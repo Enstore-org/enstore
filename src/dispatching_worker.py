@@ -33,7 +33,7 @@ request_dict = {}
 #        which becomes list[0-2]
 def purge_stale_entries(request_dict):
     Trace.trace(20,"{purge_stale_entries")
-    stale_time = time.time() - 600
+    stale_time = time.time() - 1800
     count = 0
     for entry in request_dict.items():
         list = entry[1]
@@ -248,7 +248,7 @@ class DispatchingWorker:
             self.reply_to_caller(ticket)
             return
 
-        if len(request_dict) > 200:
+        if len(request_dict) > 1000:
             purge_stale_entries(request_dict)
 
         # call the user function
