@@ -66,9 +66,11 @@ install : install_home
 	@mkdir		 $(ENSTORE_INSTALL_DIR)/doc/www
 	cp $(WWW_NEW)/*.*   $(ENSTORE_INSTALL_DIR)/doc/www
 
-install_home :
+install_home : www_new
 	@-if [ -d "$(ENSTORE_HOME)" -a -w "$(ENSTORE_HOME)" ]; then \
 		cp $(WWW_NEW)/*.*  $(ENSTORE_HOME); \
+	else \
+		echo "ERROR: No permissions to write to $(ENSTORE_HOME)"; \
 	fi;
 
 
