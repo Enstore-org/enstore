@@ -713,7 +713,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             delay = 60 * int(ticket['encp']['delayed_dismount']) #XXX is this right? minutes?
                                                                   ##what does the flag really mean?
         self.delay = max(delay, self.default_dismount_delay)
-        self.delay = min(delay, self.max_dismount_delay)
+        self.delay = min(self.delay, self.max_dismount_delay)
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
