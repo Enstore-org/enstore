@@ -60,11 +60,12 @@ if __name__ == '__main__':
 	for i in vols:
 		if i[-8:] != '.deleted':
 			vol = vcc.inquire_vol(i)
-			if vol['status'][0] == e_errors.OK:
-				if vol['system_inhibit'][1] in WATCH:
-					if vol.has_key('si_time'):
-						t = vol['si_time'][1]
-					else:
-						t = 0
-					if t >= last:
-						print i, vol['system_inhibit'][1], time.ctime(t)
+			if vol['status'][0] == e_errors.OK and \
+				vol['media_type'] != 'null' and \
+				vol['system_inhibit'][1] in WATCH:
+				if vol.has_key('si_time'):
+					t = vol['si_time'][1]
+				else:
+					t = 0
+				if t >= last:
+					print i, vol['system_inhibit'][1], time.ctime(t)
