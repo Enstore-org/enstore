@@ -27,11 +27,12 @@ import enstore_functions
 import log_client
 
 MY_NAME = "MNTR_CLI"
-MY_SERVER = "monitor_server"
+MY_SERVER = "monitor"
 
-class MonitorServerClient:
+class MonitorServerClient(generic_client.GenericClient):
 
-    def __init__( self, probe_server_addr,
+    def __init__( self, csc,
+                  probe_server_addr,
                   html_server_addr,
                   timeout,
                   block_size,
@@ -47,6 +48,8 @@ class MonitorServerClient:
         self.c_hostip, self.c_port, self.c_socket =\
                        callback.get_callback(verbose=0)
         self.c_socket.listen(4)
+        
+        generic_client.GenericClient.__init__(self, csc, MY_NAME)
 
     # send Active Monitor probe request
     def _send_probe (self, ticket):
@@ -177,11 +180,11 @@ class MonitorServerClient:
             enstore_functions.format_time(time.time()),
 	    enstore_functions.strip_node(callback_addr),
 	    enstore_functions.strip_node(remote_addr),
-            self.block_count,
-            self.block_size,
-            "%.4g" % (read_measurement['elapsed'],),
+#            self.block_count,
+#            self.block_size,
+#            "%.4g" % (read_measurement['elapsed'],),
             "%.4g" % (read_measurement['rate'],),
-            "%.4g" % (write_measurement['elapsed'],),
+#            "%.4g" % (write_measurement['elapsed'],),
             "%.4g" % (write_measurement['rate'],)
             )}
 
@@ -222,6 +225,9 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
         self.restricted_opts = opts
 	self.summary = 0
 	self.html_gen_host = None
+        self.name = MY_SERVER
+        self.alive_rcv_timeout = 10
+        self.alive_retries = 3
 	generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -229,7 +235,8 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.help_options() + ["summary", "html-gen-host="]
+            return self.help_options() +  self.alive_options() +\
+                   ["summary", "html-gen-host="]
 
 def get_all_ips(config_host, config_port, csc):
     """
@@ -271,7 +278,7 @@ class Vetos:
         # and the value field being a reason why it is in the veto list
 
         # don't send to yourself
-#        vetos[socket.gethostname()] = 'thishost'
+        vetos[socket.gethostname()] = 'thishost'
 
         self.veto_item_dict = {}
         for v in vetos.keys():
@@ -297,7 +304,7 @@ class Vetos:
 # this is called by the enstore saag interface
 def do_real_work(summary, config_host, config_port, html_gen_host):
     csc = configuration_client.ConfigurationClient((config_host, config_port))
-    config = csc.get('active_monitor')
+    config = csc.get('monitor')
     if config['status'] == (e_errors.OK, None):
         logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
@@ -323,8 +330,9 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
             if not summary:
                 print "Trying", host, 
             msc = MonitorServerClient(
-                (ip,                      config['server_port']),
-                (config['html_gen_host'], config['server_port']),
+                (config_host, config_port),
+                (ip,                      config['port']),
+                (config['html_gen_host'], config['port']),
                 config['default_timeout'],
                 config['block_size'],
                 config['block_count'],
@@ -369,7 +377,13 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
 
 # we need this in order to be called by the enstore.py code
 def do_work(intf):
-    do_real_work(intf.summary, intf.config_host, intf.config_port, intf.html_gen_host)
+    #First create an instance that can handle generic commands.
+    msc = MonitorServerClient((intf.config_host, intf.config_port),
+                              None, None, None, None, None, None)
+    #If there are no generic commands, then do real work.
+    if not msc.handle_generic_commands(intf.name, intf):
+        do_real_work(intf.summary, intf.config_host, intf.config_port,
+                     intf.html_gen_host)
 
 if __name__ == "__main__":
     

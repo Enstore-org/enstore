@@ -51,7 +51,7 @@ IP address stored in the configuration item "html_gen_host"
 
 """
 
-MY_NAME = "Monitor_Server"
+MY_NAME = "MNTR_SRV"
 
 class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
@@ -124,9 +124,10 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         #self.page is None if we have not setup.
         if not self.page:
             self.page = enstore_html.EnActiveMonitorPage(
-                ["Time", "user IP", "Enstore IP", "Blocks", "Bytes/Block",
-                 "Read Time", "Read Rate (MB/S)", "Write Time",
-                 "Write Rate (MB/S)"], self.html_refresh_time)
+                ["Time", "user IP", "Enstore IP",
+#                 "Blocks", "Bytes/Block", "Read Time", "Write Time",
+                 "Read Rate (MB/S)", "Write Rate (MB/S)"],
+                self.html_refresh_time)
         else:
             pass #have already set up
 
@@ -147,12 +148,13 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
 class MonitorServerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
-      
+        self.html_dir = None
         generic_server.GenericServerInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
-        return generic_server.GenericServerInterface.options(self)
+        return generic_server.GenericServerInterface.options(self)+\
+               self.alive_options() + ["html-dir="]
 
 config = None
 
@@ -166,19 +168,20 @@ if __name__ == "__main__":
     intf = MonitorServerInterface()
     csc = configuration_client.ConfigurationClient((intf.config_host,
                                                     intf.config_port))
-    config = csc.get('active_monitor')
+    config = csc.get('monitor')
 
-    ##temp cmd line processing - should go through "interface"
-    if len(sys.argv)>1:
-        config['html_file'] = sys.argv[1]
+    #If the command line is specified, then
+    if intf.html_dir:
+        html_directory = intf.html_dir
+    else:
+        html_directory = config['html_dir']
 
-    html_directory = config['html_file'] # this item seems to really be a dir
-    ms = MonitorServer(('', config['server_port']),
+    ms = MonitorServer(('', config['port']),
                        html_directory,
                        config['refresh']
                        )
     ms.handle_generic_commands(intf)
-    
+
     while 1:
         try:
             Trace.trace(6,"Monitor Server (re)starting")
