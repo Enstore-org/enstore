@@ -62,6 +62,11 @@ nodes without copies in appropriately backed up machines.
 rpms have been deleted.
 
 <p>
+<li> All nodes perform an "fsck -f -y" for every disk on the
+system. This makes bootup take longer, but gives a much more reliable
+system overall.
+
+<p>
 <li> Autorpm auto installation is allowed for redhat rpms and
 disallowed for others.  During productions, all installation will be
 disabled and only notification will be sent when files need to be
