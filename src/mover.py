@@ -866,6 +866,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 pass
             except e_errors.EOV1_ERROR, errmsg:
                 self.vcc.set_system_noaccess( external_label )
+                #self.vcc.set_system_readonly( external_label )
                 self.inhibit_eov = 1
                 if debug_paranoia:
                     print errmsg
@@ -1373,6 +1374,11 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	return
 	
     def update_client_info( self, ticket ):
+	Trace.log( e_errors.INFO,  "update_client_info - pid: %s, ticket['pid']=%s"%
+                   (self.pid,ticket['pid']))
+        if self.pid != ticket['pid']:
+            # assume previous "No child processes" exception
+            return
         if self.mode == 'c':     # cleaning
             if self.state != 'draining': self.state = 'idle'
             # cleaning returned
@@ -1391,8 +1397,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	self.hsm_driver.remaining_bytes = ticket['hsm_driver']['remaining_bytes']
 	self.hsm_driver.vol_label = ticket['hsm_driver']['vol_label']
 	self.hsm_driver.cur_loc_cookie = ticket['hsm_driver']['cur_loc_cookie']
-	Trace.log( e_errors.INFO,  "update_client_info - pid: %s, ticket['pid']=%s"%
-                   (self.pid,ticket['pid']))
 	wait = 0
 	next_req_to_lm = self.get_state_build_next_lm_req( wait, ticket['exit_status'] )
 	self.do_next_req_to_lm( next_req_to_lm, ticket['address'] )
