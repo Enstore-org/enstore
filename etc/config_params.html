@@ -25,11 +25,11 @@
 <tr><td><a NAME="hostip">hostip</a></td><td>server host IP address</td></tr>
 <tr><td><a NAME="port">port</a></td><td>server port number</td></tr>
 <tr><td><a NAME="logname">logname</a></td><td>server name in the log</td></tr>
-<tr><td><a NAME="inq_ignore">inq_ignore</a></td><td>if presents the inquisitor will not monitor corresponding server</td></tr>
-<tr><td><a NAME="norestart">norestart</a></td><td>if presents inq will not restart corresponding  server/mover</td></tr>
-<tr><td><a NAME="noupdown">noupdown</a></td><td>'enstore system' process will not to look at the
-corresponding server when generating the SAAG page, and possibly
-turning the ball red</td></tr>
+<tr><td><a NAME="inq_ignore">inq_ignore</a></td><td>if present the inquisitor will not monitor corresponding server</td></tr>
+<tr><td><a NAME="norestart">norestart</a></td><td>if present inq will not restart corresponding  server/mover</td></tr>
+<tr><td><a NAME="noupdown">noupdown</a></td><td>'enstore system' process will not look at the
+corresponding server when generating the SAAG page, and will not use
+		      the information in deciding to turn the ball red</td></tr>
 </table>
 
 <h2>Library Manager Keys</h2>
@@ -43,9 +43,10 @@ turning the ball red</td></tr>
 <tr><td><a NAME="max_encp_retries">max_encp_retries</a></td><td>maximal number of encp retries for a given LM</td></tr>
 <tr><td><a NAME="max_suspect_movers">max_suspect_movers</a></td><td>if number of suspect movers on which a given volume failed >= of max_suspect_movers, this volume will be set to NOACCESS state (default value - 3)</td></tr>
 <tr><td><a NAME="suspect_volume_expiration_time">suspect_volume_expiration_time</a></td><td>remove entry from suspect volume list after this period of time (default value - None)</td></tr>
-<tr><td><a NAME="min_file_size">min_file_size</a></td><td>when requesting a volume for write reserve not less than this amount of tape space (dafault value - 0)</td></tr>
-<tr><td><a NAME="max_file_size">max_file_size</a></td><td>maximal size of the file allowed by this laibrary (default value 2GB - 2kB)</td></tr>
-<tr><td><a NAME="blank_error_increment">blank_error_increment</a></td><td>do not set volume to NOACCESS in case of BLANK error until the number of erros exceeds max_suspect_movers+blank_error_increment (default value - 5)</td></tr>
+<tr><td><a NAME="min_file_size">min_file_size</a></td><td>minimal file
+		  size (default value - 0)</td></tr>
+<tr><td><a NAME="max_file_size">max_file_size</a></td><td>maximal size of the file allowed by this library (default value 2GB - 2kB)</td></tr>
+<tr><td><a NAME="blank_error_increment">blank_error_increment</a></td><td>do not set volume to NOACCESS in case of FTT_EBLANK error until the number of erros exceeds max_suspect_movers+blank_error_increment (default value - 5)</td></tr>
 <tr><td><a NAME="legal_encp_version">legal_encp_version</a></td><td>minimal encp version number allowed to acess enstore</td></tr>
 <tr><td><a NAME="CleanTapeVolumeFamily">CleanTapeVolumeFamily</a></td><td>volume family for cleaning tapes</td></tr>
 </table>
@@ -69,7 +70,7 @@ turning the ball red</td></tr>
 
 <tr><td><a NAME="max_buffer">max_buffer</a></td><td>maximal amount of memory to allocate for buffering (defaults value - 64MB)</td></tr>
 
-<tr><td><a NAME="max_rate">max_rate</a></td><td> - maximum sustained transfer rate for writes. This is used to calculate optimal buffer size</td></tr>
+<tr><td><a NAME="max_rate">max_rate</a></td><td>maximum sustained transfer rate for writes. This is used to calculate optimal buffer size</td></tr>
 
 <tr><td><a NAME="device">device</a></td><td>pathname to the UNIX tape device</td></tr>
 
@@ -84,13 +85,14 @@ turning the ball red</td></tr>
 <tr><td><a NAME="driver">driver</a></td><td>low lewel media driver ('FTTDriver' for tape, 'NullDriver'
 for null mover)</td></tr>
 
-<tr><td><a NAME="max_consecutive_failures">max_consecutive_failures</a></td><td>number of any consecutive errors after which the mover becomes unavailable to accept data transfer requests</td></tr>
+<tr><td><a
+	   NAME="max_consecutive_failures">max_consecutive_failures</a></td><td>number of any consecutive errors after which the mover goes OFFLINE</td></tr>
 
-<tr><td><a NAME="max_failures">max_failures</a></td><td>Mover will become unavailable if this many transfers fail within failure_interval (see below)</td></tr>
+<tr><td><a NAME="max_failures">max_failures</a></td><td>Mover will go OFFLINE if this many transfers fail within failure_interval (see below)</td></tr>
 
 <tr><td><a NAME="failure_interval">failure_interval</a></td><td>Interval for above (default value 3600 sec.)</td></tr>
 
-<tr><td><a NAME="send_stats">send_stats</a></td><td>send tape drive statistics to to the drivestat Data Base (defaul value - 1, which means "send")</td></tr>
+<tr><td><a NAME="send_stats">send_stats</a></td><td>send tape drive statistics to the drivestat Data Base (defaul value - 1, which means "send")</td></tr>
 
 <tr><td><a NAME="type">type</a></td><td>specifies the type of mover ('','Mover','DiskMover')</td></tr>
 
@@ -103,7 +105,7 @@ for null mover)</td></tr>
 <tr><td><a NAME="restart_on_error">restart_on_error</a></td><td>restart mover if it went to the ERROR
 state. Default - do not restart</td></tr>
 
-<tr><td><a NAME="connect_timeout">connect_timeout</a></td><td>TO for mover connection to encp (default value - 15 s)</td></tr>
+<tr><td><a NAME="connect_timeout">connect_timeout</a></td><td>TimeOut for mover connection to encp (default value - 15 s)</td></tr>
 
 <tr><td><a NAME="connect_retries">connect_retries</a></td><td>number of connection retries to encp (default value - 4)</td></tr>
 
@@ -111,13 +113,17 @@ state. Default - do not restart</td></tr>
 
 <tr><td><a NAME="single_filemark">single_filemark</a></td><td>if not 0 write single file mark (Default value - 0 - write 2 filemarks)</td></tr>
 
-<tr><td><a NAME="check_written_file">check_written_file</a></td><td>if more than 0 randomly check written file using randomization of this number (default value:0 - no check)</td></tr>
+<tr><td><a NAME="check_written_file">check_written_file</a></td><td>if
+		  greater than 0, then randomly check files written
+		  using this number as the mean (default value:0 - no check)</td></tr>
 
-<tr><td><a NAME="max_time_in_state">max_time_in_state</a></td><td>if state of the mover (other tahn ACTIVE) does not change in a period of time less than max_time_in_state the alarm will be raised (default - 600 s)</td></tr>
+<tr><td><a
+	   NAME="max_time_in_state">max_time_in_state</a></td><td>maximal time for a mover to be in any transfer state (other than IDLE or ACTIVE) (default - 600 s)</td></tr>
 
 <tr><td><a NAME="max_in_state_cnt">max_in_state_cnt</a></td><td>if this counter expires Mover errors out with "Mover stuck..." message. (default - 3)</td></tr>
 
-<tr><td><a NAME="statistics_path">statistics_path</a></td><td>If specified write the last statistics to the file statistics_path (default - None)</td></tr>
+<tr><td><a NAME="statistics_path">statistics_path</a></td><td>path to
+		  the statistics file(default - None)</td></tr>
 
 <tr><td><a NAME="compression">compression</a></td><td>0 means no compression. Everything else means use the drive compression (default: None - use the drive compression)</td></tr>
 
@@ -135,10 +141,10 @@ state. Default - do not restart</td></tr>
 <tr><td><a NAME="type">type</a></td><td>type of the media changer (name of the media changer class)</td></tr>
 <tr><td><a NAME="acls_host">acls_host</a></td><td>host name of STK robot control machine (specific for STK Library)</td></tr>
 <tr><td><a NAME="acls_uname">acls_uname</a></td><td>user name to access STK robot control program (specific for STK Library)</td></tr>
-<tr><td><a NAME="RobotArm">RobotArm</a></td><td> - robot arm in AML2 robot (specific for AML2 robotic library)</td></tr>
+<tr><td><a NAME="RobotArm">RobotArm</a></td><td>robot arm in AML2 robot (specific for AML2 robotic library)</td></tr>
 <tr><td><a NAME="IdleTimeHome">IdleTimeHome</a></td><td>home robot arm if it is idle and not in a home position after this period of time has expired (default 5 min, specific for AML2 robotic library)</td></tr>
 <tr><td><a NAME="IOBoxMedia">IOBoxMedia</a></td><td>specifies types of media and addresses of IO box for importing/exporting tapes into the robot (specific for AML2 robotic library)</td></tr>
-<tr><td><a NAME="DriveCleanTime">DriveCleanTime</a></td><td>if presents specifes the type of media, time until cleaning tape gets dismounted and number of cleaning cycles to clean a tape drive</td></tr>
+<tr><td><a NAME="DriveCleanTime">DriveCleanTime</a></td><td>if present, specifes the type of media, time until cleaning tape gets dismounted and number of cleaning cycles to clean a tape drive</td></tr>
 </table>
 
 <h2>Volume Clerk Keys</h2>
@@ -240,7 +246,9 @@ state. Default - do not restart</td></tr>
 
 <tr><td><a NAME="refresh">refresh</a></td><td>automatic refresh rate for the web pages</td></tr>
 
-<tr><td><a NAME="user_log_dirs"></a></td><td>dictionary specifying additional links that should be added to the log file web page under user log dirs</td></tr>
+<tr><td><a NAME="user_log_dirs">user_log_dirs</a></td><td>dictionary specifying
+		  additional links that should be added to the log
+		  file web page under user log dirs</td></tr>
 
 <tr><td><a NAME="www_host">www_host</a></td><td>url description of the web host</td></tr>
 </table>
@@ -272,7 +280,7 @@ state. Default - do not restart</td></tr>
 <p>  
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Fri May  7 16:55:24 CDT 2004
+Last modified: Mon May 17 15:14:02 CDT 2004
 <!-- hhmts end -->
   </body>
 </html>
