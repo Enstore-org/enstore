@@ -22,3 +22,6 @@ readstop
 writestop
 longstop
 trace.key
+t_rand
+t_read
+*.output
