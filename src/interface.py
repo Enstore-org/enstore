@@ -258,8 +258,6 @@ class Interface:
                 self.view = value
             elif opt == "--insertvol" :
                 self.insertvol = 1
-	    elif opt == "--insertlib" :
-	        self.insertNewLib = value
             elif opt == "--ejectvol" :
                 self.ejectvol = 1
             elif opt == "--new_library" :
