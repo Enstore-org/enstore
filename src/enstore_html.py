@@ -1178,3 +1178,60 @@ class EnPlotPage(EnBaseHtmlDoc):
 	    self.add_leftover_pss(plot_table, pss)
 	table.append(HTMLgen.TR(HTMLgen.TD(plot_table)))
 	self.append(table)
+
+class EnActiveMonitorPage(EnBaseHtmlDoc):
+
+    def __init__(self, headings, refresh = 120.0 ):
+
+        """
+        Make HTMLgen objects which describe the whole page. Let
+        self.perf_table be the object pointing to the table
+        of performance data we must fill in
+        """
+	self.title = "ENSTORE Active Metwork Monitoring"
+	self.script_title_gif = "encph.gif"
+	self.description = "%s%sRecent network monitoring results"%(NBSP, NBSP)
+        EnBaseHtmlDoc.__init__(self, refresh)
+        
+        #add standard header to  html page
+        # BUGGY HTAL generated when I uncommment the below
+        #self.append(self.table_top())
+        table_top = self.table_top()
+        self.append(table_top)
+
+        # The standard look and feel provides for otu out put table to be a row
+        # in a master table called "table top".   To participate in the stard look
+        # and feel we make out table ("perf_table"), put it into a dat field, and
+        # put the data field into a row, and  then add that row to "table_top"
+        
+        table_top_row_for_perf_table = HTMLgen.TR(valign="CENTER")
+        table_top.append(table_top_row_for_perf_table)
+        data_for_perf_table = HTMLgen.TD()
+        table_top_row_for_perf_table.append(data_for_perf_table)
+        self.perf_table =HTMLgen.TableLite(border=1, bgcolor=AQUA,
+                                           width="100%", cols=len(headings),
+                                           cellspacing=5, cellpadding=CELLP,
+                                           align="CENTER")
+        data_for_perf_table.append(self.perf_table)
+
+	# Populate the first row in perf_table with headings 
+	head_row = HTMLgen.TR(valign="CENTER")
+        self.perf_table.append(head_row)
+        for h in headings: head_row.append(HTMLgen.TD(h))
+
+        
+        
+    def add_measurement(self, measurement):
+        """
+        add a measurement to the bottom of the measurment table
+        lop off the head of the table when it becomes too long.
+        """
+        measurement_row = HTMLgen.TR()
+        self.perf_table.append(measurement_row)
+        for m in measurement :  measurement_row.append(HTMLgen.TD(m))
+
+
+        
+        if len(self.perf_table.contents) > 400 :
+            self.perf_table.contents = self.perf_table.contents [50:]
+
