@@ -1310,10 +1310,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
-    def got_segv(self, the_signal, frame):
-	import pdb
-	pdb.set_trace()
-
     def __init__(self, csc, html_file="", update_interval=NOVALUE, alive_rcv_to=NOVALUE, 
                  alive_retries=NOVALUE, max_encp_lines=NOVALUE, refresh=NOVALUE):
 	global server_map
