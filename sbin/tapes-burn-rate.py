@@ -88,8 +88,10 @@ for thefile in 'cdfen','d0en','stken':
     f.close()
 
 group_fd = {}
-little = open('CD-bought.tapes','w')
-group_fd['CD-bought.tapes'] = little
+eagle = open('CD-9840.tapes','w')
+group_fd['CD-9840'] = eagle
+beagle = open('CD-9940.tapes','w')
+group_fd['CD-9940'] = beagle
 
 print 'sorting drivestat into storage group and library'
 f = open('drivestat.html',"r")
@@ -102,7 +104,7 @@ while 1:
     if not line: break
     (d,v,mb) = line.split()
     if not TAPES.has_key(v):
-        #print "Can not find",v
+        print "Can not find",v
         g = 'UNKNOWN.UNKNOWN'
     else:
         g = TAPES[v]
@@ -116,26 +118,48 @@ while 1:
     o.write('%s' % (line,))
     if l in ['mezsilo','cdf','samlto'] or sg in ['cms']:
         pass
+    elif l == 'eagle':
+        eagle.write('%s' % (line,))
+    elif l == '9940':
+        beagle.write('%s' % (line,))
     else:
-        little.write('%s' % (line,))
+        print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
+        
 
 for g in group_fd.keys():
     o = group_fd[g]
     o.close()
+
+#import pprint
+#pprint.pprint(QUOTAS)
 
 d1='01-JAN-02'
 d2='01-APR-02'
 for g in group_fd.keys():
     if QUOTAS.has_key(g):
         (wv,bv,su) = QUOTAS[g]
-    elif g == "CD-bought":
-        (wv,bv,su) = QUOTAS['none.blank-9940']
+    elif g == "CD-9840":
+        (wv1,bv1,su1) = QUOTAS['blank-9840.none']
+        (wv2,bv2,su2) = QUOTAS['eagle.none:']
+        wv = string.atoi(wv1)+string.atoi(wv2)
+        bv = string.atoi(bv1)+string.atoi(bv2)
+        su = '0.0GB'
+    elif g == "CD-9940":
+        (wv1,bv1,su1) = QUOTAS['blank-9940.none']
+        (wv2,bv2,su2) = QUOTAS['9940.none:']
+        wv = string.atoi(wv1)+string.atoi(wv2)
+        bv = string.atoi(bv1)+string.atoi(bv2)
+        su = '0.0GB'
     else:
+        print 'What group is this',g
         (wv,bv,su) = ('?','?','?')
     cmd = "./tapes-plot-sg.py %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su)
     print cmd
     os.system(cmd)
+    print
+
 
 cmd = 'rcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/burn-rate/'
 print cmd
 os.system(cmd)
+
