@@ -130,7 +130,9 @@ create table migration (
 	dst_bfid varchar unique references file(bfid) on delete cascade,
 	copied timestamp without time zone,
 	swapped timestamp without time zone,
-	checked timestamp without time zone
+	checked timestamp without time zone,
+	closed timestamp without time zone,
+	remark varchar
 );
 
 create table migration_history (
