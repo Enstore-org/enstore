@@ -11,25 +11,27 @@
   </head>
   <body>
     <center>
+      <a name="head0"></a> 
       <h1>
         Fermi Tape Tools (ftt) Library User's Guide
       </h1>
     </center>
     <center>
       Chuck Debaun, <b>Marc W. Mengel</b><br>
-      Operating Systems Support Department 
+       Operating Systems Support Department 
       <p>
         Marilyn Schweitzer<br>
-        High Performance and Parallel Computing Department
+         High Performance and Parallel Computing Department
       </p>
       <p>
         <b>Dorota Genser</b>, Gene Oleynik, <b>Margaret
         Votava</b><br>
-        Online Systems Department<br>
-        Fermilab Computing Division
+         Online Systems Department<br>
+         Fermilab Computing Division
       </p>
     </center>
     <center>
+      <a name="head1"></a> 
       <h2>
         Abstract
       </h2>
@@ -52,11 +54,511 @@
         </p>
       </blockquote>
     </blockquote>
-    <!--NewPage-->
-    <!--NewPage-->
+    <!--NewPage--><!--NewPage-->
+    <ol>
+      <li>
+        <a href="#head0">Fermi Tape Tools (ftt) Library User's
+        Guide</a>
+        <ol>
+          <li>
+            <a href="#head1">Abstract</a>
+          </li>
+          <li>
+            <a href="#head2">Getting Started</a>
+            <ol>
+              <li>
+                <a href="#head3">Installation</a>
+              </li>
+              <li>
+                <a href="#head4">Basic Concepts</a>
+              </li>
+              <li>
+                <a href="#head5">Starting and Finishing</a>
+              </li>
+              <li>
+                <a href="#head6">Doing Input and Output</a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head7">Finding out what went wrong</a>
+          </li>
+          <li>
+            <a href="#head8">Opening/closing Device</a>
+            <ol>
+              <li>
+                <a href="#head9">ftt_descriptor <b>
+                ftt_open</b>(char <b>*basename, int</b> rdonly)</a>
+              </li>
+              <li>
+                <a href="#head10">ftt_descriptor <b>
+                ftt_open_logical</b> (char *<b>basename,</b> char
+                *<b>os,</b> char *<b>driveid,</b> int <b>
+                rdonly)</b></a>
+              </li>
+              <li>
+                <a href="#head11">int <b>ftt_open_dev
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head12">int <b>ftt_close
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head13">int <b>
+                ftt_close_dev(</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head14">int <b>ftt_write
+                (</b>ftt_descriptor <b>d, char *buf, int</b>
+                length)</a>
+              </li>
+              <li>
+                <a href="#head15">int <b>ftt_write2fm</b>
+                (ftt_descriptor <b>d)</b></a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head16">Moving around on the tape</a>
+            <ol>
+              <li>
+                <a href="#head17">int ftt_skip_fm (ftt_descriptor
+                d, int count)</a>
+              </li>
+              <li>
+                <a href="#head18">int ftt_skip_rec (ftt_descriptor
+                d, int count)</a>
+              </li>
+              <li>
+                <a href="#head19">int ftt_skip_to_double_fm
+                (ftt_descriptor d)</a>
+              </li>
+              <li>
+                <a href="#head20">int ftt_rewind (ftt_descriptor
+                d)</a>
+              </li>
+              <li>
+                <a href="#head21">int <b>ftt_retension
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head22">int ftt_unload (ftt_descriptor
+                d)</a>
+              </li>
+              <li>
+                <a href="#head23">int ftt_erase (ftt_descriptor
+                d)</a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head24">Densities, Compression, and other
+            Modes</a>
+            <ol>
+              <li>
+                <a href="#head25">char *ftt_set_mode
+                (ftt_descriptor <b>d,</b> int <b>density,</b>
+                int<b>cmp,</b> int <b>blocksize)</b></a>
+              </li>
+              <li>
+                <a href="#head26">char *ftt_get_mode
+                (ftt_descriptor <b>d,</b> int *<b>density,</b>
+                int<b>*cmp,</b> int <b>*blocksize)</b></a>
+              </li>
+              <li>
+                <a href="#head27">char *ftt_avail_mode
+                (ftt_descriptor <b>d,</b> int <b>density,</b>
+                int<b>cmp,</b> int <b>fixed)</b></a>
+              </li>
+              <li>
+                <a href="#head28">char <b>*ftt_density_to_name
+                (</b>ftt_descriptor <b>d,</b> int <b>
+                density)</b></a>
+              </li>
+              <li>
+                <a href="#head29">int <b>ftt_name_to_density
+                (</b>ftt_descriptor <b>d,</b> char
+                *<b>name)</b></a>
+              </li>
+              <li>
+                <a href="#head30">int <b>ftt_get_max_blocksize
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head31">int <b>
+                ftt_set_data_direction(</b>ftt_descriptor <b>d</b>,
+                int <b>n)</b></a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head32">Dealing with System Device Names</a>
+            <ol>
+              <li>
+                <a href="#head33">char **<b>ftt_list_all
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head34">int <b>ftt_chall
+                (</b>ftt_descriptor <b>d,</b> int <b>uid,</b> int
+                <b>gid,</b> int <b>mode)</b></a>
+              </li>
+              <li>
+                <a href="#head35">int
+                ftt_get_mode_dev(ftt_descriptor <b>d,</b> char
+                *<b>devname,</b> int *<b>density,</b> int <b>
+                *cmp,</b> int *<b>fixed,</b> int
+                *<b>rewind)</b></a>
+              </li>
+              <li>
+                <a href="#head36">int ftt_set_mode_dev
+                (ftt_descriptor <b>d,</b> char * <b>devname,</b>
+                int <b>force)</b></a>
+              </li>
+              <li>
+                <a href="#head37">int
+                ftt_describe_dev(ftt_descriptor <b>d,</b> char
+                *<b>devname,</b> FILE *pf<b>)</b></a>
+              </li>
+              <li>
+                <a href="#head38">char
+                *ftt_get_basename(ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head39">int <b>ftt_list_supported</b>
+                (FILE *<b>pf)</b></a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head40">Tape Statistics</a>
+            <ol>
+              <li>
+                <a href="#head41">ftt_stat_buf <b>ftt_alloc_stat
+                (void)</b></a>
+              </li>
+              <li>
+                <a href="#head42">int <b>
+                ftt_free_stat(</b>ftt_stat_buf <b>stbuff)</b></a>
+              </li>
+              <li>
+                <a href="#head43">int <b>
+                ftt_get_stats(ftt_descriptor</b> d, ftt_stat_buf
+                stbuff)</a>
+              </li>
+              <li>
+                <a href="#head44">char *<b>ftt_extract_stats
+                (</b>ftt_stat_buf <b>b,</b> int <b>stat)</b></a>
+              </li>
+              <li>
+                <a href="#head45">void <b>ftt_sub_stats
+                (</b>ftt_stat_buf <b>b1</b>, ftt_stat_buf <b>
+                b2</b>, ftt_stat_buf <b>res)</b></a>
+              </li>
+              <li>
+                <a href="#head46">void <b>ftt_add_stats
+                (</b>ftt_stat_buf <b>b1</b>, ftt_stat_buf <b>
+                b2</b>, ftt_stat_buf <b>res)</b></a>
+              </li>
+              <li>
+                <a href="#head47">int <b>ftt_update_stats
+                (</b>ftt_descriptor <b>d,</b> ftt_stat_buf
+                *<b>bp)</b></a>
+              </li>
+              <li>
+                <a href="#head48">int <b>ftt_dump_stats
+                (</b>ftt_stat_buf <b>b,</b> FILE *<b>pf)</b></a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head49">Mulitple Partition Tapes</a>
+            <ol>
+              <li>
+                <a href="#head50">ftt_partbuf&nbsp;
+                ftt_alloc_parts()</a>
+              </li>
+              <li>
+                <a href="#head51">void&nbsp;
+                ftt_free_parts(ftt_partbuf p)</a>
+              </li>
+              <li>
+                <a href="#head52">int&nbsp;
+                ftt_extract_nparts(ftt_partbuf p)</a>
+              </li>
+              <li>
+                <a href="#head53">int&nbsp;
+                ftt_extract_maxparts(ftt_partbuf p)</a>
+              </li>
+              <li>
+                <a href="#head54">long&nbsp;
+                ftt_extract_part_size(ftt_partbuf p,int n)</a>
+              </li>
+              <li>
+                <a href="#head55">int&nbsp;
+                ftt_set_nparts(ftt_partbuf p,int n)</a>
+              </li>
+              <li>
+                <a href="#head56">int&nbsp;
+                ftt_set_part_size(ftt_partbuf p,int n,long sz)</a>
+              </li>
+              <li>
+                <a href="#head57">int
+                ftt_get_partitions(ftt_descriptor d,ftt_partbuf
+                p)</a>
+              </li>
+              <li>
+                <a href="#head58">int
+                ftt_write_partitions(ftt_descriptor d,ftt_partbuf
+                p)</a>
+              </li>
+              <li>
+                <a href="#head59">int ftt_cur_part(ftt_descriptor
+                d)</a>
+              </li>
+              <li>
+                <a href="#head60">int ftt_skip_part(ftt_descriptor
+                d,int nparts)</a>
+              </li>
+              <li>
+                <a href="#head61">int
+                ftt_locate_part(ftt_descriptor d, int blockno, int
+                part)</a>
+              </li>
+              <li>
+                <a href="#head62">void
+                ftt_dump_partitions(ftt_partbuf parttab, FILE
+                *pf)</a>
+              </li>
+              <li>
+                <a href="#head63">void
+                ftt_undump_partitions(ftt_partbuf p, FILE *pf)</a>
+              </li>
+              <li>
+                <a href="#head64">int
+                ftt_set_mount_partition(ftt_descriptor d, int
+                partno)</a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head65">Status Routines</a>
+            <ol>
+              <li>
+                <a href="#head66">int <b>
+                ftt_status(</b>ftt_descriptor <b>d,</b> int <b>
+                timeout)</b></a>
+              </li>
+              <li>
+                <a href="#head67">int <b>
+                ftt_get_position(</b>ftt_descriptor <b>d,</b> int
+                *<b>file,</b> int *<b>block)</b></a>
+              </li>
+              <li>
+                <a href="#head68">char *<b>ftt_get_error (</b>int
+                *<b>pn)</b></a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head69">Volume verification</a>
+            <ol>
+              <li>
+                <a href="#head70">int <b>ftt_write_vol_label
+                (</b>ftt_descriptor <b>d,</b> int <b>type,</b> char
+                * <b>vollabel)</b></a>
+              </li>
+              <li>
+                <a href="#head71">int <b>ftt_verify_vol_label
+                (</b>ftt_descriptor <b>d,</b> int <b>type,</b> char
+                *<b>vollabel,</b> int <b>timeout,</b> int <b>
+                rdonly)</b></a>
+              </li>
+              <li>
+                <a href="#head72">int <b>ftt_guess_label (</b>char
+                *<b>buf,</b> int <b>length,</b> char **<b>vol,</b>
+                int **<b>vlen)</b></a>
+              </li>
+              <li>
+                <a href="#head73">int <b>ftt_format_label (</b>char
+                *<b>buf,</b> int <b>length,</b> char *<b>vol,</b>
+                int <b>vlen,</b> int <b>type)</b></a>
+              </li>
+              <li>
+                <a href="#head74">int <b>ftt_fork
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head75">void <b>ftt_report
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head76">int <b>ftt_wait
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head77">int <b>ftt_check
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head78">int ftt_clear_unrecovered
+                (ftt_descriptor d)</a>
+              </li>
+              <li>
+                <a href="#head79">int <b>ftt_all_scsi
+                (</b>ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
+                <a href="#head80">int ftt_locate (ftt_descriptor d,
+                int blockno)</a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head81">ftt_test</a>
+            <ol>
+              <li>
+                <a href="#head82">ftt_test Commands</a>
+                <ol>
+                  <li>
+                    <a href="#head83">Open/close Commands</a>
+                  </li>
+                  <li>
+                    <a href="#head84">Read/write Commands</a>
+                  </li>
+                  <li>
+                    <a href="#head85">Tape Positioning Commands</a>
+                  </li>
+                  <li>
+                    <a href="#head86">Asynchronous Support
+                    Commands</a>
+                  </li>
+                  <li>
+                    <a href="#head87">Get/set Mode Commands and
+                    Other Commands That Care About Filenames</a>
+                  </li>
+                  <li>
+                    <a href="#head88">Statistics Commands</a>
+                  </li>
+                  <li>
+                    <a href="#head89">Error Commands</a>
+                  </li>
+                  <li>
+                    <a href="#head90">Expert Commands</a>
+                  </li>
+                  <li>
+                    <a href="#head91">Miscellaneous Commands</a>
+                  </li>
+                </ol>
+              </li>
+              <li>
+                <a href="#head92">ftt_test Examples</a>
+                <ol>
+                  <li>
+                    <a href="#head93">Interactive Example:</a>
+                  </li>
+                  <li>
+                    <a href="#head94">Shell Script Example:</a>
+                  </li>
+                  <li>
+                    <a href="#head95">Redirection Example:</a>
+                  </li>
+                </ol>
+              </li>
+              <li>
+                <a href="#head96">ftt_test scripts</a>
+                <ol>
+                  <li>
+                    <a href="#head97">Building block scripts</a>
+                  </li>
+                  <li>
+                    <a href="#head98">All inclusive tests</a>
+                  </li>
+                </ol>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head99">ftt_suid</a>
+            <ol>
+              <li>
+                <a href="#head100">Command invocation</a>
+              </li>
+              <li>
+                <a href="#head101">Example of use</a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head102">Appendix A: System Configuration
+            Issues</a>
+            <ol>
+              <li>
+                <a href="#head103">AIX issues</a>
+              </li>
+              <li>
+                <a href="#head104">IRIX issues</a>
+              </li>
+              <li>
+                <a href="#head105">OSF1 / DEC UNIX issues</a>
+              </li>
+              <li>
+                <a href="#head106">Solaris Issues</a>
+              </li>
+              <li>
+                <a href="#head107">A.5 Windows NT</a>
+              </li>
+              <li>
+                <a href="#head108">Linux</a>
+              </li>
+              <li>
+                <a href="#head109">General Security issues</a>
+              </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head110">Appendix B: Recovering Data from
+            Overwritten 8mm Tapes</a>
+            <ol>
+              <li>
+                <a href="#head111">Disclaimer</a>
+              </li>
+              <li>
+                <a href="#head112">850x Recovery</a>
+              </li>
+              <li>
+                <a href="#head113">Special Observations:</a>
+              </li>
+              <li>
+                <ol>
+                  <li>
+                    <a href="#head114">ftt_dump/undump</a>
+                  </li>
+                  <li>
+                    <a href="#head115">simple copy program</a>
+                  </li>
+                </ol>
+              </li>
+              <li>
+                <a href="#head116">8200 Recovery</a>
+              </li>
+              <li>
+                <a href="#head117">Other Exabyte Tapes</a>
+              </li>
+              <li>
+                <a href="#head118">DLT 2000/4000</a>
+              </li>
+            </ol>
+          </li>
+        </ol>
+      </li>
+    </ol>
+    <!--NewPage--><a name="head2"></a> 
     <h2>
       Getting Started
     </h2>
+    <a name="head3"></a> 
     <h3>
       Installation
     </h3>
@@ -65,7 +567,7 @@
     There is an <b>INSTALL</b> file in the product giving details
     of non-<b>ups</b> installation. Important notes on
     prerequisites for various platforms are in Chapter 14 of this
-    document. 
+    document. <a name="head4"></a> 
     <h3>
       Basic Concepts
     </h3>
@@ -81,7 +583,8 @@
     structure is the <b>ftt_stat_buf</b> which is used to hold tape
     drive statistics obtained from the tape drive. These types, as
     well as all of the function prototypes, preprocessor
-    definitions, etc. are found in the <b>ftt.h</b> header file. 
+    definitions, etc. are found in the <b>ftt.h</b> header file. <a
+    name="head5"></a> 
     <h3>
       Starting and Finishing
     </h3>
@@ -97,7 +600,7 @@ d = ftt_open("/dev/rmt0", FTT_RDONLY);
 /* do some stuff here */
 ftt_close(d);
 </pre>
-    There are several itemuser_guide_maintext1.mifs that should be
+    There are several items that should be
     mentioned here.: 
     <ul>
       <li>
@@ -120,12 +623,13 @@ ftt_close(d);
     </ul>
     <p>
       <br>
-      If your program needs to deal with multiple tape drives, it
+       If your program needs to deal with multiple tape drives, it
       can call <b>ftt_open</b> multiple times, to get a unique <b>
       descriptor</b> for each drive. It should then issue an <b>
       ftt_close</b> on each descriptor it got from <b>ftt_open</b>
       before exiting
     </p>
+    <a name="head6"></a> 
     <h3>
       Doing Input and Output
     </h3>
@@ -146,7 +650,7 @@ length = ftt_read(d, buffer, buffer_length);
 <pre>
 length = ftt_write(d, buffer, data_length);
 </pre>
-    <!--NewPage-->
+    <!--NewPage--><a name="head7"></a> 
     <h2>
       Finding out what went wrong
     </h2>
@@ -441,8 +945,9 @@ if (n == FTT_ENOTAPE) {
       Your code can compare the error number (<b>n</b> in our
       example) to the values in this table to decide what went
       wrong in the preceding <b>ftt</b> library call.<br>
-      <!--NewPage-->
+       <!--NewPage-->
     </p>
+    <a name="head8"></a> 
     <h2>
       Opening/closing Device
     </h2>
@@ -489,6 +994,7 @@ if (n == FTT_ENOTAPE) {
       f<b>tt_close_dev()</b> pairs can be called within a single
       <b>ftt_open()</b> and <b>ftt_close()</b> pair.
     </p>
+    <a name="head9"></a> 
     <h3>
       ftt_descriptor <b>ftt_open</b>(char <b>*basename, int</b>
       rdonly)
@@ -500,7 +1006,7 @@ if (n == FTT_ENOTAPE) {
     to a basename. 
     <p>
       The <i>rdonly</i> argument indicates<br>
-      &nbsp;
+       &nbsp;
     </p>
     <p>
       <br>
@@ -564,6 +1070,7 @@ if (n == FTT_ENOTAPE) {
 ftt_descriptor d;
 d = ftt_open("/dev/rmt/tps2d4", FTT_RDWR);
 </pre>
+    <a name="head10"></a> 
     <h3>
       ftt_descriptor <b>ftt_open_logical</b> (char
       *<b>basename,</b> char *<b>os,</b> char *<b>driveid,</b> int
@@ -587,6 +1094,7 @@ d = ftt_open("/dev/rmt/tps2d4", FTT_RDWR);
 ftt_descriptor d;
 d = ftt_open_logical("/dev/rmt/tps2d4", "IRIX", "EXB-8500", FTT_RDWR);
 </pre>
+    <a name="head11"></a> 
     <h3>
       int <b>ftt_open_dev (</b>ftt_descriptor <b>d)</b>
     </h3>
@@ -618,6 +1126,7 @@ ftt_descriptor d;
 int status;
 status = ftt_open_dev(d);
 </pre>
+    <a name="head12"></a> 
     <h3>
       int <b>ftt_close (</b>ftt_descriptor <b>d)</b>
     </h3>
@@ -638,6 +1147,7 @@ ftt_descriptor d;
 int status;
 status = ftt_close(d);
 </pre>
+    <a name="head13"></a> 
     <h3>
       int <b>ftt_close_dev(</b>ftt_descriptor <b>d)</b>
     </h3>
@@ -706,6 +1216,7 @@ char data[32768]
 int status;
 status = ftt_read(d,data,32768);
 </pre>
+    <a name="head14"></a> 
     <h3>
       int <b>ftt_write (</b>ftt_descriptor <b>d, char *buf, int</b>
       length)
@@ -746,6 +1257,7 @@ ftt_descriptor d;
 int status;
 status = ftt_writefm(d);
 </pre>
+    <a name="head15"></a> 
     <h3>
       int <b>ftt_write2fm</b> (ftt_descriptor <b>d)</b>
     </h3>
@@ -805,8 +1317,9 @@ status = ftt_writefm(d);
     <p>
       will make up to a total of 6 read calls, interspersed with
       file and record skips.<br>
-      <!--NewPage-->
+       <!--NewPage-->
     </p>
+    <a name="head16"></a> 
     <h2>
       Moving around on the tape
     </h2>
@@ -819,6 +1332,7 @@ status = ftt_writefm(d);
       information can be obtained as described in the section on
       <i>Finding out what went wrong.</i>
     </p>
+    <a name="head17"></a> 
     <h3>
       int ftt_skip_fm (ftt_descriptor d, int count)
     </h3>
@@ -844,14 +1358,15 @@ status = ftt_skip_fm(d, -2);
       Note that skipping backwards will write two filemarks and
       skip back over them first if the preceding operation was an
       <b>ftt_write</b> or <b>ftt_writefm</b> call.<br>
-      &nbsp;
+       &nbsp;
     </p>
+    <a name="head18"></a> 
     <h3>
       int ftt_skip_rec (ftt_descriptor d, int count)
     </h3>
     <p>
       <br>
-      skips forward just past records, or backwards just before
+       skips forward just past records, or backwards just before
       records. <i>count</i> indicates the number of records to
       skip. <i>count</i> should be negative to skip backwards.
     </p>
@@ -874,6 +1389,7 @@ status = ftt_skip_rec(d, -2);
       skip back over them first if the preceding operation was an
       <b>ftt_write</b> or <b>ftt_writefm</b> call.
     </p>
+    <a name="head19"></a> 
     <h3>
       int ftt_skip_to_double_fm (ftt_descriptor d)
     </h3>
@@ -889,6 +1405,7 @@ int status;
 ftt_descriptor d;
 status = ftt_skip_to_double_fm(d);
 </pre>
+    <a name="head20"></a> 
     <h3>
       int ftt_rewind (ftt_descriptor d)
     </h3>
@@ -902,6 +1419,7 @@ int status;
 ftt_descriptor d;
 ftt_rewind(d);
 </pre>
+    <a name="head21"></a> 
     <h3>
       int <b>ftt_retension (</b>ftt_descriptor <b>d)</b>
     </h3>
@@ -915,6 +1433,7 @@ int status;
 ftt_descriptor d;
 ftt_rewind(d);
 </pre>
+    <a name="head22"></a> 
     <h3>
       int ftt_unload (ftt_descriptor d)
     </h3>
@@ -928,6 +1447,7 @@ int status;
 ftt_descriptor d;
 ftt_unload(d);
 </pre>
+    <a name="head23"></a> 
     <h3>
       int ftt_erase (ftt_descriptor d)
     </h3>
@@ -941,7 +1461,7 @@ int status;
 ftt_descriptor d;
 ftt_erase(d);
 </pre>
-    <!--NewPage-->
+    <!--NewPage--><a name="head24"></a> 
     <h2>
       Densities, Compression, and other Modes
     </h2>
@@ -962,6 +1482,7 @@ ftt_erase(d);
       0 if anything goes wrong, see the section <i>Finding out what
       went wrong</i> for a discussion of errors.
     </p>
+    <a name="head25"></a> 
     <h3>
       char *ftt_set_mode (ftt_descriptor <b>d,</b> int <b>
       density,</b> int<b>cmp,</b> int <b>blocksize)</b>
@@ -987,6 +1508,7 @@ int cmp = TRUE;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
 int blocksize = 0;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* variable block */
 name = ftt_set_mode(d, density, cmp, blocksize);
 </pre>
+    <a name="head26"></a> 
     <h3>
       char *ftt_get_mode (ftt_descriptor <b>d,</b> int
       *<b>density,</b> int<b>*cmp,</b> int <b>*blocksize)</b>
@@ -1010,6 +1532,7 @@ int cmp;
 int blocksize;
 name = ftt_get_mode(d, &amp;density, &amp;cmp, &amp;blocksize);
 </pre>
+    <a name="head27"></a> 
     <h3>
       char *ftt_avail_mode (ftt_descriptor <b>d,</b> int <b>
       density,</b> int<b>cmp,</b> int <b>fixed)</b>
@@ -1032,25 +1555,27 @@ int cmp = TRUE;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
 int fixed = FALSE;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* variable block */
 name = ftt_avail_mode(d, density, cmp, fixed);
 </pre>
+    <a name="head28"></a> 
     <h3>
       char <b>*ftt_density_to_name (</b>ftt_descriptor <b>d,</b>
       int <b>density)</b>
     </h3>
     Translates an integer density number to a descriptive string or
-    name. 
+    name. <a name="head29"></a> 
     <h3>
       int <b>ftt_name_to_density (</b>ftt_descriptor <b>d,</b> char
       *<b>name)</b>
     </h3>
     Translates a name to an integer density number. The name can be
     any prefix of a density string which would be returned by <b>
-    ftt_density_to_name()</b> for that device. 
+    ftt_density_to_name()</b> for that device. <a name="head30">
+    </a> 
     <h3>
       int <b>ftt_get_max_blocksize (</b>ftt_descriptor <b>d)</b>
     </h3>
     Returns the largest blocksize usable on this drive type and
     platform, suitable for getting a block size to allocate for a
-    read/write or copy buffer. 
+    read/write or copy buffer. <a name="head31"></a> 
     <h3>
       int <b>ftt_set_data_direction(</b>ftt_descriptor <b>d</b>,
       int <b>n)</b>
@@ -1061,14 +1586,14 @@ name = ftt_avail_mode(d, density, cmp, fixed);
     tape counters should be treated as read or write counts. Making
     this call is important if collecting tape statistics for tape
     I/O done by another process. <br>
-    <!--NewPage--> 
+     <!--NewPage--> <a name="head32"></a> 
     <h2>
       Dealing with System Device Names
     </h2>
     The various operating systems have multiple device names which
     are associated with the same tape drive. For example, the IRIX
     operating system currently has 38 device nodes for a single
-    8500 tape drive. 
+    8500 tape drive. <a name="head33"></a> 
     <h3>
       char **<b>ftt_list_all (</b>ftt_descriptor <b>d)</b>
     </h3>
@@ -1088,6 +1613,7 @@ char **all_names;
 ftt_descriptor d;
 all_names = ftt_list_all(d);
 </pre>
+    <a name="head34"></a> 
     <h3>
       int <b>ftt_chall (</b>ftt_descriptor <b>d,</b> int <b>
       uid,</b> int <b>gid,</b> int <b>mode)</b>
@@ -1101,6 +1627,7 @@ all_names = ftt_list_all(d);
       ftt_chall performs no tape operations, it merely changes
       permissions on the devices in <b>/dev</b>.
     </p>
+    <a name="head35"></a> 
     <h3>
       int ftt_get_mode_dev(ftt_descriptor <b>d,</b> char
       *<b>devname,</b> int *<b>density,</b> int <b>*cmp,</b> int
@@ -1137,6 +1664,7 @@ int fixed;
 int rewind
 status = ftt_get_mode_dev(d, devname, &amp;density, &amp;cmp, &amp;fixed, &amp;rewind);
 </pre>
+    <a name="head36"></a> 
     <h3>
       int ftt_set_mode_dev (ftt_descriptor <b>d,</b> char * <b>
       devname,</b> int <b>force)</b>
@@ -1164,6 +1692,7 @@ char *devname = "/dev/my_favorite_device";
 int force = FALSE;
 status = ftt_set_mode_dev (d, devname, force);
 </pre>
+    <a name="head37"></a> 
     <h3>
       int ftt_describe_dev(ftt_descriptor <b>d,</b> char
       *<b>devname,</b> FILE *pf<b>)</b>
@@ -1184,6 +1713,7 @@ ftt_descriptor d;
 char *devname = "/dev/my_favorite_device";
 status = ftt_describe_dev (d, devname, stdout);
 </pre>
+    <a name="head38"></a> 
     <h3>
       char *ftt_get_basename(ftt_descriptor <b>d)</b>
     </h3>
@@ -1202,13 +1732,14 @@ char *basename;
 ftt_descriptor d;
 basename = ftt_get_basename(d);
 </pre>
+    <a name="head39"></a> 
     <h3>
       int <b>ftt_list_supported</b> (FILE *<b>pf)</b>
     </h3>
     Prints a description of the device types and operating systems
     that ftt officially supports on the file descriptor <b>pf</b>.
     No ftt descriptors need to be open to make this call. 
-    <!--NewPage-->
+    <!--NewPage--> <a name="head40"></a> 
     <h2>
       Tape Statistics
     </h2>
@@ -1927,6 +2458,7 @@ basename = ftt_get_basename(d);
         </td>
       </tr>
     </table>
+    <a name="head41"></a> 
     <h3>
       ftt_stat_buf <b>ftt_alloc_stat (void)</b>
     </h3>
@@ -1940,6 +2472,7 @@ basename = ftt_get_basename(d);
 ftt_stat_buf stbuff;
 stbuff = ftt_alloc_stat();
 </pre>
+    <a name="head42"></a> 
     <h3>
       int <b>ftt_free_stat(</b>ftt_stat_buf <b>stbuff)</b>
     </h3>
@@ -1953,6 +2486,7 @@ int status;
 ftt_stat_buf stbuff;
 status = ftt_free_stat(stbuff);
 </pre>
+    <a name="head43"></a> 
     <h3>
       int <b>ftt_get_stats(ftt_descriptor</b> d, ftt_stat_buf
       stbuff)
@@ -1974,6 +2508,7 @@ ftt_stat_buf stbuff;
 stbuff = ftt_alloc_stat();
 status = ftt_get_stats(d,stbuff);
 </pre>
+    <a name="head44"></a> 
     <h3>
       char *<b>ftt_extract_stats (</b>ftt_stat_buf <b>b,</b> int
       <b>stat)</b>
@@ -2008,6 +2543,7 @@ if (status == -1)
 value = ftt_extract_stats(stbuff,FTT_MOTION_HOURS);
 ftt_free_stat(stbuff);
 </pre>
+    <a name="head45"></a> 
     <h3>
       void <b>ftt_sub_stats (</b>ftt_stat_buf <b>b1</b>,
       ftt_stat_buf <b>b2</b>, ftt_stat_buf <b>res)</b>
@@ -2064,6 +2600,7 @@ ftt_free_stat(b1);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n
 ftt_free_stat(b2);
 ftt_free_stat (res);
 </pre>
+    <a name="head46"></a> 
     <h3>
       void <b>ftt_add_stats (</b>ftt_stat_buf <b>b1</b>,
       ftt_stat_buf <b>b2</b>, ftt_stat_buf <b>res)</b>
@@ -2107,6 +2644,7 @@ ftt_stat_buf *bp;
 ftt_descriptor d;
 bp = ftt_init_stats(d);
 </pre>
+    <a name="head47"></a> 
     <h3>
       int <b>ftt_update_stats (</b>ftt_descriptor <b>d,</b>
       ftt_stat_buf *<b>bp)</b>
@@ -2137,6 +2675,7 @@ if (status == -1)
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ftt_ascii_error[ftt_status],estring);
 }
 </pre>
+    <a name="head48"></a> 
     <h3>
       int <b>ftt_dump_stats (</b>ftt_stat_buf <b>b,</b> FILE
       *<b>pf)</b>
@@ -2158,50 +2697,51 @@ status = ftt_get_stats(d,stbuff);
 status = ftt_dump_stats (stbuff, stderr);
 ftt_free_stat(stbuff);
 </pre>
-    <!--NewPage-->
+    <!--NewPage--><a name="head49"></a> 
     <h2>
       Mulitple Partition Tapes
     </h2>
+    <a name="head50"></a> 
     <h3>
       ftt_partbuf&nbsp; ftt_alloc_parts()
     </h3>
     This routine creates a buffer which holds a tape partitiion
-    table. 
+    table. <a name="head51"></a> 
     <h3>
       void&nbsp; ftt_free_parts(ftt_partbuf p)
     </h3>
     This routine frees the memory associated with a tape partition
-    buffer. 
+    buffer. <a name="head52"></a> 
     <h3>
       int&nbsp; ftt_extract_nparts(ftt_partbuf p)
     </h3>
     This routine gets the current total number of partitions from a
-    partition buffer 
+    partition buffer <a name="head53"></a> 
     <h3>
       int&nbsp; ftt_extract_maxparts(ftt_partbuf p)
     </h3>
     This routine gets the maximum allowable partitions from a
-    partition buffer. 
+    partition buffer. <a name="head54"></a> 
     <h3>
       long&nbsp; ftt_extract_part_size(ftt_partbuf p,int n)
     </h3>
     This routine gets the size of the <b>n</b>th partition from a
-    partition buffer. 
+    partition buffer. <a name="head55"></a> 
     <h3>
       int&nbsp; ftt_set_nparts(ftt_partbuf p,int n)
     </h3>
     This routine sets the current number of partitions in a
-    partition buffer. 
+    partition buffer. <a name="head56"></a> 
     <h3>
       int&nbsp; ftt_set_part_size(ftt_partbuf p,int n,long sz)
     </h3>
     This routine sets the partition size of the <b>n</b>th
-    partition. 
+    partition. <a name="head57"></a> 
     <h3>
       int ftt_get_partitions(ftt_descriptor d,ftt_partbuf p)
     </h3>
     This fills a partition buffer with the current partition
-    information of a drive. 
+    information of a drive. <a name="head58"></a> 
     <h3>
       int ftt_write_partitions(ftt_descriptor d,ftt_partbuf p)
     </h3>
@@ -2209,17 +2749,18 @@ ftt_free_stat(stbuff);
     tape in the drive to match.&nbsp;&nbsp; Note that drives will
     generally adjust the size of partition 0 to be whatever space
     is left on the tape, regardless what size is currently set in
-    the buffer. 
+    the buffer. <a name="head59"></a> 
     <h3>
       int ftt_cur_part(ftt_descriptor d)
     </h3>
     This returns the current partition number of the location of
-    the tape in the drive . 
+    the tape in the drive . <a name="head60"></a> 
     <h3>
       int ftt_skip_part(ftt_descriptor d,int nparts)
     </h3>
     This skips forward (or backward if nparts is negative) nparts
-    partitions, to the beginning of the partition. 
+    partitions, to the beginning of the partition. <a name=
+    "head61"></a> 
     <h3>
       int ftt_locate_part(ftt_descriptor d, int blockno, int part)
     </h3>
@@ -2227,25 +2768,27 @@ ftt_free_stat(stbuff);
     absolute partition number.&nbsp; This lets you return to an
     arbitrary tape location obtained as a partition from
     ftt_cur_part(), and a block number from (ftt_get_stats(fd,buf),
-    ftt_extract_stat(buf,FTT_BLOCK_LOC)). 
+    ftt_extract_stat(buf,FTT_BLOCK_LOC)). <a name="head62"></a> 
     <h3>
       void ftt_dump_partitions(ftt_partbuf parttab, FILE *pf)
     </h3>
     This prints a text listing of a partition buffer on file
-    descriptor pf. 
+    descriptor pf. <a name="head63"></a> 
     <h3>
       void ftt_undump_partitions(ftt_partbuf p, FILE *pf)
     </h3>
     This reads a text listing of a partition buffer from file
-    descriptor pf into the partition buffer. 
+    descriptor pf into the partition buffer. <a name="head64"></a> 
     <h3>
       int ftt_set_mount_partition(ftt_descriptor d, int partno)
     </h3>
     This attempts to set what partition number the drive will skip
-    to when a new tape is mounted in the drive. 
+    to when a new tape is mounted in the drive. <a name="head65">
+    </a> 
     <h2>
       Status Routines
     </h2>
+    <a name="head66"></a> 
     <h3>
       int <b>ftt_status(</b>ftt_descriptor <b>d,</b> int <b>
       timeout)</b>
@@ -2339,6 +2882,7 @@ int status;
 ftt_descriptor d;&nbsp;
 status = ftt_status (d, 0);
 </pre>
+    <a name="head67"></a> 
     <h3>
       int <b>ftt_get_position(</b>ftt_descriptor <b>d,</b> int
       *<b>file,</b> int *<b>block)</b>
@@ -2364,6 +2908,7 @@ ftt_descriptor d;
 int fileno, blockno
 status = ftt_get_position (d, &amp;fileno, &amp;blockno);
 </pre>
+    <a name="head68"></a> 
     <h3>
       char *<b>ftt_get_error (</b>int *<b>pn)</b>
     </h3>
@@ -2389,10 +2934,11 @@ estring = ftt_get_error(&amp;ftt_status);
 fprintf (stderr, "Error:%s Error String:%s \n",
 &nbsp;&nbsp; ftt_ascii_error[error],estring);
 </pre>
-    <!--NewPage-->
+    <!--NewPage--><a name="head69"></a> 
     <h2>
       Volume verification
     </h2>
+    <a name="head70"></a> 
     <h3>
       int <b>ftt_write_vol_label (</b>ftt_descriptor <b>d,</b> int
       <b>type,</b> char * <b>vollabel)</b>
@@ -2412,6 +2958,7 @@ int status;
 ftt_descriptor d;
 status = ftt_write_vol_label(d, FTT_ANSI_HEADER,"mydog");
 </pre>
+    <a name="head71"></a> 
     <h3>
       int <b>ftt_verify_vol_label (</b>ftt_descriptor <b>d,</b> int
       <b>type,</b> char *<b>vollabel,</b> int <b>timeout,</b> int
@@ -2438,6 +2985,7 @@ int status;
 ftt_descriptor d;
 status = ftt_verify_vol_label(d, FTT_ANSI_HEADER,"mydog",0,TRUE);
 </pre>
+    <a name="head72"></a> 
     <h3>
       int <b>ftt_guess_label (</b>char *<b>buf,</b> int <b>
       length,</b> char **<b>vol,</b> int **<b>vlen)</b>
@@ -2543,6 +3091,7 @@ char *vollabel;
 int vollen;
 type = ftt_guess_label(databuf, buflen, vollabel, vollen);
 </pre>
+    <a name="head73"></a> 
     <h3>
       int <b>ftt_format_label (</b>char *<b>buf,</b> int <b>
       length,</b> char *<b>vol,</b> int <b>vlen,</b> int <b>
@@ -2598,6 +3147,7 @@ length = ftt_format_label(databuf, buflen, "mydog",
       It is important to note that only one asynchronous operation
       at a time may be active on a given file descriptor.
     </p>
+    <a name="head74"></a> 
     <h3>
       int <b>ftt_fork (</b>ftt_descriptor <b>d)</b>
     </h3>
@@ -2626,12 +3176,13 @@ case -1: /* error */
 &nbsp;&nbsp;&nbsp; exit(0);
 }
 </pre>
+    <a name="head75"></a> 
     <h3>
       void <b>ftt_report (</b>ftt_descriptor <b>d)</b>
     </h3>
     Collects up the status from the last <b>ftt</b> call, reports
     it to the parent process, so that it will be collected by <b>
-    ftt_wait()</b>, and exits. 
+    ftt_wait()</b>, and exits. <a name="head76"></a> 
     <h3>
       int <b>ftt_wait (</b>ftt_descriptor <b>d)</b>
     </h3>
@@ -2642,6 +3193,7 @@ case -1: /* error */
     <p>
       ftt_wait performs no tape operations of its own.
     </p>
+    <a name="head77"></a> 
     <h3>
       int <b>ftt_check (</b>ftt_descriptor <b>d)</b>
     </h3>
@@ -2668,6 +3220,7 @@ case -1: /* error */
       knowledgeable user. It is not recommended that the novice
       user issue these commands.
     </p>
+    <a name="head78"></a> 
     <h3>
       int ftt_clear_unrecovered (ftt_descriptor d)
     </h3>
@@ -2689,6 +3242,7 @@ int status;
 ftt_descriptor d;
 ftt_clear_unrecovered (d);
 </pre>
+    <a name="head79"></a> 
     <h3>
       int <b>ftt_all_scsi (</b>ftt_descriptor <b>d)</b>
     </h3>
@@ -2710,6 +3264,7 @@ int status;
 ftt_descriptor d;
 ftt_all_scsi(d);
 </pre>
+    <a name="head80"></a> 
     <h3>
       int ftt_locate (ftt_descriptor d, int blockno)
     </h3>
@@ -2770,8 +3325,9 @@ status = ftt_locate(d,blockno);
     </p>
     <p>
       $(CC) $(CFLAGS) -o tapecopy tapecopy.c $(LIB)<br>
-      <!--NewPage-->
+       <!--NewPage-->
     </p>
+    <a name="head81"></a> 
     <h2>
       ftt_test
     </h2>
@@ -2798,6 +3354,7 @@ status = ftt_locate(d,blockno);
       * from the environment variable FTT_TAPE (e.g. setenv
       FTT_TAPE /dev/rmt/tps2d4).
     </p>
+    <a name="head82"></a> 
     <h3>
       ftt_test Commands
     </h3>
@@ -2818,6 +3375,7 @@ status = ftt_locate(d,blockno);
       executed, but a usage message will simply be printed to
       stderr.
     </p>
+    <a name="head83"></a> 
     <h4>
       Open/close Commands
     </h4>
@@ -2868,6 +3426,7 @@ status = ftt_locate(d,blockno);
       calls the corresponding ftt library routine using the global
       variable for the ftt file descriptor.
     </p>
+    <a name="head84"></a> 
     <h4>
       Read/write Commands
     </h4>
@@ -2980,6 +3539,7 @@ status = ftt_locate(d,blockno);
     <p>
       If not specified, FTT_ANSI_HEADER is assumed.
     </p>
+    <a name="head85"></a> 
     <h4>
       Tape Positioning Commands
     </h4>
@@ -3076,6 +3636,7 @@ status = ftt_locate(d,blockno);
       verifies that the position specified by fileno and blockno
       match those returned by ftt_get_position.
     </p>
+    <a name="head86"></a> 
     <h4>
       Asynchronous Support Commands
     </h4>
@@ -3091,6 +3652,7 @@ status = ftt_locate(d,blockno);
       calls the corresponding ftt library routine using the global
       variable for the ftt file descriptor.
     </p>
+    <a name="head87"></a> 
     <h4>
       Get/set Mode Commands and Other Commands That Care About
       Filenames
@@ -3188,6 +3750,7 @@ status = ftt_locate(d,blockno);
       calls the corresponding ftt library routine using the global
       variable for the ftt file descriptor.
     </p>
+    <a name="head88"></a> 
     <h4>
       Statistics Commands
     </h4>
@@ -3242,6 +3805,7 @@ status = ftt_locate(d,blockno);
       calls the corresponding ftt library routine. It will dump the
       stats to <i>filename</i> if specified, otherwise stderr.
     </p>
+    <a name="head89"></a> 
     <h4>
       Error Commands
     </h4>
@@ -3265,6 +3829,7 @@ status = ftt_locate(d,blockno);
       Set/show the current maximum number of errors before ftt_test
       will abort.
     </p>
+    <a name="head90"></a> 
     <h4>
       Expert Commands
     </h4>
@@ -3293,6 +3858,7 @@ status = ftt_locate(d,blockno);
       variable for the ftt file descriptor. It will locate the tape
       to the logical block number specified by <i>blockno.</i>
     </p>
+    <a name="head91"></a> 
     <h4>
       Miscellaneous Commands
     </h4>
@@ -3339,9 +3905,11 @@ status = ftt_locate(d,blockno);
     <p>
       * 1 = display commands entered by user.
     </p>
+    <a name="head92"></a> 
     <h3>
       ftt_test Examples
     </h3>
+    <a name="head93"></a> 
     <h4>
       Interactive Example:
     </h4>
@@ -3353,6 +3921,7 @@ ftt_test&gt; ftt_open /dev/rmt/tps2d4
 ftt_test&gt; ftt_rewind
 ftt_test&gt; ftt_close
 </pre>
+    <a name="head94"></a> 
     <h4>
       Shell Script Example:
     </h4>
@@ -3377,6 +3946,7 @@ ftt_rewind
 ftt_close
 EOD
 </pre>
+    <a name="head95"></a> 
     <h4>
       Redirection Example:
     </h4>
@@ -3390,6 +3960,7 @@ cat my.ftt
 &nbsp;&nbsp;&nbsp; ftt_close
 $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
 </pre>
+    <a name="head96"></a> 
     <h3>
       ftt_test scripts
     </h3>
@@ -3405,6 +3976,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
       in the environment variable FTT_TAPE or passed in as argument
       0 on the command line.
     </p>
+    <a name="head97"></a> 
     <h4>
       Building block scripts
     </h4>
@@ -3613,6 +4185,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
       randomly picks a position, skips to it, and verifies a random
       number of blocks.
     </p>
+    <a name="head98"></a> 
     <h4>
       All inclusive tests
     </h4>
@@ -3702,11 +4275,13 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
     </p>
     <p>
       15<br>
-      <!--NewPage-->
+       <!--NewPage-->
     </p>
+    <a name="head99"></a> 
     <h2>
       ftt_suid
     </h2>
+    <a name="head100"></a> 
     <h3>
       Command invocation
     </h3>
@@ -3741,25 +4316,26 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
         partition table.
       </li>
       <li>
-        ftt_suid <i>opts</i> <b>-u</b> <i>basename</i> -- undump/write 
-        partition table.
+        ftt_suid <i>opts</i> <b>-u</b> <i>basename</i> --
+        undump/write partition table.
       </li>
       <li>
-        ftt_suid <i>opts</i> <b>-l</b> <i>blk basename</i> -- locate
-        tape to <b>blk</b>.
+        ftt_suid <i>opts</i> <b>-l</b> <i>blk basename</i> --
+        locate tape to <b>blk</b>.
       </li>
       <li>
-        ftt_suid <i>opts</i> <b>-L</b> <i>blk prt basename</i> -- locate
-        to <b>blk</b> in partition <b>prt</b>.
+        ftt_suid <i>opts</i> <b>-L</b> <i>blk prt basename</i> --
+        locate to <b>blk</b> in partition <b>prt</b>.
       </li>
       <li>
         ftt_suid <i>opts</i> <b>-M</b> <i>prt basename</i> -- set
         mount partition to <b>prt</b>.
       </li>
       <li>
-        ftt_suid <i>opts</i> <b>-A</b> <i>basename</i> -- format tape in AIT
-        mode -- AIT drives only, after doing this you should be able to make 
-	more than two partitions on a tape.
+        ftt_suid <i>opts</i> <b>-A</b> <i>basename</i> -- format
+        tape in AIT mode -- AIT drives only, after doing this you
+        should be able to make more than two partitions on a tape.
+      </li>
     </ul>
     Only one of the above forms may be used per command invocation.
     
@@ -3787,6 +4363,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
       path when the library is run, and installed with the correct
       permissions.
     </p>
+    <a name="head101"></a> 
     <h3>
       Example of use
     </h3>
@@ -3812,7 +4389,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
     In this case, the error counters on the Exabyte 8200 would be
     interpreted as read errors, since <b>-w</b> was not specified.
     <br>
-    <!--NewPage--> 
+     <!--NewPage--> <a name="head102"></a> 
     <h2>
       Appendix A: System Configuration Issues
     </h2>
@@ -3820,14 +4397,14 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
     however they are listed below, by platform. ftt attempts to
     continue and operate as best it can even when these options are
     not met, however it may be unable to determine tape drive type,
-    etc. if these conditions are not met. 
+    etc. if these conditions are not met. <a name="head103"></a> 
     <h3>
       AIX issues
     </h3>
     The major assumption for <b>AIX</b> systems is that the <b>
     ftt_suid</b> executable is installed setuid root. If this is
     not done, we will be unable to set density and/or compression,
-    or get statistics. 
+    or get statistics. <a name="head104"></a> 
     <h3>
       IRIX issues
     </h3>
@@ -3872,6 +4449,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
         devices.
       </li>
     </ul>
+    <a name="head105"></a> 
     <h3>
       OSF1 / DEC UNIX issues
     </h3>
@@ -3891,6 +4469,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
       information about tape density names will be generic, and
       most statistics will be unavailable.
     </p>
+    <a name="head106"></a> 
     <h3>
       Solaris Issues
     </h3>
@@ -3912,7 +4491,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
       </li>
     </ul>
     1. It is hoped that in the future a better solution to this
-    problem will be found 
+    problem will be found <a name="head107"></a> 
     <h3>
       A.5 Windows NT
     </h3>
@@ -3932,6 +4511,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
         only a few drive statistics are provided
       </li>
     </ul>
+    <a name="head108"></a> 
     <h3>
       Linux
     </h3>
@@ -3958,6 +4538,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
         appropriate special files.
       </li>
     </ul>
+    <a name="head109"></a> 
     <h3>
       General Security issues
     </h3>
@@ -3975,18 +4556,20 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
       not get errors about the setuid binary -- of course
       functionality will be missing, as described in the preceding
       sections.<br>
-      <!--NewPage-->
+       <!--NewPage-->
     </p>
+    <a name="head110"></a> 
     <h2>
       Appendix B: Recovering Data from Overwritten 8mm Tapes
     </h2>
+    <a name="head111"></a> 
     <h3>
       Disclaimer
     </h3>
     This appendix is to document personal experience in recovering
     data from tapes that have been overwritten. It is not meant to
     guarantee that this capability will always be available both in
-    software and hardware. 
+    software and hardware. <a name="head112"></a> 
     <h3>
       850x Recovery
     </h3>
@@ -4036,6 +4619,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ftt_test&gt; ftt_locate 1300
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ftt_test. ftt_close
 </pre>
+    <a name="head113"></a> 
     <h3>
       Special Observations:
     </h3>
@@ -4084,7 +4668,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
     Once the input tape has been position into the start of good
     data, the tape can be copied via your favorite copy process. We
     tried two ways, both of which worked: ftt_dump/undump and a
-    simple c program. 
+    simple c program. <a name="head114"></a> 
     <h4>
       ftt_dump/undump
     </h4>
@@ -4093,6 +4677,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
     <p>
       ftt_dump /<b>dev/rmt/tps0d4 | ftt_test /dev/rmt/tps0d5</b>
     </p>
+    <a name="head115"></a> 
     <h4>
       simple copy program
     </h4>
@@ -4104,6 +4689,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
 <pre>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ftt_copy -i /dev/rmt/tps0d4 -o /dev/rmt/tps0d5
 </pre>
+    <a name="head116"></a> 
     <h3>
       8200 Recovery
     </h3>
@@ -4125,12 +4711,14 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
       procedure was repeated until good data was found. The Fermi
       written rimfire routines were used to control the drives.
     </p>
+    <a name="head117"></a> 
     <h3>
       Other Exabyte Tapes
     </h3>
     According to Exabyte sales representatives, the techniques used
     to recover 850x tapes will be supported in newer models, e.g.
-    the mammoth drives. This has not been tested at Fermi. 
+    the mammoth drives. This has not been tested at Fermi. <a name= 
+    "head118"></a> 
     <h3>
       DLT 2000/4000
     </h3>
@@ -4139,7 +4727,7 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
     overwritten data tapes. They are working on special firmware to
     support this, but it is not anticipated that this firmware will
     be available to the general public. <br>
-    <!--NewPage--> 
+     <!--NewPage--> 
     <p>
       <a name="fn0" href="#fnB0"></a><a name="fn0" href=
       "#fnB0"></a><a href="#fnB0" name="fn0">[1]</a> The name and
