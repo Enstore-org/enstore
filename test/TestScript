@@ -1,0 +1,26 @@
+#!/bin/sh
+
+#
+# run ftt_multitest on the first n drives on the system
+#
+n=4
+if [ -d /dev/rmt ] 
+then
+	list="`ls /dev/rmt/*[0-9] | head -${n}`"
+else
+	list="`ls /dev/rmt*[0-9] | head -${n}`"
+	if [ -z "$list" ]
+	then
+	    list="`ls /dev/rmt*[0-9]a | head -${n}`"
+	fi
+fi
+
+if [ -z "$list" ]
+then
+    echo "can't find drives to test on"
+    exit 1
+fi
+
+echo ftt_multitest ftt_fast $list
+ftt_multitest ftt_fast $list
+
