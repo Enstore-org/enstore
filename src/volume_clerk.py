@@ -382,7 +382,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             else:    # never written, just erase it
                 del self.dict[vol]
 
-        return self.__rename_volume(vol+'.deleted', vol)
+        status = self.__rename_volume(vol+'.deleted', vol)
+        if status[0] == e_errors.OK:
+            # take care of system inhibit[0]
+            record = self.dict[vol]
+            record['system_inhibit'][0] = 'none'
+            self.dict[vol] = record
+        return status
 
     # restore_volume(vol) -- server version of __restore_volume()
 
