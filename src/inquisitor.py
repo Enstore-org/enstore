@@ -9,7 +9,6 @@
 # system import
 import sys
 import time
-import pprint
 import copy
 import errno
 import string
@@ -444,7 +443,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	             str(sys.exc_info()[1])+" "+\
 	             "inquisitor serve_forever continuing"
 	    self.logc.send(log_client.ERROR, 1, format)
-	    Trace.trace(0,format)
         Trace.trace(11,"}do_update ")
 
     # loop here forever doing what inquisitors do best (overrides UDP one)
@@ -759,14 +757,7 @@ if __name__ == "__main__":
             inq.logc.send(log_client.INFO, 1, "Inquisitor (re)starting")
             inq.serve_forever(intf.verbose)
         except:
-            traceback.print_exc()
-            format = timeofday.tod()+" "+\
-                     str(sys.argv)+" "+\
-                     str(sys.exc_info()[0])+" "+\
-                     str(sys.exc_info()[1])+" "+\
-                     "inquisitor serve_forever continuing"
-            print format
-            inq.logc.send(log_client.ERROR, 1, format)
-            Trace.trace(0,format)
+	    inq.serve_forever_error("inquisitor", inq.logc)
             continue
     Trace.trace(1,"Inquisitor finished (impossible)")
+

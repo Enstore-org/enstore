@@ -835,15 +835,6 @@ if __name__ == "__main__":
             vc.logc.send(log_client.INFO, 1, "Volume Clerk (re)starting")
             vc.serve_forever()
         except:
-            traceback.print_exc()
-            format = timeofday.tod()+" "+\
-                     str(sys.argv)+" "+\
-                     str(sys.exc_info()[0])+" "+\
-                     str(sys.exc_info()[1])+" "+\
-                     "volume clerk serve_forever continuing"
-            print format
-            vc.logc.send(log_client.ERROR, 1, format)
-            Trace.trace(0,format)
+	    vc.serve_forever_error("volume clerk", vc.logc)
             continue
     Trace.trace(1,"Volume Clerk finished (impossible)")
-

@@ -112,13 +112,5 @@ if __name__ == "__main__" :
 
     del mcc.csc.u
     del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if ticket['status'][0] == e_errors.OK :
-        if intf.verbose:
-            pprint.pprint(ticket)
-        Trace.trace(1,"mcc exit ok")
-        sys.exit(0)
-    else :
-        print "BAD STATUS:",ticket['status']
-        pprint.pprint(ticket)
-        Trace.trace(0,"mcc BAD STATUS - "+repr(ticket['status']))
-        sys.exit(1)
+
+    mcc.check_ticket("mcc", ticket)

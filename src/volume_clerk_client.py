@@ -395,13 +395,4 @@ if __name__ == "__main__":
     elif intf.clrvol:
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
 
-    if ticket['status'][0] != e_errors.OK:
-        print "Bad status:",ticket['status']
-        pprint.pprint(ticket)
-        Trace.trace(0,"vcc BAD STATUS - "+repr(ticket['status']))
-        sys.exit(1)
-    elif intf.verbose:
-        pprint.pprint(ticket)
-
-    Trace.trace(1,"vcc exit ok")
-    sys.exit(0)
+    vcc.check_ticket("vcc", ticket)

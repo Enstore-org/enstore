@@ -195,12 +195,5 @@ if __name__ == "__main__" :
 
     del logc.csc.u
     del logc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if ticket['status'][0] != e_errors.OK:
-        print "Bad status:",ticket['status']
-        pprint.pprint(ticket)
-        Trace.trace(0,"logc BAD STATUS - "+repr(ticket['status']))
-        sys.exit(1)
-    elif intf.verbose:
-        pprint.pprint(ticket)
-	Trace.trace(1,"logc exit ok")
-	sys.exit(0)
+
+    logc.check_ticket("logc", ticket)

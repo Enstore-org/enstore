@@ -959,13 +959,6 @@ if __name__ == "__main__":
 	    if SystemExit:
 		sys.exit(0)
 	    else:
-		traceback.print_exc()
-		format = timeofday.tod()+" "+\
-			 str(sys.argv)+" "+\
-			 str(sys.exc_info()[0])+" "+\
-			 str(sys.exc_info()[1])+" "+\
-			 "library manager serve_forever continuing"
-		lm.logc.send(log_client.ERROR, 1, format)
-		Trace.trace(0,format)
+	        lm.serve_forever_error("library manager", lm.logc)
 		continue
     Trace.trace(1,"Library Manager finished (impossible)")

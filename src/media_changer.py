@@ -31,7 +31,8 @@ import e_errors
 
 verbose = 0
 # media loader template class
-class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
+class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
+	                 generic_server.GenericServer) :
 
     def __init__(self, medch, csc=0, verbose=0,\
 	         host=interface.default_host(), \
@@ -198,18 +199,15 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
       self.reply_to_caller(out_ticket)
 
 # STK media loader server
-class STK_MediaLoader(STK_MediaLoaderMethods,
-                      generic_server.GenericServer) :
+class STK_MediaLoader(STK_MediaLoaderMethods) :
     pass
 
 # Raw Disk media loaded server
-class RDD_MediaLoader(MediaLoaderMethods,
-                      generic_server.GenericServer) :
+class RDD_MediaLoader(MediaLoaderMethods) :
     pass
 
 # FTT tape drives with no robot loader server
-class FTT_MediaLoader(FTT_MediaLoaderMethods,
-                      generic_server.GenericServer) :
+class FTT_MediaLoader(FTT_MediaLoaderMethods) :
     pass
 
 class MediaLoaderInterface(interface.Interface):
@@ -277,15 +275,7 @@ if __name__ == "__main__" :
             mc.logc.send(log_client.INFO, 1, "Media Changer"+intf.name+"(re) starting")
             mc.serve_forever()
         except:
-            traceback.print_exc()
-            format = timeofday.tod()+" "+\
-                     str(sys.argv)+" "+\
-                     str(sys.exc_info()[0])+" "+\
-                     str(sys.exc_info()[1])+" "+\
-                     "media changer serve_forever continuing"
-            print format
-            mc.logc.send(log_client.ERROR, 1, format)
-            Trace.trace(0,format)
+	    mc.serve_forever_error("media changer", mc.logc)
             continue
     Trace.trace(1,"Media Changer finished (impossible)")
 

@@ -188,14 +188,5 @@ if __name__ == "__main__" :
     del iqc.csc.u
     del iqc.u           # del now, otherwise get name exception (just for python v1.5???)
 
-    if ticket['status'][0] == e_errors.OK:
-        if intf.verbose:
-            pprint.pprint(ticket)
-        Trace.trace(1,"iqc exit ok")
-        sys.exit(0)
-    else:
-        print "BAD STATUS:",ticket['status']
-        pprint.pprint(ticket)
-        Trace.trace(0,"iqc BAD STATUS - "+repr(ticket['status']))
-        sys.exit(1)
+    iqc.check_ticket("inq", ticket)
 

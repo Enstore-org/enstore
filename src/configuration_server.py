@@ -366,11 +366,7 @@ if __name__ == "__main__":
             Trace.trace(1,"Configuration Server (re)starting")
             cs.serve_forever()
         except:
-            traceback.print_exc()
-            Trace.trace(0,"cs.server_forever() "+str(sys.exc_info()[0])+\
-                        str(sys.exc_info()[1]))
-            print timeofday.tod(),\
-                  sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+	    cs.serve_forever_error("config server")
             continue
 
     Trace.trace(1,"Configuration Server finished (impossible)")

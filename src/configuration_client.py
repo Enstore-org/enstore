@@ -9,6 +9,7 @@ import errno
 
 # enstore imports
 import generic_client
+import generic_cs
 import interface
 import udp_client
 import Trace
@@ -33,7 +34,7 @@ def set_csc(self, csc=0, host=interface.default_host(),\
         self.csc = csc
     Trace.trace(10,'}set_csc csc='+repr(self.csc))
 
-class ConfigurationClient(generic_client.GenericClient) :
+class ConfigurationClient(generic_client.GenericClient):
 
     def __init__(self, config_host, config_port, verbose):
         Trace.trace(10,'{__init__ cc')
@@ -41,6 +42,7 @@ class ConfigurationClient(generic_client.GenericClient) :
 	if verbose>3 :
             print "Connecting to configuration server at ",\
 	        config_host, config_port
+	self.verbose = verbose
         self.config_address=(config_host,config_port)
         self.u = udp_client.UDPClient()
         Trace.trace(11,'}connect add='+repr(self.config_address)+\
@@ -233,7 +235,6 @@ if __name__ == "__main__":
     # now get a configuration client
     csc = ConfigurationClient(intf.config_host, intf.config_port,\
                                intf.verbose)
-    stat = (e_errors.OK, None)
 
     if intf.alive:
         stati = csc.alive(intf.alive_rcv_timeout,intf.alive_retries)
@@ -243,26 +244,20 @@ if __name__ == "__main__":
     elif intf.dict:
         csc.list(intf.alive_rcv_timeout,intf.alive_retries)
         print csc.config_list["list"]
-        stat = csc.config_list['status']
+        stati = csc.config_list['status']
 
     elif intf.load:
         stati= csc.load(intf.config_file, intf.alive_rcv_timeout, \
 	                intf.alive_retries)
         if intf.verbose:
             pprint.pprint(stati)
-        stat=stati['status']
 
     elif intf.get_keys:
         stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
 	pprint.pprint(stati['get_keys'])
         if intf.verbose:
             pprint.pprint(stati)
-        stat=stati['status']
 
     del csc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if stat[0] == e_errors.OK:
-        Trace.trace(1,"config client exit ok")
-        sys.exit(0)
-    else:
-        Trace.trace(0,"csc BAD STATUS - "+repr(stat))
-        sys.exit(1)
+
+    csc.check_ticket("cc", stati)
