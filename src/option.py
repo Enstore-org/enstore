@@ -195,6 +195,7 @@ IMPORT = "import"                            #volume
 INFO = "info"                                #pnfs
 IO = "io"                                    #pnfs
 JOUHOME = "jouHome"                          #restore
+LABEL = "label"                              #plotter
 LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs
@@ -315,7 +316,7 @@ valid_option_list = [
     ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, IO,
     JOUHOME,
     KEEP, KEEP_DIR,
-    LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
+    LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NOT_ALLOWED, NO_MAIL, NOTIFY,
     NOOUTAGE, NOOVERRIDE,

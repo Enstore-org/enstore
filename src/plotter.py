@@ -17,7 +17,8 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 
     def __init__(self, csc, rcv_timeout, rcv_retry, logfile_dir, 
 		 start_time, stop_time, media_changer, keep,
-		 keep_dir, output_dir, html_file):
+		 keep_dir, output_dir, html_file, mount_label=None):
+	# we need to get information from the configuration server
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
 
 	self.logfile_dir = logfile_dir
@@ -27,6 +28,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	self.keep = keep
 	self.keep_dir = keep_dir
 	self.output_dir = output_dir
+	self.mount_label = mount_label
         self.startup_state = e_errors.OK
 
         config_d = self.csc.dump(rcv_timeout, rcv_retry)
@@ -83,6 +85,7 @@ class PlotterInterface(generic_client.GenericClientInterface):
 	self.html_file = None
 	self.encp = None
 	self.mount = None
+	self.label = None
 	self.sg = None
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -123,6 +126,12 @@ class PlotterInterface(generic_client.GenericClientInterface):
                       option.VALUE_USAGE:option.IGNORED,
                       option.USER_LEVEL:option.USER,
                       },
+        option.LABEL:{option.HELP_STRING:"append this to mount plot titles ",
+		      option.VALUE_TYPE:option.STRING,
+		      option.VALUE_USAGE:option.REQUIRED,
+		      option.VALUE_LABEL:"label",
+		      option.USER_LEVEL:option.USER,
+                   },
         option.OUTPUT_DIR:{option.HELP_STRING:"directory in which to store " \
                            "the output plot files",
                            option.VALUE_TYPE:option.STRING,
@@ -167,7 +176,8 @@ if __name__ == "__main__":
 		      intf.alive_rcv_timeout, intf.alive_retries,
 		      intf.logfile_dir, intf.start_time, 
 		      intf.stop_time, intf.media_changer, intf.keep, 
-		      intf.keep_dir, intf.output_dir, intf.html_file)
+		      intf.keep_dir, intf.output_dir, intf.html_file,
+		      intf.label)
 
     if plotter.startup_state == e_errors.TIMEDOUT:
         Trace.trace(1, 
