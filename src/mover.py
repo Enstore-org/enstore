@@ -628,7 +628,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 						 enstore_functions.get_status(ticket)))
 
     def start(self):
-        self.conn_cnt = 0
         name = self.name
         self.t0 = time.time()
         self.config = self.csc.get(name)
@@ -2164,11 +2163,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         return
             
     def connect_client(self):
-        self.conn_cnt = self.conn_cnt + 1
-        if self.conn_cnt % 2:
-            self.control_socket, self.client_socket = None, None
-            self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
-            return
         # run this in a thread
         try:
             ticket = self.current_work_ticket
