@@ -276,6 +276,7 @@ def forked_write_to_hsm( self, ticket ):
 	if sts != e_errors.OK:
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
 	    self.net_driver.data_socket.close()
+	    Trace.trace( 17, 'bind problem in write' )
 	    # make write specific and ...
 	    sts = eval( "e_errors.WRITE_"+sts )
 	    send_user_done( self, ticket, sts )
@@ -286,6 +287,7 @@ def forked_write_to_hsm( self, ticket ):
 	if sts['status'][0] != "ok":
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
 	    self.net_driver.data_socket.close()
+	    Trace.trace( 17, 'vcc.set_writing problem in write' )
 	    send_user_done( self, ticket, e_errors.WRITE_NOTAPE )
 	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
@@ -403,6 +405,7 @@ def forked_read_from_hsm( self, ticket ):
 	if sts != e_errors.OK:
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
 	    self.net_driver.data_socket.close()
+	    Trace.trace( 17, 'bind problem in read' )
 	    # make read specific and ...
 	    sts = eval( "e_errors.READ_"+sts )
 	    send_user_done( self, ticket, sts )
@@ -804,6 +807,7 @@ else:
 mvr_srvr =  MoverServer( (mvr_config['hostip'],mvr_config['port']), 0 )
 mvr_srvr.rcv_timeout = 15
 
+Trace.init( "Mover" )
 mvr_srvr.serve_forever()
 
 print "ERROR?"
