@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env python
 # $Id$
 
 # python modules
@@ -1691,7 +1691,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if (empty or
                 (defer_write and (self.bytes_read < self.bytes_to_read and self.buffer.low()))):
                 if empty:
-                    buffer_empty_t = time.time()
+                    #buffer_empty_t = time.time()
                     defer_write = 1
                 Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s, defer=%s empty=%s"%
                             (self.buffer.nbytes(), self.buffer.min_bytes,
@@ -1700,7 +1700,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
                 now = time.time()
-                if int(now - buffer_empty_t) > self.max_time_in_state:
+                if (int(now - buffer_empty_t) > self.max_time_in_state) and int(buffer_empty_t) > 0:
                     if not hasattr(self,'too_long_in_state_sent'):
                         Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                     (state_name(self.state),self.current_volume))
@@ -1973,7 +1973,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.read_ok.clear()
                 self.buffer.read_ok.wait(1)
                 now = time.time()
-                if int(now - buffer_full_t) > self.max_time_in_state:
+                if (int(now - buffer_full_t) > self.max_time_in_state) and int(buffer_full_t) > 0:
                     if not hasattr(self,'too_long_in_state_sent'):
                         Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                     (state_name(self.state),self.current_volume))
