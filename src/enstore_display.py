@@ -858,7 +858,7 @@ class Mover:
         #label_stable_color  = colors('label_stable_color')
         #tape_offline_color  = colors('tape_offline_color')
         #label_offline_color = colors('label_offline_color')
-        
+        mover_label_color   = colors('mover_label_color')
 
         #These mover colors stick around.
         self.percent_color       =  colors('percent_color')
@@ -877,7 +877,10 @@ class Mover:
                             'Unknown':state_idle_color,
                             'IDLE':state_idle_color}.get(self.state,
                                                          state_stable_color)
-        self.label_color = colors('mover_label_color')
+        self.label_color = {'ERROR': state_error_color,
+                            'OFFLINE':state_offline_color}.get(self.state,
+                                                            mover_label_color)
+        
         self.library_color = self.display.get_mover_color(self.library)
         
         #Update the time in state counter for the mover.
