@@ -86,6 +86,7 @@ class LoggerClient(generic_client.GenericClient):
 
 
     def send( self, severity, priority, format, *args ):
+	if args != (): format = format%args
 	Trace.log( severity, format )
 	return {"status" : (e_errors.OK, None)}
 

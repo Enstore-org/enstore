@@ -18,7 +18,8 @@ init   = Ptrace.init
 on     = Ptrace.on
 
 # USER FUNCTIONS
-def log( severity, msg ):
+def log( severity, msg, *args ):
+    if args != (): msg = msg%args
     trace( severity, msg )
     return None
 
