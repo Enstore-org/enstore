@@ -795,7 +795,7 @@ def read_from_hsm(input_files, output,
     Trace.trace(6,"read_from_hsm input_files="+repr(input_files)+
                 " output="+repr(output)+" config_host="+repr(config_host)+
                 " config_port="+repr(config_port)+" verbose="+repr(verbose)+
-                " data_access_layer="+repr(data_acccess_layer)+
+                " data_access_layer="+repr(data_access_layer)+
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
     tinfo = {}
     tinfo["abs_start"] = t0
