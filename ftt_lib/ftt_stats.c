@@ -384,7 +384,12 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 		remain_tape=pack(0,buf[23],buf[24],buf[25]);
 		set_stat(b,FTT_REMAIN_TAPE,itoa((long)remain_tape),0);
-
+		error_count = pack(0,buf[16],buf[17],buf[18]);
+		if (d->data_direction ==  FTT_DIR_READING) {
+	            set_stat(b,FTT_READ_ERRORS,itoa(error_count),0);
+		} else {
+	            set_stat(b,FTT_WRITE_ERRORS,itoa(error_count),0);
+		}
 	    }
 	    if (stat_ops & FTT_DO_05RS) {
 		set_stat(b,FTT_TRACK_RETRY, itoa((long)buf[26]), 0);
@@ -476,7 +481,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		** and remaining tape on an EXB-8200 when rewound
 		*/
 #define 	EXB_8200_FUDGE_FACTOR 1279
-		error_count = pack(0,buf[16],buf[17],buf[18]);
 		
 		if (stat_ops & FTT_DO_EXB82FUDGE) {
 			data_count = tape_size - remain_tape - EXB_8200_FUDGE_FACTOR;
@@ -490,8 +494,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		    set_stat(b,FTT_WRITE_COUNT,itoa(data_count),0);
 		    set_stat(b,FTT_READ_COUNT,"0",0);
 		}
-	        set_stat(b,FTT_READ_ERRORS,itoa(error_count),0);
-	        set_stat(b,FTT_WRITE_ERRORS,itoa(error_count),0);
 		set_stat(b,FTT_COUNT_ORIGIN,"Exabyte_Extended_Sense",0);
 	    }
 
