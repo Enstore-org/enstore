@@ -430,6 +430,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # fill in a default timeout for any servers that did not have one specified
     def fill_in_default_timeouts(self, ctime=time.time()):
         Trace.trace(12,"{fill_in_default_timeouts")
+	itk = "inq_timeout"
 	try:
 	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, \
 	                                 self.alive_retries)
@@ -437,10 +438,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(12,"}fill_in_default_timeouts - ERROR, getting config dict timed out")
 	    return
 	for a_key in csc_keys['get_keys']:
-	    if not self.timeouts.has_key(a_key):
-	        self.timeouts[a_key] = self.default_server_timeout
+	    k = self.csc.get(a_key)
+	    if k.has_key(itk):
+	        self.timeouts[a_key] = k[itk]
 	        if not self.last_update.has_key(a_key):
 	            self.last_update[a_key] = ctime
+	    else:
+	        if not self.timeouts.has_key(a_key):
+	            self.timeouts[a_key] = self.default_server_timeout
+	            if not self.last_update.has_key(a_key):
+	                self.last_update[a_key] = ctime
 	# now get rid of any keys that are in timeouts and not in csc_keys
 	# make an exception for config_server and encp
 	for a_key in self.timeouts.keys():
