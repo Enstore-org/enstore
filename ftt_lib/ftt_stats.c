@@ -21,6 +21,10 @@ int ftt_open_io_dev();
 
 extern int errno;
 
+char *
+ftt_get_prod_id(ftt_descriptor d) {
+    return d->prod_id;
+}
 
 ftt_stat_buf
 ftt_alloc_stat() {

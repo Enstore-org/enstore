@@ -129,11 +129,11 @@ main(int argc, char **argv) {
 		res = ftt_verify_blank(d);
 		break;
         case 'p':
-		break;
 		pb = ftt_alloc_parts();
 		res = ftt_get_partitions(d,pb);
 		ftt_dump_partitions(pb,stdout);
 		ftt_free_parts(pb);
+		break;
         case 'u':
 		pb = ftt_alloc_parts();
 		ftt_undump_partitions(pb,stdin);

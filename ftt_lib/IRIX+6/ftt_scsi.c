@@ -120,6 +120,10 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 	dp->ds_time = delay * 1000;	/* allow delay seconds */
 	DEBUG2(stderr,"sending scsi frame:\n");
 	DEBUGDUMP2(pcCmd,nCmd);
+	if (writeflag && pcRdWr != 0 && nRdWr != 0){
+		DEBUG4(stderr,"Read/Write buffer:\n");
+		DEBUGDUMP4(pcRdWr,nRdWr);
+	}
 	scsistat = doscsireq(getfd(dp),dp);
 	if (0 != scsistat) {
 		gotstatus = 1;
@@ -130,9 +134,9 @@ DEBUG3(stderr,"cmdsent %d datasent %d sensesent %d status %d ret %d msg %d\n",
 
 	res = ftt_scsi_check(n,pcOp,scsistat,nRdWr);
 
-	if (pcRdWr != 0 && nRdWr != 0){
+	if (!writeflag && res > 0 && pcRdWr != 0 && nRdWr != 0){
 		DEBUG4(stderr,"Read/Write buffer:\n");
-		DEBUGDUMP4(pcRdWr,nRdWr);
+		DEBUGDUMP4(pcRdWr,res);
 	}
 	return res;
 }

@@ -106,6 +106,10 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
 
         DEBUG2(stderr,"sending scsi frame:\n");
         DEBUGDUMP2(pcCmd,nCmd);
+	if (writeflag && pcRdWr != 0 && nRdWr != 0){
+		DEBUG4(stderr,"Read/Write buffer:\n");
+		DEBUGDUMP4(pcRdWr,nRdWr);
+	}
 
         res = ioctl(fd, USCSICMD, &cmd);
 	DEBUG3(stderr, "USCSICMD ioctl returned %d, errno %d\n", res, errno);
@@ -118,9 +122,9 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
         } else {
                 res = ftt_scsi_check(fd,pcOp, scsistat, nRdWr);
 	}
-        if (pcRdWr != 0 && nRdWr != 0) {
-                DEBUG4(stderr,"got back:\n");
-                DEBUGDUMP4(pcRdWr,nRdWr);
-        }
+	if (!writeflag && res > 0 && pcRdWr != 0 && nRdWr != 0){
+		DEBUG4(stderr,"Read/Write buffer:\n");
+		DEBUGDUMP4(pcRdWr,res);
+	}
 	return res;
 }

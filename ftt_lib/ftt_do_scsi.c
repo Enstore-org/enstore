@@ -128,20 +128,20 @@ device which was not ready");
 	        recursive = 1; /* keep from recursing if sense fails */
 	        res = ftt_scsi_command(n,"sense",acReqSense, sizeof(acReqSense),
 	  		               acSensebuf, sizeof(acSensebuf),5,0);
-		DEBUG3(stderr,"request sense returns res %d\n", res);
-	        recursive = 0;
+		DEBUG3(stderr,"request sense returns res %d:\n", res);
+		DEBUG3(stderr, errmsg, pcOp, stat,
+			acSensebuf[0], acSensebuf[1],
+			acSensebuf[2], acSensebuf[3],
+			acSensebuf[4], acSensebuf[5],
+			acSensebuf[6], acSensebuf[7],
+			acSensebuf[8], acSensebuf[9],
+			acSensebuf[10], acSensebuf[12],
+			acSensebuf[13], acSensebuf[14],
+			acSensebuf[15]);
+		recursive = 0;
 	    } else {
 		return 0;
 	    }
-	    DEBUG3(stderr, errmsg, pcOp, stat,
-		    acSensebuf[0], acSensebuf[1],
-		    acSensebuf[2], acSensebuf[3],
-		    acSensebuf[4], acSensebuf[5],
-		    acSensebuf[6], acSensebuf[7],
-		    acSensebuf[8], acSensebuf[9],
-		    acSensebuf[10], acSensebuf[12],
-		    acSensebuf[13], acSensebuf[14],
-		    acSensebuf[15]);
 	    ftt_eprintf(errmsg, pcOp, stat,
 		    acSensebuf[0], acSensebuf[1],
 		    acSensebuf[2], acSensebuf[3],
@@ -239,15 +239,17 @@ ftt_all_scsi(ftt_descriptor d) {
     return 0;
 }
 
+#include "ftt_dbd.h"
+
 static double pad;
 int
 ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 
     /* getting evil alignment errors on IRIX6.5 */
     static unsigned char 
-	mod_sen10[8] = { 0x1a, 0x08, 0x10, 0x00, 20, 0x00},
+	mod_sen10[8] = { 0x1a, DBD, 0x10, 0x00, 20, 0x00},
 	mod_sel10[8] = { 0x15, 0x10, 0x00, 0x00, 20, 0x00},
-	mod_sen0f[8] = { 0x1a, 0x08, 0x0f, 0x00, 20, 0x00},
+	mod_sen0f[8] = { 0x1a, DBD, 0x0f, 0x00, 20, 0x00},
 	mod_sel0f[8] = { 0x15, 0x10, 0x00, 0x00, 20, 0x00},
 	buf [32],
         opbuf[512];
@@ -262,15 +264,15 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    DEBUG2(stderr, "Using SCSI Mode sense 0x0f page to set compression\n");
 	    res = ftt_open_scsi_dev(d);        
 	    if(res < 0) return res;
-	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen0f, 6, buf, 20, 5, 0);
+	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen0f, 6, buf, BD_LEN+16, 5, 0);
 	    if(res < 0) return res;
 	    buf[0] = 0;
 	    buf[1] = 0;
 	    /* enable outgoing compression */
-	    buf[4 + 2] &= ~(1 << 7);
-	    buf[4 + 2] |= (compression << 7);
+	    buf[BD_LEN + 2] &= ~(1 << 7);
+	    buf[BD_LEN + 2] |= (compression << 7);
 
-	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, 20, 120, 1);
+	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_LEN+16, 120, 1);
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
@@ -279,15 +281,15 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    DEBUG2(stderr, "Using SCSI Mode sense 0x10 page to set compression\n");
 	    res = ftt_open_scsi_dev(d);        
 	    if(res < 0) return res;
-	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen10, 6, buf, 20, 5, 0);
+	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen10, 6, buf, BD_LEN+16, 5, 0);
 	    if(res < 0) return res;
 	    buf[0] = 0;
 	    /* we shouldn't be changing density here but it shouldn't hurt */
 	    /* yes it will! the setuid program doesn't know which density */
 	    /* the parent process set... */
-	    /* buf[4] = d->devinfo[d->which_is_default].hwdens; */
- 	    buf[4 + 14] = compression;
-	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, 20, 120, 1);
+	    /* buf[BD_LEN] = d->devinfo[d->which_is_default].hwdens; */
+ 	    buf[BD_LEN + 14] = compression;
+	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, BD_LEN+16, 120, 1);
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
@@ -334,7 +336,7 @@ ftt_scsi_locate( ftt_descriptor d, int blockno) {
     locate_cmd[4] = (blockno >> 16) & 0xff;
     locate_cmd[5] = (blockno >> 8)  & 0xff; 
     locate_cmd[6] = blockno & 0xff;
-    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,60,0);
+    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
     res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
 
     return res;

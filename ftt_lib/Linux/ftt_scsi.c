@@ -116,6 +116,10 @@ ftt_scsi_command(
  */
         DEBUG2(stderr,"sending scsi frame:\n");
         DEBUGDUMP2(pcCmd,nCmd);
+	if (writeflag && pcRdWr != 0 && nRdWr != 0){
+		DEBUG4(stderr,"Read/Write buffer:\n");
+		DEBUGDUMP4(pcRdWr,nRdWr);
+	}
 
 	/* the system only gets 16 bytes of RS data on Linux, so if
 	 * the requester wanted *more* than that, we have to re-ask
@@ -188,12 +192,12 @@ ftt_scsi_command(
 	}
 
 
-	if (pcRdWr != 0 && nRdWr != 0){
+	res = ftt_scsi_check(n,pcOp,scsistat,res);
+
+	if (!writeflag && res > 0 && pcRdWr != 0 && nRdWr != 0){
 		DEBUG4(stderr,"Read/Write buffer:\n");
 		DEBUGDUMP4(pcRdWr,res);
 	}
-
-	res = ftt_scsi_check(n,pcOp,scsistat,res);
 
 	return res;
 }

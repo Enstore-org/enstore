@@ -237,6 +237,10 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 
     DEBUG2(stderr,"sending scsi frame:\n");
     DEBUGDUMP2(pcCmd,nCmd);
+	if (writeflag && pcRdWr != 0 && nRdWr != 0){
+		DEBUG4(stderr,"Read/Write buffer:\n");
+		DEBUGDUMP4(pcRdWr,nRdWr);
+	}
 		
     successful = 0;
     retries = 0;
@@ -286,10 +290,10 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     }
     res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status,nRdWr);
 
-    if (pcRdWr != 0 && nRdWr != 0){
-	DEBUG4(stderr,"Read/Write buffer:\n");
-	DEBUGDUMP4(pcRdWr,nRdWr);
-    }
+	if (!writeflag && res > 0 && pcRdWr != 0 && nRdWr != 0){
+		DEBUG4(stderr,"Read/Write buffer:\n");
+		DEBUGDUMP4(pcRdWr,res);
+	}
 
     return res;
 }
