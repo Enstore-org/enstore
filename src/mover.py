@@ -785,7 +785,7 @@ def return_or_update_and_exit( self, origin_addr, status ):
 	udpc.send_no_wait( {'work'       :'update_client_info',
 			    'address'    :origin_addr,
 			    'pid'        :os.getpid(),
-			    'exit_status':status,
+			    'exit_status':m_err.index(status),
 			    'vol_info'   :self.vol_info,
 			    'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
 					   'remaining_bytes':self.hsm_driver.remaining_bytes,
