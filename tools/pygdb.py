@@ -120,7 +120,7 @@ class PyGdb(Gdb):
                     return ['Breakpoint %d in %s' % (self.breakpoint_number,
                                                      func)]
                 else:
-                    return ['Already have a breakpoint in %s' % func]
+                    return ['Already have a breakpoint in %s' % (func,)]
             
             
     def delete_breakpoint(self,number):
@@ -146,7 +146,7 @@ class PyGdb(Gdb):
             return -1
 
     def c_string_expr(self, expr):
-        response = self.gdb_command("print (char*)( ( (PyStringObject*) %s)->ob_sval)" % expr)
+        response = self.gdb_command("print (char*)( ( (PyStringObject*) %s)->ob_sval)" % (expr,))
         r = string.split(response[0])
         return string.join(r[3:])[1:-1]
 
@@ -158,11 +158,11 @@ class PyGdb(Gdb):
 ##            self.gdb_command("cont")
 
         frame_expr="f"
-        rsp=self.dgdb_command("print %s"%frame_expr)
+        rsp=self.dgdb_command("print %s"%(frame_expr,))
         while rsp[0][:2]=="No":
             self.dgdb_command("up")
             spinner(-1)
-            rsp=self.dgdb_command("print %s"%frame_expr)
+            rsp=self.dgdb_command("print %s"%(frame_expr,))
         ret = []
         depth  = 0
         while 1:
@@ -241,9 +241,9 @@ class PyGdb(Gdb):
                 try:
                     bp = string.atoi(tok[1])
                     if self.delete_breakpoint(bp):
-                        return ['Deleted breakpoint %d' %bp]
+                        return ['Deleted breakpoint %d' %(bp,)]
                     else:
-                        return ['No breakpoint %d' % bp]
+                        return ['No breakpoint %d' % (bp,)]
                 except ValueError:
                     return ['Usage: d[elete] [breakpoint_number]']
         elif cmd_chr == 'i':
@@ -282,7 +282,7 @@ class PyGdb(Gdb):
                 return ['Entering gdb mode']
             
         else:
-            return ['Unrecognized command %s' % cmd]
+            return ['Unrecognized command %s' % (cmd,)]
         
 
 if __name__ == "__main__":
@@ -292,7 +292,7 @@ if __name__ == "__main__":
         pid = None
 
     if not pid:
-        print "Usage: %s pid" % sys.argv[0]
+        print "Usage: %s pid" % (sys.argv[0],)
         sys.exit(-1)
 
     try:
