@@ -1,0 +1,1 @@
+00 2 * * * sh -c 'OUT=/home/bakken/tape_inventory.out;. /usr/local/etc/setups.sh 1>>$OUT 2>&1;setup enstore 1>>$OUT 2>&1;$ENSTORE_DIR/bin/tape_inventory 1>>$OUT 2>&1;'
