@@ -2797,8 +2797,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         status = mcc_reply.get('status')
         if status and status[0]==e_errors.OK:
+            tm = time.localtime(time.time())
             time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
-            Trace.log(e_errors.INFO, "dismounted %s %s %s"%(volume_label,self.config['product_id'], time_msg))
+            Trace.log(e_errors.INFO, "dismounted %s %s %s"%(self.current_volume,self.config['product_id'], time_msg))
             self.current_volume = None
             if self.setup_mode == ASSERT:
                 self.send_client_done(self.current_work_ticket, e_errors.OK, None)
