@@ -281,7 +281,7 @@ def do_work(intf):
         ticket = lmc.change_lm_state(lock)
     elif (intf.status):
         ticket = lmc.get_lm_state()
-        print "LM state:%s"%ticket['state']
+        print "LM state:%s"%(ticket['state'],)
 	
     else:
 	intf.print_help()

@@ -597,7 +597,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.lock_file = open(os.path.join(self.db_dir, 'lm_lock'), 'w')
         self.lm_lock = self.lock_file.read()
         if not self.lm_lock: self.lm_lock = 'unlocked'
-        Trace.log(e_errors.INFO,"Library manager started in state:%s"%self.lm_lock)
+        Trace.log(e_errors.INFO,"Library manager started in state:%s"%(self.lm_lock,))
 	
     def set_udp_client(self):
 	self.udpc = udp_client.UDPClient()
@@ -1486,7 +1486,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 self.lm_lock = ticket['state']                      
                 self.lock_file.write(ticket['state'])
                 ticket["status"] = (e_errors.OK, None)
-                Trace.log(e_errors.INFO,"Library manager state is changed to:%s"%self.lm_lock)
+                Trace.log(e_errors.INFO,"Library manager state is changed to:%s"%(self.lm_lock,))
             else:
                 ticket["status"] = (e_errors.WRONGPARAMETER, None)
         else:
