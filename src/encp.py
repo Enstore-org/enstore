@@ -2985,13 +2985,13 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
                   % (transfer_stop_time - tinfo['encp_start_time'],))
 
     #Try some stuff.
-    try:
-        status = input_file_obj.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-        Trace.log(e_errors.INFO, "Socket status is: %s" % status)
-    except AttributeError:
-        pass
-    except socket.error, msg:
-        Trace.log(e_errors.ERROR, "Unable to get socket status: %s" % str(msg))
+    #try:
+    #    status = input_file_obj.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    #    Trace.log(e_errors.INFO, "Socket status is: %s" % status)
+    #except AttributeError:
+    #    pass
+    #except socket.error, msg:
+    #    Trace.log(e_errors.ERROR, "Unable to get socket status: %s" % str(msg))
     try:
         input_file_obj.shutdown(0) #close read half.
     except AttributeError:
@@ -5039,6 +5039,200 @@ def verify_read_request_consistancy(requests_per_vol):
                 #                               request['file_size'], request)
                 #quit() #Harsh, but necessary.
 
+            #Determine if the pnfs layers and the file data are consistant.
+            rest = {}
+
+            #Start by getting the pnfs layer 4 information.
+            try:
+                pnfs_volume = p.volume
+                if pnfs_volume == pnfs.UNKNOWN:
+                    rest['pnfs_volume'] = p.volume
+            except AttributeError:
+                pnfs_volume = None
+                rest['pnfs_volume'] = pnfs.UNKNOWN
+            try:
+                pnfs_location_cookie = p.location_cookie
+                if pnfs_location_cookie == pnfs.UNKNOWN:
+                    rest['pnfs_location_cookie'] = p.location_cookie
+            except AttributeError:
+                pnfs_location_cookie = None
+                rest['pnfs_location_cookie'] = pnfs.UNKNOWN
+            try:
+                pnfs_size = p.size
+                if pnfs_size == pnfs.UNKNOWN:
+                    rest['pnfs_size'] = p.size
+                try:
+                    pnfs_size = long(pnfs_size)
+                except TypeError:
+                    rest['pnfs_size_type'] = "pnfs_size contains wrong type."
+            except AttributeError:
+                pnfs_size = None
+                rest['pnfs_size'] = pnfs.UNKNOWN
+            try:
+                pnfs_origff = p.origff
+                if pnfs_origff == pnfs.UNKNOWN:
+                    rest['pnfs_origff'] = p.origff
+            except AttributeError:
+                pnfs_origff = None
+                rest['pnfs_origff'] = pnfs.UNKNOWN
+            try:
+                pnfs_origname = p.origname
+                if pnfs_origname == pnfs.UNKNOWN:
+                    rest['pnfs_origname'] = p.origname
+            except AttributeError:
+                pnfs_origname = None
+                rest['pnfs_origname'] = pnfs.UNKNOWN
+            #Mapfile no longer used.
+            try:
+                pnfsid_file = p.pnfsid_file
+                if pnfsid_file == pnfs.UNKNOWN:
+                    rest['pnfsid_file'] = p.pnfsid_file
+            except AttributeError:
+                pnfsid_file = None
+                rest['pnfsid_file'] = pnfs.UNKNOWN
+            #Volume map file id no longer used.
+            try:
+                pnfs_bfid = p.bfid
+                if pnfs_bfid == pnfs.UNKNOWN:
+                    rest['pnfs_bfid'] = p.bfid
+            except AttributeError:
+                pnfs_bfid = None
+                rest['pnfs_bfid'] = pnfs.UNKNOWN
+            #Origdrive has not always been recored.
+            try:
+                pnfs_crc = p.crc
+                #CRC has not always been recored.
+                try:
+                    if pnfs_crc != pnfs.UNKNOWN:
+                        pnfs_crc = long(pnfs_crc)
+                except TypeError:
+                    rest['pnfs_crc_type'] = "pnfs_crc contains wrong type."
+            except AttributeError:
+                pnfs_crc = None
+                rest['pnfs_crc'] = pnfs.UNKNOWN
+
+            #Next get the database information.
+            try:
+                db_volume = request['fc']['external_label']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_volume = None
+                rest['db_volume'] = pnfs.UNKNOWN
+            try:
+                db_location_cookie = request['fc']['location_cookie']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_location_cookie = None
+                rest['db_location_cookie'] = pnfs.UNKNOWN
+            try:
+                db_size = request['fc']['size']
+                try:
+                    db_size = long(db_size)
+                except TypeError:
+                    rest['db_size_type'] = "db_size contains wrong type."
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_size = None
+                rest['db_size'] = pnfs.UNKNOWN
+            try:
+                db_volume_family = request['vc']['volume_family']
+                try:
+                    db_file_family = volume_family.extract_file_family(
+                        db_volume_family)
+                except TypeError:
+                    rest['db_file_family_type'] = \
+                                         "db_file_family contains wrong type."
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_file_family = None
+                rest['db_file_family'] = pnfs.UNKNOWN
+            try:
+                db_pnfs_name0 = request['fc']['pnfs_name0']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_pnfs_name0 = None
+                rest['db_pnfs_name0'] = pnfs.UNKNOWN
+            try:
+                db_pnfsid = request['fc']['pnfsid']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_pnfsid = None
+                rest['db_pnfsid'] = pnfs.UNKNOWN
+            try:
+                db_bfid = request['fc']['bfid']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_bfid = None
+                rest['db_bfid'] = pnfs.UNKNOWN
+            try:
+                db_crc = request['fc']['complete_crc']
+                try:
+                    db_crc = long(db_crc)
+                except TypeError:
+                    rest['db_crc_type'] = "db_crc contains wrong type."
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_crc = None
+                rest['db_crc'] = pnfs.UNKNOWN
+
+            #If there is missing information, 
+            if len(rest.keys()) > 0:
+                conflict_ticket = {}
+                conflict_ticket['infile'] = request['infile']
+                conflict_ticket['outfile'] = request['outfile']
+                conflict_ticket['bfid'] = request['bfid']
+                conflict_ticket['conflict'] = rest
+
+                Trace.alarm(e_errors.ERROR, e_errors.CONFLICT, conflict_ticket)
+                raise EncpError(None,
+                                "Missing metadata information: %s" % str(rest),
+                                e_errors.CONFLICT, request)
+
+            #For only those conflicting items, include them in the dictionary.
+            if db_volume != pnfs_volume:
+                rest['db_volume'] = db_volume
+                rest['pnfs_volume'] = pnfs_volume
+                rest['volume'] = "db_volume differs from pnfs_volume"
+            if not same_cookie(db_location_cookie, pnfs_location_cookie):
+                rest['db_location_cookie'] = db_location_cookie
+                rest['pnfs_location_cookie'] = pnfs_location_cookie
+                rest['location_cookie'] = "db_location_cookie differs " \
+                                          "from pnfs_location_cookie"
+            if db_size != pnfs_size:
+                rest['db_size'] = db_size
+                rest['pnfs_size'] = pnfs_size
+                rest['size'] = "db_size differs from pnfs_size"
+            if db_file_family != pnfs_origff:
+                rest['db_file_family'] = db_file_family
+                rest['pnfs_origff'] = pnfs_origff
+                rest['file_family'] = "db_file_family differs from pnfs_origff"
+            if db_pnfs_name0 != pnfs_origname:
+                rest['db_pnfs_name0'] = db_pnfs_name0
+                rest['pnfs_origname'] = pnfs_origname
+                rest['filename'] = "db_pnfs_name0 differs from pnfs_origname"
+            #Mapfile no longer used.
+            if db_pnfsid != pnfsid_file:
+                rest['db_pnfsid'] = db_pnfsid
+                rest['pnfsid_file'] = pnfsid_file
+                rest['pnfsid'] = "db_pnfsid differs from pnfsid_file"
+            #Volume map file id no longer used.
+            if db_bfid != pnfs_bfid:
+                rest['db_bfid'] = db_bfid
+                rest['pnfs_bfid'] = pnfs_bfid
+                rest['bfid'] = "db_bfid differs from pnfs_bfid"
+            #Origdrive has not always been recored.
+            if (pnfs_crc != pnfs.UNKNOWN) and (db_crc != pnfs_crc):
+                #If present in layer 4 compare the CRC too.
+                rest['db_crc'] = db_crc
+                rest['pnfs_crc'] = pnfs_crc
+                rest['crc'] = "db_crc differs from pnfs_crc"
+
+            #If there is incorrect information.
+            if len(rest.keys()) > 0:
+                conflict_ticket = {}
+                conflict_ticket['infile'] = request['infile']
+                conflict_ticket['outfile'] = request['outfile']
+                conflict_ticket['bfid'] = request['bfid']
+                conflict_ticket['conflict'] = rest
+
+                Trace.alarm(e_errors.ERROR, e_errors.CONFLICT, conflict_ticket)
+                raise EncpError(None,
+                        "Probable database conflict with pnfs: %s" % str(rest),
+                                e_errors.CONFLICT, request)
+
+            """
             #Get the database information.
             try:
                 db_volume = request['fc']['external_label']
@@ -5130,6 +5324,7 @@ def verify_read_request_consistancy(requests_per_vol):
                 #                               request['file_size'], request)
                 #quit() #Harsh, but necessary.
 
+            """
             #Test to verify that all the brands are the same.  If not exit.
             # If so, then the system will function.  If this was not true,
             # then a lot of file clerk key errors could occur.
