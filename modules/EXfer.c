@@ -126,6 +126,7 @@ EXto_HSM(  PyObject	*self
 	int		shmid, semid, msgqid;
 	int		sts;
 	char		*shmaddr;
+	union semun	semun_u;
 	struct sembuf	sops_wr_wr2rd;  /* allows read */
 	struct sembuf	sops_rd_wr2rd;
 	struct msqid_ds	msgctl_s;
@@ -347,7 +348,8 @@ EXto_HSM(  PyObject	*self
 	}
     }
 
-    (void)semctl( semid, 0, IPC_RMID, 0 );
+    semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
+    (void)semctl( semid, 0, IPC_RMID, semun_u );
     (void)shmdt( shmaddr );
     (void)shmctl( shmid, IPC_RMID, 0 );
     (void)msgctl( msgqid, IPC_RMID, 0 );
@@ -391,6 +393,7 @@ EXusrTo_(  PyObject	*self
 	int		shmid, semid, msgqid;
 	int		sts;
 	char		*shmaddr;
+	union semun	semun_u;
 	struct sembuf	sops_wr_wr2rd;  /* allows read */
 	struct sembuf	sops_rd_wr2rd;
 	struct msqid_ds	msgctl_s;
@@ -556,7 +559,8 @@ EXusrTo_(  PyObject	*self
 	}
     }
 
-    (void)semctl( semid, 0, IPC_RMID, 0 );
+    semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
+    (void)semctl( semid, 0, IPC_RMID, semun_u );
     (void)shmdt( shmaddr );
     (void)shmctl( shmid, IPC_RMID, 0 );
     (void)msgctl( msgqid, IPC_RMID, 0 );
