@@ -203,8 +203,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def prepare(self,
                external_label,
                drive,
-               media_type) :        
+               media_type) :
         pass
+        return (e_errors.OK, 0, None) 
 
     def doWaitingInserts(self):
         pass
@@ -225,7 +226,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	   Trace.log(e_errors.ERROR, "%s"%(e,))
 	   ticket['status'] = e
 	   return e
-		
+
         if ticket['function'] in ("mount", "dismount"):
             if not ticket.has_key("vol_ticket"):
 	       e = 'MISSING VOL_TICKET'
