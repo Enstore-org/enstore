@@ -1538,8 +1538,6 @@ def get_pinfo(p):
                 pinf[k]=getattr(p,k)
             except AttributeError:
                 pinf[k]="None"
-        pinf['inode'] = 0   # cpio wrapper needs this also
-        #pprint.pprint(pinf)
         return pinf
 
     except (OSError, IOError), msg:
