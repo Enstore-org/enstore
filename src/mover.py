@@ -2552,8 +2552,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             msg =  ({READ: e_errors.READ_NOTAPE, WRITE: e_errors.WRITE_NOTAPE}.get(
                 self.setup_mode, e_errors.EPROTO), self.vol_info['status'][1])
             Trace.log(e_errors.ERROR, "Volume clerk reply %s" % (msg,))
-            self.send_client_done(self.current_work_ticket, msg[0], msg[1])
-            self.state = self.save_state
+            self.transfer_failed(msg[0], msg[1], error_source=TAPE, dismount_allowed=0)
+            #self.send_client_done(self.current_work_ticket, msg[0], msg[1])
+            #self.state = self.save_state
             return
         
         self.buffer.set_blocksize(self.vol_info['blocksize'])
@@ -2569,8 +2570,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not self.wrapper:
             msg = e_errors.EPROTO, "Illegal wrapper type %s" % (self.wrapper_type)
             Trace.log(e_errors.ERROR,  "%s" %(msg,))
-            self.send_client_done(self.current_work_ticket, msg[0], msg[1])
-            self.state = self.save_state
+            self.transfer_failed(msg[0], msg[1], error_source=TAPE, dismount_allowed=0)
+            #self.send_client_done(self.current_work_ticket, msg[0], msg[1])
+            #self.state = self.save_state
             return 
         
         self.buffer.set_wrapper(self.wrapper)
