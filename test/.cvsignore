@@ -21,3 +21,4 @@ read_list.*
 readstop
 writestop
 longstop
+trace.buffer

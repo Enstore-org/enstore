@@ -36,3 +36,5 @@ superficial_overviewobj.ps
 superficial_overviewobj.gif
 test-stand.ps
 test-stand.gif
+*.dtim
+trace.buffer
