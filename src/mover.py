@@ -271,7 +271,6 @@ class MoverClient:
 	if self.hsm_driver != None:
 	    do = self.hsm_driver.open( mvr_config['device'], 'a+' )
 	    ss = do.get_stats()
-	    do.close()
 	    if ss['serial_num'] != None: self.hsm_drive_sn = ss['serial_num']
 
 	    # check for tape in drive
@@ -282,6 +281,7 @@ class MoverClient:
 		# tell media changer to unload the vol BUT I DO NOT KNOW THE VOL
 		#mcc.unloadvol( self.vol_info, self.config['mc_device'] )
 		pass
+	    do.close()
 	    pass
 
 	signal.signal( signal.SIGTERM, sigterm )# to allow cleanup of shm
@@ -565,6 +565,7 @@ def forked_write_to_hsm( self, ticket ):
 
             location_cookie = self.vol_info['eod_cookie']
 	    eod_cookie = do.tell()
+	    if do.loc_compare(eod_cookie,location_cookie) != 1: raise "bad eod"
 	    t0 = time.time()
 	    stats = do.get_stats()
 	    ticket['times']['get_stats_time'] = time.time() - t0
@@ -591,6 +592,16 @@ def forked_write_to_hsm( self, ticket ):
 		return_or_update_and_exit( self, self.lm_origin_addr,
 					   e_errors.WRITE_ERROR )
 		pass
+	    pass
+	except "seek error":
+	    Trace.log( e_errors.ERROR, "seek error during write" )
+            wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
+            vcc.update_counts( self.vol_info['external_label'],
+                               wr_err, rd_err, wr_access, rd_access )
+	    self.usr_driver.close()
+            send_user_done( self, ticket, e_errors.WRITE_ERROR )
+	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.WRITE_ERROR )
+	    pass
         except:
 	    traceback.print_exc()
             wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
@@ -775,6 +786,15 @@ def forked_read_from_hsm( self, ticket ):
 	    self.usr_driver.close()
 	    send_user_done( self, ticket, err)
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
+	except "seek error":
+	    Trace.log( e_errors.ERROR, "seek error during read" )
+            wr_err,rd_err,wr_access,rd_access = (0,1,0,1)
+            vcc.update_counts( self.vol_info['external_label'],
+                               wr_err, rd_err, wr_access, rd_access )
+	    self.usr_driver.close()
+            send_user_done( self, ticket, e_errors.READ_ERROR )
+	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.READ_ERROR )
+	    pass
         except:
 	    traceback.print_exc()
             media_error = 1 # I don't know what else to do right now

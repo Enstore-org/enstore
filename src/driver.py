@@ -201,6 +201,14 @@ class GenericDriver:
     def close( self ):
         return os.close(self.fd)
 
+    def loc_compare( self, loc1, loc2 ):
+	if loc1==None or loc1=='None' or loc1=='none': locA = 0
+	if loc2==None or loc2=='None' or loc2=='none': locB = 0
+	if   locA == locB: rr = 0
+	elif locA <  locB: rr = -1
+	else: rr = 1
+	return rr
+
     pass
 
 
@@ -233,7 +241,7 @@ class  FTTDriver(GenericDriver) :
             # if you don't close/reopen, the status never changes, but a check outside of enstore
             # using the same python calls succeeds right away after enstore reports failure - bakken 3/3/99
             FTT.close()
-	    #time.sleep( 1 )
+	    time.sleep( 1 )
             FTT.open( device, 'r' )
 	    x = x -1
 	    pass
@@ -241,11 +249,8 @@ class  FTTDriver(GenericDriver) :
 	    Trace.log( e_errors.INFO, "sw_mount error" )
 	    raise "sw_mount error"
 
-	if eod_cookie==None or eod_cookie=='None' or eod_cookie=='none':
-	    part, block_loc, filenum = 0,0,0
-	else:
-	    part, block_loc, filenum = loc2int( self, eod_cookie )
-	    pass
+	part, block_loc, filenum = loc2int( self, eod_cookie )
+
 	# make cur_loc_cookie such that an ordered list can be produced
 	# (for pnfs) i.e. partition, blk offset, filemarks
 	ss =  FTT.get_stats()
@@ -335,20 +340,23 @@ class  FTTDriver(GenericDriver) :
 	return self
 
     def seek( self, loc_cookie ):
-	if loc_cookie==None or loc_cookie=='None' or loc_cookie=='none':
-	    part, block_loc, filenum = 0,0,0
-	else:
-	    part, block_loc, filenum = loc2int( self, loc_cookie )
+	part, block_loc, filenum = loc2int( self, loc_cookie )
+	if block_loc:
+	    xx = 2
+	    while xx:
+		FTT.locate( block_loc )
+		ss = FTT.get_stats()
+		if string.atoi(ss['bloc_loc']) == block_loc: break
+		xx = xx - 1
+		pass
+	    if xx == 0: raise "seek error"
 	    pass
-	# NEXT LINE HAS "and 0" TO DISABLE BLOCK LOCATION TEMPORARILY
-	if block_loc and 0:
-	    FTT.locate( block_loc )
 	elif filenum != loc2int(self,self.cur_loc_cookie)[2]:
 	    # NOTE: when skipping file marks, there must be a file mark to
 	    #       skip over. This is why we can not "skip" to the beginning
 	    #       of a tape; we must "rewind" to get to BOT
-	    if filenum == 0: FTT.locate( 0 )
-	    #if filenum == 0: FTT.rewind()
+	    #if filenum == 0: FTT.locate( 0 ) # higher probability for problems
+	    if filenum == 0: FTT.rewind()
 	    else:
 		skip = filenum - loc2int(self,self.cur_loc_cookie)[2]
 		if skip < 0: skip = skip - 1# if neg, make more neg
@@ -368,9 +376,7 @@ class  FTTDriver(GenericDriver) :
 	return self.cur_loc_cookie
 
     def is_bot( self, loc_cookie ):
-	if loc_cookie==None or loc_cookie=='None' or loc_cookie=='none':
-	      part, block_loc, filenum = 0,0,0
-	else: part, block_loc, filenum = loc2int( self, loc_cookie )
+        part, block_loc, filenum = loc2int( self, loc_cookie )
 	if filenum == 0: return 1
 	return 0
 
@@ -396,16 +402,33 @@ class  FTTDriver(GenericDriver) :
 	    pass
 	return FTT.close()
 
+    def loc_compare( self, loc1, loc2 ):
+	# if loc1 greater than loc2 --> return 1
+	# if same                   --> return 0
+        # otherwise                 --> return -1   (loc1 less than loc2)
+	part1, block_loc1, filenum1 = loc2int( self, loc1 )
+	part2, block_loc2, filenum2 = loc2int( self, loc2 )
+	if (part1,block_loc1,filenum1) == (part2,block_loc2,filenum2): rr = 0
+	elif part1 < part2: rr = -1
+	elif part1 > part2: rr =  1
+	elif block_loc1<=block_loc2 and filenum1<=filenum2: rr = -1
+	elif block_loc1>=block_loc2 and filenum1>=filenum2: rr =  1
+	else: raise "invalid location(s)"
+	return rr
+
     pass
 
 
 import re
 
 def loc2int( self, loc ):
-    xx = re.split( '_', loc )
-    part, block_loc, filenum = ( string.atoi(xx[0]),
-				 string.atoi(xx[1]),
-				 string.atoi(xx[2]) )
+    if loc==None or loc=='None' or loc=='none':
+	part, block_loc, filenum = 0,0,0
+    else:
+	xx = re.split( '_', loc )
+	part, block_loc, filenum = ( string.atoi(xx[0]),
+				     string.atoi(xx[1]),
+				     string.atoi(xx[2]) )
     return [part, block_loc, filenum]
 
 def int2loc( self, ii ):
