@@ -12,7 +12,7 @@ import enstore_erc_functions
 import generic_client
 import option
 
-NINETY_SECONDS = 90
+NINETY_SECONDS = 10
     
 
 def do_real_work(intf):
@@ -26,17 +26,10 @@ def do_real_work(intf):
     # receive at least 1 alive from all entered servers. if
     # not raise an alarm.
     while 1:
-        readable, junk, junk = select.select([erc.sock, 0], [], [], 5)
-        if not readable:
-            continue
+        readable, junk, junk = select.select([erc.sock], [], [], 5)
         now = time.time()
-        for fd in readable:
-            if fd == 0:
-                # move along, no more to see here
-                erc.unsubscribe()
-                erc.sock.close()
-                return
-            else:
+        if readable:
+            for fd in readable:
                 msg = enstore_erc_functions.read_erc(erc)
                 if msg and msg.type == event_relay_messages.ALIVE:
                     # get the server
