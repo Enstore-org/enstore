@@ -1622,9 +1622,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         buffer_empty_cnt = 0 # number of times buffer was cosequtively empty
         nblocks = 0L
         # send a trigger message to the client
-        bytes_written = self.net_driver.write("B", # write anything
-                                              0,
-                                              1) # just 1 byte
+        try:
+            bytes_written = self.net_driver.write("B", # write anything
+                                                  0,
+                                                  1) # just 1 byte
+        except driver.DriverError, detail:
+            self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
+            return
+        except:
+            exc, detail = sys.exc_info()[:2]
+            self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
+            return
+        
+            
         if self.header_labels:
             t1 = time.time()
             try:
@@ -4282,10 +4292,18 @@ class DiskMover(Mover):
         failed = 0
         self.media_transfer_time = 0.
         # send a trigger message to the client
-        bytes_written = self.net_driver.write("B", # write anything
-                                              0,
-                                              1) # just 1 byte
+        try:
+            bytes_written = self.net_driver.write("B", # write anything
+                                                  0,
+                                                  1) # just 1 byte
 
+        except driver.DriverError, detail:
+            self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
+            return
+        except:
+            exc, detail = sys.exc_info()[:2]
+            self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
+            return
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         Trace.notify("transfer %s %s %s media %s %.3f" %
