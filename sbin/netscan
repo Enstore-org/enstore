@@ -8,6 +8,26 @@ setup enstore
 
 set -u  # force better programming and ability to use check for not set
 
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
+
+right_file() { if ! cmp $1 $2 2>/dev/null; then
+                  msg1="BAD CONFIGURATION: $1 $2  do not match"
+                  echo $msg1
+                  if [ $ALARM -eq 1 ]; then
+                    enstore alarm --raise --severity "A" --root-error "$msg1"
+                  fi
+               fi    
+	     }
+
+right_file /home/enstore/enstore/etc/$gang.enstore.k5login /home/enstore/.k5login 
+right_file /home/enstore/enstore/sbin/routes /root/routes 
+right_file /home/enstore/enstore/etc/root.k5login /root/.k5login 
+right_file /home/enstore/enstore/etc/hosts.allow /etc/hosts.allow
+right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
+right_file /home/enstore/enstore/etc/hosts /etc/hosts 
+
+
 N=`/usr/local/bin/lsof -i TCP -i UDP`
 
 ALLOW_BASE="
@@ -22,6 +42,7 @@ ALLOW_BASE="
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
        UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
        UDP,xntpd,:ntp,UDP,x
+       UDP,tee,:UDP,tee /dev/tty
        TCP,klogind,:eklogin,TCP,x
        TCP,xemacs,:6000,TCP,x
        TCP,rsh,:kshell,TCP,x
@@ -32,6 +53,9 @@ ALLOW_BASE="
        TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
        TCP,netserver,TCP,:netperf,x
 "
+
+
+
 
 ALLOW_SRV5="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
@@ -103,7 +127,7 @@ allow() { tt=$1
           echo $msg2
           if [ $ALARM -eq 1 ]; then
             enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
-          fi
+         fi
           return 1
          }
 
