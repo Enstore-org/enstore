@@ -55,8 +55,9 @@ def mark_enstore_down(status_d, node, last_status_d):
 				    "Overall status page has Enstore ball for %s as red"%(node,))
     
 def get_last_status():
-    exec("import %s"%(LAST_STATUS_FILE,))
-    return last_status.__dict__.get("status_d", {})
+    last_s = {}
+    exec("import %s\nlast_s = last_status.__dict__.get('status_d', {})\n"%(LAST_STATUS_FILE,))
+    return last_s
 
 def set_last_status(status_d):
     fd = open(LAST_STATUS, 'w')
