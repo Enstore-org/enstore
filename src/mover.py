@@ -638,6 +638,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.send_update_cnt = 0
         self.control_socket = None
         self.lock_file_info = 0   # lock until file info is updated
+        self.read_tape_running = 0 # use this to synchronize read and network threads
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -2002,8 +2003,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 self.transfer_failed(e_errors.EPROTO)
 
+
     # read data from the tape
     def read_tape(self):
+        self.read_tape_running = 1 # use this to synchronize read and network threads
+
         Trace.log(e_errors.INFO, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         if self.buffer.client_crc_on:
             # calculate checksum when reading from
@@ -2053,6 +2057,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     buffer_full_t = now
                     if buffer_full_cnt >= self.max_in_state_cnt:
                         msg = "data transfer to client stuck. Breaking connection"
+                        self.read_tape_running = 0
                         self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
                         return
                     buffer_full_cnt = buffer_full_cnt + 1
@@ -2080,6 +2085,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                              'infile':self.current_work_ticket['infile'],
                              'location_cookie':self.current_work_ticket['fc']['location_cookie'],
                              'external_label':self.current_work_ticket['vc']['external_label']})
+                self.read_tape_running = 0
                 self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 failed = 1
                 break
@@ -2106,6 +2112,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     elif detail == 'FTT_EBLANK':
                         Trace.log(e_errors.INFO, "perhaps EOT.Current Location %s Previous location %s"%
                                   (self.current_location, prev_loc))
+                        self.read_tape_running = 0
                         self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
                         failed = 1
                         break
@@ -2113,12 +2120,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                     else:
                         Trace.log(e_errors.ERROR, "Read failed. Current Location %s Previous location %s"%
                                   (self.current_location, prev_loc))
+                        self.read_tape_running = 0
                         self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
                         
                 else:
                     Trace.trace(33,"Exception %s %s"%(e_errors.READ_ERROR,str(detail)))
+                    self.read_tape_running = 0
                     self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                     failed = 1
                     break
@@ -2126,6 +2135,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 exc, detail = sys.exc_info()[:2]
                 Trace.trace(33,"Exception %s %s"%(str(exc),str(detail)))
                 #Trace.handle_error(exc, detail, tb)
+                self.read_tape_running = 0
                 self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                 failed = 1
                 break
@@ -2134,6 +2144,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if bytes_read == 0 and self.method == 'read_next':
                     pass
                 else:
+                    self.read_tape_running = 0
                     self.transfer_failed(e_errors.READ_ERROR, "read returns %s" % (bytes_read,),
                                          error_source=TAPE)
                     failed = 1
@@ -2148,6 +2159,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         header_size = self.wrapper.header_size(b0)
                     except (TypeError, ValueError), msg:
                         Trace.log(e_errors.ERROR,"Invalid header %s" %(b0[:self.wrapper.min_header_size]))
+                        self.read_tape_running = 0
                         self.transfer_failed(e_errors.READ_ERROR, "Invalid file header", error_source=TAPE)
                         ##XXX NB: the client won't necessarily see this message since it's still trying
                         ## to recieve data on the data socket
@@ -2187,11 +2199,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         if break_here and self.method == 'read_next':
             self.bytes_to_write = self.bytes_read # set correct size for bytes to write
         if self.tr_failed:
+            self.read_tape_running = 0
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             return
-        if failed: return
+        if failed:
+            self.read_tape_running = 0
+            return
         if do_crc:
-            if self.tr_failed: return # do not calculate CRC if net thead detected a failed transfer
+            if self.tr_failed:
+                self.read_tape_running = 0
+                return # do not calculate CRC if net thead detected a failed transfer
             complete_crc = self.file_info.get('complete_crc',None)
             bfid = self.file_info.get('bfid',None)
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
@@ -2225,10 +2242,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.INFO, "updated file info %s"%(ret,)) ## Remove when fixed
                         if ret['status'][0] != e_errors.OK:
                             Trace.log(e_errors.ERROR, "cannot assign new bfid %s"%(ret,))
+                            self.read_tape_running = 0
                             self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
                             return
                         if ret['fc']['bfid'] == None:
                             Trace.log(e_errors.ERROR,"FC returned None for bfid %s"%(ret,))
+                            self.read_tape_running = 0
                             self.transfer_failed(e_errors.ERROR,"FC returned None for bfid")
                         self.file_info.update(ret['fc'])
                         self.current_work_ticket['fc'].update(self.file_info)
@@ -2250,6 +2269,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                            self.vol_info['remaining_bytes'],
                                                            self.vol_info['eod_cookie'])
                         if ret['status'][0] != e_errors.OK:
+                            self.read_tape_running = 0
                             self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
                             return
                         self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
@@ -2261,12 +2281,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   (self.file_info['bfid'],sanity_cookie, self.buffer.complete_crc))
                         self.fcc.set_crcs(self.file_info['bfid'], sanity_cookie, self.buffer.complete_crc)
                 else:
-                    if self.tr_failed: return  # do not raise alarm if net thead detected a failed transfer
+                    if self.tr_failed:
+                        self.read_tape_running = 0
+                        return  # do not raise alarm if net thead detected a failed transfer
                     Trace.alarm(e_errors.ERROR, "read_tape CRC error",
                                 {'outfile':self.current_work_ticket['outfile'],
                                  'infile':self.current_work_ticket['infile'],
                                  'location_cookie':self.current_work_ticket['fc']['location_cookie'],
                                  'external_label':self.current_work_ticket['vc']['external_label']})
+                    self.read_tape_running = 0
                     self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                     return
         self.bytes_read_last = self.bytes_read
@@ -2274,8 +2297,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         # the false "too long in state.." may be generated
         # to aviod this just make a trick with time_in_state 
         self.time_in_state = time.time()- t_started
-        Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
+        Trace.log(e_errors.INFO, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
+
+        self.read_tape_running = 0
                 
     # write data out to the network
     def write_client(self):
@@ -2389,6 +2414,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                     return
             self.bytes_written_last = self.bytes_written                
+        if self.read_tape_running != 0:
+            Trace.log(e_errors.INFO, "write_client waits for tape thread to exit")
+            for i in range(10):
+                time.sleep(1)
             self.transfer_completed()
         Trace.log(e_errors.INFO, "write_client exits")
 
