@@ -77,13 +77,13 @@ class ConfigurationClient(generic_client.GenericClient) :
 
     # return cached (or get from server) value for requested item
     def get(self, key):
-        Trace.trace(11,'{get_uncached key='+repr(key))
+        Trace.trace(11,'{get (cached) key='+repr(key))
         # try the cache
         try:
             val = self.cache[key]
         except:
             val = self.get_uncached(key)
-        Trace.trace(11,'}get_cached key='+repr(key)+'='+repr(val))
+        Trace.trace(11,'}get (cached) key='+repr(key)+'='+repr(val))
         return val
 
 
