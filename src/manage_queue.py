@@ -526,6 +526,7 @@ class Request_Queue:
         #Trace.trace(21,"admin %s"%(a,))
         Trace.trace(21,"read %s"%(r,))
         Trace.trace(21,"write %s"%(w,))
+        Trace.trace(21,'next %s'%(next,))
         if label:
             if use_admin_queue:
                 # get came with label info, hence it is from
