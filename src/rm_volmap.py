@@ -56,6 +56,9 @@ def rm(filename=None):
         return
 
     writelayer(4,"", filename)
+    writelayer(1,"", filename)
+    writelayer(2,"", filename)
+    writelayer(3,"", filename)
 
     # It would be better to move the file to some trash space.
     # I don't know how right now.
