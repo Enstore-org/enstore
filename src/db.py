@@ -17,6 +17,70 @@ import libtpshelve
 JOURNAL_LIMIT=1000
 backup_flag=1
 
+# Jcursor -- join cursor
+
+class Jcursor:
+	def __init__(self, primary, curlist):
+		self.primary = primary
+		self.curlist = curlist
+		key, value = curlist[0].current()
+		# got to find the first one at init
+		self.crnt = value
+		max = advance_all(self.crnt, self.curlist)
+		while max > self.crnt:
+			self.crnt = max
+			max = advance_all(self.crnt, self.curlist)
+			if max == None:
+				break
+		self.crnt = max
+
+	def current(self):
+		return self.crnt
+
+	def next(self):
+		key, value = self.curlist[0].nextDup()
+		self.crnt = value
+		if self.crnt == None:
+			return None
+		max = advance_all(self.crnt, self.curlist)
+		while max > self.crnt:
+			self.crn = max
+			max = advance_all(self.crnt, self.curlist)
+			if max == None:
+				break
+		self.crnt = max
+		return self.crnt
+
+	# need to close all related cursors
+	def close(self):
+		for c in self.curlist:
+			c.close()
+
+	def __del__(self):
+		self.close()
+
+# advance_all(max, curlist) -- advance all cursor such that no current
+# value is less than max. When all current equal to max, that is a
+# common element that we want. Otherwise, if after advancing, any
+# current becomes larger than max, the current max is useless
+
+def advance_all(max, curlist):
+	for c in curlist:
+		key, value = c.current()
+		while value < max:
+			key, value = c.nextDup()
+			if value == None:
+				return None
+		if value > max:
+			return value
+	return max
+
+# join -- return a join cursor
+
+def join(primary, curlist):
+	c = Jcursor(primary, curlist)
+	return c
+
 # Index
 
 class Index:
@@ -33,9 +97,9 @@ class Index:
 		dbEnv = libtpshelve.env(self.dbHome, dbEnvSet)
 		# check to see if the index file exists?
 		if os.path.isfile("%s/%s"%(self.dbHome, self.idxFile)):
-			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1)
+			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1, dupsort = 1)
 		else:	# build index file here
-			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1)
+			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1, dupsort = 1)
 			t = self.primary_db.txn()
 			c = self.primary_db.cursor(t)
 			try:
