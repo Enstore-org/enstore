@@ -2516,10 +2516,14 @@ class File:
 		if not self.exists():
 			# do nothing if it doesn't exist
 			return
+		if self.size > 2147483647:
+			size2 = 1
+		else:
+			size2 = self.size
 		real_size = os.stat(self.path)[stat.ST_SIZE]
-		if long(real_size) == long(self.size):	# do nothing
+		if long(real_size) == long(size2):	# do nothing
 			return
-		size = str(self.size)
+		size = str(size2)
 		if size[-1] == 'L':
 			size = size[:-1]
 		fname = self.size_file()+'('+size+')'
