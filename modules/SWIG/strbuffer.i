@@ -11,7 +11,8 @@
 	return read(fd, buf+offset, nbytes);
     }
     int buf_read_string(char *src, char *buf, int offset, int nbytes){
-	return strncpy(buf+offset, src, nbytes);
+	strncpy(buf+offset, src, nbytes);
+	return nbytes;
     }
     int buf_write(int fd, char *buf, int offset, int nbytes){
 	return write(fd, buf+offset, nbytes);
