@@ -214,8 +214,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             if type(finfo["location_cookie"]) == types.IntType:
                 self.enprint("fixing location_cookie from int to string type:"+repr(finfo["location_cookie"]))
                 finfo["location_cookie"] = "%12.12i"%finfo["location_cookie"]
-                dict[bfid] = copy.deepcopy(finfo)
-            print "size:",type(finfo["size"])
+                dict[bfid] = copy.deepcopy(finfo) # copy back to database
+            if type(finfo["sanity_cookie"]) == types.StringType:
+                self.enprint("fixing sanity_cookie from string to tuple type:"+repr(finfo["sanity_cookie"]))
+                exec("x="+finfo["sanity_cookie"])
+                finfo["sanity_cookie"] = x
+                dict[bfid] = copy.deepcopy(finfo) # copy back to database
             #######################################################################END#TEMPORARY##########
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
