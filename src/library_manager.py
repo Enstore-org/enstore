@@ -378,7 +378,7 @@ class LibraryManagerMethods:
         if self.process_for_bound_vol not in vol_veto_list:
             # width not exceeded, ask volume clerk for a new volume.
             v = self.vcc.next_write_volume (rq.ticket["vc"]["library"],
-                                            rq.ticket["wrapper"]["size_bytes"],
+                                            rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
                                             vol_family, 
                                             vol_veto_list,
                                             first_found=0)
@@ -511,7 +511,7 @@ class LibraryManagerMethods:
                 ret = self.vcc.is_vol_available(rq.work,
                                                 w['fc']['external_label'],
                                                 w["vc"]["volume_family"],
-                                                w["wrapper"]["size_bytes"])
+                                                w["wrapper"]["size_bytes"]+self.min_file_size)
                 if ret['status'][0] != e_errors.OK:
                     if ret['status'][0] == e_errors.BROKEN:
                         # temporarily save last state:
@@ -568,7 +568,7 @@ class LibraryManagerMethods:
             
         ret = self.vcc.is_vol_available(rq.work,  external_label,
                                         rq.ticket['vc']['volume_family'],
-                                        rq.ticket["wrapper"]["size_bytes"])
+                                        rq.ticket["wrapper"]["size_bytes"]+self.min_file_size)
         # this work can be done on this volume
         if ret['status'][0] == e_errors.OK:
             rq.ticket['vc']['external_label'] = external_label
@@ -892,6 +892,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             sg_limits = self.keys['storage_group_limits']
         v = self.keys.get('legal_encp_version','')
         self.legal_encp_version = (v, convert_version(v))
+        self.min_file_size = self.keys.get('min_file_size',0)
         LibraryManagerMethods.__init__(self, csc, sg_limits)
         self.set_udp_client()
 
