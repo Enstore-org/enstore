@@ -50,9 +50,13 @@ Enstore Data Storage System
 <li><a href="#eass">4.1 Assumptions about Errors</a>
 <li><a href="#eover">4.2 Error Overview</a>
 <li><a href="#edet">4.3 Detailed Error Discussion</a>
+<li><a href="#impexp">5 Volume Import and Export</a>
+<li><a href="#volexp">5.1 Volume Export</a>
+<li><a href="#volimp">5.2 Volume Import</a>
 </ul>
 
 <p>
+<hr>
 <h2><a name="overview">
 1 Enstore Architecture
 </h2>
@@ -65,9 +69,9 @@ systems.
 <a href="enstore_at_fnal2.ps">(also available in Postscript)</a>
 <p>
 
-<h2><a name="scope">
+<h3><a name="scope">
 1.0.1 Scope
-</h2>
+</h3>
 
 Enstore is a system to provide mass storage for large Run II data sets.  As
 such it is not a general purpose mass storage system, but optimized to
@@ -152,9 +156,9 @@ occur.  When possible, these layers are expected to use already existing
 components (e.g. ftt, pnfs).
 <p>
 
-<h2><a name="assum">
+<h3><a name="assum">
 1.0.2 Assumptions and Constraints
-</h2>
+</h3>
 
 A constraint is a factor that limits our implementations.
 Assumptions are factors that, for planning purposes, will be considered to be
@@ -257,6 +261,7 @@ an equivalent request with a new unique ID.
 The system can instruct <em>encp</em> to retry if it needs to back out
 of an operation.
 
+<hr>
 <h2><a name="pnfs">
 1.1 The DESY <em>Pnfs</em> Namespace
 </h2>
@@ -680,7 +685,7 @@ volmap file, this mechanism gives us an automatic trash can facility.  If the
 user deletes his entry in <em>pnfs</em>, we still have the duplicate entry and can
 "easily" restore the original.
 
-
+<hr>
 <h2><a name="encp">
 1.2 ENCP
 </h2>
@@ -1023,6 +1028,8 @@ Adding file to pnfs    cumt= 32.6604199409
 Complete:  41943040  bytes in  4  files  in 34.7769209146 S.  Overall rate =  1.15018808302  MB/s
 
 </pre>
+
+<hr>
 <h2><a name="servers">
 1.3 Enstore servers
 </h2>
@@ -1108,7 +1115,7 @@ The default values are shown in parentheses ().
 <td valign=top>external_label
 <td valign=top>string [primary_key]
 <td valign=top>Volume name specified by user on volume creation; is used to
-display volume meta-data.
+display volume metadata.
 <tr>
 <td valign=top>file_family
 <td valign=top>string ("none")
@@ -1856,6 +1863,7 @@ These examples reflect a running system on the <i>rip</i> cluster.
 1.3.8.3.5 Example Bytes Transferred/Day Plot
 </h4>
 
+<hr>
 <h2><a name="db">
 2 Databases in Enstore
 </h2>
@@ -1874,9 +1882,9 @@ Support recovery of corrupted databases using the journal or log files.
 Support "python dictionary" interface.
 </ul>
 
-<h2><a name="backup_recovery">
+<h3><a name="backup_recovery">
 2.1 Backup and Recovery Procedures
-</h2>
+</h3>
 <h3><a name="backup">
 2.1.1 Backup
 </h3>
@@ -2035,6 +2043,7 @@ clients will have to be redesigned to take advantage of the relational
 features.  Python interfaces will also have to be developed to allow the
 current framework to keep working.
 
+<hr>
 <h2><a name="admin_tools">
 2.3 Administrative Tools
 </h2>
@@ -2051,8 +2060,8 @@ Administrative tools will provide the following operations:
 mount date
 <li>List all media belonging to a file family where the last access date is
 before a specified date
-<li>Export meta-data of ejected media into a flat file
-<li>Import meta-data from a flat file when importing the media from outside the
+<li>Export metadata of ejected media into a flat file
+<li>Import metadata from a flat file when importing the media from outside the
 Enstore system
 <li>List all files/volumes that belong to user/group
 <li>Mark the volume as readonly if all of the files on the media are older
@@ -2062,6 +2071,7 @@ than a specified date
 <li>Check for files known to the File Clerk but unknown to <em>pnfs</em>
 </ul>
 
+<hr>
 <h2><a name="protocol">
 3 Communication Protocols
 </h2>
@@ -2083,9 +2093,9 @@ saved copy of the response; if the reception is *repeat response*, just
 ignored it. This will take care of the case when a timeout/retry happens just
 before a response is received.
 
-<h2><a name="read_protocol">
+<h3><a name="read_protocol">
 3.1 Read Protocol
-</h2>
+</h3>
 The communications performed during a read operation are illustrated in the
 diagram below and described more fully in the following text.
 <p>
@@ -2154,9 +2164,9 @@ The read has completed.
 The Mover tells the Library Manager that he still has the volume mounted.
 </ul>
 
-<h2><a name="write_protocol">
+<h3><a name="write_protocol">
 3.2 Write Protocol
-</h2>
+</h3>
 The communications performed during a write operation are illustrated in the
 diagram below and described more fully in the following text.
 <p>
@@ -2242,6 +2252,7 @@ The Library Manager tells the Mover that there is no work to be done.
 The Mover tells the Media Changer to dismount the volume.
 </ul>
 
+<hr>
 <h2><a name="error">
 4 Error Control
 </h2>
@@ -2324,7 +2335,7 @@ is at what mover </FONT> </TD>
 
 <TR VALIGN=TOP>
 <TD> <P><FONT SIZE=2><em>pnfs</em> NFS Servers </FONT> </TD>
-<TD> <P><FONT SIZE=2>DBM database "file meta data" </FONT> </TD>
+<TD> <P><FONT SIZE=2>DBM database "file metadata" </FONT> </TD>
 <TD> <P><FONT SIZE=2>NFS retry mechanisms </FONT> </TD>
 
 
@@ -3342,6 +3353,207 @@ interim, Enstore will make the following working assumptions:
 	      the system falls below a threshold.
        </ul>
 </ul>
+
+<hr>
+<h2><a name="impexp">
+5 Volume Import and Export
+</h2>
+
+It is certainly  possible to import and export information by copying disk resident data
+from Enstore using the <em>encp</em> command. 
+However, given the need to move large amounts of data, and the wide spread
+use compatible tape drives and
+media, it is usually  more efficient to interchange tape volumes: that is, to write
+tapes outside of Enstore and import them into the system, and to write tapes
+inside of Enstore and remove them from the system. In this way, for example,
+Enstore can be used as a kind of tape copy facility (one that always copies from tape to disk to tape).
+
+<p> What follows are draft design notions, importing and exporting are to be
+not yet fully implemented.
+
+<h3><a name="volexp">
+5.1 Volume Export
+</h3>
+
+<p> Exportable volumes are built in Enstore using the <em>encp</em> command, with the
+command line switch --ephemeral, which specifies a temporary, "ephemeral" file family. An
+ephemeral file family is a unique file family name created just for this <em>encp</em>
+command, with a file family width of exactly one. Under these conditions, files will
+be placed on tape volume in the order specified by the user. Once the data is written to the
+tape, the file family name is changed to the tape_label_name.ephemeral.
+
+<p>An experimenter wishing to build an exportable volumes would follow these steps:
+
+<ul>
+
+<li> Select a file structuring method which is supported in Enstore, which
+your users can read, and complies with tape interchange standards of your
+experiment.  (For D0 this is the CPIO format.)
+
+<li> Decide what kind of media you want for the exported volume. (For D0
+this will be the media selected by the SMWG.)
+
+<li> Identify and make locally disk resident all the files that you want to put on a
+volume. Consider the capacity of the tape, and whether you can tolerate files
+overflowing onto another volume.
+
+<li> Specify those files on a single <em>encp</em> command line, in the order you would
+like to have them placed on tape. Use the <em>encp</em> the --ephemeral file family
+switch on the command line.
+[After the initial <em>encp</em> copy, the file family for the tape is known. If the
+user chooses, she may append additional files to the tape.  However,
+the no additional tapes will be added to the file family once it is
+full. It is recommended that all files be copied with one <em>encp</em> command.]
+
+<li> Optionally generate metadata for the volume, if your user will want to
+know what files are on the tape.
+
+<li> Move the volume from the robot to a shelf library, using an Enstore
+administration tool.
+
+<li> Remove the volume from the Enstore system, using an Enstore
+administration tool.
+
+</ul>
+
+An experiment can make tapes in the Enstore system at Fermilab, and
+give the volumes to an experimenter, who can read the tapes anywhere.
+Experimenters can optionally generate a metadata file which is provides a
+map of the exported tape. However,
+some tape formats, such as CPIO,  are sufficiently self-describing so that the tape may
+be dumped to disk with standard utilities.
+<p>
+As an example, an experimenter can stage an entire CPIO exported volume using
+gnu CPIO at her home institution. (Since there are many files on an
+Enstore tape, special care should be taken to select a nonrewind tape
+device.
+On a UNIX system, CPIO tapes can be read with no special infrastructure
+other than 
+gnu CPIO. For example, here is a simple script to read an exported tape at
+a home institution:
+
+<pre>
+#!/bin/sh
+
+# en_dump_tape  A shell script to dump an  Enstore CPIO format tape.
+# This is pseudo code, not functional yet
+
+$tape=$1
+test ! -f $tape || exit 1  ## Try to make sure we have not selected a device file
+while /bin/true ; do  
+   mt -t $tape fsf 1      || exit 1
+   (dd if=$tape  | cpio -o  )  || exit 1
+done
+
+</pre>
+
+<h3><a name="volimp">
+5.2 Volume Import
+</h3>
+
+Volume import is a good implementation for repeated and sizeable
+transfers of data. Volume import is not as easy as export and, therefore, it is not a good choice for small, occasional
+transfers.
+
+Planning is important.
+Tapes in a robot require special labels so that can be automatically
+scanned and placed in the robot. The labels must be unique within a robot and
+within an Enstore system. You will need to procure tape volumes with labels
+meeting these requirements. Imported tapes are read-only in Enstore. (Details
+of these requirements are TBD, after the serial media working group
+decision). 
+
+<p> Although it is not mandatory, an Enstore tool will very likely have to be produced to get good
+results for experimenters at home institutions wishing to make importable tapes. 
+
+<p>If the tapes are to be accessed many times, the experiment must take some
+time to think about the layout of data on the tapes and how the files ought
+to fit into the Enstore name space.
+
+<ul>
+ <li> Files that are accessed together should likely be put on the same tape. 
+ <li> Most likely, the same file should not be placed on more than one tape. 
+ <li> Files must definitely not span tapes. 
+ <li> If a likely order of future access is known, files should be put on 
+	tape in that order.
+ <li> Think of how you would like the files to appear in the Enstore name
+        space.
+ <li> Identify a file structuring method that is compatible with Enstore and
+        your experiment's data interchange standards.
+ <li> Files should be written with a blocksize yielding good performance.
+	(precise recommendation is TBD, after SMWG decision).
+ <li> Files should be written with the recommended partitioning.
+	(precise recommendation is TBD, after SMWG decision).
+
+</ul>
+
+<p> Since the objective is to import a large amount of data, it is required to
+generate metadata for each tape; otherwise the tape will have to be scanned to
+determine the metadata and this defeats the purpose if importing volumes!
+
+
+<p> Metadata for each tape is:
+
+<ul>
+<li> The external bar-coded label of the tape.
+<li> The kind of tape media.
+<li> The file structuring method used to generate the tape.
+<li> The blocksize used in writing the tape.
+</ul>
+
+<p> Metadata for each file is:
+
+<ul>
+<li> An Adler 32 CRC of the first 65536 bytes of the file. If not
+     available, a value of "None" is acceptable and Enstore skips the check
+     (not recommended).
+<li> An Adler 32 CRC of all the bytes in the file. If not
+     available, a value of "None" is acceptable and Enstore skips the check
+     (not recommended).
+<li> The number of blocks (or less desirably, the number of file marks) preceding the beginning of the wrapper.
+<li> The number of the partition holding the file (if this feature is used).
+<li> A name for the file.
+<li> A path for the file in the <em>pnfs</em> namespace.
+</ul>
+
+<p> The procedure the user would follow is:
+
+<ul>
+ <li>Identify the files you want to put on a tape.
+ <li>Put an optically bar-coded tape in the tape drive.
+ <li>Using a tool we provide:
+ <ul>
+   <li>Place the files on the tape.
+   <li>Generate the  metadata for that file.
+ </ul>
+ <li> Remove the tape from the drive.
+</ul>
+
+
+The procedure for importing a volume is:
+
+<ul>
+  <li> Deliver the volume to the data center.
+
+  <li> Use an Enstore administration utility to make a record for the volume
+  in the volume table, using the volume metadata, and physical
+  location as the shelf library.
+
+  <li> Use an Enstore administration utility to place the metadata for
+  each file into the file table and <em>pnfs</em> namespace.
+
+</ul>
+
+
+
+
+
+
+
+
+
+
+
 
 </body>
 </html>
