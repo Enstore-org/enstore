@@ -399,6 +399,8 @@ static void* thread_read(void *info)
     errno = 0;
     FD_ZERO(&fds);
     FD_SET(rd_fd,&fds);
+    timeout.tv_sec = read_info->timeout.tv_sec;
+    timeout.tv_usec = read_info->timeout.tv_usec;
     sts = select(rd_fd+1, &fds, NULL, NULL, &timeout);
     if (sts == -1)
     {
@@ -544,6 +546,8 @@ static void* thread_write(void *info)
       errno = 0;
       FD_ZERO(&fds);
       FD_SET(wr_fd, &fds);
+      timeout.tv_sec = write_info->timeout.tv_sec;
+      timeout.tv_usec = write_info->timeout.tv_usec;
       sts = select(wr_fd+1, NULL, &fds, NULL, &timeout);
 
       if (sts == -1)
@@ -904,13 +908,13 @@ EXfd_xfer(PyObject *self, PyObject *args)
     PyObject	 *crc_tp=Py_None;/* optional, ref. FTT.fd_xfer */
     int           crc_flag=0; /*0: no CRC 1: Adler32 CRC >1: RFU */
     unsigned long crc_ul;
-    struct timeval timeout;
+    struct timeval timeout = {0, 0};
     int sts;
     PyObject	*rr;
     struct return_values transfer_sts;
     
-    sts = PyArg_ParseTuple(args, "iiOiO|O", &fr_fd, &to_fd, &no_bytes_obj,
-			   &blk_size, &crc_obj_tp, &crc_tp);
+    sts = PyArg_ParseTuple(args, "iiOiOi|O", &fr_fd, &to_fd, &no_bytes_obj,
+			   &blk_size, &crc_obj_tp, &timeout.tv_sec, &crc_tp);
     if (!sts) return (NULL);
     if (crc_tp == Py_None)
 	crc_ul = 0;
@@ -938,19 +942,19 @@ EXfd_xfer(PyObject *self, PyObject *args)
     if (crc_flag>1 || crc_flag<0)
 	printf("fd_xfer - invalid crc param");
 
-    timeout.tv_sec = TIMEOUT;
-    timeout.tv_usec = 0;
-
     errno = 0;
     transfer_sts = do_read_write(fr_fd, to_fd, no_bytes, blk_size, timeout,
 				 crc_flag, &crc_ul);
     
     if (transfer_sts.exit_status != 0)
         return (raise_exception2(&transfer_sts));
-    if (crc_flag) 
-	rr = PyLong_FromUnsignedLong(crc_ul);
-    else          
-	rr = Py_BuildValue("");
+
+    rr = Py_BuildValue("(i,O,O,i,s,s,i)",
+		       transfer_sts.exit_status, 
+		       PyLong_FromUnsignedLong(transfer_sts.crc_ul),
+		       PyLong_FromLongLong(transfer_sts.size),
+		       transfer_sts.errno_val, transfer_sts.msg,
+		       transfer_sts.filename, transfer_sts.line);
     return rr;
 }
 
