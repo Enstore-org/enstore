@@ -22,7 +22,7 @@ do
   do
 #    echo -e -n "rip$fromNode to rip$toNode: \t"
     echo -e -n "\t"
-    eval rsh rip$fromNode \"/opt/netperf/netperf -l 1 -H rip$toNode\" | tail -1 \
+    eval rsh rip$fromNode \"/opt/netperf/netperf -l 2 -H rip$toNode\" | tail -1 \
              | tr -s " " | cut -f 6 -d " " | tr -d "\012"
 #    echo rsh rip$fromNode \"/opt/netperf/netperf -l 1 -H rip$toNode\"
     toNode=`expr $toNode + 1`
