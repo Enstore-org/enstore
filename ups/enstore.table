@@ -101,6 +101,9 @@ QUALIFIERS = ""
 	# create an enstoreCut link in the sbin area
 	execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ]; then ln -s $ENSTORE_DIR/sbin/encpCut $ENSTORE_DIR/sbin/enstoreCut; fi"',NO_UPS_ENV)
 
+	# create an enstore_up_down link in the sbin area
+	execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstore_up_down ]; then ln -s $ENSTORE_DIR/src/enstore_up_down.py $ENSTORE_DIR/sbin/enstore_up_down; fi"',NO_UPS_ENV)
+
 	# special treatment for libds.a on IRIX64
 	execute("uname", UPS_ENV, ENSTORE_OSV)
 	# ups can't handle "sh -c `uanme` ...
