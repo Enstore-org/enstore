@@ -592,7 +592,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					     "delayed_dismounts",
 					     "mover")
 	self.del_dismount_list.restore()
-	
+
+        self.lock_file = open(os.path.join(self.db_dir, 'lm_lock'), 'w')
+        self.lm_lock = self.lock_file.read()
+        if not self.lm_lock: self.lm_lock = 'unlocked'
+        Trace.log(e_errors.INFO,"Library manager started in state:%s"%self.lm_lock)
 	
     def set_udp_client(self):
 	self.udpc = udp_client.UDPClient()
@@ -675,6 +679,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    
 	
     def write_to_hsm(self, ticket):
+        if self.lm_lock == 'locked':
+            ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+            self.reply_to_caller(ticket)
+            return
 	#call handle_timeout to avoid the situation when due to
 	# requests from another encp clients TO did not work even if
 	# movers being summoned did not "respond"
@@ -736,6 +744,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    summon_mover(self, mv, ticket)
 
     def read_from_hsm(self, ticket):
+        if self.lm_lock == 'locked':
+            ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+            self.reply_to_caller(ticket)
+            return
 	# check if this volume is OK
 	v = self.vcc.inquire_vol(ticket['fc']['external_label'])
 	if v['system_inhibit'][0] == e_errors.NOACCESS:
@@ -1464,6 +1476,27 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	while mv:
 	   summon_mover(self, mv, {})
 	   mv = idle_mover_next(self, None)
+
+    # change state of the library manager
+    def change_lm_state(self, ticket):
+        if ticket.has_key('state'):
+            if (ticket['state'] == 'locked' or
+                ticket['state'] == 'unlocked'):
+                self.lm_lock = ticket['state']                      
+                self.lock_file.write(ticket['state'])
+                ticket["status"] = (e_errors.OK, None)
+                Trace.log(e_errors.INFO,"Library manager state is changed to:%s"%self.lm_lock)
+            else:
+                ticket["status"] = (e_errors.WRONGPARAMETER, None)
+        else:
+            ticket["status"] = (e_errors.KEYERROR,None)
+	self.reply_to_caller(ticket)
+
+    # get state of the library manager
+    def get_lm_state(self, ticket):
+        ticket['state'] = self.lm_lock
+        ticket["status"] = (e_errors.OK, None)
+	self.reply_to_caller(ticket)
 
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 

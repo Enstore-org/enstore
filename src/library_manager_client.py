@@ -88,6 +88,13 @@ class LibraryManagerClient(generic_client.GenericClient) :
 	print "ID", id
 	return self.send({"work":"remove_work", "unique_id": id})
 
+    def change_lm_state(self, state):
+        return self.send({"work":"change_lm_state", "state": state})
+
+    def get_lm_state(self):
+        return self.send({"work":"get_lm_state"})
+        
+
     def priority(self, id, pri):
 	return self.send({"work":"change_priority", "unique_id": id, "priority": pri})
 
@@ -172,6 +179,9 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 	self.poll = 0
         self.queue_list = 0
         self.host = 0
+        self.start_draining = 0
+        self.stop_draining = 0
+        self.status = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -182,7 +192,8 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             return self.client_options()+\
                    ["get_work", "get_mover_list", "get_suspect_vols",
                     "get_delayed_dismount","delete_work=","priority=",
-                    "load_movers", "summon=", "poll", "get_queue","host="]
+                    "load_movers", "summon=", "poll", "get_queue","host=",
+                    "start_draining", "stop_draining", "status"]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -264,6 +275,13 @@ def do_work(intf):
             lm = None
 	ticket = lmc.get_queue(host, lm)
 	print repr(ticket)
+    elif (intf.start_draining or intf.stop_draining):
+        if intf.start_draining: lock = 'locked'
+        else: lock = 'unlocked'
+        ticket = lmc.change_lm_state(lock)
+    elif (intf.status):
+        ticket = lmc.get_lm_state()
+        print "LM state:%s"%ticket['state']
 	
     else:
 	intf.print_help()
