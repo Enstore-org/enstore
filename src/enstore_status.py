@@ -74,6 +74,7 @@ def parse_encp_line(line):
     Trace.trace(12,"{parse_encp_line "+repr(line))
     [etime, enode, etmp, euser, estatus, etmp2, erest] = \
                                                    string.split(line, None, 6)
+    if 0: print etmp,etmp2 # quiet lint
     if estatus == log_client.sevdict[log_client.INFO]:
         [erest2, erest3] = string.splitfields(erest, ":", 1)
         # erest2 has the file name info which we do not need, get the 
@@ -194,6 +195,7 @@ class EnStatus:
 
     # remove all single quotes
     def unquote(self, string):
+        if 0: print self # quiet lint
         Trace.trace(12,"{unquote "+repr(string))
 	return regsub.gsub("\'", "", string)
         Trace.trace(12,"}unquote ")
@@ -304,6 +306,7 @@ class EnStatus:
 	return string
 
     def format_lm_suspect_vols(self, ticket):
+        if 0: print self # quiet lint
         Trace.trace(12,"{format_lm_suspect_vols "+repr(ticket))
 	str =     "\n    SUSPECT VOLUMES : "
 	spacing = "\n                      "
@@ -327,6 +330,7 @@ class EnStatus:
 
     # parse the library manager moverlist ticket
     def parse_lm_moverlist(self, work):
+        if 0: print self # quiet lint
         Trace.trace(13,"{parse_lm_moverlist")
 	string = "    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT\n"
 	for mover in work:
@@ -335,6 +339,7 @@ class EnStatus:
 	    string = string+"    %(m)-18.18s    %(p)-4.4d    %(s)-10.10s    %(lc)-20.20s    %(tc)-3d\n" % {'m':mover['mover'], 'p':port, 's':mover['state'], 'lc':time, 'tc':mover['summon_try_cnt']}
 
 	string = string+"\n"
+        if 0: print address # quiet lint
         Trace.trace(13,"}parse_lm_moverlist")
 	return string
 
@@ -353,6 +358,7 @@ class EnStatus:
 
     # format the mover status information
     def format_moverstatus(self, ticket):
+        if 0: print self # quiet lint
         Trace.trace(12,"{format_moverstatus "+repr(ticket))
 	spacing = "\n    "
 	string = spacing+"Completed Transfers : "+repr(ticket["no_xfers"])
@@ -487,6 +493,7 @@ class EncpFile:
 
     # format the line saying there have been no encp requests
     def format_no_encp(self):
+        if 0: print self # quiet lint
 	Trace.trace(10,"{}format_no_encp ")
 	return "\nencp            : NONE\n"
 
@@ -518,6 +525,7 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 
     # format the encp info taken from the log file
     def format_encp(self, lines, key):
+        if 0: print self # quiet lint
 	Trace.trace(13,"{format_encp ")
 	prefix =  "\n                     "
 	str = key+"            : "
@@ -591,6 +599,7 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 
     # format the encp info taken from the log file
     def format_encp(self, lines, key):
+        if 0: print self,key # quiet lint
 	Trace.trace(13,"{format_encp ")
 	str = "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
 	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
@@ -697,9 +706,11 @@ class EnDataFile(EnFile):
     # check the line to see if the date and timestamp on the beginning of it
     # is between the given start and end values
     def check_line(self, line, start_time, stop_time):
+        if 0: print self # quiet lint
 	Trace.trace(10,"{check_line ")
 	# split the line into the date/time and all the rest
 	[datetime, rest] = string.split(line, None, 1)
+        if 0: print rest # quiet lint
 	# remove the beginning LOG_PREFIX
 	l = regsub.gsub(LOG_PREFIX, "", datetime)
 	# now see if the date/time is between the start time and the end time
@@ -717,9 +728,11 @@ class EnMountDataFile(EnDataFile):
 
     # parse the mount line
     def parse_line(self, line):
+        if 0: print self # quiet lint
 	Trace.trace(12,"{parse_line "+repr(line))
 	[etime, enode, etmp, euser, estatus, dev, erest] = \
                                                    string.split(line, None, 6)
+        if 0: print etmp #quiet lint
 	if erest[0:10] == "Requesting":
 	    # this is the request for the mount
 	    start = MREQUEST
@@ -745,6 +758,7 @@ class EnEncpDataFile(EnDataFile):
 
     # parse the encp line
     def parse_line(self, line):
+        if 0: print self # quiet lint
 	Trace.trace(12,"{parse_line "+repr(line))
 	einfo = parse_encp_line(line)
 	if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
