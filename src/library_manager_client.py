@@ -17,6 +17,7 @@ import generic_client
 import udp_client
 import Trace
 import e_errors
+import enstore_functions
 
 MY_NAME = ".LM"
 
