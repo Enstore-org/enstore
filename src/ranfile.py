@@ -21,14 +21,14 @@ if __name__ == "__main__" :
     list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["size=","file=","list=","help"]
+    options = ["size=","file=","list=","verbose","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--size" :
             size = string.atoi(value)
         elif opt == "--file" :
             file = value
-        elif opt == "--list" :
+        elif opt == "--list" or opt == "--verbose":
             list = 1
         elif opt == "--help" :
             print "python ",sys.argv[0], options

@@ -11,33 +11,33 @@ ecmd ping    (no options/arguments)
 ecmd stop    (no options/arguments)
 ecmd restart (no options/arguments)
 
-ecmd encp    [--config_list --list --help ] inputfilename outputfilename
+ecmd encp    [--config_list --verbose --help ] inputfilename outputfilename
 
-ecmd config  [--config_list --config_file=  --dict --load --list --alive --help ]
-ecmd fcc     [--config_list --bfids --bfid= --list --alive --help ]
-ecmd vcc     [--config_list --vols  --vol=  --list --alive --help ']
-ecmd lmc     [--config_list --getwork     --list --alive --help '] library
+ecmd config  [--config_list --config_file=  --dict --load --verbose --alive --help ]
+ecmd fcc     [--config_list --bfids --bfid= --verbose --alive --help ]
+ecmd vcc     [--config_list --vols  --vol=  --verbose --alive --help ']
+ecmd lmc     [--config_list --getwork     --verbose --alive --help '] library
 ecmd mcc     [--config_list -list --alive --help ']  media_changer volume drive
 
-ecmd bfids   [--config_list --list --help']
+ecmd bfids   [--config_list --verbose --help']
 
-ecmd bfid    bfid [--config_list --list --help']
+ecmd bfid    bfid [--config_list --verbose --help']
 
-ecmd vols    [--config_list --list --help']
+ecmd vols    [--config_list --verbose --help']
 
-ecmd vol    external_label [--config_list --list --help']
+ecmd vol    external_label [--config_list --verbose --help']
 
-ecmd addvol  [--config_list --vols  --vol=  --list --help'] library file_family
+ecmd addvol  [--config_list --vols  --vol=  --verbose --help'] library file_family
              media_type  volume_name, volume_byte_capacity remaining_capacity
-ecmd delvol  [--config_list --vols  --vol=  --list --help'] volume_name
-ecmd clrvol  [--config_list --vols  --vol=  --list --help'] volume_name
+ecmd delvol  [--config_list --vols  --vol=  --verbose --help'] volume_name
+ecmd clrvol  [--config_list --vols  --vol=  --verbose --help'] volume_name
 
-ecmd pnfs    [--test --status --file= --list --help]
+ecmd pnfs    [--test --status --file= --verbose --help]
 
-ecmd rawdriver-test [--size= --device= --eod_cookie= --list --help]
+ecmd rawdriver-test [--size= --device= --eod_cookie= --verbose --help]
 ecmd callback       (no options/arguments)
-ecmd udp-test       [--msg= --host= --port= --list --help]
-ecmd random-file    [--size= --file= --list= --help']
+ecmd udp-test       [--msg= --host= --port= --verbose --help]
+ecmd random-file    [--size= --file= --verbose= --help']
 ecmd cpio    inputfilename outputarchive
 
 ecmd zero    (no options/arguments)

@@ -537,7 +537,7 @@ if __name__ == "__main__" :
     list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["test","status","file=","list","help"]
+    options = ["test","status","file=","list","verbose""help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--test" :
@@ -547,7 +547,7 @@ if __name__ == "__main__" :
         elif opt == "--file" :
             info = 1
             file = value
-        elif opt == "--list" :
+        elif opt == "--list" or opt == "--verbose":
             list = 1
         elif opt == "--help" :
             print "python",sys.argv[0], options

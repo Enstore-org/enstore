@@ -140,7 +140,7 @@ if __name__ == "__main__" :
     list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["msg=","host=","port=","list","help"]
+    options = ["msg=","host=","port=","list","verbose","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--msg" :
@@ -149,7 +149,7 @@ if __name__ == "__main__" :
             host = value
         elif opt == "--port" :
             port = string.atoi(value)
-        elif opt == "--list" :
+        elif opt == "--list" or opt == "--verbose":
             list = 1
         elif opt == "--help" :
             print "python ",sys.argv[0], options

@@ -77,7 +77,7 @@ class  FTTDriver(GenericDriver) :
     def close_file_read(self) :
         self.position = self.position + 1
         stats = ETape.ET_CloseRead(self.ETdesc)
-        
+
         if stats[1] != "Invalid":
           self.rd_access = string.atoi(stats[1])
         if stats[2] != "Invalid":
@@ -98,7 +98,7 @@ class  FTTDriver(GenericDriver) :
         self.position = self.eod
         if stats[0] != "Invalid" :
           #self.remaining_bytes = repr(1024L * (eval(stats[0])-1024) )[:-1]
-	   self.remaining_bytes = 1024L*(string.atoi(stats[0])-1024)
+           self.remaining_bytes = 1024L*(string.atoi(stats[0])-1024)
         else :
           self.remaining_bytes = self.remaining_bytes - stats[3] - 1024L*1024L
         self.wr_access = string.atoi(stats[1])
@@ -206,16 +206,16 @@ if __name__ == "__main__" :
     list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["size=","device=","eod_cookie=","list","help"]
+    options = ["size=","device=","eod_cookie=","list","verbose","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--size" :
             size = string.atoi(value)
         elif opt == "--device" :
             device = value
-        elif opt == "--eod_cookie" :
+        elif opt == "--eod_cookie":
             eod_cookie = value
-        elif opt == "--list" :
+        elif opt == "--list" or opt == "--verbose":
             list = 1
         elif opt == "--help" :
             print "python ",sys.argv[0], options
