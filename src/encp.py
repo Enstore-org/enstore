@@ -197,8 +197,8 @@ def write_to_hsm(input_files, output, output_file_family='',
     host, port, listen_socket = callback.get_callback()
     callback_addr = (host, port)
     listen_socket.listen(4)
-    Trace.trace(10,'write_to_hsm got callback host='+repr(host)+\
-                ' port='+repr(port)+' listen_socket='+\
+    Trace.trace(10,'write_to_hsm got callback host='+repr(host)+
+                ' port='+repr(port)+' listen_socket='+
 		repr(listen_socket))
 
     tinfo["get_callback"] = time.time() - t1 #----------------------End
@@ -217,11 +217,11 @@ def write_to_hsm(input_files, output, output_file_family='',
     fticket = csc.get("file_clerk")
     if fticket['status'][0] != e_errors.OK:
 	print_data_access_layer_format('', '', 0, fticket)
-	jraise(fticket['status'][0], " encp.write_to_hsm: " \
-	       + ", ticket[\"status\"]="+repr(fticket["status"]))
+	jraise(fticket['status'][0], " encp.write_to_hsm: " 
+               ", ticket[\"status\"]="+repr(fticket["status"]))
 
     file_clerk_address = (fticket["hostip"],fticket["port"])
-    Trace.trace(10,"write_to_hsm file clerk at host="+\
+    Trace.trace(10,"write_to_hsm file clerk at host="+
                 repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
     tinfo["get_fileclerk"] = time.time() - t1 #---------------------End
@@ -236,11 +236,11 @@ def write_to_hsm(input_files, output, output_file_family='',
     vcticket = csc.get("volume_clerk")
     if vcticket['status'][0] != e_errors.OK:
 	print_data_access_layer_format('', '', 0, vcticket)
-	jraise(vcticket['status'][0], " encp.write_to_hsm: " \
-	       + ", ticket[\"status\"]="+repr(vcticket["status"]))
+	jraise(vcticket['status'][0], " encp.write_to_hsm: " 
+               ", ticket[\"status\"]="+repr(vcticket["status"]))
 
     volume_clerk_address = (vcticket["hostip"],vcticket["port"])
-    Trace.trace(10,"write_to_hsm volume clerk at host="+\
+    Trace.trace(10,"write_to_hsm volume clerk at host="+
                 repr(vcticket["hostip"])+" port="+repr(vcticket["port"]))
 
     tinfo["get_volumeclerk"] = time.time() - t1 #---------------------End
@@ -261,16 +261,16 @@ def write_to_hsm(input_files, output, output_file_family='',
     # ask configuration server what port library manager is using
     # note again:libraries have are identical since there is 
     # 1 output directory
-    Trace.trace(10,"write_to_hsm calling config server to find "+\
+    Trace.trace(10,"write_to_hsm calling config server to find "+
                 library[0]+".library_manager")
     vticket = csc.get(library[0]+".library_manager")
     if vticket['status'][0] != e_errors.OK:
 	print_data_access_layer_format('', '', 0, vticket)
-	jraise(vticket['status'][0], " encp.write_to_hsm: " \
-	       + ", ticket[\"status\"]="+repr(vticket["status"]))
+	jraise(vticket['status'][0], " encp.write_to_hsm: " 
+	       ", ticket[\"status\"]="+repr(vticket["status"]))
 	
-    Trace.trace(10,"write_to_hsm."+ \
-		library[0]+".library_manager at host="+\
+    Trace.trace(10,"write_to_hsm."+ 
+		library[0]+".library_manager at host="+
                 repr(vticket["hostip"])+" port="+repr(vticket["port"]))
 
     tinfo["get_libman"] = time.time() - t1 #-----------------------End
@@ -349,7 +349,7 @@ def write_to_hsm(input_files, output, output_file_family='',
             tinfo1["tot_to_send_ticket"+repr(i)] = t1 - t0
             system_enabled(p) # make sure system still enabled before submitting
             Trace.trace(7,"write_to_hsm q'ing:"+repr(work_ticket))
-            ticket = u.send(work_ticket, (vticket['hostip'], \
+            ticket = u.send(work_ticket, (vticket['hostip'], 
 					  vticket['port']))
             if verbose > 3:
                 print "ENCP: write_to_hsm LM returned"
@@ -357,10 +357,10 @@ def write_to_hsm(input_files, output, output_file_family='',
             if ticket['status'][0] != e_errors.OK :
 		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], ticket)
                 jraise(errno.errorcode[errno.EPROTO],\
-		       " encp.write_to_hsm: "\
-                       "from u.send to " +library[i]+" at "\
-                       +vticket['hostip']+"/"+repr(vticket['port'])\
-                       +", ticket[\"status\"]="+repr(ticket["status"]))
+		       " encp.write_to_hsm: "
+                       "from u.send to " +library[i]+" at " +
+                       vticket['hostip']+"/"+repr(vticket['port'])+
+                       ", ticket[\"status\"]="+repr(ticket["status"]))
 
             tinfo1["send_ticket"+repr(i)] = time.time() - t1 #--Lap End
             if verbose:
@@ -396,17 +396,16 @@ def write_to_hsm(input_files, output, output_file_family='',
                 callback_id = ticket['unique_id']
                 # compare strings not floats (floats fail comparisons)
                 if str(unique_id[i])==str(callback_id):
-                    Trace.trace(10,"write_to_hsm mover called back "+\
-                                "on control_socket="+\
-				repr(control_socket)+\
+                    Trace.trace(10,"write_to_hsm mover called back "+
+                                "on control_socket="+
+				repr(control_socket)+
                                 " address="+repr(address))
                     break
                 else:
-                    print("encp write_to_hsm: imposter called us, "+\
-			  "trying again")
-                    Trace.trace(10,"write_to_hsm mover imposter "+\
-				"called us control_socket="+\
-				repr(control_socket)+\
+                    print "encp write_to_hsm: imposter called us, trying again"
+                    Trace.trace(10,"write_to_hsm mover imposter "+
+				"called us control_socket="+
+				repr(control_socket)+
                                 " address="+repr(address))
                     control_socket.close()
 
@@ -415,11 +414,11 @@ def write_to_hsm(input_files, output, output_file_family='',
             if ticket["status"][0] != e_errors.OK :
 		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], ticket)
 
-                jraise(errno.errorcode[errno.EPROTO],\
-		       " encp.write_to_hsm: "+\
-                       "1st (pre-file-send) mover callback on socket "\
-                       +repr(address)+", failed to setup transfer: "\
-                       +"ticket[\"status\"]="+repr(ticket["status"]),2)
+                jraise('EPROTO',
+		       " encp.write_to_hsm: "+
+                       "1st (pre-file-send) mover callback on socket "+
+                       repr(address)+", failed to setup transfer: "+
+                       "ticket[\"status\"]="+repr(ticket["status"]),2)
 		pass
 
             tinfo1["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
@@ -449,10 +448,10 @@ def write_to_hsm(input_files, output, output_file_family='',
 		in_file = open(inputlist[i], "r")
 		mycrc = 0
 		bufsize = 65536*4
-		Trace.trace(7,"write_to_hsm: sending data to EXfer file="+\
-			    inputlist[i]+" socket="+\
-			    repr(data_path_socket)+\
-			    " bufsize="+repr(bufsize)+" chk_crc="+\
+		Trace.trace(7,"write_to_hsm: sending data to EXfer file="+
+			    inputlist[i]+" socket="+
+			    repr(data_path_socket)+
+			    " bufsize="+repr(bufsize)+" chk_crc="+
 			    repr(chk_crc))
 		statinfo = os.stat(inputlist[i])
                 if not bytecount and statinfo[stat.ST_SIZE] != fsize:
@@ -473,9 +472,9 @@ def write_to_hsm(input_files, output, output_file_family='',
 					   fsize, bufsize, crc_flag, 0, ipc_flag )
 		except (EXfer.error), err_msg:
                     # this error used to be a 0
-		    Trace.trace(6,"write_to_hsm EXfer error:"+\
-				str(sys.argv)+" "+\
-				str(sys.exc_info()[0])+" "+\
+		    Trace.trace(6,"write_to_hsm EXfer error:"+
+				str(sys.argv)+" "+
+				str(sys.exc_info()[0])+" "+
 				str(sys.exc_info()[1]))
 
 		    # might as well close our end --- we will either exit or
@@ -538,8 +537,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 		tinfo1["sent_bytes"+repr(i)] = time.time()-t1 #-----Lap-End
 		if verbose>1:
 		    if tinfo1["sent_bytes"+repr(i)]!=0:
-			wtrate = 1.*fsize/1024./1024./tinfo1["sent_bytes"+\
-							     repr(i)]
+			wtrate = 1.*fsize/1024./1024./tinfo1["sent_bytes"+repr(i)]
 		    else:
 			wdrate = 0.0
 			print "  bytes:",fsize, " Socket Write Rate = ",\
@@ -561,8 +559,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 	    # We know the file has hit some sort of media.... 
 	    # when this occurs. Create a file in pnfs namespace with
 	    #information about transfer.
-	    Trace.trace(10,"write_to_hsm waiting for final "+
-			"mover dialog on"+
+	    Trace.trace(10,"write_to_hsm waiting for final mover dialog on"+
 			repr(control_socket))
 	    done_ticket = callback.read_tcp_obj(control_socket)
 	    control_socket.close()
@@ -599,9 +596,9 @@ def write_to_hsm(input_files, output, output_file_family='',
                 elif mover_crc != mycrc :
                     done_ticket['status']=('EPROTO', "CRC mismatch")
 		    print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
-                    jraise(errno.errorcode[errno.EPROTO],\
-                           " encp.write_to_hsm: CRC's mismatch: "\
-                           +repr(mover_crc)+\
+                    jraise('EPROTO',
+                           " encp.write_to_hsm: CRC's mismatch: "+
+                           repr(mover_crc)+
 			   " "+repr(mycrc))
 
 	    tinfo1["final_dialog"] = time.time()-t1 #----------Lap End
@@ -613,7 +610,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 	    t1 = time.time() #-------------------------------Lap Start
 
 	    # create a new pnfs object pointing to current output file
-	    Trace.trace(10,"write_to_hsm adding to pnfs "+\
+	    Trace.trace(10,"write_to_hsm adding to pnfs "+
 			outputlist[i])
 	    p=pnfs.Pnfs(outputlist[i])
 	    # save the bfid and set the file size
@@ -641,9 +638,9 @@ def write_to_hsm(input_files, output, output_file_family='',
 		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
 
 		jraise(errno.errorcode[errno.EPROTO],
-		       " encp.write_to_hsm: from u.send to FC at "+\
-		       fticket['hostip']+"/"+repr(fticket['port'])\
-		       +", ticket[\"status\"]="+\
+		       " encp.write_to_hsm: from u.send to FC at "+
+		       fticket['hostip']+"/"+repr(fticket['port'])+
+		       ", ticket[\"status\"]="+
 		       repr(done_ticket["status"]))
 
 	    # store debugging info about transfer
@@ -654,7 +651,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
 	    tinfo1["pnfsupdate"+repr(i)] = time.time() - t1 #--Lap End
 	    if verbose>1:
-		print "  dt:",tinfo1["pnfsupdate"+repr(i)],\
+		print "  dt:",tinfo1["pnfsupdate"+repr(i)], \
 		      "   cumt=",time.time()-t0
 
 
@@ -754,9 +751,9 @@ def read_from_hsm(input_files, output,
                   t0=0):
     if t0==0:
         t0 = time.time()
-    Trace.trace(6,"read_from_hsm input_files="+repr(input_files)+\
-                " output="+repr(output)+" config_host="+repr(config_host)+\
-                " config_port="+repr(config_port)+" verbose="+repr(ilist)+\
+    Trace.trace(6,"read_from_hsm input_files="+repr(input_files)+
+                " output="+repr(output)+" config_host="+repr(config_host)+
+                " config_port="+repr(config_port)+" verbose="+repr(ilist)+
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
     tinfo = {}
     tinfo["abs_start"] = t0
@@ -835,7 +832,7 @@ def read_from_hsm(input_files, output,
     host, port, listen_socket = callback.get_callback()
     client['callback_addr'] = (host, port)
     listen_socket.listen(4)
-    Trace.trace(10,'read_from_hsm got callback host='+repr(host)+\
+    Trace.trace(10,'read_from_hsm got callback host='+repr(host)+
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
 
     tinfo["get_callback"] = time.time() - t1 #-----------------------------End
@@ -853,10 +850,10 @@ def read_from_hsm(input_files, output,
     fticket = client['csc'].get("file_clerk")
     if fticket['status'][0] != e_errors.OK:
 	print_data_access_layer_format('', '', 0, fticket)
-	jraise(fticket['status'][0], " encp.read_from_hsm: " \
-	       + ", ticket[\"status\"]="+repr(fticket["status"]))
+	jraise(fticket['status'][0], " encp.read_from_hsm: " 
+               ", ticket[\"status\"]="+repr(fticket["status"]))
     file_clerk_address = (fticket["hostip"],fticket["port"])
-    Trace.trace(10,"read_from_hsm file clerk at host="+\
+    Trace.trace(10,"read_from_hsm file clerk at host="+
                 repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
     tinfo["get_fileclerk"] = time.time() - t1 #-----------------------------End
@@ -869,10 +866,10 @@ def read_from_hsm(input_files, output,
     vticket = client['csc'].get("volume_clerk")
     if vticket['status'][0] != e_errors.OK:
 	print_data_access_layer_format('', '', 0, vticket)
-	jraise(vticket['status'][0], " encp.read_from_hsm: " \
-	       + ", ticket[\"status\"]="+repr(vticket["status"]))
+	jraise(vticket['status'][0], " encp.read_from_hsm: " 
+	       ", ticket[\"status\"]="+repr(vticket["status"]))
     volume_clerk_address = (vticket["hostip"],vticket["port"])
-    Trace.trace(10,"read_from_hsm volume clerk at host="+\
+    Trace.trace(10,"read_from_hsm volume clerk at host="+
                 repr(vticket["hostip"])+" port="+repr(vticket["port"]))
 
     tinfo["get_volumeclerk"] = time.time() - t1 #-----------------------------End
@@ -888,15 +885,15 @@ def read_from_hsm(input_files, output,
     # call file clerk and get file info about each bfid
     for i in range(0,ninput):
         t2 = time.time() # -------------------------------------------Lap-Start
-        Trace.trace(7,"read_from_hsm calling file clerk for bfid="+\
+        Trace.trace(7,"read_from_hsm calling file clerk for bfid="+
                     repr(bfid[i]))
         binfo  = client['u'].send({'work': 'bfid_info', 'bfid': bfid[i]},
                         (fticket['hostip'],fticket['port']))
         if binfo['status'][0]!=e_errors.OK:
 	    print_data_access_layer_format('', '', 0, binfo)
-            jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
-                   +" can not get info on bfid"+repr(bfid[i]))
-        Trace.trace(7,"read_from_hsm on volume="+\
+            jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "
+                   " can not get info on bfid"+repr(bfid[i]))
+        Trace.trace(7,"read_from_hsm on volume="+
                     repr(binfo['fc']['external_label']))
 	if binfo['vc']['system_inhibit'] == e_errors.NOACCESS:
 	    binfo['status'] = (e_errors.NOACCESS, None)
@@ -1121,8 +1118,8 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
       # get LM info from Config Server only if it is different
       if (current_library != rq_list[j]["library"]):
 	  current_library = rq_list[j]["library"]
-	  Trace.trace(8,"submit_read_requests calling config server\
-	  to find "+rq_list[j]["library"]+".library_manager")
+	  Trace.trace(8,"submit_read_requests calling config server to find"+
+                      rq_list[j]["library"]+".library_manager")
       if verbose > 3:
 	  print "calling Config. Server to get LM info for", \
 		current_library
@@ -1130,20 +1127,20 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
       if lmticket["status"][0] != e_errors.OK:
 	  pprint.pprint(lmticket)
 	  # this error used to be a 0
-	  Trace.trace(6,"submit_read_requests. lmget failed"+ \
+	  Trace.trace(6,"submit_read_requests. lmget failed"+ 
 		      repr(lmticket["status"]))
 	  print_data_access_layer_format(rq_list[j]["infile"], 
 					 rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
 					 rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
 					 lmticket)
-	  print_error(errno.errorcode[errno.EPROTO],\
-		      " submit_read_requests. lmget failed "+\
+	  print_error(errno.errorcode[errno.EPROTO],
+		      " submit_read_requests. lmget failed "+
 		      repr(lmticket["status"]))
 	  continue
 
-      Trace.trace(8,"submit_read_requests "+ current_library+\
-		  ".library_manager at host="+\
-		  repr(lmticket["hostip"])+\
+      Trace.trace(8,"submit_read_requests "+ current_library+
+		  ".library_manager at host="+
+		  repr(lmticket["hostip"])+
 		  " port="+repr(lmticket["port"]))
       # send to library manager and tell user
       ticket = client['u'].send(rq_list[j]["work_ticket"], 
@@ -1156,11 +1153,11 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 					 rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
 					 rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
 					 ticket)
-	  print_error(errno.errorcode[errno.EPROTO],\
-		      " encp.read_from_hsm: from"\
-		      +"u.send to LM at "+lmticket['hostip']+"/"\
-		      +repr(lmticket['port']) +", ticket[\"status\"]="\
-		      +repr(ticket["status"]))
+	  print_error('EPROTO',
+		      " encp.read_from_hsm: from"
+		      "u.send to LM at "+lmticket['hostip']+"/"+
+		      repr(lmticket['port']) +", ticket[\"status\"]="+
+		      repr(ticket["status"]))
 	  continue
       submitted = submitted+1
 
@@ -1170,23 +1167,23 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 	      format = "  Q'd: %s %s bytes: %d on %s %s "\
 		       "dt: %f   cumt=%f"
 	      Qd = format %\
-		   (rq_list[j]["work_ticket"]["wrapper"]["fullname"],\
-		    rq_list[j]["bfid"],\
-		    rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],\
-		    rq_list[j]["work_ticket"]["fc"]["external_label"],\
-		    rq_list[j]["work_ticket"]["fc"]["location_cookie"],\
-		    tinfo["send_ticket"+repr(rq_list[j]["index"])], \
+		   (rq_list[j]["work_ticket"]["wrapper"]["fullname"],
+		    rq_list[j]["bfid"],
+		    rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
+		    rq_list[j]["work_ticket"]["fc"]["external_label"],
+		    rq_list[j]["work_ticket"]["fc"]["location_cookie"],
+		    tinfo["send_ticket"+repr(rq_list[j]["index"])], 
 		    time.time()-tinfo['abs_start'])
 	  else:
 	      Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s "\
 		   "dt: %f   cumt=%f" %\
-		   (Qd,\
-		    rq_list[j]["work_ticket"]["wrapper"]["fullname"],\
-		    rq_list[j]["bfid"],\
-		    rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],\
-		    rq_list[j]["work_ticket"]["fc"]["external_label"],\
-		    rq_list[j]["work_ticket"]["fc"]["location_cookie"],\
-		    tinfo["send_ticket"+repr(rq_list[j]["index"])], \
+		   (Qd,
+		    rq_list[j]["work_ticket"]["wrapper"]["fullname"],
+		    rq_list[j]["bfid"],
+		    rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
+		    rq_list[j]["work_ticket"]["fc"]["external_label"],
+		    rq_list[j]["work_ticket"]["fc"]["location_cookie"],
+		    tinfo["send_ticket"+repr(rq_list[j]["index"])], 
 		    time.time()-tinfo['abs_start'])
     
   return submitted, Qd
@@ -1228,13 +1225,13 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                     forus = 1
                     break
             if forus==1:
-                Trace.trace(8,"read_hsm_files: mover called back on "+\
-                            "control_socket="+repr(control_socket)+\
+                Trace.trace(8,"read_hsm_files: mover called back on "+
+                            "control_socket="+repr(control_socket)+
                             " address="+repr(address))
                 break
             else:
-                Trace.trace(8,"read_hsm_files: mover imposter called us "+\
-                            "control_socket="+repr(control_socket)+\
+                Trace.trace(8,"read_hsm_files: mover imposter called us "+
+                            "control_socket="+repr(control_socket)+
                             " address="+repr(address))
                 #control_socket.close()
 		break
@@ -1253,15 +1250,15 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		if files_left > 0:
 		    files_left = files_left - 1
 		print_error (errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "
-	       		 +"1st (pre-file-read) mover callback on socket "
-	       		 +repr(address)+", failed to setup transfer: "
-	       		 +"ticket[\"status\"]="+repr(ticket["status"]))
+                             "1st (pre-file-read) mover callback on socket "+
+                             repr(address)+", failed to setup transfer: "
+                             "ticket[\"status\"]="+repr(ticket["status"]))
 		continue
 
 	    print_error (errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "
-                   +"1st (pre-file-read) mover callback on socket "
-                   +repr(address)+", failed to setup transfer: "
-                   +"ticket[\"status\"]="+repr(ticket["status"]))
+                         "1st (pre-file-read) mover callback on socket "+
+                         repr(address)+", failed to setup transfer: "+
+                         "ticket[\"status\"]="+repr(ticket["status"]))
 
 	    if ticket['retry_cnt'] >= maxretry:
 		del(requests[j])
@@ -1302,8 +1299,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 done_ticket  = {'status':(e_errors.NOACCESS,None)}
                 error = e_errors.NOACCESS
                 
-	    Trace.trace(8,"read_hsm_files: reading data to  file="+\
-			requests[j]['infile']+" socket="+repr(data_path_socket)+\
+	    Trace.trace(8,"read_hsm_files: reading data to  file="+
+			requests[j]['infile']+" socket="+repr(data_path_socket)+
 			" bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
 
 	    # read file, crc the data if user has request crc check
@@ -1362,7 +1359,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                             print_error ('EPROTO',
                                          " encp.read_from_hsm: 2nd (post-file-send)"+
                                          "mover callback on socket "+
-                                         +repr(address)+", failed to transfer: "+
+                                         repr(address)+", failed to transfer: "+
                                          "done_ticket[\"status\"]="+
                                          repr(done_ticket["status"]))
                             continue
@@ -1401,7 +1398,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         t2 = time.time() #----------------------------------------Lap-Start
 
         # File has been read - wait for final dialog with mover.
-        Trace.trace(8,"read_hsm_files waiting for final mover dialog on"+\
+        Trace.trace(8,"read_hsm_files waiting for final mover dialog on"+
                     repr(control_socket))
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
@@ -1423,17 +1420,17 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		if files_left > 0:
 		    files_left = files_left - 1
 		print_error ('EPROTO', " encp.read_from_hsm: "
-		       +"2nd (post-file-read) mover callback on socket "
-		       +repr(address)+", failed to transfer: "
-		       +"done_ticket[\"status\"]="
-		       +repr(done_ticket["status"]))
+                             "2nd (post-file-read) mover callback on socket "+
+                             repr(address)+", failed to transfer: "+
+                             "done_ticket[\"status\"]="+
+                             repr(done_ticket["status"]))
 		continue
 
 
             print_error(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "
-                   +"2nd (post-file-read) mover callback on socket "
-                   +repr(address)+", failed to transfer: "
-                   +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
+                        "2nd (post-file-read) mover callback on socket "+
+                        repr(address)+", failed to transfer: "+
+                        "done_ticket[\"status\"]="+repr(done_ticket["status"]))
 
 	    if ticket['retry_cnt'] >= maxretry:
 		del(requests[j])
@@ -1469,7 +1466,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		requests.remove(requests[j])
                 try: os.remove(tempname)
                 except os.error:
-                    print_error('EACCESS',
+                    print_error('EACCES',
                                 "cannot remove temporary file %s" %tempname)
 		if files_left > 0:
 		    files_left = files_left - 1
@@ -1655,7 +1652,7 @@ def jraise(errcode,errmsg,exit_code=1) :
     except:
         pass
     # this error used to be a 0
-    Trace.trace(6,"encp.jraise and exitting with code="+\
+    Trace.trace(6,"encp.jraise and exitting with code="+
                 repr(exit_code))
     sys.stdout=x
     sys.exit(exit_code)
@@ -1677,7 +1674,8 @@ def clients(config_host,config_port,verbose):
                           alive_retries)
     except:
         stati={}
-        stati["status"] = (e_errors.CONFIGDEAD,"Config at "+repr(config_host)+" port="+repr(config_port))
+        stati["status"] = (e_errors.CONFIGDEAD,"Config at "+
+                           repr(config_host)+" port="+repr(config_port))
     if stati['status'][0] != e_errors.OK:
         print_data_access_layer_format("","",0, stati)
         jraise(stati['status']," NO response on alive to config",1)
@@ -1715,9 +1713,9 @@ def clients(config_host,config_port,verbose):
 def system_enabled(p):                 # p is a  pnfs object
     running = p.check_pnfs_enabled()
     if running != pnfs.ENABLED :
-        print_data_access_layer_format("","","",{'status':("EACCESS", "Pnfs disabled")})
+        print_data_access_layer_format("","","",{'status':("EACCES", "Pnfs disabled")})
         jraise(errno.errorcode[errno.EACCES]," encp.system_enabled: "
-               +"system disabled"+running)
+               "system disabled"+running)
     Trace.trace(10,"system_enabled running="+running)
 
 ##############################################################################
@@ -1756,9 +1754,9 @@ def pnfs_information(filelist,nfiles):
         pinf['inode'] = 0                  # cpio wrapper needs this also
         pinfo.append(pinf)
 
-    Trace.trace(16,"pnfs_information bfid="+repr(bfid)+\
-                " library="+repr(library)+" file_family="+repr(file_family)+\
-                " wrapper type"+repr(ff_wrapper)+" width="+repr(width)+\
+    Trace.trace(16,"pnfs_information bfid="+repr(bfid)+
+                " library="+repr(library)+" file_family="+repr(file_family)+
+                " wrapper type"+repr(ff_wrapper)+" width="+repr(width)+
 		" pinfo="+repr(pinfo)+" p="+repr(p))
     return (bfid,library,file_family,ff_wrapper,width,pinfo,p)
 
@@ -1812,9 +1810,9 @@ def inputfile_check(input_files, bytecount=None):
 
         # input files must exist
         if not access.access(inputlist[i],access.R_OK):
-            print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCESS','No such file')})
-            jraise('EACCES'," encp.inputfile_check: "
-                   +inputlist[i]+", NO read access to file")
+            print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCES','No such file')})
+            jraise('EACCES'," encp.inputfile_check: "+
+                   inputlist[i]+", NO read access to file")
 
         # get the file size
         statinfo = os.stat(inputlist[i])
@@ -1826,9 +1824,11 @@ def inputfile_check(input_files, bytecount=None):
 
         # input files can't be directories
         if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
-            print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCESS','Not a regular file')})
-            jraise(errno.errorcode[errno.EPROTO]," encp.inputfile_check: "
-                   +inputlist[i]+" is not a regular file")
+            print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCES','Not a regular file')})
+
+            jraise('EACCES'," encp.inputfile_check: "+
+                   inputlist[i]+" is not a regular file")
+
 
     # we can not allow 2 input files to be the same
     # this will cause the 2nd to just overwrite the 1st
@@ -1836,8 +1836,8 @@ def inputfile_check(input_files, bytecount=None):
         for j in range(i+1,ninput):
             if inputlist[i] == inputlist[j]:
                 print_data_access_layer_format(inputlist[j],'',0,{'status':('EPROTO','Duplicate entry')})
-                jraise('EPROTO'," encp.inputfile_check: "
-                       +inputlist[i]+" is the duplicated - not allowed")
+                jraise('EPROTO'," encp.inputfile_check: "+
+                       inputlist[i]+" is the duplicated - not allowed")
 
     return (ninput, inputlist, file_size)
 
@@ -1884,8 +1884,11 @@ def outputfile_check(ninput,inputlist,output):
             omachine, ofullname, odir, obasename = fullpath(outputlist[i])
             if not os.path.exists(odir):
                 # directory doesn't exist - error
-                print_data_access_layer_format(inputlist[i],outputlist[i],0,{'status':
-                                                                            ('EEXIST', "No such directory"+odir)})
+                print_data_access_layer_format(inputlist[i],
+                                               outputlist[i],
+                                               0,
+                                               {'status':
+                                                ('EEXIST', "No such directory"+odir)})
                 jraise('EEXIST'," encp.outputfile_check:"
                        " base directory doesn't exist for "+outputlist[i])
 
@@ -1914,16 +1917,16 @@ def outputfile_check(ninput,inputlist,output):
             else:
                 print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status':
                                                                       ('EEXIST', None)})
-                jraise(errno.errorcode[errno.EEXIST]," encp.outputfile_check: "
-                       +outputlist[i]+" already exists")
+                jraise(errno.errorcode[errno.EEXIST]," encp.outputfile_check: "+
+                       outputlist[i]+" already exists")
 
         # need to check that directory is writable
         # since all files go to one output directory, one check is enough
         if i==0:
             if not access.access(odir,access.W_OK):
                 print_data_access_layer_format("",odir,0,{'status':('EEXIST',None)})
-                jraise(errno.errorcode[errno.EACCES]," encp.write_to_hsm: "
-                       +" NO write access to directory "+odir)
+                jraise(errno.errorcode[errno.EACCES]," encp.write_to_hsm: "+
+                       " NO write access to directory "+odir)
 
     # we can not allow 2 output files to be the same
     # this will cause the 2nd to just overwrite the 1st
@@ -1934,8 +1937,8 @@ def outputfile_check(ninput,inputlist,output):
             if outputlist[i] == outputlist[j]:
                 print_data_access_layer_format('',outputlist[j],0,
                                                {'status':('EPROTO',"Duplicated entry")})
-                jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "
-                       +outputlist[i]+" is duplicated - not allowed")
+                jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "+
+                       outputlist[i]+" is duplicated - not allowed")
 
     return outputlist
 
