@@ -372,7 +372,7 @@ def bind_volume( self, external_label ):
             Trace.log(e_errors.INFO,'Completed  precautionary offline/eject of device'+str(mvr_config['device']))
 
 	self.vol_info['read_errors_this_mover'] = 0
-        tmp_mc = str({"media_changer":mvr_config['media_changer']})
+        tmp_mc = ", "+str({"media_changer":mvr_config['media_changer']})
         Trace.log(e_errors.INFO,'Requesting media changer load '+str(tmp_vol_info)+" "+tmp_mc+' '+str(self.config['mc_device']))
 	try: rsp = self.mcc.loadvol( tmp_vol_info, self.config['name'],
 				self.config['mc_device'], vcc )
