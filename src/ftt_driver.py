@@ -101,7 +101,6 @@ class FTTDriver(driver.Driver):
                 elif detail.errno == ftt.SUCCESS: ###XXX hack - why are we getting this?
                     Trace.log(e_errors.INFO, "CGW: got SUCCESS on open, why?")
                     try:
-                        self.ftt.rewind()
                         self.ftt.close_dev()
                     except:
                         pass
