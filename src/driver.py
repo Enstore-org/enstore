@@ -10,6 +10,7 @@ import ETape
 import FTT
 import EXfer
 import IPC
+import time				# sleep used in FTT sw_mount
 
 
 class GenericDriver:
