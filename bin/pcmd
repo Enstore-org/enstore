@@ -14,6 +14,13 @@ Commonly used commands are:
 
    pcmd tags   directory    lists the tags in the directory
 
+   pcmd library [value]          sets library tag to value (must have correct cwd)
+   pcmd file_family [value]      sets library tag to value (must have correct cwd)
+   pcmd fie_family_width [value] sets library tag to value (must have correct cwd)
+
+   pcmd files volmap-tape   lists all the files on specified tape in volmap
+   pcmd volume volumename   lists the volmap-tape for the specifed volumename
+
    pcmd bfid   file         lists the bit file id of the file
    pcmd parked file         lists the last parked location of the file
    pcmd debug  file         lists the debug info about the file transfer
@@ -35,7 +42,7 @@ Don't use these unless you know what you are doing:
 
    pcmd size file size         sets the size of the file
 
-   pcd tagecho text tagname    echos text to the named tag
+   pcmd tagecho text tagname   echos text to the named tag
 
    pcmd tagrm tag              removes the tag
 
@@ -54,22 +61,26 @@ Don't use these unless you can interpret the results:
    pcmd cursor    file
    pcmd position  file
    pcmd database  file
-   pcmd databaseN dbnum
+   pcmd databaseN dbnum (must have cwd in pnfs)
 "
               echo "$usage"; }
+
+#internal routine only
+p_error()   { echo ERROR, Usage: pcmd $1; exit 1; }
 
 #internal routine only
 p_cmd()     { echo "\"`dirname $1`/$2(`basename $1`)\"" ; }
 
 #internal routine only
-p_use()     { uj="Usage:  p_use filename [container number]"
-              if [ -z "${1-}" ] ; then echo $uj; return; fi
-              if [ -z "${2-}" ] ; then c=".(use)(1)"; else c=".(use)($2)"; fi
+p_use()     { if [ -z "${2-}" ] ; then c=".(use)(1)"; else c=".(use)($2)"; fi
               p_cmd $1 $c ; }
 
-pcat()      { eval cat  `p_use $@` ; }
-pmore()     { eval more `p_use $@` ; }
-pless()     { eval less `p_use $@` ; }
+pcat()      { if [ -z "${1-}" ] ; then p_error "cat filename [level]"; fi
+              eval cat  `p_use $@` ; }
+pmore()     { if [ -z "${1-}" ] ; then p_error "more filename [level]"; fi
+              eval more `p_use $@` ; }
+pless()     { if [ -z "${1-}" ] ; then p_error "less filename [level]"; fi
+              eval less `p_use $@` ; }
 
 pbfid()     { pcat $1 1 ; }
 pparked()   { pcat $1 2 ; }
@@ -85,7 +96,8 @@ pinfo_helper()  { choice=$1
                     if [ $c -eq $choice ] ; then echo $x; break; fi
                   done ; }
 
-pinfo()     { bfid=`pbfid $@`
+pinfo()     { if [ -z "${1-}" ] ; then p_error "info filename"; fi
+              bfid=`pbfid $@`
               xref=`pxref $@`
               volume="`pinfo_helper 1`"
               location_cooke="`pinfo_helper 2`"
@@ -123,33 +135,30 @@ set pnfsid_file \"$pnfsid_file\";
 set pnfsid_map \"$pnfsid_map\";"
                fi; }
 
-pls()       { eval ls -alsF `p_use $@` ; }
+pls()       { if [ -z "${1-}" ] ; then p_error "ls filename [level]"; fi
+              eval ls -alsF `p_use $@` ; }
 
-pecho()     { uj="Usage:  pecho text file [container number]"
-              if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi
+pecho()     { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "echo text filename [level]"; fi
               pt="$1"
               shift 1
               eval echo -n "$pt" \>\| `p_use $@` ; }
 
-prm()       { eval echo -n "" \>\| `p_use $@` ; }
+prm()       { if [ -z "${1-}" ] ; then p_error "rm filename [level]"; fi
+              eval echo -n "" \>\| `p_use $@` ; }
 
-pcp()       { uj="Usage:  pcp file pnfsfile [container number]"
-              if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi
+pcp()       { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "cp file pnfsfile [level]"; fi
               pt="$1"
               shift 1
               eval cp "$pt" `p_use $@` ; }
 
-psize()     { u_j="Usage:  psize filename size";
-              if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi
+psize()     { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "size filename size"; fi
               eval touch  "\"`dirname $1`/.(fset)(`basename $1`)(size)($2)\"" ; }
 
-pid()       { uj="Usage:  pid file"
-              if [ -z "${1-}" ] ; then echo $uj; return; fi
+pid()       { if [ -z "${1-}" ] ; then p_error "id filename"; fi
               eval cat  `p_cmd $1 ".(id)"` ; }
 
-pconst()    { uj="Usage:  pid file"
-              if [ -z "${1-}" ] ; then echo $uj; return; fi
-              eval cat   `p_cmd $1 ".(const)"` ; }
+pconst()    { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              eval cat   `p_cmd $dir ".(const)"` ; }
 
 #internal routine only
 # For routines that use an id, I either need to have my cwd in pnfs, or I
@@ -158,20 +167,16 @@ pconst()    { uj="Usage:  pid file"
 p_pnfs()    { df | grep  /pnfs/ | sed -e 's%.*/pnfs/%/pnfs/%' -e 's%$%/%' | cut -d"
 " -f1; }
 
-pshowid()   { u_n="Usage: pshowid id"
-              if [ -z "${1-}" ] ; then echo $u_n; return; fi
+pshowid()   { if [ -z "${1-}" ] ; then p_error "showid id"; fi
               eval cat  "\"`p_pnfs`.(showid)($1)\"" ; }
 
-pnameof()   { u_n="Usage: pnameof id"
-              if [ -z "${1-}" ] ; then echo $u_n; return; fi
+pnameof()   { if [ -z "${1-}" ] ; then p_error "nameof id"; fi
               eval cat  "\"`p_pnfs`.(nameof)($1)\"" ; }
 
-pparent()   { u_p="Usage: pnameof id"
-              if [ -z "${1-}" ] ; then echo $u_p; return; fi
+pparent()   { if [ -z "${1-}" ] ; then p_error "parent id"; fi
               eval cat  "\"`p_pnfs`.(parent)($1)\"" ; }
 
-ppath()     { u_p="Usage: ppath id"
-              if [ -z "${1-}" ] ; then echo $u_p; return; fi
+ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
               filename=""
               id=$1
               while /bin/true;  do
@@ -180,35 +185,47 @@ ppath()     { u_p="Usage: ppath id"
                 id=`pparent $id`
               done
               filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
+              if [ -z $filename ] ; then
+                filename="NO_SUCH_FILE"
+              fi
               echo $filename
               }
 
-pcounters() { u_p="Usage: pcounters file"
-              if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
+              for i in $1/*; do
+                eval `pcmd info $i`
+                if [ $filename != "NO_SUCH_FILE" ]; then
+                  ls -l $filename
+                else
+                  a=`ls -l $map_file`
+                  echo $a $filename
+                fi
+              done; }
+
+pvolume()   { if [ -z "${1-}" ] ; then p_error "volume volume_name"; fi
+              find /pnfs -name $1; }
+
+pcounters() { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               eval cat  "\"`dirname $dir`/.(get)(counters)\"" ; }
 
-# this doesn't seem right - check it
-pcountersN() { u_p="Usage: pcounters file"
+pcountersN() { if [ -z "${1-}" ] ; then p_error "countersN dbnum"; fi
               eval cat  "\".(get)(counters)($1)\"" ; }
 
-pcursor()   { u_p="Usage: pcursor file"
-              if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+pcursor()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               eval cat  "\"`dirname $dir`/.(get)(cursor)\"" ; }
 
-pdatabase() { u_p="Usage: pdatabase file"
-              if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+pdatabase() { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               eval cat  "\"`dirname $dir`/.(get)(database)\"" ; }
 
-pdatabaseN() { u_p="Usage: pdatabase dbnum"
+pdatabaseN() { if [ -z "${1-}" ] ; then p_error "databaseN dbnum"; fi
               eval cat  "\"`p_pnfs`.(get)(database)($1)\"" ; }
 
-pposition() { u_p="Usage: pposition file"
-              if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+pposition() { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               eval cat  "\"`dirname $dir`/.(get)(position)\"" ; }
 
-pcursor()   { waste=/tmp/gc-$$
+pcursor()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              waste=/tmp/gc-$$
               rm -f $waste
-              if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               cat "`dirname $dir`/.(get)(cursor)" >$waste
               if [ $? -ne 0 ] ; then problem "FAILED : Can get .(get)(cursor) " ; return ; fi
               . $waste
@@ -222,30 +239,25 @@ pcursor()   { waste=/tmp/gc-$$
                 /bin/echo "The I/O mode of level 0 is ENABLED "
               fi ; }
 
-pio()       { u_j="Usage:  pio filename";
-              if [ -z "${1-}" ] ; then echo $uj; return; fi
+pio()       { if [ -z "${1-}" ] ; then perror "io filename"; fi
               eval touch  "\"`dirname $1`/.(fset)(`basename $1`)(io)\"" ; }
 
 
 #internal routine only
-p_tag()     { uj="Usage: p_tag tagname directory"
-              if [ -z "${1-}" ] ; then echo $uj; return; fi
-              if [ -z "${2-}" ] ; then dir=`pwd`; else dir=$2; fi
+p_tag()     { if [ -z "${2-}" ] ; then dir=`pwd`; else dir=$2; fi
               echo "\"$dir/.(tag)($1)\"" ; }
 
-ptagcat()   { eval cat  `p_tag $@` ; }
-ptagmore()  { eval more `p_tag $@` ; }
-ptagless()  { eval less `p_tag $@` ; }
-
-#internal routine
-ptagdir()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
-              cat "$dir/.(tags)(all)" ; }
+ptagcat()   { if [ -z "${1-}" ] ; then perror "tagcat tag"; fi
+              eval cat  `p_tag $@` ; }
+ptagmore()  { if [ -z "${1-}" ] ; then perror "tagmore tag"; fi
+              eval more `p_tag $@` ; }
+ptagless()  { if [ -z "${1-}" ] ; then perror "tagless tag"; fi
+              eval less `p_tag $@` ; }
 
 ptags()     { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
-              for i in `ptagdir $dir`; do v=`eval cat '$dir/$i'`; echo $i " = " $v; done ; }
+              for i in `cat "$dir/.(tags)(all)"`; do v=`eval cat '$dir/$i'`; echo $i " = " $v; done ; }
 
-ptagecho()  { uj="Usage:  ptagecho text tagname"
-              if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi
+ptagecho()  { if [ -z "${1-}" -o  -z "${2-}" ] ; then perror "tagecho text tagname"; fi
               pt="$1"
               shift 1
               eval echo -n "$pt" \>\| `p_tag $@` ; }
@@ -253,11 +265,31 @@ ptagecho()  { uj="Usage:  ptagecho text tagname"
 ptagrm()    { echo "The attempt to remove a tag results in an unpredictable behavior and may corrupt the entire directory"
               echo "If you insist on doing this, try   eval echo -n \"\" >| `p_tag tagname`" ; }
 
+plibrary()  { if [ -z "${1-}" ] ; then
+                ptagcat library
+              else
+                ptagecho "$1" library
+              fi; }
+
+pfile_family()
+            { if [ -z "${1-}" ] ; then
+                ptagcat file_family
+              else
+                ptagecho "$1" file_family
+              fi; }
+
+pfile_family_width()
+            { if [ -z "${1-}" ] ; then
+                ptagcat file_family_width
+              else
+                ptagecho "$1" file_family_width
+              fi; }
+
 #debugging routine - space in arguments are being eaten by eval
 pdog()      { echo $#
               echo $1
               echo $2
-              echo $3;          }
+              echo $3; }
 
 if [ -z "${1-}" ] ; then
   cmd="phelp"
@@ -270,5 +302,5 @@ fi
 #eval $cmd $@ # the eval command eats spaces in the positional arguments, so this doesn't work!
 eval $cmd \"$1\" \"$2\" \"$3\" \"$4\" \"$5\" \"$6\" \"$7\" \"$8\" \"$9\" # not happy with this, but it works
 stat=$?
-if [ $stat -ne 0 ] ; then phelp; fi
+#if [ $stat -ne 0 ] ; then phelp; fi
 exit $stat
