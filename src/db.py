@@ -35,7 +35,7 @@ class MyIndex(table.Index):
 	return str
 
 class DbTable:
-  def __init__(self,dbname,logc,indlst=[]):
+  def __init__(self,dbname,logc=0,indlst=[]):
     try:
 	self.dbHome=configuration_client.ConfigurationClient(\
 		interface.default_host(),\
@@ -201,23 +201,28 @@ class DbTable:
      import regex,string
      import time
      del self.jou
-     self.logc.send(log_client.INFO, 1, "Start checkpoint for "+self.name+" journal")
+     if self.logc:
+        self.logc.send(log_client.INFO, 1, "Start checkpoint for "+self.name+" journal")
      cmd="mv " + self.dbHome +"/"+self.name+".jou " + \
                         self.dbHome +"/"+self.name+".jou."+ \
                         repr(time.time())
+     print cmd
      os.system(cmd)
-     self.jou = journal.JournalDict({},self.name+".jou")
+     self.jou = journal.JournalDict({},self.dbHome+"/"+self.name+".jou")
      self.count=0
-     self.logc.send(log_client.INFO, 1, "End checkpoint for "+self.name)
+     if self.logc:
+        self.logc.send(log_client.INFO, 1, "End checkpoint for "+self.name)
   def start_backup(self):
      global  backup_flag
      backup_flag=0
-     self.logc.send(log_client.INFO, 1, "Start backup for "+self.name)
+     if self.logc:
+        self.logc.send(log_client.INFO, 1, "Start backup for "+self.name)
      self.checkpoint()
   def stop_backup(self):
      global  backup_flag
      backup_flag=1
-     self.logc.send(log_client.INFO, 1, "End backup for "+self.name)
+     if self.logc:
+        self.logc.send(log_client.INFO, 1, "End backup for "+self.name)
 def do_backup(name):
      import time
      try:
