@@ -21,16 +21,36 @@ jpeg_output_logy = os.path.join(install_dir, output_file_logy+'.jpg')
 jpeg_output_stamp = os.path.join(install_dir, output_file+'_stamp.jpg')
 jpeg_output_logy_stamp = os.path.join(install_dir, output_file_logy+'_stamp.jpg')
 
+hist_out = output_file+'_hist'
+postscript_hist_out = os.path.join(install_dir, hist_out+'.ps')
+jpeg_hist_out = os.path.join(install_dir, hist_out+'.jpg')
+jpeg_hist_out_stamp = os.path.join(install_dir, hist_out+'_stamp.jpg')
+
 low_water_mark = 1000
 high_water_mark = 5000
+step = 100
 
 tol = 0
 toh = 0
 
 mts = []
 mtsg = {}
+mtsh = {}
+
+hwmk = str(high_water_mark)
+lwmk = str(low_water_mark)
+
+def hist_key(n):
+	return str(n/step*step)
 
 if __name__ == '__main__':
+
+	# create bins
+	for i in range(0, low_water_mark, step):
+		mtsh[str(i)] = 0
+	mtsh[lwmk] = 0
+	mtsh[hwmk] = 0
+
 	f = open(vf_file)
 	l = f.readline()
 	while l:
@@ -46,11 +66,17 @@ if __name__ == '__main__':
 					mtsg[sg].append(m)
 				else:
 					mtsg[sg] = [m]
+				if m > high_water_mark:
+					toh = toh + 1
 				if m > low_water_mark:
 					tol = tol + 1
 				if m > high_water_mark:
-					toh = toh + 1
-
+					mtsh[hwmk] = mtsh[hwmk]+1
+				elif m > low_water_mark:
+					mtsh[lwmk] = mtsh[lwmk]+1
+				else:
+					k = hist_key(m)
+					mtsh[k] = mtsh[k]+1
 		l = f.readline()
 
 	mts.sort()
@@ -95,6 +121,30 @@ if __name__ == '__main__':
 	os.system("convert -rotate 90 -modulate 80 %s %s"%(postscript_output_logy, jpeg_output_logy))
 	os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_output, jpeg_output_stamp))
 	os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_output_logy, jpeg_output_logy_stamp))
+
+	# The histogram
+
+	outf = open(tmp_data, "w")
+	for i in mtsh.keys():
+		outf.write("%d %d\n"%(i, mtsh[i]))
+	outf.close()
+
+	outf = open(tmp_gnuplot_cmd, "w")
+	outf.write("set grid\n")
+	outf.write("set ylabel 'Volumes'\n")
+	outf.write("set xlabel 'Mounts'\n")
+	outf.write("set terminal postscript color solid\n")
+	outf.write("set output '"+postscript_hist_out+"'\n")
+	outf.write("set title 'Tape Mounts (plotted at %s)'\n"%(time.ctime(time.time())))
+	outf.write("plot '%s' with impulse lw 5\n"%(tmp_data))
+	outf.close()
+
+	os.system("gnuplot %s"%(tmp_gnuplot_cmd))
+
+	# convert to jpeg
+
+	os.system("convert -rotate 90 -modulate 80 %s %s"%(postscript_hist_out, jpeg_hist_out))
+	os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_hist_out, jpeg_hist_out_stamp))
 
 	# clean up
 	os.unlink(tmp_data)
