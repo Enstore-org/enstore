@@ -12,6 +12,7 @@ MINTOKLEN = 3
 # event relay message types
 ALL = "all"
 NOTIFY = "notify"
+UNSUBSCRIBE = "unsubscribe"
 
 def get_message_filter_dict(msg_tok):
     filter_d = {}
@@ -55,6 +56,7 @@ class Relay:
             tok = string.split(msg)
             if not tok:
                 continue
+	    print msg
             if tok[0]==NOTIFY:
                 try:
                     ip = tok[1]
@@ -66,6 +68,14 @@ class Relay:
                     self.clients[(ip, port)] = (now, filter_d)
                 except:
                     print "cannot handle request", msg
+
+	    elif tok[0] == UNSUBSCRIBE:
+		try:
+		    ip = tok[1]
+		    port = int(tok[2])
+		    del self.clients[(ip, port)]
+		except:
+		    print "cannot handle request", msg
             else:
                 for addr, (t0, filter_d) in self.clients.items():
                     if now - t0 > self.client_timeout:

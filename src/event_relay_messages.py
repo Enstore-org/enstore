@@ -5,6 +5,7 @@ import types
 # bottom too
 ALL = "all"
 NOTIFY = "notify"
+UNSUBSCRIBE = "unsubscribe"
 ALIVE = "alive"
 NEWCONFIGFILE = "newconfigfile"
 CLIENT = "client"
@@ -42,6 +43,9 @@ class EventRelayMsg:
     def encode_addr(self):
 	return "%s %s"%(self.host, self.port)
 
+    def encode_self(self):
+	self.encode()
+
 # Message format :  notify host port msg_type1 msg_type1 ...
 class EventRelayNotifyMsg(EventRelayMsg):
 
@@ -60,18 +64,36 @@ class EventRelayNotifyMsg(EventRelayMsg):
     def encode_self(self):
 	self.encode(self.msg_type_l)
 
+# Message format :  unsubscribe host port
+class EventRelayUnsubscribeMsg(EventRelayMsg):
+
+    def encode(self):
+	self.type = UNSUBSCRIBE
+	self.extra_info = self.encode_addr()
+
+    def decode(self, msg):
+	self.type, self.extra_info = decode_type(msg)
+	self.host, self.port = string.split(self.extra_info, MSG_FIELD_SEPARATOR, 1)
+
 # Message format:   alive host port server_name 
 class EventRelayAliveMsg(EventRelayMsg):
 
     def decode(self, msg):
 	self.type, self.extra_info = decode_type(msg)
-	self.host, self.port, self.server = string.split(self.extra_info, 
-							 MSG_FIELD_SEPARATOR, 2)
+	params = string.split(self.extra_info, MSG_FIELD_SEPARATOR, 3)
+	self.host = params[0]
+	self.port = params[1]
+	self.server = params[2]
+	if len(params) == 4:
+	    self.opt_string = params[3]
+	else:
+	    self.opt_string = ""
 
-    def encode(self, server):
+    def encode(self, server, opt_string=""):
 	self.type = ALIVE
 	self.extra_info = self.encode_addr()
-	self.extra_info = "%s%s%s"%(self.extra_info, MSG_FIELD_SEPARATOR, server)
+	self.extra_info = "%s%s%s%s%s"%(self.extra_info, MSG_FIELD_SEPARATOR, 
+					server, MSG_FIELD_SEPARATOR, opt_string)
 
     def encode_self(self):
 	self.encode(self.server)
@@ -87,9 +109,6 @@ class EventRelayNewConfigFileMsg(EventRelayMsg):
     def encode(self):
 	self.type = NEWCONFIGFILE
 	self.extra_info = ""
-
-    def encode_self(self):
-	self.encode()
 
 # Message format:  client host work file_family more_info
 class EventRelayClientMsg(EventRelayMsg):
@@ -235,12 +254,10 @@ class EventRelayEncpXferMsg(EventRelayMsg):
 	self.type = ENCPXFER
 	self.extra_info = ""
 
-    def encode_self(self):
-	self.encode()
-
 
 # list of supported messages
 SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
+		      UNSUBSCRIBE : EventRelayUnsubscribeMsg,
 		      ALIVE :  EventRelayAliveMsg,
 		      NEWCONFIGFILE : EventRelayNewConfigFileMsg,
 		      CLIENT : EventRelayClientMsg,
@@ -263,5 +280,3 @@ def decode(msg):
     else:
 	decoded_msg = None
     return decoded_msg
-
-
