@@ -515,7 +515,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	       (len(moverd[enstore_status.STATUS]) == 5 and \
 	       not (moverd[enstore_status.STATUS][4] == enstore_status.NO_INFO or
 		    moverd[enstore_status.STATUS][0] == 'timed out')):
-		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Complete%sTransfers"%(NBSP,),
+		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Requested%sTransfers"%(NBSP,),
 							color=BRICKRED, html_escape='OFF')))
 		tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
 				     align="LEFT"))
