@@ -37,12 +37,6 @@ class FileClient(generic_client.GenericClient, \
         Trace.trace(12,"}send"+repr(s))
         return s
 
-    def read_from_hsm(self, ticket):
-        Trace.trace(12,"{read_from_hsm")
-        r = self.send(ticket)
-        Trace.trace(12,"}read_from_hsm"+repr(r))
-        return r
-
     def new_bit_file(self, ticket):
         Trace.trace(12,"{new_bit_file")
         r = self.send(ticket)

@@ -522,6 +522,7 @@ def read_from_hsm(input, output,
     unique_id = []
     vols_needed = {}
     delayed_dismount = 0
+    current_library = ''
     global logc
     (csc,u,uinfo) = clients(config_host,config_port,list)
 
@@ -673,20 +674,49 @@ def read_from_hsm(input, output,
                     if not uinfo.has_key(key) : # the user key takes precedence over the pnfs key
                         wrapper[key] = pinfo[i][key]
 
+
                 # generate the work ticket
-                file_clerk = {"bfid"               : bfid[i]}
+
+                #file_clerk = {"bfid"               : bfid[i]}
                 work_ticket = {"work"              : "read_from_hsm",
                                "wrapper"           : wrapper,
                                "callback_addr"     : callback_addr,
-                               "fc"                : file_clerk,
+                               "fc"                : finfo[i],
+			       "vc"                : vinfo[i],
                                "encp"              : encp,
                                "times"             : times,
                                "unique_id"         : unique_id[i]
                                }
-
+		
+		
                 # send ticket to file clerk who sends it to right library manger
                 Trace.trace(7,"read_from_hsm q'ing:"+repr(work_ticket))
-                ticket = u.send(work_ticket, (fticket['hostip'], fticket['port']))
+
+
+
+
+		# get the library manager
+		library = vinfo[i]['library']
+		# get LM info from Config Server only if it is different
+		if (current_library != library):
+		    current_library = library
+		    Trace.trace(10,"write_to_hsm calling config server\
+		    to find "+current_library+".library_manager")
+		    if list > 3:
+			print "calling Config. Server to get LM info for", \
+			      current_library
+		    lmticket = csc.get(current_library+".library_manager")
+		    Trace.trace(10,"read_from_hsm."+ current_library+\
+				".library_manager at host="+\
+				repr(lmticket["hostip"])+\
+				" port="+repr(lmticket["port"]))
+		    if lmticket["status"][0] != e_errors.OK:
+			pprint.pprint(lmticket)
+			Trace.trace(0,"read_from_hsm "+ \
+				    repr(lmticket["status"]))
+
+		# send to library manager and tell user
+                ticket = u.send(work_ticket, (lmticket['hostip'], lmticket['port']))
                 if list > 3:
                     print "ENCP:read_from_hsm FC read_from_hsm returned"
                     pprint.pprint(ticket)
@@ -714,6 +744,8 @@ def read_from_hsm(input, output,
                               finfo[i]["external_label"],\
                               finfo[i]["bof_space_cookie"],\
                               tinfo["send_ticket"+repr(i)],time.time()-t0)
+
+
 
         tinfo["send_ticket"] = time.time() - t1 #---------------------------End
         if list:
