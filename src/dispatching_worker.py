@@ -31,6 +31,12 @@ class DispatchingWorker(udp_server.UDPServer):
     
     def __init__(self, server_address):
         udp_server.UDPServer.__init__(self, server_address, receive_timeout=60.)
+        #If the UDPServer socket failed to open, stop the server.
+        if self.server_socket == None:
+            msg = "The udp server socket failed to open.  Aborting.\n"
+            sys.stdout.write(msg)
+            sys.exit(1)
+            
         # deal with multiple interfaces
         self.read_fds = []    # fds that the worker/server also wants watched with select
         self.write_fds = []   # fds that the worker/server also wants watched with select
