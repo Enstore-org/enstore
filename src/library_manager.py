@@ -365,8 +365,8 @@ def send_regret(ticket, verbose):
 	    Trace.trace(3,"}send_regret ")
 	    generic_cs.enprint("REGRET SENDER EXITS", generic_cs.DEBUG, verbose)
 	except:
-	    print "send_regret ",str(sys.exc_info()[0]),\
-		  str(sys.exc_info()[1]),repr(ticket)
+	    generic_cs.enprint("send_regret "+str(sys.exc_info()[0])+\
+	    +str(sys.exc_info()[1])+repr(ticket), generic_cs.DEBUG, verbose)
 	    Trace.trace(0,"send_regret "+str(sys.exc_info()[0])+\
 			str(sys.exc_info()[1])+repr(ticket))
 
