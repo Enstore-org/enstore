@@ -20,10 +20,12 @@ import socket
 import signal
 import generic_client
 import option
+import pwd
 
 # enstore imports
 import setpath
 import e_errors
+import enstore_functions
 import enstore_functions2
 import udp_client
 import Trace
@@ -69,18 +71,126 @@ def is_on_host(host):
 
     return 0
 
+def get_temp_file(server_name):
+    #Get the pid file information.
+    try:
+        user_name = pwd.getpwuid(os.geteuid())[0]
+    except KeyError:
+        user_name = os.geteuid()
+    pid_dir = os.path.join(enstore_functions.get_enstore_tmp_dir(),
+                           user_name)
+    pid_file = os.path.join(pid_dir, server_name + ".pid")
+
+    return pid_file
+
+############################################################################
+
+#Detects if a process is still running with a given id.  Returns 1 if the
+# process exists, zero if gone.
+def detect_process(pid):
+    try:
+        os.kill(pid, 0)
+        return 1
+    except OSError, msg:
+        if hasattr(msg, "errno") and msg.errno == errno.EPERM:
+            return 1
+        else:
+            return 0
+
+def kill_process(pid):
+
+    if detect_process(pid):
+        #If the process doesn't go away terminate it.
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError, msg:
+            if hasattr(msg, "errno") and msg.errno != errno.EPERM:
+                return 1
+
+            #Lastly, try a SIGKILL.
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError, msg:
+                return detect_process(pid)
+
+        if detect_process(pid):
+            #If we got here, the enstore process caught the SIGTERM.
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError, msg:
+                return detect_process(pid)
+
+    #The process is already gone.
+    return 0
+
+#Nicely, try to stop the server.  If that fails, kill it.
+def stop_server(gc, servername):
+    #Stop the server.
+    print "Stopping %s: %s:%s" % (servername, gc.server_address[0],
+                                  gc.server_address[1])
+
+    #First try to be nice and let the server die on its own.
+    rtn = gc.quit(3, 3)
+    if e_errors.is_ok(rtn):
+        try:
+            os.unlink(get_temp_file(servername)) #file already deleted
+        except:
+            exc, msg, tb = sys.exc_info()
+            print "Unlink:", msg
+            pass
+        print "Stopped %s." %(servername,)
+        return
+
+    #If the process still remains, kill it.
+    #Note: there is a possible race condition here.  If the gc.quit()
+    # succeds, but another process with the same pid is started
+    # before kill_process, the new process will wrongfully be killed.
+    rtn2 = kill_process(rtn['pid'])
+    if rtn2:
+        print "Enstore server, %s, remains." % (servername,)
+        return
+    else:
+        os.unlink(get_temp_file(servername))
+        print "Stopped %s." % (servername,)
+        return
+
+def stop_server_from_pid_file(servername):
+    #If there is no responce from the server, determine if it is hung.
+    try:
+        file = open(get_temp_file(servername), "r")
+        data = file.readlines()
+        file.close()
+    except (OSError, IOError), msg:
+        print "Unable to read pid file for %s." % (servername,)
+        return
+
+    #Determine if there is a process with the id.
+    for item in data:
+        item = int(item.strip())
+        if detect_process(item):
+            print "A process not resonding to alive messages, is running" \
+                  " with the last know pid for %s." % (servername,)
+            break
+    else:
+        os.unlink(get_temp_file(servername))
+        print "No %s running." % (servername,)
+        return
+
+############################################################################
+
 def check_csc(csc):
+
+    if csc.server_address[0] not in this_host():
+        return
+
+    print "Checking configuration_server."
 
     rtn = csc.alive(configuration_client.MY_SERVER, 5, 3)
 
     if e_errors.is_ok(rtn):
-        if csc.server_address[0] in this_host():
-            #Stop the configuration server.
-            print "Stopping configuration server: %s:%s" % csc.server_address
-            os.kill(rtn['pid'], signal.SIGTERM)
+        stop_server(csc, configuration_client.MY_SERVER)
     else:
-        print "Configuration server already stopped: %s:%s" % \
-              csc.server_address
+        stop_server_from_pid_file(configuration_client.MY_SERVER)
 
 def check_db(csc, name):
 
@@ -111,11 +221,26 @@ def check_event_relay(csc):
 
     print "Checking event_relay."
 
-    rtn = erc.alive()
-    
+    rtn = erc.alive() #rtn = 0 implies alive, rtn = 1 implies dead.
+
     if not rtn:
         print "Stopping %s." % ("event_relay",)
+
+        #Tell the event relay to quit.
         erc.quit()
+
+        #Make sure that erc is not still alive.
+        rtn = erc.alive() #rtn = 0 implies alive, rtn = 1 implies dead.
+        if not rtn:
+            stop_server_from_pid_file("event_relay")
+        else:
+            #If erc is successfully halted, remove the pid file for it.
+            try:
+                os.unlink(get_temp_file("event_relay"))
+            except OSError:
+                pass
+    else:
+        stop_server_from_pid_file("event_relay")
 
 def check_server(csc, name):
 
@@ -143,11 +268,9 @@ def check_server(csc, name):
     # If the host is alive, tell it to to quit.
     if e_errors.is_ok(rtn):
         #Stop the server.
-        print "Stopping %s: %s:%s" % (name, info['hostip'], info['port'])
-        gc.quit(3, 3)
+        stop_server(gc, name)
     else:
-        print "Already stopped %s: %s:%s" % (name, info.get('hostip', None),
-                                             info.get('port', None))
+        stop_server_from_pid_file(name)
     
 
 class EnstoreStopInterface(generic_client.GenericClientInterface):
