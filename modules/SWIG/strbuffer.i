@@ -10,6 +10,9 @@
     int buf_read(int fd, char *buf, int offset, int nbytes){
 	return read(fd, buf+offset, nbytes);
     }
+    int buf_read_string(char *src, char *buf, int offset, int nbytes){
+	return strncpy(buf+offset, src, nbytes);
+    }
     int buf_write(int fd, char *buf, int offset, int nbytes){
 	return write(fd, buf+offset, nbytes);
     }
@@ -31,6 +34,7 @@
 }
 
 int buf_read(int fd, cptr buf, int offset, int nbytes);
+int buf_read_string(cptr src, cptr buf, int offset, int nbytes);
 int buf_write(int fd, cptr buf, int offset, int nbytes);
 int buf_send(int sock, cptr buf, int offset, int nbytes);
 int buf_send_dontwait(int sock, cptr buf, int offset, int nbytes);
