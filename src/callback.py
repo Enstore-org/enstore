@@ -11,7 +11,6 @@ import errno
 import socket
 
 # enstore imports
-import lockfile
 import Trace
 import e_errors
 import checksum
