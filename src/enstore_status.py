@@ -305,9 +305,8 @@ class EnStatus:
 	    except:
 	        pass
             string = string+spacing+"ID: "+mover['unique_id']
-	    string = string+"\n"
-            if work.has_key('reject_reason'):
-                string = string+spacing+"REASON FOR PENDING: "+work['reject_reason'][0]
+            if mover.has_key('reject_reason'):
+                string = string+spacing+"REASON FOR PENDING: "+mover['reject_reason'][0]
                 string = string+"\n"
 
 	    # reset this to prepare for another queued element
