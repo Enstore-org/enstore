@@ -39,6 +39,7 @@ server_map = {"log_server" : enstore_constants.LOGS,
 	      "volume_clerk" : enstore_constants.VOLC,
 	      "enstore" : enstore_constants.ENSTORE,
 	      "network" : enstore_constants.NETWORK,
+	      "alarms" : enstore_constants.ANYALARMS,
 	      "media" : ""}
 server_keys = server_map.keys()
 
@@ -821,6 +822,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "event relay subscribe work from user")
+
     # the following routines manage the file enstore_outage.py in the web area
     def find_server_match(self, text):
 	total_matches = 0

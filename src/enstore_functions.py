@@ -78,6 +78,11 @@ def read_seen_down_file(html_dir=None):
         seen_down_d = {}
     return sfile, seen_down_d
 
+def override_to_status(override):
+    # translate the override value to a real status
+    index = enstore_constants.SAAG_STATUS.index(override)
+    return enstore_constants.REAL_STATUS[index]
+
 # return a dictionary of the configuration server host and port
 def get_config_server_info():
     port, junk = interface.getenv('ENSTORE_CONFIG_PORT',

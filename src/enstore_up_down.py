@@ -95,16 +95,11 @@ def get_allowed_down_dict():
     cdict = enstore_functions.get_config_dict()
     return cdict.configdict.get(SYSTEM, {}).get(ALLOWED_DOWN, {})
 
-def override_to_status(override):
-    # translate the override value to a real status
-    index = enstore_constants.SAAG_STATUS.index(override)
-    return enstore_constants.REAL_STATUS[index]
-
 class EnstoreServer:
 
     def real_status(self, status):
 	if self.override:
-	    self.status = override_to_status(self.override)
+	    self.status = enstore_functions.override_to_status(self.override)
 	else:
 	    self.status = status
 
@@ -573,6 +568,11 @@ def do_real_work():
 	summary_d[server.format_name] = server.status
     else:
 	summary_d[enstore_constants.ENSTORE] = enstore_state(estate)
+
+    # now check if there is an override set to make sure that enstore is marked down
+    if enstore_constants.ENSTORE in override_d_keys:
+	summary_d[enstore_constants.ENSTORE] = enstore_functions.override_to_status(\
+	    override_d[enstore_constants.ENSTORE])
 
     if summary_d[enstore_constants.ENSTORE] == enstore_constants.DOWN:
 	stat = "DOWN"

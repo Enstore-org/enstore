@@ -48,6 +48,7 @@ def do_work(intf):
     # get the information on any scheduled down time. 
     sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
     outage_d, offline_d, override_d = sfile.read()
+    override_d_keys = override_d.keys()
 
     # gather all of the latest status of the enstore system
     (rtn, enstat) = enstore_up_down.do_real_work()
@@ -57,6 +58,12 @@ def do_work(intf):
 					      intf.html_gen_host)
     else:
 	netstat = {enstore_constants.NETWORK : enstore_constants.WARNING}
+
+    # check if the network status should be overridden
+    if enstore_constants.NETWORK in override_d_keys:
+	netstat[enstore_constants.NETWORK] = enstore_functions.override_to_status(\
+	    override_d[enstore_constants.NETWORK])
+
     # no media status yet.
     medstat = {}
 
@@ -74,6 +81,11 @@ def do_work(intf):
 	alarms = {enstore_constants.ANYALARMS : enstore_constants.UP}
     # add the alarm html file so a link can be created to it on the main page.
     alarms[enstore_constants.URL] = alarm_server.DEFAULT_HTML_ALARM_FILE
+
+    # check if the alarm status should be overridden
+    if enstore_constants.ANYALARMS in override_d_keys:
+	alarms[enstore_constants.ANYALARMS] = enstore_functions.override_to_status(\
+	    override_d[enstore_constants.ANYALARMS])
 
     system_tag = enstore_functions.get_from_config_file(www_server.WWW_SERVER,
 							www_server.SYSTEM_TAG,
