@@ -132,7 +132,8 @@ def stop(mover):
                     print ssh(host, "kill %s" % (pid,))
                 else:
                     print ssh(host, "kill -9 %s" % (pid,))
-    
+        time.sleep(10)
+        
     lines = getps(mover)
     if not lines:
         print mover, "killed"
