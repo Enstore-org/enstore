@@ -9,7 +9,8 @@
 #
 #   self.server_keys[]                         list of servers (and others) to
 #                                                 ping
-#   self.forked{}       same as config dict    if exists, means we forked to
+#   self.has_thread{}   same as config dict    if exists, means we created a 
+#                                              thread to 
 #                                              restart that server. cleared
 #                                              once the server is alive again.
 #
@@ -32,6 +33,7 @@ import file_clerk_client
 import library_manager_client
 import media_changer_client
 import mover_client
+import inquisitor_plots
 import dispatching_worker
 import generic_server
 import Trace
@@ -43,8 +45,6 @@ import enstore_constants
 import www_server
 import udp_client
 import safe_dict
-
-PLOTTHRNAME = "PLOT_THREAD"
 
 def default_timeout():
     return 5
@@ -76,9 +76,7 @@ MY_NAME = "inquisitor"
 
 CONFIG_DICT_TOUT = "can't get config dict"
 
-LOGFILE_DIR = "logfile_dir"
 LOGHTMLFILE_NAME = "enstore_logs.html"
-PATROL_FILE = "en_patrol.html"
 
 DID_IT = 0
 TIMED_OUT = 1
@@ -97,15 +95,15 @@ NO_PING = -1
 HUNG_TO_DEFAULT = 30
 HUNG_RETRIES_DEFAULT = 30
 
-class InquisitorMethods(dispatching_worker.DispatchingWorker):
+class InquisitorMethods(inquisitor_plots.InquisitorPlots,
+			dispatching_worker.DispatchingWorker):
 
     # look for the hung_rcv_timeout value for the specified key in the inquisitor
     # config info.  if it does not exist, return the default
     def get_hung_to(self, key):
-	try:
-	    t = self.csc.get(MY_NAME, self.alive_rcv_timeout, self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
+	t = self.csc.get(MY_NAME, self.alive_rcv_timeout, self.alive_retries)
+	if enstore_functions.is_timedout(t):
+	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time.time(), key)
 	    Trace.trace(13,"get_hung_to - ERROR, getting config dict timed out ")
 	    return HUNG_TO_DEFAULT
 	return t.get("hung_rcv_timeout", {}).get(key, HUNG_TO_DEFAULT)
@@ -113,18 +111,22 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # look for the hung_retries value for the specified key in the inquisitor
     # config info.  if it does not exist, return the default
     def get_hung_retries(self, key):
-	try:
-	    t = self.csc.get(MY_NAME, self.alive_rcv_timeout, self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
+	t = self.csc.get(MY_NAME, self.alive_rcv_timeout, self.alive_retries)
+	if enstore_functions.is_timedout(t):
+	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time.time(), key)
 	    Trace.trace(13,"get_hung_retries - ERROR, getting config dict timed out ")
 	    return HUNG_RETRIES_DEFAULT
 	return t.get("hung_retries", {}).get(key, HUNG_RETRIES_DEFAULT)
 
     # get the alive status of the server and output it
-    def alive_status(self, client, (host, port), time, key):
-	stat = client.alive(key, self.alive_rcv_timeout, self.alive_retries)
-	if not stat['status'] == ('TIMEDOUT', None):
+    def alive_status(self, client, (host, port), time, key, timeout=None,
+		     retries=None):
+	if not timeout:
+	    timeout = self.alive_rcv_timeout
+	if not retries:
+	    retries = self.alive_retries
+	stat = client.alive(key, timeout, retries)
+	if not enstore_functions.is_timedout(stat):
 	    address = stat.get('address', ["", ""])
 	    self.htmlfile.output_alive(host, address[1], "alive", time, key)
 	    self.last_alive[key] = time
@@ -140,6 +142,62 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def s_update_exit(self, the_signal, frame):
 	self.update_exit(0)
 
+    # function called to attempt a restart on a 'dead' server
+    def restart_function(self, t, key, client, host):
+	prefix = "INQ_CHILD"
+	try:
+	    # Check on server status but wait a long time
+	    timeout = t.get("hung_rcv_timeout", self.get_hung_to(key))
+	    retries = t.get("hung_retries", self.get_hung_retries(key))
+	    timeout = 5
+	    retries = 1
+	    stat = client.alive(key, timeout, retries)
+	    if enstore_functions.is_timedout(stat):
+		# if we raise an alarm we need to include the following info.
+		alarm_info = {'server' : key}
+		if t.has_key("norestart"):
+		    # do not restart, raise an alarm that the
+		    # server is dead.
+		    if not key == ALARM_S:
+			Trace.alarm(e_errors.ERROR,
+				    e_errors.SERVERDIED, alarm_info)
+		    else:
+			Trace.log(e_errors.ERROR,
+				  "%s: %s died and will not be restarted"%(prefix, key))
+		else:
+		    # we should try to restart the server.  try 3X
+		    i = 0
+		    retries = 1
+		    pid = os.getpid()
+		    Trace.log(e_errors.INFO,
+			      "%s: Attempting restart of %s (%s)"%(prefix, key, pid))
+		    # we need just the node name part of the host name
+		    node = string.split(host, ".", 1)
+		    alarm_info['node'] = node
+		    while i < 3:
+			Trace.trace(7, "%s: Server restart: try %s"%(prefix, i))
+			os.system('enstore Erestart %s "--just %s"'%(node[0], key))
+			# check if alive
+			stat = client.alive(key, timeout, retries)
+			if not enstore_functions.is_timedout(stat):
+			    Trace.log(e_errors.INFO, "%s: Restarted %s"%(prefix, key))
+			    break
+			else:
+			    i = i + 1
+		    else:
+			# we could not restart the server
+			if not key == ALARM_S:
+			    Trace.alarm(e_errors.ERROR, e_errors.CANTRESTART,
+					alarm_info)
+			else:
+			    Trace.log(e_errors.ERROR, "%s: Can't restart %s"%(prefix, key))
+	except:
+	    # we catch any exception from the thread as we do not want it to
+	    # escape from this area and start executing the main loop of the
+	    # inquisitor code.  we will output an error and then exit.
+	    e_errors.handle_error()
+	    self.serve_forever_error(prefix)
+
     # check if a server is alive, if not, try to restart it.  this restarting
     # may be overridden in the config file on a per server basis.
     def alive_and_restart(self, client, (host, port), time, key):
@@ -150,10 +208,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             #    2. try sending the alive again but wait longer and retry more
             #    3. if still timed out, try to restart the server
             #    4. if not restarted, raise an alarm
-            try:
-                t = self.csc.get(key, self.alive_rcv_timeout,
-                                 self.alive_retries)
-            except errno.errorcode[errno.ETIMEDOUT]:
+	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	    if enstore_functions.is_timedout(t):
                 self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
                 Trace.trace(13,"alive_and_restart - ERROR, getting config dict timed out ")
                 return TIMED_OUT
@@ -161,151 +217,44 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # 1. do not monitor this server any more, remove from our dict
                 self.remove_key(key)
             else:
-                # 2. the server appears dead.  do not fork to restart if the
-                #    last time we did the fork.
-                if not self.forked.has_key(key):
-                    # fork off here so that the child can do the longer wait to
+                # 2. the server appears dead.  do not create a thread to restart if the
+                #    last time we did the creation.
+                if not self.has_thread.has_key(key):
+                    # create a thread here so that the thread can do the longer wait to
                     # see if the server is really alive not just busy.  we must
-                    # keep track of the fact that we forked off so the next
-                    # time we find the server dead we do not fork again.
-                    Trace.trace(8,"Inquisitor forking to restart %s"%(key,))
-                    self.forked[key] = 1
-		    pid = self.fork()
-                    if not pid:
-                        # we are the first child ############################
-			# fork a second time and then exit.  the 2nd child will
-			# actually do the work.  the 1st child (this one) exits
-			# immediately so that the 2nd child is inherited by the
-			# init process and does not become a zombie when it 
-			# exits.
-			pid2 = self.fork()        # getting the second child
-			if not pid2:
-			    # we are the second child #######################
-			    log_name = "INQ_CHILD"
-			    try:
-				Trace.init(log_name)
-				# we need to get new udp clients so we don't collide
-				# with our parent.
-				client.u = udp_client.UDPClient()
-				if not key == CONFIG_S:
-				    self.csc.u = udp_client.UDPClient()
-				if not key == LOG_S:
-				    self.logc.u = udp_client.UDPClient()
-				if not key == ALARM_S:
-				    self.alarmc.u = udp_client.UDPClient()
-				# Check on server status but wait a long time
-				self.alive_rcv_timeout = t.get("hung_rcv_timeout", 
-							       self.get_hung_to(key))
-				self.alive_retries = t.get("hung_retries", 
-							   self.get_hung_retries(key))
-				ret = self.alive_status(client, (t['host'], t['port']),
-							time, key)
-				if ret == TIMED_OUT:
-				    # 3. if we raise an alarm we need to include the 
-				    #     following info.
-				    alarm_info = {'server' : key}
-				    if t.has_key("norestart"):
-					# do not restart, raise an alarm that the
-					# server is dead.
-					if not key == ALARM_S:
-					    Trace.alarm(e_errors.ERROR,
-							e_errors.SERVERDIED,
-							alarm_info)
-					else:
-					    Trace.log(e_errors.ERROR,
-						      "%s died and will not be restarted"%(key,))
-				    else:
-					# we should try to restart the server.  try 3X
-					i = 0
-					self.alive_retries = 1
-					pid = os.getpid()
-					Trace.log(e_errors.INFO,
-						  "Attempting restart of %s (%s)"%(key, pid))
-					# we need just the node name part of the host name
-					node = string.split(host, ".", 1)
-					alarm_info['node'] = node
-					while i < 3:
-					    Trace.trace(7, "Server restart: try %s"%(i,))
-					    os.system('enstore Erestart %s "--just %s"'%(node[0], key))
-					    # check if alive
-					    ret = self.alive_status(client,
-								    (host, port),
-								    time, key)
-					    if ret == DID_IT:
-						Trace.log(e_errors.INFO,
-							  "Restarted %s"%(key,))
-						break
-					    else:
-						i = i + 1
-					else:
-					    # 4. we could not restart the server
-					    if not key == ALARM_S:
-						Trace.alarm(e_errors.ERROR, 
-							    e_errors.CANTRESTART,
-							    alarm_info)
-					    else:
-						Trace.log(e_errors.ERROR,
-						      "Can't restart %s"%(key,))
-				del client.u
-				if not key == CONFIG_S:
-				    del self.csc.u
-				if not key == LOG_S:
-				    del self.logc.u
-				if not key == ALARM_S:
-				    del self.alarmc.u
-			        os._exit(0)   # second child
-			    except:
-				# we catch any exception from the child as we do not want it to
-				# escape from this area and start executing the main loop of the
-				# inquisitor code.  we will output an error and then exit.
-				e_errors.handle_error()
-				self.serve_forever_error(log_name)
-			        os._exit(1)   # second child
-			    # end of the second child ##################################
-			else:
-			    # add the second childs pid to the appropriate enstore file so the
-			    # child can be killed automatically
-			    os.system("tpid=`$ENSTORE_DIR/bin/en_get_pid_dir`;echo %s >> $tpid/`uname -n`-inquisitor_pids"%(pid2,))
-			    os._exit(0)   # first child
-		    else:
-			# we are the original parent.  now we must wait for the first
-			# child to exit so it does not become a zombie
-			os.waitpid(pid, 0)
+                    # keep track of the fact that we created a thread for this client so
+                    # the next time we find the server dead we do not create another one.
+                    Trace.trace(8,"Inquisitor creating thread to restart %s"%(key,))
+                    self.has_thread[key] = 1
+		    restart_thread = threading.Thread(group=None,
+						      target=self.restart_function,
+						      name="RESTART_%s"%(key,),
+						      args=(t, key, client, host))
+		    restart_thread.setDaemon(1)
+		    restart_thread.start()
         else:
-            # the server was alive, clear out any record that we forked to
+            # the server was alive, clear out any record that we created a thread to
             # restart it because apparently it worked.
-            if self.forked.has_key(key):
-                del self.forked[key]
+            if self.has_thread.has_key(key):
+                del self.has_thread[key]
         return ret
 
     # send alive to the server and handle any errors
     def do_alive_check(self, key, time, client):
-	try:
-	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
+	t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	if enstore_functions.is_timedout(t):
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
             Trace.trace(13,"do_alive_check - ERROR, getting config dict timed out ")
 	    return TIMED_OUT
 
 	ret = DID_IT
-        if t['status'] == (e_errors.OK, None):
+	if enstore_functions.is_ok(t):
 	    ret = self.alive_and_restart(client, (t['host'], t['port']),
                                          time, key)
 	elif t['status'][0] == 'KEYERROR':
 	    # do not monitor this server any more, remove him from our dict
 	    self.remove_key(key)
 	return ret
-
-    # create the patrol page that has the patrol url on it. the url comes from
-    # the configuration file
-    def make_patrol_html_file(self, pdir):
-	self.patrolhtmlfile.open()
-	if pdir:
-	    msg = (pdir, "Patrol")
-	else:
-	    msg = "No patrol_file key found in inquisitor part of config file."
-	self.patrolhtmlfile.write(msg)
-	self.patrolhtmlfile.close()
 
     # create an html file that has a link to all of the current log files
     def make_log_html_file(self, log_dirs):
@@ -335,15 +284,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 os.remove("%s/%s%s"%(self.logc.log_dir, LOGHTMLFILE_NAME,
                                      SUFFIX))
 
-    # create the html file with the inquisitor plot information
-    def	make_plot_html_page(self):
-	self.plothtmlfile.open()
-	# get the list of stamps and jpg files
-	(jpgs, stamps, pss) = enstore_plots.find_jpg_files(self.html_dir)
-	self.plothtmlfile.write(jpgs, stamps, pss)
-	self.plothtmlfile.close()
-	self.move_file(1, self.plothtmlfile_orig)
-
     # update the file that contains the configuration file information
     def make_config_html_file(self):
         self.confightmlfile.open()
@@ -357,50 +297,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# we may not have gotten the dict so check for it first before writing it.
 	self.confightmlfile.write(d.get('dump', {}))
 	self.confightmlfile.close()
-	self.move_file(1, self.confightmlfile_orig)
-
-    # update the miscellaneous status file.  the input dict is of the form -
-    #            { filename : (command_to_do, text) , ... }
-    def update_update_commands(self, key, thetime):
-        self.mischtmlfile.open()
-        if self.cmds_to_do:
-            cmd_keys = self.cmds_to_do.keys()
-            cmd_keys.sort()
-	    data = []
-            for hfile in cmd_keys:
-                # we need to add some info for this command to the html file
-                # and we need to execute the command.  if the filename is
-                # 'NONE', then, do not add a link to the file.  if the
-                # command is 'NONE', then do not execute anything.
-                if not self.cmds_to_do[hfile] == "NONE":
-		    # we do not want to hang in case the command hangs, so do a fork.
-		    pid = self.fork()
-                    if not pid:
-                        # we are the first child ############################
-			# fork a second time and then exit.  the 2nd child will
-			# actually do the work.  the 1st child (this one) exits
-			# immediately so that the 2nd child is inherited by the
-			# init process and does not become a zombie when it 
-			# exits.
-			pid2 = self.fork()        # getting the second child
-			if not pid2:
-			    # we are the second child #######################
-			    os.system("$ENSTORE_DIR/bin/run_misc_command \"%s\" 1>%s/%s 2>&1"%(self.cmds_to_do[hfile],
-							 self.html_dir, hfile))
-			    os._exit(0)   # second child
-			    # end of the second child ##################################
-			else:
-			    os._exit(0)   # first child
-		    else:
-			# we are the original parent.  now we must wait for the first
-			# child to exit so it does not become a zombie
-			os.waitpid(pid, 0)
-
-                if not hfile == "NONE":
-		    data.append(hfile)
-	    self.mischtmlfile.write((data, self.html_dir))
-        self.mischtmlfile.close()
-        self.move_file(1, self.mischtmlfile_orig)
+	self.confightmlfile.install()
 
     # get the library manager suspect volume list and output it
     def suspect_vols(self, lm, (host, port), key, time):
@@ -450,13 +347,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the library manager(s)
     def update_library_manager(self, key, time):
 	# get info on this library_manager
-	try:
-	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
+	t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	if enstore_functions.is_timedout(t):
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
 	    Trace.trace(12,"update_library_manager - ERROR, getting config dict timed out")
 	    return
-        if t['status'] == (e_errors.OK, None):
+	if enstore_functions.is_ok(t):
 	    # get a client and then check if the server is alive
             lmc = library_manager_client.LibraryManagerClient(self.csc, key)
 	    ret = self.alive_and_restart(lmc, (t['host'], t['port']), 
@@ -473,13 +369,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the movers
     def update_mover(self, key, time):
 	# get info on this mover
-	try:
-	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
+	t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	if enstore_functions.is_timedout(t):
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
             Trace.trace(12,"update_mover - ERROR, getting config dict timed out")
 	    return
-        if t['status'] == (e_errors.OK, None):
+	if enstore_functions.is_ok(t):
 	    movc = mover_client.MoverClient(self.csc, key)
 	    ret = self.alive_and_restart(movc, (t['host'], t['port']),
                                          time, key)
@@ -491,13 +386,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the media changer(s)
     def update_media_changer(self, key, time):
 	# get info on this media changer
-	try:
-	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
+	t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	if enstore_functions.is_timedout(t):
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
             Trace.trace(12,"update_media_changer - ERROR, getting config dict timed out")
 	    return
-        if t['status'] == (e_errors.OK, None):
+	if enstore_functions.is_ok(t):
 	    # get a client and then check if the server is alive
 	    mcc = media_changer_client.MediaChangerClient(self.csc, key)
 	    self.alive_and_restart(mcc, (t['host'], t['port']), time, key)
@@ -522,6 +416,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_alarm_server(self, key, time):
 	self.do_alive_check(key, time, self.alarmc)
 
+
+    # this is the routine that is called when a message arrives from the event relay.
+    def event_message_arrived(self, fd):
+	pass
+
     # pull various info out of the config file
     def update_random_info(self, conf_dict):
         self.rcv_timeout = conf_dict.get('timeout', default_timeout())
@@ -537,9 +436,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the inquisitor
     def update_inquisitor(self, key, time):
 	# get info on the inquisitor
-	try:
-	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
+	t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	if enstore_functions.is_timedout(t):
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
             Trace.trace(12,"update_inquisitor - ERROR, getting config dict timed out")
 	    return
@@ -579,17 +477,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# update the inquisitor plots web page
 	self.make_plot_html_page()
 
-	# update the page that has a link to patrol (if we have one)
-	self.make_patrol_html_file(t.get("patrol_file", ""))
-        
     # only change the status of the inquisitor on the system status page to
     # timed out, then exit.
     def update_exit(self, exit_code):
 	# get info on the inquisitor
 	key = MY_NAME
-	try:
-	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
+	t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	if enstore_functions.is_timedout(t):
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time.time(), key)
             Trace.trace(12,"update_exit - ERROR, getting config dict timed out")
 	    return
@@ -598,7 +492,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# the above just stored the information, now write the page out
 	self.htmlfile.write()
 	self.htmlfile.close()
-	self.move_file(1, self.htmlfile_orig)
+	self.htmlfile.install()
 	# Don't fear the reaper!!
 	Trace.trace(10, "exiting inquisitor due to request")
 	os._exit(exit_code)
@@ -673,8 +567,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             self.server_keys.remove(key)
         except ValueError:
             pass
-        if self.forked.has_key(key):
-            del self.forked[key]
+        if self.has_thread.has_key(key):
+            del self.has_thread[key]
 	self.htmlfile.remove_key(key)
 	self.encpfile.remove_key(key)
 
@@ -699,11 +593,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # fill in a default interval for any servers that didn't have one specified
     def fill_in_default_intervals(self, ctime=time.time()):
 	itk = "inq_interval"
-	try:
-            # get a list of the servers/keys in the config dictionary
-	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, 
-	                                 self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
+	# get a list of the servers/keys in the config dictionary
+	csc_keys = self.csc.get_keys(self.alive_rcv_timeout, self.alive_retries)
+	if enstore_functions.is_timedout(csc_keys):
             Trace.trace(12,"fill_in_default_intervals - ERROR, getting config dict timed out")
 	    return
         # for each server, get its config dict element and see if it specifies
@@ -851,22 +743,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # inq.html not inq.html.new. only move the file if we actually did
         # something.  else, remove it.
 	self.htmlfile.close()
+	if did_some_work:
+	    self.htmlfile.install()
+	else:
+	    self.htmlfile.remove()
 	self.encpfile.close()
-	self.move_file(did_some_work, self.htmlfile_orig)
-	self.move_file(did_some_encp_work, self.encpfile_orig)
-
-    # try to move the just written file to the displayed copy
-    def move_file(self, flag, afile):
-	try:
-	    if flag:
-                os.rename(afile+SUFFIX, afile)
-	    else:
-                os.remove(afile+SUFFIX)
-	except OSError, msg:
-            format = "%s %s %s, inquisitor update system error %s%s"%(
-                enstore_functions.format_time(time.time()), sys.argv, msg, 
-		afile, SUFFIX)
-	    Trace.log(e_errors.ERROR, format)
+	if did_some_encp_work:
+	    self.encpfile.install()
+	else:
+	    self.encpfile.remove()
 
     def handle_timeout(self):
 	self.do_update(0)
@@ -891,38 +776,52 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
 	self.send_reply(ticket)
 
-    #  make all the plots
-    def plot(self, ticket):
-	# make sure we do not have a thread doing this already
-	if self.plot_thread and self.plot_thread.isAlive():
-	    self.send_reply({ 'status'   : (e_errors.INPROGRESS, None) })
-	else:
-	    # find out where the log files are located
-	    if ticket.has_key(LOGFILE_DIR):
-		lfd = ticket[LOGFILE_DIR]
-	    else:
-		t = self.csc.get("log_server")
-		lfd = t["log_file_path"]
+    # thread to watch a given server
+    def watch_server_function(self, server, inq_func, log_name):
+	still_watch = 1;
+	# watch the server until either the server is no longer valid or the main thread 
+	# finishes
+	while still_watch:
+	    # make sure the server is still a valid server
+	    server_d = self.server_keys.get(server, {})
+	    if not server_d.get(PING, NO_PING) == NO_PING:
+		try:
+		    exec("self.%s(key, ctime)"%(inq_func,time.time()))
+		except SystemExit, exit_code:
+		    raise SystemExit, exit_code
+		except:
+		    # there was a problem getting info from the server
+		    # change the color of the displayed info. do not delete
+		    # the server from the list as the next time things may 
+		    # be ok. report the error too.
+		    e_errors.handle_error()
+		    self.serve_forever_error(log_name)
+		    self.htmlfile.set_alive_error_status(server)
+	    # sleep for awhile before we try this again.  we sleep for one second
+	    # intervals adding up to the time in INTERVAL.  we do this so we can
+	    # catch any requests for updating the server that are out of synch
+	    # with the timed update.
+	    secs = server_d.get(INTERVAL, DEFAULT_INTERVAL)
+	    time_sleeping = 1
+	    while secs > 0:
+		time.sleep(time_sleeping);
+		secs = secs - time_sleeping;
+		pass
+	    
 
-	    out_dir = ticket.get("out_dir", lfd)
 
-	    keep = ticket.get("keep", 0)
-	    pts_dir = ticket.get("keep_dir", "")
 
-	    # create a thread to deal with this.
-	    plot_args = (ticket, lfd, keep, pts_dir, out_dir)
-	    self.plot_thread = threading.Thread(group=None, 
-						target=self.plot_function,
-						name=PLOTTHRNAME, args=plot_args)
-	    self.plot_thread.setDaemon(1)	    
-	    self.plot_thread.start()
+    # given a server, start a thread to monitor that server
+    def watch_server(self, server_name):
+	# some keys are of the form name.real_key, so we have to get the real 
+	# key to find the function to call
+	rkeyl = string.split(key, '.')
+	inq_func = "update_"+rkeyl[len(rkeyl)-1]
+	if not InquisitorMethods.__dict__.has_key(inq_func) or \
+	   not (type(InquisitorMethods.__dict__[inq_func]) == types.FunctionType):
+	    inq_func = "update_nofunc"
+	pass
 
-    # plot thread
-    def plot_function(self, ticket, lfd, keep, pts_dir, out_dir):
-	self.encp_plot(ticket, lfd, keep, pts_dir, out_dir)
-	self.mount_plot(ticket, lfd, keep, pts_dir, out_dir)
-	ret_ticket = { 'status'   : (e_errors.OK, None) }
-	self.send_reply(ret_ticket)
 
     def do_dump(self):
         Trace.trace(11, "last_update - %s"%(self.last_update,))
@@ -930,15 +829,19 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(11, "intervals  - %s"%(self.intervals,))
 	Trace.trace(11, "server_keys - %s"%(self.server_keys,))
 	Trace.trace(11, "reset       - %s"%(self.reset,))
-	Trace.trace(11, "htmlfile_orig - %s"%(self.htmlfile_orig,))
-	Trace.trace(11, "encpfile_orig - %s"%(self.encpfile_orig,))
+	Trace.trace(11, "htmlfile - %s"%(self.htmlfile.real_file_name,))
+	Trace.trace(11, "encpfile - %s"%(self.encpfile.real_file_name,))
+	if self.plot_thread and self.plot_thread.isAlive():
+	    Trace.trace(11, "plot thread is alive")
         print "last_update - %s"%(self.last_update,)
 	print "last_alive - %s"%(self.last_alive,)
 	print "intervals  - %s"%(self.intervals,)
 	print "server_keys - %s"%(self.server_keys,)
 	print "reset       - %s"%(self.reset,)
-	print "htmlfile_orig - %s"%(self.htmlfile_orig,)
-	print "encpfile_orig - %s"%(self.encpfile_orig,)
+	print "htmlfile - %s"%(self.htmlfile.real_file_name,)
+	print "encpfile - %s"%(self.encpfile.real_file_name,)
+	if self.plot_thread and self.plot_thread.isAlive():
+	    print "plot thread is alive"
 	print ""
 	import pprint
 	pprint.pprint(self.htmlfile.text)
@@ -1038,95 +941,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                            'status'  : (e_errors.DOESNOTEXIST, None) }
 	self.send_reply(ret_ticket)
 
-    # make the mount plots (mounts per hour and mount latency
-    def mount_plot(self, ticket, lfd, keep, pts_dir, out_dir):
-	ofn = out_dir+"/mount_lines.txt"
-
-	# parse the log files to get the media changer mount/dismount
-	# information, put this info in a separate file
-	# always add /dev/null to the end of the list of files to search thru 
-	# so that grep always has > 1 file and will always print the name of 
-	# the file at the beginning of the line.
-	mountfile = enstore_files.EnMountDataFile(enstore_constants.LOG_PREFIX+\
-						  "* /dev/null", ofn, 
-	                                "-e %s -e %s"%(Trace.MSG_MC_LOAD_REQ,
-                                                       Trace.MSG_MC_LOAD_DONE),
-                                                   lfd)
-
-	# only extract the information from the newly created file that is
-	# within the requested timeframe.
-	mountfile.open('r')
-	mountfile.timed_read(ticket)
-	# now pull out the info we are going to plot from the lines
-	mountfile.parse_data(ticket.get("mcs", []))
-        mountfile.close()
-        mountfile.cleanup(keep, pts_dir)
-
-        # only do the plotting if we have some data
-        if mountfile.data:
-            # create the data files
-            mphfile = enstore_plots.MphDataFile(out_dir)
-            mphfile.open()
-            mphfile.plot(mountfile.data)
-            mphfile.close()
-            mphfile.install(self.html_dir)
-            mphfile.cleanup(keep, pts_dir)
-
-            mlatfile = enstore_plots.MlatDataFile(out_dir)
-            mlatfile.open()
-            mlatfile.plot(mountfile.data)
-            mlatfile.close()
-            mlatfile.install(self.html_dir)
-            mlatfile.cleanup(keep, pts_dir)
-
-	    # now save any new mount count data for the continuing total count. and create the
-	    # overall total mount plot
-	    mpdfile = enstore_plots.MpdDataFile(out_dir)
-            mpdfile.open()
-            mpdfile.plot(mphfile.total_mounts)
-            mpdfile.close()
-	    mpdfile.install(self.html_dir)
-
-    # make the total transfers per unit of time and the bytes moved per day
-    # plot
-    def encp_plot(self, ticket, lfd, keep, pts_dir, out_dir):
-	ofn = out_dir+"/bytes_moved.txt"
-
-	# always add /dev/null to the end of the list of files to search thru 
-	# so that grep always has > 1 file and will always print the name of 
-	# the file at the beginning of the line.
-	encpfile = enstore_files.EnEncpDataFile(enstore_constants.LOG_PREFIX+\
-						"* /dev/null",
-						ofn,
-						"-e %s"%(Trace.MSG_ENCP_XFER,),
-						lfd)
-	# only extract the information from the newly created file that is
-	# within the requested timeframe.
-	encpfile.open('r')
-	encpfile.timed_read(ticket)
-	# now pull out the info we are going to plot from the lines
-	encpfile.parse_data(ticket.get("mcs", []))
-        encpfile.close()
-        encpfile.cleanup(keep, pts_dir)
-
-        # only do the plotting if we have some data
-        if encpfile.data:
-	    bpdfile = enstore_plots.BpdDataFile(out_dir)
-	    bpdfile.open()
-	    bpdfile.plot(encpfile.data)
-	    bpdfile.close()
-	    bpdfile.install(self.html_dir)
-
-            xferfile = enstore_plots.XferDataFile(out_dir, bpdfile.ptsfile)
-            xferfile.open()
-            xferfile.plot(encpfile.data)
-            xferfile.close()
-            xferfile.install(self.html_dir)
-
-            # delete any extraneous files. do it here because the xfer file
-            # plotting needs the bpd data file
-            bpdfile.cleanup(keep, pts_dir)
-            xferfile.cleanup(keep, pts_dir)
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
@@ -1135,6 +949,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)
 	self.name = MY_NAME
+	self.startup_state = e_errors.OK
 	# set an interval and retry that we will use the first time to get the
 	# inquisitor information from the config server.  we do not use the
 	# passed values because they might have been defaulted and we need to
@@ -1142,6 +957,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	use_once_timeout = 5
 	use_once_retry = 1
 	keys = self.csc.get(self.name, use_once_timeout, use_once_retry)
+	if enstore_functions.is_timedout(keys):
+	    self.startup_state = e_errors.TIMED_OUT
+	    self.startup_text = "configuration server"
+	    return 
 	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], 
 	                                              keys['port']))
 
@@ -1149,7 +968,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.doupdate_server_dict = 0
 	self.reset = {}
         self.update_request = {}
-        self.forked = {}
+        self.has_thread = {}
         self.intervals = {}
         self.cmds_to_do = keys.get('update_commands', {})
         # if no timeout was entered on the command line, get it from the 
@@ -1199,8 +1018,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                             enstore_files.encp_html_file_name()
 	        config_file = self.html_dir+"/"+\
                             enstore_files.config_html_file_name()
-	        misc_file = self.html_dir+"/"+\
-                            enstore_files.misc_html_file_name()
 		plot_file = self.html_dir+"/"+\
                             enstore_files.plot_html_file_name()
 	    else:
@@ -1208,7 +1025,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	        html_file = enstore_files.default_status_html_file()
 	        encp_file = enstore_files.default_encp_html_file()
 	        config_file = enstore_files.default_config_html_file()
-	        misc_file = enstore_files.default_misc_html_file()
 		plot_file = enstore_files.default_plot_html_file()
 
         # if no html refresh was entered on the command line, get it from
@@ -1219,23 +1035,16 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# add a suffix to the html file because we will write to this file and 
 	# maintain another copy of the file (with the user entered name) to
 	# be displayed.
-	self.htmlfile = enstore_files.HTMLStatusFile(html_file+SUFFIX,refresh, 
+	self.htmlfile = enstore_files.HTMLStatusFile(html_file, refresh, 
 						     self.system_tag)
-	self.htmlfile_orig = html_file
-	self.encpfile = enstore_files.HTMLEncpStatusFile(encp_file+SUFFIX, refresh,
+	self.encpfile = enstore_files.HTMLEncpStatusFile(encp_file, refresh,
 							 self.system_tag)
-	self.encpfile_orig = encp_file
         self.loghtmlfile = enstore_files.HTMLLogFile(self.logc.log_dir+"/"+\
 						     LOGHTMLFILE_NAME+SUFFIX, 
 						     self.system_tag)
-        self.confightmlfile = enstore_files.HTMLConfigFile(config_file+SUFFIX, 
+        self.confightmlfile = enstore_files.HTMLConfigFile(config_file, 
 							   self.system_tag)
-        self.confightmlfile_orig = config_file
-        self.mischtmlfile = enstore_files.HTMLMiscFile(misc_file+SUFFIX, self.system_tag)
-        self.mischtmlfile_orig = misc_file
-	self.plothtmlfile = enstore_files.HTMLPlotFile(plot_file+SUFFIX, self.system_tag)
-        self.plothtmlfile_orig = plot_file
-	self.patrolhtmlfile = enstore_files.HTMLPatrolFile("%s/%s"%(self.html_dir, PATROL_FILE))
+	self.plothtmlfile = enstore_files.HTMLPlotFile(plot_file, self.system_tag)
 
 	# get the interval for each of the servers from the configuration file.
 	self.last_update = {}
@@ -1308,19 +1117,22 @@ if __name__ == "__main__":
                      intf.alive_rcv_timeout, intf.alive_retries,
 	             intf.max_encp_lines,intf.refresh)
 
-    inq.handle_generic_commands(intf)
+    if inq.startup_state == e_errors.TIMEDOUT:
+	Trace.trace(6, "Inquisitor TIMED OUT when contacting %s"%(inq.startup_text))
+    else:
+	inq.handle_generic_commands(intf)
 
-    while 1:
-        try:
-            Trace.log(e_errors.INFO, "Inquisitor (re)starting")
-            inq.serve_forever()
-	except SystemExit, exit_code:
-	    # we need to update the inquisitor page to show that the inquisitor 
-	    # is not running, then exit fer sure.
-	    inq.update_exit(exit_code)
-        except:
-	    e_errors.handle_error()
-	    inq.serve_forever_error(inq.log_name)
-	    inq.do_dump()
+	while 1:
+	    try:
+		Trace.log(e_errors.INFO, "Inquisitor (re)starting")
+		inq.serve_forever()
+	    except SystemExit, exit_code:
+		# we need to update the inquisitor page to show that the inquisitor 
+		# is not running, then exit fer sure.
+		inq.update_exit(exit_code)
+	    except:
+		e_errors.handle_error()
+		inq.serve_forever_error(inq.log_name)
+		inq.do_dump()
             continue
     Trace.trace(6,"Inquisitor finished (impossible)")
