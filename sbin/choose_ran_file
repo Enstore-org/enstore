@@ -90,7 +90,7 @@ while [ $done -gt 0 ]; do
   if [ $NF -le 0 ]; then echo `date` REJECTED NO SUITABLE FILES on $tape; rm  ${tape}_; continue; fi
 
   # ignore hidden files and sort the filelist according to location on the tape
-  grep -v '\/\.' ${tape}_ | sort -k4  ${tape}_ > ${tape}__
+  grep -v '\/\.' ${tape}_ | sort -k4 > ${tape}__
   mv  ${tape}__  ${tape}_
 
   # choose a random file and  1st and last non-deleted files on the random volume
