@@ -814,7 +814,7 @@ class ScheduleFile(EnFile):
     def close(self):
 	EnFile.close(self)
 	# get rid of the lock file
-	os.system("rm %s"%(self.lockfile,))
+	os.system("rm -f %s"%(self.lockfile,))
 
     def read(self):
         try:
@@ -843,8 +843,7 @@ class ScheduleFile(EnFile):
             outage_d = {}
             offline_d = {}
             override_d = {}
-        if self.openfile:
-            self.close()
+        self.close()
         return outage_d, offline_d, override_d
 
     # turn the dictionary into python code to be written out to the file
@@ -890,7 +889,7 @@ class SeenDownFile(EnFile):
     def close(self):
         EnFile.close(self)
         # get rid of the lock file
-        os.system("rm %s"%(self.lockfile,))
+        os.system("rm -f %s"%(self.lockfile,))
 
     def read(self):
         try:
@@ -907,8 +906,7 @@ class SeenDownFile(EnFile):
         except:
             # can't find the module
             seen_down_d = {}
-        if self.openfile:
-            self.close()
+        self.close()
         return seen_down_d
 
     # turn the dictionary into python code to be written out to the file
