@@ -22,6 +22,8 @@ BPD_FILE_R = "%s_r"%(BPD_FILE,)
 BPD_FILE_W = "%s_w"%(BPD_FILE,)
 XFER_FILE = "%s%s"%(FILE_PREFIX, XFER)
 XFERLOG_FILE = "%s%s"%(XFER_FILE, LOG)
+# ratekeeper generated plot data files
+RATES = "rates"
 
 JPG = ".jpg"
 PS = ".ps"

@@ -62,7 +62,8 @@ PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
 	     [enstore_constants.BPD_FILE_W, "Bytes Written/Day"],
 	     [enstore_constants.BPD_FILE, "Bytes/Day"], 
 	     [enstore_constants.XFERLOG_FILE, "Transfer Activity (log)"],
-	     [enstore_constants.XFER_FILE, "Transfer Activity"]]
+	     [enstore_constants.XFER_FILE, "Transfer Activity"],
+             [enstore_constants.RATES, "Total Terabytes/Day"]]
 
 DEFAULT_LABEL = "UNKNOWN INQ PLOT"
 # these defaults mean, output all the lines on the main page
