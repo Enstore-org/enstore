@@ -673,8 +673,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def return_state(self):
         return state_name(self.state)
 
-    def log_state(self):
-        if self.log_mover_state:
+    def log_state(self,logit=0):
+        if self.log_mover_state or logit:
             cmd = "EPS | grep %s"%(self.name,)
             pipeObj = popen2.Popen3(cmd, 0, 0)
             if pipeObj is None:
@@ -2844,7 +2844,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # tape thread stuck in D state - offline mover
                 after_dismount_function = self.offline
                 Trace.alarm(e_errors.ERROR, "tape thread is possibly stuck in D state")
-                self.log_state()
+                self.log_state(logit=1)
             if error_source == DRIVE:
                 after_dismount_function = self.offline
                 Trace.alarm(e_errors.ERROR, "Possible drive failure")
@@ -2890,6 +2890,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.net_driver.close()
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         if exc == e_errors.MOVER_STUCK:
+            self.log_state(logit=1)
             broken = exc
 
         save_state = self.state
@@ -2926,7 +2927,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.maybe_clean():
                     Trace.trace(26,"cleaned")
                     self.state = IDLE
-                    self.log_state()
                     self.tr_failed = 0
                     return
                 
