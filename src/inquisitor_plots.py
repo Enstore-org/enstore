@@ -280,5 +280,6 @@ class InquisitorPlots:
 	    self.total_bytes_plot()
 
 	# update the inquisitor plots web page
-	Trace.trace(1, "Creating the inq plot web page")
-	self.make_plot_html_page()
+	if not self.no_plot_html:
+	    Trace.trace(1, "Creating the inq plot web page")
+	    self.make_plot_html_page()

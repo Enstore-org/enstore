@@ -18,7 +18,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
     def __init__(self, csc, rcv_timeout, rcv_retry, logfile_dir, 
 		 start_time, stop_time, media_changer, keep,
 		 keep_dir, output_dir, html_file, mount_label=None,
-		 pts_dir=None, pts_nodes=None):
+		 pts_dir=None, pts_nodes=None, no_plot_html=None):
 	# we need to get information from the configuration server
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
 
@@ -32,6 +32,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	self.mount_label = mount_label
 	self.pts_dir = pts_dir
 	self.pts_nodes = pts_nodes
+	self.no_plot_html = no_plot_html
         self.startup_state = e_errors.OK
 
         config_d = self.csc.dump(rcv_timeout, rcv_retry)
@@ -113,6 +114,7 @@ class PlotterInterface(generic_client.GenericClientInterface):
 	self.total_bytes = None
 	self.pts_dir = None
 	self.pts_nodes = None
+	self.no_plot_html = None
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
         
@@ -149,6 +151,12 @@ class PlotterInterface(generic_client.GenericClientInterface):
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_LABEL:"node1[,node2]...",
                         option.USER_LEVEL:option.USER,
+                   },
+        option.NO_PLOT_HTML:{option.HELP_STRING:"do not create the plot web page",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER,
                    },
         option.LOGFILE_DIR:{option.HELP_STRING:"location of log files is not" \
                             " in directory in config file",
@@ -221,7 +229,8 @@ if __name__ == "__main__":
 		      intf.logfile_dir, intf.start_time, 
 		      intf.stop_time, intf.media_changer, intf.keep, 
 		      intf.keep_dir, intf.output_dir, intf.html_file,
-		      intf.label, intf.pts_dir, intf.pts_nodes)
+		      intf.label, intf.pts_dir, intf.pts_nodes,
+		      intf.no_plot_html)
 
     if plotter.startup_state == e_errors.TIMEDOUT:
         Trace.trace(1, 
