@@ -22,8 +22,10 @@ import udp_client
 import checksum
 import udp_server
 
+#Completion status field values.
 SUCCESS = "SUCCESS"
 FAILURE = "FAILURE"
+EOD = "EOD"  #Don't stop until EOD is reached.
 
 def print_usage():
     print "Usage:", os.path.basename(sys.argv[0]), \
@@ -232,10 +234,24 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
 def set_metadata(ticket, intf):
     pass
     #Create the pnfs file.
-    #encp.create_zero_length_files(ticket['infile'])
+    encp.create_zero_length_files(ticket['infile'])
+
+    ticket['wrapper']['fullname'] = ticket['outfile']
+    ticket['wrapper']['pnfsFilename'] = ticket['infile']
 
     #Set the metadata for this new file.
-    #encp.set_pnfs_settings(ticket, intf)
+    encp.set_pnfs_settings(ticket, intf)
+
+    delete_at_exit.unregister(ticket['infile'])
+
+    if e_errors.is_ok(ticket):
+        msg = "Metadata update failed for %s." % ticket['infile']
+        Trace.message(5, msg)
+        Trace.log(e_errors.INFO, msg)
+    else:
+        msg = "Successfully updated %s metadata." % ticket['infile']
+        Trace.message(5, msg)
+        Trace.log(e_errors.INFO, msg)
 
 def end_session(udp_socket, control_socket):
 
@@ -375,9 +391,11 @@ def main(e):
         # the user did not specify the filenames...
         #if len(requests_per_vol[e.volume]) == 1 and \
         #   requests_per_vol[e.volume][0].get('bfid', None) == None:
-        if request.get('bfid', None) == None:
+        if request.get('bfid', None) == None and \
+           len(requests_per_vol[e.volume]) == 1:
             #Initalize this.
             file_number = 1
+            request['completion_status'] = EOD
 
         # Keep looping until the READ_EOD error occurs.
         while requests_outstanding(requests_per_vol[e.volume]):
@@ -396,9 +414,9 @@ def main(e):
             #Everything is fine.
             if e_errors.is_ok(done_ticket):
                 #Tell the user what happend.
-                Trace.message(1,
+                Trace.message(e_errors.INFO,
                           "File %s copied successfully." % request['infile'])
-                Trace.log(e_errors.ERROR,
+                Trace.log(e_errors.INFO,
                           "File %s copied successfully." % request['infile'])
 
                 #Combine the tickets:
@@ -408,20 +426,26 @@ def main(e):
                 #Remember the completed transfer.
                 files_transfered = files_transfered + 1
 
-                if request.get('bfid', None) == None:
+                
+                if request.get('completion_status', None) == "EOD": 
                     #The fields need to be updated for the next file
-                    # on the tape to be read.
+                    # on the tape to be read.  We should only get here if
+                    # the metadata is unkown and --list was NOT used.
                     #Note: This will not work for the cern wrapper.  For this
                     # wrapper the header and trailer consume a 'file' on
                     # the tape.
                     file_number = file_number + 1
                     next_request_update(request, file_number)
-
-                    #Set the metadata.
-                    set_metadata(request, e)
                 else:
                     #Set completion status to successful.
                     request['completion_status'] = SUCCESS
+
+                #Set the metadata if it has not already been set.
+                if request.get('bfid', None) == None:
+                    Trace.message(5, "Updating metadata for %s." %
+                                  request['infile'])
+                    set_metadata(request, e)
+                    delete_at_exit.unregister(request['outfile'])
 
                 #Store these changes back into the master list.
                 requests_per_vol[e.volume][index] = request
@@ -466,7 +490,7 @@ def main(e):
                 # to the LM.
 
                 #Record the intermidiate error.
-                Trace.log(e_errors.ERROR, "File %s read failed: %s" %
+                Trace.log(e_errors.WARNING, "File %s read failed: %s" %
                               (request['infile'], done_ticket['status']))
 
                 #We are done with this mover.
