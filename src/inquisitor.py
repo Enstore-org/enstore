@@ -143,7 +143,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # mark a server as having possible hung, this happens if no alive message is
     # received from the event_relay for this server after server.hung_interval time
-    def mark_hung(self, server):
+    def mark_dead(self, server):
         self.mark_server(DEAD, server)
 
     # called by the signal handling routines
@@ -239,8 +239,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             # if we raise an alarm we need to include the following info.
             alarm_info = {'server' : server.name}
             # first see if the server is supposed to be restarted.
+	    print server
             if server.norestart:
-                if server.restart_failed and (not server.did_restart_alarm):
+                if not server.did_restart_alarm:
                     # do not restart, raise an alarm that the
                     # server is dead.
                     if not server.name == enstore_constants.ALARM_SERVER:
@@ -249,6 +250,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         Trace.log(e_errors.ERROR,
                                   "%s died and will not be restarted"%(server.name,))
                     server.did_restart_alarm = 1
+		    server.do_hack_restart()
             else:
                 # do not attempt to do the restart if the event relay is not alive.
                 if (not server.restart_failed) and self.event_relay.is_alive():
@@ -538,7 +540,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             if status == monitored_server.TIMEDOUT:
                 self.mark_timed_out(server)
             elif status == monitored_server.HUNG:
-                self.mark_hung(server)
+                self.mark_dead(server)
                 self.attempt_restart(server)
 
     def check_event_relay_last_alive(self):

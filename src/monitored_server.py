@@ -1,9 +1,12 @@
 import time
+import threading
+import os
 
 import enstore_constants
 import enstore_functions
 import mover_client
 import library_manager_client
+import e_errors
 import Trace
 
 DEFAULT_ALIVE_INTERVAL = 30
@@ -19,6 +22,19 @@ FINISHED = 1
 ACTIVE = 2
 
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+
+def hack_restart_function(name, host):
+    Trace.log(e_errors.WARNING, "running dbhang for %s on %s"%(name, host))
+    os.system("rsh -n %s '/home/enstore/dbhang %s'"%(host, name))
+
+# this is really a hack, do this right when i am back full time on enstore
+def hack_restart(name, host):
+    restart_thread = threading.Thread(group=None,
+				      target=hack_restart_function,
+				      name="HACK_RESTART_%s"%(name,),
+				      args=(name, host))
+    restart_thread.setDaemon(1)
+    restart_thread.start()
 
 # get the alive_interval from the server or the default from the inquisitor
 def get_alive_interval(csc, name, config={}):
@@ -134,6 +150,10 @@ class MonitoredServer:
 	import pprint
 	return "%s : %s\n%s"%(self.name, pprint.pformat(self.__dict__), DIVIDER)
 
+    def do_hack_restart(self):
+	# this should be overridden by the servers that care
+	pass
+
 class MonitoredInquisitor(MonitoredServer):
 
     def update_default_alive_interval(self, config):
@@ -175,12 +195,16 @@ class MonitoredFileClerk(MonitoredServer):
     def __init__(self, config):
 	MonitoredServer.__init__(self, config, enstore_constants.FILE_CLERK)
 
+    def do_hack_restart(self):
+	hack_restart(self.name, self.host)
 
 class MonitoredVolumeClerk(MonitoredServer):
 
     def __init__(self, config):
 	MonitoredServer.__init__(self, config, enstore_constants.VOLUME_CLERK)
 
+    def do_hack_restart(self):
+	hack_restart(self.name, self.host)
 
 class MonitoredConfigServer(MonitoredServer):
 
