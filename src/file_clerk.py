@@ -317,11 +317,23 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     def __erase_volume(self, vol):
         Trace.log(e_errors.INFO, 'erasing files of volume %s'%(vol))
-        bfids = self.get_all_bfids(vol)
+        try:
+            bfids = self.get_all_bfids(vol)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = "__erase_volume(): can not get bfids for '%s' %s %s"%(vol, str(exc_type), str(exc_value))
+            Trace.log(e_errors.ERROR, msg)
+            return e_errors.ERROR, msg
 
         # remove file record
         for bfid in bfids:
-            del self.dict[bfid]
+            try:
+                del self.dict[bfid]
+            except:
+                exc_type, exc_value = sys.exc_info()[:2]
+                msg = "__erase_volume(): failed to remove record '%s' %s %s"%(bfid, str(exc_type), str(exc_value))
+                Trace.log(e_errors.ERROR, msg)
+                return e_errors.ERROR, msg
 
         Trace.log(e_errors.INFO, 'files of volume %s are erased'%(vol))
         return e_errors.OK, None
