@@ -120,8 +120,8 @@ EXto_HSM(  PyObject	*self
 	PyObject	*attrObj1_p, *attrObj2_p;
 	int		sanity_byts;	/* EXto_HSM Arg 4*/
 	int		san_crc=0, dat_crc=0, dat_byts=0;
-	long		filesize[3];		/* default locations */
-	long		*filesize_p[3];
+	long		bytes_xferred[3];		/* default locations */
+	long		*bytes_xferred_p[3];
 	char		*str;
 	int		fd_a[2]={0,0};
 	FILE		*fp_a[2]={NULL,NULL};
@@ -173,7 +173,7 @@ EXto_HSM(  PyObject	*self
 		frmFunc_p[idx] = read;
 	    else
 		to_Func_p[idx] = write;
-	    filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
+	    bytes_xferred_p[idx] = &bytes_xferred[idx]; bytes_xferred[idx] = 0;
 	    /*printf( "EXfer p%d class is Mover, fd=%d\n", idx+1, fd_a[idx] );*/
 	}
 	else if (strcmp(str,"FTTDriver") == 0)
@@ -189,8 +189,8 @@ EXto_HSM(  PyObject	*self
 		   , *(char **)((struct s_ETdesc *)fd_a[idx])->ftt_desc
 		   , ((struct s_ETdesc *)fd_a[idx])->block_size );*/
 	    if (idx == To_)  inc_size = ((struct s_ETdesc *)fd_a[idx])->block_size;
+	    bytes_xferred_p[idx] = &((struct s_ETdesc *)fd_a[idx])->bytes_xferred;
 	    fd_a[idx] = (int)((struct s_ETdesc *)fd_a[idx])->ftt_desc;
-	    filesize_p[idx] = &((struct s_ETdesc *)fd_a[idx])->filesize;
 	}
 	else if (strcmp(str,"RawDiskDriver") == 0 ||  strcmp(str,"DelayDriver") == 0 )
 	{   attrObj1_p = PyObject_GetAttrString( obj_pa[idx], "df" );
@@ -204,7 +204,7 @@ EXto_HSM(  PyObject	*self
 		frmFunc_p[idx] = (void(*))fread;
 	    else
 		to_Func_p[idx] = (void(*))fwrite;
-	    filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
+	    bytes_xferred_p[idx] = &bytes_xferred[idx]; bytes_xferred[idx] = 0;
 	    /*printf( "EXfer p%d class is RawDiskDriver, fp=%p\n", idx+1, fp_a[idx] );*/
 	}
 	else
@@ -264,7 +264,16 @@ EXto_HSM(  PyObject	*self
 	while (!eof_flg)
 	{
 	    /* gain access to *blk* of shared mem */
-	    if (semop(semid,&sops_rd_wr2rd,1) == -1)  perror( "semop - read" );
+	    do
+	    {   sts = semop( semid, &sops_rd_wr2rd, 1 );
+		if ((sts==-1) && (errno!=EINTR))
+		{   perror( "semop - read" );
+		    /* exit with error??? */
+		}
+		else if (sts == -1) /* interrupted system call */
+		{   perror( "semop - read" );
+		}
+	    } while (sts != 0);
 
 	    while (shm_byts < inc_size)
 	    {   read_byts = inc_size - shm_byts;
@@ -333,8 +342,18 @@ EXto_HSM(  PyObject	*self
     while (writing_flg)
     {
 	/* read fifo - normal (blocking) */
-	if (msgrcv(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.data),0,0) == -1)
-	                                         perror( "semop - wr_rd2wr" );
+	do
+	{   sts = msgrcv(  msgqid, (struct msgbuf *)&msgbuf_s
+			 , sizeof(msgbuf_s.data), 0, 0 );
+	    if ((sts==-1) && (errno!=EINTR))
+	    {   perror( "semop - wr_rd2wr" );
+		/* exit with error??? */
+	    }
+	    if (sts == -1)/* && is EINTR - interrupted system call; stracing */
+	    {   perror( "semop - wr_rd2wr" );
+	    }
+	} while (sts == -1);
+
 	switch (msgbuf_s.mtype)
 	{
 	case WrtSiz:
@@ -354,7 +373,7 @@ EXto_HSM(  PyObject	*self
 		    perror( "write" );
 	    }
 #	    endif
-	    *filesize_p += msgbuf_s.data;
+	    *bytes_xferred_p += msgbuf_s.data;
 	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.data );*/
 	    if (semop(semid,&sops_wr_wr2rd,1) == -1) perror( "semop - read" );
 	    if (++ahead_idx == rd_ahead) ahead_idx = 0;
