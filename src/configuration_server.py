@@ -13,15 +13,16 @@ from generic_server import GenericServer
 class ConfigurationDict(DispatchingWorker) :
 
     # load the configuration dictionary - the default is a wormhole in pnfs
-    def load_config(self, configfile) :
+    def load_config(self, configfile,list=1) :
         try:
             f = open(configfile)
         except :
             return repr(configfile)+" does not exists"
         line = ""
 
-        print "ConfigurationDict load_config: "\
-              +"loading enstore configuration from ",configfile
+        if list:
+            print "ConfigurationDict load_config: "\
+                  +"loading enstore configuration from ",configfile
         while 1:
             # read another line - appending it to what we already have
             nextline = f.readline()
@@ -86,46 +87,59 @@ class ConfigurationDict(DispatchingWorker) :
     def load(self, ticket) :
         try :
             configfile = ticket["configfile"]
-            out_ticket = {"status" : self.load_config(configfile)}
+            list = 1
+            out_ticket = {"status" : self.load_config(configfile,list)}
         except KeyError:
             out_ticket = {"status" : "nosuchname"}
         self.reply_to_caller(out_ticket)
 
 
 class ConfigurationServer(ConfigurationDict, GenericServer, UDPServer) :
-    def __init__(self, server_address, \
-                 configfile="/pnfs/enstore/.(config)(flags)/enstore.conf") :
+    def __init__(self, server_address \
+                 ,configfile="/pnfs/enstore/.(config)(flags)/enstore.conf"\
+                 ,list=0):
 
         # make a configuration dictionary
         cd =  ConfigurationDict()
         # default socket initialization - ConfigurationDict handles requests
         TCPServer.__init__(self, server_address, cd)
         # now (and not before,please) load the config file user requested
-        self.load_config(configfile)
+        self.load_config(configfile,list)
         #check that it is valid - or else load a "good" one
         self.config_exists()
         # always nice to let the user see what she has
-        pprint.pprint(self.__dict__)
+        if list:
+            pprint.pprint(self.__dict__)
 
 if __name__ == "__main__" :
+    import getopt
+    import socket
 
     # defaults
     host = "localhost"
     port = "7500"
     configfile = "/pnfs/enstore/.(config)(flags)/enstore.conf"
+    list = 1
 
+    # see what the user has specified. bomb out if wrong options specified
+    options = ["host=","port=","configfile=","list", "nolist","help"]
+    optlist,args=getopt.getopt(sys.argv[1:],'',options)
+    for (opt,value) in optlist :
+        if opt == "--host" :
+            host = value
+        elif opt == "--port" :
+            port = value
+        elif opt == "--list" :
+            list = 1
+        elif opt == "--nolist" :
+            list = 0
+        elif opt == "--help" :
+            print sys.argv[0], options
+	    print "   do not forget the '--' in front of each option"
+	    sys.exit(0)
 
-    # see what the user has specified
-    try:
-        host = sys.argv[1]
-
-        port = sys.argv[2]
-
-        configfile =  sys.argv[3]
-
-    # just use the defaults if the user didn't specify them
-    except:
-        pass
+    # bomb out if can't translate host
+    ip = socket.gethostbyname(host)
 
     # bomb out if port isn't numeric
     port = string.atoi(port)
@@ -135,8 +149,9 @@ if __name__ == "__main__" :
 
     # instantiate, or bomb our, and then start server
     server_address = (host,port)
-    print "Instantiating Configuration Server at ", server_address\
-          , " using config file ",configfile
-    cs =  ConfigurationServer( server_address, configfile)
+    if list:
+        print "Instantiating Configuration Server at ", server_address\
+              , " using config file ",configfile
+    cs =  ConfigurationServer( server_address, configfile,list)
 
     cs.serve_forever()
