@@ -17,6 +17,9 @@ import setpath
 import callback
 import dispatching_worker
 import generic_server
+import event_relay_client
+import monitored_server
+import enstore_constants
 import db
 import Trace
 import e_errors
@@ -1322,7 +1325,9 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)
         keys = self.csc.get(MY_NAME)
-
+	self.alive_interval = monitored_server.get_alive_interval(self.csc,
+								  MY_NAME,
+								  keys)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
                                                              keys['port']))
 
@@ -1343,6 +1348,10 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
         self.bfid_db=bfid_db.BfidDb(dbHome)
         self.sgdb = sg_db.SGDb(dbHome)
+
+	# start our heartbeat to the event relay process
+	self.erc.start_heartbeat(enstore_constants.VOLUME_CLERK, 
+				 self.alive_interval)
         
 class VolumeClerkInterface(generic_server.GenericServerInterface):
         pass

@@ -10,6 +10,8 @@ import dispatching_worker
 import interface
 import enstore_files
 import generic_server
+import event_relay_client
+import monitored_server
 import Trace
 import alarm
 import e_errors
@@ -213,6 +215,9 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
         self.pid = os.getpid()
         keys = self.csc.get(MY_NAME)
         self.hostip = keys['hostip']
+	self.alive_interval = monitored_server.get_alive_interval(self.csc,
+								  MY_NAME,
+								  keys)
         self.sus_vol_thresh = keys.get("susp_vol_thresh",
                                        DEFAULT_SUSP_VOLS_THRESH)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
@@ -230,6 +235,11 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 
 	# write the current alarms to it
 	self.write_html_file()
+
+	# start our heartbeat to the event relay process
+	self.erc.start_heartbeat(enstore_constants.ALARM_SERVER, 
+				 self.alive_interval)
+
 
 class AlarmServerInterface(generic_server.GenericServerInterface):
 

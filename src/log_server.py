@@ -40,6 +40,9 @@ import setpath
 
 import dispatching_worker
 import generic_server
+import event_relay_client
+import monitored_server
+import enstore_constants
 import e_errors
 import hostaddr
 import Trace
@@ -69,6 +72,9 @@ class Logger(  dispatching_worker.DispatchingWorker
         #   exit if the host is not this machine
         keys = self.csc.get(MY_NAME)
         Trace.init(self.log_name)
+	self.alive_interval = monitored_server.get_alive_interval(self.csc,
+								  MY_NAME,
+								  keys)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']))
         if keys["log_file_path"][0] == '$':
@@ -83,6 +89,10 @@ class Logger(  dispatching_worker.DispatchingWorker
 	else:
 	    self.logfile_dir_path =  keys["log_file_path"]
 	self.test = test
+
+	# start our heartbeat to the event relay process
+	self.erc.start_heartbeat(enstore_constants.LOG_SERVER, 
+				 self.alive_interval)
 
     def open_logfile(self, logfile_name) :
         dirname, file = os.path.split(logfile_name)

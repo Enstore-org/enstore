@@ -17,6 +17,9 @@ import callback
 import volume_clerk_client
 import dispatching_worker
 import generic_server
+import event_relay_client
+import monitored_server
+import enstore_constants
 import db
 import Trace
 import e_errors
@@ -606,8 +609,14 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
         #   get our port and host from the name server
         #   exit if the host is not this machine
         keys = self.csc.get(MY_NAME)
+	self.alive_interval = monitored_server.get_alive_interval(self.csc,
+								  MY_NAME,
+								  keys)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], 
                                                       keys['port']))
+	# start our heartbeat to the event relay process
+	self.erc.start_heartbeat(enstore_constants.FILE_CLERK, 
+				 self.alive_interval)
 
 
 class FileClerkInterface(generic_server.GenericServerInterface):

@@ -16,6 +16,9 @@ import setpath
 
 import dispatching_worker
 import generic_server
+import event_relay_client
+import event_relay_messages
+import enstore_constants
 import interface
 import Trace
 import e_errors
@@ -155,6 +158,9 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 	    try:
 		configfile = ticket["configfile"]
 		out_ticket = {"status" : self.load_config(configfile)}
+		if out_ticket["status"] == (e_errors.OK, None):
+		    # send an event relay message 
+		    self.erc.send(self.new_config_message)
 	    except KeyError:
 		out_ticket = {"status" : (e_errors.KEYERROR, "Configuration Server: no such name")}
 	    self.reply_to_caller(out_ticket)
@@ -259,6 +265,14 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
         self.load_config(configfile)
         self.running = 1
 
+	# set up for sending an event relay message whenever we get a new config loaded
+	self.new_config_message = event_relay_messages.EventRelayNewConfigFileMsg(csc[0], csc[1])
+	self.new_config_message.encode()
+
+	# start our heartbeat to the event relay process
+	self.erc = event_relay_client.EventRelayClient(self)
+	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER, 
+				 enstore_constants.CONFIG_SERVER_ALIVE_INTERVAL)
 
 class ConfigurationServerInterface(generic_server.GenericServerInterface):
 
