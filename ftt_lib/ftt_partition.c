@@ -167,6 +167,10 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 	    buf[BD_SIZE+8 + 2*i + 0] = (p->partsizes[i] & 0xff00) >> 8;
 	    buf[BD_SIZE+8 + 2*i + 1] = p->partsizes[i] & 0x00ff;
 	}
+	for( i = p->n_parts + 1 ; i <= p->max_parts; i++ ) {
+	    buf[BD_SIZE+8 + 2*i + 0] = 0;
+	    buf[BD_SIZE+8 + 2*i + 1] = 0;
+	}
 	res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, buf, len, 3600, 1);
 	return res;
     }

@@ -52,6 +52,44 @@ return 0;
 
 /* ============================================================================
 
+ROUTINE: ftt_t_locate_part
+ 	
+	call ftt_locate_part using the global file descriptor
+==============================================================================*/
+int	ftt_t_locate_part	(int argc, char **argv)
+{
+int 		status;				/* status */
+int 		estatus = 0;			/* expected status */
+static char	*estatus_str;			/* expected status string */
+static int	async;				/* async flag */
+static int	block;				/* block number*/
+static int	part;				/* partition number */
+ftt_t_argt	argt[] = {
+	{"<partition>",	FTT_T_ARGV_INT,		NULL,		&part},
+	{"<block>",	FTT_T_ARGV_INT,		NULL,		&block},
+        {"-async",      FTT_T_ARGV_CONSTANT,    (char *)TRUE,   &async},
+ 	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = 0; async = FALSE;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);	/* check expected status opt */
+
+/* do the skip
+   ----------- */
+
+FTT_T_ASYNC (async,ftt_t_fd,ftt_locate_part(ftt_t_fd,part,block),status);
+FTT_T_CHECK_CALL (status,estatus);
+return 0;
+
+}
+
+/* ============================================================================
+
 ROUTINE: ftt_t_skip_part
  	
 	call ftt_skip_part using the global file descriptor
