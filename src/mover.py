@@ -110,7 +110,8 @@ class Buffer:
         self.write_ok.clear()
         
         self._buf = []
-        self._freelist = []
+##        self._freelist = []  keep this around, to save on malloc's - cgw
+        self._cached_block = None
         self._buf_bytes = 0
         self._reading_block = None
         self._writing_block = None
@@ -154,6 +155,7 @@ class Buffer:
             raise "Buffer error: changing blocksize of nonempty buffer"
         self._lock.acquire()
         self._freelist = []
+        self._cached_block = None
         self.blocksize = blocksize
         self._lock.release()
     
@@ -268,7 +270,9 @@ class Buffer:
         if self._freelist:
             r =  self._freelist.pop(0)
         else:
-            r = '\0' * self.blocksize
+            if not self._cached_block:
+                self._cached_block = '\0' * self.blocksize #this is expensive, only do it once
+            r = self._cached_block[:]
         self._lock.release()
         return r
     
