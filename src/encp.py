@@ -1295,11 +1295,13 @@ def submit_read_requests(requests, client, tinfo, verbose, retry_flag):
             requests[req]['wrapper']["sanity_size"] = 65536
             requests[req]['wrapper']["size_bytes"] = requests[req]['file_size']
 
-            ##XXX CGW: how does the uinfo value get into the dictionary here?  This looks like a bug.
             # store the pnfs information info into the wrapper
             for key in requests[req]['pinfo'].keys():
-                if not client['uinfo'].has_key(key) : # the user key takes precedence over the pnfs key
-                    requests[req]['wrapper'][key] = requests[req]['pinfo'][key]
+                requests[req]['wrapper'][key] = requests[req]['pinfo'][key]
+
+            # the user key takes precedence over the pnfs key
+            for key in client['uinfo'].keys():
+                requests[req]['wrapper'][key] = client['uinfo'][key]
 
             if verbose > 1: print "RETRY_CNT=", requests[req]['retry']
 
@@ -1558,78 +1560,80 @@ def read_hsm_files(listen_socket, submitted, requests,
 
         # read file, crc the data if user has request crc check
         if not error:
-            Trace.trace(8,"read_hsm_files: reading data to file %s, sockname=%s, peername=%s, bufsize=%s, chk_crc=%s"%
+            Trace.trace(8,"read_hsm_files: reading data to file %s, "
+                        "sockname=%s, peername=%s, bufsize=%s, chk_crc=%s"%
                         (localname, data_path_socket.getsockname(),
                          data_path_socket.getpeername(), bufsize,chk_crc))
-            
+
+            #Read in the data from the mover and write it out to file.  Also,
+            # total up the crc value for comparison with what was sent from
+            # the mover.
             try:
                 if chk_crc != 0:
                     crc_flag = 1
                 else:
                     crc_flag = 0
-                mycrc = EXfer.fd_xfer( data_path_socket.fileno(),
-                                       out_fd,
-                                       requests[j]['file_size'], bufsize,
-                                       crc_flag, 0)
+                    
+                mycrc = EXfer.fd_xfer(data_path_socket.fileno(), out_fd,
+                                      requests[j]['file_size'], bufsize,
+                                      crc_flag, 0)
+            
             except EXfer.error, msg:
                 #Regardless of the type of error, make sure it gets logged.
                 Trace.log(e_errors.ERROR,"read_from_hsm EXfer error: %s" %
                           (msg,))
 
-                if msg.args[1]==errno.ENOSPC:
-                    try:
-                        if localname!="/dev/null":
-                            os.unlink(localname)
-                            delete_at_exit.unregister(localname)
-                    except:
-                        pass
+                #Unlink the file since it didn't tranfer in tact.
+                try:
+                    if localname!="/dev/null":
+                        os.unlink(localname)
+                        delete_at_exit.unregister(localname)
+                except:
+                    pass
+                
+                error = 1
+                data_path_socket.close()
+
+                try:
+                    if msg.args[1] != errno.ENOSPC:
+                        done_ticket = callback.read_tcp_obj(control_socket)
+                    control_socket.close()
+                except:
+                    # assume network error...
+                    # no done_ticket!
+                    # exit here
                     print_data_access_layer_format(
-                        requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
-                        {'status':("ENOSPC", "No space left on device")})
+                        requests[j]['infile'], requests[j]['outfile'], 0,
+                        {'status':("EPROTO","Network problem or mover reset")})
+                    quit()
+                    
+                #If the local error is empty (i.e. OK), use the mover error.
+                if msg.args[1] == 0:
+                    error_type = done_ticket['status'][0]
+                else:
+                    error_type = msg.args[1]
+
+                #If the mover error is empty (i.e. None), use the local error.
+                if done_ticket['status'][1] == "None": #use "None", not None
+                    error_description = msg.args[0]
+                else:
+                    error_description = done_ticket['status'][1]
+                
+                print_data_access_layer_format(
+                    requests[j]['infile'], requests[j]['outfile'], 
+                    requests[j]['file_size'], 
+                    {'status':(error_type, error_description)})
+
+                #If there is no more space left on the device, there is no
+                # point in proceding.
+                if msg.args[1] == errno.ENOSPC:
                     quit()
 
-                    error = 1
-                    data_path_socket.close()
-                    try:
-                        done_ticket = callback.read_tcp_obj(control_socket)
-                    except:
-                        # assume network error...
-                        # no done_ticket!
-                        # exit here
-                        print_data_access_layer_format(requests[j]['infile'],  
-                                                       requests[j]['outfile'],
-                                                       0,
-                                                       {'status':("EPROTO",
-                                                                  "Network problem or mover reset")})
-                        try:
-                            if localname!="/dev/null":
-                                os.unlink(localname)
-                                delete_at_exit.unregister(localname)
-                        except:
-                            pass
-                        quit()
-
-                    control_socket.close()
-                    print_data_access_layer_format(requests[j]['infile'],  
-                                                   requests[j]['outfile'], 
-                                                   requests[j]['file_size'], 
-                                                   done_ticket )
-                    if not e_errors.is_retriable(done_ticket["status"][0]):
-                        del(requests[j])
-                        if files_left > 0: files_left = files_left - 1
-
-                        print_error ('EPROTO',  'Failed to transfer, status=%s' %(done_ticket["status"],))
-                        error=1
-                        break
-                    print_error ('EPROTO', 'failed to transfer, status=%s'%(done_ticket["status"],))
-
-                if ticket['retry'] >= maxretry:
+                if not e_errors.is_retriable(done_ticket["status"][0]):
                     del(requests[j])
                     if files_left > 0: files_left = files_left - 1
-                    pass
                 else:
                     requests[j]['retry'] = requests[j]['retry']+1
-                    pass
                 continue
 
             # if no exceptions, fsize is file_size[j]
@@ -1651,7 +1655,8 @@ def read_hsm_files(listen_socket, submitted, requests,
         t2 = time.time() #----------------------------------------Lap-Start
 
         # File has been read - wait for final dialog with mover.
-        Trace.trace(8,"read_hsm_files waiting for final mover dialog on %s"%(control_socket,))
+        Trace.trace(8,"read_hsm_files waiting for final mover dialog on %s" %
+                    (control_socket,))
         try:
             done_ticket = callback.read_tcp_obj(control_socket)
             control_socket.close()
@@ -1981,6 +1986,19 @@ def read_from_hsm(input_files, output,
         request['retry'] = 0
         request['unique_id'] = ''
         request['client_crc'] = chk_crc
+
+        #Verify that the external labels named by the file clerk and volume
+        # clerk are the same.
+        if request['vc']['external_label'] != request['fc']['external_label']:
+            msg = "External labels retrieved from file and volume clerks " \
+                  "are not the same.\n" \
+                  "From file clerk: %s\n" \
+                  "From volume clerk: %s\n" % \
+                  (request['fc']['external_label'],
+                   request['vc']['external_label'])
+            print_data_access_layer_format(inputlist[i], ofile, 0,
+                                           {'status':(e_errors.BROKEN, msg)})
+            quit()
 
         wr = {}
         for key in client['uinfo'].keys():
