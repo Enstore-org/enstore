@@ -176,6 +176,8 @@ class Interface:
                 self.remove_work = 1
             elif opt == "--change_priority" :
                 self.change_priority = 1
+            elif opt == "--loadmovers" :
+                self.load_mover_list = 1
             elif opt == "--load" :
                 self.load = 1
             elif opt == "--vols" :

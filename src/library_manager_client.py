@@ -120,6 +120,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def change_priority(self, id, pri):
 	return self.send({"work":"change_priority", "unique_id": id, "priority": pri})
 
+    def load_mover_list(self):
+	return self.send({"work":"load_mover_list"})
+	
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self) :
         self.name = ""
@@ -138,7 +141,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def options(self):
         return self.client_options()+\
 	       ["getwork", "getmoverlist", "get_suspect_vols",
-	       "get_del_dismount","del_work","change_priority"]
+	       "get_del_dismount","del_work","change_priority","loadmovers"]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -214,6 +217,10 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.CLIENT
     elif intf.change_priority:
 	ticket = lmc.change_priority(intf.args[1], string.atoi(intf.args[2]))
+	generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+    elif intf.load_mover_list:
+	ticket = lmc.load_mover_list()
 	generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
 	
