@@ -626,25 +626,30 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
-        
             
         Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
 
         if self.bytes_written == self.bytes_to_write:
-            if self.single_filemark:
-                self.tape_driver.writefm()
-            else:
-                self.tape_driver.writefm()
-                self.tape_driver.writefm()
-                self.tape_driver.skipfm(-1)
-            ##We don't ever want to let ftt handle the filemarks for us, because its
-            ##default behavior is to write 2 filemarks and backspace over both
-            ##of them.
-            self.tape_driver.flush()
+            try:
+                if self.single_filemark:
+                    self.tape_driver.writefm()
+                else:
+                    self.tape_driver.writefm()
+                    self.tape_driver.writefm()
+                    self.tape_driver.skipfm(-1)
+                ##We don't ever want to let ftt handle the filemarks for us, because its
+                ##default behavior is to write 2 filemarks and backspace over both
+                ##of them.
+                self.tape_driver.flush()
+            except:
+                exc, detail, tb = sys.exc_info()
+                self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                return
+            
             if self.update_after_writing():
                 self.transfer_completed()
             else:
-                self.transfer_failed(error_source=TAPE)
+                self.transfer_failed(e_errors.EPROTO)
 
 
     def read_tape(self):
@@ -1128,7 +1133,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 callback.write_tcp_obj(control_socket, ticket)
             except:
                 exc, detail, tb = sys.exc_info()
-                Trace.log(e_errors.ERROR,"error in connect_client_done: %s" % (detail,))
+                Trace.log(e_errors.ERROR,"error in connect_client: %s" % (detail,))
             # we expect a prompt call-back here
             Trace.trace(10, "select: listening for client callback")
             read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],60) # one minute timeout
