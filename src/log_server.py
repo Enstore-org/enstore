@@ -62,6 +62,10 @@ class Logger(  dispatching_worker.DispatchingWorker
         #   get our port and host from the name server
         #   exit if the host is not this machine
         keys = self.csc.get("logserver")
+	try:
+	    self.print_id = keys['logname']
+	except:
+	    pass
 	self.enprint(keys, generic_cs.SERVER, verbose)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']))

@@ -384,6 +384,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.keys = self.csc.get(libman)
+	try:
+	    self.print_id = keys['logname']
+	except:
+	    pass
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
                                                       self.keys['port']))
         # get a logger

@@ -615,6 +615,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	#   exit if the host is not this machine
 	keys = self.csc.get("inquisitor", use_once_timeout, use_once_retry)
         Trace.init(keys["logname"])
+	try:
+	    self.print_id = keys['logname']
+	except:
+	    pass
 	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
 
