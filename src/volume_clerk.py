@@ -700,6 +700,55 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
          return
 
+    # for the backward compatibility D0_TEMP
+    # flag the database that we are now writing the system
+    def add_at_mover(self, ticket):
+     Trace.trace(10,'{add_at_mover '+repr(ticket))
+     try:
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}cadd_at_mover "+repr(ticket["status"]))
+            return
+
+        # get the current entry for the volume
+        try:
+            record = copy.deepcopy(dict[external_label])
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}add_at_mover "+repr(ticket["status"]))
+            return
+
+        # add fields
+	try:
+	    at_mover = record['at_mover']
+	except KeyError:
+	    record['at_mover'] = ('unmounted', 'none')
+        dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
+        record["status"] = (e_errors.OK, None)
+        self.reply_to_caller(record)
+        Trace.trace(10,'}add_at_mover '+repr(record))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"}add_at_mover "+repr(ticket["status"]))
+         return
+    # END D0_TEMP
+
 
     # move a volume to a new library
     def new_library(self, ticket):

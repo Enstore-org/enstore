@@ -339,6 +339,17 @@ class VolumeClerkClient(generic_client.GenericClient,\
         Trace.trace(10,'}can_write_volume '+repr(x))
         return x
 
+    # for the backward compatibility D0_TEMP
+    def add_at_mover (self, external_label):
+        Trace.trace(10,'{add_at_mover '+repr(external_label))
+        ticket = { 'work'                : 'add_at_mover',
+                   'external_label'       : external_label }
+
+        x = self.send(ticket)
+        Trace.trace(10,'}add_at_mover '+repr(x))
+        return x
+    # END D0_TEMP
+
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
@@ -355,6 +366,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.newlib = 0
         self.rdovol = 0
         self.noavol = 0
+	self.atmover = 0 # for the backward compatibility D0_TEMP
         generic_client.GenericClientInterface.__init__(self)
         Trace.trace(10,'}__init__ vcci')
 
@@ -363,7 +375,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         Trace.trace(20,'{}options')
         return self.client_options()+\
                ["clrvol", "backup", "vols","nextvol","vol=","addvol"] + \
-	       ["delvol","newlib","rdovol","noavol"]
+	       ["delvol","newlib","rdovol","noavol","atmover"]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -505,6 +517,12 @@ if __name__ == "__main__":
     elif intf.noavol:
         ticket = vcc.set_system_noaccess(intf.args[0])  # name of this volume
 	msg_id = generic_cs.CLIENT
+    # D0_TEPM
+    elif intf.atmover:
+	ticket = vcc.add_at_mover (intf.args[0])
+	generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+    # END D0_TEMP
     else:
 	intf.print_help()
         sys.exit(0)
