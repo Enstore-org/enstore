@@ -1,3 +1,6 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 import string
 import os
 import getopt
