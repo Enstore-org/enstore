@@ -785,8 +785,15 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     for vk in vols.keys():
         vv = vols[vk]
         # skipping deleted volumes
-        if vk[-8:] == ".deleted" or vv['external_label'][-8:] == ".deleted":    # skip
-            continue
+        try:
+            if vk[-8:] == ".deleted" or vv['external_label'][-8:] == ".deleted":    # skip
+                continue
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            print exc_type, exc_value
+            print "vk =", `vk`
+            print "vv =", `vv`
+            raise # let it fail
 
         print 'processing', vk, '...',
 
