@@ -857,7 +857,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 sys.exit(-1)
                         have_tape=0
                     self.init_stat(self.device, self.logname)
-                self.tape_driver.close()
+                else:
+                    self.tape_driver.close()
                 if not have_tape:
                     Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
                     vol_ticket = { "external_label": "Unknown",
