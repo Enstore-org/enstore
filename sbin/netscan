@@ -234,7 +234,15 @@ $MKDIR $ACTIVE 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ] ; then
    # ok, this is terrible..., but I don't know what else to do.  Dang kerberos!
    # the most likely thing that has failed, or hung is the task that access the net.  Kill it.
-   $PS axwww | $EGREP "farmlets|rsync"|$EGREP -v grep| while read pid line; do
+   # kill the farmlets task
+   $PS axwww | $EGREP "farmlets"|$EGREP -v grep| while read pid line; do
+      $ECHO `$DATE` $KILL -9 $pid $line >>$LOG 2>&1
+      $ECHO `$DATE` $KILL -9 $pid $line
+      $KILL -9 $pid
+   done;
+   $SLEEP 30
+   # kill any remaining rsyncs that check the cron area
+   $PS axwww | $EGREP "farmlets|rsync"|$EGREP -v grep| $EGREP cron | while read pid line; do
       $ECHO $KILL -9 $pid $line >>$LOG 2>&1
       $ECHO $KILL -9 $pid $line
       $KILL -9 $pid
