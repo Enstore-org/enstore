@@ -22,8 +22,8 @@ rcf=/tmp/rcf
 rm -f $rcf
 find . -type f | grep -v old| while read f; do
  file=`echo $f | cut -c3-`;
- echo encp $file $BACKUP/`echo $file | sed -e s%/%-%g`
-      encp $file $BACKUP/`echo $file | sed -e s%/%-%g`
+ echo encp --delayed-dismount=3 $file $BACKUP/`echo $file | sed -e s%/%-%g`
+      encp --delayed-dismount=3 $file $BACKUP/`echo $file | sed -e s%/%-%g`
  e=$?
  rc=`expr $rc + $e`
  rm -f $rcf
