@@ -8,6 +8,7 @@ import time
 import setpath
 import driver
 import strbuffer
+import Trace
 
 class NullDriver(driver.Driver):
 
@@ -33,11 +34,11 @@ class NullDriver(driver.Driver):
         return self.fd
 
     def rewind(self):
-        if self.verbose: print "rewind"
+        Trace.trace(25, "rewind")
         self.loc = 0L
 
     def tell(self):
-        if self.verbose: print "tell", self.loc
+        Trace.trace(25, "tell %s" % (self.loc))
         return self.loc
     
     def seek(self, loc, eot_ok=None):
@@ -45,7 +46,7 @@ class NullDriver(driver.Driver):
             if loc[-1]=='L':
                 loc=loc[:-1] #py1.5.2 
             loc = long(loc)
-        if self.verbose: print "seek", loc
+        Trace.trace(25, "seek %s" % (loc,))
         self.loc = loc
         
     def fileno(self):
@@ -55,13 +56,12 @@ class NullDriver(driver.Driver):
         pass
         
     def close(self):
-        if self.verbose: print "close"
+        Trace.trace(25, "close")
         r = os.close(self.fd)
         self.fd = -1
         return r
 
     def read(self, buf, offset, nbytes):
-        if self.verbose: print "reading", nbytes
         if self.mode != 0:
             raise ValueError, "file not open for reading"
 
@@ -75,13 +75,11 @@ class NullDriver(driver.Driver):
             self._bytes_transferred = self._bytes_transferred + r
             self._rate = self._bytes_transferred/(now - self._start_time)
         if r == -1:
-            self.print_error("read")
+            Trace.log(e_errors.ERROR, "read error on null device")
             raise IOError, "read error on null device"
-        if self.verbose: print "read", r
         return r
     
     def write(self, buf, offset, nbytes):
-        if self.verbose: print "writing", nbytes
         if self.mode != 1:
             raise ValueError, "file not open for writing"
 
@@ -96,13 +94,11 @@ class NullDriver(driver.Driver):
             self._bytes_transferred = self._bytes_transferred + r
             self._rate = self._bytes_transferred/(now - self._start_time)
         if r == -1:
-            self.print_error("write")
-            raise IOError, "write error on null device"
-        if self.verbose: print "wrote", r
+            Trace.log(e_errors.ERROR,  "write error on null device")
         return r
         
     def writefm(self):
-        if self.verbose: print "writefm"
+        Trace.trace(25, "writefm")
         self.loc = self.loc + 1
 
     def eject(self):
