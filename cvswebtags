@@ -1,971 +1,364 @@
-FTT_TAPE_ERASE       def      19  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_ERASE STERASE
-FTT_TAPE_FSF         def      22  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_FSF STFSF
-FTT_TAPE_FSR         def      24  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_FSR STFSR
-FTT_TAPE_NOP         def      17  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_NOP STFSR
-FTT_TAPE_OP          def      32  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_OP STIOCTOP
-FTT_TAPE_RETEN       def      18  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_RETEN STRETEN
-FTT_TAPE_REW         def      20  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_REW STREW
-FTT_TAPE_RSF         def      21  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_RSF STRSF
-FTT_TAPE_RSR         def      23  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_RSR STRSR
-FTT_TAPE_UNLOAD      def      28  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_UNLOAD STOFFL
-FTT_TAPE_UNLOAD      def      30  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_UNLOAD -1
-FTT_TAPE_WEOF        def      25  ftt_lib/AIX/ftt_mtio.h #define FTT_TAPE_WEOF STWEOF
-tape_count           def      34  ftt_lib/AIX/ftt_mtio.h #define tape_count st_count
-tape_op              def      33  ftt_lib/AIX/ftt_mtio.h #define tape_op st_op
-tapeop               def      16  ftt_lib/AIX/ftt_mtio.h #define tapeop stop
-extract_logical      func     11  ftt_lib/AIX/ftt_machdep.c extract_logical(ftt_descriptor d, char *what) {
-ftt_get_hwdens       func    243  ftt_lib/AIX/ftt_machdep.c ftt_get_hwdens(ftt_descriptor d, char *devname) {
-ftt_set_blocksize    func    178  ftt_lib/AIX/ftt_machdep.c ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-ftt_set_compression  func    174  ftt_lib/AIX/ftt_machdep.c ftt_set_compression(ftt_descriptor d, int compression) {
-ftt_set_hwdens       func    104  ftt_lib/AIX/ftt_machdep.c ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-ftt_status           func     56  ftt_lib/AIX/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
-rcsid                var       1  ftt_lib/AIX/ftt_machdep.c static char rcsid[] = "@(#)$Id$";
-ftt_scsi_close       func     74  ftt_lib/AIX/ftt_scsi.c ftt_scsi_close(scsi_handle n)
-ftt_scsi_command     func    102  ftt_lib/AIX/ftt_scsi.c ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite)
-ftt_scsi_open        func     52  ftt_lib/AIX/ftt_scsi.c ftt_scsi_open(const char *pc) { 
-rcsid                var       1  ftt_lib/AIX/ftt_scsi.c static char rcsid[] = "@(#)$Id$";
-FTT_TAPE_ERASE       def      17  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_ERASE MTERASE
-FTT_TAPE_FSF         def      21  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_FSF MTFSF
-FTT_TAPE_FSR         def      22  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_FSR MTFSR
-FTT_TAPE_NOP         def      15  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_NOP MTNOP
-FTT_TAPE_OP          def      25  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_OP MTIOCTOP
-FTT_TAPE_RETEN       def      16  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_RETEN MTRETEN
-FTT_TAPE_REW         def      18  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_REW MTREW
-FTT_TAPE_RSF         def      19  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_RSF MTBSF
-FTT_TAPE_RSR         def      20  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_RSR MTBSR
-FTT_TAPE_UNLOAD      def      24  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_UNLOAD MTOFFL
-FTT_TAPE_WEOF        def      23  ftt_lib/OSF1/ftt_mtio.h #define FTT_TAPE_WEOF MTWEOF
-tape_count           def      27  ftt_lib/OSF1/ftt_mtio.h #define tape_count mt_count
-tape_op              def      26  ftt_lib/OSF1/ftt_mtio.h #define tape_op mt_op
-tapeop               def      14  ftt_lib/OSF1/ftt_mtio.h #define tapeop mtop
-ftt_get_hwdens       func     74  ftt_lib/OSF1/ftt_machdep.c ftt_get_hwdens(ftt_descriptor d, char *devname) {
-ftt_set_blocksize    func     68  ftt_lib/OSF1/ftt_machdep.c ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-ftt_set_compression  func     81  ftt_lib/OSF1/ftt_machdep.c ftt_set_compression(ftt_descriptor d, int compression) {
-ftt_set_hwdens       func     61  ftt_lib/OSF1/ftt_machdep.c ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-ftt_status           func     13  ftt_lib/OSF1/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
-rcsid                var       1  ftt_lib/OSF1/ftt_machdep.c static char rcsid[] = "@(#)$Id$";
-FD_MAX               def      20  ftt_lib/OSF1/ftt_scsi.c #define FD_MAX 24
-SENSSIZ              def     176  ftt_lib/OSF1/ftt_scsi.c # define SENSSIZ 64
-ftt_scsi_close       func    140  ftt_lib/OSF1/ftt_scsi.c ftt_scsi_close(scsi_handle n)
-ftt_scsi_command     func    168  ftt_lib/OSF1/ftt_scsi.c ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite) {
-ftt_scsi_open        func     74  ftt_lib/OSF1/ftt_scsi.c ftt_scsi_open(const char *pc) { 
-lookup_drive         func     38  ftt_lib/OSF1/ftt_scsi.c lookup_drive(char *pc, int *bus, int *targ, int *lun, char *idstring) {
-open_devs            var      30  ftt_lib/OSF1/ftt_scsi.c static osf_scsi_block open_devs[FD_MAX];
-osf_scsi_block       type     28  ftt_lib/OSF1/ftt_scsi.c } osf_scsi_block, *osf_scsi_descriptor;
-osf_scsi_descriptor  type     28  ftt_lib/OSF1/ftt_scsi.c } osf_scsi_block, *osf_scsi_descriptor;
-rcsid                var       1  ftt_lib/OSF1/ftt_scsi.c static char rcsid[] = "@(#)$Id$";
-demo_with_delay      func     12  ftt_lib/asyncdemo.c demo_with_delay(char *dev, int n) {
-main                 func     59  ftt_lib/asyncdemo.c main(int argc, char **argv) {
-rcsid                var       1  ftt_lib/asyncdemo.c static char rcsid[] = "@(#)$Id$";
-_FTT_H               def       2  ftt_lib/ftt.h  #define _FTT_H
-ftt_check            func     81  ftt_lib/ftt_async.c ftt_check(ftt_descriptor d) {
-ftt_fork             func     24  ftt_lib/ftt_async.c ftt_fork(ftt_descriptor d) {
-ftt_report           func    137  ftt_lib/ftt_async.c ftt_report(ftt_descriptor d) {
-ftt_wait             func    100  ftt_lib/ftt_async.c ftt_wait(ftt_descriptor d) {
-rcsid                var       1  ftt_lib/ftt_async.c static char rcsid[] = "@(#)$Id$";
-ftt_check_table      func     18  ftt_lib/ftt_checktable.c void ftt_check_table(FILE *pf) {
-main                 func     11  ftt_lib/ftt_checktable.c main() {
-rcsid                var       1  ftt_lib/ftt_checktable.c static char rcsid[] = "@(#)$Id$";
-table_debug          var       9  ftt_lib/ftt_checktable.c static int table_debug;
-ftt_debug_dump       func     53  ftt_lib/ftt_debug.c ftt_debug_dump(unsigned char *pc, int n) {
-ftt_dump             func      7  ftt_lib/ftt_debug.c ftt_dump(FILE *pf, unsigned char *pc, int n, int do_offsets, int do_chars) {
-rcsid                var       1  ftt_lib/ftt_debug.c static char rcsid[] = "@(#)$Id$";
-FTT_ABOT             def     147  ftt_lib/ftt_defines.h #define FTT_ABOT 0x01
-FTT_AEOT             def     148  ftt_lib/ftt_defines.h #define FTT_AEOT 0x04
-FTT_AEW              def     149  ftt_lib/ftt_defines.h #define FTT_AEW 0x08
-FTT_ANSI_HEADER      def     160  ftt_lib/ftt_defines.h #define FTT_ANSI_HEADER 0
-FTT_BLANK_HEADER     def     165  ftt_lib/ftt_defines.h #define FTT_BLANK_HEADER 5
-FTT_BLOCK_NUMBER     def      30  ftt_lib/ftt_defines.h #define FTT_BLOCK_NUMBER 11
-FTT_BLOCK_SIZE       def      38  ftt_lib/ftt_defines.h #define FTT_BLOCK_SIZE 19
-FTT_BLOCK_TOTAL      def      39  ftt_lib/ftt_defines.h #define FTT_BLOCK_TOTAL 20
-FTT_BLOC_LOC         def      58  ftt_lib/ftt_defines.h #define FTT_BLOC_LOC 39
-FTT_BOT              def      31  ftt_lib/ftt_defines.h #define FTT_BOT 12
-FTT_BTSW             def     100  ftt_lib/ftt_defines.h #define FTT_BTSW 0x00000004 /* byte swap on read/write */
-FTT_BUSY             def     152  ftt_lib/ftt_defines.h #define FTT_BUSY 0x40
-FTT_CLEANED_BIT      def      51  ftt_lib/ftt_defines.h #define FTT_CLEANED_BIT 32
-FTT_CLEANING_BIT     def      23  ftt_lib/ftt_defines.h #define FTT_CLEANING_BIT 4
-FTT_CMP_READ         def      72  ftt_lib/ftt_defines.h #define FTT_CMP_READ 53
-FTT_CMP_WRITE        def      71  ftt_lib/ftt_defines.h #define FTT_CMP_WRITE 52
-FTT_COMPRESSED       def     179  ftt_lib/ftt_defines.h #define FTT_COMPRESSED 1
-FTT_CONTROLLER       def      45  ftt_lib/ftt_defines.h #define FTT_CONTROLLER 26
-FTT_COUNT_ORIGIN     def      59  ftt_lib/ftt_defines.h #define FTT_COUNT_ORIGIN 40
-FTT_CPIO_HEADER      def     163  ftt_lib/ftt_defines.h #define FTT_CPIO_HEADER 3
-FTT_DEBUG_HI         def      88  ftt_lib/ftt_defines.h #define FTT_DEBUG_HI 3
-FTT_DEBUG_LOW        def      86  ftt_lib/ftt_defines.h #define FTT_DEBUG_LOW 1
-FTT_DEBUG_MED        def      87  ftt_lib/ftt_defines.h #define FTT_DEBUG_MED 2
-FTT_DEBUG_NONE       def      85  ftt_lib/ftt_defines.h #define FTT_DEBUG_NONE 0
-FTT_DENSITY          def      46  ftt_lib/ftt_defines.h #define FTT_DENSITY 27
-FTT_DIR_READING      def     183  ftt_lib/ftt_defines.h #define FTT_DIR_READING 0
-FTT_DIR_WRITING      def     184  ftt_lib/ftt_defines.h #define FTT_DIR_WRITING 1
-FTT_DONTCHECK_HEADER def     166  ftt_lib/ftt_defines.h #define FTT_DONTCHECK_HEADER 6
-FTT_E2SMALL          def     135  ftt_lib/ftt_defines.h #define FTT_E2SMALL 22
-FTT_EBLANK           def     125  ftt_lib/ftt_defines.h #define FTT_EBLANK 12
-FTT_EBLKSIZE         def     123  ftt_lib/ftt_defines.h #define FTT_EBLKSIZE 10
-FTT_EBUSY            def     126  ftt_lib/ftt_defines.h #define FTT_EBUSY 13 
-FTT_EFAULT           def     119  ftt_lib/ftt_defines.h #define FTT_EFAULT 6
-FTT_EFILEMARK        def     140  ftt_lib/ftt_defines.h #define FTT_EFILEMARK 27
-FTT_EIO              def     122  ftt_lib/ftt_defines.h #define FTT_EIO 9
-FTT_ELEADER          def     139  ftt_lib/ftt_defines.h #define FTT_ELEADER 26
-FTT_ELOST            def     141  ftt_lib/ftt_defines.h #define FTT_ELOST 28
-FTT_ENFILE           def     129  ftt_lib/ftt_defines.h #define FTT_ENFILE 16
-FTT_ENODEV           def     127  ftt_lib/ftt_defines.h #define FTT_ENODEV 14
-FTT_ENOENT           def     121  ftt_lib/ftt_defines.h #define FTT_ENOENT 8
-FTT_ENOEXEC          def     124  ftt_lib/ftt_defines.h #define FTT_ENOEXEC 11
-FTT_ENOMEM           def     133  ftt_lib/ftt_defines.h #define FTT_ENOMEM 20
-FTT_ENOSPC           def     120  ftt_lib/ftt_defines.h #define FTT_ENOSPC 7
-FTT_ENOTAPE          def     116  ftt_lib/ftt_defines.h #define FTT_ENOTAPE 3
-FTT_ENOTBOT          def     142  ftt_lib/ftt_defines.h #define FTT_ENOTBOT 29
-FTT_ENOTSUPPORTED    def     117  ftt_lib/ftt_defines.h #define FTT_ENOTSUPPORTED 4
-FTT_ENOTTAPE         def     134  ftt_lib/ftt_defines.h #define FTT_ENOTTAPE 21
-FTT_ENXIO            def     128  ftt_lib/ftt_defines.h #define FTT_ENXIO 15
-FTT_EOM              def      35  ftt_lib/ftt_defines.h #define FTT_EOM 16
-FTT_EPARTIALSTAT     def     114  ftt_lib/ftt_defines.h #define FTT_EPARTIALSTAT 1
-FTT_EPERM            def     118  ftt_lib/ftt_defines.h #define FTT_EPERM 5
-FTT_EPIPE            def     131  ftt_lib/ftt_defines.h #define FTT_EPIPE 18
-FTT_ERANGE           def     132  ftt_lib/ftt_defines.h #define FTT_ERANGE 19
-FTT_EROFS            def     130  ftt_lib/ftt_defines.h #define FTT_EROFS 17
-FTT_ERROR_CODE       def      73  ftt_lib/ftt_defines.h #define FTT_ERROR_CODE 54
-FTT_ERWFS            def     136  ftt_lib/ftt_defines.h #define FTT_ERWFS 23
-FTT_EUNRECOVERED     def     115  ftt_lib/ftt_defines.h #define FTT_EUNRECOVERED 2
-FTT_EWRONGVOL        def     137  ftt_lib/ftt_defines.h #define FTT_EWRONGVOL 24
-FTT_EWRONGVOLTYP     def     138  ftt_lib/ftt_defines.h #define FTT_EWRONGVOLTYP 25
-FTT_FAIL_RETRIES     def      66  ftt_lib/ftt_defines.h #define FTT_FAIL_RETRIES 47 
-FTT_FILE_NUMBER      def      29  ftt_lib/ftt_defines.h #define FTT_FILE_NUMBER 10
-FTT_FIRMWARE         def      21  ftt_lib/ftt_defines.h #define FTT_FIRMWARE 2
-FTT_FMB_HEADER       def     161  ftt_lib/ftt_defines.h #define FTT_FMB_HEADER 1
-FTT_FMK              def      34  ftt_lib/ftt_defines.h #define FTT_FMK 15
-FTT_HARD_ERRORS      def      68  ftt_lib/ftt_defines.h #define FTT_HARD_ERRORS 49
-FTT_ILI              def      47  ftt_lib/ftt_defines.h #define FTT_ILI 28
-FTT_MAX_HEADER       def     167  ftt_lib/ftt_defines.h #define FTT_MAX_HEADER 7
-FTT_MAX_STAT         def      74  ftt_lib/ftt_defines.h #define FTT_MAX_STAT 55
-FTT_MEDIA_TYPE       def      37  ftt_lib/ftt_defines.h #define FTT_MEDIA_TYPE 18
-FTT_MOTION_HOURS     def      55  ftt_lib/ftt_defines.h #define FTT_MOTION_HOURS 36
-FTT_N_READS          def      60  ftt_lib/ftt_defines.h #define FTT_N_READS 41
-FTT_N_WRITES         def      61  ftt_lib/ftt_defines.h #define FTT_N_WRITES 42
-FTT_ONLINE           def     151  ftt_lib/ftt_defines.h #define FTT_ONLINE 0x20
-FTT_PEOT             def      36  ftt_lib/ftt_defines.h #define FTT_PEOT 17
-FTT_PF               def      50  ftt_lib/ftt_defines.h #define FTT_PF 31
-FTT_POWER_HOURS      def      56  ftt_lib/ftt_defines.h #define FTT_POWER_HOURS 37
-FTT_PRODUCT_ID       def      20  ftt_lib/ftt_defines.h #define FTT_PRODUCT_ID 1
-FTT_PROT             def     150  ftt_lib/ftt_defines.h #define FTT_PROT 0x10
-FTT_RDNW             def     101  ftt_lib/ftt_defines.h #define FTT_RDNW 0x00000008 /* we can read this density, but not write it */
-FTT_RDONLY           def     173  ftt_lib/ftt_defines.h #define FTT_RDONLY 1
-FTT_RDWR             def     172  ftt_lib/ftt_defines.h #define FTT_RDWR 0
-FTT_READY            def      32  ftt_lib/ftt_defines.h #define FTT_READY 13
-FTT_READ_COMP        def      28  ftt_lib/ftt_defines.h #define FTT_READ_COMP 9 
-FTT_READ_COUNT       def      24  ftt_lib/ftt_defines.h #define FTT_READ_COUNT 5
-FTT_READ_ERRORS      def      26  ftt_lib/ftt_defines.h #define FTT_READ_ERRORS 7
-FTT_REMAIN_TAPE      def      42  ftt_lib/ftt_defines.h #define FTT_REMAIN_TAPE 23
-FTT_RESETS           def      67  ftt_lib/ftt_defines.h #define FTT_RESETS 48
-FTT_RETRIES          def      65  ftt_lib/ftt_defines.h #define FTT_RETRIES 46
-FTT_RTOO             def      99  ftt_lib/ftt_defines.h #define FTT_RTOO 0x00000002 /* retension on open */
-FTT_RWOC             def      98  ftt_lib/ftt_defines.h #define FTT_RWOC 0x00000001 /* rewind on close */
-FTT_SCSI_ASC         def      48  ftt_lib/ftt_defines.h #define FTT_SCSI_ASC 29
-FTT_SCSI_ASCQ        def      49  ftt_lib/ftt_defines.h #define FTT_SCSI_ASCQ 30
-FTT_SENSE_KEY        def      63  ftt_lib/ftt_defines.h #define FTT_SENSE_KEY 44
-FTT_SERIAL_NUM       def      22  ftt_lib/ftt_defines.h #define FTT_SERIAL_NUM 3
-FTT_SUCCESS          def     113  ftt_lib/ftt_defines.h #define FTT_SUCCESS 0
-FTT_TAR_HEADER       def     162  ftt_lib/ftt_defines.h #define FTT_TAR_HEADER 2
-FTT_TNP              def      62  ftt_lib/ftt_defines.h #define FTT_TNP 43
-FTT_TRACK_RETRY      def      53  ftt_lib/ftt_defines.h #define FTT_TRACK_RETRY 34
-FTT_TRANS_COMPRESS   def      41  ftt_lib/ftt_defines.h #define FTT_TRANS_COMPRESS 22
-FTT_TRANS_DENSITY    def      40  ftt_lib/ftt_defines.h #define FTT_TRANS_DENSITY 21
-FTT_TRANS_SENSE_KEY  def      64  ftt_lib/ftt_defines.h #define FTT_TRANS_SENSE_KEY 45
-FTT_TUR_STATUS       def      57  ftt_lib/ftt_defines.h #define FTT_TUR_STATUS 38
-FTT_UNCOMPRESSED     def     178  ftt_lib/ftt_defines.h #define FTT_UNCOMPRESSED 0
-FTT_UNC_READ         def      70  ftt_lib/ftt_defines.h #define FTT_UNC_READ 51
-FTT_UNC_WRITE        def      69  ftt_lib/ftt_defines.h #define FTT_UNC_WRITE 50
-FTT_UNDERRUN         def      54  ftt_lib/ftt_defines.h #define FTT_UNDERRUN 35
-FTT_UNKNOWN_HEADER   def     164  ftt_lib/ftt_defines.h #define FTT_UNKNOWN_HEADER 4
-FTT_USER_READ        def      43  ftt_lib/ftt_defines.h #define FTT_USER_READ 24
-FTT_USER_WRITE       def      44  ftt_lib/ftt_defines.h #define FTT_USER_WRITE 25
-FTT_VENDOR_ID        def      19  ftt_lib/ftt_defines.h #define FTT_VENDOR_ID 0
-FTT_WRITE_COMP       def      52  ftt_lib/ftt_defines.h #define FTT_WRITE_COMP 33
-FTT_WRITE_COUNT      def      25  ftt_lib/ftt_defines.h #define FTT_WRITE_COUNT 6
-FTT_WRITE_ERRORS     def      27  ftt_lib/ftt_defines.h #define FTT_WRITE_ERRORS 8
-FTT_WRITE_PROT       def      33  ftt_lib/ftt_defines.h #define FTT_WRITE_PROT 14
-BITFLD               def     347  ftt_lib/ftt_do_scsi.c #define BITFLD(offset,hibit,lobit) ((*(((char*)inq)+offset)) & ((2 << (hibit+1)) - 1)) >> lobit
-MS11_LEN             def     504  ftt_lib/ftt_do_scsi.c # define MS11_LEN 24
-MS31_LEN             def     502  ftt_lib/ftt_do_scsi.c # define MS31_LEN 22
-MS32_LEN             def     503  ftt_lib/ftt_do_scsi.c # define MS32_LEN 22
-NPDT                 def     420  ftt_lib/ftt_do_scsi.c #define NPDT (sizeof pdt_types / sizeof pdt_types[0])
-aenc                 def     355  ftt_lib/ftt_do_scsi.c #define aenc BITFLD(3,7,7)
-ailen                def     359  ftt_lib/ftt_do_scsi.c #define ailen BITFLD(4,7,0)
-ansi                 def     354  ftt_lib/ftt_do_scsi.c #define ansi BITFLD(2,2,0)
-bzero                def      14  ftt_lib/ftt_do_scsi.c #define bzero ZeroMemory
-cmdq                 def     365  ftt_lib/ftt_do_scsi.c #define cmdq BITFLD( 7,1,1)
-dtq                  def     351  ftt_lib/ftt_do_scsi.c #define dtq BITFLD(1,6,0)
-ecma                 def     353  ftt_lib/ftt_do_scsi.c #define ecma BITFLD(2,5,3)
-ftt_all_scsi         func    227  ftt_lib/ftt_do_scsi.c ftt_all_scsi(ftt_descriptor d) {
-ftt_close_scsi_dev   func     77  ftt_lib/ftt_do_scsi.c ftt_close_scsi_dev(ftt_descriptor d) {
-ftt_do_scsi_command  func     34  ftt_lib/ftt_do_scsi.c ftt_do_scsi_command(ftt_descriptor d,char *pcOp,unsigned char *pcCmd, 
-ftt_format_ait       func    500  ftt_lib/ftt_do_scsi.c int ftt_format_ait(ftt_descriptor d, int size) {
-ftt_get_scsi_devname func    207  ftt_lib/ftt_do_scsi.c ftt_get_scsi_devname(ftt_descriptor d){
-ftt_inquire          func    477  ftt_lib/ftt_do_scsi.c int ftt_inquire(ftt_descriptor d) {
-ftt_logsense         func    686  ftt_lib/ftt_do_scsi.c int ftt_logsense(ftt_descriptor d) {
-ftt_modesense        func    637  ftt_lib/ftt_do_scsi.c int ftt_modesense(ftt_descriptor d) {
-ftt_open_scsi_dev    func     52  ftt_lib/ftt_do_scsi.c ftt_open_scsi_dev(ftt_descriptor d) {
-ftt_scsi_check       func     97  ftt_lib/ftt_do_scsi.c ftt_scsi_check(scsi_handle n,char *pcOp, int stat, int len) {
-ftt_scsi_locate      func    322  ftt_lib/ftt_do_scsi.c ftt_scsi_locate( ftt_descriptor d, int blockno) {
-ftt_scsi_set_compression func    243  ftt_lib/ftt_do_scsi.c ftt_scsi_set_compression(ftt_descriptor d, int compression) {
-ftt_set_transfer_length func     27  ftt_lib/ftt_do_scsi.c ftt_set_transfer_length( unsigned char *cdb, int n ) {
-geteuid              def      13  ftt_lib/ftt_do_scsi.c #define geteuid() -1
-hex                  def     376  ftt_lib/ftt_do_scsi.c #define hex(x) "0123456789ABCDEF" [ (x) & 0xF ]
-hprint               func    382  ftt_lib/ftt_do_scsi.c hprint(unsigned char *s, int n, int nperline, int space, int ascii)
-inqdata              type    374  ftt_lib/ftt_do_scsi.c } inqdata;
-iso                  def     352  ftt_lib/ftt_do_scsi.c #define iso BITFLD(2,7,6)
-link                 def     364  ftt_lib/ftt_do_scsi.c #define link BITFLD( 7,3,3)
-pdt                  def     349  ftt_lib/ftt_do_scsi.c #define pdt BITFLD(0,4,0)
-pdt_types            var     416  ftt_lib/ftt_do_scsi.c static char pdt_types[][16] = {
-pqt                  def     348  ftt_lib/ftt_do_scsi.c #define pqt BITFLD(0,7,5)
-printinq             func    423  ftt_lib/ftt_do_scsi.c printinq(inqdata *inq)
-rcsid                var       1  ftt_lib/ftt_do_scsi.c static char rcsid[] = "@(#)$Id$";
-reladr               def     360  ftt_lib/ftt_do_scsi.c #define reladr BITFLD(7,7,7)
-res0                 def     357  ftt_lib/ftt_do_scsi.c #define res0 BITFLD(3,5,4)
-respfmt              def     358  ftt_lib/ftt_do_scsi.c #define respfmt BITFLD(3,4,0)
-rmb                  def     350  ftt_lib/ftt_do_scsi.c #define rmb BITFLD(1,7,7)
-softre               def     366  ftt_lib/ftt_do_scsi.c #define softre BITFLD(7,0,0)
-synch                def     363  ftt_lib/ftt_do_scsi.c #define synch BITFLD(7,4,4)
-trmiop               def     356  ftt_lib/ftt_do_scsi.c #define trmiop BITFLD(3,6,6)
-wide16               def     362  ftt_lib/ftt_do_scsi.c #define wide16 BITFLD(7,5,5)
-wide32               def     361  ftt_lib/ftt_do_scsi.c #define wide32 BITFLD(7,6,6)
-CHECKS               def     177  ftt_lib/ftt_error.c # define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
-CHECKS               def     368  ftt_lib/ftt_error.c # define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
-ftt_WIN_error        func    279  ftt_lib/ftt_error.c ftt_WIN_error (DWORD res) {
-ftt_ascii_error      var      39  ftt_lib/ftt_error.c char *ftt_ascii_error[] = {
-ftt_describe_error   func    249  ftt_lib/ftt_error.c ftt_describe_error(ftt_descriptor d, int opn, char *op, int res, char *what, int recoverable) {
-ftt_describe_error_WIN func    420  ftt_lib/ftt_error.c ftt_describe_error_WIN(ftt_descriptor d, int opn, char *op, DWORD res, char *what, int recoverable) 
-ftt_eprintf          func     22  ftt_lib/ftt_error.c ftt_eprintf(char *format, ...)
-ftt_get_error        func     32  ftt_lib/ftt_error.c ftt_get_error(int *pn){
-ftt_translate_error  func    154  ftt_lib/ftt_error.c ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, int recoverable) {
-ftt_translate_error_WIN func    349  ftt_lib/ftt_error.c ftt_translate_error_WIN(ftt_descriptor d, int opn, char *op, DWORD fres, char *what, int recoverable) {
-main                 func    449  ftt_lib/ftt_error.c main(){
-messages             var      74  ftt_lib/ftt_error.c static char *messages[] = {
-rcsid                var       1  ftt_lib/ftt_error.c static char rcsid[] = "@(#)$Id$";
-ftt_find_last_part   func    155  ftt_lib/ftt_find.c ftt_find_last_part( char *p ) {
-ftt_findslot         func     51  ftt_lib/ftt_find.c ftt_findslot (char *basename, char *os, char *drivid, 
-ftt_get_driveid      func    186  ftt_lib/ftt_find.c ftt_get_driveid(char *basename,char *os) {
-ftt_get_os           func     16  ftt_lib/ftt_find.c char * ftt_get_os() {
-ftt_get_os           func     34  ftt_lib/ftt_find.c ftt_get_os() {
-ftt_make_os_name     func     43  ftt_lib/ftt_find.c ftt_make_os_name(char *sys, char *release , char *version) {
-ftt_strip_to_basename func     88  ftt_lib/ftt_find.c ftt_strip_to_basename(const char *basename,char *os) {
-geteuid              def      11  ftt_lib/ftt_find.c #define geteuid() -1 
-pclose               def      13  ftt_lib/ftt_find.c #define pclose _pclose
-popen                def      12  ftt_lib/ftt_find.c #define popen _popen
-rcsid                var       1  ftt_lib/ftt_find.c static char rcsid[] = "@(#)$Id$";
-ftt_debug            var       6  ftt_lib/ftt_global.c int ftt_debug;
-ftt_eprint_buf       var       7  ftt_lib/ftt_global.c char ftt_eprint_buf[FTT_EPRINT_BUF_SIZE];
-ftt_errno            var       5  ftt_lib/ftt_global.c int ftt_errno;
-rcsid                var       1  ftt_lib/ftt_global.c static char rcsid[] = "@(#)$Id$";
-LAST                 def     191  ftt_lib/ftt_higher.c #define LAST 1
-TOTALS               def     192  ftt_lib/ftt_higher.c #define TOTALS 0
-ftt_alloc_stats      func    210  ftt_lib/ftt_higher.c ftt_alloc_stats() {
-ftt_ascii_rewindflags var     133  ftt_lib/ftt_higher.c char *ftt_ascii_rewindflags[] = {
-ftt_clear_unrecovered func    528  ftt_lib/ftt_higher.c ftt_clear_unrecovered(ftt_descriptor d) {
-ftt_describe_dev     func    142  ftt_lib/ftt_higher.c ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
-ftt_dump_stats       func    329  ftt_lib/ftt_higher.c ftt_dump_stats(ftt_stat_buf b, FILE *pf) {
-ftt_first_supported  func    380  ftt_lib/ftt_higher.c ftt_first_supported(int *pi) {
-ftt_free_stats       func    225  ftt_lib/ftt_higher.c ftt_free_stats( ftt_stat_buf *res ) {
-ftt_init_stats       func    194  ftt_lib/ftt_higher.c ftt_init_stats(ftt_descriptor d){
-ftt_list_supported   func    402  ftt_lib/ftt_higher.c ftt_list_supported(FILE *pf) {
-ftt_next_supported   func    386  ftt_lib/ftt_higher.c ftt_next_supported(int *pi) {
-ftt_retry            func    497  ftt_lib/ftt_higher.c ftt_retry( ftt_descriptor d, int n, int (*op)(ftt_descriptor, char *, int),
-ftt_stat_names       var     268  ftt_lib/ftt_higher.c char *ftt_stat_names[] = {
-ftt_undump_stats     func    347  ftt_lib/ftt_higher.c ftt_undump_stats(ftt_stat_buf b, FILE *pf) {
-ftt_update_stats     func    232  ftt_lib/ftt_higher.c ftt_update_stats(ftt_descriptor d, ftt_stat_buf *bp){
-ftt_verify_blank     func    537  ftt_lib/ftt_higher.c ftt_verify_blank(ftt_descriptor d) {
-ftt_verify_vol_label func     18  ftt_lib/ftt_higher.c ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel, 
-ftt_write_vol_label  func    109  ftt_lib/ftt_higher.c ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel) {
-geteuid              def      10  ftt_lib/ftt_higher.c #define geteuid() -1
-namebuf              var     377  ftt_lib/ftt_higher.c static char namebuf[512];
-rcsid                var       1  ftt_lib/ftt_higher.c static char rcsid[] = "@(#)$Id$";
-comptable            var     142  ftt_lib/ftt_info.c static char *comptable[] = {"uncompressed", "compressed"};
-ftt_avail_mode       func    144  ftt_lib/ftt_info.c ftt_avail_mode(ftt_descriptor d, int density, int mode, int fixedblock) {
-ftt_chall            func    102  ftt_lib/ftt_info.c ftt_chall(ftt_descriptor d, int uid, int gid, int mode) {
-ftt_density_to_name  func     32  ftt_lib/ftt_info.c ftt_density_to_name(ftt_descriptor d, int density){
-ftt_get_basename     func     23  ftt_lib/ftt_info.c ftt_get_basename(ftt_descriptor d) {
-ftt_get_data_direction func     15  ftt_lib/ftt_info.c ftt_get_data_direction(ftt_descriptor d) {
-ftt_get_max_blocksize func     68  ftt_lib/ftt_info.c ftt_get_max_blocksize(ftt_descriptor d) {
-ftt_get_mode         func    169  ftt_lib/ftt_info.c ftt_get_mode(ftt_descriptor d, int *density, int* mode, int *blocksize){
-ftt_get_mode_dev     func    217  ftt_lib/ftt_info.c ftt_get_mode_dev(ftt_descriptor d, char *devname, int *density, 
-ftt_list_all         func     85  ftt_lib/ftt_info.c ftt_list_all(ftt_descriptor d) {
-ftt_name_to_density  func     48  ftt_lib/ftt_info.c ftt_name_to_density(ftt_descriptor d, const char *name){
-ftt_set_data_direction func    309  ftt_lib/ftt_info.c ftt_set_data_direction( ftt_descriptor d, int value ) {
-ftt_set_mode         func    181  ftt_lib/ftt_info.c ftt_set_mode(ftt_descriptor d, int density, int mode, int blocksize) {
-ftt_set_mode_dev     func    253  ftt_lib/ftt_info.c ftt_set_mode_dev(ftt_descriptor d, const char *devname, int force) {
-rcsid                var       1  ftt_lib/ftt_info.c static char rcsid[] = "@(#)$Id$";
-BLEN                 def     114  ftt_lib/ftt_label.c #define BLEN 512
-ftt_format_label     func    107  ftt_lib/ftt_label.c ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
-ftt_format_label_version func    112  ftt_lib/ftt_label.c ftt_format_label_version( char *buf, int length, char *vol, int vlen, int type, char version) {
-ftt_guess_label      func     22  ftt_lib/ftt_label.c ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
-ftt_label_type_names var      10  ftt_lib/ftt_label.c char *ftt_label_type_names[] = {
-ftt_to_upper         func     98  ftt_lib/ftt_label.c ftt_to_upper( char *p ) {
-pack                 def       6  ftt_lib/ftt_label.c #define pack(a,b,c,d) (((a)<<24)|((b)<<16)|((c)<<8)|(d))
-rcsid                var       1  ftt_lib/ftt_label.c static char rcsid[] = "@(#)$Id$";
-CKNULL               def      24  ftt_lib/ftt_macros.h #define CKNULL(what,p) \
-CKOK                 def      53  ftt_lib/ftt_macros.h #define CKOK(d,name,writes,recovers) \
-DEBUG0               def       3  ftt_lib/ftt_macros.h #define DEBUG0 if(ftt_debug>=0) (void)fprintf
-DEBUG0               def       5  ftt_lib/ftt_macros.h #define DEBUG0 if(ftt_debug>=1) (void)fprintf
-DEBUG1               def       8  ftt_lib/ftt_macros.h #define DEBUG1 if(ftt_debug>=1) (void)fprintf
-DEBUG2               def       9  ftt_lib/ftt_macros.h #define DEBUG2 if(ftt_debug>=2) (void)fprintf
-DEBUG3               def      10  ftt_lib/ftt_macros.h #define DEBUG3 if (ftt_debug>=3) (void)fprintf
-DEBUG4               def      11  ftt_lib/ftt_macros.h #define DEBUG4 if (ftt_debug>=4) (void)fprintf
-DEBUGDUMP1           def      12  ftt_lib/ftt_macros.h #define DEBUGDUMP1 if (ftt_debug>=1) (void)ftt_debug_dump
-DEBUGDUMP2           def      13  ftt_lib/ftt_macros.h #define DEBUGDUMP2 if (ftt_debug>=2) (void)ftt_debug_dump
-DEBUGDUMP3           def      14  ftt_lib/ftt_macros.h #define DEBUGDUMP3 if (ftt_debug>=3) (void)ftt_debug_dump
-DEBUGDUMP4           def      15  ftt_lib/ftt_macros.h #define DEBUGDUMP4 if (ftt_debug>=4) (void)ftt_debug_dump
-ENTERING             def      17  ftt_lib/ftt_macros.h #define ENTERING(name) \
-PCKNULL              def      31  ftt_lib/ftt_macros.h #define PCKNULL(what,p) \
-VCKNULL              def      38  ftt_lib/ftt_macros.h #define VCKNULL(what,p) \
-buf                  var       7  ftt_lib/ftt_main.c char buf[128];
-d                    var       5  ftt_lib/ftt_main.c ftt_descriptor d;
-main                 func      9  ftt_lib/ftt_main.c main() {
-rcsid                var       1  ftt_lib/ftt_main.c static char rcsid[] = "@(#)$Id$";
-FNONBLOCK            def      26  ftt_lib/ftt_open.c # define FNONBLOCK O_NONBLOCK
-ftt_close            func    201  ftt_lib/ftt_open.c ftt_close(ftt_descriptor d){
-ftt_close_dev        func    526  ftt_lib/ftt_open.c ftt_close_dev(ftt_descriptor d) {
-ftt_close_io_dev     func    495  ftt_lib/ftt_open.c ftt_close_io_dev(ftt_descriptor d) {
-ftt_matches          func     73  ftt_lib/ftt_open.c ftt_matches( const char *s1, const char *s2 ) {
-ftt_open             func     30  ftt_lib/ftt_open.c ftt_open(const char *name, int rdonly) {
-ftt_open_dev         func    417  ftt_lib/ftt_open.c ftt_open_dev(ftt_descriptor d) {
-ftt_open_io_dev      func    361  ftt_lib/ftt_open.c ftt_open_io_dev(ftt_descriptor d) {
-ftt_open_logical     func     87  ftt_lib/ftt_open.c ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
-ftt_open_set_blocksize func    301  ftt_lib/ftt_open.c ftt_open_set_blocksize (ftt_descriptor d) {
-ftt_open_set_mode    func    315  ftt_lib/ftt_open.c ftt_open_set_mode (ftt_descriptor d,int status_res) {
-ftt_open_status      func    240  ftt_lib/ftt_open.c ftt_open_status (ftt_descriptor d ) {
-ftt_setdev           func    472  ftt_lib/ftt_open.c ftt_setdev(ftt_descriptor d) {
-rcsid                var       1  ftt_lib/ftt_open.c static char rcsid[] = "@(#)$Id$";
-rcslink              var       3  ftt_lib/ftt_open.c static char *rcslink = ftt_version;
-ftt_cdb_read         var      40  ftt_lib/ftt_rdwr.c unsigned char ftt_cdb_read[] = { 0x08, 0x00, 0x00, 0x00, 0x00, 0x00 },
-ftt_cdb_write        var      41  ftt_lib/ftt_rdwr.c ftt_cdb_write[] = { 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00 };
-ftt_get_position     func     19  ftt_lib/ftt_rdwr.c ftt_get_position(ftt_descriptor d, int *file, int *block) {
-ftt_read             func     44  ftt_lib/ftt_rdwr.c ftt_read( ftt_descriptor d, char *buf, int length ) {
-ftt_write            func    129  ftt_lib/ftt_rdwr.c ftt_write( ftt_descriptor d, char *buf, int length ) {
-rcsid                var       1  ftt_lib/ftt_rdwr.c static char rcsid[] = "@(#)$Id$";
-scsi_handle          type      1  ftt_lib/ftt_scsi.h typedef long scsi_handle;
-ftt_cdb_erase        var     150  ftt_lib/ftt_skip.c unsigned char ftt_cdb_erase[] = {0x19, 0x01, 0x00, 0x00, 0x00, 0x00};
-ftt_cdb_retension    var     149  ftt_lib/ftt_skip.c unsigned char ftt_cdb_retension[]= {0x1b, 0x00, 0x00, 0x00, 0x03, 0x00};
-ftt_cdb_rewind       var     147  ftt_lib/ftt_skip.c unsigned char ftt_cdb_rewind[] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-ftt_cdb_skipbl       var     146  ftt_lib/ftt_skip.c unsigned char ftt_cdb_skipbl[] = {0x11, 0x00, 0x00, 0x00, 0x00, 0x00};
-ftt_cdb_skipfm       var     145  ftt_lib/ftt_skip.c unsigned char ftt_cdb_skipfm[] = {0x11, 0x01, 0x00, 0x00, 0x00, 0x00};
-ftt_cdb_unload       var     148  ftt_lib/ftt_skip.c unsigned char ftt_cdb_unload[] = {0x1b, 0x00, 0x00, 0x00, 0x00, 0x00};
-ftt_cdb_writefm      var     151  ftt_lib/ftt_skip.c unsigned char ftt_cdb_writefm[] = {0x10, 0x00, 0x00, 0x00, 0x00, 0x00};
-ftt_erase            func    305  ftt_lib/ftt_skip.c ftt_erase(ftt_descriptor d) {
-ftt_mtop             func     48  ftt_lib/ftt_skip.c ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *cdb) {
-ftt_retension        func    263  ftt_lib/ftt_skip.c ftt_retension(ftt_descriptor d) {
-ftt_rewind           func    233  ftt_lib/ftt_skip.c ftt_rewind(ftt_descriptor d){
-ftt_skip_fm          func    157  ftt_lib/ftt_skip.c ftt_skip_fm(ftt_descriptor d, int n) {
-ftt_skip_fm_internal func    199  ftt_lib/ftt_skip.c ftt_skip_fm_internal(ftt_descriptor d, int n) {
-ftt_skip_rec         func    213  ftt_lib/ftt_skip.c ftt_skip_rec(ftt_descriptor d, int n){
-ftt_skip_to_double_fm func    389  ftt_lib/ftt_skip.c ftt_skip_to_double_fm(ftt_descriptor d) {
-ftt_unload           func    284  ftt_lib/ftt_skip.c ftt_unload(ftt_descriptor d){
-ftt_write2fm         func    444  ftt_lib/ftt_skip.c ftt_write2fm(ftt_descriptor d) {
-ftt_write_fm_if_needed func    416  ftt_lib/ftt_skip.c ftt_write_fm_if_needed(ftt_descriptor d) {
-ftt_writefm          func    351  ftt_lib/ftt_skip.c ftt_writefm(ftt_descriptor d) {
-geteuid              def      18  ftt_lib/ftt_skip.c #define geteuid() -1
-ioctlbuf             var      33  ftt_lib/ftt_skip.c static struct tapeop ioctlbuf;
-rcsid                var       1  ftt_lib/ftt_skip.c static char rcsid[] = "@(#)$Id$";
-EXB_8200_FUDGE_FACTOR def     584  ftt_lib/ftt_stats.c #define EXB_8200_FUDGE_FACTOR 1279
-bit                  def     235  ftt_lib/ftt_stats.c #define bit(n,byte) (unsigned long)(((byte)>>(n))&1)
-decrypt_ls           func    243  ftt_lib/ftt_stats.c decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
-ftt_add_stats        func    186  ftt_lib/ftt_stats.c ftt_add_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
-ftt_alloc_stat       func     26  ftt_lib/ftt_stats.c ftt_alloc_stat() {
-ftt_clear_stats      func    777  ftt_lib/ftt_stats.c ftt_clear_stats(ftt_descriptor d) {
-ftt_dtoa             func     75  ftt_lib/ftt_stats.c ftt_dtoa(double n) {
-ftt_extract_stats    func    840  ftt_lib/ftt_stats.c ftt_extract_stats(ftt_stat_buf b, int stat){
-ftt_free_stat        func     42  ftt_lib/ftt_stats.c ftt_free_stat(ftt_stat_buf b) {
-ftt_get_stat_ops     func    272  ftt_lib/ftt_stats.c ftt_get_stat_ops(char *name) {
-ftt_get_stats        func    288  ftt_lib/ftt_stats.c ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
-ftt_itoa             func     67  ftt_lib/ftt_stats.c ftt_itoa(long n) {
-ftt_itoa_Large       func     59  ftt_lib/ftt_stats.c ftt_itoa_Large(LARGE_INTEGER n) {
-ftt_numeric_tab      var     127  ftt_lib/ftt_stats.c int ftt_numeric_tab[FTT_MAX_STAT] = {
-ftt_sub_stats        func    206  ftt_lib/ftt_stats.c ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
-geteuid              def      13  ftt_lib/ftt_stats.c #define geteuid() -1
-pack                 def     232  ftt_lib/ftt_stats.c #define pack(a,b,c,d) \
-rcsid                var       1  ftt_lib/ftt_stats.c static char rcsid[] = "@(#)$Id$";
-set_stat             func     87  ftt_lib/ftt_stats.c set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
-main                 func     22  ftt_lib/ftt_suid.c main(int argc, char **argv) {
-rcsid                var       1  ftt_lib/ftt_suid.c static char rcsid[] = "@(#)$Id$";
-usage                func     12  ftt_lib/ftt_suid.c usage(void) {
-ftt_do_suid_scsi_command func      3  ftt_lib/ftt_suid_scsi.c ftt_do_suid_scsi_command(ftt_descriptor d,char *pcOp,unsigned char *pcCmd, 
-rcsid                var       1  ftt_lib/ftt_suid_scsi.c static char rcsid[] = "@(#)$Id$";
-AIT_density_trans    var     717  ftt_lib/ftt_tables.c char *AIT_density_trans[MAX_TRANS_DENSITY] = {
-AIXfind              var     754  ftt_lib/ftt_tables.c static char AIXfind[] =
-DLT_density_trans    var     705  ftt_lib/ftt_tables.c char *DLT_density_trans[MAX_TRANS_DENSITY] = {
-EXB_MAX_BLKSIZE      def     840  ftt_lib/ftt_tables.c #define EXB_MAX_BLKSIZE 245760
-Exabyte_density_trans var     697  ftt_lib/ftt_tables.c char *Exabyte_density_trans[MAX_TRANS_DENSITY] = {
-Generic_density_trans var     689  ftt_lib/ftt_tables.c char *Generic_density_trans[MAX_TRANS_DENSITY] = {
-IRIX_MAX_BLKSIZE     def     841  ftt_lib/ftt_tables.c #define IRIX_MAX_BLKSIZE 131072
-IRIXfind             var     761  ftt_lib/ftt_tables.c static char IRIXfind[] =
-IRIXfindVME          var     768  ftt_lib/ftt_tables.c static char IRIXfindVME[] =
-LINUX_MAX_BLKSIZE    def     844  ftt_lib/ftt_tables.c #define LINUX_MAX_BLKSIZE 65536
-LINUXfind            var     730  ftt_lib/ftt_tables.c static char LINUXfind[] =
-LINUXrmtfind         var     744  ftt_lib/ftt_tables.c static char LINUXrmtfind[] =
-OSF1find             var     775  ftt_lib/ftt_tables.c static char OSF1find[] = 
-SUN_MAX_BLKSIZE      def     842  ftt_lib/ftt_tables.c #define SUN_MAX_BLKSIZE 65534
-SunOSfind_dev        var     787  ftt_lib/ftt_tables.c static char SunOSfind_dev[] =
-WIN_MAX_BLKSIZE      def     843  ftt_lib/ftt_tables.c #define WIN_MAX_BLKSIZE 120000
-Win32find_dev        var     804  ftt_lib/ftt_tables.c static char Win32find_dev[] = "";
-devtable             var     847  ftt_lib/ftt_tables.c ftt_dev_entry devtable[] = {
-devtable_size        var    2232  ftt_lib/ftt_tables.c int devtable_size = sizeof(devtable);
-ftt_stat_op_tab      var    2235  ftt_lib/ftt_tables.c ftt_stat_entry ftt_stat_op_tab[] = {
-ftt_trans_chall      var     595  ftt_lib/ftt_tables.c int ftt_trans_chall[MAX_TRANS_ERRNO] = {
-ftt_trans_in         var      59  ftt_lib/ftt_tables.c int ftt_trans_in[MAX_TRANS_ERRNO] = {
-ftt_trans_in_AIX     var     112  ftt_lib/ftt_tables.c int ftt_trans_in_AIX[MAX_TRANS_ERRNO] = {
-ftt_trans_open       var       5  ftt_lib/ftt_tables.c int ftt_trans_open[MAX_TRANS_ERRNO] = {
-ftt_trans_out        var     541  ftt_lib/ftt_tables.c int ftt_trans_out[MAX_TRANS_ERRNO] = {
-ftt_trans_out_AIX    var     487  ftt_lib/ftt_tables.c int ftt_trans_out_AIX[MAX_TRANS_ERRNO] = {
-ftt_trans_skipf      var     219  ftt_lib/ftt_tables.c int ftt_trans_skipf[MAX_TRANS_ERRNO] = {
-ftt_trans_skipf_AIX  var     272  ftt_lib/ftt_tables.c int ftt_trans_skipf_AIX[MAX_TRANS_ERRNO] = {
-ftt_trans_skipr      var     325  ftt_lib/ftt_tables.c int ftt_trans_skipr[MAX_TRANS_ERRNO] = {
-ftt_trans_skipr_AIX  var     379  ftt_lib/ftt_tables.c int ftt_trans_skipr_AIX[MAX_TRANS_ERRNO] = {
-ftt_trans_skiprec    var     166  ftt_lib/ftt_tables.c int ftt_trans_skiprec[MAX_TRANS_ERRNO] = {
-ftt_trans_skiprew_AIX var     433  ftt_lib/ftt_tables.c int ftt_trans_skiprew_AIX[MAX_TRANS_ERRNO] = {
-ftt_trans_table      var     668  ftt_lib/ftt_tables.c int *ftt_trans_table[] = {
-ftt_trans_table_AIX  var     648  ftt_lib/ftt_tables.c int *ftt_trans_table_AIX[] = {
-rcsid                var       1  ftt_lib/ftt_tables.c static char rcsid[] = "@(#)$Id$";
-devtable             var     147  ftt_lib/ftt_tables.old.c ftt_dev_entry devtable[] = {
-ftt_stat_op_tab      var     311  ftt_lib/ftt_tables.old.c ftt_stat_entry ftt_stat_op_tab[] = {
-ftt_trans_in         var       5  ftt_lib/ftt_tables.old.c int ftt_trans_in[] = {
-ftt_trans_out        var      87  ftt_lib/ftt_tables.old.c int ftt_trans_out[] = {
-ftt_trans_skip       var      46  ftt_lib/ftt_tables.old.c int ftt_trans_skip[] = {
-ftt_trans_table      var     128  ftt_lib/ftt_tables.old.c int *ftt_trans_table[] = {
-rcsid                var       1  ftt_lib/ftt_tables.old.c static char rcsid[] = "@(#)$Id$";
-FTT_DO_05RS          def     164  ftt_lib/ftt_types.h #define FTT_DO_05RS 0x00000100 /* EXABYTE 8x05 Request sense added bytes */
-FTT_DO_DLTRS         def     165  ftt_lib/ftt_types.h #define FTT_DO_DLTRS 0x00000200 /* DLT Request sense added bytes */
-FTT_DO_EXB82FUDGE    def     171  ftt_lib/ftt_types.h #define FTT_DO_EXB82FUDGE 0x00008000 /* fudge read/write counts with remain tape */
-FTT_DO_EXBRS         def     161  ftt_lib/ftt_types.h #define FTT_DO_EXBRS 0x00000010 /* do Exabyte vendor specifics */
-FTT_DO_INQ           def     157  ftt_lib/ftt_types.h #define FTT_DO_INQ 0x00000001 /* do basic scsi inquiry */
-FTT_DO_LS            def     162  ftt_lib/ftt_types.h #define FTT_DO_LS 0x00000020 /* do log sense for read/write stats */
-FTT_DO_MS            def     159  ftt_lib/ftt_types.h #define FTT_DO_MS 0x00000004 /* do basic modes sense */
-FTT_DO_MS_Px0f       def     172  ftt_lib/ftt_types.h #define FTT_DO_MS_Px0f 0x00010000 /* do a ModeSense p.0x0f to set density */
-FTT_DO_MS_Px10       def     169  ftt_lib/ftt_types.h #define FTT_DO_MS_Px10 0x00002000 /* do a ModeSense p.0x10 */
-FTT_DO_MS_Px20_EXB   def     170  ftt_lib/ftt_types.h #define FTT_DO_MS_Px20_EXB 0x00004000 /* do a ModeSense p.0x20(EXB) */
-FTT_DO_RP            def     167  ftt_lib/ftt_types.h #define FTT_DO_RP 0x00000800 /* do a read position */
-FTT_DO_RP_SOMETIMES  def     168  ftt_lib/ftt_types.h #define FTT_DO_RP_SOMETIMES 0x00001000 /* do a read position,okay if fails*/
-FTT_DO_RS            def     160  ftt_lib/ftt_types.h #define FTT_DO_RS 0x00000008 /* do basic request sense */
-FTT_DO_SN            def     158  ftt_lib/ftt_types.h #define FTT_DO_SN 0x00000002 /* do inquiry with serial number page */
-FTT_DO_TUR           def     166  ftt_lib/ftt_types.h #define FTT_DO_TUR 0x00000400 /* do a test unit ready */
-FTT_DO_VSRS          def     163  ftt_lib/ftt_types.h #define FTT_DO_VSRS 0x00000040 /* to request sense for vendor specific stuff */
-FTT_EPRINT_BUF_SIZE  def       6  ftt_lib/ftt_types.h #define FTT_EPRINT_BUF_SIZE 512
-FTT_FLAG_BSIZE_AFTER def     114  ftt_lib/ftt_types.h #define FTT_FLAG_BSIZE_AFTER 0x00000040 /* set blocksize after open */
-FTT_FLAG_CHK_BOT_AT_FMK def     113  ftt_lib/ftt_types.h #define FTT_FLAG_CHK_BOT_AT_FMK 0x00000020 /* check for reset/rewinds */
-FTT_FLAG_FSF_AT_EOF  def     108  ftt_lib/ftt_types.h #define FTT_FLAG_FSF_AT_EOF 0x00000001 /* fsf to get past eof */
-FTT_FLAG_HOLD_SIGNALS def     110  ftt_lib/ftt_types.h #define FTT_FLAG_HOLD_SIGNALS 0x00000004 /* sighold reads/writes */
-FTT_FLAG_MODE_AFTER  def     117  ftt_lib/ftt_types.h #define FTT_FLAG_MODE_AFTER 0x00000200 /* set mode After dev is opened */
-FTT_FLAG_NO_DENSITY  def     118  ftt_lib/ftt_types.h #define FTT_FLAG_NO_DENSITY 0x00000400 /* dont actually set density */
-FTT_FLAG_REOPEN_AT_EOF def     109  ftt_lib/ftt_types.h #define FTT_FLAG_REOPEN_AT_EOF 0x00000002 /* reopen " */
-FTT_FLAG_REOPEN_R_W  def     111  ftt_lib/ftt_types.h #define FTT_FLAG_REOPEN_R_W 0x00000008 /* reopen on r/w switch */
-FTT_FLAG_SUID_DRIVEID def     116  ftt_lib/ftt_types.h #define FTT_FLAG_SUID_DRIVEID 0x00000100 /* need root to get driveid */
-FTT_FLAG_SUID_SCSI   def     112  ftt_lib/ftt_types.h #define FTT_FLAG_SUID_SCSI 0x00000010 /* must be root to do scsi */
-FTT_FLAG_VERIFY_EOFS def     115  ftt_lib/ftt_types.h #define FTT_FLAG_VERIFY_EOFS 0x00000080 /* check whether EOF is EOT */
-FTT_OPN_ASYNC        def      77  ftt_lib/ftt_types.h #define FTT_OPN_ASYNC 12 
-FTT_OPN_CHALL        def      79  ftt_lib/ftt_types.h #define FTT_OPN_CHALL 14
-FTT_OPN_ERASE        def      74  ftt_lib/ftt_types.h #define FTT_OPN_ERASE 9
-FTT_OPN_GET_STATUS   def      76  ftt_lib/ftt_types.h #define FTT_OPN_GET_STATUS 11
-FTT_OPN_OPEN         def      80  ftt_lib/ftt_types.h #define FTT_OPN_OPEN 15
-FTT_OPN_PASSTHRU     def      78  ftt_lib/ftt_types.h #define FTT_OPN_PASSTHRU 13
-FTT_OPN_READ         def      66  ftt_lib/ftt_types.h #define FTT_OPN_READ 1
-FTT_OPN_RETENSION    def      73  ftt_lib/ftt_types.h #define FTT_OPN_RETENSION 8
-FTT_OPN_REWIND       def      71  ftt_lib/ftt_types.h #define FTT_OPN_REWIND 6
-FTT_OPN_RSKIPFM      def      82  ftt_lib/ftt_types.h #define FTT_OPN_RSKIPFM 17
-FTT_OPN_RSKIPREC     def      81  ftt_lib/ftt_types.h #define FTT_OPN_RSKIPREC 16
-FTT_OPN_SETCOMPRESSION def      84  ftt_lib/ftt_types.h #define FTT_OPN_SETCOMPRESSION 19
-FTT_OPN_SETDENSITY   def      83  ftt_lib/ftt_types.h #define FTT_OPN_SETDENSITY 18
-FTT_OPN_SKIPFM       def      70  ftt_lib/ftt_types.h #define FTT_OPN_SKIPFM 5
-FTT_OPN_SKIPREC      def      69  ftt_lib/ftt_types.h #define FTT_OPN_SKIPREC 4
-FTT_OPN_STATUS       def      75  ftt_lib/ftt_types.h #define FTT_OPN_STATUS 10
-FTT_OPN_UNLOAD       def      72  ftt_lib/ftt_types.h #define FTT_OPN_UNLOAD 7
-FTT_OPN_WRITE        def      67  ftt_lib/ftt_types.h #define FTT_OPN_WRITE 2
-FTT_OPN_WRITEFM      def      68  ftt_lib/ftt_types.h #define FTT_OPN_WRITEFM 3
-FTT_OP_ASYNC         def      98  ftt_lib/ftt_types.h #define FTT_OP_ASYNC (1 << FTT_OPN_ASYNC )
-FTT_OP_CHALL         def     100  ftt_lib/ftt_types.h #define FTT_OP_CHALL (1 << FTT_OPN_CHALL )
-FTT_OP_ERASE         def      95  ftt_lib/ftt_types.h #define FTT_OP_ERASE (1 << FTT_OPN_ERASE )
-FTT_OP_GET_STATUS    def      97  ftt_lib/ftt_types.h #define FTT_OP_GET_STATUS (1 << FTT_OPN_GET_STATUS )
-FTT_OP_OPEN          def     101  ftt_lib/ftt_types.h #define FTT_OP_OPEN (1 << FTT_OPN_OPEN )
-FTT_OP_PASSTHRU      def      99  ftt_lib/ftt_types.h #define FTT_OP_PASSTHRU (1 << FTT_OPN_PASSTHRU )
-FTT_OP_READ          def      87  ftt_lib/ftt_types.h #define FTT_OP_READ (1 << FTT_OPN_READ )
-FTT_OP_RETENSION     def      94  ftt_lib/ftt_types.h #define FTT_OP_RETENSION (1 << FTT_OPN_RETENSION )
-FTT_OP_REWIND        def      92  ftt_lib/ftt_types.h #define FTT_OP_REWIND (1 << FTT_OPN_REWIND )
-FTT_OP_RSKIPFM       def     103  ftt_lib/ftt_types.h #define FTT_OP_RSKIPFM (1 << FTT_OPN_RSKIPFM)
-FTT_OP_RSKIPREC      def     102  ftt_lib/ftt_types.h #define FTT_OP_RSKIPREC (1 << FTT_OPN_RSKIPREC)
-FTT_OP_SETCOMPRESSION def     105  ftt_lib/ftt_types.h #define FTT_OP_SETCOMPRESSION (1 << FTT_OPN_SETCOMPRESSION)
-FTT_OP_SETDENSITY    def     104  ftt_lib/ftt_types.h #define FTT_OP_SETDENSITY (1 << FTT_OPN_SETDENSITY)
-FTT_OP_SKIPFM        def      91  ftt_lib/ftt_types.h #define FTT_OP_SKIPFM (1 << FTT_OPN_SKIPFM )
-FTT_OP_SKIPREC       def      90  ftt_lib/ftt_types.h #define FTT_OP_SKIPREC (1 << FTT_OPN_SKIPREC )
-FTT_OP_STATUS        def      96  ftt_lib/ftt_types.h #define FTT_OP_STATUS (1 << FTT_OPN_STATUS )
-FTT_OP_UNLOAD        def      93  ftt_lib/ftt_types.h #define FTT_OP_UNLOAD (1 << FTT_OPN_UNLOAD )
-FTT_OP_WRITE         def      88  ftt_lib/ftt_types.h #define FTT_OP_WRITE (1 << FTT_OPN_WRITE )
-FTT_OP_WRITEFM       def      89  ftt_lib/ftt_types.h #define FTT_OP_WRITEFM (1 << FTT_OPN_WRITEFM )
-MAXDEVSLOTS          def      14  ftt_lib/ftt_types.h #define MAXDEVSLOTS 80
-MAX_TRANS_DENSITY    def      11  ftt_lib/ftt_types.h #define MAX_TRANS_DENSITY 10 /* maximum density number we translate */
-MAX_TRANS_ERRNO      def       9  ftt_lib/ftt_types.h #define MAX_TRANS_ERRNO 50 /* maximum error number we translate */
-ftt_descriptor       type     62  ftt_lib/ftt_types.h } ftt_descriptor_buf, *ftt_descriptor;
-ftt_descriptor_buf   type     62  ftt_lib/ftt_types.h } ftt_descriptor_buf, *ftt_descriptor;
-ftt_dev_entry        type    145  ftt_lib/ftt_types.h } ftt_dev_entry;
-ftt_devinfo          type     26  ftt_lib/ftt_types.h } ftt_devinfo;
-ftt_stat             type    122  ftt_lib/ftt_types.h } ftt_stat, *ftt_stat_buf;
-ftt_stat_buf         type    122  ftt_lib/ftt_types.h } ftt_stat, *ftt_stat_buf;
-ftt_stat_entry       type    152  ftt_lib/ftt_types.h } ftt_stat_entry;
-DEBUG1               def     109  ftt_lib/ftt_types.old.h #define DEBUG1 (ftt_debug>=1)&&fprintf
-DEBUG2               def     110  ftt_lib/ftt_types.old.h #define DEBUG2 (ftt_debug>=2)&&fprintf
-DEBUG3               def     111  ftt_lib/ftt_types.old.h #define DEBUG3 (ftt_debug>=3)&&fprintf
-DEBUGDUMP1           def     112  ftt_lib/ftt_types.old.h #define DEBUGDUMP1 (ftt_debug>=1)&&ftt_debug_dump
-DEBUGDUMP2           def     113  ftt_lib/ftt_types.old.h #define DEBUGDUMP2 (ftt_debug>=2)&&ftt_debug_dump
-DEBUGDUMP3           def     114  ftt_lib/ftt_types.old.h #define DEBUGDUMP3 (ftt_debug>=3)&&ftt_debug_dump
-FTT_CURRENT_BLOCK_VALID def      46  ftt_lib/ftt_types.old.h #define FTT_CURRENT_BLOCK_VALID 0x01
-FTT_CURRENT_FILE_VALID def      47  ftt_lib/ftt_types.old.h #define FTT_CURRENT_FILE_VALID 0x02
-FTT_DIR_READING      def      50  ftt_lib/ftt_types.old.h #define FTT_DIR_READING 0
-FTT_DIR_WRITING      def      51  ftt_lib/ftt_types.old.h #define FTT_DIR_WRITING 1
-FTT_DO_05RS          def     153  ftt_lib/ftt_types.old.h #define FTT_DO_05RS 0x00000100 /* EXABYTE 8x05 Request sense added bytes */
-FTT_DO_DLTRS         def     154  ftt_lib/ftt_types.old.h #define FTT_DO_DLTRS 0x00000200 /* DLT Request sense added bytes */
-FTT_DO_EXBRS         def     150  ftt_lib/ftt_types.old.h #define FTT_DO_EXBRS 0x00000010 /* do Exabyte vendor specifics */
-FTT_DO_INQ           def     146  ftt_lib/ftt_types.old.h #define FTT_DO_INQ 0x00000001 /* do basic scsi inquiry */
-FTT_DO_LSC           def     152  ftt_lib/ftt_types.old.h #define FTT_DO_LSC 0x00000080 /* do log sense for compression rate */
-FTT_DO_LSRW          def     151  ftt_lib/ftt_types.old.h #define FTT_DO_LSRW 0x00000020 /* do log sense for read/write stats */
-FTT_DO_MS            def     148  ftt_lib/ftt_types.old.h #define FTT_DO_MS 0x00000004 /* do basic modes sense */
-FTT_DO_RP            def     156  ftt_lib/ftt_types.old.h #define FTT_DO_RP 0x00000800 /* do a read position */
-FTT_DO_RS            def     149  ftt_lib/ftt_types.old.h #define FTT_DO_RS 0x00000008 /* do basic request sense */
-FTT_DO_SN            def     147  ftt_lib/ftt_types.old.h #define FTT_DO_SN 0x00000002 /* do inquiry with serial number page */
-FTT_DO_TUR           def     155  ftt_lib/ftt_types.old.h #define FTT_DO_TUR 0x00000400 /* do a test unit ready */
-FTT_FLAG_ASYNC_REWIND def      93  ftt_lib/ftt_types.old.h #define FTT_FLAG_ASYNC_REWIND 0x00000040 /* Async. rewind call */
-FTT_FLAG_FSF_AT_EOF  def      88  ftt_lib/ftt_types.old.h #define FTT_FLAG_FSF_AT_EOF 0x00000001 /* fsf to get past eof */
-FTT_FLAG_HOLD_SIGNALS def      90  ftt_lib/ftt_types.old.h #define FTT_FLAG_HOLD_SIGNALS 0x00000004 /* sighold reads/writes */
-FTT_FLAG_REOPEN_AT_EOF def      89  ftt_lib/ftt_types.old.h #define FTT_FLAG_REOPEN_AT_EOF 0x00000002 /* reopen " */
-FTT_FLAG_REOPEN_R_W  def      92  ftt_lib/ftt_types.old.h #define FTT_FLAG_REOPEN_R_W 0x00000020 /* reopen on r/w switch */
-FTT_FLAG_REWIND_WAIT def      91  ftt_lib/ftt_types.old.h #define FTT_FLAG_REWIND_WAIT 0x00000010 /* rewind returns immed.*/
-FTT_FLAG_SUID_SCSI   def      94  ftt_lib/ftt_types.old.h #define FTT_FLAG_SUID_SCSI 0x00000080 /* must be root to do scsi */
-FTT_OPN_ASYNC        def      65  ftt_lib/ftt_types.old.h #define FTT_OPN_ASYNC 12 
-FTT_OPN_CHALL        def      67  ftt_lib/ftt_types.old.h #define FTT_OPN_CHALL 14
-FTT_OPN_ERASE        def      62  ftt_lib/ftt_types.old.h #define FTT_OPN_ERASE 9
-FTT_OPN_GET_STATUS   def      64  ftt_lib/ftt_types.old.h #define FTT_OPN_GET_STATUS 11
-FTT_OPN_OPEN         def      68  ftt_lib/ftt_types.old.h #define FTT_OPN_OPEN 15
-FTT_OPN_PASSTHRU     def      66  ftt_lib/ftt_types.old.h #define FTT_OPN_PASSTHRU 13
-FTT_OPN_READ         def      54  ftt_lib/ftt_types.old.h #define FTT_OPN_READ 1
-FTT_OPN_RETENSION    def      61  ftt_lib/ftt_types.old.h #define FTT_OPN_RETENSION 8
-FTT_OPN_REWIND       def      59  ftt_lib/ftt_types.old.h #define FTT_OPN_REWIND 6
-FTT_OPN_SKIPFM       def      58  ftt_lib/ftt_types.old.h #define FTT_OPN_SKIPFM 5
-FTT_OPN_SKIPREC      def      57  ftt_lib/ftt_types.old.h #define FTT_OPN_SKIPREC 4
-FTT_OPN_STATUS       def      63  ftt_lib/ftt_types.old.h #define FTT_OPN_STATUS 10
-FTT_OPN_UNLOAD       def      60  ftt_lib/ftt_types.old.h #define FTT_OPN_UNLOAD 7
-FTT_OPN_WRITE        def      55  ftt_lib/ftt_types.old.h #define FTT_OPN_WRITE 2
-FTT_OPN_WRITEFM      def      56  ftt_lib/ftt_types.old.h #define FTT_OPN_WRITEFM 3
-FTT_OP_ASYNC         def      82  ftt_lib/ftt_types.old.h #define FTT_OP_ASYNC (1 << FTT_OPN_ASYNC )
-FTT_OP_CHALL         def      84  ftt_lib/ftt_types.old.h #define FTT_OP_CHALL (1 << FTT_OPN_CHALL )
-FTT_OP_ERASE         def      79  ftt_lib/ftt_types.old.h #define FTT_OP_ERASE (1 << FTT_OPN_ERASE )
-FTT_OP_GET_STATUS    def      81  ftt_lib/ftt_types.old.h #define FTT_OP_GET_STATUS (1 << FTT_OPN_GET_STATUS )
-FTT_OP_OPEN          def      85  ftt_lib/ftt_types.old.h #define FTT_OP_OPEN (1 << FTT_OPN_OPEN )
-FTT_OP_PASSTHRU      def      83  ftt_lib/ftt_types.old.h #define FTT_OP_PASSTHRU (1 << FTT_OPN_PASSTHRU )
-FTT_OP_READ          def      71  ftt_lib/ftt_types.old.h #define FTT_OP_READ (1 << FTT_OPN_READ )
-FTT_OP_RETENSION     def      78  ftt_lib/ftt_types.old.h #define FTT_OP_RETENSION (1 << FTT_OPN_RETENSION )
-FTT_OP_REWIND        def      76  ftt_lib/ftt_types.old.h #define FTT_OP_REWIND (1 << FTT_OPN_REWIND )
-FTT_OP_SKIPFM        def      75  ftt_lib/ftt_types.old.h #define FTT_OP_SKIPFM (1 << FTT_OPN_SKIPFM )
-FTT_OP_SKIPREC       def      74  ftt_lib/ftt_types.old.h #define FTT_OP_SKIPREC (1 << FTT_OPN_SKIPREC )
-FTT_OP_STATUS        def      80  ftt_lib/ftt_types.old.h #define FTT_OP_STATUS (1 << FTT_OPN_STATUS )
-FTT_OP_UNLOAD        def      77  ftt_lib/ftt_types.old.h #define FTT_OP_UNLOAD (1 << FTT_OPN_UNLOAD )
-FTT_OP_WRITE         def      72  ftt_lib/ftt_types.old.h #define FTT_OP_WRITE (1 << FTT_OPN_WRITE )
-FTT_OP_WRITEFM       def      73  ftt_lib/ftt_types.old.h #define FTT_OP_WRITEFM (1 << FTT_OPN_WRITEFM )
-ftt_descriptor       type     43  ftt_lib/ftt_types.old.h } ftt_descriptor_buf, *ftt_descriptor;
-ftt_descriptor_buf   type     43  ftt_lib/ftt_types.old.h } ftt_descriptor_buf, *ftt_descriptor;
-ftt_dev_entry        type    133  ftt_lib/ftt_types.old.h } ftt_dev_entry;
-ftt_devinfo          type     16  ftt_lib/ftt_types.old.h } ftt_devinfo;
-ftt_stat             type     98  ftt_lib/ftt_types.old.h } ftt_stat, *ftt_stat_buf;
-ftt_stat_buf         type     98  ftt_lib/ftt_types.old.h } ftt_stat, *ftt_stat_buf;
-ftt_stat_entry       type    140  ftt_lib/ftt_types.old.h } ftt_stat_entry;
-ftt_version          var       2  ftt_lib/ftt_version.c char ftt_version[] = "ftt release v2_0 : $Id$";
-ftt_descriptor       type      6  ftt_lib/ftt_voidtypes.h typedef void *ftt_descriptor;
-ftt_stat_buf         type      7  ftt_lib/ftt_voidtypes.h typedef void *ftt_stat_buf;
-main                 func      5  ftt_lib/listdemo.c main() {
-rcsid                var       1  ftt_lib/listdemo.c static char rcsid[] = "@(#)$Id$";
-FTT_TAPE_ERASE       def      15  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_ERASE MTERASE
-FTT_TAPE_FSF         def      19  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_FSF MTFSF
-FTT_TAPE_FSR         def      20  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_FSR MTFSR
-FTT_TAPE_NOP         def      13  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_NOP MTNOP
-FTT_TAPE_OP          def      23  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_OP MTIOCTOP
-FTT_TAPE_RETEN       def      14  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_RETEN MTRET
-FTT_TAPE_REW         def      16  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_REW MTREW
-FTT_TAPE_RSF         def      17  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_RSF MTBSF
-FTT_TAPE_RSR         def      18  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_RSR MTBSR
-FTT_TAPE_UNLOAD      def      22  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_UNLOAD MTUNLOAD
-FTT_TAPE_WEOF        def      21  ftt_lib/IRIX+4/ftt_mtio.h #define FTT_TAPE_WEOF MTWEOF
-tape_count           def      25  ftt_lib/IRIX+4/ftt_mtio.h #define tape_count mt_count
-tape_op              def      24  ftt_lib/IRIX+4/ftt_mtio.h #define tape_op mt_op
-tapeop               def      12  ftt_lib/IRIX+4/ftt_mtio.h #define tapeop mtop
-ftt_get_hwdens       func     98  ftt_lib/IRIX+4/ftt_machdep.c ftt_get_hwdens(ftt_descriptor d, char *devname) {
-ftt_set_blocksize    func     70  ftt_lib/IRIX+4/ftt_machdep.c ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-ftt_set_compression  func     61  ftt_lib/IRIX+4/ftt_machdep.c ftt_set_compression(ftt_descriptor d, int compression) {
-ftt_set_hwdens       func     65  ftt_lib/IRIX+4/ftt_machdep.c ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-ftt_status           func     14  ftt_lib/IRIX+4/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
-rcsid                var       1  ftt_lib/IRIX+4/ftt_machdep.c static char rcsid[] = "@(#)$Id$";
-ftt_scsi_close       func     70  ftt_lib/IRIX+4/ftt_scsi.c ftt_scsi_close(scsi_handle n) {
-ftt_scsi_command     func     98  ftt_lib/IRIX+4/ftt_scsi.c ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int writeflag)
-ftt_scsi_open        func     45  ftt_lib/IRIX+4/ftt_scsi.c ftt_scsi_open(const char *pc)
-rcsid                var       1  ftt_lib/IRIX+4/ftt_scsi.c static char rcsid[] = "@(#)$Id$";
-FTT_TAPE_ERASE       def      15  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_ERASE MTERASE
-FTT_TAPE_FSF         def      19  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_FSF MTFSF
-FTT_TAPE_FSR         def      20  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_FSR MTFSR
-FTT_TAPE_NOP         def      13  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_NOP MTNOP
-FTT_TAPE_OP          def      23  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_OP MTIOCTOP
-FTT_TAPE_RETEN       def      14  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_RETEN MTRET
-FTT_TAPE_REW         def      16  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_REW MTREW
-FTT_TAPE_RSF         def      17  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_RSF MTBSF
-FTT_TAPE_RSR         def      18  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_RSR MTBSR
-FTT_TAPE_UNLOAD      def      22  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_UNLOAD MTUNLOAD
-FTT_TAPE_WEOF        def      21  ftt_lib/IRIX+5/ftt_mtio.h #define FTT_TAPE_WEOF MTWEOF
-tape_count           def      25  ftt_lib/IRIX+5/ftt_mtio.h #define tape_count mt_count
-tape_op              def      24  ftt_lib/IRIX+5/ftt_mtio.h #define tape_op mt_op
-tapeop               def      12  ftt_lib/IRIX+5/ftt_mtio.h #define tapeop mtop
-ftt_get_hwdens       func     98  ftt_lib/IRIX+5/ftt_machdep.c ftt_get_hwdens(ftt_descriptor d, char *devname) {
-ftt_set_blocksize    func     71  ftt_lib/IRIX+5/ftt_machdep.c ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-ftt_set_compression  func     60  ftt_lib/IRIX+5/ftt_machdep.c ftt_set_compression(ftt_descriptor d, int compression) {
-ftt_set_hwdens       func     65  ftt_lib/IRIX+5/ftt_machdep.c ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-ftt_status           func     14  ftt_lib/IRIX+5/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
-rcsid                var       1  ftt_lib/IRIX+5/ftt_machdep.c static char rcsid[] = "@(#)$Id$";
-ftt_scsi_close       func     75  ftt_lib/IRIX+5/ftt_scsi.c ftt_scsi_close(scsi_handle n) {
-ftt_scsi_command     func    103  ftt_lib/IRIX+5/ftt_scsi.c ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int writeflag)
-ftt_scsi_open        func     45  ftt_lib/IRIX+5/ftt_scsi.c ftt_scsi_open(const char *pc)
-rcsid                var       1  ftt_lib/IRIX+5/ftt_scsi.c static char rcsid[] = "@(#)$Id$";
-FTT_TAPE_ERASE       def      15  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_ERASE MTERASE
-FTT_TAPE_FSF         def      19  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_FSF MTFSF
-FTT_TAPE_FSR         def      20  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_FSR MTFSR
-FTT_TAPE_NOP         def      13  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_NOP MTNOP
-FTT_TAPE_OP          def      23  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_OP MTIOCTOP
-FTT_TAPE_RETEN       def      14  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_RETEN MTRET
-FTT_TAPE_REW         def      16  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_REW MTREW
-FTT_TAPE_RSF         def      17  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_RSF MTBSF
-FTT_TAPE_RSR         def      18  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_RSR MTBSR
-FTT_TAPE_UNLOAD      def      22  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_UNLOAD MTUNLOAD
-FTT_TAPE_WEOF        def      21  ftt_lib/IRIX+6/ftt_mtio.h #define FTT_TAPE_WEOF MTWEOF
-tape_count           def      25  ftt_lib/IRIX+6/ftt_mtio.h #define tape_count mt_count
-tape_op              def      24  ftt_lib/IRIX+6/ftt_mtio.h #define tape_op mt_op
-tapeop               def      12  ftt_lib/IRIX+6/ftt_mtio.h #define tapeop mtop
-ftt_get_hwdens       func     97  ftt_lib/IRIX+6/ftt_machdep.c ftt_get_hwdens(ftt_descriptor d, char *devname) {
-ftt_set_blocksize    func     71  ftt_lib/IRIX+6/ftt_machdep.c ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-ftt_set_compression  func     60  ftt_lib/IRIX+6/ftt_machdep.c ftt_set_compression(ftt_descriptor d, int compression) {
-ftt_set_hwdens       func     65  ftt_lib/IRIX+6/ftt_machdep.c ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-ftt_status           func     14  ftt_lib/IRIX+6/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
-rcsid                var       1  ftt_lib/IRIX+6/ftt_machdep.c static char rcsid[] = "@(#)$Id$";
-ftt_scsi_close       func     75  ftt_lib/IRIX+6/ftt_scsi.c ftt_scsi_close(scsi_handle n) {
-ftt_scsi_command     func    103  ftt_lib/IRIX+6/ftt_scsi.c ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int writeflag)
-ftt_scsi_open        func     45  ftt_lib/IRIX+6/ftt_scsi.c ftt_scsi_open(const char *pc)
-rcsid                var       1  ftt_lib/IRIX+6/ftt_scsi.c static char rcsid[] = "@(#)$Id$";
-FTT_TAPE_ERASE       def      15  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_ERASE MTERASE
-FTT_TAPE_FSF         def      19  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_FSF MTFSF
-FTT_TAPE_FSR         def      20  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_FSR MTFSR
-FTT_TAPE_NOP         def      13  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_NOP MTNOP
-FTT_TAPE_OP          def      23  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_OP MTIOCTOP
-FTT_TAPE_RETEN       def      14  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_RETEN MTRETEN
-FTT_TAPE_REW         def      16  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_REW MTREW
-FTT_TAPE_RSF         def      17  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_RSF MTBSF
-FTT_TAPE_RSR         def      18  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_RSR MTBSR
-FTT_TAPE_UNLOAD      def      22  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_UNLOAD MTUNLOAD
-FTT_TAPE_WEOF        def      21  ftt_lib/Linux/ftt_mtio.h #define FTT_TAPE_WEOF MTWEOF
-tape_count           def      25  ftt_lib/Linux/ftt_mtio.h #define tape_count mt_count
-tape_op              def      24  ftt_lib/Linux/ftt_mtio.h #define tape_op mt_op
-tapeop               def      12  ftt_lib/Linux/ftt_mtio.h #define tapeop mtop
-ftt_get_hwdens       func    176  ftt_lib/Linux/ftt_machdep.c ftt_get_hwdens(ftt_descriptor d, char *devname) {
-ftt_set_blocksize    func    143  ftt_lib/Linux/ftt_machdep.c ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-ftt_set_compression  func    112  ftt_lib/Linux/ftt_machdep.c ftt_set_compression(ftt_descriptor d, int compression) {
-ftt_set_hwdens       func    117  ftt_lib/Linux/ftt_machdep.c ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-ftt_status           func     16  ftt_lib/Linux/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
-ftt_status           func     62  ftt_lib/Linux/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
-rcsid                var       1  ftt_lib/Linux/ftt_machdep.c static char rcsid[] = "@(#)$Id$";
-SCSI_OFF             def     107  ftt_lib/Linux/ftt_scsi.c # define SCSI_OFF sizeof(struct sg_header)
-ftt_scsi_close       func     68  ftt_lib/Linux/ftt_scsi.c ftt_scsi_close(scsi_handle n) {
-ftt_scsi_command     func     93  ftt_lib/Linux/ftt_scsi.c ftt_scsi_command(
-ftt_scsi_open        func     45  ftt_lib/Linux/ftt_scsi.c ftt_scsi_open(const char *pc)
-rcsid                var       1  ftt_lib/Linux/ftt_scsi.c static char rcsid[] = "@(#)$Id$";
-FTT_TAPE_ERASE       def      21  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_ERASE MTERASE
-FTT_TAPE_FSF         def      25  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_FSF MTFSF
-FTT_TAPE_FSR         def      26  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_FSR MTFSR
-FTT_TAPE_NOP         def      19  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_NOP MTNOP
-FTT_TAPE_OP          def      29  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_OP MTIOCTOP
-FTT_TAPE_RETEN       def      20  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_RETEN MTRETEN
-FTT_TAPE_REW         def      22  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_REW MTREW
-FTT_TAPE_RSF         def      23  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_RSF MTBSF
-FTT_TAPE_RSR         def      24  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_RSR MTBSR
-FTT_TAPE_UNLOAD      def      28  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_UNLOAD MTOFFL
-FTT_TAPE_WEOF        def      27  ftt_lib/SunOS/ftt_mtio.h #define FTT_TAPE_WEOF MTWEOF
-tape_count           def      31  ftt_lib/SunOS/ftt_mtio.h #define tape_count mt_count
-tape_op              def      30  ftt_lib/SunOS/ftt_mtio.h #define tape_op mt_op
-tapeop               def      18  ftt_lib/SunOS/ftt_mtio.h #define tapeop mtop
-ftt_get_hwdens       func     87  ftt_lib/SunOS/ftt_machdep.c ftt_get_hwdens(ftt_descriptor d, char *devname) {
-ftt_set_blocksize    func     81  ftt_lib/SunOS/ftt_machdep.c ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-ftt_set_compression  func     75  ftt_lib/SunOS/ftt_machdep.c ftt_set_compression(ftt_descriptor d, int compression) {
-ftt_set_hwdens       func     69  ftt_lib/SunOS/ftt_machdep.c ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-ftt_status           func     20  ftt_lib/SunOS/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
-rcsid                var       1  ftt_lib/SunOS/ftt_machdep.c static char rcsid[] = "@(#) $Id$";
-ARQ                  def      31  ftt_lib/SunOS/ftt_scsi.c #define ARQ
-SYSV                 def      10  ftt_lib/SunOS/ftt_scsi.c #define SYSV
-bzero                def      29  ftt_lib/SunOS/ftt_scsi.c #define bzero(b,l) memset(b,0,l)
-ftt_scsi_close       func     59  ftt_lib/SunOS/ftt_scsi.c ftt_scsi_close(scsi_handle n)
-ftt_scsi_command     func     66  ftt_lib/SunOS/ftt_scsi.c ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite)
-ftt_scsi_open        func     42  ftt_lib/SunOS/ftt_scsi.c ftt_scsi_open(const char *pcDevice)
-gethostname          def      28  ftt_lib/SunOS/ftt_scsi.c #define gethostname(b, l) sysinfo(SI_HOSTNAME, b, (long)l)
-rcsid                var       1  ftt_lib/SunOS/ftt_scsi.c static char rcsid[] = "@(#)$Id$";
-ftt_scsi_close       func    122  ftt_lib/VMS/ftt_scsi.c ftt_scsi_close(char *pcDevice, long n)
-ftt_scsi_command     func    178  ftt_lib/VMS/ftt_scsi.c ftt_scsi_command(scsi_handle n, char *pcOp, char *pcCmd, int nCmd, char *pcRdWr, int nRdWr, int delay, int writeflag)
-ftt_scsi_open        func     42  ftt_lib/VMS/ftt_scsi.c ftt_scsi_open(const char *pcDevice)
-rcsid                var       1  ftt_lib/VMS/ftt_scsi.c static char rcsid[] = "@(#)$Id$";
-ftt_check            func     26  ftt_lib/WIN32/ftt_async.c ftt_check(ftt_descriptor d) {
-ftt_fork             func     16  ftt_lib/WIN32/ftt_async.c ftt_fork(ftt_descriptor d) {
-ftt_report           func     53  ftt_lib/WIN32/ftt_async.c ftt_report(ftt_descriptor d) {
-ftt_wait             func     39  ftt_lib/WIN32/ftt_async.c ftt_wait(ftt_descriptor d) {
-rcsid                var       1  ftt_lib/WIN32/ftt_async.c static char rcsid[] = "@(#)$Id$";
-ftt_get_hwdens       func    188  ftt_lib/WIN32/ftt_machdep.c ftt_get_hwdens(ftt_descriptor d, char *devname) {
-ftt_set_blocksize    func    166  ftt_lib/WIN32/ftt_machdep.c ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-ftt_set_compression  func    113  ftt_lib/WIN32/ftt_machdep.c ftt_set_compression(ftt_descriptor d, int compression) {
-ftt_set_hwdens       func    157  ftt_lib/WIN32/ftt_machdep.c ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-ftt_status           func     55  ftt_lib/WIN32/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
-ftt_win_get_paramters func     16  ftt_lib/WIN32/ftt_machdep.c ftt_win_get_paramters(ftt_descriptor d, TAPE_GET_MEDIA_PARAMETERS *gmp,
-rcsid                var       1  ftt_lib/WIN32/ftt_machdep.c static char rcsid[] = "@(#)$Id$";
-FTT_TAPE_ERASE       def      14  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_ERASE 4
-FTT_TAPE_FSF         def      18  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_FSF 9
-FTT_TAPE_FSR         def      19  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_FSR 10
-FTT_TAPE_NOP         def      12  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_NOP 7
-FTT_TAPE_OP          def      22  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_OP 13
-FTT_TAPE_RETEN       def      13  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_RETEN 3
-FTT_TAPE_REW         def      15  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_REW 5
-FTT_TAPE_RSF         def      16  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_RSF 6
-FTT_TAPE_RSR         def      17  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_RSR 8
-FTT_TAPE_UNLOAD      def      21  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_UNLOAD 12
-FTT_TAPE_WEOF        def      20  ftt_lib/WIN32/ftt_mtio.h #define FTT_TAPE_WEOF 11 
-tape_count           def      25  ftt_lib/WIN32/ftt_mtio.h #define tape_count mt_count
-tape_op              def      24  ftt_lib/WIN32/ftt_mtio.h #define tape_op mt_op
-tapeop               tag       8  ftt_lib/WIN32/ftt_mtio.h struct tapeop {
-ulong                type      6  ftt_lib/WIN32/ftt_mtio.h typedef unsigned long ulong;
-ftt_scsi_close       func     23  ftt_lib/WIN32/ftt_scsi.c ftt_scsi_close(scsi_handle n) {
-ftt_scsi_command     func     29  ftt_lib/WIN32/ftt_scsi.c ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int writeflag)
-ftt_scsi_open        func     15  ftt_lib/WIN32/ftt_scsi.c ftt_scsi_open(const char *pc)
-rcsid                var       1  ftt_lib/WIN32/ftt_scsi.c static char rcsid[] = "@(#)$Id$";
-FTT_ERROR_REPORT     def      25  ftt_test/ftt_copy.c #define FTT_ERROR_REPORT(routine) { \
-main                 func     33  ftt_test/ftt_copy.c void main(int argc, char **argv)
-FTT_MAXNBLOCK        def     107  ftt_test/ftt_random.c #define FTT_MAXNBLOCK 6000
-FTT_MAXNFILE         def     106  ftt_test/ftt_random.c #define FTT_MAXNFILE 10
-FTT_MAXPOSITION      def     108  ftt_test/ftt_random.c #define FTT_MAXPOSITION 20
-main                 func     33  ftt_test/ftt_random.c void main(int argc, char **argv)
-random               def      24  ftt_test/ftt_random.c #define random rand 
-rcsid                var       1  ftt_test/ftt_random.c static char rcsid[] = "@(#)$Id$";
-srandom              def      23  ftt_test/ftt_random.c #define srandom srand
-FALSE                def      22  ftt_test/ftt_t_block.c #define FALSE 0
-PACK                 def      30  ftt_test/ftt_t_block.c #define PACK(b4,b3,b2,b1) (((b4)<<24) | ((b3)<<16) | ((b2)<<8) | (b1))
-TRUE                 def      19  ftt_test/ftt_t_block.c #define TRUE 1
-UNPACK               def      31  ftt_test/ftt_t_block.c #define UNPACK(n,b4,b3,b2,b1) (\
-ftt_t_block_dump     func    108  ftt_test/ftt_t_block.c void ftt_t_block_dump(FILE *outfile,int bufferno,unsigned char *buff,int bsize,int do_offsets, int do_chars )
-ftt_t_block_fill     func     40  ftt_test/ftt_t_block.c void ftt_t_block_fill (unsigned char *buff, int bsize, int fileno, int blockno)
-ftt_t_block_undump   func    121  ftt_test/ftt_t_block.c int ftt_t_block_undump(FILE *infile, unsigned char *buff)
-ftt_t_block_verify   func     61  ftt_test/ftt_t_block.c int ftt_t_block_verify(unsigned char *buff, int bsize, int fileno, int blockno)
-rcsid                var       1  ftt_test/ftt_t_block.c static char rcsid[] = "@(#)$Id$";
-CLRTOEOL             def     117  ftt_test/ftt_t_cmdline.c #define CLRTOEOL \
-ED_OFF               def     136  ftt_test/ftt_t_cmdline.c #define ED_OFF(a_savearg) {}
-ED_OFF               def     159  ftt_test/ftt_t_cmdline.c #define ED_OFF(a_savearg) \
-ED_ON                def     135  ftt_test/ftt_t_cmdline.c #define ED_ON(a_savearg) {}
-ED_ON                def     143  ftt_test/ftt_t_cmdline.c #define ED_ON(a_savearg) \
-MOVECRSR             def     124  ftt_test/ftt_t_cmdline.c #define MOVECRSR \
-PRINTLINE            def     116  ftt_test/ftt_t_cmdline.c #define PRINTLINE fputs(a_hl->line, stdout)
-ftclCmd_TERM         func    876  ftt_test/ftt_t_cmdline.c static void ftclCmd_TERM
-ftt_t_Win_Interrupt  func    659  ftt_test/ftt_t_cmdline.c BOOL ftt_t_Win_Interrupt(DWORD sig) {
-ftt_t_cmdcont        func    818  ftt_test/ftt_t_cmdline.c static void ftt_t_cmdcont
-ftt_t_cmdint         func    696  ftt_test/ftt_t_cmdline.c static void ftt_t_cmdint() 
-ftt_t_cmdreset       func    247  ftt_test/ftt_t_cmdline.c void ftt_t_cmdreset () 
-ftt_t_cmdtstp        func    758  ftt_test/ftt_t_cmdline.c static void ftt_t_cmdtstp
-ftt_t_exithandler    func   1041  ftt_test/ftt_t_cmdline.c static void ftt_t_exithandler () 
-ftt_t_getchar        func    269  ftt_test/ftt_t_cmdline.c int ftt_t_getchar (ftt_cmd_edithndl_t *a_hl) 
-ftt_t_interrupt_chk  func   1007  ftt_test/ftt_t_cmdline.c int ftt_t_interrupt_chk () 
-ftt_t_interrupt_dec  func    936  ftt_test/ftt_t_cmdline.c void ftt_t_interrupt_dec (int a_cnt) 
-ftt_t_linestart      func    185  ftt_test/ftt_t_cmdline.c void ftt_t_linestart ( ftt_cmd_edithndl_t *a_hl, char *a_prompt) 
-ftt_t_procchar       func    315  ftt_test/ftt_t_cmdline.c int ftt_t_procchar (ftt_cmd_edithndl_t *a_hl,char *a_line) 
-g_ed_savearg         var      87  ftt_test/ftt_t_cmdline.c static struct termio g_ed_savearg;
-g_exit_flag          var     100  ftt_test/ftt_t_cmdline.c static int g_exit_flag=0;
-g_exit_pid           var      95  ftt_test/ftt_t_cmdline.c static int g_exit_pid;
-g_exit_pid           var      97  ftt_test/ftt_t_cmdline.c static pid_t g_exit_pid;
-g_quit_flag          var     657  ftt_test/ftt_t_cmdline.c static g_quit_flag = 0 ; /* this is for NT */
-g_sigcont_old        var     109  ftt_test/ftt_t_cmdline.c struct sigaction g_sigcont_old;
-g_sigint_flag        var     101  ftt_test/ftt_t_cmdline.c static int g_sigint_flag=0;
-g_sigint_flag_max    var     102  ftt_test/ftt_t_cmdline.c static int g_sigint_flag_max=0;
-g_sigint_old         var     107  ftt_test/ftt_t_cmdline.c struct sigaction g_sigint_old;
-g_sigterm_old        var     110  ftt_test/ftt_t_cmdline.c struct sigaction g_sigterm_old;
-g_sigtstp_old        var     108  ftt_test/ftt_t_cmdline.c struct sigaction g_sigtstp_old;
-rcsid                var       1  ftt_test/ftt_t_cmdline.c static char rcsid[] = "@(#)$Id$";
-FTTTCMDLINE_HEADER   def       2  ftt_test/ftt_t_cmdline.h #define FTTTCMDLINE_HEADER
-FTT_MAXLINE          def      19  ftt_test/ftt_t_cmdline.h #define FTT_MAXLINE 132
-L_BELL               def      48  ftt_test/ftt_t_cmdline.h #define L_BELL '\007'
-L_BS                 def      46  ftt_test/ftt_t_cmdline.h #define L_BS '\b'
-L_BWD                def      52  ftt_test/ftt_t_cmdline.h #define L_BWD '\002'
-L_CR                 def      44  ftt_test/ftt_t_cmdline.h #define L_CR '\r'
-L_DEL                def      47  ftt_test/ftt_t_cmdline.h #define L_DEL '\177'
-L_EOF                def      42  ftt_test/ftt_t_cmdline.h #define L_EOF '\004'
-L_EOL                def      43  ftt_test/ftt_t_cmdline.h #define L_EOL '\005'
-L_ESC                def      41  ftt_test/ftt_t_cmdline.h #define L_ESC '\033'
-L_FWD                def      51  ftt_test/ftt_t_cmdline.h #define L_FWD '\006'
-L_LEFT               def      40  ftt_test/ftt_t_cmdline.h #define L_LEFT 'D'
-L_LF                 def      45  ftt_test/ftt_t_cmdline.h #define L_LF '\n'
-L_REDRAW             def      50  ftt_test/ftt_t_cmdline.h #define L_REDRAW '\022'
-L_RIGHT              def      39  ftt_test/ftt_t_cmdline.h #define L_RIGHT 'C'
-L_RUB                def      49  ftt_test/ftt_t_cmdline.h #define L_RUB '\025'
-ftt_cmd_edithndl     tag      25  ftt_test/ftt_t_cmdline.h typedef struct ftt_cmd_edithndl
-ftt_cmd_edithndl_t   type     37  ftt_test/ftt_t_cmdline.h } ftt_cmd_edithndl_t;
-ftt_cmd_t            type     20  ftt_test/ftt_t_cmdline.h typedef char ftt_cmd_t[FTT_MAXLINE];
-FTT_MAXCOMMAND       def      55  ftt_test/ftt_t_cmdloop.c #define FTT_MAXCOMMAND 1024
-__EXTENSIONS__       def      31  ftt_test/ftt_t_cmdloop.c #define __EXTENSIONS__
-ftt_reset_to_top     def      84  ftt_test/ftt_t_cmdloop.c #define ftt_reset_to_top() { \
-ftt_t_commandloop    func     74  ftt_test/ftt_t_cmdloop.c void ftt_t_commandloop (char *prompt,ftt_t_cmd_table_t *cmdlist)
-ftt_t_debug          var      58  ftt_test/ftt_t_cmdloop.c int ftt_t_debug = 0; /* debug level */
-ftt_t_istty          var      57  ftt_test/ftt_t_cmdloop.c int ftt_t_istty = FALSE;
-rcsid                var       1  ftt_test/ftt_t_cmdloop.c static char rcsid[] = "@(#)$Id$";
-ftt_t_cmdproc        func     36  ftt_test/ftt_t_cmdproc.c int ftt_t_cmdproc (char *cmdbuf, ftt_t_cmd_table_t *cmdlist)
-rcsid                var       1  ftt_test/ftt_t_cmdproc.c static char rcsid[] = "@(#)$Id$";
-FTTTCMDTABLE         def       2  ftt_test/ftt_t_cmds.h #define FTTTCMDTABLE
-ftt_t_cmd_table_t    type     18  ftt_test/ftt_t_cmds.h } ftt_t_cmd_table_t;
-FTTTCMDTABLE         def       2  ftt_test/ftt_t_cmdtable.h #define FTTTCMDTABLE
-ftt_t_cmd_table_t    type     18  ftt_test/ftt_t_cmdtable.h } ftt_t_cmd_table_t;
-ftt_t_eprintf        func     62  ftt_test/ftt_t_error.c int ftt_t_eprintf (int argc, char **argv)
-ftt_t_get_error      func     33  ftt_test/ftt_t_error.c int ftt_t_get_error (int argc, char **argv)
-ftt_t_max_error      var      23  ftt_test/ftt_t_error.c int ftt_t_max_error = 20; /* max number of errs */
-ftt_t_nerror         var      24  ftt_test/ftt_t_error.c int ftt_t_nerror = 0; /* current error count*/
-rcsid                var       1  ftt_test/ftt_t_error.c static char rcsid[] = "@(#)$Id$";
-getopt               func      7  ftt_test/ftt_t_getopt.c int getopt(int argc,char **argv,char *what) 
-optarg               var       6  ftt_test/ftt_t_getopt.c char *optarg;
-rcsid                var       1  ftt_test/ftt_t_getopt.c static char *rcsid = "@(#) $Id$";
-FTT_T_CHECK_LABELTYPE def      20  ftt_test/ftt_t_label.c #define FTT_T_CHECK_LABELTYPE(type_str,type) { \
-ftt_t_verify_vol_label func     47  ftt_test/ftt_t_label.c int ftt_t_verify_vol_label(int argc, char **argv)
-ftt_t_write_vol_label func     85  ftt_test/ftt_t_label.c int ftt_t_write_vol_label(int argc, char **argv)
-rcsid                var       1  ftt_test/ftt_t_label.c static char rcsid[] = "@(#)$Id$";
-FTTT                 def       2  ftt_test/ftt_t_macros.h #define FTTT
-FTT_T_ASYNC          def     130  ftt_test/ftt_t_macros.h #define FTT_T_ASYNC(async_flag,fd,myroutine,mystatus) \
-FTT_T_CHECK_CALL     def      56  ftt_test/ftt_t_macros.h #define FTT_T_CHECK_CALL(status,estatus) { \
-FTT_T_CHECK_CALL_OPEN def      82  ftt_test/ftt_t_macros.h #define FTT_T_CHECK_CALL_OPEN(status,estatus) { \
-FTT_T_CHECK_ESTATUS  def     112  ftt_test/ftt_t_macros.h #define FTT_T_CHECK_ESTATUS(estring,estatus) { \
-FTT_T_CHECK_PARSE    def      43  ftt_test/ftt_t_macros.h #define FTT_T_CHECK_PARSE(status,argt,cmdname){ \
-FTT_T_INC_NERROR     def      33  ftt_test/ftt_t_macros.h #define FTT_T_INC_NERROR(){ \
-strcasecmp           def     109  ftt_test/ftt_t_macros.h #define strcasecmp stricmp
-ftt_t_all_scsi       func    164  ftt_test/ftt_t_misc.c int ftt_t_all_scsi (int argc, char **argv)
-ftt_t_clear_unrecovered func    193  ftt_test/ftt_t_misc.c int ftt_t_clear_unrecovered (int argc, char **argv)
-ftt_t_date           func     30  ftt_test/ftt_t_misc.c int ftt_t_date (int argc, char **argv)
-ftt_t_debug_level    func     89  ftt_test/ftt_t_misc.c int ftt_t_debug_level (int argc, char **argv)
-ftt_t_echo           func     59  ftt_test/ftt_t_misc.c int ftt_t_echo (int argc, char **argv)
-ftt_t_format_ait     func    222  ftt_test/ftt_t_misc.c int ftt_t_format_ait (int argc, char **argv)
-ftt_t_inquire        func    306  ftt_test/ftt_t_misc.c int ftt_t_inquire (int argc, char **argv)
-ftt_t_logsense       func    278  ftt_test/ftt_t_misc.c int ftt_t_logsense (int argc, char **argv)
-ftt_t_max_errors     func    132  ftt_test/ftt_t_misc.c int ftt_t_max_errors (int argc, char **argv)
-ftt_t_modesense      func    250  ftt_test/ftt_t_misc.c int ftt_t_modesense (int argc, char **argv)
-rcsid                var       1  ftt_test/ftt_t_misc.c static char rcsid[] = "@(#)$Id$";
-ftt_t_avail_mode     func    169  ftt_test/ftt_t_name.c int ftt_t_avail_mode(int argc, char **argv)
-ftt_t_chall          func    103  ftt_test/ftt_t_name.c int ftt_t_chall(int argc, char **argv)
-ftt_t_describe_dev   func    348  ftt_test/ftt_t_name.c int ftt_t_describe_dev(int argc, char **argv)
-ftt_t_get_basename   func     38  ftt_test/ftt_t_name.c int ftt_t_get_basename (int argc, char **argv)
-ftt_t_get_mode       func    243  ftt_test/ftt_t_name.c int ftt_t_get_mode(int argc, char **argv)
-ftt_t_get_mode_dev   func    278  ftt_test/ftt_t_name.c int ftt_t_get_mode_dev(int argc, char **argv)
-ftt_t_list_all       func     69  ftt_test/ftt_t_name.c int ftt_t_list_all(int argc, char **argv)
-ftt_t_list_supported func    528  ftt_test/ftt_t_name.c int ftt_t_list_supported (int argc, char **argv)
-ftt_t_set_mode       func    206  ftt_test/ftt_t_name.c int ftt_t_set_mode(int argc, char **argv)
-ftt_t_set_mode_dev   func    315  ftt_test/ftt_t_name.c int ftt_t_set_mode_dev(int argc, char **argv)
-ftt_t_verify_exist   func    377  ftt_test/ftt_t_name.c int ftt_t_verify_exist(int argc, char **argv)
-ftt_t_verify_modes   func    403  ftt_test/ftt_t_name.c int ftt_t_verify_modes (int argc, char **argv)
-rcsid                var       1  ftt_test/ftt_t_name.c static char rcsid[] = "@(#)$Id$";
-ftt_t_close          func    209  ftt_test/ftt_t_open.c int ftt_t_close (int argc, char **argv)
-ftt_t_close_dev      func    239  ftt_test/ftt_t_open.c int ftt_t_close_dev (int argc, char **argv)
-ftt_t_fd             var      23  ftt_test/ftt_t_open.c ftt_descriptor ftt_t_fd = 0; /* file descriptor */
-ftt_t_open           func     31  ftt_test/ftt_t_open.c int ftt_t_open (int argc, char **argv)
-ftt_t_open_dev       func    179  ftt_test/ftt_t_open.c int ftt_t_open_dev (int argc, char **argv)
-ftt_t_open_logical   func     89  ftt_test/ftt_t_open.c int ftt_t_open_logical (int argc, char **argv)
-rcsid                var       1  ftt_test/ftt_t_open.c static char rcsid[] = "@(#)$Id$";
-ARGSIZ               def      34  ftt_test/ftt_t_parse.c #define ARGSIZ (BUFSIZ/2)
-FTT_T_INDENT         def      47  ftt_test/ftt_t_parse.c #define FTT_T_INDENT " "
-assign_defaults      func    580  ftt_test/ftt_t_parse.c static int assign_defaults(ftt_t_argt *argTable)
-ftt_t_missing_arg    def     173  ftt_test/ftt_t_parse.c #define ftt_t_missing_arg(myarg) { \
-ftt_t_parse          func     70  ftt_test/ftt_t_parse.c int ftt_t_parse(int *argcPtr, char **argv, ftt_t_argt *argTable)
-ftt_t_pass1          func    157  ftt_test/ftt_t_parse.c static int ftt_t_pass1(int *argcPtr, char **argv, ftt_t_argt *argTable)
-ftt_t_pass2          func    357  ftt_test/ftt_t_parse.c static int ftt_t_pass2(int *argcPtr, char **argv, ftt_t_argt *argTable)
-ftt_t_print_usage    func    649  ftt_test/ftt_t_parse.c void ftt_t_print_usage(ftt_t_argt *argTable, char *cmd_name)
-ftt_t_split          func    682  ftt_test/ftt_t_parse.c int ftt_t_split(char *input, int *argc, char ***argv)
-g_Specified_args     var      35  ftt_test/ftt_t_parse.c static char g_Specified_args[ARGSIZ];
-rcsid                var       1  ftt_test/ftt_t_parse.c static char rcsid[] = "@(#)$Id$";
-FALSE                def      15  ftt_test/ftt_t_parse.h #define FALSE 0
-FTT_T_ARGINFO_BUFSIZE def      55  ftt_test/ftt_t_parse.h #define FTT_T_ARGINFO_BUFSIZE 8193
-FTT_T_ARGV_CONSTANT  def      48  ftt_test/ftt_t_parse.h #define FTT_T_ARGV_CONSTANT 0x64
-FTT_T_ARGV_DOUBLE    def      51  ftt_test/ftt_t_parse.h #define FTT_T_ARGV_DOUBLE 0x68
-FTT_T_ARGV_END       def      52  ftt_test/ftt_t_parse.h #define FTT_T_ARGV_END 0x6B
-FTT_T_ARGV_INT       def      49  ftt_test/ftt_t_parse.h #define FTT_T_ARGV_INT 0x65
-FTT_T_ARGV_STRING    def      50  ftt_test/ftt_t_parse.h #define FTT_T_ARGV_STRING 0x66
-FTT_T_BADSYNTAX      def      40  ftt_test/ftt_t_parse.h #define FTT_T_BADSYNTAX 1
-FTT_T_SUCCESS        def      39  ftt_test/ftt_t_parse.h #define FTT_T_SUCCESS 0 
-FTT_T_USAGE          def      41  ftt_test/ftt_t_parse.h #define FTT_T_USAGE 2
-FTT_T_USAGE_BUFSIZE  def      54  ftt_test/ftt_t_parse.h #define FTT_T_USAGE_BUFSIZE 1025
-TRUE                 def      11  ftt_test/ftt_t_parse.h #define TRUE 1
-_FTT_T_PARSE_H       def       8  ftt_test/ftt_t_parse.h #define _FTT_T_PARSE_H
-ftt_t_argt           type     28  ftt_test/ftt_t_parse.h } ftt_t_argt;
-ftt_t_check          func     95  ftt_test/ftt_t_position.c int ftt_t_check (int argc, char **argv)
-ftt_t_erase          func    305  ftt_test/ftt_t_position.c int ftt_t_erase (int argc, char **argv)
-ftt_t_get_position   func     27  ftt_test/ftt_t_position.c int ftt_t_get_position (int argc, char **argv)
-ftt_t_locate         func    533  ftt_test/ftt_t_position.c int ftt_t_locate (int argc, char **argv)
-ftt_t_retension      func    270  ftt_test/ftt_t_position.c int ftt_t_retension (int argc, char **argv)
-ftt_t_rewind         func    235  ftt_test/ftt_t_position.c int ftt_t_rewind (int argc, char **argv)
-ftt_t_skip_fm        func    163  ftt_test/ftt_t_position.c int ftt_t_skip_fm (int argc, char **argv)
-ftt_t_skip_rec       func    126  ftt_test/ftt_t_position.c int ftt_t_skip_rec (int argc, char **argv)
-ftt_t_skip_to_double_fm func    200  ftt_test/ftt_t_position.c int ftt_t_skip_to_double_fm (int argc, char **argv)
-ftt_t_status         func    375  ftt_test/ftt_t_position.c int ftt_t_status (int argc, char **argv)
-ftt_t_test_status    func    426  ftt_test/ftt_t_position.c int ftt_t_test_status (int argc, char **argv)
-ftt_t_unload         func    340  ftt_test/ftt_t_position.c int ftt_t_unload (int argc, char **argv)
-ftt_t_verify_position func    492  ftt_test/ftt_t_position.c int ftt_t_verify_position (int argc, char **argv)
-ftt_t_wait           func     63  ftt_test/ftt_t_position.c int ftt_t_wait (int argc, char **argv)
-rcsid                var       1  ftt_test/ftt_t_position.c static char rcsid[] = "@(#)$Id$";
-FTT_T_MAXDSIZE       def      28  ftt_test/ftt_t_rdwr.c #define FTT_T_MAXDSIZE 65536
-ftt_t_dump           func    324  ftt_test/ftt_t_rdwr.c int ftt_t_dump (int argc, char **argv)
-ftt_t_undump         func    428  ftt_test/ftt_t_rdwr.c int ftt_t_undump (int argc, char **argv)
-ftt_t_verify_tblock  func    200  ftt_test/ftt_t_rdwr.c int ftt_t_verify_tblock (int argc, char **argv)
-ftt_t_write2fm       func     75  ftt_test/ftt_t_rdwr.c int ftt_t_write2fm (int argc, char **argv)
-ftt_t_write_tblock   func    105  ftt_test/ftt_t_rdwr.c int ftt_t_write_tblock (int argc, char **argv)
-ftt_t_writefm        func     45  ftt_test/ftt_t_rdwr.c int ftt_t_writefm (int argc, char **argv)
-random               def      26  ftt_test/ftt_t_rdwr.c #define random rand
-rcsid                var       1  ftt_test/ftt_t_rdwr.c static char rcsid[] = "@(#)$Id$";
-sleep                def      24  ftt_test/ftt_t_rdwr.c #define sleep(x) Sleep(1000*x)
-srandom              def      25  ftt_test/ftt_t_rdwr.c #define srandom srand
-delstat              var      23  ftt_test/ftt_t_stats.c static ftt_stat_buf *delstat = NULL;
-ftt_t_dump_stats     func    130  ftt_test/ftt_t_stats.c int ftt_t_dump_stats (int argc, char **argv)
-ftt_t_extract_stats  func     79  ftt_test/ftt_t_stats.c int ftt_t_extract_stats (int argc, char **argv)
-ftt_t_free_stat      func    195  ftt_test/ftt_t_stats.c int ftt_t_free_stat (int argc, char **argv)
-ftt_t_get_stats      func     32  ftt_test/ftt_t_stats.c int ftt_t_get_stats (int argc, char **argv)
-ftt_t_init_stats     func    228  ftt_test/ftt_t_stats.c int ftt_t_init_stats (int argc, char **argv)
-ftt_t_update_stats   func    260  ftt_test/ftt_t_stats.c int ftt_t_update_stats (int argc, char **argv)
-rcsid                var       1  ftt_test/ftt_t_stats.c static char rcsid[] = "@(#)$Id$";
-statbuf              var      22  ftt_test/ftt_t_stats.c static ftt_stat_buf statbuf = NULL;
-FTT_T_CHECK_ASYNC    def     112  ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_ASYNC(astring,alevel) { \
-FTT_T_CHECK_CALL     def      64  ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_CALL(status,estatus) { \
-FTT_T_CHECK_CALL_OPEN def      88  ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_CALL_OPEN(status,estatus) { \
-FTT_T_CHECK_ESTATUS  def     126  ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_ESTATUS(estring,estatus) { \
-FTT_T_CHECK_PARSE    def      51  ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_PARSE(status,argt,cmdname){ \
-FTT_T_INC_NERROR     def      41  ftt_test/ftt_t_wrap.c #define FTT_T_INC_NERROR(){ \
-FTT_T_MAXDSIZE       def      27  ftt_test/ftt_t_wrap.c #define FTT_T_MAXDSIZE 65535
-ftt_t_allow_async    func    755  ftt_test/ftt_t_wrap.c int ftt_t_allow_async (int argc, char **argv)
-ftt_t_close          func    695  ftt_test/ftt_t_wrap.c int ftt_t_close (int argc, char **argv)
-ftt_t_close_dev      func    725  ftt_test/ftt_t_wrap.c int ftt_t_close_dev (int argc, char **argv)
-ftt_t_date           func    151  ftt_test/ftt_t_wrap.c int ftt_t_date (int argc, char **argv)
-ftt_t_debug_level    func    210  ftt_test/ftt_t_wrap.c int ftt_t_debug_level (int argc, char **argv)
-ftt_t_dump           func   1307  ftt_test/ftt_t_wrap.c int ftt_t_dump (int argc, char **argv)
-ftt_t_dump_stats     func    431  ftt_test/ftt_t_wrap.c int ftt_t_dump_stats (int argc, char **argv)
-ftt_t_echo           func    180  ftt_test/ftt_t_wrap.c int ftt_t_echo (int argc, char **argv)
-ftt_t_eprintf        func    282  ftt_test/ftt_t_wrap.c int ftt_t_eprintf (int argc, char **argv)
-ftt_t_erase          func   1000  ftt_test/ftt_t_wrap.c int ftt_t_erase (int argc, char **argv)
-ftt_t_extract_stats  func    384  ftt_test/ftt_t_wrap.c int ftt_t_extract_stats (int argc, char **argv)
-ftt_t_free_stat      func    488  ftt_test/ftt_t_wrap.c int ftt_t_free_stat (int argc, char **argv)
-ftt_t_get_error      func    253  ftt_test/ftt_t_wrap.c int ftt_t_get_error (int argc, char **argv)
-ftt_t_get_position   func    309  ftt_test/ftt_t_wrap.c int ftt_t_get_position (int argc, char **argv)
-ftt_t_get_stats      func    345  ftt_test/ftt_t_wrap.c int ftt_t_get_stats (int argc, char **argv)
-ftt_t_open           func    526  ftt_test/ftt_t_wrap.c int ftt_t_open (int argc, char **argv)
-ftt_t_open_dev       func    665  ftt_test/ftt_t_wrap.c int ftt_t_open_dev (int argc, char **argv)
-ftt_t_open_logical   func    584  ftt_test/ftt_t_wrap.c int ftt_t_open_logical (int argc, char **argv)
-ftt_t_retension      func    963  ftt_test/ftt_t_wrap.c int ftt_t_retension (int argc, char **argv)
-ftt_t_rewind         func    926  ftt_test/ftt_t_wrap.c int ftt_t_rewind (int argc, char **argv)
-ftt_t_skip_fm        func    848  ftt_test/ftt_t_wrap.c int ftt_t_skip_fm (int argc, char **argv)
-ftt_t_skip_rec       func    809  ftt_test/ftt_t_wrap.c int ftt_t_skip_rec (int argc, char **argv)
-ftt_t_skip_to_double_fm func    887  ftt_test/ftt_t_wrap.c int ftt_t_skip_to_double_fm (int argc, char **argv)
-ftt_t_undump         func   1406  ftt_test/ftt_t_wrap.c int ftt_t_undump (int argc, char **argv)
-ftt_t_unload         func   1037  ftt_test/ftt_t_wrap.c int ftt_t_unload (int argc, char **argv)
-ftt_t_verify_tblock  func   1197  ftt_test/ftt_t_wrap.c int ftt_t_verify_tblock (int argc, char **argv)
-ftt_t_write_tblock   func   1104  ftt_test/ftt_t_wrap.c int ftt_t_write_tblock (int argc, char **argv)
-ftt_t_writefm        func   1074  ftt_test/ftt_t_wrap.c int ftt_t_writefm (int argc, char **argv)
-rcsid                var       1  ftt_test/ftt_t_wrap.c static char rcsid[] = "@(#)$Id$";
-ftt_t_basename       var      30  ftt_test/ftt_test.c char *ftt_t_basename=NULL; /* basename entered on cmdline */
-main                 func     78  ftt_test/ftt_test.c void main(int argc, char **argv)
-rcsid                var       1  ftt_test/ftt_test.c static char rcsid[] = "@(#)$Id$";
+extract_logical   11 ftt_lib/AIX/ftt_machdep.c extract_logical(
+ftt_get_hwdens   243 ftt_lib/AIX/ftt_machdep.c ftt_get_hwdens(
+ftt_set_blocksize 178 ftt_lib/AIX/ftt_machdep.c ftt_set_blocksize(
+ftt_set_compression 174 ftt_lib/AIX/ftt_machdep.c ftt_set_compression(
+ftt_set_hwdens   104 ftt_lib/AIX/ftt_machdep.c ftt_set_hwdens(
+ftt_status        56 ftt_lib/AIX/ftt_machdep.c ftt_status(
+ftt_scsi_close    74 ftt_lib/AIX/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command 102 ftt_lib/AIX/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     52 ftt_lib/AIX/ftt_scsi.c ftt_scsi_open(
+ftt_scsi_close   122 ftt_lib/VMS/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command 178 ftt_lib/VMS/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     42 ftt_lib/VMS/ftt_scsi.c ftt_scsi_open(
+demo_with_delay   12 ftt_lib/asyncdemo.c demo_with_delay(
+main              59 ftt_lib/asyncdemo.c main(
+ftt_check         81 ftt_lib/ftt_async.c ftt_check(
+ftt_fork          24 ftt_lib/ftt_async.c ftt_fork(
+ftt_report       137 ftt_lib/ftt_async.c ftt_report(
+ftt_wait         100 ftt_lib/ftt_async.c ftt_wait(
+ftt_check_table   18 ftt_lib/ftt_checktable.c void ftt_check_table(
+main              11 ftt_lib/ftt_checktable.c main(
+ftt_debug_dump    53 ftt_lib/ftt_debug.c ftt_debug_dump(
+ftt_dump           7 ftt_lib/ftt_debug.c ftt_dump(
+BITFLD           349 ftt_lib/ftt_do_scsi.c #define BITFLD(
+ftt_all_scsi     227 ftt_lib/ftt_do_scsi.c ftt_all_scsi(
+ftt_close_scsi_dev  77 ftt_lib/ftt_do_scsi.c ftt_close_scsi_dev(
+ftt_do_scsi_command  34 ftt_lib/ftt_do_scsi.c ftt_do_scsi_command(
+ftt_format_ait   502 ftt_lib/ftt_do_scsi.c int ftt_format_ait(
+ftt_get_scsi_devname 207 ftt_lib/ftt_do_scsi.c ftt_get_scsi_devname(
+ftt_inquire      479 ftt_lib/ftt_do_scsi.c int ftt_inquire(
+ftt_logsense     688 ftt_lib/ftt_do_scsi.c int ftt_logsense(
+ftt_modesense    639 ftt_lib/ftt_do_scsi.c int ftt_modesense(
+ftt_open_scsi_dev  52 ftt_lib/ftt_do_scsi.c ftt_open_scsi_dev(
+ftt_scsi_check    97 ftt_lib/ftt_do_scsi.c ftt_scsi_check(
+ftt_scsi_locate  324 ftt_lib/ftt_do_scsi.c ftt_scsi_locate(
+ftt_scsi_set_compression 243 ftt_lib/ftt_do_scsi.c ftt_scsi_set_compression(
+ftt_set_transfer_length  27 ftt_lib/ftt_do_scsi.c ftt_set_transfer_length(
+geteuid           13 ftt_lib/ftt_do_scsi.c #define geteuid(
+hex              378 ftt_lib/ftt_do_scsi.c #define hex(
+hprint           384 ftt_lib/ftt_do_scsi.c hprint(
+inqdata          376 ftt_lib/ftt_do_scsi.c } inqdata;
+printinq         425 ftt_lib/ftt_do_scsi.c printinq(
+ftt_WIN_error    296 ftt_lib/ftt_error.c ftt_WIN_error 
+ftt_describe_error 266 ftt_lib/ftt_error.c ftt_describe_error(
+ftt_describe_error_WIN 437 ftt_lib/ftt_error.c ftt_describe_error_WIN(
+ftt_eprintf       22 ftt_lib/ftt_error.c ftt_eprintf(
+ftt_get_error     32 ftt_lib/ftt_error.c ftt_get_error(
+ftt_translate_error 154 ftt_lib/ftt_error.c ftt_translate_error(
+ftt_translate_error_WIN 366 ftt_lib/ftt_error.c 	ftt_translate_error_WIN(
+main             466 ftt_lib/ftt_error.c main(
+ftt_find_last_part 155 ftt_lib/ftt_find.c ftt_find_last_part(
+ftt_findslot      51 ftt_lib/ftt_find.c ftt_findslot 
+ftt_get_driveid  186 ftt_lib/ftt_find.c ftt_get_driveid(
+ftt_get_os        16 ftt_lib/ftt_find.c char * ftt_get_os(
+ftt_make_os_name  43 ftt_lib/ftt_find.c ftt_make_os_name(
+ftt_strip_to_basename  88 ftt_lib/ftt_find.c ftt_strip_to_basename(
+geteuid           11 ftt_lib/ftt_find.c #define geteuid(
+ftt_alloc_stats  210 ftt_lib/ftt_higher.c ftt_alloc_stats(
+ftt_clear_unrecovered 528 ftt_lib/ftt_higher.c ftt_clear_unrecovered(
+ftt_describe_dev 142 ftt_lib/ftt_higher.c ftt_describe_dev(
+ftt_dump_stats   329 ftt_lib/ftt_higher.c ftt_dump_stats(
+ftt_first_supported 380 ftt_lib/ftt_higher.c ftt_first_supported(
+ftt_free_stats   225 ftt_lib/ftt_higher.c ftt_free_stats(
+ftt_init_stats   194 ftt_lib/ftt_higher.c ftt_init_stats(
+ftt_list_supported 402 ftt_lib/ftt_higher.c ftt_list_supported(
+ftt_next_supported 386 ftt_lib/ftt_higher.c ftt_next_supported(
+ftt_retry        497 ftt_lib/ftt_higher.c ftt_retry(
+ftt_undump_stats 347 ftt_lib/ftt_higher.c ftt_undump_stats(
+ftt_update_stats 232 ftt_lib/ftt_higher.c ftt_update_stats(
+ftt_verify_blank 537 ftt_lib/ftt_higher.c ftt_verify_blank(
+ftt_verify_vol_label  18 ftt_lib/ftt_higher.c ftt_verify_vol_label(
+ftt_write_vol_label 109 ftt_lib/ftt_higher.c ftt_write_vol_label(
+geteuid           10 ftt_lib/ftt_higher.c #define geteuid(
+ftt_avail_mode   144 ftt_lib/ftt_info.c ftt_avail_mode(
+ftt_chall        102 ftt_lib/ftt_info.c ftt_chall(
+ftt_density_to_name  32 ftt_lib/ftt_info.c ftt_density_to_name(
+ftt_get_basename  23 ftt_lib/ftt_info.c ftt_get_basename(
+ftt_get_data_direction  15 ftt_lib/ftt_info.c ftt_get_data_direction(
+ftt_get_max_blocksize  68 ftt_lib/ftt_info.c ftt_get_max_blocksize(
+ftt_get_mode     169 ftt_lib/ftt_info.c ftt_get_mode(
+ftt_get_mode_dev 217 ftt_lib/ftt_info.c ftt_get_mode_dev(
+ftt_list_all      85 ftt_lib/ftt_info.c ftt_list_all(
+ftt_name_to_density  48 ftt_lib/ftt_info.c ftt_name_to_density(
+ftt_set_data_direction 309 ftt_lib/ftt_info.c ftt_set_data_direction(
+ftt_set_mode     181 ftt_lib/ftt_info.c ftt_set_mode(
+ftt_set_mode_dev 253 ftt_lib/ftt_info.c ftt_set_mode_dev(
+ftt_format_label 107 ftt_lib/ftt_label.c ftt_format_label(
+ftt_format_label_version 112 ftt_lib/ftt_label.c ftt_format_label_version(
+ftt_guess_label   22 ftt_lib/ftt_label.c ftt_guess_label(
+ftt_to_upper      98 ftt_lib/ftt_label.c ftt_to_upper(
+pack               6 ftt_lib/ftt_label.c #define pack(
+CKNULL            24 ftt_lib/ftt_macros.h #define CKNULL(
+CKOK              53 ftt_lib/ftt_macros.h #define CKOK(
+ENTERING          17 ftt_lib/ftt_macros.h #define ENTERING(
+PCKNULL           31 ftt_lib/ftt_macros.h #define PCKNULL(
+VCKNULL           38 ftt_lib/ftt_macros.h #define VCKNULL(
+main               9 ftt_lib/ftt_main.c main(
+ftt_close        201 ftt_lib/ftt_open.c ftt_close(
+ftt_close_dev    526 ftt_lib/ftt_open.c ftt_close_dev(
+ftt_close_io_dev 495 ftt_lib/ftt_open.c ftt_close_io_dev(
+ftt_matches       73 ftt_lib/ftt_open.c ftt_matches(
+ftt_open          30 ftt_lib/ftt_open.c ftt_open(
+ftt_open_dev     417 ftt_lib/ftt_open.c ftt_open_dev(
+ftt_open_io_dev  361 ftt_lib/ftt_open.c ftt_open_io_dev(
+ftt_open_logical  87 ftt_lib/ftt_open.c ftt_open_logical(
+ftt_open_set_blocksize 301 ftt_lib/ftt_open.c ftt_open_set_blocksize 
+ftt_open_set_mode 315 ftt_lib/ftt_open.c ftt_open_set_mode 
+ftt_open_status  240 ftt_lib/ftt_open.c ftt_open_status 
+ftt_setdev       472 ftt_lib/ftt_open.c ftt_setdev(
+ftt_get_position  19 ftt_lib/ftt_rdwr.c ftt_get_position(
+ftt_read          44 ftt_lib/ftt_rdwr.c ftt_read(
+ftt_write        129 ftt_lib/ftt_rdwr.c ftt_write(
+scsi_handle        1 ftt_lib/ftt_scsi.h typedef long scsi_handle;
+ftt_erase        305 ftt_lib/ftt_skip.c ftt_erase(
+ftt_mtop          48 ftt_lib/ftt_skip.c ftt_mtop(
+ftt_retension    263 ftt_lib/ftt_skip.c ftt_retension(
+ftt_rewind       233 ftt_lib/ftt_skip.c ftt_rewind(
+ftt_skip_fm      157 ftt_lib/ftt_skip.c ftt_skip_fm(
+ftt_skip_fm_internal 199 ftt_lib/ftt_skip.c ftt_skip_fm_internal(
+ftt_skip_rec     213 ftt_lib/ftt_skip.c ftt_skip_rec(
+ftt_skip_to_double_fm 389 ftt_lib/ftt_skip.c ftt_skip_to_double_fm(
+ftt_unload       284 ftt_lib/ftt_skip.c ftt_unload(
+ftt_write2fm     444 ftt_lib/ftt_skip.c ftt_write2fm(
+ftt_write_fm_if_needed 416 ftt_lib/ftt_skip.c ftt_write_fm_if_needed(
+ftt_writefm      351 ftt_lib/ftt_skip.c ftt_writefm(
+geteuid           18 ftt_lib/ftt_skip.c #define geteuid(
+bit              235 ftt_lib/ftt_stats.c #define bit(
+decrypt_ls       243 ftt_lib/ftt_stats.c decrypt_ls(
+ftt_add_stats    186 ftt_lib/ftt_stats.c ftt_add_stats(
+ftt_alloc_stat    26 ftt_lib/ftt_stats.c ftt_alloc_stat(
+ftt_clear_stats  777 ftt_lib/ftt_stats.c ftt_clear_stats(
+ftt_dtoa          75 ftt_lib/ftt_stats.c ftt_dtoa(
+ftt_extract_stats 840 ftt_lib/ftt_stats.c ftt_extract_stats(
+ftt_free_stat     42 ftt_lib/ftt_stats.c ftt_free_stat(
+ftt_get_stat_ops 272 ftt_lib/ftt_stats.c ftt_get_stat_ops(
+ftt_get_stats    288 ftt_lib/ftt_stats.c ftt_get_stats(
+ftt_itoa          67 ftt_lib/ftt_stats.c ftt_itoa(
+ftt_itoa_Large    59 ftt_lib/ftt_stats.c 	ftt_itoa_Large(
+ftt_stats_status 855 ftt_lib/ftt_stats.c ftt_stats_status(
+ftt_sub_stats    206 ftt_lib/ftt_stats.c ftt_sub_stats(
+geteuid           13 ftt_lib/ftt_stats.c #define geteuid(
+pack             232 ftt_lib/ftt_stats.c #define pack(
+set_stat          87 ftt_lib/ftt_stats.c set_stat(
+main              22 ftt_lib/ftt_suid.c main(
+usage             12 ftt_lib/ftt_suid.c usage(
+ftt_do_suid_scsi_command   3 ftt_lib/ftt_suid_scsi.c ftt_do_suid_scsi_command(
+ftt_descriptor    62 ftt_lib/ftt_types.h } ftt_descriptor_buf, *ftt_descriptor;
+ftt_dev_entry    145 ftt_lib/ftt_types.h } ftt_dev_entry;
+ftt_devinfo       26 ftt_lib/ftt_types.h } ftt_devinfo;
+ftt_stat_buf     122 ftt_lib/ftt_types.h } ftt_stat, *ftt_stat_buf;
+ftt_stat_entry   152 ftt_lib/ftt_types.h } ftt_stat_entry;
+ftt_descriptor    43 ftt_lib/ftt_types.old.h } ftt_descriptor_buf, *ftt_descriptor;
+ftt_dev_entry    133 ftt_lib/ftt_types.old.h } ftt_dev_entry;
+ftt_devinfo       16 ftt_lib/ftt_types.old.h } ftt_devinfo;
+ftt_stat_buf      98 ftt_lib/ftt_types.old.h } ftt_stat, *ftt_stat_buf;
+ftt_stat_entry   140 ftt_lib/ftt_types.old.h } ftt_stat_entry;
+ftt_descriptor     6 ftt_lib/ftt_voidtypes.h typedef void *ftt_descriptor;
+ftt_stat_buf       7 ftt_lib/ftt_voidtypes.h typedef void *ftt_stat_buf;
+main               5 ftt_lib/listdemo.c main(
+ftt_get_hwdens    98 ftt_lib/IRIX+4/ftt_machdep.c ftt_get_hwdens(
+ftt_set_blocksize  70 ftt_lib/IRIX+4/ftt_machdep.c ftt_set_blocksize(
+ftt_set_compression  61 ftt_lib/IRIX+4/ftt_machdep.c ftt_set_compression(
+ftt_set_hwdens    65 ftt_lib/IRIX+4/ftt_machdep.c ftt_set_hwdens(
+ftt_status        14 ftt_lib/IRIX+4/ftt_machdep.c ftt_status(
+ftt_scsi_close    70 ftt_lib/IRIX+4/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command  98 ftt_lib/IRIX+4/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     45 ftt_lib/IRIX+4/ftt_scsi.c ftt_scsi_open(
+ftt_get_hwdens    98 ftt_lib/IRIX+5/ftt_machdep.c ftt_get_hwdens(
+ftt_set_blocksize  71 ftt_lib/IRIX+5/ftt_machdep.c ftt_set_blocksize(
+ftt_set_compression  60 ftt_lib/IRIX+5/ftt_machdep.c ftt_set_compression(
+ftt_set_hwdens    65 ftt_lib/IRIX+5/ftt_machdep.c ftt_set_hwdens(
+ftt_status        14 ftt_lib/IRIX+5/ftt_machdep.c ftt_status(
+ftt_scsi_close    75 ftt_lib/IRIX+5/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command 103 ftt_lib/IRIX+5/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     45 ftt_lib/IRIX+5/ftt_scsi.c ftt_scsi_open(
+ftt_get_hwdens    97 ftt_lib/IRIX+6/ftt_machdep.c ftt_get_hwdens(
+ftt_set_blocksize  71 ftt_lib/IRIX+6/ftt_machdep.c ftt_set_blocksize(
+ftt_set_compression  60 ftt_lib/IRIX+6/ftt_machdep.c ftt_set_compression(
+ftt_set_hwdens    65 ftt_lib/IRIX+6/ftt_machdep.c ftt_set_hwdens(
+ftt_status        14 ftt_lib/IRIX+6/ftt_machdep.c ftt_status(
+ftt_scsi_close    75 ftt_lib/IRIX+6/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command 103 ftt_lib/IRIX+6/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     45 ftt_lib/IRIX+6/ftt_scsi.c ftt_scsi_open(
+ftt_get_hwdens   130 ftt_lib/Linux/ftt_machdep.c ftt_get_hwdens(
+ftt_set_blocksize  95 ftt_lib/Linux/ftt_machdep.c ftt_set_blocksize(
+ftt_set_compression  63 ftt_lib/Linux/ftt_machdep.c ftt_set_compression(
+ftt_set_hwdens    68 ftt_lib/Linux/ftt_machdep.c ftt_set_hwdens(
+ftt_status        15 ftt_lib/Linux/ftt_machdep.c ftt_status(
+ftt_scsi_close    68 ftt_lib/Linux/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command  93 ftt_lib/Linux/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     45 ftt_lib/Linux/ftt_scsi.c ftt_scsi_open(
+ftt_get_hwdens    74 ftt_lib/OSF1/ftt_machdep.c ftt_get_hwdens(
+ftt_set_blocksize  68 ftt_lib/OSF1/ftt_machdep.c ftt_set_blocksize(
+ftt_set_compression  81 ftt_lib/OSF1/ftt_machdep.c ftt_set_compression(
+ftt_set_hwdens    61 ftt_lib/OSF1/ftt_machdep.c ftt_set_hwdens(
+ftt_status        13 ftt_lib/OSF1/ftt_machdep.c ftt_status(
+ftt_scsi_close   140 ftt_lib/OSF1/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command 168 ftt_lib/OSF1/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     74 ftt_lib/OSF1/ftt_scsi.c ftt_scsi_open(
+lookup_drive      38 ftt_lib/OSF1/ftt_scsi.c lookup_drive(
+osf_scsi_descriptor  28 ftt_lib/OSF1/ftt_scsi.c } osf_scsi_block, *osf_scsi_descriptor;
+ftt_get_hwdens    87 ftt_lib/SunOS/ftt_machdep.c ftt_get_hwdens(
+ftt_set_blocksize  81 ftt_lib/SunOS/ftt_machdep.c ftt_set_blocksize(
+ftt_set_compression  75 ftt_lib/SunOS/ftt_machdep.c ftt_set_compression(
+ftt_set_hwdens    69 ftt_lib/SunOS/ftt_machdep.c ftt_set_hwdens(
+ftt_status        20 ftt_lib/SunOS/ftt_machdep.c ftt_status(
+bzero             29 ftt_lib/SunOS/ftt_scsi.c #define bzero(
+ftt_scsi_close    59 ftt_lib/SunOS/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command  66 ftt_lib/SunOS/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     42 ftt_lib/SunOS/ftt_scsi.c ftt_scsi_open(
+gethostname       28 ftt_lib/SunOS/ftt_scsi.c #define gethostname(
+ftt_check         26 ftt_lib/WIN32/ftt_async.c ftt_check(
+ftt_fork          16 ftt_lib/WIN32/ftt_async.c ftt_fork(
+ftt_report        53 ftt_lib/WIN32/ftt_async.c ftt_report(
+ftt_wait          39 ftt_lib/WIN32/ftt_async.c ftt_wait(
+ftt_get_hwdens   188 ftt_lib/WIN32/ftt_machdep.c ftt_get_hwdens(
+ftt_set_blocksize 166 ftt_lib/WIN32/ftt_machdep.c ftt_set_blocksize(
+ftt_set_compression 113 ftt_lib/WIN32/ftt_machdep.c ftt_set_compression(
+ftt_set_hwdens   157 ftt_lib/WIN32/ftt_machdep.c ftt_set_hwdens(
+ftt_status        55 ftt_lib/WIN32/ftt_machdep.c ftt_status(
+ftt_win_get_paramters  16 ftt_lib/WIN32/ftt_machdep.c ftt_win_get_paramters(
+ulong              6 ftt_lib/WIN32/ftt_mtio.h typedef unsigned long	ulong;
+ftt_scsi_close    23 ftt_lib/WIN32/ftt_scsi.c ftt_scsi_close(
+ftt_scsi_command  29 ftt_lib/WIN32/ftt_scsi.c ftt_scsi_command(
+ftt_scsi_open     15 ftt_lib/WIN32/ftt_scsi.c ftt_scsi_open(
+FTT_ERROR_REPORT  25 ftt_test/ftt_copy.c #define FTT_ERROR_REPORT(
+main              33 ftt_test/ftt_copy.c void main(
+main              33 ftt_test/ftt_random.c void main(
+PACK              30 ftt_test/ftt_t_block.c #define PACK(
+UNPACK            31 ftt_test/ftt_t_block.c #define UNPACK(
+ftt_t_block_dump 108 ftt_test/ftt_t_block.c void ftt_t_block_dump(
+ftt_t_block_fill  40 ftt_test/ftt_t_block.c void ftt_t_block_fill 
+ftt_t_block_undump 121 ftt_test/ftt_t_block.c int ftt_t_block_undump(
+ftt_t_block_verify  61 ftt_test/ftt_t_block.c int ftt_t_block_verify(
+ED_OFF           136 ftt_test/ftt_t_cmdline.c #define ED_OFF(
+ED_ON            135 ftt_test/ftt_t_cmdline.c #define ED_ON(
+ftclCmd_TERM     876 ftt_test/ftt_t_cmdline.c static void ftclCmd_TERM
+ftt_t_Win_Interrupt 659 ftt_test/ftt_t_cmdline.c BOOL ftt_t_Win_Interrupt(
+ftt_t_cmdcont    818 ftt_test/ftt_t_cmdline.c static void ftt_t_cmdcont
+ftt_t_cmdint     696 ftt_test/ftt_t_cmdline.c static void ftt_t_cmdint(
+ftt_t_cmdreset   247 ftt_test/ftt_t_cmdline.c void ftt_t_cmdreset 
+ftt_t_cmdtstp    758 ftt_test/ftt_t_cmdline.c static void ftt_t_cmdtstp
+ftt_t_exithandler 1041 ftt_test/ftt_t_cmdline.c static void ftt_t_exithandler 
+ftt_t_getchar    269 ftt_test/ftt_t_cmdline.c int ftt_t_getchar 
+ftt_t_interrupt_chk 1007 ftt_test/ftt_t_cmdline.c int ftt_t_interrupt_chk 
+ftt_t_interrupt_dec 936 ftt_test/ftt_t_cmdline.c void ftt_t_interrupt_dec 
+ftt_t_linestart  185 ftt_test/ftt_t_cmdline.c void ftt_t_linestart 
+ftt_t_procchar   315 ftt_test/ftt_t_cmdline.c int ftt_t_procchar 
+ftt_cmd_edithndl  25 ftt_test/ftt_t_cmdline.h typedef struct ftt_cmd_edithndl
+ftt_cmd_edithndl_t  37 ftt_test/ftt_t_cmdline.h    } ftt_cmd_edithndl_t;
+ftt_cmd_t         20 ftt_test/ftt_t_cmdline.h typedef char ftt_cmd_t[
+ftt_reset_to_top  84 ftt_test/ftt_t_cmdloop.c #define ftt_reset_to_top(
+ftt_t_commandloop  74 ftt_test/ftt_t_cmdloop.c void ftt_t_commandloop 
+ftt_t_cmdproc     36 ftt_test/ftt_t_cmdproc.c int ftt_t_cmdproc	
+ftt_t_cmd_table_t  18 ftt_test/ftt_t_cmds.h    } ftt_t_cmd_table_t;
+ftt_t_cmd_table_t  18 ftt_test/ftt_t_cmdtable.h    } ftt_t_cmd_table_t;
+ftt_t_eprintf     62 ftt_test/ftt_t_error.c int	ftt_t_eprintf 
+ftt_t_get_error   33 ftt_test/ftt_t_error.c int	ftt_t_get_error 
+getopt             7 ftt_test/ftt_t_getopt.c int getopt(
+FTT_T_CHECK_LABELTYPE  20 ftt_test/ftt_t_label.c #define FTT_T_CHECK_LABELTYPE(
+ftt_t_verify_vol_label  47 ftt_test/ftt_t_label.c int	ftt_t_verify_vol_label(
+ftt_t_write_vol_label  85 ftt_test/ftt_t_label.c int	ftt_t_write_vol_label(
+FTT_T_ASYNC      130 ftt_test/ftt_t_macros.h #define FTT_T_ASYNC(
+FTT_T_CHECK_CALL  56 ftt_test/ftt_t_macros.h #define FTT_T_CHECK_CALL(
+FTT_T_CHECK_CALL_OPEN  82 ftt_test/ftt_t_macros.h #define FTT_T_CHECK_CALL_OPEN(
+FTT_T_CHECK_ESTATUS 112 ftt_test/ftt_t_macros.h #define FTT_T_CHECK_ESTATUS(
+FTT_T_CHECK_PARSE  43 ftt_test/ftt_t_macros.h #define FTT_T_CHECK_PARSE(
+FTT_T_INC_NERROR  33 ftt_test/ftt_t_macros.h #define FTT_T_INC_NERROR(
+ftt_t_all_scsi   164 ftt_test/ftt_t_misc.c int	ftt_t_all_scsi 
+ftt_t_clear_unrecovered 193 ftt_test/ftt_t_misc.c int	ftt_t_clear_unrecovered 
+ftt_t_date        30 ftt_test/ftt_t_misc.c int	ftt_t_date	
+ftt_t_debug_level  89 ftt_test/ftt_t_misc.c int	ftt_t_debug_level	
+ftt_t_echo        59 ftt_test/ftt_t_misc.c int	ftt_t_echo	
+ftt_t_format_ait 222 ftt_test/ftt_t_misc.c int	ftt_t_format_ait 
+ftt_t_inquire    306 ftt_test/ftt_t_misc.c int	ftt_t_inquire 
+ftt_t_logsense   278 ftt_test/ftt_t_misc.c int	ftt_t_logsense 
+ftt_t_max_errors 132 ftt_test/ftt_t_misc.c int	ftt_t_max_errors	
+ftt_t_modesense  250 ftt_test/ftt_t_misc.c int	ftt_t_modesense 
+ftt_t_avail_mode 169 ftt_test/ftt_t_name.c int	ftt_t_avail_mode(
+ftt_t_chall      103 ftt_test/ftt_t_name.c int	ftt_t_chall(
+ftt_t_describe_dev 348 ftt_test/ftt_t_name.c int	ftt_t_describe_dev(
+ftt_t_get_basename  38 ftt_test/ftt_t_name.c int	ftt_t_get_basename 
+ftt_t_get_mode   243 ftt_test/ftt_t_name.c int	ftt_t_get_mode(
+ftt_t_get_mode_dev 278 ftt_test/ftt_t_name.c int	ftt_t_get_mode_dev(
+ftt_t_list_all    69 ftt_test/ftt_t_name.c int	ftt_t_list_all(
+ftt_t_list_supported 528 ftt_test/ftt_t_name.c int     ftt_t_list_supported 
+ftt_t_set_mode   206 ftt_test/ftt_t_name.c int	ftt_t_set_mode(
+ftt_t_set_mode_dev 315 ftt_test/ftt_t_name.c int	ftt_t_set_mode_dev(
+ftt_t_verify_exist 377 ftt_test/ftt_t_name.c int	ftt_t_verify_exist(
+ftt_t_verify_modes 403 ftt_test/ftt_t_name.c int     ftt_t_verify_modes 
+ftt_t_close      209 ftt_test/ftt_t_open.c int	ftt_t_close	
+ftt_t_close_dev  239 ftt_test/ftt_t_open.c int	ftt_t_close_dev	
+ftt_t_open        31 ftt_test/ftt_t_open.c int	ftt_t_open	
+ftt_t_open_dev   179 ftt_test/ftt_t_open.c int	ftt_t_open_dev	
+ftt_t_open_logical  89 ftt_test/ftt_t_open.c int	ftt_t_open_logical	
+assign_defaults  580 ftt_test/ftt_t_parse.c static int assign_defaults(
+ftt_t_missing_arg 173 ftt_test/ftt_t_parse.c #define ftt_t_missing_arg(
+ftt_t_parse       70 ftt_test/ftt_t_parse.c int ftt_t_parse(
+ftt_t_pass1      157 ftt_test/ftt_t_parse.c static int ftt_t_pass1(
+ftt_t_pass2      357 ftt_test/ftt_t_parse.c static int ftt_t_pass2(
+ftt_t_print_usage 649 ftt_test/ftt_t_parse.c void ftt_t_print_usage(
+ftt_t_split      682 ftt_test/ftt_t_parse.c int ftt_t_split(
+ftt_t_argt        28 ftt_test/ftt_t_parse.h } ftt_t_argt;
+ftt_t_check       95 ftt_test/ftt_t_position.c int	ftt_t_check 
+ftt_t_erase      305 ftt_test/ftt_t_position.c int	ftt_t_erase 
+ftt_t_get_position  27 ftt_test/ftt_t_position.c int	ftt_t_get_position 
+ftt_t_locate     533 ftt_test/ftt_t_position.c int     ftt_t_locate 
+ftt_t_retension  270 ftt_test/ftt_t_position.c int	ftt_t_retension 
+ftt_t_rewind     235 ftt_test/ftt_t_position.c int	ftt_t_rewind 
+ftt_t_skip_fm    163 ftt_test/ftt_t_position.c int	ftt_t_skip_fm	
+ftt_t_skip_rec   126 ftt_test/ftt_t_position.c int	ftt_t_skip_rec	
+ftt_t_skip_to_double_fm 200 ftt_test/ftt_t_position.c int	ftt_t_skip_to_double_fm	
+ftt_t_status     375 ftt_test/ftt_t_position.c int	ftt_t_status 
+ftt_t_test_status 426 ftt_test/ftt_t_position.c int	ftt_t_test_status 
+ftt_t_unload     340 ftt_test/ftt_t_position.c int	ftt_t_unload 
+ftt_t_verify_position 492 ftt_test/ftt_t_position.c int     ftt_t_verify_position 
+ftt_t_wait        63 ftt_test/ftt_t_position.c int	ftt_t_wait 
+ftt_t_dump       324 ftt_test/ftt_t_rdwr.c int	ftt_t_dump 
+ftt_t_undump     428 ftt_test/ftt_t_rdwr.c int	ftt_t_undump 
+ftt_t_verify_tblock 200 ftt_test/ftt_t_rdwr.c int	ftt_t_verify_tblock 
+ftt_t_write2fm    75 ftt_test/ftt_t_rdwr.c int	ftt_t_write2fm 
+ftt_t_write_tblock 105 ftt_test/ftt_t_rdwr.c int	ftt_t_write_tblock 
+ftt_t_writefm     45 ftt_test/ftt_t_rdwr.c int	ftt_t_writefm 
+sleep             24 ftt_test/ftt_t_rdwr.c #define sleep(
+ftt_t_dump_stats 130 ftt_test/ftt_t_stats.c int	ftt_t_dump_stats 
+ftt_t_extract_stats  79 ftt_test/ftt_t_stats.c int	ftt_t_extract_stats 
+ftt_t_free_stat  195 ftt_test/ftt_t_stats.c int	ftt_t_free_stat 
+ftt_t_get_stats   32 ftt_test/ftt_t_stats.c int	ftt_t_get_stats 
+ftt_t_init_stats 228 ftt_test/ftt_t_stats.c int	ftt_t_init_stats 
+ftt_t_update_stats 260 ftt_test/ftt_t_stats.c int	ftt_t_update_stats 
+FTT_T_CHECK_ASYNC 112 ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_ASYNC(
+FTT_T_CHECK_CALL  64 ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_CALL(
+FTT_T_CHECK_CALL_OPEN  88 ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_CALL_OPEN(
+FTT_T_CHECK_ESTATUS 126 ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_ESTATUS(
+FTT_T_CHECK_PARSE  51 ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_PARSE(
+FTT_T_INC_NERROR  41 ftt_test/ftt_t_wrap.c #define FTT_T_INC_NERROR(
+ftt_t_allow_async 755 ftt_test/ftt_t_wrap.c int	ftt_t_allow_async 
+ftt_t_close      695 ftt_test/ftt_t_wrap.c int	ftt_t_close	
+ftt_t_close_dev  725 ftt_test/ftt_t_wrap.c int	ftt_t_close_dev	
+ftt_t_date       151 ftt_test/ftt_t_wrap.c int	ftt_t_date	
+ftt_t_debug_level 210 ftt_test/ftt_t_wrap.c int	ftt_t_debug_level	
+ftt_t_dump       1307 ftt_test/ftt_t_wrap.c int	ftt_t_dump 
+ftt_t_dump_stats 431 ftt_test/ftt_t_wrap.c int	ftt_t_dump_stats 
+ftt_t_echo       180 ftt_test/ftt_t_wrap.c int	ftt_t_echo	
+ftt_t_eprintf    282 ftt_test/ftt_t_wrap.c int	ftt_t_eprintf 
+ftt_t_erase      1000 ftt_test/ftt_t_wrap.c int	ftt_t_erase 
+ftt_t_extract_stats 384 ftt_test/ftt_t_wrap.c int	ftt_t_extract_stats 
+ftt_t_free_stat  488 ftt_test/ftt_t_wrap.c int	ftt_t_free_stat 
+ftt_t_get_error  253 ftt_test/ftt_t_wrap.c int	ftt_t_get_error 
+ftt_t_get_position 309 ftt_test/ftt_t_wrap.c int	ftt_t_get_position 
+ftt_t_get_stats  345 ftt_test/ftt_t_wrap.c int	ftt_t_get_stats 
+ftt_t_open       526 ftt_test/ftt_t_wrap.c int	ftt_t_open	
+ftt_t_open_dev   665 ftt_test/ftt_t_wrap.c int	ftt_t_open_dev	
+ftt_t_open_logical 584 ftt_test/ftt_t_wrap.c int	ftt_t_open_logical	
+ftt_t_retension  963 ftt_test/ftt_t_wrap.c int	ftt_t_retension 
+ftt_t_rewind     926 ftt_test/ftt_t_wrap.c int	ftt_t_rewind 
+ftt_t_skip_fm    848 ftt_test/ftt_t_wrap.c int	ftt_t_skip_fm	
+ftt_t_skip_rec   809 ftt_test/ftt_t_wrap.c int	ftt_t_skip_rec	
+ftt_t_skip_to_double_fm 887 ftt_test/ftt_t_wrap.c int	ftt_t_skip_to_double_fm	
+ftt_t_undump     1406 ftt_test/ftt_t_wrap.c int	ftt_t_undump 
+ftt_t_unload     1037 ftt_test/ftt_t_wrap.c int	ftt_t_unload 
+ftt_t_verify_tblock 1197 ftt_test/ftt_t_wrap.c int	ftt_t_verify_tblock 
+ftt_t_write_tblock 1104 ftt_test/ftt_t_wrap.c int	ftt_t_write_tblock 
+ftt_t_writefm    1074 ftt_test/ftt_t_wrap.c int	ftt_t_writefm 
+main              78 ftt_test/ftt_test.c void main(
