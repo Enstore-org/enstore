@@ -205,12 +205,16 @@ def get_entvrc_filename():
     return os.environ["HOME"] + "/.entvrc"
 
 def get_entvrc_file():
-        #Variables and files to look for.
-    f = open(get_entvrc_filename())
     lines = []
-    for line in f.readlines():
-        lines.append(line.strip())
-    f.close()
+
+    #Get the file contents.
+    try:
+        f = open(get_entvrc_filename())
+        for line in f.readlines():
+            lines.append(line.strip())
+        f.close()
+    except (OSError, IOError):
+        pass
     
     ###Don't remove blank lines and command lines from the output.  This
     ### output is used by the set_entvrc function which will use these
@@ -225,8 +229,11 @@ def get_entvrc(intf):
             address = "localhost"
         else:
             address = intf.csc.server_address[0]
-        
-        for line in get_entvrc_file():
+
+        #Only need to grab this once.
+        entvrc_data = get_entvrc_file()
+
+        for line in entvrc_data:
 
             #Check the line for problems or things to skip, like comments.
             if len(line) == 0:
@@ -258,16 +265,20 @@ def get_entvrc(intf):
                 break
         else:
             #If it wasn't found raise this to set the defaults.
-            raise IndexError(words[0])
+            if entvrc_data and len(words):
+                raise IndexError(words[0])
+            else:
+                raise IndexError("Unknown")
     except (IOError, IndexError):
         geometry = "700x1600+0+0"
         background = DEFAULT_BG_COLOR
+        animate = 1
 
     library_colors = {}
     client_colors = {}
 
     #Pass through the file looking for library color lines.
-    for line in get_entvrc_file():
+    for line in entvrc_data:
 
         #Check the line for problems or things to skip, like comments.
         if len(line) == 0:
