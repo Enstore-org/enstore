@@ -1,0 +1,13 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+home=/home/enstore
+drives=${home}/drive_list
+. /usr/local/etc/setups.sh
+setup enstore
+cat $drives | while read drive tape media size; do
+ echo $drive $tape $media $size
+ ${ENSTORE_DIR}/sbin/check_drive.py $drive $tape $media $size > $tape.chk &
+done
+wait
+exit 0
