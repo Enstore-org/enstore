@@ -22,7 +22,7 @@ def usage():
     print "usage: %s --infile file"%(sys.argv[0])
 
 def error(s):
-    print 'Error:  ', s
+    print s, '... ERROR'
 
 def layer_file(f, n):
     p, ff = os.path.split(f)
@@ -30,12 +30,13 @@ def layer_file(f, n):
 
 def check(f):
     msg = []
+    warn = []
     if not os.access(f, os.R_OK):
-        return ['no read permission']
+        return ['no read permission'], []
     try:
         pf = pnfs.File(f)
     except:
-        return ['corrupted meta-data']
+        return ['corrupted meta-data'], []
     # get bfid
     f1 = open(layer_file(f, 1))
     bfid = f1.readline()
@@ -46,13 +47,13 @@ def check(f):
     except:
         if len(bfid) < 8:
             msg.append('missing layer 1')
-            return msg
+            return msg, warn
         else:
             msg.append('missing layer 4')
             fr = fcc.bfid_info(bfid)
             if fr['status'][0] != e_errors.OK:
                 msg.append('not in db')
-                return msg
+                return msg, warn
             if fr.has_key('pnfs_name0'):
                 if pf.path != fr['pnfs_name0']:
                     msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
@@ -64,12 +65,12 @@ def check(f):
                     msg.append('pnfsid(%s, %s)'%(id, fr['pnfsid']))
             else:
                 msg.append('no pnfs id in db')
-            return msg
+            return msg, warn
 
     fr = fcc.bfid_info(bfid)
     if fr['status'][0] != e_errors.OK:
         msg.append('not in db')
-	return msg
+	return msg, warn
     # volume label
     try:
         if pf.volume != fr['external_label']:
@@ -99,7 +100,7 @@ def check(f):
             vol = vcc.inquire_vol(fr['external_label'])
             if vol['status'][0] != e_errors.OK:
                 msg.append('missing vol '+fr['external_label'])
-                return msg
+                return msg, warn
             file_family = volume_family.extract_file_family(vol['volume_family'])
             ff[fr['external_label']] = file_family
         if pf.file_family != file_family:
@@ -128,14 +129,14 @@ def check(f):
             p1 = string.split(pf.path, '/')
             p2 = string.split(fr['pnfs_name0'], '/')
             if p1[-1] != p2[-1] or p1[1:4] != p2[1:4]:
-                msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
+                warn.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
     except:
         msg.append('no or corrupted pnfs_path')
 
     # path2
     try:
         if pf.path != pf.p_path:
-            msg.append('path(%s, %s)'%(pf.path, pf.p_path))
+            warn.append('path(%s, %s)'%(pf.path, pf.p_path))
     except:
         msg.append('no or corrupted l4_pnfs_path')
 
@@ -146,11 +147,13 @@ def check(f):
     except:
         msg.append('no deleted field')
 
-    return msg
+    return msg, warn
 
 def check_file(f):
+    if not os.access(f, os.F_OK):
+        error(f+' ... does not exist')
     # if f is a directory, recursively check its files
-    if os.path.isdir(f):
+    elif os.path.isdir(f):
         # skip symbolic link to a directory
         if not os.path.islink(f):
             # skip volmap
@@ -159,20 +162,26 @@ def check_file(f):
                     for i in os.listdir(f):
                         check_file(os.path.join(f,i))
                 else:
-                    print 'can not access directory', f
+                    error(f+' ... can not access directory')
     elif os.path.isfile(f):
         print f+' ...',
-        res = check(f)
+        res, wrn = check(f)
+        # print warnings
+        for i in wrn:
+            print i+' ...',
+        # print errors
+        for i in res:
+            print i+' ...',
         if res:
-            for i in res:
-                print i+' ...',
             print 'ERROR'
+        elif wrn:
+            print 'WARNING'
         else:
             print 'OK'
     elif os.path.islink(f):
-        error('missing the original of link '+f)
+        error(f+' ... missing the original of link')
     else:
-        error('unrecognized type of '+f)
+        error(f+' ... unrecognized type')
 
 if __name__ == '__main__':
 
