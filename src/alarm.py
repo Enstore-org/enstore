@@ -13,9 +13,6 @@ SHORT_TEXT = "short_text"
 # use this if no SHORT_TEXT was part of the alarm
 DEFAULT_TEXT = "has a problem"
 
-# keyword to specify textual alarm information as read from the alarm file
-TEXTKEY = "AscIITeXt"
-
 class GenericAlarm:
 
     def __init__(self):
