@@ -99,6 +99,10 @@ class GenericDriver:
 	return self.shm.offget( 4 )
     def wr_bytes_get( self ):
 	return self.shm.offget( 5 )
+    def _bytes_clear( self ):
+	self.shm.offset( 4, 0 )
+	self.shm.offset( 5, 0 )
+	return None
 
     def writefm( self ):			# wrapper may need this
 	self.file_marks = self.file_marks + 1
