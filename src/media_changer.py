@@ -316,7 +316,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                self.workQueueClosed = 0
         # if not duplicate, fork the work
         pipe = os.pipe()
-        if self.fork(ttl=None): #parent
+        if self.fork(ttl=None): #no time limit
             self.add_select_fd(pipe[0])
             os.close(pipe[1])
             # add entry to outstanding work 
