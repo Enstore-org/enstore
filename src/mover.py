@@ -607,7 +607,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
-            Trace.log(e_errors.INFO,"Init d_b LOG(%s): PS %s"%(pid, result))
+            Trace.log(e_errors.INFO,"Init d_b LOG(%s): PS %s"%(result,))
 
         
     def return_state(self):
@@ -615,29 +615,28 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def log_state(self):
         if self.log_mover_state:
-            pid = os.getpid()
             cmd = "EPS | grep %s"%(self.name,)
             pipeObj = popen2.Popen3(cmd, 0, 0)
             if pipeObj is None:
                 return
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
-            Trace.log(e_errors.INFO,"LOG(%s): PS %s"%(pid, result))
+            Trace.log(e_errors.INFO,"LOG: PS %s"%(result,))
             thread = threading.currentThread()
             if thread:
                 thread_name = thread.getName()
             else:
                 thread_name = None
-            Trace.log(e_errors.INFO,"LOG(%s): CurThread %s"%(pid, thread_name))
+            Trace.log(e_errors.INFO,"LOG: CurThread %s"%(thread_name))
           
             # see what threads are running
             threads = threading.enumerate()
             for thread in threads:
                 if thread.isAlive():
                     thread_name = thread.getName()
-                    Trace.log(e_errors.INFO,"LOG(%s): Thread %s is running" % (pid, thread_name,))
+                    Trace.log(e_errors.INFO,"LOG: Thread %s is running" % (thread_name,))
                 else:
-                    Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(pid,))
+                    Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(thread_name,))
             
 
     def lock_state(self):
