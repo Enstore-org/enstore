@@ -24,7 +24,7 @@ eval $cmd >$finalscan 2>&1
 rc=$?
 if [ $rc -ne 0 ]; then
     echo `date` ERROR $tape bad return code
-    /usr/bin/Mail -s "$tape migration error" bakken@fnal.gov < $finalscan
+    /usr/bin/Mail -s "$tape migration error" bakken@fnal.gov alcorn@fnal.gov georges@fnal.gov < $finalscan
 else
     echo `date` $tape All files read
 fi
