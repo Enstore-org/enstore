@@ -6,10 +6,12 @@
 import os
 import sys
 import signal
+import Trace
 
 import configuration_client
 import file_clerk_client
 import enstore_functions2
+import e_errors
 
 _deletion_list = []
 _deletion_list_bfids = []
@@ -37,11 +39,13 @@ def unregister_bfid(bfid):
 def delete():
     # Delete registered files.
     for f in _deletion_list:
+        Trace.log(e_errors.INFO, "Performing file cleanup for file: %s" % (f,))
         if os.path.exists(f):
             try:
                 os.unlink(f)
             except:
-                sys.stderr.write("Can't delete %s\n" %(f,))
+                Trace.log(e_errors.ERROR, "Can not delete file %s.\n" % (f,))
+                sys.stderr.write("Can not delete file %s.\n" % (f,))
 
     # get a configuration server and file clerk
     config_host = enstore_functions2.default_host()
@@ -50,11 +54,14 @@ def delete():
 
     # Delete registered bfids.
     for b in _deletion_list_bfids:
+        Trace.log(e_errors.INFO, "Performing bfid cleanup for: %s" % (b,))
         try:
             fcc = file_clerk_client.FileClient(csc, b)
             fcc.set_deleted("yes")
         except:
-            sys.stderr.write("Can't delete %s from database\n" %(b,))
+            Trace.log(e_errors.ERROR,
+                      "Can not delete bfid %s from database.\n" % (b,))
+            sys.stderr.write("Can not delete bfid %s from database.\n" % (b,))
 
             
 def signal_handler(sig, frame):
@@ -73,7 +80,7 @@ def signal_handler(sig, frame):
             pass
     
     try:
-        sys.stderr.write("Caught signal %s, exiting\n" % (sig,))
+        sys.stderr.write("Caught signal %s, exiting.\n" % (sig,))
         sys.stderr.flush()
     except IOError:
         pass
