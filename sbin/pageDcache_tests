@@ -90,8 +90,13 @@ setup_products() {
 	setup_product dcap
     fi
     if [ -z "${SRMCP_DIR:-}" ]; then
-	export PATH=/usr/java/j2sdk1.4.1/bin/:$PATH
-	setup_product srmcp
+	if [ -d "/usr/java/j2sdk1.4.1/bin/" ]; then
+	    export PATH=/usr/java/j2sdk1.4.1/bin/:$PATH
+	    setup_product srmcp
+	elif [ -d "/usr/java/j2sdk1.4.2_01/bin/" ]; then
+	   export PATH=/usr/java/j2sdk1.4.2_01/bin/:$PATH
+	   setup_product srmcp
+	fi
     fi
 
     # always setup python to make sure we get the correct version.
@@ -353,7 +358,7 @@ srmcp_test() {
 
 # srmcp write
     transfer_setup $write_in_progress 7
-    do_transfer "srmcp file://localhost/$test_file srm://$dcache:8443/$w" $w $write_in_progress
+    do_transfer "srmcp file://localhost/$test_file srm://$dcache:$port/$w" $w $write_in_progress
  
     if [ -r $write_in_progress ]; then
 	raise_alarm "$dcache dcache srmcp write failed." $dcache_saag 6
@@ -361,7 +366,7 @@ srmcp_test() {
 
 # srmcp readback
     transfer_setup $read_in_progress 5
-    do_transfer "srmcp srm://$dcache:8443/$w file://localhost/$read_back" $read_back $read_in_progress
+    do_transfer "srmcp srm://$dcache:$port/$w file://localhost/$read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
 	raise_alarm "$dcache dcache srmcp read failed" $dcache_saag 4
@@ -435,11 +440,12 @@ case $test_to_do in
 	     gridftp_test
 	     ;;
     srm) # get the specific parameters first
-	 if [ $# -ne 1 ];
+	 if [ $# -ne 2 ];
 	 then
 	     not_enough_parameters srmcp
 	 fi
 	 w=$1
+	 port=$2
 	 srmcp_test
 	 ;;
 esac
