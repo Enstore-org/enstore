@@ -388,8 +388,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.tape_driver.read(buf, 0, 80)
                 except (e_errors.READ_ERROR, ftt.FTTError), detail:
                     Trace.log(e_errors.ERROR, "while checking for loaded tape: %s"%(detail,))
-
-                buf = string.split(buf)[0]
+                if buf:
+                    buf = string.split(buf)
+                    if buf:
+                        buf = buf[0]
                 if buf[:4]=='VOL1':
                     volname=buf[4:]
                     self.current_volume = volname
