@@ -89,23 +89,15 @@ MOVER_CRASH     = 'MOVER_CRASH'
 
 if 0: print ENCP_GONE,TCP_HUNG,MOVER_CRASH #lint fix
 
-def is_retriable(error):
-    if error == NOMOVERS or \
-       error == NOACCESS or \
-       error == WRONGPARAMETER or \
-       error == MOUNTFAILED or \
-       error == USERERROR  or \
-       error == UNKNOWNMEDIA or \
-       error == NOVOLUME or \
-       error == WRITE_NOTAPE or \
-       error == WRITE_NOBLANKS or \
-       error == READ_NOTAPE or \
-       error == READ_BADMOUNT or \
-       error == READ_BADLOCATE or \
-       error == READ_UNLOAD or \
-       error == UNMOUNT:
-	return 0
-    return 1
-    
-    
+non_retriable_errors = (NOMOVERS, NOACCESS,
+                        WRONGPARAMETER, MOUNTFAILED,
+                        USERERROR, UNKNOWNMEDIA, NOVOLUME,
+                        WRITE_NOTAPE, WRITE_NOBLANKS,
+                        READ_NOTAPE, READ_BADMOUNT,
+                        READ_BADLOCATE, READ_UNLOAD,
+                        UNMOUNT)
 
+def is_retriable(e):
+    if e in non_retriable_errors:
+        return 0
+    return 1
