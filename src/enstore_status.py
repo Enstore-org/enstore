@@ -36,10 +36,13 @@ class EnstoreStatus:
 
     # write the header to the file
     def write_header(self):
+        Trace.trace(12,"{write_header "+self.header)
 	self.file.write(self.header)
+        Trace.trace(12,"}write_header ")
 
     # open the file
     def doopen(self, list=0):
+        Trace.trace(12,"{doopen "+self.file_name)
 	if list :
             print "opening " + self.file_name
         # try to open status file for append
@@ -51,12 +54,15 @@ class EnstoreStatus:
             self.file = open(self.file_name, 'w')
             if list :
                 print "opened for write"
+        Trace.trace(12,"}doopen "+)
 
     # close the file
     def doclose(self):
+        Trace.trace(12,"{doclose "+self.file_name)
 	if self.file_type == html_file:
 	    self.file.write("</pre>\n")
 	self.file.close()
+        Trace.trace(12,"}doclose")
 
     # output the passed alive status
     def output_alive(self, host, tag, status):
@@ -151,9 +157,11 @@ class EnstoreStatus:
     # translate time.time output to a person readable format.
     # strip off the day and reorganize things a little
     def format_time(self, theTime):
+        Trace.trace(12,"{format_time ")
 	ftime = time.strftime("%c", time.localtime(theTime))
 	(dow, mon, day, tod, year) = string.split(ftime)
 	ntime = "%s-%s-%s %s" % (year, mon, day, tod)
+        Trace.trace(12,"}format_time ")
 	return ntime
 
     # parse the library manager queues returned from "getwork"

@@ -188,13 +188,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # add time info to the file
     def update_time(self):
+        Trace.trace(12,"{update_time")
 	self.essfile.output_time()
 	self.htmlfile.output_time()
+        Trace.trace(12,"}update_time")
 
     # flush the files we have been writing to
     def flush_files(self):
+        Trace.trace(12,"{flush_files")
 	self.essfile.flush()
 	self.htmlfile.flush()
+        Trace.trace(12,"}flush_files")
 
     # update the enstore system status information
     def do_update(self, ticket, list):
