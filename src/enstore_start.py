@@ -192,10 +192,11 @@ def start_server(cmd, servername):
 
         #Send stdout and strerr to the output file.
         save(servername)
-        os.close(1);
+        os.dup(1)
+        os.close(1)
         os.open(output(servername), os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0664)
-        os.close(2);
-        os.dup(1);
+        os.close(2)
+        os.dup(1)
 
         #Write out the pid file.
         write_pid_file(servername)
