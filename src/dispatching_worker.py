@@ -126,6 +126,22 @@ class DispatchingWorker:
         collect_children()
         Trace.trace(5,"}process_request idn="+repr(idn))
 
+    def handle_error(self, request, client_address):
+	"""OVERRIDING SocketServer.handle_error
+	"""
+	Trace.trace(0,"{handle_error request="+repr(request)+" add="+\
+		    repr(client_address))
+	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
+	print '-'*40
+	print 'Exception happened during processing of request from',
+	print client_address
+	import traceback
+	traceback.print_exception(exc, value, tb)
+	print '-'*40
+	self.reply_to_caller( {'status':'error','request':request,'exc_type':repr(exc),'exc_value':repr(value)} )
+	Trace.trace(0,"}handle_error "+str(sys.exc_info()[0])+\
+		    str(sys.exc_info()[1]))
+
     # nothing like a heartbeat to let someone know we're alive
     def alive(self,ticket):
         Trace.trace(10,"{alive address="+repr(self.server_address))
