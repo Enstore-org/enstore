@@ -1992,6 +1992,7 @@ class encp(interface.Interface):
     #  define our specific help
     def help_line(self):
         Trace.trace(16,"{encp.help_line")
+        prefix = self.help_prefix()
         the_help = "%s%s\n or\n  %s%s\n or\n  %s%s%s" % (
             prefix, self.parameters1(),
             prefix, self.parameters2(),
