@@ -73,6 +73,7 @@ class LoggerClient(generic_client.GenericClient):
         self.log_priority = 7
 	lticket = self.csc.get( servername )
 	self.logger_address = (lticket['hostip'], lticket['port'])
+        self.log_dir = lticket.get("log_file_path", "")
         self.u = udp_client.UDPClient()
 	Trace.set_log_func( self.log_func )
 	self.lock = LoggerLock() 
