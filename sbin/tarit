@@ -113,7 +113,7 @@ tar -czf \$F \\
   /etc/sysconfig/network-scripts/ifcfg* \\
   /usr/local/etc/farmlets
   /var/spool/cron/*
-rcp \$F $node:$SPECIAL
+enrcp \$F $node:$SPECIAL
 "
   chmod +x $SF
   rgang -c $gang $SF /tmp/special_files
