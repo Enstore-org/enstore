@@ -83,15 +83,6 @@ def find_mover_by_name(mover):
 	return {}
     return mv
 
-# summon mover
-def summon_mover(self, mover, ticket):
-    summon_rq = {'work': 'summon',
-		 'address': self.server_address }
-    
-    Trace.trace(15,"summon_rq %s will be sent to %s" % (summon_rq, mover['mover']))
-    # send summon request
-    mover['tr_error'] = self.udpc.send_no_wait(summon_rq, mover['address'])
-
         
 ## Trace.trace for additional debugging info uses bits >= 11
  
@@ -972,20 +963,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # mover is idle - see what we can do
     def mover_idle(self, mticket):
         Trace.trace(11,"IDLE RQ %s"%(mticket,))
-        ##############################################   remove between the lines
-        mt = {'mover': mticket['mover'],
-              'external_label' : None,
-              'current_location' : None,
-              'state' : None,
-              'status' : (e_errors.OK, None),
-              'volume_family': None,
-              'volume_status':((None,None),(None,None))
-              }
-        
-        ###############################################
         
         # mover is idle remove it from volumes_at_movers
-        self.volumes_at_movers.delete(mt)
+        self.volumes_at_movers.delete(mticket)
         if self.is_starting():
             # LM needs a certain startup delay before it
             # starts processing mover requests to update
@@ -1054,24 +1034,24 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                     w['vc']['wrapper']), '.')
         w['vc']['file_family'] = volume_family.extract_file_family(w['vc']['volume_family'])
         Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
-        self.reply_to_caller(w) # reply now to avoid deadlocks
+        self.udpc.send_no_wait(w, mticket['address'])
+
         w['mover'] = mticket['mover']
         Trace.trace(11, "File Family = %s" % (w['vc']['file_family']))
         self.work_at_movers.append(w)
         work = string.split(w['work'],'_')[0]
-        ##############################################   remove between the lines
-        mt = {'mover': mticket['mover'],
-              'external_label' : w["fc"]["external_label"],
-              'current_location' : None,
-              'state' : work,
-              'status' : (e_errors.OK, None),
-              'volume_family': w['vc']['volume_family'],
-              'volume_status':((None,None),(None,None))
-              }
-        Trace.trace(11,"MT %s" % (mt,))
 
-        ###############################################
-        self.volumes_at_movers.put(mt)
+        ### XXX are these all needed?
+        mticket['external_label'] = w["fc"]["external_label"]
+        mticket['current_location'] = None
+        mticket['volume_family'] =  w['vc']['volume_family']
+        mticket['status'] =  (e_errors.OK, None)
+        mticket['volume_status'] = ((None,None),(None,None))
+
+        Trace.trace(11,"MT %s" % (mticket,))
+
+
+        self.volumes_at_movers.put(mticket)
             
         
 
@@ -1122,7 +1102,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    w['times']['lm_dequeued'] = time.time()
             if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s to mover"%(w,))
-            self.reply_to_caller(w) # reply now to avoid deadlocks
+            self.udpc.send_no_wait(w, mticket['address']) 
             self.pending_work.delete(rq)
 	    state = 'work_at_mover'
             w['mover'] = mticket['mover']
