@@ -271,19 +271,33 @@ class FTTDriver(driver.Driver):
 
     def eject(self):
         try:
-            self.ftt.close_dev()
+            self.ftt.close()
         except:
-            Trace.log(e_errors.ERROR, "ftt_close_dev failed")
-        try:
+            Trace.log(e_errors.ERROR, "eject: ftt_close failed")
+        ok = 0
+        for retry in (0, 1, 2):
+            if retry:
+                Trace.log(e_errors.ERROR, "eject: retry %s" % (retry,))
+                time.sleep(5)
             p=os.popen("mt -f %s offline 2>&1" % (self.device),'r')
             r=p.read()
             s=p.close()
-            if s:
-                raise "mt offline failed", r
-        except:
-            exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "eject %s %s" % ( exc, msg))
+            if not s:
+                ok = 1
+                break
+            else:
+                Trace.log(e_errors.ERROR, "eject: mt offline failed: %s" % (r,))
+                if string.find(r, "Input/output error") >= 0:
+                    p=os.popen("mt -f %s rewind 2>&1" % (self.device),'r')
+                    r=p.read()
+                    s=p.close()
+                    if s:
+                        Trace.log(e_errors.ERROR, "eject: mt rewind failed: %s" % (r,))
+        if not ok:
+            Trace.log(e_errors.ERROR, "eject: failed after 3 tries")
             return -1
+        else:
+            return 0
         
     def set_mode(self, density=None, compression=None, blocksize=None):
         ##HACK: this seems to trigger a core dump in ftt, and it's
