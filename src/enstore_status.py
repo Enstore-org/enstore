@@ -372,12 +372,12 @@ class EnStatus:
 	    p = "Current Transfer : "
 	    if ticket["mode"] == "r":
 	        m = " reading "+repr(ticket["bytes_to_xfer"])+\
-                    " bytes from the HSM"
+                    " bytes from Enstore"
                 f_in = 1
                 f_out = 0
 	    else:
 	        m = " writing "+repr(ticket["bytes_to_xfer"])+\
-                    " bytes to the HSM"
+                    " bytes to Enstore"
                 f_in = 0
                 f_out = 1
 	elif ticket["state"] == "idle":
