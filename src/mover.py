@@ -2089,6 +2089,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                  error_source=TAPE)
                             return 0
                     Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
+                    Trace.trace(10, "ticket %s"%(self.current_work_ticket))
                     vol1_label = self.wrapper.vol_labels(volume_label, self.current_work_ticket)
                     #vol1_label = 'VOL1'+ volume_label[0:6]
                     #vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
@@ -2102,9 +2103,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.tape_driver.write(vol1_label, 0, 80)
                         self.tape_driver.writefm()
 	            # END WAYNE FOO
-                except: 
+                except:
                     exc, detail, tb = sys.exc_info()
-                    #Trace.handle_error(exc, detail, tb)
+                    Trace.handle_error(exc, detail, tb)
                     self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                     return 0
                 eod = 1
