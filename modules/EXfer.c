@@ -1718,7 +1718,7 @@ raise_exception2(struct return_values *rtn_val)
 
     /* note: format should be the same as in FTT.c */
     /* What does the above comment mean??? */
-    v = Py_BuildValue("(s,i,s,i,O,f,f,s,i)",
+    v = Py_BuildValue("(s,i,s,i,O,O,O,s,i)",
 		      rtn_val->msg, i, strerror(i), getpid(),
 		      PyLong_FromLongLong(rtn_val->size),
 		      PyFloat_FromDouble(rtn_val->read_time),
