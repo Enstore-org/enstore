@@ -769,6 +769,21 @@ class LibraryManagerMethods:
                     
     # check if volume is in the suspect volume list
     def is_volume_suspect(self, external_label):
+        # remove volumes time in the queue for wich has expired
+        if self.suspect_vol_expiration_to:
+            # create a list of expired volumes
+            now = time.time()
+            expired_vols = []
+            for vol in self.suspect_volumes.list:
+                if now - vol['time'] >= self.suspect_vol_expiration_to:
+                    expired_vols.append(vol)
+            # cleanup suspect volume list
+            if expired_vols:
+                for vol in expired_vols:
+                    Trace.log(e_errors.INFO,"%s has been removed from suspect volume list due to TO expiration",%
+                              (vol['external_label'],))
+                    self.suspect_volumes.remove(vol)
+                   
         for vol in self.suspect_volumes.list:
             if external_label == vol['external_label']:
                 return vol
@@ -898,6 +913,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             sg_limits = self.keys['storage_group_limits']
         v = self.keys.get('legal_encp_version','')
         self.legal_encp_version = (v, convert_version(v))
+        self.suspect_vol_expiration_to = self.keys.get('suspect_volume_expiration_time',None)
         # add this to file size when requesting
         # a tape for writes to avoid FTT_ENOSPC at the end of the tape
         # due to inaccurate REMAINING_BYTES
@@ -908,7 +924,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        sg_limits,
                                        min_file_size,
                                        self.max_suspect_movers,
-                                        self.max_suspect_volumes)
+                                       self.max_suspect_volumes)
         self.set_udp_client()
 
     # check startup flag
