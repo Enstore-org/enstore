@@ -20,8 +20,6 @@ else
     base=/tmp/doesnot/exist
 fi
 
-# the second parameter is the gang
-
 #convert=/usr/bin/X11/convert
 convert=/usr/bin/convert
 
