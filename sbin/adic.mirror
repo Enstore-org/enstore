@@ -10,6 +10,7 @@ package=everything
         recurse_hard=true
         flags_nonrecursive=
         get_patt=.
+	exclude_patt=MPTN/ETC/TRUSERS|OS2/SYSTEM/SWAPPER.DAT|tcpip/DOS/ETC/TRUSERS
 
 #old package=main
 #old         site=adic2.fnal.gov
