@@ -64,6 +64,8 @@ class Relay:
             
     def dump(self):
 	# dump our brains
+	print "%s"%(time.strftime("%s%s%s"%("%Y-%b-%d", " ", 
+					    "%H:%M:%S"), time.localtime(time.time())),)
 	print "Subscribed clients : %s"%(self.clients,)
 	print "Timeouts : %s"%(self.timeouts,)
 
