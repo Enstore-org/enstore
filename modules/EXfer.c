@@ -51,7 +51,7 @@ do_read_write(int rd_fd, int wr_fd, int no_bytes, int blk_size, int crc_flag, un
 	buffer = (char *)alloca(blk_size);
 	
 	while (no_bytes) {
-	    /* Do not worry about reading/writeing an exact block as this is
+	    /* Do not worry about reading/writing an exact block as this is
 	       one the user end. But attempt blk_size reads. */
 	    bytes_to_xfer = (no_bytes<blk_size)?no_bytes:blk_size;
 	    
@@ -74,7 +74,6 @@ do_read_write(int rd_fd, int wr_fd, int no_bytes, int blk_size, int crc_flag, un
 		    return (-2);
 		}
 	    
-	    /* call write (which should return async) and then crc */
 	    bytes_to_xfer = sts;
 	    b_p = buffer;
 	    do {
@@ -82,10 +81,6 @@ do_read_write(int rd_fd, int wr_fd, int no_bytes, int blk_size, int crc_flag, un
 		if (sts == -1) {   /* return a write error */
 		    return (-3);
 		}
-		/* checksum what ever we wrote. Presumably, the system is
-		   delivering the data to the device (and the device is taking
-		   the data from system mem and we can xsum while this is
-		   happening. */
 		switch (crc_flag) {
 		case 0:  
 		    break;
