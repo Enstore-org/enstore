@@ -311,7 +311,7 @@ int do_routing(char *cmd, char *dest, char *gw, char *if_name)
 			   define this function.  Also, there is no known
 			   way to detect this fact at compile time.
 			*/
-			//rtm->rtm_index = if_nametoindex(if_name);
+			/*rtm->rtm_index = if_nametoindex(if_name);*/
 		}
 	}
 	else if (!strcmp(cmd, "del"))
@@ -336,7 +336,7 @@ int do_routing(char *cmd, char *dest, char *gw, char *if_name)
 			   define this function.  Also, there is no known
 			   way to detect this fact at compile time.
 			*/
-			//rtm->rtm_index = if_nametoindex(if_name);
+			/*rtm->rtm_index = if_nametoindex(if_name);*/
 		}
 	}
 	else
