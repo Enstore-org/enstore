@@ -446,6 +446,7 @@ def forked_read_from_hsm( self, ticket ):
 
         # open the hsm file for reading and read it
         try:
+            Trace.trace(11, 'driver_open '+mvr_config['device'])
             do = self.hsm_driver.open( mvr_config['device'], 'r' )
 
 	    t0 = time.time()
@@ -454,16 +455,20 @@ def forked_read_from_hsm( self, ticket ):
 	    ticket['times']['seek_time'] = time.time() - t0
 
 	    # create the wrapper instance (could be different for different tapes)
+            Trace.trace(11,' calling Cpio')
 	    wrapper = cpio.Cpio()
 
             logc.send(log_client.INFO,2,"WRAPPER.READ")
 	    t0 = time.time()
+            Trace.trace(11,'calling read_pre_data')
             wrapper.read_pre_data( do, None )
+            Trace.trace(11,'calling fd_xfer -sanity size='+repr(ticket['fc']['sanity_cookie'][0]))
             san_crc = do.fd_xfer( self.usr_driver.fileno(),
 				  ticket['fc']['sanity_cookie'][0],
 				  ECRC.ECRC,
 				  0 )
 	    if (ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]) > 0:
+                Trace.trace(11,'calling fd_xfer -rest size='+repr(ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]))
 		user_file_crc = do.fd_xfer( self.usr_driver.fileno(),
 					    ticket['fc']['size']-ticket['fc']['sanity_cookie'][0],
 					    ECRC.ECRC,
@@ -472,12 +477,16 @@ def forked_read_from_hsm( self, ticket ):
 		user_file_crc = san_crc
 		pass
 	    tt = {'data_crc':ticket['fc']['complete_crc']}
+            Trace.trace(11,'calling read_post_data')
             wrapper.read_post_data( do, tt )
 	    ticket['times']['transfer_time'] = time.time() - t0
 
+            Trace.trace(11,'calling get stats')
 	    stats = self.hsm_driver.get_stats()
 	    # close hsm file
+            Trace.trace(11,'calling close')
             do.close()
+            Trace.trace(11,'closed')
 	    wr_err,rd_err       = stats['wr_err'],stats['rd_err']
 	    wr_access,rd_access = stats['wr_access'],stats['rd_access']
         except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
