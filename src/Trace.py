@@ -42,8 +42,8 @@ mode   = Ptrace.mode
 
 # USER FUNCTIONS
 def log( severity, msg, msg_dict = MSG_DICT_DFLT, msg_type = MSG_TYPE_DFLT ):
-    # CHECK TO SEE IF THERE IS A VALID DICTIONARY. IF THERE IS,
-    # BASE64(CPICKLE) IT AND ATTACH TO END OF MESSAGE.
+    # check to see if there is a valid dictionary. if there is,
+    # base64(cpickle) it and attach to end of message.
     if len(msg_dict) > 0:
         tmp_dict = base64.encodestring(cPickle.dumps(msg_dict))
         tmp_dict = string.split(tmp_dict, "\n")
@@ -52,8 +52,8 @@ def log( severity, msg, msg_dict = MSG_DICT_DFLT, msg_type = MSG_TYPE_DFLT ):
     else:
         msg_dict = ""
 
-    # SEE IF USER ENTERED HIS OWN 'MSG_TYPE' MESSAGE. IF HE DID,
-    # ATTACH TO END OF MESSAGE.
+    # see if user entered his own 'msg_type' message. if he did,
+    # attach to end of message.
     if len(msg_type) > 0:
         msg_type = "%s%s" % (MSG_TYPE, msg_type)
 
