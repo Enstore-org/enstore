@@ -35,27 +35,16 @@ MDICTS = 6
 MREQUEST = 0
 MMOUNT = 1
 
-# flags to show if we are formatting an ENCP file or a regular Enstore status
-# file
-FROM_ENCP = 1
-FROM_STATUS = FROM_ENCP+1
-
 TRUE = 1
 FALSE = 0
 START_TIME = "start_time"
 STOP_TIME = "stop_time"
 LOG_PREFIX = "LOG-"
-bg_color = "FFFFFF"
+BG_COLOR = "FFFFFF"
 tdata = "<TD NOSAVE>"
 trow = "<TR NOSAVE>\n"
 tdata_end = "</TD>\n"
 TMP = ".tmp"
-
-html_header1 = "<title>Enstore Status</title>\n"+\
-               "<meta http-equiv=\"Refresh\" content=\""
-html_header2 = "\">\n"+\
-               "<body bgcolor=\""+bg_color+"\">\n"
-html_header3 = "<pre>\n"
 
 default_dir = "./"
 
@@ -490,13 +479,17 @@ class EnStatusFile(EnFile):
 	# well, nothing has really been written to the file, it is all stored
 	# in a hash.  so we must write it all now
         if self.filedes:
-            self.filedes.write("\nENSTORE SYSTEM STATUS\n")
+            self.write_title()
             keys = self.text.keys()
             keys.sort()
             for key in keys:
                 self.filedes.write(self.text[key])
 
             self.filedes.flush()
+
+    # write out any title information
+    def write_title(self):
+        self.filedes.write("\nENSTORE SYSTEM STATUS\n")
 
     # remove something from the text hash that will be written to the files
     def remove_key(self, key):
@@ -518,23 +511,21 @@ class EnHTMLFile:
         if self.filedes:
             self.filedes.write(self.trailer)
             self.filedes.close()
+	    self.filedes = 0
 
     # include a link to the main inquisitor page and a sideways page of the
     # users choice
-    def page_top_buttons(self, from_flag):
+    def page_top_buttons(self):
         if 0: print self     # lint fix
         str = '<A HREF="'+inq_file_name()+\
               '">Go Back</A>&nbsp&nbsp&nbsp<A HREF="'
-        if from_flag == FROM_ENCP:
-            str = str+status_html_file_name()+'">ENSTORE'
-        elif from_flag == FROM_STATUS:
-            str = str+encp_html_file_name()+'">ENCP'
+        str = str+self.add_2nd_button()
         str = str+' Status Page</A><BR><BR><HR><BR><BR>'
         return str
     
     # reset the header, the refresh has changed
     def set_header(self):
-	self.header = html_header1+repr(self.refresh)+html_header2
+	self.header = self.html_header1+repr(self.refresh)+self.html_header2
 
     # reset the refresh
     def set_refresh(self, value):
@@ -562,10 +553,16 @@ class EncpFile:
 
 class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
 
+    html_header1 = "<title>Enstore Status</title>\n"+\
+                   "<meta http-equiv=\"Refresh\" content=\""
+    html_header2 = "\">\n"+\
+                   "<body bgcolor=\""+BG_COLOR+"\">\n"
+    html_header3 = "<pre>\n"
+
     def __init__(self, file, refresh):
 	EnStatusFile.__init__(self, file)
 	EnHTMLFile.__init__(self, refresh)
-	self.header2 = html_header3
+	self.header2 = self.html_header3
 	self.trailer = "</pre></body>\n"
 
     # open the file and write the header to the file
@@ -575,7 +572,10 @@ class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
         if self.filedes:
             self.filedes.write(self.header)
             self.filedes.write(self.header2)
-            self.filedes.write(self.page_top_buttons(FROM_STATUS))
+            self.filedes.write(self.page_top_buttons())
+
+    def add_2nd_button(self):
+        return encp_html_file_name()+'">ENCP'
 
 class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 
@@ -634,6 +634,12 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 
 class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 
+    html_header1 = "<title>Encp History</title>\n"+\
+                   "<meta http-equiv=\"Refresh\" content=\""
+    html_header2 = "\">\n"+\
+                   "<body bgcolor=\""+BG_COLOR+"\">\n"
+    html_header3 = "<pre>\n"
+
     def __init__(self, file, refresh):
         EnStatusFile.__init__(self, file)
 	EnHTMLFile.__init__(self, refresh)
@@ -645,7 +651,13 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	EnStatusFile.open(self)
         if self.filedes:
             self.filedes.write(self.header)
-            self.filedes.write(self.page_top_buttons(FROM_ENCP))
+            self.filedes.write(self.page_top_buttons())
+
+    # write out any title information
+    def write_title(self):
+        # we don't want a title written out.  the encp information will be
+        # enough
+        pass
 
     # format the line saying there have been no encp requests
     def format_no_encp(self):
@@ -688,6 +700,9 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	else:
 	    str = str+"</TABLE></CENTER>\n"
 	return str+str2+"</PRE>\n"
+
+    def add_2nd_button(self):
+        return status_html_file_name()+'">ENSTORE'
 
 class EnDataFile(EnFile):
 
