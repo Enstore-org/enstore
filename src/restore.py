@@ -123,3 +123,14 @@ class DbTable(db.DbTable):
 				error = error + 1
 
 		return error
+
+if __name__ == "__main__":		# main
+
+	for i in sys.argv[1:]:
+		d = DbTable(i, '', [])
+		print "Checking "+i+" ... "
+		err = d.cross_check()
+		if err:
+			print "Fixing "+i+" ... "
+			d.fix_db()
+
