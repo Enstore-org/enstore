@@ -760,13 +760,13 @@ class STK_MediaLoader(MediaLoaderMethods):
             rt = self.load(v['external_label'], drive, v['media_type'])
             status = rt[0]
             if status != e_errors.OK:      # mount returned error
-                return status
+                return status, 0, None
 
             time.sleep(cleanTime)  # wait cleanTime seconds
             rt = self.unload(v['external_label'], drive, v['media_type'])
             status = rt[0]
-            if status != 0:      # dismount returned error
-                return status
+            if status != e_errors.OK
+                return status, 0, None
             Trace.log(e_errors.INFO,"STK Clean returned %s"%(rt,))
 
         retTicket = vcc.get_remaining_bytes(v['external_label'])
