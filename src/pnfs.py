@@ -15,7 +15,6 @@ import fcntl
 
 # enstore imports
 import Trace
-import lockfile
 import e_errors
 try:
     import Devcodes # this is a compiled enstore module
@@ -170,47 +169,6 @@ class Pnfs:
         #self.utime()
         self.pstatinfo()
 
-    ##########################################################################
-
-    # lock/unlock the file
-    # this doesn't work - no nfs locks available
-    def readlock(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            return
-        try:
-            f = open(self.pnfsFilename,'r')
-        # if we can not open the file, we can't set the times either
-        except:
-            return
-
-        if 0:
-            try:
-                # I can't find these in python -
-                #  got them from /usr/include/sys/file.h
-                # LOCK_EX 2    /* Exclusive lock.  */
-                # LOCK_UN 8    /* Unlock.  */
-                # LOCK_NB 4    /* Don't block when locking.  */
-                fcntl.flock(f.fileno(),2+4)
-                fcntl.flock(f.fileno(),8)
-                Trace.log(e_errors.INFO, "locked/unlocked - worked, a miracle")
-            except:
-                exc,msg,tb=sys.exc_info()
-                Trace.log(e_errors.INFO, "Could not lock or unlock %s: %s"%
-                          (self.pnfsFilename, msg))
-
-        if 0:
-            try:
-                lockfile.readlock(f)
-                lockfile.unlock(f)
-                Trace.log(e_errors.INFO, "locked/unlocked - worked, a miracle")
-            except:
-                exc,msg,tb=sys.exc_info()
-                Trace.log(e_errors.INFO, "Could not lock or unlock %s: %s"%
-                          (self.pnfsFilename, msg))
-
-        f.close()
-
-    ##########################################################################
 
     # write a new value to the specified file layer (1-7)
     # the file needs to exist before you call this
