@@ -32,17 +32,22 @@ import Trace
 
 def write_to_hsm(input, output,
                  config_host, config_port,
-                 list=0, chk_crc=1,
+                 ilist=0, chk_crc=1,
                  pri=1, delpri=0, agetime=0,
                  t0=0):
     if t0==0:
         t0 = time.time()
     Trace.trace(6,"{write_to_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
-                " config_port="+repr(config_port)+" list="+repr(list)+\
+                " config_port="+repr(config_port)+" list="+repr(ilist)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
     tinfo = {}
     tinfo["abs_start"] = t0
+
+    # check if there special d0sam printing requested. This is designated by
+    # the having bit 2^12 set (4096)
+    d0sam = (ilist & 0x1000) !=0
+    list = ilist & 0x0fff
 
     if list>2:
         print "Getting clients, storing/checking local info   cumt=",\
@@ -400,12 +405,14 @@ def write_to_hsm(input, output,
         format = "  %s -> %s : %d bytes copied to %s at"+\
                  " %s MB/S  requestor:%s     cumt= %f"
 
-        if list or ninput>1:
+        if list:
             print format %\
                   (inputlist[i], outputlist[i], fsize,\
                    done_ticket["fc"]["external_label"],\
                    tinfo1["rate"+repr(i)], uinfo["uname"],\
                    time.time()-t0)
+        if d0sam:
+            print "hello igor - write"
 
         logc.send(log_client.INFO, 2, format,
                   inputlist[i], outputlist[i], fsize,
@@ -432,7 +439,7 @@ def write_to_hsm(input, output,
     msg ="Complete: "+repr(total_bytes)+" bytes in "+repr(ninput)+" files"+\
           " in "+repr(tf-t0)+"S.  Overall rate = "+\
           repr(done_ticket["MB_per_S"])+" MB/S"
-    if list or ninput>1:
+    if list:
         print msg
 
     # tell library manager we are done - this allows it to delete our unique id in
@@ -449,17 +456,22 @@ def write_to_hsm(input, output,
 
 def read_from_hsm(input, output,
                   config_host, config_port,
-                  list=0, chk_crc=1,
+                  ilist=0, chk_crc=1,
                   pri=1, delpri=0, agetime=0,
                   t0=0):
     if t0==0:
         t0 = time.time()
     Trace.trace(6,"{read_from_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
-                " config_port="+repr(config_port)+" list="+repr(list)+\
+                " config_port="+repr(config_port)+" list="+repr(ilist)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
     tinfo = {}
     tinfo["abs_start"] = t0
+
+    # check if there special d0sam printing requested. This is designated by
+    # the having bit 2^12 set (4096)
+    d0sam = (ilist & 0x1000) !=0
+    list = ilist & 0x0fff
 
     if list>2:
         print "Getting clients, storing/checking local info   cumt=",\
@@ -812,12 +824,14 @@ def read_from_hsm(input, output,
             format = "  %s -> %s : %d bytes copied from %s at"+\
                      " %s MB/S  requestor:%s     cumt= %f"
 
-            if list or ninput>1:
+            if list:
                 print format %\
                       (inputlist[j], outputlist[j], fsize,\
                        done_ticket["fc"]["external_label"],\
                        tinfo["rate"+repr(j)], uinfo["uname"],\
                        time.time()-t0)
+            if d0sam:
+                print "hello igor - read"
 
             logc.send(log_client.INFO, 2, format,
                       inputlist[j], outputlist[j], fsize,
@@ -844,7 +858,7 @@ def read_from_hsm(input, output,
     msg = "Complete: "+repr(total_bytes)+" bytes in "+repr(ninput)+" files"+\
           " in"+repr(tf-t0)+"S.  Overall rate = "+\
           repr(done_ticket["MB_per_S"])+" MB/s"
-    if list or ninput>1:
+    if list:
         print msg
 
     if list > 3:
@@ -1152,6 +1166,7 @@ class encp(interface.Interface):
         self.pri = 1     # lowest priority
         self.delpri = 0  # priority doesn't change
         self.agetime = 0 # priority doesn't age
+        self.d0sam = 0   # no special sam listings
 
         host = 'localhost'
         port = 0
@@ -1168,7 +1183,7 @@ class encp(interface.Interface):
 
         the_options = self.config_options()+\
                       self.list_options()+\
-                      ["nocrc","pri=","delpri=","agetime="] +\
+                      ["nocrc","pri=","delpri=","agetime=", "d0sam"] +\
                       self.help_options()
 
         Trace.trace(16,"}encp.options options="+repr(the_options))
