@@ -3,6 +3,13 @@ static char rcsid[] = "@(#)$Id$";
 #include <stdlib.h>
 #include <string.h>
 #include "ftt_private.h"
+
+#ifdef WIN32
+#include <io.h>
+#include <process.h>
+#define geteuid() -1
+#endif
+
 extern int errno;
 
 void ftt_to_upper( char *p ) ;

@@ -3,11 +3,17 @@ static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
 #include <string.h>
 #include <ftt_private.h>
+#include <ctype.h>
 
 #ifdef WIN32
 #include <io.h>
 #include <process.h>
+#include <windows.h>
+
 #define geteuid() -1
+#define bzero ZeroMemory
+
+
 #else
 #include <unistd.h>
 #endif
@@ -468,7 +474,7 @@ printinq(inqdata *inq)
          putchar('\n');
 }
 
-ftt_inquire(ftt_descriptor d) {
+int ftt_inquire(ftt_descriptor d) {
 
     static unsigned char 
 	inquiry[6] = { 0x12, 0x00, 0x00, 0x00, 255, 0x00};
@@ -491,7 +497,7 @@ ftt_inquire(ftt_descriptor d) {
 /*
  This is a guess at what we need to format an ait cartridge - does not work
 */
-ftt_format_ait(ftt_descriptor d, int size) {
+int ftt_format_ait(ftt_descriptor d, int size) {
 
 # define MS31_LEN 22
 # define MS32_LEN 22
@@ -514,7 +520,6 @@ ftt_format_ait(ftt_descriptor d, int size) {
         medbuf[MS11_LEN],
         bigbuf[2047];
     int res;
-    int i;
     int parttotal;
 
 
@@ -629,7 +634,7 @@ ftt_format_ait(ftt_descriptor d, int size) {
 /*
   Use mode sense 0x3f to get all modesense pages and print them
 */
-ftt_modesense(ftt_descriptor d) {
+int ftt_modesense(ftt_descriptor d) {
 
     static unsigned char 
 	mod_sen3f[6] = { 0x1a, 0x00, 0x3f, 0x00, 255, 0x00},
@@ -678,7 +683,7 @@ ftt_modesense(ftt_descriptor d) {
  use log sense 0x0 to get a list of log sense pages, then get each page in turn
  and print it
 */
-ftt_logsense(ftt_descriptor d) {
+int ftt_logsense(ftt_descriptor d) {
 
     static unsigned char 
 	logsense0h[10]={0x4d, 0x00, 0x40, 0x00, 0x00,0x00,0x00, 0x10, 0x00, 0x00},

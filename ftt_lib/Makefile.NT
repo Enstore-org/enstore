@@ -99,7 +99,8 @@ LIB_OBJS= \
 	"$(SRCDIR)\ftt_stats.obj" \
 	"$(SRCDIR)\ftt_async.obj" \
 	"$(SRCDIR)\ftt_higher.obj" \
-	"$(SRCDIR)\ftt_rdwr.obj"
+	"$(SRCDIR)\ftt_rdwr.obj" \
+	"$(SRCDIR)\ftt_version.obj" 
 
 $(FTT_LIB) : "$(LIBDIR)" $(LIB_OBJS)
     $(LIB32)  @<<

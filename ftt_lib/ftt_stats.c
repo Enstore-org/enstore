@@ -273,9 +273,10 @@ ftt_get_stat_ops(char *name) {
 int
 ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     int res;
-    int hwdens;
+
 
 #ifndef WIN32
+    int hwdens;
     int failures = 0;
     int i;
     unsigned char buf[512];

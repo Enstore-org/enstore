@@ -12,6 +12,7 @@ int ftt_describe_error_WIN();
 #endif
 
 int ftt_describe_error();
+int ftt_verify_blank(ftt_descriptor d);
 
 /*
 ** ftt_eprintf call...
