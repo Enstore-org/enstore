@@ -160,6 +160,8 @@ def check_volume(vol):
 			bfile['sanity_cookie'] = (long(bfile['sanity_cookie'][0]), long(bfile['sanity_cookie'][1]))
 		if type(bfile['size']) == type(1):
 			bfile['size'] = long(bfile['size'])
+		if type(bfile['complete_crc']) == type(1):
+			bfile['complete_crc'] = long( bfile['complete_crc'])
 		if ddiff(pfile, bfile):
 			if verbose:
 				print 'pdb:', `pfile`
