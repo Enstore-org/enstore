@@ -199,7 +199,7 @@ def flush_pending_jobs(self, status, external_label=None, jobtype=None):
 
 # return a list of busy volumes for a given file family
 def busy_vols_in_family (self, vc, family_name):
-    Trace.trace(11,"busy_vols_in_family family: %s"%(family_name,))
+    Trace.trace(12,"busy_vols_in_family family: %s"%(family_name,))
     vols = []
     write_enabled = 0
     # look in the list of work_at_movers
@@ -209,23 +209,36 @@ def busy_vols_in_family (self, vc, family_name):
 	if fn == family_name:
 	    vols.append(w["fc"]["external_label"])
             vol_info = vc.inquire_vol(w["fc"]["external_label"])
-            Trace.trace(11,"busy_vols_in_family: system inhibit: %s"%(vol_info['system_inhibit'][1],))
+            Trace.trace(12,"busy_vols_in_family: system inhibit: %s"%(vol_info['system_inhibit'][1],))
             if vol_info['system_inhibit'][1] == 'none':
                 # if volume can be potentially written increase number
                 # of write enabled volumes that are currently at work
                 # further comparison of this number with file family width
                 # tells if write work can be given out
                 write_enabled = write_enabled + 1
+
+    # volume can also be in the delayed dismount list
+    for w in self.del_dismount_list.list:
+        if w.has_key("file_family") and w["file_family"] == family_name:
+            if w.has_key("external_label"):
+                Trace.trace(11,"busy_vols_in_family. DEL DISM label %s"%(w["external_label"],))
+                if not w["external_label"] in vols:
+                    vols.append(w["external_label"])
+                    vol_info = vc.inquire_vol(w["external_label"])
+                    if vol_info['system_inhibit'][1] == 'none':
+                        write_enabled = write_enabled + 1
+
+    
     # now check if any volume in this family is still mounted
     work_movers = []
     for mv in movers:
-        Trace.trace(11,"busy_vols_in_family. Mover : %s"%(mv,))
-        Trace.trace(11,"busy_vols_in_family. Mover file_family: %s"%(mv["file_family"],))
+        Trace.trace(12,"busy_vols_in_family. Mover : %s"%(mv,))
+        Trace.trace(12,"busy_vols_in_family. Mover file_family: %s"%(mv["file_family"],))
 	if (mv.has_key("external_label") and
             mv.has_key("file_family") and
             mv["file_family"] == family_name):
 	    vol_info = vc.inquire_vol(mv["external_label"])
-            Trace.trace(11,"busy_vols_in_family vol %s"%(vol_info,))
+            Trace.trace(12,"busy_vols_in_family vol %s"%(vol_info,))
 	    if vol_info["status"][0] != e_errors.OK: continue
 	    if vol_info['at_mover'][0] != 'unmounted':
 		# volume is potentially available if not unmounted
@@ -246,13 +259,13 @@ def busy_vols_in_family (self, vc, family_name):
                         vol_info['system_inhibit'][1] == 'none'):
                         write_enabled = write_enabled + 1
             # check if this mover can do the work
-            Trace.trace(11,"busy_vols_in_family.mover:%s,state:%s,at_mover:%s"%\
+            Trace.trace(12,"busy_vols_in_family.mover:%s,state:%s,at_mover:%s"%\
                         (mv['mover'],mv['state'],repr(vol_info['at_mover'])))
 	    if (vol_info['at_mover'][0] == 'mounted' and
                 mv['mover'] == vol_info['at_mover'][1] and 
 		(mv['state'] == 'idle_mover'or mv['state'] == 'summoned')):
 		work_movers.append(mv)
-    Trace.trace(11,"busy_vols_in_family. vols %s. movers %s"%\
+    Trace.trace(12,"busy_vols_in_family. vols %s. movers %s"%\
                 (repr(vols), repr(work_movers)))
     return vols, work_movers, write_enabled
 
@@ -400,7 +413,8 @@ def next_work_any_volume(self):
                 continue
 
 	    # check if mover that already has mounted volume can do the
-	    # work and, if yes, summon it 
+	    # work and, if yes, summon it
+            mover_summoned = 0
 	    for mov in work_movers:
 		# found mover that can do the work: check if we can
 		# write to the volume belonging to this mover
@@ -417,31 +431,35 @@ def next_work_any_volume(self):
                     # summon this mover
                     summon_mover(self, mov, w)
                     # and return no work to the idle requester mover
-                    return {"status" : (e_errors.NOWORK, None)}, force_summon
+                    #continue
+                    mover_summoned = 1
+                    break
+                    #return {"status" : (e_errors.NOWORK, None)}, force_summon
 		else:
                     w["reject_reason"] = (v_info['status'][0],v_info['status'][1])
 		    Trace.trace(11,"next_work_any_volume:can_write_volume returned %s" %
                                 (v_info['status'],))
 
+            if not mover_summoned:
+                Trace.trace(11,"next_work_any_volume: request next write volume for %s.%s"%(w["vc"]["file_family"],w["vc"]["wrapper"]))
+                # width not exceeded, ask volume clerk for a new volume.
+                first_found = 0
+                v = self.vcc.next_write_volume (w["vc"]["library"],
+                                                w["wrapper"]["size_bytes"],
+                                                w["vc"]["file_family"], 
+                                                w["vc"]["wrapper"],
+                                                vol_veto_list,
+                                                first_found)
+                # If the volume clerk returned error - return
+                if v["status"][0] != e_errors.OK:
+                    w["status"] = v["status"]
+                    w["reject_reason"] = (v["status"][0],v["status"][1])
+                    return w, force_summon
 		
-            # width not exceeded, ask volume clerk for a new volume.
-            first_found = 0
-            v = self.vcc.next_write_volume (w["vc"]["library"],
-                                      w["wrapper"]["size_bytes"],
-                                      w["vc"]["file_family"], 
-				      w["vc"]["wrapper"],
-				      vol_veto_list,
-                                      first_found)
-            # If the volume clerk returned error - return
-	    if v["status"][0] != e_errors.OK:
-		w["status"] = v["status"]
-                w["reject_reason"] = (v["status"][0],v["status"][1])
-		return w, force_summon
-		
-            # found a volume that has write work pending - return it
-	    w["fc"]["external_label"] = v["external_label"]
-	    w["fc"]["size"] = w["wrapper"]["size_bytes"]
-	    break
+                # found a volume that has write work pending - return it
+                w["fc"]["external_label"] = v["external_label"]
+                w["fc"]["size"] = w["wrapper"]["size_bytes"]
+                break
 
         # alas, all I know about is reading and writing
         else:
@@ -1231,6 +1249,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    mv = find_mover(mticket, movers)
             if w["status"][0] == e_errors.VOL_SET_TO_FULL:
                 # dismount unconditionally
+                Trace.trace(12,"DISMOUNT 1")
                 dismount_vol = 1
             else:
                 # check if delayed_dismount is set
@@ -1266,13 +1285,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                         if mvr_found:
                             if not mvr.has_key("del_dism"):
                                 # no delayed dismount: flag dismount
+                                Trace.trace(12,"DISMOUNT 2")
                                 dismount_vol = 1
                             else:
                                 # do not dismount, rather send no work
                                 self.reply_to_caller({'work': 'nowork'})
                                 Trace.trace(16,"have_bound_volume delayed dismount %s"%(w,))
                                 return
-                        else: dismount_vol = 1
+                        else:
+                            Trace.trace(12,"DISMOUNT 3")
+                            dismount_vol = 1
                 except:
                     e_errors.handle_error()
                     # no delayed dismount: flag dismount
@@ -1451,6 +1473,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def schedule(self):
         while 1:
             w, force = next_work_any_volume(self)
+            Trace.trace(11,"schedule:FORCE_SUMMON %s"%(force,))
             if w["status"][0] == e_errors.OK or \
 	       w["status"][0] == e_errors.NOWORK:
                 if force:
@@ -1461,7 +1484,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.pending_work.delete_job(w)
 	    send_regret(self, w)
             self.force_summon()
-	    Trace.trace(14,"schedule: Error detected %s" % (w,))
+	    Trace.trace(11,"schedule: Error detected %s" % (w,))
 
     # load mover list form the configuration server
     def load_mover_list(self, ticket):
