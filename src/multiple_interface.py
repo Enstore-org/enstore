@@ -146,8 +146,8 @@ def rates(interfaces):
     tdiff = t1-t0
     ret = {}
     for interface in interfaces:
-        r0, s0 = st0[interface]
-        r1, s1 = st1[interface]
+        r0, s0 = st0.get(interface, (0, 0))
+        r1, s1 = st1.get(interface, (0, 0)) 
         rrate = (r1-r0)/tdiff
         srate = (s1-s0)/tdiff
         ret[interface] = (rrate, srate)

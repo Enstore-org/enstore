@@ -19,7 +19,11 @@ import enroute
 import runon
 import pdb
 
-UDP_fixed_route = 0
+#UDP_fixed_route = 0
+
+##############################################################################
+# The following three functions read in the enstore.conf file.
+##############################################################################
 
 def find_config_file():
     config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
@@ -88,9 +92,11 @@ def get_config():
         _cached_config = read_config_file(find_config_file())
     return _cached_config
 
+##############################################################################
+# The following two functions parse the config dictionary.
+##############################################################################
 
-
-
+#Returns the 'interface' sub dictionary.
 def get_interfaces():
     config = get_config()
     if not config:
@@ -104,6 +110,7 @@ def get_interfaces():
 
     return interfaces
 
+#Returns the dictionary, that represents one interface line in entore.conf.
 def get_interface_info(interface):
     config = get_config()
     if not config:
@@ -113,6 +120,10 @@ def get_interface_info(interface):
         return
 
     return interface_dict[interface]
+
+##############################################################################
+# The following function selects which CPU to run the process on.
+##############################################################################
 
 def runon_cpu(interface):
     config = get_config()
@@ -128,43 +139,63 @@ def runon_cpu(interface):
         else:
             Trace.log(e_errors.INFO, "runon(%s)" % (cpu,))
 
-def set_route(interface_ip, dest):
+##############################################################################
+# The following two functions manipulate the routing table.
+##############################################################################
+
+def set_route(dest, interface_ip):
     config = get_config()
     if not config:
         return
 
+    for interface in get_interfaces():
+	if interface_ip == config['interface'][interface]['ip']:
+	    break
+    else:
+	return
+
+    for interface in get_interfaces():
+	if dest == config['interface'][interface]['ip']:
+	    break
+    else:
+	return
+
     err=enroute.routeAdd(dest, interface_ip)
     if err:
-        Trace.log(e_errors.ERROR, "set_route(%s, %s) failed"%(dest, interface_ip))
-    return
+        Trace.log(e_errors.ERROR,
+		  "set_route(%s, %s) failed"%(dest, interface_ip))
 
-    # The following is the previous code and is commented out
-    # interface_dict = config.get('interface', {})
+def unset_route(dest):
+    config = get_config()
+    if not config:
+        return
 
-    # interface_details = {}
-    # for interface in interface_dict.keys():
-    #     if interface_dict[interface]['ip'] == interface_ip:
-    #         interface_details = interface_dict[interface]
+    for interface in get_interfaces():
+	if dest == config['interface'][interface]['ip']:
+	    break
+    else:
+	return
 
-    # gw = interface_details.get('gw', None)
-    # if gw is not None and dest is not None:
-    #     err=enroute.routeDel(dest)
-    #     #SENDING THINGS TO THE LOG FILE FROM THIS FUNCTION IS BAD!  IF DONE,
-    #     # AN INFINITE LOOP OCCURS.
-    #     #if err:
-    #     #    Trace.log(e_errors.INFO,
-    #     #              "enroute.routeDel(%s) returns %s" % (dest, err))
-    #     #else:
-    #     #    Trace.log(e_errors.INFO, "enroute.routeDel(%s)" % (dest,))
-    #     err=enroute.routeAdd(dest, gw)
-    #     #if err:
-    #     #    Trace.log(e_errors.INFO,
-    #     #              "enroute.routeAdd(%s,%s) returns %s" % (dest, gw, err))
-    #     #else:
-    #     #    Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
+    err=enroute.routeDel(dest)
+    if err:
+        Trace.log(e_errors.ERROR,
+		  "unset_route(%s) failed"%(dest,))
 
-    # return interface_details
+##############################################################################
+# The following three functions select an interface based on various criteria.
+##############################################################################
 
+#Return the hostip, as a string, that appears on the 'hostip=' line in
+# the enstore.conf file.
+def get_default_interface_ip():
+    config = get_config()
+    if not config:
+        return socket.gethostbyname(socket.gethostname())
+    hostip = config.get('hostip', None)
+    if hostip:
+        return hostip
+    else:
+        return socket.gethostbyname(socket.gethostname())
 
 def choose_interface(dest=None):
     interfaces = get_interfaces()
@@ -176,25 +207,10 @@ def choose_interface(dest=None):
         weight = get_interface_info(interface).get('weight', 1.0)
         choose.append((-weight, random.random(), interface))
     choose.sort()
-    junk1, junk2, interface = choose[0]
-    
-    runon_cpu(interface)
-    set_route(interface, dest)
-
+    junk, junk, junk, interface = choose[0]
     return get_interface_info(interface)
 
-def get_default_interface_ip():
-    config = get_config()
-    if not config:
-        return socket.gethostbyname(socket.gethostname())
-    hostip = config.get('hostip', None)
-    if hostip:
-        return hostip
-    else:
-        return socket.gethostbyname(socket.gethostname())
-    
-    
-def check_load_balance(mode = 0, dest = None):
+def check_load_balance(mode = None, dest = None):
     #mode should be 0 or 1 for "read" or "write"
     config = get_config()
     if not config:
@@ -214,44 +230,31 @@ def check_load_balance(mode = 0, dest = None):
         recv_rate, send_rate = rate_dict[interface]
         recv_rate = recv_rate/weight
         send_rate = send_rate/weight
+	total_rate = (recv_rate + send_rate)/weight
         if mode==1: #writing
             #If rates are equal on different interfaces, randomize!
             choose.append((send_rate, -weight, random.random(), interface))
+	elif mode==0: #reading
+	    choose.append((recv_rate, -weight, random.random(), interface))
         else:
-            choose.append((recv_rate, -weight, random.random(), interface))
+            choose.append((total_rate, -weight, random.random(), interface))
     choose.sort()
-    rate, junk1, junk2, interface = choose[0]
-    #Trace.log(e_errors.INFO, "chose interface %s, %s rate=%s" % (
-    #    interface, {0:"recv",1:"send"}.get(mode,"?"), rate))
-    interface_details = interface_dict[interface]
-    cpu = interface_details.get('cpu')
-    if cpu is not None:
-        err = runon.runon(cpu)
-        if err:
-            Trace.log(e_errors.ERROR, "runon(%s): failed, err=%s" % (cpu, err))
-        else:
-            Trace.log(e_errors.INFO, "runon(%s)" % (cpu,))
-            
-    gw = interface_details.get('gw')
-    if gw is not None and dest is not None:
-        err=enroute.routeDel(dest)
-        if err:
-            Trace.log(e_errors.INFO,
-                      "enroute.routeDel(%s) returns %s" % (dest, err))
-        else:
-            Trace.log(e_errors.INFO, "enroute.routeDel(%s)" % (dest,))
-        err=enroute.routeAdd(dest, gw)
-        if err:
-            Trace.log(e_errors.INFO,
-                      "enroute.routeAdd(%s,%s) returns %s" % (dest, gw, err))
-        else:
-            Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
+    junk, junk, junk, interface = choose[0]
+    return get_interface_info(interface)
 
-    return interface_details
+##############################################################################
+# The following function sets up an interface for outgoing data.
+##############################################################################
 
-# set config file, if any, once for all
+def setup_interface(dest, interface_ip):
+    #Some architecures (like IRIX) attach a network card to a processor.
+    # make sure the process runs on the correct cpu for the interface selected.
+    interface_dict = get_config().get('interface')
+    for interface in interface_dict.keys():
+	if interface_dict[interface]['ip'] == interface_ip:
+	    #pass in the interface (ie. eg0, eth0)
+	    runon_cpu(interface)
 
-if get_config():
-    if get_config().get('hostip', None):
-        if get_config().get('set_UDP_route', None):
-            UDP_fixed_route = 1
+    unset_route(dest)
+    set_route(dest, interface_ip)
+
