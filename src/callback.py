@@ -1,6 +1,11 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import time
 import sys
@@ -112,14 +117,42 @@ def timeout_recv(sock,nbytes,timeout=15*60):
             #Hopefully, this situation is different than other situations
             # that were all previously lumped together as "error".
             continue
-        return sock.recv(nbytes)
 
+        data_string = sock.recv(nbytes)
+        if data_string == "":
+            #According to python documentation when recv() returns the empty
+            # string the other end has closed the connection.
+            
+            try:
+                #Verify if the connection is still up.
+                sock.getpeername()
+            except socket.error, msg:
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): getpeername: %s" % str(msg))
+                
+            try:
+                #Verify if there is an error on the socket.
+                socket_error = sock.getsockopt(socket.SOL_SOCKET,
+                                               socket.SO_ERROR)
+                if socket_error != 0:
+                    Trace.log(e_errors.ERROR,
+                             "timeout_recv(): socket error: %s" % socket_error)
+            except socket.error, msg:
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): getsockopt: %s" % str(msg))
+                
+            #If there is no error, try again.
+            Trace.log(e_errors.ERROR, "timeout_recv(): received no data")
+
+        return data_string
+        
     #timedout
+    Trace.log(e_errors.ERROR, "timeout_recv(): timedout")
     return ""
 
 # read a complete message
 def read_tcp_raw(sock, timeout=15*60):
-    tmp = timeout_recv(sock,8, timeout) 
+    tmp = timeout_recv(sock,8, timeout)
     try:
         bytecount = int(tmp)
     except:
