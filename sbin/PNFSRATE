@@ -1,5 +1,25 @@
-#!/bin/sh
+#!/bin/sh -xv
 
-python $ENSTORE_DIR/sbin/pnfsRate.py --mountpoint /pnfs/sam/mammoth --database 10 --sleeptime=5  --genhtml --all --lssizecmd="d0ensrv1 /diska/pnfs/db" > /fnal/ups/prd/www_pages/enstore/pnfsRate.html 2>/fnal/ups/prd/www_pages/enstore/pnfsRate.errors
+# $Id$
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+
+case $node in
+  stken*) gang=stken
+	  mountpoint="/pnfs/eagle"
+          ndb=30
+	  lssizecmd="stkensrv1 /diska/pnfs/db"
+          ;;
+   d0en*) gang=d0en
+	  mountpoint="/pnfs/sam/mammoth"
+          ndb=30
+	  lssizecmd="d0ensrv1 /diska/pnfs/db"
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+
+
+python $ENSTORE_DIR/sbin/pnfsRate.py --mountpoint $mountpoint --database $ndb --sleeptime=5  --genhtml --all --lssizecmd="$lssizecmd" > /fnal/ups/prd/www_pages/enstore/pnfsRate.html 2>/fnal/ups/prd/www_pages/enstore/pnfsRate.errors
 
 
