@@ -23,30 +23,36 @@ cd $ENSTORE_DIR/etc
 
 # the configuration server needs to be the 1st thing started
 echo "$What Configuration Server on $config_host, port $config_port, using file $config_file"
+
 if [ $ping_only -eq 0 ] ; then
   python $ENSTORE_DIR/src/configuration_server.py --config_host=$config_host --config_port=$config_port --config_file=$config_file &
   echo $! >> `uname -n`-configuration_pids
-fi
 
-python $ENSTORE_DIR/src/configuration_client.py --config_host=$config_host --config_port=$config_port --alive
-if [ $? -ne 0 ] ; then
+else
+
+  python $ENSTORE_DIR/src/configuration_client.py --config_host=$config_host --config_port=$config_port --alive
+  if [ $? -ne 0 ] ; then
     echo "   ...Configuration Server not pingable..."
-    if [ $ping_only -eq 0 ] ; then cd $place; exit 1; fi
+  fi
+
 fi
 
 ################################################################################################################################################
 
 # volume clerk
 echo "$What Volume Clerk"
+
 if [ $ping_only -eq 0 ] ; then
   python $ENSTORE_DIR/src/volume_clerk.py --config_host=$config_host --config_port=$config_port &
   echo $! >> `uname -n`-volume_clerk_pids
-fi
 
-python $ENSTORE_DIR/src/volume_clerk_client.py --config_host=$config_host --config_port=$config_port --alive
-if [ $? -ne 0 ] ; then
-  echo "   ...Volume Clerk not pingable..."
-  if [ $ping_only -eq 0 ] ; then cd $place; exit 1; fi
+else
+
+  python $ENSTORE_DIR/src/volume_clerk_client.py --config_host=$config_host --config_port=$config_port --alive
+  if [ $? -ne 0 ] ; then
+    echo "   ...Volume Clerk not pingable..."
+  fi
+
 fi
 
 
@@ -54,15 +60,18 @@ fi
 
 # file clerk
 echo "$What File Clerk"
+
 if [ $ping_only -eq 0 ] ; then
   python $ENSTORE_DIR/src/file_clerk.py --config_host=$config_host --config_port=$config_port &
   echo $! >> `uname -n`-file_clerk_pids
-fi
 
-python $ENSTORE_DIR/src/file_clerk_client.py --config_host=$config_host --config_port=$config_port --alive
-if [ $? -ne 0 ] ; then
-  echo "   ...File Clerk not pingable..."
-  if [ $ping_only -eq 0 ] ; then cd $place; exit 1; fi
+else
+
+  python $ENSTORE_DIR/src/file_clerk_client.py --config_host=$config_host --config_port=$config_port --alive
+  if [ $? -ne 0 ] ; then
+    echo "   ...File Clerk not pingable..."
+  fi
+
 fi
 
 ################################################################################################################################################
@@ -74,12 +83,14 @@ for i in $enstore_libraries; do
   if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/library_manager.py --config_host=$config_host --config_port=$config_port $i &
     echo $! >> `uname -n`-library_manager_pids
-  fi
 
-  python $ENSTORE_DIR/src/library_manager_client.py --config_host=$config_host --config_port=$config_port --alive $i
-  if [ $? -ne 0 ] ; then
+  else
+
+    python $ENSTORE_DIR/src/library_manager_client.py --config_host=$config_host --config_port=$config_port --alive $i
+    if [ $? -ne 0 ] ; then
       echo "   ...$i Library Manager not pingable..."
-      if [ $ping_only -eq 0 ] ; then cd $place; exit 1; fi
+    fi
+
   fi
 
 done
@@ -93,13 +104,15 @@ for i in $enstore_media_changers; do
   if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/media_changer.py --config_host=$config_host --config_port=$config_port $i &
     echo $! >> `uname -n`-media_changer_pids
-  fi
 
-  python $ENSTORE_DIR/src/media_changer_client.py --config_host=$config_host --config_port=$config_port --alive $i 0 0
-  if [ $? -ne 0 ] ; then
-      echo "   ...$i Media Changer not pingable..."
-      if [ $ping_only -eq 0 ] ; then cd $place; exit 1; fi
-  fi
+  else
+
+    python $ENSTORE_DIR/src/media_changer_client.py --config_host=$config_host --config_port=$config_port --alive $i 0 0
+    if [ $? -ne 0 ] ; then
+        echo "   ...$i Media Changer not pingable..."
+    fi
+
+ fi
 
 done
 
@@ -113,14 +126,10 @@ for i in $enstore_movers; do
   if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/mover.py --config_host=$config_host --config_port=$config_port $i &
     echo $! >> `uname -n`-mover_pids
-  fi
 
-  if [ $ping_only -eq 1 ] ; then
+  else
     echo "   ...No ping test for $i Mover...(yet)"
-  fi
-  if [ $? -ne 0 ] ; then
-      echo "   ...$i Mover not pingable..."
-      if [ $ping_only -eq 0 ] ; then cd $place; exit 1; fi
+
   fi
 
 done
@@ -128,3 +137,4 @@ done
 ################################################################################################################################################
 
 cd $place
+

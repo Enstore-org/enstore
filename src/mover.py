@@ -197,24 +197,25 @@ class Mover :
                                 remaining_bytes,
                                 eod_cookie,wr_err,rd_err,wr_mnt,rd_mnt)
                         self.have_bound_volume_next()
-                        self.send_user_last({"status" : "user_protocol_error"})
+                        self.send_user_last({"status" : "Mover: "\
+                                             +"user_protocol_error"})
                         return
 
                 elif media_full :
                         ss.set_system_readonly(ticket["external_label"])
                         self.unilateral_unbind_next()
-                        self.send_user_last({"status" : "retry"})
+                        self.send_user_last({"status" : "Mover: retry"})
                         return
 
                 elif media_error :
                         ss.set_system_readonly(ticket["external_label"])
-                        self.send_user_last({"status" : "retry"})
+                        self.send_user_last({"status" : "Mover: retry"})
                         self.unilateral_unbind_next()
                         return
 
                 elif drive_error :
                         ss.set_hung(ticket["external_label"])
-                        self.send_user_last({"status" : "retry"})
+                        self.send_user_last({"status" : "Mover: retry"})
                         self.unilateral_unbind_next()
                         #since we will kill ourselves, tell the volume mgr
                         #now....
@@ -285,13 +286,13 @@ class Mover :
 
                 if media_error :
                         ss.set_system_readonly(ticket["external_label"])
-                        self.send_user_last({"status" : "retry"})
+                        self.send_user_last({"status" : "Mover: retry"})
                         self.unilateral_unbind_next()
                         return
 
                 elif drive_error :
                         ss.set_hung(ticket["external_label"])
-                        self.send_user_last({"status" : "retry"})
+                        self.send_user_last({"status" : "Mover: retry"})
                         self.unilateral_unbind_next()
                         #since we will kill ourselves, tell the volume mgr
                         #now....

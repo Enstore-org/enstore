@@ -22,13 +22,13 @@ class VolumeClerkMethods(DispatchingWorker) :
         try:
             external_label = ticket["external_label"]
         except KeyError:
-            ticket["status"] = key+" is missing"
+            ticket["status"] = "Volume Clerk: "+key+" is missing"
             self.reply_to_caller(ticket)
             return ticket
 
         # can't have 2 with same label
         if dict.has_key(external_label) :
-            ticket["status"] = "volume already exists"
+            ticket["status"] = "Volume Clerk: volume already exists"
             self.reply_to_caller(ticket)
             return ticket
 
@@ -38,7 +38,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             try:
                 record[key] = ticket[key]
             except KeyError:
-                ticket["status"] = key+" is missing"
+                ticket["status"] = "Volume Clerk: "+key+" is missing"
                 self.reply_to_caller(ticket)
                 return ticket
 
@@ -94,7 +94,8 @@ class VolumeClerkMethods(DispatchingWorker) :
             try:
                 msize = sizes[ticket['media_type']]
             except :
-                ticket['status'] = "unknown media type = unknown blocksize"
+                ticket['status'] = "Volume Clerk: "\
+				   +"unknown media type = unknown blocksize"
                 self.reply_to_caller(ticket)
                 return ticket
             record['blocksize'] = msize
@@ -110,7 +111,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             del dict[ticket["external_label"]]
             ticket["status"] = "ok"
         except KeyError:
-            ticket["status"] = "no such volume"
+            ticket["status"] = "Volume Clerk: no such volume"
         self.reply_to_caller(ticket)
 
 
@@ -168,7 +169,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             return vol
 
         # nothing was available
-        ticket["status"] = "no new volume"
+        ticket["status"] = "Volume Clerk: no new volumes available"
         self.reply_to_caller(ticket)
         return ticket
 
@@ -197,7 +198,8 @@ class VolumeClerkMethods(DispatchingWorker) :
             record["status"] = "ok"
 
         except KeyError:
-            record["status"] = "no such volume - or badly formed ticket"
+            record["status"] = "Volume Clerk: no such volume"\
+			       +"- or badly formed ticket"
 
         self.reply_to_caller(record)
 
@@ -208,7 +210,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             ticket = old
             ticket["status"] = "ok"
         except KeyError:
-            ticket["status"] = "no such volume"
+            ticket["status"] = "Volume Clerk: no such volume"
         self.reply_to_caller(ticket)
 
 
@@ -220,7 +222,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             dict[key] = record # THIS WILL JOURNAL IT
             record["status"] = "ok"
         except KeyError:
-            record["status"] = "no such volume"
+            record["status"] = "Volume Clerk: no such volume"
         self.reply_to_caller(record)
         return record
 

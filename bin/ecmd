@@ -46,6 +46,7 @@ stat=0
 case $cmd in
   start|enstore-start)
     $ENSTORE_DIR/bin/enstore-start
+    $ENSTORE_DIR/bin/enstore-start --ping
     stat=$?
     ;;
   ping)

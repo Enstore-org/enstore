@@ -74,7 +74,7 @@ class ConfigurationDict(DispatchingWorker) :
         try :
             out_ticket = self.configdict[ticket["lookup"]]
         except KeyError:
-            out_ticket = {"status" : "nosuchname"}
+            out_ticket = {"status" : "Configuration Server: nosuchname"}
         self.reply_to_caller(out_ticket)
 
     # return a dump of the dictionary back to the user
@@ -90,7 +90,7 @@ class ConfigurationDict(DispatchingWorker) :
             list = 1
             out_ticket = {"status" : self.load_config(configfile,list)}
         except KeyError:
-            out_ticket = {"status" : "nosuchname"}
+            out_ticket = {"status" : "Configuration Server: no such name"}
         self.reply_to_caller(out_ticket)
 
 

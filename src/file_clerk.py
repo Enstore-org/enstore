@@ -45,7 +45,7 @@ class FileClerkMethods(DispatchingWorker) :
             # look up in our dictionary the request bit field id
             finfo = dict[ticket["bfid"]]
         except KeyError :
-            self.reply_to_caller({"status" : "bfid not found" })
+            self.reply_to_caller({"status" : "File Clerk: bfid not found" })
             return
 
         # copy all file information we have to user's ticket
@@ -87,7 +87,7 @@ class FileClerkMethods(DispatchingWorker) :
             # look up in our dictionary the request bit field id
             finfo = dict[ticket["bfid"]]
         except KeyError :
-            self.reply_to_caller({"status" : "bfid not found" })
+            self.reply_to_caller({"status" : "File Clerk: bfid not found" })
             return
 
         # ask the volume clerk server which library has "external_label" in it
