@@ -369,15 +369,22 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # this is the file writing thread
     def make_server_status_html_file(self):
 	while 1:
-	    self.server_status_file_event.wait(SERVER_STATUS_THREAD_TO)
-	    if self.server_status_file_event.isSet() or \
-	       self.exit_now_event.isSet():
-		self.do_server_status_write()
+	    try:
+		self.server_status_file_event.wait(SERVER_STATUS_THREAD_TO)
+		if self.server_status_file_event.isSet() or \
+		   self.exit_now_event.isSet():
+		    self.do_server_status_write()
+		    self.server_status_file_event.clear()
+		if self.exit_now_event.isSet():
+		    enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
+					       "Exiting write of status files thread")
+		    return
+	    except:
+		# this is the write thread.  catch anything, report it and
+		# carry on.
 		self.server_status_file_event.clear()
-	    if self.exit_now_event.isSet():
-		enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
-					   "Exiting write of status files thread")
-		return
+		Trace.handle_error()
+		inq.serve_forever_error(inq.log_name+"WT")
 
     # signal the thread that the server status file can be written
     def write_server_status_file(self):
