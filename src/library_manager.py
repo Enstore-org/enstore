@@ -1228,7 +1228,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
         if mticket.has_key('returned_work') and mticket['returned_work']:
             # put this ticket back into the pending queue
-            Trace.trace(11, "mover_error put returned work back to pending queue %s",
+            Trace.trace(11, "mover_error put returned work back to pending queue %s"%
                         (mticket['returned_work'],))
             rq, status = self.pending_work.put(mticket['returned_work'])
             # return
