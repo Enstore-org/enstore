@@ -45,9 +45,10 @@ def backup_dbase(dbHome):
     filelist = map(string.strip,os.popen("db_archive -s  -h"+dbHome).readlines())
     
     for name in filelist:
-        (nkeys, size) = get_size(dbHome,name)
-        stmsg = "%s :  Number of keys = %s  Database size = %s"%(name,nkeys,size)
-        logthis(e_errors.INFO, stmsg)
+        stmsg = ""
+        ## (nkeys, size) = get_size(dbHome,name)
+        ## stmsg = "%s :  Number of keys = %s  Database size = %s"%(name,nkeys,size)
+        ## logthis(e_errors.INFO, stmsg)
         fp = open(name+".stat", "w")
         fp.write(stmsg)
 	fp.close()
@@ -196,19 +197,9 @@ if __name__=="__main__":
         hst_bck = backup_config['host']
     except:
 	hst_bck = hst_local
-
-  
-    logthis(e_errors.INFO, "Stop to backup databases")
-    os.system("enstore stop")
-    
     logthis(e_errors.INFO, "Start database backup")
     backup_dbase(dbHome)
     logthis(e_errors.INFO, "End database backup")
-
-    logthis(e_errors.INFO, "Restarting after database backup")
-    os.system("enstore Estart `uname -n`")
-    time.sleep(10)
-
     logthis(e_errors.INFO, "Start volume backup")
     os.system("enstore volume --backup")
     logthis(e_errors.INFO, "End  volume backup")
