@@ -218,7 +218,8 @@ def swap(f):
 	# handle library
 	if not f_b.volume in cbvolume:
 		fix_library(f_b.volume)
-		cbvolume.append(f_b.volume)
+		if doit:
+			cbvolume.append(f_b.volume)
 
 	# check size
 	if long(f_o.size) != long(f_b.size):
