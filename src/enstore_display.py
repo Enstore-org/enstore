@@ -76,6 +76,8 @@ def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
 
     f = _font_cache.get((height_wanted, width_wanted, len(fit_string), family))
     if f:
+        return f
+        #Why do this?  MWZ
         if width_wanted and f.measure(fit_string) > width_wanted:
             pass
         else:
@@ -1404,6 +1406,7 @@ class Display(Tkinter.Canvas):
             self.after_cancel(self.after_animation_id)
             self.after_cancel(self.after_clients_id)
             self.after_cancel(self.after_idle_id)
+            self.after_cancel(self.after_reinititalize_id)
             if self.after_reposition_id:
                 self.after_cancel(self.after_reposition_id)
         except AttributeError:
@@ -1424,11 +1427,12 @@ class Display(Tkinter.Canvas):
         except AttributeError:
             pass
 
-    def reinititalize(self, event):
+    def reinititalize(self, event=None):
         self.after_cancel(self.after_timer_id)
         self.after_cancel(self.after_animation_id)
         self.after_cancel(self.after_clients_id)
         self.after_cancel(self.after_idle_id)
+        self.after_cancel(self.after_reinititalize_id)
         self._reinit = 1
         self.quit()
 
@@ -1870,6 +1874,7 @@ class Display(Tkinter.Canvas):
         self.after_animation_id = self.after(30, self.connection_animation)
         self.after_clients_id = self.after(30, self.disconnect_clients)
         self.after_idle_id = self.after(30, self.display_idle)
+        self.after_reinititalize_id = self.after(3600000, self.reinititalize)
         self.after_reposition_id = None
         Tkinter.Tk.mainloop(self)
         self.undraw()
