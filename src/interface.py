@@ -318,6 +318,8 @@ class Interface:
 	        self.mail_node=value
             elif opt == "--alarm" :
                 self.alarm = 1
+            elif opt == "--patrol_file" :
+                self.patrol_file=1
             elif opt == "--root_error" :
                 self.root_error = value
             elif opt == "--severity" :
