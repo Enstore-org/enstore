@@ -10,7 +10,7 @@ Enstore Data Storage System
 <li><a href="#volmaps">1.1.1 Volume Maps</a>
 <li><a href="#encp">1.2 ENCP</a>
 <li><a href="#encp_throttle">1.2.1 Throttling in <em>encp</em></a>
-<li><a href="#encp_list_from hsm">1.2.2 Specifying lists of files when reading from the HSM</a>
+<li><a href="#encp_list_from hsm">1.2.2 Specifying lists of files when reading from or writing to the HSM</a>
 <li><a href="#servers">1.3 Enstore servers</a>
 <li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
 <li><a href="#file_clerk">1.3.2 File Clerk</a>
@@ -285,32 +285,52 @@ for example, someone forking off 200 copy requests,
 since at most 15 will be active in the system at any time.
 
 <h3><a name="encp_list_from hsm">
-1.2.2 Specifying lists of files when reading from the HSM
+1.2.2 Specifying lists of files when reading from or writing to the HSM
 </h3>
 
-Encp duplicates unix cp's behaviour when one tries to read multiple input
-files from the HSM: <br> ecmd encp [options] source... directory<br> That
-is, the final item has to be a directory when specifying an input list.
-There is 1 caveat when reading multiple files using a single encp command:
-there is at most 1 mover processing your request list at a time.  Encp
-scans all your files and groups them according to which volume they are on
-and then submits all the file requests that are on one specific volume,
-reads all the files for that volume from the hsm and then proceeds to the
-next volume.  If you want more than mover active, you should use multiple
-encp commands when you are reading lists of files from more than one
-volume.  The reason why encp uses just one mover is to limit the amount of
-forking it does (and if you want to many forks, then just use many encp
+Encp duplicates unix cp's behaviour when one tries to read or writing
+multiple input files from the HSM: <br> ecmd encp [options]
+source... directory<br> That is, the final item has to be a directory when
+specifying an input list.  There is 1 caveat when specifying multiple files
+using a single encp command: there is at most 1 mover processing your
+request list at a time. If you want more than mover active, you should use
+multiple encp commands when you are reading lists of files from more than
+one volume.  The reason why encp uses just one mover is to limit the amount
+of forking it does (and if you want to many forks, then just use many encp
 commands).
+<p>
 
-Consider the following example (P=/pnfs/enstore/airedale)
+On reads from the HSM, encp scans all your files and groups them according
+to which volume they are on and then submits all the file requests that are
+on one specific volume, reads all the files for that volume from the hsm
+and then proceeds to the next volume.  Encp processes the volumes in any
+order it chooses.
+<p>
+
+On writes to the HSM, encp processes each input file sequentially. Since
+the user must specify a single output directory, all input files belong to
+the same file family, and hence could all go to the same tape (if
+possible). Encp sets a flag,"don't dismount the volume too quickly -
+there's more files coming for the same family", that the mover uses to
+postpone the dismount and thereby bypass the extra times involved in the
+volume manipulations.  Please note that there is no guarantee that all the
+files will go to one tape (there might not be room) or that they will be
+grouped together on the tape (there may be other writes to the same family
+that get intermixed).
+<p>
+
+Consider the following example (P=/pnfs/enstore/airedale) for reading from
+the HSM:
+<p>
 
 There are the following files on flop301: ran-1, ran-2 ran-3, ran-4<br>
 There are the following files on flop302: ran-5, ran-6 ran-7, ran-8<br>
 There are the following files on flop302: ran-9, ran-10 ran-11, ran-12<br>
+<p>
 
 Encp submits the requests for all files on flop301 and reads back those
-files and then does the same for flop302 and flop303. Encp does the volumes
-in any order it chooses.
+files and then does the same for flop302 and flop303.
+<p>
 
 Here is the output of an actual test:
 <pre>
@@ -331,7 +351,7 @@ $ ecmd encp $P/ran-1       $P/ran-2        $P/ran-3        $P/ran-4 \
 /pnfs/enstore/airedale/ran-4 -> /home/bakken/enstore/src/ran-4 : 102400 bytes copied from flop301 at 0.454517460805 MB/S  requestor:bakken     cum= 8.078855
 </pre>
 
-Here is the same transfer, but this time with the "--list" option enabled,
+Here is the same transfer, but this time with the "--verbose=5" option enabled,
 so more details of the transfers are printed out:
 <pre>
 $ ecmd encp --list $P/ran-1       $P/ran-2        $P/ran-3        $P/ran-4 \
@@ -480,6 +500,103 @@ Waiting for final mover dialog    cum= 18.5247290134
 Complete:  1228800  bytes in  12  files  in 18.6140960455 S.  Overall rate =  0.0629563206903  MB/s
 </pre>
 
+Here's an example of writing 4 unix files to the HSM:
+
+<pre>
+Linux-airedale[353] 09:17:37 jon1$ ecmd encp ran-1 ran-2 ran-3 ran-4 $P/test
+  /home/bakken/enstore/test/jon1/ran-1 -> /pnfs/enstore/airedale/test/ran-1 : 10485760 bytes copied to flop306 at 1.11655493497 MB/S  requestor:bakken     cumt= 10.983013
+  /home/bakken/enstore/test/jon1/ran-2 -> /pnfs/enstore/airedale/test/ran-2 : 10485760 bytes copied to flop306 at 1.18191504602 MB/S  requestor:bakken     cumt= 19.482414
+  /home/bakken/enstore/test/jon1/ran-3 -> /pnfs/enstore/airedale/test/ran-3 : 10485760 bytes copied to flop306 at 1.25504795528 MB/S  requestor:bakken     cumt= 27.481132
+  /home/bakken/enstore/test/jon1/ran-4 -> /pnfs/enstore/airedale/test/ran-4 : 10485760 bytes copied to flop306 at 1.02843066309 MB/S  requestor:bakken     cumt= 37.235880
+Complete:  41943040  bytes in  4  files  in 37.239297986 S.  Overall rate =  1.07413410465  MB/s
+</pre>
+
+And here's the same test but with the verbose=5 flag set:
+
+<pre>
+Linux-airedale[368] 09:21:40 jon1$ ecmd encp --verbose=5 ran-1 ran-2 ran-3 ran-4 $P/test/testa
+Getting clients, storing/checking local info   cumt= 0.125026941299
+Connecting to configuration server at  pcfarm9.fnal.gov 7510
+  dt: 0.0242840051651    cumt= 0.151304960251
+csc= <configuration_client.configuration_client instance at 8119fc0>
+u= <udp_client.UDPClient instance at 811a3e8>
+logc= <log_client.LoggerClient instance at 811a580>
+uinfo= {'gname': 'g023', 'uid': 5406, 'gid': 1530, 'fullname': '', 'uname': 'bakken', 'machine': ('Linux', 'airedale', '2.0.35', '#1 Mon Jul 20 08:54:09 CDT 1998', 'i686')}
+Checking input unix files: ['/home/bakken/enstore/test/jon1/ran-1', '/home/bakken/enstore/test/jon1/ran-2', '/home/bakken/enstore/test/jon1/ran-3', '/home/bakken/enstore/test/jon1/ran-4']    cumt= 0.152971982956
+  dt: 0.185861945152    cumt= 0.339438915253
+ninput= 4
+inputlist= ['/home/bakken/enstore/test/jon1/ran-1', '/home/bakken/enstore/test/jon1/ran-2', '/home/bakken/enstore/test/jon1/ran-3', '/home/bakken/enstore/test/jon1/ran-4']
+file_size= [10485760, 10485760, 10485760, 10485760]
+delayed_dismount= 1
+Checking output pnfs files: ['/pnfs/enstore/airedale/test/testa']    cumt= 0.345446944237
+  dt: 0.51175403595    cumt= 0.857663989067
+outputlist= ['/pnfs/enstore/airedale/test/testa/ran-1', '/pnfs/enstore/airedale/test/testa/ran-2', '/pnfs/enstore/airedale/test/testa/ran-3', '/pnfs/enstore/airedale/test/testa/ran-4']
+library= ['airedaledisk', 'airedaledisk', 'airedaledisk', 'airedaledisk']
+file_family= ['jon', 'jon', 'jon', 'jon']
+width= [1, 1, 1, 1]
+pinfo= [{'pstat': (16893, 38392440, 5, 1, 5406, 1530, 512, 901808412, 901808412, 901808412), 'minor': 0, 'rmajor': 0, 'mode': 32798, 'gname': 'g023', 'rminor': 0, 'uid': 5406, 'pnfsFilename': '/pnfs/enstore/airedale/test/testa/ran-1', 'gid': 1530, 'major': 0, 'uname': 'bakken'}, {'pstat': (16893, 38392440, 5, 1, 5406, 1530, 512, 901808412, 901808412, 901808412), 'minor': 0, 'rmajor': 0, 'mode': 32798, 'gname': 'g023', 'rminor': 0, 'uid': 5406, 'pnfsFilename': '/pnfs/enstore/airedale/test/testa/ran-2', 'gid': 1530, 'major': 0, 'uname': 'bakken'}, {'pstat': (16893, 38392440, 5, 1, 5406, 1530, 512, 901808412, 901808412, 901808412), 'minor': 0, 'rmajor': 0, 'mode': 32798, 'gname': 'g023', 'rminor': 0, 'uid': 5406, 'pnfsFilename': '/pnfs/enstore/airedale/test/testa/ran-3', 'gid': 1530, 'major': 0, 'uname': 'bakken'}, {'pstat': (16893, 38392440, 5, 1, 5406, 1530, 512, 901808412, 901808412, 901808412), 'minor': 0, 'rmajor': 0, 'mode': 32798, 'gname': 'g023', 'rminor': 0, 'uid': 5406, 'pnfsFilename': '/pnfs/enstore/airedale/test/testa/ran-4', 'gid': 1530, 'major': 0, 'uname': 'bakken'}]
+p= <pnfs.pnfs instance at 8115a30>
+Requesting callback ports    cumt= 0.862877011299
+  airedale.fnal.gov 7600
+  dt: 0.238645911217    cumt= 1.10273790359
+Calling Config Server to find airedaledisk.library_manager    cumt= 1.10303294659
+   airedale 7517
+  dt: 0.0058319568634    cumt= 1.10947692394
+Sending ticket to airedaledisk.library_manager    cumt= 1.10977995396
+  Q'd: /home/bakken/enstore/test/jon1/ran-1 airedaledisk family: jon bytes: 10485760 dt: 0.0713790655136    cumt= 1.18164396286
+Waiting for mover to call back    cumt= 1.18626201153
+  airedale.fnal.gov 7601 cum: 2.64205896854
+  dt: 1.45555996895    cumt= 2.64386999607
+Sending data for file  /pnfs/enstore/airedale/test/testa/ran-1    cumt= 2.64423692226
+  bytes: 10485760  Socket Write Rate =  2.01092899528  MB/s
+  dt: 4.97282600403    cumt= 7.61788499355
+Waiting for final mover dialog    cumt= 7.61800897121
+  dt: 0.35071003437    cumt= 7.96896100044
+Adding file to pnfs    cumt= 7.96911489964
+  dt: 1.93133103848    cumt= 9.90079092979
+  /home/bakken/enstore/test/jon1/ran-1 -> /pnfs/enstore/airedale/test/testa/ran-1 : 10485760 bytes copied to flop306 at 1.14729553162 MB/S  requestor:bakken     cumt= 9.903162
+Sending ticket to airedaledisk.library_manager    cumt= 9.91201090813
+  Q'd: /home/bakken/enstore/test/jon1/ran-2 airedaledisk family: jon bytes: 10485760 dt: 0.0295230150223    cumt= 9.94205701351
+Waiting for mover to call back    cumt= 9.94686996937
+  airedale.fnal.gov 7601 cum: 10.7699859142
+  dt: 0.822878956795    cumt= 10.7718319893
+Sending data for file  /pnfs/enstore/airedale/test/testa/ran-2    cumt= 10.7721740007
+  bytes: 10485760  Socket Write Rate =  2.1859992052  MB/s
+  dt: 4.57456707954    cumt= 15.3475339413
+Waiting for final mover dialog    cumt= 15.3476879597
+  dt: 0.278494954109    cumt= 15.6264359951
+Adding file to pnfs    cumt= 15.6266009808
+  dt: 2.92102301121    cumt= 18.5479849577
+  /home/bakken/enstore/test/jon1/ran-2 -> /pnfs/enstore/airedale/test/testa/ran-2 : 10485760 bytes copied to flop306 at 1.16245629222 MB/S  requestor:bakken     cumt= 18.549760
+Sending ticket to airedaledisk.library_manager    cumt= 18.5514349937
+  Q'd: /home/bakken/enstore/test/jon1/ran-3 airedaledisk family: jon bytes: 10485760 dt: 0.0314730405807    cumt= 18.5834269524
+Waiting for mover to call back    cumt= 18.5839298964
+  airedale.fnal.gov 7601 cum: 19.4579730034
+  dt: 0.873831033707    cumt= 19.459815979
+Sending data for file  /pnfs/enstore/airedale/test/testa/ran-3    cumt= 19.4601159096
+  bytes: 10485760  Socket Write Rate =  2.0228595011  MB/s
+  dt: 4.94349706173    cumt= 24.4044009447
+Waiting for final mover dialog    cumt= 24.4045529366
+  dt: 0.289401054382    cumt= 24.6942389011
+Adding file to pnfs    cumt= 24.6957499981
+  dt: 1.75857806206    cumt= 26.4547179937
+  /home/bakken/enstore/test/jon1/ran-3 -> /pnfs/enstore/airedale/test/testa/ran-3 : 10485760 bytes copied to flop306 at 1.27029727496 MB/S  requestor:bakken     cumt= 26.456495
+Sending ticket to airedaledisk.library_manager    cumt= 26.4581599236
+  Q'd: /home/bakken/enstore/test/jon1/ran-4 airedaledisk family: jon bytes: 10485760 dt: 0.0315480232239    cumt= 26.4902279377
+Waiting for mover to call back    cumt= 26.4907259941
+  airedale.fnal.gov 7601 cum: 27.4995449781
+  dt: 1.00860905647    cumt= 27.5014169216
+Sending data for file  /pnfs/enstore/airedale/test/testa/ran-4    cumt= 27.5017179251
+  bytes: 10485760  Socket Write Rate =  2.04191980491  MB/s
+  dt: 4.89735198021    cumt= 32.3998779058
+Waiting for final mover dialog    cumt= 32.4000319242
+  dt: 0.259968996048    cumt= 32.6602540016
+Adding file to pnfs    cumt= 32.6604199409
+  dt: 2.11265301704    cumt= 34.7734309435
+  /home/bakken/enstore/test/jon1/ran-4 -> /pnfs/enstore/airedale/test/testa/ran-4 : 10485760 bytes copied to flop306 at 1.20713143087 MB/S  requestor:bakken     cumt= 34.775209
+Complete:  41943040  bytes in  4  files  in 34.7769209146 S.  Overall rate =  1.15018808302  MB/s
+
+</pre>
 <h2><a name="servers">
 1.3 Enstore servers
 </h2>
