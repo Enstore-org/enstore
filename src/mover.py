@@ -149,7 +149,6 @@ class Buffer:
         self._freelist = []
         self.blocksize = blocksize
         self._lock.release()
-        
     
     def push(self, data):
         self._lock.acquire()
@@ -163,7 +162,6 @@ class Buffer:
         self._buf_bytes = self._buf_bytes - len(data)
         self._lock.release()
         return data
-    
         
     def nonzero(self):
         return self.nbytes() > 0
@@ -184,6 +182,7 @@ class Buffer:
             partial=space[:bytes_read]
             self.push(partial)
             self._freespace(space)
+        Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
         return bytes_read
         
     def block_write(self, nbytes, driver):
