@@ -10,6 +10,7 @@ import time
 import errno
 import string
 import socket
+import select
 
 # enstore imports
 import setpath
@@ -1359,6 +1360,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.control_socket.connect(addr)
             callback.write_tcp_obj(self.control_socket, ticket)
+
+            r,w,x = select.select([listen_socket], [], [], 15)
+            if not r:
+                listen_socket.close()
+                return 0
             data_socket, address = listen_socket.accept()
             if not hostaddr.allow(address):
                 data_socket.close()

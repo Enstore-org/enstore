@@ -171,38 +171,28 @@ class LibraryManagerClient(generic_client.GenericClient) :
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"         : work,
-                  "callback_addr" : (host, port),
-                  "unique_id"    : str(time.time()) }
+                  "callback_addr" : (host, port)}
 
         # send the work ticket to the library manager
         ticket = self.send(ticket, self.send_to,self.send_tries)
         if ticket['status'][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"lmc.%s sending ticket %s"%(work,ticket)
+            return ticket
 
-        while 1 :
-            Trace.trace(9,"lmc: accepting")
-            control_socket, address = listen_socket.accept()
-            Trace.trace(9,"lmc: accepted connection from %s"%(address,))
-            if not hostaddr.allow(address):
-                control_socket.close()
-                listen_socket.close()
-                return []
-            new_ticket = callback.read_tcp_obj_new(control_socket)
-            if ticket["unique_id"] == new_ticket["unique_id"] :
-                listen_socket.close()
-                break
-            else:
-                Trace.trace(9, "sent id=%s, recieved id=%s" % (ticket['unique_id'],
-                                                               new_ticket['unique_id']))
+        r,w,x = select.select([listen_socket], [], [], 15)
+        if not r:
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for library manager callback"
+        
+        control_socket, address = listen_socket.accept()
+        listen_socket.close()
+        if not hostaddr.allow(address):
+            control_socket.close()
+            listen_socket.close()
+            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+        ticket = callback.read_tcp_obj_new(control_socket)
+        control_socket.close()
 
-                Trace.trace(9,"lmc.%s: imposter called us back, trying again" %(work,))
-                control_socket.close()
-        ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"lmc."+work+": "\
-                  +"1st (pre-work-read) library manager callback on socket "\
-                  +repr(address)+", failed to setup transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
+            return ticket
 
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
@@ -217,10 +207,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
         done_ticket = callback.read_tcp_obj_new(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"lmc."+work+": "\
-                  +"2nd (post-work-read) library manger callback on socket "\
-                  +repr(address)+", failed to transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
+            return done_ticket
+
         return worklist
 
     # get active volume known to LM
@@ -328,24 +316,29 @@ def do_work(intf):
         pass
     elif  intf.get_work:
         ticket = lmc.getwork()
-        print ticket['pending_work']
-        print ticket['at movers']
+        if enstore_functions.is_ok(ticket):
+            print ticket['pending_work']
+            print ticket['at movers']
     elif  intf.get_susp_vols:
         ticket = lmc.get_suspect_volumes()
-        print ticket['suspect_volumes']
+        if enstore_functions.is_ok(ticket):
+            print ticket['suspect_volumes']
     elif intf.delete_work:
         ticket = lmc.remove_work(intf.work_to_delete)
-        print repr(ticket)
+        if enstore_functions.is_ok(ticket):
+            print ticket
     elif intf.rm_suspect_vol:
         ticket = lmc.remove_suspect_volume(intf.suspect_volume)
     elif intf.rm_active_vol:
         ticket = lmc.remove_active_volume(intf.active_volume)
     elif not intf.priority == -1:
         ticket = lmc.priority(intf.args[1], intf.priority)
-        print repr(ticket)
+        if enstore_functions.is_ok(ticket):
+            print ticket
     elif intf.poll:
         ticket = lmc.poll()
-        print repr(ticket)
+        if enstore_functions.is_ok(ticket):
+            print ticket
     elif intf.vols:
         ticket = lmc.get_active_volumes()
     elif intf.storage_groups:
@@ -353,7 +346,8 @@ def do_work(intf):
 
     elif intf.get_queue != None:
         ticket = lmc.get_queue(intf.get_queue, intf.name)
-        print repr(ticket)
+        if enstore_functions.is_ok(ticket):
+            print ticket
         
     elif (intf.start_draining or intf.stop_draining):
         if intf.start_draining:
@@ -366,7 +360,8 @@ def do_work(intf):
         ticket = lmc.change_lm_state(lock)
     elif (intf.status):
         ticket = lmc.get_lm_state()
-        print "LM state:%s"%(ticket['state'],)
+        if enstore_functions.is_ok(ticket):
+            print "LM state:%s"%(ticket['state'],)
     else:
         intf.print_help()
         sys.exit(0)

@@ -8,6 +8,7 @@ import errno
 import pprint
 import os
 import socket
+import select
 
 # enstore imports
 import generic_client
@@ -64,13 +65,16 @@ class ConfigurationClient(generic_client.GenericClient):
                    'callback_addr'  : (host,port)
                    }
 
-        x=self.send(request, timeout, retry)
+        reply = self.send(request, timeout, retry)
+        r, w, x = select.select([listen_socket], [], [], 15)
+        if not r:
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for configuration server callback"
         control_socket, addr = listen_socket.accept()
-        if hostaddr.allow(addr):
-            d = callback.read_tcp_obj(control_socket)
-        else:
-            d = {}
-        control_socket.close()
+        if not hostaddr.allow(addr):
+            listen_socket.close()
+            control_socket.close()
+            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+        d = callback.read_tcp_obj(control_socket)
         listen_socket.close()
         return d
         
@@ -86,51 +90,36 @@ class ConfigurationClient(generic_client.GenericClient):
         x = self.send(request, timeout, retry)
         return x
 
-
     def alive(self, server, rcv_timeout=0, tries=0):
-        try:
-            x = self.send({'work':'alive'}, rcv_timeout, tries)
-        except errno.errorcode[errno.ETIMEDOUT]:
-	    x = {'status' : (e_errors.TIMEDOUT, None)}
-        return x
+        return self.send({'work':'alive'}, rcv_timeout, tries)
 
     # get list of the Library manager movers
     def get_movers(self, library_manager, timeout=0, retry=0):
         request = {'work' : 'get_movers' ,  'library' : library_manager }
-        x = self.send(request, timeout, retry)
-        return x
+        return self.send(request, timeout, retry)
 
     # get media changer associated with a library manager
     def get_media_changer(self, library_manager, timeout=0, retry=0):
         request = {'work' : 'get_media_changer' ,
                    'library' : library_manager }
-        x = self.send(request, timeout, retry)
-        return x
-
+        return  self.send(request, timeout, retry)
 	
     #get list of library managers
     def get_library_managers(self, ticket, timeout=0, retry=0):
         request = {'work': 'get_library_managers'}
-        x = self.send(request, timeout, retry)
-        return x
-
+        return self.send(request, timeout, retry)
 
     #get list of media changers
     def get_media_changers(self, ticket, timeout=0, retry=0):
         request = {'work': 'get_media_changers'}
-        x = self.send(request, timeout, retry)
-        return x
-
+        return self.send(request, timeout, retry)
 
     # get the configuration dictionary element(s) that contain the specified
     # key, value pair
     def get_dict_entry(self, keyValue, timeout=0, retry=0):
         request = {'work': 'get_dict_element',
                    'keyValue': keyValue }
-        x = self.send(request, timeout, retry)
-        return x
-
-
+        return self.send(request, timeout, retry)
         
 class ConfigurationClientInterface(generic_client.GenericClientInterface):
     def __init__(self, flag=1, opts=[]):

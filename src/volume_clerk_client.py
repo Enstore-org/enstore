@@ -184,7 +184,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
                        'vcc.get_vols: sending ticket: %s'%(ticket,) )
-            raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket %s"%(ticket,)
+            return ticket
 
         while 1:
             control_socket, address = listen_socket.accept()
