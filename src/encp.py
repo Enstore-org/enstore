@@ -714,8 +714,8 @@ def open_control_socket(listen_socket, mover_timeout, verbose):
 
     try:
         ticket = callback.read_tcp_obj(control_socket)
-    except "TCP connection closed":
-        msg = "open_control_socket: TCP connection closed"
+    except e_errors.TCP_EXCEPTION:
+        msg = "open_control_socket:", e_errors.TCP_EXCEPTION
         if verbose > 3:
             print msg
         Trace.log(e_errors.NET_ERROR, msg)
