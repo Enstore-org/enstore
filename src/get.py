@@ -145,14 +145,17 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 	# enabled or disabled.  If enabled, then the listening socket
 	# returned from open_udp_socket is used.  Otherwise, the
 	# original udp socket opened and the beginning is used.
-	#If the routes were changed, then only wait 10 sec. before
+	#If the routes were changed, then only wait WAIT_TIME sec. before
 	# initiating the retry.
+        WAIT_TIME = 120.0 #in seconds
+        SELECT_TIME = 5.0 #in seconds
 	i = 0
-	while i < int(encp_intf.mover_timeout/15):
+	#while i < int(encp_intf.mover_timeout/SELECT_TIME):
+        while i < int(WAIT_TIME / SELECT_TIME):
 	    try:
 		control_socket, mover_address, ticket = \
 				encp.open_control_socket(
-				    listen_socket, 15)
+				    listen_socket, SELECT_TIME)
 		break
 	    except (socket.error, select.error, encp.EncpError), msg:
 		#If a select (or other call) was interupted,
@@ -379,6 +382,10 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         Trace.message(10, pprint.pformat(work_ticket))
         udp_socket.reply_to_caller(work_ticket)
 
+        #It will most likely be a while, so this would be a good time to
+        # perform this maintenance.
+        encp.collect_garbage()
+
 	try:
 	    mover_addr = work_ticket['mover']['callback_addr']
 	except KeyError:
@@ -409,7 +416,6 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
         #Open the data socket.
         try:
-	    time.sleep(1)
             data_path_socket = encp.open_data_socket(mover_addr, local_intf_ip)
 
             if not data_path_socket:
@@ -429,8 +435,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          work_ticket, None,
-                                          None, None, e)
+                                          work_ticket, e)
 
         if not e_errors.is_ok(result_dict):
             #Log the error.
@@ -476,8 +481,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             work_ticket['status'] = (e_errors.TIMEDOUT, "No data received")
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          work_ticket, None,
-                                          None, None, e)
+                                          work_ticket, e)
 
         if not e_errors.is_ok(result_dict):
             #Log the error.
@@ -527,13 +531,13 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          done_ticket, None,
-                                          None, None, e)
+                                          done_ticket, e)
+
         #DELETE THE FOUR FOLOWING Trace.log() CALLS WHEN DONE.
-        Trace.log(e_errors.ERROR, "WORK_TICKET: %s" % str(work_ticket))
-        Trace.log(e_errors.ERROR, "DONE_TICKET: %s" % str(done_ticket))
-        Trace.log(e_errors.ERROR, "RESULT_DICT: %s" % str(result_dict))
-        Trace.log(e_errors.ERROR, "MOVER_DONE_TICKET: %s" % str(mover_done_ticket))
+        #Trace.log(e_errors.ERROR, "WORK_TICKET: %s" % str(work_ticket))
+        #Trace.log(e_errors.ERROR, "DONE_TICKET: %s" % str(done_ticket))
+        #Trace.log(e_errors.ERROR, "RESULT_DICT: %s" % str(result_dict))
+        #Trace.log(e_errors.ERROR, "MOVER_DONE_TICKET: %s" % str(mover_done_ticket))
         if not e_errors.is_ok(result_dict):
             #Copy this element special into work_ticket.
             work_ticket['status'] = done_ticket['status']
@@ -577,8 +581,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         
         # Verify that everything went ok with the transfer.
         mover_result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                                mover_done_ticket, None,
-                                                None, None, e)
+                                                mover_done_ticket, e)
 
         if not e_errors.is_ok(mover_result_dict):
             #Copy this element specially into work_ticket.
@@ -669,8 +672,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
         # Verify that the sizes reported from the mover and encp are good.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          work_ticket, None,
-                                          None, None, e)
+                                          work_ticket, e)
         
         if not e_errors.is_ok(result_dict):
             #Log the error.
@@ -691,8 +693,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
         # Verify that the crcs are correct and handle occordingly.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          work_ticket, None,
-                                          None, None, e)
+                                          work_ticket, e)
 
         if not e_errors.is_ok(result_dict):
             #Log the error.
@@ -1041,8 +1042,7 @@ def readtape_from_hsm(e, tinfo):
         
 	# Verify that everything went ok with the handshake.
         result_dict = encp.handle_retries([request], request,
-                                          ticket, None,
-                                          None, None, e)
+                                          ticket, e)
 
         if not e_errors.is_ok(result_dict):
             # Close these descriptors before they are forgotten about.
@@ -1095,16 +1095,14 @@ def readtape_from_hsm(e, tinfo):
 	    #We timed out.  Handle the error.
 	    error_ticket = {'status' : (e_errors.RESUBMITTING, None)}
 	    result_dict = encp.handle_retries([request], request,
-					       error_ticket, None,
-					       None, None, e)
+					       error_ticket, e)
 	    continue
 
         Trace.message(5, "Received mover ready message.")
         Trace.log(e_errors.INFO, "Received mover ready message.")
 
         result_dict = encp.handle_retries([request], request,
-                                          mover_ready, None,
-                                          None, None, e)
+                                          mover_ready, e)
 
         if not e_errors.is_ok(result_dict):
             # Close these descriptors before they are forgotten about.
@@ -1146,10 +1144,10 @@ def readtape_from_hsm(e, tinfo):
             request['unique_id'] = use_unique_id
             #Store these changes back into the master list.
             requests_per_vol[e.volume][index] = request
-            
-            Trace.message(4, "Preparing to read %s." % request['outfile'])
+
+            Trace.message(4, "Preparing to read %s." % request['infile'])
             Trace.log(e_errors.INFO,
-                      "Preparing to read %s." % request['outfile'])
+                      "Preparing to read %s." % request['infile'])
 
             ################################################################
             #In this function call is where most of the work in transfering
@@ -1350,7 +1348,7 @@ def main(intf):
     # client).  Create them.
     status_ticket = encp.clients(intf)
     if not e_errors.is_ok(status_ticket):
-        encp.final_say(intf, status_ticket)
+        return encp.final_say(intf, status_ticket)
 
     #Log/print the starting encp information.  This depends on the log
     # from the clients() call, thus it should always be after clients().
@@ -1364,15 +1362,15 @@ def main(intf):
 
     done_ticket = readtape_from_hsm(intf, tinfo)
 
-    encp.final_say(intf, done_ticket)
+    return encp.final_say(intf, done_ticket)
     
 
 def do_work(intf):
     delete_at_exit.setup_signal_handling()
 
     try:
-        main(intf)
-	halt(0)
+        exit_status = main(intf)
+	halt(exit_status)
     except SystemExit:
 	halt(1)
 
