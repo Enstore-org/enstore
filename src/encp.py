@@ -142,11 +142,11 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
                 library[0]+".library_manager")
     vticket = csc.get(library[0]+".library_manager")
     Trace.trace(10,"write_to_hsm."+ library[0]+".library_manager at host="+\
-                repr(vticket["host"])+" port="+repr(vticket["port"]))
+                repr(vticket["hostip"])+" port="+repr(vticket["port"]))
 
     tinfo["get_libman"] = time.time() - t1 #--------------------------------End
     if list>1:
-        print "  ",vticket["host"],vticket["port"]
+        print "  ",vticket["hostip"],vticket["port"]
         print "  dt:",tinfo["get_libman"], "   cumt=",time.time()-t0
 
     # loop on all input files sequentially
@@ -204,11 +204,11 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
             tinfo1["tot_to_send_ticket"+repr(i)] = t1 -t0
             system_enabled(p) # make sure system still enabled before submitting
             Trace.trace(7,"write_to_hsm q'ing:"+repr(work_ticket))
-            ticket = u.send(work_ticket, (vticket['host'], vticket['port']))
+            ticket = u.send(work_ticket, (vticket['hostip'], vticket['port']))
             if ticket['status'] != "ok" :
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        "from u.send to " +library[i]+" at "\
-                       +vticket['host']+"/"+repr(vticket['port'])\
+                       +vticket['hostip']+"/"+repr(vticket['port'])\
                        +", ticket[\"status\"]="+ticket["status"])
 
             tinfo1["send_ticket"+repr(i)] = time.time() - t1 #-----------Lap End
@@ -417,7 +417,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
     # tell library manager we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
-    #u.send_no_wait({"work":"done_cleanup"}, (vticket['host'], vticket['port']))
+    #u.send_no_wait({"work":"done_cleanup"}, (vticket['hostip'], vticket['port']))
 
     if list > 3:
 	print "DONE TICKET"
@@ -518,11 +518,11 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     Trace.trace(10,"read_from_hsm calling config server to find file clerk")
     fticket = csc.get("file_clerk")
     Trace.trace(10,"read_from_hsm file clerk at host="+\
-                repr(fticket["host"])+" port="+repr(fticket["port"]))
+                repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
     tinfo["get_fileclerk"] = time.time() - t1 #-----------------------------End
     if list>1:
-        print " ",fticket["host"],fticket["port"]
+        print " ",fticket["hostip"],fticket["port"]
         print "  dt:", tinfo["get_fileclerk"], "   cumt=",time.time()-t0
 
     if list>1:
@@ -536,7 +536,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
         Trace.trace(7,"read_from_hsm calling file clerk for bfid="+\
                     repr(bfid[i]))
         binfo  = u.send({'work': 'bfid_info', 'bfid': bfid[i]},
-                        (fticket['host'],fticket['port']))
+                        (fticket['hostip'],fticket['port']))
         if binfo['status']!='ok':
             pprint.pprint(binfo)
             jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
@@ -589,11 +589,11 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
 
                 # send ticket to file clerk who sends it to right library manger
                 Trace.trace(7,"read_from_hsm q'ing:"+repr(work_ticket))
-                ticket = u.send(work_ticket, (fticket['host'], fticket['port']))
+                ticket = u.send(work_ticket, (fticket['hostip'], fticket['port']))
                 if ticket['status'] != "ok" :
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.read_from_hsm: from"\
-                           +"u.send to file_clerk at "+fticket['host']+"/"\
+                           +"u.send to file_clerk at "+fticket['hostip']+"/"\
                            +repr(fticket['port']) +", ticket[\"status\"]="\
                            +ticket["status"])
                 submitted = submitted+1
@@ -810,7 +810,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
-    #u.send_no_wait({"work":"done_cleanup"}, (fticket['host'], fticket['port']))
+    #u.send_no_wait({"work":"done_cleanup"}, (fticket['hostip'], fticket['port']))
     if list > 3:
 	print "DONE TICKET"
 	pprint.pprint(done_ticket)

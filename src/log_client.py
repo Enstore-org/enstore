@@ -101,7 +101,7 @@ class LoggerClient(generic_client.GenericClient):
             ticket = {'work' : 'log_message',
                       'message' : msg }
             lticket = self.csc.get(self.logger)
-            self.u.send_no_wait(ticket, (lticket['host'], lticket['port']))
+            self.u.send_no_wait(ticket, (lticket['hostip'], lticket['port']))
             return {"status" : "ok"}
         else :
             return {"status" : "wrong_severity_level"}
@@ -125,7 +125,7 @@ class LoggerClient(generic_client.GenericClient):
     def alive(self):
         lticket = self.csc.get("logserver")
         return  self.u.send({'work':'alive'},
-                            (lticket['host'], lticket['port']))
+                            (lticket['hostip'], lticket['port']))
 
 class LoggerClientInterface(interface.Interface):
 

@@ -28,7 +28,7 @@ class MediaLoaderClient(generic_client.GenericClient):
     # send the request to the Media Loader server and then send answer to user
     def send (self, ticket) :
         vticket = self.csc.get(self.media_changer)
-        return  self.u.send(ticket, (vticket['host'], vticket['port']))
+        return  self.u.send(ticket, (vticket['hostip'], vticket['port']))
 
     def loadvol(self, external_label, drive):
         ticket = {'work'           : 'loadvol',

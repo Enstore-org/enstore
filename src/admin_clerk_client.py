@@ -24,7 +24,7 @@ class AdminClerkClient(generic_client.GenericClient) :
     # send the request to the volume clerk server and then send answer to user
     def send (self, ticket) :
         aticket = self.csc.get("admin_clerk")
-        return  self.u.send(ticket, (aticket['host'], aticket['port']))
+        return  self.u.send(ticket, (aticket['hostip'], aticket['port']))
 
     def select(self,criteria,dbname):
         # get a port to talk on and listen for connections

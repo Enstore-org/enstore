@@ -25,7 +25,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
         # who's our library manager that we should send the ticket to?
         lticket = self.csc.get(self.name)
         # send user ticket and return answer back
-        return self.u.send(ticket, (lticket['host'], lticket['port']) )
+        return self.u.send(ticket, (lticket['hostip'], lticket['port']) )
+
 
     def write_to_hsm(self, ticket) :
         return self.send(ticket)

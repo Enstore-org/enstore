@@ -712,7 +712,7 @@ if __name__ == "__main__":
                                                     config_list)
 
     keys = csc.get("volume_clerk")
-    vc =  VolumeClerk((keys['host'], keys['port']), VolumeClerkMethods)
+    vc =  VolumeClerk((keys['hostip'], keys['port']), VolumeClerkMethods)
     vc.set_csc(csc)
 
     # get a logger

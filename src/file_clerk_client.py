@@ -31,8 +31,8 @@ class FileClerkClient(generic_client.GenericClient, \
         # who's our file clerk server that we should send the ticket to?
         vticket = self.csc.get("file_clerk")
         # send user ticket and return answer back
-        Trace.trace(12,"send addr="+repr((vticket['host'], vticket['port'])))
-        s = self.u.send(ticket, (vticket['host'], vticket['port']) )
+        Trace.trace(12,"send addr="+repr((vticket['hostip'], vticket['port'])))
+        s = self.u.send(ticket, (vticket['hostip'], vticket['port']) )
         Trace.trace(12,"}send"+repr(s))
         return s
 

@@ -1,4 +1,4 @@
-###############################################################################
+##############################################################################
 # src/$RCSfile$   $Revision$
 #
 # system import
@@ -132,7 +132,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                     library+".library_manager")
         vmticket = csc.get(library+".library_manager")
         Trace.trace(10,"write_to_hsm."+ library+".library_manager at host="+\
-                    repr(vmticket["host"])+" port="+repr(vmticket["port"]))
+                    repr(vmticket["hostip"])+" port="+repr(vmticket["port"]))
         if vmticket["status"] != "ok":
             pprint.pprint(ticket)
             self.reply_to_caller(vmticket)
@@ -142,7 +142,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # send to library manager and tell user
         u = udp_client.UDPClient()
         Trace.trace(7,"read_from_hsm q'ing:"+repr(ticket))
-        ticket = u.send(ticket, (vmticket['host'], vmticket['port']))
+        ticket = u.send(ticket, (vmticket['hostip'], vmticket['port']))
         self.reply_to_caller(ticket)
         Trace.trace(7,"}read_from_hsm")
         return
@@ -370,7 +370,7 @@ if __name__ == "__main__":
     #   get our port and host from the name server
     #   exit if the host is not this machine
     keys = csc.get("file_clerk")
-    fc = FileClerk( (keys["host"], keys["port"]), FileClerkMethods)
+    fc = FileClerk( (keys["hostip"], keys["port"]), FileClerkMethods)
     fc.set_csc(csc)
 
     # get a logger

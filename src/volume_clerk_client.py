@@ -33,8 +33,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
         Trace.trace(16,'{send')
         vticket = self.csc.get("volume_clerk")
         Trace.trace(16,'send to volume clerk '+\
-                    repr((vticket['host'], vticket['port'])))
-        x = self.u.send(ticket, (vticket['host'], vticket['port']))
+                    repr((vticket['hostip'], vticket['port'])))
+        x = self.u.send(ticket, (vticket['hostip'], vticket['port']))
         Trace.trace(16,'}send '+repr(x))
         return x
 

@@ -100,7 +100,7 @@ class Mover:
 
             # get (possibly new) info asssociated with our volume manager
             lconfig = self.csc.get_uncached(self.library)
-            self.library_manager_host = lconfig["host"]
+            self.library_manager_host = lconfig["hostip"]
             self.library_manager_port = lconfig["port"]
 
         # set our ticket when we announce ourselves to the library manager

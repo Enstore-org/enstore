@@ -180,7 +180,7 @@ if __name__=="__main__":
 
    csc = configuration_client.configuration_client(config_host,config_port,config_list)  
    keys = csc.get("admin_clerk")
-   ac =  AdminClerk((keys['host'], keys['port']), AdminClerkMethods)
+   ac =  AdminClerk((keys['hostip'], keys['port']), AdminClerkMethods)
    ac.set_csc(csc)
    logc = log_client.LoggerClient(csc, "", 'logserver', 0)
    ac.set_logc(logc)

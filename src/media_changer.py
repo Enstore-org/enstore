@@ -237,13 +237,13 @@ if __name__ == "__main__" :
 
     # THIS NEEDS TO BE FIXED -- WE CAN'T BE CHECKING FOR EACH KIND!!!
     if args[0] == 'STK.media_changer' :
-        mc =  STK_MediaLoader((keys['host'], keys['port']),
+        mc =  STK_MediaLoader((keys['hostip'], keys['port']),
                                STK_MediaLoaderMethods)
     elif args[0] == 'FTT.media_changer' :
-        mc =  FTT_MediaLoader((keys['host'], keys['port']),
+        mc =  FTT_MediaLoader((keys['hostip'], keys['port']),
                                FTT_MediaLoaderMethods)
     else :
-        mc =  RDD_MediaLoader((keys['host'], keys['port']),
+        mc =  RDD_MediaLoader((keys['hostip'], keys['port']),
                                MediaLoaderMethods)
     mc.set_csc(csc)
 

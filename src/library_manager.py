@@ -415,7 +415,7 @@ if __name__ == "__main__":
 
     #  set ourself up on that port and start serving
     methods =  LibraryManagerMethods()
-    lm =  LibraryManager( (keys['host'], keys['port']), methods)
+    lm =  LibraryManager( (keys['hostip'], keys['port']), methods)
     lm.set_csc(csc)
 
     # get a logger

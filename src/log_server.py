@@ -180,7 +180,7 @@ if __name__ == "__main__" :
     if list :
         pprint.pprint(keys)
         pprint.pprint(args)
-    logserver =  Logger((keys['host'], keys['port']), LogMethods)
+    logserver =  Logger((keys['hostip'], keys['port']), LogMethods)
 
     logserver.set_csc(csc)
 
