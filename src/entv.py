@@ -1214,6 +1214,8 @@ def main(intf):
         #Force garbage collection while the display is off while awaiting
         # initialization.
         gc.collect()
+        del gc.garbage[:]
+        gc.collect()
         uncollectable_count = len(gc.garbage)
         del gc.garbage[:]
         if uncollectable_count > 0:
