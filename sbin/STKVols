@@ -1,0 +1,66 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*) gang=stken
+          robot="PowderHorn 9310"
+          ;;
+   d0en*) gang=d0en
+          robot="UNKNOWN"
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+
+volfile=/tmp/STKROBOT-VOLUMES-$gang
+
+output=${1:-/dev/tty}
+if [ `echo $output | grep -c /dev/` -eq 0 ] ; then 
+  rm -f $output
+fi
+
+if [ $node = "stkensrv4" ] ; then
+
+cat << EOF >>$output
+<html> <head> <title>$robot Volume Status Page</title> </head>
+<body>
+<body bgcolor="#ffffff" text=#a0a0ff">
+<meta http-equiv="Refresh" content="900">
+<h1><center>$robot Volume Fetch Begin: `date`</center><h1>
+<hr>
+EOF
+
+rm -f $volfile
+
+rsh fntt -l acsss "echo query vol all |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garbx" < /dev/null >>$volfile
+
+cat << EOF >>$output
+<h1><center>$robot Volume Fetch Done : `date`</center><h1>
+<hr>
+EOF
+
+cmd="egrep '0,' $volfile"
+
+cat << EOF >>$output
+<h1> Tapes in the $robot satisfying: $cmd
+<pre>
+EOF
+
+eval $cmd >>$output
+
+cat << EOF >>$output
+</pre>
+<hr>
+<h1><center>$robot Volume Status Page Done : `date`</center><h1>
+<hr>
+</body>
+EOF
+
+else
+  f=STK-VOLUMES.html
+  rm /tmp/$f
+  rcp stkensrv4:$f /tmp/$f
+  cat /tmp/$f >>$output
+fi
