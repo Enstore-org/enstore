@@ -9,6 +9,7 @@
 
 #include <Python.h>		/* all the Py.... stuff */
 #include <assert.h>             /* assert */
+#include <stdlib.h>		/* getenv */
 
 #include "trace.h"		/* trace... */
 
@@ -54,6 +55,33 @@ raise_exception( method_name, ETdesc, va_alist )
 }   /* raise_exception */
 
 
+
+void
+enstore_trace_init( const char *name)
+{
+	char		*ENSTORE_DB;
+	char		buf[200]; /* arbitrary size, big enough for path? */
+
+    /* get the enstore trace directory -
+       ENSTORE_DB (or . if not set) */
+    ENSTORE_DB = getenv( "ENSTORE_DB" );
+    if (ENSTORE_DB == NULL)
+    {   ENSTORE_DB = getenv( "ENSTORE_DIR" );
+	if (ENSTORE_DB == NULL)
+	    ENSTORE_DB = "/tmp";
+	else
+	{   strcpy( buf, ENSTORE_DB );
+	    if (buf[strlen(buf)-1] == '/')
+		buf[strlen(buf)-1] = '\0';	/* strip trailing / */
+	    strcat( buf, "/etc" );
+	    ENSTORE_DB = buf;
+	}
+    }
+    trace_init( name, ENSTORE_DB );
+    return;
+}
+
+
 /******************************************************************************
  * @+Public+@
  * ROUTINE: init_function:  Added by ron on 01-May-1998
@@ -66,14 +94,14 @@ static char init_function_Doc[] = "write to trace_buffer";
 
 static PyObject *
 init_function(  PyObject	*self
-	     , PyObject	*args )
+	      , PyObject	*args )
 {							/* @-Public-@ */
 	char		*name;
 
 
     /*  Parse the arguments */
     PyArg_ParseTuple(  args, "s", &name );
-    trace_init( name );
+    enstore_trace_init( name );
     return (Py_BuildValue(""));
 }   /* init_function */
 
@@ -212,6 +240,7 @@ initTrace()
     TraceErrObject = PyErr_NewException("Trace.error", NULL, NULL);
     if (TraceErrObject != NULL)
 	PyDict_SetItemString(d,"error",TraceErrObject);
-    trace_init( "python trace" );
+
+    enstore_trace_init( "enstore" );
 }
 
