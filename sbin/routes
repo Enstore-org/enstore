@@ -14,6 +14,7 @@ case $node in
           NODES="stkensrv0 stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
                  stkenmvr1a: stkenmvr1b: stkenmvr2a: stkenmvr2b: stkenmvr3a: stkenmvr3b: \
                  stkenmvr4a: stkenmvr4b: stkenmvr5a: stkenmvr5b: stkenmvr6a: stkenmvr6b: \
+		 stkenmvr7a: stkenmvr8a: \
 		 stkendca3a: stkendca4a: stkendca5a: \
                  rip9: rip10:"
           ;;
@@ -38,6 +39,8 @@ case $node in
           ;;
   stkmvr*|d0enmvr*) type=mover
           ;;
+  stkendca*) type=dcache
+          ;;
        *) type=UNKNOWN
           ;;
 esac
@@ -49,10 +52,11 @@ add*)
 
     e=`/sbin/ifconfig eth1`
     eth1=eth1
-    if [ `echo $e | grep -c UP` -eq 0 -o $type = "server" ]; then
+    if [ `echo $e | grep -c UP` -eq 0 -o $type = "server" -o $type = "dcache" ]; then
       eth1=eth0
     fi
 
+    /sbin/route add -host d0ensrv0 eth0
     /sbin/route add -host d0ensrv1 eth0
     /sbin/route add -host d0ensrv2 eth0
     /sbin/route add -host d0ensrv3 eth0
@@ -69,6 +73,9 @@ add*)
     /sbin/route add -host stkendca4a eth0
     /sbin/route add -host stkendca5a eth0
 
+    /sbin/route add -host stkenmvr7a eth0
+    /sbin/route add -host stkenmvr8a eth0
+    
     x=1
     while [ $x -le 22 ]; do
       /sbin/route add -host d0enmvr${x}a  eth0
@@ -94,6 +101,9 @@ add*)
     /sbin/route add -host rip9 eth0
     /sbin/route add -host rip10 eth0
 
+
+    /sbin/route add -host cachen1a eth0
+    /sbin/route add -host cachen2a eth0
 
     if [ "$type" = "server" ]; then
 
@@ -121,6 +131,7 @@ add*)
 ################################################################################
 del*)
 
+    /sbin/route del d0ensrv0
     /sbin/route del d0ensrv1
     /sbin/route del d0ensrv2
     /sbin/route del d0ensrv3
@@ -137,6 +148,9 @@ del*)
     /sbin/route del stkendca4a
     /sbin/route del stkendca5a
 
+    /sbin/route del stkenmvr7a
+    /sbin/route del stkenmvr8a
+
     x=1
     while [ $x -le 22 ]; do
       /sbin/route del d0enmvr${x}a
@@ -145,7 +159,7 @@ del*)
     done
 
     x=1
-    while [ $x -le 5 ]; do
+    while [ $x -le 6 ]; do
       /sbin/route del stkenmvr${x}a
       /sbin/route del stkenmvr${x}b
       x=`expr $x + 1`
@@ -161,6 +175,9 @@ del*)
     /sbin/route del rip8
     /sbin/route del rip9
     /sbin/route del rip10
+
+    /sbin/route del cachen1a
+    /sbin/route del cachen2a
 
     if [ "$type" = "server" ]; then
 
