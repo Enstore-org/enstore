@@ -15,17 +15,6 @@ import string
 def usage():
     print "usage: %s path [path2 [path3 [ ... ]]]"%(sys.argv[0])
 
-if len(sys.argv) == 1 or sys.argv[1] == '--help':
-    usage()
-    sys.exit(0)
-
-intf = option.Interface()
-fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
-generic_client.init_done = 0
-vcc = volume_clerk_client.VolumeClerkClient((intf.config_host, intf.config_port))
-
-ff = {}
-
 def error(s):
     print 'Error:  ', s
 
@@ -128,14 +117,15 @@ def check(f):
 def check_file(f):
     # if f is a directory, recursively check its files
     if os.path.isdir(f):
-        # skip volmap
-        if os.path.split(f)[1] == 'volmap':
-            return
-        if os.access(f, os.R_OK) and os.access(f, os.X_OK):
-            for i in os.listdir(f):
-                check_file(os.path.join(f,i))
-        else:
-            print 'can not access directory', f
+        # skip symbolic link to a directory
+        if not os.path.islink(f):
+            # skip volmap
+            if os.path.split(f)[1] != 'volmap':
+                if os.access(f, os.R_OK) and os.access(f, os.X_OK):
+                    for i in os.listdir(f):
+                        check_file(os.path.join(f,i))
+                else:
+                    print 'can not access directory', f
     elif os.path.isfile(f):
         print f+' ...',
         res = check(f)
@@ -151,6 +141,17 @@ def check_file(f):
         error('unrecognized type of '+f)
 
 if __name__ == '__main__':
+
+    if len(sys.argv) == 1 or sys.argv[1] == '--help':
+        usage()
+        sys.exit(0)
+
+    intf = option.Interface()
+    fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
+    generic_client.init_done = 0
+    vcc = volume_clerk_client.VolumeClerkClient((intf.config_host, intf.config_port))
+
+    ff = {}
 
     for i in sys.argv[1:]:
         check_file(i)
