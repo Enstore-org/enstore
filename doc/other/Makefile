@@ -15,11 +15,6 @@ SHELL = /bin/sh
 	mv $@.tmp $@
 	if [ ! -z  "$(CONVERT)" ] ; then  $(CONVERT) ps:$@ ../WWW/$*.gif ; fi
 
-drawings : any_unmount.ps write_badmount.ps write_error.ps write_tapebusy.ps \
-write.ps write_drivebusy.ps write_notape.ps read_error.ps
-
- 
-
 SBIN=../../bin
 
 # a .dtim file stands for a .gif _and_ a .ps file rendered into the doc area
@@ -57,7 +52,10 @@ all:
 	DOT=`if hash dot 2>/dev/null ; then echo dot ; else echo true ; fi`\
         CONVERT=`if hash convert 2>/dev/null ; then echo convert ; else echo true ; fi ` rest
 
-rest: drawings pics ../obj.ps other
+drawings : any_unmount.ps write_badmount.ps write_error.ps write_tapebusy.ps \
+write.ps write_drivebusy.ps write_notape.ps read_error.ps
+
+rest: drawings pics ../obj.ps
 
 ../obj.ps:
 	./mk_inherit
@@ -80,8 +78,3 @@ clean :
 	@ rm -f *.pyc
 	@ rm -f *.tmp
 	@ rm -f *.ps
-
-
-
-
-
