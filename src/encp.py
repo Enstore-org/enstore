@@ -913,8 +913,9 @@ def write_to_hsm(input_files, output, output_file_family='',
             mycrc = 0
             bufsize = 65536*4 #XXX CGW Investigate this
 
-            Trace.trace(7,"write_to_hsm: sending data to EXfer file=%s, socket=%s bufsize=%s chk_crc=%s"
-                        %(inputlist[i],data_path_socket,bufsize,chk_crc))
+            Trace.trace(7,"write_to_hsm: sending data to EXfer file=%s, sockname=%s, peername=%s, bufsize=%s chk_crc=%s"
+                        %(inputlist[i],data_path_socket.getsockname(),
+                          data_path_socket.getpeername(),bufsize,chk_crc))
 
             statinfo = os.stat(inputlist[i])
 
@@ -1424,8 +1425,9 @@ def read_hsm_files(listen_socket, submitted, requests,
             done_ticket = {'status':(error,"Can't write %s"%(localname,))}
 
 
-        Trace.trace(8,"read_hsm_files: reading data to file %s, socket=%s, bufsize=%s, chk_crc=%s"%
-                    (localname,data_path_socket.getsockname(),bufsize,chk_crc))
+        Trace.trace(8,"read_hsm_files: reading data to file %s, sockname=%s, peername=%s, bufsize=%s, chk_crc=%s"%
+                    (localname,data_path_socket.getsockname(),data_path_socket.getpeername(),
+                     bufsize,chk_crc))
 
         # read file, crc the data if user has request crc check
         if not error:
