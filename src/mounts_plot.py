@@ -23,7 +23,6 @@ jpeg_output_logy_stamp = os.path.join(install_dir, output_file_logy+'_stamp.jpg'
 
 hist_out = output_file+'_hist'
 postscript_hist_out = os.path.join(install_dir, hist_out+'.ps')
-latex_hist_out = os.path.join(install_dir, hist_out+'.tex')
 jpeg_hist_out = os.path.join(install_dir, hist_out+'.jpg')
 jpeg_hist_out_stamp = os.path.join(install_dir, hist_out+'_stamp.jpg')
 
@@ -138,7 +137,7 @@ if __name__ == '__main__':
 		count = count + 1
 		outf.write("%d %d\n"%(count, mtsh[i]))
 		set_xtics = set_xtics + '"%s" %d,'%(i, count)
-		set_label = set_label+'set label %d "%d" at %d,%d\n"%(
+		set_label = set_label+'set label %d "%d" at %d,%d\n'%(
 			count, mtsh[i], count, mtsh[i])
 	outf.close()
 	set_xtics = set_xtics[:-1]+')'
