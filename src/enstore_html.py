@@ -735,12 +735,6 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 			       SIZE="-1", html_escape='OFF'))
 	return HTMLgen.TR(td)
 
-    def write_header_row(self):
-	txt = HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("writes", 
-						     "Writes%s"%(NBSP,))), 
-			   SIZE="+3", html_escape='OFF')
-	return HTMLgen.TR(HTMLgen.TD(txt, colspan=LM_COLS))
-
     def get_in_vol_order(self, table):
 	started_extra_page = 0
 	num_done = 20
@@ -762,7 +756,8 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 		    # add in the header row
 		    rows.insert(0, rhr)
 		    rhr = None
-		num_extra = num_extra + len(rows)
+		# subtract out the header row
+		num_extra = num_extra + len(rows) - 1
 		self.extra_queue_pages[new_key][0].body(rows)
 	    else:
 		rows = self.append_vols(elem)
@@ -774,18 +769,59 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 		table.append(empty_row(LM_COLS))
 		table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
 								'Extra Read Queue Rows (%s)'%(num_extra)),
-						   colspan=4)))
+						   colspan=LM_COLS)))
 
+    def append_ff(self, elem):
+	rows = []
+	rows.append(self.write_row(elem, 1))
+	if self.ff.has_key(elem[5]):
+	    # there are more queue elements for this file family
+	    w_list = self.ff[elem[5]]
+	    for n_elem in w_list:
+		rows.append(self.write_row(n_elem))
+	return rows
+
+    def write_header_row(self):
+	txt = HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("writes", 
+						     "Writes%s"%(NBSP,))), 
+			   SIZE="+3", html_escape='OFF')
+	return HTMLgen.TR(HTMLgen.TD(txt, colspan=LM_COLS))
 
     def get_in_ff_order(self, table):
+	started_extra_page = 0
+	num_done = 20
+	num_extra = 0
 	for elem in self.w_ff:
-	    table.append(self.write_row(elem, 1))
-	    if self.ff.has_key(elem[5]):
-		# there are more queue elements for this file family
-		w_list = self.ff[elem[5]]
-		for n_elem in w_list:
-		    table.append(self.write_row(n_elem))
+	    if num_done > self.max_lm_rows and not self.max_lm_rows == DEFAULT_ALL_ROWS:
+		# we have put the max number on the main page, now make an additional page
+		if not started_extra_page:
+		    started_extra_page = 1
+		    filename = "%s/%s-write.html"%(self.html_dir, self.lm)
+		    new_key = "%s-write"%(self.lm,)
+		    self.extra_queue_pages[new_key] = (EnExtraLmQueuePages(self,
+									   self.lm),
+						       filename)
+		    rhr = self.write_header_row()
 
+		rows = self.append_ff(elem)
+		if rhr:
+		    # add in the header row
+		    rows.insert(0, rhr)
+		    rhr = None
+		# subtract out the header row
+		num_extra = num_extra + len(rows) - 1
+		self.extra_queue_pages[new_key][0].body(rows)
+	    else:
+		rows = self.append_ff(elem)
+		num_done = num_done + len(rows)
+		for row in rows:
+		    table.append(row)
+	else:
+	    if started_extra_page:
+		table.append(empty_row(LM_COLS))
+		table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
+								'Extra Write Queue Rows (%s)'%(num_extra)),
+						   colspan=LM_COLS)))
 
     def other_vol_info(self, table):
 	other_mv = {}
