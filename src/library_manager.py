@@ -1397,14 +1397,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 (wt["unique_id"] == ticket["unique_id"])):
                 ticket['status'] = (e_errors.OK,"Operation in progress")
                 self.reply_to_caller(ticket)
-                format = "write rq. is already in the at mover queue %s (%s) -> %s : library=%s family=%s requester:%s volume_family:%s"
+                format = "write rq. is already in the at mover queue %s (%s) -> %s : library=%s family=%s requester:%s sg:%s"
                 Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
                                                  ticket["unique_id"],
                                                  ticket["wrapper"]["pnfsFilename"],
                                                  ticket["vc"]["library"],
                                                  ticket["vc"]["file_family"],
                                                  ticket["wrapper"]["uname"],
-                                                 ticket['vc']["volume_family"]))
+                                                 ticket['vc']["storage_group"]))
                 return
             
         if not ticket.has_key('lm'):
