@@ -157,18 +157,6 @@ class EncpError(Exception):
     
 ############################################################################
 
-def setup_signal_handling():
-    
-    #Handle all signal not in the known skip list.
-    for sig in range(1, signal.NSIG):
-        if sig not in (signal.SIGTSTP, signal.SIGCONT,
-                       signal.SIGCHLD, signal.SIGWINCH):
-            try:
-                signal.signal(sig, signal_handler)
-            except:
-                sys.stderr.write("Setting signal %s to %s failed.\n" %
-                                 (sig, signal_handler))
-
 def signal_handler(sig, frame):
 
     try:
@@ -187,6 +175,18 @@ def signal_handler(sig, frame):
 
     if sig != signal.SIGTERM: #If they kill, don't do anything.
         quit(1)
+
+def setup_signal_handling():
+    
+    #Handle all signal not in the known skip list.
+    for sig in range(1, signal.NSIG):
+        if sig not in (signal.SIGTSTP, signal.SIGCONT,
+                       signal.SIGCHLD, signal.SIGWINCH):
+            try:
+                signal.signal(sig, signal_handler)
+            except:
+                sys.stderr.write("Setting signal %s to %s failed.\n" %
+                                 (sig, signal_handler))
 
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
@@ -451,7 +451,7 @@ def get_csc(ticket_or_bfid=None):
 
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
-    if config_servers['status'][0] == e_errors.OK:
+    if e_errors.is_ok(config_servers['status']):
         del config_servers['status']
     else:
         return csc
@@ -614,7 +614,7 @@ def clients(config_host,config_port):
         stati={}
         stati["status"] = (e_errors.CONFIGDEAD,"Config at %s port=%s"%
                            (config_host, config_port))
-    if stati['status'][0] != e_errors.OK:
+    if not e_errors.is_ok(stati['status']):
         print_data_access_layer_format("","",0, stati)
         quit()
     
@@ -1443,7 +1443,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             continue
 
         # ok, we've been called back with a matched id - how's the status?
-        if ticket['status'] != (e_errors.OK, None):
+        if not e_errors.is_ok(ticket['status']):
             return None, None, ticket
 
         try:
@@ -1453,7 +1453,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             sys.stderr.write("Sub ticket 'mover' not found.\n")
             sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
             sys.stderr.write(pprint.pformat(ticket)+"\n")
-            if ticket.get('status', (None, None))[0] == e_errors.OK:
+            if e_errors.is_ok(ticket.get('status', (None, None))):
                 ticket['status'] = (str(exc), str(msg))
             return None, None, ticket
 
@@ -1517,7 +1517,7 @@ def submit_one_request(ticket):
     else:
         responce_ticket = lmc.write_to_hsm(ticket)
 
-    if responce_ticket['status'][0] != e_errors.OK :
+    if not e_errors.is_ok(responce_ticket['status']):
         Trace.message(ERROR_LEVEL, "Submition to LM failed: " + \
                       str(responce_ticket['status']))
         Trace.log(e_errors.ERROR,
@@ -1652,9 +1652,9 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
     elif not e_errors.is_retriable(EXfer_ticket['status'][0]):
         rtn_ticket = combine_dict({'exfer':EXfer_ticket}, done_ticket, request)
         rtn_ticket['status'] = EXfer_ticket['status'] #Set this seperately
-    elif done_ticket['status'][0] != (e_errors.OK):
+    elif not e_errors.is_ok(done_ticket['status']):
         rtn_ticket = combine_dict(done_ticket, {'exfer':EXfer_ticket}, request)
-    elif EXfer_ticket['status'][0] != (e_errors.OK):
+    elif not e_errors.is_ok(EXfer_ticket['status']):
         rtn_ticket = combine_dict({'exfer':EXfer_ticket}, done_ticket, request)
         rtn_ticket['status'] = EXfer_ticket['status'] #Set this seperately
     else:
@@ -1890,7 +1890,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             print_data_access_layer_format(infile, outfile, file_size,
                                            error_dictionary)
 
-        if status[0] in e_errors.raise_alarm_errors:
+        if e_errors.is_alarmable(status[0]):
             Trace.alarm(e_errors.WARNING, status[0], {
                 'infile':infile, 'outfile':outfile, 'status':status[1]})
 
@@ -1973,7 +1973,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                                            None, encp_intf)
 
             #If an unrecoverable error occured while resubmitting to LM.
-            if not e_errors.is_retriable(internal_result_dict['status'][0]):
+            if e_errors.is_non_retriable(internal_result_dict['status'][0]):
                 result_dict = {'status':internal_result_dict['status'],
                                'retry':request_dictionary.get('retry', 0),
                                'resubmits':request_dictionary.get('resubmits',
@@ -1981,7 +1981,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                'queue_size':0}
                 Trace.log(e_errors.ERROR, str(result_dict))
             #If a retriable error occured while resubmitting to LM.
-            elif internal_result_dict['status'][0] != e_errors.OK:
+            elif not e_errors.is_ok(internal_result_dict['status'][0]):
                 result_dict = {'status':internal_result_dict['status'],
                                'retry':request_dictionary.get('retry', 0),
                                'resubmits':request_dictionary.get('resubmits',
@@ -2045,14 +2045,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
 
         
         #If an unrecoverable error occured while retrying to LM.
-        if not e_errors.is_retriable(internal_result_dict['status'][0]):
+        if e_errors.is_non_retriable(internal_result_dict['status'][0]):
             result_dict = {'status':internal_result_dict['status'],
                            'retry':request_dictionary.get('retry', 0),
                            'resubmits':request_dictionary.get('resubmits',
                                                               0),
                            'queue_size':len(request_list) - 1}
             Trace.log(e_errors.ERROR, str(result_dict))
-        elif internal_result_dict['status'][0] != e_errors.OK:
+        elif not e_errors.is_ok(internal_result_dict['status'][0]):
             result_dict = {'status':internal_result_dict['status'],
                            'retry':request_dictionary.get('retry', 0),
                            'resubmits':request_dictionary.get('resubmits', 0),
@@ -2104,7 +2104,7 @@ def calculate_rate(done_ticket, tinfo):
     else: #write "to"
         preposition = "to"
     
-    if done_ticket['status'][0] == e_errors.OK:
+    if e_errors.is_ok(done_ticket['status'][0]):
 
         if complete_time != 0:
             tinfo['overall_rate_%s'%(id,)] = MB_transfered / complete_time
@@ -2375,7 +2375,7 @@ def set_pnfs_settings(ticket, intf_encp):
         fcc = file_clerk_client.FileClient(csc, ticket["fc"]["bfid"])
         fc_reply = fcc.set_pnfsid(fc_ticket)
 
-        if fc_reply['status'][0] != e_errors.OK:
+        if not e_errors.is_ok(fc_reply['status'][0]):
             Trace.alarm(e_errors.ERROR, fc_reply['status'][0], fc_reply)
 
         Trace.message(TICKET_LEVEL, "PNFS SET")
@@ -2576,11 +2576,13 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
                                      None, None, None, encp_intf)
-	if result_dict['status'][0] == e_errors.OK:
+        if e_errors.is_ok(result_dict['status'][0]):
 	    ticket['status'] = result_dict['status']
             return ticket
-        elif result_dict['status'][0] == e_errors.RETRY or \
-           e_errors.is_retriable(result_dict['status'][0]):
+        #elif result_dict['status'][0] == e_errors.RETRY or \
+        #   e_errors.is_retriable(result_dict['status'][0]):
+        #    continue
+        elif e_errors.is_retriable(result_dict['status'][0]):
             continue
         else:
             ticket['status'] = result_dict['status']
@@ -2611,10 +2613,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
                                      listen_socket, route_server, None, e)
 
-        if result_dict['status'][0] == e_errors.RETRY or \
-           result_dict['status'][0] == e_errors.RESUBMITTING:
+        if e_errors.is_resendable(result_dict['status'][0]):
             continue
-        elif not e_errors.is_retriable(result_dict['status'][0]):
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
             ticket = combine_dict(result_dict, ticket)
             return ticket
 
@@ -2638,10 +2639,11 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
                                      done_ticket, listen_socket, route_server,
                                      None, e)
         
-        if result_dict['status'][0] == e_errors.RETRY:
+        #if result_dict['status'][0] == e_errors.RETRY:
+        if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket)
             continue
-        elif not e_errors.is_retriable(result_dict['status'][0]):
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket)
             return combine_dict(result_dict, work_ticket)
         else:
@@ -2665,9 +2667,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
             
             close_descriptors(control_socket, data_path_socket, in_fd)
             
-            if result_dict['status'][0] == e_errors.RETRY:
+            if e_errors.is_retriable(result_dict['status'][0]):
                 continue
-            elif not e_errors.is_retriable(result_dict['status'][0]):
+            elif e_errors.is_non_retriable(result_dict['status'][0]):
                 return combine_dict(result_dict, work_ticket)
 
         Trace.message(TRANSFER_LEVEL, "Starting transfer.  elapsed=%s" %
@@ -2699,9 +2701,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
                                      done_ticket, listen_socket,
                                      route_server, None, e)
 
-        if result_dict['status'][0] == e_errors.RETRY:
+        if e_errors.is_retriable(result_dict['status'][0]):
             continue
-        elif not e_errors.is_retriable(result_dict['status'][0]):
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
             return done_ticket
 
         Trace.message(TRANSFER_LEVEL, "File %s transfered.  elapsed=%s" %
@@ -2719,9 +2721,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, listen_socket,
                                      route_server, None, e)
-        if result_dict['status'][0] == e_errors.RETRY:
+        if e_errors.is_retriable(result_dict['status'][0]):
             continue
-        elif not e_errors.is_retriable(result_dict['status'][0]):
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
             return combine_dict(result_dict, work_ticket)
 
         #Update the last access and modification times respecively.
@@ -2735,9 +2737,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, listen_socket,
                                      route_server, None, e)
-        if result_dict['status'][0] == e_errors.RETRY:
+        if e_errors.is_retriable(result_dict['status'][0]):
             continue
-        elif not e_errors.is_retriable(result_dict['status'][0]):
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
             return combine_dict(result_dict, work_ticket)
 
         #Set the UNIX file permissions.
@@ -2757,7 +2759,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         #This error should result in the file being left where it is, but it
         # is still considered a failed transfer (aka. exit code = 1 and
         # data access layer is still printed).
-        if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
+        if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
             print_data_access_layer_format(done_ticket['infile'],
                                            done_ticket['outfile'],
                                            done_ticket['file_size'],
@@ -2840,7 +2842,7 @@ def write_to_hsm(e, tinfo):
 
         #handle_retries() is not required here since submit_write_request()
         # handles its own retrying when an error occurs.
-        if done_ticket['status'][0] != e_errors.OK:
+        if not e_errors.is_ok(done_ticket['status'][0]):
             exit_status = 1
             continue
 
@@ -2868,7 +2870,7 @@ def write_to_hsm(e, tinfo):
 
         #handle_retries() is not required here since write_hsm_file()
         # handles its own retrying when an error occurs.
-        if done_ticket['status'][0] != e_errors.OK:
+        if not e_errors.is_ok(done_ticket['status'][0]):
             exit_status = 1
             continue
 
@@ -3104,7 +3106,7 @@ def get_clerks_info(vcc, fcc, bfid):
 
     fc_ticket = fcc.bfid_info(bfid=bfid)
 
-    if fc_ticket['status'][0] != e_errors.OK:
+    if not e_errors.is_ok(fc_ticket['status'][0]):
         raise EncpError(None,
                         "Failed to obtain information for bfid %s" % bfid,
                         e_errors.EPROTO, fc_ticket)
@@ -3307,9 +3309,9 @@ def submit_read_requests(requests, tinfo, encp_intf):
             
             result_dict = handle_retries(requests_to_submit, req, ticket,
                                          None, None, None, encp_intf)
-            if result_dict['status'][0] == e_errors.RETRY:
+            if e_errors.is_retriable(result_dict['status'][0]):
                 continue
-            elif not e_errors.is_retriable(result_dict['status'][0]):
+            elif e_errors.is_non_retriable(result_dict['status'][0]):
                 #del requests_to_submit[requests_to_submit.index(req)]
                 req['submitted'] = 0 #This in not 1 nor None.
                 break
@@ -3363,15 +3365,17 @@ def read_hsm_files(listen_socket, route_server, submitted,
                                      request_ticket, listen_socket,
                                      route_server, None, e)
 
-        if result_dict['status'][0]== e_errors.RETRY or \
-           result_dict['status'][0]== e_errors.RESUBMITTING:
+        if e_errors.is_resendable(result_dict['status']):
             continue
+        #if result_dict['status'][0]== e_errors.RETRY or \
+        #   result_dict['status'][0]== e_errors.RESUBMITTING:
+        #    continue
         elif result_dict['status'][0]== e_errors.TOO_MANY_RESUBMITS:
             for n in range(files_left):
                 failed_requests.append(request_ticket)
             files_left = 0
             continue
-        elif not e_errors.is_retriable(result_dict['status'][0]):
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
             continue
@@ -3387,7 +3391,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, listen_socket,
                                      route_server, None, e)
-        if not e_errors.is_retriable(result_dict['status'][0]):
+        if e_errors.is_non_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
 
@@ -3428,9 +3432,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
                                      done_ticket, listen_socket,
                                      route_server, None, e)
         
-        if result_dict['status'][0] == e_errors.RETRY:
+        if e_errors.is_retriable(result_dict['status'][0]):
             continue
-        elif not e_errors.is_retriable(result_dict['status'][0]):
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
             continue
@@ -3452,9 +3456,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, listen_socket,
                                      route_server, None, e)
-        if result_dict['status'][0] == e_errors.RETRY:
+        if e_errors.is_retriable(result_dict['status'][0]):
             continue
-        elif not e_errors.is_retriable(result_dict['status'][0]):
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
             continue
@@ -3469,9 +3473,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, listen_socket,
                                      route_server, None, e)
-        if result_dict['status'][0] == e_errors.RETRY:
+        if e_errors.is_retriable(result_dict['status'][0]):
             continue
-        elif not e_errors.is_retriable(result_dict['status'][0]):
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
             continue
@@ -3486,7 +3490,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         #This error should result in the file being left where it is, but it
         # is still considered a failed transfer (aka. exit code = 1 and
         # data access layer is still printed).
-        if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
+        if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
             print_data_access_layer_format(done_ticket['infile'],
                                            done_ticket['outfile'],
                                            done_ticket['file_size'],
@@ -3634,7 +3638,7 @@ def read_from_hsm(e, tinfo):
                           (vol, time.time() - tinfo['encp_start_time']))
 
             if len(requests_failed) > 0 or \
-               data_access_layer_ticket['status'][0] != e_errors.OK:
+               not e_errors.is_ok(data_access_layer_ticket['status'][0]):
                 exit_status = 1 #Error, when quit() called, this is passed in.
                 Trace.message(ERROR_LEVEL,
                               "TRANSFERS FAILED: %s" % len(requests_failed))
@@ -3645,7 +3649,7 @@ def read_from_hsm(e, tinfo):
             bytes = bytes + brcvd
         else:
             #If all submits fail (i.e using an old encp), this avoids crashing.
-            if reply_ticket['status'][0] != e_errors.OK:
+            if not e_errors.is_ok(reply_ticket['status'][0]):
                 data_access_layer_ticket = reply_ticket
             else:
                 data_access_layer_ticket = {}
