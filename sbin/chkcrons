@@ -2,7 +2,14 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-base=/tmp/doesnot/exist
+# the first parameter is the base.  if not entered, use the default
+if [ $# -ge 1 ] ; 
+then
+    base=$1;
+    shift;
+else
+    base=/tmp/doesnot/exist
+fi
 
 convert=/usr/bin/X11/convert
 
