@@ -1092,7 +1092,7 @@ def get_finfo(inputfile, outputfile, e):
         remote_file = inputfile
 
     #These exist for reads and writes.
-    finfo["fullname"] = remote_file
+    finfo["fullname"] = local_file
     finfo["sanity_size"] = 65536
     finfo["size_bytes"] = get_file_size(inputfile)
 
