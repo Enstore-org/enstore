@@ -31,6 +31,7 @@ main(  int	argc
 	int	*i_p; /* to fill buf w/ random ints */
 	char	*file;
 	int	nMB=102;
+	int	sts;
 
     if (argc <= 1)
     {   printf( USAGE, argv[0] );
@@ -60,7 +61,11 @@ main(  int	argc
     printf( "1024*1024*%d=%d   1024*%d=%d\n", nMB, 1024*1024*nMB, nKB, 1024*nKB );
     for (idx=0; idx<((1024*nMB)/nKB); idx++)
     {
-	 write( fd, buf_p, 1024*nKB );
+	 sts = write( fd, buf_p, 1024*nKB );
+	 if (sts == -1)
+	 {   perror( "write error" );
+	     break;
+	 }
     }
 
     close( fd );
