@@ -24,6 +24,7 @@ class FTTDriver(driver.Driver):
         self.ftt = None
         self._bytes_transferred = 0
         self._start_time = None
+        self._total_time = 0
         self._rate = self._last_rate = 0
         
     def open(self, device=None, mode=None, retry_count=10):
@@ -110,7 +111,7 @@ class FTTDriver(driver.Driver):
             return -1
         return file
     
-    def seek(self, target, eot_ok=0):
+    def seek(self, target, eot_ok=0): #XXX is eot_ok needed?
         if type(target)==type(""):
             target = long(target)
         try:
@@ -131,7 +132,7 @@ class FTTDriver(driver.Driver):
             try:
                 self.ftt.skip_fm(target-current)
             except ftt.FTTError, detail:
-                if detail.errno == ftt.EBLANK and eot_ok:
+                if detail.errno == ftt.EBLANK and eot_ok: ##XXX is eot_ok needed?
                     ### XXX Damn, this is unrecoverable (for AIT2, at least). What to do?
                     pass
                 else:
@@ -227,7 +228,7 @@ class FTTDriver(driver.Driver):
             ## We don't want a subsequent "close" to write extra filemarks.
             ## ftt_close_dev is being too helpful in the case where the last operation
             ## was a writefm.  So we tell a lie to ftt...
-            ftt._ftt.ftt_set_last_operation(self.ftt.d, ftt.OP_SKIPFM)
+            ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.errno))
         if r==-1:
