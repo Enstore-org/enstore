@@ -148,7 +148,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             # This amount to time spent inside select should be the value
             # of self.timeout.  However, it has been observed that a
             # sleep/select call specifed to wait 1 sec actually on average
-            # waits 0.9997 seconds (On Linux and SUN, IRIX waits the full
+            # waits 0.9997 seconds (On Linux and SUN; IRIX waits the full
             # second).  This way we can wait the entire time without the
             # possiblity of loosing connections.  The .000001 is one micro-
             # second, the smallest resolution the API specifies.
@@ -157,8 +157,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             try:
                 r,w,ex = select.select(sock_read_list, sock_write_list,
                                        [data_sock], wait_time)
-            except KeyboardInterrupt:
-                raise sys.exc_info()
+            except (KeyboardInterrupt, SystemExit):
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
                 r, w, ex = (None, None, None)
                 
@@ -244,7 +244,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                 raise MonitorError(detail[1])
 
         #Check if the socket is open for reading and/or writing.
-        r, w, ex = select.select([sock], [sock], [], self.timeout)
+        r, w, unused = select.select([sock], [sock], [], self.timeout)
 
         if r or w:
             #Get the socket error condition...
@@ -277,8 +277,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
         listen_sock.listen(1)
 
         #wait for a responce
-        r,w,ex = select.select([listen_sock], [], [listen_sock],
-                               self.timeout)
+        r, unused, unused = select.select([listen_sock], [], [listen_sock],
+                                          self.timeout)
         if not r :
             listen_sock.close()
             #raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
@@ -286,7 +286,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
 
         #Wait for the client to connect creating the data socket used for the
         # encp rate tests.
-        data_sock, address = listen_sock.accept()
+        data_sock, unused = listen_sock.accept()
         listen_sock.close()
 
         #For machines with multiple network interfaces, pick the best one.
@@ -386,11 +386,11 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
     def flush_measurements(self, ticket):
         self.reply_to_caller({"status" : ('ok', "")})
         self._become_html_gen_host(ticket)
-        file = enstore_files.EnFile("%s/%s"%(ticket['dir'], 
+        m_file = enstore_files.EnFile("%s/%s"%(ticket['dir'], 
 					     enstore_constants.NETWORKFILE))
-        file.open()
-        file.write(str(self.page))
-        file.close()
+        m_file.open()
+        m_file.write(str(self.page))
+        m_file.close()
 
 class MonitorServerInterface(generic_server.GenericServerInterface):
 
