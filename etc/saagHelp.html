@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+  <head>
+    <title>Status-At-A-Glance Help</title>
+  </head>
+
+  <body BACKGROUND="enstore.gif" TEXT="#000066">
+    <center><h1>Status-At-A-Glance Help</h1></center>
+
+    <h1>Overview</h1>
+    <B><I>Status-At-A-Glance</I></B> provides the visual status of an Enstore system separated
+into 4 major sub-systems; the Enstore servers, the storage medium (<B>TBD</B>), the network
+between the computers on which Enstore is running and any alarms that have been raised.
+The status for each sub-system as a whole, is presented in a summary section
+at the top of the page followed by the status for individual items within each sub-system.  The
+<I>alarms</I> sub-system does not have a separate section as it represents a toggle of whether
+alarms exist or not.  Once a
+problem has been identified it is expected that the more complete and detailed view of the 
+<A HREF="status_enstore_system.html">Enstore servers</A>, the 
+<A HREF="active_monitor.html">network</A> and the <A HREF="enstore_alarms.html">alarms</A>
+will be examined.
+<P>
+There are 3 levels of status represented on this page -<BR>
+<ul>
+<li><I>No problems</I> indicated by a <IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0">
+<li><I>Minor problem</I> indicated by a <IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0">
+<li><I>Major problem</I> indicated by a <IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0">
+</ul>
+
+In general a <I>Minor problem</I> will indicate that the Enstore system is still operational as a
+whole but some piece of it has a problem which should be investigated.  A <I>Major problem</I>
+will imply that the Enstore system is not operational.  <I>Minor problems</I> may escalate to
+major ones and should not be ignored.
+<P>
+In addition to showing the status of the system, this page will indicate when
+pieces of the Enstore system will be undergoing a scheduled outage by placing a 
+<IMG src="checkmark.gif" height="15" width="15" alt="checkmark.gif" border="0"> after the item
+and including the approximate time of the start of the outage.
+<P>
+Sometimes a server or sub-system item will be known to be down.  In this case, the item will have
+a <strike>line drawn through it</strike>.
+
+The last section on the page is for informational purposes only.  It lists the nodes in the
+Enstore system and the servers that run on each of them.
+
+
+<h1>Enstore Overall Status</h1>
+This section presents a summary of the information on the rest of the page.  The following table
+defines what the different status levels mean for each of the sub-systems.<BR>
+<BR>
+
+<TABLE align="CENTER" cellpadding="3" cellspacing="5" border="2" width="100%" bgcolor="#DFF0FF">
+<CAPTION><FONT color="#770000" size="+2"><STRONG>Status Levels </FONT></CAPTION>
+<TR><TH>Sub-System</TH><TH><IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TH><TH><IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0"></TH><TH><IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0"></TH></TR>
+<TR><TD>enstore</TD>
+    <TD>All elements are marked <IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TD>
+    <TD><ul>
+	<li>The Inquisitor is down
+	<li>Some Movers are down (less than half) for a Library Manager
+	</ul>
+    <TD><ul>
+	<li>At least one of the following is down : Alarm Server, Configuration Server, File 
+		Clerk, Logger, Volume Clerk
+	<li>More than one half of all Movers (for a Library Manager) are down
+	</ul>
+</TR>
+<TR><TD>network</TD>
+    <TD>All elements of the network are marked <IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TD>
+    <TD>&nbsp;</TD>
+    <TD>At least one element of the network is marked <IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0"></TD>
+</TR>
+<TR><TD>alarms</TD>
+    <TD>No alarms have been raised</TD>
+    <TD>&nbsp;</TD>
+    <TD>One or more alarms have been raised</TD>
+</TR>
+</TABLE>
+<P>
+A <IMG src="checkmark.gif" height="15" width="15" alt="checkmark.gif" border="0"> next to one of
+these sub-systems, indicates the entire sub-system will be unavailable.  The approximate time
+when the outage will begin is included underneath the server in parenthesis.
+<P>
+If one of these sub-systems is <strike>crossed out</strike>, the entire system can be considered to be
+down.
+
+<h1>Enstore Individual Server Status</h1>
+This section presents the status of each individual server in Enstore.<BR><BR>
+
+<TABLE align="CENTER" cellpadding="3" cellspacing="5" border="2" width="100%" bgcolor="#DFF0FF">
+<CAPTION><FONT color="#770000" size="+2"><STRONG>Status Levels </FONT></CAPTION>
+<TR><TH>Sub-System</TH><TH><IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TH><TH><IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0"></TH><TH><IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0"></TH></TR>
+<TR><TD>Alarm Server</TD>
+    <TD>Responds to an <I>alive</I> request
+    <TD>&nbsp;</TD>
+    <TD>Does not respond to an <I>alive</I> request
+</TR>
+<TR><TD>Configuration Server</TD>
+    <TD>Responds to an <I>alive</I> request
+    <TD>&nbsp;</TD>
+    <TD>Does not respond to an <I>alive</I> request
+</TR>
+<TR><TD>File Clerk</TD>
+    <TD>Responds to an <I>alive</I> request
+    <TD>&nbsp;</TD>
+    <TD>Does not respond to an <I>alive</I> request
+</TR>
+<TR><TD>Logger</TD>
+    <TD>Responds to an <I>alive</I> request
+    <TD>&nbsp;</TD>
+    <TD>Does not respond to an <I>alive</I> request
+</TR>
+<TR><TD>Inquisitor</TD>
+    <TD>Responds to an <I>alive</I> request
+    <TD>&nbsp;</TD>
+    <TD>Does not respond to an <I>alive</I> request
+</TR>
+<TR><TD>Volume clerk</TD>
+    <TD>Responds to an <I>alive</I> request
+    <TD>&nbsp;</TD>
+    <TD>Does not respond to an <I>alive</I> request
+</TR>
+<TR><TD>All Library Managers</TD>
+    <TD>Responds to an <I>alive</I> request
+    <TD><UL>
+	<LI>More than half of the associated Movers are marked <IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0">
+	<LI>In an <I>offline</I> state 
+	<LI>In a <I>draining</I> state.
+	</UL></TD>
+    <TD>Does not respond to an <I>alive</I> request
+</TR>
+<TR><TD>All Media Changers</TD>
+    <TD>Responds to an <I>alive</I> request
+    <TD>&nbsp;</TD>
+    <TD>Does not respond to an <I>alive</I> request
+</TR>
+<TR><TD>All Movers</TD>
+    <TD>Responds to an <I>alive</I> request
+    <TD>Is in a <I>draining</I> state</TD>
+    <TD>Does not respond to an <I>alive</I> request
+</TR>
+
+
+</TABLE>
+
+<h1>Enstore Network Status</h1>
+This section contains an element for all nodes mentioned in the configuration file that are not
+explicitly listed as being excluded from this measurement.  An <I>encp-like</I> connection is
+made between the <B>Base Node</I> and each of the other nodes.  The data communications rate 
+between the two nodes is measured.  If the non-base node does not respond to the connection or if
+the data transfer rate between the two is 0.0, then the node is marked as <IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0">.  Otherwise the node is marked 
+<IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0">.  
+
+    <hr>
+<!-- Created: Tue May  9 11:01:16 CDT 2000 -->
+<!-- hhmts start -->
+Last modified: Mon May 22 09:38:15 CDT 2000
+<!-- hhmts end -->
+  </body>
+</html>
