@@ -23,18 +23,14 @@ MY_SERVER = "file_clerk"
 class FileClient(generic_client.GenericClient, 
                       backup_client.BackupClient):
 
-    def __init__( self, csc, bfid=0, server_addr=None ):
+    def __init__( self, csc, bfid=0, server_address=None ):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
 	self.bfid = bfid
-        ticket = self.csc.get( MY_SERVER )
-	if server_addr != None: self.server_addr = server_addr
-	else:                  self.server_addr = (ticket['hostip'],ticket['port'])
-
-    def send (self, ticket, rcv_timeout=0, tries=0):
-        Trace.trace( 12, 'send to volume clerk %s'%(self.server_addr,))
-        x = self.u.send( ticket, self.server_addr, rcv_timeout, tries )
-        return x
+	if server_address != None:
+            self.server_address = server_address
+	else:
+            self.server_address = self.get_server_address(MY_SERVER)
 
     def new_bit_file(self, ticket):
         r = self.send(ticket)
