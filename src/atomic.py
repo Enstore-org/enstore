@@ -4,11 +4,11 @@
 #
 
 import os
-import sys
+#import sys
 import stat
 import errno
 import delete_at_exit
-import exceptions
+#import exceptions
 import time
 
 def _open1(pathname,mode=0666):
@@ -32,6 +32,7 @@ def _open1(pathname,mode=0666):
 
 
 def _open2(pathname,mode=0666):
+    __pychecker__ = "unusednames=i"
 
     #Create a unique temporary filename.
     tmpname = "%s_%s_%s_%s_%s_%s_%s_lock" % (
@@ -94,28 +95,35 @@ def _open2(pathname,mode=0666):
             # will (now) fail.  To test for this case get the full directory
             # listing and check to see if it is there.  If so, corrupted
             # directory.  If not, some other error occured.
-            rtn_errno = getattr(errno, "EFSCORRUPTED", getattr(errno, "EIO"))
+            rtn_errno = getattr(errno, str("EFSCORRUPTED"),
+                                getattr(errno, str("EIO")))
             msg = os.strerror(rtn_errno) + ": " + "Filesystem is corrupt."
         elif s and s[stat.ST_NLINK] > 2:
             #If there happen to be more than 2 hard links to the same file.
             # This should never happen.
-            rtn_errno = getattr(errno, "EMLINK", getattr(errno, "EIO"))
+            rtn_errno = getattr(errno, str("EMLINK"),
+                                getattr(errno, str("EIO")))
             msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK])
         elif s:
             #If there is only one link to the file.  In this case the link
             # failed.  The use of "ENOLINK" is for Linux, IRIX and SunOS.
             # The "EFTYPE" is for OSF1.
-            rtn_errno = getattr(errno, "ENOLINK", getattr(errno, "EFTYPE"))
+            rtn_errno = getattr(errno, str("ENOLINK"),
+                                getattr(errno, str("EFTYPE")))
             msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK])
 
         else:
             #If we get here, then something really bad happened.
-            rtn_errno = getattr(errno, "ENOLINK", getattr(errno, "EFTYPE"))
+            rtn_errno = getattr(errno, str("ENOLINK"),
+                                getattr(errno, str("EFTYPE")))
             msg = os.strerror(rtn_errno) + ": " + "Unknown"
 
         os.close(fd_tmp)
         #return -(detail.errno) #return errno values as negative.
         raise OSError(rtn_errno, msg)
-            
+
+#Since the point of this modules is to override the default open function,
+# we want to suppress the "shadows builtin" warning message.
+__pychecker__ = "no-shadowbuiltin"
 open = _open2
 

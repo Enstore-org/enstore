@@ -1,6 +1,6 @@
 
 import sys
-import pprint
+#import pprint
 import os
 import re
 import string
@@ -20,8 +20,8 @@ import atomic
 import charset
 
 
-def quit(exit_code=1):
-    delete_at_exit.quit(exit_code)
+#def quit(exit_code=1):
+#    delete_at_exit.quit(exit_code)
 
 def print_error(errcode,errmsg):
     format = str(errcode)+" "+str(errmsg) + '\n'
@@ -411,14 +411,14 @@ def do_work(intf):
 
     try:
         main(intf)
-        quit(0)
+        delete_at_exit.quit(0)
     except SystemExit:
-        quit(1)
+        delete_at_exit.quit(1)
     #except:
         #exc, msg, tb = sys.exc_info()
         #sys.stderr.write("%s\n" % (tb,))
         #sys.stderr.write("%s %s\n" % (exc, msg))
-        #quit(1)
+        #delete_at_exit.quit(1)
         
 
 if __name__ == '__main__':

@@ -101,7 +101,12 @@ def setup_signal_handling():
                 sys.stderr.write("Setting signal %s to %s failed.\n" %
                                  (sig, signal_handler))
 
+#Simply ignoring the pychecker warning really isn't a great solution.  A
+# different name other than "quit" sould really be used.  It is just used
+# in so many places.
+__pychecker__ = "no-shadowbuiltin"
 def quit(exit_code=1):
+    
     #Perform cleanup.
     delete()
 
