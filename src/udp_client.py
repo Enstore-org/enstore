@@ -198,6 +198,9 @@ class UDPClient:
                     Trace.log(e_errors.INFO, message)
                     rcvd_txn_id=None
             else: # we got a good reply
+                ##Trace.log(e_errors.INFO,"done cleanup %s"%(dst,))
+                self.send_no_wait({"work":"done_cleanup"}, dst)
+                del tsd.send_done[dst]
                 return out
 	    
         #If we got here, it's because we didn't receive a response to the
