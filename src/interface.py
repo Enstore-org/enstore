@@ -111,8 +111,11 @@ class Interface:
 
         for (opt,value) in optlist :
             value=self.strip(value)
-	    if self.verbose:
-	        print "opt = "+repr(opt)+", value = "+repr(value)
+	    try:
+	        if self.verbose:
+	            print "opt = "+repr(opt)+", value = "+repr(value)
+	    except:
+	        pass
             if opt == "--config_host" :
                 self.parse_config_host(value)
             elif opt == "--config_port" :
