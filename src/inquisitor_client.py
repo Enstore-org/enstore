@@ -8,7 +8,6 @@ import configuration_client
 import generic_client
 import backup_client
 import udp_client
-import db
 import callback
 import interface
 import Trace
@@ -106,6 +105,9 @@ if __name__ == "__main__" :
     elif intf.get_timeout:
         ticket = iqc.get_timeout()
 
+    del iqc.csc.u
+    del iqc.u           # del now, otherwise get name exception (just for python v1.5???)
+
     if ticket['status'][0] == e_errors.OK:
         if intf.list:
             pprint.pprint(ticket)
@@ -116,7 +118,4 @@ if __name__ == "__main__" :
         pprint.pprint(ticket)
         Trace.trace(0,"iqc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)
-
-
-
 
