@@ -1468,7 +1468,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         defer_write = 1
         failed = 0
         self.media_transfer_time = 0.
-        buffer_empty_t = 0   #time when buffer empty has been detected
+        buffer_empty_t = time.time()   #time when buffer empty has been detected
         buffer_empty_cnt = 0 # number of times buffer was cosequtively empty
         nblocks = 0L
         if self.header_labels:
