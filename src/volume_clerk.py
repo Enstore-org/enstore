@@ -17,12 +17,12 @@ import hostaddr
 import callback
 import dispatching_worker
 import generic_server
-import db
+import edb
 import Trace
 import e_errors
 import configuration_client
 import volume_family
-import sgdb
+import esgdb
 import enstore_constants
 import monitored_server
 import file_clerk_client
@@ -79,7 +79,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.ignored_sg_file = None
         return
 
-    # check if volume is full
+    # check if volume is full #### DONE
     def is_volume_full(self, v, min_remaining_bytes):
         external_label = v['external_label']
         ret = ""
@@ -98,9 +98,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # detect a transition
                 ret = e_errors.VOL_SET_TO_FULL
                 v["system_inhibit"][1] = "full"
-                if not v.has_key('si_time'):
-                    v['si_time'] = [0, 0]
-                v['si_time'][1] = time.time()
+                v["si_time"][1] = time.time()
                 left = v["remaining_bytes"]/1.
                 totb = v["capacity_bytes"]/1.
                 if totb != 0:
@@ -111,17 +109,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                           "%s is now full, bytes remaining = %d, %.2f %%" %
                           (external_label,
                            v["remaining_bytes"],waste))
-                
-                if self.dict.cursor_open:
-                    Trace.log(e_errors.ERROR, "Old style cursor is opened...")
 
-                t = self.dict.db.txn()
-                self.dict.db[(external_label,t)] = v
-                t.commit()
+		# update it
+		self.dict[external_label] = v
                 Trace.log(e_errors.INFO, 'volume %s is set to "full" by is_volume_full()'%(external_label))
             else: ret = e_errors.NOSPACE
         return ret
 
+    #### DONE
     # __rename_volume(old, new): rename a volume from old to new
     #
     # renaming a volume involves:
@@ -134,31 +129,27 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     # after renaming, the original volume does not exist any more
 
     def __rename_volume(self, old, new):
-         try:
-             record = self.dict[old]
-         except:
-             return 'EACCESS', "volume %s does not exist"%(old)
+        record = self.dict[old]
+        if not record:
+            return 'EACCESS', "volume %s does not exist"%(old)
 
-         if self.dict.has_key(new):
-             return 'EEXIST', "volume %s already exists"%(new)
+        if self.dict.has_key(new):
+            return 'EEXIST', "volume %s already exists"%(new)
 
-         fcc = file_clerk_client.FileClient(self.csc)
+        # backward compatible with BerkeleyDB
+        fcc = file_clerk_client.FileClient(self.csc)
+        fcc.rename_volume(old, new)
+	del fcc
+        
+        try:
+            record['external_label'] = new
+            self.dict[old] = record
+        except:
+            Trace.log(e_errors.ERROR, "failed to rename %s to %s"%(old, new))
+            return e_errors.ERROR, None
 
-         # have file clerk to rename the volume information for the files
-
-         r = fcc.rename_volume(old, new)
-         if r['status'][0] == e_errors.OK:
-             # modify the volume record
-             # should we update other infromation?
-             record['external_label'] = new
-             self.dict[new] = record
-             del self.dict[old]
-         else:
-             Trace.log(e_errors.ERROR, "failed to rename %s to %s"%(old, new))
-             return r['status']
-
-         Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old, new))
-         return e_errors.OK, None
+        Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old, new))
+        return e_errors.OK, None
 
     # rename_volume() -- server version of __rename_volume()
 
@@ -186,7 +177,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
-    # __erase_volume(vol) -- erase vol forever
+    # __erase_volume(vol) -- erase vol forever #### DONE
     # This one is very dangerous
     #
     # erasing a volume wipe out the meta information about it as if
@@ -220,7 +211,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         Trace.log(e_errors.INFO, 'volume "%s" has been erased'%(vol))
         return e_errors.OK, None
 
-    # erase_volume(vol) -- server version of __erase_volume()
+    # erase_volume(vol) -- server version of __erase_volume() #### DONE
 
     def erase_volume(self, ticket):
         try:
@@ -246,17 +237,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         return
 
     # has_undeleted_file(vol) -- check if vol has undeleted file
-    # this is served by file_clerk
 
     def has_undeleted_file(self, vol):
-        fcc = file_clerk_client.FileClient(self.csc)
-        r = fcc.has_undeleted_file(vol)
-        del fcc
-        if r['status'][1]:
-            return 1
-        return 0
+        q = "select * from file, volume where volume.label = '%s' and volume.id = file.volume and file.deleted <> 'y';"%(vol)
+        res = self.dict.db.query(q)
+        return res.ntuples()
 
-    # __delete_volume(vol) -- delete a volume
+    # __delete_volume(vol) -- delete a volume #### DONE
     #
     # * only a volume that contains no active files can be deleted
     #
@@ -266,10 +253,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     def __delete_volume(self, vol, recycle = 0):
         # check existence of the volume
-        try:
-            record = self.dict[vol]
-        except KeyError, detail:
-            msg = "Volume Clerk: no such volume %s" % (detail)
+        record = self.dict[vol]
+        if not record:
+            msg = "Volume Clerk: no such volume %s" % (vol)
             Trace.log(e_errors.ERROR, msg)
             return e_errors.ERROR, msg
 
@@ -350,7 +336,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         return status
 
-    # delete_volume(vol) -- server version of __delete_volume()
+    # delete_volume(vol) -- server version of __delete_volume() #### DONE
 
     def delete_volume(self, ticket):
 
@@ -376,6 +362,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # recycle_volume(vol) -- server version of __delete_volume(vol, 1)
 
     def recycle_volume(self, ticket):
@@ -402,6 +389,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # __restore_volume(vol) -- restore a deleted volume
     #
     # Only a deleted volume can be restored, i.e., vol must be of the
@@ -474,6 +462,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # reassign_sg(self, ticket) -- reassign storage group
     #    only the volumes with initial storage 'none' can be reassigned
 
@@ -494,9 +483,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        try:
-	    record = self.dict[vol]
-        except:
+	record = self.dict[vol]
+        if not record:
             msg = "trying to reassign sg for non-existing volume %s"%(vol)
             Trace.log(e_errors.ERROR, msg)
             ticket['status'] = (e_errors.ERROR, msg)
@@ -532,7 +520,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
-    # set_comment() -- set comment to a volume record
+    # set_comment() -- set comment to a volume record #### DONE
 
     def set_comment(self, ticket):
         try:
@@ -548,9 +536,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # comment will be truncked at 80 characters
         if len(comment) > 80:
             comment = comment[:80]
-        try:
-	    record = self.dict[vol]
-        except:
+
+        record = self.dict[vol]
+        if not record:
             msg = "trying to set comment for non-existing volume %s"%(vol)
             Trace.log(e_errors.ERROR, msg)
             ticket['status'] = (e_errors.ERROR, msg)
@@ -559,14 +547,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         if comment:
             record['comment'] = comment
-        elif record.has_key('comment'):
-            del record['comment']
         self.dict[vol] = record
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
 
-    # show_quota() -- set comment to a volume record
+    # show_quota() -- set comment to a volume record #### DONE
 
     def show_quota(self, ticket):
 	ticket['quota'] = self.quota_enabled(None, None)
@@ -574,6 +560,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
@@ -684,6 +671,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record['non_del_files'] = ticket.get('non_del_files', 0)
         record['wrapper'] = ticket.get('wrapper', None)
         record['blocksize'] = ticket.get('blocksize', -1)
+	record['si_time'] = [0.0, 0.0]
+	record['comment'] = ""
         if record['blocksize'] == -1:
             sizes = self.csc.get("blocksizes")
             try:
@@ -702,6 +691,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # modify:
     def modifyvol(self, ticket):
         # create empty record and control what goes into database
@@ -749,6 +739,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # delete a volume entry from the database
     # This is meant to be used only by trained professional ...
     # It removes the volume entry in the database ...
@@ -776,10 +767,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
+        record = self.dict[external_label]
+        if not record:
+            msg="Volume Clerk: no such volume %s" % (external_label)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -791,15 +781,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # Check if volume is available
     def is_vol_available(self, ticket):
         work = ticket["action"]
         label = ticket["external_label"]
         # get the current entry for the volume
-        try:
-            record = self.dict[label]  
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
+        record = self.dict[label]  
+        if not record:
+            msg="Volume Clerk: no such volume %s" % (label)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -874,80 +864,80 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         Trace.trace(35, "is_volume_available: returning %s " %(ret_stat,))
         self.reply_to_caller(ticket)
 
-    # find volume that matches given volume family
+    # find volume that matches given volume family #### DONE
     def find_matching_volume(self, library, vol_fam, pool,
                              wrapper, vol_veto_list, first_found,
                              min_remaining_bytes, exact_match=1,
                              mover={}):
 
-        # go through the volumes and find one we can use for this request
-        vol = {}
+        # decomposit storage_group, file_family and wrapper
+        storage_group, file_family, wrapper = string.split(pool, '.')
+
+        # figure out minimal space needed
+        required_bytes = max(long(min_remaining_bytes*SAFETY_FACTOR), MIN_LEFT)
+
+        # build vito list into where clause
+        vito_q = ""
+        for i in vol_veto_list:
+            vito_q = vito_q+" and label != '%s'"%(i)
+
         type_of_mover = mover.get('mover_type','Mover')
+
+        # To be backward comparible
         if type_of_mover == 'DiskMover':
-          exact_match=1  
+            exact_match = 1
+
         Trace.trace(20,  "volume family %s pool %s wrapper %s veto %s exact %s" %
                     (vol_fam, pool,wrapper, vol_veto_list, exact_match))
 
-        lc = self.dict.inx['library'].cursor()          # read only
-        vc = self.dict.inx['volume_family'].cursor()
-        label, v = lc.set(library)
-        label, v = vc.set(pool)
-        c = db.join(self.dict, [lc, vc])
-        while 1:
-            label,v = c.next()
-            Trace.trace(30, "label,v = %s, %s" % (label, v))
-            if not label:
-                break
-            if label in vol_veto_list:
-                continue
-            if v["user_inhibit"] != ["none",  "none"]:
-                Trace.trace(30, "user inhibit = %s" % (v['user_inhibit'],))
-                continue
-            if v["system_inhibit"] != ["none", "none"]:
-                Trace.trace(30, "system inhibit = %s" % (v['system_inhibit'],))
-                continue
+        # special treatment for Disk Mover
+        if type_of_mover == 'DiskMover':
+            mover_ip_map = mover.get('ip_map', '')
 
-            # equal treatment for blank volume
+            q = "select * from volume \
+                where \
+                    label like '%s:%%' and \
+                    library = '%s' and \
+                    storage_group = '%s' and \
+                    file_family = '%s' and \
+                    wrapper = '%s' and \
+                    system_inhibit_0 = 'none' and \
+                    system_inhibit_1 = 'none' and \
+                    user_inhibit_0 = 'none' and \
+                    user_inhibit_1 = 'none' \
+                    %s\
+                order by declared ;"%(mover_ip_map, library,
+                    storage_group, file_family, wrapper, vito_q)
+        else: # normal case
+            q = "select * from volume \
+                where \
+                    library = '%s' and \
+                    storage_group = '%s' and \
+                    file_family = '%s' and \
+                    wrapper = '%s' and \
+                    system_inhibit_0 = 'none' and \
+                    system_inhibit_1 = 'none' and \
+                    user_inhibit_0 = 'none' and \
+                    user_inhibit_1 = 'none' \
+                    %s\
+                order by declared ;"%(library, storage_group,
+                    file_family, wrapper, vito_q)
+        res = self.dict.db.query(q).dictresult()
+        if len(res):
             if exact_match:
-                if self.is_volume_full(v,min_remaining_bytes):
-                    Trace.trace(30, "full")
-                    continue
-                if type_of_mover == 'DiskMover':
-                    mover_ip_map = mover.get('ip_map', '')
-                    Trace.trace(30, "ip_map %s v %s"%(mover_ip_map,string.split(v['external_label'],':')[0])) 
-                    if mover_ip_map and mover_ip_map is string.split(v['external_label'],':')[0]:
-                        break
+                for v in res:
+                    v1 = self.dict.export_format(v)
+                    if self.is_volume_full(v1,min_remaining_bytes):
+                        Trace.trace(30, "full")
+                    else:
+                        return v1
+                return {}
             else:
-                if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
-                    Trace.trace(30, "almost full")
-                    continue
-                
-            # vetoed = 0
-            # for veto in vol_veto_list:
-            #    if label == veto:
-            #        Trace.trace(30, "vetoed")
-            #        vetoed = 1
-            #        break
-            # if vetoed:
-            #    continue
+                return self.dict.export_format(res[0])
+        else:
+            return {}
 
-            # supposed to return first volume found?
-            # do not return blank volume at this point yet
-            if first_found:
-                Trace.trace(30,"first found")
-                v["status"] = (e_errors.OK, None)
-                c.close()
-                return v
-            # if not, is there an "earlier" volume that we have already found?
-            if len(vol) == 0:
-                Trace.trace(30,"vol %s"%(v,))
-                vol = v
-            elif v['declared'] < vol['declared']:
-                vol = v  
-        c.close()
-        return vol
-
-    # check if quota is enabled in the configuration
+    # check if quota is enabled in the configuration #### DONE
     def quota_enabled(self, library, storage_group):
         q_dict = self.csc.get('quotas')
         if q_dict['status'][0] == e_errors.KEYERROR:
@@ -962,8 +952,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return None
         else:
             return q_dict
-        
-    # check quota
+
+    # check quota #### DONE
     def check_quota(self, quotas, library, storage_group):
         if not quotas.has_key('libraries'):
             Trace.log(e_errors.ERROR, "Wrong quota config")
@@ -982,7 +972,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         return 0
             
     
-    # Get the next volume that satisfy criteria
+    # Get the next volume that satisfy criteria #### DONE
     def next_write_volume (self, ticket):
         Trace.trace(20, "next_write_volume %s" % (ticket,))
             
@@ -1137,55 +1127,53 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         return
 
 
-    # check if specific volume can be used for write
+    # check if specific volume can be used for write #### DONE
     def can_write_volume (self, ticket):
-     # get the criteria for the volume from the user's ticket
-     try:
-         min_remaining_bytes = ticket["min_remaining_bytes"]
-         library = ticket["library"]
-         vol_fam = ticket["volume_family"]
-         external_label = ticket["external_label"]
-     except KeyError, detail:
-         msg="Volume Clerk: key %s is missing"%(detail,)
-         ticket["status"] = (e_errors.KEYERROR, msg)
-         Trace.log(e_errors.ERROR, msg)
-         self.reply_to_caller(ticket)
-         return
+        # get the criteria for the volume from the user's ticket
+        try:
+            min_remaining_bytes = ticket["min_remaining_bytes"]
+            library = ticket["library"]
+            vol_fam = ticket["volume_family"]
+            external_label = ticket["external_label"]
+        except KeyError, detail:
+            msg="Volume Clerk: key %s is missing"%(detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
 
-     # get the current entry for the volume
-     try:
-         v = self.dict[external_label]  
+        # get the current entry for the volume
+        v = self.dict[external_label]
+        if not v:
+            msg="Volume Clerk: no such volume %s" % (external_label)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
 
-         ticket["status"] = (e_errors.OK,'None')
-         if (v["library"] == library and
-             (v["volume_family"] == vol_fam) and
-             v["user_inhibit"][0] == "none" and
-             v["user_inhibit"][1] == "none" and
-             v["system_inhibit"][0] == "none" and
-             v["system_inhibit"][1] == "none"):
-             ##
-             ##ret_st = self.is_volume_full(v,min_remaining_bytes)
-             ##if ret_st:
-             ##    ticket["status"] = (ret_st,None)
-             ##
+        ticket["status"] = (e_errors.OK,'None')
+        if (v["library"] == library and
+            (v["volume_family"] == vol_fam) and
+            v["user_inhibit"][0] == "none" and
+            v["user_inhibit"][1] == "none" and
+            v["system_inhibit"][0] == "none" and
+            v["system_inhibit"][1] == "none"):
+            ##
+            ##ret_st = self.is_volume_full(v,min_remaining_bytes)
+            ##if ret_st:
+            ##    ticket["status"] = (ret_st,None)
+            ##
 
-             if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
-                 ticket["status"] = (e_errors.WRITE_EOT, "file too big")
-             self.reply_to_caller(ticket)
-             return
-         else:
-             ticket["status"] = (e_errors.NOACCESS, 'None')
-             self.reply_to_caller(ticket)
-             return
-     except KeyError, detail:
-         msg="Volume Clerk: no such volume %s" % (detail,)
-         ticket["status"] = (e_errors.KEYERROR, msg)
-         Trace.log(e_errors.ERROR, msg)
-         self.reply_to_caller(ticket)
-         return
+            if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
+                ticket["status"] = (e_errors.WRITE_EOT, "file too big")
+            self.reply_to_caller(ticket)
+            return
+        else:
+            ticket["status"] = (e_errors.NOACCESS, 'None')
+            self.reply_to_caller(ticket)
+            return
 
-
-    # update the database entry for this volume
+    # update the database entry for this volume #### DONE
     def get_remaining_bytes(self, ticket):
         ticket['status'] = (e_errors.OK, None)
         try:
@@ -1198,15 +1186,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
+        record = self.dict[external_label]  
+        if not record:
+            msg="Volume Clerk: no such volume %s" % (external_label,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
-
 
         # access the remaining_byte field
         try:
@@ -1219,6 +1205,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     ##This should really be renamed, it does more than set_remaining_bytes
     # update the database entry for this volume
     def set_remaining_bytes(self, ticket):
@@ -1232,10 +1219,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s"%(detail,)
+        record = self.dict[external_label]  
+        if not record:
+            msg="Volume Clerk: no such volume %s"%(external_label,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -1253,14 +1239,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        if record["remaining_bytes"] == 0:
+        if record["remaining_bytes"] == 0 and \
+            record["system_inhibit"][1] == "none":
             record["system_inhibit"][1] = "full"
-            if not record.has_key('si_time'):
-                record['si_time'] = [0, 0]
-            record['si_time'][1] = time.time()
-        else:
-            record["system_inhibit"][0] = "none"
-            
+            record["si_time"][1] = time.time()
+
         record["last_access"] = time.time()
         if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
@@ -1278,7 +1261,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(record)
         return
 
-    # decrement the file count on the volume
+    # decrement the file count on the volume #### DONE
     def decr_file_count(self, ticket):
         try:
             external_label = ticket["external_label"]
@@ -1290,10 +1273,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
+        record = self.dict[external_label]  
+        if not record:
+            msg="Volume Clerk: no such volume %s" % (external_label,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -1309,7 +1291,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(record)
         return
 
-    # update the database entry for this volume
+    # update the database entry for this volume #### DONE
     def update_counts(self, ticket):
         try:
             external_label = ticket["external_label"]
@@ -1324,10 +1306,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             external_label = '<None>'
 
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
+        record = self.dict[external_label]  
+        if not record:
+            msg="Volume Clerk: no such volume %s" % (external_label,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -1360,7 +1341,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(record)
         return
 
-    # get the current database volume about a specific entry
+    # get the current database volume about a specific entry #### DONE
     def inquire_vol(self, ticket):
         try:
             external_label = ticket["external_label"]
@@ -1374,15 +1355,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # guarded against external_label == None
         if external_label:
             # get the current entry for the volume
-            try:
-                record = self.dict[external_label]  
-                record["status"] = e_errors.OK, None
-                self.reply_to_caller(record)
-            except KeyError, detail:
-                msg="Volume Clerk: no such volume %s" % (detail,)
+            record = self.dict[external_label]
+            if not record:
+                msg="Volume Clerk: no such volume %s" % (external_label,)
                 ticket["status"] = (e_errors.KEYERROR, msg)
                 Trace.log(e_errors.ERROR, msg)
                 self.reply_to_caller(ticket)
+                return
+            record["status"] = (e_errors.OK, None)
+            self.reply_to_caller(record)
             return
         else:
             msg = "Volume Clerk::inquire_vol(): external_label == None"
@@ -1391,7 +1372,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-    # touch(self, ticket) -- update last_access time
+    # touch(self, ticket) -- update last_access time #### DONE
     def touch(self, ticket):
         try:
             external_label = ticket["external_label"]
@@ -1403,24 +1384,25 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]
-            record['last_access'] = time.time()
-            if record['first_access'] == -1:
-                record['first_access'] = record['last_access']
-            self.dict[external_label] = record
-            ticket["last_access"] = record['last_access']
-            ticket["status"] = (e_errors.OK, None)
-            self.reply_to_caller(ticket)
-            return
-        except KeyError, detail:
-            msg="touch(): no such volume %s" % (detail,)
+        record = self.dict[external_label]
+        if not record:
+            msg="touch(): no such volume %s" % (external_label,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
 
-    # check_record(self, ticket) -- trim obsolete fileds
+        record['last_access'] = time.time()
+        if record['first_access'] == -1:
+            record['first_access'] = record['last_access']
+        self.dict[external_label] = record
+        ticket["last_access"] = record['last_access']
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
+    #### Should have nothing to trim!!!
+    # check_record(self, ticket) -- trim obsolete fileds #### DONE
     def check_record(self, ticket):
         try:
             external_label = ticket["external_label"]
@@ -1432,26 +1414,25 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]
-            changed = 0
-            for i in ['at_mover', 'status', 'file_family', 'mounts']:
-                if record.has_key(i):
-                    del record[i]
-                    changed = 1
-            if changed:
-                self.dict[external_label] = record
-            ticket["status"] = (e_errors.OK, None)
-            self.reply_to_caller(ticket)
-            return
-        except KeyError, detail:
-            msg="check_record(): no such volume %s" % (detail,)
+        record = self.dict[external_label]
+        if not record:
+            msg="check_record(): no such volume %s" % (external_label,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
+        changed = 0
+        for i in ['at_mover', 'status', 'mounts']:
+            if record.has_key(i):
+                del record[i]
+                changed = 1
+        if changed:
+            self.dict[external_label] = record
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
 
-    # flag the database that we are now writing the system
+    # flag the database that we are now writing the system #### DONE
     def clr_system_inhibit(self, ticket):
         try:
             external_label = ticket["external_label"]
@@ -1467,11 +1448,18 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
+        record = self.dict[external_label]
+        if not record:
+            msg="Volume Clerk: no such volume %s" % (external_label,)
             ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # check the range of position
+        if position != 0 and position != 1:
+            msg="Volume Clerk: clr_system_inhibit(%s, %d), no such position %d"%(inhibit, position, position)
+            ticket["status"] = (e_errors.ERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1485,8 +1473,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # update the fields that have changed
                 record[inhibit][position] = "none"
                 # set time stamp
-                if not record.has_key('si_time'):
-                    record['si_time'] = [0, 0]
                 record['si_time'][position] = time.time()
                 self.dict[external_label] = record   # THIS WILL JOURNAL IT
                 record["status"] = (e_errors.OK, None)
@@ -1495,17 +1481,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record[inhibit][position] = "none"
             if inhibit == "system_inhibit":
                 # set time stamp
-                if not record.has_key('si_time'):
-                    record['si_time'] = [0, 0]
                 record['si_time'][position] = time.time()
             self.dict[external_label] = record   # THIS WILL JOURNAL IT
             record["status"] = (e_errors.OK, None)
         if record["status"][0] == e_errors.OK:
-            Trace.log(e_errors.INFO, "system inhibit cleared for %s" % (external_label, ))
+            Trace.log(e_errors.INFO, "system inhibit %d cleared for %s" % (position, external_label))
         self.reply_to_caller(record)
         return
 
-    # get the actual state of the media changer
+    # get the actual state of the media changer #### DONE
     def get_media_changer_state(self, lib, volume, m_type):
         # m_changer = self.csc.get_media_changer(lib + ".library_manager")
 
@@ -1534,24 +1518,23 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         return state
 
-    # move a volume to a new library
+    # move a volume to a new library #### DONE
     def new_library(self, ticket):
         external_label = ticket["external_label"]
         new_library = ticket["new_library"]
 
         # get the current entry for the volume
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
+        record = self.dict[external_label]  
+        if not record:
+            msg="Volume Clerk: no such volume %s" % (external_label,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
         
         # update the library field with the new library
-	old_library = record ["library"]
+        old_library = record ["library"]
         record ["library"] = new_library
         self.dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
@@ -1559,14 +1542,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(record)
         return
 
-    # set system_inhibit flag
+    # set system_inhibit flag #### DONE
     def set_system_inhibit(self, ticket, flag, index=0):
         external_label = ticket["external_label"]
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
+        record = self.dict[external_label]  
+        if not record:
+            msg="Volume Clerk: no such volume %s" % (external_label,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -1583,8 +1565,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         #         return record["status"]
         record["system_inhibit"][index] = flag
         # record time
-        if not record.has_key("si_time"):
-            record["si_time"] = [0,0]
         record["si_time"][index] = time.time()
         self.dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
@@ -1592,30 +1572,31 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(record)
         return record["status"]
 
+    #### DONE
     # set system_inhibit flag, flag the database that we are now writing the system
     def set_writing(self, ticket):
         return self.set_system_inhibit(ticket, "writing")
 
-    # set system_inhibit flag to none
+    # set system_inhibit flag to none #### DONE
     def set_system_none(self, ticket):
         return self.set_system_inhibit(ticket, "none")
 
-    # flag that the current volume is readonly
+    # flag that the current volume is readonly #### DONE
     def set_system_readonly(self, ticket):
         return self.set_system_inhibit(ticket, "readonly", 1)
 
-    # flag that the current volume is migrated
+    # flag that the current volume is migrated #### DONE
     def set_system_migrated(self, ticket):
         return self.set_system_inhibit(ticket, "migrated", 1)
 
+    #### DONE
     # set pause flag for the all Library Managers corresponding to
     # certain Media Changer
     def pause_lm(self, external_label):
         # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
+        record = self.dict[external_label]
+        if not record:
+            msg="Volume Clerk: no such volume %s" % (external_label,)
             Trace.log(e_errors.ERROR, msg)
             return
         # find the media changer for this volume
@@ -1642,7 +1623,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 self.paused_lms[m_changer]['paused'] = 1
                 Trace.log(e_errors.INFO,'pause library_managers for %s media_changerare paused due to too many volumes set to NOACCESS' % (m_changer,))
                 
-    # check if Library Manager is paused
+    # check if Library Manager is paused #### DONE
     def lm_is_paused(self, library):
         # m_changer = self.csc.get_media_changer(library + ".library_manager")
         if len(library) < 16 or library[-16:] != '.library_manager':
@@ -1660,7 +1641,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         return ret_code
             
             
-    # flag that the current volume is marked as noaccess
+    # flag that the current volume is marked as noaccess #### DONE
     def set_system_noaccess(self, ticket):
         Trace.alarm(e_errors.WARNING, e_errors.NOACCESS,{"label":ticket["external_label"]})
         rc = self.set_system_inhibit(ticket, e_errors.NOACCESS)
@@ -1668,17 +1649,19 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.pause_lm(ticket["external_label"])
         return rc
 
-    # flag that the current volume is marked as not allowed
+    # flag that the current volume is marked as not allowed #### DONE
     def set_system_notallowed(self, ticket):
         # Trace.alarm(e_errors.WARNING, e_errors.NOTALLOWED,{"label":ticket["external_label"]}) 
         Trace.log(e_errors.INFO, "volume %s is set to NOTALLOWED"%(ticket['external_label']))
         return self.set_system_inhibit(ticket, e_errors.NOTALLOWED)
 
+    #### DONE
     # device is broken - what to do, what to do ===================================FIXME======================================
     def set_hung(self,ticket):
         self.reply_to_caller({"status" : (e_errors.OK, None)})
         return
 
+    #### DONE, probably not completely
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket):
         ticket["status"] = (e_errors.OK, None)
@@ -1686,98 +1669,102 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
 	# log it
         Trace.log(e_errors.INFO, "start listing all volumes")
-        try:
-            if not self.get_user_sockets(ticket):
-                return
-            ticket["status"] = (e_errors.OK, None)
-            callback.write_tcp_obj(self.data_socket, ticket)
-            # REMOVE ME LATER
-            # The following commented out old style cursor usage should
-            #   removed once the new style usage is proven stable
-            # self.dict.cursor("open")
-            # key,value=self.dict.cursor("first")
-            c = self.dict.newCursor()
-            key,value = c.first()
-            msg={}
-            while key:
-                if ticket.has_key("not"): cond = ticket["not"]
-                if ticket.has_key("in_state") and ticket["in_state"] != None:
-                    if ticket.has_key("key") and ticket["key"] != None:
-                        if value.has_key(ticket["key"]):
-                            loc_val = value[ticket["key"]]
-                            if mycmp(cond,loc_val,ticket["in_state"]):
-                                if msg:
-                                    dict = {"volume":key}
-                                    msg["volumes"].append(dict)
-                                else:
-                                    msg["volumes"]= []
-                                    dict = {"volume":key}
-                                    msg["volumes"].append(dict)
-                            else:
-                                pass
-                    else:
-                        if (ticket["in_state"] == "full" or
-                            ticket["in_state"] == "readonly" or
-                            ticket["in_state"] == "migrated"):
-                            index = 1
-                        else: index = 0
-                        if value["system_inhibit"][index] == ticket["in_state"]:
-                            if msg:
-                                dict = {"volume":key}
-                                msg["volumes"].append(dict)
-                            else:
-                                msg["volumes"]= []
-                                dict = {"volume":key}
-                                msg["volumes"].append(dict)
+
+        if not self.get_user_sockets(ticket):
+            return
+        callback.write_tcp_obj(self.data_socket, ticket)
+
+        msg = {}
+        q = "select * from volume "
+        if ticket.has_key('in_state'):
+            state = ticket['in_state']
+        else:
+            state = None
+        if ticket.has_key('not'):
+            cond = ticket['not']
+        else:
+            cond = None
+        if ticket.has_key('key'):
+            key = ticket['key']
+        else:
+            key = None
+
+        if key and state:
+            if key == 'volume_family':
+                sg, ff, wp = string.split(state, '.')
+                if cond == None:
+                    q = q + "where storage_group = '%s' and file_family = '%s' and wrapper = '%s'"%(sg, ff, wp)
                 else:
-                    dict = {"volume"         : key}
-                    for k in ["capacity_bytes","remaining_bytes", "system_inhibit",
-                              "user_inhibit", "library", "volume_family", "non_del_files"]:
-                        dict[k]=value[k]
-                    if value.has_key('si_time'):
-                        dict['si_time'] = value['si_time']
-                    if value.has_key('comment'):
-                        dict['comment'] = value['comment']
-                    if msg:
-                        msg["volumes"].append(dict)
-                    else:
-                        msg["header"] = "FULL"
-                        msg["volumes"]= []
-                        msg["volumes"].append(dict)
+                    q = q + "where not (storage_group = '%s' and file_family = '%s' and wrapper = '%s')"%(sg, ff, wp)
 
-                key,value = c.next()
-            callback.write_tcp_obj_new(self.data_socket, msg)
-            c.close()
-            self.data_socket.close()
+            else:
+                if key in ['blocksize', 'capacity_bytes',
+                    'non_del_files', 'remaining_bytes', 'sum_mounts',
+                    'sum_rd_access', 'sum_rd_err', 'sum_wr_access',
+                    'sum_wr_err']:
+                    val = "%d"%(state)
+                elif key in ['eod_cookie', 'external_label', 'library',
+                    'media_type', 'volume_family', 'wrapper',
+                    'storage_group', 'file_family', 'wrapper']:
+                    val = "'%s'"%(state)
+                elif key in ['first_access', 'last_access', 'declared',
+                    'si_time_0', 'si_time_1', 'system_inhibit_0',
+                    'system_inhibit_1', 'user_inhibit_0',
+                    'user_inhibit_1']:
+                    val = "'%s'"%(edb.time2timestamp(state))
+                else:
+                    val = state
 
-            callback.write_tcp_obj(self.control_socket, ticket)
-            self.control_socket.close()
-        except:
-            exc, msg = sys.exc_info()[:2]
-            Trace.handle_error(exc,msg)
+                if key == 'external_label':
+                    key = 'label'
+
+                if cond == None:
+                    q = q + "where %s = %s"%(key, val)
+                else:
+                    q = q + "where %s %s %s"%(key, cond, val)
+        elif state:
+            if state in ['full', 'read_only', 'migrated']:
+                q = q + "where system_inhibit_1 = '%s'"%(state)
+            else:
+                q = q + "where system_inhibit_0 = '%s'"%(state)
+        else:
+            msg['header'] = 'FULL'
+
+        q = q + ' order by label;'
+
+        res = self.dict.db.query(q).dictresult()
+        msg['volumes'] = []
+        for v2 in res:
+            vol2 = {'volume': v2['label']}
+            for k in ["capacity_bytes","remaining_bytes", "library",
+                "non_del_files"]:
+                vol2[k] = v2[k]
+            vol2['volume_family'] = v2['storage_group']+'.'+v2['file_family']+'.'+v2['wrapper']
+            vol2['system_inhibit'] = (v2['system_inhibit_0'], v2['system_inhibit_1'])
+            vol2['user_inhibit'] = (v2['user_inhibit_0'], v2['user_inhibit_1'])
+            vol2['si_time'] = (edb.timestamp2time(v2['si_time_0']),
+                edb.timestamp2time(v2['si_time_1']))
+            if len(v2['comment']):
+                vol2['comment'] = v2['comment']
+            msg['volumes'].append(vol2)
+
+        callback.write_tcp_obj_new(self.data_socket, msg)
+        self.data_socket.close()
+        callback.write_tcp_obj(self.control_socket, ticket)
+        self.control_socket.close()
+
         Trace.log(e_errors.INFO, "stop listing all volumes")
         return
 
-    # The following are for the sgdb
-    def __rebuild_sg_count(self):
-        self.sgdb.clear()
-        c = self.dict.newCursor()
-        k, v = c.first()
-        while k:
-            if k[-8:] != '.deleted':
-                try:
-                    sg = string.split(v['volume_family'], '.')[0]
-                    self.sgdb.inc_sg_counter(v['library'], sg)
-                except:
-                    pass
-            k, v = c.next()
-        c.close()
+    # The followings are for the sgdb
 
+    #### DONE
     def rebuild_sg_count(self, ticket):
-        self.__rebuild_sg_count()
+        self.sgdb.rebuild_sg_count()
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
+    #### DONE
     def set_sg_count(self, ticket):
         try:
             lib = ticket['library']
@@ -1796,6 +1783,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
+    #### DONE
     def get_sg_count(self, ticket):
         try:
             lib = ticket['library']
@@ -1813,17 +1801,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
+    #### DONE
     def list_sg_count(self, ticket):
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-        c = self.sgdb.dict.newCursor()
-        sgcnt = {}
-        k, v = c.first()
-        while k:
-            sgcnt[k] = v
-            k, v = c.next()
-        c.close()
+        sgcnt = self.sgdb.list_sg_count()
 
         try:
             if not self.get_user_sockets(ticket):
@@ -1839,9 +1822,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.handle_error(exc,msg)
         return
 
+    #### DONE
     def __get_vol_list(self):
-        return self.dict.keys()
+        q = "select label from volume order by label;"
+        res2 = self.dict.db.query(q).getresult()
+        res = []
+        for i in res2:
+            res.append(i[0])
+        return res
 
+    #### DONE        
     # return a list of all the volumes
     def get_vol_list(self,ticket):
         ticket["status"] = (e_errors.OK, None)
@@ -1862,6 +1852,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.handle_error(exc,msg)
         return
 
+    #### DONE
     # get a port for the data transfer
     # tell the user I'm your volume clerk and here's your ticket
     def get_user_sockets(self, ticket):
@@ -1892,7 +1883,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             exc, msg = sys.exc_info()[:2]
             Trace.handle_error(exc,msg)
         return 1
-    
+
+    #### DONE
     def start_backup(self,ticket):
         try:
             self.dict.start_backup()
@@ -1906,6 +1898,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller({"status"       : status,
                                   "start_backup" : 'no' })
 
+    #### DONE
     def stop_backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"stop_backup")
@@ -1920,6 +1913,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller({"status"       : status,
                                   "stop_backup"  : 'no' })
 
+    #### DONE
     def backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"backup")
@@ -1934,6 +1928,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller({"status"       : status,
                                   "backup"  : 'no' })
 
+    #### DONE
     def clear_lm_pause(self, ticket):
         # m_changer = self.csc.get_media_changer(ticket['library'] + ".library_manager")
         lib = ticket['library']
@@ -1951,12 +1946,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.noaccess_to = self.keys.get('noaccess_to', 300.)
         self.reply_to_caller({"status" : (e_errors.OK, None)})
 
+    #### DONE
     # The following is for temporarily surpress raising the red ball
     # when new tape is drawn from the common pool. The operator may
     # use the following methods to set or clear a library.storage_group
     # in an ignored group list. This list is presistent across the
     # sessions
 
+    #### DONE
     def set_ignored_sg(self, ticket):
         try:
             sg = ticket['sg']
@@ -1995,6 +1992,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     def clear_ignored_sg(self, ticket):
         try:
             sg = ticket['sg']
@@ -2029,6 +2027,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     def clear_all_ignored_sg(self, ticket):
         try:
             self.ignored_sg = []
@@ -2047,10 +2046,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     def list_ignored_sg(self, ticket):
         ticket['status'] = (e_errors.OK, self.ignored_sg)
         self.reply_to_caller(ticket)
 
+    #### DONE
     def quit(self, ticket):
 	self.dict.close()
 	dispatching_worker.DispatchingWorker.quit(self, ticket)
@@ -2075,23 +2076,15 @@ class VolumeClerk(VolumeClerkMethods):
             dbHome = os.environ['ENSTORE_DIR']
             jouHome = dbHome
 
-        Trace.log(e_errors.INFO,"opening volume database using DbTable")
-        self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
-        Trace.log(e_errors.INFO,"hurrah, volume database is open")
+        db_host = dbInfo['db_host']
+        db_port = dbInfo['db_port']
 
-        self.sgdb = sgdb.SGDb(dbHome)
+        Trace.log(e_errors.INFO,"opening volume database using edb.VolumeDB")
+        self.dict = edb.VolumeDB(host=db_host, port=db_port, jou=jouHome, dbHome=dbHome)
+        self.sgdb = esgdb.SGDb(self.dict.db)
         # rebuild it if it was not loaded
-        if len(self.sgdb.dict) == 0:
-            c = self.dict.newCursor()
-            k, v = c.first()
-            while k:
-                try:
-                    sg = string.split(v['volume_family'], '.')[0]
-                    self.sgdb.inc_sg_counter(v['library'], sg)
-                except:
-                    pass
-                k, v = c.next()
-            c.close()
+        if len(self.sgdb) == 0:
+            self.sgdb.rebuild_sg_count()
         self.noaccess_cnt = 0
         self.max_noaccess_cnt = self.keys.get('max_noaccess_cnt', 2)
         self.noaccess_to = self.keys.get('noaccess_to', 300.)

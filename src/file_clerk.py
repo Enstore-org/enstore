@@ -22,7 +22,7 @@ import generic_server
 import event_relay_client
 import monitored_server
 import enstore_constants
-import db
+import edb
 import Trace
 import e_errors
 import configuration_client
@@ -52,12 +52,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # we need a new bit field id for each new file in the system
     def new_bit_file(self, ticket):
         # input ticket is a file clerk part of the main ticket
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
-        record = {}
+        record = {'pnfsid':'','drive':'','pnfs_name0':'','deleted':'no'}
+
         record["external_label"]   = ticket["fc"]["external_label"]
         record["location_cookie"]  = ticket["fc"]["location_cookie"]
         record["size"]             = ticket["fc"]["size"]
@@ -76,6 +78,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,'new_bit_file bfid=%s'%(bfid,))
         return
 
+    #### DONE
     # update the database entry for this file - add the pnfs file id
     def set_pnfsid(self, ticket):
         try:
@@ -100,16 +103,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # temporary workaround - sam doesn't want to update encp too often
         pnfsvid = ticket["fc"].get("pnfsvid")
         pnfs_name0 = ticket["fc"].get("pnfs_name0")
-        pnfs_mapname = ticket["fc"].get("pnfs_mapname")
 
         # start (10/18/00) adding which drive we used to write the file
         drive = ticket["fc"].get("drive","unknown:unknown")
 
         # look up in our dictionary the request bit field id
-        try:
-            record = self.dict[bfid] 
-        except KeyError, detail:
-            msg = "File Clerk: bfid %s not found"%(detail,)
+        record = self.dict[bfid] 
+        if not record:
+            msg = "File Clerk: bfid %s not found"%(bfid,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -123,8 +124,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record["pnfsvid"] = pnfsvid
         if pnfs_name0 != None:
             record["pnfs_name0"] = pnfs_name0
-        if pnfs_mapname != None:
-            record["pnfs_mapname"] = pnfs_mapname
         record["deleted"] = "no"
 
         # record our changes
@@ -134,130 +133,53 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,'set_pnfsid %s'%(ticket,))
         return
 
-    # change the delete state element in the dictionary
-    # this method is for private use only
-    def set_deleted_priv(self, bfid, deleted, restore_dir="no"):
-        try:
-            # look up in our dictionary the request bit field id
-            try:
-                record = self.dict[bfid] 
-            except KeyError:
-                status = (e_errors.KEYERROR, 
-                          "File Clerk: bfid %s not found"%(bfid,))
-                Trace.log(e_errors.INFO, "%s"%(status,))
-                Trace.trace(10,"set_deleted %s"%(status,))
-                return status, None, None
-
-
-            if 'y' in string.lower(deleted):
-                deleted = "yes"
-                decr_count = 1
-            else:
-                deleted = "no"
-                decr_count = -1
-            # the foolowing fixes a problem with lost 'deleted' entry'
-            fix_deleted = 0
-            if not record.has_key('deleted'):
-                fix_deleted = 1
-                record["deleted"] = deleted
-                
-            if record["deleted"] == deleted:
-                # don't return a status error to the user - she needs a 0 status in order to delete
-                # the file in the trashcan.  Otherwise we are in a hopeless loop & it makes no sense
-                # to try and keep deleting the already deleted file over and over again
-                #status = (e_errors.USER_ERROR,
-                #                    "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
-                status = (e_errors.OK, None)
-                fname=record.get('pnfs_name0','pnfs_name0 is lost')
-                Trace.log(e_errors.USER_ERROR, 
-                "%s = %s deleted flag already set to %s - no change." % (bfid, fname, record["deleted"]))
-                Trace.trace(12,'set_deleted_priv %s'%(status,))
-                if fix_deleted:
-                    self.dict[bfid] = record
-                    Trace.log(e_errors.INFO, 'added missing "deleted" key for bfid %s' % (bfid,))
-                return status, None, None
-
-            if deleted == "no":
-                # restore pnfs entry
-                # import pnfs
-                map = pnfs.Pnfs(record["pnfs_mapname"])
-                status = map.restore_from_volmap(restore_dir)
-                del map
-                if status[0] != e_errors.OK:
-                    Trace.log(e_errors.ERROR, "restore_from_volmap failed. Status: %s"%(status,))
-                    return status, None, None 
-
-            # mod the delete state
-            record["deleted"] = deleted
-
-            # do not maintain non_del_files
-            #
-            # # become a client of the volume clerk and decrement the non-del files on the volume
-            # vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-            # vticket = vcc.decr_file_count(record['external_label'],decr_count)
-            # status = vticket["status"]
-            # if status[0] != e_errors.OK: 
-            #     Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%(status,))
-            #     return status, None, None 
-
-            # record our changes
-            self.dict[bfid] = record 
-
-            # some do not have pnfs_mapname
-            if record.has_key('pnfs_mapname'):
-                Trace.log(e_errors.INFO,
-                      "%s = %s flagged as deleted:%s  volume=%s   mapfile=%s" %
-                      (bfid,record["pnfs_name0"],record["deleted"],
-                       record["external_label"], record["pnfs_mapname"]))
-            else:
-                Trace.log(e_errors.INFO,
-                      "%s = %s flagged as deleted:%s  volume=%s" %
-                      (bfid,record["pnfs_name0"],record["deleted"],
-                       record["external_label"]))
-           
-
-            # and return to the caller
-            status = (e_errors.OK, None)
-            fc = record
-            # vc = vticket
-            Trace.trace(12,'set_deleted_priv status %s'%(status,))
-            # return status, fc, vc
-            return status, fc, None
-
-        # if there is an error - log and return it
-        except:
-            exc, val, tb = Trace.handle_error()
-            status = (str(exc), str(val))
-
+    #### DONE
     def get_crcs(self, ticket):
         try:
             bfid  =ticket["bfid"]
-            record=self.dict[bfid]
-            complete_crc=record["complete_crc"]
-            sanity_cookie=record["sanity_cookie"]
         except KeyError, detail:
             msg =  "File Clerk: key %s is missing" % (detail,)
             ticket["status"]=(e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
+
+        record=self.dict[bfid]
+        if not record:
+            msg = "File Clerk: no such bfid %s"%(bfid)
+            ticket["status"]=(e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        complete_crc=record["complete_crc"]
+        sanity_cookie=record["sanity_cookie"]
         ticket["status"]=(e_errors.OK, None)
         ticket["complete_crc"]=complete_crc
         ticket["sanity_cookie"]=sanity_cookie
         self.reply_to_caller(ticket)
 
+    #### DONE
     def set_crcs(self, ticket):
         try:
             bfid  =ticket["bfid"]
             complete_crc=ticket["complete_crc"]
             sanity_cookie=ticket["sanity_cookie"]
-            record=self.dict[bfid]
         except KeyError, detail:
             msg = "File Clerk: key %s is missing"%(detail,)
             ticket["status"]=(e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
+
+        record=self.dict[bfid]
+        if not record:
+            msg = "File Clerk: no such bfid %s"%(bfid)
+            ticket["status"]=(e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
         record["complete_crc"]=complete_crc
         record["sanity_cookie"]=sanity_cookie
         #record our changes to the database
@@ -270,13 +192,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
 
 
-        
+    #### DONE        
     # change the delete state element in the dictionary
     def set_deleted(self, ticket):
         try:
             bfid = ticket["bfid"]
             deleted = ticket["deleted"]
-            restore_dir = ticket["restore_dir"]
         except KeyError, detail:
             msg =  "File Clerk: key %s is missing" % (detail,)
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -284,78 +205,32 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        # also need new value of the delete element- make sure we have this
-        try:
-            deleted = ticket["deleted"]
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing" % (detail,)
+        record = self.dict[bfid]
+        if not record:
+            msg = "File Clerk: no such bfid %s"%(bfid)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
 
-        status, fc, vc = self.set_deleted_priv(bfid, deleted, restore_dir)
-        ticket["status"] = status
-        if fc: ticket["fc"] = fc
-        if vc: ticket["vc"] = fc
+        if record["deleted"] != deleted:
+            record["deleted"] = deleted
+            self.dict[bfid] = record
+        ticket["status"] = (e_errors.OK, None)
         # look up in our dictionary the request bit field id
         self.reply_to_caller(ticket)
         Trace.trace(12,'set_deleted %s'%(ticket,))
         return
 
-    # restore specified file
-    def restore_file_obsolete(self, ticket):
-        try:
-            fname = ticket["file_name"]
-            restore_dir = ticket["restore_dir"]
-        except KeyError, detail:
-            msg =  "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-        # find the file in db
-        bfid = None
-        self.dict.cursor("open")
-        key,value=self.dict.cursor("first")
-        while key:
-            if value["pnfs_name0"] == fname:
-                bfid = value["bfid"]
-                break
-            key,value=self.dict.cursor("next")
-        self.dict.cursor("close")
-        # file not found
-        if not bfid:
-            ticket["status"] = "ENOENT", "File %s not found"%(fname,)
-            Trace.log(e_errors.INFO, "%s"%(ticket,))
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file %s"%(ticket["status"],))
-            return
-
-        if string.find(value["external_label"],'deleted') !=-1:
-            ticket["status"] = "EACCES", "volume %s is deleted"%(value["external_label"],)
-            Trace.log(e_errors.INFO, "%s"%(ticket,))
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file %s"%(ticket["status"],))
-
-        status, fc, vc = self.set_deleted_priv(bfid, "no", restore_dir)
-        ticket["status"] = status
-        if fc: ticket["fc"] = fc
-        if vc: ticket["vc"] = fc
-
-        self.reply_to_caller(ticket)
-        Trace.trace(12,'restore_file %s'%(ticket,))
-        return
-
+    #### DONE
     # restore specified file
     #
     # This is a newer version
 
     def __restore_file(self, bfid, file_family = None, check = 1):
 
-        try:
-            record = self.dict[bfid]
-        except:
+        record = self.dict[bfid]
+        if not record:
             msg = "File %s not found"%(bfid)
             Trace.log(e_errors.ERROR, msg)
             return "ENOENT", msg
@@ -388,14 +263,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return "ENOPNFSNAME", msg
 
         # find file_family
-        if not file_family: 
-            vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-            vol = vcc.inquire_vol(record['external_label'])
-            if vol['status'][0] != e_errors.OK:
-                msg = "File %s does not belong to a valid volume"%(bfid)
-                Trace.log(vol['status'][0], msg)
-                return vol['status']
-            file_family = volume_family.extract_file_family(vol['volume_family'])
+        if not file_family:
+            q = "select file_family from volume where label = '%s';"%(record["external_label"])
+            file_family = self.dict.db.query(q).getresult()[0][0]
         record['file_family'] = file_family
         pf = pnfs.File(record)
 
@@ -421,6 +291,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         return e_errors.OK, None
 
+    #### DONE
     # restore specified file
     #
     # This is a newer version
@@ -441,6 +312,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     def get_user_sockets(self, ticket):
         file_clerk_host, file_clerk_port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -462,6 +334,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         listen_socket.close()
         return 1
 
+    # DONE
     # return all info about a certain bfid - this does everything that the
     # read_from_hsm method does, except send the ticket to the library manager
     def bfid_info(self, ticket):
@@ -475,21 +348,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         # look up in our dictionary the request bit field id
-        try:
-            finfo = self.dict[bfid] 
-        except KeyError, detail:
+        finfo = self.dict[bfid] 
+        if not finfo:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid %s not found"%(bfid,))
             Trace.log(e_errors.INFO, "%s"%(ticket,))
             self.reply_to_caller(ticket)
             Trace.trace(10,"bfid_info %s"%(ticket["status"],))
             return
-
-        # chek if finfo has deleted key and if not fix the record
-        if not finfo.has_key('deleted'):
-            finfo['deleted'] = 'no'
-            Trace.log(e_errors.INFO, 'added missing "deleted" key for bfid %s' % (bfid,))
-            self.dict[bfid] = finfo
 
         #Copy all file information we have to user's ticket.  Copy the info
         # one key at a time to avoid cyclic dictionary references.
@@ -501,38 +367,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
         return
 
-    # return volume map name for given bfid
-    def get_volmap_name_obsolete(self, ticket):
-        try:
-            bfid = ticket["bfid"]
-        except KeyError, detail:
-            msg  = "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.INFO, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # look up in our dictionary the request bit field id
-        try:
-            finfo = self.dict[bfid] 
-        except KeyError, detail:
-            msg = "File Clerk: bfid %s not found"%(detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # copy all file information we have to user's ticket
-        try:
-            ticket["pnfs_mapname"] = finfo["pnfs_mapname"]
-            ticket["status"] = (e_errors.OK, None)
-        except KeyError:
-            ticket['status'] = (e_errors.KEYERROR, None)
-
-        self.reply_to_caller(ticket)
-        Trace.trace(10,"get_volmap_name %s"%(ticket["status"],))
-        return
-
+    #### DONE
     # change the delete state element in the dictionary
     def del_bfid(self, ticket):
         try:
@@ -563,60 +398,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,'del_bfid %s'%(ticket,))
         return
 
-    # rename volume and volume map
-    # this version rename volume for all files in it
-    #
-    # This only renames the file records. A complete volume renaming
-    # requires volume clerk to rename the volume information.
-    #
-    # Renaming a volume, as far as a file's concern, renames the
-    # 'external_label' and 'pnfs_mapname' accordingly.
-    #
-    # Renaming does involve renaming the volmap path in /pnfs.
-    # If it fails, nothing would be done further.
-    #
-    # 12/04/2001 volmap is obsolete!
-
-    def __rename_volume(self, old, new):
-        Trace.log(e_errors.INFO, 'renaming volume %s -> %s'%(old, new))
-        bfids = self.get_all_bfids(old)
-
-        # deal with volmap directory
-        # if volmap directory can not be renamed, singal a error and stop
-
-	# if len(bfids):
-        #     volmap = self.dict[bfids[0]]["pnfs_mapname"]
-        #     p1, f = os.path.split(volmap)
-        #     p, f1 = os.path.split(p1)
-        #     if old != f1:
-        #         Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1))
-        #         return e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1)
-        #     new_volmap = os.path.join(p, new)
-        #     # can I modify it?
-        #     if not os.access(p, os.W_OK):
-        #         return e_errors.ERROR, 'can not rename %s to %s'%(p1, new_volmap)
-        #     try:
-        #         os.rename(p1, new_volmap)
-        #     except:
-        #         return e_errors.ERROR, 'failed to rename %s to %s'%(p1, new_volmap)
-        
-        for bfid in bfids:
-            record = self.dict[bfid] 
-            # replace old volume name with new one
-            # p1, f = os.path.split(record["pnfs_mapname"])
-            # p, f1 = os.path.split(p1)
-            # if old != f1:
-            #     Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for"%s" but found "%s". Changed anyway.'%(old, f1))
-            # record["pnfs_mapname"] = os.path.join(p, new, f)
-            record["external_label"] = new
-            self.dict[bfid] = record 
- 
-        Trace.log(e_errors.INFO, 'volume %s renamed to %s'%(old, new))
-        return e_errors.OK, None
-
     # rename volume -- server service
     #
-    # This is the newer version
+    # This has been obsolete. Since file is attached to volume id,
+    # rename volume is done by volume clerk.
 
     def rename_volume(self, ticket):
         try:
@@ -629,15 +414,20 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        # catch any failure
-        try:
-            ticket["status"] = self.__rename_volume(old, new)
-        except:
-            ticket["status"] = (e_errors.ERROR, "rename failed")
-        # and return to the caller
+        # This is to be backward compatible with BerkeleyDB
+        if self.dict.bdb:
+            # do not fail
+            try:
+                self.dict.rename_volume(old, new)
+            except:
+                Trace.log(e_errors.ERROR, 'rename %s --> %s failed'%(old, new))
+            
+        # Nothing needs to be done
+        ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # __erase_volume(self, vol) -- delete all files belonging to vol
     #
     # This is only the file clerk portion of erasing a volume.
@@ -650,56 +440,15 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, 'erasing files of volume %s'%(vol))
         bfids = self.get_all_bfids(vol)
 
-        # # check to see if volmap can be deleted
-        # volmap_dir = None
-        # for bfid in bfids:
-        #     record = self.dict[bfid]
-        #     if record.has_key('pnfs_mapname'):
-        #         if not volmap_dir:
-        #             volmap_dir, f = os.path.split(record["pnfs_mapname"])
-        #         if not os.access(record["pnfs_mapname"], os.W_OK):
-        #             error_msg = "no write permission to %s"%(record["pnfs_mapname"])
-        #             Trace.log(e_errors.ERROR, error_msg)
-        #             return 'EACCESS', error_msg
-
-        # # check to see if volmap directory can be deleted
-        # if volmap_dir:
-        #     if not os.access(volmap_dir, os.W_OK):
-        #         error_msg = "no write permission to %s"%(volmap_dir)
-        #         Trace.log(e_errors.ERROR, error_msg)
-        #         return 'EACCESS', error_msg
-        #     p, f = os.path.split(volmap_dir)
-        #     if not os.access(p, os.W_OK):
-        #         error_msg = "no write permission to %s"%(p)
-        #         Trace.log(e_errors.ERROR, error_msg)
-        #         return 'EACCESS', error_msg
-
         # remove file record
         for bfid in bfids:
-        #     record = self.dict[bfid]
-        #     if record.has_key('pnfs_mapname'):
-        #         try:
-        #             os.remove(record['pnfs_mapname'])
-        #         except:
-        #             error_msg = "fail to remove %s"%(record['pnfs_mapname'])
-        #             Trace.log(e_errors.ERROR, error_msg)
-        #             return 'EACCESS', error_msg
             del self.dict[bfid]
-
-        # remove volmap directory
-        # if volmap_dir:
-        #     try:
-        #         os.rmdir(volmap_dir)
-        #     except:
-        #         error_msg = "fail to remove directory %s"%(volmap_dir)
-        #         Trace.log(e_errors.ERROR, error_msg)
-        #         return 'EACCESS', error_msg
 
         Trace.log(e_errors.INFO, 'files of volume %s are erased'%(vol))
         return e_errors.OK, None
 
     # erase_volume -- server service
-
+    #### DONE
     def erase_volume(self, ticket):
         try:
             vol = ticket["external_label"]
@@ -724,7 +473,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     #
     # Note: this is NOT the counter part of __delete_volume() in
     #       volume clerk, which is simply a renaming to *.deleted
-
+    #### DONE
     def __delete_volume(self, vol):
         Trace.log(e_errors.INFO, 'marking files of volume %s as deleted'%(vol))
         bfids = self.get_all_bfids(vol)
@@ -735,6 +484,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, 'all files of volume %s are marked deleted'%(vol))
         return
 
+    #### DONE
     # delete_volume -- server service
 
     def delete_volume(self, ticket):
@@ -757,22 +507,19 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # __has_undeleted_file(self, vol) -- check if all files are deleted
 
     def __has_undeleted_file(self, vol):
         Trace.log(e_errors.INFO, 'checking if files of volume %s are deleted'%(vol))
-        bfids = self.get_all_bfids(vol)
-        for bfid in bfids:
-            record = self.dict[bfid]
-            if record.has_key('deleted'):
-                if record['deleted'] == 'no':
-                    return 1
-            else:
-                # This could happen for very old records
-                # record the fact and move on
-                Trace.log(e_errors.ERROR, "%s has no 'deleted' field"%(bfid))
-        return 0
+        q = "select bfid from file, volume \
+             where volume.label = '%s' and \
+                   file.volume = volume.id and \
+                   file.deleted = 'n';"%(vol)
+        res = self.dict.db.query(q)
+        return res.ntuples()
 
+    #### DONE
     # has_undeleted_file -- server service
 
     def has_undeleted_file(self, ticket):
@@ -796,6 +543,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # exist_bfids -- check if a, or a list of, bfid(s) exists/exist
 
     def exist_bfids(self, ticket):
@@ -811,16 +559,16 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if type(bfids) == type([]):    # a list
             result = []
             for i in bfids:
-                try:
-                    rec = self.dict[i]
+                rec = self.dict[i]
+                if rec:
                     result.append(1)
-                except:
+                else:
                     result.append(0)
         else:
-            try:
-                rec = self.dict[bfids]
+            rec = self.dict[bfids]
+            if rec:
                 result = 1
-            except:
+            else:
                 result = 0
 
         ticket['result'] = result
@@ -828,6 +576,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # __restore_volume(self, vol) -- restore according to volmap
 
     def __restore_volume(self, vol):
@@ -843,6 +592,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         else:
             return e_errors.OK, None
 
+    #### DONE
     # restore_volume -- server service
 
     def restore_volume(self, ticket):
@@ -865,6 +615,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
@@ -875,6 +626,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             bfid = bfid + 1
         return self.brand+str(bfid)
 
+    #### DONE
     # get_bfids(self, ticket) -- get bfids of a certain volume
     #        This is almost the same as tape_list() yet it does not
     #        retrieve any information from primary file database
@@ -903,22 +655,20 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.control_socket.close()
         return
 
+    #### DONE
     # get_all_bfids(external_label) -- get all bfids of a particular volume
 
     def get_all_bfids(self, external_label):
+        q = "select bfid from file, volume\
+             where volume.label = '%s' and \
+                   file.volume = volume.id;"%(external_label)
+        res = self.dict.db.query(q).getresult()
         bfids = []
-        if self.dict.inx.has_key('external_label'):
-            # now get a cursor so we can loop on the database quickly:
-            c = self.dict.inx['external_label'].cursor()
-            key, pkey = c.set(external_label)
-            while key:
-                bfids.append(pkey)
-                key, pkey = c.nextDup()
-            c.close()
-        else:    # This is an error
-            Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
+        for i in res:
+            bfids.append(i[0])
         return bfids
 
+    #### DONE
     def tape_list(self,ticket):
         try:
             external_label = ticket["external_label"]
@@ -939,27 +689,24 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # log the activity
         Trace.log(e_errors.INFO, "start listing "+external_label)
+        
+        q = "select bfid, crc, deleted, drive, volume.label, \
+                    location_cookie, pnfs_path, pnfs_id, \
+                    sanity_size, sanity_crc, size \
+             from file, volume \
+             where \
+                 file.volume = volume.id and volume.label = '%s';"%(
+             external_label)
+
+        res = self.dict.db.query(q).dictresult()
+
         vol = {}
-        if self.dict.inx.has_key('external_label'):  # use index
-            # now get a cursor so we can loop on the database quickly:
-            c = self.dict.inx['external_label'].cursor()
-            key, pkey = c.set(external_label)
-            while key:
-                value = self.dict[pkey]
-                if value.has_key('deleted'):
-                    if value['deleted']=="yes":
-                        deleted = "deleted"
-                    else:
-                        deleted = " active"
-                else:
-                    deleted = "unknown"
-                if not value.has_key('pnfs_name0'):
-                    value['pnfs_name0'] = "unknown"
-                vol[pkey] = value
-                key,pkey = c.nextDup()
-            c.close()
-        else:    # This is an error
-            Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
+
+        for ff in res:
+            value = self.dict.export_format(ff)
+            if not value.has_key('pnfs_name0'):
+                value['pnfs_name0'] = "unknown"
+            vol[value['bfid']] = value
 
         # finishing up
 
@@ -970,62 +717,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, "finish listing "+external_label)
         return
 
-    def tape_list_saved(self,ticket):
-        try:
-            external_label = ticket["external_label"]
-            ticket["status"] = (e_errors.OK, None)
-            self.reply_to_caller(ticket)
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing"%(detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            ####XXX client hangs waiting for TCP reply
-            return
-
-        # fork as it may take quite a while to get the list
-        # if self.fork() != 0:
-        #    return
-
-        # get a user callback
-        if not self.get_user_sockets(ticket):
-            return
-        callback.write_tcp_obj(self.data_socket,ticket)
-        msg="     label            bfid       size        location_cookie delflag original_name\n"
-        callback.write_tcp_raw(self.data_socket, msg)
-
-        if self.dict.inx.has_key('external_label'):  # use index
-            # now get a cursor so we can loop on the database quickly:
-            c = self.dict.inx['external_label'].cursor()
-            key, pkey = c.set(external_label)
-            while key:
-                value = self.dict[pkey]
-                if value.has_key('deleted'):
-                    if value['deleted']=="yes":
-                        deleted = "deleted"
-                    else:
-                        deleted = " active"
-                else:
-                    deleted = "unknown"
-                if not value.has_key('pnfs_name0'):
-                    value['pnfs_name0'] = "unknown"
-                msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
-                    value['size'],value['location_cookie'],
-                    deleted,value['pnfs_name0'])
-                callback.write_tcp_raw(self.data_socket, msg)
-                key,pkey = c.nextDup()
-            c.close()
-        else:    # This is an error
-            Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
-
-        # finishing up
-
-        callback.write_tcp_raw(self.data_socket, "")
-        self.data_socket.close()
-        callback.write_tcp_obj(self.control_socket,ticket)
-        self.control_socket.close()
-        return
-
+    #### DONE
     # list_active(self, ticket) -- list the active files on a volume
     #     only the /pnfs path is listed
     #     the purpose is to generate a list for deletion before the
@@ -1049,20 +741,23 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
         callback.write_tcp_obj(self.data_socket,ticket)
 
+        q = "select bfid, crc, deleted, drive, volume.label, \
+                    location_cookie, pnfs_path, pnfs_id, \
+                    sanity_size, sanity_crc, size \
+             from file, volume \
+             where \
+                 file.volume = volume.id and volume.label = '%s';"%(
+             external_label)
+
+        res = self.dict.db.query(q).dictresult()
+
         alist = []
-        if self.dict.inx.has_key('external_label'):  # use index
-            # now get a cursor so we can loop on the database quickly:
-            c = self.dict.inx['external_label'].cursor()
-            key, pkey = c.set(external_label)
-            while key:
-                value = self.dict[pkey]
-                if not value.has_key('deleted') or value['deleted'] != "yes":
-                    if value.has_key('pnfs_name0'):
-                        alist.append(value['pnfs_name0'])
-                key,pkey = c.nextDup()
-            c.close()
-        else:    # This is an error
-            Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
+
+        for ff in res:
+            value = self.dict.export_format(ff)
+            if not value.has_key('deleted') or value['deleted'] != "yes":
+                if value.has_key('pnfs_name0'):
+                    alist.append(value['pnfs_name0'])
 
         # finishing up
 
@@ -1115,6 +810,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller({"status"       : status,
                                   "backup"  : 'no' })
 
+    #### DONE
     # add_file_record() -- create a file record
     #
     # This is very dangerous!
@@ -1126,15 +822,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if ticket.has_key('bfid'):
             bfid = ticket['bfid']
             # to see if the bfid has already been used
-            try:
-                record = self.dict[bfid]
+            record = self.dict[bfid]
+            if record:
                 msg = 'bfid "%s" has already been used'%(bfid)
                 Trace.log(e_errors.ERROR, msg)
                 ticket['status'] = (e_errors.ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
-            except: # This is normal
-                pass
         else:
             bfid = self.unique_bit_file_id()
             ticket['bfid'] = bfid
@@ -1155,7 +849,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             drive = ticket['drive']
             external_label = ticket['external_label']
             location_cookie = ticket['location_cookie']
-            pnfs_mapname = ticket.get('pnfs_mapname')
             pnfs_name0 = ticket['pnfs_name0']
             pnfsid = ticket['pnfsid']
             pnfsvid = ticket.get('pnfsvid')
@@ -1175,8 +868,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record['drive'] = drive
         record['external_label'] = external_label
         record['location_cookie'] = location_cookie
-        if pnfs_mapname:
-            record['pnfs_mapname'] = pnfs_mapname
         record['pnfs_name0'] = pnfs_name0
         record['pnfsid'] = pnfsid
         if pnfsvid:
@@ -1191,6 +882,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    #### DONE
     # modify_file_record() -- modify file record
     #
     # This is very dangerous!
@@ -1202,9 +894,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if ticket.has_key('bfid'):
             bfid = ticket['bfid']
             # to see if the bfid exists
-            try:
-                record = self.dict[bfid]
-            except: # this is an error
+            record = self.dict[bfid]
+            if not record:
                 msg = 'modify_file_record(): bfid "%s" does not exist'%(bfid)
                 Trace.log(e_errors.ERROR, msg)
                 ticket['status'] = (e_errors.ERROR, msg)
@@ -1233,7 +924,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     def quit(self, ticket):
-	self.dict.close()
+	# self.dict.close()
 	dispatching_worker.DispatchingWorker.quit(self, ticket)
 
 
@@ -1297,22 +988,18 @@ if __name__ == "__main__":
         dbHome = os.environ['ENSTORE_DIR']
         jouHome = dbHome
 
-    Trace.log(e_errors.INFO,"opening file database using DbTable")
-    # see if there is an index file
-    if os.access(os.path.join(dbHome, 'file.external_label.index'), os.F_OK) or os.environ.has_key('FILE_DB_USE_INDEX'):
-        print "open with index"
-        fc.dict = db.DbTable("file", dbHome, jouHome, ['external_label']) 
-    else:
-        print "open with no index"
-        fc.dict = db.DbTable("file", dbHome, jouHome) 
-    Trace.log(e_errors.INFO,"hurrah, file database is open")
+    db_host = dbInfo['db_host']
+    db_port = dbInfo['db_port']
+
+    Trace.log(e_errors.INFO,"opening file database using edb.FileDB")
+    fc.dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome, dbHome=dbHome)
     
     while 1:
         try:
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
             fc.serve_forever()
         except SystemExit, exit_code:
-            fc.dict.close()
+            # fc.dict.close()
             sys.exit(exit_code)
         except:
             fc.serve_forever_error(fc.log_name)
