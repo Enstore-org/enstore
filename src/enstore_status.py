@@ -409,11 +409,14 @@ class EnStatus:
                     " bytes from Enstore"
                 f_in = 1
                 f_out = 0
-	    else:
+	    elif ticket["mode"] == "w":
 	        m = " writing "+repr(ticket["bytes_to_xfer"])+\
                     " bytes to Enstore"
                 f_in = 0
                 f_out = 1
+            elif ticket["mode"] == "u":
+                got_vol = 0
+                m = " busy dismounting volume %s"%ticket['tape']
 	elif ticket["state"] == "idle":
 	    p = "Last Transfer : "
 	    m = " "
