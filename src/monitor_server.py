@@ -73,10 +73,6 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         self.page = None
 
     def simulate_encp_transfer(self, ticket):
-        #Create a new instance for each query.
-        pid=self.fork()
-        if pid: #parent
-            return
         
         #simulate mover connecting on callback and a read_from_HSM transfer
         localhost, localport, well_known_sock = callback.get_callback(
@@ -122,12 +118,9 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                 bytes_received=bytes_received+len(data)
             ticket['elapsed']=time.time()-t0
 
-        #Whether sending or recieving, send the reply and have the child exit.
         ticket['status'] = ('ok', None)
         self.reply_to_caller(ticket)
         xfer_sock.close()
-        os._exit(0)
-
 
     def _become_html_gen_host(self):
         #setup for HTML output if we are so stimulated by a client
