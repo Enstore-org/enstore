@@ -16,6 +16,9 @@ import time
 
 hostinfo=None
 
+
+####  XXX Get preferred interface from config file if present, else use hostname.
+
 def gethostinfo(verbose=0):
     global hostinfo
     if not hostinfo:
