@@ -145,7 +145,7 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 		** since stdin is already redirected, we need do nothing...
                 ** ... except flush it...
                 */
-                fflush(stdin);
+                fseek(stdin,0L,SEEK_CUR);
 		if (ftt_debug) {
 		    execlp("ftt_suid", "ftt_suid", "-x",  "-u", d->basename, 0);
 		} else {
