@@ -129,57 +129,33 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          return
 
     # change the delete state element in the dictionary
-    def set_deleted(self, ticket):
+    # this method is for private use only
+    def set_deleted_priv(self, bfid, deleted):
      try:
-
-        # everything is based on bfid - make sure we have this
-        try:
-            key="bfid"
-            bfid = ticket[key]
-        except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, 
-                                "File Clerk: "+key+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
-            return
-
-        # also need new value of the delete element- make sure we have this
-        try:
-            key2="deleted"
-            deleted = ticket[key2]
-            if string.find(string.lower(deleted),'y') !=-1 or string.find(string.lower(deleted),'Y') !=-1:
-                deleted = "yes"
-                decr_count = 1
-            else:
-                self.deleted = "no"
-                decr_count = -1
-        except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
-            return
-
         # look up in our dictionary the request bit field id
         try:
             record = dict[bfid] ## was deepcopy
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, 
-                                "File Clerk: bfid "+repr(bfid)+" not found")
-            Trace.log(e_errors.INFO, repr(ticket))
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
-            return
+            status = (e_errors.KEYERROR, 
+		      "File Clerk: bfid "+repr(bfid)+" not found")
+            Trace.log(e_errors.INFO, repr(status))
+            Trace.trace(10,"set_deleted "+repr(status))
+            return status, None, None
         
+	if string.find(string.lower(deleted),'y') !=-1 or \
+	   string.find(string.lower(deleted),'Y') !=-1:
+	    deleted = "yes"
+	    decr_count = 1
+	else:
+	    self.deleted = "no"
+	    decr_count = -1
         if record["deleted"] == deleted:
-            ticket["status"] = (e_errors.USER_ERROR,
+            status = (e_errors.USER_ERROR,
                                 "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
             Trace.log(e_errors.USER_ERROR, 
             "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
-            self.reply_to_caller(ticket)
-            Trace.trace(12,'set_deleted '+repr(ticket))
-            return
+            Trace.trace(12,'set_deleted_priv '+repr(status))
+            return status, None, None
             
         # mod the delete state
         record["deleted"] = deleted
@@ -202,11 +178,109 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                   (bfid,record["pnfs_name0"],record["deleted"],record["external_label"],vticket["non_del_files"],record["pnfs_mapname"]))
 
         # and return to the caller
-        ticket["status"] = (e_errors.OK, None)
-        ticket["fc"] = record
-        ticket["vc"] = vticket
+        status = (e_errors.OK, None)
+        fc = record
+        vc = vticket
+        Trace.trace(12,'set_deleted_priv '+repr(status))
+        return status, fc, vc
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         Trace.log(e_errors.INFO, repr(status))
+         Trace.trace(10,"set_deleted_priv "+repr(status))
+         return status, None, None
+
+    # change the delete state element in the dictionary
+    def set_deleted(self, ticket):
+     try:
+
+        # everything is based on bfid - make sure we have this
+        try:
+            key="bfid"
+            bfid = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, 
+                                "File Clerk: "+key+" key is missing")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
+            return
+
+        # also need new value of the delete element- make sure we have this
+        try:
+            key2="deleted"
+            deleted = ticket[key2]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
+            return
+
+	status, fc, vc = self.set_deleted_priv(bfid, deleted)
+	ticket["status"] = status
+	if fc: ticket["fc"] = fc
+	if vc: ticket["vc"] = fc
+        # look up in our dictionary the request bit field id
         self.reply_to_caller(ticket)
         Trace.trace(12,'set_deleted '+repr(ticket))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         Trace.log(e_errors.INFO, repr(ticket))
+         self.reply_to_caller(ticket)
+         Trace.trace(10,"set_deleted "+repr(ticket["status"]))
+         return
+
+    # restore specified file
+    def restore_file(self, ticket):
+     try:
+        # everything is based on bfid - make sure we have this
+        try:
+            key="file_name"
+            fname = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, 
+                                "File Clerk: "+key+" key is missing")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"restore_file "+repr(ticket["status"]))
+            return
+	# find the file in db
+	bfid = None
+	dict.cursor("open")
+	key,value=dict.cursor("first")
+	while key:
+	    if value["pnfs_name0"] == fname:
+		bfid = value["bfid"]
+		external_label = value["external_label"]
+		break
+	    key,value=dict.cursor("next")
+	dict.cursor("close")
+	# file not found
+	if not bfid:
+	    ticket["status"] = ENOENT, "File %s not found"%fname
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"restore_file "+repr(ticket["status"]))
+            return
+
+	if string.find(value["external_label"],'deleted') !=-1:
+	    ticket["status"] = EACCES, "volume %s is deleted"%value["external_label"]
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"restore_file "+repr(ticket["status"]))
+	    
+	status, fc, vc = self.set_deleted_priv(bfid, "no")
+	ticket["status"] = status
+	if fc: ticket["fc"] = fc
+	if vc: ticket["vc"] = fc
+
+        self.reply_to_caller(ticket)
+        Trace.trace(12,'restore_file '+repr(ticket))
         return
 
      # even if there is an error - respond to caller so he can process it

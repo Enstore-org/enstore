@@ -183,12 +183,19 @@ class FileClient(generic_client.GenericClient, \
 
     # rename volume and volume map
     def rename_volume(self, bfid, external_label, set_deleted, restore_vm):
-        r = self.send({"work"           : "rename_volume",\
+        r = self.send({"work"           : "rename_volume",
                        "bfid"           : bfid,
 		       "external_label" : external_label,
 		       "set_deleted"    : set_deleted,
 		       "restore"        : restore_vm} )
 	return r
+
+    # rename volume and volume map
+    def restore(self, file_name):
+        r = self.send({"work"           : "restore_file",
+                       "file_name"      : file_name} )
+	return r
+
     # get volume map name for given bfid
     def get_volmap_name(self):
         r = self.send({"work"           : "get_volmap_name",\
@@ -210,13 +217,14 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.bfid = 0
         self.backup = 0
         self.deleted = 0
+	self.restore = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+["bfids","bfid=","deleted=","tape_list=","backup"]
+        return self.client_options()+["bfids","bfid=","deleted=","tape_list=","backup", "restore="]
 
 
 if __name__ == "__main__" :
@@ -259,7 +267,9 @@ if __name__ == "__main__" :
 	if ticket['status'][0] ==  e_errors.OK:
 	    print repr(ticket['fc'])
 	    print repr(ticket['vc'])
-
+    elif intf.restore:
+	print "file",intf.file 
+        ticket = fcc.restore(intf.file)
     else:
 	intf.print_help()
         sys.exit(0)

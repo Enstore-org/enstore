@@ -270,6 +270,9 @@ class Interface:
                 self.delvol = 1
             elif opt == "--restorevol" :
                 self.restorevol = 1
+            elif opt == "--restore" :
+                self.restore = 1
+		self.file = value
             elif opt == "--all" :
                 self.all = 1
             elif opt == "--force" :
