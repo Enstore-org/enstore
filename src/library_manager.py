@@ -2541,7 +2541,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # get active volume known to LM
     def get_active_volumes(self, ticket):
         movers = self.volumes_at_movers.get_active_movers()
-          ticket['movers'] = []
+        ticket['movers'] = []
         for mover in movers:
             ticket['movers'].append({'mover'          : mover['mover'],
                                      'external_label' : mover['external_label'],
