@@ -62,7 +62,10 @@ class DispatchingWorker:
         self.server_bind()
 
     def r_eval(self, stuff):
-        return self.rexec.r_eval(stuff)
+        try:
+            return self.rexec.r_eval(stuff)
+        except:
+            return None,None,None
     
     def add_interval_func(self, func, interval, one_shot=0):
         now = time.time()
@@ -172,7 +175,7 @@ class DispatchingWorker:
             Trace.trace(6,"serve_forever, shouldn't get here")
 
     def do_one_request(self):
-        """Recieve and process one request, possibly blocking."""
+        """Receive and process one request, possibly blocking."""
         # request is a "(idn,number,ticket)"
         request, client_address = self.get_request()
         now=time.time()
@@ -289,6 +292,8 @@ class DispatchingWorker:
                         request = None
                     gotit = 1
                     request,inCRC = self.r_eval(req)
+                    if request == None:
+                        return (request, addr)
                     # calculate CRC
                     crc = checksum.adler32(0L, request, len(request))
                     if (crc != inCRC) :
@@ -315,8 +320,13 @@ class DispatchingWorker:
     def process_request(self, request, client_address):
         # ref udp_client.py (i.e. we may wish to have a udp_client method
         # to get this information)
-        idn, number, ticket = self.r_eval(request)
         self.reply_address = client_address
+        idn, number, ticket = self.r_eval(request)
+        if idn == None or type(ticket) != type({}) or not ticket.has_key("work"):
+            Trace.log(e_errors.ERROR,"Malformed request from %s %s"%(client_address, request,))
+            reply = (0L,{'status': (e_errors.MALFORMED, None)},None)
+            self.server_socket.sendto(repr(reply), self.reply_address)
+            return
         self.client_number = number
         self.current_id = idn
 
