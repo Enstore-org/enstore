@@ -10,6 +10,7 @@ import sys
 import lockfile
 import dict_to_a
 import Trace
+import generic_cs
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -71,7 +72,7 @@ def get_callback_port(start,end):
         sleeptime = 1
         msg = "get_callback_port: all ports from "+repr(start)+' to ' \
 	      +repr(end) + " used. waiting"+repr(sleeptime)+" seconds"
-        print msg
+        generic_cs.enprint(msg)
         Trace.trace(2,msg)
         time.sleep (sleeptime)
 
@@ -167,15 +168,15 @@ def write_tcp_buf(sock,buffer,errmsg=""):
     Trace.trace(16,"{write_tcp_buf")
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"write_tcp_buff pre-send error:",\
-              errno.errorcode[badsock]
+        generic_cs.enprint(errmsg+" write_tcp_buff pre-send error: "+\
+              repr(errno.errorcode[badsock]))
         Trace.trace(0,"write_tcp_buf pre-send error "+errmsg+\
                     repr(errno.errorcode[badsock]))
     sock.send(buffer)
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"write_tcp_buf post-send error:",\
-              errno.errorcode[badsock]
+        generic_cs.enprint(errmsg+" write_tcp_buf post-send error: "+\
+              repr(errno.errorcode[badsock]))
         Trace.trace(0,"write_tcp_buf post-send error "+errmsg+\
                     repr(errno.errorcode[badsock]))
     Trace.trace(16,"}write_tcp_buf")
@@ -185,15 +186,15 @@ def write_tcp_socket(sock,buffer,errmsg=""):
     Trace.trace(16,"{write_tcp_socket")
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"write_tcp_socket pre-send error:",\
-              errno.errorcode[badsock]
+        generic_cs.enprint(errmsg+" write_tcp_socket pre-send error: "+\
+              repr(errno.errorcode[badsock]))
         Trace.trace(0,"write_tcp_socket pre-send error "+errmsg+\
                     repr(errno.errorcode[badsock]))
     sock.send(dict_to_a.dict_to_a(buffer))
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"write_tcp_socket post-send error:",\
-              errno.errorcode[badsock]
+        generic_cs.enprint(errmsg+" write_tcp_socket post-send error: "+\
+              repr(errno.errorcode[badsock]))
         Trace.trace(0,"write_tcp_socket post-send error "+errmsg+\
                     repr(errno.errorcode[badsock]))
     Trace.trace(16,"}write_tcp_socket")
@@ -203,15 +204,15 @@ def read_tcp_buf(sock,errmsg="") :
     Trace.trace(16,"{read_tcp_buf")
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"read_tcp_buf pre-recv error:",\
-              errno.errorcode[badsock]
+        generic_cs.enprint(errmsg+" read_tcp_buf pre-recv error: "+\
+              repr(errno.errorcode[badsock]))
         Trace.trace(0,"read_tcp_buf pre-recv error "+errmsg+\
                     repr(errno.errorcode[badsock]))
     buf = sock.recv(65536*4)
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"read_tcp_buf post-recv error:",\
-              errno.errorcode[badsock]
+        generic_cs.enprint(errmsg+" read_tcp_buf post-recv error: "+\
+              repr(errno.errorcode[badsock]))
         Trace.trace(0,"read_tcp_buf post-recv error "+errmsg+\
                     repr(errno.errorcode[badsock]))
     Trace.trace(16,"}read_tcp_buf len="+repr(len(buf)))
@@ -223,15 +224,16 @@ def read_tcp_socket(sock,errmsg="") :
     while 1:
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
-            print errmsg,"read_tcp_socket pre-recv socketerror:",\
-                  errno.errorcode[badsock]
+            generic_cs.enprint(errmsg+\
+                               " read_tcp_socket pre-recv socketerror: "+\
+                               repr(errno.errorcode[badsock]))
             Trace.trace(0,"read_tcp_socket pre-recv error "+errmsg+\
                         repr(errno.errorcode[badsock]))
         buf = sock.recv(65536*4)
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
-            print errmsg,"read_tcp_socket post-recv error:",\
-                  errno.errorcode[badsock]
+            generic_cs.enprint(errmsg+" read_tcp_socket post-recv error: "+\
+                  repr(errno.errorcode[badsock]))
             Trace.trace(0,"read_tcp_socket post-recv error "+errmsg+\
                         repr(errno.errorcode[badsock]))
         if len(buf) == 0 :
@@ -241,7 +243,8 @@ def read_tcp_socket(sock,errmsg="") :
             worklist = dict_to_a.a_to_dict(workmsg)
             return worklist
         except SyntaxError:
-            #print "SyntaxError on translating:",repr(workmsg),"\nretrying"
+            #generic_cs.enprint("SyntaxError on translating: "+\
+            #                    repr(workmsg)+"\nretrying")
             err = 1
             continue
     try:
@@ -258,6 +261,6 @@ if __name__ == "__main__" :
     Trace.trace(1,"callback called with args "+repr(sys.argv))
 
     c = get_callback()
-    print c
+    generic_cs.enprint(c)
     Trace.trace(1,"callback exit ok callback="+repr(c))
 

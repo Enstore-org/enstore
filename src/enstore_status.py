@@ -2,7 +2,6 @@
 # system import
 import sys
 import time
-import pprint
 import copy
 import errno
 import regsub
@@ -14,6 +13,7 @@ import stat
 import traceback
 import Trace
 import e_errors
+import generic_cs
 
 # define file types
 ascii_file = 0
@@ -44,17 +44,15 @@ class EnstoreStatus:
     # open the file
     def open(self, verbose=0):
         Trace.trace(12,"{open "+self.file_name)
-	if verbose :
-            print "opening " + self.file_name
+	generic_cs.enprint("opening " + self.file_name, generic_cs.SERVER, \
+	                    verbose)
         # try to open status file for append
         try:
             self.file = open(self.file_name, 'a')
-            if verbose :
-                print "opened for append"
+            generic_cs.enprint("opened for append", generic_cs.SERVER, verbose)
         except:
             self.file = open(self.file_name, 'w')
-            if verbose :
-                print "opened for write"
+            generic_cs.enprint("opened for write", generic_cs.SERVER, verbose)
         Trace.trace(12,"}open")
 
     # close the file
@@ -317,8 +315,8 @@ class EnstoreStatus:
     def output_suspect_vols(self, ticket, key, verbose):
         Trace.trace(12,"{output_suspect_vols "+repr(ticket))
 	sm = self.format_lm_suspect_vols(ticket)
-	if verbose:
-	  pprint.pprint(sm)
+	generic_cs.enprint(sm, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
+	                   verbose)
 	self.text[key] = self.text[key]+sm
         Trace.trace(12,"}output_suspect_vols")
 
@@ -326,8 +324,8 @@ class EnstoreStatus:
     def output_lmqueues(self, ticket, key, verbose):
         Trace.trace(12,"{output_lmqueues "+repr(ticket))
 	fq = self.format_lm_queues(ticket)
-	if verbose:
-	  pprint.pprint(fq)
+	generic_cs.enprint(fq, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
+	                   verbose)
 	self.text[key] = self.text[key]+fq
         Trace.trace(12,"}output_lmqueues ")
 
@@ -335,8 +333,8 @@ class EnstoreStatus:
     def output_lmmoverlist(self, ticket, key, verbose):
         Trace.trace(12,"{output_lmmoverlist "+repr(ticket))
 	fq = self.format_lm_moverlist(ticket)
-	if verbose:
-	  pprint.pprint(fq)
+	generic_cs.enprint(fq, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
+	                   verbose)
 	self.text[key] = self.text[key]+fq
         Trace.trace(12,"}output_lmmoverlist ")
 

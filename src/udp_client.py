@@ -10,7 +10,6 @@ import errno
 import exceptions
 import errno
 import sys
-import pprint
 
 # enstore imports
 import interface
@@ -60,14 +59,21 @@ def empty_socket( sock ):
         try:
             f = sock.fileno()
             r, w, x = select.select([f],[],[f],0)
-            #print "empty socket",repr(sock),pprint.pprint(sock.__dict__),f,xcount,r,w,x
+            #generic_cs.enprint("empty socket "+repr(sock))
+	    #generic_cs.enprint(sock.__dict__, generic_cs.PRETTY_PRINT)
+	    #generic_cs.enprint(repr(f)+" "+repr(xcount)+" "+repr(r)+" "+\
+	    #                    repr(w)+" "+repr(x))
 
             # exception mean trouble
             if x:
                 xcount = xcount+1
                 Trace.trace(0, "empty_socket: exception on select to " +repr(f))
                 Trace.trace(0,"empty_socket"+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                #print "empty socket exception",xcount,pprint.pprint(sock.__dict__),r,w,x,str(sys.exc_info()[0]),str(sys.exc_info()[1])
+                #generic_cs.enprint("empty socket exception "+repr(xcount))
+	        #generic_cs.enprint(sock.__dict__, generic_cs.PRETTY_PRINT)
+	        #generic_cs.enprint(repr(r)+" "+repr(w)+" "+repr(x)+" "+\
+	        #                    str(sys.exc_info()[0])+\
+	        #                    " "+str(sys.exc_info()[1]))
 
             elif r:
                 rcount = rcount+1
@@ -94,8 +100,8 @@ def send_socket( sock, message, address ):
     badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
     if badsock != 0:
 	Trace.trace( 0, "send_socket pre send"+repr(errno.errorcode[badsock]) )
-	print "udp_client send_socket, pre-sendto error:",\
-	      errno.errorcode[badsock]
+	generic_cs.enprint("udp_client send_socket, pre-sendto error: "+\
+	      repr(errno.errorcode[badsock]))
     sent = 0
     while sent == 0:
 	try:
@@ -106,16 +112,17 @@ def send_socket( sock, message, address ):
 			, 'send_socket: Nameserver not responding add='
 			  +repr(address)+str(sys.exc_info()[0])
 			  +str(sys.exc_info()[1]) )
-	    print timeofday.tod(),\
-		  "udp_client.send_socket: Nameserver not responding\n",\
-		  message,"\n",address,"\n",\
-		  sys.exc_info()[0],"\n",sys.exc_info()[1]
+	    generic_cs.enprint(repr(timeofday.tod())+ \
+		  "udp_client.send_socket: Nameserver not responding\n"+\
+		  message+"\n"+repr(address)+"\n"+\
+		  str(sys.exc_info()[0])+"\n"+str(sys.exc_info()[1]))
 	    time.sleep(3)		# arbitrary time - don't beat on NS
     badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
     if badsock != 0:
 	Trace.trace( 0,"send_socket post send"+repr(errno.errorcode[badsock]) )
-	print "udp_client send_socket, post-sendto ",address," error:",\
-	      errno.errorcode[badsock]
+	generic_cs.enprint("udp_client send_socket, post-sendto "+\
+	                   repr(address)+" error: "+ \
+	                   repr(errno.errorcode[badsock]))
     return
 
 def wait_rsp( sock, address, rcv_timeout ):
@@ -131,9 +138,9 @@ def wait_rsp( sock, address, rcv_timeout ):
 	Trace.trace( 0, "send: exception on select after send to "
 		        +repr(address)+" "+repr(x) )
 	Trace.trace(0,"send"+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-	print "UDPClient.send: exception on select after send to "+\
-	      repr(address)+" "+repr(x)
-	print sys.exc_info()[0],sys.exc_info()[1]
+	generic_cs.enprint("UDPClient.send: exception on select after send to "+\
+	      repr(address)+" "+repr(x)+" "+str(sys.exc_info()[0])+" "+\
+	      str(sys.exc_info()[1]))
 
     # something there - read it and see if we have response that
     # matches the number we sent out
@@ -141,12 +148,14 @@ def wait_rsp( sock, address, rcv_timeout ):
 	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
 	if badsock != 0:
 	    Trace.trace( 0,"send pre recv"+repr(errno.errorcode[badsock]) )
-	    print "udp_client send, pre-recv error:",errno.errorcode[badsock]
+	    generic_cs.enprint("udp_client send, pre-recv error: "+\
+	                       repr(errno.errorcode[badsock]))
 	reply , server = sock.recvfrom( TRANSFER_MAX )
 	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
 	if badsock != 0:
 	    Trace.trace( 0,"send post recv"+repr(errno.errorcode[badsock]))
-	    print "udp_client send, post-recv error:",errno.errorcode[badsock]
+	    generic_cs.enprint("udp_client send, post-recv error: "+ \
+	                       repr(errno.errorcode[badsock]))
 
     return reply, server
 
@@ -202,7 +211,7 @@ class UDPClient:
         # its dictionary - this keeps things cleaner & stops memory from growing
         Trace.trace(10,'__del__ udpclient '+repr(self.ident))
         for server in self.where_sent.items() :
-            #print "clearing ",server[0], server[1]
+            #generic_cs.enprint("clearing "+server[0]+" "+ server[1])
             try:
                 self.send_no_wait({"work":"done_cleanup"}, server[0])
             except:
@@ -214,7 +223,9 @@ class UDPClient:
         Trace.trace( 20, 'send add='+repr(address)+' text='+repr(text) )
 	if self.pp and text['work']!='idle_mover':
 	    x=sys.stdout;sys.stdout=sys.stderr
-	    print "\nreq/cmd to address:",address," from:",self.ident; pprint.pprint(text)
+	    generic_cs.enprint("\nreq/cmd to address: "+repr(address)+\
+	                       " from: "+ repr(self.ident))
+	    generic_cs.enprint(text, generic_cs.PRETTY_PRINT)
 	    sys.stdout=x
 
 	if rcv_timeout:
@@ -250,9 +261,9 @@ class UDPClient:
 		    Trace.trace(0,"send disaster: didn't read entire message"+\
 				"server="+repr(server)+" "+\
 				str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-		    print "disaster: didn't read entire message"
-		    print "reply:",reply
-		    print "server:",server
+		    generic_cs.enprint("disaster: didn't read entire message")
+		    generic_cs.enprint("reply: "+repr(reply))
+		    generic_cs.enprint("server: "+repr(server))
 		    raise sys.exc_info()[0],sys.exc_info()[1]
 		# goofy test feature - need for client being echo service only
 		except exceptions.ValueError :
@@ -261,12 +272,14 @@ class UDPClient:
 
 		# now (after receive), check...
 		if number != self.number :
-                    print type(number), type(self.number)
+                    generic_cs.enprint(repr(type(number))+" "+\
+	                               repr(type(self.number)))
 		    msg="UDPClient.send: stale_number=%s number=%s" %\
 			 (number,self.number)
 		    Trace.trace(21,'send stale='+repr(number)+' want='+\
 				repr(self.number))
-		    print msg,"resending to ", address, message
+		    generic_cs.enprint(msg+" resending to "+repr(address)+\
+	                               message)
 
 	    elif tries!=0 and ntries>=tries:  # no reply after requested tries
                 Trace.trace(0,"send quiting,no reply after tries="+repr(ntries))
@@ -276,7 +289,8 @@ class UDPClient:
 
 	if self.pp and (not 'work' in out.keys() or out['work']!='nowork'):
 	    x=sys.stdout;sys.stdout=sys.stderr
-	    print "\nrsp - sent to:",self.ident; pprint.pprint(out)
+	    generic_cs.enprint("\nrsp - sent to: "+repr(self.ident))
+	    generic_cs.enprint(out, generic_cs.PRETTY_PRINT)
 	    sys.stdout=x
 	Trace.trace(20,"}send "+repr(out))
         return out
@@ -286,7 +300,9 @@ class UDPClient:
         Trace.trace(20,'send_no_wait add='+repr(address)+' text='+repr(text))
 	if self.pp:
 	    x=sys.stdout;sys.stdout=sys.stderr
-	    print "\nmsg/cmd to address:",address," from:",self.ident; pprint.pprint(text)
+	    generic_cs.enprint("\nmsg/cmd to address: "+repr(address)+\
+	                       " from: "+repr(self.ident))
+	    generic_cs.enprint(text, generic_cs.PRETTY_PRINT)
 	    sys.stdout=x
 
 	message, self.number = protocolize( self, text )
@@ -315,7 +331,6 @@ class UDPClientInterface(interface.Interface):
                self.help_options()
 
 if __name__ == "__main__" :
-    import pprint
 
     status = 0
 
@@ -325,17 +340,19 @@ if __name__ == "__main__" :
     # get a UDP client
     u = UDPClient(intf.host, intf.port, intf.socket)
 
-    #pprint.pprint(u.__dict__)
+    #generic_cs.enprint(u.__dict__, generic_cs.PRETTY_PRINT)
 
-    if intf.verbose:
-        print "Sending:\n",intf.msg,"\nto",intf.sendhost,intf.sendport,"with calback on",intf.port
+    generic_cs.enprint("Sending:\n"+intf.msg+"\nto"+repr(intf.sendhost)+" "+\
+	               repr(intf.sendport)+" with calback on "+\
+	      	       repr(intf.port), generic_cs.CONNECTING, intf.verbose)
     back = u.send(intf.msg, (intf.sendhost, intf.sendport))
 
     if back != intf.msg :
-        print "Error: sent:\n",intf.msg,"\nbut read:\n",back
+        generic_cs.enprint("Error: sent:\n"+intf.msg+"\nbut read:\n"+back)
         status = status|1
 
-    elif intf.verbose:
-        print "Read back:\n",back
+    else:
+	generic_cs.enprint("Read back:\n"+back, generic_cs.CONNECTING,\
+	                   intf.verbose)
 
     sys.exit(status)

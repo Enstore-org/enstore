@@ -3,7 +3,6 @@
 #
 #  o allow it to respond to alive requests when it is in the middle of 
 #	updating the servers.
-#  o communicate with the movers
 #
 ##############################################################################
 # system import
@@ -596,6 +595,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                  html_file="", alive_rcv_to=-1, alive_retries=-1, \
 	         max_ascii_size=-1):
 	Trace.trace(10, '{__init__')
+	self.print_id = "INQS"
 	self.verbose = verbose
 	# set a timeout and retry that we will use the first time to get the
 	# inquisitor information from the config server.  we do not use the

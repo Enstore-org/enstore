@@ -22,8 +22,6 @@ import Trace
 import pdb
 import e_errors
 
-volid = "VOLC"
-
 class VolumeClerkClient(generic_client.GenericClient,\
                         backup_client.BackupClient):
 
@@ -31,6 +29,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                  port=interface.default_port()):
         Trace.trace(10,'{__init__ csc='+repr(csc)+' verbose='+repr(verbose)+\
                     ' host='+repr(host)+' port='+repr(port))
+	self.print_id = "VCC"
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 	self.verbose = verbose
@@ -137,8 +136,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                 listen_socket.close()
                 break
             else:
-	        self.enprint("get_vols - imposter called us back, trying again",\
-	                     generic_cs.NO_LOGGER, 0, volid)
+	        self.enprint("get_vols - imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
@@ -162,7 +160,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                                     "client get_vols, reading worklist")
           if len(msg)==0:
                 break
-	  self.enprint(msg)
+	  generic_cs.enprint(msg)
         worklist = ticket
         data_path_socket.close()
 
@@ -398,7 +396,7 @@ if __name__ == "__main__":
 	msg_id = generic_cs.CLIENT
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
-	vcc.enprint(ticket, generic_cs.PRETTY_PRINT)
+	generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
     elif intf.addvol:
         ticket = vcc.addvol(intf.args[0],              # library
@@ -415,4 +413,4 @@ if __name__ == "__main__":
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
 	msg_id = generic_cs.CLIENT
 
-    vcc.check_ticket(ticket, msg_id, volid)
+    vcc.check_ticket(ticket, msg_id)

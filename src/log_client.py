@@ -35,8 +35,6 @@ WARNING=2
 INFO=3
 MISC=4
 
-logid = "LOGC"
-
 # severity translator
 sevdict = { ERROR      : 'E', \
             USER_ERROR : 'U', \
@@ -78,6 +76,7 @@ class LoggerClient(generic_client.GenericClient):
                  host=interface.default_host(),
                  port=interface.default_port()):
 
+	self.print_id = "LOGC"
         self.i_am = i_am_a
         self.pid = os.getpid()
         self.uid = os.getuid()
@@ -100,8 +99,7 @@ class LoggerClient(generic_client.GenericClient):
             str = format % args
 	    Trace.trace( severity, str )
             msg = msg + ' ' + str
-	    self.enprint(msg, generic_cs.NO_LOGGER, generic_cs.DEBUG, logid,
-	                 self.verbose)
+	    self.enprint(msg, generic_cs.DEBUG, self.verbose)
             ticket = {'work' : 'log_message',
                       'message' : msg }
             lticket = self.csc.get(self.logger)
@@ -197,4 +195,4 @@ if __name__ == "__main__" :
     del logc.csc.u
     del logc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    logc.check_ticket(ticket, msg_id, logid)
+    logc.check_ticket(ticket, msg_id)

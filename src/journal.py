@@ -31,6 +31,7 @@ import time
 
 # enstore imports
 import Trace
+import generic_cs
 
 class JournalDict:
 
@@ -97,10 +98,11 @@ class JournalDict:
 
 def printdict(dict) :
 	Trace.trace(10,'{printdict')
-	print dict
+	generic_cs.enprint(dict)
 	for k in dict.keys():
-		print "%s %s" % (k, `dict[k]`)
-		print type(dict[k])
+	        msg = "%s %s" % (k, `dict[k]`)
+		generic_cs.enprint(msg)
+		generic_cs.enprint(type(dict[k]))
 	Trace.trace(10,'}printdict')
 
 if __name__ == "__main__" :

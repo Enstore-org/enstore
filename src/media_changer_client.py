@@ -20,12 +20,11 @@ import generic_cs
 import Trace
 import e_errors
 
-medchid = "MEDCHC"
-
 class MediaChangerClient(generic_client.GenericClient):
     def __init__(self, csc=0, verbose=0, name="", \
                  host=interface.default_host(), \
                  port=interface.default_port()):
+	self.print_id = "MEDCHC"
         self.media_changer=name
 	self.verbose = verbose
         configuration_client.set_csc(self, csc, host, port, verbose)
@@ -112,10 +111,10 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.ALIVE
     else:
         ticket = mcc.unloadvol(intf.volume, intf.drive)
-	mcc.enprint('unload returned:'+ticket['status'])
+	mcc.enprint('unload returned:'+repr(ticket['status']))
 	msg_id = generic_cs.CLIENT
 
     del mcc.csc.u
     del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    mcc.check_ticket(ticket, msg_id, medchid)
+    mcc.check_ticket(ticket, msg_id)

@@ -12,23 +12,22 @@ try:
     import SOCKS; socket = SOCKS
 except ImportError:
     import socket
-
-import pdb
+import generic_cs
 
 def default_host():
     try:
 	return os.environ['ENSTORE_CONFIG_HOST']
     except:
-	print "can not get default host - reverting to localhost:",\
-	      sys.exc_info()[0],sys.exc_info()[1]
+	generic_cs.enprint("can not get default host - reverting to localhost: "+\
+	      str(sys.exc_info()[0])+" "+str(sys.exc_info()[1]))
 	return("localhost")
 
 def default_port():
     try:
 	return os.environ['ENSTORE_CONFIG_PORT']
     except:
-	print "can not get default port - reverting to 7500:",\
-	      sys.exc_info()[0],sys.exc_info()[1]
+	generic_cs.enprint("can not get default port - reverting to 7500: "+\
+	      str(sys.exc_info()[0])+" "+str(sys.exc_info()[1]))
 	return("7500")
 
 def default_file():
@@ -78,10 +77,8 @@ class Interface:
 	self.ip = socket.gethostbyname(self.config_host)
 
     def print_help(self):
-        print "USAGE:"
-	print self.help_line()
-	print "" 
-	print "     (do not forget the '--' in  front of each option)"
+        generic_cs.enprint("USAGE:\n"+self.help_line()+"\n")
+	generic_cs.enprint("     (do not forget the '--' in  front of each option)")
 
     def parse_config_host(self, value):
         try:
@@ -105,17 +102,15 @@ class Interface:
             optlist,self.args=getopt.getopt(sys.argv[1:],self.charopts(),
                                             self.options())
         except:
-            print "ERROR: ", sys.exc_info()[0], sys.exc_info()[1]
+            generic_cs.enprint("ERROR: "+str(sys.exc_info()[0])+" "+\
+	                       str(sys.exc_info()[1]))
             self.print_help()
             sys.exit(1)
 
         for (opt,value) in optlist :
             value=self.strip(value)
-	    try:
-	        if self.verbose:
-	            print "opt = "+repr(opt)+", value = "+repr(value)
-	    except:
-	        pass
+	    generic_cs.enprint("opt = "+repr(opt)+", value = "+repr(value), \
+	                       generic_cs.INTERFACE, self.verbose)
             if opt == "--config_host" :
                 self.parse_config_host(value)
             elif opt == "--config_port" :

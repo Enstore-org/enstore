@@ -7,8 +7,8 @@ import pprint
 #enstore imports
 import Trace
 
-NONE = -1
-NO_LOGGER = 0
+NONE = 0
+NONE_V = -1
 
 # define the bits used in the verbose mask
 SERVER       = 000000000001     # 1
@@ -17,24 +17,39 @@ CONNECTING   = 000000000004     # 4
 D0SAM        = 000000000010     # 8
 SOCKET_ERROR = 000000000020     # 16
 ALIVE        = 000000000040     # 32
+PNFS         = 000000000100     # 64
+INTERFACE    = 000000000200     # 128
 DEBUG        = 010000000000     # 1073741824
 ALL_SERVER   = SERVER | ALIVE | CONNECTING | SOCKET_ERROR
 ALL_CLIENT   = CLIENT | ALIVE | CONNECTING | SOCKET_ERROR
 PRETTY_PRINT = 020000000000
 ALL          = 037777777777
 
-def enprint(msg, logger=NO_LOGGER, msg_bit=0, id="", verbosity=NONE):
+global_print_id = ""
+
+def add_id(id, msg):
+    global global_print_id
+
     # add id on to the front if we have one
     if id == "":
-	nmsg = msg
+	# now look to see if we have a global one
+	if global_print_id == "":
+	    nmsg = msg
+	else:
+	    nmsg = global_print_id+": "+repr(msg)
     else:
 	nmsg = id+": "+repr(msg)
+    return nmsg
+
+def enprint(msg, msg_bit=NONE, verbosity=NONE_V, logger=NONE, id=""):
+    global global_print_id
 
     # send the message to STDOUT.
     # do not print if the verbosity level does not have a bit set for this msg.
-    if verbosity != NONE:
+    if verbosity != NONE_V:
 	# check that this message should be printed for this verbosity
 	if verbosity & msg_bit:
+	    nmsg = add_id(id, msg)
 	    if msg_bit & PRETTY_PRINT:
 	        try:
 	            pprint.pprint(nmsg)
@@ -51,6 +66,7 @@ def enprint(msg, logger=NO_LOGGER, msg_bit=0, id="", verbosity=NONE):
 	        logger.send(log_client.WARNING, 1, nmsg)
     else:
 	# no verbosity was entered, try to print the message
+	nmsg = add_id(id, msg)
 	if msg_bit & PRETTY_PRINT:
 	    try:
 	        pprint.pprint(nmsg)
@@ -61,8 +77,18 @@ def enprint(msg, logger=NO_LOGGER, msg_bit=0, id="", verbosity=NONE):
 	        print nmsg
 	    except:
 	        pass
+    # reset the following so if the next time we are called generically,
+    # we do not retain the old value.
+    global_print_id = ""
 
 class GenericCS:
 
-    def enprint(self, msg, logger=NO_LOGGER, msg_bit=0, id="", verbosity=NONE):
-	enprint(msg, logger, msg_bit, id, verbosity)
+    def enprint(self, msg, msg_bit=NONE, verbosity=NONE_V, logger=NONE):
+	global global_print_id
+	try:
+	    global_print_id = self.print_id
+	except:
+	    global_print_id = ""
+
+	enprint(msg, msg_bit, verbosity, logger)
+

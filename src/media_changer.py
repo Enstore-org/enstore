@@ -21,6 +21,7 @@ import os
 import configuration_client
 import dispatching_worker
 import generic_server
+import generic_cs
 import interface
 import log_client
 import traceback
@@ -39,6 +40,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	         port=interface.default_port()):
         Trace.trace(10, '{__init__')
 	self.verbose = verbose
+	self.print_id = medch
         # get the config server
         configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system
@@ -62,7 +64,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
              external_label,    # volume external label
              drive) :           # drive id
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-	    print "make sure tape",external_label,"is in drive",drive
+	    self.enprint("make sure tape "+external_label+" is in drive "+\
+	                 drive)
 	    time.sleep( self.mc_config['delay'] )
 	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
@@ -72,7 +75,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                external_label,  # volume external label
                drive) :         # drive id
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-	    print "remove tape",external_label,"from drive",drive
+	    self.enprint("remove tape "+external_label+" from drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
 	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
@@ -103,7 +106,7 @@ class FTT_MediaLoaderMethods(MediaLoaderMethods) :
 
     # assumes volume is in drive
     def load(self, external_label, drive) :
-	print "media changer rewind"
+	self.enprint("media changer rewind")
         #os.system("mt -t " + drive + " rewind")
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 

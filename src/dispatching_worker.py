@@ -23,6 +23,7 @@ except ImportError:
 import timeofday
 import Trace
 import e_errors
+import generic_cs
 
 request_dict = {}
 #
@@ -55,7 +56,8 @@ def collect_children():
     try:
         pid, status = os.waitpid(0, os.WNOHANG)
         if (pid!=0):
-            #print "Child reaped: pid=",pid," status=",status
+            #generic_cs.enprint("Child reaped: pid= "+repr(pid)+" status= "+\
+	    #                    repr(status))
             count = count+1
             Trace.trace(21,"collect_children reaped pid="+repr(pid))
     except os.error:
@@ -120,11 +122,11 @@ class DispatchingWorker:
         if (crc != inCRC) :
             Trace.trace(0,"handle_request - bad CRC inCRC="+repr(inCRC)+\
                         " calcCRC="+repr(crc))
-            print "BAD CRC"
-            print "received:"
-            print "request:", request
-            print "CRC: ", inCRC
-            print "calculated CRC:", crc
+            self.enprint("BAD CRC")
+            self.enprint("received:")
+            self.enprint("request: "+request)
+            self.enprint("CRC: "+repr(inCRC))
+            self.enprint("calculated CRC: "+repr(crc))
             return
 	try:
 	    self.process_request(request, client_address)
@@ -142,14 +144,14 @@ class DispatchingWorker:
 	addr = ()
 	req = (b,addr)
 	f = self.socket.fileno()
-	#print "select"
+	#self.enprint("select")
 	r, w, x = select.select([f],[],[f], self.rcv_timeout)
 	
 	if r:
 	    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
 	    if badsock != 0 :
-		print "DispatchingWorked get_request, pre-recvfrom error:",\
-		      errno.errorcode[badsock]
+		self.enprint("DispatchingWorked get_request, pre-recvfrom error: "+\
+		             errno.errorcode[badsock])
 		Trace.trace(0,"DispatchingWorker get_request pre-recv error "+\
                         repr(errno.errorcode[badsock]))
 		#return 0
@@ -157,12 +159,12 @@ class DispatchingWorker:
 		pass
 	
 	    req = self.socket.recvfrom(self.max_packet_size)
-	    #pprint.pprint(req)
-	    #print "P3"
+	    #self.enprint(req, generic_cs.PRETTY_PRINT)
+	    #self.enprint("P3")
 	    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
 	    if badsock != 0 :
-		print "DispatchingWorker get_request, post-recvfrom error:",\
-		      errno.errorcode[badsock]
+		self.enprint("DispatchingWorker get_request, post-recvfrom error:"+\
+		             repr(errno.errorcode[badsock]))
 		Trace.trace(0,"DispatchingWorker get_request post-recvfrom error "+\
 			    repr(errno.errorcode[badsock]))
 		Trace.trace(5,"}get_request"+repr(req))
@@ -170,7 +172,7 @@ class DispatchingWorker:
 
     def handle_timeout(self):
 	# override this method for specific timeout hadling
-	#print "timeout handler"
+	#self.enprint("timeout handler")
 	pass
 
     def fileno(self):
@@ -248,12 +250,12 @@ class DispatchingWorker:
 	Trace.trace(0,"{handle_error request="+repr(request)+" add="+\
 		    repr(client_address))
 	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
-	print '-'*40
-	print 'Exception happened during processing of request from',
-	print client_address
+	generic_cs.enprint('-'*40)
+	self.enprint('Exception happened during processing of request from '+\
+	             repr(client_address))
 	import traceback
 	traceback.print_exception(exc, value, tb)
-	print '-'*40
+	generic_cs.enprint('-'*40)
 	self.reply_to_caller( {'status':(str(sys.exc_info()[0]), \
 					    str(sys.exc_info()[1]),'error'), \
 			       'request':request, \
@@ -299,8 +301,8 @@ class DispatchingWorker:
         if badsock != 0:
             Trace.trace(0,"reply_with_list pre-send error "+\
                         repr(errno.errorcode[badsock]))
-            print "dispatching_worker reply_with_list, pre-sendto error:",\
-                  errno.errorcode[badsock]
+            self.enprint("dispatching_worker reply_with_list, pre-sendto error: "+\
+                         repr(errno.errorcode[badsock]))
         sent = 0
         while sent == 0:
             try:
@@ -310,14 +312,15 @@ class DispatchingWorker:
                 Trace.trace(0,"reply_with_list Nameserver not responding "+\
                             "add="+repr(address)+\
                             str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                print timeofday.tod(),\
-                      "dispatching_worker: Nameserver not responding\n",\
-                      address,"\n", sys.exc_info()[0],"\n", sys.exc_info()[1]
+                self.enprint(repr(timeofday.tod())+\
+                          " dispatching_worker: Nameserver not responding\n"+\
+                          repr(address)+"\n"+str(sys.exc_info()[0])+"\n"+\
+	                  str(sys.exc_info()[1]))
                 time.sleep(10)
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0:
             Trace.trace(0,"reply_with_list post-send error "+\
                         repr(errno.errorcode[badsock]))
-            print "dispatching_worker reply_with_list, post-sendto error:",\
-                  errno.errorcode[badsock]
+            self.enprint("dispatching_worker reply_with_list, post-sendto error: "+\
+                         repr(errno.errorcode[badsock]))
         Trace.trace(19,"}reply_with_list number="+repr(self.client_number))

@@ -14,8 +14,6 @@ import interface
 import Trace
 import e_errors
 
-inqid = "INQC"
-
 class Inquisitor(generic_client.GenericClient):
 
     def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
@@ -25,6 +23,7 @@ class Inquisitor(generic_client.GenericClient):
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 	self.verbose = verbose
+	self.print_id = "INQC"
         Trace.trace(10,'}__init')
 
     def send (self, ticket, rcv_timeout=0, tries=0):
@@ -177,8 +176,7 @@ if __name__ == "__main__" :
 
     elif intf.get_timeout:
         ticket = iqc.get_timeout(intf.server)
-	iqc.enprint(ticket['timeout'], generic_cs.NO_LOGGER, \
-	            generic_cs.PRETTY_PRINT)
+	generic_cs.enprint(ticket['timeout'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
 
     elif intf.reset_timeout:
@@ -195,12 +193,11 @@ if __name__ == "__main__" :
 
     elif intf.get_max_ascii_size:
         ticket = iqc.get_max_ascii_size()
-	iqc.enprint(ticket['max_ascii_size'], generic_cs.NO_LOGGER, \
-	            generic_cs.PRETTY_PRINT)
+	generic_cs.enprint(ticket['max_ascii_size'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
 
     del iqc.csc.u
     del iqc.u           # del now, otherwise get name exception (just for python v1.5???)
 
-    iqc.check_ticket(ticket, msg_id, inqid)
+    iqc.check_ticket(ticket, msg_id)
 

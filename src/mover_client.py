@@ -19,12 +19,11 @@ import generic_cs
 import Trace
 import e_errors
 
-moverid = "MOVERC"
-
 class MoverClient(generic_client.GenericClient):
     def __init__(self, csc=0, verbose=0, name="", \
                  host=interface.default_host(), \
                  port=interface.default_port()):
+	self.print_id = "MOVERC"
         self.mover=name
 	self.verbose = verbose
         configuration_client.set_csc(self, csc, host, port, verbose)
@@ -89,4 +88,4 @@ if __name__ == "__main__" :
     del movc.csc.u
     del movc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    movc.check_ticket(ticket, msg_id, moverid)
+    movc.check_ticket(ticket, msg_id)

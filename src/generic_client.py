@@ -20,20 +20,17 @@ class GenericClient(generic_cs.GenericCS):
         return x
 
     # examine the final ticket to check for any errors
-    def check_ticket(self, ticket, msg_id, client_id):
+    def check_ticket(self, ticket, msg_id):
         if ticket['status'][0] == e_errors.OK:
-	    generic_cs.enprint(ticket, generic_cs.NO_LOGGER, \
-	                       generic_cs.PRETTY_PRINT | msg_id, \
-	                       client_id, self.verbose)
-            Trace.trace(1, client_id+" exit ok")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT|msg_id, self.verbose)
+            Trace.trace(1,self.print_id+" exit ok")
             sys.exit(0)
         else:
-	    generic_cs.enprint("BAD STATUS: "+repr(ticket['status']), \
-                               generic_cs.NO_LOGGER, \
-	                       generic_cs.PRETTY_PRINT, client_id)
-	    generic_cs.enprint(ticket, generic_cs.NO_LOGGER,\
-	                       generic_cs.PRETTY_PRINT, client_id)
-            Trace.trace(0, client_id+" BAD STATUS - "+repr(ticket['status']))
+	    self.enprint("BAD STATUS: "+repr(ticket['status']), \
+	                 generic_cs.PRETTY_PRINT)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.trace(0, self.print_id+" BAD STATUS - "+\
+	                repr(ticket['status']))
             sys.exit(1)
 
     # cover ourselves just in case our sub class does not have a send

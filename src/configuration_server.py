@@ -5,7 +5,6 @@
 import sys
 import string
 import regsub
-import pprint
 import copy
 import types
 import socket
@@ -14,15 +13,17 @@ import os
 # enstore imports
 import dispatching_worker
 import generic_server
+import generic_cs
 import interface
 import Trace
 import e_errors
 import generic_cs
 
-class ConfigurationDict(dispatching_worker.DispatchingWorker):
+class ConfigurationDict(dispatching_worker.DispatchingWorker, \
+                        generic_cs.GenericCS):
 
     def __init__(self):
-	pass
+	self.print_id="CONFIGD"
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile,verbose=1):
@@ -33,14 +34,14 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         except:
             msg = (e_errors.DOESNOTEXIST,"Configuration Server: load_config"\
                    +repr(configfile)+" does not exists")
-            print msg
+            self.enprint(msg)
             Trace.trace(0,"}load_config "+msg)
             return msg
         line = ""
 
-        if verbose:
-            print "Configuration Server load_config: "\
-                  +"loading enstore configuration from ",configfile
+	self.enprint("Configuration Server load_config: "+\
+                     "loading enstore configuration from "+configfile,
+	             generic_cs.CLIENT, verbose)
         while 1:
             # read another line - appending it to what we already have
             nextline = f.readline()
@@ -57,15 +58,14 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                 continue
             # ok, we have a complete line - execute it
             try:
-		if verbose:
-		    print line
+	        self.enprint(line, generic_cs.CLIENT, verbose)
                 exec ("x"+line)
             except:
                 f.close()
                 msg = (EXECERROR, "Configuration Server: "\
                       +"can not process line: ",line \
                       ,"\ndictionary unchanged.")
-                print msg
+                self.enprint(msg)
                 Trace.trace(0,"}load_config"+msg)
                 return msg
             # start again
@@ -118,7 +118,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
      # even if there is an error - respond to caller so he can process it
      except:
-         print  sys.exc_info()[0],sys.exc_info()[1]
+         self.enprint(str(sys.exc_info()[0])+" "+str(sys.exc_info()[1]))
          Trace.trace(0,"}load_config "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
          return (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
@@ -138,7 +138,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             configfile="/pnfs/enstore/.(config)(flags)/enstore.conf"
             msg ="Configuration Server: invalid dictionary, " \
                   +"loading "+repr(configfile)
-            print msg
+            self.enprint(msg)
             Trace.trace(0,"config_exists "+msg)
             self.load_config(configfile)
         Trace.trace(20,"}config_exists")
@@ -146,7 +146,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
      # even if there is an error - respond to caller so he can process it
      except:
-         print str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         self.enprint(str(sys.exc_info()[0])+str(sys.exc_info()[1]))
          Trace.trace(0,"}config_exists "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
          return
@@ -164,7 +164,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         except KeyError:
             Trace.trace(0,"lookup "+repr(key)+" key is missing")
             ticket["status"] = (e_errors.KEYERROR, "Configuration Server: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(6,"}lookup")
             return
@@ -176,7 +176,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             Trace.trace(0,"lookup no such name"+repr(lookup))
             out_ticket = {"status": (e_errors.KEYERROR, "Configuration Server: no such name: "\
                           +repr(lookup))}
-            pprint.pprint(out_ticket)
+            self.enprint(out_ticket, generic_cs.PRETTY_PRINT)
         self.reply_to_caller(out_ticket)
         Trace.trace(6,"}lookup "+repr(lookup)+"="+repr(out_ticket))
         return
@@ -184,7 +184,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+         self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}lookup "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
@@ -205,7 +205,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
-         pprint.pprint(ticket)
+         self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}get_keys "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
@@ -244,7 +244,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                  formatted= formatted + ", \\"
               else:
                  formatted= formatted + " }\n"
-        #print formatted
+        #self.enprint(formatted)
         out_ticket = {"status" : (e_errors.OK, None), "list" : formatted}
         self.reply_to_caller(out_ticket)
         Trace.trace(6,"}list")
@@ -253,7 +253,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
-         pprint.pprint(ticket)
+         self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}list "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
@@ -277,7 +277,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 	# even if there is an error - respond to caller so he can process it
 	except:
 	    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
-	    pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
 	    self.reply_to_caller(ticket)
 	    Trace.trace(0,"}load "+str(sys.exc_info()[0])+\
 			str(sys.exc_info()[1]))
@@ -287,7 +287,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
     def get_movers(self, ticket):
 	Trace.trace(6,"{get_movers")
 	ret = []
-	#pprint.pprint(self.configdict)
+	#self.enprint(self.configdict, generic_cs.PRETTY_PRINT)
 	if ticket.has_key('library'):
 	    # search for the appearance of this library manager
 	    # in all configured movers
@@ -333,9 +333,10 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
                     repr(port)+" configfile="+repr(configfile)+" verbose="+\
                     repr(verbose))
 	self.running = 0
-        if verbose:
-            print "Instantiating Configuration Server at ", server_address,\
-                  " using config file ",config_file
+	self.print_id = "CONFIGS"
+	self.enprint("Instantiating Configuration Server at "+repr(host)+", "+\
+                     repr(port)+" using config file "+configfile, \
+	             generic_cs.SERVER, verbose)
 
         # make a configuration dictionary
         cd =  ConfigurationDict()
@@ -352,8 +353,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
         # always nice to let the user see what she has
 	self.verbose = verbose
-        if verbose:
-            pprint.pprint(self.__dict__)
+	self.enprint(self.__dict__, generic_cs.SERVER, verbose)
 
 class ConfigurationServerInterface(interface.Interface):
 

@@ -11,6 +11,7 @@ import time
 import traceback
 
 # enstore imports
+import generic_cs
 import EXfer
 import Trace
 import ECRC
@@ -192,12 +193,13 @@ class Cpio :
             data_offset, data_bytes, data_name = decode( buffer )
             # take care of files where sanity size > data size
             if sanity_bytes > data_bytes:
-                print "ERROR: sanity_bytes=",sanity_bytes, "and data_bytes=",data_bytes,\
-                      "setting sanity_bytes=data_bytes"
+                self.enprint("ERROR: sanity_bytes="+repr(sanity_bytes)+ \
+	                     " and data_bytes="+repr(data_bytes)+ \
+                             " setting sanity_bytes=data_bytes")
                 sanity_bytes = data_bytes
         except errno.errorcode[errno.EINVAL]:
             # for now, just send the data back to the user, as read
-            bad = str(sys.exc_info()[1]); print bad
+            bad = str(sys.exc_info()[1]); self.enprint(bad)
             while 1:
                 self.write_driver.write_block( buffer )
                 buffer = self.read_driver.read_block()
@@ -238,9 +240,9 @@ class Cpio :
                               " but was expecting"+repr(sanity_crc)
                 # now check the case where we were told more sanity_bytes than data_bytes
                 if san_bytes > dat_bytes:
-                    print san_bytes,sanity_bytes
-                    print dat_bytes,data_bytes
-                    print buffer_len
+                    self.enprint(san_bytes+" "+repr(sanity_bytes))
+                    self.enprint(dat_bytes+" "+repr(data_bytes))
+                    self.enprint(buffer_len)
                     raise "TILT - coding error!"
 
             if dat_bytes == data_bytes: break
@@ -300,7 +302,8 @@ def headers( format,            # either "new" or "CRC"
             # set this dang mode to something that works on all machines!
             if (mode & 0777000) != 0100000 :
                 jonmode = 0100664
-                print "Mode is invalid, setting to",jonmode, "so cpio valid"
+                generic_cs.enprint("Mode is invalid, setting to "+\
+	                           repr(jonmode)+" so cpio valid")
             else :
                 jonmode = mode
             # make all filenames relative - strip off leading slash
@@ -352,7 +355,7 @@ def trailers( siz, head_crc, data_crc, trailer ):
         # first need to pad data
         padd = (4-(size%4)) %4
         size = size + padd
-        #print "ronDBG - padd =",padd
+        #generic_cs.enprint("ronDBG - padd = "+repr(padd))
 
         # next is header for crc file, 8 bytes of crc info, and padding
         size = size + len(head_crc) + 8
@@ -495,8 +498,8 @@ if __name__ == "__main__" :
     ticket['wrapper']['pnfsFilename']= fin._file_.name
     ticket["wrapper"]["sanity_size"] = sanity_bytes
     (size,crc,sanity_cookie) = wrapper.write( ticket )
-    print "Cpio.write returned: size:",size,"crc:",crc,\
-          "sanity_cookie:",sanity_cookie
+    generic_cs.enprint("Cpio.write returned: size: "+repr(size)+" crc: "+\
+	               repr(crc)+" sanity_cookie: "+repr(sanity_cookie))
 
     fin.close()
     fout.close()
@@ -513,7 +516,8 @@ if __name__ == "__main__" :
 
     wrapper = Cpio(fin,fout,ECRC.ECRC)
     (read_size, read_crc) = wrapper.read(sanity_cookie)
-    print "cpio.read  returned: size:",read_size,"crc:",read_crc
+    generic_cs.enprint("cpio.read returned: size: "+repr(read_size)+" crc: "+\
+	               repr(read_crc))
 
     fin.close()
     fout.close()

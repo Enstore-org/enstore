@@ -15,8 +15,6 @@ import udp_client
 import Trace
 import e_errors
 
-libmanid = "LIBMANC"
-
 def getlist(self, work):
     # get a port to talk on and listen for connections
     host, port, listen_socket = callback.get_callback()
@@ -44,8 +42,8 @@ def getlist(self, work):
             listen_socket.close()
             break
         else:
-	    self.enprint("lmc."+work+": imposter called us back, trying again",\
-	                 generic_cs.NO_LOGGER, 0, libmanid)
+	    self.enprint("lmc."+work+\
+                         ": imposter called us back, trying again")
             control_socket.close()
     ticket = new_ticket
     if ticket["status"][0] != e_errors.OK:
@@ -78,6 +76,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                  host=interface.default_host(), port=interface.default_port()):
         self.name=name
 	self.verbose = verbose
+	self.print_id = "LIBMANC"
         # we always need to be talking to our configuration server
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
@@ -154,24 +153,20 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.ALIVE
     elif  intf.getwork:
         ticket = lmc.getwork(intf.verbose)
-	lmc.enprint(ticket['pending_work'], generic_cs.NO_LOGGER, 
-	            generic_cs.PRETTY_PRINT)
-	lmc.enprint(ticket['at movers'], generic_cs.NO_LOGGER, 
-	            generic_cs.PRETTY_PRINT)
+	generic_cs.enprint(ticket['pending_work'], generic_cs.PRETTY_PRINT)
+	generic_cs.enprint(ticket['at movers'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
     elif  intf.getmoverlist:
 	ticket = lmc.getmoverlist()
-	lmc.enprint(ticket['moverlist'], generic_cs.NO_LOGGER, 
-	            generic_cs.PRETTY_PRINT)
+	generic_cs.enprint(ticket['moverlist'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
     elif  intf.get_susp_vols:
 	ticket = lmc.get_suspect_volumes()
-	lmc.enprint(ticket['suspect_volumes'], generic_cs.NO_LOGGER, 
-	            generic_cs.PRETTY_PRINT)
+	generic_cs.enprint(ticket['suspect_volumes'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
 
     del lmc.csc.u
     del lmc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    lmc.check_ticket(ticket, msg_id, libmanid)
+    lmc.check_ticket(ticket, msg_id)
 

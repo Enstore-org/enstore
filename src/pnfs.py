@@ -16,14 +16,14 @@ import string
 import time
 import fcntl
 import regsub
-import pprint
 
 # enstore imports
 import lockfile
+import generic_cs
 try:
     import Devcodes # this is a compiled enstore module
 except ImportError:
-    print "Devcodes unavailable"
+    generic_cs.enprint("Devcodes unavailable")
 import interface
 
 ENABLED = "enabled"
@@ -41,6 +41,7 @@ class Pnfs:
     # initialize - we will be needing all these things soon, get them now
     def __init__(self,pnfsFilename,all=0,timeit=0):
         t1 = time.time()
+	self.print_id = "PNFS"
         self.pnfsFilename = pnfsFilename
         (dir,file) = os.path.split(pnfsFilename)
         if dir == '':
@@ -62,11 +63,12 @@ class Pnfs:
         if all:
             self.get_pnfs_info()
         if timeit != 0:
-            print "pnfs__init__ dt:",time.time()-t1
+            generic_cs.enprint("pnfs__init__ dt: "+time.time()-t1)
 
     # list what is in the current object
-    def dump(self):
-        pprint.pprint(self.__dict__)
+    def dump(self, verbose):
+        generic_cs.enprint(self.__dict__, \
+	                 generic_cs.PRETTY_PRINT|generic_cs.PNFS, verbose)
 
     ##########################################################################
 
@@ -132,7 +134,8 @@ class Pnfs:
                     f = open(self.pnfsFilename,'w')
                     f.close()
                 else:
-                    print "problem with pnfsFilename =",self.pnfsFilename
+                    generic_cs.enprint("problem with pnfsFilename = "+ \
+	                               self.pnfsFilename)
                     raise sys.exc_info()[0],sys.exc_info()[1]
             self.pstatinfo()
             self.get_id()
@@ -145,7 +148,8 @@ class Pnfs:
                 t = int(time.time())
                 os.utime(self.pnfsFilename,(t,t))
             except os.error:
-                print "can not utime:",sys.exc_info()[0],sys.exc_info()[1]
+                generic_cs.enprint("can not utime: "+str(sys.exc_info()[0])+\
+	                           " "+str(sys.exc_info()[1]))
             self.pstatinfo()
 
 
@@ -183,19 +187,19 @@ class Pnfs:
                     # LOCK_NB 4    /* Don't block when locking.  */
                     fcntl.flock(f.fileno(),2+4)
                     fcntl.flock(f.fileno(),8)
-                    print "locked/unlocked - worked, a miracle"
+                    generic_cs.enprint("locked/unlocked - worked, a miracle")
                 except:
-                    print "Could not lock or unlock "\
-                          ,self.pnfsFilename,sys.exc_info()[1]
+                    generic_cs.enprint("Could not lock or unlock "\
+                          +self.pnfsFilename+" "+str(sys.exc_info()[1]))
 
             if 0:
                 try:
                     lockfile.readlock(f)
                     lockfile.unlock(f)
-                    print "locked/unlocked - worked, a miracle"
+                    generic_cs.enprint("locked/unlocked - worked, a miracle")
                 except:
-                    print "Could not lock or unlock "\
-                          ,self.pnfsFilename,sys.exc_info()[1]
+                    generic_cs.enprint("Could not lock or unlock "\
+                          +self.pnfsFilename+" "+str(sys.exc_info()[1]))
 
             f.close()
 
@@ -352,7 +356,7 @@ class Pnfs:
                     #self.utime()
                     self.pstatinfo()
                 except os.error:
-                    print "enoent path taken again!"
+                    generic_cs.enprint("enoent path taken again!")
                     if sys.exc_info()[1][0] == errno.ENOENT:
                         # maybe this works??
                         f = open(self.dir+'/.(fset)('\
@@ -363,7 +367,7 @@ class Pnfs:
                     else:
                         raise sys.exc_info()[0],sys.exc_info()[1]
                 if self.file_size != 0:
-                    print "can not set file size to 0 - oh well!"
+                    generic_cs.enprint("can not set file size to 0 - oh well!")
             f = open(self.dir+'/.(fset)('+self.file+')(size)('\
                      +repr(size)+')','w')
             f.close()
@@ -659,7 +663,7 @@ class Pnfs:
                 dir_elements = string.split(self.voldir,'/')
                 for element in dir_elements:
                     dir=dir+'/'+element
-                    #print dir
+                    #generic_cs.enprint(dir)
                     if posixpath.exists(dir) == 0:
                         # try to make the directory - just bomb out if we fail
                         #   since we probably require user intervention to fix
@@ -741,7 +745,7 @@ def findfiles(mainpnfsdir,                  # directory above volmap directory
     bfids = []
     for i in range(0,n):
         if i == last:
-            print "skipping duplicate request: ",i
+            generic_cs.enprint("skipping duplicate request: "+repr(i))
             continue
         else:
             last = i
@@ -780,11 +784,10 @@ if __name__ == "__main__":
 
     if intf.info:
         p=Pnfs(intf.file,1,1)
-        if intf.verbose:
-            p.dump()
+        p.dump(intf.verbose)
 
     elif intf.status:
-        print "not yet"
+        generic_cs.enprint("not yet")
 
     elif intf.restore:
         p=Pnfs(intf.file)
@@ -796,23 +799,24 @@ if __name__ == "__main__":
         count = 0
         for pf in base+"/"+repr(time.time()), "/impossible/path/test":
             count = count+1;
-            if intf.verbose: print ""
-            if intf.verbose:
-                print "Self test from ",__name__," using file ",count,": ",pf
+	    generic_cs.enprint("\nSelf test from "+__name__+" using file "+\
+	                       repr(count)+": "+repr(pf), generic_cs.PNFS, \
+	                       intf.verbose)
 
             p = Pnfs(pf)
 
             e = p.check_pnfs_enabled()
-            if intf.verbose: print "enabled: ", e
+	    generic_cs.enprint("enabled: "+repr(e), generic_cs.PNFS, \
+	                       intf.verbose)
 
             if p.valid == VALID:
                 if count==2:
-                    print "ERROR: File ",count\
-                          ," is invalid - but valid flag is set"
+                    generic_cs.enprint("ERROR: File "+repr(count)\
+                          +" is invalid - but valid flag is set")
                     continue
                 p.jon1()
                 p.get_pnfs_info()
-                if intf.verbose: p.dump()
+                p.dump(intf.verbose)
                 l = p.library
                 f = p.file_family
                 w = p.file_family_width
@@ -821,93 +825,106 @@ if __name__ == "__main__":
 
                 nv = "crunch"
                 nvn = 222222
-                if intf.verbose: print ""
-                if intf.verbose: print "Changing to new values"
+	        generic_cs.enprint("\nChanging to new values", \
+	                           generic_cs.PNFS, intf.verbose)
 
                 p.set_library(nv)
                 if p.library == nv:
-                    if intf.verbose: print " library changed"
+	            generic_cs.enprint(" library changed", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't change library tag: still is "\
-                          ,p.library
+                    generic_cs.enprint(" ERROR: didn't change library tag: still is "\
+                          +p.library)
 
                 p.set_file_family(nv)
                 if p.file_family == nv:
-                    if intf.verbose: print " file_family changed"
+	            generic_cs.enprint(" file_family changed", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't change file_family tag: still is "\
-                          ,p.file_family
+                    generic_cs.enprint(" ERROR: didn't change file_family tag: still is "\
+                          +p.file_family)
 
                 p.set_file_family_width(nvn)
                 if p.file_family_width == nvn:
-                    if intf.verbose: print " file_family_width changed"
+	            generic_cs.enprint(" file_family_width changed", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't change file_family_width tag: "\
-                          +"still is ",p.file_family_width
+                    generic_cs.enprint(" ERROR: didn't change file_family_width tag: "\
+                          +"still is "+repr(p.file_family_width))
 
                 p.set_bit_file_id(nv,nvn)
                 if p.bit_file_id == nv:
-                    if intf.verbose: print " bit_file_id changed"
+	            generic_cs.enprint(" bit_file_id changed", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't change bit_file_id layer: still is "\
-                          ,p.bit_file_id
+                    generic_cs.enprint(" ERROR: didn't change bit_file_id layer: still is "\
+                          +repr(p.bit_file_id))
 
                 if p.file_size == nvn:
-                    if intf.verbose: print " file_size changed"
+	            generic_cs.enprint(" file_size changed", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't change file_size: still is "\
-                          ,p.file_size
+                    generic_cs.enprint(" ERROR: didn't change file_size: still is "\
+                          +repr(p.file_size))
 
-                if intf.verbose: p.dump()
-                if intf.verbose: print ""
-                if intf.verbose: print "Restoring original values"
+                p.dump(intf.verbose)
+	        generic_cs.enprint("\nRestoring original values", \
+	                               generic_cs.PNFS, intf.verbose)
 
                 p.set_library(l)
                 if p.library == l:
-                    if intf.verbose: print " library restored"
+	            generic_cs.enprint(" library restored", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't restore library tag: still is "\
-                          ,p.library
+                    generic_cs.enprint(" ERROR: didn't restore library tag: still is "\
+                          +p.library)
 
                 p.set_file_family(f)
                 if p.file_family == f:
-                    if intf.verbose: print " file_family restored"
+	            generic_cs.enprint(" file_family restored", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't restore file_family tag: still is "\
-                          ,p.file_family
+                    generic_cs.enprint(" ERROR: didn't restore file_family tag: still is "\
+                          +p.file_family)
 
                 p.set_file_family_width(w)
                 if p.file_family_width == w:
-                    if intf.verbose: print " file_family_width restored"
+	            generic_cs.enprint(" file_family_width restored", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't restore file_family_width tag: "\
-                          +"still is ",p.file_family_width
+                    generic_cs.enprint(" ERROR: didn't restore file_family_width tag: "\
+                          +"still is "+repr(p.file_family_width))
 
                 p.set_bit_file_id(i,s)
                 if p.bit_file_id == i:
-                    if intf.verbose: print " bit_file_id restored"
+	            generic_cs.enprint(" bit_file_id restored", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't restore bit_file_id layer: "\
-                          +"still is ",p.bit_file_id
+                    generic_cs.enprint(" ERROR: didn't restore bit_file_id layer: "\
+                          +"still is "+repr(p.bit_file_id))
 
                 if p.file_size == s:
-                    if intf.verbose: print " file size restored"
+	            generic_cs.enprint(" file size restored", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print " ERROR: didn't restore file_size: still is "\
-                          ,p.file_size
+                    generic_cs.enprint(" ERROR: didn't restore file_size: still is "\
+                          +repr(p.file_size))
 
-                if intf.verbose: p.dump()
+                p.dump(intf.verbose)
                 p.rm()
                 if p.exists != EXISTS:
-                    if intf.verbose: print p.pnfsFilename," deleted"
+	            generic_cs.enprint(p.pnfsFilename+ "deleted", \
+	                               generic_cs.PNFS, intf.verbose)
                 else:
-                    print "ERROR: could not delete ",p.pnfsFilename
+                    generic_cs.enprint("ERROR: could not delete "+\
+	                               p.pnfsFilename)
 
             else:
                 if count==2:
                     continue
                 else:
-                    print "ERROR: File ",count\
-                          ," is valid - but invvalid flag is set"
-                    print p.pnfsFilename, "file is not a valid pnfs file"
+                    generic_cs.enprint("ERROR: File "+repr(count)\
+                          +" is valid - but invvalid flag is set")
+                    generic_cs.enprint(p.pnfsFilename+\
+	                               "file is not a valid pnfs file")
 

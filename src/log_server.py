@@ -31,13 +31,13 @@ import sys
 import os
 import string
 import time
-import pprint
 import traceback
 
 #enstore imports
 import configuration_client
 import dispatching_worker
 import generic_server
+import generic_cs
 import interface
 import timeofday
 import socket
@@ -54,6 +54,7 @@ class Logger(  dispatching_worker.DispatchingWorker
     def __init__(self, csc=0, host=interface.default_host(), \
                  port=interface.default_port(), test=0, verbose=0):
         Trace.trace(10, '{__init__')
+	self.print_id = "LOGGERS"
         # get the config server
         configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system
@@ -61,8 +62,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         #   get our port and host from the name server
         #   exit if the host is not this machine
         keys = self.csc.get("logserver")
-        if verbose :
-            pprint.pprint(keys)
+	self.enprint(keys, generic_cs.SERVER, verbose)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']))
         if keys["log_file_path"][0] == '$':
@@ -70,7 +70,8 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    try:
 	        tmp = os.environ[tmp];
 	    except:
-	        print "log_file_path '",keys["log_file_path"],"' configuration ERROR"
+	        self.enprint("log_file_path '"+keys["log_file_path"]+\
+	                     "' configuration ERROR")
 	        sys.exit(1)
 	    self.logfile_dir_path = tmp
 	else:
@@ -81,20 +82,18 @@ class Logger(  dispatching_worker.DispatchingWorker
 
     def open_logfile(self, logfile_name) :
         # try to open log file for append
-        if self.verbose :
-            print "opening " + logfile_name
+	self.enprint("opening "+logfile_name, generic_cs.SERVER, self.verbose)
         try:
             self.logfile = open(logfile_name, 'a')
-            if self.verbose :
-                print "opened for append"
+	    self.enprint("opened for append ", generic_cs.SERVER, self.verbose)
         except :
 	    try:
 		self.logfile = open(logfile_name, 'w')
 	    except:
-		print "Can not open log ",logfile_name
+	        self.enprint("Can not open log "+logfile_name)
 		os._exit(1)
-            if self.verbose :
-                print "opened for write"
+	    self.enprint("opened for write", generic_cs.SERVER, self.verbose)
+
 
     # log the message recieved from the log client
     def log_message(self, ticket) :
@@ -110,12 +109,11 @@ class Logger(  dispatching_worker.DispatchingWorker
                    host,
                    ticket['message'])
 
-        if self.verbose:
-            print message          # for test
+	self.enprint(message, generic_cs.SERVER, self.verbose)
         res = self.logfile.write(message)    # write log message to the file
         self.logfile.flush()
-        if self.verbose :
-            pprint.pprint(res)
+	self.enprint(res, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
+	             self.verbose)
 
     def serve_forever(self):                      # overrides UDPServer method
         tm = time.localtime(time.time())          # get the local time
@@ -204,13 +202,7 @@ if __name__ == "__main__" :
             Trace.trace(1,'Log Server (re)starting')
             logserver.serve_forever()
         except:
-            traceback.print_exc()
-            format = timeofday.tod()+" "+\
-                     str(sys.argv)+" "+\
-                     str(sys.exc_info()[0])+" "+\
-                     str(sys.exc_info()[1])+" "+\
-                     "log server serve_forever continuing"
-            print format
+	    logserver.serve_forever_error("log server")
             Trace.trace(0,format)
             continue
     Trace.trace(1,"Log Server finished (impossible)")

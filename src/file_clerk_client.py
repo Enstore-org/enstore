@@ -17,8 +17,6 @@ import interface
 import Trace
 import e_errors
 
-filecc = "FILECC"
-
 class FileClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
 
@@ -26,6 +24,7 @@ class FileClient(generic_client.GenericClient, \
                  port=interface.default_port(), bfid=0):
         # we always need to be talking to our configuration server
         Trace.trace(10,'{__init__')
+	self.print_id = "FILECC"
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 	self.bfid = bfid
@@ -80,7 +79,7 @@ class FileClient(generic_client.GenericClient, \
                 break
             else:
 	        self.enprint("get_bfids - imposter called us back, trying again",
-	                     self.logc, 0, filecc)
+	                     generic_cs.NONE, generic_cs.NONE_V, self.logc)
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
@@ -100,10 +99,10 @@ class FileClient(generic_client.GenericClient, \
         while 1:
           msg=callback.read_tcp_buf(data_path_socket,"file  clerk "+"client get_bfids, reading worklist")
           if len(msg)==0:
-	        self.enprint(workmsg)
+	        generic_cs.enprint(workmsg)
                 break
           workmsg = workmsg+msg
-	  self.enprint(workmsg[:string.rfind( workmsg,',',0)])
+	  generic_cs.enprint(workmsg[:string.rfind( workmsg,',',0)])
           workmsg=msg[string.rfind(msg,',',0)+1:]
         worklist = ticket
         data_path_socket.close()
@@ -186,10 +185,8 @@ if __name__ == "__main__" :
     elif intf.bfid:
         ticket = fcc.bfid_info()
 	if ticket['status'][0] ==  e_errors.OK:
-	    fcc.enprint(ticket['fc'], generic_cs.NO_LOGGER, \
-	                generic_cs.PRETTY_PRINT)
-	    fcc.enprint(ticket['vc'], generic_cs.NO_LOGGER, \
-	                generic_cs.PRETTY_PRINT)
+	    generic_cs.enprint(ticket['fc'], generic_cs.PRETTY_PRINT)
+	    generic_cs.enprint(ticket['vc'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
 
-    fcc.check_ticket(ticket, msg_id, filecc)
+    fcc.check_ticket(ticket, msg_id)

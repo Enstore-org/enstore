@@ -12,6 +12,7 @@ import journal
 import table
 import Trace
 import configuration_client
+import generic_cs
 
 import libtpshelve
 
@@ -182,9 +183,9 @@ class DbTable:
   def dump(self):
      t=self.db.txn()
      c=self.db.cursor(t)
-     print c.first()
+     generic_cs.enprint(c.first())
      while c:
-	 print c.next()
+	 generic_cs.enprint(c.next())
      c.close()
      t.commit()
   def close(self):
@@ -223,10 +224,10 @@ def do_backup(name):
      cwd=os.getcwd()
      os.chdir(os.environ['ENSTORE_DB'])
      cmd="tar cvf "+name+".tar "+name+" "+name+".jou.*"
-     print cmd
+     generic_cs.enprint(cmd)
      os.system(cmd)
      cmd="rm "+name +".jou.*"
-     print cmd
+     generic_cs.enprint(cmd)
      os.system(cmd)
      os.chdir(cwd)
 if __name__=="__main__":

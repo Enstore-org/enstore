@@ -4,7 +4,6 @@
 # system import
 import sys
 import time
-import pprint
 import copy
 
 # enstore imports
@@ -16,6 +15,7 @@ import configuration_client
 import volume_clerk_client
 import dispatching_worker
 import generic_server
+import generic_cs
 import interface
 import udp_client
 import db
@@ -66,7 +66,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(0,"}new_bit_file "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+         self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          return
 
@@ -82,7 +82,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
@@ -94,7 +94,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key2+" key is missing")
-            pprint.pprint(ticket)
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
@@ -109,7 +109,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: bfid "+repr(bfid)+" not found")
-            pprint.pprint(ticket)
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
@@ -127,7 +127,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+         self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}set_pnfsid "+repr(ticket["status"]))
          return
@@ -195,7 +195,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
@@ -210,7 +210,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: bfid "+repr(bfid)+" not found")
-            pprint.pprint(ticket)
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
@@ -230,7 +230,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
@@ -240,7 +240,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                     repr(external_label))
         vticket = vcc.inquire_vol(external_label)
         if vticket["status"][0] != e_errors.OK:
-            pprint.pprint(ticket)
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(vticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
@@ -259,7 +259,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+         self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"bfid_info "+repr(ticket["status"]))
          return
@@ -280,7 +280,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      except:
          msg = "can not generate a bit file id!!"+\
                str(sys.exc_info()[0])+str(sys.exc_info()[1])
-         print msg
+         self.enprint(msg)
          Trace.trace(0,"unique_bit_file_id "+msg)
          sys.exit(1)
 
@@ -303,6 +303,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
     def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port()):
 	Trace.trace(10, '{__init__')
+	self.print_id = "FCS"
 	self.verbose = verbose
 	# get the config server
 	configuration_client.set_csc(self, csc, host, port, verbose)

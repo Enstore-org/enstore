@@ -9,7 +9,6 @@ import sys
 import os
 import time
 import copy
-import pprint
 import errno
 
 # enstore imports
@@ -20,6 +19,7 @@ import traceback
 import configuration_client
 import dispatching_worker
 import generic_server
+import generic_cs
 import interface
 import db
 import Trace
@@ -43,7 +43,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}addvol "+repr(ticket["status"]))
             return
@@ -53,7 +53,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (errno.errorcode[errno.EEXIST], \
 				"Volume Clerk: volume "+external_label\
                                +" already exists")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}addvol "+repr(ticket["status"]))
             return
@@ -66,7 +66,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             except KeyError:
                 ticket["status"] = (e_errors.KEYERROR, \
 				    "Volume Clerk: "+key+" is missing")
-                pprint.pprint(ticket)
+	        self.enprint(ticket, generic_cs.PRETTY_PRINT)
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"}addvol "+repr(ticket["status"]))
                 return
@@ -126,7 +126,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 ticket['status'] = (e_errors.UNKNOWNMEDIA, \
 				    "Volume Clerk: "\
                                    +"unknown media type = unknown blocksize")
-                pprint.pprint(ticket)
+	        self.enprint(ticket, generic_cs.PRETTY_PRINT)
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"}addvol "+repr(ticket["status"]))
                 return
@@ -144,7 +144,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(0,"}addvol "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          return
 
@@ -160,7 +160,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}delvol "+repr(ticket["status"]))
             return
@@ -174,7 +174,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: volume "+external_label\
                                +" no such volume")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             Trace.trace(0,"}delvol "+repr(ticket["status"]))
 
         self.reply_to_caller(ticket)
@@ -185,7 +185,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(0,"}delvol "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          return
 
@@ -201,7 +201,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}next_write_volume "+repr(ticket["status"]))
             return
@@ -220,7 +220,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}next_write_volume "+repr(ticket["status"]))
             return
@@ -234,7 +234,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             else:
                 break
             v = copy.deepcopy(dict[label])
-            #pprint.pprint(v)
+	    #self.enprint(v, generic_cs.PRETTY_PRINT)
             if v["library"] != library:
                 continue
             if v["file_family"] != file_family:
@@ -257,8 +257,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 totb = v["capacity_bytes"]/1.
                 if totb != 0:
                     waste = left/totb*100.
-                print label,"is now full, bytes remaining = ",left,\
-                      "wasted=",waste,"%"
+	        self.enprint(label+" is now full, bytes remaining = "+\
+	                     repr(left)+" wasted = "+repr(waste)+"%")
                 dict[label] = copy.deepcopy(v)
                 continue
             vetoed = 0
@@ -382,7 +382,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
             return
@@ -394,7 +394,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: volume "+external_label\
                                +" no such volume")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
             return
@@ -408,7 +408,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
             return
@@ -426,7 +426,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             except KeyError:
                 ticket["status"] = (e_errors.KEYERROR, \
 				    "Volume Clerk: "+key+" key is missing")
-                pprint.pprint(ticket)
+	        self.enprint(ticket, generic_cs.PRETTY_PRINT)
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
                 return
@@ -441,7 +441,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
          return
@@ -458,7 +458,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}update_counts "+repr(ticket["status"]))
             return
@@ -470,7 +470,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: volume "+external_label\
                                +" no such volume")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}update_counts "+repr(ticket["status"]))
             return
@@ -488,7 +488,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             except KeyError:
                 ticket["status"] = (e_errors.KEYERROR, \
 				    "Volume Clerk: "+key+" key is missing")
-                pprint.pprint(ticket)
+	        self.enprint(ticket, generic_cs.PRETTY_PRINT)
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"update_counts "+repr(ticket["status"]))
                 return
@@ -503,7 +503,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}update_counts "+repr(ticket["status"]))
          return
@@ -520,7 +520,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}inquire_vol "+repr(ticket["status"]))
             return
@@ -536,7 +536,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: volume "+external_label\
                                +" no such volume")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}inquire_vol "+repr(ticket["status"]))
             return
@@ -544,7 +544,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}inquire_vol "+repr(ticket["status"]))
          return
@@ -561,7 +561,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
             return
@@ -573,7 +573,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: volume "+external_label\
                                +" no such volume")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
             return
@@ -589,7 +589,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
          return
@@ -606,7 +606,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_writing "+repr(ticket["status"]))
             return
@@ -618,7 +618,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: volume "+external_label\
                                +" no such volume")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_writing "+repr(ticket["status"]))
             return
@@ -634,7 +634,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}set_writing "+repr(ticket["status"]))
          return
@@ -651,7 +651,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" key is missing")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_system_inhibit "+repr(ticket["status"]))
             return
@@ -663,7 +663,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: volume "+external_label\
                                +" no such volume")
-            pprint.pprint(ticket)
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_system_inhibit "+repr(ticket["status"]))
             return
@@ -679,7 +679,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}set_system_inhibit "+repr(ticket["status"]))
          return
@@ -707,7 +707,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         pprint.pprint(ticket)
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}set_system_readonly "+repr(ticket["status"]))
          return
@@ -793,6 +793,7 @@ class VolumeClerk(VolumeClerkMethods,\
     def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port()):
         Trace.trace(10, '{__init__')
+	self.print_id = "VOLCS"
 	self.verbose = verbose
         # get the config server
         configuration_client.set_csc(self, csc, host, port, verbose)

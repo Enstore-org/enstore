@@ -16,12 +16,11 @@ import interface
 import generic_client
 import generic_cs
 
-adminid = "ADMINC"
-
 class AdminClerkClient(generic_client.GenericClient) :
 
     def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port()):
+	self.print_id = "ADMINC"
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 	self.verbose = verbose
@@ -54,7 +53,7 @@ class AdminClerkClient(generic_client.GenericClient) :
                 break
             else:
 	        self.enprint("select - imposter called us back, trying again",\
-	                     self.logc, 0, adminid)
+	                     generic_cs.NONE, generic_cs.NONE, self.logc)
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
@@ -93,8 +92,7 @@ class AdminClerkClient(generic_client.GenericClient) :
     def printRec(self,msg):
         import regex
    	index=regex.search("}",msg)
-	self.enprint(msg[:index+1], generic_cs.NO_LOGGER,
-	             generic_cs.PRETTY_PRINT, 0, adminid)
+	self.enprint(msg[:index+1], generic_cs.PRETTY_PRINT)
    	if index==len(msg)-1:
 	   msg=""
 	else:
@@ -133,8 +131,7 @@ class AdminClerkClientInterface(interface.Interface) :
         index=regex.search("[^0-9><=!]",value)
         if index==-1:
 	    return value
-	generic_cs.enprint("ERROR: Wrong syntax: "+repr(value),
-	                   generic_cs.NO_LOGGER, 0, adminid)
+	generic_cs.enprint("ERROR: Wrong syntax: "+repr(value))
         self.print_help()
         sys.exit(1)
 
@@ -200,4 +197,4 @@ if __name__ == "__main__" :
     del acc.csc.u
     del acc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    acc.check_ticket(ticket, msg_id, adminid)
+    acc.check_ticket(ticket, msg_id)

@@ -2,6 +2,8 @@
 import time
 import string
 
+import generic_cs
+
 class Queue:
    queue=[]
    queue_ptr=0
@@ -16,7 +18,10 @@ class Queue:
          # deltas is the number of delta time periods 
          deltas=int(time.time()-ticket["times"]["t0"])/60/ticket["encp"]["agetime"]
          p=p + ticket["encp"]["delpri"]*deltas
-      #print p,ticket["encp"]["basepri"],deltas,ticket["encp"]["agetime"],ticket["encp"]["delpri"],time.time(),ticket["times"]["t0"]
+      #self.enprint(p+" "+repr(ticket["encp"]["basepri"])+" "+repr(deltas)+\
+      #            " "+repr(ticket["encp"]["agetime"])+" "+\
+      #            repr(ticket["encp"]["delpri"])+\
+      #            " "+repr(time.time())+" "+repr(ticket["times"]["t0"]))
       ticket["encp"]["curpri"]=p
       return p
    
@@ -76,7 +81,6 @@ class Queue:
 
 if __name__ == "__main__":
   import manage_queue
-  import pprint
   pending_work = manage_queue.Queue()
   t1={}
   t1["encp"]={}
@@ -114,13 +118,13 @@ if __name__ == "__main__":
   n=10
   while n:
     w=pending_work.get_init()
-    print w["encp"]["pri"]
+    generic_cs.enprint(w["encp"]["pri"])
     while w:
       w=pending_work.get_next()
     time.sleep(30)
     n=n-1
-  print "delete t1"
+  generic_cs.enprint("delete t1")
   pending_work.delete_job(t1)
 # get the whole list of jobs 
-  print "get_queue"
-  pprint.pprint(pending_work.get_queue())
+  generic_cs.enprint("get_queue")
+  generic_cs.enprint(pending_work.get_queue(), generic_cs.PRETTY_PRINT)

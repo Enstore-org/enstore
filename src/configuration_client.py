@@ -25,8 +25,6 @@ try:
 except ImportError:
     import socket
 
-configid = "CONFIGC"
-
 def set_csc(self, csc=0, host=interface.default_host(),\
             port=interface.default_port(), verbose=0):
     Trace.trace(10,'{set_csc csc='+repr(csc))
@@ -41,9 +39,10 @@ class ConfigurationClient(generic_client.GenericClient):
     def __init__(self, config_host, config_port, verbose):
         Trace.trace(10,'{__init__ cc')
         self.clear()
+	self.print_id = "CONFIGC"
 	self.enprint("Connecting to configuration server at "+\
-	             config_host+" "+repr(config_port), generic_cs.NO_LOGGER,\
-	             generic_cs.CONNECTING, configid, verbose)
+	             config_host+" "+repr(config_port), \
+	             generic_cs.CONNECTING, verbose)
 	self.verbose = verbose
         self.config_address=(config_host,config_port)
         self.u = udp_client.UDPClient()
@@ -80,12 +79,11 @@ class ConfigurationClient(generic_client.GenericClient):
             delay = 3
             Trace.trace(0,"}"+id+" retrying "+ \
 	                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-	    self.enprint(sys.exc_info()[1][0]+" "+\
+	    self.enprint(str(sys.exc_info()[1][0])+" "+\
 	                 "socket error. configuration sending to "+\
 	                 repr(self.config_address)+\
                          "server down?  retrying in "+repr(delay)+" seconds",\
-	                 generic_cs.NO_LOGGER, generic_cs.SOCKET_ERROR, \
-	                 configid, self.verbose)
+	                 generic_cs.SOCKET_ERROR, self.verbose)
             time.sleep(delay)
         else:
             Trace.trace(0,"}+id+"+str(sys.exc_info()[0])+\
@@ -206,7 +204,7 @@ if __name__ == "__main__":
 
     elif intf.dict:
         csc.list(intf.alive_rcv_timeout,intf.alive_retries)
-	generic_cs.enprint(csc.config_list["list"])
+	generic_cs.enprint(csc.config_list["list"], generic_cs.PRETTY_PRINT)
         stati = csc.config_list
 	msg_id = generic_cs.CLIENT
 
@@ -217,10 +215,9 @@ if __name__ == "__main__":
 
     elif intf.get_keys:
         stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
-	generic_cs.enprint(stati['get_keys'], generic_cs.NO_LOGGER, \
-	                   generic_cs.PRETTY_PRINT)
+	generic_cs.enprint(stati['get_keys'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
 
     del csc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    csc.check_ticket(stati, msg_id, configid)
+    csc.check_ticket(stati, msg_id)

@@ -10,10 +10,11 @@ import time
 import os				# temporary - .system to execute mt commands
 
 # enstore imports
+import generic_cs
 try:
     import ETape
 except  ImportError:
-    print "ETape unavailable!"
+    generic_cs.enprint("ETape unavailable!")
 import interface
 
 class GenericDriver:
@@ -174,7 +175,7 @@ class  RawDiskDriver(GenericDriver) :
     # read file -- use the "cookie" to not walk off the end, since we have
     # no "file marks" on a disk
     def open_file_read(self, file_location_cookie) :
-        #print "   open_file_read"
+        #self.enprint("   open_file_read")
         self.df = open( self.device+'.'+self.vol_label, "a+" )
         self.rd_access = self.rd_access+1
         self.firstbyte, self.pastbyte = eval(file_location_cookie)
@@ -182,7 +183,7 @@ class  RawDiskDriver(GenericDriver) :
         self.left_to_read = self.pastbyte - self.firstbyte
 
     def close_file_read(self) :
-        #print "   close_file_read"
+        #self.enprint("   close_file_read")
 	self.df.close()
         pass
 
@@ -199,14 +200,14 @@ class  RawDiskDriver(GenericDriver) :
 
     # we cannot auto sense a floppy, so we must trust the user
     def open_file_write(self):
-        #print "   open_file_write"
+        #self.enprint("   open_file_write")
         self.df = open( self.device+'.'+self.vol_label, "a+" )
         self.wr_access = self.wr_access+1
         self.df.seek(self.eod, 0)
         self.first_write_block = 1
 
     def close_file_write(self):
-        #print "   close_file_write"
+        #self.enprint("   close_file_write")
         first_byte = self.eod
         last_byte = self.df.tell()
 
@@ -266,7 +267,7 @@ class  DelayDriver(RawDiskDriver) :
 	time.sleep(bytesskipped/20E6)    # skip at 20MB/sec
 
     def open_file_write(self):
-        #print "   open_file_write"
+        #self.enprint("   open_file_write")
 	bytesskipped = abs(self.eod - self.firstbyte);
 	time.sleep(bytesskipped/20E6)    # skip at 20MB/sec
 	RawDiskDriver.open_file_write(self)
@@ -300,8 +301,9 @@ if __name__ == "__main__" :
 
     intf = DriverInterface()
 
-    if intf.verbose:
-        print "Creating RawDiskDriver device",intf.device, "with",intf.size,"bytes"
+    generic_cs.enprint("Creating RawDiskDriver device "+intf.device+" with"+\
+	               repr(intf.size)+" bytes", generic_cs.SERVER, \
+	               intf.verbose)
     rdd = RawDiskDriver (intf.device,intf.eod_cookie,intf.size)
     #rdd = DelayDriver (intf.device,intf.eod_cookie,intf.size)
     rdd.sw_mount( intf.eod_cookie, vol_label )
@@ -309,92 +311,95 @@ if __name__ == "__main__" :
     cookie = {}
 
     try:
-        if intf.verbose:
-            print "writing 1 0's"
+        generic_cs.enprint("writing 1 0's", generic_cs.SERVER, intf.verbose)
         rdd.open_file_write()
         rdd.write_block("0"*1)
         cookie[0] = rdd.close_file_write()
-        if intf.verbose:
-            print "   ok",cookie[0]
+        generic_cs.enprint("   ok "+repr(cookie[0]), generic_cs.SERVER, \
+	                   intf.verbose)
 
-        if intf.verbose:
-            print "writing 10 1's"
+        generic_cs.enprint("writing 10 1's", generic_cs.SERVER, intf.verbose)
         rdd.open_file_write()
         rdd.write_block("1"*10)
         cookie[1] = rdd.close_file_write()
-        if intf.verbose:
-            print "   ok",cookie[1]
+        generic_cs.enprint("   ok "+repr(cookie[1]), generic_cs.SERVER, \
+	                   intf.verbose)
 
-        if intf.verbose:
-            print "writing 100 2's"
+        generic_cs.enprint("writing 100 2's", generic_cs.SERVER, intf.verbose)
         rdd.open_file_write()
         rdd.write_block("2"*100)
         cookie[2] = rdd.close_file_write()
-        if intf.verbose:
-            print "   ok",cookie[2]
+        generic_cs.enprint("   ok "+repr(cookie[2]), generic_cs.SERVER,\
+                           intf.verbose)
 
-        if intf.verbose:
-            print "writing 1,000 3's"
+        generic_cs.enprint("writing 1,000 3's", generic_cs.SERVER, intf.verbose)
         rdd.open_file_write()
         rdd.write_block("3"*1000)
         cookie[3] = rdd.close_file_write()
-        if intf.verbose:
-            print "   ok",cookie[3]
+        generic_cs.enprint("   ok "+repr(cookie[3]), generic_cs.SERVER, \
+	                   intf.verbose)
 
-        if intf.verbose:
-            print "writing 10,000 4's"
+        generic_cs.enprint("writing 10,000 4's", generic_cs.SERVER, \
+	                   intf.verbose)
         rdd.open_file_write()
         rdd.write_block("4"*10000)
         cookie[4] = rdd.close_file_write()
-        if intf.verbose:
-            print "   ok",cookie[4]
+        generic_cs.enprint("   ok "+repr(cookie[4]), generic_cs.SERVER, \
+	                   intf.verbose)
 
-        if intf.verbose:
-            print "writing 100,000 5's"
+        generic_cs.enprint("writing 100,000 5's", generic_cs.SERVER, \
+	                   intf.verbose)
         rdd.open_file_write()
         rdd.write_block("5"*100000)
         cookie[5] = rdd.close_file_write()
-        if intf.verbose:
-            print "   ok",cookie[5]
+        generic_cs.enprint("   ok "+repr(cookie[5]), generic_cs.SERVER, \
+	                   intf.verbose)
 
-        if intf.verbose:
-            print "writing 1,000,000 6's"
+        generic_cs.enprint("writing 1,000,000 6's", generic_cs.SERVER, \
+	                   intf.verbose)
         rdd.open_file_write()
         rdd.write_block("6"*1000000)
         cookie[6] = rdd.close_file_write()
-        if intf.verbose:
-            print "   ok",cookie[6]
+        generic_cs.enprint("   ok "+repr(cookie[6]), generic_cs.SERVER, \
+	                   intf.verbose)
 
-        if intf.verbose:
-            print "writing 1,000,000 7's"
+        generic_cs.enprint("writing 1,000,000 7's", generic_cs.SERVER, \
+	                   intf.verbose)
         rdd.open_file_write()
         rdd.write_block("7"*1000000)
         cookie[7] = rdd.close_file_write()
-        print "   ok",cookie[7]
+        generic_cs.enprint("   ok "+repr(cookie[7]), generic_cs.SERVER, \
+	                   intf.verbose)
 
     except:
-        if intf.verbose:
-            print "ok, processed exception:"\
-                  #,sys.exc_info()[0],sys.exc_info()[1]
+        generic_cs.enprint("ok, processed exception: "\
+                           #+str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])\
+                           , generic_cs.SERVER, intf.verbose)
 
-    if intf.verbose:
-        print "EOD cookie:",rdd.get_eod()
-        print "lower bound on bytes available:", rdd.get_eod_remaining_bytes()
+    generic_cs.enprint("EOD cookie: "+repr(rdd.get_eod()), generic_cs.SERVER, \
+	               intf.verbose)
+    generic_cs.enprint("lower bound on bytes available: "+\
+	               repr(rdd.get_eod_remaining_bytes()), generic_cs.SERVER,\
+	               intf.verbose)
 
     for k in cookie.keys() :
         rdd.open_file_read(cookie[k])
         readback = rdd.read_block()
         rlen = len(readback)
         if rlen != 10**k and rlen != rdd.blocksize :
-            print "Read error on cookie",k, cookie[k],"- not enough bytes. "\
-                  +"Read=",rlen ," should have read= ",10**k
+            generic_cs.enprint("Read error on cookie "+repr(k)+" "+\
+	                       repr(cookie[k])+"- not enough bytes. Read= "+\
+	                       repr(rlen)+" should have read= "+repr(10**k))
             status = status|1
-        if intf.verbose:
-            print "cookie=",k," readback[0]=",readback[0]\
-                  ,"readback[end]=",readback[rlen-1]
+        generic_cs.enprint("cookie= "+repr(k)+" readback[0]= "+\
+	                   repr(readback[0])+" readback[end]= "+\
+	                   repr(readback[rlen-1]), generic_cs.SERVER, \
+	                   intf.verbose)
         if readback[0] != repr(k) or readback[rlen-1] != repr(k) :
-            print "Read error. ",  cookie[k], "Should have read",k, " but "\
-                  ,"First=",readback[0],"  Last=",readback[rlen-1]
+            generic_cs.enprint("Read error. "+repr(cookie[k])+\
+	                       " Should have read"+repr(k)+" but First= "+\
+	                       repr(readback[0])+"  Last= "+\
+	                       repr(readback[rlen-1]))
             status = status|2
         rdd.close_file_read()
 

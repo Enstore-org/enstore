@@ -46,6 +46,7 @@ MoverClient:
 """
 
 import generic_server
+import generic_cs
 import interface
 import dispatching_worker
 import volume_clerk_client		# -.
@@ -60,7 +61,6 @@ import driver
 import time				# .sleep
 import traceback			# print_exc == stack dump
 import ECRC				# for crc
-import pprint				# hopefully get rid of this???
 import posix				# waitpid
 
 import e_errors
@@ -129,7 +129,8 @@ def fatal_enstore( self, error_info, ticket ):
 # send a message to our user (last means "done with the read or write")
 def send_user_done( self, ticket, error_info ):
     ticket['status'] = (error_info,None)
-    #print "DONE ticket (TCP):"; pprint.pprint( ticket )
+    #self.enprint("DONE ticket (TCP):")
+    #self.enprint( ticket, generic_cs.PRETTY_PRINT )
     callback.write_tcp_socket( self.control_socket, ticket,
 			       "mover send_user_done" )
     self.control_socket.close()
@@ -142,6 +143,7 @@ def send_user_done( self, ticket, error_info ):
 #
 class MoverClient:
     def __init__( self, config ):
+	self.print_id = "MOVER"
 	self.config = config
 	self.state = 'idle'
 	self.pid = 0
@@ -151,14 +153,16 @@ class MoverClient:
 	if config['device'][0] == '$':
 	    dev_rest=config['device'][string.find(config['device'],'/'):]
 	    if dev_rest[0] != '/':
-		print "device '",config['device'],"' configuration ERROR"
+		self.enprint("device '"+config['device']+\
+	                     "' configuration ERROR")
 		sys.exit(1)
 		pass
 	    dev_env = config["device"][1:string.find(config['device'],'/')]
 	    try:
 		dev_env = os.environ[dev_env];
 	    except:
-		print "device '",config['device'],"' configuration ERROR"
+		self.enprint("device '"+config['device']+\
+	                     "' configuration ERROR")
 		sys.exit(1)
 		pass
 	    config['device'] = dev_env + dev_rest
@@ -367,7 +371,7 @@ def forked_write_to_hsm( self, ticket ):
 					     'external_label':self.vol_info['external_label'],
 					     'complete_crc':user_file_crc}} )
 	    if rsp['status'][0] != e_errors.OK:
-		print "XXXXXXXXXXXenstore software error"
+		self.enprint("XXXXXXXXXXXenstore software error")
 		pass
 	    ticket['fc'] = rsp['fc']
 	    ticket['mover'] = self.config
@@ -567,15 +571,15 @@ class Mover:
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
         if badsock != 0:
-            print "Mover read_block, pre-recv error:", \
-                  errno.errorcode[badsock]
+            self.enprint("Mover read_block, pre-recv error: "+ \
+                         repr(errno.errorcode[badsock]))
 	    raise errno.errorcode[badsock]
 	block = self.data_socket.recv( self.blocksize )
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
         if badsock != 0:
-            print "Mover read_block, post-recv error:", \
-                  errno.errorcode[badsock]
+            self.enprint("Mover read_block, post-recv error: "+ \
+                         repr(errno.errorcode[badsock]))
 	    raise errno.errorcode[badsock]
 	return block
 
@@ -585,15 +589,15 @@ class Mover:
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
         if badsock != 0:
-            print "Mover write_block, pre-send error:",\
-	     	  errno.errorcode[badsock]
+            self.enprint("Mover write_block, pre-send error: "+\
+	     	         repr(errno.errorcode[badsock]))
 	    raise errno.errorcode[badsock]
 	count = self.data_socket.send(buff)
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
         if badsock != 0:
-            print "Mover write_block, post-send error:", \
-                  errno.errorcode[badsock]
+            self.enprint("Mover write_block, post-send error: "+ \
+                         repr(errno.errorcode[badsock]))
 	    raise errno.errorcode[badsock]
         return count
 
@@ -832,4 +836,4 @@ Trace.init( mvr_config['logname'] )
 Trace.on( mvr_config['logname'], 0, 31 )
 mvr_srvr.serve_forever()
 
-print "ERROR?"
+generic_cs.enprint("ERROR?")
