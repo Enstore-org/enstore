@@ -1025,9 +1025,9 @@ def do_work(intf):
             sys.exit(1)
 
         # check if it is a real exported volume object
-        if sumup(volume) != 0:
-            print "Error!", intf._import, "is a counterfeit"
-            sys.exit(1)
+        #if sumup(volume) != 0:
+        #    print "Error!", intf._import, "is a counterfeit"
+        #    sys.exit(1)
 
         # check if volume contains all necessary information
         for i in ['vol', 'files', 'vol_name', 'key']:
