@@ -22,10 +22,10 @@ class GenericDriver:
         self.remaining_bytes = remaining_bytes
 	# When a volume is ceated, the system sets EOD cookie to "none"
 	self.set_eod( eod_cookie )
-        self.wr_err = 0
-        self.rd_err = 0
-        self.wr_access = 0
-        self.rd_access = 0
+        self.wr_err = 0			# counts
+        self.rd_err = 0			# counts
+        self.wr_access = 0		# counts
+        self.rd_access = 0		# counts
 
     def load( self, eod_cookie ):
         pass
@@ -144,18 +144,19 @@ class  RawDiskDriver(GenericDriver) :
 	pass
 
     def load( self, eod_cookie ):
-	self.df = open(self.device, "a+")
-	self.set_eod( repr(self.df.tell()) )
+	#self.df = open(self.device, "a+")
+	self.set_eod( eod_cookie )
         pass
 
     def unload( self ):
-	self.df.close()
+	#self.df.close()
 	pass
 
     # read file -- use the "cookie" to not walk off the end, since we have
     # no "file marks" on a disk
     def open_file_read(self, file_location_cookie) :
         #print "   open_file_read"
+        self.df = open(self.device, "a+")
         self.rd_access = self.rd_access+1
         self.firstbyte, self.pastbyte = eval(file_location_cookie)
         self.df.seek(self.firstbyte, 0)
@@ -163,6 +164,7 @@ class  RawDiskDriver(GenericDriver) :
 
     def close_file_read(self) :
         #print "   close_file_read"
+	self.df.close()
         pass
 
     def read_block(self):
@@ -179,6 +181,7 @@ class  RawDiskDriver(GenericDriver) :
     # we cannot auto sense a floppy, so we must trust the user
     def open_file_write(self):
         #print "   open_file_write"
+        self.df = open(self.device, "a+")
         self.wr_access = self.wr_access+1
         self.df.seek(self.eod, 0)
         self.first_write_block = 1
@@ -202,7 +205,7 @@ class  RawDiskDriver(GenericDriver) :
         else:
             self.eod = last_byte
 
-        #self.df.close()                  # belongs in unload
+        self.df.close()			# belongs in unload???
         return `(first_byte, last_byte)`  # cookie describing the file
 
     # write a block of data to already open file: user has to handle exceptions
