@@ -37,6 +37,7 @@ check_server()
     if [ -n "${2-}" ] ; then
        echo "`date` Checking $1 on $xnode $xport $local_host"
     fi  
+    echo udp_sendWaitReply-withTimeout.sh $xnode $xport $timeout --tries $tries
     alv=`udp_sendWaitReply-withTimeout.sh $xnode $xport $timeout --tries $tries`
     if [ $? -ne 0 ] ; then
         echo "`date`   ...$1 on $xnode $xport $local_host NOT REACHABLE..."
