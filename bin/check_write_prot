@@ -8,7 +8,7 @@ log_file=$log_dir/LOG-$date
 data_file="/tmp/override_ro_mount-$date"
 report="/tmp/write_prot_audit_report-$date"
 flipped_tabs=${1:-$HOME/write_tabs/flipped_tapes}
-mail_to="moibenko@fnal.gov"
+mail_to="enstore@fnal.gov"
 mail_file="/tmp/mail.$$"
 
 . /usr/local/etc/setups.sh
