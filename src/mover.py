@@ -1180,17 +1180,41 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	self.reply_to_caller( out_ticket )
 	return
 
-    def clean_drive( self, ticket ):
-	if self.mvr_config['do_fork']:
-            self.do_fork( ticket, 'u' )
-            if self.pid != 0: return {} #parent
-            pass
+    # get a port for the data transfer
+    def get_user_sockets(self, ticket):
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket["callback_host"] = host
+        ticket["callback_port"] = port
+        control_socket = callback.user_callback_socket(ticket)
+        data_socket, address = listen_socket.accept()
+        listen_socket.close()
+        return control_socket, data_socket
 
+    def clean_drive( self, ticket ):
+        ticket["status"] = (e_errors.OK, None)
+	if self.mvr_config['do_fork']:
+            if self.state == 'idle':
+                self.do_fork( ticket, 'c' )
+                if self.pid != 0:
+                    ticket["status"] = (e_errors.OK, None)
+                    self.reply_to_caller(ticket) # reply now to avoid deadlocks
+                    return {} #parent
+            else:
+                self.reply_to_caller( {'status': (e_errors.INPROGRESS, "Mover is busy")} )
+                return {}
 	# child or single process???
 	Trace.log(e_errors.INFO,'CLEAN start %s'%ticket)
+        
+        control_socket, data_socket = self.get_user_sockets(ticket)
         rt =self.mcc.doCleaningCycle(self.mvr_config, self.vol_info)
 	out_ticket = {'status':(rt['status'][0],rt['status'][2])}
-	self.reply_to_caller( out_ticket )
+        callback.write_tcp_obj(data_socket,out_ticket)
+        data_socket.close()
+        callback.write_tcp_obj(control_socket,ticket)
+        control_socket.close()
+        
+        self.return_or_update_and_exit((0,None), e_errors.OK )
         return
     
     def status( self, ticket ):
@@ -1280,6 +1304,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	return
 	
     def update_client_info( self, ticket ):
+        if self.mode == 'c':     # cleaning
+            self.state = 'idle'
+            return
 	self.vol_info = ticket['vol_info']
 	self.no_xfers = ticket['no_xfers']
 	self.hsm_driver.blocksize = ticket['hsm_driver']['blocksize']
@@ -1444,6 +1471,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 #os.system( 'ps alxwww' )
                 #raise
                 pass
+            self.state = 'idle'
             if pid == self.pid:
                 self.pid = 0
                 if self.state != 'crazed':
