@@ -59,7 +59,7 @@ class Relay:
         ##self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         ##self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	self.send_socket = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+	self.send_socket = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
         my_addr = ("", my_port)
         self.listen_socket.bind(my_addr)
         self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
