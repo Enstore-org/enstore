@@ -117,7 +117,7 @@ class EnstoreServer:
 		    os.system("echo ' Message from enstore_up_down.py:\n\n\tPlease check the full Enstore software system.\n\n" + \
 			      "See the Status-at-a-Glance Web Page\n\n' > %s"%(file,))
 		    os.system("date >> %s"%(file,))
-		    os.system("/usr/bin/Mail -s '%s' $ENSTORE_MAIL < %s"%(subject, file))
+		    os.system("/usr/bin/Mail -s \"%s\" $ENSTORE_MAIL < %s"%(subject, file))
 		    os.system("rm %s"%(file,))
 		    mail_sent = 1
 
