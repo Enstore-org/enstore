@@ -9,7 +9,7 @@ This has two advantages.  First, there is usually (though not always)
 an increase in the transfer rate.  Second, this allows for encp to
 independently measure the access to/from local disk and the network.
 
-A bug fix was made to limit the number of "mover importer" error messages.
+A bug fix was made to limit the number of "mover impostor" error messages.
 This was caused by an obscure order of events with a symptom of 15 minutes
 delays between retries.
 
@@ -33,7 +33,7 @@ Encp --help gives a short description of the switches.
 
 Support for encp to notify the alarm server of problems that require
 remote computer administrator intervention.  The alarm server then will
-sent the e-mail to a designated list of e-mail addresses.  This is useful
+send the e-mail to a designated list of e-mail addresses.  This is useful
 for errors like CRC_ENCP_ERROR or CRC_ECRC_ERROR.
 
 For multi-file write transfers, the delayed dismount for the first (n - 1)
@@ -54,7 +54,7 @@ With dcache and srm there are multiple paths to the same file.  For example,
 /pnfs/xyz, /pnfs/fs/usr/xyz and /pnfs/fnal.gov/usr/xyz.  Encp on reads
 will first attempt the path that the user specified, if that path does
 not exist it will then search the other two paths to attempt to deliver
-the user their file.  For writes users must still know where they are
+the users thier files.  For writes users must still know where they are
 writing.
 
 On machines that have interface lines in their enstore.conf file, this file
@@ -70,20 +70,21 @@ There are now 5 rates measured during a transfer:
    threaded transfer this rate is the same (minus context switches) as the disk
    and transfer rates.  Measured by encp.
 2) tape (or drive) - The rate at which the file is read or written from/to
-   the tape.  Measured by mover.
+   the tape including selective CRC check implemented on written files by
+   mover. Measured by mover.
 3) disk - The rate at which the file is read/written from/to disk.  For a
    single threaded transfer this rate is the same (minus context switches)
    as the network and transfer rates.  Measured by encp.
 4) overall - The rate measured from the moment the mover contacts encp until
    the last piece of metadata is set.  This does include any mount time
    and CRC readback check time in the rate calculation.  Measured by encp.
-5) transfer - Traditionally has been called the network rate in previous
-   versions of encp.  This rate is invariant to single or multi-threaded
-   encp transfers.  On reads, it is measured from when the first byte is
-   detected on encp's data socket until the last byte has been flushed to
-   disk.  On writes, it is measured from when the mover is ready to receive
-   data from encp until the last bytes has been written two tape (and the
-   mover responds saying it is done).  Measured by encp.
+5) transfer - the network rate in previous versions of encp.  This rate is 
+   invariant to single or multi-threaded encp transfers.  On reads, it
+   is measured from when the first byte is detected on encp's data socket 
+   until the last byte has been flushed to disk.  On writes, it is measured 
+   from when the mover is ready to receive data from encp until the last bytes 
+   has been written two tape (and the mover responds saying it is done).  
+   Measured by encp.
 
 Encp now has a consistent interpretation of what a pnfs directory is with
 the enstore pnfs commands.  For most users this was not a problem, however
@@ -712,7 +713,7 @@ add accounting server and drivestat server to servers page
 
 ========== mover.py ====================================================================================
 
-fixed buf in a function call 
+fixed bug in a function call 
 
 added low level diagnostics for FTT_EBLANK 
 
@@ -724,7 +725,7 @@ shuffle libraries in the idle state to implement a fair selection of LM for mult
 
 send a correct state in update_lm 
 
-Fixed /modified the code for multiple LMs serving one mover. 
+Fixed/modified the code for multiple LMs serving one mover. 
 
 fixed bug causing mover to not error out if too long in ATIVE state reading tape 
 
