@@ -1501,6 +1501,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     for k in ["capacity_bytes","remaining_bytes", "system_inhibit",
                               "user_inhibit", "library", "volume_family", "non_del_files"]:
                         dict[k]=value[k]
+                        if value.has_key('si_time'):
+                            dict['si_time'] = value['si_time']
                     if msg:
                         msg["volumes"].append(dict)
                     else:
