@@ -426,15 +426,14 @@ class Display(Canvas):
             M.position(N)
             M.draw()
             
-    def create_robot(self):
+    def create_robot_path(self):
             x1, y1 = 0.35 + 0.2 * math.cos(math.pi/2 + angle*k), 0.2 * math.sin(math.pi/2 + angle*k)
             R=Robot(self)
             R.x1, R.y1 = scale_to_display(x1, y1, self.width, self.height)
             self.outline =  self.create_oval(R.x1-20, R.y1-120, self.width, self.height-160)
-            R.draw()
 
     def reposition_movers(self):
-        items = self.movers.items()
+        items = self.clients.items()
         N = len(items) #need this to determine angle
         for mover_name, mover in items:
             mover.reposition(N)            
