@@ -838,7 +838,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# know what is happening anyway.
 	if lm.server_status in [e_errors.BROKEN]:
 	    Trace.trace(enstore_constants.INQWORKDBG, 
-			"CBW: lm in bad state (%s - %s), no checks done"%(lm.name))
+			"CBW: lm in bad state (%s - %s), no checks done"%(lm.name,
+									  lm.server_status))
 	    return
 	# now parse the lm write wam queue and pull out any queue elements
 	# which have a mover in a bad state and match the criteria specified
