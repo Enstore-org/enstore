@@ -62,7 +62,7 @@ ENGLISH_TITLES = {
 		   "syncit" : "(r)Rsync Mover Nodes",
                    "tarit" : "(r)Backup Host Files",
 		   "udpclog" : "(r)Get UDP Clog Info",
-		   "user_bytes" : "(e)Get User Bytes on Tape"
+		   "user_bytes" : "(e)Get User Bytes on Tape",
 		   "volmap" : "(r)Chmod volmap Dirs" }
 
 # find all the files under the current directory that are jpg files.
