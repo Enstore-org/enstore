@@ -1959,22 +1959,42 @@ class Mover(dispatching_worker.DispatchingWorker,
             flags = fcntl.fcntl(control_socket.fileno(), FCNTL.F_GETFL)
             fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | FCNTL.O_NONBLOCK)
             Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
-            for retry in xrange(60):
-                try:
-                    control_socket.connect(ticket['callback_addr'])
-                    break
-                except socket.error, detail:
-                    Trace.log(e_errors.ERROR, "%s %s" %
-                              (detail, ticket['callback_addr']))
-                    if detail[0] == errno.ECONNREFUSED:
-                        return None, None
-                    elif host_type()==IRIX and detail[0]==errno.EISCONN:
-                        break #This is not an error! The connection succeeded.
-                    time.sleep(1)
-            else:
-                Trace.log(e_errors.ERROR, "timeout connecting to %s" %
-                          (ticket['callback_addr'],))
-                return None, None
+	    try:
+		control_socket.connect(ticket['callback_addr'])
+	    except socket.error, detail:
+		Trace.log(e_errors.ERROR, "%s %s" %
+			  (detail, ticket['callback_addr']))
+		#We have seen that on IRIX, when the connection succeds, we
+		# get an ISCONN error.
+		if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
+		    pass
+		#The TCP handshake is in progress.
+		elif detail[0] == errno.EINPROGRESS:
+		    pass
+		else:
+		    Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
+			      (ticket['callback_addr'], os.strerror(detail)))
+		    return None, None
+		    
+
+	    #Check if the socket is open for reading and/or writing.
+	    r, w, ex = select.select([control_socket], [control_socket], [], 60)
+
+	    if r or w:
+		#Get the socket error condition...
+		rtn = control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+	    else:
+                Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
+                          (ticket['callback_addr'], os.strerror(errno.ETIMEDOUT)))
+		return None, None
+
+	    #...if it is zero then success, otherwise it failed.
+            if rtn != 0:
+                Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
+                          (ticket['callback_addr'], os.strerror(rtn)))
+		return None, None
+
+	    # we have a connection
             fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags)
             Trace.trace(10, "connected")
             try:
