@@ -157,6 +157,18 @@ class EncpError(Exception):
     
 ############################################################################
 
+def setup_signal_handling():
+    
+    #Handle all signal not in the known skip list.
+    for sig in range(1, signal.NSIG):
+        if sig not in (signal.SIGTSTP, signal.SIGCONT,
+                       signal.SIGCHLD, signal.SIGWINCH):
+            try:
+                signal.signal(sig, signal_handler)
+            except:
+                sys.stderr.write("Setting signal %s to %s failed.\n" %
+                                 (sig, signal_handler))
+
 def signal_handler(sig, frame):
 
     try:
@@ -1628,7 +1640,7 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
     Trace.message(TRANSFER_LEVEL,"Waiting for final mover dialog.  elapsed=%s"
                   % (time.time() - tinfo['encp_start_time'],))
     #Even though the functionality is there for this to be done in
-    # handle requests, this should be recieved outside since there must
+    # handle requests, this should be received outside since there must
     # be one... not only receiving one on error.
     if EXfer_ticket['status'][0] == e_errors.NOSPACE:
         done_ticket = {'status':(e_errors.OK, None)}
@@ -3957,15 +3969,8 @@ def main():
 
 if __name__ == '__main__':
 
-    for sig in range(1, signal.NSIG):
-        if sig not in (signal.SIGTSTP, signal.SIGCONT,
-                       signal.SIGCHLD, signal.SIGWINCH):
-            try:
-                signal.signal(sig, signal_handler)
-            except:
-                sys.stderr.write("Setting signal %s to %s failed.\n" %
-                                 (sig, signal_handler))
-    
+    setup_signal_handling()
+
     try:
         main()
         quit(0)
