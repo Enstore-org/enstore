@@ -1,0 +1,4 @@
+#$ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon2 /home/bakken/enstore/test/scratch.in 15 0
+#$ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon2 /home/bakken/enstore/test/rip8a.in   16 0
+$ENSTORE_DIR/test/roll  -noread /pnfs/grau/ait/jon2 /home/bakken/enstore/test/rip8b.in   17 0
+#$ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon2 /home/bakken/enstore/test/fnal.in    18 0

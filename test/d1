@@ -1,0 +1,5 @@
+./roll -noread /pnfs/grau/dlt/jon1 /home/bakken/enstore/test/scratch.in  9 100
+./roll -noread /pnfs/grau/dlt/jon1 /home/bakken/enstore/test/rip8a.in    10 100
+#./roll -noread /pnfs/grau/dlt/jon1 /home/bakken/enstore/test/rip8b.in   11 100
+#./roll -noread /pnfs/grau/dlt/jon1 /home/bakken/enstore/test/fnal.in    12 100
+ 

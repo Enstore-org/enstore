@@ -1,0 +1,6 @@
+cd $ENSTORE_DIR/test
+make jobs
+volume-declare mam
+cd /pnfs/grau/mammoth/
+for i in 1 2 3; do mkdir jon$i; cd jon$i; pcmd file_family jon-mam-$i; cd ..; done
+cd $ENSTORE_DIR/test
