@@ -755,7 +755,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             non_del_files = record['non_del_files']
         except KeyError:
-            record['non_del_files'] = record['sum_wr_access'] - record['sum_wr_err']
+            record['non_del_files'] = record['sum_wr_access']-record['sum_wr_err']
 
         # update the non-deleted file count if we wrote to the tape
         # this key gets decremented when we delete files
@@ -860,12 +860,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             non_del_files = record['non_del_files']
         except KeyError:
-            record['non_del_files'] = record['sum_wr_access']
+            record['non_del_files'] = record['sum_wr_access']-record['sum_wr_err']
 
         # update the non-deleted file count if we wrote to the tape
         # this key gets decremented when we delete files
-        record['non_del_files'] = record['non_del_files'] + ticket['wr_access']
-
+        if not ticket.get('wr_err',0):
+            record['non_del_files'] = record['non_del_files'] + \
+                                      ticket['wr_access']
         # record our changes
         self.dict[external_label] = record  ## was deepcopy
         record["status"] = (e_errors.OK, None)
