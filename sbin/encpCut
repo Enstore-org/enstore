@@ -179,18 +179,21 @@ fi
 ##############################################################################
 # we need a place to install the cut product
 
+setrev=1
 if [ -z "${INSTALLDIR-}" ] ; then
    Step="installdir"
    case `uname -n` in
       airedale*) INSTALLDIR=/home/products/$product;;
       pcfarm9*)  INSTALLDIR=/products/$product;;
       hppc*)     INSTALLDIR=/usr/products/IRIX+6/$product;;
+      rip*)      INSTALLDIR=/fnal/ups/prd/encp/${REV}/$product; setrev=0;;
       *)         INSTALLDIR=/p/`uname`/$product;;
    esac
    echo "Install directory not specified - Defaulting to install directory of $INSTALLDIR"
 fi
-INSTALLDIR=${INSTALLDIR}/${REV}
-
+if [ $setrev -eq 1 ]; then 
+  INSTALLDIR=${INSTALLDIR}/${REV}
+fi
 
 ##############################################################################
 # we need to know what steps we are supposed to perform during the cut
