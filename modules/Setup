@@ -55,7 +55,7 @@
 # This is for freeze to find the source of the included modules
 *shared*
 
-ETape ETape.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
+ETape ETape.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt -lc
 
 EXfer EXfer.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
 
@@ -70,4 +70,5 @@ Trace Trace.c trace.a -lc
 ECRC ECRC.c
 
 
-STK STKmodule.c -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
+STK STK.c -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
+EMASS EMASS.c -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
