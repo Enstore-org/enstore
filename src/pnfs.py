@@ -160,6 +160,7 @@ class Pnfs:
             self.writelayer(1,"")
             self.writelayer(2,"")
             self.writelayer(3,"")
+            self.writelayer(4,"")
             # It would be better to move the file to some trash space.
             # I don't know how right now.
             os.remove(self.pnfsFilename)
@@ -413,7 +414,7 @@ class Pnfs:
 
     # store new info and transaction log
     def set_info(self,value):
-        if self.valid == VALID and self.exists == EXISTS:
+        if self.valid == VALID and self.exists == EXISTS and 0==1:
             self.writelayer(3,value)
             self.get_info()
 
