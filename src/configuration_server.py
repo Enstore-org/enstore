@@ -95,7 +95,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             msg ="Configuration Server: invalid dictionary, " \
                   +"loading "+repr(configfile)
             print msg
-            Trace(0,"config_exists "+msg)
+            Trace.trace(0,"config_exists "+msg)
             self.load_config(configfile)
         Trace.trace(20,"}config_exists")
         return

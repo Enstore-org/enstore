@@ -750,6 +750,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 class VolumeClerk(VolumeClerkMethods,\
                   generic_server.GenericServer,\
                   SocketServer.UDPServer):
+    pass
 
 if __name__ == "__main__":
     import sys
