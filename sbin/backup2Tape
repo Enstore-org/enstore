@@ -49,35 +49,27 @@ saveit() { #  Tapes have to be declared to the volume server and in the correct 
            if [ $status -ne 0 ]; then touch $QUIT; exit $status; fi
          }
 
+verbose="--verbose=1"
+filePath='/diska'
+VAULT=${filePath}/BackupToTape
+BACKUP_LOG=${VAULT}/backup_log;     export BACKUP_LOG
+PNFS=${filePath}/pnfs-backup
+ENSTORE=${filePath}/enstore-backup
+ENSTORELOG=${filePath}/enstore-log-backup
+QUIT=$VAULT/QUIT
+TIMEONDISK=1  #days
+
 # Fermi specific stuff
 if [ $node = d0ensrv3 ]; then
-  verbose="--verbose=1"
-  pnfspath="/pnfs/archive/backups/`date_string_d`"; export pnfspath
-  filePath='/diska'
-  VAULT=${filePath}/BackupToTape
-  BACKUP_LOG=${VAULT}/backup_log;     export BACKUP_LOG
-  PNFS=${filePath}/pnfs-backup
-  ENSTORE=${filePath}/enstore-backup
-  ENSTORELOG=${filePath}/enstore-log-backup
-  QUIT=$VAULT/QUIT
-  TIMEONDISK=1  #days
-
-  if /bin/true; then
-    pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
-    ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
-  fi
+  pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
+  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
 
 elif [ $node = stkensrv3 ]; then
-  verbose="--verbose=1"
   pnfspath="/pnfs/eagle/backups/`date_string_d`"; export pnfspath
-  filePath='/diska'
-  VAULT=${filePath}/BackupToTape
-  BACKUP_LOG=${VAULT}/backup_log;     export BACKUP_LOG
-  PNFS=${filePath}/pnfs-backup
-  ENSTORE=${filePath}/enstore-backup
-  ENSTORELOG=${filePath}/enstore-log-backup
-  QUIT=$VAULT/QUIT
-  TIMEONDISK=1  #days
+
+elif [ $node = cdfensrv3 ]; then
+  pnfspath="/pnfs/eagle/cdfen-backups/`date_string_d`"; export pnfspath
+  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
 
 else
   doit "Do not know about node $node... fix $ENSTORE/sbin/backup2Tape script"
