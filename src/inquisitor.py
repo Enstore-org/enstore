@@ -786,9 +786,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # search the log files for a string. always add /dev/null to the end of the
     # list of files to search thru so that grep always has > 1 file and will
     # always print the name of the file at the beginning of the line.
-    def search_logfiles(self, string, output):
+    def search_logfiles(self, string, input_dir, output):
 	try:
-	    os.system("fgrep "+string+" "+LOG_PREFIX+"* /dev/null> "+output)
+	    os.system("fgrep "+string+" "+input_dir+"/"+LOG_PREFIX+\
+	              "* /dev/null> "+output)
 	except:
 	    format = timeofday.tod()+" "+\
 	             str(sys.argv)+" "+\
@@ -857,7 +858,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	ofn = lfd+"/bytes_moved."+enstore_status.get_ts()
 
 	# parse out the ENCP information from the log files
-	self.search_logfiles("ENCP", ofn)
+	self.search_logfiles("ENCP", lfd, ofn)
 
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
@@ -868,6 +869,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    einfo = enstore_status.parse_encp_line(line)
 	    if einfo[enstore_status.ESTATUS] == \
 	       log_client.sevdict[log_client.INFO]:
+	        # the time info may contain the file directory which we must
+	        # strip off
+	        ind = string.rfind(einfo[enstore_status.ETIME], "/")
+	        if not ind == -1:
+	            einfo[enstore_status.ETIME] = \
+	                         einfo[enstore_status.ETIME][(ind+1):]
 	        data.append([string.replace(einfo[enstore_status.ETIME], \
 	                     LOG_PREFIX, ""), einfo[enstore_status.EBYTES]])
 	self.make_plot_file(lfd+"/bpt.pts", data)
