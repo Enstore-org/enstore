@@ -1692,6 +1692,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
 
     def read_from_hsm(self, ticket):
+        method = ticket.get('method', None)
+        if method and method == 'read_next': # this request must go directly to mover
+            ticket['status'] = (e_errors.USERERROR, "Wrong method used %s"%(method,))
+            self.reply_to_caller(ticket)
+            return
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
         if ticket.has_key('version'):
@@ -2088,6 +2093,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s %s to mover %s %s DEL_DISM %s"%
                       (w['work'],w['wrapper']['pnfsFilename'], mticket['mover'],
                        mticket['address'], w['encp']['delayed_dismount']))
+            Trace.trace(18, "HAVE_BOUND: Ticket %s"%(w,))
             self.pending_work.delete(rq)
             w['times']['lm_dequeued'] = time.time()
             w['mover'] = mticket['mover']
