@@ -8,7 +8,7 @@
 void WriteUsage()
 {
     fprintf(stderr,"\
-Usage: %s --write [--verbose] [--tape-device=dev] [--tape-db=dir] \n  --volume-label=label filelist [...]\n\
+Usage: %s --write [--verbose] [--no-check] [--tape-device=dev] [--tape-db=dir] \n  --volume-label=label filelist [...]\n\
     each filelist is:  [--pnfs-dir=dir] [--strip-path=path] file [...]\n\
     tape-device can be set using environment variable $TAPE_DEVICE\n\
     tape-db (db directory) can be set using environment variable $TAPE_DB\n", 
@@ -99,6 +99,8 @@ write_tape_main(int argc, char **argv)
 	    /* it's an option */
 	    if (match_opt("--verbose", argv[i])) {
 		verbose = 1;
+	    } else if (match_opt("--no-check", argv[i])){
+		no_check = 1;
 	    } else if ((cp=match_opt("--tape-device=", argv[i]))) {
 		tape_device = cp;
 	    } else if ((cp=match_opt("--tape-db=",argv[i]))) {
