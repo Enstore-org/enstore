@@ -255,10 +255,8 @@ def trailers( siz, head_crc, data_crc, trailer ):
                trailer + "\0"*padt )
 
 
-# given a buffer pointing to beginning of header, return:
-#    offset to real data, data size, filename,
-def decode( buffer ):
-        # only 2 cpio formats allowed
+# given a buffer pointing to beginning of header, return crc
+def encrc( buffer ):
         magic = buffer[0:6]
         if magic == "070701" or  magic == "070702" :
             pass
@@ -270,13 +268,6 @@ def decode( buffer ):
         filename_size = string.atoi(buffer[94:102],16)
         data_offset = 110+filename_size
         data_offset =data_offset + (4-(data_offset%4))%4
-        data_size = string.atoi(buffer[54:62],16)
-        filename = buffer[110:110+filename_size-1]
-        return (data_offset, data_size, filename)
-
-# given a buffer pointing to beginning of header, return crc
-def encrc( buffer ):
-        offset,size,name = decode(buffer)
         # We have switched to 32 bit crcs.  This means that string.atoi now
         # causes an overflow when the crc value has the sign bit set.  The most
         # obvious solution of going to atol doesn't work.  The problem is that
@@ -288,8 +279,7 @@ def encrc( buffer ):
         # either use long casts everywhere the crc is calculated or force this crc
         # to be a 32 bit number.  The exec line causes the crc to be a 32 bit number,
         # exactly as it was stored.
-        #return string.atol(buffer[offset:offset+8],16)
-        exec("crc=0x"+buffer[offset:offset+8])
+        exec("crc=0x"+buffer[data_offset:data_offset+8])
         return crc
 
 ###############################################################################
