@@ -709,7 +709,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if not ticket.has_key('lm'):
 	    ticket['lm'] = {'address':self.server_address }
 
-        self.pending_work.insert_job(ticket)
+        # check if work is in the at mover list before inserting it
+	for wt in self.work_at_movers.list:
+	    if wt["unique_id"] == ticket["unique_id"]:
+		break
+        else: self.pending_work.insert_job(ticket)
 
 	# find the next idle mover
 	if ticket["fc"].has_key("external_label"):
@@ -771,7 +775,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if not ticket.has_key('lm'):
 	    ticket['lm'] = {'address' : self.server_address}
 
-        self.pending_work.insert_job(ticket)
+        # check if work is in the at mover list before inserting it
+	for wt in self.work_at_movers.list:
+	    if wt["unique_id"] == ticket["unique_id"]:
+		break
+        else: self.pending_work.insert_job(ticket)
 
 	# check if requested volume is busy
 	if  not is_volume_busy(self, ticket["fc"]["external_label"]):
@@ -887,7 +895,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	# find mover in the work_at_movers
 	found = 0
 	for wt in self.work_at_movers.list:
-	    if wt['mover'] == mticket['mover']:
+	    if wt['mover'] == self.requestor:
 		found = 1     # must do this. Construct. for...else will not
                               # do better 
 		break
@@ -895,9 +903,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.work_at_movers.remove(wt)
 	    format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
 	    Trace.log(e_errors.INFO, format%(wt,mticket))
-	    # check if tape is stuck in in the mounting state
+	    # tape must be in unmounted state
 	    vol_info = self.vcc.inquire_vol(wt['fc']['external_label'])
-	    if vol_info['at_mover'][0] == 'mounting':
+	    if (vol_info['at_mover'][0] != 'unmounted' and
+                vol_info['at_mover'][1] == self.requestor):
                 mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'])
 		format = "vol:%s state recovered to %s. mover:%s"
 		Trace.log(e_errors.INFO, format%(wt['fc']['external_label'],
@@ -1002,6 +1011,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, mticket, state)
+	# check if mover can accept another request
+	if state != 'idle_mover':
+            Trace.trace(14,"have_bound_volume state:%s"%state)
+            if state == "draining":
+                movers.remove(mv)
+                Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % mv)
+	    self.reply_to_caller({'work': 'nowork'})
+	    return
 
         # just did some work, delete it from queue
         w = get_work_at_movers (self, mticket['vc']["external_label"])
@@ -1014,14 +1031,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		del(mv["work_ticket"])
 
 	else: delayed_dismount = 0
-	# check if mover can accept another request
-	if state != 'idle_mover':
-            Trace.trace(14,"have_bound_volume state:%s"%state)
-            if state == "draining":
-                movers.remove(mv)
-                Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % mv)
-	    self.reply_to_caller({'work': 'nowork'})
-	    return
         # otherwise, see if this volume will do for any other work pending
         w = next_work_this_volume(self, mticket["vc"])
         if w["status"][0] == e_errors.OK:
