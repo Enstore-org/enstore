@@ -402,7 +402,6 @@ class EnFile:
 	if not self.filedes == 0:
 	    self.filedes.close()
 	    self.filedes = 0
-	self.file_name = ""
 	Trace.trace(10,"}enfile close ")
 
 class EnStatusFile(EnFile):
