@@ -89,18 +89,12 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
 			   self.configdict[key]['hostip']) and \
 			   (self.serverlist[configured_key][2] == \
 			    self.configdict[key]['port']):
-			    if self.running:
-				logger = 1
-			    else:
-				logger = generic_cs.NO_LOGGER
 			    msg = "Configuration Conflict detected for "\
 				  "hostip "+\
 				  repr(self.configdict[key]['hostip'])+ \
 				  "and port "+ \
 				  repr(self.configdict[key]['port'])
-			    generic_cs.enprint(msg, logger, 1, "CONFS", 1)
-
-
+			    generic_cs.enprint(msg, 1, 1)
 			    conflict = 1
 			    break
 		    if not conflict:
