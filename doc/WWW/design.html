@@ -2,6 +2,15 @@
 <font size=7><b><i>
 <center>Enstore Technical Design Document</center>
 </i></b></font>
+<center>Jon Bakken</center>
+<center>Eileen Berman</center>
+<center>Chih-Hao Huang</center>
+<center>Alexander Moibenko</center>
+<center>Don Petravick</center>
+<center>Ron Rechenmacher</center>
+<center>Kurt Ruthmansdorfer</center>
+<p>
+<p>
 <p>
 <font size=+1><b>Table of Contents</b></font>
 <ul>
@@ -551,136 +560,344 @@ client. It is almost entirely written in shell, and therefore, it is
 stand alone and doesn't require any other products, including python.
 <p>
 Commonly used commands are:
-<ul>
-   <li>pcmd help        <br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the online help
+<P>
+<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>FUNCTION</B></TD>
+<TD NOSAVE><B>COMMAND</B></TD>
+<TD NOSAVE><B>OUTPUT</B></TD>
+</TR>
 
-   <li>pcmd info file   <br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists "important" info about the file *** Needs work to be fully functional ***
-                        <br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;note: "eval `pcmd info file`" will set shell variables for the user
-	<pre>
-	$ pcmd info M1
-	bfid="91184924000000L";
-	volume="flop309";
-	location_cookie="68608";
-	size="1252";
-	file_family="jon4";
-	filename="/pnfs/enstore/airedale/jon4/M1";
-	orig_name="/pnfs/enstore/airedale/jon4/M1";
-	map_file="/pnfs/enstore/volmap/jon4/flop309/000000068608";
-	pnfsid_file="00020000000000000050AE88";
-	pnfsid_map="00020000000000000050AEA0";
-	</pre>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists the online help</TD>
+<TD NOSAVE>pcmd help</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
 
-   <li>pcmd tags directory      <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the tags in the directory
-        <pre>
-        $ pcmd tags .
-        .(tag)(library)  =  ait
-        .(tag)(file_family)  =  jon-ait-3
-        .(tag)(file_family_width)  =  2
-        </pre>
-   <li>pcmd library [value]           <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets/lists library tag to value (must have correct cwd)
-	<pre>
-	$ pcmd library
-	ait
-	$ pcmd library xxx
-	$ pcmd library
-	xxx
-	</pre>
-   <li>pcmd file_family [value]       <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets/lists library tag to value (must have correct cwd)
-	<pre>
-	$ pcmd file_family
-	jon-ait-3
-	$ pcmd file_family xxx
-	$ pcmd file_family
-	xxx
-	</pre>
-   <li>pcmd file_family_width [value] <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets/lists library tag to value (must have correct cwd)
-	<pre>
-	$ pcmd file_family_width    
-	2
-	$ pcmd file_family_width 10
-	$ pcmd file_family_width
-	10
-	</pre>
-   <li>pcmd files volmap-tape   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists all the files on specified tape in volmap *** Needs work to be fully functional ***
-   <li>pcmd volume volumename   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the volmap-tape for the specifed volumename *** Needs work to be fully functional ***
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists "important" info about the file<br>*** Needs work to be fully functional ***</TD>
+<TD NOSAVE>pcmd info file</TD>
+<TD NOSAVE><pre>
+$ pcmd info M1
+bfid="91184924000000L";
+volume="flop309";
+location_cookie="68608";
+size="1252";
+file_family="jon4";
+filename="/pnfs/enstore/airedale/jon4/M1";
+orig_name="/pnfs/enstore/airedale/jon4/M1";
+map_file="/pnfs/enstore/volmap/jon4/flop309/000000068608";
+pnfsid_file="00020000000000000050AE88";
+pnfsid_map="00020000000000000050AEA0"</pre></TD>
+</TR>
 
-   <li>pcmd bfid   file         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the bit file id of the file
-	<pre>
-	$ pcmd bfid testfile
-	91551931700000L
-	</pre>
-   <li>pcmd parked file         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the last parked location of the file
-	                        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;parked feature is not implemented
-   <li>pcmd debug  file         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the debug info about the file transfer
-   <li>pcmd xref   file         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the cross-reference info about the file
-	<pre>
-	$ pcmd xref testfile
-	CA2902 (tape label)
-	'0000_000000000_0000132' (positioning info)
-	104857600 (file size)
-	jon-ait-1 (file family)
-	/pnfs/grau/ait/jon1/100MB.trand__Jan05005204rip8.fnal.gov16199 (original name)
-	/pnfs/grau/ait/volmap/jon-ait-1/CA2902/0000_000000000_0000132 (volume map name)
-	0001000000000000000928D0 (pnfs id of file)
-	0001000000000000000928E0 (pnfs id of volume map file)
-	</pre>
-   <li>pcmd ls   file [layer]   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;does an ls on the named layer in the file
-	<pre>
-	$ pcmd ls testfile 3
-	4 -rw-rw-r--   1 bakken   g023         3692 Jan  5 00:55 ./.(use)(3)(testfile)
-	</pre>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists the tags in the directory</TD>
+<TD NOSAVE>pcmd tags directory</TD>
+<TD NOSAVE><pre>
+$ pcmd tags .
+.(tag)(library)  =  ait
+.(tag)(file_family)  =  jon-ait-3
+.(tag)(file_family_width)  =  2</pre></TD>
+</TR>
 
-   <li>pcmd {cat|more|less} file layer     <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the layer of the file
-    	                        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;it is easier to use pcmd bfid|parked|debug|xref commands
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>sets/lists library tag to value <br>(must have correct cwd)</TD>
+<TD NOSAVE>pcmd library [value]</TD>
+<TD NOSAVE><pre>
+$ pcmd library
+ait
+$ pcmd library xxx
+$ pcmd library
+xxx</pre></TD>
+</TR>
 
-   <li>pcmd {tagcat|tagmore|tagless} tag  directory <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the tag in the directory
-    	                        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;it is easier to use pcmd library|file_family|file_family_width  commands
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>sets/lists library tag to value <br>(must have correct cwd)</TD>
+<TD NOSAVE>pcmd file_family [value]</TD>
+<TD NOSAVE><pre>
+$ pcmd file_family
+jon-ait-3
+$ pcmd file_family xxx
+$ pcmd file_family
+xxx
+</pre></TD>
+</TR>
 
-   <li>pcmd enstore_state          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists whether Enstore is still accepting transfers
-	<pre>
-	$ pcmd enstore_state
-	Enstore enabled
-	</pre>
-	
-   <li>pcmd pnfs_state mount-point <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists whether pnfs mount point is up *** Not fully functional yet ***
-	<pre>
-	$ pcmd pnfs_state /pnfs/grau/ait
-	Pnfs up
-	</pre>
-</ul>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>sets/lists library tag to value <br>(must have correct cwd)</TD>
+<TD NOSAVE>pcmd file_family_width [value]</TD>
+<TD NOSAVE><pre>
+$ pcmd file_family_width    
+2
+$ pcmd file_family_width 10
+$ pcmd file_family_width
+10
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists all the files on specified tape in volmap <br>*** Needs work to be fully functional ***</TD>
+<TD NOSAVE>pcmd files volmap-tape</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists the volmap-tape for the specifed volumename <br>*** Needs work to be fully functional ***</TD>
+<TD NOSAVE>pcmd volume volumename</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists the bit file id of the file</TD>
+<TD NOSAVE>pcmd bfid   file</TD>
+<TD NOSAVE><pre>
+$ pcmd bfid testfile
+91551931700000L
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists the last parked location of the file <br>parked feature is not implemented</TD>
+<TD NOSAVE>pcmd parked file</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists the debug info about the file transfer</TD>
+<TD NOSAVE>pcmd debug  file</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists the cross-reference info about the file</TD>
+<TD NOSAVE>pcmd xref   file</TD>
+<TD NOSAVE><pre>
+$ pcmd xref testfile
+CA2902 (tape label)
+'0000_000000000_0000132' (positioning info)
+104857600 (file size)
+jon-ait-1 (file family)
+/pnfs/grau/ait/jon1/100MB.trand__Jan05005204rip8.fnal.gov16199 (original name)
+/pnfs/grau/ait/volmap/jon-ait-1/CA2902/0000_000000000_0000132 (volume map name)
+0001000000000000000928D0 (pnfs id of file)
+0001000000000000000928E0 (pnfs id of volume map file)
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>does an ls on the named layer in the file</TD>
+<TD NOSAVE>pcmd ls   file [layer]</TD>
+<TD NOSAVE><pre>
+$ pcmd ls testfile 3
+4 -rw-rw-r--   1 bakken   g023         3692 Jan  5 00:55 ./.(use)(3)(testfile)
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists the layer of the file<br>it is easier to use pcmd bfid|parked|debug|xref commands</TD>
+<TD NOSAVE>pcmd {cat|more|less} file layer</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists the tag in the directory<br>it is easier to use pcmd library|file_family|file_family_width commands</TD>
+<TD NOSAVE>pcmd {tagcat|tagmore|tagless} tag  directory</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists whether Enstore is still accepting transfers</TD>
+<TD NOSAVE>pcmd enstore_state  </TD>
+<TD NOSAVE><pre>
+$ pcmd enstore_state
+Enstore enabled
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>lists whether pnfs mount point is up <BR>*** Not fully functional yet ***</TD>
+<TD NOSAVE>pcmd pnfs_state mount-point</TD>
+<TD NOSAVE><pre>
+$ pcmd pnfs_state /pnfs/grau/ait
+Pnfs up
+</pre></TD>
+</TR>
+
+</TABLE>
+<P>
 
 Don't use these unless you know what you are doing:
-<ul>
-   <li>pcmd echo text file layer   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;echos text to named layer of the file
+<P>
+<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>FUNCTION</B></TD>
+<TD NOSAVE><B>COMMAND</B></TD>
+<TD NOSAVE><B>OUTPUT</B></TD>
+</TR>
 
-   <li>pcmd rm file layer          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;deletes (clears) named layer of the file
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>echos text to named layer of the file</TD>
+<TD NOSAVE>pcmd echo text file layer</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
 
-   <li>pcmd cp unixfile file layer <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;copies Unix file to named layer of file
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>deletes (clears) named layer of the file</TD>
+<TD NOSAVE>pcmd rm file layer </TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
 
-   <li>pcmd size file size         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets the size of the file
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>copies Unix file to named layer of file</TD>
+<TD NOSAVE>pcmd cp unixfile file layer</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
 
-   <li> pcmd tagecho text tagname   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;echos text to the named tag
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>copies Unix file to named layer of file</TD>
+<TD NOSAVE>pcmd cp unixfile file layer</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
 
-   <li>pcmd tagrm tag              <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;removes the tag (tricky, see DESY documents)
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>sets the size of the file</TD>
+<TD NOSAVE>pcmd size file size</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
 
-   <li>pcmd io file                <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets io mode (can't clear it easily)
-</ul>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>echos text to the named tag</TD>
+<TD NOSAVE>pcmd tagecho text tagname</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>removes the tag (tricky, see DESY documents)</TD>
+<TD NOSAVE>pcmd tagrm tag </TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>sets io mode (can't clear it easily)</TD>
+<TD NOSAVE>pcmd io file</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+</TABLE>
+<P>
+
 
 Don't use these unless you can interpret the results:
-<ul>
-   <li>pcmd id        file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the pnfs id
-   <li>pcmd showid    id          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the showid information
-   <li>pcmd const     file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the onst information
-   <li>pcmd nameof    id          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the filename
-   <li>pcmd path      id          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the complete file path
-   <li>pcmd parent    id          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the parent
-   <li>pcmd counters  file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the counters
-   <li>pcmd counterN  dbnum (must have cwd in pnfs)  <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows of the counters
-   <li>pcmd cursor    file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the cursor
-   <li>pcmd position  file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the directory position
-   <li>pcmd database  file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the database information
-   <li>pcmd databaseN dbnum (must have cwd in pnfs)  <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the database information
-</ul>
+<P>
+<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>FUNCTION</B></TD>
+<TD NOSAVE><B>COMMAND</B></TD>
+<TD NOSAVE><B>OUTPUT</B></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the pnfs id</TD>
+<TD NOSAVE>pcmd id file</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the showid information</TD>
+<TD NOSAVE>pcmd showid id</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the const information</TD>
+<TD NOSAVE>pcmd const file</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the filename</TD>
+<TD NOSAVE>pcmd nameof id </TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the complete file path</TD>
+<TD NOSAVE>pcmd path id</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the parent</TD>
+<TD NOSAVE>pcmd parent id</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the counters</TD>
+<TD NOSAVE>pcmd counters  file</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows of the counters</TD>
+<TD NOSAVE>pcmd counterN dbnum <br>(must have cwd in pnfs</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the cursor</TD>
+<TD NOSAVE>pcmd cursor file</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the directory position</TD>
+<TD NOSAVE>pcmd position file</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the database information</TD>
+<TD NOSAVE>pcmd database file </TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>shows the database information</TD>
+<TD NOSAVE>pcmd databaseN dbnum <br>(must have cwd in pnfs)</TD>
+<TD NOSAVE><pre>
+</pre></TD>
+</TR>
+
+</TABLE>
+<P>
 
 <h3><a name="volmaps">
 1.1.5 <em>Pnfs</em> Volume Maps
