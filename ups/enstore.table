@@ -122,7 +122,10 @@ COMMON:
                 setupRequired("ftt v2_7")
 
 		# drivestat_client is the Fermi product that will allow us to monitor drive usage
-		setupOptional("drivestat_client v1_0")
+                # drivestat_client is now a local module in enstore
+		# setupOptional("drivestat_client v1_0")
+                envSet(DS_SERVER_PORT,5001)
+                envSet(DS_SERVER_HOST,fncdug.fnal.gov)
 
                 # aci is the EMASS tape library and admin tool product
                 # the media changer is the only server that interfaces to it
