@@ -6,13 +6,38 @@
 volumes="
 activelibrary family_raw      floppy  flop1      1400000     1400000
 activelibrary family_raw      floppy  flop2      1400000     1400000
+activelibrary family_raw      floppy  flop3      1400000     1400000
+activelibrary family_raw      floppy  flop4      1400000     1400000
+activelibrary family_raw      floppy  flop5      1400000     1400000
+activelibrary family_raw      floppy  flop6      1400000     1400000
+activelibrary family_raw      floppy  flop7      1400000     1400000
+activelibrary family_raw      floppy  flop8      1400000     1400000
+activelibrary family_raw      floppy  flop9      1400000     1400000
+activelibrary family_raw      floppy  flop10     1400000     1400000
+activelibrary family_raw      floppy  flop11     1400000     1400000
+activelibrary family_raw      floppy  flop12     1400000     1400000
+activelibrary family_raw      floppy  flop13     1400000     1400000
+activelibrary family_raw      floppy  flop14     1400000     1400000
+activelibrary family_raw      floppy  flop15     1400000     1400000
+activelibrary family_raw      floppy  flop16     1400000     1400000
+activelibrary family_raw      floppy  flop17     1400000     1400000
+activelibrary family_raw      floppy  flop18     1400000     1400000
+activelibrary family_raw      floppy  flop19     1400000     1400000
+activelibrary family_raw      floppy  flop20     1400000     1400000
 activelibrary family_process  floppy  flop22     1400000     1400000
-shelf         family_reserved floppy  flop3      1400000     1400000
-shelf         family_reserved floppy  flop4      1400000     1400000
+shelf         family_reserved floppy  flop90     1400000     1400000
+shelf         family_reserved floppy  flop91     1400000     1400000
 red50library  family_redwood  redwood 000007 50000000000 50000000000
 8500library   family_8500     exabyte exasc1  4500000000  4500000000
 8500library   family_8500     exabyte exasc2  4500000000  4500000000
 8500library   family_8500     exabyte exasc3  4500000000  4500000000
+8500library   family_8500     exabyte exasc4  4500000000  4500000000
+8500library   family_8500     exabyte exasc5  4500000000  4500000000
+8500library   family_8500     exabyte exasc6  4500000000  4500000000
+8500library   family_8500     exabyte exasc7  4500000000  4500000000
+8500library   family_8500     exabyte exasc8  4500000000  4500000000
+8500library   family_8500     exabyte exasc9  4500000000  4500000000
+8500library   family_8500     exabyte exasc10 4500000000  4500000000
 "
 
 oldifs="${IFS}"
