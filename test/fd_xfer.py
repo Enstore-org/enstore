@@ -39,6 +39,11 @@ statinfo = os.stat( tapedev )
 
 statinfo = os.stat( infile )
 
+# initialize variables incase we comment out (during the course of testing)
+# the lines that set them 
+crc = None
+t0 = time.time()
+t1 = time.time()
 
 bytes = statinfo[stat.ST_SIZE]
 
@@ -95,13 +100,13 @@ for ll in string.split( pprint.pformat(stats), '\012' ): print '\n%s:         %s
 
 do.close()			# b/c of fm above, this is purely sw.
 
-fo.close()
 
 print '\n%s:         crc is %s  %d bytes in %s seconds (%s bytes/sec)'%(tt(),
 									crc,
 									bytes,
 									t1-t0,
 									bytes/(t1-t0))
+fo.close()
 
 sys.stdout = stdout_sav
 print eod_cookie
