@@ -1219,8 +1219,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #Prints out the specified layer of the specified file.
     def player(self, intf):
         data = self.readlayer(intf.named_layer)
-        for datum in data:
-            print datum,
+        if data == INVALID or data == UNKNOWN:
+            print data
+        else:
+            for datum in data:
+                print datum,
+
+    #For legacy perpouses.
+    pcat = player
     
     #Snag the cross reference of the file inside self.file.
     #***LAYER 4***
@@ -1508,7 +1514,27 @@ class PnfsInterface(option.Interface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"filename",
                      option.FORCE_SET_DEFAULT:option.FORCE,
-                },
+                     },
+        option.CAT:{option.HELP_STRING:"see --layer",
+                    option.DEFAULT_VALUE:option.DEFAULT,
+                    option.DEFAULT_NAME:"layer",
+                    option.DEFAULT_TYPE:option.INTEGER,
+                    option.VALUE_NAME:"file",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.VALUE_LABEL:"filename",
+                    option.FORCE_SET_DEFAULT:option.FORCE,
+                    option.USER_LEVEL:option.USER,
+                    option.EXTRA_VALUES:[{option.DEFAULT_VALUE:
+                                          option.DEFAULT,
+                                          option.DEFAULT_NAME:"named_layer",
+                                          option.DEFAULT_TYPE:option.INTEGER,
+                                          option.VALUE_NAME:"named_layer",
+                                          option.VALUE_TYPE:option.INTEGER,
+                                          option.VALUE_USAGE:option.OPTIONAL,
+                                          option.VALUE_LABEL:"layer",
+                                          }]
+                    },
         option.DUPLICATE:{option.HELP_STRING:"gets/sets duplicate file values",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_NAME:"duplicate",
