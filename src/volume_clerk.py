@@ -1050,8 +1050,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # flag that the current volume is marked as noaccess
     def set_system_noaccess(self, ticket):
-        Trace.alarm(e_errors.WARNING, e_errors.NOACCESS,{"label":ticket["external_label"]}) 
-        return self.set_system_inhibit(ticket, e_errors.NOACCESS)
+        Trace.log(e_errors.INFO, "Not setting %s NOACCESS" % (ticket["external_label"],))
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+##  original code:
+##    Trace.alarm(e_errors.WARNING, e_errors.NOACCESS,{"label":ticket["external_label"]}) 
+##    return self.set_system_inhibit(ticket, e_errors.NOACCESS)
 
     # flag that the current volume is marked as not allowed
     def set_system_notallowed(self, ticket):
