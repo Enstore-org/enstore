@@ -9,8 +9,12 @@ import tempfile
 
 #user imports
 import db
+import enstore_functions
+import checkBackedUpDatabases
+import configuration_client
 
-
+#This is the "magic" class to use when filtering out elements that have the
+# same external label in a list.
 class match_list:
     def __call__(self, list_element):
         return list_element['external_label'] == self.compare_value
@@ -18,9 +22,25 @@ class match_list:
         self.compare_value = thresh
 
 #Print the command line syntax to the terminal.
-def inventory_usage(message):
-    print "\n" + message + "\n"
-    print "Usage: inventory.py <volume file> <data file>\n"
+def inventory_usage(message = None):
+    if message:
+        print "\n" + message + "\n"
+    print "Usage: " + sys.argv[0] + " [-v volume_file] [-f data_file]",
+    print "[[-o output_file] | [-stdout]] [--help]\n"
+
+#Take in a long int or int and format it into human readable form.
+def format_storage_size(size_in_bytes):
+    #suffix list
+    suffix = ("B", "KB", "MB", "GB", "TB", "PB")
+    
+    #format the remaining bytes. collumn
+    volume_size = float(size_in_bytes)
+    count = 0
+    while long(abs(volume_size) / 1024) > 0:
+        volume_size = volume_size / 1024
+        count = count + 1
+
+    return volume_size, suffix[count]
 
 
 #############################################################################
@@ -53,9 +73,9 @@ def read_db(dbname):
             k,v=d.cursor('next')
             if count % 1000 == 0:
                 delta = time.time()-t0
-                print "Through line %d rate is %.1f keys/S in " \
-                      "%d seconds total." % \
-                      (count, count/delta, delta)
+                print "Read through line %d rate is %.1f keys/S." % \
+                      (count, count/delta)
+                print "Read time %s." % (delta,)
         
     except:
         exc, msg, tb = sys.exc_info()
@@ -240,41 +260,91 @@ def print_data(volume, fd_temp, fd_data):
 
     return sorted_list
 
-#Print the sums of the file sizes to the file USAGE.
-def print_volume_size_stats(volume_sums, output_dir):
-    usage_file = open(output_dir + "USAGE", "w")
-    usage_file.write("%10s %15s\n" % ("Label", "Size"))
-    sorted_keys = volume_sums.keys()
-    sorted_keys.sort()
-    for key in sorted_keys:
-        usage_file.write("%10s %15s\n" % (key, str(volume_sums[key])))
+#Print the sums of the file sizes to the file VOLUME_SIZE.  Also, print
+# out the expected volume sizes.
+def print_volume_size_stats(volume_sums, volume_list, output_file):
+    usage_file = open(output_file, "w")
+    usage_file.write("%10s %13s  %12s\n" % ("Label", "Actual Size",
+                                         "Expected Size"))
+    volume_list.sort(el_sort)
+    for volume in volume_list:
+        key = volume['external_label']
+        format_tuple = (key,) + format_storage_size(volume_sums[key]) + \
+                        format_storage_size(volume['capacity_bytes'] -
+                                            volume['remaining_bytes'])
+        usage_file.write("%10s %11.2f%s %6.2f%s\n" % format_tuple)
 
 #Print the last access info to the output file LAST_ACCESS.
-def print_last_access_status(volume_list, output_dir):
+def print_last_access_status(volume_list, output_file):
     volume_list.sort(la_sort)
-    la_file = open(output_dir + "LAST_ACCESS", "w")
+    la_file = open(output_file, "w")
     for volume in volume_list:
         la_file.write("%f, %s %s\n"
                       % (volume['last_access'],
                          time.asctime(time.localtime(volume['last_access'])),
                          volume['external_label']))
 
-def print_volumes_defind_status(volume_list, output_dir):
+def print_volumes_defind_status(volume_list, output_file):
     volume_list.sort(el_sort)
-    vd_file = open(output_dir + "VOLUMES_DEFINED", "w")
-    for volume in volume_list:
-        vd_file.write("%10s %s\n"
-                      % (volume['external_label'],
-                         volume['remaining_bytes']))
+    vd_file = open(output_file, "w")
 
-        
+
+    vd_file.write("Date this listing was generated: %s\n" % \
+                  time.asctime(time.localtime(time.time())))
+    
+    vd_file.write("%-10s  %-8s %-17s %17s  %012s %-12s\n" %
+          ("label", "avail.", "system_inhibit", "user_inhibit",
+           "library", "volume_family"))
+    
+    for volume in volume_list:
+        formated_size = format_storage_size(volume['remaining_bytes'])
+
+        vd_file.write("%-10s %6.2f%s (%-08s %08s) (%-08s %08s) %-012s %012s\n"
+                      % (volume['external_label'],
+                         formated_size[0], formated_size[1],
+                         volume['system_inhibit'][0],
+                         volume['system_inhibit'][1],
+                         volume['user_inhibit'][0],
+                         volume['user_inhibit'][1],
+                         volume['library'],
+                         volume['volume_family']))
+
+def print_volume_quotas_status(volume_quotas, output_file):
+    vq_file = open(output_file, "w")
+
+    vq_file.write("Date this listing was generated: %s\n" % \
+                  time.asctime(time.localtime(time.time())))
+    
+    vq_file.write("%-10s %-20s %-6s %-10s %-14s %-7s %s\n" %
+          ("Library", "Storage Group", "Quota",
+           "Blank Vols", "Written Vols", "Deleted", "Space Used"))
+
+    quotas = volume_quotas.keys()
+    quotas.sort()
+    for keys in quotas:
+        formated_tuple = volume_quotas[keys][0:6] + \
+                         format_storage_size(volume_quotas[keys][6])
+        vq_file.write("%-10s %-20s %-6d %-10d %-14d %-7d %8.2f%s\n"
+                      % formated_tuple)
+
+
+def print_total_bytes_on_tape(volume_sums, output_file):
+    sum = 0
+    for line in volume_sums.keys():
+        sum = volume_sums[line] + sum
+
+    tbot_file = open(output_file, "w")
+
+    tbot_file.write("%.2f %s\n" % format_storage_size(sum))
+    
+
 ##############################################################################
 ##############################################################################
 
 def create_fd_list(volume_list, output_dir):
     #Create the file descriptor dictionary.
     fd_list = {}
-    
+    count = 0
     #Loop through each entry in the list of volumes.  Pull out all files
     # from the file data list on each particular volume.  Output the data
     # in the appropriate format.
@@ -284,8 +354,12 @@ def create_fd_list(volume_list, output_dir):
             print "setting file descriptor to 1."
         else:
             file_string = output_dir + volume['external_label']
+
+            count = count + 1
+            print count,
             fd = os.open(file_string,
                          os.O_RDWR | os.O_CREAT | os.O_TRUNC, 0666)
+            print fd
             if fd == -1:
                 print "Error opening file " + file_string + "."
                 sys.exit(1)
@@ -295,7 +369,7 @@ def create_fd_list(volume_list, output_dir):
 
     return fd_list
 
-def process_out_string(short_list, fd_list):
+def process_out_string(short_list, fd):
     for vol in short_list:
         try:
             out_string = "%10s %15s %10s %22s %7s %s\n" % \
@@ -318,8 +392,8 @@ def process_out_string(short_list, fd_list):
                           "unknown")
             
         #It doesn't matter if the value in out_string was set with or
-        # without an exception being through.  Just stream it out.
-        os.write(fd_list[vol['external_label']], out_string)
+        # without an exception being thrown.  Just stream it out.
+        os.write(fd, out_string)
 
 
 def parse_time(seconds):
@@ -362,42 +436,65 @@ def verify_volume_sizes(volume_data, volume, volume_sizes):
 
     volume_sizes[volume['external_label']] = sum_size
 
+
+def verify_volume_quotas(volume_data, volume, volume_quotas):
+    storage_group = string.split(volume['volume_family'], ".")[0]
+    library = volume['library']
+
+    #Since the data of which files are on what volume is already known,
+    # that same data can be used here.
+    if len(volume_data) == 1 and volume_data[0] == "":
+        blank_vols = 1
+        written_vols = 0
+    else:
+        blank_vols = 0
+        written_vols = 1
+
+    #Determine if the volume is deleted.
+    if volume['system_inhibit'][0] == "DELETED":
+        deleted = 1
+    else:
+        deleted = 0
+
+    #Determine space used for this volume.  Later sum these numbers up for
+    # each library/storage group.
+    space_used = volume['capacity_bytes'] - volume['remaining_bytes']
+
+    try:
+        quota = volume_quotas[(library, storage_group)]
+
+        volume_quotas[(library, storage_group)] = (library,
+                                                   storage_group,
+                                                   quota[2] + 1,
+                                                   quota[3] + blank_vols,
+                                                   quota[4] + written_vols,
+                                                   quota[5] + deleted,
+                                                   quota[6] + space_used)
+
+    except KeyError:
+        volume_quotas[(library, storage_group)] = (library,
+                                                   storage_group,
+                                                   1, #quota
+                                                   blank_vols,
+                                                   written_vols,
+                                                   deleted,
+                                                   space_used)
+        
+    
+
 ##############################################################################
 ##############################################################################
 
-#Proccess the inventory of the files specified.  This is the main source
-# function where all of the magic starts.
-#Takes the full filepath name to the volume file in the first parameter.
-#Takes the full filepath name to the data file in the second parameter.
-#Takes the full path to the ouput directory in the third parameter.
-
-def inventory(volume_file, data_file, output_dir):
-    t0 = time.time() #grab the start time
-    count_1000s = 0 #keep track of the number of files processed.
-
-    volume_list = read_db(os.path.split(volume_file))
-    if volume_list == 1:
-        print "Database " + volume_file + " read in unsuccessfully."
-
+def sort_inventory(data_file, volume_list, tmp_dir):
+    t0 = time.time()
+    data_list = [1]
+    fd_tmp = {}
+    db = None          #The database needed by read_long_db()
+    count_metadata = 0 #keep track of the number of files processed.
     #A cool thing this class is.  It is a class, but it acts like a function
     # later on.  This is how the filter function allows me to pass in
     # different filter values.
     compare = match_list("")
-
-
-    os.system("rm -rf /tmp/label_files/")
-#    os.remove("/tmp/label_files/*")
-#    os.rmdir("/tmp/label_files/")
-
-    os.mkdir("/tmp/label_files/", 0777)
-    
-    #The variable fd_tmp is really a dictionary, but holds a list of file
-    # descriptors to temporary output file. 
-    fd_tmp = create_fd_list(volume_list, "/tmp/label_files/")
-
-    data_list = [1]   #Give it an element to make it have a non-zero length.
-    volume_sums = {}  #The summation of all of the file sizes on a volume.
-    db = None         #The database needed by read_long_db()
 
     #While there is still data to process.
     while len(data_list):
@@ -412,6 +509,17 @@ def inventory(volume_file, data_file, output_dir):
         db = long_read_return[1]
 
         for volume in volume_list:
+            #It may seam that always opening a file is a waste.  But, this
+            # way there will always be a file for a volume (even empty
+            # volumes).
+            file_string = tmp_dir + volume['external_label']
+            fd = os.open(file_string,
+                         os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0666)
+            if fd == -1:
+                print "Unable to open tmp file", volume['external_label'],
+                print "for writing."
+                sys.exit(1)
+                
             #This is where the magic of that callable class happends.  I set
             # the compare_value variable and it is automatically referenced
             # when the class is executed like a function in the filter() call.
@@ -420,73 +528,172 @@ def inventory(volume_file, data_file, output_dir):
 
             #With the short list of files located on the current volume
             # print them out to the corresponding temporary file.
-            process_out_string(short_list, fd_tmp)
+            process_out_string(short_list, fd)
+
+            #Close the open file to avoid opening to many at once.
+            os.close(fd)
 
         #Since, the while loop takes a while to process all of the data,
         # generate some running performace statistics.
         delta = time.time()-t0
-        count_1000s = count_1000s + len(data_list)
-        print "Through line %d rate is %.1f keys/S in %s." % \
-              (count_1000s, count_1000s/delta, parse_time(delta))
+        count_metadata = count_metadata + len(data_list)
+        print "Read through line %d rate is %.1f keys/S. Read time is %s." % \
+              (count_metadata, count_metadata/delta, parse_time(delta))
 
 #        break #usefull for debugging
 
-    #The variable fd_ouput is really a dictionary, but holds a list of file
-    # descriptors to corresponding output files. 
-    fd_output = create_fd_list(volume_list, output_dir)
+    return count_metadata
+
+
+#Proccess the inventory of the files specified.  This is the main source
+# function where all of the magic starts.
+#Takes the full filepath name to the volume file in the first parameter.
+#Takes the full filepath name to the metadata file in the second parameter.
+#Takes the full path to the ouput directory in the third parameter.
+# If output_dir is set to /dev/stdout/ then everything is sent to standard out.
+def inventory(volume_file, metadata_file, output_dir, tmp_dir):
+    volume_sums = {}   #The summation of all of the file sizes on a volume.
+    volume_quotas = {} #Stats on usage of storage groups.
+    
+    volume_list = read_db(os.path.split(volume_file))
+    if volume_list == 1:
+        print "Database " + volume_file + " read in unsuccessfully."
+
+    #An empty temporary directory would be nice, so delete it and anything
+    # in it and then reopen it.
+    os.system("rm -rf " + tmp_dir)
+    os.mkdir(tmp_dir, 0777)
+    if string.find(output_dir, "/dev/stdout") == -1:
+        os.system("rm -rf " + output_dir) #clear the output directory
+        os.mkdir(output_dir, 0777)
+
+    #Sort all of the data in data_file into the correct temporary files.
+    count_metadata = sort_inventory(metadata_file, volume_list, tmp_dir)
 
     #print information to a real file.
     for volume in volume_list:
-        #Print the header information.
-        print_header(volume, fd_output[volume['external_label']])
-
+        if string.find(output_dir, "/dev/stdout") != -1:
+            fd_output = 1
+        else:
+            fd_output = os.open(output_dir + volume['external_label'],
+                                os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0666)
+        fd_tmp = os.open(tmp_dir + volume['external_label'],
+                            os.O_RDONLY, 0666)
+        
+        print_header(volume, fd_output) #Print the header information.
+        
         #Prints the data to the appropriot output file.  Also, returns a
-        # list of the lines in the tmp file.
-        file_data = print_data(volume, fd_tmp[volume['external_label']],
-                               fd_output[volume['external_label']])
+        # list of the lines in the tmp file, which is used to calculate
+        # some statistics.
+        file_data = print_data(volume, fd_tmp, fd_output)
+        
+        print_footer(volume, fd_output) #Print the footer information.
 
-        #Print the footer information.
-        print_footer(volume, fd_output[volume['external_label']])
-
+        if fd_output != 1:
+            os.close(fd_output)
+        
         #Verifies the amount of data stored on the volumes.  Each call to
         # this function adds an entry into volume_sums.  The data generated
         # will be outputed by the print_volume_size_stats() funciton.
         verify_volume_sizes(file_data, volume, volume_sums)
         
-        #Print current time information to the screen.
-        print "Label", volume['external_label'], "processed.",
-        print "(%s)" % (parse_time(time.time() - t0))
+        #Verifies the amount of data stored in storage groups.  Each call to
+        # this function adds an entry into volume_quotas.  The data generated
+        # will be outputed by the print_volume_quotas_stats() funciton.
+        verify_volume_quotas(file_data, volume, volume_quotas)
 
+    if string.find(output_dir, "/dev/stdout") != -1: 
+        last_access_file = "/dev/stdout"
+        volume_size_file = "/dev/stdout"
+        volumes_defind_file = "/dev/stdout"
+        volume_quotas_file = "/dev/stdout"
+        total_bytes_file = "/dev/stdout"
+    else:
+        last_access_file = output_dir + "LAST_ACCESS"
+        volume_size_file = output_dir + "VOLUME_SIZE"
+        volumes_defind_file = output_dir + "VOLUMES_DEFINED"
+        volume_quotas_file = output_dir + "VOLUME_QUOTAS"
+        total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
     #Create files that hold statistical data.
-    print_last_access_status(volume_list, output_dir)
-    print_volume_size_stats(volume_sums, output_dir)
-    print_volumes_defind_status(volume_list, output_dir)
-
+    print_last_access_status(volume_list, last_access_file)
+    print_volume_size_stats(volume_sums, volume_list, volume_size_file)
+    print_volumes_defind_status(volume_list, volumes_defind_file)
+    print_volume_quotas_status(volume_quotas, volume_quotas_file)
+    print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     try:
-        os.rmdir("/tmp/label_files/")
+        os.system("rm -rf " + tmp_dir)
+        checkBackedUpDatabases.clean_up(extract_dir, current_dir)
     except OSError:
         pass #We want the dir to go away, if it's already gone don't worry.
+
+    return len(volume_list), count_metadata
+
+
+
+def inventory_dirs():
+    csc = configuration_client.ConfigurationClient(
+        checkBackedUpDatabases.config)
+    inven = csc.get('inventory',checkBackedUpDatabases.timeout,
+                    checkBackedUpDatabases.tries)
+    checkBackedUpDatabases.check_ticket('Configuration Server', inven)
+    
+    inventory_dir = inven.get('inventory_dir','MISSING')
+    inventory_tmp_dir = inven.get('inventory_tmp_dir','MISSING')
+
+    return inventory_dir, inventory_tmp_dir
+
+
+if __name__ == "__main__":
+    #Grab the start time.
+    t0 = time.time()
+    
+    #Don't bother with initialization if they only want help
+    if "--help" in sys.argv:
+        inventory_usage()
+        sys.exit(0)
+        
+    #Retrieve the necessary directories from the enstore servers.
+    (backup_dir, extract_dir, current_dir) = \
+                 checkBackedUpDatabases.configure()
+    (inventory_dir, inventory_tmp_dir) = inventory_dirs()
+
+    #Make sure all of the directories end with a /
+    if backup_dir[-1] != "/": backup_dir = backup_dir + "/"
+    if extract_dir[-1] != "/": extract_dir = extract_dir + "/"
+    if current_dir[-1] != "/": current_dir = current_dir + "/"
+    if inventory_dir[-1] != "/": inventory_dir = inventory_dir + "/"
+    if inventory_tmp_dir[-1] != "/":
+        inventory_tmp_dir = inventory_tmp_dir + "/"
+
+    #Look through the arguments list for valid arguments.
+    if "-stdout" in sys.argv:
+        output_dir = "/dev/stdout/"
+    elif "-o" in sys.argv:
+        output_dir = sys.argv[sys.argv.index("-o") + 1] + "/"
+    else:
+        output_dir = inventory_dir
+        
+    if "-f" in sys.argv:
+        file_file = sys.argv[sys.argv.index("-f") + 1]
+    else:
+        file_file = extract_dir + "file"
+        
+    if "-v" in sys.argv:
+        volume_file = sys.argv[sys.argv.index("-v") + 1]
+    else:
+        volume_file = extract_dir + "volume"
+
+    #If the backup needs to be extracted (the defualt) then do.
+    if "-f" not in sys.argv and "-v" not in sys.argv:
+        container = checkBackedUpDatabases.check_backup(backup_dir)
+        checkBackedUpDatabases.extract_backup(extract_dir, container)
+
+    #Inventory is the main function that does work.
+    counts = inventory(volume_file, file_file, output_dir, inventory_tmp_dir)
 
     #Print stats regarding the data generated.
     delta_t = time.time() - t0
     print "%d files on %d volumes processed in %s." % \
-          (count_1000s, len(volume_list), parse_time(delta_t))
+          (counts[1], counts[0], parse_time(delta_t))
 
-
-                
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        inventory_usage("To few arguments.")
-    elif len(sys.argv) == 3:
-        #volume file, data file, None == stdout
-        inventory(sys.argv[1], sys.argv[2], None)
-    elif len(sys.argv) == 4:
-        #The user shouldn't have to enter in a "/" at the end of the directory.
-        # If it is not there add it.
-        if sys.argv[3][-1] != "/":
-            sys.argv[3] = sys.argv[3] + "/"
-        #volume file, data file, ouput directory
-        inventory(sys.argv[1], sys.argv[2], sys.argv[3])
-    else:
-        inventory_usage("To many arguments.")
