@@ -374,7 +374,7 @@ class Mover:
             angle=math.pi/(N-1)
             i=(0+1J)
             coord=.75+.5*cmath.exp(i*(math.pi/2 + angle*k))
-            x, y = scale_to_display(coord.real. coord.imag, self.display.width, self.display.height)
+            x, y = scale_to_display(coord.real, coord.imag, self.display.width, self.display.height)
         else:
             if ejected:
                 #x, y = self.x*2.2, self.y +1
