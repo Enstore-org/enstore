@@ -88,6 +88,13 @@ trace_init(  const char	*name
 }
 
 
+/* Note: shared library problem -- "trace" conflicts with libcurses.so
+         "trace" function. This is dependent upon whether or not python
+         is configured to use libcurses.
+         (I used
+          `cd /usr/lib; for ss in *.so;do echo $ss;nm $ss|grep trace;done|less` 
+          to verify that there was a conflict with trace)
+ */
 
 void
 trace_(  int lvl
