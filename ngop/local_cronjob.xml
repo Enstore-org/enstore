@@ -34,7 +34,7 @@
          </ConditionSet>
       </MonitoredElement>
 
-      <MonitoredElement Name="root" Host="localhost" Type="Hardware">
+      <MonitoredElement Name="root" Host="localhost" Type="Daemon">
          <ConditionSet>
          <fn Name="checkcron" Arg="root" RetVal="int:x"/>
          <Condition State="0" SevLevel="0" Description="root cron job has been running 3 times longer than normal interval">
