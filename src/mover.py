@@ -1400,17 +1400,23 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dismount_volume(self, after_function=None):
         self.dismount_time = None
         save_state = self.state
-        if self.do_eject:
-            self.state = DISMOUNT_WAIT
-            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
-            if have_tape == 1:
-                ejected = self.tape_driver.eject()
-                if ejected == -1:
-                    self.error("Cannot eject tape")
-                    ### XXXX Shouldn't code return here? Moibenko
-                    return
-            self.tape_driver.close()
-            Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
+        if not self.do_eject:
+            self.current_volume = None
+            if after_function:
+                after_function()
+            else:
+                if save_state not in (DRAINING, OFFLINE):
+                    self.idle()
+
+        self.state = DISMOUNT_WAIT
+        have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
+        if have_tape == 1:
+            ejected = self.tape_driver.eject()
+            if ejected == -1:
+                self.error("Cannot eject tape")
+                return
+        self.tape_driver.close()
+        Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
         self.last_volume = self.current_volume
         self.last_location = self.current_location
@@ -1426,6 +1432,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   (self.current_volume, v))
                 else:
                     Trace.log(e_errors.ERROR, "dismount_volume: current_volume=%s" % (self.current_volume,))
+
         if not self.vol_info.get('external_label'):
             if self.current_volume:
                 self.vol_info['external_label'] = self.current_volume
@@ -1454,6 +1461,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def mount_volume(self, volume_label, after_function=None):
         self.dismount_time = None
+        if self.current_volume:
+            self.dismount_volume()
+
         self.state = MOUNT_WAIT
         self.current_volume = volume_label
 
