@@ -121,23 +121,23 @@ class CJFunc(Worker):
            return 60*24*31*(self.calcuTime(my, 12)-1) + 60*24*(dayMs-1)\
                   + 60*(hrs-1) + mins
         elif my == "*":       			# this case needs to be improved
-           hrs = setTime(h, 24)
-           mins = setTime(m, 60)
-           return max((60*24*(calcuTime(dm,31)-1) + 60*(hrs-1) + mins),\
-                      (60*24*(calcuTime(dw,7) -1) + 60*(hrs-1) + mins))
+           hrs = self.setTime(h, 24)
+           mins = self.setTime(m, 60)
+           return max((60*24*(self.calcuTime(dm,31)-1) + 60*(hrs-1) + mins),\
+                      (60*24*(self.calcuTime(dw,7) -1) + 60*(hrs-1) + mins))
         elif dm == '*':       			# this case needs to be improved
-           hrs = setTime(h, 24)
-           mins = setTime(m, 60)
-           dayWks = setTime(dw, 7)
-           return 60*24*31*(calcuTime(my,12)-1) + 60*24*(dayWks - 1)\
+           hrs = self.setTime(h, 24)
+           mins = self.setTime(m, 60)
+           dayWks = self.setTime(dw, 7)
+           return 60*24*31*(self.calcuTime(my,12)-1) + 60*24*(dayWks - 1)\
                                                + 60*(hrs-1) + mins
         else:                              	# this case needs to improved
-           hrs = setTime(h, 24)
-           mins = setTime(m, 60)
-           dayWks = setTime(dw, 7)
-           dayMs = setTime(dm, 31)
+           hrs = self.setTime(h, 24)
+           mins = self.setTime(m, 60)
+           dayWks = self.setTime(dw, 7)
+           dayMs = self.setTime(dm, 31)
            days = min(dayMs, dayWks)
-           return 60*24*31*(calcuTime(my,12)-1)+60*24*(days-1)+60*(hrs-1)+mins
+           return 60*24*31*(self.calcuTime(my,12)-1)+60*24*(days-1)+60*(hrs-1)+mins
 
     def convertMonth(self, mon):
         if mon == 'Jan':
