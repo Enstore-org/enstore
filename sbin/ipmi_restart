@@ -12,8 +12,12 @@ cd /root
 
 # stop the watchdog timer and ipmisrv process
 
-echo `date` Stopping watchdog timer and ipmisrv
-/usr/local/bin/dogdisarm
+### all lines that begin with 3 pound signs were commented
+### out in order to remove any watchdog timer functionality.
+### uncomment these lines to get the functionality back.
+###echo `date` Stopping watchdog timer and ipmisrv
+echo `date` Stopping ipmisrv  ### remove me for watchdog support
+###/usr/local/bin/dogdisarm
 
 ps axuww|grep ipmisrv| grep -v grep  
 
@@ -28,12 +32,14 @@ sleep 3
 # The timer will reset the system if 5 minutes passes
 # without a reset by deadman with ipmisrv.
 
-echo `date` Starting watchdog timer and ipmisrv process
-/usr/local/bin/ipmisrv 1>&- 2>1 <&- &
+###echo `date` Starting watchdog timer and ipmisrv process
+echo `date` Starting ipmisrv process  ### remove me for watchdog support
+###/usr/local/bin/ipmisrv 1>&- 2>1 <&- &
+/usr/local/bin/ipmisrv NO_DOG 1>&- 2>1 <&- & ### remove me for watchdog support
 
 sleep 3
-/usr/local/bin/dogarm
-/usr/local/bin/dogreset
+###/usr/local/bin/dogarm
+###/usr/local/bin/dogreset
 
 ps axuww|grep ipmisrv| grep -v grep  
 
