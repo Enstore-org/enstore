@@ -15,6 +15,8 @@ echo "  " >> $tmp_file
 echo "  " >> $tmp_file
 echo "  " >> $tmp_file
 echo $theDate >> $tmp_file
+echo "  " >> $tmp_file
+echo "  " >> $tmp_file
 
 ls -l -F -R /pnfs/cms >> $tmp_file
 
