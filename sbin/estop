@@ -1,3 +1,8 @@
+# sun nodes need an extended path in order to find all the regular unix commands
+if [ `uname` = SunOS ]; then 
+  PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/lbin:/usr/ucb:/usr/ccs/bin
+fi
+
 source /usr/local/etc/setups.sh
 setup enstore
 ecmd stop
