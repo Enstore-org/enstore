@@ -1,0 +1,227 @@
+
+import sys
+import os
+import time
+import pprint
+import select
+
+import encp
+import pnfs
+import e_errors
+import delete_at_exit
+import callback
+import host_config
+
+
+def print_usage():
+    print "Usage:", os.path.basename(sys.argv[0]), \
+          "<Volume> <Input Dir.> <Output Dir.>"
+
+def transfer_file(in_fd, out_fd):
+
+    bytes = 0L #Number of bytes transfered.
+
+    while 1:
+
+        r, w, x = select.select([in_fd], [], [], 15 * 60)
+
+        if in_fd not in r:
+            return -1
+        
+        data = os.read(in_fd, 1048576)
+
+        if len(data) == 0:
+            return bytes
+
+        r, w, x = select.select([], [out_fd], [], 15 * 60)
+
+        if out_fd not in w:
+            return -1
+
+        bytes += os.write(out_fd, data)
+
+def get_single_file(work_ticket, control_socket, e):
+
+    #Loop around in case the file transfer needs to be retried.
+    while work_ticket.get('retry', 0) <= e.max_retry:
+
+        # Open the local file.
+        done_ticket = encp.open_local_file(work_ticket['outfile'], e)
+        
+        if not e_errors.is_ok(done_ticket):
+            sys.stderr.write("Unable to open local file %s: %s\n",
+                             (work_ticket['outfile'], done_ticket['status'],))
+            encp.quit(1)
+        else:
+            out_fd = done_ticket['fd']
+
+
+        # Send the request to the mover.
+        work_ticket['method'] = "read_next" #evil hack
+        try:
+            done_ticket = callback.write_tcp_obj(control_socket, work_ticket)
+        except e_errors.TCP_EXCEPTION:
+            sys.stderr.write("Unable to communicate request to mover\n",
+                             (work_ticket['outfile'], done_ticket['status'],))
+            encp.quit(1)
+
+        #Open the data socket.
+        try:
+            data_path_socket = encp.open_data_socket(
+                work_ticket['mover']['callback_addr'],
+                work_ticket['callback_addr'][0])
+        except (encp.EncpError,), detail:
+            sys.stderr.write("Unable to open data socket with mover: %s\n",
+                             (str(detail),))
+            encp.quit(1)
+
+        # Stall starting the count until the first byte is ready for reading.
+        read_fd, write_fd, exc_fd = select.select([data_path_socket], [],
+                                                  [data_path_socket], 15 * 60)
+
+        # Read the file from the mover.
+        done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
+
+        # Close these desriptors before they are forgotten about.
+        encp.close_descriptors(out_fd, data_path_socket)
+        
+        # Verify that everything went ok with the transfer.
+        result_dict = encp.handle_retries([work_ticket], work_ticket,
+                                     done_ticket, None,
+                                     None, None, e)
+
+        if e_errors.is_ok(result_dict):
+            return encp.combine_dict(result_dict, work_ticket)
+        elif e_errors.is_retriable(result_dict['status'][0]):
+            continue
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
+            return result_dict
+
+    # Can we get here?
+    return {'status' : (e_errors.TOO_MANY_RETRIES, None)}
+
+def main(e):
+
+    t0 = time.time()
+    tinfo = {'t0' : t0, 'encp_start_time' : t0}
+
+    # get a port to talk on and listen for connections
+    callback_addr, listen_socket = encp.get_callback_addr(e)
+    #Get an ip and port to listen for the mover address for routing purposes.
+    routing_addr, udp_server = encp.get_routing_callback_addr(e)
+    
+    #Create all of the request dictionaries.
+    requests_per_vol = encp.create_read_requests(callback_addr, routing_addr,
+                                                 tinfo, e)
+
+    #Set the max attempts that can be made on a transfer.
+    check_lib = requests_per_vol.keys()
+    encp.max_attempts(requests_per_vol[check_lib[0]][0]['vc']['library'], e)
+
+    #This might be a problem when zero information is available...
+    for request in requests_per_vol[e.volume]:
+        #Make sure that we are not clobbering files.
+        encp.outputfile_check(request['infile'], request['outfile'], e)
+    
+    for request in requests_per_vol[e.volume]:
+        #Create the zero length file entry.
+        encp.create_zero_length_files(request['outfile'])
+
+
+    #Only the first submition goes to the LM for volume reads.
+    requests_per_vol[e.volume][0]['method'] = "read_tape_start" #evil hack
+    submitted, reply_ticket = encp.submit_read_requests(
+            [requests_per_vol[e.volume][0]], tinfo, e)
+
+    if not e_errors.is_ok(reply_ticket):
+        sys.stderr.write("Unable to read volume %s: %s\n",
+                         (e.volume, reply_ticket['status']))
+        encp.quit(1)
+
+
+    #Open the routing socket.
+    config = host_config.get_config()
+    use_listen_socket = listen_socket
+    try:
+        #There is no need to do this on a non-multihomed machine.
+        if config and config.get('interface', None):
+            ticket, use_listen_socket = encp.open_routing_socket(
+                udp_server,
+                [requests_per_vol[e.volume][0]['unique_id']], #unique_id_list
+                e)
+
+            if not e_errors.is_ok(ticket):
+                sys.stderr.write("Unable to handle routing: %s\n",
+                         (reply_ticket['status'],))
+                encp.quit(1)
+    except (encp.EncpError,), detail:
+        sys.stderr.write("Unable to handle routing: %s\n",
+                         (reply_ticket['status'],))
+        encp.quit(1)
+
+    #Open the control socket.
+    try:
+        control_socket, mover_address, ticket = \
+                        encp.open_control_socket(use_listen_socket, 15 * 60)
+
+        if not e_errors.is_ok(ticket['status']):
+            sys.stderr.write("Unable to open control socket with mover: %s\n",
+                             (ticket['status'],))
+            encp.quit(1)
+    except (encp.EncpError,), detail:
+        sys.stderr.write("Unable to open control socket with mover: %s\n",
+                         (reply_ticket['status'],))
+        encp.quit(1)
+    
+
+    # Loop through the files.
+    for request in requests_per_vol[e.volume]:
+
+        print "Reading %s." % request['outfile']
+
+        encp.combine_dict(ticket, request)
+        done_ticket = get_single_file(request, control_socket, e)
+
+        if e_errors.is_ok(done_ticket):
+            print "File %s read successfully."
+        else:
+            print "File %s read failed."
+
+    encp.quit(0)
+
+def do_work(intf):
+    delete_at_exit.setup_signal_handling()
+
+    try:
+        main(intf)
+        quit(0)
+    except SystemExit, msg:
+        quit(1)
+
+if __name__ == '__main__':
+
+
+    if len(sys.argv) < 4:
+        print_usage()
+        sys.exit(1)
+
+    if not encp.is_volume(sys.argv[1]):
+        sys.stderr.write("First argument is not a volume name.\n")
+        sys.exit(1)
+        
+    if not os.path.exists(sys.argv[2]) or not os.path.isdir(sys.argv[2]) \
+       or not pnfs.is_pnfs_path(sys.argv[2]):
+        sys.stderr.write("Second argument is not an input directory.\n")
+        sys.exit(1)
+
+    if not os.path.exists(sys.argv[3]) or not os.path.isdir(sys.argv[3]):
+        sys.stderr.write("Third argument is not an output directory.\n")
+        sys.exit(1)
+
+    intf = encp.EncpInterface([sys.argv[0]] + sys.argv[2:4], 0) # zero = admin
+    intf.volume = sys.argv[1]
+
+    #print encp.format_class_for_print(intf, "intf")
+    
+    do_work(intf)
+
