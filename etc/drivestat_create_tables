@@ -18,7 +18,8 @@ create table status (
 	write_errors int,
 	track_retries int,
 	underrun int,
-	mount_count int
+	mount_count int,
+	wp int
 );
 
 create index status_drive_sn_idx on status(drive_sn);
