@@ -4,13 +4,10 @@ import sys
 import os
 import string
 import time
+import getopt
 
 OK = 0
 FAIL = 1
-
-#tdir="/home/aik/tape_inventory_010723/"
-tdir="/diska/tape-inventory/"
-
 
 def Print(msg,output):
     output.write(msg)
@@ -20,21 +17,35 @@ def CleanJunk(msg):
     table='                                 !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~                                                                                                                                 '
     return string.strip(string.translate(msg,table," \"'{}"))
 
-def generate_volume_list(volume_file):
-    f=open(volume_file, 'r')
+def generate_volume_list(volume_file, library):
+    host = os.environ.get('ENSTORE_CONFIG_HOST', '')
+    url = "http://%s/%s"%(host, volume_file)
+    print "URL",url
+    # copy to this file first
+    # as wget may intemix the data with diagnistics at stdout
+    ofile = "VOLS%s"%(int(time.time()),)
+    try:
+        os.system("wget -o wget.log -O %s %s"%(ofile, url,))
+        f = open(ofile, 'r')
+    except:
+        exc, msg, tb = sys.exc_info()
+        print "exception: %s %s" % (str(exc), str(msg))
+        return None
+    
     lines = f.readlines()
+    f.close()
+    os.unlink(ofile)
     volume_list = []
     del(lines[0])
     del(lines[0])
     for line in lines:
-        label,junk,junk,junk,junk,junk,junk,volume_group=line.split()
+        label,junk,junk,junk,junk,junk,lib,volume_group=line.split()
         ff = volume_group.split('.')[1]
         #print "DEBUG: '%s', '%s'" % (label, label[0:4])
-        if label[0:4] == "null" or label[0:4] == "NULL":
+        if label[0:4] == "null" or label[0:4] == "NULL" or label[0:3] == "CLN" :
             continue
-        if ff != 'none':
+        if library == lib and ff != 'none':
             volume_list.append(label)
-    f.close()
     return volume_list
 
 def readlayer(fullname,layer,ferr):
@@ -67,6 +78,23 @@ def file_stat(kind,fname,comment,ferr):
                      (kind,fname,comment,str(exc),str(msg)), ferr )
         Print ( "DEBUG: stat failed ... exc= '%s' msg= '%s'\n" % (exc, msg),ferr )
     return -1
+
+def change_file_name(file):
+    # replace pnfs with pnfs/fs/usr
+    orig = string.split(file, "/")
+    if 'sam' in orig:
+        sam_ind = orig.index('sam')
+        next = orig[sam_ind+1]
+        
+        if next in ('mammoth', 'm2', 'lto'):
+            orig.remove(next)
+            orig[sam_ind] = 'sam-%s'%(next,)
+            
+    new=['/pnfs','fs','usr'] # this is not always true, depends on the name of the mount point
+    for i in range(2,len(orig)):
+        new.append(orig[i])
+    new_fn=string.join(new,'/')
+    return new_fn
 
 def check_volume(label,selected_library=""):
     err    = 0
@@ -158,7 +186,7 @@ def check_volume(label,selected_library=""):
                 print ""
         
         # Check file is readable
-        fname = entry["fname"]
+        fname = change_file_name(entry["fname"])
         if file_stat( "Error ESF",fname,"orig_file",ferr ) :
             err = err +1
             continue
@@ -236,41 +264,58 @@ def check_volume(label,selected_library=""):
     return (0, err, warn,fcount,vinfo)
 
 #--------------------------------------------------
+
+def usage():
+    print "usage %s --library=<library> [VOL1 VOL2 ...]"%(sys.argv[0],)
+
 # Main()
-t1 = time.time()
-flog = open("AUDIT.log","w")
+if __name__ == "__main__":
+    try:
+        options, args = getopt.getopt(sys.argv[1:],'',['library=',])
+    except getopt.GetoptError:
+        usage()
+        sys.exit(-1)
+    print "opt %s arg %s"%(options, args)
+    if options and options[0][0] == '--library':
+        library = options[0][1]
+    else:
+        usage()
+        print "Sorry you must specify library"
+        sys.exit(-1)
+    if args:
+        volume_list = args
+    else:
+       volume_list=generate_volume_list("enstore/tape_inventory/VOLUMES_DEFINED", library) 
+    print volume_list
+    t1 = time.time()
+    flog = open("AUDIT.log","w")
 
-#volume_list= ["VO1059","VO1060","VO1061","VO1062","VO1063","VO1064",]
-#volume_list= ["VO1002",]
+    #volume_list= ["VO1059","VO1060","VO1061","VO1062","VO1063","VO1064",]
+    #volume_list= ["VO1002",]
 
-if len(sys.argv)==1 or sys.argv[1] == "VOLUMES_DEFINED":
-    volume_list=generate_volume_list(tdir+"VOLUMES_DEFINED")
-else:
-    volume_list = sys.argv[1:]
+    nvols = len(volume_list)
 
-nvols = len(volume_list)
+    # set VMAX = -1 for normal operation
+    #
+    VMAX   = -1
+    vcount = 0
 
-# set VMAX = -1 for normal operation
-#
-VMAX   = -1
-vcount = 0
+    for volume in volume_list:
+        print "Volume %4d of %4d, %s" % (vcount+1, nvols, volume)
+        (ret,err,warn,fcount,vinfo) = check_volume(volume,'samm2')
+        flag = "OK "
+        if (ret != 0 or err !=0 or warn !=0 ):
+            flag = "BAD"
+        if ret==-2:
+            flag="????"
 
-for volume in volume_list:
-    print "Volume %4d of %4d, %s" % (vcount+1, nvols, volume)
-    (ret,err,warn,fcount,vinfo) = check_volume(volume,'samm2')
-    flag = "OK "
-    if (ret != 0 or err !=0 or warn !=0 ):
-        flag = "BAD"
-    if ret==-2:
-        flag="????"
-        
-    Print( "%s %s %s \tfiles=%6d rc=%3d  err=%5d  warn=%5d\n" % (flag,volume,vinfo['volume_family'],fcount,ret,err,warn),flog)
-    vcount = vcount+1
-    if( vcount == VMAX ) :
-        break
-    
-t2 = time.time()
-suffix = ""
-if vcount > 1 :
-    suffix = "s"
-print "Checked %s volume%s in %s sec" % ( vcount,suffix, (t2-t1))
+        Print( "%s %s %s \tfiles=%6d rc=%3d  err=%5d  warn=%5d\n" % (flag,volume,vinfo['volume_family'],fcount,ret,err,warn),flog)
+        vcount = vcount+1
+        if( vcount == VMAX ) :
+            break
+
+    t2 = time.time()
+    suffix = ""
+    if vcount > 1 :
+        suffix = "s"
+    print "Checked %s volume%s in %s sec" % ( vcount,suffix, (t2-t1))
