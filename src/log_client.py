@@ -21,10 +21,10 @@ import pwd
 import string
 import base64
 import cPickle
-import cStringIO		# to make freeze happy
-import copy_reg			# to make freeze happy
+#import cStringIO		# to make freeze happy
+#import copy_reg			# to make freeze happy
 
-#enstore imports
+# enstore imports
 import generic_client
 import enstore_constants
 import Trace
@@ -39,30 +39,33 @@ RCV_TIMEOUT = 3
 RCV_TRIES = 1
 
 
-#############################################################################################
+##############################################################################
 # AUTHOR        : FERMI-LABS
 # DATE          : JUNE 8, 1999
-# DESCRIPTION   : THIS FUNCTION TAKES A LINE THAT IS PASSED TO IT BY THE CALLER, AND
-#               : USES DICTIONARIES TO TRY SENSIBLE ERROR MESSAGES
+# DESCRIPTION   : THIS FUNCTION TAKES A LINE THAT IS PASSED TO IT BY THE
+#               : CALLER, AND USES DICTIONARIES TO TRY SENSIBLE ERROR MESSAGES
 # PRECONDITION  : A VALID LINE IN STRING FORMAT
 # POSTCONDITION : AN ACCURATE (HOPEFULLY) ERROR MESSAGE
-#############################################################################################
+##############################################################################
 def genMsgType(msg, ln, severity):
-    TRUE = 1
-    FALSE = 0
+    #TRUE = 1
+    #FALSE = 0
 
-    clientFlg = FALSE # DETERMINES IF A VALID CLIENT DEFINITION WAS FOUND
-    functFlg  = FALSE # FOR FUNCTION DEFINITIONS
-    sevFlg    = FALSE # FOR SEVERITY DEFINITIONS
+    clientFlg = False # DETERMINES IF A VALID CLIENT DEFINITION WAS FOUND
+    functFlg  = False # FOR FUNCTION DEFINITIONS
+    sevFlg    = False # FOR SEVERITY DEFINITIONS
     clientMsg = ''    # CONTAINS THE ACTUAL CLIENT PORTION OF ERROR MESSAGE
     functMsg  = ''    # FUNCTION PORTION OF ERROR MESSAGE
     sevMsg    = ''    # SEVERITY PORTION OF ERROR MESSAGE
     listNum  = 0      # MESSAGES START ON THIS PORTION OF LINE INPUT
     msgStrt   = 0     # ANCHOR FOR WHERE MESSAGE STARTS
 
-    tmpLine = string.split(msg)      # 2 LINES CAUSE A GROUP OF CHARACTERS TO BE SPLIT APART AND THEN
-    msg = string.joinfields(tmpLine) # RE-ASSEMBLED LEAVING ONLY 1 SPACE IN BETWEEN EACH GROUP
-    lowLine = string.lower(msg)      # CONVERTS LINE TO ALL LOWER CASE FOR STRING CHECKS
+    tmpLine = string.split(msg)      # 2 LINES CAUSE A GROUP OF CHARACTERS TO
+                                     # BE SPLIT APART AND THEN
+    msg = string.joinfields(tmpLine) # RE-ASSEMBLED LEAVING ONLY 1 SPACE IN
+                                     # BETWEEN EACH GROUP.
+    lowLine = string.lower(msg)      # CONVERTS LINE TO ALL LOWER CASE FOR
+                                     # STRING CHECKS.
 
     if string.find(lowLine, "file clerk") >= 0:
         cKey = "fc"
@@ -232,7 +235,7 @@ def genMsgType(msg, ln, severity):
         sKey = string.lower(tmpLine[msgStrt])
 
     while listNum < len(tmpLine):
-        if clientFlg == TRUE and functFlg == TRUE and sevFlg == TRUE:
+        if clientFlg and functFlg and sevFlg:
             break
         while 1:
             if listNum > msgStrt: # ONLY DO ELSE THE FIRST TIME THROUGH
@@ -243,38 +246,38 @@ def genMsgType(msg, ln, severity):
             else:
                 if e_errors.ctypedict.has_key(cKey):
                     clientMsg = e_errors.ctypedict[cKey]
-                    clientFlg = TRUE
+                    clientFlg = True
                 if e_errors.ftypedict.has_key(fKey):
                     if e_errors.stypedict.has_key(fKey):
                         functMsg = e_errors.ftypedict[fKey]
-                        functFlg = TRUE
+                        functFlg = True
                         sevMsg = e_errors.stypedict[fKey]
-                        sevFlg = TRUE
+                        sevFlg = True
                     else:
                         functMsg = e_errors.ftypedict[fKey]
-                        functFlg = TRUE
+                        functFlg = True
                 elif e_errors.stypedict.has_key(sKey):
                     sevMsg = e_errors.stypedict[sKey]
-                    sevFlg = TRUE
+                    sevFlg = True
                 
-            if clientFlg == FALSE:
+            if not clientFlg:  #clientFlg == False
                 if e_errors.ctypedict.has_key(cKey):
                     clientMsg = e_errors.ctypedict[cKey]
-                    clientFlg = TRUE
+                    clientFlg = True
                     listNum = listNum + 1
                     break
                 
-            if functFlg == FALSE:
+            if not clientFlg:  #functFlg == False
                 if e_errors.ftypedict.has_key(fKey):
                     functMsg = e_errors.ftypedict[fKey]
-                    functFlg = TRUE
+                    functFlg = True
                     listNum = listNum + 1
                     break
                 
-            if sevFlg == FALSE:
+            if not sevFlg:  #sevFlg == False
                 if e_errors.stypedict.has_key(sKey):
                     sevMsg = e_errors.stypedict[sKey]
-                    sevFlg = TRUE
+                    sevFlg = True
                     listNum = listNum + 1
                     break
             listNum = listNum + 1
@@ -283,17 +286,17 @@ def genMsgType(msg, ln, severity):
     # THESE SERIES OF CHECKS ARE IF ANY OF THE PORTIONS OF THE ERROR MESSAGE
     # WEREN'T FOUND. IT TRIES TO COME UP WITH A SANE DEFAULT.
     if sevMsg == functMsg:
-        functFlg = FALSE
+        functFlg = False
         functMsg = ""
-    if clientFlg == FALSE:
+    if not clientFlg:  #clientFlg == False
         clientMsg = string.upper(ln)
     clientMsg = "_" + clientMsg
     if string.lower(sevMsg) == "suc" and  string.lower(severity) != "i":
-        sevFlg = FALSE
-    if sevFlg == FALSE:
+        sevFlg = False
+    if not sevFlg:  #sevFlg == False
         sKey = string.lower(severity)
         sevMsg = e_errors.stypedict[sKey]
-    if functFlg == TRUE:
+    if functFlg:  #functFlg == True
         sevMsg = "_" + sevMsg
         
     return  "%s%s%s%s" % (Trace.MSG_TYPE, functMsg, sevMsg, clientMsg)
@@ -326,12 +329,16 @@ class LoggerClient(generic_client.GenericClient):
 	Trace.set_log_func( self.log_func )
 
     def log_func( self, time, pid, name, args ):
+        #Even though this implimentation of log_func() does not use the time
+        # parameter, others will.
+        __pychecker__ = "unusednames=time"
+        
 	severity = args[0]
 	msg      = args[1]
-        if self.log_name:
-            ln = self.log_name
-        else:
-            ln = name
+        #if self.log_name:
+        #    ln = self.log_name
+        #else:
+        #    ln = name
 	if severity > e_errors.MISC:
             msg = '%s %s' % (severity, msg)
             severity = e_errors.MISC
@@ -341,18 +348,20 @@ class LoggerClient(generic_client.GenericClient):
 	ticket = {'work':'log_message', 'message':msg}
 	self.u.send_no_wait( ticket, self.logger_address )
 
-    def send( self, severity, priority, format, *args ):
-	if args != (): format = format%args
-	Trace.log( severity, format )
-	return {"status" : (e_errors.OK, None)}
+#    def send( self, severity, priority, format, *args ):
+#	if args != (): format = format%args
+#	Trace.log( severity, format )
+#	return {"status" : (e_errors.OK, None)}
 
 #
 # priorty allows turning logging on and off in a server.
 #  Coventions - setting log_priority to 0 should turn off all logging.
-#             - default priority on send is 1 so the default is to log a message
+#             - default priority on send is 1 so the default is to log a
+#                     message
 #             - the default log_priority to test against is 10 so a priority
 #                     send with priorty < 10 will normally be logged
-#             - a brief trace message (1 per file per server should be priority 10
+#             - a brief trace message (1 per file per server should be
+#                     priority 10
 #             - file/server trace messages should 10> <20
 #             - debugging should be > 20
     def set_logpriority(self, priority):
@@ -391,8 +400,8 @@ def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
     if port and host:
         # if port and host defined create config client
         csc = configuration_client.ConfigurationClient((host,port))
-        # create log client
-        logc = LoggerClient(csc, logname, MY_SERVER)
+        # create log client  (Sets Trace global so Trace.log() works.)
+        LoggerClient(csc, logname, MY_SERVER)
     Trace.init(logname)
     Trace.log(sev_level, message)
     
@@ -406,17 +415,17 @@ def logit(logc, message="HELLO", logname="LOGIT"):
 
     return {"status" : (e_errors.OK, None)}
 
-#################################################################################
+###############################################################################
 # NAME        : FERMI LABS - RICHARD KENNA
 # DATE        : JUNE 24, 1999
-# DESCRIPTION : THIS FUNCTION TAKES A LINE INPUT AND RETURNS A USABLE DICTIONARY
-#             : WITH THE FOLLOWING VALUES. THE COMMANDS ARE:
+# DESCRIPTION : THIS FUNCTION TAKES A LINE INPUT AND RETURNS A USABLE
+#             : DICTIONARY WITH THE FOLLOWING VALUES. THE COMMANDS ARE:
 #             : TIME, SYS_NAME, PID, USR_NAME, SEVERITY, DEV_NAME,
 #             : MSG, MSG_DICT AND MSG_TYPE
 #             : TO USE: a = log.parse(lineIn)  - IT WILL RETURN THE DICTIONARY
 #             : THEN TO SEE DIFFERENT VALUES, TYPE: a['time']
 #             : IT WILL RESPOND WITH: '12:02:12' - OR THE TIME IN THE MESSAGE
-#################################################################################
+###############################################################################
 def parse(lineIn):
 
     tmpLine = string.split(lineIn)
@@ -564,7 +573,7 @@ def do_work(intf):
         sys.exit(0)
 
     del logc.csc.u
-    del logc.u		# del now, otherwise get name exception (just for python v1.5???)
+    del logc.u # del now, otherwise get name exception (just for python v1.5??)
 
     logc.check_ticket(ticket)
 
