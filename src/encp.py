@@ -25,7 +25,7 @@ import udp_client
 import EXfer
 import interface
 import e_errors
-import Trace
+import Trace_lite; Trace=Trace_lite
 import library_manager_client
 
 data_access_layer_format = "INFILE=%s\n"+\
