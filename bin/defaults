@@ -24,7 +24,7 @@ if [ `uname -n | grep -c pcfarm4` -eq 1 ] ; then
 elif [ `uname -n | grep -c fntt1` -eq 1 ] ; then
   enstore_libraries="8500.library_manager"
   enstore_media_changers="8500.media_changer"
-  enstore_movers="exa0.mover"
+  enstore_movers="8500.mover"
 
 elif [ `uname -n | grep -c fndapr` -eq 1 ] ; then
   enstore_libraries="fndaprdisk.library_manager"

@@ -86,7 +86,7 @@ class ConfigurationDict(DispatchingWorker) :
         except KeyError:
             out_ticket = {"status" : "Configuration Server: no such name: "\
                           +repr(lookup)}
-            pprint.pprint(ticket)
+            pprint.pprint(out_ticket)
         self.reply_to_caller(out_ticket)
 
     # return a dump of the dictionary back to the user
