@@ -7,6 +7,7 @@ Trace.trace(1,"GO")
 # system imports
 import string
 import time
+import errno
 
 # enstore imports
 import callback

@@ -4,6 +4,7 @@
 # system imports
 import time
 import string
+import errno
 
 # enstore imports
 import configuration_client
