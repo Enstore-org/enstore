@@ -80,7 +80,8 @@ class EventRelay:
 	print "event_relay : ",
 	pprint.pprint(self.__dict__)
 	print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-
+        return " "
+    
     def alive(self, now):
 	self.last_alive = now
 	self.sent_own_alive = 0
@@ -680,6 +681,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	keys = self.server_d.keys()
 	keys.sort()
 	print keys
+        import pdb
+        pdb.set_trace()
 	for skey in keys:
 	    server = self.server_d[skey]
 	    print server.name

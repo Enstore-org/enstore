@@ -122,7 +122,7 @@ class MonitoredServer:
 	print "%s : "%(self.name,),
 	pprint.pprint(self.__dict__)
 	print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-
+        return " "
 class MonitoredInquisitor(MonitoredServer):
 
     def update_default_alive_interval(self, config):
