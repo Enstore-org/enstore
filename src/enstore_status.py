@@ -45,7 +45,7 @@ def get_dict(text):
             # are part of the dictionaries
             try:
                 dicts = eval(text[start:end+1])
-                if len(dicts) == 1:
+		if type(dicts) == types.DictType:
                     # dicts is a dictionary, we want to return a list
                     dicts = [dicts,]
             except SyntaxError:
@@ -140,12 +140,13 @@ class EncpLine:
 		# get the dictionary at the end
 		self.dict = get_dict(tmp2)
                 # pull out the name of the media changer
-		if self.dict:
-		    self.mc = self.dict.get(enstore_constants.MEDIA_CHANGER, QUESTION)
-		    self.interface = self.dict.get(enstore_constants.MOVER_INTERFACE,
-						   QUESTION)
-		    # get rid of .fnal.gov
-		    self.interface = enstore_functions.strip_node(self.interface)
+		for aDict in self.dict:
+		    if aDict.has_key(enstore_constants.MEDIA_CHANGER):
+			self.mc = aDict[enstore_constants.MEDIA_CHANGER]
+		    if aDict.has_key(enstore_constants.MOVER_INTERFACE):
+			self.interface = aDict[enstore_constants.MOVER_INTERFACE]
+			# get rid of .fnal.gov
+			self.interface = enstore_functions.strip_node(self.interface)
                 tmp_list = string.splitfields(tmp1, " ")
                 self.bytes = tmp_list[0]
                 self.direction = tmp_list[3]
