@@ -115,8 +115,11 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
             pass
         
     if doprint and print_levels.has_key(severity):
-        print msg
-        sys.stdout.flush()
+        try:
+            print msg
+            sys.stdout.flush()
+        except:
+            pass
         
 def alarm(severity, root_error, rest={}):
     rest['severity'] = severity
@@ -126,14 +129,20 @@ def alarm(severity, root_error, rest={}):
         alarm_func(
             time.time, os.getpid(), logname, ("root_error:%s"%(rest['root_error'],), rest ))
     if print_levels.has_key(severity):
-        print root_error
-        sys.stdout.flush()
+        try:
+            print root_error
+            sys.stdout.flush()
+        except:
+            pass
 
 def trace(severity, msg):
     msg = trunc(msg)
     if print_levels.has_key(severity):
-        print severity, msg
-        sys.stdout.flush()
+        try:
+            print severity, msg
+            sys.stdout.flush()
+        except:
+            pass
     if log_levels.has_key(severity):
         log(severity, msg, doprint=0)
     if alarm_levels.has_key(severity):
