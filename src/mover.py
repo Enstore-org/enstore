@@ -898,6 +898,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.restart_on_error = self.config.get("restart_on_error", None)
         self.connect_to = self.config.get("connect_timeout", 15)
         self.connect_retry = self.config.get("connect_retries", 4)
+        self.stop =  self.config.get('stop_mover',None)
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
@@ -1685,6 +1686,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if buffer_empty_cnt >= self.max_in_state_cnt:
                         msg = "data transfer from client stuck. Breaking connection"
                         self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
+                        self.tape_driver.flush() # to empty buffer and to release devivice from this thread
                         return
                     buffer_empty_cnt = buffer_empty_cnt + 1
                 
@@ -1759,12 +1761,16 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not self.buffer.full():
                 self.buffer.read_ok.set()
         if self.tr_failed:
-            Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
+            Trace.trace(27,"write_tape: write interrupted transfer failed")
+            self.tape_driver.flush() # to empty buffer and to release devivice from this thread
             return
 
         Trace.log(e_errors.INFO, "written bytes %s/%s, blocks %s header %s trailer %s" %( self.bytes_written, self.bytes_to_write, nblocks, len(self.header), len(self.trailer)))
 
-        if failed: return
+        if failed:
+            self.tape_driver.flush() # to empty buffer and to release devivice from this thread
+            return
+        
         if self.bytes_written == self.bytes_to_write:
             try:
                 if self.single_filemark:
@@ -2313,6 +2319,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.setup_transfer(ticket, mode=ASSERT)
 
     def setup_transfer(self, ticket, mode):
+        # see what threads are running
+        threads = threading.enumerate()
+        for thread in threads:
+            if thread.isAlive():
+                thread_name = thread.getName()
+                Trace.trace(87,"setup_transfer: Thread %s is running" % (thread_name,))
+            else:
+                Trace.trace(87,"setup_transfer: Thread is dead"%(thread_name,))
+            
+        
         self.lock_state()
         self.save_state = self.state
         self.udp_cm_sent = 0
@@ -2768,6 +2784,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             elif msg.find("FTT_EBLANK") != -1:
                 # possibly a scsi error, log low level diagnostics
                 self.watch_syslog()
+                if self.stop:
+                    self.offline() # stop here for investigation
+                    return
         
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
@@ -2854,6 +2873,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if thread and thread.isAlive():
                         Trace.trace(26, "thread %s is already running, waiting %s" % ('tape_thread', wait))
                         time.sleep(1)
+                    else:
                         break
         Trace.trace(26,"dismount_allowed %s after_dismount %s"%(dism_allowed, after_dismount_function))
         if encp_gone:
@@ -4099,6 +4119,7 @@ class DiskMover(Mover):
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.log_mover_state = self.config.get('log_state', None)
         self.restart_on_error = self.config.get("restart_on_error", None)
+        self.stop =  self.config.get('stop_mover',None)
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
