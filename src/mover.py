@@ -525,6 +525,11 @@ if __name__ == "__main__" :
             mv = Mover(config_host,config_port)
             mv.move_forever (args[0])
         except:
-            print time.strftime("%c",time.localtime(time.time())),\
-                  sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+            format = time.strftime("%c",time.localtime(time.time()))+" "+\
+                     str(sys.argv)+" "+\
+                     str(sys.exc_info()[0])+" "+\
+                     str(sys.exc_info()[1])+" "+\
+                     "mover move_forever continuing"
+            print format
             continue
+

@@ -197,30 +197,30 @@ if __name__ == "__main__" :
 
     # THIS NEEDS TO BE FIXED -- WE CAN'T BE CHECKING FOR EACH KIND!!!
     if args[0] == 'STK.media_changer' :
-        mls =  STK_MediaLoader((keys['host'], keys['port']),
+        mc =  STK_MediaLoader((keys['host'], keys['port']),
                                STK_MediaLoaderMethods)
     elif args[0] == 'FTT.media_changer' :
-        mls =  FTT_MediaLoader((keys['host'], keys['port']),
+        mc =  FTT_MediaLoader((keys['host'], keys['port']),
                                FTT_MediaLoaderMethods)
     else :
-        mls =  RDD_MediaLoader((keys['host'], keys['port']),
+        mc =  RDD_MediaLoader((keys['host'], keys['port']),
                                MediaLoaderMethods)
-    mls.set_csc(csc)
+    mc.set_csc(csc)
 
     # create a log client
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
-    mls.set_logc(logc)
+    mc.set_logc(logc)
 
     while 1:
         try:
             logc.send(log_client.INFO, "Media Changer"+args[0]+"(re) starting")
-            mls.serve_forever()
+            mc.serve_forever()
         except:
             format = time.strftime("%c",time.localtime(time.time()))+" "+\
-                     repr(sys.argv)+" "+\
-                     repr(sys.exc_info()[0])+" "+\
-                     repr(sys.exc_info()[1])+" "+\
-                     "continuing"
+                     str(sys.argv)+" "+\
+                     str(sys.exc_info()[0])+" "+\
+                     str(sys.exc_info()[1])+" "+\
+                     "media changer serve_forever continuing"
             print format
             logc.send(log_client.INFO,format)
             continue

@@ -261,23 +261,23 @@ if __name__ == "__main__" :
     #   get our port and host from the name server
     #   exit if the host is not this machine
     keys = csc.get("file_clerk")
-    cs = FileClerk( (keys["host"], keys["port"]), FileClerkMethods)
-    cs.set_csc(csc)
+    fc = FileClerk( (keys["host"], keys["port"]), FileClerkMethods)
+    fc.set_csc(csc)
 
     # get a logger
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
-    cs.set_logc(logc)
+    fc.set_logc(logc)
 
     while 1:
         try:
             logc.send(log_client.INFO, "File Clerk (re)starting")
-            cs.serve_forever()
+            fc.serve_forever()
         except:
             format = time.strftime("%c",time.localtime(time.time()))+" "+\
-                     repr(sys.argv)+" "+\
-                     repr(sys.exc_info()[0])+" "+\
-                     repr(sys.exc_info()[1])+" "+\
-                     "continuing"
+                     str(sys.argv)+" "+\
+                     str(sys.exc_info()[0])+" "+\
+                     str(sys.exc_info()[1])+" "+\
+                     "file clerk serve_forever continuing"
             print format
             logc.send(log_client.INFO,format)
             continue

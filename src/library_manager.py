@@ -390,11 +390,11 @@ if __name__ == "__main__" :
             logc.send(log_client.INFO,"Library Manager"+args[0]+"(re)starting")
             lm.serve_forever()
         except:
-            format = time.strftime("%c",time.localtime(time.time()))+" "+\
-                     repr(sys.argv)+" "+\
-                     repr(sys.exc_info()[0])+" "+\
-                     repr(sys.exc_info()[1])+" "+\
-                     "continuing"
+	    format = time.strftime("%c",time.localtime(time.time()))+" "+\
+                     str(sys.argv)+" "+\
+                     str(sys.exc_info()[0])+" "+\
+                     str(sys.exc_info()[1])+" "+\
+                     "library manager serve_forever continuing"
             print format
             logc.send(log_client.INFO,format)
             continue

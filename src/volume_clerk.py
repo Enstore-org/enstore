@@ -665,23 +665,23 @@ if __name__ == "__main__" :
     csc = configuration_client(config_host,config_port)
 
     keys = csc.get("volume_clerk")
-    vs =  VolumeClerk((keys['host'], keys['port']), VolumeClerkMethods)
-    vs.set_csc(csc)
+    vc =  VolumeClerk((keys['host'], keys['port']), VolumeClerkMethods)
+    vc.set_csc(csc)
 
     # get a logger
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
-    vs.set_logc(logc)
+    vc.set_logc(logc)
 
     while 1:
         try:
             logc.send(log_client.INFO, "Volume Clerk (re)starting")
-            vs.serve_forever()
+            vc.serve_forever()
         except:
             format = time.strftime("%c",time.localtime(time.time()))+" "+\
-                     repr(sys.argv)+" "+\
-                     repr(sys.exc_info()[0])+" "+\
-                     repr(sys.exc_info()[1])+" "+\
-                     "continuing"
+                     str(sys.argv)+" "+\
+                     str(sys.exc_info()[0])+" "+\
+                     str(sys.exc_info()[1])+" "+\
+                     "volume clerk serve_forever continuing"
             print format
             logc.send(log_client.INFO,format)
             continue
