@@ -527,7 +527,7 @@ ftt_retry( ftt_descriptor d, int  n, int (*op)(ftt_descriptor, char *, int),
 }
 
 /*
-** allow us to forge on ahead.
+** allow us to forge on ahead. -- dangerous!
 */
 int 
 ftt_clear_unrecovered(ftt_descriptor d) {
@@ -535,6 +535,18 @@ ftt_clear_unrecovered(ftt_descriptor d) {
 	CKNULL("ftt_descriptor", d);
 
 	d->unrecovered_error = 0;
+	return 0;
+}
+
+/*
+** allow us to forgo filemarks, etc. -- dangerous!
+*/
+int 
+ftt_clear_write_state(ftt_descriptor d) {
+	ENTERING("ftt_clear_unrecovered");
+	CKNULL("ftt_descriptor", d);
+
+	d->last_operation = 0;
 	return 0;
 }
 
