@@ -26,3 +26,4 @@ derrno_wrap.c
 adler32_wrap.c
 checksum_wrap.c
 tape_copy
+socket_ext_wrap.c
