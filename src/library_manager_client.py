@@ -62,8 +62,14 @@ class LibraryManagerClient(generic_client.GenericClient) :
                    reject_reason = ("","")
                    if pw_list[i].has_key('reject_reason'):
                        reject_reason = pw_list[i]['reject_reason']
+                   vol = ''
+                   if pw_list[i]['vc'].has_key('external_label'):
+                       vol = pw_list[i]['vc']['external_label']
+                   vol_msg = ''
+                   if vol:
+                       vol_msg='VOL %s' % (vol,)
                    if (host == node) or (not node):
-                       print "%s %s %s %s %s P %d %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1])
+                       print "%s %s %s %s %s P %d %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg)
                        if pw_list[i]["work"] == "read_from_hsm":
                           pending_read_cnt = pending_read_cnt + 1
                        elif pw_list[i]["work"] == "write_to_hsm":
