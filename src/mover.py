@@ -144,6 +144,7 @@ class Buffer:
         self._write_ptr = 0
         self.wrapper = None
         self.first_block = 1
+        self.bytes_for_crc = 0L
         
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
@@ -283,6 +284,7 @@ class Buffer:
             partial = 1
 
         data_ptr = 0
+        bytes_for_crc = bytes_read
         bytes_for_cs = bytes_read
 
         if self.first_block: #Handle variable-sized cpio header
@@ -296,7 +298,7 @@ class Buffer:
                     Trace.log(e_errors.ERROR,"Invalid header %s" %(data[:self.wrapper.min_header_size]))
                     raise "WRAPPER_ERROR"
                 data_ptr = header_size
-                bytes_for_cs = bytes_read - header_size
+                bytes_for_cs = min(bytes_read - header_size, self.bytes_for_crc)
         if do_crc:
             crc_error = 0
             try:
@@ -1117,7 +1119,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.save_settings()
                 bytes_read = 0L
                 Trace.trace(20,"write_tape: header size %s" % (self.buffer.header_size,))
-                bytes_to_read = self.bytes_to_transfer + self.buffer.header_size
+                #bytes_to_read = self.bytes_to_transfer + self.buffer.header_size
+                bytes_to_read = self.bytes_to_transfer
+                header_size = self.buffer.header_size
                 # setup buffer for reads
                 saved_wrapper = self.buffer.wrapper
                 saved_sanity_bytes = self.buffer.sanity_bytes
@@ -1127,9 +1131,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(22, "starting check after write, bytes_to_read=%s" % (bytes_to_read,))
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
                 driver = self.tape_driver
+                first_block = 1
                 while bytes_read < bytes_to_read:
 
                     nbytes = min(bytes_to_read - bytes_read, self.buffer.blocksize)
+                    self.buffer.bytes_for_crc = nbytes
                     if bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
                         nbytes = self.buffer.blocksize
                     try:
@@ -1151,6 +1157,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                                              error_source=TAPE)
                         failed = 1
                         break
+                    if first_block:
+                        bytes_to_read = bytes_to_read + header_size
+                        first_block = 0
                     bytes_read = bytes_read + b_read
                     if bytes_read > bytes_to_read: #this is OK, we read a cpio trailer or something
                         bytes_read = bytes_to_read
@@ -1172,7 +1181,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 self.transfer_failed(e_errors.EPROTO)
 
-
     def read_tape(self):
         Trace.trace(8, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         if self.buffer.client_crc_on:
@@ -1193,6 +1201,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 continue
             
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
+            self.buffer.bytes_for_crc = nbytes
             if self.bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
                 nbytes = self.buffer.blocksize
 
@@ -1430,7 +1439,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             client_crc_on = 0
         else:
             client_crc_on = 1 # assume that client does CRC
-        
+
         # if client_crc is ON:
         #    write requests -- calculate CRC when writing from memory to tape
         #    read requetsts -- calculate CRC when reading from tape to memory
