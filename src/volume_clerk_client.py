@@ -56,8 +56,8 @@ class VolumeClerkClient(generic_client.GenericClient,
     # add a volume to the stockpile
     def add(self,
             library,               # name of library media is in
-            storage_group,         # storage group for this volume
             file_family,           # volume family the media is in
+            storage_group,         # storage group for this volume
             media_type,            # media
             external_label,        # label as known to the system
             capacity_bytes,        #
