@@ -365,7 +365,7 @@ def do_work(intf):
         ticket = iqc.dump(intf.alive_rcv_timeout, intf.alive_retries)
 
     elif intf.update:
-        ticket = iqc.update(intf.update)
+        ticket = iqc.update()
 
     elif intf.update_and_exit:
         ticket = iqc.update_and_exit()
