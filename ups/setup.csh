@@ -19,5 +19,3 @@ setenv ENSTORE_CONFIG_PORT 7510
 setenv ENSTORE_CONFIG_HOST pcfarm9.fnal.gov
 
 #source $ENSTORE_DIR/etc/defaults
-
-# . $ENSTORE_DIR/etc/pnfs.sh

@@ -101,7 +101,8 @@ ptagrm()    { echo "The attempt to remove a tag results in an unpredictable beha
 
 
 cmd=p$1
-eval $cmd
+shift
+eval $cmd $@
 stat=$?
 exit $stat
 

@@ -25,5 +25,3 @@ ENSTORE_CONFIG_HOST=pcfarm9.fnal.gov
 export ENSTORE_CONFIG_HOST
 
 . $ENSTORE_DIR/etc/defaults
-
-. $ENSTORE_DIR/etc/pnfs.sh
