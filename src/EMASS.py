@@ -6,8 +6,7 @@
 #
 
 import aci
-from derrno import * ## This is safe because the module contains constants only
-                     ## (DAS status codes)
+import derrno
 
 import types
 
@@ -59,11 +58,11 @@ def mount(volume, drive, media_type):
     media_code = aci.__dict__.get("ACI_"+media_type)
 
     if media_code is None:
-        status = ENOVOLUME
+        status = derrno.ENOVOLUME
     elif aci.aci_mount(volume,media_code,drive):  #note order of args!
         status = aci.cvar.d_errno
         if status > len(status_table):  #invalid error code
-            status = EDASINT
+            status = derrno.EDASINT
     
     return status_table[status][0], status, status_table[status][1]    
     
@@ -75,7 +74,7 @@ def dismount(volume, drive, media_type):
     if aci.aci_force(drive):
         status=aci.cvar.d_errno
         if status > len(status_table):
-            status = EDASINT
+            status = derrno.EDASINT
 
     return status_table[status][0], status, status_table[status][1]    
 
@@ -99,13 +98,13 @@ def view(volume, media_type):
     media_code = aci.__dict__.get("ACI_"+media_type)
 
     if media_code is None:
-        status = ENOVOLUME
+        status = derrno.ENOVOLUME
     else:
         v = aci.aci_view(volume,media_code)
         if v[0]:
             status = aci.cvar.d_errno
             if status > len(status_table):  #invalid error code
-                status = EDASINT
+                status = derrno.EDASINT
     
     return status_table[status][0], status, status_table[status][1],\
            v[1].coord, v[1].owner, v[1].attrib, v[1].type, v[1].volser, \
