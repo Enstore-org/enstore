@@ -41,28 +41,28 @@ def Select (R, W, X, timeout) :
 
 	Trace.trace (0, "{cleanUDP.Select")
 
-	dirty_x = []
+	cleaned_r = []
 	while 1 :
 		t0 = time.time()
 		r, w, x = select.select(R, W, X, timeout)
 		timeout = timeout - (time.time() - t0)
 		timeout = max (0, timeout)
-		Trace.trace (1, "cleanUDP.Select: %s %s" % (x, dirty_x))
+		Trace.trace (1, "cleanUDP.Select: %s %s" % (r, cleaned_r))
 
-		if x == dirty_x :
+		if r == cleaned_r :
 			# all except FD's as the saem as not scrubbed
 			# previously.
 			Trace.trace (0, "}cleanUDP.Select")
 			return r, w, x
-		dirty_x = []
-		for obj in x :
+		cleaned_r = []
+		for obj in r :
 			try :
-				if not obj.scrub() :
-				        Trace.trace (0, "dirty cleanUDP object")
-					dirty_x.append(obj)		
+				if obj.scrub() :
+				        Trace.trace (0, "cleaned_r cleanUDP object")
+					cleaned_r.append(obj)		
 			except : 
 				Trace.trace (0, "non clean UDP object")
-				dirty_x.append(obj)
+				cleaned_r.append(obj)
 
 
 class cleanUDP :
@@ -79,11 +79,11 @@ class cleanUDP :
 	
 	def scrub(self) :
 		self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-		r, w, x = select.select([], [], [self], 0)
+		r, w, x = select.select([self], [], [self], 0)
 		Trace.trace (20, "cleanUDP.scrub : %s %s %s" % (r, w, x))
-		if x :
-			return 0
-		return 1
+		if r :
+			return 1 # it's clean - there really is a read to do
+		return 0 # it went away - just the icmp message under A. Cox's linux implementation
 
 	def accept(self) : 
 		return self.socket.accept()
@@ -169,7 +169,9 @@ if __name__ == "__main__" :
 	if not x and not r and w:
 		print "expected select.select behavoir on non-linux" 
 	elif x and r and w:
-		print "expected select.select behavior on linux"
+		print "expected select.select behavior on linux, pre 2.2 kernel"
+	elif not x and r and w:
+		print "expected select.select behavior on linux, post 2.2 kernel"
 	else:
 		print "***unexpected  behavior on _any_ platform"
 	r, w, x = Select([sout],[sout],[sout],1.0)
