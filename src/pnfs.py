@@ -2468,7 +2468,7 @@ class File:
 			f.write(self.bfid+'\n')
 			f.write(self.drive+'\n')
 			if self.complete_crc:
-				f.write(self.complete_crc+'\n')
+				f.write(str(self.complete_crc)+'\n')
 			f.close()
 			# set file size
 			self.set_size()
