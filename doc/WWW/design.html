@@ -2245,7 +2245,7 @@ for presentation.
      Sample output from these commands:<br><br>
 <b>getwork</b>
 <pre>
-[enter command] ecmd lmc --getwork sphinxdisk.library_manager
+$ ecmd lmc --getwork sphinxdisk.library_manager
 [{'callback_addr': ('131.225.81.23', 7600),
   'encp': {'adminpri': -1,
            'agetime': 0,
@@ -2461,7 +2461,7 @@ admin_clerk_client.py',
 </pre>
 <b>getmoverlist</b>
 <pre>
-[enter command] ecmd lmc --getmoverlist sphinxdisk.library_manager
+$ ecmd lmc --getmoverlist sphinxdisk.library_manager
 [{'address': ('131.225.81.23', 7508),
   'last_checked': 915731762.917,
   'mover': 'sphinxdisk.mover',
@@ -2471,7 +2471,7 @@ admin_clerk_client.py',
 </pre>
 <b>get_suspect_vols</b> 
 <pre>
-[enter command] ecmd lmc --get_suspect_vols sphinxdisk.library_manager
+$ ecmd lmc --get_suspect_vols sphinxdisk.library_manager
 [{'external_label': 'flop1', 'movers': ['sphinxdisk.mover']}]
 </pre>
 
@@ -2869,7 +2869,7 @@ Fields in a log file are:
 <li>user name
 <li>severity indicator (I - information, E - Error)
 <li>client abbreviation
-<li>arbitrary message
+<li>message
 </ul>
 <hr>
 <h3><a name="media_changer">
@@ -2915,16 +2915,19 @@ The Media Changer mounting agents:
 <h3>
 Tape Cleaning
 </h3>
-The Media Changer is not involved with tape cleaning.  The EMASS AMU and the
+The Media Changer is not directly involved with tape cleaning.  The EMASS AMU and the
 STK ACSLS tape library systems keep tape drive usage statistics and automatically
-mount cleaning tapes.
+mount cleaning tapes. The Media Changer will not issue mount requests during the cleaning process.
 <h3>
 Tape statistics
 </h3>
 The Media Changer does not keep tape drive or cartridge statistics.  Summary statistics
-are not very useful and the media does not run on the machine connected to the tape drive.
+are not very useful and the media does not run on the machine connected to
+the tape drive. The overall tape and drive statistics repository is OCS,
+and a Enstore interface has not yet been designed.
 <p>
-Enstore writes detail error statistics to its log when a file is closed.
+Enstore writes detail error statistics to its log when a file is closed. A
+separate mount/dismount log can be easily separated from the main log.
 
 
 
