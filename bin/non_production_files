@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 
 cd
-basedir=`pwd`
+basedir=`pwd`/enstore
 
 output=$basedir/repository-production
 rm -f $output
@@ -26,9 +26,9 @@ echo "List of files in $CVSROOT without production tag" >> $output
 
 echo "BASEDIR $basedir"
 echo `ls`
-find enstore -type d | egrep -v "CVS|ingest" > $dirs
+find * -type d | egrep -v "CVS|ingest" > $dirs
 cat $dirs | while read d; do
- (cd $d; $basedir/enstore/tools/notready.py *| egrep -v 'Checking files...|ok$|not in CVS, skipping$|is a directory, ignoring|in in /CVS/ directory. Can not possibly check it' >> $output )
+ (cd $d; $basedir/tools/notready.py *| egrep -v 'Checking files...|ok$|not in CVS, skipping$|is a directory, ignoring|in in /CVS/ directory. Can not possibly check it' >> $output )
 done
 
 date >> $output
