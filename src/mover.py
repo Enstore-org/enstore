@@ -118,8 +118,10 @@ class Buffer:
         self.trailer_size = 0
         self._lock.release()
         
-    def nbytes(self): #this is only approximate..
+    def nbytes(self):
+        self._lock.acquire()
         n = self._buf_bytes
+        self._lock.release()
         return n
         
     def full(self):
@@ -127,10 +129,13 @@ class Buffer:
     
     def empty(self):
         ## this means that a "pull" would fail
-        return len(self._buf) == 0
-
+        self._lock.acquire()
+        r =  len(self._buf) == 0
+        self._lock.release()
+        return r
+    
     def low(self):
-        return self.empty() or self._buf_bytes < self.min_bytes
+        r = self.empty() or self.nbytes() < self.min_bytes
     
     def set_min_bytes(self, min_bytes):
         self.min_bytes = min_bytes
@@ -174,7 +179,7 @@ class Buffer:
         elif bytes_read<=0: #error
             pass #XXX or raise an exception?
         else: #partial block read
-            Trace.trace(e_errors.INFO, 25, "partial block (%s/%s) read" % (bytes_read,nbytes))
+            Trace.trace(25, "partial block (%s/%s) read" % (bytes_read,nbytes))
             partial=space[:bytes_read]
             self.push(partial)
             self._freespace(space)
