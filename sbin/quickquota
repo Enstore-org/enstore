@@ -10,7 +10,6 @@ import volume_clerk_client
 #first of a triple of dot-delimited fields,
 #except for a kluges to get the converted V1 data bases.
 def get_storage_info(vol_family):
-    print 'vol_family =', `vol_family`
     # storage_group, ff, wrapper_type = string.split(vol_family, ".")
     ss = string.split(vol_family, ".")
     storage_group = ss[0]
