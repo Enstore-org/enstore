@@ -67,7 +67,6 @@ case "$1" in
         cd /etc/rc.d/rc3.d
         x=S99zzzenstore-boot
         rm -f $x; ln -s ../init.d/enstore-boot $x
-        cd /etc/rc.d/rc6.d
         x=K01aaaenstore-boot
         rm -f $x; ln -s ../init.d/enstore-boot $x
         ;;
