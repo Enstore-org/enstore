@@ -59,10 +59,14 @@ def _open2(pathname,mode=0666):
         return fd
     else:
         delete_at_exit.unregister(pathname)
+        s = os.stat(tmpname)
+        if s:
+            msg = os.strerror(errno.ENOLINK) + ": " + str(s[stat.ST_NLINK])
+        else:
+            msg = os.strerror(errno.ENOLINK) + ": " + "Unknown"
         os.close(fd_tmp)
         #return -(detail.errno) #return errno values as negative.
-        os_exception = exceptions.OSError(errno.ENOLINK,
-                                          os.strerror(errno.ENOLINK))
+        os_exception = exceptions.OSError(errno.ENOLINK, msg)
         raise OSError, os_exception
             
 open = _open2
