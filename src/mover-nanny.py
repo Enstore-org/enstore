@@ -17,6 +17,10 @@ host = os.uname()[1]
 
 
 def sendmail(subject, reason):
+    # I know the hardware doesn't work.  Disable all mail till it does.
+    # disable all mail 11/16/00 J Bakken 
+    if 1:
+        return
     mail_cmd = '/bin/mail -s "%s" %s'%(subject,mail_victims)
     p=os.popen(mail_cmd, 'w')
     p.write('reason: %s\n' % (reason,))
