@@ -439,7 +439,7 @@ def print_volume_quota_sums(volume_quotas, output_file):
 
         #For each library total up the numbers
         try:
-            quota = quota + library_dict[l][2]
+            quota = int(quota) + int(library_dict[l][2])
         except:
             quota = "N/A"
         allocated = allocated + library_dict.get(l, (0,) * 11)[3]
