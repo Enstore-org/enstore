@@ -10,8 +10,25 @@ if [ "$1" = '-x' ];then set -x; shift; fi
 set -u
 
 USAGE="\
-usage: `basename $0` <name> on|of
- Note: 'of' is short for 'off' ('off' is also recognized)"
+   usage: `basename $0` [options] \"<name [name...]>\" on|of
+examples: `basename $0` FLIBM on
+          `basename $0` FLIBM of
+          `basename $0` \"FLIBM FMOV\" off
+    Note: 'of' is short for 'off' ('off' is also recognized)
+ options: -?      print this \"usage\" information
+          -h      print this \"usage\" information
+          --help  print this \"usage\" information
+          -v      verbose; prints trace commands executed
+          -x      set -x (for debugging)
+"
+
+while opt=`expr "${1-}" : '-\(.*\)'`;do
+    case $opt in
+    \?|h|-help)  echo "$USAGE"; exit;;
+    v)           opt_v=1;;
+    esac
+    shift
+done
 
 if [ $# != 2 ];then echo "$USAGE"; exit; fi
 
@@ -19,4 +36,12 @@ if   [ "$2" = 'of' -o "$2" = 'off' ];then cmd=traceOff
 elif [ "$2" = 'on'                 ];then cmd=traceOn
 else echo "invalid parameter '$2'"; echo "$USAGE"; exit; fi
 
-$cmd -modes 8 $1 0 31
+mode=`traceInfo 0 | grep 'mode:' | sed -e 's/.*mode: //' -e 's/ .*//'`
+if [ $cmd = traceOn -a $mode -lt 8 ];then
+    if [ "${opt_v-}" ];then echo traceMode `expr $mode + 8`; fi
+    traceMode `expr $mode + 8` >/dev/null
+fi
+for name in $1;do
+    if [ "${opt_v-}" ];then echo $cmd -modes 8 $name 0 31; fi
+    $cmd -modes 8 $name 0 31 >/dev/null
+done
