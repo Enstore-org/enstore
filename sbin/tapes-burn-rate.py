@@ -3,11 +3,14 @@
 import os
 import string
 import sys
+import pg
+import popen2
+import time
 
 #&columns=Mb_User_Write%2C%20Tape_Volser%2C%20time_stamp
 #&orders=Tape_Volser%20Asc%0D%0A
 
-cmd = 'rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.html'
+cmd = 'rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.*'
 print cmd
 os.system(cmd)
 
@@ -16,6 +19,8 @@ os.system(cmd)
 
 d1 = None
 d2 = None
+hosts = ("d0ensrv0.fnal.gov","stkensrv0.fnal.gov","cdfensrv0.fnal.gov")
+
 for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-%y"':
     d = os.popen(when,'r')
     dat=d.readlines()
@@ -28,22 +33,21 @@ for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-
        d2 = string.upper(d2)
 print 'Generating burn-rate plots from', d1, ' to ',d2
 
+query_cmd='psql -h %s -p 8076 -o "drivestat.%s.txt" -c "select time,tape_volser,mb_user_write from status where date(time) between date(now())-1 and date(now()) and mb_user_write != 0;" drivestat'
 
-href="http://miscomp.fnal.gov/misweb/cgi/misweb.pl\
-?owner=SYS\
-&dbname=procprd1\
-&tables=DRIVESTAT_LOG\
-&columns=time_stamp%2C%20Tape_Volser%2C%20Mb_User_Write\
-&wheres=%20%20Time_Stamp%20%3E%3D%20to_date%28%27"+d1+"%27%2C%27DD-MON-YY%27%29%20%20AND%20Operation%20%3D%20upper%28%27ABSOLUTE%27%29%20AND%20Mb_User_Write%20%3E%200\
-&output_type=application/xls\
-&orders=time_stamp%20Asc%0D%0A\
-&drill_wheres=Yes\
-&pagerows=500000\
-&maxrows=500000"
+for host in hosts:
+    pipeObj = popen2.Popen3(query_cmd%(host,host), 0, 0)
+    if pipeObj is None:
+        sys.exit(1) 
+    stat = pipeObj.wait()
+    result = pipeObj.fromchild.readlines()  # result has returned string
 
+for host in hosts:
+    os.system("cat drivestat.%s.txt >> drivestat.txt"%(host,))
+
+    
 
 for cmd in \
-           '$ENSTORE_DIR/bin/Linux/wget -O drivestat.html "%s"' % (href,),\
            '$ENSTORE_DIR/bin/Linux/wget -O cdfen.volumes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
            '$ENSTORE_DIR/bin/Linux/wget -O d0en.volumes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
            '$ENSTORE_DIR/bin/Linux/wget -O stken.volumes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
@@ -112,21 +116,28 @@ for thefile in 'cdfen','d0en','stken':
     f.close()
 
 group_fd = {}
-eagle = open('CD-9840.tapes','w')
+# copy all "old" tapes files
+os.system("cp ../burn-rate/*.tapes .")
+#eagle = open('CD-9840.tapes','w')
+eagle = open('CD-9840.tapes','a')
 group_fd['CD-9840'] = eagle
-beagle = open('CD-9940.tapes','w')
+#beagle = open('CD-9940.tapes','w')
+beagle = open('CD-9940.tapes','a')
 group_fd['CD-9940'] = beagle
 
 print 'sorting drivestat into storage group and library'
-f = open('drivestat.html',"r")
-f.readline()
-f.readline()
-f.readline()
-
+f = open('drivestat.txt',"r")
 while 1:
     line = f.readline()
     if not line: break
-    (d,v,mb) = line.split()
+    # skip the line if it begins not with digit
+    i = 0
+    if line[0].isspace():
+        if len(line) > 1:
+            i = 1
+    if not line[i].isdigit():
+        continue
+    (d,t,junk,v,junk,mb) = line.split()
     if not TAPES.has_key(v):
         print "Can not find",v
         g = 'UNKNOWN.UNKNOWN'
@@ -137,15 +148,20 @@ while 1:
         o = group_fd[g]
     else:
         print 'New group found:',g
-        o = open(g+'.tapes','w')
+        #o = open(g+'.tapes','w')
+        o = open(g+'.tapes','a')
         group_fd[g] = o
-    o.write('%s' % (line,))
+    # convert date
+    ti = time.mktime(time.strptime(d,"%Y-%m-%d"))
+    do = time.strftime("%m-%b-%y",time.localtime(ti))
+    ol = string.join((do.upper(),v,mb),'\t')
+    o.write('%s\n' % (ol,))
     if l in ['mezsilo','cdf','samlto'] or sg in ['cms']:
         pass
     elif l == 'eagle':
-        eagle.write('%s' % (line,))
+        eagle.write('%s\n' % (ol,))
     elif l == '9940':
-        beagle.write('%s' % (line,))
+        beagle.write('%s\n' % (ol,))
     else:
         print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
 
@@ -178,7 +194,7 @@ for g in group_fd.keys():
     cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su)
     print cmd
     os.system(cmd)
-    print
+
 
 
 cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/burn-rate/'
