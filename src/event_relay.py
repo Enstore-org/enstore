@@ -10,10 +10,10 @@ DEFAULT_PORT = 55510
 
 class Relay:
 
-    client_timeout = 15*60
+    client_timeout = 15*60 #clients recieve messages for this long
     
     def __init__(self, myport=DEFAULT_PORT):
-        self.clients = {}
+        self.clients = {} # key is (host,port), value is time connected
         self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         myaddr = ("", myport)
