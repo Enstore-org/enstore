@@ -347,7 +347,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    stat = lm.get_suspect_volumes()
 	    self.htmlfile.output_suspect_vols(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
                                            key)
 	    Trace.trace(13, "suspect_vols - ERROR, timed out")
 
@@ -357,7 +357,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    stat = lm.getwork()
 	    self.htmlfile.output_lmqueues(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
                                            key)
 	    Trace.trace(13, "work_queue - ERROR, timed out")
 
@@ -367,7 +367,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    stat = lm.get_lm_state()
 	    self.htmlfile.output_lmstate(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
                                            key)
 	    Trace.trace(13, "lm_state - ERROR, timed out")
 
@@ -377,7 +377,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    stat = lm.getmoverlist()
 	    self.htmlfile.output_lmmoverlist(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
                                            key)
 	    Trace.trace(13, "mover_list - ERROR, timed out")
 
@@ -387,7 +387,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    stat = movc.status(self.alive_rcv_timeout, self.alive_retries)
 	    self.htmlfile.output_moverstatus(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
                                            key)
 	    Trace.trace(13, "mover_status - ERROR, timed out")
 
