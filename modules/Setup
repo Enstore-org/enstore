@@ -59,6 +59,8 @@
 *shared*
 # dbm dbmmodule.c
 
+CFLAGS = $(OPT) -I$(INCLUDEPY) -I$(EXECINCLUDEPY) $(DEFS)
+
 EXFER_THREADED = IGNORE_ME_PLEASE
 
 # EXfer EXfer.c  -D`uname` -DTHREADED adler32.a
