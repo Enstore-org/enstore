@@ -286,8 +286,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # 'NONE', then, do not add a link to the file.  if the
                 # command is 'NONE', then do not execute anything.
                 if not self.cmds_to_do[hfile] == "NONE":
-                    rtn = os.system("%s > %s/%s 2>&1"%(self.cmds_to_do[hfile],
-                                                       self.html_dir, hfile))
+                    os.system("%s > %s/%s 2>&1"%(self.cmds_to_do[hfile],
+						 self.html_dir, hfile))
                     # now get the mod time of the file to tell the user so it
                     # can be seen if the system call is really failing
                     try:
