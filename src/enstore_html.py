@@ -406,7 +406,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    text = self.get_intro_text(qelem[enstore_constants.WORK], intro)
 	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(text, color=BRICKRED, html_escape='OFF')))
 	    if qelem.has_key(enstore_constants.MOVER):
-		tr.append(HTMLgen.TD(HTMLgen.Name(qelem[enstore_constants.MOVER],
+		tr.append(HTMLgen.TD(HTMLgen.Href(qelem[enstore_constants.MOVER],
 						  qelem[enstore_constants.MOVER])))
 	    else:
 		tr.append(empty_data())
