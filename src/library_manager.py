@@ -252,7 +252,7 @@ class LibraryManagerMethods:
         self.tmp_rq = None   # need this to temporarily store selcted request
         self.checked_keys = [] # list of checked tag keys
         self.continue_scan = 0
-        self.process_for_bound_vol = 0 # if not 0 volume is bound
+        self.process_for_bound_vol = None # if not None volume is bound
 
     def fair_share(self, rq):
         # fair share
@@ -289,6 +289,13 @@ class LibraryManagerMethods:
     def process_read_request(self, request, requestor):
         self.continue_scan = 0
         rq = request
+
+        key_to_check = self.fair_share(rq)
+        Trace.trace(11, "key to check %s" % (key_to_check,))  ## REMOVE !!!
+        if key_to_check:
+            self.continue_scan = 1
+            return rq, key_to_check
+    
         if self.volumes_at_movers.is_vol_busy(rq.ticket["fc"]["external_label"]):
             rq.ticket["reject_reason"] = ("VOL_BUSY",rq.ticket["fc"]["external_label"])
             Trace.trace(11,"VOL BUSY %s" % (rq.ticket["fc"]["external_label"],))  ## REMOVE!!!
@@ -345,15 +352,15 @@ class LibraryManagerMethods:
                 if rq.pri > self.tmp_rq.pri:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
-        key_to_check = self.fair_share(rq)
-        Trace.trace(11, "key to check %s" % (key_to_check,))  ## REMOVE !!!
-        if key_to_check:
-            self.continue_scan = 1
-        return rq, key_to_check
+        return rq, None
 
     def process_write_request(self, request):
         self.continue_scan = 0
         rq = request
+        key_to_check = self.fair_share(rq)
+        if key_to_check:
+            self.continue_scan = 1
+            return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
         if not self.write_vf_list.has_key(vol_family):
             vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(vol_family)
@@ -370,33 +377,37 @@ class LibraryManagerMethods:
             return rq, None
         Trace.trace(11,"process_write_request: request next write volume for %s" % (vol_family,))
 
-        # width not exceeded, ask volume clerk for a new volume.
-        first_found = 0
-        ##################################################
-        v = self.vcc.next_write_volume (rq.ticket["vc"]["library"],
-                                        rq.ticket["wrapper"]["size_bytes"],
-                                        vol_family, 
-                                        vol_veto_list,
-                                        first_found)
-        # volume clerk returned error
-        Trace.trace(11,"process_write_request: next write volume returned %s" % (v,))
-        if v["status"][0] != e_errors.OK:
-            if v["status"][0] == e_errors.NOVOLUME:
-                if not self.process_for_bound_vol:
-                    #if wr_en > rq.ticket["vc"]["file_family_width"]:
-                    # remove this request and send regret to the client
-                    rq.ticket['status'] = v['status']
-                    self.send_regret(rq.ticket)
-                    self.pending_work.delete(rq)
-                    rq = None
+        # before assigning volume check if it is bound for the current family
+        if self.process_for_bound_vol not in vol_veto_list:
+            # width not exceeded, ask volume clerk for a new volume.
+            v = self.vcc.next_write_volume (rq.ticket["vc"]["library"],
+                                            rq.ticket["wrapper"]["size_bytes"],
+                                            vol_family, 
+                                            vol_veto_list,
+                                            first_found=0)
+            # volume clerk returned error
+            Trace.trace(11,"process_write_request: next write volume returned %s" % (v,))
+            if v["status"][0] != e_errors.OK:
+                if v["status"][0] == e_errors.NOVOLUME:
+                    if not self.process_for_bound_vol:
+                        #if wr_en > rq.ticket["vc"]["file_family_width"]:
+                        # remove this request and send regret to the client
+                        rq.ticket['status'] = v['status']
+                        self.send_regret(rq.ticket)
+                        self.pending_work.delete(rq)
+                        rq = None
+                else:
+                    rq.ticket["status"] = v["status"]
+                    rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
+                self.continue_scan = 1
+                return rq, None
             else:
-                rq.ticket["status"] = v["status"]
-                rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
-            self.continue_scan = 1
-            return rq, None
+                external_label = v["external_label"]
+        else:
+           external_label = self.process_for_bound_vol 
 		
         # found a volume that has write work pending - return it
-        rq.ticket["fc"]["external_label"] = v["external_label"]
+        rq.ticket["fc"]["external_label"] = external_label
         rq.ticket["fc"]["size"] = rq.ticket["wrapper"]["size_bytes"]
 
         # request has passed about all the criterias
@@ -418,13 +429,10 @@ class LibraryManagerMethods:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
         
-        key_to_check = self.fair_share(rq)
-        if key_to_check:
-            self.continue_scan = 1
-        return rq, key_to_check
+        return rq, None
 
     # is there any work for any volume?
-    def next_work_any_volume(self, requestor, bound=0):
+    def next_work_any_volume(self, requestor, bound=None):
         Trace.trace(11, "next_work_any_volume")
         self.init_request_selection()
         self.process_for_bound_vol = bound
@@ -486,7 +494,7 @@ class LibraryManagerMethods:
 
 
     # what is next on our list of work?
-    def schedule(self, mover, bound=0):
+    def schedule(self, mover, bound=None):
         while 1:
             rq, status = self.next_work_any_volume(mover, bound)
             if (status[0] == e_errors.OK or 
@@ -499,6 +507,7 @@ class LibraryManagerMethods:
             Trace.trace(11,"schedule: Error detected %s" % (rq.ticket,))
 
     def check_write_request(self, external_label, rq):
+        external_label = rq.ticket['fc'].get('external_label', external_label)
         Trace.trace(11, "check_write_request %s %s"%(external_label, rq.ticket))
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(rq.ticket['vc']['volume_family'])
         if wr_en >= rq.ticket["vc"]["file_family_width"]:
@@ -555,7 +564,7 @@ class LibraryManagerMethods:
         Trace.trace(11, "next_work_this_volume for %s" % (external_label,))
         status = None
         self.init_request_selection()
-        self.process_for_bound_vol = 1
+        self.process_for_bound_vol = external_label
         #self.pending_work.wprint()
         # first see if there are any HiPri requests
         rq =self.pending_work.get_admin_request()
@@ -593,7 +602,7 @@ class LibraryManagerMethods:
                 
         # no HIPri requests: look in pending work queue for reading or writing work
         self.init_request_selection()
-        self.process_for_bound_vol = 1
+        self.process_for_bound_vol = external_label
         # for tape positioning optimization check what was
         # a last work for this volume
         if last_work == 'WRITE':
@@ -627,7 +636,7 @@ class LibraryManagerMethods:
             if exc_limit_rq:
                 # if storage group limit for this volume has been exceeded
                 # try to get any work
-                rq, status = self.schedule(requestor, bound=1)
+                rq, status = self.schedule(requestor, bound=external_label)
                 Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
                 # no work means: use what we have
                 if status[0] == e_errors.NOWORK:
