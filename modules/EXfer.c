@@ -5,6 +5,7 @@
     */
 
 #include <sys/types.h>		/* read/write */
+#include <stdio.h>		/* fread/fwrite */
 #include <unistd.h>		/* read/write, fork, nice, close */
 #include <sys/ipc.h>		/* shmxxx */
 #include <sys/shm.h>		/* shmxxx */
@@ -110,9 +111,10 @@ EXto_HSM(  PyObject	*self
 	long		*filesize_p[3];
 	PyObject	*attrObj_p;
 	char		*str;
-	int		fd_a[2];
-	int		(*(frmFunc_p)[2])();
-	int		(*(to_Func_p)[2])();
+	int		fd_a[2]={0,0};
+	FILE		*fp_a[2]={NULL,NULL};
+	int		(*(frmFunc_p)[2])()={NULL,NULL};
+	int		(*(to_Func_p)[2])()={NULL,NULL};
 	char		*dat_buf;
 	int		dat_buf_byts;
 	/**/		/**/
@@ -142,8 +144,10 @@ EXto_HSM(  PyObject	*self
 	{   attrObj_p = PyObject_GetAttrString( obj_pa[idx], "data_socket" );
 	    attrObj_p = PyObject_CallMethod( attrObj_p, "fileno", "" );
 	    fd_a[idx] = PyInt_AsLong(attrObj_p);
-	    frmFunc_p[idx] = read;
-	    to_Func_p[idx] = write;
+	    if (idx == Frm)
+		frmFunc_p[idx] = read;
+	    else
+		to_Func_p[idx] = write;
 	    filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
 	    printf( "EXfer p%d class is Mover, fd=%d\n", idx+1, fd_a[idx] );
 	}
@@ -151,8 +155,10 @@ EXto_HSM(  PyObject	*self
 	{   attrObj_p = PyObject_GetAttrString( obj_pa[idx], "ETdesc" );
 	    /* struct s_ETdesc is kept at int member */
 	    fd_a[idx] = PyInt_AsLong(attrObj_p);
-	    frmFunc_p[idx] = ftt_read;
-	    to_Func_p[idx] = ftt_write;
+	    if (idx == Frm)
+		frmFunc_p[idx] = ftt_read;
+	    else
+		to_Func_p[idx] = ftt_write;
 	    printf(  "EXfer p%d class is FTTDriver, devname=%s, block_size=%d\n", idx+1
 		   , *(char **)((struct s_ETdesc *)fd_a[idx])->ftt_desc
 		   , ((struct s_ETdesc *)fd_a[idx])->block_size );
@@ -162,10 +168,11 @@ EXto_HSM(  PyObject	*self
 	}
 	else if (strcmp(str,"RawDiskDriver") == 0)
 	{   attrObj_p = PyObject_GetAttrString( obj_pa[idx], "df" );
-	    attrObj_p = PyObject_CallMethod( attrObj_p, "fileno", "" );
-	    fd_a[idx] = PyInt_AsLong( attrObj_p );
-	    frmFunc_p[idx] = read;
-	    to_Func_p[idx] = write;
+	    fp_a[idx] = PyFile_AsFile( attrObj_p );
+	    if (idx == Frm)
+		frmFunc_p[idx] = (void(*))fread;
+	    else
+		to_Func_p[idx] = (void(*))fwrite;
 	    filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
 	    printf( "EXfer p%d class is RawDiskDriver, fd=%d\n", idx+1, fd_a[idx] );
 	}
@@ -298,10 +305,20 @@ EXto_HSM(  PyObject	*self
 	switch (msgbuf_s.mtype)
 	{
 	case WrtSiz:
-	    if (   (to_Func_p[To_])( fd_a[To_], shmaddr+(inc_size*ahead_idx)
-				    ,msgbuf_s.data)
-		!= msgbuf_s.data)
-		perror( "write" );
+	    if (fd_a[To_])
+	    {
+		if (   (to_Func_p[To_])( fd_a[To_], shmaddr+(inc_size*ahead_idx)
+					,msgbuf_s.data)
+		    != msgbuf_s.data)
+		    perror( "write" );
+	    }
+	    else
+	    {
+		if (   (to_Func_p[To_])( fp_a[To_], 1, shmaddr+(inc_size*ahead_idx)
+					,msgbuf_s.data)
+		    != msgbuf_s.data)
+		    perror( "write" );
+	    }
 	    *filesize_p += msgbuf_s.data;
 	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.data );*/
 	    if (semop(semid,&sops_wr_wr2rd,1) == -1) perror( "semop - read" );
@@ -357,7 +374,7 @@ EXusrTo_(  PyObject	*self
 	long		filesize[3];		/* default locations */
 	long		*filesize_p[3];
 	PyObject	*attrObj_p;
-	int		fd_a[2];
+	int		fd_a[2]={0,0};
 	int		(*(frmFunc_p)[2])();
 	int		(*(to_Func_p)[2])();
 	/**/		/**/
