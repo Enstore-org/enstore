@@ -635,6 +635,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.in_state = 0
         self.next = 0
         self.vol = ""
+        self.gvol = ""
         self.check = ""
         self.add = ""
         self.erase = None
@@ -878,6 +879,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.USER},
+        option.GVOL:{option.HELP_STRING:"get info of a volume in human readable time format",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
+                          option.USER_LEVEL:option.USER},
         option.LABELS:{
                 option.HELP_STRING:"list all volume labels",
                 option.DEFAULT_VALUE:option.DEFAULT,
@@ -962,6 +968,18 @@ def do_work(intf):
         if ticket['status'][0] == e_errors.OK:
             status = ticket['status']
             del ticket['status']
+            pprint.pprint(ticket)
+            ticket['status'] = status
+    elif intf.gvol:
+        ticket = vcc.inquire_vol(intf.gvol)
+        if ticket['status'][0] == e_errors.OK:
+            status = ticket['status']
+            del ticket['status']
+            ticket['declared'] = time.ctime(ticket['declared'])
+            ticket['first_access'] = time.ctime(ticket['first_access'])
+            ticket['last_access'] = time.ctime(ticket['last_access'])
+            ticket['si_time'] = (time.ctime(ticket['si_time'][0]),
+                                 time.ctime(ticket['si_time'][1]))
             pprint.pprint(ticket)
             ticket['status'] = status
     elif intf.check:
