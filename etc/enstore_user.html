@@ -1,0 +1,354 @@
+<HTML><HEAD><TITLE>Enstore User Commands</TITLE></HEAD>
+<BODY TEXT="#000066" BGCOLOR="#FFFFFF">
+<BLOCKQUOTE>
+<CENTER><B><U><FONT COLOR="DARKRED" SIZE=+4>ENSTORE USER COMMANDS</FONT></U></B></CENTER>
+</BLOCKQUOTE>
+
+<FORM METHOD="GET" ACTION="http://www-hppc.fnal.gov/cgi-bin/enstore_user.cgi">
+<TABLE ALIGN=LEFT NOBORDER NOSAVE>
+<TR>
+<TD><INPUT ALIGN=LEFT VALUE="Execute" TYPE="submit"></TD>
+<TD>&nbsp;</TD>
+<TD><INPUT ALIGN=RIGHT VALUE="Reset" TYPE="reset"></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD COLSPAN=3></FONT SIZE=+2><B>Enstore File Commands</B></FONT></TD>
+<TD>&nbsp;</TD>
+<TD COLSPAN=4></FONT SIZE=+2><B>Enstore Library Commands</B></FONT></TD>
+</TR>
+<TR>
+<TD><INPUT TYPE=RADIO NAME="server" VALUE="file"> <B>file</B></TD>
+<TD><INPUT TYPE=RADIO NAME="file_opts" VALUE="help"> help</TD>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="server" VALUE="library"> <B>library</B></TD>
+<TD><INPUT TYPE=RADIO NAME="library_opts" VALUE="help"> help</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="file_opts" VALUE="bfid"> bfid</TD>
+<TD><INPUT TYPE=TEXT NAME="bfid" size=20></TD>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="library_opts" VALUE="delete_work"> delete_work</TD>
+<TD><INPUT TYPE=TEXT NAME="delete_work" size=20></TD>
+<TD><INPUT TYPE=TEXT NAME="delete_work_p" size=30></TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="file_opts" VALUE="list"> list</TD>
+<TD><INPUT TYPE=TEXT NAME="list" size=20></TD>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="library_opts" VALUE="get_queue"> get_queue</TD>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=TEXT NAME="get_queue_p" size=30></TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=CHECKBOX NAME="file_cbox" VALUE="recursive"> recursive</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="library_opts" VALUE="delete"> priority</TD>
+<TD><INPUT TYPE=TEXT NAME="priority" size=20></TD>
+<TD><INPUT TYPE=TEXT NAME="priority_p" size=30></TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="file_opts" VALUE="restore"> restore</TD>
+<TD><INPUT TYPE=TEXT NAME="restore" size=20></TD>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=CHECKBOX NAME="library_cbox" VALUE="retries"> retries</TD>
+<TD><INPUT TYPE=TEXT NAME="library_retries" size=20></TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=CHECKBOX NAME="file_cbox" VALUE="retries"> retries</TD>
+<TD><INPUT TYPE=TEXT NAME="file_retries" size=20></TD>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=CHECKBOX NAME="library_cbox" VALUE="timeout"> timeout</TD>
+<TD><INPUT TYPE=TEXT NAME="library_timeout" size=20></TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=CHECKBOX NAME="file_cbox" VALUE="timeout"> timeout</TD>
+<TD><INPUT TYPE=TEXT NAME="file_timeout" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD COLSPAN=7>&nbsp;</TD>
+</TR>
+<TR>
+<TD COLSPAN=7 ALIGN=LEFT></FONT SIZE=+2><B>Enstore Volume Commands</B></FONT></TD>
+</TR>
+<TR>
+<TD><INPUT TYPE=RADIO NAME="server" VALUE="volume"> <B>volume</B></TD>
+<TD><INPUT TYPE=RADIO NAME="volume_opts" VALUE="help"> help</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="volume_opts" VALUE="add"> add</TD>
+<TD><INPUT TYPE=TEXT NAME="add" size=20></TD>
+<TD COLSPAN=3><INPUT TYPE=TEXT NAME="add_p" size=60></TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="volume_opts" VALUE="delete"> delete</TD>
+<TD><INPUT TYPE=TEXT NAME="delete" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="volume_opts" VALUE="new_library"> new_library</TD>
+<TD COLSPAN=2><INPUT TYPE=TEXT NAME="new_library" size=40></TD>
+<TD><INPUT TYPE=TEXT NAME="new_library_p" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="volume_opts" VALUE="no_access"> no_access</TD>
+<TD><INPUT TYPE=TEXT NAME="no_access" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="volume_opts" VALUE="read_only"> read_only</TD>
+<TD><INPUT TYPE=TEXT NAME="read_only" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="volume_opts" VALUE="restore"> restore</TD>
+<TD><INPUT TYPE=TEXT NAME="restore" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=CHECKBOX NAME="volume_cbox" VALUE="retries"> retries</TD>
+<TD><INPUT TYPE=TEXT NAME="volume_retries" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=CHECKBOX NAME="volume_cbox" VALUE="timeout"> timeout</TD>
+<TD><INPUT TYPE=TEXT NAME="volume_timeout" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="volume_opts" VALUE="update"> update</TD>
+<TD><INPUT TYPE=TEXT NAME="update" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="volume_opts" VALUE="vol"> vol</TD>
+<TD><INPUT TYPE=TEXT NAME="vol" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD><INPUT ALIGN=LEFT VALUE="Execute" TYPE="submit"></TD>
+<TD>&nbsp;</TD>
+<TD><INPUT ALIGN=RIGHT VALUE="Reset" TYPE="reset"></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD COLSPAN=7><TABLE BORDER WIDTH="100%" BGCOLOR="#DFDFF0" NOSAVE>
+	<TR>
+	<TD ALIGN=CENTER NOSAVE><BR>COMMAND</BR></TD>
+	<TD ALIGN=CENTER NOSAVE><BR>OPTIONS</BR></TD>
+	<TD ALIGN=CENTER NOSAVE><BR>REQUIRED PARAMETERS</BR></TD>
+	<TD ALIGN=CENTER NOSAVE><BR>DEFINITION</BR></TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>file</TD>
+	<TD ALIGN=LEFT NOSAVE>bfid=bit_file_id</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>get information on the specified bit file id</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>help</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>get help information</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>list=volume</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>get a file list of the specified volume</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>recursive</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>recursively restore all files</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>restore=file_name</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>restore the specified file</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>retries=number</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>number of retries for udp communication</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>timeout=seconds</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>number of seconds to wait for udp response</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>library</TD>
+	<TD ALIGN=LEFT NOSAVE>delete_work=work_id</TD>
+	<TD ALIGN=LEFT NOSAVE>library_manager_name</TD>
+	<TD ALIGN=LEFT NOSAVE>remove the specified work from the queue of work to do</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>get_queue</TD>
+	<TD ALIGN=LEFT NOSAVE>library_manager_name</TD>
+	<TD ALIGN=LEFT NOSAVE>well Sasha what does this do?????</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>help</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>get help information</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>priority=number</TD>
+	<TD ALIGN=LEFT NOSAVE>library_manager_name</TD>
+	<TD ALIGN=LEFT NOSAVE>set the priority for the specifed work in the queue of work to do</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>retries=number</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>number of retries for udp communication</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>timeout=seconds</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>number of seconds to wait for udp response</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>volume</TD>
+	<TD ALIGN=LEFT NOSAVE>add=volume_name</TD>
+	<TD ALIGN=LEFT NOSAVE>library file_family media_type volume_byte_capacity remaining_capacity</TD>
+	<TD ALIGN=LEFT NOSAVE>add the specified volume to Enstore</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>delete=volume_name</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>delete the specified volume from Enstore</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>help</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>get help information</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>new_library=library_name</TD>
+	<TD ALIGN=LEFT NOSAVE>volume_name</TD>
+	<TD ALIGN=LEFT NOSAVE>associate the specified volume with the specified library manager</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>no_access=</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>do not allow access to the specified volume</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>read_only=</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>do not allow writes to the specified volume</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>restore=</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>restore the specified volume within Enstore</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>retries=</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>number of retries for udp communication</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>timeout=</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>number of seconds to wait for udp response</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>update=</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>update the status of the volume</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>vol=</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>get information on the specified volume</TD>
+	</TR>
+	</TABLE>
+</TD>
+</TR>
+</TABLE>
+</FORM>
+</BODY></HTML>
