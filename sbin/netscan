@@ -15,6 +15,7 @@ setup enstore
 # . I know I don't check everything!
 # . Only check for LISTEN, igorning TCP and UDP for now.
 #        TCP could be done, but UDP seems very hard (sh, mt... open lots of sockets!).
+# . Require connection to live across a ps, so I can get the process name for later checks
 # . Depend on installed version of os (grep, lsof...)
 #        Should download a static version each time.
 # . Swapped out versions of jobs with open connections - allowed, not checked.
@@ -39,6 +40,8 @@ AWK="/bin/awk"
 WC="/usr/bin/wc"
 DATE="/bin/date"
 CAT="/bin/cat"
+SORT="/bin/sort"
+UNIQ="/usr/bin/uniq"
 RPM="/bin/rpm"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
@@ -49,8 +52,6 @@ ACTIVE=/root/CRON/netscanACTIVE
 
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           if [ "${2:-}"x = "psx" ]; then
-             $PS >> $LOG 2>&1
-             $ECHO orig ps >>$LOG 2>&1
              $ECHO "${PSfirst:-}"  >>$LOG 2>&1
           fi
           $ECHO "$1"
@@ -113,7 +114,7 @@ if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
     if [ $ALARM -eq 1 ]; then
       enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
     fi
-fi   
+fi
 
 ALLOW_BASE="
        LISTEN,inetd,:ftp,TCP,x
@@ -204,10 +205,7 @@ allow() { tt=$1
             p=`$ECHO $i | cut -f5 -d,`
             if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"`  -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
               if [ $p != "x" ]; then
-                 psline=`$PS -p $pid|$EGREP -v PPID`
-                 if [ -z "$psline" ] ; then
-                    psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
-                 fi
+                 psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
                  if [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
                     msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
                     msg2=`$PS -p $pid|$EGREP -v PPID`
@@ -228,7 +226,7 @@ allow() { tt=$1
             fi
           done
           msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
-          msg2=`$PS -p $pid|$EGREP -v PPID`
+          msg2=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
           logit "$msg1"
           logit "$msg2" "ps"
           if [ $ALARM -eq 1 ]; then
@@ -237,8 +235,13 @@ allow() { tt=$1
           return 1
          }
 
+# get open files twice - get ps in between - only take connections that survive past this
+# otherwise it is impossible to compare and see if they are allowed.
+# this is a small hole
+N1=`$LSOF -i TCP -i UDP`
 PSfirst=`$PS`
-N=`$LSOF -i TCP -i UDP`
+N2=`$LSOF -i TCP -i UDP`
+N=`$ECHO "$N1 $N2"|$SORT|$UNIQ -d`
 
 $ECHO "$N" | while read command pid rest; do
     if [ $pid = "PID" ] ; then continue; fi
