@@ -126,6 +126,7 @@ class Mover:
         self.width = 125
         self.height = 30
         self.state = "Unknown"
+        self.color = None
         now = time.time()
         self.timer_started = now
         self.timer_seconds = 0
@@ -173,9 +174,10 @@ class Mover:
         if state == self.state:
             return
         self.state = state
-        mover_color = {'ERROR': 'red', 'OFFLINE':'grey'}.get(self.state)
-        if mover_color:
+        mover_color = {'ERROR': 'red', 'OFFLINE':'grey'}.get(self.state, 'black')
+        if mover_color != self.color:
             self.display.itemconfigure(self.outline, fill=mover_color)
+            self.color = mover_color
         x, y = self.x, self.y
         self.display.delete(self.state_display) # "undraw" the prev. state message
         img = find_image(state+'.gif')
