@@ -3,7 +3,13 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-gang=`gang`
+ttt=`which gang`
+if [ $? -eq 0 ];
+then
+    gang=`gang`
+else
+    gang="NOGANG"
+fi
 
 # the first parameter is the base.  if not entered, use the default
 if [ $# -ge 1 ] ; 
@@ -13,6 +19,8 @@ then
 else
     base=/tmp/doesnot/exist
 fi
+
+# the second parameter is the gang
 
 #convert=/usr/bin/X11/convert
 convert=/usr/bin/convert
