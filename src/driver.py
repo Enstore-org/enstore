@@ -78,7 +78,7 @@ class  FTTDriver(GenericDriver) :
     def close_file_read(self) :
         self.position = self.position + 1
         stats = ETape.ET_CloseRead(self.ETdesc)
-   
+
         if stats[1] != "Invalid":
           self.rd_access = string.atoi(stats[1])
         if stats[2] != "Invalid":
@@ -115,7 +115,7 @@ class  FTTDriver(GenericDriver) :
     # ftt updates remaining_byte count, so this routine not needed for FTT driver
     def Xferred_bytes(self,size) :
         pass
-    
+
 class  RawDiskDriver(GenericDriver) :
     """
     A driver for testing with disk files
@@ -125,6 +125,10 @@ class  RawDiskDriver(GenericDriver) :
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
         #print "opening file"
         self.df = open(device, "a+")
+        # new volumes for disk, don't start at 0 offset - set eod to end
+        if eod_cookie == "none":
+            eod_cookie = repr(self.df.tell())
+            print "adjusted eod from none to ",eod_cookie
         self.set_eod(eod_cookie)
         self.blocksize = 4096
 
