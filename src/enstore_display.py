@@ -123,11 +123,8 @@ color_dict = {
     'state_offline_color':  rgbtohex(0, 0, 0), # black
     'timer_color':          rgbtohex(255, 255, 255), # white
     #volume colors
-    #'label_offline_color':  rgbtohex(0, 0, 0), # black (tape)
-    'label_stable_color':   rgbtohex(255, 255, 255), # white (tape)
-    #'tape_offline_color':   rgbtohex(169, 169, 169), # grey
-    #'tape_stable_color':    rgbtohex(255, 165, 0), # orange
     'tape_stable_color':    rgbtohex(0, 165, 255), # (royal?) blue
+    'label_stable_color':   rgbtohex(255, 255, 255), # white (tape)
 }
 
     
@@ -197,17 +194,21 @@ class XY:
 #########################################################################
 # Most of the functions will be handled by the mover.
 # its  functions include:
+#     draw_mover() - draws the mover background and the label
+#     draw_state() - draws the current state image or text
+#     draw_timer() - draws the time-in-state timer
+#     draw_volume() - draw the current volume at mover
+#     draw_progress() - indicates progress of each data transfer;
+#                                     is it almost complete?
 #     draw() - draws most features on the movers
 #     update_state() - as the state of the movers change, display
 #                                  for state will be updated
 #     update_timer() - timer associated w/state, will update for each state
 #     load_tape() - tape gets loaded onto mover:
-#                                  gray indicates robot recognizes tape and loaded it
-#                                  orange indicates when mover actually recognizes tape     
+#                        gray indicates robot recognizes tape and loaded it
+#                        orange indicates when mover actually recognizes tape
 #     unload_tape() - will unload tape to side of each mover, ready for
 #                                 robot to remove f/screen
-#     show_progress() - indicates progress of each data transfer;
-#                                     is it almost complete?
 #     transfer_rate() - rate at which transfer being sent; calculates a rate
 #     undraw() - undraws the features fromthe movers
 #     position() - calculates the position for each mover
@@ -272,7 +273,7 @@ class Mover:
 
 #########################################################################
 
-    def draw(self):
+    def draw_mover(self):
         x, y                    = self.x, self.y
 
         #Display the mover rectangle.
@@ -294,6 +295,9 @@ class Mover:
                                                     text=self.name,
                                                     anchor=Tkinter.SW,
                                                     font = self.label_font)
+
+    def draw_state(self):
+        x, y                    = self.x, self.y
 
         #Display the current state.
         img          = find_image(self.state + '.gif')
@@ -332,35 +336,38 @@ class Mover:
                     x+self.state_offset.x, y+self.state_offset.y,
                     font = self.font, text=self.state, fill=self.state_color)
 
-        #Display the timer.
+    def draw_timer(self):
         if self.timer_display:
-            self.display.coords(self.timer_display,
-                                x+self.timer_offset.x, y+self.timer_offset.y)
+            self.display.itemconfigure(self.timer_display,
+                                       text=self.timer_string)
         else:
             self.timer_display = self.display.create_text(
-                x+self.timer_offset.x, y+self.timer_offset.y, text='00:00:00',
-                fill = self.timer_color, font = self.font)
+                self.x + self.timer_offset.x, self.y + self.timer_offset.y,
+                text = self.timer_string, fill = self.timer_color,
+                font = self.font)
 
-        #Display the progress bar and percent done.
-        self.show_progress(self.percent_done)
+    def draw_volume(self):
+        x, y                    = self.x, self.y
 
-        #Draw the volume background.
-        if self.volume_bg_display:
-            self.display.coords(
-                self.volume_bg_display, self.x + self.volume_offset.x,
-                self.y + self.volume_offset.y,
-                self.x + self.volume_offset.x + self.vol_width,
-                self.y + self.volume_offset.y + self.vol_height)
-        else:
-            self.volume_bg_display = self.display.create_rectangle(
-                self.x + self.volume_offset.x, self.y + self.volume_offset.y,
-                self.x + self.volume_offset.x + self.vol_width,
-                self.y + self.volume_offset.y + self.vol_height,
-                fill = self.volume_bg_color)
-            
-        
         #Diaplay the volume.
         if self.volume:
+
+            #Draw the volume background.
+            if self.volume_bg_display:
+                self.display.coords(
+                    self.volume_bg_display, self.x + self.volume_offset.x,
+                    self.y + self.volume_offset.y,
+                    self.x + self.volume_offset.x + self.vol_width,
+                    self.y + self.volume_offset.y + self.vol_height)
+            else:
+                self.volume_bg_display = self.display.create_rectangle(
+                    self.x + self.volume_offset.x,
+                    self.y + self.volume_offset.y,
+                    self.x + self.volume_offset.x + self.vol_width,
+                    self.y + self.volume_offset.y + self.vol_height,
+                    fill = self.volume_bg_color)
+            
+        
             if self.volume_display:
                 self.display.coords(self.volume_display,
                             x+self.volume_offset.x+(self.vol_width / 2.0) + 1,
@@ -372,14 +379,7 @@ class Mover:
                    text = self.volume, fill = self.volume_font_color,
                    font = self.volume_font, width = self.vol_width,)
             
-
-        #Display the connection.
-        if self.connection:
-            self.connection.draw()
-
-        self.display.update()
-
-    def show_progress(self, percent_done):
+    def draw_progress(self, percent_done):
 
         #### color
         progress_bg_color     = colors('progress_bg_color')
@@ -424,7 +424,29 @@ class Mover:
                 text = str(self.percent_done)+"%",
                 fill = percent_display_color, font = self.font)
 
-    def undraw(self):
+    def draw(self):
+        x, y                    = self.x, self.y
+
+        self.draw_mover()
+
+        self.draw_state()
+
+        self.draw_timer()
+
+        #Display the progress bar and percent done.
+        self.draw_progress(self.percent_done)
+
+        self.draw_volume()
+
+        #Display the connection.
+        if self.connection:
+            self.connection.draw()
+
+        self.display.update()
+
+#########################################################################
+
+    def undraw_mover(self):
         try:        
             self.display.delete(self.label)
             self.label = None
@@ -432,17 +454,26 @@ class Mover:
             pass
 
         try:
+            self.display.delete(self.outline)
+            self.outline = None
+        except Tkinter.TclError:
+            pass
+
+    def undraw_timer(self):
+        try:
             self.display.delete(self.timer_display)
             self.timer_display = None
         except Tkinter.TclError:
             pass
 
+    def undraw_state(self):
         try:
             self.display.delete(self.state_display)
             self.state_display = None
         except Tkinter.TclError:
             pass
 
+    def undraw_progress(self):
         try:        
             self.display.delete(self.progress_bar_bg)
             self.progress_bar_bg = None
@@ -461,6 +492,7 @@ class Mover:
         except Tkinter.TclError:
             pass
 
+    def undraw_volume(self):
         try:
             self.display.delete(self.volume_display)
             self.volume_display = None
@@ -473,18 +505,12 @@ class Mover:
         except Tkinter.TclError:
             pass
 
-        try:
-            self.display.delete(self.outline)
-            self.outline = None
-        except Tkinter.TclError:
-            pass
-
-        #if self.volume:
-        #    self.volume.undraw()
-        #    #self.volume = None
-        #if self.connection:
-        #    self.connection.undraw()
-        #    #self.connection = None
+    def undraw(self):
+        self.undraw_timer()
+        self.undraw_state()
+        self.undraw_progress()
+        self.undraw_volume()
+        self.undraw_mover()
 
 #########################################################################
         
@@ -536,39 +562,20 @@ class Mover:
         self.timer_seconds = seconds
         self.timer_string = HMS(seconds)
 
-        if self.timer_display:
-            self.display.itemconfigure(self.timer_display,
-                                       text=self.timer_string)
-        else:
-            #timer color
-            #self.timer_color = colors('timer_color')
-            self.timer_display = self.display.create_text(
-                self.x + self.timer_offset.x, self.y + self.timer_offset.y,
-                text = self.timer_string, fill = self.timer_color,
-                font = self.font)
+        self.draw_timer()
 
     def load_tape(self, volume_name, load_state):
         self.volume = volume_name
-        if self.volume_display:
-            self.display.itemconfig(self.volume_display, text = self.volume)
-        else:
-            self.volume_display = self.display.create_text(
-                self.x + self.volume_offset.x + (self.vol_width / 2.0) + 1,
-                self.y + self.volume_offset.y + (self.vol_height / 2.0) + 1,
-                text = self.volume, fill = self.volume_font_color,
-                font = self.volume_font, width = self.vol_width,)
-            
+        self.update_state(load_state)
+        self.draw_volume()
+
     def unload_tape(self):
         if not self.volume:
             Trace.trace(1, "Mover %s has no volume." % (self.name,))
             return
 
-        try:
-            self.display.delete(self.volume_display)
-            self.volume_display = None
-            self.volume = None
-        except Tkinter.TclError:
-            pass
+        self.volume = None
+        self.undraw_volume()
 
     def transfer_rate(self, num_bytes, total_bytes):
         #keeps track of last number of bytes and time; calculates rate
@@ -990,6 +997,9 @@ class Display(Tkinter.Canvas):
         #self.volumes          = {}
         #self.title_animation  = None
 
+        self.mover_update_index = 0
+        self.client_update_index = 0
+
         self.bind('<Button-1>', self.action)
         self.bind('<Button-3>', self.reinititalize)
         self.bind('<Configure>', self.resize)
@@ -1099,22 +1109,18 @@ class Display(Tkinter.Canvas):
 
     #Called from entv.handle_periodic_actions().
     def connection_animation(self):
-        
         now = time.time()
         #### Update all mover timers
         #This checks to see if the timer has changed at all.  If it has,
         # it resets the timer for new state.
         for mover in self.movers.values():
-            mover.update_timer(now)     #We must advance the timer
+            mover.update_timer(now)
             if mover.connection:
                 mover.connection.animate(now)
 
-        ####force the display to refresh
-        self.update()
-
     #Called from entv.handle_periodic_actions().
     def disconnect_clients(self):
-
+        return
         now = time.time()
         #### Check for unconnected clients
         for client_name, client in self.clients.items():
@@ -1242,7 +1248,7 @@ class Display(Tkinter.Canvas):
                 #Remove the progress bar.
                 mover.t0 = time.time()
                 mover.b0 = 0
-                mover.show_progress(None)
+                mover.draw_progress(None)
                 
                 return
 
@@ -1321,7 +1327,7 @@ class Display(Tkinter.Canvas):
                     percent_done = 100
                 else:
                     percent_done = abs(int(100 * num_bytes/total_bytes))
-                mover.show_progress(percent_done)
+                mover.draw_progress(percent_done)
                 rate = mover.transfer_rate(num_bytes, total_bytes) / (256*1024)
                 if mover.connection:
                     mover.connection.update_rate(rate)

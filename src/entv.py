@@ -190,13 +190,13 @@ def handle_status(mover, status):
         return [mover_state]
     if state in ['ACTIVE', 'SEEK', 'SETUP']:
         loaded = "loaded %s %s" % (mover, volume)
-        return [mover_state, loaded, connect]
-    if state in ['HAVE_BOUND']:
+        return [loaded, mover_state, connect]
+    if state in ['HAVE_BOUND', 'DISMOUNT_WAIT']:
         loaded = "loaded %s %s" % (mover, volume)
-        return [mover_state, loaded]
+        return [loaded, mover_state]
     if state in ['MOUNT_WAIT']:
         loading = "loading %s %s" %(mover, volume)
-        return [mover_state, loading, connect]
+        return [loading, mover_state, connect]
 
     return [mover_state]
 
@@ -232,7 +232,7 @@ def handle_periodic_actions(display):
     global stop_now
 
     while not display.stopped and not stop_now:
-
+        
         display_lock.acquire()
         if display.stopped or stop_now:
             display_lock.release()
@@ -244,6 +244,7 @@ def handle_periodic_actions(display):
                 pass
         display_lock.release()
 
+
         display_lock.acquire()
         if display.stopped or stop_now:
             display_lock.release()
@@ -254,12 +255,6 @@ def handle_periodic_actions(display):
         except Tkinter.TclError:
                 pass
         display_lock.release()
-        
-        #display_lock.acquire()
-        #What does this do???  For whatever reason, if it is commented in
-        # then the connection lines stop moving.
-        #display.handle_titling()
-        #display_lock.release()
         
         time.sleep(0.03) #Without this sleep, the thread uses a lot of CPU.
 
