@@ -16,3 +16,6 @@ XFERLOG_FILE = "%s%s"%(XFER_FILE, LOG)
 JPG = ".jpg"
 PS = ".ps"
 STAMP = "_stamp"
+
+READ = 1
+WRITE = READ + 1

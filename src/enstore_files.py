@@ -31,6 +31,7 @@ EBYTES = 5
 EDEV = 6
 EURATE = 7
 EDICTS = 8
+ETYPE = 9
 
 # message is either a mount request or an actual mount
 MREQUEST = 0
@@ -328,7 +329,7 @@ class EnEncpDataFile(EnDataFile):
         # the time info may contain the file directory which we must
         # strip off
         enstore_status.strip_file_dir(einfo[ETIME])
-        return [einfo[ETIME], einfo[EBYTES], einfo[EDICTS]]
+        return [einfo[ETIME], einfo[EBYTES], einfo[EDICTS], einfo[ETYPE]]
 
     # pull out the plottable data from each line
     def parse_data(self, mcs):
@@ -336,7 +337,7 @@ class EnEncpDataFile(EnDataFile):
 	    einfo = self.parse_line(line)
 	    if einfo and (not mcs or enstore_status.mc_in_list(einfo[2], mcs)):
 	        self.data.append([string.replace(einfo[0], LOG_PREFIX, ""), \
-	                         einfo[1]])
+	                         einfo[1], einfo[3]])
 
 class HtmlAlarmFile(EnFile):
 

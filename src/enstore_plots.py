@@ -266,13 +266,15 @@ class XferGnuFile(enstore_files.EnFile):
 	                   "set format x \"%y-%m-%d\"\n"+ \
 	                   "set logscale y\n"+ \
 	                   "plot '"+ptsfile1+\
-	                   "' using 1:2 t '' with points\n"+ \
+	                   "' using 1:4 t 'reads' with points 3 5, "+ 
+			   "'"+ptsfile1+\
+			   "' using 1:3 t 'writes' with points 1 1\n"+ 
 	                   "set output '"+outfile1+"'\n"+ \
 	                   "set pointsize 2\n"+ \
 	                   "set nologscale y\n"+ \
 	                   "set yrange [0: ]\n"+ \
-	                   "plot '"+ptsfile1+"' using 1:2 t '' w impulses, "+\
-	                   "'"+ptsfile2+\
+			   "plot '"+ptsfile1+"' using 1:2 t '' w impulses, "+\
+			   "'"+ptsfile2+\
 	                   "' using 1:5 t 'mean file size' w points 3 5\n")
 
 class XferDataFile(EnPlot):
@@ -285,12 +287,13 @@ class XferDataFile(EnPlot):
     # make the file with the plot points in them
     def plot(self, data):
 	# write out the data points
-	if len(data[0]) == 2:
-	    for [xpt, ypt] in data:
-	        self.filedes.write(xpt+" "+ypt+"\n")
-	elif len(data[0]) == 3:
-	    for [xpt, ypt, zpt] in data:
-	        self.filedes.write(xpt+" "+ypt+" "+zpt+"\n")
+	for [xpt, ypt, type] in data:
+	    if type == "to":
+		# this was a write request
+		self.filedes.write("%s %s %s\n"%(xpt, ypt, ypt))
+	    else:
+		# this was a read request
+		self.filedes.write("%s %s 0 %s\n"%(xpt, ypt, ypt))
 
 	# we must create our gnu plot command file too
 	gnucmds = XferGnuFile(self.gnufile)
@@ -341,7 +344,7 @@ class BpdDataFile(EnPlot):
 	smallest = {}
 	largest = {}
 	ctr = {}
-	for [xpt, ypt] in data:
+	for [xpt, ypt, type] in data:
 	    adate = xpt[0:10]
 	    fypt = string.atof(ypt)
 	    if mean.has_key(adate):

@@ -120,6 +120,7 @@ def parse_encp_line(line):
         # erest2 has the file name info which we do not need, get the 
         # total data transfer rate from the end of erest3
         [erest2, tt] = string.splitfields(erest3, "(", 1)
+	# check if this is a read from enstore or a write to enstore
         [tt, etmp] = string.splitfields(tt, ")",1)
         # pull out the name of the media changer
         mc = get_dict(etmp)
@@ -128,7 +129,7 @@ def parse_encp_line(line):
     except ValueError:
         # we do not handle this formatting
         return []
-    return [etime, enode, euser, estatus, tt, erate[1], "%s %s"%(erate[4], erate[5]), erate[7], mc]
+    return [etime, enode, euser, estatus, tt, erate[1], "%s %s"%(erate[4], erate[5]), erate[7], mc, erate[4]]
 
 # given a list of media changers and a log file message, see if any of the
 # media changers are mentioned in the log file message
