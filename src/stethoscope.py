@@ -3,6 +3,7 @@
 import select
 import time
 import sys
+import os
 import string
 
 import event_relay_client
@@ -48,28 +49,30 @@ def do_real_work(intf):
             erc.sock.close()
             # see which servers have not sent an alive
             for server in intf.servers:
-                print "did not get alive from %s"%(server,)
+                os.system("%s %s"%(intf.filename, server))
             return
 
 class StethoscopeInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
         self.servers = None
+        self.filename = None
 	generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
     stethoscope_options = {}
-    parameters = ["server[ server]"]
+    parameters = ["filename", "server[ server]"]
 
     def parse_options(self):
         generic_client.GenericClientInterface.parse_options(self)
 
         if (getattr(self, "help", 0) or getattr(self, "usage", 0)):
             pass
-        elif len(self.args) < 1:
-            self.print_usage("Expected server list parameter")
+        elif len(self.args) < 2:
+            self.print_usage("Expected filename and server list parameters")
         else:
-            self.servers = string.split(self.args[0], " ")
+            self.filename = self.args[0]
+            self.servers = string.split(self.args[1], " ")
 
     def valid_dictionaries(self):
 	return (self.help_options, self.stethoscope_options)
