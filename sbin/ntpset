@@ -64,7 +64,7 @@ RELAX=`expr $COUNT - $COUNT / 2 \* 2`
 
 x=`$XNTPDC -p`
 x1=`$ECHO "$x"|$EGREP '^\*|^~'`
-if [ `$ECHO "$x1"|$WC|$AWK '{print $1}'` != "1" ]; then
+if [ `$ECHO "$x1"|$WC|$AWK '{print $1}'` -lt 1 ]; then
     logit "NO TIME SYNC"
     logit "$x"
     COUNT=`expr $COUNT + 1`
