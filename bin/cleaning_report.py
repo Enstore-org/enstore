@@ -61,14 +61,17 @@ else:
 print
 
 total = {}
+total_count = {}
 for vol in good:
     v,library = string.split(vol,'/')
     if total.has_key(library):
         total[library] = total[library] + remaining[vol]
+        total_count[library] = total_count[library] + 1
     else:
         total[library] = remaining[vol]
+        total_count[library] = 1
 
 for lib in total.keys():
     print "There are %s %s cleaning tapes left, with a total capacity of %s cleanings" % (
-    len(good), lib, total[lib])
+    total_count[lib], lib, total[lib])
 
