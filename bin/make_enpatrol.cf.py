@@ -89,8 +89,7 @@ server_start_order = ("config_server", \
                       "*library_manager", \
                       "*media_changer", \
                       "*mover", \
-                      "inquisitor", \
-                      "admin_clerk")
+                      "inquisitor")
 
 DOMAIN = ".fnal.gov"
 
