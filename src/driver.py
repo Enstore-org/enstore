@@ -202,10 +202,10 @@ class GenericDriver:
         return os.close(self.fd)
 
     def loc_compare( self, loc1, loc2 ):
-	if loc1==None or loc1=='None' or loc1=='none': locA = 0
-	if loc2==None or loc2=='None' or loc2=='none': locB = 0
-	if   locA == locB: rr = 0
-	elif locA <  locB: rr = -1
+	if loc1==None or loc1=='None' or loc1=='none': loc1 = 0
+	if loc2==None or loc2=='None' or loc2=='none': loc2 = 0
+	if   loc1 == loc2: rr = 0
+	elif loc1 <  loc2: rr = -1
 	else: rr = 1
 	return rr
 
