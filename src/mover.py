@@ -355,15 +355,16 @@ class MoverClient:
 	self.vol_info['external_label'] = ''
 	
 	#get status information and write it to a file
-	WSstatus,WSdata = self.writeAll(driver_object, mvr_config['device'], outParam=['cleaning_bit',], inParam={'work':'afterUnload'})
-        Trace.log(e_errors.INFO,"Writing statistics, status = "+str(WSstatus))
-	if WSstatus == 0:
+        if 0:
+	 WSstatus,WSdata = self.writeAll(driver_object, mvr_config['device'], outParam=['cleaning_bit',], inParam={'work':'afterUnload'})
+         Trace.log(e_errors.INFO,"Writing statistics, status = "+str(WSstatus))
+	 if WSstatus == 0:
 	    if WSdata['cleaning_bit'] == 1:
 	        rr = self.mcc.doCleaningCycle(mvr_config, self.vol_info, self.vol_vcc)
                 Trace.log(e_errors.INFO,"Media changer cleaningCycle status"+str(rr['status']))
-	else:
+	 else:
             Trace.log(e_errors.ERROR,"ERROR: Get-statistics status "+str(WSstatus))
-	
+     
 	return_or_update_and_exit( self, self.vol_info['from_lm'], e_errors.OK )
 	pass
 
