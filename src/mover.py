@@ -968,12 +968,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                 break
             else:
                 try:
-                    Trace.log(e_errors.INFO, "position media: rewind and retry")
-                    self.tape_driver.rewind()
+                    Trace.log(e_errors.INFO, "rewind/retry")
+                    r= self.tape_driver.close()
+                    time.sleep(1)
+                    r=self.tape_driver.open(self.device, self.mode, retry_count=1)
+                    Trace.log(e_errors.INFO, "rewind/retry: open=%s" % (r,))
+                    r=self.tape_driver.rewind()
+                    Trace.log(e_errors.INFO, "rewind/retry: rewind=%s" % (r,))
                     self.tape_driver.close()
                 except:
                     exc, detail, tb = sys.exc_info()
-                    Trace.log(e_errors.ERROR, detail)
+                    Trace.log(e_errors.ERROR, "rewind/retry: %s %s" % ( exc, detail))
         else:
             self.error("cannot open tape device for positioning")
             return
