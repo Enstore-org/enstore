@@ -39,6 +39,11 @@ class MoverClient(generic_client.GenericClient):
     def stop_draining(self, rcv_timeout=0, tries=0):
         return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
 
+    def device_dump(self, sendto=[], notify=[], rcv_timeout=0, tries=0):
+        print "device_dump(self, sendto="+`sendto`+', notify='+`notify`+', rcv_timeout='+`rcv_timeout`+', tries='+`tries`+')'
+        return self.send({"work" : "device_dump_S",
+                          "sendto" : sendto,
+                          "notify" : notify}, rcv_timeout, tries)
 
 class MoverClientInterface(generic_client.GenericClientInterface):
     def __init__(self, flag=1, opts=[]):
@@ -53,6 +58,9 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.status = 0
         self.start_draining = 0
         self.stop_draining = 0
+        self.notify = []
+        self.sendto = []
+        self.dump = 0
         generic_client.GenericClientInterface.__init__(self)
         
     # define the command line options that are valid
@@ -65,7 +73,9 @@ class MoverClientInterface(generic_client.GenericClientInterface):
             # the difference between the mover and the library manager.
             return self.client_options()+["status", "clean-drive", "offline",
                                           "down", "start-draining=",
-                                          "stop-draining", "online", "up"]
+                                          "stop-draining", "online",
+                                          "up", "sendto=", "notify=",
+                                          "dump"]
 
     #  define our specific help
     def parameters(self):
@@ -118,6 +128,8 @@ def do_work(intf):
         ticket = movc.start_draining(intf.alive_rcv_timeout, intf.alive_retries)
     elif intf.stop_draining:
         ticket = movc.stop_draining(intf.alive_rcv_timeout, intf.alive_retries)
+    elif intf.dump:
+        ticket = movc.device_dump(intf.sendto, intf.notify, intf.alive_rcv_timeout, intf.alive_retries)
     else:
         intf.print_help()
         sys.exit(0)

@@ -42,7 +42,7 @@ import socket_ext
 import hostaddr
 import string_driver
 import socket_ext
-
+import m2		# for m2.dump_code()
 import Trace
 
 
@@ -794,6 +794,53 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
         ##end of __init__
 
+    # device_dump(self, sendto, notify) -- internal device dump
+    #   This is mainly for M2 drives.
+    #   sendto is either an email address or a list of them which the
+    #   dump file will be sent to.
+    #   notify is either an email address or a list of them which the
+    #   notification is sent to
+    #
+    # device_dump_S() is a server hook for device_dump()
+
+    # device_dump_S(self, ticket) -- server hook for device_dump()
+
+    def device_dump_S(self, ticket):
+        if ticket.has_key('sendto'):
+            sendto = ticket['sendto']
+        else:
+            sendto = []
+
+        if ticket.has_key('notify'):
+            notify = ticket['notify']
+        else:
+            notify = []
+
+        if notify:
+            res = self.device_dump(sendto, notify)
+        else:
+            res = self.device_dump(sendto)	# take default notify
+
+        t = {"status":(e_errors.OK, res)}
+        self.reply_to_caller(t)
+	return
+
+    def device_dump(self, sendto=None, notify=['huangch@fnal.gov']):
+        Trace.log(e_errors.INFO, 'device_dump('+`sendto`+', '+`notify`+')')
+        # print 'device_dump('+`sendto`+', '+`notify`+')'
+
+        # do nothing if it is not a M2 drive
+
+        if self.config['product_id'] != "Mammoth2":
+            return "can not dump a non-Mammoth2 drive"
+
+        res = m2.dump_code(self.device, '/tmp', sendto, notify, 'enstore mover: '+self.name)
+
+	if res:
+            Trace.log(e_error.INFO, res)
+
+	return res
+ 
     def check_written_file(self):
         if self.check_written_file_period:
             ran = random.randrange(self.check_written_file_period,self.check_written_file_period*10,1)
