@@ -268,4 +268,4 @@ if __name__ == '__main__':
                 check_file(i)
             except (KeyboardInterrupt, SystemExit):
                 #If the user does Control-C don't traceback.
-                pass
+                break
