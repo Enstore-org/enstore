@@ -71,8 +71,8 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             external_label + " " + tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-        #print 'command is:'
-        #print stk_mount_command
+        print 'command is:'
+        print stk_mount_command
 
         # call mount command
         returned_message = os.popen(stk_mount_command, "r").readlines()
@@ -85,6 +85,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                 out_ticket = {"status" : "ok"}
                 break
         # send reply to caller
+	print out_ticket
         self.reply_to_caller(out_ticket)
         if list: print "status " + out_ticket["status"]
 

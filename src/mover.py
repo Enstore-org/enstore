@@ -256,7 +256,6 @@ class Mover :
         remaining_bytes = self.driver.get_eod_remaining_bytes()
         wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
 
-        print "mover",file_cookie,eod_cookie,remaining_bytes, wr_err,rd_err,wr_access,rd_access
         vcc = VolumeClerkClient(self.csc)
 
         # check for errors and inform volume clerk
@@ -313,7 +312,6 @@ class Mover :
         # All is well - write has finished successfully.
 
         # Tell volume server & update database
-	print "setting remaining bytes"
         self.vticket = vcc.set_remaining_bytes(ticket["external_label"],
                                                remaining_bytes,
                                                eod_cookie,
@@ -321,11 +319,9 @@ class Mover :
                                                wr_access,rd_access)
 
         # connect to file clerk and get new bit file id
-	print self.vticket
         fc = FileClerkClient(self.csc)
         self.fticket = fc.new_bit_file(file_cookie,ticket["external_label"],
                                        sanity_cookie,complete_crc)
-	print self.fticket
         # only bfid is needed, but save other useful information for user too
         ticket["bfid"] = self.fticket["bfid"]
         ticket["volume_clerk"] = self.vticket

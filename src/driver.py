@@ -15,7 +15,6 @@ class GenericDriver:
         self.device = device
         self.remaining_bytes = remaining_bytes
            # When a volume is ceated, the system sets EOD cookie to "none"
-        print "init eod",eod_cookie
         if eod_cookie == "none" :
             self.eod = 0
         else:
@@ -57,7 +56,7 @@ class  FTTDriver(GenericDriver) :
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
         self.blocksize = 65536
-        ETape.ET_Rewind("", self.device)
+        #ETape.ET_Rewind("", self.device)
         self.set_position()
 
     def load(self):
@@ -101,7 +100,7 @@ class  FTTDriver(GenericDriver) :
           #self.remaining_bytes = repr(1024L * (eval(stats[0])-1024) )[:-1]
 	   self.remaining_bytes = 1024L*(string.atoi(stats[0])-1024)
         else :
-          self.remaining_bytes = 44000000000L
+          self.remaining_bytes = self.remaining_bytes - stats[3] - 1024L*1024L
         self.wr_access = string.atoi(stats[1])
         if stats[2] != "Invalid" :
           self.wr_err = string.atoi(stats[2])
