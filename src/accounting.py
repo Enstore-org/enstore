@@ -126,7 +126,7 @@ class accDB:
 		overall_rate, transfer_rate, mover,
 		drive_id, drive_sn, elapsed, media_changer,
 		mover_interface, driver, storage_group, encp_ip,
-		encp_id, rw):
+		encp_id, rw, encp_version='unknown'):
 
 		if type(date) != type(""):
 			date = time2timestamp(date)
@@ -154,7 +154,8 @@ class accDB:
 			'storage_group'	: storage_group,
 			'encp_ip'	: encp_ip,
 			'encp_id'	: encp_id,
-			'rw'		: rw}
+			'rw'		: rw,
+			'encp_version'	: encp_version}
 
 		self.insert('encp_xfer', xfer)
 

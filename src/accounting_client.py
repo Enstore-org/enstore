@@ -129,7 +129,7 @@ class accClient(generic_client.GenericClient):
 		network_rate, drive_rate, disk_rate, overall_rate,
 		transfer_rate, mover, drive_id, drive_sn,
 		elapsed, media_changer, mover_interface, driver,
-		storage_group, encp_ip, encp_id, rw):
+		storage_group, encp_ip, encp_id, rw, encp_version='unknown'):
 
 		if not self.server_address: return
 
@@ -159,9 +159,10 @@ class accClient(generic_client.GenericClient):
 			'mover_interface': mover_interface,
 			'driver'	: driver,
 			'storage_group'	: storage_group,
-			'encp_ip': encp_ip,
-			'encp_id': encp_id,
-			'rw': rw}
+			'encp_ip'	: encp_ip,
+			'encp_id'	: encp_id,
+			'rw'		: rw,
+			'encp_version'	: encp_version}
 		self.send2(ticket)
 
 	def log_start_event(self, name):

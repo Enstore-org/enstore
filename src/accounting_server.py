@@ -179,7 +179,34 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		st = time.time()
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
-			if ticket.has_key('overall_rate'):
+			if ticket.has_key('encp_version'):
+				self.accDB.log_encp_xfer(
+					ticket['date'],
+					ticket['node'],
+					ticket['pid'],
+					ticket['username'],
+					ticket['src'],
+					ticket['dst'],
+					ticket['size'],
+					ticket['volume'],
+					ticket['network_rate'],
+					ticket['drive_rate'],
+					ticket['disk_rate'],
+					ticket['overall_rate'],
+					ticket['transfer_rate'],
+					ticket['mover'],
+					ticket['drive_id'],
+					ticket['drive_sn'],
+					ticket['elapsed'],
+					ticket['media_changer'],
+					ticket['mover_interface'],
+					ticket['driver'],
+					ticket['storage_group'],
+					ticket['encp_ip'],
+					ticket['encp_id'],
+					ticket['rw'],
+					ticket['encp_version'])
+			elif ticket.has_key('overall_rate'):
 				self.accDB.log_encp_xfer(
 					ticket['date'],
 					ticket['node'],
