@@ -1,0 +1,96 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# $Id$
+
+# This script attempts to backup most things on a node
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*) gang=stken
+          op="-ne"
+          ;;
+   d0en*) gang=d0en
+          op="-eq"
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+
+
+#compressor=/usr/bin/bzip2
+#compressor_suffix=tbz2
+
+compressor=/usr/bin/gzip
+compressor_suffix=tgz
+
+d=`date +"%j" | sed -e 's/^0*//'`
+d2=`expr $d \/ 2 \* 2`
+
+select="$d2 $op $d"
+if test $select; then
+  BACKUP=/master
+# rip8:/fnal  /master nfs noauto 0 0
+# rip8:/rip8b /master nfs noauto 0 0
+else
+  BACKUP=/backup
+# d0ensrv3:/diskc  /backup nfs noauto 0 0
+# stkensrv3:/diskc /backup nfs noauto 0 0
+fi
+
+mount $BACKUP
+
+node=`uname -n | sed -e 's/.fnal.gov//'`
+
+if [ `echo $node | grep -c mvr` -ne 0 ]; then
+  M=$BACKUP/enstore/$gang/movers
+else
+  M=$BACKUP/enstore/$gang/servers/`echo $node | eval sed -e 's/$gang//'`
+fi
+export M
+
+here=`pwd`
+cd $M
+if [ "$BACKUP" = "/backup" ]; then
+  mkdir -p old >/dev/null 2>/dev/null
+  mv files.err files.list files.$compressor_suffix partition_table.dd old
+else
+  rm files.err files.list files.$compressor_suffix partition_table.dd
+fi
+cd $here
+
+echo "`date`: dd-ing partition table to $M/partition_table"
+dd if=/dev/hda of=$M/partition_table.dd bs=512 count=1
+
+echo "`date` tar-ing files to $M/files.$compressor_suffix"
+nice -n 20 tar -l \
+        --exclude="/lost+found" \
+        --exclude="/proc" \
+        --exclude="/tmp/*" \
+        --exclude="/var/log/*" \
+        --exclude="/home/alcorn/*" \
+        --exclude="/home/berman/*" \
+        --exclude="/home/cgw/*" \
+        --exclude="/home/djholm/*" \
+        --exclude="/home/genser/*" \
+        --exclude="/home/huangch/*" \
+        --exclude="/home/joes/*" \
+        --exclude="/home/jonest/*" \
+        --exclude="/home/moibenko/*" \
+        --exclude="/home/patrol/*" \
+        --exclude="/home/petravic/*" \
+        --exclude="/home/ron/*" \
+        --exclude="/home/sachs/*" \
+        --exclude="*\.jon*" \
+        --exclude="*\.fnal\.gov\.startup" \
+    -cf - / 2>$M/files.err |  $compressor > $M/files.$compressor_suffix
+
+### echo "`date`: reading tar file and making list"
+### $compressor < $M/files.$compressor_suffix | tar -tvf - > $M/files.list
+
+echo "`date`:"
+ls -alR $M
+
+umount $BACKUP
+
