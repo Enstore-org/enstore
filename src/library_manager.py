@@ -233,7 +233,7 @@ def next_work_any_volume(self, csc):
 		    # and return no work to the idle requester mover
 		    return {"status" : (e_errors.NOWORK, None)}
 		else:
-		    Trace.trace(11,"next_work_any_volume:can_write_volume returned %s" % v_info['status'])
+		    Trace.trace(11,"next_work_any_volume:can_write_volume returned %s" % repr(v_info['status']))   # repr is needed here as status tuple
 
 		
             # width not exceeded, ask volume clerk for a new volume.
