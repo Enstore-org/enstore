@@ -41,10 +41,10 @@ config_host, config_port = enstore_utils_cgi.find_enstore()
 os.environ['ENSTORE_CONFIG_HOST'] = config_host
 os.environ['ENSTORE_CONFIG_PORT'] = config_port
 print '<h1><font color=#aa0000>', volume, '</font></h1>'
-res = os.popen('enstore vol --vol '+volume).readlines()
+res1 = os.popen('enstore vol --vol '+volume).readlines()
 
 # extract information
-for i in res:
+for i in res1:
     k, v = string.split(i, ':')
     if k == " 'last_access'":
         last_access = float(v[:-2])
@@ -64,37 +64,45 @@ for i in res:
         system_inhibit = si[0]+'+'+si[1]
         # system_inhibit = string.replace(string.replace(v[2:-3], "'", ""), ', ', '+')
 
+fileout = []
+res = os.popen('enstore file --list '+volume).readlines()
+res = res[2:]	# get rid of header
+total = 0L
+
+for i in res:
+    if string.find(i, 'active') != -1:
+        h1 = '<font color="#0000ff">'
+    else:
+        h1 = '<font color="#ff0000">'
+    fr = string.split(i)
+    bfid = fr[1]
+    total = total + long(fr[2])
+    i = string.strip(i)
+    i = string.replace(i, bfid, '<a href=/cgi-bin/enstore/show_file_cgi.py?bfid='+bfid+'>'+bfid+'</a>')
+    fileout.append(h1+i+'</font>')
+
 print "<font size=5 color=#0000aa><b>"
 print "<pre>"
 print "          Volume:", volume
 print "Last accessed on:", la_time
 print "      Bytes free:", show_size(remaining_bytes)
-print "   Bytes written:", show_size(capacity - remaining_bytes)
+print "   Bytes written:", show_size(total)
 print "        Inhibits:", system_inhibit
 print '</b><hr></pre>'
 print "</font><pre>"
 
-for i in res:
+for i in res1:
     print i,
 print '<p>'
 print '<hr>'
-res = os.popen('enstore file --list '+volume).readlines()
-res = res[2:]	# get rid of header
 
 header = " volume         bfid             size      location cookie     status           original path"
 
 print '<font color=#aa0000>'+header+'</font>'
 print '<p>'
 
-for i in res:
-    if string.find(i, 'active') != -1:
-        print '<font color="#0000ff">',
-    else:
-        print '<font color="#ff0000">',
-    bfid = string.split(i)[1]
-    i = string.strip(i)
-    i = string.replace(i, bfid, '<a href=/cgi-bin/enstore/show_file_cgi.py?bfid='+bfid+'>'+bfid+'</a>')
-    print i+'</font>'
+for i in fileout:
+    print i
 
 print "</body>"
 print "</html>"
