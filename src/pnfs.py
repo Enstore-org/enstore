@@ -2025,7 +2025,11 @@ def get_local_pnfs_path(p, m={}):
     for i in mtab.keys():
         if string.find(p, i) == 0 and \
            string.split(os.uname()[1], '.')[0] == mtab[i][1]:
-            return string.replace(p, i, mtab[i][0])
+            p1 = os.path.join('/pnfs/fs/usr', string.replace(p, i, mtab[i][0][1:]))
+            if os.access(p1, os.F_OK):
+                return p1
+            else:
+                return p
     return p
 
 # This is a cleaner interface to access the file, as well as its
