@@ -9,7 +9,7 @@ import time
 #&columns=Mb_User_Write%2C%20Tape_Volser%2C%20time_stamp
 #&orders=Tape_Volser%20Asc%0D%0A
 
-cmd = 'rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.*'
+cmd = 'rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.* dstat.*'
 print cmd
 os.system(cmd)
 
@@ -32,17 +32,17 @@ for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-
        d2 = string.upper(d2)
 print 'Generating burn-rate plots from', d1, ' to ',d2
 
-query_cmd='psql -h %s -p 8076 -o "drivestat.%s.txt" -c "select time,tape_volser,mb_user_write from status where date(time) between date(now())-1 and date(now()) and mb_user_write != 0;" drivestat'
+query_cmd='psql -h %s -p 8076 -o "drivestat.%s.txt" -c "select time,tape_volser,mb_user_write from status where date(time) between date(%s%s%s) and date(%s%s%s) and mb_user_write != 0;" drivestat'
 
 for host in hosts:
-    pipeObj = popen2.Popen3(query_cmd%(host,host), 0, 0)
+    pipeObj = popen2.Popen3(query_cmd%(host, host, "'", d1, "'", "'", d2, "'"), 0, 0)
     if pipeObj is None:
         sys.exit(1) 
     stat = pipeObj.wait()
     result = pipeObj.fromchild.readlines()  # result has returned string
 
 for host in hosts:
-    os.system("cat drivestat.%s.txt >> drivestat.txt"%(host,))
+    os.system("cat drivestat.%s.txt >> dstat.txt"%(host,))
 
     
 
@@ -116,7 +116,7 @@ for thefile in 'cdfen','d0en','stken':
 
 group_fd = {}
 # copy all "old" tapes files
-os.system("cp ../burn-rate/*.tapes .")
+#os.system("cp ../burn-rate/*.tapes .")
 #eagle = open('CD-9840.tapes','w')
 eagle = open('CD-9840.tapes','a')
 group_fd['CD-9840'] = eagle
@@ -125,7 +125,7 @@ beagle = open('CD-9940.tapes','a')
 group_fd['CD-9940'] = beagle
 
 print 'sorting drivestat into storage group and library'
-f = open('drivestat.txt',"r")
+f = open('dstat.txt',"r")
 while 1:
     line = f.readline()
     if not line: break
@@ -135,8 +135,10 @@ while 1:
         if len(line) > 1:
             i = 1
     if not line[i].isdigit():
+        #print "L",line
         continue
-    (d,t,junk,v,junk,mb) = line.split()
+    (d,t,junk,v,junk1,mb) = line.split()
+    #print "qqqqqqqqq",d,junk,v,junk1,mb
     if not TAPES.has_key(v):
         print "Can not find",v
         g = 'UNKNOWN.UNKNOWN'
@@ -152,9 +154,12 @@ while 1:
         group_fd[g] = o
     # convert date
     ti = time.mktime(time.strptime(d,"%Y-%m-%d"))
-    do = time.strftime("%m-%b-%y",time.localtime(ti))
+    do = time.strftime("%d-%b-%y",time.localtime(ti))
+    
     ol = string.join((do.upper(),v,mb),'\t')
     o.write('%s\n' % (ol,))
+    #if g=='cdf.cdf':
+        #print "WWW",ol
     if l in ['mezsilo','cdf','samlto'] or sg in ['cms']:
         pass
     elif l == 'eagle':
@@ -162,9 +167,10 @@ while 1:
     elif l == '9940':
         beagle.write('%s\n' % (ol,))
     else:
-        print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
+        pass
+        #print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
 
-
+#sys.exit()
 for g in group_fd.keys():
     o = group_fd[g]
     o.close()
@@ -194,7 +200,7 @@ for g in group_fd.keys():
     print cmd
     os.system(cmd)
 
-
+sys.exit()
 
 cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/burn-rate/'
 print cmd
