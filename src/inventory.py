@@ -992,7 +992,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         else:
             vsum = {}
 
-        if vv.has_key['sum_mounts']:
+        if vv.has_key('sum_mounts'):
             mounts = vv['sum_mounts']
         else:
             mounts = -1
