@@ -4893,7 +4893,7 @@ class encp(interface.Interface):
 
 ##############################################################################
 
-def main():
+def main(intf):
     #Snag the start time.  t0 is needed by the mover, but its name conveys
     # less meaning.
     encp_start_time = time.time()
@@ -4909,13 +4909,13 @@ def main():
     
     # use class to get standard way of parsing options
     #e = encp()
-    e = EncpInterface(sys.argv, 0) # zero means admin
+    #e = EncpInterface(sys.argv, 0) # zero means admin
     #if e.test_mode:
     #    print "WARNING: running in test mode"
 
-    for x in xrange(6, e.verbose+1):
+    for x in xrange(6, intf.verbose+1):
         Trace.do_print(x)
-    for x in xrange(1, e.verbose+1):
+    for x in xrange(1, intf.verbose+1):
         Trace.do_message(x)
 
     #If verbosity is turned on get the user name(s).
@@ -4940,7 +4940,7 @@ def main():
 
     #If verbosity is turned on and the transfer is a write to enstore,
     # output the tag information.
-    t=pnfs.Tag(os.path.dirname(e.output[0]))
+    t=pnfs.Tag(os.path.dirname(intf.output[0]))
     try:
         library = t.get_library()
     except (OSError, IOError, KeyError, TypeError):
@@ -4991,12 +4991,12 @@ def main():
     Trace.message(DONE_LEVEL, id_line)
     Trace.message(DONE_LEVEL, command_line)
     Trace.message(DONE_LEVEL, version_line)
-    if e.outtype == "hsmfile":
+    if intf.outtype == "hsmfile":
         Trace.message(DONE_LEVEL, tag_line)
     Trace.message(DONE_LEVEL, cwd_line)
 
     #Print out the information from the command line.
-    Trace.message(CONFIG_LEVEL, format_class_for_print(e, "e"))
+    Trace.message(CONFIG_LEVEL, format_class_for_print(intf, "intf"))
 
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.
@@ -5007,60 +5007,62 @@ def main():
 
     # convenient, but maybe not correct place, to hack in log message
     # that shows how encp was called.
-    if e.outtype == "hsmfile":  #write
+    if intf.outtype == "hsmfile":  #write
         Trace.log(e_errors.INFO, "%s  %s  %s  %s  %s" %
                   (version_line, id_line, tag_line, cwd_line, command_line))
     else:                       #read
         Trace.log(e_errors.INFO, "%s  %s  %s  %s" %
                   (version_line, id_line, cwd_line, command_line))
 
-    if e.data_access_layer:
+    if intf.data_access_layer:
         global data_access_layer_requested
-        data_access_layer_requested = e.data_access_layer
+        data_access_layer_requested = intf.data_access_layer
         #data_access_layer_requested.set()
 
     #Special handling for use with dcache - not yet enabled
-    if e.get_cache:
+    if intf.get_cache:
         #pnfs_id = sys.argv[-2]
         #local_file = sys.argv[-1]
         #print "pnfsid", pnfs_id
         #print "local file", local_file
-        done_ticket = read_from_hsm(e, tinfo)
+        done_ticket = read_from_hsm(intf, tinfo)
 
     #Special handling for use with dcache - not yet enabled
-    elif e.put_cache:
+    elif intf.put_cache:
         #pnfs_id = sys.argv[-2]
         #local_file = sys.argv[-1]
-        done_ticket = write_to_hsm(e, tinfo)
+        done_ticket = write_to_hsm(intf, tinfo)
         
     ## have we been called "encp unixfile hsmfile" ?
-    elif e.intype=="unixfile" and e.outtype=="hsmfile" :
-        done_ticket = write_to_hsm(e, tinfo)
+    elif intf.intype=="unixfile" and intf.outtype=="hsmfile" :
+        done_ticket = write_to_hsm(intf, tinfo)
         
 
     ## have we been called "encp hsmfile unixfile" ?
-    elif e.intype=="hsmfile" and e.outtype=="unixfile" :
-        done_ticket = read_from_hsm(e, tinfo)
+    elif intf.intype=="hsmfile" and intf.outtype=="unixfile" :
+        done_ticket = read_from_hsm(intf, tinfo)
 
 
     ## have we been called "encp unixfile unixfile" ?
-    elif e.intype=="unixfile" and e.outtype=="unixfile" :
-        emsg="encp copies to/from tape. It is not involved in copying %s to %s" % (e.intype, e.outtype)
+    elif intf.intype=="unixfile" and intf.outtype=="unixfile" :
+        emsg="encp copies to/from tape. It is not involved in copying %s to %s" % (intf.intype, intf.outtype)
         print_error('USERERROR', emsg)
-        if e.data_access_layer:
-            print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
+        if intf.data_access_layer:
+            print_data_access_layer_format(intf.input, intf.output, 0,
+                                           {'status':("USERERROR",emsg)})
         quit()
 
     ## have we been called "encp hsmfile hsmfile?
-    elif e.intype=="hsmfile" and e.outtype=="hsmfile" :
+    elif intf.intype=="hsmfile" and intf.outtype=="hsmfile" :
         emsg=  "encp tape to tape is not implemented. Copy file to local disk and them back to tape"
         print_error('USERERROR', emsg)
-        if e.data_access_layer:
-            print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
+        if intf.data_access_layer:
+            print_data_access_layer_format(intf.input, intf.output, 0,
+                                           {'status':("USERERROR",emsg)})
         quit()
 
     else:
-        emsg = "ERROR: Can not process arguments %s"%(e.args,)
+        emsg = "ERROR: Can not process arguments %s"%(intf.args,)
         Trace.trace(16,emsg)
         print_data_access_layer_format("","",0,{'status':("USERERROR",emsg)})
         quit()
@@ -5071,10 +5073,10 @@ def main():
         status = done_ticket.get('status', (e_errors.UNKNOWN,e_errors.UNKNOWN))
         Trace.log(e_errors.INFO, string.replace(status[1], "\n\t", "  "))
 
-        if e.data_access_layer and not exit_status:
+        if intf.data_access_layer and not exit_status:
             #If there was no error and they want the data access layer anyway,
             # print it out.
-            print_data_access_layer_format(e.input, e.output,
+            print_data_access_layer_format(intf.input, intf.output,
                                            done_ticket.get('file_size', 0),
                                            done_ticket)
         else:
@@ -5091,12 +5093,12 @@ def main():
     #Quit safely by Removing any zero length file for transfers that failed.
     quit(exit_status)
 
-if __name__ == '__main__':
 
+def do_work(intf):
     setup_signal_handling()
 
     try:
-        main()
+        main(intf)
         quit(0)
     except SystemExit, msg:
         quit(1)
@@ -5107,3 +5109,8 @@ if __name__ == '__main__':
         #quit(1)
         
         
+if __name__ == '__main__':
+
+    intf = EncpInterface(sys.argv, 0) # zero means admin
+
+    do_work(intf)

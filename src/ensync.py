@@ -211,14 +211,18 @@ def main(intf):
         sys.exit(1)
 
 ############################################################################
+
+def do_work(intf):
+    
+    encp.setup_signal_handling()
+
+    main(intf)
+
+############################################################################
 ############################################################################
 
 if __name__ == '__main__':
 
-    encp.setup_signal_handling()
-    
-    intf = EnsyncInterface(user_mode=0)
+    intf = EnsyncInterface(user_mode=0) #defualt admin
 
-    intf._mode = "admin"
-
-    main(intf)
+    do_work(intf)
