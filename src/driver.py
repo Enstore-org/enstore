@@ -213,7 +213,6 @@ class  FTTDriver(GenericDriver) :
 	# Note: remaining_bytes is updated in write and
 	# fd_xfer (when opened for write)
 	ss = FTT.get_stats()
-	print 'ronDBG - self.remaining_bytes:',self.remaining_bytes," ss['remain_tape']:", ss['remain_tape']
 	return {'remaining_bytes':self.remaining_bytes,
 		'wr_err':self.wr_err,
 		'rd_err':self.rd_err,
