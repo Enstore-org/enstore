@@ -68,11 +68,13 @@ NOREAD="noread"
 NOWRITE="nowrite"
 OSERROR = "OS ERROR"                    #Blanket error for caught OSError.
 PNFS_ERROR = "PNFS ERROR"               #Encp to Pnfs specific error.
-ENCP_STUCK = "ENCP STUCK"               # mover dected no transfers on encp side
+ENCP_STUCK = "ENCP STUCK"               #Mover dected no transfers on encp side
 POSITIONING_ERROR='POSITIONING_ERROR'
 
 #V3 additions:
 DEVICE_ERROR = "DEVICE ERROR"           #read()/write() call stuck in kernel.
+FILE_MODIFIED = "FILE WAS MODIFIED" #Encp knows local file changed.
+
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
@@ -182,6 +184,7 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          NOWRITE, # Library is locked for the write access
                          NOSPACE, # Local disk full on read.
                          CRC_ERROR,  #Set by mover
+                         FILE_MODIFIED, #When writing the file changed.
                          )
 
 raise_alarm_errors = ( CRC_ENCP_ERROR,  #Set by encp
