@@ -93,7 +93,7 @@ def signal_handler(sig, frame):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v2_12  CVS $Revision$ "
+    version_string = "v2_13  CVS $Revision$ "
     file = globals().get('__file__', "")
     if file: version_string = version_string + file
     return version_string
