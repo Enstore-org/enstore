@@ -30,7 +30,11 @@ import Trace
 
 ##############################################################################
 
-def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
+def write_to_hsm(input, output,
+                 config_host, config_port,
+                 list=0, chk_crc=1,
+                 pri=1, delpri=0, agetime=0,
+                 t0=0):
     if t0==0:
         t0 = time.time()
     Trace.trace(6,"{write_to_hsm input="+repr(input)+\
@@ -50,6 +54,12 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     unique_id = []
     global logc # needs to be global so other defs can use it in this file
     (csc,u,uinfo) = clients(config_host,config_port,list)
+
+    # make the part of the ticket that encp knows about (there's more later)
+    encp = {}
+    encp["pri"] = pri
+    encp["delpri"] = delpri
+    encp["agetime"] = agetime
 
     tinfo["clients"] = time.time() - t1 #-----------------------------------End
     if list>2:
@@ -122,6 +132,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     # get a port to talk on and listen for connections
     Trace.trace(10,'write_to_hsm calling callback.get_callback')
     host, port, listen_socket = callback.get_callback()
+    encp["callback_addr"] = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'write_to_hsm got callback host='+repr(host)+\
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
@@ -177,7 +188,8 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
             # if old ticket exists, that means we are retrying
             #    then just bump priority and change unique id
             try:
-                work_ticket["priority"] = workticket["priority"]+4
+                work_ticket["priority"] = workticket["priority"]+4 # this will be deleted shortly
+                work_ticket["encp"]["pri"] = work_ticket["encp"]["pri"] +4
                 work_ticket["unique_id"] = unique_id[i]
 
             # if no ticket, then this is a not a retry
@@ -185,16 +197,18 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
                 file_clerk = {"library"            : library[i],\
                               "file_family"        : file_family[i],\
                               "file_family_width"  : width[i]}
-                uinfo["callback_addr"] = (host, port)
+                uinfo["callback_addr"] = (host, port)        # this will be deleted shortly
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
-                uinfo["delayed_dismount"] = delayed_dismount
+                uinfo["delayed_dismount"] = delayed_dismount  # this will be deleted shortly
+                encp["delayed_dismount"] = delayed_dismount
                 uinfo["mtime"] = int(time.time())
-                work_ticket = {"work"               : "write_to_hsm",\
-                               "priority"           : 1,\
-                               "fc"                 : file_clerk,\
-                               "pinfo"              : pinfo[i],\
-                               "uinfo"              : uinfo,\
+                work_ticket = {"work"               : "write_to_hsm",
+                               "priority"           : 1,
+                               "fc"                 : file_clerk,
+                               "pinfo"              : pinfo[i],
+                               "uinfo"              : uinfo,
+                               "encp"               : encp,
                                "unique_id"          : unique_id[i]
                                }
 
@@ -433,7 +447,11 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
 ##############################################################################
 
-def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
+def read_from_hsm(input, output,
+                  config_host, config_port,
+                  list=0, chk_crc=1,
+                  pri=1, delpri=0, agetime=0,
+                  t0=0):
     if t0==0:
         t0 = time.time()
     Trace.trace(6,"{read_from_hsm input="+repr(input)+\
@@ -457,6 +475,12 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     delayed_dismount = 0
     global logc
     (csc,u,uinfo) = clients(config_host,config_port,list)
+
+    # make the part of the ticket that encp knows about (there's more later)
+    encp = {}
+    encp["pri"] = pri
+    encp["delpri"] = delpri
+    encp["agetime"] = agetime
 
     tinfo["clients"] = time.time() - t1 #-----------------------------------End
     if list>2:
@@ -507,6 +531,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     # get a port to talk on and listen for connections
     Trace.trace(10,'read_from_hsm calling callback.get_callback')
     host, port, listen_socket = callback.get_callback()
+    encp["callback_addr"] = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'read_from_hsm got callback host='+repr(host)+\
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
@@ -581,17 +606,19 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             if volume[i]==vol:
                 unique_id[i] = time.time()  # note that this is down to mS
                 uinfo["fullname"] = outputlist[i]
-                uinfo["callback_addr"] = (host, port)
+                uinfo["callback_addr"] = (host, port)        # this will be deleted shortly
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
-                uinfo["delayed_dismount"] = delayed_dismount
+                uinfo["delayed_dismount"] = delayed_dismount # this will be deleted shortly
+                encp["delayed_dismount"] = delayed_dismount
 
                 # generate the work ticket
                 file_clerk = {"bfid"               : bfid[i]}
-                work_ticket = {"work"              : "read_from_hsm",\
-                               "uinfo"             : uinfo,\
-                               "fc"                : file_clerk,\
-                               "pinfo"             : pinfo[i],\
+                work_ticket = {"work"              : "read_from_hsm",
+                               "uinfo"             : uinfo,
+                               "fc"                : file_clerk,
+                               "pinfo"             : pinfo[i],
+                               "encp"              : encp,
                                "unique_id"         : unique_id[i]
                                }
 
@@ -1121,7 +1148,11 @@ class encp(interface.Interface):
     def __init__(self):
         Trace.trace(16,"{encp.__init__")
 
-        self.chk_crc = 1
+        self.chk_crc = 1 # we will check the crc unless told not to
+        self.pri = 1     # lowest priority
+        self.delpri = 0  # priority doesn't change
+        self.agetime = 0 # priority doesn't age
+
         host = 'localhost'
         port = 0
         interface.Interface.__init__(self, host, port)
@@ -1137,7 +1168,7 @@ class encp(interface.Interface):
 
         the_options = self.config_options()+\
                       self.list_options()+\
-                      ["nocrc"] +\
+                      ["nocrc","pri=","delpri=","agetime="] +\
                       self.help_options()
 
         Trace.trace(16,"}encp.options options="+repr(the_options))
@@ -1221,15 +1252,17 @@ if __name__  ==  "__main__" :
 
     # have we been called "encp unixfile hsmfile" ?
     if e.intype=="unixfile" and e.outtype=="hsmfile" :
-        write_to_hsm(e.input,  e.output,\
-                     e.config_host, e.config_port,\
-                     e.list, e.chk_crc, t0)
+        write_to_hsm(e.input,  e.output,
+                     e.config_host, e.config_port,
+                     e.list, e.chk_crc,
+                     e.pri, e.delpri, e.agetime, t0)
 
     # have we been called "encp hsmfile unixfile" ?
     elif e.intype=="hsmfile" and e.outtype=="unixfile" :
-        read_from_hsm(e.input, e.output,\
-                      e.config_host, e.config_port,\
-                      e.list, e.chk_crc, t0)
+        read_from_hsm(e.input, e.output,
+                      e.config_host, e.config_port,
+                      e.list, e.chk_crc,
+                      e.pri, e.delpri, e.agetime, t0)
 
     # have we been called "encp unixfile unixfile" ?
     elif e.intype=="unixfile" and e.outtype=="unixfile" :
@@ -1247,4 +1280,3 @@ if __name__  ==  "__main__" :
         jraise(errno.errorcode[errno.EPROTO],emsg)
 
     Trace.trace(1,"encp finished at "+repr(time.time()))
-
