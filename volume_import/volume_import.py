@@ -113,6 +113,7 @@ if __name__=="__main__":
 
 
     #before we do anything else, make sure we can create the pnfs directories
+    if verbose:  print "checking pnfs permissions"
     gid=os.getegid()
     uid=os.geteuid()
     for vol_name in volume_dict.keys():
@@ -125,8 +126,9 @@ if __name__=="__main__":
                 sys.exit(-1)
             pnfs_dir = os.path.dirname(pnfs_filename)
             #figure out how much of pnfs_dir path already exists:
-            while not os.path.exists(pnfs_dir):
+            while pnfs_dir and not os.path.exists(pnfs_dir):
                 pnfs_dir = os.path.split(pnfs_dir)[0]
+                
             #make sure we have write access
             stat_info = os.stat(pnfs_dir)
             mode=stat_info[stat.ST_MODE]
@@ -141,6 +143,7 @@ if __name__=="__main__":
                 print "Error, no write access to %s" % (pnfs_dir,)
                 sys.exit(-1)
     #ok, we have sufficient permissions to create the pnfs entries
+    if verbose: print "pnfs permissions ok"
     
     if config_host=="localhost":
         config_host = socket.gethostname()
