@@ -1125,8 +1125,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 		 'last_location': self.last_location,
 		 'time_stamp'   : now,
                  }
-        if self.dismount_timer and self.dismount_timer>now:
-            tick['dismount time'] = now-self.dismount_timer()
+        if self.dismount_time and self.dismount_time>now:
+            tick['will dismount'] = 'in %.1f seconds'%(now - self.dismount_time)
             
 	self.reply_to_caller( tick )
 	return
