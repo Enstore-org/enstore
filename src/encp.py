@@ -10,7 +10,7 @@
 # $ENSTORE_CONFIG_PORT = The port number of the configuration server.
 # $ENSTORE_SPECIAL_LIB = Override the library manager to use.  Use with care.
 #                        Its original purpose was to use a migration LM
-#                        for the 9940A to 9940B conversion.
+#                        for the 9940A to 9940B conversion.  (reads only)
 # $ENCP_DAQ = <Its a mover thing.>
 # $ENCP_CANONICAL_DOMAINNAME = Encp will attempt on reads to try the three
 #                              paths to a file: /pnfs/xyz, /pnfs/fs/usr/xyz and
@@ -4403,7 +4403,10 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         #There is no sense to get these values every time.  Only get them
         # on the first pass.
         if not library:
-            library = t.get_library()
+            if e.output_library:
+                library = e.output_library
+            else:
+                library = t.get_library()
         #The pnfs file family may be overridden with the options
         # --ephemeral or --file-family.
         if not file_family:
@@ -4414,9 +4417,15 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         if not file_family_width:
             file_family_width = t.get_file_family_width()
         if not file_family_wrapper:
-            file_family_wrapper = t.get_file_family_wrapper()
+            if e.output_file_family_wrapper:
+                file_family_wrapper = e.output_file_family_wrapper
+            else:
+                file_family_wrapper = t.get_file_family_wrapper()
         if not storage_group:
-            storage_group = t.get_storage_group()
+            if e.output_storage_group:
+                storage_group = e.output_storage_group
+            else:
+                storage_group = t.get_storage_group()
         #except (OSError, IOError), msg:
         #    print_data_access_layer_format(
         #        '', '', 0, {'status':
@@ -6674,9 +6683,14 @@ class EncpInterface(option.Interface):
                                    # before resubmitting req. to lib. mgr.
                                    # 15 minutes
 
-        #misc.
-        self.output_file_family = '' # initial set for use with --ephemeral or
+        #Options for overriding the pnfs tags.
+        self.output_file_family = "" # initial set for use with --ephemeral or
                                      # or --file-family
+        self.output_file_family_wrapper = ""
+        self.output_library = ""
+        self.output_storage_group = ""
+
+        #misc.
         #self.bytes = None          #obsolete???
         #self.test_mode = 0         #obsolete???
         self.pnfs_is_automounted = 0 # true if pnfs is automounted.
@@ -6786,6 +6800,14 @@ class EncpInterface(option.Interface):
                             option.VALUE_TYPE:option.STRING,
                             option.VALUE_NAME:"output_file_family",
                             option.USER_LEVEL:option.USER,},
+        option.FILE_FAMILY_WRAPPER:{option.HELP_STRING:
+                                    "Specify an alternative file family "
+                                    "wrapper to override the pnfs file family "
+                                    "wrapper tag (writes only).",
+                                    option.VALUE_USAGE:option.REQUIRED,
+                                    option.VALUE_TYPE:option.STRING,
+                               option.VALUE_NAME:"output_file_faimily_wrapper",
+                                    option.USER_LEVEL:option.ADMIN,},
         option.GET_BFID:{option.HELP_STRING:
                          "Specifies that dcache requested the file and that "
                          "the first 'filename' is really the file's bfid.",
@@ -6798,6 +6820,13 @@ class EncpInterface(option.Interface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.USER_LEVEL:option.ADMIN,},
+        option.LIBRARY:{option.HELP_STRING:
+                            "Specify an alternativelibrary to override "
+                            "the pnfs library tag (writes only).",
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_NAME:"output_library",
+                            option.USER_LEVEL:option.ADMIN,},
         option.MAX_RETRY:{option.HELP_STRING:
                           "Specifies number of non-fatal errors that can "
                           "occur before encp gives up. (default = 3)",
@@ -6859,6 +6888,14 @@ class EncpInterface(option.Interface):
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.DEFAULT_VALUE:1,
                          option.USER_LEVEL:option.ADMIN,},
+        option.STORAGE_GROUP:{option.HELP_STRING:
+                               "Specify an alternative storage group to "
+                               "override the pnfs strorage group tag "
+                               "(writes only).",
+                               option.VALUE_USAGE:option.REQUIRED,
+                               option.VALUE_TYPE:option.STRING,
+                               option.VALUE_NAME:"output_storage_group",
+                               option.USER_LEVEL:option.ADMIN,},
         option.THREADED:{option.HELP_STRING:
                          "Multithread the actual data transfer.",
                          option.DEFAULT_TYPE:option.INTEGER,
