@@ -408,17 +408,13 @@ class AML2_MediaLoader(MediaLoaderMethods):
             self.driveCleanTime = self.mc_config['DriveCleanTime'] # force the exception
             return
 
-        if self.mc_config.has_key('CleanTapeFileFamily'):   # error if DriveCleanTime assignments not in config
+        if self.mc_config.has_key('CleanTapeVolumeFamily'):   # error if DriveCleanTime assignments not in config
             try:
-                self.cleanTapeFileFamily,self.cleanTapeFileWrapper = string.split(self.mc_config['CleanTapeFileFamily'],'.') # expected format is "externalfamilyname.wrapper"
+		    self.cleanTapeVolumeFamily = self.mc_config['CleanTapeVolumeFamily'] # expected format is "externalfamilyname.wrapper"
+		    fields = string.split(self.cleanTapeVolumeFamily, '.')
+		    self.cleanTapeWrapper = fields[-1]
             except IndexError:
-                Trace.log(e_errors.ERROR, "ERROR:mc:aml2 bad CleanTapeFileFamily in configuration file")
-        else:
-            try:
-                self.cleanTapeFileFamily,self.cleanTapeFileWrapper = string.split(self.mc_config['CleanTapeFileFamily'],'.')
-            except:
-                Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no CleanTapeFileFamily assignments in configuration")
-                self.cleanTapeFileFamily,self.cleanTapeFileWrapper = None,None
+                Trace.log(e_errors.ERROR, "ERROR:mc:aml2 bad CleanTapeVolumeFamily in configuration file")
 
         if self.mc_config.has_key('IdleTimeHome'):
             if (type(self.mc_config['IdleTimeHome']) == types.IntType and
@@ -542,7 +538,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
         driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         min_remaining_bytes = 1
-        wrapper = self.cleanTapeFileWrapper
+        wrapper = self.cleanTapeWrapper
         vol_veto_list = []
         first_found = 0
         libraryManagers = inTicket['moverConfig']['library']
@@ -555,7 +551,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
             status = 37
             return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
         v = vcc.next_write_volume(library,
-                                  min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
+                                  min_remaining_bytes, self.cleanTapeVolumeFamily, wrapper, 
                                   vol_veto_list, first_found)  # get which volume to use
         if v["status"][0] != e_errors.OK:
             Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
