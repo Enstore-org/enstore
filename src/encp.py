@@ -165,37 +165,6 @@ class EncpError(Exception):
     
 ############################################################################
 
-def signal_handler(sig, frame):
-
-    try:
-        if sig != signal.SIGTERM and sig != signal.SIGINT:
-            sys.stderr.write("Signal caught at: ", frame.f_code.co_filename,
-                             frame.f_lineno);
-            sys.stderr.flush()
-    except:
-        pass
-    
-    try:
-        sys.stderr.write("Caught signal %s, exiting\n" % (sig,))
-        sys.stderr.flush()
-    except:
-        pass
-
-    if sig != signal.SIGTERM: #If they kill, don't do anything.
-        quit(1)
-
-def setup_signal_handling():
-    
-    #Handle all signal not in the known skip list.
-    for sig in range(1, signal.NSIG):
-        if sig not in (signal.SIGTSTP, signal.SIGCONT,
-                       signal.SIGCHLD, signal.SIGWINCH):
-            try:
-                signal.signal(sig, signal_handler)
-            except:
-                sys.stderr.write("Setting signal %s to %s failed.\n" %
-                                 (sig, signal_handler))
-
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
@@ -205,8 +174,9 @@ def encp_client_version():
     return version_string
 
 def quit(exit_code=1):
-    delete_at_exit.delete()
-    os._exit(exit_code)
+    delete_at_exit.quit(exit_code)
+    #delete_at_exit.delete()
+    #os._exit(exit_code)
 
 def print_error(errcode,errmsg):
     format = str(errcode)+" "+str(errmsg) + '\n'
@@ -5115,7 +5085,7 @@ def main(intf):
 
 
 def do_work(intf):
-    setup_signal_handling()
+    delete_at_exit.setup_signal_handling()
 
     try:
         main(intf)

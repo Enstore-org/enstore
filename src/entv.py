@@ -34,6 +34,7 @@ import setpath
 import Trace
 import generic_client
 import option
+import delete_at_exit
 
 #4-30-2002: For reasons unknown to me the order of the imports matters a lot.
 # If the wrong order is done, then the dashed lines are not drawn.
@@ -76,44 +77,6 @@ def open_files(message):
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
-def signal_handler(sig, frame):
-    global status_thread, messages_thread
-    global stop_now
-
-    try:
-        if sig != signal.SIGTERM and sig != signal.SIGINT:
-            sys.stderr.write("Signal caught at: ", frame.f_code.co_filename,
-                             frame.f_lineno);
-            sys.stderr.flush()
-    except (OSError, IOError, TypeError):
-        pass
-    
-    try:
-        sys.stderr.write("Caught signal %s, exiting\n" % (sig,))
-        sys.stderr.flush()
-    except IOError:
-        pass
-
-    #flag the threads to stop.
-    stop_now = 1
-    
-    thread = threading.currentThread()
-    if thread != status_thread:
-        status_thread.join()
-    if thread != messages_thread:
-        messages_thread.join()
-    sys.exit(0)
-
-def setup_signal_handling():
-    
-    for sig in range(1, signal.NSIG):
-        if sig not in (signal.SIGTSTP, signal.SIGCONT,
-                       signal.SIGCHLD, signal.SIGWINCH):
-            try:
-                signal.signal(sig, signal_handler)
-            except (ValueError, TypeError):
-                sys.stderr.write("Setting signal %s to %s failed.\n" %
-                                 (sig, signal_handler))
 
 def dict_eval(data):
     ##This is like "eval" but it assumes the input is a
@@ -807,7 +770,7 @@ def main(intf):
         
 if __name__ == "__main__":
 
-    setup_signal_handling()
+    delete_at_exit.setup_signal_handling()
 
     intf = EntvClientInterface(user_mode=0)
 

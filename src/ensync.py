@@ -13,7 +13,7 @@ import string
 import Trace
 import option
 import generic_client
-import encp
+import delete_at_exit
 
 
 MY_NAME = "ENSYNC"
@@ -214,7 +214,7 @@ def main(intf):
 
 def do_work(intf):
     
-    encp.setup_signal_handling()
+    delete_at_exit.setup_signal_handling()
 
     main(intf)
 
