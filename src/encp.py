@@ -1078,7 +1078,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         if verbose > 2:
             print "To many retries for %s -> %s." % (infile, outfile)
         status = (e_errors.TOO_MANY_RETRIES, status)
-
+    print "STATUS"
+    print status
     #If the error is not retriable, remove it from the request queue.
     if not e_errors.is_retriable(status[0]):
         #Print error to stdout in data_access_layer format. However, only
@@ -2340,7 +2341,9 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         #Verify that everything is ok on the mover side of the transfer.
         result_dict = handle_retries(requests, requests[j],
                                      done_ticket, None, e)
-
+        print "RESULT_DICT"
+        pprint.pprint(result_dict)
+        
         if result_dict['status'][0] == e_errors.RETRY:
             print "1111111111"
             continue
