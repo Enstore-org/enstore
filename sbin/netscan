@@ -440,7 +440,7 @@ else
     maxproc=200  #servers
 fi
 
-if [ $NPROC -ge $NPROC ]; then
+if [ $NPROC -ge $maxproc ]; then
    msg="$NPROC processes running. Way too many"
    logit "$msg"
    if [ $ALARM -eq 1 ]; then
