@@ -6,23 +6,18 @@ import errno
 import pprint
 import pwd
 import grp
-import pnfs
-import callback
+import socket
 import binascii
 import regsub
-import log_client
-from configuration_client import configuration_client
-from udp_client import UDPClient, TRANSFER_MAX
 
-# Import SOCKS module if it exists, else standard socket module socket
-# This is a python module that works just like the socket module, but uses
-# the SOCKS protocol to make connections through a firewall machine.
-# See http://www.w3.org/People/Connolly/support/socksForPython.html or
-# goto www.python.org and search for "import SOCKS"
-try:
-    import SOCKS; socket = SOCKS
-except ImportError:
-    import socket
+# enstore modules
+import pnfs
+import callback
+import log_client
+import configuration_client
+import udp_client
+import EXfer
+
 
 ##############################################################################
 
@@ -192,22 +187,34 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     mycrc = 0
     if list:
         print "Sending data", "   cum=",time.time()-t0
-    while 1:
-        buf = in_file.read(min(fsize, 65536*4))
-        if len(buf) == 0 : break
-        if chk_crc != 0 :
-            mycrc = binascii.crc_hqx(buf,mycrc)
-#        badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
-#                                              socket.SO_ERROR)
-#        if badsock != 0 :
-#            print "encp write_to_hsm, sending data, pre-send error:", \
-#                  errno.errorcode[badsock]
-        data_path_socket.send(buf)
-        badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0 :
-            print "encp write_to_hsm, sending data, post-send error:", \
-                  errno.errorcode[badsock]
+
+
+    if 1:
+	try:
+	    mycrc = EXfer.usrTo_( in_file, data_path_socket, binascii.crc_hqx,
+				  65536/2, chk_crc )
+	except:
+	    print "Error with encp EXfer - continueing";traceback.print_exc()
+    else:
+
+	while 1:
+	    buf = in_file.read(min(fsize, 65536*4))
+	    if len(buf) == 0 : break
+	    if chk_crc != 0 :
+		mycrc = binascii.crc_hqx(buf,mycrc)
+#            badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
+#                                                  socket.SO_ERROR)
+#            if badsock != 0 :
+#                print "encp write_to_hsm, sending data, pre-send error:", \
+#                      errno.errorcode[badsock]
+            data_path_socket.send(buf)
+	    badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
+						  socket.SO_ERROR)
+	    if badsock != 0 :
+		print "encp write_to_hsm, sending data, post-send error:", \
+		      errno.errorcode[badsock]
+
+
     data_path_socket.close()
     in_file.close()
     t2 = time.time()
@@ -581,8 +588,8 @@ if __name__  ==  "__main__" :
             config_port = value
         elif opt == "--config_list" :
             config_list = 1
-        elif opt == "--nocrc" :
-            chkcrc = 0
+        elif opt == "--nocrc":
+            chk_crc = 0
         elif opt == "--list" or opt == "--verbose":
             list = 1
         elif opt == "--help" :
@@ -605,8 +612,8 @@ if __name__  ==  "__main__" :
     # get a configuration server
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client(config_host,config_port)
-    u = UDPClient()
+    csc = configuration_client.configuration_client(config_host,config_port)
+    u = udp_client.UDPClient()
 
     # get a logger
     logc = log_client.LoggerClient(csc, 'ENCP', 'logserver', 0)

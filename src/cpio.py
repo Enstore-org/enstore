@@ -4,6 +4,9 @@ import stat
 import errno
 import binascii
 import string
+import time
+import traceback
+import EXfer
 
 """
 
@@ -202,137 +205,153 @@ class cpio :
         # generate the headers for the archive and write out 1st one
         format = "new"
         nlink = 1
-        header,head_crc,trailer = self.headers(format, inode, mode, uid,
+        header,crc_header,trailer = self.headers(format, inode, mode, uid,
                                                gid, nlink, mtime, filesize,
                                                major, minor, rmajor, rminor,
                                                filename,0)
         size = len(header)
-        self.write_driver.write_block(header,)
 
-        # now read input and write it out
-        sanity_crc = 0
-        sanity_size = 0
-        data_crc = 0
-        data_size = 0
-        while 1:
-            b = self.read_driver.read_block()
-            length = len(b)
-            if length == 0 :
-                break
-            size = size + length
-            data_size = data_size + length
-            # we need a complete crc of the data in the file
-            data_crc = self.crc_fun(b,data_crc)
 
-            # we also need a "sanity" crc of 1st sanity_bytes of data in file
-            # so, we crc the 1st portion of the data twice (should be ok)
-            if sanity_size < sanity_bytes :
-                if sanity_size + length <= sanity_bytes :
-                    sanity_end = length
-                    sanity_size = sanity_size+length
-                else :
-                    sanity_end = sanity_bytes - sanity_size
-                    sanity_size = sanity_bytes
-                sanity_crc = self.crc_fun(b[0:sanity_end],sanity_crc)
+	if 1:
+	    try:
+		# it is assumed that the data size will be greater than sanity_bytes
+		# the header is passed thru ETape
+		(dat_bytes,dat_crc,san_crc) = EXfer.to_HSM( self.read_driver, self.write_driver,
+							    self.crc_fun, sanity_bytes, header )
+		# sanity_bytes will be dat_bytes when dat_bytes is less than
+		# sanity_bytes.
+		if dat_bytes < sanity_bytes:
+		    san_bytes = dat_bytes
+		else:
+		    san_bytes = sanity_bytes
+		    size = size + dat_bytes
+		# partial tape block will be in ETape buffer????
+	    except:
+		print "Error with EXfer - continueing";traceback.print_exc()
 
-            self.write_driver.write_block(b,)
+	else:
+	    self.write_driver.write_block(header,)
+
+	    # now read input and write it out
+	    san_crc = 0; san_bytes = 0	# "in progress" (shorter 3-character names) crc's,
+	    dat_crc = 0; dat_bytes = 0	#          data bytes and sanity bytes read.
+	    ronDbg = 0
+	    while 1:
+		b = self.read_driver.read_block()
+		length = len(b)
+		if length == 0 :
+		    break
+		size = size + length
+		dat_bytes = dat_bytes + length
+		# we need a complete crc of the data in the file
+		dat_crc = self.crc_fun(b,dat_crc)
+		
+		# we also need a "sanity" crc of 1st sanity_bytes of data in file
+		# so, we crc the 1st portion of the data twice (should be ok)
+		if san_bytes < sanity_bytes :
+		    if san_bytes + length <= sanity_bytes :
+			sanity_end = length
+			san_bytes = san_bytes+length
+		    else:
+			sanity_end = sanity_bytes - san_bytes
+			san_bytes = sanity_bytes # finished
+		    san_crc = self.crc_fun(b[0:sanity_end],san_crc)
+
+		self.write_driver.write_block(b,)
 
         # write out the trailers
-        self.write_driver.write_block(self.trailers(size,head_crc,data_crc,trailer),)
-        sanity_cookie = (sanity_bytes,sanity_crc)
-        return (data_size, data_crc, repr(sanity_cookie))
+        self.write_driver.write_block(self.trailers(size,crc_header,dat_crc,trailer),)
+        sanity_cookie = (san_bytes,san_crc)
+        return (dat_bytes, dat_crc, repr(sanity_cookie))
 
 
     # read an enstore archive: devices must be ready and open
     def read(self, sanity_cookie="(0,0)") :
 
-        # setup counters/flags
-        sanity_bytes,sanity_crc=eval(sanity_cookie)
-        san_crc = 0
-        data_crc = 0
-        data_size = 0
-        sanity_size = 0
-        first = 1
-        size = 0
-        parse_header = 1
+        # setup counters
+        sanity_bytes, sanity_crc = eval(sanity_cookie)
+	dat_crc = 0;  san_crc = 0	# "in progress" (shorter 3-character names) crc's,
+        dat_bytes = 0; san_bytes = 0	#          data bytes and sanity bytes read.
 
-        # now read input file and write it out
-        while size < data_size or first:
-            first = 0
-            offset = 0
-            buffer = self.read_driver.read_block()
-            length = len(buffer)
-            if length == 0 :
-                raise errno.errorcode[errno.EINVAL],"Invalid format of cpio "+\
-                      "format  Expecting "+ repr(data_size)+" bytes, but "+\
-                      "only read"+repr(size)+" bytes"
+	# read the 1st block - assume cpio header is always within (completely) 1st block
+	buffer = self.read_driver.read_block()
+	if len(buffer) == 0:
+	    raise errno.errorcode[errno.EINVAL],"Invalid format of cpio "+\
+		  "format  Expecting 1st block bytes, but only read 0 bytes"
 
-            # decode the cpio header block
-            if parse_header :
-                try:
-                    data_offset, data_size, data_name = self.decode(buffer)
-                except errno.errorcode[errno.EINVAL]:
-                    # for now, just send the data back to the user, as read
-                    bad = str(sys.exc_info()[1])
-                    print bad
-                    while 1:
-                        self.write_driver.write_block(buffer,)
-                        buffer = self.read_driver.read_block()
-                        length = len(buffer)
-                        if length == 0 :
-                            return (-1,-1,-1,bad)
-                parse_header = 0
-                offset = data_offset
+	# decode the cpio header block
+	try:
+	    data_offset, data_bytes, data_name = self.decode(buffer)
+	except errno.errorcode[errno.EINVAL]:
+	    # for now, just send the data back to the user, as read
+	    bad = str(sys.exc_info()[1]); print bad
+	    while 1:
+		self.write_driver.write_block(buffer,)
+		buffer = self.read_driver.read_block()
+		if len(buffer) == 0: return (-1,-1,-1,bad)
+
+	buffer = buffer[data_offset:]	# just dealing with data now
+	buffer_len = len( buffer )
+
+        # now continue with writing/reading
+	while 1:
 
             # we need to crc the data
-            if size + length - offset <= data_size :
-                data_end = length
-                size = size + length - offset
-            else :
-                data_end = data_size - size + offset
-                size = data_size
-                next = data_offset + size
-                padd =  (4-(next%4)) %4
-                trailer = buffer[data_end+padd:]
-            data_crc = self.crc_fun(buffer[offset:data_end],data_crc)
+	    if buffer_len < data_bytes - dat_bytes:
+		dat_bytes = dat_bytes + buffer_len
+		dat_crc = self.crc_fun( buffer, dat_crc )
+		self.write_driver.write_block( buffer, )
+	    else:
+		dat_end   = data_bytes - dat_bytes
+		dat_bytes = data_bytes	# read all the data (finished), but still may be doing sanity
+		dat_crc = self.crc_fun(        buffer[:dat_end], dat_crc )  # so don't break here
+		self.write_driver.write_block( buffer[:dat_end], )
+		padd = (4-(dat_bytes%4)) %4
+		trailer = buffer[dat_end+padd:]	# may be null (if right at edge)
 
             # look at first part of file to make sure it is right file
-            if sanity_size < sanity_bytes and size!=data_size:
-                if sanity_size + length - offset <= sanity_bytes :
-                    sanity_end = length
-                    sanity_size = sanity_size+length-offset
-                else :
-                    sanity_end = sanity_bytes - sanity_size + offset
-                    sanity_size = sanity_bytes
-                    san_crc = self.crc_fun(buffer[offset:sanity_end],san_crc)
-                if sanity_size == sanity_bytes :
-                    if sanity_crc != sanity_crc:
+	    if san_bytes < sanity_bytes:
+		# logic is same as data crc
+                if buffer_len < sanity_bytes - san_bytes:
+                    san_bytes = san_bytes + buffer_len
+		    san_crc = self.crc_fun(buffer,san_crc)
+                else:
+                    san_end = sanity_bytes - san_bytes
+                    san_bytes = sanity_bytes # done with sanity check
+		    san_crc = self.crc_fun( buffer[:san_end], san_crc )
+                    if san_crc != sanity_crc:
                         raise IOError, "Sanity Mismatch, read"+repr(san_crc)+\
                               " but was expecting"+repr(sanity_crc)
-                elif sanity_size > sanity_bytes :
-                    # need sanity_size, or less,  bytes in sanity_crc
-                    print sanity_size,sanity_bytes
-                    print size,data_size
-                    print length,offset
+		# now check the case where we were told more sanity_bytes than data_bytes
+		if san_bytes > dat_bytes:
+		    print san_bytes,sanity_bytes
+                    print dat_bytes,data_bytes
+                    print buffer_len
                     raise "TILT - coding error!"
 
-            # write the data
-            self.write_driver.write_block(buffer[offset:data_end],)
+	    if dat_bytes == data_bytes: break
+
+	    # continue with next read
+	    buffer = self.read_driver.read_block()
+	    buffer_len = len(buffer)
+	    if buffer_len == 0:
+		raise errno.errorcode[errno.EINVAL],"Invalid format of cpio "+\
+		      "format  Expecting "+ repr(data_size)+" bytes, but "+\
+		      "only read"+repr(size)+" bytes"
 
         # now read the crc file - just read to end of data and then decode
         while 1  :
             buffer = self.read_driver.read_block()
-            length = len(buffer)
-            if length == 0 :
-                break
+            buffer_len = len(buffer)
+            if buffer_len == 0: break
             trailer =  trailer + buffer
 
         recorded_crc = self.encrc(trailer)
-        if recorded_crc != data_crc :
-            raise IOError, "CRC Mismatch, read"+repr(san_crc)+\
-                  " but was expecting"+repr(sanity_crc)
+        if recorded_crc != dat_crc :
+            raise IOError, "CRC Mismatch, read "+repr(dat_crc)+\
+                  " but was expecting "+repr(recorded_crc)
 
-        return (data_size, data_crc)
+        return (dat_bytes, dat_crc)
 
 # shamelessly stolen from python's posixfile.py
 class diskdriver:
