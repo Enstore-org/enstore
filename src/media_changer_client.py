@@ -82,10 +82,9 @@ class MediaChangerClient(generic_client.GenericClient):
 	rt = self.send(ticket)
         return rt
 
-    def doCleaningCycle(self, moverConfig, volInfo):
+    def doCleaningCycle(self, moverConfig):
         ticket = {'work'       : 'doCleaningCycle',
                   'moverConfig': moverConfig,
-                  'volInfo'    : volInfo
                   }
 	rt = self.send(ticket,300,10)
         return rt
