@@ -1,4 +1,5 @@
 import time
+import copy
 from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
@@ -168,7 +169,7 @@ class VolumeClerkMethods(DispatchingWorker) :
         # go through the volumes and find one we can use for this request
         vol = {}
         for k in dict.keys() :
-            v = dict[k]
+            v = copy.deepcopy(dict[k])
             if v["library"] != library :
                 continue
             if v["file_family"] != file_family :
@@ -193,7 +194,7 @@ class VolumeClerkMethods(DispatchingWorker) :
                     waste = left/totb*100.
                 print k,"is now full, bytes remaining = ",left,\
                       "wasted=",waste,"%"
-                dict[k] = v
+                dict[k] = copy.deepcopy(v)
                 continue
             vetoed = 0
             extl = v["external_label"]
@@ -211,9 +212,9 @@ class VolumeClerkMethods(DispatchingWorker) :
                 return
             # if not, is this an "earlier" volume that one we already found?
             if len(vol) == 0 :
-                vol = v
+                vol = copy.deepcopy(v)
             elif v['declared'] < vol['declared'] :
-                vol = v
+                vol = copy.deepcopy(v)
 
         # return what we found
         if len(vol) != 0:
@@ -224,7 +225,7 @@ class VolumeClerkMethods(DispatchingWorker) :
         # nothing was available - see if we can assign a blank one.
         vol = {}
         for k in dict.keys() :
-            v = dict[k]
+            v = copy.deepcopy(dict[k])
             if v["library"] != library :
                 continue
             if v["file_family"] != "none" :
@@ -248,23 +249,23 @@ class VolumeClerkMethods(DispatchingWorker) :
             if first_found:
                 v["file_family"] = file_family
                 print "Assigning blank volume",k,"to",library,file_family
-                dict[k] = v
+                dict[k] = copy.deepcopy(v)
                 v["status"] = "ok"
                 self.reply_to_caller(v)
                 return
             # if not, is this an "earlier" volume that one we already found?
             if len(vol) == 0 :
-                vol = v
+                vol = copy.deepcopy(v)
             elif v['declared'] < vol['declared'] :
-                vol = v
+                vol = copy.deepcopy(v)
 
         # return blank volume we found
         if len(vol) != 0:
-            v["file_family"] = file_family
+            vol["file_family"] = file_family
             print "Assigning blank volume",k,"to",library,file_family
-            dict[k] = v
-            v["status"] = "ok"
-            self.reply_to_caller(v)
+            dict[k] = copy.deepcopy(vol)
+            vol["status"] = "ok"
+            self.reply_to_caller(vol)
             return
 
         # nothing was available at all
@@ -276,7 +277,6 @@ class VolumeClerkMethods(DispatchingWorker) :
 
     # update the database entry for this volume
     def set_remaining_bytes(self, ticket) :
-
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -289,7 +289,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]
+            record = copy.deepcopy(dict[external_label])
         except KeyError:
             ticket["status"] = "Volume Clerk: volume "+external_label\
                                +" no such volume"
@@ -322,7 +322,7 @@ class VolumeClerkMethods(DispatchingWorker) :
                 return
 
         # record our changes
-        dict[external_label] = record
+        dict[external_label] = copy.deepcopy(record)
         record["status"] = "ok"
 
         self.reply_to_caller(record)
@@ -330,7 +330,6 @@ class VolumeClerkMethods(DispatchingWorker) :
 
     # update the database entry for this volume
     def update_counts(self, ticket) :
-
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -343,7 +342,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]
+            record = copy.deepcopy(dict[external_label])
         except KeyError:
             ticket["status"] = "Volume Clerk: volume "+external_label\
                                +" no such volume"
@@ -366,7 +365,7 @@ class VolumeClerkMethods(DispatchingWorker) :
                 return
 
         # record our changes
-        dict[external_label] = record
+        dict[external_label] = copy.deepcopy(record)
         record["status"] = "ok"
 
         self.reply_to_caller(record)
@@ -385,7 +384,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]
+            record = copy.deepcopy(dict[external_label])
             record["status"] = "ok"
             self.reply_to_caller(record)
         except KeyError:
@@ -409,7 +408,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]
+            record = copy.deepcopy(dict[external_label])
         except KeyError:
             ticket["status"] = "Volume Clerk: volume "+external_label\
                                +" no such volume"
@@ -419,7 +418,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # update the fields that have changed
         record ["system_inhibit"] = "writing"
-        dict[external_label] = record # THIS WILL JOURNAL IT
+        dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
 
         record["status"] = "ok"
         self.reply_to_caller(record)
@@ -438,7 +437,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]
+            record = copy.deepcopy(dict[external_label])
         except KeyError:
             ticket["status"] = "Volume Clerk: volume "+external_label\
                                +" no such volume"
@@ -448,7 +447,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # update the fields that have changed
         record ["system_inhibit"] = "readonly"
-        dict[external_label] = record # THIS WILL JOURNAL IT
+        dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
 
         record["status"] = "ok"
         self.reply_to_caller(record)
@@ -456,7 +455,6 @@ class VolumeClerkMethods(DispatchingWorker) :
 
     # device is broken - what to do, what to do
     def set_hung(self,ticket) :
-        print "set_hung",pprint.pformat(ticket)
         self.reply_to_caller({"status" : "ok"})
 
 

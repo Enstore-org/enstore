@@ -1,5 +1,6 @@
 import time
 import pprint
+import copy
 from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
 from library_manager_client import LibraryManagerClient
@@ -28,7 +29,7 @@ class FileClerkMethods(DispatchingWorker) :
         record["bfid"] = bfid
 
         # record it to the database
-        dict[bfid] = record
+        dict[bfid] = copy.deepcopy(record)
 
         ticket["bfid"] = bfid
         ticket["status"] = "ok"
@@ -50,7 +51,7 @@ class FileClerkMethods(DispatchingWorker) :
 
         # look up in our dictionary the request bit field id
         try :
-            finfo = dict[bfid]
+            finfo = copy.deepcopy(dict[bfid])
         except KeyError :
             ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
             pprint.pprint(ticket)
@@ -116,7 +117,7 @@ class FileClerkMethods(DispatchingWorker) :
 
         # look up in our dictionary the request bit field id
         try :
-            finfo = dict[bfid]
+            finfo = copy.deepcopy(dict[bfid])
         except KeyError :
             ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
             pprint.pprint(ticket)
