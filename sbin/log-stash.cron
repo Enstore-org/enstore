@@ -1,0 +1,1 @@
+0 4 3 * * $ENSTORE_SBIN/ecron -p log-stash log-stash > /dev/null 2> /dev/null
