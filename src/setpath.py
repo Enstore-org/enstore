@@ -4,6 +4,7 @@
     
 import sys
 import os
+import errno
 
 def addpath(p):
     if not p:
@@ -17,7 +18,18 @@ def addpath(p):
 addpath('$ENSTORE_DIR/src')
 addpath('$ENSTORE_DIR/modules')
 
-cdir = os.getcwd()
+#
+try:
+    cdir = os.getcwd()
+except OSError, msg:
+    if msg.errno == errno.ENOENT:
+        sys.stderr.write("%s: %s" % (os.strerror(msg.errno),
+                                     "No current working directory"))
+        sys.exit(1)
+    else:
+        sys.stderr.write(str(msg))
+        sys.exit(1)
+        
 addpath(os.path.join(cdir, '../modules'))
 
 

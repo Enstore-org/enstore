@@ -79,7 +79,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if mount_point:
             self.dir = mount_point
         else:
-            self.dir = os.getcwd() ###This needs to be addressed.
+            try:
+                #Handle the case where the cwd has been deleted.
+                self.dir = os.getcwd()
+            except OSError:
+                self.dir = ""
 
         #Test if the filename passed in is really a pnfs id.
         if self.is_pnfsid(pnfsFilename):
@@ -824,32 +828,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError), detail:
             print str(detail)
             return 1
-
-    #If dupl is empty, then show the duplicate data for the file
-    # (in self.file).  If dupl is there then set the duplicate for the file
-    # in self.file to that in dupl.
-    #***LAYER 3***
-    def pduplicate(self, intf):
-        #Handle the add/edit duplicate feature.
-        if intf.file and intf.duplicate_file:
-            if os.path.isfile(intf.duplicate_file):
-                self.writelayer(enstore_constants.DUPLICATE_LAYER,
-                                intf.duplicate_file)
-            else:
-                print "Specified duplicate file does not exist."
-                
-        #Display only the duplicates for the specified file.
-        elif intf.file:
-            print "%s:" % (self.filepath),
-            for filename in self.readlayer(enstore_constants.DUPLICATE_LAYER):
-                print filename,
-            print
-        else:
-            #Display all the duplicates for every file specified.
-            for file in os.listdir(os.getcwd()):
-                intf.file = file
-                self.__init__(intf.filepath)
-                self.pduplicate(intf)
 
 ##############################################################################
 
@@ -1636,12 +1614,29 @@ class Tag:
             value=str(value)
         if directory:
             fname = os.path.join(directory, ".(tag)(%s)"%(tag,))
-        else:
+        elif self.dir:
             fname = os.path.join(self.dir, ".(tag)(%s)"%(tag,))
+        else:
+            #Make sure that the current working directory is still valid.
+            try:
+                cwd = os.getcwd()
+            except OSError:
+                exc, msg, tb = sys.exc_info()
+                if msg.errno == errno.ENOENT:
+                    msg_str = "%s: %s" % (os.strerror(errno.ENOENT),
+                                          "No current working directory")
+                    raise OSError, OSError(errno.ENOENT, msg_str), tb
+                else:
+                    raise exc, msg, tb
+            fname = os.path.join(cwd, ".(tag)(%s)"%(tag,))
 
         #If directory is empty indicating the current directory, prepend it.
-        if not os.path.dirname(self.dir):
-            fname = os.path.join(os.getcwd(), fname)
+        #if not os.path.dirname(self.dir):
+        #    try:
+        #        fname = os.path.join(os.getcwd(), fname)
+        #    expect OSError:
+        #        fname = ""
+
         #Determine if the target directory is in pnfs namespace
         if fname[:6] != "/pnfs/":
             raise IOError(errno.EINVAL,
@@ -1655,12 +1650,26 @@ class Tag:
     def readtag(self, tag, directory=None):
         if directory:
             fname = os.path.join(directory, ".(tag)(%s)" % (tag,))
-        else:
+        elif self.dir:
             fname = os.path.join(self.dir, ".(tag)(%s)" % (tag,))
-
+        else:
+            #Make sure that the current working directory is still valid.
+            try:
+                cwd = os.getcwd()
+            except OSError:
+                exc, msg, tb = sys.exc_info()
+                if msg.errno == errno.ENOENT:
+                    msg_str = "%s: %s" % (os.strerror(errno.ENOENT),
+                                          "No current working directory")
+                    raise OSError, OSError(errno.ENOENT, msg_str), tb
+                else:
+                    raise exc, msg, tb
+            fname = os.path.join(cwd, ".(tag)(%s)"%(tag,))
+            
         #If directory is empty indicating the current directory, prepend it.
-        if not os.path.dirname(self.dir):
-            fname = os.path.join(os.getcwd(), fname)
+        #if not os.path.dirname(self.dir):
+        #    fname = os.path.join(os.getcwd(), fname)
+        
         #Determine if the target directory is in pnfs namespace
         if fname[:6] != "/pnfs/":
             raise IOError(errno.EINVAL,
@@ -1675,11 +1684,31 @@ class Tag:
 
     #Print out the current settings for all directory tags.
     def ptags(self, intf):
+
+        #If the directory to use was passed in use that for the current
+        # working directory.  Otherwise uses the current working directory.
+        
         if hasattr(intf, "directory"):
-            filename = os.path.join(os.path.abspath(intf.directory),
-                                    ".(tags)(all)")
+            try:
+                cwd = os.path.abspath(intf.directory)
+            except OSError, detail:
+                print detail
+                return 1
         else:
-            filename = os.path.join(os.getcwd(), ".(tags)(all)")
+            try:
+                #Make sure that the current working directory is still valid.
+                cwd = os.path.abspath(os.getcwd())
+            except OSError:
+                exc, msg, tb = sys.exc_info()
+                if msg.errno == errno.ENOENT:
+                    msg_str = "%s: %s" % (os.strerror(errno.ENOENT),
+                                          "No current working directory")
+                    print msg_str
+                else:
+                    print msg
+                return 1
+
+        filename = os.path.join(cwd, ".(tags)(all)")
 
         try:
             file = open(filename, "r")
@@ -1701,7 +1730,7 @@ class Tag:
 
         #Print the bottom portion of the output.
         for line in data:
-            tag_file = os.path.join(intf.directory, line[:-1])
+            tag_file = os.path.join(cwd, line[:-1])
             os.system("ls -l \"" + tag_file + "\"")
 
         return 0
@@ -1731,15 +1760,28 @@ class Tag:
     ##########################################################################
 
     def ptagchown(self, intf):
+        #Determine the directory to use.
+        if self.dir:
+            cwd = self.dir
+        else:
+            try:
+                cwd = os.getcwd()
+            except OSError, msg:
+                if msg.errno == errno.ENOENT:
+                    msg_str = "%s: %s" % (os.strerror(errno.ENOENT),
+                                          "No current working directory")
+                    print msg_str
+                else:
+                    print msg
+                return 1
+
         #Format the tag filename string.
-        fname = os.path.join(self.dir, ".(tag)(%s)" % (intf.named_tag,))
-        #If directory is empty indicating the current directory, prepend it.
-        if not os.path.dirname(self.dir):
-            fname = os.path.join(os.getcwd(), fname)
+        fname = os.path.join(cwd, ".(tag)(%s)" % (intf.named_tag,))
+
         #Determine if the target directory is in pnfs namespace
         if fname[:6] != "/pnfs/":
-            raise IOError(errno.EINVAL,
-                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
+            print os.strerror(errno.EINVAL) + ": Not a valid pnfs directory"
+            return 1
 
         #Determine if the tag file exists.
         pstat = os.stat(fname)
@@ -1787,11 +1829,24 @@ class Tag:
 
 
     def ptagchmod(self, intf):
+        #Determine the directory to use.
+        if self.dir:
+            cwd = self.dir
+        else:
+            try:
+                cwd = os.getcwd()
+            except OSError, msg:
+                if msg.errno == errno.ENOENT:
+                    msg_str = "%s: %s" % (os.strerror(errno.ENOENT),
+                                          "No current working directory")
+                    print msg_str
+                else:
+                    print msg
+                return 1
+        
         #Format the tag filename string.
-        fname = os.path.join(self.dir, ".(tag)(%s)" % (intf.named_tag,))
-        #If directory is empty indicating the current directory, prepend it.
-        if not os.path.dirname(self.dir):
-            fname = os.path.join(os.getcwd(), fname)
+        fname = os.path.join(cwd, ".(tag)(%s)" % (intf.named_tag,))
+
         #Determine if the target directory is in pnfs namespace
         if fname[:6] != "/pnfs/":
             print os.strerror(errno.EINVAL) + ": Not a valid pnfs directory"
@@ -2054,7 +2109,10 @@ class Tag:
 
 class N:
     def __init__(self, dbnum):
-        self.dir = os.getcwd()
+        try:
+            self.dir = os.getcwd()
+        except OSError:
+            self.dir = ""
         self.dbnum = dbnum
 
     # get the cursor information

@@ -22,12 +22,21 @@ import mover_client
 
 
 #Set up paths to find our private copy of tcl/tk 8.3
-ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
+try:
+    ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
+except OSError, msg:
+    sys.stderr.write(str(msg))
+    sys.exit(1)
+try:
+    CWD = os.getcwd()
+except OSError, msg:
+    sys.stderr.write(str(msg) + ": No current working directory")
+    sys.exit(1)
 TCLTK_DIR=None
 if ENSTORE_DIR:
     TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
 if TCLTK_DIR is None or not os.path.exists(TCLTK_DIR):
-    TCLTK_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','TclTk'))
+    TCLTK_DIR=os.path.normpath(os.path.join(CWD,'..','etc','TclTk'))
 os.environ["TCL_LIBRARY"]=os.path.join(TCLTK_DIR, 'tcl8.3')
 os.environ["TK_LIBRARY"]=os.path.join(TCLTK_DIR, 'tk8.3')
 sys.path.insert(0, os.path.join(TCLTK_DIR, sys.platform))
@@ -36,10 +45,10 @@ IMAGE_DIR=None
 if ENSTORE_DIR:
     IMAGE_DIR=os.path.join(ENSTORE_DIR, 'etc', 'Images')
 if IMAGE_DIR is None or not os.path.exists(IMAGE_DIR):
-    IMAGE_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','Images'))
+    IMAGE_DIR=os.path.normpath(os.path.join(CWD,'..','etc','Images'))
 
 ##print "IMAGE_DIR=", IMAGE_DIR
-    
+
 import Tkinter
 import tkFont
 import entv
