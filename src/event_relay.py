@@ -87,7 +87,6 @@ class Relay:
                     del self.clients[(ip, port)]
                 except:
                     print "cannot handle request", msg
-		    traceback.print_exc()
             else:
                 self.send_message(msg, tok[0], now)
         
