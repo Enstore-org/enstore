@@ -84,8 +84,8 @@ def compare_all(bfinfo, l4):
     for key in keys:
         if key != 'file_family':
             if bfinfo[key] != l4[key]: break
-            else:
-                return 1
+    else:
+        return 1
     return 0
 
 def fix_pnfs_layers(file, bfid):
