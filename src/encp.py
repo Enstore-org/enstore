@@ -20,7 +20,7 @@ except ImportError:
 
 ##############################################################################
 
-def write_to_hsm(unixfile, pnfsfile, u, csc) :
+def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
 
     # first check the unix file the user specified
     # Note that the unix file remains open
@@ -71,8 +71,9 @@ def write_to_hsm(unixfile, pnfsfile, u, csc) :
               +p.library+".library_manager at "\
               +vticket['host']+"/"+repr(vticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
-    print "Q'd:",unixfile, ticket["library"], ticket["file_family"]\
-          ,ticket["file_family_width"],ticket["size_bytes"]
+    if list :
+        print "Q'd:",unixfile, ticket["library"], ticket["file_family"]\
+              ,ticket["file_family_width"],ticket["size_bytes"]
 
     # We have placed our work in the system and now we have to wait for
     # resources. All we  need to do is wait for the system to call us back,
@@ -114,8 +115,9 @@ def write_to_hsm(unixfile, pnfsfile, u, csc) :
     if done_ticket["status"] == "ok" :
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"]\
                           ,pprint.pformat(done_ticket))
-        print p.pnfsFilename, p.bit_file_id, p.file_size\
-              ,done_ticket["external_label"],done_ticket["bof_space_cookie"]
+        if list :
+            print p.pnfsFilename, p.bit_file_id, p.file_size\
+                  ,done_ticket["external_label"],done_ticket["bof_space_cookie"]
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
               +"2nd (post-file-send) mover callback on socket at "\
@@ -124,7 +126,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc) :
 
 ##############################################################################
 
-def read_from_hsm(pnfsfile, outfile, u, csc) :
+def read_from_hsm(pnfsfile, outfile, u, csc, list) :
 
     # first check the input pnfs file - this will also provide the bfid
     p = pnfs.pnfs(pnfsfile)
@@ -157,7 +159,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc) :
         raise errorcode[EPROTO],"encp.read_from_hsm: from u.send to "\
               +"file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
-    print "Q'd:",p.pnfsFilename, ticket["bfid"], p.file_size\
+    if list :
+        print "Q'd:",p.pnfsFilename, ticket["bfid"], p.file_size\
               ,ticket["external_label"],ticket["bof_space_cookie"]
 
     # We have placed our work in the system and now we have to wait for
@@ -201,7 +204,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc) :
               +"2nd (post-file-read) mover callback on socket at "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
-    pprint.pprint(ticket)
+    if list :
+        print outfile, p.file_size
 
 ##############################################################################
 
@@ -211,17 +215,23 @@ if __name__  ==  "__main__" :
     csc = configuration_server_client()
     u = UDPClient()
 
+    # usage:  encp input output [list-details]
+    try :
+        list = string.atoi(sys.argv[3])
+    except :
+        list = 1
+
     # all files on the hsm system have /pnfs/ as the 1st part of their name
     p1 = string.find(sys.argv[1],"/pnfs/")
     p2 = string.find(sys.argv[2],"/pnfs/")
 
     # have we been called "encp unixfile hsmfile" ?
     if p1==-1 and p2==0 :
-        write_to_hsm(sys.argv[1], sys.argv[2], u, csc)
+        write_to_hsm(sys.argv[1], sys.argv[2], u, csc, list)
 
     # have we been called "encp hsmfile unixfile" ?
     elif p1==0 and p2==-1 :
-        read_from_hsm(sys.argv[1], sys.argv[2], u, csc)
+        read_from_hsm(sys.argv[1], sys.argv[2], u, csc, list)
 
     # have we been called "encp unixfile unixfile" ?
     elif p1==-1 and p2==-1 :
@@ -236,3 +246,4 @@ if __name__  ==  "__main__" :
     else:
         print "ERROR: Can not process arguments "\
               +sys.argv[1]," to ",sys.argv[2]
+
