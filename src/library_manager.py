@@ -1343,7 +1343,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                  mticket["mover"],
                                                  w["wrapper"]["uname"]))
             except KeyError:
-                Trace.log(e_erros.ERROR, "mover_bound_volume: Bad ticket: %s"%(w,))
+                Trace.log(e_errors.ERROR, "mover_bound_volume: Bad ticket: %s"%(w,))
                 raise KeyError
             w['times']['lm_dequeued'] = time.time()
             if w.has_key('reject_reason'): del(w['reject_reason'])
