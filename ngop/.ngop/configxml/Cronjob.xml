@@ -1,0 +1,57 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+  <System ID="Crobjob" Cluster="stkensrv0">
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkensrv0"/>
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkensrv0"/>
+  </System>
+  <System ID="Crobjob" Cluster="stkensrv1">
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkensrv1"/>
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkensrv1"/>
+  </System>
+  <System ID="Crobjob" Cluster="stkensrv2">
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkensrv2"/>
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkensrv2"/>
+  </System>
+  <System ID="Crobjob" Cluster="stkensrv3">
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkensrv3"/>
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkensrv3"/>
+  </System>
+  <System ID="Crobjob" Cluster="stkensrv4"> 
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkensrv4"/> 
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkensrv4"/> 
+  </System>
+  <System ID="Crobjob" Cluster="stkenmvr1a"> 
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkenmvr1a"/> 
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkenmvr1a"/> 
+  </System>
+  <System ID="Crobjob" Cluster="stkenmvr2a">
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkenmvr2a"/> 
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkenmvr2a"/> 
+  </System>
+  <System ID="Crobjob" Cluster="stkenmvr3a">
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkenmvr3a"/> 
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkenmvr3a"/> 
+  </System>
+  <System ID="Crobjob" Cluster="stkenmvr4a">
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkenmvr4a"/> 
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkenmvr4a"/> 
+  </System>
+  <System ID="Crobjob" Cluster="stkenmvr5a">
+     <MonitoredElement ID="enstore" Type="FileSystem" Host="stkenmvr5a"/> 
+     <MonitoredElement ID="root"    Type="FileSystem" Host="stkenmvr5a"/> 
+  </System>
+  <System ID="Crobjob" Cluster="stkenmvr6a">
+     <MonitoredElement ID="enstore"  Type="FileSystem" Host="stkenmvr6a"/> 
+     <MonitoredElement ID="root"     Type="FileSystem" Host="stkenmvr6a"/> 
+  </System>
+  <System ID="Crobjob" Cluster="rip9">
+     <MonitoredElement ID="enstore"  Type="FileSystem" Host="rip9"/>
+     <MonitoredElement ID="root"     Type="FileSystem" Host="rip9"/>
+  </System>
+  <System ID="Crobjob" Cluster="rip10">
+     <MonitoredElement ID="enstore"  Type="FileSystem" Host="rip10"/>
+     <MonitoredElement ID="root"     Type="FileSystem" Host="rip10"/>
+  </System>
+</NGOPConfig>
+
