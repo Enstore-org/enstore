@@ -22,10 +22,10 @@ GLOBAL_FUNC_INFO = { '__import__': (types.ModuleType, 1, 4),
                      'buffer': (types.BufferType, 1, 3),
                      'callable': (BOOL, 1, 1),
                      'chr': (types.StringType, 1, 1),
-                     'cmp': (BOOL, 2, 2),
+                     'cmp': (types.IntType, 2, 2),
                      'coerce': ([ types.NoneType, types.TupleType ], 2, 2),
                      'compile': (types.CodeType, 3, 3),
-                     'complex': (types.ComplexType, 1, 2),
+                     'complex': (types.ComplexType, 1, 2, ['real', 'imag']),
                      'delattr': (types.NoneType, 2, 2),
                      'dir': (types.ListType, 0, 1),
                      'divmod': (types.TupleType, 2, 2),
@@ -40,19 +40,19 @@ GLOBAL_FUNC_INFO = { '__import__': (types.ModuleType, 1, 4),
                      'hex': (types.StringType, 1, 1),
                      'id': (types.IntType, 1, 1),
                      'input': (Stack.TYPE_UNKNOWN, 0, 1),
-                     'int': (types.IntType, 1, 2),
+                     'int': (types.IntType, 1, 2, ['x']),
                      'intern': (types.StringType, 1, 1),
                      'isinstance': (BOOL, 2, 2),
                      'issubclass': (BOOL, 2, 2),
                      'len': (types.IntType, 1, 1),
-                     'list': (types.ListType, 1, 1),
+                     'list': (types.ListType, 1, 1, ['sequence']),
                      'locals': (types.DictType, 0, 0),
-                     'long': (types.LongType, 1, 2),
+                     'long': (types.LongType, 1, 2, ['x']),
                      'map': (types.ListType, 2, None),
                      'max': (Stack.TYPE_UNKNOWN, 1, None),
                      'min': (Stack.TYPE_UNKNOWN, 1, None),
                      'oct': (types.StringType, 1, 1),
-                     'open': (types.FileType, 1, 3),
+                     'open': (types.FileType, 1, 3, ['name', 'mode', 'buffering']),
                      'ord': (types.IntType, 1, 1),
                      'pow': (Stack.TYPE_UNKNOWN, 2, 3),
                      'range': (types.ListType, 1, 3),
@@ -70,28 +70,37 @@ GLOBAL_FUNC_INFO = { '__import__': (types.ModuleType, 1, 4),
                      'xrange': (types.ListType, 1, 3),
                    }
 
+if hasattr(types, 'UnicodeType') :
+    GLOBAL_FUNC_INFO['unichr'] = (types.UnicodeType, 1, 1)
+    GLOBAL_FUNC_INFO['unicode'] = (types.UnicodeType, 1, 3, ['string', 'encoding', 'errors'])
+
 if utils.pythonVersion() >= utils.PYTHON_2_2 :
     GLOBAL_FUNC_INFO['compile'] = (types.CodeType, 3, 5)
-    GLOBAL_FUNC_INFO['dict'] = (types.DictType, 0, 1)
-    GLOBAL_FUNC_INFO['int'] = (types.IntType, 0, 2)
-    GLOBAL_FUNC_INFO['list'] = (types.ListType, 0, 1)
-    GLOBAL_FUNC_INFO['long'] = (types.LongType, 0, 2)
-    GLOBAL_FUNC_INFO['str'] = (types.StringType, 0, 1)
-    GLOBAL_FUNC_INFO['type'] = (types.TypeType, 1, 3)     # FIXME: not 2 args
-    GLOBAL_FUNC_INFO['tuple'] = (types.TupleType, 0, 1)
+    GLOBAL_FUNC_INFO['dict'] = (types.DictType, 0, 1, ['items'])
+    GLOBAL_FUNC_INFO['file'] = GLOBAL_FUNC_INFO['open']
+    GLOBAL_FUNC_INFO['float'] = (types.IntType, 0, 1, ['x'])
+    GLOBAL_FUNC_INFO['int'] = (types.IntType, 0, 2, ['x'])
+    GLOBAL_FUNC_INFO['list'] = (types.ListType, 0, 1, ['sequence'])
+    GLOBAL_FUNC_INFO['long'] = (types.LongType, 0, 2, ['x'])
+    GLOBAL_FUNC_INFO['str'] = (types.StringType, 0, 1, ['object'])
+    # FIXME: type doesn't take 2 args, only 1 or 3
+    GLOBAL_FUNC_INFO['type'] = (types.TypeType, 1, 3, ['name', 'bases', 'dict'])
+    GLOBAL_FUNC_INFO['tuple'] = (types.TupleType, 0, 1, ['sequence'])
 
     GLOBAL_FUNC_INFO['classmethod'] = (types.MethodType, 1, 1)
     GLOBAL_FUNC_INFO['iter'] = (Stack.TYPE_UNKNOWN, 1, 2)
-    GLOBAL_FUNC_INFO['property'] = (Stack.TYPE_UNKNOWN, 0, 4) # FIXME: ???
+    GLOBAL_FUNC_INFO['property'] = (Stack.TYPE_UNKNOWN, 0, 4, ['fget', 'fset', 'fdel', 'doc'])
     GLOBAL_FUNC_INFO['super'] = (Stack.TYPE_UNKNOWN, 1, 2)
     GLOBAL_FUNC_INFO['staticmethod'] = (types.MethodType, 1, 1)
+    GLOBAL_FUNC_INFO['unicode'] = (types.UnicodeType, 0, 3, ['string', 'encoding', 'errors'])
 
-if hasattr(types, 'UnicodeType') :
-    GLOBAL_FUNC_INFO['unichr'] = (types.UnicodeType, 1, 1)
-    GLOBAL_FUNC_INFO['unicode'] = (types.UnicodeType, 1, 3)
+    GLOBAL_FUNC_INFO['bool'] = (BOOL, 1, 1, ['x'])
 
 if globals().has_key('zip') :
     GLOBAL_FUNC_INFO['zip'] = (types.ListType, 1, None)
+
+if globals().has_key('enumerate'):
+    GLOBAL_FUNC_INFO['enumerate'] = (types.TupleType, 1, 1, ['sequence'])
 
 _STRING_METHODS = { 'capitalize': (types.StringType, 0, 0),
                     'center': (types.StringType, 1, 1),
@@ -167,9 +176,12 @@ BUILTIN_METHODS = { types.DictType :
                       'truncate': (types.NoneType, 0, 1),
                       'write': (types.NoneType, 1, 1),
                       'writelines': (types.NoneType, 1, 1),
-                      'xreadlines': (types.NoneType, 0, 0),
+                      'xreadlines': (types.ListType, 0, 0),
                     },
                   }
+
+if hasattr({}, 'pop'):
+    BUILTIN_METHODS[types.DictType]['pop'] = (Stack.TYPE_UNKNOWN, 1, 1)
 
 def _setupBuiltinMethods() :
     if utils.pythonVersion() >= utils.PYTHON_2_2 :
@@ -223,7 +235,7 @@ def _setupBuiltinAttrs() :
         _MSG = "xrange object's 'start', 'stop' and 'step' attributes are deprecated"
         warnings.filterwarnings('ignore', _MSG)
         del warnings, _MSG
-    except ImportError :
+    except (ImportError, AssertionError):
         pass
     BUILTIN_ATTRS[types.XRangeType] = dir(xrange(0))
 
@@ -248,10 +260,10 @@ def _setupBuiltinAttrs() :
             BUILTIN_ATTRS[types.FrameType] = dir(tb.tb_frame)
         except:
             pass
-        tb = None; del tb
+        tb = None
 
 BUILTIN_ATTRS = { types.StringType : dir(''),
-                  types.TypeType : dir(type(0)),
+                  types.TypeType : dir(type(type)),
                   types.ListType : dir([]),
                   types.DictType : dir({}),
                   types.FunctionType : dir(_setupBuiltinAttrs),
@@ -265,3 +277,97 @@ BUILTIN_ATTRS = { types.StringType : dir(''),
 
 # have to setup the rest this way to support different versions of Python
 _setupBuiltinAttrs()
+
+PENDING_DEPRECATED_MODULES = { 'string': None, 'types': None,
+                             }
+DEPRECATED_MODULES = { 'audioop': None, 'FCNTL': 'fcntl', 'gopherlib': None,
+                       'macfs': 'Carbon.File or Carbon.Folder',
+                       'posixfile': 'fcntl', 'pre': None, 'regsub': 're',
+                       'statcache': 'os.stat()',
+                       'stringold': None, 'tzparse': None,
+                       'TERMIOS': 'termios', 'whrandom':'random',
+                       'xmllib': 'xml.sax',
+
+                       # C Modules
+                       'mpz': None, 'pcre': None, 'pypcre': None,
+                       'rgbimg': None, 'strop': None, 'xreadlines': 'file',
+                     }
+DEPRECATED_ATTRS = { 'array.read': None, 'array.write': None,
+                     'operator.isCallable': None,
+                     'operator.sequenceIncludes': None,
+                     'pty.master_open': None, 'pty.slave_open': None,
+                     'random.stdgamma': 'random.gammavariate',
+                     'rfc822.AddrlistClass': 'rfc822.AddressList',
+                     'string.atof': None, 'string.atoi': None,
+                     'string.atol': None, 'string.zfill': None,
+                     'sys.exc_traceback': None, 'sys.exit_thread': None,
+                     'tempfile.mktemp': None, 'tempfile.template': None,
+                   }
+
+# FIXME: can't check these right now, maybe later
+DEPRECATED_METHODS = {
+                       'email.Message.get_type': 'email.Message.get_content_type',
+                       'email.Message.get_subtype': 'email.Message.get_content_subtype',
+                       'email.Message.get_main_type': 'email.Message.get_content_maintype',
+                       'htmllib.HTMLParser.do_nextid': None,
+                       'pstats.Stats.ignore': None,
+                       'random.Random.cunifvariate': None,
+                       'random.Random.stdgamma': 'Random.gammavariate',
+                     }
+
+_OS_AND_POSIX_FUNCS = { 'tempnam': None, 'tmpnam': None }
+SECURITY_FUNCS = { 'os' : _OS_AND_POSIX_FUNCS, 'posix': _OS_AND_POSIX_FUNCS }
+
+SPECIAL_METHODS = {
+    '__call__': None,                   # any number > 1
+    '__cmp__': 2,
+    '__coerce__': 2,
+    '__contains__': 2,
+    '__del__': 1,
+    '__hash__': 1,
+    '__iter__': 1,
+    '__len__': 1,
+    '__new__': None,			# new-style class constructor
+    '__nonzero__': 1,
+    '__reduce__': 1,
+
+    '__hex__': 1,
+    '__oct__': 1,
+    '__repr__': 1,
+    '__str__': 1,
+
+    '__invert__': 1,	'__neg__': 1,	'__pos__': 1,     '__abs__': 1,     
+    '__complex__': 1,	'__int__': 1,	'__long__': 1,    '__float__': 1,
+
+    '__eq__': 2,	'__ne__': 2,
+    '__ge__': 2,	'__gt__': 2,
+    '__le__': 2,	'__lt__': 2,
+
+    '__getattribute__': 2,	# only in new-style classes
+    '__getattr__': 2,		'__setattr__': 3,	'__delattr__': 2,
+    '__getitem__': 2,		'__setitem__': 3,	'__delitem__': 2,
+    '__getslice__': 3,		'__setslice__': 4,	'__delslice__': 3,
+    # getslice is deprecated
+
+    '__add__': 2,	'__radd__': 2,		'__iadd__': 2,    
+    '__sub__': 2,	'__rsub__': 2,		'__isub__': 2,
+    '__mul__': 2,	'__rmul__': 2,		'__imul__': 2,    
+    '__div__': 2,	'__rdiv__': 2,		'__idiv__': 2,    
+    '__pow__': 2,	'__rpow__': 2,		'__ipow__': 2,    # 2 or 3
+    '__truediv__': 2,	'__rtruediv__': 2,	'__itruediv__': 2,	
+    '__floordiv__': 2,	'__rfloordiv__': 2,	'__ifloordiv__': 2,	
+    '__mod__': 2,	'__rmod__': 2,		'__imod__': 2,    
+    '__divmod__': 2,	'__rdivmod__': 2,	# no inplace op for divmod()
+
+    '__lshift__': 2,	'__rlshift__': 2,	'__ilshift__': 2,
+    '__rshift__': 2,	'__rrshift__': 2,	'__irshift__': 2, 
+
+    '__and__': 2,	'__rand__': 2,		'__iand__': 2,
+    '__xor__': 2,	'__rxor__': 2,		'__ixor__': 2,
+    '__or__': 2,	'__ror__': 2,		'__ior__': 2,
+
+    # these are related to pickling 
+    '__getstate__': 1,		'__setstate__': 2,
+    '__copy__': 1,		'__deepcopy__': 2,
+    '__getinitargs__': 1,	
+    }

@@ -23,7 +23,14 @@ def UNARY_NEGATIVE(op):        return op == 11
 def UNARY_INVERT(op):          return op == 15
 def RETURN_VALUE(op):          return op == 83
 def JUMP_FORWARD(op):          return op == 110
+def JUMP_ABSOLUTE(op):         return op == 113
+def FOR_ITER(op):              return op == 93
+def FOR_LOOP(op):              return op == 114
+def SETUP_LOOP(op):            return op == 120
+def BREAK_LOOP(op):            return op == 80
 def RAISE_VARARGS(op):         return op == 130
+def POP_BLOCK(op):             return op == 87
+def END_FINALLY(op):           return op == 88
 
 def UNPACK_SEQUENCE(op) :
     "Deal w/Python 1.5.2 (UNPACK_[LIST|TUPLE]) or 2.0 (UNPACK_SEQUENCE)"
@@ -41,6 +48,9 @@ _HAS_JABS = (113, 119,)
 
 _CMP_OP =  ('<', '<=', '==', '!=', '>', '>=', 'in', 'not in', 'is',
             'is not', 'exception match', 'BAD')
+
+EXCEPT_COMPARISON = 10
+IS_COMPARISON = 8
 
 def getOperand(op, func_code, oparg) :
     if op in _HAS_NAME :
@@ -86,6 +96,15 @@ def initFuncCode(func) :
     func_code = func.func_code
     code = func_code.co_code
     return func_code, code, 0, len(code), 0
+
+def conditional(op):
+    "returns true if the code results in conditional execution"
+    return op in [83,                   # return
+                  93,                   # for_iter
+                  111, 112, 114,        # conditional jump
+                  121,                  # setup_exec
+                  130                   # raise_varargs
+                  ]
 
 # this code is here for debugging purposes.
 # Jython doesn't support dis, so don't rely on it

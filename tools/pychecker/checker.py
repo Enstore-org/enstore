@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2001, MetaSlash Inc.  All rights reserved.
+# Copyright (c) 2001-2002, MetaSlash Inc.  All rights reserved.
 
 """
 Check python source code files for possible errors and print warnings
 
 Contact Info:
   http://pychecker.sourceforge.net/
-  pychecker@metaslash.com
+  pychecker-list@lists.sourceforge.net
 """
 
 import string
@@ -16,6 +16,7 @@ import sys
 import imp
 import os
 import glob
+import traceback
 
 # see __init__.py for meaning, this must match the version there
 LOCAL_MAIN_VERSION = 1
@@ -34,6 +35,7 @@ def setupNamespace(path) :
 if __name__ == '__main__' :
     setupNamespace(sys.argv[0])
 
+from pychecker import utils
 from pychecker import printer
 from pychecker import warn
 from pychecker import OP
@@ -57,6 +59,9 @@ If you want to run the local version, you must remove the version
 from site-packages.  Or you can install the current version
 by doing python setup.py install.
 '''
+
+def cfg() :
+    return utils.cfg()
 
 def _flattenList(list) :
     "Returns a list which contains no lists"
@@ -94,17 +99,18 @@ def getModules(arg_list) :
 
             module_name = os.path.basename(arg)[:-PY_SUFFIX_LEN]
             if arg_dir not in sys.path :
-                sys.path.insert(1, arg_dir)
+                sys.path.insert(0, arg_dir)
             arg = module_name
         modules.append(arg)
 
     return modules
 
 
-def _findModule(name, path = sys.path) :
+def _findModule(name) :
     """Returns the result of an imp.find_module(), ie, (file, filename, smt)
        name can be a module or a package name.  It is *not* a filename."""
 
+    path = sys.path[:]
     packages = string.split(name, '.')
     for p in packages :
         # smt = (suffix, mode, type)
@@ -133,7 +139,7 @@ def _findModule(name, path = sys.path) :
                 new_path = filename
             if new_path not in path :
                 path.insert(1, new_path)
-        else:
+        elif smt[-1] != imp.PY_COMPILED:
             if p is not packages[-1] :
                 if file is not None :
                     file.close()
@@ -151,6 +157,11 @@ class Variable :
         self.name = name
         self.type = type
         self.value = None
+
+    def __str__(self) :
+        return self.name
+
+    __repr__ = utils.std_repr
 
 
 def _filterDir(object, ignoreList) :
@@ -171,13 +182,29 @@ class Class :
 
     def __init__(self, name, module) :
         self.name = name
-        self.module = module
         self.classObject = getattr(module, name)
+
+        # Argh -- some ExtensionClasses don't have a __module__ attribute.
+        modname = getattr(self.classObject, '__module__', None)
+        self.module = sys.modules.get(modname)
+        if not self.module:
+            self.module = module
+            sys.stderr.write("warning: couldn't find real module for class %s "
+                             "(module name: %s)\n"
+                             % (self.classObject, modname))
         self.ignoreAttrs = 0
         self.methods = {}
         self.members = { '__class__': types.ClassType,
                          '__doc__': types.StringType,
                          '__dict__': types.DictType, }
+        self.memberRefs = {}
+        self.statics = {}
+        self.lineNums = {}
+
+    def __str__(self) :
+        return self.name
+
+    __repr__ = utils.std_repr
 
     def getFirstLine(self) :
         "Return first line we can find in THIS class, not any base classes"
@@ -211,37 +238,49 @@ class Class :
             func_name = className + func_name
         return func_name
 
-    def addMethod(self, method, className = None, methodName = None) :
+    def addMethod(self, method, methodName = None) :
         if type(method) == types.StringType :
             self.methods[method] = None
-            return
-        if not hasattr(method, "func_name") :
-            return
-
-        if not methodName :
-            methodName = self.__getMethodName(method.func_name, className)
-        self.methods[methodName] = function.Function(method)
-
+        else :
+            assert methodName is not None, "must supply methodName"
+            self.methods[methodName] = function.Function(method, 1)
+                
     def addMethods(self, classObject) :
         for classToken in _getClassTokens(classObject) :
-            token = getattr(classObject, classToken)
-            if type(token) == types.MethodType :
-                self.addMethod(token.im_func, classObject.__name__, classToken)
+            token = getattr(classObject, classToken, None)
+            if token is None:
+                continue
+
+            # Looks like a method.  Need to code it this way to
+            # accommodate ExtensionClass and Python 2.2.  Yecchh.
+            if (hasattr(token, "func_code") and
+                hasattr(token.func_code, "co_argcount")): 
+                self.addMethod(token, token.__name__)
+
+            elif hasattr(token, '__get__') and \
+                 not hasattr(token, '__set__') and \
+                 type(token) is not types.ClassType :
+                self.addMethod(getattr(token, '__name__', classToken))
             else :
                 self.members[classToken] = type(token)
+                self.memberRefs[classToken] = None
 
+        self.cleanupMemberRefs()
         # add standard methods
         for methodName in ('__class__',) :
             self.addMethod(methodName, classObject.__name__)
 
     def addMembers(self, classObject) :
-        if not _cfg.onlyCheckInitForMembers :
+        if not cfg().onlyCheckInitForMembers :
             for classToken in _getClassTokens(classObject) :
-                method = getattr(classObject, classToken)
+                method = getattr(classObject, classToken, None)
                 if type(method) == types.MethodType :
                     self.addMembersFromMethod(method.im_func)
-        elif hasattr(classObject, "__init__") :
-            self.addMembersFromMethod(classObject.__init__.im_func)
+        else:
+            try:
+                self.addMembersFromMethod(classObject.__init__.im_func)
+            except AttributeError:
+                pass
 
     def addMembersFromMethod(self, method) :
         if not hasattr(method, 'func_code') :
@@ -257,20 +296,117 @@ class Class :
                     stack.append(operand)
                 elif OP.STORE_ATTR(op) :
                     if len(stack) > 0 :
-                        if stack[-1] == _cfg.methodArgName :
+                        if stack[-1] == cfg().methodArgName:
                             value = None
                             if len(stack) > 1 :
                                 value = type(stack[-2])
                             self.members[operand] = value
+                            self.memberRefs[operand] = None
                         stack = []
 
+        self.cleanupMemberRefs()
 
-def importError(moduleName, info):
-    # detail may contain a newline replace with - 
-    # use str to avoid undestanding the tuple structure in the exception
-    info = string.join(string.split(str(info), '\n' ), ' - ')
-    sys.stderr.write("  Problem importing module %s - %s\n" % (moduleName, info))
+    def cleanupMemberRefs(self) :
+        try :
+            del self.memberRefs[Config.CHECKER_VAR]
+        except KeyError :
+            pass
 
+    def abstractMethod(self, m):
+        """Return 1 if method is abstract, None if not
+           An abstract method always raises an exception.
+        """
+        if not self.methods.get(m, None):
+            return None
+        func_code, bytes, i, maxCode, extended_arg = \
+                   OP.initFuncCode(self.methods[m].function)
+        # abstract if the first conditional is RAISE_VARARGS
+        while i < maxCode:
+            op, oparg, i, extended_arg = OP.getInfo(bytes, i, extended_arg)
+            if OP.RAISE_VARARGS(op):
+                return 1
+            if OP.conditional(op):
+                break
+        return None
+
+    def isAbstract(self):
+        """Return the method names that make a class abstract.
+           An abstract class has at least one abstract method."""
+        result = []
+        for m in self.methods.keys():
+            if self.abstractMethod(m):
+                result.append(m)
+        return result
+
+def _getLineInFile(moduleName, linenum):
+    line = ''
+    file, filename, smt = _findModule(moduleName)
+    try:
+        lines = file.readlines()
+        line = string.rstrip(lines[linenum - 1])
+    except (IOError, IndexError):
+        pass
+    file.close()
+    return line
+
+def importError(moduleName):
+    exc_type, exc_value, tb = sys.exc_info()
+
+    # First, try to get a nice-looking name for this exception type.
+    exc_name = getattr(exc_type, '__name__', None)
+    if not exc_name:
+        # either it's a string exception or a user-defined exception class
+        # show string or fully-qualified class name
+        exc_name = str(exc_type)
+        
+    # Print a traceback, unless this is an ImportError.  ImportError is
+    # presumably the most common import-time exception, so this saves
+    # the clutter of a traceback most of the time.  Also, the locus of
+    # the error is usually irrelevant for ImportError, so the lack of
+    # traceback shouldn't be a problem.
+    if exc_type is SyntaxError:
+        # SyntaxErrors are special, we want to control how we format
+        # the output and make it consistent for all versions of Python
+        e = exc_value
+        msg = '%s (%s, line %d)' % (e.msg, e.filename, e.lineno)
+        line = _getLineInFile(moduleName, e.lineno)
+        offset = e.offset
+        if type(offset) is not types.IntType:
+            offset = 0
+        exc_value = '%s\n    %s\n   %s^' % (msg, line, ' ' * offset)
+    elif exc_type is not ImportError:
+        sys.stderr.write("  Caught exception importing module %s:\n" %
+                         moduleName)
+
+        try:
+            tbinfo = traceback.extract_tb(tb)
+        except:
+            tbinfo = []
+            sys.stderr.write("      Unable to format traceback\n")
+        for filename, line, func, text in tbinfo[1:]:
+            sys.stderr.write("    File \"%s\", line %d" % (filename, line))
+            if func != "?":
+                sys.stderr.write(", in %s()" % func)
+            sys.stderr.write("\n")
+            if text:
+                sys.stderr.write("      %s\n" % text)
+
+    # And finally print the exception type and value.
+    # Careful formatting exc_value -- can fail for some user exceptions
+    sys.stderr.write("  %s: " % exc_name)
+    try:
+        sys.stderr.write(str(exc_value) + '\n')
+    except:
+        sys.stderr.write('**error formatting exception value**\n')
+
+
+def _getPyFile(filename):
+    """Return the file and '.py' filename from a filename which could
+    end with .py, .pyc, or .pyo"""
+
+    if filename[-1] in 'oc' and filename[-4:-1] == '.py':
+        return filename[:-1]
+    return filename
 
 class Module :
     "Class to hold all information for a module"
@@ -286,8 +422,12 @@ class Module :
         self.main_code = None
         self.module = None
         self.check = check
-        global _allModules
         _allModules[moduleName] = self
+
+    def __str__(self) :
+        return self.moduleName
+
+    __repr__ = utils.std_repr
 
     def addVariable(self, var, varType) :
         self.variables[var] = Variable(var, varType)
@@ -303,8 +443,14 @@ class Module :
 
     def addClass(self, name) :
         self.classes[name] = c = Class(name, self.module)
-        packages = string.split(str(c.classObject), '.')
-        c.ignoreAttrs = packages[0] in _cfg.blacklist
+        try:
+            objName = str(c.classObject)
+        except TypeError:
+            # this can happen if there is a goofy __getattr__
+            c.ignoreAttrs = 1
+        else:
+            packages = string.split(objName, '.')
+            c.ignoreAttrs = packages[0] in cfg().blacklist
         if not c.ignoreAttrs :
             self.__addAttributes(c, c.classObject)
 
@@ -322,57 +468,81 @@ class Module :
             self.modules[name] = module
 
     def filename(self) :
-        if not self.module :
-            return self.moduleName
-        filename = self.module.__file__
-        if string.lower(filename[-4:]) == '.pyc' :
-            filename = filename[:-4] + '.py'
-        return filename
+        try :
+            filename = self.module.__file__
+        except AttributeError :
+            filename = self.moduleName
+        return _getPyFile(filename)
 
-    def load(self) :
+    def load(self):
         try :
             # there's no need to reload modules we already have
-            if sys.modules.has_key(self.moduleName) :
+            module = sys.modules.get(self.moduleName)
+            if module :
                 if not _allModules[self.moduleName].module :
-                    return self.initModule(sys.modules[self.moduleName])
+                    return self._initModule(module)
                 return 1
 
-            file, filename, smt = _findModule(self.moduleName)
-            # FIXME: if the smt[-1] == imp.PKG_DIRECTORY : load __all__
-            try :
-                module = imp.load_module(self.moduleName, file, filename, smt)
-                self.setupMainCode(file, filename, module)
-            finally :
-                if file != None :
-                    file.close()
-            return self.initModule(module)
+            return self._initModule(self.setupMainCode())
         except (SystemExit, KeyboardInterrupt) :
             exc_type, exc_value, exc_tb = sys.exc_info()
             raise exc_type, exc_value
         except :
-            return importError(self.moduleName, sys.exc_info()[1])
+            importError(self.moduleName)
+            return 0
 
     def initModule(self, module) :
-        self.module = module
-        self.attributes = dir(self.module)
-        for tokenName in _filterDir(self.module, _DEFAULT_MODULE_TOKENS) :
-            token = getattr(self.module, tokenName)
-            tokenType = type(token)
-            if tokenType == types.ModuleType :
-                # get the real module name, tokenName could be an alias
-                self.addModule(token.__name__)
-            elif tokenType == types.FunctionType :
-                self.addFunction(token)
-            elif tokenType == types.ClassType :
-                self.addClass(tokenName)
-            else :
-                self.addVariable(tokenName, tokenType)
-
+        if not self.module:
+            filename = _getPyFile(module.__file__)
+            if string.lower(filename[-3:]) == '.py':
+                try:
+                    file = open(filename)
+                except IOError:
+                    pass
+                else:
+                    self._setupMainCode(file, filename, module)
+            return self._initModule(module)
         return 1
 
-    def setupMainCode(self, file, filename, module) :
-        if file :
+    def _initModule(self, module):
+        self.module = module
+        self.attributes = dir(self.module)
+
+        pychecker_attr = getattr(module, Config.CHECKER_VAR, None)
+        if pychecker_attr is not None :
+            utils.pushConfig()
+            utils.updateCheckerArgs(pychecker_attr, 'suppressions', 0, [])
+
+        for tokenName in _filterDir(self.module, _DEFAULT_MODULE_TOKENS) :
+            token = getattr(self.module, tokenName)
+            if isinstance(token, types.ModuleType) :
+                # get the real module name, tokenName could be an alias
+                self.addModule(token.__name__)
+            elif isinstance(token, types.FunctionType) :
+                self.addFunction(token)
+            elif isinstance(token, types.ClassType) or \
+                 hasattr(token, '__bases__') :
+                self.addClass(tokenName)
+            else :
+                self.addVariable(tokenName, type(token))
+
+        if pychecker_attr is not None :
+            utils.popConfig()
+        return 1
+
+    def setupMainCode(self) :
+        file, filename, smt = _findModule(self.moduleName)
+        # FIXME: if the smt[-1] == imp.PKG_DIRECTORY : load __all__
+        module = imp.load_module(self.moduleName, file, filename, smt)
+        self._setupMainCode(file, filename, module)
+        return module
+
+    def _setupMainCode(self, file, filename, module):
+        try :
             self.main_code = function.create_from_file(file, filename, module)
+        finally :
+            if file != None :
+                file.close()
 
 
 def getAllModules() :
@@ -389,8 +559,10 @@ _BUILTIN_MODULE_ATTRS = { 'sys': [ 'ps1', 'ps2', 'tracebacklimit',
                                  ],
                         }
 
-def fixupBuiltinModules() :
+def fixupBuiltinModules(needs_init=0):
     for moduleName in sys.builtin_module_names :
+        if needs_init:
+            _ = Module(moduleName, 0)
         module = _allModules.get(moduleName, None)
         if module is not None :
             try :
@@ -431,6 +603,7 @@ def processFiles(files, cfg = None, pre_process_cb = None) :
         _cfg = Config.Config()
 
     warnings = []
+    utils.initConfig(_cfg)
     for moduleName in getModules(files) :
         if callable(pre_process_cb) :
             pre_process_cb(moduleName)
@@ -438,6 +611,7 @@ def processFiles(files, cfg = None, pre_process_cb = None) :
         if not module.load() :
             w = Warning(module.filename(), 1, "NOT PROCESSED UNABLE TO IMPORT")
             warnings.append(w)
+    utils.popConfig()
     return warnings
 
 
@@ -453,11 +627,32 @@ def _print_processing(name) :
 
 
 def main(argv) :
+    __pychecker__ = 'no-miximport'
     import pychecker
     if LOCAL_MAIN_VERSION != pychecker.MAIN_MODULE_VERSION :
         sys.stderr.write(_VERSION_MISMATCH_ERROR)
         sys.exit(100)
 
+    # remove empty arguments
+    argv = filter(None, argv)
+        
+    # if the first arg starts with an @, read options from the file
+    # after the @ (this is mostly for windows)
+    if len(argv) >= 2 and argv[1][0] == '@':
+        # read data from the file
+        command_file = argv[1][1:]
+        try:
+            f = open(command_file, 'r')
+            command_line = f.read()
+            f.close()
+        except IOError, err:
+            sys.stderr.write("Unable to read commands from file: %s\n  %s\n" % \
+                             (command_file, err))
+            sys.exit(101)
+
+        # convert to an argv list, keeping argv[0] and the files to process
+        argv = argv[:1] + string.split(command_line) + argv[2:]
+ 
     global _cfg
     _cfg, files, suppressions = Config.setupFromArgs(argv[1:])
     if not files :
@@ -490,3 +685,56 @@ if __name__ == '__main__' :
     except Config.UsageError :
         sys.exit(127)
 
+else :
+    _orig__import__ = None
+    _suppressions = None
+    _warnings_cache = {}
+
+    def _get_unique_warnings(warnings):
+        for i in range(len(warnings)-1, -1, -1):
+            w = warnings[i].format()
+            if _warnings_cache.has_key(w):
+                del warnings[i]
+            else:
+                _warnings_cache[w] = 1
+        return warnings
+
+    def __import__(name, globals=None, locals=None, fromlist=None):
+        if globals is None:
+            globals = {}
+        if locals is None:
+            locals = {}
+        if fromlist is None:
+            fromlist = []
+
+        check = not sys.modules.has_key(name) and name[:10] != 'pychecker.'
+        pymodule = _orig__import__(name, globals, locals, fromlist)
+        if check :
+            try :
+                module = Module(pymodule.__name__)
+                if module.initModule(pymodule):
+                    warnings = warn.find([module], _cfg, _suppressions)
+                    _printWarnings(_get_unique_warnings(warnings))
+                else :
+                    print 'Unable to load module', pymodule.__name__
+            except Exception:
+                name = getattr(pymodule, '__name__', str(pymodule))
+                importError(name)
+
+        return pymodule
+
+    def _init() :
+        global _cfg, _suppressions, _orig__import__
+
+        args = string.split(os.environ.get('PYCHECKER', ''))
+        _cfg, files, _suppressions = Config.setupFromArgs(args)
+        utils.initConfig(_cfg)
+        fixupBuiltinModules(1)
+
+        # keep the orig __import__ around so we can call it
+        import __builtin__
+        _orig__import__ = __builtin__.__import__
+        __builtin__.__import__ = __import__
+
+    if not os.environ.get('PYCHECKER_DISABLED') :
+        _init()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2001, MetaSlash Inc.  All rights reserved.
+# Copyright (c) 2001-2002, MetaSlash Inc.  All rights reserved.
 
 """
 Module to hold manipulation of elements on the stack.
@@ -28,22 +28,41 @@ class Item :
         self.type = dataType
         self.const = const
         self.length = length
+        self.is_really_string = 0
 
     def __str__(self) :
+        if type(self.data) == types.TupleType :
+            value = '('
+            for item in self.data :
+                value = value + str(item) + ', '
+            # strip off the ', ' for multiple items
+            if len(self.data) > 1 :
+                value = value[:-2]
+            return value + ')'
         return str(self.data)
 
-    def isNone(self) :
-        return self.data is None or (self.data == 'None' and not self.const)
+    def __repr__(self):
+        return 'Stack Item: (%s, %s, %d)' % (self.data, self.type, self.const)
 
-    def isMethodCall(self, c, methodArgName) :
+    def isNone(self) :
+        return (self.type != TYPE_UNKNOWN and self.data is None or
+                (self.data == 'None' and not self.const))
+
+    def isImplicitNone(self) :
+        return self.data is None and self.const
+
+    def isMethodCall(self, c, methodArgName):
         return self.type == TYPE_ATTRIBUTE and c != None and \
                len(self.data) == 2 and self.data[0] == methodArgName
 
     def isLocals(self) :
         return self.type == types.DictType and self.data == LOCALS
 
+    def setStringType(self, value = types.StringType):
+        self.is_really_string = value == types.StringType
+
     def getType(self, typeMap) :
-        if self.type != types.StringType :
+        if self.type != types.StringType or self.is_really_string:
             return self.type
         if self.const :
             return type(self.data)
@@ -53,24 +72,12 @@ class Item :
                 return localTypes[0]
         return TYPE_UNKNOWN
 
-    def getName(self, module) :
-        if self.type == TYPE_ATTRIBUTE and \
-           type(self.data) != types.StringType :
-            strValue, data = "", self.data
-            # handle:  from XXX import YYY to munge the name 
-            # into looking like: XXX.YYY
-            if type(self.data[0]) == types.StringType and \
-               hasattr(module.module, self.data[0]) :
-                globalObject = getattr(module.module, self.data[0])
-                data = self.data[1:]
-                if type(globalObject) != types.ModuleType :
-                    strValue = "." + str(globalObject)
-                else :
-                    strValue = "." + globalObject.__name__
-
+    def getName(self) :
+        if self.type == TYPE_ATTRIBUTE and type(self.data) != types.StringType:
+            strValue = ""
             # convert the tuple into a string ('self', 'data') -> self.data
-            for item in data :
-                strValue = strValue + "." + str(item)
+            for item in self.data :
+                strValue = '%s.%s' % (strValue, str(item))
             return strValue[1:]
         return str(self.data)
 
@@ -83,7 +90,10 @@ class Item :
 
 
 def makeDict(values = (), const = 1) :
-    return Item(tuple(values), types.DictType, const, len(values))
+    values = tuple(values)
+    if not values:
+        values = ('<on-stack>',)
+    return Item(values, types.DictType, const, len(values))
 
 def makeTuple(values = (), const = 1) :
     return Item(tuple(values), types.TupleType, const, len(values))
@@ -91,9 +101,12 @@ def makeTuple(values = (), const = 1) :
 def makeList(values = [], const = 1) :
     return Item(values, types.ListType, const, len(values))
 
-def makeFuncReturnValue(stackValue) :
+def makeFuncReturnValue(stackValue, argCount) :
     data = DATA_UNKNOWN
-    if stackValue.type == TYPE_GLOBAL and stackValue.data == LOCALS :
+    # vars() without params == locals()
+    if stackValue.type == TYPE_GLOBAL and \
+       (stackValue.data == LOCALS or
+        (argCount == 0 and stackValue.data == 'vars')) :
         data = LOCALS
     return Item(data, TYPE_FUNC_RETURN)
 

@@ -9,7 +9,7 @@ from string import capitalize, strip, rstrip, split
 
 import Config
 
-MAX_SUBBOX_ROWS = 7
+MAX_SUBBOX_ROWS = 8
 MAX_BOX_COLS = 3
 PAD = 10
 EDITOR = "xterm -e vi -n +%(line)d %(file)s"
@@ -103,7 +103,8 @@ class ConfigDialog:
         self._file = Tkinter.StringVar()
         self._results = None
 
-        self._file.set(sys.argv[1])
+	if len(sys.argv) > 1:
+            self._file.set(sys.argv[1])
 
         for name, group in Config._OPTIONS:
           opts = []
