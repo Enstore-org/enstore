@@ -4,8 +4,8 @@
 
 2. You also need pnfs to be available and mounted on the machine you are
    trying to run on.  This requires adding your node to the pnfs export list
-   on the pnfs server node.  See bakken if you want to add a node to pnfs
-   exporting.
+   on the pnfs server node.  See bakken (at Fermi, otherwise your Enstore
+   administrator)  if you want to add a node to pnfs exporting.
 
    To mount a minimal pnfs, create a mount point (/pnfs/enstore by default)
    and use the $ENSTORE/bin/pnfs-mount command, which does a mount -nfs
@@ -63,7 +63,8 @@ To get pnfs running. (pnfs depends on gdbm)
    Within the database directory, the file info/databases will have variables
    to set to the location of database files.
 
-   See Jon Bakken about initializing databases.
+   See Jon Bakken (at Fermi, or your Enstore administrator) about initializing
+   databases.
 
    Once the pnfsSetup file, info/databases files, and the database files have
    been setup, to start the pnfs demonds, execute the pnfs "tools/pnfs.server
