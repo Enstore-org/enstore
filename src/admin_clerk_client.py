@@ -107,6 +107,7 @@ class AdminClerkClientInterface(interface.Interface) :
 
     def __init__(self):
 	self.verbose=0
+	self.got_server_verbose=0
         self.alive=0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
@@ -121,8 +122,8 @@ class AdminClerkClientInterface(interface.Interface) :
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() +\
-               ["verbose=", "dbname=", "faccess=",
+        return self.config_options() + self.verbose_options()+\
+               ["dbname=", "faccess=",
                 "laccess=","declared=","capacity=","rem_bytes=",] +\
                self.alive_options()+self.help_options()
 
@@ -190,6 +191,10 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = acc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+    elif intf.got_server_verbose:
+        ticket = acc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
+	                         intf.alive_retries)
+	msg_id = generic_cs.CLIENT
     else :
 	if intf.dbname=="file" and len(acc.criteria)>0:
 	   for key in acc.criteria.keys():

@@ -36,3 +36,12 @@ class GenericClient(generic_cs.GenericCS):
     # cover ourselves just in case our sub class does not have a send
     def send(self, work, timeout=0, retry=0):
 	pass
+
+    # reset the verbosity in the server
+    def set_verbose(self, verbosity, rcv_timeout=0, tries=0):
+        Trace.trace(10,'{set_verbose (client)')
+        x = self.send({'work':'set_verbose', 'verbose': verbosity}, \
+	              rcv_timeout, tries)
+        Trace.trace(10,'}set_verbose (client) '+repr(x))
+        return x
+

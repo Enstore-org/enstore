@@ -116,6 +116,7 @@ class LibraryManagerClientInterface(interface.Interface) :
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.getmoverlist = 0
+	self.got_server_verbose = 0
         interface.Interface.__init__(self)
 
 	# parse the options
@@ -123,8 +124,8 @@ class LibraryManagerClientInterface(interface.Interface) :
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options()+\
-	       ["verbose=", "getwork", "getmoverlist", "get_suspect_vols"] +\
+        return self.config_options()+self.verbose_options()+\
+	       ["getwork", "getmoverlist", "get_suspect_vols"] +\
 	       self.alive_options()+self.help_options()
 
     #  define our specific help
@@ -156,6 +157,10 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = lmc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+    elif intf.got_server_verbose:
+        ticket = lmc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
+	                         intf.alive_retries)
+	msg_id = generic_cs.CLIENT
     elif  intf.getwork:
         ticket = lmc.getwork(intf.verbose)
 	generic_cs.enprint(ticket['pending_work'], generic_cs.PRETTY_PRINT)

@@ -134,6 +134,15 @@ class LoggerClient(generic_client.GenericClient):
         return  self.u.send({'work':'alive'},
                             (lticket['hostip'], lticket['port']), rcv_timeout, tries)
 
+    # reset the servers verbose flag
+    def set_verbose(self, verbosity, rcv_timeout=0, tries=0):
+        Trace.trace(10,'{set_verbose (client)')
+        l = self.csc.get("logserver")
+        x = self.u.send({'work':'set_verbose', 'verbose': verbosity}, \
+	                (l['hostip'], l['port']), rcv_timeout, tries)
+        Trace.trace(10,'}set_verbose (client) '+repr(x))
+        return x
+
 class LoggerClientInterface(interface.Interface):
 
     def __init__(self):
@@ -143,6 +152,7 @@ class LoggerClientInterface(interface.Interface):
         self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
+	self.got_server_verbose = 0
         interface.Interface.__init__(self)
 
         # fill in the options
@@ -150,8 +160,8 @@ class LoggerClientInterface(interface.Interface):
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() +\
-               ["verbose=", "config_file=", "test", "logit="] +\
+        return self.config_options() + self.verbose_options()+\
+               ["config_file=", "test", "logit="] +\
                self.alive_options()+self.help_options()
 
 
@@ -186,6 +196,11 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = logc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+
+    elif intf.got_server_verbose:
+        ticket = logc.set_verbose(intf.server_verbose,intf.alive_rcv_timeout,\
+	                          intf.alive_retries)
+	msg_id = generic_cs.CLIENT
 
     elif intf.test:
         ticket = logc.send(ERROR, 1, "This is a test message %s %d", 'TEST', 3456)

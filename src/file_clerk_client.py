@@ -145,6 +145,7 @@ class FileClerkClientInterface(interface.Interface):
         self.backup = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
+	self.got_server_verbose = 0
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -154,8 +155,8 @@ class FileClerkClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16,"{}options")
-        return self.config_options()+\
-               ["verbose=","bfids","bfid=","backup"] +\
+        return self.config_options()+self.verbose_options()+\
+               ["bfids","bfid=","backup"] +\
                self.alive_options()+self.help_options()
 
 
@@ -175,6 +176,11 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = fcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+
+    elif intf.got_server_verbose:
+        ticket = fcc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
+	                         intf.alive_retries)
+	msg_id = generic_cs.CLIENT
 
     elif intf.backup:
         ticket = fcc.start_backup()

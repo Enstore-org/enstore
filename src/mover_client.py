@@ -54,7 +54,7 @@ class MoverClientInterface(interface.Interface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.mover = ""
-	self.server_verbose = -1
+	self.got_server_verbose = 0
 	self.status = 0
         interface.Interface.__init__(self)
 
@@ -101,7 +101,7 @@ if __name__ == "__main__" :
         ticket = movc.status(intf.alive_rcv_timeout,intf.alive_retries)
 	generic_cs.enprint(ticket)
 	msg_id = generic_cs.CLIENT
-    elif intf.server_verbose != -1:
+    elif intf.got_server_verbose:
         ticket = movc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
 	                          intf.alive_retries)
 	msg_id = generic_cs.CLIENT

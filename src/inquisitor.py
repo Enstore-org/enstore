@@ -104,12 +104,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	return ret
 
     # get the library manager suspect volume list and output it
-    def suspect_vols(self, lm, (host, port), key, verbose):
+    def suspect_vols(self, lm, (host, port), key):
         Trace.trace(13,"{suspect_vols "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.get_suspect_volumes()
-	    self.essfile.output_suspect_vols(stat, key, verbose)
-	    self.htmlfile.output_suspect_vols(stat, key, verbose)
+	    self.essfile.output_suspect_vols(stat, key, self.verbose)
+	    self.htmlfile.output_suspect_vols(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout((host, port), "    ", key)
 	    self.htmlfile.output_etimedout((host, port), "    ", key)
@@ -118,12 +118,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(13,"}suspect_vols")
 
     # get the library manager work queue and output it
-    def work_queue(self, lm, (host, port), key, verbose):
+    def work_queue(self, lm, (host, port), key):
         Trace.trace(13,"{work_queue "+repr(host)+" "+repr(port))
 	try:
-	    stat = lm.getwork(verbose)
-	    self.essfile.output_lmqueues(stat, key, verbose)
-	    self.htmlfile.output_lmqueues(stat, key, verbose)
+	    stat = lm.getwork(self.verbose)
+	    self.essfile.output_lmqueues(stat, key, self.verbose)
+	    self.htmlfile.output_lmqueues(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout((host, port), "    ", key)
 	    self.htmlfile.output_etimedout((host, port), "    ", key)
@@ -132,12 +132,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(13,"}work_queue ")
 
     # get the library manager mover list and output it
-    def mover_list(self, lm, (host, port), key, verbose):
+    def mover_list(self, lm, (host, port), key):
         Trace.trace(13,"{mover_list "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.getmoverlist()
-	    self.essfile.output_lmmoverlist(stat, key, verbose)
-	    self.htmlfile.output_lmmoverlist(stat, key, verbose)
+	    self.essfile.output_lmmoverlist(stat, key, self.verbose)
+	    self.htmlfile.output_lmmoverlist(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout((host, port), "    ", key)
 	    self.htmlfile.output_etimedout((host, port), "    ", key)
@@ -146,12 +146,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(13,"}mover_list ")
 
     # get the movers' status
-    def mover_status(self, movc, (host, port), key, verbose):
+    def mover_status(self, movc, (host, port), key):
         Trace.trace(13,"{mover_status "+repr(host)+" "+repr(port))
 	try:
 	    stat = movc.status(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_moverstatus(stat, key, verbose)
-	    self.htmlfile.output_moverstatus(stat, key, verbose)
+	    self.essfile.output_moverstatus(stat, key, self.verbose)
+	    self.htmlfile.output_moverstatus(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout((host, port), "    ", key)
 	    self.htmlfile.output_etimedout((host, port), "    ", key)
@@ -161,14 +161,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 
     # get the information from the configuration server
-    def update_config_server(self, key, time, verbose=0):
+    def update_config_server(self, key, time):
         Trace.trace(12,"{update_config_server "+repr(self.essfile.file_name))
 	self.alive_status(self.csc, self.csc.get_address(), \
 	                  self.cfg_prefix, time, key)
         Trace.trace(12,"}update_config_server")
 
     # get the information from the library manager(s)
-    def update_library_manager(self, key, time, verbose=0):
+    def update_library_manager(self, key, time):
         Trace.trace(12,"{update_library_manager "+\
                          repr(self.essfile.file_name)+" "+repr(key))
 	# get info on this library_manager
@@ -189,15 +189,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    ret = self.alive_status(lmc, (t['host'], t['port']), \
 	                            key+self.trailer, time, key)
 	    if ret == self.did_it:
-	        self.suspect_vols(lmc, (t['host'], t['port']), key, verbose)
-	        self.mover_list(lmc, (t['host'], t['port']), key, verbose)
-	        self.work_queue(lmc, (t['host'], t['port']), key, verbose)
+	        self.suspect_vols(lmc, (t['host'], t['port']), key)
+	        self.mover_list(lmc, (t['host'], t['port']), key)
+	        self.work_queue(lmc, (t['host'], t['port']), key)
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
         Trace.trace(12,"}update_library_manager ")
 
     # get the information from the movers
-    def update_mover(self, key, time, verbose=0):
+    def update_mover(self, key, time):
         Trace.trace(12,"{update_mover "+repr(self.essfile.file_name)+" "+\
                         repr(key))
 	# get info on this mover
@@ -216,31 +216,31 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    ret = self.alive_status(movc, (t['host'], t['port']),\
 	                            key+self.trailer, time, key)
 	    if ret == self.did_it:
-	        self.mover_status(movc, (t['host'], t['port']), key, verbose)
+	        self.mover_status(movc, (t['host'], t['port']), key)
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
         Trace.trace(12,"}update_mover")
 
     # get the information from the admin clerk
-    def update_admin_clerk(self, key, time, verbose=0):
+    def update_admin_clerk(self, key, time):
         Trace.trace(12,"{update_admin_clerk "+repr(self.essfile.file_name))
 	self.do_alive_check(key, time, self.acc, self.ac_prefix)
         Trace.trace(12,"}update_admin_clerk ")
 
     # get the information from the file clerk
-    def update_file_clerk(self, key, time, verbose=0):
+    def update_file_clerk(self, key, time):
         Trace.trace(12,"{update_file_clerk "+repr(self.essfile.file_name))
 	self.do_alive_check(key, time, self.fcc, self.fc_prefix)
         Trace.trace(12,"}update_file_clerk ")
 
     # get the information from the log server
-    def update_logserver(self, key, time, verbose=0):
+    def update_logserver(self, key, time):
         Trace.trace(12,"{update_log_server "+repr(self.essfile.file_name))
 	self.do_alive_check(key, time, self.logc, self.logc_prefix)
         Trace.trace(12,"}update_log_server ")
 
     # get the information from the media changer(s)
-    def update_media_changer(self, key, time, verbose=0):
+    def update_media_changer(self, key, time):
         Trace.trace(12,"{update_media_changer "+repr(self.essfile.file_name)+\
 	                " "+repr(key))
 	# get info on this media changer
@@ -263,7 +263,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,"}update_media_changer")
 
     # get the information from the inquisitor
-    def update_inquisitor(self, key, time, verbose=0):
+    def update_inquisitor(self, key, time):
         Trace.trace(12,"{update_inquisitor "+repr(self.essfile.file_name))
 	# get info on the inquisitor
 	try:
@@ -303,13 +303,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.default_server_timeout = default_server_timeout()
 
     # get the information from the volume clerk server
-    def update_volume_clerk(self, key, time, verbose=0):
+    def update_volume_clerk(self, key, time):
         Trace.trace(12,"{update_volume_clerk "+repr(self.essfile.file_name))
 	self.do_alive_check(key, time, self.vcc, self.vc_prefix)
         Trace.trace(12,"}update_volume_clerk ")
 
     # get the information about the blocksizes
-    def update_blocksizes(self, key, time, verbose=0):
+    def update_blocksizes(self, key, time):
         Trace.trace(12,"{update_blocksizes "+repr(self.essfile.file_name))
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
@@ -404,7 +404,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(12,"}update_nofunc ")
 
     # update the enstore system status information
-    def do_update(self, ticket, verbose, do_all=0):
+    def do_update(self, ticket, do_all=0):
         Trace.trace(11,"{do_update ")
 
 	# check the ascii file and see if it has gotten too big and needs to be
@@ -412,7 +412,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.essfile.timestamp()
 
 	# open the html file and output the header to it
-	self.htmlfile.open()
+	self.htmlfile.open(self.verbose)
 	self.htmlfile.write_header()
 
 	# we will need the current time to decide which servers to poke with
@@ -448,7 +448,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        if InquisitorMethods.__dict__.has_key(inq_func):
 	            if type(InquisitorMethods.__dict__[inq_func]) == \
 	               types.FunctionType:
-	                exec("self."+inq_func+"(key, ctime, verbose)")
+	                exec("self."+inq_func+"(key, ctime)")
 	                self.last_update[key] = ctime
 	                did_some_work = 1
 	            else:
@@ -491,7 +491,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(11,"}do_update ")
 
     # loop here forever doing what inquisitors do best (overrides UDP one)
-    def serve_forever(self, verbose) :
+    def serve_forever(self) :
 	Trace.trace(4,"{serve_forever "+repr(self.rcv_timeout))
 
 	# get a file clerk client, volume clerk client, admin clerk client.
@@ -501,9 +501,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# information from the servers. we do not need to pass a host and port
 	# to the class instantiators because we are giving them a configuration
 	# client and they do not need to connect to the configuration server.
-	self.fcc = file_clerk_client.FileClient(self.csc, verbose)
-	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc, verbose)
-	self.acc = admin_clerk_client.AdminClerkClient(self.csc, verbose)
+	self.fcc = file_clerk_client.FileClient(self.csc, self.verbose)
+	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+	                                                 self.verbose)
+	self.acc = admin_clerk_client.AdminClerkClient(self.csc, self.verbose)
 
 	# get all the servers we are to keep tabs on
 	self.prepare_keys()
@@ -520,10 +521,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # our client said to update the enstore system status information
     def update(self, ticket):
         Trace.trace(10,"{update "+repr(ticket))
-	try:
-	    verbose = ticket['verbose']
-	except:
-	    verbose = 0
 	# if the ticket holds a server name then only update that one, else
 	# update everything we know about
 	if ticket.has_key(self.server_keyword):
@@ -539,25 +536,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        return
 	else:
 	    do_all = 1
-	self.do_update(ticket, verbose, do_all)
+	self.do_update(ticket, do_all)
         ticket["status"] = (e_errors.OK, None)
 	self.send_reply(ticket)
         Trace.trace(10,"}update")
-
-    # send back our response
-    def send_reply(self, t):
-	Trace.trace(11,"{send_reply "+repr(t))
-	self.enprint(t, generic_cs.SERVER, self.verbose, self.logc,\
-	             log_client.WARNING)
-        try:
-           self.reply_to_caller(t)
-        # even if there is an error - respond to caller so he can process it
-        except:
-           t["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-           self.reply_to_caller(t)
-           Trace.trace(0,"}send_reply "+repr(t))
-           return
-	Trace.trace(11,"}send_reply")
 
     # set a new timeout value
     def set_timeout(self,ticket):
@@ -733,7 +715,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	    self.essfile = enstore_status.EnstoreStatus(ascii_file, \
 	                                           enstore_status.ascii_file,\
 	                                           "", max_ascii_size, verbose)
-	    self.essfile.open()
+	    self.essfile.open(verbose)
 
 	# get an html system status file
 	if html_file != "":
@@ -809,9 +791,8 @@ if __name__ == "__main__":
         try:
             Trace.trace(1,'Inquisitor (re)starting')
             inq.logc.send(log_client.INFO, 1, "Inquisitor (re)starting")
-            inq.serve_forever(intf.verbose)
+            inq.serve_forever()
         except:
 	    inq.serve_forever_error("inquisitor", inq.logc)
             continue
     Trace.trace(1,"Inquisitor finished (impossible)")
-

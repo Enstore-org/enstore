@@ -219,6 +219,7 @@ class Interface:
                 # if d0sam has been requested, just add 4096 to verbose option
                 self.verbose = self.verbose | 0x1000 
             elif opt == "--server_verbose" :
+	        self.got_server_verbose = 1
 	        self.server_verbose = string.atoi(value)
             elif opt == "--faccess":
   	        self.criteria['first_access']=self.check(value)

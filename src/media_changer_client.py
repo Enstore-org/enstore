@@ -65,6 +65,7 @@ class MediaChangerClientInterface(interface.Interface):
         self.media_changer = ""
         self.volume = 0
         self.drive = 0
+	self.got_server_verbose = 0
         interface.Interface.__init__(self)
 
         # parse the options
@@ -72,8 +73,8 @@ class MediaChangerClientInterface(interface.Interface):
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() +\
-               ["verbose=", "config_file="] +\
+        return self.config_options() + self.verbose_options()+\
+               ["config_file="] +\
                self.alive_options()+self.help_options()
 
     #  define our specific help
@@ -89,7 +90,7 @@ class MediaChangerClientInterface(interface.Interface):
         else:
             self.media_changer = self.args[0]
 
-        if self.alive == 0:
+        if (self.alive == 0) and (self.got_server_verbose == 0):
             # bomb out if we number of arguments is wrong
             if len(self.args) < 3 :
                 self.print_help()
@@ -114,6 +115,10 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = mcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+    elif intf.got_server_verbose:
+        ticket = mcc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
+	                         intf.alive_retries)
+	msg_id = generic_cs.CLIENT
     else:
         ticket = mcc.unloadvol(intf.volume, intf.drive)
 	mcc.enprint('unload returned:'+repr(ticket['status']))

@@ -125,6 +125,7 @@ class InquisitorClientInterface(interface.Interface):
 	self.max_ascii_size = 0
 	self.get_max_ascii_size = 0
 	self.verbose = 0
+	self.got_server_verbose = 0
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -148,7 +149,8 @@ class InquisitorClientInterface(interface.Interface):
     def options(self):
         Trace.trace(16,"{}options")
         return self.config_options()+self.alive_options() +\
-               ["verbose=","timeout=","get_timeout", "reset_timeout"] +\
+	       self.verbose_options() +\
+               ["timeout=", "get_timeout", "reset_timeout"] +\
 	       ["update", "timestamp", "max_ascii_size="] +\
 	       ["get_max_ascii_size"] +\
                self.help_options()
@@ -170,6 +172,11 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = iqc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+
+    elif intf.got_server_verbose:
+        ticket = iqc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
+	                         intf.alive_retries)
+	msg_id = generic_cs.CLIENT
 
     elif intf.update:
         ticket = iqc.update(intf.server, intf.verbose)

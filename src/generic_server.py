@@ -23,6 +23,7 @@ import generic_cs
 import traceback
 import timeofday
 import log_client
+import e_errors
 
 class GenericServer(generic_cs.GenericCS):
 
@@ -42,3 +43,33 @@ class GenericServer(generic_cs.GenericCS):
         self.enprint(format)
 	if logger:
             logger.send(log_client.ERROR, 1, format)
+
+    # reset the verbosity
+    def set_verbose(self, ticket):
+        Trace.trace(10,'{set_verbose')
+        ticket["status"] = (e_errors.OK, None)
+	id = "verbose"
+	if self.__dict__.has_key(id):
+	    # set both just in case
+	    self.verbose = ticket[id]
+	    verbose = ticket[id]
+	    ticket["variable"] = "self.verbose, verbose"
+	else:
+	    verbose = ticket[id]
+	    ticket["variable"] = "verbose"
+	self.send_reply(ticket)
+        Trace.trace(10,'}set_verbose')
+	
+    # send back our response
+    def send_reply(self, t):
+	Trace.trace(11,"{send_reply "+repr(t))
+	self.enprint(t, generic_cs.SERVER, self.verbose)
+        try:
+           self.reply_to_caller(t)
+        # even if there is an error - respond to caller so he can process it
+        except:
+           t["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+           self.reply_to_caller(t)
+           Trace.trace(0,"}send_reply "+repr(t))
+           return
+	Trace.trace(11,"}send_reply")

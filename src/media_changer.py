@@ -30,7 +30,6 @@ import time				# sleep
 import Trace
 import e_errors
 
-verbose = 0
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	                 generic_server.GenericServer) :

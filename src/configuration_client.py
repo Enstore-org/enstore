@@ -145,8 +145,17 @@ class ConfigurationClient(generic_client.GenericClient):
     # check on alive status
     def alive(self, rcv_timeout=0, tries=0):
         Trace.trace(10,'{alive config_address='+repr(self.config_address))
-        x = self.u.send({'work':'alive'},self.config_address, rcv_timeout,tries)
+        x = self.u.send({'work':'alive'},self.config_address, rcv_timeout,\
+	                tries)
         Trace.trace(10,'}alive '+repr(x))
+        return x
+
+    # reset the servers verbose flag
+    def set_verbose(self, verbosity, rcv_timeout=0, tries=0):
+        Trace.trace(10,'{set_verbose (client)')
+        x = self.u.send({'work':'set_verbose', 'verbose': verbosity}, \
+	                self.config_address, rcv_timeout, tries)
+        Trace.trace(10,'}set_verbose (client) '+repr(x))
         return x
 
     # get list of the Library manager movers
@@ -175,6 +184,7 @@ class ConfigurationClientInterface(interface.Interface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
        	self.get_keys = 0
+	self.got_server_verbose = 0
         interface.Interface.__init__(self)
 
         # parse the options
@@ -182,8 +192,8 @@ class ConfigurationClientInterface(interface.Interface):
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() +\
-	       ["config_file=","verbose=","get_keys","dict","load"] + \
+        return self.config_options() + self.verbose_options()+\
+	       ["config_file=","get_keys","dict","load"] + \
 	       self.alive_options()+self.help_options()
 
 if __name__ == "__main__":
@@ -201,6 +211,11 @@ if __name__ == "__main__":
     if intf.alive:
         stati = csc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+
+    elif intf.got_server_verbose:
+        stati = csc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
+	                        intf.alive_retries)
+	msg_id = generic_cs.CLIENT
 
     elif intf.dict:
         csc.list(intf.alive_rcv_timeout,intf.alive_retries)
@@ -221,3 +236,4 @@ if __name__ == "__main__":
     del csc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     csc.check_ticket(stati, msg_id)
+

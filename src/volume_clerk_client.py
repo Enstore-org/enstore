@@ -308,6 +308,7 @@ class VolumeClerkClientInterface(interface.Interface):
         self.addvol = 0
         self.delvol = 0
 	self.verbose = 0
+	self.got_server_verbose = 0
         interface.Interface.__init__(self)
 
         # parse the options
@@ -317,9 +318,9 @@ class VolumeClerkClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(20,'{}options')
-        return self.config_options() +\
-               ["verbose=", "clrvol", "backup" ] +\
-               ["vols","nextvol","vol=","addvol","delvol" ] +\
+        return self.config_options() + self.verbose_options()+\
+               ["clrvol", "backup"] +\
+	       ["vols","nextvol","vol=","addvol","delvol" ] +\
                self.alive_options()+self.help_options()
 
     # parse the options like normal but make sure we have necessary params
@@ -384,6 +385,10 @@ if __name__ == "__main__":
     if intf.alive:
         ticket = vcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+    elif intf.got_server_verbose:
+        ticket = vcc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
+	                         intf.alive_retries)
+	msg_id = generic_cs.CLIENT
     elif intf.backup:
         ticket = vcc.start_backup()
         db.do_backup("volume")

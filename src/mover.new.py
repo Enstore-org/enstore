@@ -653,8 +653,9 @@ class Mover:
 # Gather everything together and add to the mess
 class MoverServer(  dispatching_worker.DispatchingWorker
 	     	  , generic_server.GenericServer ):
-    def __init__( self, server_address ):
+    def __init__( self, server_address, verbose=0 ):
 	self.client_obj_inst = MoverClient( mvr_config )
+	self.verbose = verbose
 	for lm in mvr_config['library']:# should be libraries
 	    # a "respone" to server being summoned
 	    address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
@@ -802,7 +803,7 @@ class MoverInterface(interface.Interface):
         Trace.trace(10,'{lmsi.__init__')
         # fill in the defaults for possible options
         self.summon = 1
-        self.debug = 0
+        self.verbose = 0
         interface.Interface.__init__(self)
 
         # now parse the options
