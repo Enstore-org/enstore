@@ -153,7 +153,7 @@ echo "Tapes in Enstore, but not in the towers"
 egrep -v "^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read line; do
   vol=`echo $line| awk '{print $1}'`
   lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
-  if [ `echo $lib | egrep -ic 'null|disk|shelf` -ne 0 ]; then continue; fi
+  if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
   if [ `echo $lib | grep -ic mezsilo` -ne 0 ]; then continue; fi
   n=`grep $vol /diska/tape-inventory/AML2-VOLUMES.html | wc | awk '{print $1}'`
   if [ $n -eq 0 ]; then
@@ -178,7 +178,7 @@ egrep -v "^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read
   if [ $lib = 'sammam' -o $lib = 'samm2' -o $lib = 'samlto' -o $lib = 'mezsilo' ];then continue; fi
   if [ $lib = 'test' -o $lib = 'testm2' -o $lib = 'testlto' ];then continue; fi
   if [ $lib = 'blank-d0-9940' -o $lib = 'blank-9940' -o $lib = 'blank-9840' ];then continue; fi
-  if [ `echo $lib | egrep -ic 'null|disk|shelf` -ne 0 ]; then continue; fi
+  if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
   echo $line
 done
 echo
