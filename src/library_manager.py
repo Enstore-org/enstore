@@ -41,7 +41,8 @@ def add_mover(name, address):
 	     'state'   : 'idle_mover',
 	     'last_checked' : time.time(),
 	     'summon_try_cnt' : 0,
-	     'tr_error' : 'ok'
+	     'tr_error' : 'ok',
+	     'file_family':''
 	     }
     movers.append(mover)
     mover_cnt = mover_cnt + 1
@@ -93,7 +94,7 @@ def find_mover(mover, mover_list, verbose=0):
 
 	generic_cs.enprint("keyerror", generic_cs.SERVER, verbose)
 	generic_cs.enprint(mover, \
-	                generic_cs.SERVER|generic_server.PRETTY_PRINT, verbose)
+	                generic_cs.SERVER|generic_cs.PRETTY_PRINT, verbose)
 	generic_cs.enprint("find_mover "+repr(mover), generic_cs.SERVER, \
 	                   verbose)
     
@@ -148,21 +149,40 @@ def remove_mover(mover, mover_list, verbose=0):
 work_at_movers = []
 
 # return a list of busy volumes for a given file family
-def busy_vols_in_family (family_name, verbose):
+def busy_vols_in_family (vc, family_name, verbose):
     Trace.trace(4,"{busy_vols_in_family " + repr(family_name))
     vols = []
     for w in work_at_movers:
      try:
-        if w["vc"]["file_family"] == family_name:
+	 if w["vc"]["file_family"] == family_name:
             vols.append(w["fc"]["external_label"])
      except:
-	Trace.trace(0,"}busy_vols_in_family "+str(sys.exc_info()[0])+\
+	 Trace.trace(0,"}busy_vols_in_family "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
-        generic_cs.enprint(repr(w)+"\n"+repr(work_at_movers), \
-	                   generic_cs.DEBUG|generic_cs.PRETTY_PRINT, verbose)
-        os._exit(222)
-    Trace.trace(4,"}busy_vols_in_family ")
-    return vols
+	 generic_cs.enprint(repr(w)+"\n"+repr(work_at_movers), \
+			    generic_cs.DEBUG|generic_cs.PRETTY_PRINT, verbose)
+	 os._exit(222)
+
+    # now check if any volume in this family is still mounted
+    work_movers = []
+    for mv in movers:
+     try:
+	 if mv["file_family"] == family_name:
+	     vol_info = vc.inquire_vol(mv["external_label"])
+	     if vol_info['at_mover'][0] != 'unmounted':
+		 vols.append(mv["external_label"])
+	     # check if this mover can do the work
+	     if vol_info['at_mover'][0] == 'mounted':
+		 if mv['state'] == 'idle_mover':
+		     work_movers.append(mv)
+     except:
+	 Trace.trace(0,"}busy_vols_in_family "+str(sys.exc_info()[0])+\
+                     str(sys.exc_info()[1]))
+	 generic_cs.enprint(repr(mv)+"\n"+repr(work_at_movers), \
+			    generic_cs.DEBUG|generic_cs.PRETTY_PRINT, verbose)
+	 os._exit(222)
+     Trace.trace(4,"}busy_vols_in_family ")
+    return vols, work_movers
 
 
 # check if a particular volume with given label is busy
@@ -190,9 +210,10 @@ def get_work_at_movers(external_label):
 
 ##############################################################
 # is there any work for any volume?
-def next_work_any_volume(csc, verbose):
+def next_work_any_volume(self, csc, verbose):
     Trace.trace(3,"{next_work_any_volume "+repr(csc))
 
+    vc = volume_clerk_client.VolumeClerkClient(csc)
     # look in pending work queue for reading or writing work
     w=pending_work.get_init()
     while w:
@@ -214,14 +235,30 @@ def next_work_any_volume(csc, verbose):
         # find volumes we _dont_ want to hear about -- that is volumes in the
         # apropriate family which are currently at movers.
         elif w["work"] == "write_to_hsm":
-            vol_veto_list = busy_vols_in_family(w["vc"]["file_family"], \
-	                                        verbose)
+            vol_veto_list, work_movers = busy_vols_in_family(vc, 
+							    w["vc"]["file_family"],
+							    verbose)
+	    for mov in work_movers:
+		# summon this mover
+		v_info = vc.can_write_volume (w["vc"]["library"],
+					      w["wrapper"]["size_bytes"],
+					      w["vc"]["file_family"],
+					      w["vc"]["wrapper"],
+					      mov["external_label"])
+		if v_info['status'][0] == e_errors.OK:
+		    Trace.trace(3,"{next_work_any_volume MV TO SUMMON"+\
+				 repr(mov))
+		    summon_mover(self, mov, w)
+		    return {"status" : (e_errors.NOWORK, None)}
+		else:
+		    Trace.trace(3,"{next_work_any_volume:can_write_volume returned"+repr(v_info['status']))
+
             # only so many volumes can be written to at one time
             if len(vol_veto_list) >= w["vc"]["file_family_width"]:
                 w=pending_work.get_next()
                 continue
+		
             # width not exceeded, ask volume clerk for a new volume.
-            vc = volume_clerk_client.VolumeClerkClient(csc)
             first_found = 0
             t1 = time.time()
             v = vc.next_write_volume (w["vc"]["library"],
@@ -278,7 +315,7 @@ def next_work_this_volume(v):
 	#print "COMP", w["vc"]["file_family"]+"."+w["vc"]["wrapper"]
         # writing to this volume?
         if (w["work"]                == "write_to_hsm"   and
-            (w["vc"]["file_family"]+"."+w["vc"]["wrapper"])   == v['vc']["file_family"] and
+            (w["vc"]["file_family"]+"."+w["vc"]["wrapper"]) == v['vc']["file_family"] and
             v["vc"]["user_inhibit"]        == "none"           and
             v["vc"]["system_inhibit"]      == "none"           and
             w["wrapper"]["size_bytes"] <= v['vc']["remaining_bytes"]):
@@ -329,16 +366,6 @@ def summon_mover(self, mover, ticket):
     summon_rq = {'work': 'summon',
 		 'address': self.server_address }
     
-    # find mover in delayed dismount queue and 
-    # cancel timer queue entry for this mover
-    w = {}
-    for mov in self.del_dismount_list:
-	if mov['mover'] == mover['mover']:
-	    try:
-		w = mov['work_ticket']
-	    except:
-		w = {}
-    timer_task.msg_cancel_tr(summon_mover, self, mover['mover'], w)
     self.enprint("summon_rq "+repr(summon_rq), generic_cs.DEBUG, self.verbose)
     mover['tr_error'] = self.udpc.send_no_wait(summon_rq, mover['address'])
     self.enprint("summon_queue", generic_cs.DEBUG, self.verbose)
@@ -444,7 +471,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    pass
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
                                                       self.keys['port']))
-	timer_task.TimerTask.__init__( self, 5 )
+	timer_task.TimerTask.__init__( self, 10 )
         # get a logger
         self.logc = log_client.LoggerClient(self.csc, self.keys["logname"], \
                                             'logserver', 0)
@@ -695,7 +722,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def idle_mover(self, mticket):
 	global mover_cnt
 	
-	print "IDLE"
 	Trace.trace(3,"{idle_mover " + repr(mticket))
         self.enprint("IDLE MOVER "+repr(mticket), generic_cs.DEBUG, \
 	             self.verbose)
@@ -785,19 +811,27 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    + repr(item))
 			return
 
-	    # set volume to mounting
+	    # chech the volume state and try to lock it
 	    vc = volume_clerk_client.VolumeClerkClient(self.csc)
-	    v = vc.set_at_mover(w['fc']['external_label'], 'mounting', 
-				mticket["mover"])
-	    if v['status'][0] != e_errors.OK:
-		format = "cannot change to 'mounting' vol=%s mover=%s state=%s"
-		logticket = self.logc.send(log_client.INFO, 2, format,
-                                       w["fc"]["external_label"],
-                                       v['at_mover'][1], v['at_mover'][0])
+	    vol_info = vc.inquire_vol(w['fc']['external_label'])
+
+	    if vol_info['at_mover'][0] == 'unmounted':
+		# set volume to mounting
+		v = vc.set_at_mover(w['fc']['external_label'], 'mounting', 
+				    mticket["mover"])
+		if v['status'][0] != e_errors.OK:
+		    format = "cannot change to 'mounting' vol=%s mover=%s state=%s"
+		    logticket = self.logc.send(log_client.INFO, 2, format,
+					       w["fc"]["external_label"],
+					       v['at_mover'][1], v['at_mover'][0])
 		
-		Trace.trace(3,"}idle_mover: cannot change to 'mounting'"+repr(v['at_mover']))
+		    Trace.trace(3,"}idle_mover: cannot change to 'mounting'"+repr(v['at_mover']))
+		    self.reply_to_caller({"work" : "nowork"})
+		    return
+	    else:
 		self.reply_to_caller({"work" : "nowork"})
 		return
+		
 		
 
             # reply now to avoid deadlocks
@@ -816,6 +850,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             work_at_movers.append(w)
 	    mv = update_mover_list(self, mticket, 'work_at_mover')
 	    mv['external_label'] = w['fc']['external_label']
+	    mv["file_family"] = w["vc"]["file_family"]
             self.enprint("Work at movers appended", generic_cs.SERVER, \
 	                 self.verbose)
             self.enprint(w, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
@@ -866,8 +901,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w:
             self.enprint("removing "+repr(w)+" from the queue", \
 	                 generic_cs.SERVER, self.verbose)
-            work_at_movers.remove(w)
 	    delayed_dismount = w['encp']['delayed_dismount']
+	    work_at_movers.remove(w)
 	else: delayed_dismount = 0
 	# check if mover can accept another request
 	if state != 'idle_mover':
@@ -904,40 +939,34 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    Trace.trace(3,"}have_bound_volume " + repr(w))
             return
 
-
         # if the pending work queue is empty, then we're done
         elif  w["status"][0] == e_errors.NOWORK:
-	    print "delayed_dismount=",delayed_dismount
 	    mv = find_mover(mticket, movers, self.verbose)
-	    if not ((mv != None) and mv):
-		mvr_found = 1 # fake dismount request
-	    else:
-		# check if delayed_dismount set
-		mvr_found = 0
+	    # check if delayed_dismount set
+	    mvr_found = 0
+	    if len(self.del_dismount_list) != 0:
 		mvr = find_mover(mticket,self.del_dismount_list,self.verbose)
 		if (mvr != None) and mvr: 
 		    mvr_found = 1
-		    #print "sending NOWORK"
-		    #self.reply_to_caller({'work': 'nowork'})
-		    #Trace.trace(3,"}have_bound_volume delayed dismount"+\
-				#repr(w))
-		    #return
-		try:
-		    if (delayed_dismount):
-			if not mvr_found:
-			    self.del_dismount_list.append(mv)
-			timer_task.msg_add(delayed_dismount*60, 
-					   summon_mover, self, mv, w)
-			print "sending NOWORK"
-			self.reply_to_caller({'work': 'nowork'})
-			Trace.trace(3,"}have_bound_volume delayed dismount"+\
-				    repr(w))
-			return
+	    try:
+		if (delayed_dismount):
+		    if not mvr_found:
+			self.del_dismount_list.append(mv)
 		    else:
-			mvr_found = 1
-		except:
-		    mvr_found = 1 
-			
+			timer_task.msg_cancel_tr(summon_mover, 
+						 self, mvr['mover'])
+		    timer_task.msg_add(delayed_dismount*60, 
+				       summon_mover, self, mv, w)
+		    self.reply_to_caller({'work': 'nowork'})
+		    Trace.trace(3,"}have_bound_volume delayed dismount"+\
+				repr(w))
+		    return
+		else:
+		    mvr_found = 1
+	    except:
+		traceback.print_exc()
+		mvr_found = 1 
+
 	    if mvr_found:
 		# unbind volume
 		try:
@@ -1117,7 +1146,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def schedule(self):
 	Trace.trace(3,"{schedule ")
         while 1:
-            w = next_work_any_volume(self.csc, self.verbose)
+            w = next_work_any_volume(self, self.csc, self.verbose)
             if w["status"][0] == e_errors.OK or \
 	       w["status"][0] == e_errors.NOWORK:
 		Trace.trace(3,"}schedule " + repr(w))
@@ -1316,6 +1345,7 @@ if __name__ == "__main__":
             lm.logc.send(log_client.INFO, 1, "Library Manager "+intf.name+"(re)starting")
             lm.serve_forever()
         except:
+	    traceback.print_exc()
 	    if SystemExit:
 		sys.exit(0)
 	    else:

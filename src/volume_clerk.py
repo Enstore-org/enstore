@@ -396,6 +396,81 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          self.reply_to_caller(ticket)
          return
 
+    # check if specific volume can be used for write
+    def can_write_volume (self, ticket):
+     Trace.trace(12,'{can_write_volume '+repr(ticket))
+     # get the criteria for the volume from the user's ticket
+     try:
+	 key = "min_remaining_bytes"
+	 min_remaining_bytes = ticket[key]
+	 key = "library"
+	 library = ticket[key]
+	 key = "file_family"
+	 file_family = ticket[key]
+	 key = "wrapper"
+	 wrapper_type = ticket[key]
+	 key = "external_label"
+	 external_label = ticket[key]
+     except KeyError:
+	 ticket["status"] = (e_errors.KEYERROR, \
+			     "Volume Clerk: "+key+" is missing")
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
+	 self.reply_to_caller(ticket)
+	 Trace.trace(0,"}can_write_volume "+repr(ticket["status"]))
+	 return
+
+     # get the current entry for the volume
+     try:
+	 v = copy.deepcopy(dict[external_label])
+	 # for backward compatibility for at_mover field
+	 try:
+	     at_mover = v['at_mover']
+	 except KeyError:
+	     v['at_mover'] = ('unmounted', '')
+	    
+	 ticket["status"] = (e_errors.OK,'None')
+	 if (v["library"] == library and
+	     (v["file_family"] == file_family+"."+wrapper_type) and
+	     v["wrapper"] == wrapper_type and
+	     v["user_inhibit"] == "none" and
+	     v["system_inhibit"] == "none" and
+	     v['at_mover'][0] == "mounted"):
+	     if v["remaining_bytes"] < min_remaining_bytes:
+		 # if it __ever__ happens that we can't write a file on a
+		 # volume, then mark volume as full.  This prevents us from
+		 # putting 1 byte files on old "golden" volumes and potentially
+		 # losing the entire tape. One could argue that a very large
+		 # file write could prematurely flag a volume as full, but lets
+		 # worry about if it is really a problem - I propose that an
+		 # administrator reset the system_inhibit back to none in these
+		 # special, and hopefully rare cases.
+		 v["system_inhibit"] = "full"
+		 left = v["remaining_bytes"]/1.
+		 totb = v["capacity_bytes"]/1.
+		 if totb != 0:
+		     waste = left/totb*100.
+		 self.enprint(label+" is now full, bytes remaining = "+\
+			      repr(left)+" wasted = "+repr(waste)+"%")
+		 dict[external_label] = copy.deepcopy(v)
+		 ticket["status"] = (e_errors.WRITE_EOT, \
+				     "Volume Clerk: "+key+" is missing")
+	     self.reply_to_caller(ticket)
+	     Trace.trace(0,"}can_write_volume "+repr(ticket["status"]))
+	     return
+	 else:
+	     ticket["status"] = (e_errors.NOACCESS,'None')
+	     self.reply_to_caller(record)
+	     Trace.trace(0,"}can_write_volume "+repr(ticket["status"]))
+	     return
+     except KeyError:
+	 ticket["status"] = (e_errors.KEYERROR, \
+			     "Volume Clerk: volume "+external_label\
+			     +" no such volume")
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
+	 self.reply_to_caller(ticket)
+	 Trace.trace(0,"}can_write_volume "+repr(ticket["status"]))
+	 return
+
 
     # update the database entry for this volume
     def set_remaining_bytes(self, ticket):

@@ -240,8 +240,11 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   'external_label' : external_label,
 		  'at_mover' : (flag, mover)}
         x = self.send(ticket)
+	"""
 	generic_cs.enprint("set_at_mover:VCC returned "+\
-			   repr(x['at_mover'])+repr(x['status']))
+			   repr(x['at_mover'])+repr(x['status']), 
+			   generic_cs.DEBUG)
+        """
 
         Trace.trace(10,'}set_at_mover '+repr(x))
         return x
@@ -316,6 +319,23 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
         x = self.send(ticket)
         Trace.trace(10,'}next_write_volume '+repr(x))
+        return x
+
+    # check if specific volume can be used for write
+    def can_write_volume (self, library, min_remaining_bytes,
+                           file_family, wrapper, external_label):
+        Trace.trace(10,'{can_write_volume lib='+repr(library)+' bytes='+\
+                    repr(min_remaining_bytes)+' ff='+repr(file_family)+\
+                    " volume="+repr(external_label))
+        ticket = { 'work'                : 'can_write_volume',
+                   'library'             : library,
+                   'min_remaining_bytes' : min_remaining_bytes,
+                   'file_family'         : file_family,
+		   'wrapper'             : wrapper,
+                   'external_label'       : external_label }
+
+        x = self.send(ticket)
+        Trace.trace(10,'}can_write_volume '+repr(x))
         return x
 
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):

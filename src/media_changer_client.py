@@ -21,6 +21,7 @@ import log_client
 import Trace
 import volume_clerk_client
 import e_errors
+import log_client
 
 class MediaChangerClient(generic_client.GenericClient):
     def __init__(self, csc=0, verbose=0, name="", \
@@ -31,6 +32,8 @@ class MediaChangerClient(generic_client.GenericClient):
 	self.verbose = verbose
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
+	self.logc = log_client.LoggerClient( csc, self.print_id, 
+					     'logserver', 0 )
         ticket = self.csc.get(name)
 	try:
             self.print_id = ticket['logname']
@@ -58,7 +61,7 @@ class MediaChangerClient(generic_client.GenericClient):
 	    if v['status'][0] != e_errors.OK:
 		format = "cannot change to 'mounted' vol=%s mover=%s state=%s"
 		logticket = self.logc.send(log_client.INFO, 2, format,
-					   v["fc"]["external_label"],
+					   vol_ticket["external_label"],
 					   v['at_mover'][1], v['at_mover'][0])
                 if 0: print logticket #lint fix
 	    rt['status'] =  v['status']
@@ -80,7 +83,7 @@ class MediaChangerClient(generic_client.GenericClient):
 	    if v['status'][0] != e_errors.OK:
 		format = "cannot change to 'unmounted' vol=%s mover=%s state=%s"
 		logticket = self.logc.send(log_client.INFO, 2, format,
-					   v["fc"]["external_label"],
+					   vol_ticket["external_label"],
 					   v['at_mover'][1], v['at_mover'][0])
                 if 0: print logticket #lint fix
 		rt['status'] =  v['status']
@@ -172,3 +175,20 @@ if __name__ == "__main__" :
     del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     mcc.check_ticket(ticket, msg_id)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
