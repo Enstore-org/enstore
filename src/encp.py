@@ -149,7 +149,7 @@ def close_descriptors(*fds):
             try:
                 os.close(fd)
             except OSError:
-                sys.stderr.write("Unable to close %s." % fd)
+                sys.stderr.write("Unable to close fd %s.\n" % fd)
             
 def max_attempts(library, encp_intf):
     #Determine how many times a transfer can be retried from failures.
@@ -259,7 +259,7 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
     except OSError:
         exc,msg,tb=sys.exc_info()
         sys.stderr.write("cannot log error message %s\n"%(errmsg,))
-        sys.stderr.write("internal error %s %s"%(exc,msg))
+        sys.stderr.write("internal error %s %s\n"%(exc,msg))
 
 #######################################################################
 
@@ -782,10 +782,11 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
                 break #Success, control socket opened!
             
         else: #Didn't find matching id.
-            try:
-                control_socket.close()
-            except socket.error:
-                pass
+            close_descriptors(control_socket)
+            #try:
+            #    control_socket.close()
+            #except socket.error:
+            #    pass
 
             list_of_ids = []
             for j in range(0, len(work_tickets)):
@@ -1909,10 +1910,11 @@ def write_to_hsm(e, client, tinfo):
         calculate_rate(done_ticket, tinfo, e.verbose)
         
     # we are done transferring - close out the listen socket
-    try:
-        listen_socket.close()
-    except socket.error:
-        pass
+    close_descriptors(listen_socket)
+    #try:
+    #    listen_socket.close()
+    #except socket.error:
+    #    pass
 
     #Finishing up with a few of these things.
     calc_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
@@ -2414,14 +2416,22 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         if len(transfer) < 3:
             unknown_failed_transfers.append(transfer)
 
+    #Extract the unique ids for the two lists.
+    succeded_ids = []
+    failed_ids = []
+    for req in succeded_requests:
+        succeded_ids.append(req['unique_id'])
+    for req in failed_requests:
+        failed_ids.append(req['unique_id'])
+
     #For each transfer that failed without even succeding to open a control
-    # socket, print out there data access layer.
+    # socket, print out their data access layer.
     for transfer in request_list:
-        if transfer not in succeded_requests and \
-           transfer not in failed_requests:
+        if transfer['unique_id'] not in succeded_ids and \
+           transfer['unique_id'] not in failed_ids:
             try:
                 transfer = combine_dict(unknown_failed_transfers[0], transfer)
-                del unknown_failed_transfers[0]
+                del unknown_failed_transfers[0] #shorten this list.
             except IndexError:
                 pass
             
@@ -2542,10 +2552,11 @@ def read_from_hsm(e, client, tinfo):
                   (time.time() - tinfo['encp_start_time'],))
 
     # we are done transferring - close out the listen socket
-    try:
-        listen_socket.close()
-    except socket.error:
-        pass
+    close_descriptors(listen_socket)
+    #try:
+    #    listen_socket.close()
+    #except socket.error:
+    #    pass
 
     #Finishing up with a few of these things.
     calc_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
@@ -2788,7 +2799,9 @@ def main():
             Trace.message(1, str(status[1]))
 
     except ValueError:
-        pass
+        exc, msg, tb = sys.exc_inf()
+        sys.stderr.write("Error (main): %s: %s\n" % (str(exc), str(msg)))
+        sys.stderr.write("Exit status: %s\n", exit_status)
 
     Trace.trace(10,"encp finished at %s"%(time.time(),))
     #Quit safely by Removing any zero length file for transfers that failed.
@@ -2802,7 +2815,8 @@ if __name__ == '__main__':
             try:
                 signal.signal(sig, signal_handler)
             except:
-                pass
+                sys.stderr.write("Setting signal %s to %s failed.\n" %
+                                 (sig, signal_handler))
     
     try:
         main()
