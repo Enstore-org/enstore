@@ -1410,6 +1410,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.ERROR, msg)
 
     def send_client_done(self, ticket, status, error_info=None):
+        if self.control_socket is None:
+            return
         ticket['status'] = (status, error_info)
         try:
             callback.write_tcp_obj(self.control_socket, ticket)
