@@ -69,6 +69,12 @@ class Relay:
 	print "Subscribed clients : %s"%(self.clients,)
 	print "Timeouts : %s"%(self.timeouts,)
 
+    def cleanup(self, key):
+	if self.clients.has_key(key):
+	    del self.clients[key]
+	if self.timeouts.has_key(key):
+	    del self.timeouts[key]
+
     def mainloop(self):
         last_heartbeat = 0
 	try:
@@ -109,8 +115,11 @@ class Relay:
 		    try:
 			ip = tok[1]
 			port = int(tok[2])
-			del self.clients[(ip, port)]
-			msg = "Unsubscribe request for %s, (port: %s)"%(ip, port)
+			if not self.clients.has_key((ip, port)):
+			    msg = "no client subscribed %s"%(msg,)
+			else:
+			    self.cleanup((ip, port))
+			    msg = "Unsubscribe request for %s, (port: %s)"%(ip, port)
 			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
 		    except:
 			self.dump()
@@ -130,7 +139,7 @@ class Relay:
         """Send the message to all clients who care about it"""
         for addr, (t0, filter_d) in self.clients.items():
             if now - t0 > self.client_timeout:
-                del self.clients[addr]
+		self.cleanup(addr)
             else:
                 # client wants the message if there is no filter or if
                 # the filter contains the message type in its dict.
@@ -138,16 +147,15 @@ class Relay:
                     try:
                         self.send_socket.sendto(msg, addr)
                     except:
-			self.dump()
-                        Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
+			###self.dump()
+                        ###Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
 			msg = "send failed %s"%(addr,)
 			Trace.log(e_errors.ERROR, msg, Trace.MSG_EVENT_RELAY)
 
 			### figure out if we should stop sending to this client
 			self.timeouts[addr] = self.timeouts.get(addr, 0) + 1
 			if self.timeouts[addr] > MAX_TIMEOUTS:
-			    del self.clients[addr]
-			    del self.timeouts[addr]
+			    self.cleanup(addr)
                 
 if __name__ == '__main__':
     R = Relay()
