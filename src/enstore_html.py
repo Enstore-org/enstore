@@ -2515,7 +2515,7 @@ class EnSaagPage(EnBaseHtmlDoc):
     def make_node_server_table(self, dict):
 	entable = HTMLgen.TableLite(cellspacing=3, cellpadding=3, align="CENTER", 
 				    border=2, width="90%", bgcolor=AQUA)
-	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Node/Server Relationship"), 
+	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Node/Server Mapping"), 
 						    size="+3", color=BRICKRED)))
 	cols = 4
 	# arrange each node in a table on the page
