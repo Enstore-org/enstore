@@ -129,7 +129,8 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          NOVOLUME, #unknown volume
                          DELETED,
                          QUOTAEXCEEDED,
-                         TOO_MANY_RETRIES)
+                         TOO_MANY_RETRIES,
+                         MALFORMED)
 
 
 # CLIENT PORTION OF 'MESS_TYPE' MESSAGE
