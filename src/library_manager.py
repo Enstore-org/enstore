@@ -1137,8 +1137,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, mticket, state)
-        # if mover is busy do nothing
-        if state == 'busy':
+        # if mover is busy or offline do nothing
+        if state == 'busy' or state == 'offline':
             self.reply_to_caller({'work': 'nowork'})
             return
         # just did some work, delete it from queue
@@ -1193,6 +1193,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
         # otherwise, see if this volume will do for any other work pending
         w = next_work_this_volume(self, mticket["vc"])
+        Trace.trace(11, "have_bound_volume: next_work_this_volume returned: %s"%(w,))
         if w["status"][0] == e_errors.OK:
             format = "%s next work on vol=%s mover=%s requester:%s"
             Trace.log(e_errors.INFO, format%(w["work"],
@@ -1380,6 +1381,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	    # set volume as noaccess
 	    v = self.vcc.set_system_noaccess(w['fc']['external_label'])
+	    # set volume as read only
+	    #v = self.vcc.set_system_readonly(w['fc']['external_label'])
 	    label = w['fc']['external_label']
 	    Trace.trace(13,"set_system_noaccess returned %s"%(v,))
 
