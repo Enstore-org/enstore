@@ -26,6 +26,7 @@ MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%MSG_TYPE
 trace  = Ptrace.trace
 init   = Ptrace.init
 on     = Ptrace.on
+off    = Ptrace.off
 mode   = Ptrace.mode
 
 
