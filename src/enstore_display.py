@@ -85,7 +85,6 @@ class Mover:
         self.label = self.display.create_text(x+60, y+40, text=self.name)
         self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
         self.timer_display = self.display.create_text(x+100, y+22, text='00:00:00',fill='white')
-        self.tape_slot = self.display.create_rectangle(x+5,y+2,x+55,y+13,fill='grey')
         if self.percent_done != None:
             bar_width = 38
             self.progress_bar_bg = self.display.create_rectangle(x+5,y+17,x+6+bar_width,y+26,fill='magenta')
@@ -117,10 +116,10 @@ class Mover:
         self.display.delete(self.timer_display)
         self.timer_display = self.display.create_text(x+100, y+22, text=self.timer_string,fill='white')
 
-    def load_tape(self, volume_name):
+    def load_tape(self, volume_name,load_state):
         self.volume = Volume(volume_name, self.display)
         self.volume.x, self.volume.y = self.x + 5, self.y + 2
-        self.volume.draw()
+        self.volume.draw(load_state)
 
     def unload_tape(self, volume):
         if self.volume: #XXX
@@ -332,11 +331,19 @@ class Volume:
     def __init__(self, name, display):
         self.name = name
         self.display = display
+        self.loaded = 0
 
-    def draw(self):
+    def draw(self,load_state):
+        self.loaded=load_state
         x, y = self.x, self.y
-        self.outline = self.display.create_rectangle(x, y, x+50, y+11, fill = 'orange')
-        self.label = self.display.create_text(x+25, y+6, text=self.name,fill = 'white')
+        if self.loaded:
+            tape_color = 'orange'
+            label_color= 'white'
+        else:
+            tape_color = 'grey'
+            label_color='black'
+        self.outline = self.display.create_rectangle(x, y, x+50, y+11, fill = tape_color)
+        self.label = self.display.create_text(x+25, y+6, text=self.name,fill = label_color)
 
     def moveto(self, x, y):
         dx, dy = (x - self.x), (y - self.y)
@@ -451,9 +458,6 @@ class Display(Canvas):
         # variable number of words
         # movers M1 M2 M3 ...
         # title (?)
-
-        if debug:
-            print command
         
         now = time.time()
         command = string.strip(command) #get rid of extra blanks and newlines
@@ -545,10 +549,15 @@ class Display(Canvas):
             mover.b0 = 0
             mover.show_progress(None)
             return
-        
-        if words[0]=='load':
+
+        if words[0]=='loading':
             what_volume = words[2]
-            mover.load_tape(what_volume)
+            mover.load_tape(what_volume,0)
+            return
+
+        if words[0]=='loaded':
+            what_volume = words[2]
+            mover.load_tape(what_volume,1)
             return
         
         if words[0]=='unload':
