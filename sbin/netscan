@@ -16,8 +16,8 @@ setup enstore
 # . Check that the farmlets match the base node farmlets.
 # . Check that crontab directories match the base node of the farmlet
 # . Check that root's crontab has reset of watchdog. 
-# . Check that ipmisrv in /usr/local/bin is same as one in enstore
 # . Check that ipmisrv is running and has NO_DOG option
+# . Check that watchdog action is to do nothing
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -43,9 +43,6 @@ UNAME="/bin/uname"
 PS="/bin/ps"
 CMP="/usr/bin/cmp"
 ECHO="/bin/echo"
-XNTPDC="/usr/sbin/xntpdc"
-NTPDATE="/usr/sbin/ntpdate"
-XNTP="/etc/rc.d/init.d/xntpd restart"
 LSOF="/usr/local/bin/lsof"
 EGREP="/bin/egrep"
 AWK="/bin/awk"
@@ -66,7 +63,6 @@ gang=`/home/enstore/enstore/sbin/gang`
 
 LOG=/tmp/netscan.log
 ACTIVE=/root/CRON/netscanACTIVE
-TIME_NOT_SYNCD=/root/time_not_syncd
 
 # function to log messages, optionally print the ps state
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
@@ -284,28 +280,11 @@ fi
 
 
 # check that ntp is working, fix if not, complain if down more than once
-if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
-    x=`$XNTPDC -p`
-    logit "NO TIME SYNC"
-    logit "$x"
-    if [ $ALARM -eq 1 ]; then
-      if [ -r $TIME_NOT_SYNCD ]; then
-        enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
-      fi
-    fi
-    touch $TIME_NOT_SYNCD
-    $XNTP stop >>$LOG 2>&1
-    # set the time, but use more than just fermilab to sync it
-    $NTPDATE -b -p 8 -u -v `cat /etc/ntp/step-tickers` ntp-1.cso.uiuc.edu ntp-1.mcs.anl.gov ntp.cmr.gov >>$LOG 2>&1  
-    # start up ntp again - this just syncs to fermilab, according to policy.
-    $XNTP start >>$LOG 2>&1
-else
-  rm -f $TIME_NOT_SYNCD
-  if [ $QUIET -ne 1 ]; then
-    logit  "TIME SYNCD, ok"
-  fi
+# check only in this job.  Separate cronjob sets time if needed.
+msg=`/home/enstore/enstore/sbin/ntpset -a -c 2>&1`
+if [ $QUIET -ne 1 ]; then
+   logit  "$msg"
 fi
-
 
 
 # check that we have two processors running
@@ -364,24 +343,41 @@ if [ `$EGREP -c check_watchdog_reset.py /var/spool/cron/root` -ne 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
 elif [ $QUIET -ne 1 ]; then
-   logit  "check_watchdog_reset.py is ok"
+   logit  "check_watchdog_reset.py crontab ok"
 fi
-if ! $CMP /usr/local/bin/ipmisrv /home/enstore/ipmi/ipmisrv >/dev/null 2>/dev/null; then
-   msg="ipmisrv found in /usr/local/bin not the same as /home/enstore/ipmi/ipmisrv"
+
+# check that we have a ntpset running in the crontab:
+if [ `$EGREP -c ntpset /var/spool/cron/root` -ne 1 ]; then
+   msg="/var/spool/cron/root is missing ntpset or it is misconfigured" 
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
 elif [ $QUIET -ne 1 ]; then
-   logit  "/usr/local/bin/ipmisrv, ok"
+   logit  "ntpset crontab, ok"
 fi
-if [ `$PS -ef | $EGREP -c "/usr/local/bin/ipmisrv NO_DOG"` -ne 1 ];then
-   msg="/usr/local/bin/ipmisrv NO_DOG not running"
+
+# check that ipmisrv is running without watchdog timer
+if [ `$PS -ef | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
+   msg="ipmisrv NO_DOG not running"
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
 elif [ $QUIET -ne 1 ]; then
-   logit  "/usr/local/bin/ipmisrv running, ok"
+   logit  "ipmisrv running, ok"
 fi
+
+# check that watchdog timer action is to do nothing
+ACTION=`/home/enstore/ipmi/dogread| $EGREP Action|$AWK '{print $2}'`
+if [  $ACTION != "00"  ];then
+   msg="watchdog action is $ACTION. Should be 00"
+   if [ $ALARM -eq 1 ]; then
+     enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif [ $QUIET -ne 1 ]; then
+   logit  "watchdog action, ok"
+fi
+
+
 
 # get open files - twice - get ps in between - only take connections that survive past this
 # otherwise it is impossible to compare and see if they are allowed.
