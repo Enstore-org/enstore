@@ -24,22 +24,20 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
     def __init__(self):
 	self.print_id="CONFIGD"
 
-    # load the configuration dictionary - the default is a wormhole in pnfs
-    def load_config(self, configfile,verbose=1):
-     Trace.trace(6,"{load_config configfile="+repr(configfile))
-     xconfigdict = {} # we will be loading new config file into xconfigdict - clear it
-     try:
+    def read_config(self, configfile, verbose=1):
+        Trace.trace(7,"{read_config configfile="+repr(configfile))
+        xconfigdict = {} # will load new config file into xconfigdict - clear it
         try:
             f = open(configfile)
         except:
-            msg = (e_errors.DOESNOTEXIST,"Configuration Server: load_config"\
+            msg = (e_errors.DOESNOTEXIST,"Configuration Server: read_config"\
                    +repr(configfile)+" does not exists")
             self.enprint(msg)
-            Trace.trace(0,"}load_config "+msg)
+            Trace.trace(0,"}read_config "+repr(msg))
             return msg
         line = ""
 
-	self.enprint("Configuration Server load_config: "+\
+	self.enprint("Configuration Server read_config: "+\
                      "loading enstore configuration from "+configfile,
 	             generic_cs.CLIENT, verbose)
         while 1:
@@ -68,13 +66,23 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
                       +"can not process line: ",line \
                       ,"\ndictionary unchanged.")
                 self.enprint(msg)
-                Trace.trace(0,"}load_config"+msg)
+                Trace.trace(0,"}read_config"+msg)
                 return msg
             # start again
             line = ""
         f.close()
         # ok, we read entire file - now set it to real dictionary
         self.configdict=copy.deepcopy(xconfigdict)
+        Trace.trace(7,"}read_config")
+        return (e_errors.OK, None)
+
+    # load the configuration dictionary - the default is a wormhole in pnfs
+    def load_config(self, configfile,verbose=1):
+     Trace.trace(6,"{load_config")
+     try:
+	msg = self.read_config(configfile, verbose)
+	if not msg == (e_errors.OK, None):
+	    return msg
         self.serverlist = {}
 	conflict = 0
         for key in self.configdict.keys():
