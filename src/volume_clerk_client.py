@@ -503,7 +503,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         print "usage: --clear volume_name"
         print "       --clear volume_name {system_inhibit|user_inhibit} position(1 or 2)"
 
-    def print_bfid_args(args):
+    def print_bfid_args(self):
         print "   usage: --bfid bfid volume"
         
     # print out our extended help
