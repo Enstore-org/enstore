@@ -1475,7 +1475,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 if data_ip:
                     interface=hostaddr.interface_name(data_ip)
-                    if interface:
+                    if 0 and interface:
                         status=socket_ext.bindtodev(client_socket.fileno(),interface)
                         if status:
                             Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
