@@ -3,8 +3,6 @@
 import option
 import configuration_client
 import pg
-import info_client
-import generic_client
 import log_client
 import sys
 import string
