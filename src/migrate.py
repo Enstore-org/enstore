@@ -60,7 +60,7 @@ import os
 import sys
 import string
 import e_errors
-import encp_wraper
+import encp_wrapper
 import volume_family
 import pg
 import time
@@ -336,7 +336,7 @@ def copy_files(files):
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 
 	# get an encp
-	encp = encp_wraper.Encp()
+	encp = encp_wrapper.Encp()
 
 	# if files is not a list, make a list for it
 	if type(files) != type([]):
@@ -510,7 +510,7 @@ def migrating():
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 
 	# get an encp
-	encp = encp_wraper.Encp()
+	encp = encp_wrapper.Encp()
 
 	if debug:
 		log(MY_TASK, "migrating() starts")
@@ -606,7 +606,7 @@ def final_scan():
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 
 	# get an encp
-	encp = encp_wraper.Encp()
+	encp = encp_wrapper.Encp()
 
 	job = scan_queue.get(True)
 	while job:
@@ -652,7 +652,7 @@ def final_scan_volume(vol):
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 
 	# get an encp
-	encp = encp_wraper.Encp()
+	encp = encp_wrapper.Encp()
 
 	q = "select bfid, pnfs_id, src_bfid, location_cookie  \
 		from file, volume, migration \
