@@ -50,7 +50,7 @@ if [ $local_host = $ENSTORE_CONFIG_HOST ];then
     enstore_start_config=1
 fi
 
-timeout=1
+timeout=5
 tries=10
 
 # function to redirect input/output when there is not a controlling terminal
