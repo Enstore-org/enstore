@@ -525,10 +525,9 @@ class Buffer:
         if driver:
             bytes_written = driver.write(self._writing_block, self._write_ptr, bytes_to_write)
             if bytes_written != bytes_to_write:
-                Trace.log(e_errors.ERROR, "encp gone? bytes to write %s, bytes written %s"%
-                            (bytes_to_write, bytes_written)) 
-                raise e_errors.ENCP_GONE,"encp gone? bytes to write %s, bytes written %s"%
-                            (bytes_to_write, bytes_written) 
+                msg="encp gone? bytes to write %s, bytes written %s"%(bytes_to_write, bytes_written)
+                Trace.log(e_errors.ERROR, msg)
+                raise e_errors.ENCP_GONE, msg
             if do_crc:
                 self.complete_crc = checksum.adler32_o(self.complete_crc,
                                                        self._writing_block,
