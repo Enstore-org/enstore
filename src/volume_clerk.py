@@ -1113,7 +1113,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if state != "enabled":
             return None
         q = "select library, storage_group, quota, significance from quota;"
-        res = self.db.query(q).dictresult()
+        res = self.dict.db.query(q).dictresult()
         libraries = {}
         order = {'bottom':[], 'top':[]}
         for i in res:
