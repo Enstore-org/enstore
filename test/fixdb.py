@@ -25,13 +25,19 @@ def main(argv):
         if data.has_key('bfids'):
             print "clobbering bfids for volume", vol
             bfids=data['bfids']
-            del data['bfids']
-            #update the database
-            d[vol]=data
+            print "bfid list from database",bfids
+            print "now init the new database"
             bdb.init_dbfile(vol)
             for bfid in bfids:
+                print "add",bfid
                 bdb.add_bfid(vol,bfid)
-        vol,data=d.cursor('next')
+            print "delete bfids from database record"
+            del data['bfids']
+            #update the database
+            print "update database"
+            d[vol]=data
+
+            vol,data=d.cursor('next')
 
 if __name__=='__main__':
     main(sys.argv)
