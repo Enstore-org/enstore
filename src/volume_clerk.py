@@ -431,11 +431,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	self.reply_to_caller(ticket)
 
     # Get the next volume that satisfy criteria
-    #
-    # A quick fix is applied
-    # There should be a permenat fix in the future
 
-    def next_write_volume_wrong (self, ticket):
+    def next_write_volume (self, ticket):
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
@@ -446,7 +443,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         first_found = ticket["first_found"]
         wrapper_type = ticket["wrapper"]
         cfile_family = file_family+"."+wrapper_type	# combined
-
         # go through the volumes and find one we can use for this request
         vol = {}
         lc1 = self.dict.inx['library'].cursor()		# read only
@@ -516,7 +512,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     waste = 0.
                 Trace.log(e_errors.INFO,
                           "%s is now full, bytes remaining = %d, %.2f %%" % (label, v["remaining_bytes"],waste))
-		self.dict[label] = v
+                t = self.dict.db.txn()
+                self.dict.db[(key,t)] = v
+                t.commit()
+		# self.dict[label] = v
                 continue
             vetoed = 0
             for veto in vol_veto_list:
@@ -605,10 +604,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 v["file_family"] = file_family+"."+wrapper_type
                 v["wrapper"] = wrapper_type
                 Trace.log(e_errors.INFO, "Assigning blank volume "+label+" to "+library+" "+file_family)
+                c.close()
                 self.dict[label] = v  ## was deepcopy
                 v["status"] = (e_errors.OK, None)
                 self.reply_to_caller(v)
-                c.close()
                 return
             # if not, is this an "earlier" volume that one we already found?
             if len(vol) == 0:
@@ -647,7 +646,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # A quick fix is applied
     # There should be a permenat fix in the future
 
-    def next_write_volume (self, ticket):
+    def next_write_volume2 (self, ticket):
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
