@@ -1,5 +1,4 @@
 REMOVE		stkensrv	stken-all[ab]	stken-all
-cmspnfs1	stkensrv	stken-alla	stken-all
 stkensrv0	stkensrv	stken-alla	stken-all
 stkensrv1	stkensrv	stken-alla	stken-all
 stkensrv2	stkensrv	stken-alla	stken-all
@@ -8,6 +7,7 @@ stkensrv4	stkensrv	stken-alla	stken-all
 stkensrv5	stkensrv	stken-alla	stken-all
 stkensrv6	stkensrv	stken-alla	stken-all
 stkensrv7	stkensrv	stken-alla	stken-all
+cmspnfs1	stkensrv	stken-alla	stken-all
 REMOVE		stkenmvr*[ab]
 stkenmvr1a	stkenmvr-a	stken-alla	stken-all
 stkenmvr2a	stkenmvr-a	stken-alla	stken-all
@@ -37,6 +37,7 @@ stkenmvr29a	stkenmvr-a	stken-alla	stken-all
 stkenmvr30a	stkenmvr-a	stken-alla	stken-all
 stkenmvr31a	stkenmvr-a	stken-alla	stken-all
 REMOVE		stkendca
+stkendca2a	stkendca
 stkendca3a	stkendca
 stkendca3b	stkendca
 stkendca4a	stkendca
@@ -46,6 +47,10 @@ stkendca5b	stkendca
 stkendca6a	stkendca
 stkendca7a	stkendca
 stkendca8a	stkendca
+stkendca9a	stkendca
+stkendca10a	stkendca
+stkendca11a	stkendca
+stkendca12a	stkendca
 REMOVE		stkendm
 stkendm1a	stkendm
 stkendm2a	stkendm
