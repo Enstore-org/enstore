@@ -241,6 +241,7 @@ if __name__ == '__main__':
 	intf = Interface()
 	fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
 
+	te_count = 0
 	if sys.argv[1] == '-f':
 		for f2 in sys.argv[2:]:
 			print 'checking', f2, '...'
@@ -250,6 +251,7 @@ if __name__ == '__main__':
 				while l:
 					if l[:5] == '/pnfs':
 						check(l)
+						te_count = te_count + e_count
 					l = string.strip(ff.readline())
 				ff.close()
 			else:
@@ -261,12 +263,14 @@ if __name__ == '__main__':
 			if result['status'][0] == e_errors.OK:
 				for i in result['active_list']:
 					check(i)
+					te_count = te_count + e_count
 			else:
 				print result['status'][1]
 	else:
 		for l in sys.argv:
 			if l[:5] == '/pnfs':
 				check(l)
+				te_count = te_count + e_count
 
 
-	sys.exit(e_count)
+	sys.exit(te_count)
