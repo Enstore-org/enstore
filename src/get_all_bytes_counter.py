@@ -64,6 +64,7 @@ MB = 1024.0 * 1024.0
 GB = MB * 1024.0
 TB = GB * 1024.0
 PB = TB * 1024.0
+UNITS = "TB"
 
 
 if __name__ == "__main__":
@@ -72,6 +73,7 @@ if __name__ == "__main__":
     # since we are not running on an enstore node, we will assume the web
     # directory is /fnal/ups/prd/www_pages/enstore.
     total = 0.0
+    total_bytes = 0.0
     units = ""
     dead_nodes = []
     for node in NODES:
@@ -84,10 +86,10 @@ if __name__ == "__main__":
 		file = open(newfile)
 		lines = file.readlines()
 		for line in lines:
-		    fields = string.split(line)
-		    if len(fields) == 2:
-			total = total + float(fields[0])
-			units = fields[1]
+                    # translate total bytes into terabytes
+                    bytes = float(fields[0])
+                    total = total + bytes/TB
+                    total_bytes = total_bytes + bytes
 		else:
 		    file.close()
 	    else:
@@ -106,18 +108,9 @@ if __name__ == "__main__":
 	    str = ""
 	# output the total count
 	file = open(TOTAL_FILE, 'w')
-	file.write("%s %s %s\n"%(total, units, str))
+	file.write("%s %s %s\n"%(total, UNITS, str))
 	file.close()
 
         file = open(TOTAL_BYTES_FILE, 'w')
-        # convert to bytes
-        if units == "MB":
-            total = total * MB
-        elif units == "GB":
-            total = total * GB
-        elif units == "TB":
-            total = total * TB
-        elif units == "PB":
-            total = total * PB
-        file.write("%.0f"%(total,))
+        file.write("%.0f"%(total_bytes,))
         file.close()
