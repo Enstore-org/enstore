@@ -3231,7 +3231,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #If the mover doesn't call back after max_submits number of times, give up.
     # If the error is already non-retriable, skip this step.
     if max_submits != None and resubmits >= max_submits \
-       and e_errors.is_retriable(status):
+       and status[0] == e_errors.RESUBMITTING:
         Trace.message(ERROR_LEVEL,
                       "To many resubmissions for %s -> %s."%(infile,outfile))
         status = (e_errors.TOO_MANY_RESUBMITS, status)
@@ -3240,7 +3240,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # Since TOO_MANY_RETRIES is non-retriable, set this here.
     # If the error is already non-retriable, skip this step.
     if max_retries != None and retry >= max_retries \
-       and e_errors.is_retriable(status):
+       and e_errors.is_retriable(status) \
+       and status[0] != e_errors.RESUBMITTING:
         Trace.message(ERROR_LEVEL,
                       "To many retries for %s -> %s."%(infile,outfile))
         status = (e_errors.TOO_MANY_RETRIES, status)
