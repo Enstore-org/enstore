@@ -219,6 +219,7 @@ MAKE_HTML = "make-html"                      #up_down
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
 MAX_WORK = "max-work"                        #media(c&s)
 MESSAGE = "message"                          #log
+MIGRATED = "migrated"                        #volume
 MODIFY = "modify"                            #volume
 MOUNT = "mount"                              #media, plotter
 MOVER_TIMEOUT = "mover-timeout"              #assert
@@ -344,7 +345,7 @@ valid_option_list = [
     KEEP, KEEP_DIR,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE, LIST_SG_COUNT,
     MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, MOVER_TIMEOUT,
-    MOVERS_FILE,
+    MOVERS_FILE, MIGRATED,
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NOT_ALLOWED, NO_MAIL, NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,

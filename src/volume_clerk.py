@@ -1586,6 +1586,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     def set_system_readonly(self, ticket):
         return self.set_system_inhibit(ticket, "readonly", 1)
 
+    # flag that the current volume is migrated
+    def set_system_migrated(self, ticket):
+        return self.set_system_inhibit(ticket, "migrated", 1)
+
     # set pause flag for the all Library Managers corresponding to
     # certain Media Changer
     def pause_lm(self, external_label):

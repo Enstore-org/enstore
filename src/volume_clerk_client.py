@@ -526,6 +526,12 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket,30,1)
 
+    # mark volume as migrated
+    def set_system_migrated(self, external_label):
+        ticket= { 'work'           : 'set_system_migrated',
+                  'external_label' : external_label }
+        return self.send(ticket,30,1)
+
     # set system inhibit to none
     def set_system_none(self, external_label):
         ticket= { 'work'           : 'set_system_none',
@@ -712,6 +718,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.new_library = ""
         self.read_only = ""
         self.no_access = ""
+        self.migrated = None
         self.not_allowed = None
         self.decr_file_count = 0
         self.rmvol = 0
@@ -924,6 +931,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_TYPE:option.INTEGER,
                       option.VALUE_USAGE:option.IGNORED,
                       option.USER_LEVEL:option.ADMIN},
+        option.MIGRATED:{option.HELP_STRING:"set volume to MIGRATED",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
+                          option.USER_LEVEL:option.ADMIN},
         option.MODIFY:{option.HELP_STRING:
                        "modify a volume record -- extremely dangerous",
                         option.VALUE_TYPE:option.STRING,
@@ -1381,6 +1393,8 @@ def do_work(intf):
         Trace.trace(12, repr(ticket))
     elif intf.read_only:
         ticket = vcc.set_system_readonly(intf.read_only)  # name of this volume
+    elif intf.migrated:
+        ticket = vcc.set_system_migrated(intf.migrated) # name of this volume
     elif intf.no_access:
         ticket = vcc.set_system_notallowed(intf.no_access)  # name of this volume
     elif intf.not_allowed:
