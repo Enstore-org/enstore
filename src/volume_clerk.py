@@ -420,6 +420,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		    if (ticket['file_family'] == record['file_family'] and
 			ticket['file_size'] <= record['remaining_bytes']):
 			ret_stat = (e_errors.OK,None)
+		    elif (ticket['file_family'] == 'ephemeral' and
+			ticket['file_size'] <= record['remaining_bytes']):
+			ret_stat = (e_errors.OK,None)
 		    else:
 			ret_stat = (e_errors.NOACCESS,None)
 	    else:

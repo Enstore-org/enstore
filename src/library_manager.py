@@ -407,8 +407,9 @@ def next_work_any_volume(self):
 	Trace.trace(11,"check volume %s " % (w['fc']['external_label'],))
 	if w["status"][0] == e_errors.OK:
 	    file_family = w["vc"]["file_family"]
-	    if w["work"] == "write_to_hsm":
-		file_family = file_family+"."+w["vc"]["wrapper"]
+	    if (w["work"] == "write_to_hsm" and
+                file_family != 'ephemeral'):
+                file_family = file_family+"."+w["vc"]["wrapper"]
 	    ret = self.vcc.is_vol_available(w['work'],
 					    w['fc']['external_label'],
 					    file_family,
