@@ -6,17 +6,32 @@
 Encp changes:
 =============
 
- 
+If routing is enabled, whenever a resubmition occurs the interface and port
+encp listens on for the mover to call back is reinitalized.
 
+For reads, if the target directory does not support pathconf() queries
+print message to stderr and continue.  Previously, it would stop the transfer.
+
+Bug fix was made so the "Node" column on the EncpHistory page is correct.
+
+Sufficent disk space checked on reads.  Note: This does not guarantee that
+the encp will not fail with NOSPACE.
 
 Misc.:
 ======
 
+The previous enstore/encp version only supported routing to specific hosts,
+not subnets.  This alows users to set the route to the enstore subnet by
+hand and avoid dynamic manipulation of the routing table.  This only works
+correctly if one interface will be used for all enstore traffic and the
+hostip line is the only valid line in the enstore.conf file.
 
+Enstore/encp was incorrectly parsing the routing table on OSF1.  This has
+been fixed.
 
+The library manager now reports PURSUING instead of LIMIT_REACHED.
 
-
-			
+	
 
 			Detailed cvs commit logs
 
