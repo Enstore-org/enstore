@@ -232,7 +232,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             # if drive is doing a clean cycle, drop request
             for i in self.work_list:
                 try:
-                    if i['function'] == "cleanCycle" and i['drive_id'] == ticket['drive_id']:
+                    if (i['function'] == "cleanCycle" and i.has_key('drive_id') and
+                        i['drive_id'] == ticket['drive_id']):
                         Trace.log(e_errors.INFO,
                                   'REQUESTED %s request of %s in %s  dropped, drive in cleaning cycle.'%
                                   (ticket['function'],ticket['vol_ticket']['external_label'],
