@@ -214,7 +214,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         
     
 
-    def update(self):
+    def update(self, reset_timer=None):
         if verbose:
             print "update"
             
@@ -242,7 +242,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 print "Send", ticket, "to", addr
             self.udpc.send_no_wait(ticket, addr)
         self._last_state=self.state
-        
+        if reset_timer:
+            self.reset_interval_timer()
+            
     def nowork( self, ticket ):
 	return {}
 
@@ -449,8 +451,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         if msg:
             self.send_client_done(self.current_work_ticket, msg)
         self.reset()
-        self.update()
-        self.reset_interval_timer()
+        self.update(reset_timer=1)
         
     def transfer_complete(self):
         if verbose: print "transfer complete"
@@ -509,8 +510,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.send_client_done(self.current_work_ticket, e_errors.OK)
         self.reset()
 
-        self.update()
-        self.reset_interval_timer()
+        self.update(reset_timer=1)
 
         
     def reset(self):
