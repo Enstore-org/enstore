@@ -99,8 +99,11 @@ class Jcursor:
 	# need to close all related cursors
 	def close(self):
 		for c in self.curlist:
-			if c:
+			# This is not necessary ... just to be safe
+			try:
 				c.close()
+			except:
+				pass
 
 	def __del__(self):
 		self.close()
