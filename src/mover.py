@@ -2124,6 +2124,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                             Trace.log(e_errors.ERROR, "cannot assign new bfid %s"%(ret,))
                             self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
                             return
+                        if ret['fc']['bfid'] == None:
+                            Trace.log(e_errors.ERROR,"FC returned None for bfid %s"%(ret,))
+                            self.transfer_failed(e_errors.ERROR,"FC returned None for bfid")
                         self.file_info.update(ret['fc'])
                         self.current_work_ticket['fc'].update(self.file_info)
                         self.current_work_ticket['bfid'] = self.file_info['bfid']
