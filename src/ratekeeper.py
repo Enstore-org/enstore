@@ -17,6 +17,7 @@ import configuration_client
 import timeofday
 import udp_client
 import enstore_functions
+import enstore_constants
 
 
 MY_NAME = "Ratekeeper"
@@ -49,7 +50,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                  generic_server.GenericServer):
     interval = 15
     resubscribe_interval = 10*60 
-    def __init__(self, event_relay_addr, filename_base, output_dir='/tmp/RATES'):
+    def __init__(self, ratekeeper_addr, event_relay_addr, filename_base,
+                 output_dir='/tmp/RATES'):
         self.event_relay_addr = event_relay_addr
         self.filename_base = filename_base
         self.output_dir = output_dir
@@ -63,7 +65,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         self.subscribe_time = 0
         self.mover_msg = {} #key is mover, value is last (num, denom)
 
-        dispatching_worker.DispatchingWorker.__init__(self, event_relay_addr)
+        dispatching_worker.DispatchingWorker.__init__(self, ratekeeper_addr)
         
     def subscribe(self):
         self.sock.sendto("notify %s %s" % (self.addr),
@@ -195,26 +197,29 @@ if __name__ == "__main__":
     
     ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
     ratekeeper_host = ratekeep.get('host','MISSING') #Info about local node.
-    ratekeeper_port = 55510 #ratekeep.get('port','MISSING')
-    ratekeeper_name = ratekeep.get('name','MISSING') #info about remote node.
-    ratekeeper_node = ratekeep.get('name','MISSING')
-    ratekeeper_nodes = ratekeep.get('nodes','MISSING')
+    ratekeeper_port = ratekeep.get('port','MISSING')
+    ratekeeper_nodes = ratekeep.get('nodes','MISSING') #Command line info.
+    event_relay_host = ratekeep.get('event_relay_host','MISSING')
+    event_relay_port = enstore_constants.EVENT_RELAY_PORT
     
     if ratekeeper_dir  == 'MISSING' or not ratekeeper_dir:
         print "Error: Missing ratekeeper configdict directory.",
         print "  (ratekeeper_dir)"
         sys.exit(1)
+    if ratekeeper_host == 'MISSING' or not ratekeeper_host:
+        print "Error: Missing ratekeeper configdict directory.",
+        print "  (ratekeeper_host)"
+        sys.exit(1)
     if ratekeeper_port == 'MISSING' or not ratekeeper_port:
         print "Error: Missing ratekeeper configdict directory.",
         print "  (ratekeeper_port)"
         sys.exit(1)
-    if ratekeeper_node == 'MISSING':
-        ratekeeper_node = ''
-    if ratekeeper_name == 'MISSING':
-        ratekeeper_name = ratekeeper_node
     if ratekeeper_nodes == 'MISSING':
         ratekeeper_nodes = ''
-
+    if event_relay_host == 'MISSING' or not event_relay_host:
+        print "Error: Missing ratekeeper configdict directory.",
+        print "  (event_relay_host)"
+        sys.exit(1)
 
     #If an option is specified, then use it.  But first check to see if it is
     # listed in the 'nodes' dictionary.  Think of it as the key is the shortest
@@ -235,27 +240,15 @@ if __name__ == "__main__":
                     event_relay_host = ratekeeper_nodes[short_name][0]
                     filename_base = ratekeeper_nodes[short_name][1]
                     break
-    #Parse the command line.
-    #If no options specified, obtain the defaults.
     else:
-        #Default values from the config dictionary.
-        if ratekeeper_node:
-            event_relay_host = ratekeeper_node
-            filename_base = ratekeeper_name
-        #If the configdict doesn't have a 'node' and 'name', use 'host'.
-        elif ratekeeper_host:
-            event_relay_host = ratekeeper_host
-            filename_base = enstore_functions.strip_node(event_relay_host)
-        #If the configdict doesn't have anything, check the env. variable
-        else:
-            event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
-            filename_base = enstore_functions.strip_node(event_relay_host)
-            
+        filename_base = enstore_functions.strip_node(event_relay_host)
+    
 
     print "Connecting to host %s on port %s." % \
-          (event_relay_host, ratekeeper_port)
-    rk = Ratekeeper((event_relay_host, ratekeeper_port), filename_base,
-                    ratekeeper_dir)
+          (event_relay_host, event_relay_port)
+    rk = Ratekeeper((ratekeeper_host, ratekeeper_port),
+                    (event_relay_host, event_relay_port),
+                    filename_base, ratekeeper_dir)
 
     reply = rk.handle_generic_commands(intf)
 
