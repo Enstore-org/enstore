@@ -128,7 +128,7 @@ COMMON:
 
                 # aci is the EMASS tape library and admin tool product
                 # the media changer is the only server that interfaces to it
-                setupOptional("aci v3_0_2")
+                setupOptional("aci v3_1_0")
 
                 # the setup of python is tricky
                 # if user has python declared via ups, set that up and use it
