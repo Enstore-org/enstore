@@ -2087,7 +2087,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 
     def __init__(self, title="ENSTORE System Plots", gif="en_plots.gif", 
 		 system_tag="", description="", mount_label=None,
-		 links_l=None, nav_link=None):
+		 links_l=None, nav_link=""):
 	EnBaseHtmlDoc.__init__(self, refresh=0, help_file="plotHelp.html",
 			       system_tag=system_tag)
 	self.title = title
