@@ -1338,7 +1338,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record = self.dict[external_label]
             record['last_access'] = time.time()
             if record['first_access'] == -1:
-                record['first_access'] == record['last_access']
+                record['first_access'] = record['last_access']
             self.dict[external_label] = record
             ticket["last_access"] = record['last_access']
             ticket["status"] = (e_errors.OK, None)
