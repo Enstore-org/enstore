@@ -13,10 +13,10 @@
 PROD=ftt
 
 # version for ups
-VERS=v1_10
+VERS=v2_0
 
 # dependency flags for declares
-DEPEND=-b "< gcc current"
+DEPEND=
 
 # Chain for declares/addproduct
 CHAIN=development
