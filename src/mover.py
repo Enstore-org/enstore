@@ -336,7 +336,18 @@ def loc_to_cookie(loc):
     if loc is None:
         loc = 0
     return '%04d_%09d_%07d' % (0, 0, loc)
-        
+
+_host_type = None
+
+Linux, IRIX, Solaris, Other = range(4)
+
+def host_type():
+    global _host_type
+    if _host_type:
+        return _host_type
+    uname = string.upper(os.uname()[0])
+    _host_type = {'linux':Linux, 'irix':IRIX, 'sunos': Solaris}.get(uname, Other)
+    return _host_type
     
 class Mover(dispatching_worker.DispatchingWorker,
             generic_server.GenericServer):
@@ -613,8 +624,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not inhibit:
             ticket = self.format_lm_ticket(state=state, error_source=error_source)
             for lib, addr in self.libraries:
-                if state is OFFLINE and self._last_state is OFFLINE:
-                    continue
+##                if state is OFFLINE and self._last_state is OFFLINE:
+##                    continue
                 if state != self._last_state:
                     Trace.trace(10, "Send %s to %s" % (ticket, addr))
                 self.udpc.send_no_wait(ticket, addr)
@@ -851,9 +862,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if len(b0) >= self.wrapper.min_header_size:
                     try:
                         header_size = self.wrapper.header_size(b0)
-                    except ValueError, msg:
+                    except (TypeError, ValueError), msg:
                         Trace.log(e_errors.ERROR,"Invalid header %s" %(b0[:self.wrapper.min_header_size]))
                         self.transfer_failed(e_errors.READ_ERROR, "Invalid file header", error_source=TAPE)
+                        ##XXX NB: the client won't necessarily see this message since it's still trying
+                        ## to recieve data on the data socket
                         break
                     self.buffer.header_size = header_size
                     self.bytes_to_read = self.bytes_to_read + header_size
@@ -969,7 +982,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
 
         self.current_work_ticket = ticket
-        self.unique_id = ticket['unique_id']
+        self.unique_id = ticket['unique_id']  ####Why?
         self.control_socket, self.client_socket = self.connect_client()
         
         Trace.trace(10, "client connect %s %s" % (self.control_socket, self.client_socket))
@@ -1421,6 +1434,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                               (detail, ticket['callback_addr']))
                     if detail[0] == errno.ECONNREFUSED:
                         return None, None
+                    elif host_type()==IRIX and detail[0]==errno.EISCONN:
+                        break #This is not an error! The connection succeeded.
                     time.sleep(1)
             else:
                 Trace.log(e_errors.ERROR, "timeout connecting to %s" %
