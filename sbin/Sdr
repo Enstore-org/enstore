@@ -73,14 +73,34 @@ EOF
   for i in `cat $farmlet`; do
     val="`getval "$des" $filebase$i`"
     if [ "$val" = "" ]; then
-      data_item="<td align=center bgcolor=\"RED\">&nbsp;</td>"
+	# try the values for the new ipmi
+	if [ "$des" = "Baseboard Temp 1" ]; then
+	    val="`getval 'Baseboard Temp' $filebase$i`"
+	elif [ "$des" = "Baseboard Temp 2" ]; then
+	    val="`getval 'Baseboard Temp' $filebase$i`"
+        elif [ "$des" = "Processor 1 Fan" ]; then
+	    val="`getval 'Processor Fan 1' $filebase$i`"
+	elif [ "$des" = "Processor 2 Fan" ]; then
+	    val="`getval 'Processor Fan 2' $filebase$i`"
+	elif [ "$des" = "Processor 1 Volt" ]; then
+	    val="`getval 'Processor 1 VCCP' $filebase$i`"
+	elif [ "$des" = "Processor 2 Volt" ]; then
+	    val="`getval 'Processor 2 VCCP' $filebase$i`"
+	elif [ "$des" = "Baseboard 5V" ]; then
+	    val="`getval 'Baseboard 5.0V' $filebase$i`"
+	fi
+	if [ "$val" = "" ]; then
+	    data_item="<td align=center bgcolor=\"RED\">&nbsp;</td>"
 #      remove the following comments if an alarm should be sent.
 #      if [ "$alarm_sent" = "0" ]; then
 #        `enstore alarm --raise --root-error="DOESNOTEXIST - $des, $i (check all values)"`
 #	alarm_sent=1
 #      fi
+	else
+	    data_item="<td align=center>$val</td>"
+	fi
     else
-      data_item="<td align=center>$val</td>"
+	data_item="<td align=center>$val</td>"
     fi
     cat <<EOF >>$output
 $data_item
