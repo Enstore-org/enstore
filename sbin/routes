@@ -8,6 +8,10 @@ job=${1:-"route"}
 netperf=/opt/netperf/netperf
 N=/dev/null
 
+#                 d0enmvr4a:  
+#                 d0enmvr7a:  
+
+
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 case $node in
@@ -21,8 +25,6 @@ case $node in
                  stkenmvr7a: \
                  stkenmvr8a: \
                  stkenmvr9a: \
-                 d0enmvr4a:  \
-                 d0enmvr7a:  \
                  stkendca3a: stkendca4a: stkendca5a: \
                  rip9: rip10:"
           ;;
@@ -61,7 +63,7 @@ case $node in
                  cdfenmvr7a: \
                  cdfenmvr8a: \
                  cdfenmvr9a: \
-                 cdfenmvr10a: \ 
+                 cdfenmvr10a: \
                  cdfendca3: cdfendca4: cdfendca5: "
           ;;
 
