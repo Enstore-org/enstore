@@ -599,7 +599,7 @@ def do_work(intf):
     #             "db_deadlock -h %s  -t 1 &" % db_dir)
 
     #Get the library names.
-    libraries = csc.get_library_managers({}).keys()
+    libraries = csc.get_library_managers().keys()
     libraries = map((lambda l: l + ".library_manager"), libraries)
 
     #Libraries.

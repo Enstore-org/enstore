@@ -805,7 +805,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # set remaining bytes
         record['remaining_bytes'] = ticket.get('remaining_bytes', record['capacity_bytes'])
         # check if library key is valid library manager name
-        llm = self.csc.get_library_managers(ticket)
+        llm = self.csc.get_library_managers()
 
         # "shelf" library is a special case
         if ticket['library']!='shelf' and not llm.has_key(ticket['library']):
@@ -1707,7 +1707,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # m_changer = self.csc.get_media_changer(lib + ".library_manager")
 
         # a short cut for non-existing library, such as blank
-        if not string.split(lib, '.')[0] in self.csc.get_library_managers({}).keys():
+        if not string.split(lib, '.')[0] in self.csc.get_library_managers().keys():
             return ""
 
         if len(lib) < 16 or lib[-16:] != '.library_manager':

@@ -588,7 +588,7 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
     #If necessary, do this the long way without using the cached config.
 
     #Get the list of library managers.
-    lm_dict = csc.get_library_managers({})
+    lm_dict = csc.get_library_managers()
     lm_list = lm_dict.keys()
 
     #If the user selected to hide some movers, remove their LM from the list.

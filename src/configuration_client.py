@@ -270,12 +270,12 @@ class ConfigurationClient(generic_client.GenericClient):
         return  self.send(request, timeout, retry)
 	
     #get list of library managers
-    def get_library_managers(self, ticket, timeout=0, retry=0):
+    def get_library_managers(self, timeout=0, retry=0):
         request = {'work': 'get_library_managers'}
         return self.send(request, timeout, retry)
 
     #get list of media changers
-    def get_media_changers(self, ticket, timeout=0, retry=0):
+    def get_media_changers(self, timeout=0, retry=0):
         request = {'work': 'get_media_changers'}
         return self.send(request, timeout, retry)
 
