@@ -87,6 +87,10 @@ def convert_to_jpg(psfile, file_name):
     os.system("convert -rotate 90 %s %s%s"%(psfile, file_name, enstore_constants.JPG))
     #JPG_FILES.append("%s%s"%(file_name, enstore_constants.JPG))
 
+# return the time to be included in the title of the plots
+def plot_time():
+    return "(Plotted: %s)"%(enstore_status.format_time(time.time()),)
+
 class EnPlot(enstore_files.EnFile):
 
     def __init__(self, dir, name):
@@ -125,7 +129,7 @@ class MphGnuFile(enstore_files.EnFile):
 	for info in gnuinfo:
 	    self.filedes.write("set output '"+info[3]+ \
 			       "'\nset title 'Mount Count For "+info[0]+ \
-	                       " (Total = "+info[1]+")'\nplot '"+info[2]+ \
+	                       " (Total = "+info[1]+") "+plot_time()+"'\nplot '"+info[2]+ \
 	                       "' using 1:2 t '' with impulses lw 20\n")
 
 class MphDataFile(EnPlot):
@@ -200,7 +204,7 @@ class MlatGnuFile(enstore_files.EnFile):
     def write(self, outfile, ptsfile):
 	self.filedes.write("set output '"+outfile+"\n"+ \
                            "set terminal postscript color\n"+ \
-                           "set title 'Mount Latency in Seconds'\n"+ \
+                           "set title 'Mount Latency in Seconds "+plot_time()+"'\n"+ \
                            "set xlabel 'Date'\n"+ \
                            "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
                            "set logscale y\n"+ \
@@ -270,7 +274,7 @@ class XferGnuFile(enstore_files.EnFile):
     def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
 	self.filedes.write("set output '"+outfile2+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
-	                   "set title 'Individual Transfer Activity'\n"+ \
+	                   "set title 'Individual Transfer Activity "+plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
 	                   "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
 	                   "set xdata time\n"+ \
@@ -327,7 +331,7 @@ class BpdGnuFile(enstore_files.EnFile):
     def write(self, outfile, ptsfile, total, meansize, xfers):
 	self.filedes.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
-	                   "set title 'Total Bytes Transferred Per Day'\n"+ \
+	                   "set title 'Total Bytes Transferred Per Day"+plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
 	                   "set timefmt \"%Y-%m-%d\"\n"+ \
 	                   "set xdata time\n"+ \
