@@ -2464,7 +2464,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.notify("loading %s %s" % (self.shortname, volume_label))        
         Trace.log(e_errors.INFO, "mounting %s"%(volume_label,),
                   msg_type=Trace.MSG_MC_LOAD_REQ)
-        
+
+        self.current_location = 0L
         mcc_reply = self.mcc.loadvol(self.vol_info, self.name, self.mc_device)
         self.timer('mount_time')
         status = mcc_reply.get('status')
