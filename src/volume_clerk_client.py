@@ -124,16 +124,13 @@ class VolumeClerkClient :
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
                            file_family, vol_veto_list,first_found) :
-	t1=time.time()
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
                    'file_family'         : file_family,
                    'vol_veto_list'       : `vol_veto_list`,
                    'first_found'         : first_found }
-        oticket = self.send(ticket)
-	print "nwv dt=",time.time()-t1
-	return oticket
+        return self.send(ticket)
 
 
     # check on alive status
