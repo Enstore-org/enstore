@@ -60,13 +60,10 @@ install : install_home
 	cp Makefile mk_inherit class4module $(ENSTORE_INSTALL_DIR)/doc
 	@mkdir		 $(ENSTORE_INSTALL_DIR)/doc/www
 	cp $(WWW_NEW)/*.*   $(ENSTORE_INSTALL_DIR)/doc/www
-	@if [ -d "$(ENSTORE_HOME)" ]; then \
-		cp $(WWW_NEW)/*.*  $(ENSTORE_HOME) \
-	fi;
 
-install_home:
-	@if [ -d "$(ENSTORE_HOME)" ]; then \
-		cp $(WWW_NEW)/*.*  $(ENSTORE_HOME) \
+install_home :
+	@-if [ -d "$(ENSTORE_HOME)" -a -w "$(ENSTORE_HOME)" ]; then \
+		cp $(WWW_NEW)/*.*  $(ENSTORE_HOME); \
 	fi;
 
 
