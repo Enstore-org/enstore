@@ -51,7 +51,8 @@ class GenericDriver:
     # the file location should be a string that will produce an ordered
     # list of the files on the device
     LOC_SPEC = '%012d'		# bytes offset (arbitary width)
-
+    #note: LOC_SPEC is not actually used in this class.
+    
     if 0: #debugging magic
         def __setattr__(self, attr, val):
             if attr=='cur_loc_cookie':
@@ -75,9 +76,12 @@ class GenericDriver:
             ret = string.atoi(loc)
         return ret
 
-            
-    def int2loc( self, ii ):
-        return self.LOC_SPEC % ii
+    def int2loc( self, offset):
+        s="%12s"%offset
+        if s[-1]=='L':
+            s=s[:-1]
+        s='0'*(12-len(s))+s
+
 
     
     def __init__( self, sm_size ):
@@ -310,7 +314,7 @@ class GenericDriver:
 
 
 class  FTTDriver(GenericDriver) :
-    LOC_SPEC = '%04d_%09d_%07d'		# partition, blk offset, filemarks (arbitrary field widths
+    LOC_SPEC = '%04d_%09d_%07d' # partition, blk offset, filemarks (arbitrary field widths
     """
      A Fermi Tape Tools driver
     """
@@ -326,7 +330,8 @@ class  FTTDriver(GenericDriver) :
                                          string.atoi(xx[2]) )
         return [part, block_loc, filenum]
 
-
+    def int2loc( self, ii ):
+        return self.LOC_SPEC % ii
     
     def sw_mount( self, device, blocksize, remaining_bytes, vol_label,
 		  eod_cookie ):
