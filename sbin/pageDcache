@@ -178,7 +178,7 @@ case $gang in
 		   case $testToDo in
 			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
 			      ;;
-			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output _gridftp 2>&1; echo $? > $exit_code_gridftp`&
+			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
 			         ;;
 			srm) `pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
 			     ;;
