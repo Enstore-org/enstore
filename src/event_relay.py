@@ -129,7 +129,7 @@ class Relay:
                     try:
                         self.send_socket.sendto(msg, addr)
                     except:
-			msg = "send failed"%(addr,)
+			msg = "send failed %s"%(addr,)
 		        ### debugging log message
 			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
                         print msg
