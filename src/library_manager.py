@@ -267,6 +267,7 @@ def next_work_this_volume(v):
             w["wrapper"]["size_bytes"] <= v['vc']["remaining_bytes"]):
             w["fc"] = {} # clear old info or create new subticket
             w["fc"]["external_label"] = v['vc']["external_label"]
+            w["fc"]["size"] = w["wrapper"]["size_bytes"]
             # ok passed criteria, return write work ticket
 	    Trace.trace(3,"}next_work_this_volume " + repr(w))
             return w
