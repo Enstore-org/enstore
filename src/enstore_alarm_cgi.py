@@ -45,21 +45,26 @@ def go():
         form = cgi.FieldStorage()
         keys = form.keys()
         an_argv = []
-	# there may be more than one alarm that was chosen to be
-	# cancelled, so get them all
-	alarms = []
-        for key in form.keys():
-            if key[0:5] == "alarm":
-                alarms.append(string.strip(form[key].value))
-        else:
-            if not alarms:
-                # not to decide, is to decide
-                print "ERROR: No alarm chosen for resolution."
-                raise SystemExit
 
 	# we need to find the location of enstore so we can import
 	(config_host, config_port) = enstore_utils_cgi.find_enstore()
 	config_port = int(config_port)
+
+	# there may be more than one alarm that was chosen to be
+	# cancelled, so get them all
+	alarms = []
+	import enstore_html
+	if form.has_key(enstore_html.RESOLVEALL):
+	    alarm = [enstore_html.RESOLVEALL]
+	else:
+	    for key in form.keys():
+		if key[0:5] == "alarm":
+		    alarms.append(string.strip(form[key].value))
+	    else:
+		if not alarms:
+		    # not to decide, is to decide
+		    print "ERROR: No alarm chosen for resolution."
+                raise SystemExit
 
 	import alarm_client
 	import Trace

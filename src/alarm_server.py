@@ -26,7 +26,6 @@ def default_alive_retries():
 MY_NAME = "alarm_server"
 
 DEFAULT_FILE_NAME = "enstore_alarms.txt"
-DEFAULT_PATROL_FILE_NAME = "enstore_patrol.txt"
 DEFAULT_SUSP_VOLS_THRESH = 3
 DEFAULT_HTML_ALARM_FILE = "enstore_alarms.html"
 
@@ -103,8 +102,6 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             self.alarms[theAlarm.get_id()] = theAlarm
             # write it to the persistent alarm file
             self.write_alarm_file(theAlarm)
-            # write it out to the patrol file
-            self.write_patrol_file()
 	    # write it to the web page
 	    self.write_html_file()
         return theAlarm
@@ -124,12 +121,10 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         # an alarm is being resolved, we must do the following -
         #      remove it from our alarm dictionary
         #      rewrite the entire enstore_alarm file (txt and html)
-        #      rewrite the enstore patrol file
         #      log this fact
         if self.alarms.has_key(id):
             del self.alarms[id]
             self.write_alarm_file()
-            self.write_patrol_file()
 	    self.write_html_file()
             Trace.log(e_errors.INFO,
                       "Alarm with id = "+repr(id)+" has been resolved")
@@ -141,7 +136,11 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     def resolve_alarm(self, ticket):
         # get the unique identifier for this alarm
         id = ticket.get(enstore_constants.ALARM, 0)
-        status = self.resolve(id)
+	if id == enstore_html.RESOLVEALL:
+	    for id in self.alarms.keys():
+		self.resolve(id)
+	else:
+	    status = self.resolve(id)
 
         # send the reply to the client
         ticket['status'] = status
@@ -167,22 +166,6 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                 for key in keys:
                     self.alarm_file.write(self.alarms[key])
         self.alarm_file.close()
-
-    def write_patrol_file(self):
-        if not self.alarms == {}:
-            self.patrol_file.open()
-            if self.alarms:
-                keys = self.alarms.keys()
-                keys.sort()
-                for key in keys:
-                    if self.alarms[key].severity == \
-                       e_errors.sevdict[e_errors.ERROR]:
-                        self.patrol_file.write(self.alarms[key])
-            self.patrol_file.close()
-        else:
-            # there are no alarms raised.  if the patrol file exists, we
-            # need to delete it
-            self.patrol_file.remove()
 
     # create the web page that contains the list of raised alarms
     def write_html_file(self):
@@ -212,20 +195,6 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         self.alarms = self.alarm_file.read()
         self.alarm_file.close()
 
-    # get the location of the file we will create for patrol and write any
-    # alarms to it
-    def get_patrol_file(self):
-        # the patrol file lives in the same directory as the log file
-        self.patrol_file = enstore_files.EnPatrolFile("%s/%s"%(self.get_log_path(),
-							  DEFAULT_PATROL_FILE_NAME))
-        self.write_patrol_file()
-
-    # return the name of the patrol file
-    def get_patrol_filename(self, ticket):
-        ticket['patrol_file'] = self.patrol_file.real_file_name
-        ticket['status'] = (e_errors.OK, None)
-        self.send_reply(ticket)
-
 class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 
     def __init__(self, csc):
@@ -251,10 +220,6 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
         # see if an alarm file exists. if it does, open it and read it in.
         # these are the alarms that have not been dealt with.
         self.get_alarm_file()
-
-        # get the patrol file name and location and write any current alarms
-        # out to it.
-        self.get_patrol_file()
 
 	# initialize the html alarm file
 	self.alarmhtmlfile = enstore_files.HtmlAlarmFile("%s/%s"%( \
