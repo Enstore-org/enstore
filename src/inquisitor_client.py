@@ -140,6 +140,21 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(16,"}get_timeout")
 	return s
 
+    def plot_bpt (self, logfile_dir="", start_time="", stop_time=""):
+	Trace.trace(16,"{plot_bpt")
+	# tell the inquisitor to plot bytes per unit of time
+	t = {"work"        : "plot_bpt" }
+	if not logfile_dir == "":
+	    t["logfile_dir"] = logfile_dir
+	if not start_time == "":
+	    t["start_time"] = start_time
+	if not stop_time == "":
+	    t["stop_time"] = stop_time
+	s = self.send(t)
+        Trace.trace(16,"}plot_bpt")
+	return s
+
+
 class InquisitorClientInterface(interface.Interface):
 
     def __init__(self):
@@ -162,6 +177,10 @@ class InquisitorClientInterface(interface.Interface):
 	self.get_refresh = 0
 	self.max_encp_lines = 0
 	self.get_max_encp_lines = 0
+	self.plot = 0
+	self.logfile_dir = ""
+	self.start_time = ""
+	self.stop_time = ""
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -190,9 +209,9 @@ class InquisitorClientInterface(interface.Interface):
 	       ["update", "timestamp", "max_ascii_size="] +\
 	       ["get_max_ascii_size", "dump"] +\
 	       ["refresh=", "get_refresh", "max_encp_lines="] +\
-	       ["get_max_encp_lines"] +\
+	       ["get_max_encp_lines", "plot", "logfile_dir="] +\
+	       ["start_time=", "stop_time="] +\
                self.help_options()
-
 
 
 if __name__ == "__main__" :
@@ -265,6 +284,10 @@ if __name__ == "__main__" :
     elif intf.get_max_encp_lines:
         ticket = iqc.get_max_encp_lines()
 	generic_cs.enprint(ticket['max_encp_lines'], generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+
+    elif intf.plot:
+	ticket = iqc.plot_bpt(intf.logfile_dir, intf.start_time, intf.stop_time)
 	msg_id = generic_cs.CLIENT
 
     del iqc.csc.u

@@ -80,6 +80,10 @@ def inq_file_name():
 TRUE = 1
 FALSE = 0
 MAX_ENCP_LINES = 25
+LOGFILE_DIR = "logfile_dir"
+LOG_PREFIX = "LOG-"
+START_TIME = "start_time"
+STOP_TIME = "stop_time"
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
@@ -360,7 +364,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	if encp_access == TRUE:
 	    # first pull out all of the encp info and store it in another file
 	    try:
-	        os.system("grep ENCP "+fname+"|sort -r> "+self.parsed_file+\
+	        os.system("fgrep ENCP "+fname+"|sort -r> "+self.parsed_file+\
 	                  suffix)
 	        # Now open this file and read in at most numitems lines
 	        encpfile = open(self.parsed_file+suffix, 'r')
@@ -513,7 +517,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(12,"}update_nofunc ")
 
     # update the enstore system status information
-    def do_update(self, ticket, do_all=0):
+    def do_update(self, ticket, do_all=FALSE):
         Trace.trace(11,"{do_update ")
 
 	# check the ascii file and see if it has gotten too big and needs to be
@@ -635,10 +639,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.do_update(0, 0)
 	Trace.trace(4,"}handle_timeout ")
 
-    # generate the plot of bytes xferred/time
-    def xfer_rate_plot(self, ticket):
-	pass
-
     # our client said to update the enstore system status information
     def update(self, ticket):
         Trace.trace(10,"{update "+repr(ticket))
@@ -648,7 +648,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    if self.timeouts.has_key(ticket[self.server_keyword]):
 	        # mark as needing an update when call do_update
 	        self.last_update[ticket[self.server_keyword]] = 0
-	        do_all = 0
+	        do_all = FALSE
 	    else:
 	        # we have no knowledge of this server, maybe it was a typo
 	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
@@ -656,7 +656,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        Trace.trace(10,"}update")
 	        return
 	else:
-	    do_all = 1
+	    do_all = TRUE
 	self.do_update(ticket, do_all)
         ticket["status"] = (e_errors.OK, None)
 	self.send_reply(ticket)
@@ -782,6 +782,91 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	               'status'  : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
         Trace.trace(10,"}get_timeout")
+
+    # search the log files for a string. always add /dev/null to the end of the
+    # list of files to search thru so that grep always has > 1 file and will
+    # always print the name of the file at the beginning of the line.
+    def search_logfiles(self, string, output):
+	try:
+	    os.system("fgrep "+string+" "+LOG_PREFIX+"* /dev/null> "+output)
+	except:
+	    format = timeofday.tod()+" "+\
+	             str(sys.argv)+" "+\
+	             str(sys.exc_info()[0])+" "+\
+	             str(sys.exc_info()[1])+" "+\
+	             "inquisitor plot system error"
+	    self.logc.send(log_client.ERROR, 1, format)
+
+    # check the line to see if the date and timestamp on the beginning of it
+    # is between the given start and end values
+    def check_line(self, line, start_time, stop_time):
+	# split the line into the date/time and all the rest
+	[datetime, rest] = string.split(line, None, 1)
+	# remove the beginning LOG_PREFIX
+	l = regsub.gsub(LOG_PREFIX, "", line)
+	# now see if the date/time is between the start time and the end time
+	time_ok = TRUE
+	if not start_time == "":
+	    if l < start_time:
+	        time_ok = FALSE
+	if time_ok and (not stop_time == ""):
+	    if l > stop_time:
+	        time_ok = FALSE
+	return time_ok
+
+    # read in the given file and return a list of lines that are between a
+    # given start and end time
+    def extract_lines(self, filename, ticket):
+	do_all = FALSE
+	matched_lines = []
+	if ticket.has_key(START_TIME):
+	    start_time = ticket[START_TIME]
+	else:
+	    start_time = ""
+	if ticket.has_key(STOP_TIME):
+	    stop_time = ticket[STOP_TIME]
+	else:
+	    stop_time = ""
+	    if start_time == "":
+	        do_all = TRUE
+	# open the file and read it in.  only save the lines that match the
+	# desired time frame
+	try:
+	    theFile = open(filename, 'r')
+	    while TRUE:
+	        line = theFile.readline()
+	        if not line:
+	            break
+	        else:
+	            if do_all or self.check_line(line, start_time, stop_time):
+	                matched_lines.append(line)
+	except:
+	    pass
+	return matched_lines
+
+    # make the bytes transferred per unit of time plot
+    def plot_bpt(self, ticket):
+        Trace.trace(10,"{plot_bpt "+repr(ticket))
+	# find out where the log files are located
+	if ticket.has_key(LOGFILE_DIR):
+	    lfd = ticket[LOGFILE_DIR]
+	else:
+	    t = self.csc.get("logserver")
+	    lfd = t["log_file_path"]
+
+	ofn = lfd+"/bytes_moved."+enstore_status.get_ts()
+
+	# parse out the ENCP information from the log files
+	self.search_logfiles("ENCP", ofn)
+
+	# only extract the information from the newly created file that is
+	# within the requested timeframe.
+	lines = self.extract_lines(ofn, ticket)
+	self.enprint(lines, generic_cs.PRETTY_PRINT, generic_cs.ALL, "")
+	ret_ticket = { 'plot_bpt' : len(lines), \
+	               'status'   : (e_errors.OK, None) }
+	self.send_reply(ret_ticket)
+        Trace.trace(10,"}plot_bpt ")
 
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):

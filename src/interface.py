@@ -170,8 +170,6 @@ class Interface:
             elif opt == "--restore" :
                 self.restore = 1
 	        self.file = value
-            elif opt == "--status" :
-                self.status = 1
             elif opt == "--logit" :
                 self.logit1 = 1
                 self.logmsg = value
@@ -241,6 +239,14 @@ class Interface:
             elif opt == "--server_verbose" :
 	        self.got_server_verbose = 1
 	        self.server_verbose = string.atoi(value)
+            elif opt == "--logfile_dir":
+                self.logfile_dir = value
+            elif opt == "--start_time":
+                self.start_time = value
+            elif opt == "--stop_time":
+                self.stop_time = value
+            elif opt == "--plot":
+                self.plot = 1
             elif opt == "--faccess":
   	        self.criteria['first_access']=self.check(value)
             elif opt == "--laccess":
@@ -270,6 +276,3 @@ class Interface:
             elif opt == "--help" :
 	        self.print_help()
                 sys.exit(0)
-
-
-

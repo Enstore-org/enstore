@@ -28,6 +28,21 @@ html_header1 = "<title>Enstore Status</title>\n"+\
 html_header2 = "\">\n"+\
               "<body bgcolor=\""+bg_color+"\">\n<pre>\n"
 
+# format the timestamp value
+def get_ts():
+    ts = regsub.gsub(" ", "_", format_time(time.time()))
+    return ts
+
+# translate time.time output to a person readable format.
+# strip off the day and reorganize things a little
+def format_time(theTime):
+    Trace.trace(12,"{format_time ")
+    ftime = time.strftime("%c", time.localtime(theTime))
+    (dow, mon, day, tod, year) = string.split(ftime)
+    ntime = "%s-%s-%s %s" % (year, mon, day, tod)
+    Trace.trace(12,"}format_time ")
+    return ntime
+
 class EnStatus:
 
     # output the encp info
@@ -63,7 +78,7 @@ class EnStatus:
     # output the passed alive status
     def output_alive(self, host, tag, status, time, key):
         Trace.trace(12,"{output_alive "+repr(tag)+" "+repr(host))
-	ftime = self.format_time(time)
+	ftime = format_time(time)
 	str = self.unquote(tag)+self.unquote(status['work'])+" on "+\
 	      self.format_ip_address(host, status['address'])+" at "+\
 	      ftime+"\n"
@@ -73,7 +88,7 @@ class EnStatus:
     # output the timeout error
     def output_etimedout(self, address, tag, time, key):
         Trace.trace(12,"{output_etimedout "+repr(tag)+" "+repr(address))
-	ftime = self.format_time(time)
+	ftime = format_time(time)
 	str = tag + "timed out on "+self.unquote(repr(address))+" at "+\
 	       ftime+"\n"
 	self.text[key] = str
@@ -82,7 +97,7 @@ class EnStatus:
     # output timeout error when trying to get config dict from config server
     def output_noconfigdict(self, tag, time, key):
         Trace.trace(12,"{output_noconfigdict "+repr(tag))
-	ftime = self.format_time(time)
+	ftime = format_time(time)
 	str = tag + "timed out while getting config dict at "+ftime+"\n"
 	self.text[key] = str
         Trace.trace(12,"}output_noconfigdict")
@@ -140,16 +155,6 @@ class EnStatus:
         Trace.trace(12,"{unquote "+repr(string))
 	return regsub.gsub("\'", "", string)
         Trace.trace(12,"}unquote ")
-
-    # translate time.time output to a person readable format.
-    # strip off the day and reorganize things a little
-    def format_time(self, theTime):
-        Trace.trace(12,"{format_time ")
-	ftime = time.strftime("%c", time.localtime(theTime))
-	(dow, mon, day, tod, year) = string.split(ftime)
-	ntime = "%s-%s-%s %s" % (year, mon, day, tod)
-        Trace.trace(12,"}format_time ")
-	return ntime
 
     # format the status, just use the first element
     def format_status(self, status):
@@ -215,17 +220,17 @@ class EnStatus:
 	             ",  DELTA "+repr(encp['delpri'])+"  and  AGETIME: "+\
 	             repr(encp['agetime'])
 	    string = string+spacing+"JOB SUBMITTED: "+\
-	             self.format_time(times['t0'])
+	             format_time(times['t0'])
 	    # not found in pending work
 	    try:
 	        string = string+",  DEQUEUED: "+\
-	                 self.format_time(times['lm_dequeued'])
+	                 format_time(times['lm_dequeued'])
 	    except:
 	        pass
 	    # not found in reads
 	    try:
 	        string = string+spacing+"FILE MODIFIED: "+\
-	                 self.format_time(wrapper['mtime'])
+	                 format_time(wrapper['mtime'])
 	    except:
 	        pass
 	    string = string+"\n"
@@ -284,7 +289,7 @@ class EnStatus:
 	string = "    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT\n"
 	for mover in work:
 	    (address, port) = mover['address']
-	    time = self.format_time(mover['last_checked'])
+	    time = format_time(mover['last_checked'])
 	    string = string+"    %(m)-18.18s    %(p)-4.4d    %(s)-10.10s    %(lc)-20.20s    %(tc)-3d\n" % {'m':mover['mover'], 'p':port, 's':mover['state'], 'lc':time, 'tc':mover['summon_try_cnt']}
 
 	string = string+"\n"
@@ -449,8 +454,8 @@ class AsciiStatusFile(EnStatusFile, EnStatus):
 	if (self.max_ascii_size > 0) or (really == 1):
 	    if (s[stat.ST_SIZE] >= self.max_ascii_size) or (really == 1):
 	        self.file.close()
-	        ts = regsub.gsub(" ", "_", self.format_time(time.time()))
-	        os.system("mv "+self.file_name+" "+self.file_name+"."+ts)
+	        os.system("mv "+self.file_name+" "+self.file_name+"."+\
+	                  get_ts())
 	        self.open()
         Trace.trace(11,"}timestamp ")
 
