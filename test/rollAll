@@ -2,6 +2,8 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
+node=`uname -n`
 for i in fndapr hppc fntt1 8500-tests; do
-    $ENSTORE_DIR/roll $i
+    echo Starting $i tests from
+    $ENSTORE_DIR/test/roll $i
 done
