@@ -33,12 +33,13 @@ class FTTDriver(driver.Driver):
         if self.ftt and mode != self.mode:
             self.ftt.close()
             self.ftt = None
-            
+
         if not self.ftt:
             self.ftt = ftt.open(
                 self.device,
                 {0:ftt.RDONLY, 1:ftt.RDWR}[mode])
-        
+
+        self.mode = mode
         self._last_rate = 0
         self._rate = 0
         self._bytes_transferred = 0
