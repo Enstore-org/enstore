@@ -797,6 +797,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 
 	nlines=0
 	ntries=0
+	jonflag=0
 	while nlines<19 and ntries<3:
 	  ntries=ntries+1
           while blanks<2 and nread<maxread:
@@ -826,12 +827,19 @@ class stk_MediaLoader(MediaLoaderMethods):
 	       if self.DEBUG:
 	          print "DELETED:", l
 	       del response[nl]
+	       jonflag=1
 	    else:
 	       if self.DEBUG:
 	          print    "response line =",nl, l
 	       nl=nl+1
           nlines=len(response)
-	  
+
+	  nl=0
+	  if jonflag and self.DEBUG:
+	       for l in response:
+		  print    "response line =",nl, l
+		  nl=nl+1
+
 	os.close(c2pread)
         size = len(response)
         if size <= 19:
