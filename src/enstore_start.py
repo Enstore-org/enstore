@@ -69,11 +69,12 @@ def is_in_cluster():
     #If we are on the configuration server host, check the config file
     # directly.
     if os.environ['ENSTORE_CONFIG_HOST'] in this_host():
-        kcs = enstore_functions.get_config_dict().get('known_config_servers')
+        conf_dict = enstore_functions.get_config_dict().configdict
+        kcs = conf_dict.get('known_config_servers')
+        
     #Any other system we need to check with the configuration server.
     else:    
         csc = get_csc()
-        
         kcs = csc.get('known_config_servers', 3, 3)
 
     #Simple loop to determine if the system is a production system.
