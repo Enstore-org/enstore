@@ -26,8 +26,12 @@ traceShow*
 #include <termios.h>		/* ICANON */
 #include <sys/ioctl.h>		/* ioctl */
 
-#ifdef OSF1
+#if defined(__osf__)
 #include <sys/termio.h>         /* struct termio */
+#endif
+
+#if defined(sun)		/* struct termio -- Sun */
+#include <termio.h>
 #endif
 
 #include <sys/ipc.h>		/* semop, shmget */
