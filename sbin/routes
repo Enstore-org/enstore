@@ -2,20 +2,22 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-job=${1:-test}
+# $Id$
+
+job=${1:-"route"}
 netperf=/opt/netperf/netperf
 N=/dev/null
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 case $node in
   stken*) gang=stken
-	  NODES="stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
+          NODES="stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
                  stkenmvr1a: stkenmvr2a: stkenmvr3a: stkenmvr4a: stkenmvr5a: \
                  stkenmvr1b: stkenmvr2b: stkenmvr3b: stkenmvr4b: stkenmvr5b: \
                  rip8 rip9 rip10"
           ;;
    d0en*) gang=d0en
-	  NODES="d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5 \
+          NODES="d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5 \
                  d0enmvr1a: d0enmvr2a: d0enmvr3a: \
                  d0enmvr4a: d0enmvr4b: d0enmvr5a: d0enmvr5b: d0enmvr6a: d0enmvr6b: \
                  d0enmvr7a: d0enmvr7b: d0enmvr8a: d0enmvr8b: d0enmvr9a: d0enmvr9b: \
@@ -31,7 +33,7 @@ case $node in
 esac
 
 case $node in
-  stksrv*|d0ensrv*) type=server
+  stkensrv*|d0ensrv*) type=server
           ;;
   stkmvr*|d0enmvr*) type=mover
           ;;
@@ -61,11 +63,7 @@ add*)
     /sbin/route add -host stkensrv3 eth0
     /sbin/route add -host stkensrv4 eth0
 
-    /sbin/route add -host d0enmvr1a eth0
-    /sbin/route add -host d0enmvr2a eth0
-    /sbin/route add -host d0enmvr3a eth0
-
-    x=4
+    x=1
     while [ $x -le 20 ]; do
       /sbin/route add -host d0enmvr${x}a  eth0
       /sbin/route add -host d0enmvr${x}b $eth1
@@ -90,6 +88,28 @@ add*)
     /sbin/route add -host rip9 eth0
     /sbin/route add -host rip10 eth0
 
+
+    if [ "$type" = "server" ]; then
+
+      case $gang in
+         d0en)
+            /sbin/route add -host  d0ensrv1p eth1
+            /sbin/route add -host  d0ensrv2p eth1
+            /sbin/route add -host  d0ensrv3p eth1
+            /sbin/route add -host  d0ensrv4p eth1
+            /sbin/route add -host  d0ensrv5p eth1
+            /sbin/route add -host  adic2     eth1
+            ;;
+         stken)
+            /sbin/route add -host stkensrv1p eth1
+            /sbin/route add -host stkensrv2p eth1
+            /sbin/route add -host stkensrv3p eth1
+            /sbin/route add -host stkensrv4p eth1
+            /sbin/route add -host adic4      eth1
+            /sbin/route add -host fntt       eth1
+            ;;
+      esac
+    fi
     ;;
 
 ################################################################################
@@ -106,11 +126,7 @@ del*)
     /sbin/route del stkensrv3
     /sbin/route del stkensrv4
 
-    /sbin/route del d0enmvr1a
-    /sbin/route del d0enmvr2a
-    /sbin/route del d0enmvr3a
-
-    x=4
+    x=1
     while [ $x -le 20 ]; do
       /sbin/route del d0enmvr${x}a
       /sbin/route del d0enmvr${x}b
@@ -134,6 +150,28 @@ del*)
     /sbin/route del rip8
     /sbin/route del rip9
     /sbin/route del rip10
+
+    if [ "$type" = "server" ]; then
+
+      case $gang in
+         d0en)
+            /sbin/route del  d0ensrv1p
+            /sbin/route del  d0ensrv2p
+            /sbin/route del  d0ensrv3p
+            /sbin/route del  d0ensrv4p
+            /sbin/route del  d0ensrv5p
+            /sbin/route del  adic2
+            ;;
+         stken)
+            /sbin/route del stkensrv1p
+            /sbin/route del stkensrv2p
+            /sbin/route del stkensrv3p
+            /sbin/route del stkensrv4p
+            /sbin/route del adic4
+            /sbin/route del fntt
+            ;;
+      esac
+    fi
 
     ;;
 
@@ -374,6 +412,11 @@ makearp)
     cat $ifmaster | while read node eth x hwaddr junk; do
       echo /sbin/arp -i $eth -s $node $hwaddr
     done
+    ;;
+
+################################################################################
+route)
+    route
     ;;
 
 esac
