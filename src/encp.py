@@ -1575,33 +1575,65 @@ def check_library(library, e):
 
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
+
+    #Check the file and volume clerk sub-tickets.
     fc_ticket = ticket.get('fc', {})
     vc_ticket = ticket.get('vc', {})
+    if type(fc_ticket) != types.DictType:
+        Trace.log(e_errors.WARNING,
+                  "Did not excpect 'fc_ticket' value -- %s -- as type %s."
+                  % (str(fc_ticket), str(type(fc_ticket))))
+        fc_ticket = {}
+    if type(vc_ticket) != types.DictType:
+        
+        Trace.log(e_errors.WARNING,
+                  "Did not excpect 'vc_ticket' value -- %s -- as type %s."
+                  % (str(vc_ticket), str(type(vc_ticket))))
+        vc_ticket = {}
     external_label = fc_ticket.get('external_label',
                                    vc_ticket.get('external_label',
                                                  ticket.get('volume', "")))
     location_cookie = fc_ticket.get('location_cookie', "")
+    storage_group = vc_ticket.get('storage_group', "")
+
+    #Check the mover sub-ticket.
     mover_ticket = ticket.get('mover', {})
+    if type(mover_ticket) != types.DictType:
+        Trace.log(e_errors.WARNING,
+                  "Did not excpect 'mover_ticket' value -- %s -- as type %s."
+                  % (str(mover_ticket), str(type(mover_ticket))))
+        mover_ticket = {}
     device = mover_ticket.get('device', '')
     device_sn = mover_ticket.get('serial_num','')
+
+    #Check the time sub-ticket.
     time_ticket = ticket.get('times', {})
+    if type(time_ticket) != types.DictType:
+        Trace.log(e_errors.WARNING,
+                  "Did not excpect 'time_ticket' value -- %s -- as type %s."
+                  % (str(time_ticket), str(type(time_ticket))))
+        time_ticket = {}
     transfer_time = time_ticket.get('transfer_time', 0)
     seek_time = time_ticket.get('seek_time', 0)
     mount_time = time_ticket.get('mount_time', 0)
     in_queue = time_ticket.get('in_queue', 0)
-    unique_id = ticket.get('unique_id', "")
-    vc_ticket = ticket.get('vc', {})
-    storage_group = vc_ticket.get('storage_group', "")
     now = time.time()
     total = now - time_ticket.get('encp_start_time', now)
+
+    #Check miscellaneous field(s).
+    unique_id = ticket.get('unique_id', "")
+
+    #Check status field.
     sts =  ticket.get('status', ('Unknown', None))
     status = sts[0]
     msg = sts[1:]
     if len(msg)==1:
         msg=msg[0]
+
+    #Check paranoid fields.
     paranoid_crc = ticket.get('ecrc', None)
     encp_crc = ticket.get('exfer', {}).get('encp_crc', None)
-    mover_crc = ticket.get('fc', {}).get('complet_crc', None)
+    mover_crc = ticket.get('fc', {}).get('complete_crc', None)
     if paranoid_crc != None:
         crc = paranoid_crc
     elif encp_crc != None:
@@ -1610,7 +1642,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         crc = mover_crc
     else:
         crc = ""
-        
+
     if type(outputfile) == types.ListType and len(outputfile) == 1:
         outputfile = outputfile[0]
     if type(inputfile) == types.ListType and len(inputfile) == 1:
