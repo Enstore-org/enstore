@@ -168,6 +168,8 @@ class Interface:
                 self.timeout = string.atoi(value)
             elif opt == "--get_timeout" :
                 self.get_timeout = 1
+            elif opt == "--reset_timeout" :
+                self.reset_timeout = 1
             elif opt == "--update" :
                 self.update = 1
             elif opt == "--ascii_file" :

@@ -224,6 +224,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_server_dict(self):
         Trace.trace(12,"{update_server_dict")
 	self.timeouts = self.new_timeouts
+
+	# now look thru any server timeouts that may have reset by hand and
+	# keep the reset value
+	for key in self.reset.keys():
+	    if self.timeouts.has_key(key):
+	        self.timeouts[key] = self.reset[key]
+	    else:
+	        del self.reset[key]
 	self.prepare_keys()
         Trace.trace(12,"}update_server_dict")
 
@@ -374,10 +382,26 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	if ticket.has_key(server_key):
 	    if self.timeouts.has_key(ticket[server_key]):
 	        self.timeouts[ticket[server_key]] = ticket["timeout"]
+		self.reset[ticket[server_key]] = ticket["timeout"]
 	    else:
 	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
 	else:
             self.rcv_timeout = ticket["timeout"]
+	self.send_reply(ticket)
+        Trace.trace(10,"}set_timeout")
+
+    # set a new timeout value
+    def reset_timeout(self,ticket):
+        Trace.trace(10,"{reset_timeout "+repr(ticket))
+        ticket["status"] = (e_errors.OK, None)
+	if ticket.has_key(server_key):
+	    if self.reset.has_key(ticket[server_key]):
+		del self.reset[ticket[server_key]]
+	    else:
+	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
+	else:
+	    t = self.csc.get("inquisitor")
+            self.rcv_timeout = t["timeout"]
 	self.send_reply(ticket)
         Trace.trace(10,"}set_timeout")
 
@@ -443,6 +467,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
 	# initialize
 	self.doupdate_server_dict = 0
+	self.reset = {}
 
         # if no timeout was entered on the command line, get it from the 
         # configuration file.

@@ -56,6 +56,17 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(16,"}set_timeout")
 	return s
 
+    def reset_timeout (self, server=""):
+	Trace.trace(16,"{reset_timeout")
+	t = {"work"       : "reset_timeout" }
+	# see if we have a server or not
+	if server != "":
+	    t['server'] = server
+	# tell the inquisitor to reset the timeout between gathering stats
+	s = self.send(t)
+        Trace.trace(16,"}reset_timeout")
+	return s
+
     def timestamp (self):
 	Trace.trace(16,"{timestamp")
 	# tell the inquisitor to timestamp the ascii file
@@ -98,6 +109,7 @@ class InquisitorClientInterface(interface.Interface):
         self.config_list = 0
 	self.update = 0
 	self.timeout = 0
+	self.reset_timeout = 0
 	self.get_timeout = 0
         self.alive = 0
         self.alive_rcv_timeout = 0
@@ -129,8 +141,9 @@ class InquisitorClientInterface(interface.Interface):
         Trace.trace(16,"{}options")
         return self.config_options()+self.list_options()  +\
 	       self.alive_options() +\
-               ["config_list","timeout=","get_timeout", "update", ""] +\
-	       ["timestamp", "max_ascii_size=", "get_max_ascii_size"] +\
+               ["config_list","timeout=","get_timeout", "reset_timeout"] +\
+	       ["update", "timestamp", "max_ascii_size="] +\
+	       ["get_max_ascii_size"] +\
                self.help_options()
 
 
@@ -159,6 +172,9 @@ if __name__ == "__main__" :
 
     elif intf.get_timeout:
         ticket = iqc.get_timeout(intf.server)
+
+    elif intf.reset_timeout:
+        ticket = iqc.reset_timeout(intf.server)
 
     elif intf.timestamp:
         ticket = iqc.timestamp()
