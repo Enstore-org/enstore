@@ -94,11 +94,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # also need new pnfsid - make sure we have this
         try:
-            key2="pnfsid"
-            pnfsid = ticket["fc"][key2]
+            key2="pnfsid";       pnfsid       = ticket["fc"][key2]
+            key2="pnfsvid";      pnfsvid      = ticket["fc"][key2]
+            key2="pnfs_name0";   pnfs_name0   = ticket["fc"][key2]
+            key2="pnfs_mapname"; pnfs_mapname = ticket["fc"][key2]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
-                                "File Clerk: "+key2+" key is missing")
+            ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
             self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
@@ -122,6 +123,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # add the pnfsid
         record["pnfsid"] = pnfsid
+        record["pnfsvid"] = pnfsvid
+        record["pnfs_name0"] = pnfs_name0
+        record["pnfs_mapname"] = pnfs_mapname
+        record["deleted"] = "no"
 
         # record our changes
         dict[bfid] = copy.deepcopy(record)

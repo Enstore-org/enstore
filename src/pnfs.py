@@ -100,7 +100,7 @@ class Pnfs:
     def check_pnfs_enabled(self):
         if self.valid == VALID:
             try:
-                os.stat(self.dir+'/.(config)(flags)/disabled')
+                os.stat(self.dir+'/.(config)/disabled')
             except os.error:
                 if sys.exc_info()[1][0] == errno.ENOENT:
                     return ENABLED
@@ -430,7 +430,8 @@ class Pnfs:
                self.pnfsFilename+'\012' + \
                self.volume_file+'\012' + \
                self.id+'\012' + \
-               self.volume_fileP.id+'\012'
+               self.volume_fileP.id+'\012' + \
+               self.bit_file_id+'\012'
         Trace.trace(11,'value='+repr(value))
         self.writelayer(4,value)
         self.get_xreference()
@@ -665,47 +666,66 @@ class Pnfs:
             #dir_elements = string.split(self.dir,'/')
             #self.voldir = '/'+dir_elements[1]+'/'+dir_elements[2]+'/volmap/'+ ff+'/'+volume
 
-            # this is horrible --- PLATFORM DEPENDENT ----------------------------------------------------------<--
-            machtypelf = os.popen('uname','r').readlines()
-            machtype = regsub.sub("\012","",machtypelf[0])
-            if machtype=="AIX":
-                k = ""
-                item = "7"
-            elif machtype=="IRIX":
-                k = ""
-                item = "7"
-            elif machtype=="SunOS":
-                k = "-k"
-                item = "6"
-            elif machtype=="OSF1":
-                k = ""
-                item = "6"
-            elif machtype=="Linux":
-                k = ""
-                item = "6"
-            else:
-                k = ""
-                item = "6"
-                generic_cs.enprint("unknown OS:"+repr(machtype)+" "+repr(item))
+            if 0:
+                # this is horrible --- PLATFORM DEPENDENT ----------------------------------------------------------<--
+                machtypelf = os.popen('uname','r').readlines()
+                machtype = regsub.sub("\012","",machtypelf[0])
+                if machtype=="AIX":
+                    k = ""
+                    item = "7"
+                elif machtype=="IRIX":
+                    k = ""
+                    item = "7"
+                elif machtype=="SunOS":
+                    k = "-k"
+                    item = "6"
+                elif machtype=="OSF1":
+                    k = ""
+                    item = "6"
+                elif machtype=="Linux":
+                    k = ""
+                    item = "6"
+                else:
+                    k = ""
+                    item = "6"
+                    generic_cs.enprint("unknown OS:"+repr(machtype)+" "+repr(item))
 
-            # we need to find the mount point and create the volume file there
-            #command = 'df '+k+' | grep /pnfs| awk "{print \$'+item+'}" '
-            command = 'df '+k+' | grep /pnfs| awk "{print \$NF}" '
-            mountpoints = os.popen(command,'r').readlines()
-            mpchoose = ""
-            for mplf in mountpoints:
-                mp = regsub.sub("\012","",mplf)
-                if string.find(self.dir,mp) == 0:
-                    if len(mp)>len(mpchoose):
-                        mpchoose = mp
-            self.voldir = '/'+mpchoose+'/volmap/'+ ff+'/'+volume
+                # we need to find the mount point and create the volume file there
+                #command = 'df '+k+' | grep /pnfs| awk "{print \$'+item+'}" '
+                command = 'df '+k+' | grep /pnfs| awk "{print \$NF}" '
+                mountpoints = os.popen(command,'r').readlines()
+                mpchoose = ""
+                for mplf in mountpoints:
+                    mp = regsub.sub("\012","",mplf)
+                    if string.find(self.dir,mp) == 0:
+                        if len(mp)>len(mpchoose):
+                            mpchoose = mp
+                self.voldir = '/'+mpchoose+'/volmap/'+ ff+'/'+volume
+
+            else:
+                dir_elements = string.split(self.dir,'/')
+                if dir_elements[1] != "pnfs":
+                    Trace.trace(0,'bad filename for - no pnfs as first element'+self.file)
+                    self.voldir=UNKNOWN
+                else:
+                    vd="/pnfs"
+                    # march from top 
+                    for e in range(2,len(dir_elements)):
+                        vd=vd+"/"+dir_elements[e]
+                        try:
+                            os.stat(vd+'/volmap')
+                            self.voldir=vd+'/volmap/'+ ff+'/'+volume
+                            break
+                        except:
+                            pass
+                Trace.trace(11,'Voldir='+self.voldir)
+                
             # make the filename lexically sortable.  since this could be a byte offset,
             #     allow for 100 GB offsets
             self.volume_file = self.voldir+'/'+cookie
 
             self.voldir      = regsub.sub("//","/",self.voldir)
             self.volume_file = regsub.sub("//","/",self.volume_file)
-
         else:
             self.volume_file = UNKNOWN
 

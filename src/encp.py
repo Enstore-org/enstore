@@ -596,8 +596,11 @@ def write_to_hsm(input, output, output_file_family='',
             except:
                 print  "Trouble with pnfs.set_xreference",\
                       sys.exc_info()[0],sys.exc_info()[1], "continuing..."
-	    # add the pnfs id to the file clerk ticket and store it
+	    # add the pnfs ids and filenames to the file clerk ticket and store it
 	    done_ticket["fc"]["pnfsid"] = p.id
+            done_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
+            done_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
+            done_ticket["fc"]["pnfs_mapname"] = p.mapfile
 	    done_ticket["work"] = "set_pnfsid"
 	    binfo  = u.send(done_ticket, (fticket['hostip'], 
 					  fticket['port']))
