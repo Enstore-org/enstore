@@ -291,6 +291,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    elif not got_generic_servers and is_generic_server(server):
 		got_generic_servers = 1
 	    elif not got_movers and is_mover(server):
+                first_mover = server
 		got_movers = 1
 	    elif is_blocksizes(server):
 		got_blocksizes = 1
@@ -311,14 +312,14 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	for lm in shortcut_lm:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(lm,), lm)
-	# now finish up with the media changers, orphan movers and blocksizes
+	# now finish up with the media changers, movers and blocksizes
 	if got_media_changers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(MEDIA_CHANGER,),
 						  MEDIA_CHANGERS)
 	if got_movers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
-						  '#mover', MOVERS)
+						  '#%s'%(first_mover,), MOVERS)
 	if got_blocksizes:
 	    tr, num_tds_so_far = check_row(num_tds_so_far, tr, table)
 	    tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(\
@@ -406,7 +407,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    text = self.get_intro_text(qelem[enstore_constants.WORK], intro)
 	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(text, color=BRICKRED, html_escape='OFF')))
 	    if qelem.has_key(enstore_constants.MOVER):
-		tr.append(HTMLgen.TD(HTMLgen.Href(qelem[enstore_constants.MOVER],
+		tr.append(HTMLgen.TD(HTMLgen.Href("#%s"%(qelem[enstore_constants.MOVER],),
 						  qelem[enstore_constants.MOVER])))
 	    else:
 		tr.append(empty_data())
@@ -696,12 +697,14 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		if first_time:
 		    table.append(self.alive_row(HTMLgen.Name(MEDIA_CHANGER, server), 
 				self.data_dict[server][enstore_constants.STATUS]))
+                    first_time = 0
 		else:
 		    table.append(self.alive_row(server, 
 				self.data_dict[server][enstore_constants.STATUS]))
 
     # output all of the mover rows 
     def mover_rows(self, table, skeys):
+        first_time = 1
 	for server in skeys:
 	    # look for movers
 	    if is_mover(server):
