@@ -28,6 +28,24 @@ movers = []    # list of movers belonging to this LM
 mover_cnt = 0  # number of movers in the queue
 mover_index = 0  # index if current mover in the queue
 
+# send a regret
+def send_regret(self, ticket):
+    # fork off the regret sender
+    ret = self.fork()
+    if ret == 0:
+	try:
+	    Trace.trace(13,"send_regret "+repr(ticket))
+	    callback.send_to_user_callback(ticket)
+	    Trace.trace(13,"send_regret ")
+	except:
+	    Trace.log(1,"send_regret "+str(sys.exc_info()[0])+\
+			str(sys.exc_info()[1])+repr(ticket))
+
+	os._exit(0)
+    else:
+        Trace.trace(12, "CHILD ID= %s"%ret)
+
+
 # find mover in the list
 def find_mover(mover, mover_list):
     for mv in mover_list:
@@ -47,6 +65,41 @@ def find_mover_by_name(mover, mover_list):
 	# mover is not in the list
 	return {}
     return mv
+
+
+# summon mover
+def summon_mover(self, mover, ticket):
+    # update mover info
+    mover['last_checked'] = time.time()
+    mover['state'] = 'summoned'
+    mover['summon_try_cnt'] = mover['summon_try_cnt'] + 1
+    # find the mover in summon queue
+    mv = find_mover(mover, self.summon_queue)
+    Trace.trace(15,"MV=%s"%mv)
+    if not mv:
+	# add it to the summon queue
+	self.summon_queue.append(mover)
+    mover['work_ticket'] = {}
+    mover['work_ticket'].update(ticket)
+
+    summon_rq = {'work': 'summon',
+		 'address': self.server_address }
+    
+    Trace.trace(15,"summon_rq %s will be sent to %s" % (summon_rq, mover['mover']))
+    # send summon request
+    mover['tr_error'] = self.udpc.send_no_wait(summon_rq, mover['address'])
+    Trace.trace(15,"summon_queue %s" % self.summon_queue)
+
+
+# summon mover timer function
+def summon_mover_d(self, mover, ticket):
+    mvr = find_mover(mover,self.del_dismount_list.list)
+    Trace.trace(16,"summon_mover_d %s" % repr(mvr))
+    if mvr:
+	if mvr.has_key("del_dism"):
+	    del mvr["del_dism"]
+    summon_mover(self, mover, ticket)
+
 
 # add mover to the movers list
 def add_mover(name, address):
@@ -409,41 +462,6 @@ def next_work_this_volume(self, v):
 	w=self.pending_work.get_next()
     return {"status" : (e_errors.NOWORK, None)}
 
-##############################################################
-# summon mover
-def summon_mover(self, mover, ticket):
-    # update mover info
-    mover['last_checked'] = time.time()
-    mover['state'] = 'summoned'
-    mover['summon_try_cnt'] = mover['summon_try_cnt'] + 1
-    # find the mover in summon queue
-    mv = find_mover(mover, self.summon_queue)
-    Trace.trace(15,"MV=%s"%mv)
-    if not mv:
-	# add it to the summon queue
-	self.summon_queue.append(mover)
-    mover['work_ticket'] = {}
-    mover['work_ticket'].update(ticket)
-
-    summon_rq = {'work': 'summon',
-		 'address': self.server_address }
-    
-    Trace.trace(15,"summon_rq %s will be sent to %s" % (summon_rq, mover['mover']))
-    # send summon request
-    mover['tr_error'] = self.udpc.send_no_wait(summon_rq, mover['address'])
-    Trace.trace(15,"summon_queue %s" % self.summon_queue)
-
-
-# summon mover timer function
-def summon_mover_d(self, mover, ticket):
-    mvr = find_mover(mover,self.del_dismount_list.list)
-    Trace.trace(16,"summon_mover_d %s" % repr(mvr))
-    if mvr:
-	if mvr.has_key("del_dism"):
-	    del mvr["del_dism"]
-    summon_mover(self, mover, ticket)
-
-
 # check if volume is in the suspect volume list
 def is_volume_suspect(self, external_label):
     for vol in self.suspect_volumes:
@@ -494,23 +512,6 @@ def idle_mover_next(self, external_label):
 	mv = None
     # return next idle mover
     return mv
-
-# send a regret
-def send_regret(self, ticket):
-    # fork off the regret sender
-    ret = self.fork()
-    if ret == 0:
-	try:
-	    Trace.trace(13,"send_regret "+repr(ticket))
-	    callback.send_to_user_callback(ticket)
-	    Trace.trace(13,"send_regret ")
-	except:
-	    Trace.log(1,"send_regret "+str(sys.exc_info()[0])+\
-			str(sys.exc_info()[1])+repr(ticket))
-
-	os._exit(0)
-    else:
-        Trace.trace(12, "CHILD ID= %s"%ret)
 
 
 class LibraryManager(dispatching_worker.DispatchingWorker,
