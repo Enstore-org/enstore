@@ -77,8 +77,6 @@ class MonitoredServer:
         self.state = NO_TIMEOUT
 	self.server_status = None
 	self.update_alive_interval()
-	# this is for the restart hack
-	self.host = ""
 
     def __getattr__(self, attr):
 	if attr[:2]=='__':
