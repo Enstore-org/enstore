@@ -1,0 +1,3 @@
+# rwquery
+#    show the status of drives 1 and 3
+rsh fntt -l acsss "echo query drive  0,0,9,1 0,0,9,3 | /export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null
