@@ -21,14 +21,14 @@ RCV_TRIES = 2
 
 class Lock:
     def __init__(self):
-	self.locked = 0
+        self.locked = 0
     def unlock(self):
-	self.locked = 0
-	return None
+        self.locked = 0
+        return None
     def test_and_set(self):
-	s = self.locked
-	self.locked=1
-	return s
+        s = self.locked
+        self.locked=1
+        return s
 
 class AlarmClient(generic_client.GenericClient):
 
@@ -48,13 +48,13 @@ class AlarmClient(generic_client.GenericClient):
 
         self.rcv_timeout = rcv_timeout
         self.rcv_tries = rcv_tries
-	Trace.set_alarm_func( self.alarm_func )
-	self.alarm_func_lock = Lock() 
+        Trace.set_alarm_func( self.alarm_func )
+        self.alarm_func_lock = Lock() 
         
     def alarm_func(self, time, pid, name, args):
-	# prevent infinite recursion (i.e if some function call by this
-	# function does a trace and the alarm bit is set
-	if self.alarm_func_lock.test_and_set(): return None
+        # prevent infinite recursion (i.e if some function call by this
+        # function does a trace and the alarm bit is set
+        if self.alarm_func_lock.test_and_set(): return None
         ticket = {}
         ticket['work'] = "post_alarm"
         ticket[enstore_constants.UID] = self.uid
@@ -63,16 +63,16 @@ class AlarmClient(generic_client.GenericClient):
         if args[0] == e_errors.ALARM:
             # we were called from Trace.alarm and args will be a dict
             ticket.update(args[2])
-	    log_msg = args[2]
+            log_msg = args[2]
         else:
             # we were called from someplace like Trace.trace and we only
             # have a text string for an argument
             ticket['text'] = args[1]
-	    log_msg = args[1]
+            log_msg = args[1]
         self.send(ticket, self.rcv_timeout, self.rcv_tries )
-	# log it for posterity
-	Trace.log(e_errors.ALARM, repr(log_msg), Trace.MSG_ALARM)
-	return self.alarm_func_lock.unlock()
+        # log it for posterity
+        Trace.log(e_errors.ALARM, repr(log_msg), Trace.MSG_ALARM)
+        return self.alarm_func_lock.unlock()
 
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
               root_error=e_errors.DEFAULT_ROOT_ERROR,
