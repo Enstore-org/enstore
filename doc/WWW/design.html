@@ -1262,6 +1262,9 @@ obtains information from the Enstore system and creates reports
 using this information.
 <h3>1.3.8.1 Command Line Control of the Inquisitor 
 </h3>
+Inquisitor functionality may be controlled through a command line interface using
+<B>ecmd</B>.  Using this command, values
+
 <h3>1.3.8.2 Inquisitor Config File Values
 </h3>
 The Inquisitor looks for the following values in the Inquisitor section of the
@@ -1359,6 +1362,24 @@ dictionary element, for the file clerk set to 65
 </UL>
 The value in the individual server dictionary element will take precedence over
 the value in the Inquisitor dictionary element.
+<P>
+In order to block monitoring of a particular server, set it's timeout value to 
+-1.
+<P>
+An example Inquisitor dictionary element is given below:<BR>
+<P>
+<PRE>
+configdict['inquisitor']   = { 'host':'rip6',          \
+                               'port':7505,            \
+                               'logname':'INQSRV',     \
+                               'timeout':10,           \
+                               'alive_rcv_timeout': 5, \
+                               'alive_retries':1,      \
+                               'ascii_file':'/rip6a/enstore/inquisitor/', \
+                               'html_file':'/fnal/ups/prd/www_pages/enstore/', \
+                               'default_server_timeout': 15, \
+                               'timeouts' : { 'ait.library_manager': 15} }
+</PRE>
 
 
 <h2><a name="db">
