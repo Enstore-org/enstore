@@ -192,7 +192,7 @@ if [ -z "${INSTALLDIR-}" ] ; then
    esac
    echo "Install directory not specified - Defaulting to install directory of $INSTALLDIR"
 fi
-if [ $setrev -eq 1 ]; then 
+if [ $setrev -eq 1 ]; then
   INSTALLDIR=${INSTALLDIR}/${REV}
 fi
 
@@ -306,6 +306,9 @@ for try in list doit; do
               check_status $? "cp * $INSTALLDIR"
 	      cp $ENSTORE_DIR/volume_import/enstore_tape $INSTALLDIR
 	      check_status $? "cp enstore_tape $INSTALLDIR"
+	      cd $INSTALLDIR
+	      ln -s sam.table enstore_variables
+	      check_status $? "cp ln -s sam.table enstore_variables"
            fi
            ;;
 
@@ -355,7 +358,7 @@ for try in list doit; do
       ans=`echo_timed_read 10`
       if [ $? != 0 ] || expr "$ans" : '[Yy]' >/dev/null ; then
         echo "Proceeding with ${product}Cut..."
-        echo ""  
+        echo ""
     else
          cd $thepwd
          exit 0
