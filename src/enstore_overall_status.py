@@ -1,13 +1,11 @@
 import os
 import sys
 import string
-import signal
 import time
 
 import enstore_functions2
 import enstore_constants
 import enstore_html
-import HTMLgen
 
 nodes = {'d0ensrv2' : ' d0en mass storage',
 	 'stkensrv2' : ' stken mass storage',
@@ -121,7 +119,7 @@ def do_work():
     keys = nodes.keys()
     # we hard code the html_dir because we are no longer running on an enstore system
     html_dir = "/local/ups/prd/www_pages/enstore/"
-    file = "%s/%s"%(html_dir, enstore_constants.ENSTORESTATUSFILE)
+    aFile = "%s/%s"%(html_dir, enstore_constants.ENSTORESTATUSFILE)
     status_d = {}
     # get the last status of the enstore balls
     last_status_d = get_last_status()
@@ -133,9 +131,9 @@ def do_work():
             NEWFILE = "enstore_status_only_%s"%(node,)
             new_file = "%s/%s.py"%(DESTDIR, NEWFILE)
             if node == thisNode:
-                rtn = os.system("cp %s %s"%(file, new_file))
+                rtn = os.system("cp %s %s"%(aFile, new_file))
             else:
-                rtn = enstore_functions2.get_remote_file(node, file, new_file)
+                rtn = enstore_functions2.get_remote_file(node, aFile, new_file)
             if rtn == 0:
                 exec("import %s\nstatus_d[node] = %s.status\n"%(NEWFILE, NEWFILE))
             else:
