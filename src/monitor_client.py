@@ -20,6 +20,7 @@ import udp_client
 import Trace
 import e_errors
 import configuration_client
+import enstore_functions
 import log_client
 
 MY_NAME = "MNTR_CLI"
@@ -127,9 +128,9 @@ class MonitorServerClient:
             'work' : 'recieve_measurement',
             
             'measurement' : (
-            time.asctime(time.localtime(time.time())), 
-            string.replace(callback_addr, ".fnal.gov", ""),
-            string.replace(remote_addr, ".fnal.gov", ""),
+	    enstore_functions.format_time(time.time()),
+	    enstore_functions.strip_node(callback_addr),
+	    enstore_functions.strip_node(remote_addr),
             block_count,
             block_size,
             "%.4g" % elapsed,
