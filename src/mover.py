@@ -805,6 +805,7 @@ def unilateral_unbind_next( self, error_info ):
 		      'mover'          : self.config['name'],
 		      'address'        : (self.config['hostip'],self.config['port']),
 		      'external_label' : self.fc['external_label'],
+		      'state'          : self.state,
 		      'status'         : (error_info,None)}
     return next_req_to_lm
 
