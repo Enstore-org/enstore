@@ -6,6 +6,8 @@ all:
 clean:
 	@ $(ENSTORE_DIR)/bin/enstoreClean
 	rm -f *.pyc encp
+	- rm -rf ENCPBIN_TEMP
+	- rm -rf ENCPBIN
 
 encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/ETape.o $(ENSTORE_DIR)/modules/EXfer.o $(ENSTORE_DIR)/modules/Trace.o
 	- rm -rf ENCPBIN_TEMP
