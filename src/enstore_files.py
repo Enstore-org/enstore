@@ -719,7 +719,7 @@ class HtmlStatusOnlyFile(EnFile):
     # write to.  we will create the temp one and then move it to the real
     # one.
     def __init__(self, name):
-        EnFile.__init__(self, name+TMP, system_tag)
+        EnFile.__init__(self, name+TMP)
         self.real_file_name = name
 	self.enstore_ball = ""
 
