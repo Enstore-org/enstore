@@ -895,7 +895,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.media_transfer_time = 0.
         self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                            self.config['media_changer'])
-        self.asc = accounting_client.accClient(self.csc)
+        self.asc = accounting_client.accClient(self.csc, self.logname)
         mc_keys = self.csc.get(self.mcc.media_changer)
         # STK robot can eject tape by either sending command directly to drive or
         # by pushing a corresponding button
@@ -3100,7 +3100,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         status = mcc_reply.get('status')
         if status and status[0]==e_errors.OK:
-            self.asc.log_finish_mount(self.current_volume)
+            self.asc.log_finish_dismount(self.current_volume)
             tm = time.localtime(time.time())
             time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
             Trace.log(e_errors.INFO, "dismounted %s %s %s"%(self.current_volume,self.config['product_id'], time_msg))
@@ -3126,7 +3126,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
 ##            self.error(status[-1], status[0])
             
-            self.asc.log_finish_mount_err(self.current_volume)
+            self.asc.log_finish_dismount_err(self.current_volume)
             broken = "dismount failed: %s %s" %(status[-1], status[0])
             if self.current_volume:
                 try:
