@@ -61,6 +61,8 @@ CONFIGS = "Configuration Server"
 FILEC = "File Clerk"
 INQ = "Inquisitor"
 VOLC = "Volume Clerk"
+EV_RLY = "Event Relay"
+UP_DOWN = "up_down"
 
 # server names used in config file
 LOG_SERVER = "log_server"
@@ -71,14 +73,14 @@ VOLUME_CLERK = "volume_clerk"
 INQUISITOR = "inquisitor"
 CONFIG_SERVER = "config_server"  # included for use by inquisitor
 WWW_SERVER = "www_server"
-EVENT_RELAY = "event_relay"
 
 SERVER_NAMES = {LOGS : LOG_SERVER,
 		ALARMS : ALARM_SERVER,
 		FILEC : FILE_CLERK,
 		INQ : INQUISITOR,
 		VOLC : VOLUME_CLERK,
-		CONFIGS : CONFIG_SERVER}
+		CONFIGS : CONFIG_SERVER,
+		EV_RLY : EVENT_RELAY}
 
 OUTAGEFILE = "enstore_outage.py"
 SEENDOWNFILE = "enstore_seen_down.py"
