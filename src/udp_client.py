@@ -46,7 +46,13 @@ def wait_rsp( sock, address, rcv_timeout ):
 
     r, w, x, rcv_timeout = cleanUDP.Select( [sock], [], [sock], rcv_timeout)
     if r:
-        reply , server = sock.recvfrom( TRANSFER_MAX, rcv_timeout)
+        #reply , server = sock.recvfrom( TRANSFER_MAX, rcv_timeout)
+        temp = sock.recvfrom( TRANSFER_MAX, rcv_timeout)
+	try:
+	    reply, server = temp
+	except:
+	    print "TEMP = %s %s"%(type(temp), temp,)
+	    raise
     elif x or w :
         exc,msg,tb=sys.exc_info()
         Trace.log(e_errors.INFO, "UDPClient.send: exception on select after send to %s %s: %s %s"%
