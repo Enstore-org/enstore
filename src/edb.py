@@ -304,7 +304,7 @@ class FileDB(DbTable):
 		else:
 			crc = s['complete_crc']
 
-		return {
+		record = {
 			'bfid': s['bfid'],
 			'crc': crc,
 			'deleted': deleted,
@@ -316,9 +316,15 @@ class FileDB(DbTable):
 			'sanity_size': sanity_size,
 			'sanity_crc': sanity_crc,
 			'size': s['size'],
-			'uid': s['uid'],
-			'gid': s['gid']
 			}
+
+		# handle uid and gid
+		if s.has_key("uid"):
+			record["uid"] = s["uid"]
+		if s.has_key("gid"):
+			record["gid"] = s["gid"]
+
+		return record
 
 class VolumeDB(DbTable):
 	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1):
