@@ -51,17 +51,28 @@ LOG_FILES = $(WWW)/redwoodfiber.log $(WWW)/redwoodlocal.log
 
 # Define .ps and .gif files that are generated. Not all .ps and 
 # .gif files in this directory are generated
-PIC_FILES = \
-	./desy.ps ./desy.gif \
-	./enstore.ps ./enstore.gif \
-	./enstoreRead.ps ./enstoreRead.gif \
-	./enstoreSimple.ps ./enstoreSimple.gif \
-	./enstore_at_fnal.ps ./enstore_at_fnal.gif \
-	./enstore_at_fnal2.ps ./enstore_at_fnal2.gif \
-	./read.ps ./read.gif \
-	./test_nodes.ps ./test_nodes.gif \
-	./test-stand.ps ./test-stand.gif \
-	./write.ps ./write.gif
+PIC_GIF_FILES = \
+	./desy.gif \
+	./enstore.gif \
+	./enstoreRead.gif \
+	./enstoreSimple.gif \
+	./enstore_at_fnal.gif \
+	./enstore_at_fnal2.gif \
+	./read.gif \
+	./test_nodes.gif \
+	./test-stand.gif \
+	./write.gif
+PIC_PS_FILES = \
+	./desy.ps \
+	./enstore.ps \
+	./enstoreRead.ps \
+	./enstoreSimple.ps \
+	./enstore_at_fnal.ps \
+	./enstore_at_fnal2.ps \
+	./read.ps \
+	./test_nodes.ps \
+	./test-stand.ps \
+	./write.ps 
 
 WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(GIF_FILES) $(LOG_FILES) \
 	$(HOME_FILE)
@@ -71,7 +82,14 @@ WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(GIF_FILES) $(LOG_FILES) \
 #
 all: pics warn
 
-pics:	$(PIC_FILES)
+pics: PS_pics GIF_pics
+
+PS_pics: $(PIC_PS_FILES)
+
+gifs: $(PIC_GIF_FILES)
+
+GIF_pics: 
+	make gifs
 
 #
 # The template defines things at the top of HTML files which are
@@ -114,7 +132,7 @@ tidy:
 # Scrub down to what would have been had from the source repository 
 clean :
 	@ $(BIN)/enstoreClean
-	@ rm -rf $(PIC_FILES)
+	@ rm -rf $(PIC_PS_FILES) $(PIC_GIF_FILES)
 
 
 
