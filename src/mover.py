@@ -372,12 +372,14 @@ def bind_volume( self, external_label ):
             Trace.log(e_errors.INFO,'Completed  precautionary offline/eject of device'+str(mvr_config['device']))
 
 	self.vol_info['read_errors_this_mover'] = 0
-	Trace.log(e_errors.INFO,'Requesting media changer load '+str(tmp_vol_info)+' '+str(self.config['mc_device']))
+        tmp_mc = str({"media_changer":mvr_config['media_changer']})
+        Trace.log(e_errors.INFO,'Requesting media changer load '+str(tmp_vol_info)+" "+tmp_mc+' '+str(self.config['mc_device']))
 	try: rsp = self.mcc.loadvol( tmp_vol_info, self.config['name'],
 				self.config['mc_device'], vcc )
 	except errno.errorcode[errno.ETIMEDOUT]:
             rsp = { 'status':('ETIMEDOUT',None) }
-	Trace.log(e_errors.INFO,'Media changer load status'+str(rsp['status']))
+	Trace.log(e_errors.INFO,'Media changer load status '+\
+                  str(rsp['status'])+" "+tmp_mc)
 	if rsp['status'][0] != 'ok':
 	    # it is possible, under normal conditions, for the system to be
 	    # in the following race condition:
