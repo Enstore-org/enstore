@@ -818,6 +818,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
     def __init__( self, server_address, verbose=0 ):
 	self.client_obj_inst = MoverClient( mvr_config )
 	self.verbose = verbose
+	self.summoned_while_busy = []
         logc.send( log_client.INFO, 0, 'Mover starting - contacting libman')
 	for lm in mvr_config['library']:# should be libraries
 	    # a "respone" to server being summoned
@@ -925,6 +926,8 @@ class MoverServer(  dispatching_worker.DispatchingWorker
     def summon( self, ticket ):
 	wait=posix.WNOHANG
 	next_req_to_lm = get_state_build_next_lm_req( self, wait )
+	if next_req_to_lm['state']=='busy' and not ticket['address'] in self.summoned_while_busy:
+	    self.summoned_while_busy.append(ticket['address'])
 	do_next_req_to_lm( self, next_req_to_lm, ticket['address'] )
 	return
 
@@ -991,6 +994,18 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	    raise sys.exc_info()[0], sys.exc_info()[1]
 	method = MoverClient.__dict__[client_function]
 	next_req_to_lm = method( self.client_obj_inst, rsp_ticket )
+	# note: order of check is important to avoid KeyError exception
+	if  len(self.summoned_while_busy) and next_req_to_lm=={}:
+	    next_req_to_lm = idle_mover_next( self.client_obj_inst )
+	    address = self.summoned_while_busy[0]
+	    del self.summoned_while_busy[0]
+	elif len(self.summoned_while_busy) and next_req_to_lm['work']=='idle_mover':
+	    # do not tell this lm idle as he may keep giving work
+	    next_req_to_lm = idle_mover_next( self.client_obj_inst )
+	    self.summoned_while_busy.append( address )
+	    address = self.summoned_while_busy[0]
+	    del self.summoned_while_busy[0]
+	    pass
 	pass
     return
 
