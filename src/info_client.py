@@ -415,6 +415,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 		self.list =None 
 		self.bfid = 0
 		self.bfids = None
+		self.check = ""
 		self.alive_rcv_timeout = 0
 		self.alive_retries = 0
 		self.ls_active = None
@@ -442,6 +443,11 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 				option.VALUE_USAGE:option.REQUIRED,
 				option.USER_LEVEL:option.USER},
 		option.BFIDS:{option.HELP_STRING:"list all bfids on a volume",
+				option.VALUE_TYPE:option.STRING,
+				option.VALUE_USAGE:option.REQUIRED,
+				option.VALUE_LABEL:"volume_name",
+				option.USER_LEVEL:option.ADMIN},
+		option.CHECK:{option.HELP_STRING:"check a volume",
 				option.VALUE_TYPE:option.STRING,
 				option.VALUE_USAGE:option.REQUIRED,
 				option.VALUE_LABEL:"volume_name",
@@ -551,6 +557,14 @@ def do_work(intf):
 			del ticket['status']
 			pprint.pprint(ticket)
 			ticket['status'] = status
+	elif intf.check:
+		ticket = vcc.inquire_vol(intf.check)
+		# guard against error
+		if ticket['status'][0] == e_errors.OK:
+			print "%-10s  %s %s %s" % (ticket['external_label'],
+				capacity_str(ticket['remaining_bytes']),
+				ticket['system_inhibit'],
+				ticket['user_inhibit'])
 	elif intf.vols:
 		# optional argument
 		nargs = len(intf.args)
