@@ -158,9 +158,13 @@ def check(bfid, vol):
 
 	file = fcc.bfid_info(bfid)
 
-	print 'checking', bfid, file['pnfs_name0'], '...',
+	f = file.get('pnfs_name0', 'unknown')
 
-	f = file['pnfs_name0']
+	print 'checking', bfid, f, '...',
+
+	if f == 'unknown' or f['deleted'] == 'yes':
+		print 'OK'
+		return
 
 	# does original file exist?
 	if not os.access(f, os.F_OK):
@@ -226,8 +230,11 @@ def check(bfid, vol):
 	return
 
 def delete(bfid):
-	f = fcc.bfid_info(bfid)
-	af = a_path(f['pnfs_name0'])
+	f = fcc.bfid_info(bfid).get('pnfs_name0', 'unknown')
+	if f == 'unknown':
+		af = 'unknown'
+	else:
+		af = a_path(f)
 	print 'deleting', bfid, af, '...',
 	ticket = {'bfid': bfid,'pnfs_name0': af, 'deleted': 'yes'}
 	res = fcc.modify(ticket)
