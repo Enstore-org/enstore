@@ -24,6 +24,7 @@ import math
 import exceptions
 import re
 import statvfs
+import types
 
 # enstore modules
 import setpath 
@@ -390,6 +391,41 @@ def bin(integer):
 
     return temp
 
+#Take as parameter the interface class instance or a request ticket.  Determine
+# if the transfer(s) is/are a read or not.
+def is_read(ticket_or_interface):
+    #If the type is a dictionary...
+    if type(ticket_or_interface) == types.DictionaryType:
+        infile = ticket_or_interface.get('infile', "")
+        outfile = ticket_or_interface.get('outfile', "")
+        if infile[:6] == "/pnfs/" and outfile[:6] != "/pnfs/":
+            return 1
+        elif infile[:6] != "/pnfs/" and outfile[:6] == "/pnfs/":
+            return 0
+        else:
+            raise EncpError(errno.EINVAL, "Inconsistant file types.",
+                            e_errors.BROKEN)
+    #If the type is an interface class...
+    elif type(ticket_or_interface) == types.InstanceType:
+        intype = getattr(ticket_or_interface, 'intype', "")
+        outtype = getattr(ticket_or_interface, 'outtype', "")
+        if intype == "hsmfile" and outtype == "unixfile":
+            return 1
+        elif intype == "unixfile" and outtype == "hsmfile":
+            return 0
+        else:
+            raise EncpError(errno.EINVAL, "Inconsistant file types.",
+                            e_errors.BROKEN)
+    #Have no idea what was passed in.
+    else:
+        raise EncpError(errno.EINVAL, "Expected ticket or interface.",
+                        e_errors.WRONGPARAMETER)
+
+#Take as parameter the interface class instance or a request ticket.  Determine
+# if the transfer(s) is/are a write or not.
+def is_write(ticket_or_interface):
+    return not is_read(ticket_or_interface)
+    
 ############################################################################
 
 #The os.access() and the access(2) C library routine use the real id when
@@ -2044,22 +2080,32 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             request_dictionary = combine_dict(socket_dict, request_dictionary)
 
     #The volume clerk set the volume NOACCESS.
-    if not e_errors.is_ok(vc_status):  #[0] != e_errors.OK:
+    if not e_errors.is_ok(vc_status):
         status = vc_status
     #Set status if there was an error recieved from control socket.
-    elif not e_errors.is_ok(socket_status): #[0] != e_errors.OK:
+    elif not e_errors.is_ok(socket_status):
         status = socket_status
     #Use the ticket status.
     else:
         status = dict_status
         
     #If there is no error, then don't do anything
-    if e_errors.is_ok(status): # == (e_errors.OK, None):
+    if e_errors.is_ok(status):
         result_dict = {'status':(e_errors.OK, None), 'retry':retry,
                        'resubmits':resubmits,
                        'queue_size':len(request_list)}
         result_dict = combine_dict(result_dict, socket_dict)
         return result_dict
+    #At this point it is known there is an error.  If the transfer is a read,
+    # then if the encp is killed before completing quit() could leave
+    # non-zero non-correct files.  If this is the case truncate them.
+    elif is_read(encp_intf):
+        try:
+            fd = os.open(outfile, os.O_WRONLY | os.O_TRUNC)
+            os.close(fd)
+        except (IOError, OSError):
+            #Something is very wrong, deal with it later.
+            pass
 
     #If the mover doesn't call back after max_submits number of times, give up.
     if max_submits != None and resubmits >= max_submits:
