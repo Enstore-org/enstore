@@ -1,0 +1,10 @@
+CCOPTS = -ansiposix -c 
+LDOPTS = -shared
+
+.SUFFIXES:
+.SUFFIXES : .c .so
+
+.c.so :
+	cc $(CCOPTS) -I$(PYTHONINC) $< -o $*.o
+	ld $(LDOPTS)                 $*.o -o  $*.so
+	rm $*.o
