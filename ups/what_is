@@ -48,24 +48,6 @@ if [ ! -f $setups ] ; then quit "$setup not found" -4; fi
 . $setups
 
 case $1 in
-	libtp_include)
-		if [ -d ${ENSTORE_DIR}/BerkeleyDB ]
-		then
-			echo ${ENSTORE_DIR}/BerkeleyDB/build_unix
-		else
-			setup libtp
-			echo ${LIBTP_DIR}/include
-		fi
-	;;
-	libtp_lib)
-		if [ -d ${ENSTORE_DIR}/BerkeleyDB ]
-		then
-			echo ${ENSTORE_DIR}/BerkeleyDB/build_unix
-		else
-			setup libtp
-			echo ${LIBTP_DIR}/lib
-		fi
-	;;
 	HTMLgen)
 		if [ -d ${ENSTORE_DIR}/HTMLgen ]
 		then

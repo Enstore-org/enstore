@@ -193,8 +193,8 @@ COMMON:
                 exeAccess("swig")
 
                 # set the libtp and libtppy variables up after python - products are part of python
-                envSet(LIBTP_INCLUDE, `${UPS_PROD_DIR}/ups/what_is libtp_include`)
-                envSet(LIBTP_LIB, `${UPS_PROD_DIR}/ups/what_is libtp_lib`)
+                # envSet(LIBTP_INCLUDE, `${UPS_PROD_DIR}/ups/what_is libtp_include`)
+                # envSet(LIBTP_LIB, `${UPS_PROD_DIR}/ups/what_is libtp_lib`)
 
                 # now set the python module search path, need to do these in separate
                 # lines so that when an unsetup is done, the dropit will do 3 separate
