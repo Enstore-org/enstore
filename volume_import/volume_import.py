@@ -192,7 +192,7 @@ if __name__=="__main__":
             loc_cookie = "0000_000000000_%07d" % n
             if (file['early_checksum_size'] == 'None'
                 or file['early_checksum'] == 'None'):
-                sanity_cookie = None, None
+                sanity_cookie = 0, None
             else:
                 sanity_cookie = (string.atoi(file['early_checksum_size']),
                                  string.atol(file['early_checksum']))
