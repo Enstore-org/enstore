@@ -8,8 +8,8 @@ case $node in
           othergang=d0en
           basenode=stkenmvr5a
 	  othernode=d0enmvr18a
-          movers="1 2 3 4"
-          servers="1 2 3 4"
+          movers="1 2 3 4 6"
+          servers="1 2 3 4 6"
           ;;
    d0en*) gang=d0en
 	  othergang=stken

@@ -12,8 +12,8 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 case $node in
   stken*) gang=stken
           NODES="stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
-                 stkenmvr1a: stkenmvr2a: stkenmvr3a: stkenmvr4a: stkenmvr5a: \
-                 stkenmvr1b: stkenmvr2b: stkenmvr3b: stkenmvr4b: stkenmvr5b: \
+                 stkenmvr1a: stkenmvr2a: stkenmvr3a: stkenmvr4a: stkenmvr5a: stkenmvr6a:\
+                 stkenmvr1b: stkenmvr2b: stkenmvr3b: stkenmvr4b: stkenmvr5b: stkenmvr6b \
                  rip8 rip9 rip10"
           ;;
    d0en*) gang=d0en
@@ -71,7 +71,7 @@ add*)
     done
 
     x=1
-    while [ $x -le 5 ]; do
+    while [ $x -le 6 ]; do
       /sbin/route add -host stkenmvr${x}a  eth0
       /sbin/route add -host stkenmvr${x}b $eth1
       x=`expr $x + 1`
