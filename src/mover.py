@@ -1087,7 +1087,8 @@ def get_usr_driver( self, ticket ):
 	    ticket['mover']['callback_addr'] = None# to appease encp verbose
 	    self.control_socket = callback.user_callback_socket( ticket )
 	else:
-	    host, port, listen_socket = callback.get_data_callback()
+            data_ip=mvr_config.get("data_ip",None)
+            host, port, listen_socket = callback.get_data_callback(fixed_ip=data_ip)
 	    listen_socket.listen(4)
 	    ticket['mover']['callback_addr'] = (host,port)
 	    self.control_socket = callback.user_callback_socket( ticket )
