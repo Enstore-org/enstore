@@ -151,12 +151,19 @@ while [ $done -gt 0 ]; do
   if [ $copyit -eq 0 ]; then
     echo $thefiles
   else
-    for f in $the_files; do
-    cmd="encp --verbose=3  --max-resubmit=7 --delayed-dismount=1 $f /dev/null"
-    echo $cmd
-    eval $cmd
-    rc=$?
-    RC=`expr $RC + $rc`
+    echo
+    echo Random volume = $tape 
+    echo Random file = $file
+    echo First  file = $file1 
+    echo Last   file = $filel
+    echo 
+    for f in $thefiles; do
+      cmd="encp --verbose=3  --max-resubmit=7 --delayed-dismount=1 $f /dev/null"
+      echo $cmd
+      eval $cmd
+      rc=$?
+      RC=`expr $RC + $rc`
+    done
   fi
   done=`expr $done - 1`
 done
