@@ -39,7 +39,7 @@ case `uname` in
 esac
 
 if [ $returnpid -eq 0 ]; then
-  echo "$x" | sort | egrep -v '\(?EPS\)?| \(?egrep\)?| \(?sort\)?| \(?ps\)?| \(?\-?bash\)?| \(?tail\)?| \(?xnetload\)?| \(?tee\)?| \(?r?s?login\)?| \(?su\)?'| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_|dbserver|pmountd|pnfsd|zombie|patrol|selread|sdrread|ipmisrv|dogread|dogarm|dogdisarm|deadman|run_misc_command|httpd|conserver|chip2|getcons|enrsh|enrcp|ratekeeper|nanny|event|rsh|rcp|fixme|rsync|ecron'
+  echo "$x" | sort | egrep -v '\[?EPS\]?|ngop|\[?egrep\]?| \[?sort\]?| \[?ps\]?| \[?\-?bash\]?| \[?tail\]?| \[?xnetload\]?| \[?tee\]?| \[?r?s?login\]?| \[?su\]?'| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_|dbserver|pmountd|pnfsd|zombie|patrol|selread|sdrread|ipmisrv|dogread|dogarm|dogdisarm|deadman|run_misc_command|httpd|conserver|chip2|getcons|enrsh|enrcp|ratekeeper|nanny|event|rsh|rcp|fixme|rsync|ecron'
 else
   echoed=0
   oldIFS="$IFS"
@@ -49,7 +49,7 @@ else
   for psl in $x; do 
     IFS="$oldIFS"
     #echo "psline $psl x${lookfor}x"
-    psline=`echo "$psl" | grep $lookfor | egrep -v 'grep|returnpid|pidkill' | grep \`whoami\``
+    psline=`echo "$psl" | grep $lookfor | egrep -v 'grep|ngop|returnpid|pidkill' | grep \`whoami\``
     # is the pid always the 2nd field???????
     pid=`echo $psline | cut -f2 -d' '` # no quotes arounds $psline removes spaces
     if [ "$pid" != "" ]; then 
