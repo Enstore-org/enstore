@@ -350,6 +350,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         else:
             status = (e_errors.ERROR, "file %d does not have volmap entry"%(bfid))
 
+        if status[0] == e_errors.OK:
+            # reset the deleted status
+            record['deleted'] = 'no'
+            self.dict[bfid] = record
+
         ticket["status"] = status
         self.reply_to_caller(ticket)
         Trace.trace(12,'restore_file %s'%(ticket,))
