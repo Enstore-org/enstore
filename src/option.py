@@ -748,7 +748,14 @@ class Interface:
         temp = ""
         for opt in self.options.keys():
             short_opt = self.options[opt].get(SHORT_OPTION, None)
+            #If their is a (valid) short option.
             if short_opt and len(short_opt) == 1:
+                #If the user does not have permission to execute such an option
+                # skip over it.
+                if self.options[opt].get(USER_LEVEL, USER) == ADMIN and \
+                   self.user_level == USER:
+                    continue
+                
                 temp = temp + short_opt
                 
                 if self.options[opt].get(VALUE_USAGE, None) in [REQUIRED]:
