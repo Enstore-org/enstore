@@ -1146,28 +1146,23 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                 self.verbose)
             work_at_movers.remove(w)
 
-	    # change volume state to unmounting
 
-	    # when mover unbind request comes in some cases
-	    # it does not contain vc subticket
-	    # one of instances is when read fails with READ_ERROR
-	    # process the mover ticket with exception
-	    try:
-		v = vc.set_at_mover(ticket['vc']['external_label'], 
+
+	    if ticket['state'] != 'offline':
+		# change volume state to unmounting and send unmount request
+		v = vc.set_at_mover(ticket['external_label'], 
 				    'unmounting', 
 				    ticket["mover"])
 		if v['status'][0] != e_errors.OK:
 		    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
 		    logticket = self.logc.send(log_client.INFO, 2, format,
-					       ticket['vc']['external_label'],
+					       ticket['external_label'],
 					       v['at_mover'][1], 
 					       v['at_mover'][0])
-	    except KeyError:
-		format = "cannot change to 'unmounting' vc missing:%s"
-		logticket = self.logc.send(log_client.INFO, 2, format,
-					   ticket)
-	
-        self.reply_to_caller({"work" : "nowork"})
+		else:
+		    self.reply_to_caller({"work" : "unbind_volume"})
+	    else:
+		self.reply_to_caller({"work" : "nowork"})
 
 	# determine if all the movers are in suspect volume list and if
 	# yes set volume as having no access and send a regret: noaccess.
