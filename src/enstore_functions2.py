@@ -408,12 +408,29 @@ def default_port():
         return DEFAULT_PORT
 
 
+def expand_path(filename):
+    #Expand the path to the complete absolute path.
+    filepath = os.path.expandvars(filename)
+    filepath = os.path.expanduser(filepath)
+    filepath = os.path.abspath(filepath)
+
+    #If the target was a directory, handle it slightly differently.
+    #if filename[-1] == "/":
+    #    filepath = filepath + "/"
+
+    return filepath
+
 # generate the full path name to the file
 def fullpath(filename):
     if not filename:
         return None, None, None, None
     elif type(filename) != types.StringType:
         return None, None, None, None
+
+    #Detemine if a host and port have been specifed on the command line.
+    host_and_port = re.search("^[a-z0-9.]*:[0-9]*/", filename)
+    if host_and_port != None:
+        filename = filename[len(host_and_port.group()):]
 
     try:
         machine = socket.gethostbyaddr(socket.gethostname())[0]
@@ -423,15 +440,63 @@ def fullpath(filename):
         machine = None
 
     #Expand the path to the complete absolute path.
-    filepath = os.path.expandvars(filename)
-    filepath = os.path.expanduser(filepath)
-    filepath = os.path.abspath(filepath)
-    filepath = os.path.abspath(filepath)
+    filepath = expand_path(filename)
 
-    #These functions will remove a tailing "/", put it back.
-    if filename[-1] == "/":
-        filepath = filepath + "/"
-        
-    dirname, basename = os.path.split(filepath)
+    #If the target was a directory, handle it slightly differently.
+    if filename[-1] == "/" or os.path.isdir(filename):
+        dirname, basename = (filepath, "")
+    else:
+        dirname, basename = os.path.split(filepath)
 
     return machine, filepath, dirname, basename
+
+# generate the full path name to the file
+def fullpath2(filename):
+    if not filename:
+        return None, None, None, None, None, None
+    elif type(filename) != types.StringType:
+        return None, None, None, None, None, None
+
+    #Split off a protocol.
+    #en_protocol = re.search("^[a-zA-Z-0-9]+://", filename)
+    #if en_protocol:
+    #    protocol = en_protocol.group()[:-3]
+    #
+    #    filename = filename[len(en_protocol.group()):]
+    #else:
+    protocol = ""
+
+    #Detemine if a host and port have been specifed on the command line.
+    host_and_port = re.search("^[a-z0-9.]*:[0-9]*/", filename)
+    if host_and_port != None:
+        hostname = host_and_port.group().split(":")[0]
+        try:
+            portnumber = int(host_and_port.group()[:-1].split(":")[1])
+        except ValueError:
+            #Trying to convert an empty string to int gives this error.
+            portnumber = None
+
+        filename = filename[len(host_and_port.group()):]
+    else:
+        hostname = socket.gethostname()
+        portnumber = None
+
+    #Fill in some values if they are empty.
+    if not hostname:
+        hostname = socket.gethostname()
+    if not portnumber:
+        portnumber = None
+
+    hostinfo = socket.gethostbyaddr(hostname)
+    machine = hostinfo[0]
+
+    #Expand the path to the complete absolute path.
+    filepath = expand_path(filename)
+
+    #If the target was a directory, handle it slightly differently.
+    if filename[-1] == "/" or os.path.isdir(filename):
+        dirname, basename = (filepath, "")
+    else:
+        dirname, basename = os.path.split(filepath)
+
+    return protocol, machine, portnumber, filepath, dirname, basename
