@@ -355,7 +355,7 @@ class Interface:
                 self.stop_draining=1
             elif opt == "--import":
                 if value:
-                    self.import = value
+                    self._import = value
                 else:
                     self._import = 1
             elif opt == "--input-dir":
