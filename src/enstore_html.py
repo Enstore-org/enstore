@@ -2168,8 +2168,10 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
 
 class EnSaagPage(EnBaseHtmlDoc):
 
+    redball_gif = "redball.gif"
+
     greenball = HTMLgen.Image("greenball.gif", width=17, height=17, border=0)
-    redball = HTMLgen.Image("redball.gif", width=17, height=17, border=0)
+    redball = HTMLgen.Image(redball_gif, width=17, height=17, border=0)
     question = HTMLgen.Image("star.gif", width=17, height=17, border=0)
     yellowball = HTMLgen.Image("yelball.gif", width=17, height=17, border=0)
     checkmark = HTMLgen.Image("checkmark.gif", width=17, height=17, border=0)
@@ -2183,17 +2185,19 @@ class EnSaagPage(EnBaseHtmlDoc):
 	self.source_server = "SPAM"
 	self.description = ""
 
-    def get_color_ball(self, dict, key, direction=""):
+    def get_gif(self, dict, key):
 	val = dict.get(key, enstore_constants.DOWN)
 	if val == enstore_constants.WARNING:
-	    td = HTMLgen.TD(self.yellowball, align=direction)
+	    return self.yellowball
 	elif val == enstore_constants.UP:
-	    td = HTMLgen.TD(self.greenball, align=direction)
+	    return self.greenball
 	elif val == enstore_constants.SEEN_DOWN:
-	    td = HTMLgen.TD(self.question, align=direction)
+	    return self.question
 	else:
-	    td = HTMLgen.TD(self.redball, align=direction)
-	return td
+	    return self.redball
+
+    def get_color_ball(self, dict, key, direction=""):
+	return HTMLgen.TD(self.get_gif(dict, key), align=direction)
 
     # the  alt_key is used to specify a more explicit data item than just the key
     def get_element(self, dict, key, out_dict, offline_dict, alt_key="", 
@@ -2233,6 +2237,25 @@ class EnSaagPage(EnBaseHtmlDoc):
 						    size="-1")))
 	return td
 
+    def check_for_red(self, enstat_d, table):
+	# check if the enstore ball is red, if so we need to add something
+	ball_gif = self.get_gif(enstat_d, enstore_constants.ENSTORE)
+	if ball_gif.filename == self.redball_gif:
+	    self.background = None
+	    self.bgcolor = "YELLOW"
+	    rb_tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Image("bigredball.gif", 
+						     title="Enstore ball has turnded red"),
+				       align="CENTER"))
+	    rb_tr.append(HTMLgen.TD(HTMLgen.Image("enstore_is_red.gif"), align="LEFT"))
+	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(rb_tr, cellspacing=1, 
+								 cellpadding=1, border=0, 
+								 align="CENTER", 
+								 width="90%"))))
+	    table.append(empty_row())
+	    table.append(empty_row())
+	    table.append(empty_row())
+	    table.append(empty_row())
+	    
     def make_overall_table(self, enstat_d, netstat_d, medstat_d, alarms_d, outage_d, 
 			   offline_d):
 	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
@@ -2429,6 +2452,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	else:
 	    stat = enstore_constants.UP
 	medstat_d = {media_tag : stat, TAG : media_tag}
+	self.check_for_red(enstat_d, table)
 	table.append(HTMLgen.TR(HTMLgen.TD(self.make_overall_table(enstat_d, 
 								   netstat_d,
 								   medstat_d, alarms,
