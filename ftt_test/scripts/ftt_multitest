@@ -22,13 +22,14 @@ x-p)	sequential=false;
 esac
 
 base="$1"
+
 script="$FTT_DIR/ftt_test/scripts/$1"
 
 shift
 
 for drive in $*
 do
-    outfile="$base`echo $drive | sed -e 's;/;_;g'`"
+    outfile="`echo out $base $drive | sed -e 's;[/ ];_;g'`"
     cmd="$script $drive 2>&1 | tee $outfile" 
     if $sequential
     then
