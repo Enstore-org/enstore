@@ -6,6 +6,7 @@ import os, sys
 import re, string
 
 def preprocess(lines):
+    """ remove all comments and triple-quoted strings from a list of lines"""
     copy, comment, q1, q2, q3, q2a, q1a = range(7)
     inbuf = string.join(lines,'')
     outbuf = ''
@@ -104,6 +105,10 @@ def find_circ(name, imports):
 
 
 if __name__=="__main__":
+
+    if len(sys.argv)<2:
+        print "Usage: %s file-or-dir [file-or-dir...]" % sys.argv[0]
+        sys.exit(-1)
     files = []
     for arg in sys.argv[1:]:
         if not os.path.exists(arg):
