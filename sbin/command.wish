@@ -767,7 +767,7 @@ proc SKT1QRun_done { name element op } {
     } else {
         $butskt1 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
-    if {$more == 1} { STK2Run }
+    if {$more == 1} { STK2QRun }
 }
 
 ############################################################################################################################################
