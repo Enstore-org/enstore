@@ -46,7 +46,8 @@ def encp_client_version():
 #seconds to wait for mover to call back, before resubmitting req. to lib. mgr.
 mover_timeout = 15*60  #15 minutes
 
-data_access_layer_requested = 0
+
+
 data_access_layer_format = """INFILE=%s
 OUTFILE=%s
 FILESIZE=%s
@@ -59,25 +60,30 @@ QWAIT_TIME=%f
 TIME2NOW=%f
 STATUS=%s\n"""
 
-##############################################################################
-#simple stopwatch
-start_time=None
 
 
-##############################################################################
 
-# log the error to the logger, print it to the console and exit
+class Flag:
+    def __init__(self):
+        self.val=0
+    def set(self):
+        self.val=1
+    def clear(self):
+        self.val=0
+    def test(self):
+        return self.val
+    def __nonzero__(self):
+        return self.val
+    
+data_access_layer_requested=Flag()
+
 
 def quit(exit_code=1) :
     sys.exit(exit_code)
 
 
-##############################################################################
-
-# log the error to the logger and print it to the stderr
-
 def print_error(errcode,errmsg,fatal=0) :
-        
+    
     format = str(errcode)+" "+str(errmsg) + '\n'
     if fatal:
         format = "Fatal error: "+format
@@ -94,7 +100,7 @@ def print_error(errcode,errmsg,fatal=0) :
     except:
         pass
 
-
+    
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
     try:
@@ -1353,7 +1359,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                     files_left = files_left - 1
 
                 print_error ('EPROTO',
-                             'failed to setup transfer, status=%s' %(ticket["status"]),
+                             'failed to setup transfer, status=%s' %(ticket["status"],),
                              fatal=0)
 
                 continue
@@ -1468,7 +1474,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                             error=1
                             break
                         print_error ('EPROTO',
-                                     'failed to transfer, status=%s' %(done_ticket["status"]),
+                                     'failed to transfer, status=%s'%(done_ticket["status"],),
                                      fatal=1)
                         pass
 
@@ -2046,7 +2052,7 @@ class encp(interface.Interface):
 ##############################################################################
 
 if __name__  ==  "__main__" :
-    global data_access_layer_requested #yuk
+
     t0 = time.time()
     Trace.init("ENCP")
     Trace.trace( 6, 'encp called at %s: %s'%(t0,sys.argv) )
@@ -2064,7 +2070,7 @@ if __name__  ==  "__main__" :
         Trace.trace = trace
 
     if e.data_access_layer:
-        data_access_layer_requested=1
+        data_access_layer_requested.set()
 
     ## have we been called "encp unixfile hsmfile" ?
     if e.intype=="unixfile" and e.outtype=="hsmfile" :
