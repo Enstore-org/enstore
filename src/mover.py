@@ -955,17 +955,11 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	self.summoned_while_busy = []
         Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
 	for lm in mvr_config['library']:# should be libraries
-	    # a "respone" to server being summoned
-	    try:
-		address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
-		next_req_to_lm = idle_mover_next( self.client_obj_inst )
-		do_next_req_to_lm( self, next_req_to_lm, address )
-	    except KeyError:    
-		Trace.log( e_errors.ERROR, "ERROR GETTING LM:%s FROM Config Server "+\
-			   str(sys.exc_info()[0])+ "  "+\
-			   str(sys.exc_info()[1]), repr(lm))
-
+	    address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
+	    next_req_to_lm = idle_mover_next( self.client_obj_inst )
+	    do_next_req_to_lm( self, next_req_to_lm, address )
 	    pass
+	# now go on with *server* setup (i.e. respond to summon,status,etc.)
 	dispatching_worker.DispatchingWorker.__init__( self,(mvr_config['hostip'],mvr_config['port']) )
 	self.last_status_tick = {}
 	#print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
@@ -1145,25 +1139,33 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 def do_next_req_to_lm( self, next_req_to_lm, address ):
     while next_req_to_lm != {} and next_req_to_lm != None:
 	rsp_ticket = udpc.send(  next_req_to_lm, address )
-	if next_req_to_lm['work'] == 'unilateral_unbind':
-	    # FOR SOME ERRORS I FREEZE
-	    #if next_req_to_lm['status'] in [ ]:
-	 	#Trace.log( e_errors.ERROR, 'MOVER FREEZE - told busy mover to do work' )
-		#while 1: time.sleep( 1 )# freeze
-		#pass
-	    pass
 	# STATE COULD BE 'BUSY' OR 'OFFLINE'
 	if self.client_obj_inst.state != 'idle' and rsp_ticket['work'] != 'nowork':
+	    # CHANGE THIS TO Trace.alarm???
 	    Trace.log( e_errors.ERROR,
-                       'FATAL ENSTORE - libm gave busy or offline move work' )
-	    while 1: time.sleep( 1 )	# freeze???
+                       'FATAL ENSTORE - libm gave busy or offline move work %s'%\
+		       rsp_ticket['work'] )
+	    if mvr_srvr['execution_env'][0:5] == 'devel':
+		Trace.log( e_errors.ERROR, 'FATAL ENSTORE in devel env. => crazed' )
+		print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
+		self.client_obj_inst.state = 'crazed'
+	    Trace.log( e_errors.ERROR, 'mover changing work %s to "nowork"'%\
+		       rsp_ticket['work'] )
+	    rsp_ticket['work'] = 'nowork'
 	    pass
 	# Exceptions are caught (except block) in dispatching_worker.py.
 	# The reply is the command (i.e the network is the computer).
 	try: client_function = rsp_ticket['work']
-	except:
-	    print 'ronDBG - complete rsp_ticket is:';pprint.pprint(rsp_ticket)
-	    raise sys.exc_info()[0], sys.exc_info()[1]
+	except KeyError:
+	    # CHANGE THIS TO Trace.alarm???
+	    Trace.log( e_errors.ERROR,
+                       'FATAL ENSTORE - invalid rsp from libm: %s'%rsp_ticket )
+	    if mvr_srvr['execution_env'][0:5] == 'devel':
+		Trace.log( e_errors.ERROR, 'FATAL ENSTORE in devel env. => crazed' )
+		print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
+		self.client_obj_inst.state = 'crazed'
+	    Trace.log( e_errors.ERROR, 'mover changing invalid rsp to "nowork"' )
+	    client_function = 'nowork'
 	method = MoverClient.__dict__[client_function]
 	next_req_to_lm = method( self.client_obj_inst, rsp_ticket )
 	# note: order of check is important to avoid KeyError exception
@@ -1201,7 +1203,8 @@ def get_state_build_next_lm_req( self, wait, exit_status ):
 	    pass
 	if pid == self.client_obj_inst.pid:
 	    self.client_obj_inst.pid = 0
-	    self.client_obj_inst.state = 'idle'
+	    if self.client_obj_inst.state != 'crazed':
+		self.client_obj_inst.state = 'idle'
 	    signal = status&0xff
 	    exit_status = status>>8
 	    next_req_to_lm = status_to_request( self.client_obj_inst,
@@ -1308,6 +1311,10 @@ intf = MoverInterface()
 
 mvr_srvr =  MoverServer( (intf.config_host, intf.config_port), intf.name )
 del intf
+
+# for porduction, either add 'execution_env':'production to mover config
+# or change this default to 'production'
+if not 'execution_env' in mvr_srvr.keys(): mvr_srvr['execution_env'] = 'devel'
 
 mvr_srvr.serve_forever()
 
