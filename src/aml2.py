@@ -149,49 +149,6 @@ def view(volume, media_type):
            v[1].coord, v[1].owner, v[1].attrib, v[1].type, v[1].volser, \
            v[1].vol_owner, v[1].use_count, v[1].crash_count
 	   
-def cleanADrive(ticket, classTicket):
-    status = 0
-    
-    Trace.log(e_errors.INFO, 'aml2: ticket='+repr(ticket))
-    try:
-        volume = ticket['volume']
-    except KeyError:
-        Trace.log(e_errors.ERROR, 'aml2 no volume field found in ticket.')
-	status = 37
-        return status_table[status][0], status, status_table[status][1]
-    try:
-        drive = ticket['drive']
-    except KeyError:
-        Trace.log(e_errors.ERROR, 'aml2 no drive field found in ticket.')
-	status = 37
-        return status_table[status][0], status, status_table[status][1]
-    try:
-        media_type = ticket['media_type']
-    except KeyError:
-        Trace.log(e_errors.ERROR, 'aml2 no media_type field found in ticket.')
-	status = 37
-        return status_table[status][0], status, status_table[status][1]
-    try:
-        cleanTime = ticket['cleanTime']
-    except KeyError:
-        Trace.log(e_errors.ERROR, 'aml2 no cleanTime field found in ticket.')
-	status = 37
-        return status_table[status][0], status, status_table[status][1]
-
-    status1 = mount(volume, drive, media_type)
-    status = status1[1]
-    if status != 0:      # mount returned error
-	return status_table[status][0], status, status_table[status][1]
-
-    # drive automatically starts cleaning upon tape insert.
-    time.sleep(cleanTime)  # wait cleanTime seconds
-
-    stat2 = dismount(volume, drive, media_type)
-
-    status = stat2[1]
-
-    return status_table[status][0], status, status_table[status][1]
-
 #sift through a list of lists
 def yankList(listOfLists, listPosition, look4String):
     newRecordList = []
