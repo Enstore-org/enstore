@@ -26,7 +26,7 @@ hst_local="" # quiet lint
 
 def get_size(dbFile):
 
-    cmd = "db_stat -h " + dbHome + " -d " + dbFile + " | grep keys | awk '{print $1}'"
+    cmd = "db_stat -h " + dbHome + " -d " + dbFile + " | grep \"Number of keys in the tree\" | awk '{print $1}'"
     nkeys = os.popen(cmd).readline()[:-1]
     size = os.stat(dbFile)[stat.ST_SIZE]
 
