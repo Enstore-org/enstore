@@ -1951,7 +1951,12 @@ def create_zero_length_pnfs_files(filenames):
             fd = atomic.open(fname, mode=0666) #raises OSError on error.
 
             if type(f) == types.DictType:
+                #The inode is used later on to determine if another process
+                # has deleted or removed the remote pnfs file.
                 f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
+                #The pnfs id is used to track down the new paths to files
+                # that were moved before encp completes.
+                f['fc']['pnfsid'] = pnfs.Pnfs(fname).get_id()
 
             os.close(fd)
         except OSError, msg:
@@ -1993,6 +1998,8 @@ def create_zero_length_local_files(filenames):
         fd = atomic.open(fname, mode=0666) #raises OSError on error.
         
         if type(f) == types.DictType:
+            #The inode is used later on to determine if another process
+            # has deleted or removed the local file.
             f['local_inode'] = os.fstat(fd)[stat.ST_INO]
             
         os.close(fd)
@@ -3096,7 +3103,10 @@ def check_crc(done_ticket, encp_intf, fd=None):
                     return
 
 ############################################################################
-            
+
+#Double check that all of the filesizes agree.  As a performance bonus,
+# double check the inodes since the performace pentalty of the stat()s has
+# already occured.
 def verify_file_size(ticket):
     #Don't worry about checking when outfile is /dev/null.
     if ticket['outfile'] == '/dev/null':
@@ -3136,13 +3146,70 @@ def verify_file_size(ticket):
     #    ticket['status'] = (e_errors.OSERROR, str(detail))
     #    return
     
-    #Until pnfs supports NFS version 3 (for large file support) make sure
-    # we are using the correct file_size for the pnfs side.
+
+    #Handle making sure the local inode did not change during the transfer.
+    local_inode = ticket.get("local_inode", None)
+    if local_inode:
+        if local_inode != full_inode:
+            ticket['status'] = (e_errors.USERERROR,
+                                "Local inode changed during transfer.")
+            return
+
+    #Handle making sure the pnfs file inode not change during the transfer.
+    remote_inode = ticket['wrapper'].get("inode", None)
+    if remote_inode and remote_inode != 0:
+        if remote_inode != pnfs_inode:
+            ticket['status'] = (e_errors.USERERROR,
+                                "Pnfs inode changed during transfer.")
+            return
+
+    #Handle large files.
+    if pnfs_filesize == 1:
+        #Until pnfs supports NFS version 3 (for large file support) make sure
+        # we are using the correct file_size for the pnfs side.
+        try:
+            p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
+            pnfs_real_size = p.get_file_size()
+        except (OSError, IOError), detail:
+            ticket['status'] = (e_errors.OSERROR, str(detail))
+            return
+
+        if full_filesize != pnfs_real_size:
+            msg = "Expected local file size (%s) to equal remote file " \
+                  "size (%s) for large file %s." \
+                  % (full_filesize, pnfs_real_size, ticket['outfile'])
+            ticket['status'] = (e_errors.FILE_MODIFIED, msg)
+    #Test if the sizes are correct.
+    elif ticket['file_size'] != full_filesize:
+        msg = "Expected file size (%s) to equal actuall file size " \
+              "(%s) for file %s." % \
+              (ticket['file_size'], full_filesize, ticket['outfile'])
+        ticket['status'] = (e_errors.FILE_MODIFIED, msg)
+    elif full_filesize != pnfs_filesize:
+        msg = "Expected local file size (%s) to equal remote file " \
+              "size (%s) for file %s." \
+              % (full_filesize, pnfs_filesize, ticket['outfile'])
+        ticket['status'] = (e_errors.FILE_MODIFIED, msg)
+
+def verify_inode(ticket):
+    #Don't worry about checking when outfile is /dev/null.
+    if ticket['outfile'] == '/dev/null':
+        return
+
+    #Get the stat info for each file.
     try:
-        p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
-        p.pstatinfo()
-        p.get_file_size()
-        pnfs_real_size = p.file_size
+        full_stat = os.stat(ticket['wrapper'].get('fullname', None))
+        full_inode = full_stat[stat.ST_INO]
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
+    
+    try:
+        pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
+        pnfs_inode = pnfs_stat[stat.ST_INO]
+    except (TypeError), detail:
+        ticket['status'] = (e_errors.OK, "No files sizes to verify.")
+        return
     except (OSError, IOError), detail:
         ticket['status'] = (e_errors.OSERROR, str(detail))
         return
@@ -3163,25 +3230,6 @@ def verify_file_size(ticket):
                                 "Pnfs inode changed during transfer.")
             return
 
-    #Handle large files.
-    if pnfs_filesize == 1:
-        if full_filesize != pnfs_real_size:
-            msg = "Expected local file size (%s) to equal remote file " \
-                  "size (%s) for large file %s." \
-                  % (full_filesize, pnfs_real_size, ticket['outfile'])
-            ticket['status'] = (e_errors.FILE_MODIFIED, msg)
-    #Test if the sizes are correct.
-    elif ticket['file_size'] != full_filesize:
-        msg = "Expected file size (%s) to equal actuall file size " \
-              "(%s) for file %s." % \
-              (ticket['file_size'], full_filesize, ticket['outfile'])
-        ticket['status'] = (e_errors.FILE_MODIFIED, msg)
-    elif full_filesize != pnfs_filesize:
-        msg = "Expected local file size (%s) to equal remote file " \
-              "size (%s) for file %s." \
-              % (full_filesize, pnfs_filesize, ticket['outfile'])
-        ticket['status'] = (e_errors.FILE_MODIFIED, msg)
-    
 ############################################################################
 
 def set_outfile_permissions(ticket):
@@ -3984,12 +4032,46 @@ def set_pnfs_settings(ticket, intf_encp):
     #Make sure the file is still there.  This check is done with
     # access_check() because it will loop incase pnfs is automounted.
     # If the return is zero, then it wasn't found.
+    #Note: There is a possible race condition here if the file is
+    #      (re)moved after it is determined to remain in the original
+    #      location, but before the metadata is set.
     if access_check(ticket['wrapper']['pnfsFilename'], os.F_OK) == 0:
-        ticket['status'] = (e_errors.USERERROR,
-          "PNFS file %s has been removed." % ticket['wrapper']['pnfsFilename'])
-        Trace.log(e_errors.INFO,
-                  "Trouble with pnfs: %s %s." % ticket['status'])
-        return
+        #With the remembered pnfsid, try to find out where it was moved to
+        # if it was in fact moved.
+        pnfsid = ticket['fc'].get('pnfsid', None)
+        if pnfsid:
+            try:
+                p = pnfs.Pnfs(pnfsid,
+                           os.path.dirname(ticket['wrapper']['pnfsFilename']))
+                path = p.get_path()  #Find the new path.
+                Trace.log(e_errors.INFO,
+                          "File %s was moved to %s." %
+                          (ticket['wrapper']['pnfsFilename'], path))
+                ticket['wrapper']['pnfsFilename'] = path  #Remember new path.
+                if is_write(ticket):
+                    ticket['outfile'] = path
+                else:  #is_read() for "get".
+                    ticket['infile'] = path
+            except OSError:
+                ticket['status'] = (e_errors.USERERROR,
+                                    "PNFS file %s has been removed." %
+                                    ticket['wrapper']['pnfsFilename'])
+                Trace.log(e_errors.ERROR,
+                          "Trouble with pnfs: %s %s." % ticket['status'])
+                return
+        else:
+            ticket['status'] = (e_errors.USERERROR,
+                                "PNFS file %s has been removed." %
+                                ticket['wrapper']['pnfsFilename'])
+            Trace.log(e_errors.ERROR,
+                      "Trouble with pnfs: %s %s." % ticket['status'])
+            return
+    else:
+        #Check to make sure that the inodes are still the same.
+        verify_inode(ticket)
+        if not e_errors.is_ok(ticket):
+            #Ticket is already set.
+            return
 
     layer1_start_time = time.time() # Start time of setting pnfs layer 1.
 
@@ -3998,10 +4080,7 @@ def set_pnfs_settings(ticket, intf_encp):
     Trace.message(INFO_LEVEL, "Setting layer 1: %s" %
                   ticket["fc"]["bfid"])
     try:
-        #p=pnfs.Pnfs(ticket['outfile'])
-        #t=pnfs.Tag(os.path.dirname(ticket['outfile']))
-        p=pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
-        #t=pnfs.Tag(os.path.dirname(ticket['wrapper']['pnfsFilename']))
+        p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
         # save the bfid
         p.set_bit_file_id(ticket["fc"]["bfid"])
     except (KeyboardInterrupt, SystemExit):
@@ -4322,7 +4401,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
                         "file_family_width"  : file_family_width,
                         "wrapper"            : file_family_wrapper,
                         "storage_group"      : storage_group,}
-        file_clerk = {"address" : fcc.server_address}
+        file_clerk = {'address' : fcc.server_address}
 
         config = host_config.get_config()
         if config and config.get('interface', None):
