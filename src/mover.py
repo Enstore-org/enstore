@@ -17,6 +17,7 @@ import select
 import exceptions
 import traceback
 import fcntl, FCNTL
+import random
 
 # enstore modules
 
@@ -641,8 +642,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
-        self.check_written_file_period = self.config.get('check_written_file', 0)
-        self.files_written_cnt = 0
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.udpc = udp_client.UDPClient()
         self.state = IDLE
@@ -731,7 +730,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         ## a single filemark at the end of the volume;  causing some drives
         ## (e.g. Mammoth-1) to have trouble spacing to end-of-media.
             
+        self.check_written_file_period = self.config.get('check_written_file', 0)
+        self.files_written_cnt = 0
         if self.driver_type == 'NullDriver':
+            self.check_written_file_period = 0 # no file check for null mover
             self.device = None
             self.single_filemark = 1 #need this to cause EOD cookies to update.
             ##XXX should this be more encapsulated in the driver class?
@@ -791,8 +793,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         ##end of __init__
 
     def check_written_file(self):
-        if self.check_written_file_period and self.files_written_cnt%self.check_written_file_period == 0:
-            return 1
+        if self.check_written_file_period:
+            ran = random.randrange(self.check_written_file_period,self.check_written_file_period*10,1)
+            if (ran % self.check_written_file_period == 0):
+                return 1
+            else:
+                return 0
         else:
             return 0
         
@@ -1098,12 +1104,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 save_location = self.tape_driver.tell()
                 Trace.trace(22,"save location %s" % (save_location,))
                 if have_tape != 1:
+                    Trace.alarm(e_errors.ERROR, "error positionong tape for selective CRC check")
+
                     self.transfer_failed(e_errors.WRITE_ERROR, "error positionong tape for selective CRC check", error_source=TAPE)
                     return
                 try:
                     self.tape_driver.seek(cookie_to_long(self.vol_info['eod_cookie']), 0) #XXX is eot_ok needed?
                 except:
                     exc, detail, tb = sys.exc_info()
+                    Trace.alarm(e_errors.ERROR, "error positionong tape for selective CRC check")
                     self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
                     return
                 self.buffer.save_settings()
@@ -1133,16 +1142,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                     except "CRC_ERROR":
                         exc, detail, tb = sys.exc_info()
                         Trace.handle_error(exc, detail, tb)
+                        Trace.alarm(e_errors.ERROR, "selective CRC check error")
                         self.transfer_failed(e_errors.CRC_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
                     except:
                         exc, detail, tb = sys.exc_info()
                         Trace.handle_error(exc, detail, tb)
+                        Trace.alarm(e_errors.ERROR, "selective CRC check error")
                         self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
                     if b_read <= 0:
+                        Trace.alarm(e_errors.ERROR, "selective CRC check read error")
                         self.transfer_failed(e_errors.WRITE_ERROR, "read returns %s" % (bytes_read,),
                                              error_source=TAPE)
                         failed = 1
@@ -1156,8 +1168,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 Trace.trace(22,"write_tape: read CRC %s write CRC %s"%
                             (self.buffer.complete_crc, saved_complete_crc))
-                if failed: return
+                if failed:
+                    return
                 if self.buffer.complete_crc != saved_complete_crc:
+                    Trace.alarm(e_errors.ERROR, "selective CRC check error")
                     self.transfer_failed(e_errors.CRC_ERROR, None)
                     return
                 Trace.log(e_errors.INFO, "selective CRC check after writing file cmpleted successfuly")
@@ -1165,9 +1179,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # position to eod"
                 self.tape_driver.seek(save_location, 0) #XXX is eot_ok
             if self.update_after_writing():
-                self.transfer_completed()
                 self.files_written_cnt = self.files_written_cnt + 1
-
+                self.transfer_completed()
             else:
                 self.transfer_failed(e_errors.EPROTO)
 
@@ -1599,12 +1612,29 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
                         return 0
 
-                self.tape_driver.rewind()
-                vol1_label = 'VOL1'+ volume_label
-                vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
-                Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
-                self.tape_driver.write(vol1_label, 0, 80)
-                self.tape_driver.writefm()
+                try:
+                    if self.driver_type == 'FTTDriver':
+                        import ftt
+                        stats = self.tape_driver.ftt.get_stats()
+                        if stats[ftt.WRITE_PROT]:
+                            self.vcc.set_system_noaccess(volume_label)
+                            Trace.alarm(e_errors.ERROR, "attempt to label write protected tape")
+                            self.transfer_failed(e_errors.WRITE_ERROR,
+                                                 "attempt to label write protected tape",
+                                                 error_source=TAPE)
+                            return 0
+                            
+                    self.tape_driver.rewind()
+                    vol1_label = 'VOL1'+ volume_label
+                    vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
+                    Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
+                    self.tape_driver.write(vol1_label, 0, 80)
+                    self.tape_driver.writefm()
+                except: 
+                    exc, detail, tb = sys.exc_info()
+                    Trace.handle_error(exc, detail, tb)
+                    self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                    return 0
                 eod = 1
                 self.target_location = eod
                 self.vol_info['eod_cookie'] = eod
@@ -2230,6 +2260,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'bytes_read'     : self.bytes_read,
                  'bytes_written'     : self.bytes_written,
                  'bytes_buffered' : self.buffer.nbytes(),
+                 'successful_writes': self.files_written_cnt,
                  # from "work ticket"
                  'bytes_to_transfer': self.bytes_to_transfer,
                  'files'        : self.files,
