@@ -1223,7 +1223,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed = 0
         if self.header_labels:
             try:
-                bytes_written = driver.write(self.header_labels, 0, len(header_labels))
+                bytes_written = driver.write(self.header_labels, 0, len(self.header_labels))
             except:
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
@@ -1241,9 +1241,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.force_clean = 1
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 return
-            if bytes_written != len(header_labels):
+            if bytes_written != len(self.header_labels):
                 self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
-                                     (bytes_written, nbytes), error_source=TAPE)
+                                     (bytes_written, len(self.header_labels)), error_source=TAPE)
                 return
             self.tape_driver.writefm()
             
@@ -1335,12 +1335,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ##We don't ever want to let ftt handle the filemarks for us, because its
                 ##default behavior is to write 2 filemarks and backspace over both
                 ##of them.
-                eofs = self.wrapper.eof_labels(self.buffer.complete_crc)
-                if eofs:
-                    bytes_written = driver.write(self.header_labels, 0, len(header_labels))
-                    if bytes_written != len(header_labels):
+                self.eof_labels = self.wrapper.eof_labels(self.buffer.complete_crc)
+                if self.eof_labels:
+                    bytes_written = driver.write(self.eof_labels, 0, len(self.eof_labels))
+                    if bytes_written != len(self.eof_labels):
                         self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
-                                             (bytes_written, nbytes), error_source=TAPE)
+                                             (bytes_written, len(self.eof_labels)), error_source=TAPE)
                         return
                     self.tape_driver.writefm()
                 self.tape_driver.flush()
@@ -1366,7 +1366,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     location = self.vol_info['eod_cookie']
                     if self.header_labels:
                         location = location+1
-                    self.tape_driver.seek(cookie_to_long(location, 0)) #XXX is eot_ok needed?
+                    self.tape_driver.seek(cookie_to_long(location), 0) #XXX is eot_ok needed?
                 except:
                     exc, detail, tb = sys.exc_info()
                     Trace.alarm(e_errors.ERROR, "error positioning tape for selective CRC check")
@@ -1773,6 +1773,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         volume_label = fc['external_label']
         if volume_label:
             self.vol_info.update(self.vcc.inquire_vol(volume_label))
+            self.current_work_ticket['vc'].update(self.vol_info)
         else:
             Trace.log(e_errors.ERROR, "setup_transfer: volume label=%s" % (volume_label,))
         if self.vol_info['status'][0] != 'ok':
@@ -1820,7 +1821,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.client_hostname = client_hostname
         if client_hostname:
             client_filename = client_hostname + ":" + client_filename
-
+        if self.wrapper:
+            self.wrapper_ticket = self.wrapper.create_wrapper_dict(self.current_work_ticket)
         if self.mode == READ:
             self.files = (pnfs_filename, client_filename)
             self.target_location = cookie_to_long(fc['location_cookie'])
@@ -1828,9 +1830,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif self.mode == WRITE:
             self.files = (client_filename, pnfs_filename)
             if self.wrapper:
-                self.header_labels = self.wrapper.hdr_labels(self.current_work_ticket)
+                self.header_labels = self.wrapper.hdr_labels(self.wrapper_ticket)
                 # note! eof_labels will be called when write is done and checksum is calculated
-                self.header, self.trailer = self.wrapper.headers(self.current_work_ticket['wrapper'])
+                self.header, self.trailer = self.wrapper.headers(self.wrapper_ticket)
             else:
                 self.header = ''
                 self.trailer = ''
@@ -2163,8 +2165,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         previous_eod = cookie_to_long(self.vol_info['eod_cookie'])
         eod_increment = 0
         if self.header_labels:
-           eod_increment = eod_increment + 1
-        if self.eof_labels:
            eod_increment = eod_increment + 1
             
         self.current_location = self.tape_driver.tell()
