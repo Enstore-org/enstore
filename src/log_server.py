@@ -40,6 +40,7 @@ import generic_server
 import generic_cs
 import interface
 import timeofday
+import e_errors
 import socket
 import Trace
 
@@ -98,6 +99,11 @@ class Logger(  dispatching_worker.DispatchingWorker
 		os._exit(1)
 	    self.enprint("opened for write", generic_cs.SERVER, self.verbose)
 
+    # return the current log file name
+    def get_logfile_name(self, ticket):
+        ticket["status"] = (e_errors.OK, None)
+        ticket["logfile_name"] = self.logfile_name
+        self.send_reply(ticket)
 
     # log the message recieved from the log client
     def log_message(self, ticket) :
