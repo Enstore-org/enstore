@@ -443,7 +443,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
 	# how often to send an alive heartbeat to the event relay
-	self.alive_interval = monitored_server.get_alive_interval(self.csc,
+	##self.alive_interval = monitored_server.get_alive_interval(self.csc,
 								  name,
 								  self.config)
 
@@ -599,7 +599,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.add_interval_func(self.update, self.update_interval) #this sets the period for messages to LM.
         self.set_error_handler(self.handle_mover_error)
 	# start our heartbeat to the event relay process
-	self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
+	##self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
         ##end of __init__
 
     def nowork(self, ticket):
