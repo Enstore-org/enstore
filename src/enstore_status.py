@@ -360,7 +360,7 @@ class EnStatus:
             if ticket['state'] == mover_constants.HAVE_BOUND:
                 self.text[key][enstore_constants.STATE] = "IDLE - have bound volume"
             else:
-                self.text[key][enstore_constants.STATE] = ticket['state']
+                self.text[key][enstore_constants.STATE] = "%s"%(ticket['state'],)
             if ticket['transfers_completed'] > 0:
                 self.text[key][enstore_constants.VOLUME] = ticket['last_volume']
                 self.text[key][enstore_constants.FILES] = ["%s -->"%(ticket['files'][0],)]
@@ -374,4 +374,4 @@ class EnStatus:
             self.text[key][enstore_constants.STATE] = "ERROR - %s"%(ticket["status"],)
         # unknown state
         else:
-            self.text[key][enstore_constants.STATE] = ticket["state"]
+            self.text[key][enstore_constants.STATE] = "%s"%(ticket["state"],)
