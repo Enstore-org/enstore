@@ -54,7 +54,7 @@ class EnstoreStatus:
             self.file = open(self.file_name, 'w')
             if list :
                 print "opened for write"
-        Trace.trace(12,"}doopen "+)
+        Trace.trace(12,"}doopen ")
 
     # close the file
     def doclose(self):
