@@ -500,7 +500,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			if state in ['full', 'readonly', 'migrated']:
 				q = q + "where system_inhibit_1 = '%s'"%(state)
 			else:
-				q = q + "where system_inhibit_0 = '%s'"%(state)
+				q = q + "where system_inhibit_0 = '%s'"%(string.upper(state))
 			q = q + "and not label like '%%.deleted'"
 
 		msg['header'] = 'FULL'
