@@ -5025,7 +5025,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         work_ticket['outfile'] = ofullname
         work_ticket['override_ro_mount'] = e.override_ro_mount
         work_ticket['resend'] = resend
-        work_ticket['retry'] = None, #LM legacy requirement.
+        work_ticket['retry'] = None #LM legacy requirement.
         if udp_callback_addr: #For "get" only.
             work_ticket['routing_callback_addr'] = udp_callback_addr
             work_ticket['route_selection'] = 1
