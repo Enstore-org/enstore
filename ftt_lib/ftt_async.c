@@ -5,6 +5,7 @@ static char rcsid[] = "@(#)$Id$";
 #include <sys/wait.h> 
 #include <ftt_private.h>
 #include <string.h>
+#include <sys/param.h>
 
 #ifndef WIN32
 #include <signal.h>
@@ -23,6 +24,7 @@ int
 ftt_fork(ftt_descriptor d) {
     int fds[2];
     int res=0;
+    int i;
 
     ENTERING("ftt_fork");			
     CKNULL("ftt_descriptor", d);
@@ -34,9 +36,15 @@ ftt_fork(ftt_descriptor d) {
 	switch (res = fork()) {
 
 	case 0:    /* child, fork again so no SIGCLD, zombies, etc. */
+
+	  /* close all files except fds[1] */
+	  for( i=0; i<NOFILE; i++ ) {
+	    if ( i != fds[1] ) close(i);
+	  }
+	  
 	    if(fork() == 0){
 		   /* grandchild, send our pid up the pipe */
-	        close(fds[0]);
+	      
 	        d->async_pf_parent = fdopen(fds[1],"w");
 		fprintf(d->async_pf_parent,"%d\n", (int)getpid());
 		fflush(d->async_pf_parent);
