@@ -708,7 +708,10 @@ def forked_read_from_hsm( self, ticket ):
 	    t0 = time.time()
             Trace.trace(11,'calling read_pre_data')
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
-            wrapper.read_pre_data( driver_object, None )
+            if self.vol_info['wrapper'] == "run1":
+                wrapper.read_pre_data( driver_object, ticket['hsm_driver']['cur_loc_cookie'] )
+	    else:
+                wrapper.read_pre_data( driver_object, None )
             Trace.trace(11,'calling fd_xfer -sanity size='+str(ticket['fc']['sanity_cookie'][0]))
 	    self.hsm_driver.user_state_set( forked_state.index('data') )
             san_crc = driver_object.fd_xfer( self.usr_driver.fileno(),
