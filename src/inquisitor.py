@@ -910,7 +910,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
                                    "update_encp - found %s lines"%(i,))
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
-                                   "update_encp - max_encp_lines = "%(self.max_encp_lines,))
+                                   "update_encp - max_encp_lines = %s"%(self.max_encp_lines,))
         if i < self.max_encp_lines:
             # we read in all the encps from the most recent log file. we
             # did not read in self.max_encp_lines, so get the 2nd most recent
