@@ -158,7 +158,6 @@ class FTTDriver(driver.Driver):
         try:
             #Trace.trace(42, "ftt.get_position()")
             file, block = self.ftt.get_position()
-            #Trace.trace(42, "%s,%s=ftt.get_position() done" % (file, block,))
         except ftt.FTTError, detail: 
             if detail.errno == ftt.ELOST: 
                 self.rewind() #don't know tape position, must rewind
@@ -168,6 +167,7 @@ class FTTDriver(driver.Driver):
 
         #Trace.trace(42, "ftt.get_position()")
         file, block = self.ftt.get_position()
+        Trace.log(e_errors.INFO, "tape position: target %s current %s %s" % (target, file, block,))
         #Trace.trace(42, "%s,%s=ftt.get_position() done" % (file, block,))
         if block==0 and file == target:
             return 0
@@ -176,25 +176,23 @@ class FTTDriver(driver.Driver):
         current = file
         if target>current:
             try:
-               #Trace.trace(42, "ftt.skip_fm(%s)"%(target-current,))
                self.ftt.skip_fm(target-current)
-               #Trace.trace(42, "ftt.skip_fm(%s) done"%(target-current,))
+               Trace.log(e_errors.INFO, "skip_fm %s"%(target-current,))
                
             except ftt.FTTError, detail:
                 if detail.errno == ftt.EBLANK and eot_ok: ##XXX is eot_ok needed?
                     ### XXX Damn, this is unrecoverable (for AIT2, at least). What to do?
+                    Trace.log(e_errors.ERROR,"ftt errors positioning tape %s" % (detail, ))
                     pass
                 else:
                     Trace.log(e_errors.ERROR, "ftt_driver:seek: %s %s" % (detail, detail.value))
                     raise ftt.FTTError, detail
         else:
             try:
-                #Trace.trace(42, "ftt.skip_fm(%s)"%(target-current-1,))
                 self.ftt.skip_fm(target-current-1)
-                #Trace.trace(42, "ftt.skip_fm done")
-                #Trace.trace(42, "ftt.skip_fm(1)")
+                Trace.log(e_errors.INFO, "skip_fm %s"%(target-current,))
                 self.ftt.skip_fm(1)
-                #Trace.trace(42, "ftt.skip_fm(1) done")
+                Trace.log(e_errors.INFO, "skip_fm %s"%(target-current,))
             except ftt.FTTError, detail:
                 Trace.log(e_errors.ERROR, "ftt_driver:skip_fm: %s %s" % (detail, detail.value))
                 raise ftt.FTTError, detail
