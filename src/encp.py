@@ -1941,7 +1941,6 @@ def create_write_requests(callback_addr, e, tinfo):
         try:
             p = pnfs.Pnfs(outputlist[i])
             pinfo = get_pinfo(p)
-            print format_class_for_print(p, "p")
         except (OSError, IOError), detail:
             print_data_access_layer_format(
                 inputlist[i], outputlist[i], file_size[i],
