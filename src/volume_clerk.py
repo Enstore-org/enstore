@@ -1379,6 +1379,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     # get the actual state of the media changer
     def get_media_changer_state(self, lib, volume, m_type):
         # m_changer = self.csc.get_media_changer(lib + ".library_manager")
+
+        # a short cut for non-existing library, such as blank
+        if not string.split(lib, '.')[0] in self.csc.get_library_managers({}).keys():
+            return ""
+
         if len(lib) < 16 or lib[-16:] != '.library_manager':
             lib = lib + '.library_manager'
         m_changer = self.csc.get_media_changer(lib)
