@@ -1,4 +1,4 @@
-set output 'bpt.ps'
+set output 'bpt.pts.ps'
 set terminal postscript color
 set title 'Individual Transfer Activity'
 set xlabel 'Date'
