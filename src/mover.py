@@ -579,7 +579,9 @@ def forked_read_from_hsm( self, ticket ):
 	    tmp_vinfo = vcc.inquire_vol(ticket['fc']['external_label'])
             wrapper=wrapper_selector.select_wrapper(tmp_vinfo['wrapper'])
 	    if wrapper == None:
-		raise errno.errorcode[errno.EINVAL], "Invalid wrapper"
+		wrapper=wrapper_selector.select_wrapper("cpio_custom")
+		if wrapper == None:
+		    raise errno.errorcode[errno.EINVAL], "Invalid wrapper"
 
             logc.send(log_client.INFO,2,"WRAPPER.READ")
 	    if ticket['fc']['sanity_cookie'][1] == None:# when reading...

@@ -73,7 +73,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                sum_rd_err = 0,        # total number of read errors
                sum_wr_access = 0,     # total number of write mounts
                sum_rd_access = 0,     # total number of read mounts
-               wrapper = "cpio",      # kind of wrapper for volume
+               wrapper = "cpio_custom",      # kind of wrapper for volume
                blocksize = -1         # blocksize (-1 =  media type specifies)
                ):
         Trace.trace(3,'add_vol label='+repr(external_label))

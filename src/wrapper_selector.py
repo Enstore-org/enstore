@@ -11,5 +11,4 @@ def select_wrapper(wrapper_module):
 	exec("import "+wrapper_module)
 	return eval(wrapper_module+".Wrapper()")
     except:
-	
 	return None
