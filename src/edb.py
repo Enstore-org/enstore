@@ -234,31 +234,43 @@ class FileDB(DbTable):
 
 
 	def export_format(self, s):
+		if s['deleted'] == 'y':
+			deleted = 'yes'
+		elif s['deleted'] == 'n':
+			deleted = 'no'
+		else:
+			deleted = 'unknown'
 		return {
 			'bfid': s['bfid'],
 			'complete_crc': s['crc'],
-			'deleted': s['deleted'],
+			'deleted': deleted,
 			'drive': s['drive'],
 			'external_label': s['label'],
 			'location_cookie': s['location_cookie'],
 			'pnfs_name0': s['pnfs_path'],
 			'pnfsid': s['pnfs_id'],
-			'santy_cookie': (s['sanity_cookie_0'], s['sanity_cookie_1']),
+			'sanity_cookie': (s['sanity_cookie_0'], s['sanity_cookie_1']),
 			'size': s['size']
 			}
 
 	def import_format(self, s):
+		if s['deleted'] == 'yes' or s['deleted'] == 'y':
+			deleted = 'y'
+		elif s['deleted'] == 'no' or s['deleted'] == 'n':
+			deleted = 'n'
+		else:
+			deleted = 'u'
 		return {
 			'bfid': s['bfid'],
 			'crc': s['complete_crc'],
-			'deleted': s['deleted'],
+			'deleted': deleted,
 			'drive': s['drive'],
 			'volume': ('lookup_vol', s['external_label']),
 			'location_cookie': s['location_cookie'],
 			'pnfs_path': s['pnfs_name0'],
 			'pnfs_id': s['pnfsid'],
-			'sanity_cookie_0': s['santy_cookie'][0],
-			'sanity_cookie_1': s['santy_cookie'][1],
+			'sanity_cookie_0': s['sanity_cookie'][0],
+			'sanity_cookie_1': s['sanity_cookie'][1],
 			'size': s['size']
 			}
 

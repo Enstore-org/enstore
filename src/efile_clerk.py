@@ -140,8 +140,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def get_crcs(self, ticket):
         try:
             bfid  =ticket["bfid"]
-            complete_crc=record["complete_crc"]
-            sanity_cookie=record["sanity_cookie"]
         except KeyError, detail:
             msg =  "File Clerk: key %s is missing" % (detail,)
             ticket["status"]=(e_errors.KEYERROR, msg)
@@ -157,6 +155,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
+        complete_crc=record["complete_crc"]
+        sanity_cookie=record["sanity_cookie"]
         ticket["status"]=(e_errors.OK, None)
         ticket["complete_crc"]=complete_crc
         ticket["sanity_cookie"]=sanity_cookie
@@ -201,19 +201,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             bfid = ticket["bfid"]
             deleted = ticket["deleted"]
-            restore_dir = ticket["restore_dir"]
         except KeyError, detail:
             msg =  "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # also need new value of the delete element- make sure we have this
-        try:
-            deleted = ticket["deleted"]
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing" % (detail,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -227,7 +216,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        record["deleted"] = deleted
+        if record["deleted"] != deleted:
+            record["deleted"] = deleted
+            self.dict[bfid] = record
         ticket["status"] = (e_errors.OK, None)
         # look up in our dictionary the request bit field id
         self.reply_to_caller(ticket)
@@ -410,79 +401,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,'del_bfid %s'%(ticket,))
         return
 
-    # rename volume and volume map
-    # this version rename volume for all files in it
-    #
-    # This only renames the file records. A complete volume renaming
-    # requires volume clerk to rename the volume information.
-    #
-    # Renaming a volume, as far as a file's concern, renames the
-    # 'external_label' and 'pnfs_mapname' accordingly.
-    #
-    # Renaming does involve renaming the volmap path in /pnfs.
-    # If it fails, nothing would be done further.
-    #
-    # 12/04/2001 volmap is obsolete!
-
-    #### NEEDS WORK
-    def __rename_volume(self, old, new):
-        Trace.log(e_errors.INFO, 'renaming volume %s -> %s'%(old, new))
-        bfids = self.get_all_bfids(old)
-
-        # deal with volmap directory
-        # if volmap directory can not be renamed, singal a error and stop
-
-	# if len(bfids):
-        #     volmap = self.dict[bfids[0]]["pnfs_mapname"]
-        #     p1, f = os.path.split(volmap)
-        #     p, f1 = os.path.split(p1)
-        #     if old != f1:
-        #         Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1))
-        #         return e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1)
-        #     new_volmap = os.path.join(p, new)
-        #     # can I modify it?
-        #     if not os.access(p, os.W_OK):
-        #         return e_errors.ERROR, 'can not rename %s to %s'%(p1, new_volmap)
-        #     try:
-        #         os.rename(p1, new_volmap)
-        #     except:
-        #         return e_errors.ERROR, 'failed to rename %s to %s'%(p1, new_volmap)
-        
-        for bfid in bfids:
-            record = self.dict[bfid] 
-            # replace old volume name with new one
-            # p1, f = os.path.split(record["pnfs_mapname"])
-            # p, f1 = os.path.split(p1)
-            # if old != f1:
-            #     Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for"%s" but found "%s". Changed anyway.'%(old, f1))
-            # record["pnfs_mapname"] = os.path.join(p, new, f)
-            record["external_label"] = new
-            self.dict[bfid] = record 
- 
-        Trace.log(e_errors.INFO, 'volume %s renamed to %s'%(old, new))
-        return e_errors.OK, None
-
     # rename volume -- server service
     #
-    # This is the newer version
+    # This has been obsolete. Since file is attached to volume id,
+    # rename volume is done by volume clerk.
 
     def rename_volume(self, ticket):
-        try:
-            old = ticket["external_label"]
-            new = ticket[ "new_external_label"]
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # catch any failure
-        try:
-            ticket["status"] = self.__rename_volume(old, new)
-        except:
-            ticket["status"] = (e_errors.ERROR, "rename failed")
-        # and return to the caller
+        # Nothing needs to be done
+        ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
 
@@ -576,7 +502,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                    file.volume = volume.id and \
                    file.deleted = 'n';"%(vol)
         res = self.dict.db.query(q)
-        return res.ntuples
+        return res.ntuples()
 
     #### DONE
     # has_undeleted_file -- server service
@@ -881,15 +807,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if ticket.has_key('bfid'):
             bfid = ticket['bfid']
             # to see if the bfid has already been used
-            try:
-                record = self.dict[bfid]
+            record = self.dict[bfid]
+            if record:
                 msg = 'bfid "%s" has already been used'%(bfid)
                 Trace.log(e_errors.ERROR, msg)
                 ticket['status'] = (e_errors.ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
-            except: # This is normal
-                pass
         else:
             bfid = self.unique_bit_file_id()
             ticket['bfid'] = bfid

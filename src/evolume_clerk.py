@@ -911,22 +911,22 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     system_inhibit_0 = 'none' and \
                     system_inhibit_1 = 'none' and \
                     user_inhibit_0 = 'none' and \
-                    user_inhibit_1 = 'none' and \
-                    remaining_bytes >= %d \
+                    user_inhibit_1 = 'none' \
                     %s\
                 order by declared ;"%(library, storage_group,
-                    file_family, wrapper, required_bytes, vito_q)
+                    file_family, wrapper, vito_q)
         res = self.dict.db.query(q).dictresult()
         if len(res):
             if exact_match:
                 for v in res:
-                    if self.is_volume_full(v,min_remaining_bytes):
+                    v1 = self.dict.export_format(v)
+                    if self.is_volume_full(v1,min_remaining_bytes):
                         Trace.trace(30, "full")
                     else:
-                        return v
+                        return v1
                 return {}
             else:
-                return res[0]
+                return self.dict.export_format(res[0])
         else:
             return {}
 
@@ -1473,7 +1473,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.dict[external_label] = record   # THIS WILL JOURNAL IT
             record["status"] = (e_errors.OK, None)
         if record["status"][0] == e_errors.OK:
-            Trace.log(e_errors.INFO, "system inhibit cleared for %s" % (external_label, ))
+            Trace.log(e_errors.INFO, "system inhibit %d cleared for %s" % (position, external_label))
         self.reply_to_caller(record)
         return
 
