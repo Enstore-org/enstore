@@ -27,6 +27,9 @@ script="$FTT_DIR/ftt_test/scripts/$1"
 
 shift
 
+kids=""
+trap 'kill -9 $kids; exit' 2 3 15
+
 for drive in $*
 do
     outfile="`echo out $base $drive | sed -e 's;[/ ];_;g'`"
@@ -35,8 +38,19 @@ do
     then
 	$cmd
     else
-	xterm	-T "$base $drive" \
-		-n "$base $drive" \
+	if [ "$DISPLAY" != "" ]
+	then
+	    xterm -T "$base $drive" -n "$base $drive" -sb -sl 1024 \
 		-e /bin/sh -c "$cmd;echo 'Press Enter';read line" &
+	    kids="$kids $!"
+	else
+	    $cmd 2>&1 | sed -e "s;^;$drive:	;" &
+	    kids="$kids $!"
+	fi
     fi
+done
+
+for drive in $*
+do
+    wait
 done

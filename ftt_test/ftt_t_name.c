@@ -522,7 +522,7 @@ ROUTINE: ftt_t_list_supported
 ==============================================================================*/
 int     ftt_t_list_supported (int argc, char **argv)
 {
-FILE            *outfile = stdout;	/* file to output to */
+FILE            *outfile = stderr;	/* file to output to */
 static char     *out_filename;                  /* output file name */
 int		status;
 
@@ -552,7 +552,7 @@ if (out_filename)
    }
  
 ftt_list_supported (outfile);
-if (outfile != stdout) close(outfile);
+if (outfile != stderr) close(outfile);
 return 0;
 }
 
