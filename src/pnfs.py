@@ -36,7 +36,7 @@ ERROR = -1
 
 class Pnfs:
     # initialize - we will be needing all these things soon, get them now
-    def __init__(self,pnfsFilename,all=0,timeit=0):
+    def __init__(self,pnfsFilename,get_details=1,get_pinfo=0,timeit=0):
         t1 = time.time()
         self.print_id = "PNFS"
         self.pnfsFilename = pnfsFilename
@@ -51,13 +51,17 @@ class Pnfs:
         self.rmajor = 0
         self.rminor = 0
         self.get_bit_file_id()
-        self.get_library()
-        self.get_file_family()
-        self.get_file_family_wrapper()
-        self.get_file_family_width()
-        self.get_xreference()
+        #self.get_xreference()
         self.get_id()
-        if all:
+        if get_details:
+            self.get_library()
+            self.get_file_family()
+            self.get_file_family_wrapper()
+            self.get_file_family_width()
+            self.get_storage_group()
+            self.get_xreference()
+            
+        if get_pinfo:
             self.get_pnfs_info()
         if timeit != 0:
             Trace.log(e_errors.INFO, "pnfs__init__ dt: "+time.time()-t1)
@@ -571,6 +575,32 @@ class Pnfs:
 
     ##########################################################################
 
+    # store a new storage group tag
+    # this is group of volumes assigned to one experiment or group of users
+    def set_storage_group(self,value):
+        if self.valid != VALID:
+            return
+        self.writetag("storage_group",value)
+        self.get_storage_group()
+
+    # get the storage group
+    def get_storage_group(self):
+        self.storage_group = UNKNOWN
+        if self.valid != VALID:
+            return
+        try:
+            self.storage_group = self.readtag("storage_group")[0]
+        except:
+            # do not record this exception
+            # for the backward compatibility
+            # storage grop is essential only for version higher
+            # enstore versions 
+            #self.log_err("get_storage_group")
+            return
+
+
+    ##########################################################################
+
     # update all the stat info on the file, or if non-existent, its directory
     def pstatinfo(self,update=1):
         if update:
@@ -706,7 +736,7 @@ class Pnfs:
         if ret[0]!=e_errors.OK:
             return
         # create the volume map file and set its size the same as main file
-        self.volume_fileP = Pnfs(self.volume_file)
+        self.volume_fileP = Pnfs(self.volume_file, get_details=0)
         self.volume_fileP.touch()
         self.volume_fileP.set_file_size(self.file_size)
 

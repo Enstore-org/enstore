@@ -419,24 +419,32 @@ def system_enabled(p):                 # p is a  pnfs object
 # return pnfs information,
 # and an open pnfs object so you can check if  the system is enabled.
 
-def pnfs_information(filelist,nfiles):
+def pnfs_information(filelist,nfiles,write=1):
     bfid = []
     pinfo = []
     library = []
     file_family = []
     width = []
     ff_wrapper = []
+    storage_group = []
+    if write: details = 1
+    else: details = 0
 
     for i in range(0,nfiles):
-        p = pnfs.Pnfs(filelist[i])         # get the pnfs object
+        p = pnfs.Pnfs(filelist[i], get_details = details)  # get the pnfs object
         bfid.append(p.bit_file_id)         # get the bit file id
-        library.append(p.library)          # get the library
-        file_family.append(p.file_family)  # get the file family
-        try:
-            ff_wrapper.append(p.file_family_wrapper)  # get the file family wrapper
-        except:
-            ff_wrapper.append("cpio_odc")  # default
-        width.append(p.file_family_width)  # get the width
+        if write:
+            library.append(p.library)          # get the library
+            file_family.append(p.file_family)  # get the file family
+            try:
+                ff_wrapper.append(p.file_family_wrapper)  # get the file family wrapper
+            except:
+                ff_wrapper.append("cpio_odc")  # default
+            width.append(p.file_family_width)  # get the width
+            try:
+                storage_group.append(p.storage_group) # get the storage group
+            except:
+                storage_group.append('none')   # default
 
         # get some debugging info for the ticket
         pinf = {}
@@ -451,9 +459,9 @@ def pnfs_information(filelist,nfiles):
         pinfo.append(pinf)
 
     Trace.trace(16,"pnfs_information bfid=%s library=%s file_family=%s \
- wrapper_type=%s width=%s pinfo=%s p=%s" %
-                (bfid, library, file_family, ff_wrapper, width, pinfo, p))
-    return (bfid,library,file_family,ff_wrapper,width,pinfo,p)
+    wrapper_type=%s width=%s storage_group=%s pinfo=%s p=%s" %
+                (bfid, library, file_family, ff_wrapper, width, storage_group, pinfo, p))
+    return (bfid,library,file_family,ff_wrapper,width,storage_group,pinfo,p)
 
     
 ##############################################################################
@@ -535,7 +543,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     # check (and generate) the output pnfs files(s) names
     # bomb out if they exist already
     outputlist = outputfile_check(ninput,inputlist,output)
-    junk,library,file_family,ff_wrapper,width,pinfo,p=pnfs_information(outputlist,ninput)
+    junk,library,file_family,ff_wrapper,width,storage_group,pinfo,p=pnfs_information(outputlist,ninput)
 
     if output_file_family != "":
         for i in range(0,ninput):
@@ -556,6 +564,7 @@ def write_to_hsm(input_files, output, output_file_family='',
             print "file_family=",file_family
             print "wrapper type=",ff_wrapper
             print "width=",width
+            print "storage_group",storage_group
             msg =  "library, file_family, width not all the same"
             print_data_access_layer_format('','',0,{'status':(e_errors.USERERROR, msg)})
             quit()
@@ -570,8 +579,8 @@ def write_to_hsm(input_files, output, output_file_family='',
         print "file_family=",file_family
         print "wrapper type=",ff_wrapper
         print "width=",width
+        print "storage_group",storage_group
         print "pinfo=",pinfo
-        print "p=",p
 
     t1 = time.time() #-------------------------------------------Start
     if verbose>1:
@@ -702,6 +711,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                                 # technically width does not belong here, but it associated with the volume
                                 "file_family_width"  : width[i],
                                 "wrapper"            : ff_wrapper[i],
+                                "storage_group"      : storage_group[i],
                                 "address"            : volume_clerk_address}
                 file_clerk = {"address": file_clerk_address}
 
@@ -724,7 +734,10 @@ def write_to_hsm(input_files, output, output_file_family='',
             
             reply_read=0
             while not reply_read:
-                system_enabled(p) # make sure system still enabled before submitting
+                # currently we have another way to determine if pnfs is enabled
+                # do not use system_enabled, but leave the code in for
+                # later potential use
+                #system_enabled(p) # make sure system still enabled before submitting
                 ##start of resubmit block
                 Trace.trace(7,"write_to_hsm q'ing: %s"%(work_ticket,))
                 ticket = u.send(work_ticket, (vticket['hostip'], 
@@ -1697,7 +1710,7 @@ def read_from_hsm(input_files, output,
 
     #check the input unix files. if files don't exits, we bomb out to the user
     (ninput, inputlist, file_size) = inputfile_check(input_files)
-    (bfid,junk,junk,junk,junk,pinfo,p)=pnfs_information(inputlist,ninput)
+    (bfid,junk,junk,junk,junk,junk,pinfo,p)=pnfs_information(inputlist,ninput,0)
 
     tinfo["pnfscheck"] = time.time() - t1 #--------------------------------End
     if verbose>2:
@@ -1882,7 +1895,10 @@ def read_from_hsm(input_files, output,
     bytes = 0
     while files_left:
 
-        system_enabled(p) # make sure system is still enabled before submitting
+        # currently we have another way to determine if pnfs is enabled
+        # do not use system_enabled, but leave the code in for
+        # later potential use
+        #system_enabled(p) # make sure system is still enabled before submitting
         (submitted,Qd) = submit_read_requests(request_list,
                                               client, tinfo, 
                                               vols_needed.keys(),
