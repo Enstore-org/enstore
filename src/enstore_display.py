@@ -509,28 +509,49 @@ class Mover:
             self.display.mover_label_width = max_width
         len_text = self.font.measure(self.name)
         label_width = self.display.mover_label_width
+
         #k = number of movers
-        i=0
         k = self.index
-        half = N/2
-        if N == 1:
-            x = self.display.width - ((self.display.width/3)+label_width)
-            y = self.display.height / 2.
-        elif N < 20:
-            space = (self.display.height - 40.0) / N
-            y = 20 + k * space
-            x = self.display.width - ((self.display.width/3)+label_width)
+
+        #total number of columns 
+        num_cols = (N / 20) + 1
+        #total number of rows in this movers column
+        num_rows = (N / num_cols) + 1
+        #this movers column and row
+        column = (k / num_rows)
+        row = (k % num_rows)
+
+        #vertical distance seperating the bottom of one mover with the top
+        # of the next.
+        space = ((self.display.height - (self.height * 19.0)) / 19.0)
+        space = (self.height - space) * ((19.0 - num_rows) / 19.0) + space
+
+        #The following offsets the y values for a second column.
+        y_offset = ((self.height + space) / 2) * (column % 2)
+
+        #Calculate the y position for rows with odd and even number of movers.
+        #These calculation start in the middle of the window, subtract the
+        # first have of them, then add the position that the current mover
+        # is in.
+        if N % 2:
+            y = (self.display.height / 2) - \
+                ((num_rows - 1) / 2 * (space + self.height)) - \
+                (self.height / 2) + (row * (space + self.height)) + \
+                y_offset
         else:
-            space = (self.display.height - 40.0) / (N/2.0+1.0)
-            if k <= half:
-                x = self.display.width - ((self.display.width/1.5)+label_width)
-                y = 20 + k * space
-            else:
-                self.column = 1
-                x = self.display.width - ((self.display.width/3.5)+label_width)
-                y = 20 + (k-half-0.5)*space
-            #print k, self.name, x, y, self.column
+            y = (self.display.height / 2) - \
+                ((num_rows / 2) * (space + self.height)) + \
+                (row * (space + self.height)) + \
+                y_offset
+
+        #Adding 1 to the column values in the following line,
+        # mathematically gives the clients their own column
+        x = (self.display.width / float(num_cols + 1)) * (column + 1)
+
+        #This value is used when drawing the dotted connection line.
+        self.column = column
         self.display.mover_columns[self.column] = int(x)
+        
         return int(x), int(y)
     
     def position(self, N):
@@ -543,12 +564,8 @@ class Mover:
             sys.exit(-1)
 
     def resize(self, N):
-        #This is the new configuration for mover size
-        if N >= 20:
-            self.height = 0.75 * (self.display.height - 40) / (N/2.0+1.0)
-        else:
-            self.height = 0.75 * (self.display.height - 40) / N
-
+        self.height = ((self.display.height - 40) / 20)
+        #This line assumes that their will not be 30 or more movers.
         self.width = (self.display.width/4.0)
     
     def reposition(self, N, state=None):
@@ -997,7 +1014,8 @@ class Display(Tkinter.Canvas):
         for k in range(N):
             mover_name = mover_names[k]
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
-            self.reposition_movers(N)
+            self.movers[mover_name].reposition(N)
+            #self.reposition_movers(N)
 
     def has_canvas_changed(self):
         try:

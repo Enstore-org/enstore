@@ -208,7 +208,7 @@ def request_mover_status(display):
         if stop_now: #End imediatily.
             return
         mov = mover_client.MoverClient(csc, mover)
-        status = mov.status()
+        status = mov.status(rcv_timeout=5, tries=1)
         commands = handle_status(mover[:-6], status)
         if not commands:
             continue
@@ -366,8 +366,11 @@ def main():
         display.mainloop()
 
         status_thread.join()
+        print "status thread finished"
         periodic_thread.join()
+        print "periodic thread finished"
         messages_thread.join()
+        print "message thread finished"
 
 
 if __name__ == "__main__":
