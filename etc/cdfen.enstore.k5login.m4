@@ -34,6 +34,7 @@ bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
 djholm@FNAL.GOV
+ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
 genser@FNAL.GOV
 george@FNAL.GOV
 huangch@FNAL.GOV
