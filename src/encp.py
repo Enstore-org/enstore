@@ -796,13 +796,11 @@ def open_data_socket(mover_addr):
 
 def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
                     verbose):
-    global bsdfg
     ##19990723:  resubmit request after 15minute timeout.  Since the
     # unique_id is unchanged the library manager should not get
     # confused by duplicate requests.
     timedout=0
     while 1:  ###not (timedout or reply_read):
-        
         #Attempt to get the control socket connected with the mover.
         try:
             control_socket, mover_address, ticket = open_control_socket(
@@ -810,6 +808,8 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         except (socket.error, e_errors.NET_ERROR), detail:
             exc, msg, tb = sys.exc_info()
             ticket = {'status':(exc, msg)}
+            message = exc + ":", msg
+            Trace.log(e_errors.INFO, message)
 
             #Since an error occured, just return it.
             return None, None, ticket
@@ -1027,18 +1027,23 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         
     #If the error is not retriable, remove it from the request queue.
     if not e_errors.is_retriable(status[0]):
-        # print error to stdout in data_access_layer format
-        print_data_access_layer_format(infile, outfile, file_size,
-                                       error_dictionary)
+        #Print error to stdout in data_access_layer format. However, only
+        # do so if the dictionary is full (aka. the error occured after
+        # the control socket was successfully opened).  Control socket
+        # errors are printed elsewere (for reads only).
+        if len(request_dictionary) > 3:
+            print_data_access_layer_format(infile, outfile, file_size,
+                                           error_dictionary)
         try:
             #Try to delete the request.  In the event that the connection
             # didn't let us determine which request failed, don't worry.
             del request_list[request_list.index(request_dictionary)]
+            queue_size = len(request_list)
         except (KeyError, ValueError):
-            pass
+            queue_size = len(request_list) - 1
         
         result_dict = {'status':status, 'retry':retry,
-                       'queue_size':len(request_list)} #one less than before
+                       'queue_size':queue_size} #one less than before
         return result_dict
 
     #Keep retrying this file.
@@ -1975,7 +1980,7 @@ def submit_read_requests(requests, client, tinfo, verbose):
 #   for this encp.
 
 def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
-#chk_crc, max_retry, verbose):
+
     for rq in requests: 
         Trace.trace(7,"read_hsm_files: %s"%(rq['infile'],))
 
@@ -1984,6 +1989,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
     encp_crc = 0
     mover_timeout_retries = 0 #Number of times listen/select/accept has failed.
     failed_requests = []
+    succeded_requests = []
 
     #for waiting in range(submitted):
     while files_left:
@@ -2002,26 +2008,25 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             e.max_retry,
             e.verbose)
 
+        #There are cases where encp is unable to obtain the ticket from the
+        # mover.  Most likely this is from a mover restart.  When this
+        # happens only 'status' is set.  Here we must fake a 'retry' item.
+        if request.get('retry', -1) == -1: #Error opening control socket.
+            mover_timeout_retries = mover_timeout_retries + 1
+            request['retry'] = mover_timeout_retries
+        else:
+            mover_timeout_retries = 0 #reset this
+            
         done_ticket = request #Make sure this exists by this point.
         result_dict = handle_retries(requests, request, request,
                                      e.max_retry, e.verbose)
         if result_dict['status'][0]== e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
-            files_left = result_dict['queue_size']
             failed_requests.append(request)
-            continue
-
-        #This is a redundant check.
-        if not control_socket or not data_path_socket:
-            mover_timeout_retries = mover_timeout_retries + 1
-            if mover_timeout_retries > e.max_retry:
-                #The mover has not called back in max_retry * mover_timeout
-                # number of seconds. Assume it has died.
-                files_left = 0
-            continue
-        else:
+            files_left = submitted - len(failed_requests)
             mover_timeout_retries = 0 #reset this
+            continue
 
         if e.verbose > 1:
             t2 = time.time() - tinfo['encp_start_time']
@@ -2224,9 +2229,36 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         except (OSError, socket.error):
             pass
 
+        #With the transfer a success, we can now add the ticket to the list
+        # of succeses.
+        succeded_requests.append(done_ticket)
+
     if e.verbose > 4:
-            print "DONE TICKET"
-            pprint.pprint(done_ticket)
+        print "DONE TICKET"
+        pprint.pprint(done_ticket)
+
+    #Pull out the failed transfers that occured while trying to open the
+    # control socket.
+    unknown_failed_transfers = []
+    for transfer in failed_requests:
+        if len(transfer) < 3:
+            unknown_failed_transfers.append(transfer)
+
+    #For each transfer that failed without even succeding to open a control
+    # socket, print out there data access layer.
+    for transfer in requests:
+        if transfer not in succeded_requests and \
+           transfer not in failed_requests:
+            try:
+                transfer = combine_dict(unknown_failed_transfers[0], transfer)
+                del unknown_failed_transfers[0]
+            except IndexError:
+                pass
+            
+            print_data_access_layer_format(transfer['infile'],
+                                           transfer['outfile'],
+                                           transfer['file_size'],
+                                           transfer)
 
     return failed_requests, bytes, done_ticket
 
