@@ -44,9 +44,10 @@ if /bin/true; then
 fi
 # END HACK
 
+CACHE=cachen2a:/diska/enstore_backup/$gang/tarit
+
 mount $BACKUP
 
-node=`uname -n | sed -e 's/.fnal.gov//'`
 
 if [ `echo $node | grep -c mvr` -ne 0 ]; then
   M=$BACKUP/enstore/$gang/movers
@@ -89,6 +90,9 @@ echo $cmd
 eval $cmd
 echo "`date`: tar complete"
 ls -alR $M
+STASH=$CACHE/$d.$node.files.tgz
+echo "`date` stashing a copy on $STASH'"
+enrcp  $M/files.tgz $STASH
 
 # on server1, also copy all "special" node-specific files from all nodes
 if [ $node = ${gang}srv1 ]; then
@@ -148,5 +152,11 @@ if [ `echo $node | grep -c mvr` -eq 0 ]; then
   # I don't know how to get just the /pnfs... mountpoints or /diska /diskb... mountpoints
   cp $T $SPECIAL
 fi
+
+#now copy everything over to the cache
+for i in `ls -1 $SPECIAL`; do
+    echo enrcp $SPECIAL/$i $CACHE/$d.`basename $i`
+         enrcp $SPECIAL/$i $CACHE/$d.`basename $i`
+done
 
 umount $BACKUP
