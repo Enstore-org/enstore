@@ -164,6 +164,9 @@ class accDB:
 		if type(date) != type(""):
 			date = time2timestamp(date)
 
+		# take care of error being None
+		if error == None:
+			error = ''
 		en_error = {
 			'date'		: date,
 			'node'		: node,
