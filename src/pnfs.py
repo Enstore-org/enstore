@@ -101,7 +101,7 @@ class Pnfs:
                 if sys.exc_info()[1][0] == errno.ENOENT:
                     return ENABLED
                 else:
-                    raise
+                    raise sys.exc_info()[0], sys.exc_info()[1]
                 f = open(self.dir+'/.(config)(flags)/disabled')
                 why = f.readlines()
                 f.close()
@@ -131,9 +131,9 @@ class Pnfs:
                     f = open(self.pnfsFilename,'w')
                     f.close()
                 else:
-                    Trace.log(e_errors.INFO, "problem with pnfsFilename = "+ \
+                    Trace.log(e_errors.INFO, "problem with pnfsFilename = "+ 
                                        self.pnfsFilename)
-                    raise
+                    raise sys.exc_info()[0], sys.exc_info()[1]
             self.pstatinfo()
             self.get_id()
 
@@ -145,7 +145,7 @@ class Pnfs:
                 t = int(time.time())
                 os.utime(self.pnfsFilename,(t,t))
             except os.error:
-                Trace.log(e_errors.INFO, "can not utime: "+str(sys.exc_info()[0])+\
+                Trace.log(e_errors.INFO, "can not utime: "+str(sys.exc_info()[0])+
                                    " "+str(sys.exc_info()[1]))
             self.pstatinfo()
 

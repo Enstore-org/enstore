@@ -73,9 +73,9 @@ class ConfigurationClient(generic_client.GenericClient):
                          "server down?  retrying in "+repr(delay)+" seconds")
             time.sleep(delay)
         else:
-            Trace.trace(6, repr(id)+" "+str(sys.exc_info()[0])+\
-                        str(sys.exc_info()[1]))
-            raise 
+            exc, msg, tb = sys.exc_info()
+            Trace.trace(6, repr(id)+" "+str(exc)+" "+str(msg))
+            raise exc, msg
 
     # return cached (or get from server) value for requested item
     def get(self, key, timeout=0, retry=0):

@@ -53,11 +53,11 @@ def collect_children():
             count = count+1
             Trace.trace(21,"collect_children reaped pid="+repr(pid)+' '+repr(status))
     except os.error:
-        if sys.exc_info()[1][0] != errno.ECHILD:
-            Trace.trace(6,"collect_children "+str(sys.exc_info()[0])+\
-                        str(sys.exc_info()[1]))
-            raise 
-    Trace.trace(20,"collect_children count=%d",count)
+        exc, msg, tb = sys.exc_info()
+        if msg[0] != errno.ECHILD:
+            Trace.trace(6,"collect_children "+str(exc)+" "+str(msg))
+            raise exc, msg
+    Trace.trace(20,"collect_children count=%s"%count)
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket

@@ -196,7 +196,15 @@ def cleanADrive(ticket, classTicket):
         status = stat2
     
     return status_table[status][0], status, status_table[status][1]
-	   
+
+def yankList(listOfLists, listPosition, look4String):
+    """ sift through a list of lists"""
+    newRecordList = []
+    for record in listOfLists:
+	if string.find(record[listPosition],look4String)>-1:
+	    newRecordList.append(record)
+    return newRecordList    
+    
 def insert(ticket, classTicket):
     """insert(ticket, classTicket)"""
 
@@ -362,11 +370,5 @@ def eject(ticket, classTicket):
     
     return status_table[status][0], status, status_table[status][1]
     
-def yankList(listOfLists, listPosition, look4String):
-    """ sift through a list of lists"""
-    newRecordList = []
-    for record in listOfLists:
-	if string.find(record[listPosition],look4String)>-1:
-	    newRecordList.append(record)
-    return newRecordList
+
 

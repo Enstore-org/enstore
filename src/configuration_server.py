@@ -36,6 +36,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         code = string.join(f.readlines(),'')
         Trace.trace(9, "Configuration Server read_config: "
                      "loading enstore configuration from %s"%configfile)
+        configdict={}; del configdict # Lint hack, otherwise lint can't see where configdict is defined.
         try:
             exec(code)
             ##I would like to do this in a restricted namespace, but

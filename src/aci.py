@@ -13,16 +13,20 @@ import aci_shadow
 
 from aci_shadow import *
 
+def getptr(self):
+    #return the SWIG internal pointer
+    return self.this
+
 def aci_clientstatus(clientname):
-    client_entry = aci_client_entry()
+    client_entry = aci_shadow.aci_client_entry()
     status = aci_shadow.aci_clientstatus(clientname,client_entry)
     return status, client_entry
 
 def aci_drivestatus(clientname="NULL"):
     drive_entries = []
-    for x in range(ACI_MAX_DRIVE_ENTRIES):
-        drive_entries.append(aci_drive_entry())
-    drive_entry_ptrs = map(lambda x:x.this, drive_entries)
+    for x in range(aci_shadow.ACI_MAX_DRIVE_ENTRIES):
+        drive_entries.append(aci_shadow.aci_drive_entry())
+    drive_entry_ptrs = map(getptr, drive_entries)
 
     status = aci_shadow.aci_drivestatus(clientname, drive_entry_ptrs)
     return status, drive_entries
@@ -33,9 +37,9 @@ def aci_list(clientname):
     #storage for the req_entries getting allocated ?
 
     req_entries = []
-    for x in range(ACI_MAX_REQ_ENTRIES):
-        req_entries.append(aci_req_entry())
-    req_entry_ptrs = map(lambda x:x.this, req_entries)
+    for x in range(aci_shadow.ACI_MAX_REQ_ENTRIES):
+        req_entries.append(aci_shadow.aci_req_entry())
+    req_entry_ptrs = map(getptr, req_entries)
 
     status = aci_shadow.aci_list(clientname, req_entry_ptrs)
     return status, req_entries

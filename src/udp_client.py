@@ -196,7 +196,7 @@ class UDPClient:
                               "server="+repr(server)+" "+\
                               "reply: "+repr(reply)+" "+\
                               str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-		    raise
+		    raise sys.exc_info()[0], sys.exc_info()[1]
 		# goofy test feature - need for client being echo service only
 		except exceptions.ValueError :
 		    Trace.trace(6,'send GOOFY TEST FEATURE')
