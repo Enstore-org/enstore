@@ -17,6 +17,12 @@ import Trace
 import e_errors
 import configuration_client
 
+##def p(*args):
+##    lev = args[0]
+##    if lev<20:
+##        print args[1:]
+##Trace.trace=p
+
 # conditional comparison
 def mycmp(cond, a, b):
     # condition may be None or some other
@@ -468,6 +474,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         file_family = ticket["file_family"]
         first_found = ticket["first_found"]
         wrapper_type = ticket["wrapper"]
+        ##print "CGW1: lib='%s' fam='%s' wrap='%s'"%(library,file_family,wrapper_type)
         cfile_family = file_family+"."+wrapper_type	# combined
         # go through the volumes and find one we can use for this request
         vol = {}
@@ -480,29 +487,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         while 1:
             label,v = c.next()
             if label:
-                Trace.trace(17,'nwv '+label)
+                Trace.trace(17,'next write vol '+label)
                 pass
             else:
                 break
 
-            # the following is commented out for redundancy
-            # if v["library"] != library:
-            #     Trace.trace(17,label+" rejected library "+v["library"]+' '+library)
-            #     continue
-
-            # checking the matched file family and blank volume at the
-            # same time. If vol is assigned, meaning there is at least
-            # one, normal or blank, that is good enough, then don't
-            # bother checking the blank volume.
-
-            # The following is commented out for redundancy
-            # if v["file_family"] != file_family+"."+wrapper_type and \
-            #    (len(vol) or v["file_family"] != "none"):
-            #    Trace.trace(17,label+" rejected file_family "+v["file_family"]+' '+file_family+"."+wrapper_type)
-            #    continue
-            #if v["wrapper"] != wrapper_type:
-            #    Trace.trace(17,label+" rejected wrapper "+v["wrapper"]+' '+wrapper_type)
-            #    continue
             if v["user_inhibit"][0] != "none":
                 Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"][0])
                 continue
@@ -1245,15 +1234,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                 dict = {"volume":key}
                                 msg["volumes"].append(dict)
                 else:
-                    bytes_left = value['remaining_bytes']*1./1024./1024./1024.
-                    dict = {"volume"         : key,
-                            "bytes_left"     : bytes_left,
-                            "at_mover"       : value['at_mover'],
-                            "system_inhibit" : value['system_inhibit'],
-                            "user_inhibit"   : value['user_inhibit'],
-                            "library"        : value['library'],
-                            "file_family"    : value['file_family']
-                            }
+                    dict = {"volume"         : key}
+                    for k in ["remaining_bytes", "at_mover",   "system_inhibit",
+                              "user_inhibit", "library", "file_family"]:
+                        dict[k]=value[k]
                     if msg:
                         msg["volumes"].append(dict)
                     else:
