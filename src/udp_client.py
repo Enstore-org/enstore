@@ -321,7 +321,7 @@ class UDPClient:
 		except exceptions.ValueError :
 		    Trace.trace(0,'send GOOFY TEST FEATURE')
 		    ident, number,  out, time  = eval(reply)
-                    Trace.trace(20,'goofy test:'+repr(ident,number,out,time))
+                    Trace.trace(20,'goofy test:'+repr((ident,number,out,time)))
 
 		# now (after receive), check...
 		if number != self.number :
