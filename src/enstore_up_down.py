@@ -356,7 +356,7 @@ class Mover(EnstoreServer):
     def is_alive(self):
 	# now check to see if the mover is in a bad state
 	keys = self.BADSTATUS.keys()
-	if self.mstate in keys:
+	if self.mstate == 'ERROR':
 	    # the mover is not in a good state mark it as bad
 	    enprint("%s in a %s state"%(self.format_name, self.mstate))
 	    self.set_status(self.BADSTATUS[self.mstate])
