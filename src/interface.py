@@ -86,7 +86,7 @@ class Interface:
 
     def parse_options(self):
         try:
-            optlist,self.args=getopt.getopt(sys.argv[1:],self.charopts(), \
+            optlist,self.args=getopt.getopt(sys.argv[1:],self.charopts(),
                                             self.options())
         except:
             print "ERROR: ", sys.exc_info()[0], sys.exc_info()[1]
@@ -139,6 +139,12 @@ class Interface:
                 self.alive = 1
             elif opt == "--nocrc":
                 self.chk_crc = 0
+            elif opt == "--pri" :
+                self.pri = string.atoi(value)
+            elif opt == "--delpri" :
+                self.delpri = string.atoi(value)
+            elif opt == "--agetime" :
+                self.agetime = string.atoi(value)
             elif opt == "--list":
                 self.list = 1
             elif opt == "--verbose" :
