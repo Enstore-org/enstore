@@ -2239,10 +2239,10 @@ ftt_free_stat(stbuff);
     This reads a text listing of a partition buffer from file
     descriptor pf into the partition buffer. 
     <h3>
-      int ftt_load_partition(ftt_descriptor d, int partno)
+      int ftt_set_mount_partition(ftt_descriptor d, int partno)
     </h3>
     This attempts to set what partition number the drive will skip
-    to when a new tape is loaded in the drive. 
+    to when a new tape is mounted in the drive. 
     <h2>
       Status Routines
     </h2>
@@ -3735,6 +3735,26 @@ $FTT_DIR/bin/ftt_test -f /dev/rmt/tps2d4 &lt;my.ftt
       <li>
         ftt_suid <i>opts</i> <b>-d</b> <i>n basename</i> -- set
         density to <b>n</b>.
+      </li>
+      <li>
+        ftt_suid <i>opts</i> <b>-p</b> <i>basename</i> -- get/dump
+        partition table.
+      </li>
+      <li>
+        ftt_suid <i>opts</i> <b>-u</b> <i>basename</i> -- undump/write 
+        partition table.
+      </li>
+      <li>
+        ftt_suid <i>opts</i> <b>-l</b> <i>blk basename</i> -- locate
+        tape to <b>blk</b>.
+      </li>
+      <li>
+        ftt_suid <i>opts</i> <b>-L</b> <i>blk prt basename</i> -- locate
+        to <b>blk</b> in partition <b>prt</b>.
+      </li>
+      <li>
+        ftt_suid <i>opts</i> <b>-M</b> <i>prt basename</i> -- set
+        mount partition to <b>prt</b>.
       </li>
     </ul>
     Only one of the above forms may be used per command invocation.
