@@ -87,6 +87,12 @@ QUALIFIERS=efb
 		execute("touch /tmp/enstore/berman/ripsgidisk.fake.", NO_UPS_ENV)
                 exeActionRequired(COMMON_SETUP)
 
+#bulk1.workuk is 192.9.200.103 (UK lancaster)
+QUALIFIERS=lancs
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, 192.9.200.103) 
+                envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/lancs.conf)
+                exeActionRequired(COMMON_SETUP)
 FLAVOR=ANY
 QUALIFIERS=""
         ACTION=SETUP
