@@ -375,9 +375,12 @@ class DispatchingWorker(udp_server.UDPServer):
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
         try:
-            ##Trace.trace(20,"done_cleanup id="+repr(self.current_id))
+            Trace.trace(6,"done_cleanup id %s %s "%(self.current_id, self.request_dict[self.current_id]))
+            ##Trace.trace(6,"done_cleanup %s"%(self.request_dict,))
             del self.request_dict[self.current_id]
-        except KeyError:
+            ##Trace.trace(6,"done_cleanup after %s"%(self.request_dict,))
+        except KeyError, detail:
+            Trace.trace(6,"done_cleanup exception %s"%(detail,))
             pass
 
     def restricted_access(self):
