@@ -228,9 +228,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
             pending_work.remove(w)
 	    mticket["external_label"] = w["fc"]["external_label"]
 	    self.have_bound_volume(mticket)
-            self.reply_to_caller({"work"           : "bind_volume",
-                                  "external_label" : w["fc"]\
-                                  ["external_label"] })
+
         # alas
         else:
             #import pprint
