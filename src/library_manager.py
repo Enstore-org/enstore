@@ -1958,9 +1958,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # which may happen in case of high pri. work
             # update volumes_at_movers
             if w["vc"]["external_label"] != mticket['external_label']:
-                #self.volumes_at_movers.delete(mticket) # do not delete this entry
-                # because volume is still mounted and mover will tell when it is dismounted
-                # in a mover_busy request.
+                # update volumes_at_movers
+                # perhaps this is a hipri request forcing a tape replacement
+                self.volumes_at_movers.delete(mticket)
                 mticket['external_label'] = w["vc"]["external_label"]
                 # update volume status
                 # get it directly from volume clerk as mover
@@ -1987,7 +1987,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
             #sg = volume_family.extract_storage_group(mticket['volume_family'])
             #self.postponed_requests.update(sg, transfer_deficiency)
-            #self.volumes_at_movers.put(mticket)
+            self.volumes_at_movers.put(mticket)
 
         # if the pending work queue is empty, then we're done
         elif  (status[0] == e_errors.NOWORK or
