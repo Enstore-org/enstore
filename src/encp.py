@@ -404,8 +404,8 @@ def system_enabled(p):                 # p is a  pnfs object
     if running != pnfs.ENABLED :
         print_data_access_layer_format("","","",{'status':("EACCES", "Pnfs disabled")})
         jraise(errno.errorcode[errno.EACCES],"encp.system_enabled: "
-               "system disabled"+running)
-    Trace.trace(10,"system_enabled running="+running)
+               "system disabled "+running)
+    Trace.trace(10,"system_enabled running= "+running)
 
 
     
