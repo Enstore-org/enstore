@@ -316,6 +316,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
         self.draining = 0
+        self._in_setup = 0 ##HACK XXX
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -509,6 +510,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time-now < 5:
             #Don't tease the library manager!
             inhibit = 1
+
+        if self._in_setup: #HACK XXX FIXME!
+            inhibit = 1
         
         if state in (CLEANING, DRAINING, OFFLINE, ERROR, SEEK, MOUNT_WAIT, DISMOUNT_WAIT):
             if state == self._last_state:
@@ -566,7 +570,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.buffer.reset()
         self.bytes_read = 0L
         self.bytes_written = 0L
-        
+
     def return_work_to_lm(self,ticket):
         Trace.trace(21, "return_work_to_lm %s"%(ticket,))
         try:
@@ -842,15 +846,18 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.setup_transfer(ticket, mode=READ)
 
     def setup_transfer(self, ticket, mode):
+        self._in_setup = 1
         self.lock_state()
+        save_state = self.state
         Trace.trace(10, "setup transfer")
         ## pprint.pprint(ticket)
         if self.state not in (IDLE, HAVE_BOUND):
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
             self.unlock_state()
+            self._in_setup = 0
             return 0
-        self.state = ACTIVE
+
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
@@ -862,6 +869,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if "NULL" not in string.split(filename,'/'):
                 ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
                 self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
+                self.state = save_state
+                self._in_setup = 0
                 return 0
         self.reset()
 
@@ -878,6 +887,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.state is HAVE_BOUND:
                 self.dismount_time = time.time() + self.default_dismount_delay
             self.update(reset_timer=1)
+            self._in_setup = 0
             return 0
 
         self.t0 = time.time()
@@ -909,6 +919,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 mode, e_errors.EPROTO), self.vol_info['status'][1])
             Trace.log(e_errors.ERROR, "Volume clerk reply %s" % (msg,))
             self.send_client_done(ticket, msg[0], msg[1])
+            self.state = save_state
+            self._in_setup = 0
             return 0
         
         self.buffer.set_blocksize(self.vol_info['blocksize'])
@@ -924,7 +936,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             msg = e_errors.EPROTO, "Illegal wrapper type %s" % (self.wrapper_type)
             Trace.log(e_errors.ERROR,  "%s" %(msg,))
             self.send_client_done(ticket, msg[0], msg[1])
-            
+            self.state = save_state
+            self._in_setup = 0
+            return 0
+        
         client_filename = ticket['wrapper'].get('fullname','?')
         pnfs_filename = ticket['wrapper'].get('pnfsFilename', '?')
 
@@ -960,9 +975,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         if volume_label == self.current_volume: #no mount needed
             self.timer('mount_time')
             self.position_media(verify_label=0)
+            self._in_setup = 0
         else:
             self.run_in_thread('media_thread', self.mount_volume, args=(volume_label,),
                                after_function=self.position_media)
+            self._in_setup = 0
         
     def error(self, msg, err=e_errors.ERROR):
         self.last_error = (str(err), str(msg))
@@ -1074,6 +1091,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
+        self._in_setup = 0
         Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_hostname))
         
@@ -1125,6 +1143,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     
         
     def transfer_completed(self):
+        self._in_setup = 0
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
             self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_hostname))
@@ -1539,6 +1558,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         #If we've gotten this far, we've mounted, positioned, and connected to the client.
         #Just start up the work threads and watch the show...
         self.state = ACTIVE
+        self._in_setup = 0
         if self.mode is WRITE:
             self.run_in_thread('net_thread', self.read_client)
             self.run_in_thread('tape_thread', self.write_tape)
