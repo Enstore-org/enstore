@@ -16,12 +16,21 @@ import callback
 import e_errors
 import socket
 
+def get_config_host():
+    return blah
+
+def get_config_port():
+    return blah
+
 MY_NAME = "CONFIG_CLIENT"
 MY_SERVER = "configuration_server"
 
 class ConfigurationClient(generic_client.GenericClient):
 
-    def __init__(self, address):
+    def __init__(self, address=None):
+        if address is None:
+            address = (os.environ.get("ENSTORE_CONFIG_HOST", 'localhost'),
+                       int(os.environ.get("ENSTORE_CONFIG_PORT", 7500)))
         self.print_id = MY_NAME
         self.server_address=address
         self.u = udp_client.UDPClient()
