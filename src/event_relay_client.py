@@ -8,6 +8,7 @@ import enstore_erc_functions
 import event_relay_messages
 import enstore_constants
 import e_errors
+import host_config
 
 """
 This class supports messages from the event relay process.  Methods are 
@@ -73,7 +74,11 @@ class EventRelayClient:
         # get a socket on which to talk to the event relay process
         # we do this setup in a subroutine, so if it doesn't work
         # we can try again later.
-        self.hostname = os.uname()[1]
+	config = host_config.get_config()
+	if config and config.get("hostip", None):
+	    self.hostname = config['hostip']
+	else:
+	    self.hostname = os.uname()[1]
         self.server = server
         self.function = function
         self.event_relay_host = event_relay_host
