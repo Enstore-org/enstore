@@ -257,7 +257,9 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
 
         if not e_errors.is_ok(callback_ticket['status']):
             #Output a message.
-            sys.stderr.write(str(callback_ticket['status']) + "\n")
+            sys.stderr.write("Early error for %s: %s\n" %
+                             callback_ticket['vc']['external_label'],
+                             str(callback_ticket['status']))
             #Do not retry from error.
             error_id_list.append(callback_ticket['unique_id'])
             continue
@@ -271,7 +273,8 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
         except:
             #Output a message.
             exc, msg, tb = sys.exc_info()
-            sys.stderr.write(str(msg) + "\n")
+            sys.stderr.write("Encountered final dialog error for %s: %s\n" %
+                             callback_ticket['vc']['external_label'], str(msg))
             #Do not retry from error.
             error_id_list.append(callback_ticket['unique_id'])
             continue
@@ -279,7 +282,10 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
         Trace.trace(5, "DONE TICKET")
         Trace.trace(5, pprint.pformat(done_ticket))
 
-        message = "Volume status is %s" % (done_ticket['status'],)
+        #Print message if requested.  If an error occured print that to stderr.
+        message = "Volume %s status is %s" % (
+            done_ticket['vc']['external_label'],
+            done_ticket['status'],)
         if e_errors.is_ok(done_ticket['status']):
             Trace.trace(1, message)
         else:
