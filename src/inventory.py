@@ -396,10 +396,10 @@ def print_volume_quotas_status(volume_quotas, output_file):
         else:
             for t_order in order.get('top', []):
                 if t_order[0] == None and t_order[1] == volume_quotas[keys][1]:
-                    bottom.append(keys)
+                    top.append(keys)
                 elif t_order[1] == None and \
                      t_order[0] == volume_quotas[keys][0]:
-                    bottom.append(keys)
+                    top.append(keys)
         
             for b_order in order.get('bottom', []):
                 if b_order[0] == None and b_order[1] == volume_quotas[keys][1]:
@@ -540,14 +540,14 @@ def verify_volume_quotas(volume_data, volume, volumes_allocated):
     csc = configuration_client.ConfigurationClient()
     quotas = csc.get('quotas',timeout=15,retry=3)
 
-    try:
-        quota = quotas['libraries']['storage_group']
-    except KeyError:
-        quota = "N/A"
-    
     storage_group = string.split(volume['volume_family'], ".")[0]
     library = volume['library']
 
+    try:
+        quota = quotas['libraries'][library][storage_group]
+    except KeyError:
+        quota = "N/A"
+    
     #Since the data of which files are on what volume is already known,
     # that same data can be used here.
     if len(volume_data) == 0:
