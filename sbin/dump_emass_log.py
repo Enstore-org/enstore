@@ -50,7 +50,6 @@ def dumpfile(logfile):
         time,disc,code,msg=decode(raw_msg)
         print time,disc,code,msg
         ptr=ptr+chunksize
-        count=count+1
     
 if __name__=="__main__":
     for file in sys.argv[1:]:
