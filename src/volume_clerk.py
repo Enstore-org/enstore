@@ -25,6 +25,20 @@ MY_NAME = "volume_clerk"
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 
+    ## Avoid sending back a ticket which contains the "bfids" key, which may
+    ## be arbitrarily large and hence not fit in a UDP packet.  This is a hack which
+    ## should probably be replaced with a more general notion of public vs. private
+    ## (or external vs. internal) elements of tickets
+    def reply_to_caller(self, ticket,
+                        replyfunc=dispatching_worker.DispatchingWorker.reply_to_caller):
+        has_bfids = ticket.has_key("bfids")
+        if has_bfids:
+            bfids=ticket["bfids"]
+            del ticket["bfids"]
+        replyfunc(self,ticket)
+        if has_bfids:
+            ticket["bfids"]=bfids
+            
     # rename deleted volume
     def rename_volume(self, old_label, new_label, restore="no"):
      try:
