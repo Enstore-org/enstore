@@ -27,7 +27,7 @@ def default_host():
     return getenv('ENSTORE_CONFIG_HOST', default='localhost')
 
 def default_port():
-    return getenv('ENSTORE_CONFIG_PORT', default='7500')
+    return string.atoi(getenv('ENSTORE_CONFIG_PORT', default='7500'))
 
 def default_file():
     return "/pnfs/enstore/.(config)(flags)/enstore.conf"
