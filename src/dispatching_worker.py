@@ -17,7 +17,6 @@ import sys
 import socket
 
 #enstore imports
-
 import cleanUDP
 import timeofday
 import Trace
@@ -310,6 +309,10 @@ class DispatchingWorker:
         Trace.trace(10,"{quit address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
+        try:
+            self.enprint("QUITTING... via os_exit python call")
+        except:
+            generic_cs.enprint("QUITTING-e... via os_exit python call")
         self.reply_to_caller(ticket)
         os._exit(0)
 
