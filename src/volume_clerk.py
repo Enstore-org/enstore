@@ -1205,7 +1205,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # at quota?
                 if dq == 1:
                    msg = "(%s, %s) has reached its quota limit (%d/%d)"%(library, storage_group, vol_count+1, quota)
-                   Trace.alarm(e_errors.WARNING, 'REACH QUOTA LIMIT', msg)
+                   Trace.alarm(e_errors.WARNING, 'QUOTA LIMIT REACHED', msg)
                 elif dq < 3 or dq < (quota * 0.05):
                    msg = "(%s, %s) is approaching its quota limit (%d/%d)"%(library, storage_group, vol_count+1, quota)
                    Trace.alarm(e_errors.WARNING, 'APPROACHING QUOTA LIMIT', msg)
