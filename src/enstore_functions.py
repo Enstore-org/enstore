@@ -1,4 +1,5 @@
 import time
+import string
 
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
