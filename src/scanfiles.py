@@ -29,10 +29,15 @@ def layer_file(f, n):
     return os.path.join(p, '.(use)(%d)(%s)'%(n, ff))
 
 def check(f):
+    f_orig = f
     msg = []
     warn = []
+    if not os.access(f, os.F_OK):
+        return ['non-existent'], []
     if not os.access(f, os.R_OK):
-        return ['no read permission'], []
+        f = pnfs.get_local_pnfs_path(f)
+        if not os.access(f, os.R_OK):
+            return ['no read permission'], []
     try:
         pf = pnfs.File(f)
     except:
@@ -55,7 +60,8 @@ def check(f):
                 msg.append('not in db')
                 return msg, warn
             if fr.has_key('pnfs_name0'):
-                if pf.path != fr['pnfs_name0']:
+                if pf.path != fr['pnfs_name0'] and \
+                   pf.path != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
                     msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
             else:
                 msg.append('unknown file')
@@ -125,17 +131,16 @@ def check(f):
         msg.append('no or corrupted drive')
     # path
     try:
-        if pf.path != fr['pnfs_name0']:
-            p1 = string.split(pf.path, '/')
-            p2 = string.split(fr['pnfs_name0'], '/')
-            if p1[-1] != p2[-1] or p1[1:4] != p2[1:4]:
-                warn.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
+        if pf.path != fr['pnfs_name0'] and \
+           pf.path != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
+            warn.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
     except:
         msg.append('no or corrupted pnfs_path')
 
     # path2
     try:
-        if pf.path != pf.p_path:
+        if pf.path != pf.p_path and \
+           pf.path != pnfs.get_local_pnfs_path(pf.p_path):
             warn.append('path(%s, %s)'%(pf.path, pf.p_path))
     except:
         msg.append('no or corrupted l4_pnfs_path')
