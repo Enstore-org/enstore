@@ -133,7 +133,7 @@ def wait_rsp( sock, address, rcv_timeout ):
 
     # something there - read it and see if we have response that
     # matches the number we sent out
-    if r:
+    elif r:
 	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
 	if badsock != 0:
 	    Trace.trace( 0,"send pre recv"+repr(errno.errorcode[badsock]) )
@@ -175,14 +175,15 @@ class UDPClient:
         Trace.trace(10,'__del__ udpclient')
 
     # this (generally) is received/processed by dispatching worker
-    def send( self, text, address, rcv_timeout=0 ):
-        Trace.trace( 20, 'send add='+repr(address)+' text='+repr(text) )
+    def send( self, text, address, rcv_timeout=0, tries=0):
+        Trace.trace( 20, 'send add='+repr(address)+' text='+repr(text)+
+                     ' tmo='+repr(rcv_timeout)+' tries='+repr(tries))
 
 	if rcv_timeout:
-	    once=1
+            if tries==0:
+                tries = 1      # if timeout!=0 and tries=0, then try just once
 	else:
-	    once = 0
-	    rcv_timeout = 10		# default
+	    rcv_timeout = 10   # default timeout - also no adjusting of tries
 
         # make a new message number - response needs to match this number
         self.number = self.number + 1
@@ -203,9 +204,11 @@ class UDPClient:
 
         # send the udp message until we get a response that it was sent
         number = 0  # impossible number
+        ntries = 0  
         while number != self.number:
 	    send_socket( self.socket, message, address )
-
+            ntries = ntries+1
+            
             # check for a response
 	    reply , server = wait_rsp( self.socket, address, rcv_timeout )
 
@@ -234,8 +237,11 @@ class UDPClient:
 		    print "UDPClient.send: stale_number=",number, "number=", \
 			  self.number,"resending to ", address, message
 
-	    elif once: # no reply and once
+	    elif tries!=0 and ntries>=tries:  # no reply after requested tries
+                Trace.trace(0,"send quiting,no reply after tries="+repr(ntries))
 		raise errno.errorcode[errno.ETIMEDOUT]
+            else:
+                Trace.trace(0,"send no reply after tries="+repr(ntries))
 
 	Trace.trace(20,"}send "+repr(out))
         return out
