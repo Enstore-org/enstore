@@ -1221,7 +1221,7 @@ class EnPlotPage(EnBaseHtmlDoc):
         for file_label in PLOT_INFO:
             if string.find(text, file_label[0]) == 0:
 		# this is a match
-		if file_label[0] = enstore_constants.UTIL_FILE:
+		if file_label[0] == enstore_constants.UTIL_FILE:
 		    # fix up the label
 		    type = string.split(text, "_", 1)
 		    return "%s %s"%(type[0], file_label[1])
