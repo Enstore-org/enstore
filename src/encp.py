@@ -5725,6 +5725,11 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
         requests_per_vol[label] = requests_per_vol.get(label,[]) + [request]
         nfiles = nfiles+1
+
+        #When output is redirected to a file, sometimes it needs a push
+        # to get there.
+        sys.stdout.flush()
+        sys.stderr.flush()
     
     #print time.ctime(time.time())
     return requests_per_vol
