@@ -1,54 +1,12 @@
 #!/bin/sh 
 set -u  
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-testToDo=""
-if [ "${1:-q}" != "q" ] ; then testToDo=${1}; fi
+# if we are on stken, then we could be testing one of the following dcaches -
+# fndca, lqcd, cms
+dcacheToTest=""
+if [ "${1:-q}" != "q" ] ; then dcacheToTest=${1}; fi
 
 # bin/$RCSfile$  $Revision$
-
-# useful functions
-raise_alarm() {
-    msg=$1
-    item_to_override=$2
-    error_code=$3
-    echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail -s "pageDcache error on $item_to_override" enstore-admin@fnal.gov
-    (setup enstore;enstore alarm --raise --severity "A" --root-error "$msg")
-    (setup enstore;enstore sched --override $item_to_override --saagstatus red --time="$msg")
-    # do not turn the ball red any more ...
-    #enstore sched --override enstore    --saagstatus red --time="$msg"
-    exit $error_code
-}
-
-transfer_setup() {
-    file=$1
-    error_code=$2
-    try=0
-    maxtry=3
-    delay=30
-    stat=1
-    rm -f $1
-    touch $1
-    if [ $? -ne 0 ]; then echo `date` ERROR: Can not touch $write_in_progress; exit $2; fi
-}
-
-do_transfer() {
-    xfer=$1
-    xfer_file=$2
-    progress_file=$3
-    while [ $stat -ne 0 -a $try -lt $maxtry ]; do
-	try=`expr $try + 1`
-	rm -f $xfer_file
-	echo `date` Try $try of $maxtry: $xfer
-	                                 $xfer
-	stat=$?
-	if [ $stat -eq 0 ]; then 
-	    rm -f $progress_file
-	else
-	    echo `date` sleep $delay
-	                sleep $delay
-	fi
-    done
-}
 
 get_ticket() {
 # Use Eileen's enrsh method to get a ticket
@@ -66,175 +24,38 @@ get_ticket() {
 # ${krbdir}/klist -fea
 }
 
-
-
-#######################################################################
-
-dccp_test() {
-# dccp write
-    transfer_setup $write_in_progress 7
-    do_transfer "dccp $test_file $w" $w $write_in_progress
- 
-    if [ -r $write_in_progress ]; then
-	raise_alarm "$dcache dcache write failed." $dcache_saag 6
-    fi
-
-# dccp readback
-
-    transfer_setup $read_in_progress 5
-    do_transfer "dccp $w $read_back" $read_back $read_in_progress
-
-    if [ -r $read_in_progress ]; then
-	raise_alarm "$dcache dcache read failed" $dcache_saag 4
-    fi
-
-# file comparison
-
-    cmp $test_file $read_back
-    if [ $? -ne 0 ]; then
-	raise_alarm "$dcache dcache cmp failed" $dcache_saag 3
-    fi
+rm_tmp_files() {
+    rm -f $output_dccp
+    rm -f exit_code_dccp
+    rm -f $output_kftp
+    rm -f exit_code_kftp
+    rm -f $output_ftp
+    rm -f $exit_code_ftp
 }
-#######################################################################
 
-kftp_test() {
-# kftp passive write
-    transfer_setup $write_in_progress 7
-    # we need to strip off the pnfs dir from $wp
-    wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -m -p -v $test_file enstore@$dcache:$wp1" $wp $write_in_progress
-
-    if [ -r $write_in_progress ]; then
-	raise_alarm "$dcache dcache passive kftp write failed." $dcache_saag 6
-    fi
-
-# kftp passive readback
-    transfer_setup $read_in_progress 5
-    # we need to strip off the pnfs dir from $wp
-    wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -m -p -v enstore@$dcache:$wp1 $read_back" $read_back $read_in_progress
-
-    if [ -r $read_in_progress ]; then
-	raise_alarm "$dcache dcache passive kftp read failed" $dcache_saag 4
-    fi
-
-# kftp passive readback file comparison
-    cmp $test_file $read_back
-    if [ $? -ne 0 ]; then
-	raise_alarm "$dcache dcache passive kftp cmp failed" $dcache_saag 3
-    fi
-
-# kftp active write
-    transfer_setup $write_in_progress 7
-    # we need to strip off the pnfs dir from $wa
-    wa1=`echo $wa|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -v $test_file enstore@$dcache:$wa1" $wa $write_in_progress
- 
-    if [ -r $write_in_progress ]; then
-	raise_alarm "$dcache dcache write failed." $dcache_saag 6
-    fi
-
-# kftp active readback
-    transfer_setup $read_in_progress 5
-    # we need to strip off the pnfs dir from $wa
-    wa1=`echo $wa|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -v enstore@$dcache:$wa1 $read_back" $read_back $read_in_progress
-
-    if [ -r $read_in_progress ]; then
-	raise_alarm "$dcache dcache read failed" $dcache_saag 4
-    fi
-
-# kftp active readback file comparison
-
-    cmp $test_file $read_back
-    if [ $? -ne 0 ]; then
-	raise_alarm "$dcache dcache kftp active cmp failed" $dcache_saag 3
-    fi
-}
-#######################################################################
-
-ftp_test() {
-    ftp_file=`echo $1|sed -e "s%${strip_dir}%%"`
-# ftp readback
-    transfer_setup $read_in_progress 5
-
-    while [ $stat -ne 0 -a $try -lt $maxtry ]; do
-	try=`expr $try + 1`
-	rm -f $read_back
-	echo `date` Try $try of $maxtry: anonymous ftp read of $ftp_file
-	python -c '
-from ftplib import FTP
-import sys
-ftp=FTP()
-ftp.connect("'$dcache'",'$weak_port')
-ftp.login("enstore-test","anon-read")
-print ftp.retrbinary("RETR '$ftp_file'", open("'$read_back'", "wb").write)
-ftp.quit()
-'
-	stat=$?
-	if [ $stat -eq 0 ]; then 
-	    rm -f $read_in_progress
-	else
-	    echo `date` sleep $delay
-		        sleep $delay
-	fi
-    done
-
-    if [ -r $read_in_progress ]; then
-	raise_alarm "$dcache dcache ftp read failed" $dcache_saag 4
-    fi
-
-# ftp readback file comparison
-
-    cmp $test_file $read_back
-    if [ $? -ne 0 ]; then
-	raise_alarm "$dcache dcache ftp cmp failed" $dcache_saag 3
+echo_output() {
+    echo "=================== output from $1 ======================="
+    if [ -e $1 ];
+    then
+	cat $1
     fi
 }
 
-#######################################################################
-#######################################################################
+check_exit_code() {
+    if [ $ec = 0 -a -e $1 ];
+    then
+	ec=`cat $1`
+    fi
+}
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-gang=`gang`
+# assume success exit code
+ec=0
 
 # N will have a leading 0 (if < 100) unless we pipe it to sed.
 N=`date +"%j"|sed -e 's%^0%%'` #day of year
 N1=`expr $N - 1`
 
-
-case $gang in
-  stken) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
-	 wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
-         wa=/pnfs/eagle/dcache-tests/$N.dcache_page_a_$$
-         l=/pnfs/eagle/dcache-tests/$N1
-	 strip_dir="/pnfs/eagle"
-         dcache=fndca
-	 dcache_saag="dcache_stk"
-          ;;
-  cdfen) w=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_$$
-         wp=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_p_$$
-         wa=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_a_$$
-         l=/pnfs/cdfen/jon/fcdfsgi2/$N1
-	 strip_dir="/pnfs/cdfen"
-         dcache=cdfdca
-	 dcache_saag="dcache_cdf"
-          ;;
-  d0en)  w=/pnfs/archive/dcache-tests/$N.dcache_page_$$
-         wp=/pnfs/archive/dcache-tests/$N.dcache_page_p_$$
-         wa=/pnfs/archive/dcache-tests/$N.dcache_page_a_$$
-         l=/pnfs/archive/dcache-tests/$N1
-	 strip_dir="/pnfs"
-         dcache=d0dca
-	 dcache_saag="dcache_d0"
-          ;;
-       *) namespace="UNKNOWN"
-          echo `date` UNKNOWN gang
-	  exit 1
-          ;;
-esac
-
-# get the dcache node and ftp/kftp ports
+# get the ftp/kftp ports
 tmp_file=/tmp/dCacheSetup
 enrcp $dcache:~enstore/dcache-deploy/config/dCacheSetup $tmp_file
 set +u;. $tmp_file;set -u
@@ -242,103 +63,118 @@ rm $tmp_file
 strong_port=$kerberosFtpPort
 weak_port=$ftpPort
 
-read_back=/tmp/dcache_page_read_back_$$
-rm -f $read_back
-
 test_file=/tmp/dcache_page_file_$$
 rm -f $test_file
 cp /var/log/messages $test_file
 if [ $? != 0 ]; then echo `date` ERROR: can not cp /var/log/messages; exit 2; fi
 
-write_in_progress=/tmp/dcache_page_write_in_progress_$$
-read_in_progress=/tmp/dcache_page_read_in_progress_$$
+output_dccp=/tmp/dcache_page_output_dccp_$$
+exit_code_dccp=/tmp/dcache_page_exit_code_dccp_$$
+output_kftp=/tmp/dcache_page_output_kftp_$$
+exit_code_kftp=/tmp/dcache_page_exit_code_kftp_$$
+output_ftp=/tmp/dcache_page_output_ftp_$$
+exit_code_ftp=/tmp/dcache_page_exit_code_ftp_$$
+rm_tmp_files
 
-# set up any necessary products
-source /usr/local/etc/setups.sh
-if [ $? -gt 0 ]; then
-    echo `date` ERROR: unable to source /usr/local/etc/setups.sh.
-    exit 9
-fi
-if [ -z "${KFTP_DIR:-}" ]; then
-    setup kftp
-    if [ $? -gt 0 ]; then
-        echo `date` ERROR: unable to setup kftp.
-	exit 8
-    fi
-fi
-if [ -z "${GSSPY_GSI_DIR:-}" ]; then
-    setup gsspy_gsi
-    if [ $? -gt 0 ]; then
-	echo `date` ERROR: unable to setup gsspy_gsi.
-	exit 8
-    fi
-fi
-if [ -z "${GSSPY_KRB_DIR:-}" ]; then
-    setup gsspy_krb
-    if [ $? -gt 0 ]; then
-	echo `date` ERROR: unable to setup gsspy_krb.
-	exit 8
-    fi
-fi
-if [ -z "${DCAP_DIR:-}" ]; then
-    setup dcap
-    if [ $? -gt 0 ]; then
-	echo `date` ERROR: unable to setup dcap.
-	exit 8
-    fi
-fi
-
-# always setup python to make sure we get the correct version.
-setup python
-if [ $? -gt 0 ]; then
-    echo `date` ERROR: unable to setup python.
-    exit 8
-fi
-
-
+gang=`gang`
 case $gang in
-    cdfen)	
-	if [ "$testToDo" != "" ];
-	then
-	    $testToDo $wa
-	else
-	    get_ticket
-	    dccp_test
-	    kftp_test
-	    ftp_test $wa
-	fi
-	# make sure the ball is ok
-	enstore sched --nooverride $dcache_saag
-	;;
-    d0en)
-	if [ "$testToDo" != "" ];
-	then
-	    $testToDo $wa
-	else
-	    get_ticket
-	    dccp_test
-	    kftp_test
-	    ftp_test $wa
-	fi
-	;;
-    stken)
-	if [ "$testToDo" != "" ];
-	then
-	    $testToDo $wa
-	else
-	    get_ticket
-	    dccp_test
-	    kftp_test
-	    ftp_test $wa
-	fi
-	;;
+  stken) case $dcacheToTest in
+	      cms) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
+		   wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
+		   wa=/pnfs/eagle/dcache-tests/$N.dcache_page_a_$$
+		   strip_dir="/pnfs/eagle"
+		   dcache=cmsdca
+		   dcache_saag="dcache_cms"
+		   get_ticket
+		   `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		   `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
+		   `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		   ;;
+	     lqcd) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
+		   wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
+		   wa=/pnfs/eagle/dcache-tests/$N.dcache_page_a_$$
+		   strip_dir="/pnfs/eagle"
+		   dcache=lqcd-cache
+		   dcache_saag="dcache_lqcd"
+		   get_ticket
+		   `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		   `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
+		   `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		   ;;
+	    fndca) 
+	        *) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
+		   wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
+		   wa=/pnfs/eagle/dcache-tests/$N.dcache_page_a_$$
+		   strip_dir="/pnfs/eagle"
+		   dcache=fndca
+		   dcache_saag="dcache_stk"
+		   get_ticket
+		   `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		   `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
+		   `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		   ;;
+	 esac
+	 ;;
+  cdfen) case $dcacheToTest in
+	      cdfen)
+	          *) w=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_$$
+		     wp=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_p_$$
+		     wa=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_a_$$
+		     strip_dir="/pnfs/cdfen"
+		     dcache=cdfdca
+		     dcache_saag="dcache_cdf"
+		     get_ticket
+		     `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		     `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
+		     `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		     ;;
+	 esac
+	 ;;
+  d0en)  case $dcacheToTest in
+	      d0en)
+		 *) w=/pnfs/archive/dcache-tests/$N.dcache_page_$$
+		    wp=/pnfs/archive/dcache-tests/$N.dcache_page_p_$$
+		    wa=/pnfs/archive/dcache-tests/$N.dcache_page_a_$$
+		    strip_dir="/pnfs"
+		    dcache=d0dca
+		    dcache_saag="dcache_d0"
+		    get_ticket
+		    `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		    `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
+		    `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		    ;;
+	 esac
+         ;;
+     *) namespace="UNKNOWN"
+        echo `date` UNKNOWN gang
+	exit 1
+        ;;
 esac
 
-#clean up of old junk
-echo cleanup: rm -f ${l}*
-              rm -f ${l}*
-echo cleanup: rm -f $test_file $read_back $write_in_progress $read_in_progress
-              rm -f $test_file $read_back $write_in_progress $read_in_progress
+# we have spawned off all tests to run in parallel,
+# wait for all of our children to completed.
+# jobs -p returns a list of pids that are space separated
+wait `jobs -p`
 
+# all the children have finished, echo anything they said.
+echo_output $output_dccp
+echo_output $output_kftp
+echo_output $output_ftp
+
+# and check their exit codes
+check_exit_code $exit_code_dccp
+check_exit_code $exit_code_kftp
+check_exit_code $exit_code_ftp
+
+# we are done, do any cleanup
+rm_tmp_files
+
+case $gang in
+    cdfen)
+	   # make sure the ball is ok
+	   enstore sched --nooverride $dcache_saag
+	   ;;
+esac
+		     
 echo `date` Finished.
-exit 0
+exit $ec
