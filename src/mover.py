@@ -56,6 +56,7 @@ import udp_client			# -'
 import callback
 import cpio
 import Trace
+import driver
 
 class Mover:
 
@@ -123,7 +124,7 @@ class Mover:
 
         # now invoke the driver, which has the form:
         #       __init__(self, device, eod_cookie, remaining_bytes):
-        self.driver = eval(self.driver_name + "('" +\
+        self.driver = eval("driver."+self.driver_name + "('" +\
                            self.device + "','" +\
                            self.vticket["eod_cookie"] + "'," +\
                            repr(self.vticket["remaining_bytes"]) + ")")
