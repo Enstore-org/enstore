@@ -193,6 +193,12 @@ ALLOW_BASE="
        LISTEN,inetd,:klogin,TCP,x
        LISTEN,inetd,:eklogin,TCP,x
        LISTEN,inetd,:netperf,TCP,x
+       LISTEN,xinetd,:ftp,TCP,x
+       LISTEN,xinetd,:telnet,TCP,x
+       LISTEN,xinetd,:kshell,TCP,x
+       LISTEN,xinetd,:klogin,TCP,x
+       LISTEN,xinetd,:eklogin,TCP,x
+       LISTEN,xinetd,:netperf,TCP,x
        LISTEN,python,:,TCP,/home/enstore/enstore/bin|/home/enstore/enstore/src|/home/petravic/Zope|inquisitor|ftpcp.py
        LISTEN,dccp,:,TCP,x
        LISTEN,netserver,:,TCP,x
