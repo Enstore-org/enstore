@@ -6,9 +6,9 @@ import time
 import pprint
 
 def formatedf(file):
-	bfid = file.get('bfid', None)
-	complete_crc = file.get('complete_crc', 0)
-	if complete_crc == None:
+	bfid = file.get('bfid', '')
+	complete_crc = file.get('complete_crc', -1)
+	if complete_crc == None or complete_crc == 'none':
 		complete_crc = -1 
 	deleted = 'u'
 	if file.has_key('deleted'):
@@ -16,13 +16,13 @@ def formatedf(file):
 			deleted = 'n'
 		elif file ['deleted'] == 'yes':
 			deleted = 'y'
-	drive = file.get('drive', None)
-	external_label = file.get('external_label', None)
-	location_cookie = file.get('location_cookie', None)
-	if len(location_cookie) > 24:
-		return None
-	pnfs_name0 = file.get('pnfs_name0', None)
-	pnfsid = file.get('pnfsid', None)
+	drive = file.get('drive', '')
+	external_label = file.get('external_label', '')
+	location_cookie = file.get('location_cookie', '')
+	# if len(location_cookie) > 24:
+	#	return None
+	pnfs_name0 = file.get('pnfs_name0', '')
+	pnfsid = file.get('pnfsid', '')
 	sanity_cookie_0 = file.get('sanity_cookie', (None, None))[0]
 	sanity_cookie_1 = file.get('sanity_cookie', (None, None))[1]
 	if sanity_cookie_0 == None:
