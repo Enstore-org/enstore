@@ -76,6 +76,7 @@ VOLUME_CLERK = "volume_clerk"
 INQUISITOR = "inquisitor"
 CONFIG_SERVER = "config_server"  # included for use by inquisitor
 WWW_SERVER = "www_server"
+RATEKEEPER = "ratekeeper"
 
 SERVER_NAMES = {LOGS : LOG_SERVER,
 		ALARMS : ALARM_SERVER,

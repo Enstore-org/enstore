@@ -17,6 +17,7 @@ import timeofday
 import udp_client
 import enstore_functions
 import enstore_constants
+import monitored_server
 
 
 MY_NAME = "Ratekeeper"
@@ -49,7 +50,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                  generic_server.GenericServer):
     interval = 15
     resubscribe_interval = 10*60 
-    def __init__(self, ratekeeper_addr, event_relay_addr, filename_base,
+    def __init__(self, csc, ratekeeper_addr, event_relay_addr, filename_base,
                  output_dir='/tmp/RATES'):
         self.event_relay_addr = event_relay_addr
         self.filename_base = filename_base
@@ -64,7 +65,14 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         self.subscribe_time = 0
         self.mover_msg = {} #key is mover, value is last (num, denom)
 
+        generic_server.GenericServer.__init__(self, csc, MY_NAME)
         dispatching_worker.DispatchingWorker.__init__(self, ratekeeper_addr)
+
+        self.alive_interval = monitored_server.get_alive_interval(self.csc,
+                                                                  MY_NAME)
+                                                                  #keys)
+        self.erc.start_heartbeat(enstore_constants.RATEKEEPER, 
+                                 self.alive_interval)
         
     def subscribe(self):
         self.sock.sendto("notify %s %s" % (self.addr),
@@ -271,7 +279,8 @@ if __name__ == "__main__":
 
     print "Connecting to host %s on port %s." % \
           (event_relay_host, event_relay_port)
-    rk = Ratekeeper((ratekeeper_host, ratekeeper_port),
+    rk = Ratekeeper(csc,
+                    (ratekeeper_host, ratekeeper_port),
                     (event_relay_host, event_relay_port),
                     filename_base, ratekeeper_dir)
 
