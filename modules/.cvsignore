@@ -25,3 +25,4 @@ aci_shadow.py
 derrno_wrap.c
 adler32_wrap.c
 checksum_wrap.c
+tape_copy
