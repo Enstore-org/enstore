@@ -78,8 +78,9 @@ def check(f):
     if id != pf.pnfs_id or id != fr['pnfsid']:
         msg.append('pnfsid(%s, %s, %s)'%(pf.pnfs_id, id, fr['pnfsid']))
     # drive
-    if pf.drive != fr['drive']:
-        msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
+    if fr.has_key('drive'):	# some do not have this field
+        if pf.drive != fr['drive']:
+            msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
     # path
     if pf.path != fr['pnfs_name0']:
         p1 = string.split(pf.path, '/')
