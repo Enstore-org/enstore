@@ -48,15 +48,11 @@ def collect_children():
     try:
         pid, status = os.waitpid(0, os.WNOHANG)
         if (pid!=0):
-            #Trace.trace(13,"Child reaped: pid= "+repr(pid)+" status= "+\
-	    #                    repr(status))
             count = count+1
-            Trace.trace(21,"collect_children reaped pid="+repr(pid)+' '+repr(status))
     except os.error, msg:
         if msg.errno != errno.ECHILD:
             Trace.trace(6,"collect_children %s"%(msg,))
             raise os.error, msg
-    Trace.trace(20,"collect_children count=%s"%(count,))
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -153,7 +149,6 @@ class DispatchingWorker:
 
         f = self.server_fds + [self.socket]
         r, w, x = cleanUDP.Select(f,[],f, self.rcv_timeout)
-        Trace.trace(20,'get_request select r=%s'%(r,))
         
         if r:
             # if input is ready from server process pipe, handle it first
