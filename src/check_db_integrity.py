@@ -14,6 +14,7 @@ import pnfs
 import bfid_db
 import pprint
 import volume_family
+import traceback
 
 opts_permitted = ['interactive', 'fix_file_db', 'fix_bfid_db',
                   'fix_all','scan_pnfs', 'fix_pnfs','fix_volmap','vol=']
@@ -226,8 +227,8 @@ class DBChecker:
             if len(layer1) != 1:
                 print "wrong layer 1 length(%s) for %s. Must be 1" % (len(layer1),file['pnfs_name0'])
                 print "layer 1 entires"
-                pprint.pprint(layer1)
-                bad_pnfs_layers.append(1)
+                pprintf.pprint(layer1)
+                bad_layer = 1
 
             l1_bfid = layer1[0]
             if file['bfid'] != l1_bfid:
