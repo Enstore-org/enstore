@@ -64,6 +64,14 @@ def do_work():
 	    rtn = get_remote_file(node, file, NEWFILE)
 	if rtn == 0:
 	    exec("import %s\nstatus_d[node] = %s.status\n"%(NEWFILE, NEWFILE))
+	else:
+	    # there was an error, mark enstore as down
+	    status_d[node] = [enstore_constants.DOWN,
+			      enstore_functions.format_time(time.time()),
+			      enstore_constants.NONE,
+			      enstore_constants.NONE,
+			      enstore_constants.NONE,
+			      enstore_constants.NONE]
 
     # now create the web page
     filename = "%s/%s"%(html_dir, enstore_constants.STATUSONLYHTMLFILE)

@@ -2669,9 +2669,10 @@ class EnStatusOnlyPage(EnSaagPage):
 	    outage_d = {}
 	else:
 	    outage_d = {enstore_constants.ENSTORE : outage}
-	enstat_d = {enstore_constants.ENSTORE : status,
-		    enstore_constants.URL : "%s/enstore/%s"%(web_address,
-							     enstore_constants.SAAGHTMLFILE)}
+	enstat_d = {enstore_constants.ENSTORE : status}
+	if not web_address == enstore_constants.NONE:
+	    enstat_d[enstore_constants.URL] = "%s/enstore/%s"%(web_address,
+							       enstore_constants.SAAGHTMLFILE)
 	if not self.check_for_red(enstat_d, table, 0):
 	    tr = HTMLgen.TR(empty_data())
 	    self.add_to_row(tr, enstore_constants.ENSTORE, enstat_d, outage_d, offline_d,
@@ -2679,10 +2680,10 @@ class EnStatusOnlyPage(EnSaagPage):
 	    table.append(tr)
 	else:
 	    # enstore ball is red need to identify it better on the page as to which one
-	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(enstat_d[enstore_constants.URL],
-							    HTMLgen.Font(txt, size="+2", 
-									 color=BRICKRED)),
-					       colspan=4, align="center")))
+	    txt = HTMLgen.Font(txt, size="+2", color=BRICKRED)
+	    if enstat_d.has_key(enstore_constants.URL):
+		txt = HTMLgen.Href(enstat_d[enstore_constants.URL], txt)
+	    table.append(HTMLgen.TR(HTMLgen.TD(txt, colspan=4, align="center")))
 
     def body(self, status_d, txt_d):
 	# create the outer table and its rows
