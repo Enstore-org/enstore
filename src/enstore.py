@@ -63,6 +63,8 @@ server_interfaces = {
                  monitor_client.do_work],
     "mover" : [mover_client.MoverClientInterface,
                mover_client.do_work],
+    "pnfs":[pnfs.PnfsInterface,
+            pnfs.do_work],
     "up_down" : [enstore_up_down.UpDownInterface,
                  enstore_up_down.do_work],
     "system" : [enstore_saag.SaagInterface,

@@ -412,7 +412,7 @@ class Interface(option.Interface):
 		self.all = 0
 		self.restore_all = 0
 		self.nocheck = 0
-		option.Interface.__init__(self, args, user_mode)
+		option.Interface.__init__(self, args=args, user_mode=user_mode)
 
 	def valid_dictionaries(self):
 	    return (self.config_options, self.dbs_options)

@@ -1037,7 +1037,7 @@ class PnfsInterface(option.Interface):
         #self.restore = 0
         #These my be used, they may not.
         #self.duplicate_file = None
-        option.Interface.__init__(self, args, user_mode)
+        option.Interface.__init__(self, args=args, user_mode=user_mode)
 
     pnfs_user_options = {
         option.BFID:{option.HELP_STRING:"lists the bit file id for file",
