@@ -96,7 +96,7 @@ Like <em>tcp</em>, the system is architected with distributed and
 peer-to-peer reliability.
 Each request originating from the <em>encp</em> program is branded
 with a unique ID.
-<em>encp</em> retries under well-defined circumstances, issuing
+<em>Encp</em> retries under well-defined circumstances, issuing
 an equivalent request with a new unique ID.
 The system can instruct <em>encp</em> to re-try if it needs to back out
 of an operation.
@@ -108,7 +108,7 @@ The DESY <a href=http://mufasa.desy.de/pnfs/Welcome.html><em>pnfs</em>
 (http://mufasa.desy.de/pnfs/Welcome.html) </a>package implements an <em>nfs</em> daemon and
 mount daemon.
 These daemons do not actually serve a file system, but, instead make a
-collection of database entries <em>look like</em> a file system,
+collection of database entries looks like a file system,
 and provide control information for the system.
 <p>
 To inspect files, users mount their portion of the <em>pnfs</em> file
@@ -118,7 +118,9 @@ For example, users can <em>ls</em>, <em>stat</em>,
 <em>mv</em>, <em>rm</em> or <em>touch</em> existing "files",
 but are given errors on attempts to read
 or write the content of the files.
-Users can also <em>mkdir</em> and <em>rmdir</em>, and <em>ln</em> files.
+Users can also <em>mkdir</em> and <em>rmdir</em>, and <em>ln</em> files. [Some
+special files can also contain data that administrators can write to and users
+can read from, so in that sense pnfs also provides normal files as well.]
 <p>
 Normal UNIX permissions and administered export points
 are used to prevent unauthorized access to the name space.
