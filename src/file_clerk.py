@@ -23,7 +23,6 @@ import event_relay_client
 import monitored_server
 import enstore_constants
 import db
-import bfid_db
 import Trace
 import e_errors
 import configuration_client
@@ -38,7 +37,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def __init__(self, csc):
         dispatching_worker.DispatchingWorker.__init__(self, csc)
         self.dict = None
-        self.bfid_db = None
         return
 
     # set_brand(brand) -- set brand
@@ -953,11 +951,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 bfids.append(pkey)
                 key, pkey = c.nextDup()
             c.close()
-        else:  # use bfid_db
-            try:
-                bfids = self.bfid_db.get_all_bfids(external_label)
-            except:
-                bfids = None
+        else:    # This is an error
+            Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
         return bfids
 
     def tape_list(self,ticket):
@@ -982,9 +977,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
         callback.write_tcp_obj(self.data_socket,ticket)
 
-        # if index is available, use index, otherwise use bfid_db to be
-        # backward compatible
-
         vol = {}
         if self.dict.inx.has_key('external_label'):  # use index
             # now get a cursor so we can loop on the database quickly:
@@ -1004,26 +996,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 vol[pkey] = value
                 key,pkey = c.nextDup()
             c.close()
-        else:  # use bfid_db
-            try:
-                bfid_list = self.bfid_db.get_all_bfids(external_label)
-            except:
-                msg = "File Clerk: no entry for volume %s" % external_label
-                ticket["status"] = (e_errors.KEYERROR, msg)
-                Trace.log(e_errors.ERROR, msg)
-                bfid_list = []
-            for bfid in bfid_list:
-                value = self.dict[bfid]
-                if value.has_key('deleted'):
-                    if value['deleted']=="yes":
-                        deleted = "deleted"
-                    else:
-                        deleted = " active"
-                else:
-                    deleted = "unknown"
-                if not value.has_key('pnfs_name0'):
-                     value['pnfs_name0'] = "unknown"
-                vol[bfid] = value
+        else:    # This is an error
+            Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
 
         # finishing up
 
@@ -1057,9 +1031,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         msg="     label            bfid       size        location_cookie delflag original_name\n"
         callback.write_tcp_raw(self.data_socket, msg)
 
-        # if index is available, use index, otherwise use bfid_db to be
-        # backward compatible
-
         if self.dict.inx.has_key('external_label'):  # use index
             # now get a cursor so we can loop on the database quickly:
             c = self.dict.inx['external_label'].cursor()
@@ -1081,29 +1052,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 callback.write_tcp_raw(self.data_socket, msg)
                 key,pkey = c.nextDup()
             c.close()
-        else:  # use bfid_db
-            try:
-                bfid_list = self.bfid_db.get_all_bfids(external_label)
-            except:
-                msg = "File Clerk: no entry for volume %s" % external_label
-                ticket["status"] = (e_errors.KEYERROR, msg)
-                Trace.log(e_errors.ERROR, msg)
-                bfid_list = []
-            for bfid in bfid_list:
-                value = self.dict[bfid]
-                if value.has_key('deleted'):
-                    if value['deleted']=="yes":
-                        deleted = "deleted"
-                    else:
-                        deleted = " active"
-                else:
-                    deleted = "unknown"
-                if not value.has_key('pnfs_name0'):
-                     value['pnfs_name0'] = "unknown"
-                msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
-                                                      value['size'],value['location_cookie'],
-                                                      deleted,value['pnfs_name0'])
-                callback.write_tcp_raw(self.data_socket, msg)
+        else:    # This is an error
+            Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
 
         # finishing up
 
@@ -1136,9 +1086,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
         callback.write_tcp_obj(self.data_socket,ticket)
 
-        # if index is available, use index, otherwise use bfid_db to be
-        # backward compatible
-
         alist = []
         if self.dict.inx.has_key('external_label'):  # use index
             # now get a cursor so we can loop on the database quickly:
@@ -1151,19 +1098,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                         alist.append(value['pnfs_name0'])
                 key,pkey = c.nextDup()
             c.close()
-        else:  # use bfid_db
-            try:
-                bfid_list = self.bfid_db.get_all_bfids(external_label)
-            except:
-                msg = "File Clerk: no entry for volume %s" % external_label
-                ticket["status"] = (e_errors.KEYERROR, msg)
-                Trace.log(e_errors.ERROR, msg)
-                bfid_list = []
-            for bfid in bfid_list:
-                value = self.dict[bfid]
-                if not value.has_key('deleted') or value['deleted'] != "yes":
-                    if value.has_key('pnfs_name0'):
-                        alist.append(value['pnfs_name0'])
+        else:    # This is an error
+            Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
 
         # finishing up
 
@@ -1399,7 +1335,6 @@ if __name__ == "__main__":
     else:
         print "open with no index"
         fc.dict = db.DbTable("file", dbHome, jouHome) 
-    fc.bfid_db = bfid_db.BfidDb(dbHome)
     Trace.log(e_errors.INFO,"hurrah, file database is open")
     
     while 1:
