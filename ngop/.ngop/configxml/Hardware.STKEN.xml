@@ -1,0 +1,20 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+   <SystemView ID="Hardware.STK">
+      <System ID="Hardware" Cluster="stkensrv0"/>
+      <System ID="Hardware" Cluster="stkensrv1"/>
+      <System ID="Hardware" Cluster="stkensrv2"/>
+      <System ID="Hardware" Cluster="stkensrv3"/>
+      <System ID="Hardware" Cluster="stkensrv4"/>
+      <System ID="Hardware" Cluster="stkenmvr1a"/>
+      <System ID="Hardware" Cluster="stkenmvr2a"/>
+      <System ID="Hardware" Cluster="stkenmvr3a"/>
+      <System ID="Hardware" Cluster="stkenmvr4a"/>
+      <System ID="Hardware" Cluster="stkenmvr5a"/>
+      <System ID="Hardware" Cluster="stkenmvr6a"/>
+      <System ID="Hardware" Cluster="rip9"/>
+      <System ID="Hardware" Cluster="rip10"/>
+   </SystemView>
+</NGOPConfig>
+
