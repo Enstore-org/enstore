@@ -153,7 +153,7 @@ def check_volume(vol):
 			bfile['pnfsid'] = ''
 		if not bfile.has_key('deleted'):
 			bfile['deleted'] = 'unknown'
-		bfile['sanity_cookie'] = (long(bfile['sanity_cookie'][0]), long(bfile['sanity_cookie'][1]))
+		# bfile['sanity_cookie'] = (long(bfile['sanity_cookie'][0]), long(bfile['sanity_cookie'][1]))
 		if ddiff(pfile, bfile):
 			if verbose:
 				print 'pdb:', `pfile`
