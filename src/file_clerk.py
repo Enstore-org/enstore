@@ -747,6 +747,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, 'checking if files of volume %s are deleted'%(vol))
         bfids = self.get_all_bfids(vol)
         for bfid in bfids:
+            print 'bfid = ', bfid
             record = self.dict[bfid]
             print 'record =', `record`
             if record['deleted'] == 'yes':
