@@ -11,31 +11,34 @@ QUALIFIERS = ""
         pathPrepend( PATH, "${UPS_PROD_DIR}/sbin" )
         pathPrepend( PATH, "${UPS_PROD_DIR}/bin" )
 
-        # dot, tgif, htmldoc, ghostview and ximagetools are for generating documenation only
+        # dot, tgif, htmldoc, ghostview ximagetools and imagemagick are for generating documenation only
         # dot and graphviz are the same product with different names!
+	# I don't care which version I get so don't specify any
         setupOptional("dot")
         setupOptional("graphviz")
         setupOptional("tgif")
         setupOptional("htmldoc")
 	setupOptional("ghostview")
 	setupOptional("ximagetools")
+	setupOptional("imagemagick")
 
-	# setup the lint tool if it is present
+	# setup the lint tool if it is present, any version will do
 	setupOptional("gadfly")
 
-        setupRequired("ftt")
+	# ftt is Fermi tape tools
+        setupRequired("ftt v2_5")
 
 	# aci is the EMASS tape library and admin tool product
 	# the media changer is the only server that interfaces to it
-	setupOptional("aci")
+	setupOptional("aci v1_3_0_c7")
 
 	# stk is the STK tape library
 	# the media changer is the only server that interfaces to it
-	setupOptional("stk")
+	setupOptional("stk v1_0")
 
         # the setup of python is tricky
         # if user has python declared via ups, set that up and use it
-        setupOptional("python")
+        setupOptional("python v1_5_2")
         # if no python from ups available, we need it from the user's path
         exeAccess("python")
         # if python from user's path, we need to set a ups-like PYTHON_DIR to point to python
@@ -56,13 +59,13 @@ QUALIFIERS = ""
 
 	# we now need swig to generate the modules. 
 	# as with python, allow the user to use his local copy if he doesn't have swig installed
-	setupOptional("swig")
+	setupOptional("swig v1_1p5")
         # if no swig from ups available, we need it from the user's path
         exeAccess("swig")
 	
         # set the libtp and libtppy products up after python
-        setupRequired("libtppy")
-        # setupRequired("libtp") # libtp is set up by libtppy
+        setupRequired("libtppy v1_2")
+        # setupRequired("libtp v2_7_4") # libtp is set up by libtppy
 
         # now set the python module search path, need to do these in separate
 	# lines so that when an unsetup is done, the dropit will do 3 separate
