@@ -84,9 +84,9 @@ class UDPClient:
 
             # exception mean trouble
             if x :
-                raise errno.errorcode[errno.ESHUTDOWN],"UDPClient.send: "+\
-                      "exception on select after send to "+\
-                      repr(address)+" peer exitted"
+                print "UDPClient.send: exception on select after send to "+\
+                      repr(address)+" "+repr(x)
+                print sys.exc_info()[0],sys.exc_info()[1]
 
             # something there - read it and see if we have response that
             # matches the number we sent out

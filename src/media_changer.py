@@ -83,8 +83,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             external_label + " " + tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-        print 'command is:'
-        print stk_mount_command
+        print 'mount command is:',stk_mount_command
 
         # call mount command
         returned_message = os.popen(stk_mount_command, "r").readlines()
@@ -99,7 +98,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
         # send reply to caller
         print out_ticket
         self.reply_to_caller(out_ticket)
-        if list: print "status " + out_ticket["status"]
+        print "mount status " + out_ticket["status"]
 
     # unload volume from the drive
     def unload(self, external_label, tape_drive) :
@@ -111,6 +110,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
         # call dismount command
+        print 'dismount command is:',stk_mount_command
         returned_message = os.popen(stk_mount_command, "r").readlines()
         out_ticket = {"status" : "dismount_failed"}
 
@@ -121,7 +121,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                 out_ticket = {"status" : "ok"}
                 break
         self.reply_to_caller(out_ticket)
-        if list: print "status " + out_ticket["status"]
+        print "dism status " + out_ticket["status"]
 
 # STK media loader server
 class STK_MediaLoader(STK_MediaLoaderMethods,

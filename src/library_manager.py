@@ -42,8 +42,15 @@ work_awaiting_bind = []
 def busy_vols_in_family (family_name):
     vols = []
     for w in work_at_movers + work_awaiting_bind :
+     try:
         if w["file_family"] == family_name :
             vols.append(w["external_label"])
+     except:
+        import pprint 
+        pprint.pprint(w)
+        pprint.pprint(work_at_movers)
+        pprint.pprint(work_awaiting_bind)
+        os._exit(222)
     return vols
 
 
