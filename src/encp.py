@@ -293,10 +293,12 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
     tinfo["pnfscheck"] = time.time() - t1
     try:
         (parked_node,parked_name) = eval(p.lastparked)
-        print "  Last parked on ",parked_node,parked_name
+        if list:
+            print "  Last parked on ",parked_node,parked_name
     except:
-        print sys.exc_info()[0],sys.exc_info()[1]
-        print p.lastparked
+        pass
+        #print sys.exc_info()[0],sys.exc_info()[1]
+        #print p.lastparked
     if list:
         print "  dt:",tinfo["pnfscheck"], "   cum=",time.time()-t0
 

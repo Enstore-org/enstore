@@ -1,3 +1,4 @@
+import time
 import lockfile
 import dict_to_a
 # Import SOCKS module if it exists, else standard socket module socket
@@ -40,7 +41,7 @@ def get_callback() :
                 lockf.close()
                 return host, port, mysocket
         #  otherwise, we tried all ports, try later.
-        sleep (1)
+        time.sleep (1)
 
 
 # return a mover tcp socket
