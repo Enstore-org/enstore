@@ -160,10 +160,31 @@ def cleanADrive(ticket, classTicket):
 
     status = 0
     
-    volume = ticket[volume]
-    drive = ticket[drive]
-    media_type = ticket[media_type]
-    cleanTime = ticket[cleanTime]
+    try:
+        volume = ticket['volume']
+    except KeyError:
+        Trace.log(e_errors.ERROR, 'aml2 no volume field found in ticket.')
+	status = 37
+        return status_table[status][0], status, status_table[status][1]
+    try:
+        drive = ticket['drive']
+    except KeyError:
+        Trace.log(e_errors.ERROR, 'aml2 no drive field found in ticket.')
+	status = 37
+        return status_table[status][0], status, status_table[status][1]
+    try:
+        media_type = ticket['media_type']
+    except KeyError:
+        Trace.log(e_errors.ERROR, 'aml2 no media_type field found in ticket.')
+	status = 37
+        return status_table[status][0], status, status_table[status][1]
+    try:
+        cleanTime = ticket['cleanTime']
+    except KeyError:
+        Trace.log(e_errors.ERROR, 'aml2 no cleanTime field found in ticket.')
+	status = 37
+        return status_table[status][0], status, status_table[status][1]
+
     status = mount(volume, drive, media_type)
 
     # drive automatically starts cleaning upon tape insert.

@@ -30,7 +30,6 @@ class MediaChangerClient(generic_client.GenericClient):
                                                          ".media_changer",
                                                          MY_NAME))
         generic_client.GenericClient.__init__(self, csc, self.log_name)
-
         self.u = udp_client.UDPClient()
 
     # send the request to the Media Changer server and then send answer to user
@@ -86,10 +85,10 @@ class MediaChangerClient(generic_client.GenericClient):
 	rt = self.send(ticket)
         return rt
 
-    def doCleaningCycle(self, drive, m_type, vcc):
+    def doCleaningCycle(self, moverConfig, volInfo, vcc):
         ticket = {'work'       : 'doCleaningCycle',
-                  'drive_id'   : drive,
-                  'media_type' : m_type,
+                  'moverConfig': moverConfig,
+                  'volInfo'    : volInfo,
 		  'vcc'        : vcc
                   }
 	rt = self.send(ticket)
@@ -168,7 +167,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         interface.Interface.parse_options(self)
 	if self._import:
             if len(self.args) < 2:
-	        self.missing_parameter("media_changer")
+	        self.missing_parameter("media_changer/insertNewLib")
                 self.print_help()
                 sys.exit(1)
             else:
@@ -209,6 +208,9 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         interface.Interface.print_help(self)
         print "        --max_work=N        Max simultaneous operations allowed (may be 0)"
         print "        --get_work          List operations in progress"
+        #print "        --update volume"
+        #print "        --import insertNewLib [IOarea]"
+        #print "        --export media_type volume1 [volume2 ...]"
         
 def do_work(intf):
     # get a media changer client

@@ -39,6 +39,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	                 generic_server.GenericServer,
 			 timer_task.TimerTask):
     work_list = []
+    work_cleaning_list = []
 
     def __init__(self, medch, maxwork, csc):
         self.name = medch
@@ -47,6 +48,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         Trace.init(self.log_name)
         self.MaxWork = maxwork
 	self.workQueueClosed = 0
+        self.insertRA = None
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
@@ -175,6 +177,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         pass
         return (e_errors.OK, 0, None) 
 
+    def waitingCleanCycle(self,ticket):
+        pass
+        return (e_errors.OK, 0, None) 
+
     def startTimer(self,ticket):
         pass
         return (e_errors.OK, 0, None) 
@@ -191,6 +197,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         pass
         return (e_errors.OK, 0, None) 
 
+    def doWaitingCleaningCycles(self):
+        ticket["function"] = "waitingCleanCycle"
+        return self.DoWork( self.waitingCleanCycle, ticket)
+
     def getNretry(self):
         numberOfRetries = 2
         return numberOfRetries
@@ -198,16 +208,26 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # Do the forking and call the function
     def DoWork(self, function, ticket):
 	if ticket['function'] == "mount" or ticket['function'] == "dismount":
-            Trace.trace(e_errors.INFO, 'REQUESTED '+ticket['function']+ ' ' + \
+            Trace.log(e_errors.INFO, 'REQUESTED '+ticket['function']+ ' ' + \
 		   ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
             # if drive is doing a clean cycle, drop request
             for i in self.work_list:
 	        if i['function'] == "cleanCycle" and i['drive_id'] == ticket['drive_id']:
+                    Trace.log(e_errors.INFO, 'REQUESTED '+ticket['function']+ ' request of ' + \
+		            ticket['vol_ticket']['external_label']+ ' in ' +ticket['drive_id'] + \
+			    ' dropped, drive in cleaning cycle.')
                     return
         else:
-            Trace.trace(e_errors.INFO, 'REQUESTED '+ticket['function'])
+            Trace.log(e_errors.INFO, 'REQUESTED '+ticket['function'])
+	#put cleaningCyles on cleaning list
+	if ticket['function'] == "cleanCycle":
+            ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
+	    todo = (ticket,function)
+	    self.work_cleaning_list.append(todo)
+	
         #if we have max number of working children, assume client will resend
-        if len(self.work_list) >= self.MaxWork :
+	# let work list length exceed MaxWork for cleaningCycle
+        if len(self.work_list) >= self.MaxWork:
             Trace.log(e_errors.INFO,
                       "MC Overflow: "+ repr(self.MaxWork) + " " +\
 		      ticket['function'])
@@ -220,6 +240,15 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             #Trace.log(e_errors.INFO, "DOWORK "+repr(ticket))
             # set the reply address - note this could be a general thing in dispatching worker
             ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
+            # bump other requests for cleaning
+	    if len(self.work_cleaning_list) > 0:
+	        if ticket['function'] != "waitingCleanCycle":
+	            Trace.log(e_errors.INFO,
+                      "MC: "+ ticket['function'] + " bumped for cleaning")
+	        ticket = self.work_cleaning_list[0][0]
+	        self.work_cleaning_list.remove(ticket)
+	        function = self.work_cleaning_list[0][1]
+                Trace.log(e_errors.INFO, 'REPLACEMENT '+ticket['function'])
             # if this a duplicate request, drop it
             for i in self.work_list:
                 if i["ra"] == ticket["ra"]:
@@ -229,6 +258,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	        if len(self.work_list)>0:
 	           self.workQueueClosed = 1
 		   self.timeInsert = time.time()
+		   self.insertRA = ticket["ra"]
 		   return
 		else:
 		   self.workQueueClosed = 0
@@ -237,10 +267,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             if not self.fork():
                 # if in child process
 	        if ticket['function'] == "mount" or ticket['function'] == "dismount":
-                    Trace.trace(e_errors.INFO, 'mcDoWork>>> forked (child) '+ticket['function']+ \
+                    Trace.log(e_errors.INFO, 'mcDoWork>>> forked (child) '+ticket['function']+ \
 		            ' ' +ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
                 else:
-                    Trace.trace(e_errors.INFO, 'mcDoWork>>> '+ticket['function'])
+                    Trace.log(e_errors.INFO, 'mcDoWork>>> '+ticket['function'])
                 os.close(pipe[0])
 		# do the work ...
                 # ... if this is a mount, dismount first
@@ -303,15 +333,18 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
               break
         # report back to original client - probably a mover
 	if ticket['function'] == "mount" or ticket['function'] == "dismount":
-            Trace.trace(e_errors.INFO, 'FINISHED '+ticket['function']+ ' ' +\
+            Trace.log(e_errors.INFO, 'FINISHED '+ticket['function']+ ' ' +\
 		   ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
         else:
-            Trace.trace(e_errors.INFO, 'FINISHED '+ticket['function'])
+            Trace.log(e_errors.INFO, 'FINISHED '+ticket['function'])
         # reply_with_address uses the "ra" entry in the ticket
         self.reply_with_address(ticket)
 	self.robotNotAtHome = 1
         self.lastWorkTime = time.time()
-	# if function is insert, reopen work queue
+	# check for cleaning jobs
+	if len(self.work_list) < self.MaxWork and len(self.work_cleaning_list) > 0:
+            sts = self.doWaitingCleaningCycles()
+ 	# if work queue is closed and work_list is empty, do insert
 	sts = self.doWaitingInserts()
 
 # aml2 robot loader server
@@ -339,13 +372,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	else:
             Trace.log(e_errors.ERROR, "ERROR:aml2 no DriveCleanTime assignments in configuration")
 	    self.driveCleanTime = self.mc_config['DriveCleanTime'] # force the exception
-	    return
-
-	if self.mc_config.has_key('CleanTapeLibrary'):   # error if DriveCleanTime assignments not in config
-	    self.cleanTapeLibrary = self.mc_config['CleanTapeLibrary']
-	else:
-            Trace.log(e_errors.ERROR, "ERROR:aml2 no CleanTapeLibrary assignments in configuration")
-	    self.cleanTapeLibrary = self.mc_config['CleanTapeLibrary'] # force the exception
 	    return
 
 	if self.mc_config.has_key('CleanTapeFileFamily'):   # error if DriveCleanTime assignments not in config
@@ -381,6 +407,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
 
     def insert(self, ticket):
         import aml2
+	self.insertRA = None
         classTicket = { 'mcSelf' : self }
 	ticket['timeOfCmd'] = time.time()
 	ticket['medIOassign'] = self.mediaIOassign
@@ -415,51 +442,55 @@ class AML2_MediaLoader(MediaLoaderMethods):
           state = rt[5]
         return (rt[0], rt[1], rt[2], state)
 	
-    """
-    # view - replaced with above, tgj
-    def view(self, external_label, media_type): #leave view's code body alone
-	"get current state of the tape"
-        import aml2
-	rt = aml2.view(external_label, media_type)
-        if 'O' == rt[5] :
-          state = 'O'
-        elif 'M' == rt[5] :
-          state = 'M'
-        else :
-          state = rt[5]
-        return (rt[0], rt[1], rt[2], state)
-    """
-
-    def doCleaningCycle(self, ticket):
+    def doCleaningCycle(self, inTicket):
         """ do drive cleaning cycle """
         import aml2
         classTicket = { 'mcSelf' : self }
-
-	driveType = ticket[drive][:2]  # ... need device type, not actual device
+	ticket = {}
+        try:
+            ticket['drive'] = inTicket['moverConfig']['device']
+        except KeyError:
+            Trace.log(e_errors.ERROR, 'aml2 no device field found in ticket.')
+	    status = 1
+            return "ERROR", status, "no device field found in ticket"
+        try:
+	    ticket['media_type'] = inTicket['vol_info']['media_type']
+        except KeyError:
+            Trace.log(e_errors.ERROR, 'aml2 no media_type field found in ticket.')
+	    status = 1
+            return "ERROR", status, "no media_type field found in ticket"
+	
+	driveType = ticket['drive'][:2]  # ... need device type, not actual device
         ticket['cleanTime'] = self.driveCleanTime[driveType][0]  # clean time in seconds	
         driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
 	
-        vcc = ticket[vcc]
-	min_remaining_bytes = 1
-	wrapper = self.cleanTapeFileWrapper
-	vol_veto_list = []
-	first_found = 0
-	cleaningVolume = vcc.next_write_volume(self.cleanTapeLibrary, min_remaining_bytes,
-                  self.cleanTapeFileFamily, wrapper, vol_veto_list,first_found)  # get which volume to use
+        vcc = inTicket['vcc']
+	if type(vcc) == types.StringType:
+	    cleaningVolume = vcc
+	else:
+	    min_remaining_bytes = 1
+	    wrapper = self.cleanTapeFileWrapper
+	    vol_veto_list = []
+	    first_found = 0
+	    cleaningVolume = vcc.next_write_volume(inTicket['moverConfig']['library'],
+	                      min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
+			      vol_veto_list, first_found)  # get which volume to use
 	ticket['volume'] = cleaningVolume
 	for i in range(driveCleanCycles):
 	    rt = aml2.cleanADrive(ticket, classTicket)
-	retTicket = vcc.get_remaining_bytes(cleaningVolume)
-	remaining_bytes = retTicket[remaining_bytes]-1
-	vcc.set_remaining_bytes(cleaningVolume,remaining_bytes,'\0',0,0,0,0,None)
+	if type(vcc) != types.StringType:
+	    retTicket = vcc.get_remaining_bytes(cleaningVolume)
+	    remaining_bytes = retTicket['remaining_bytes']-1
+	    vcc.set_remaining_bytes(cleaningVolume,remaining_bytes,'\0',0,0,0,0,None)
         return (e_errors.OK, 0, None)
 
     def doWaitingInserts(self):
         """ do delayed insertvols"""
 	if self.workQueueClosed and len(self.work_list)==0:
 	    self.workQueueClosed = 0
-	    ticket = { 'function' : 'insert',
-	               'timeOfCmd' : self.timeInsert }
+	    ticket = { 'function'  : 'insert',
+	               'timeOfCmd' : self.timeInsert,
+		       'ra'        : self.insertRA }
 	    self.DoWork( self.insert, ticket)
         return (e_errors.OK, 0, None) 
 
