@@ -1,6 +1,6 @@
 %module strbuffer
 %{
-
+#include <sys/types.h>          /* for IRIX+6.2 */
 #include <sys/socket.h>
 #ifdef linux  /*kludge*/
 #ifndef MSG_DONTWAIT
