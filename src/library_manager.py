@@ -2161,7 +2161,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
     # this will be raplaced with error handlers!!!!!!!!!!!!!!!!
     def mover_error(self, mticket):
-        Trace.trace(11,"MOVER ERROR RQ %s"%(mticket,))
+        Trace.log(e_errors.ERROR,"MOVER ERROR RQ %s"%(mticket,))
         library = mticket.get('library', None)
         if library and library != self.name.split(".")[0]:
             return
