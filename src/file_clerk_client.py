@@ -30,6 +30,7 @@ import pprint
 import volume_clerk_client
 import volume_family
 import pnfs
+import info_client
 
 MY_NAME = "FILE_C_CLIENT"
 MY_SERVER = "file_clerk"
@@ -653,6 +654,8 @@ def do_work(intf):
     fcc = FileClient((intf.config_host, intf.config_port), intf.bfid, None, intf.alive_rcv_timeout, intf.alive_retries)
     Trace.init(fcc.get_name(MY_NAME))
 
+    ifc = info_client.infoClient(fcc.csc)
+
     ticket = fcc.handle_generic_commands(MY_SERVER, intf)
     if ticket:
         pass
@@ -671,7 +674,7 @@ def do_work(intf):
         Trace.trace(13, str(ticket))
 
     elif intf.list:
-        ticket = fcc.tape_list(intf.list)
+        ticket = ifc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
             
             print "     label           bfid       size        location_cookie delflag original_name\n"
@@ -695,24 +698,24 @@ def do_work(intf):
         ticket = fcc.unmark_bad(intf.unmark_bad)
 
     elif intf.show_bad:
-        ticket = fcc.show_bad()
+        ticket = ifc.show_bad()
         if ticket['status'][0] == e_errors.OK:
             for f in ticket['bad_files']:
                 print f['label'], f['bfid'], f['size'], f['path']
 
     elif intf.ls_active:
-        ticket = fcc.list_active(intf.ls_active)
+        ticket = ifc.list_active(intf.ls_active)
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['active_list']:
                 print i
     elif intf.bfids:
-        ticket  = fcc.get_bfids(intf.bfids)
+        ticket  = ifc.get_bfids(intf.bfids)
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['bfids']:
                 print i
             # print `ticket['bfids']`
     elif intf.bfid:
-        ticket = fcc.bfid_info()
+        ticket = ifc.bfid_info(intf.bfid)
 	if ticket['status'][0] ==  e_errors.OK:
 	    #print ticket['fc'] #old encp-file clerk format
 	    #print ticket['vc']
