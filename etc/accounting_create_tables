@@ -1,29 +1,30 @@
 create table encp_xfer (
-date	timestamp not null,
-node	varchar(32) not null,
-pid	int not null,
+date		timestamp not null,
+node		varchar(32) not null,
+pid		int not null,
 username	varchar(32) not null,
-src	text not null,
-dst	text not null,
-size	bigint not null,
-rw	char(1) not null,
-rate	bigint not null,
+src		text not null,
+dst		text not null,
+size		bigint not null,
+rw		char(1) not null,
+rate		bigint not null,
 net_rate	bigint not null,
 drive_rate	bigint not null,
 disk_rate	bigint,
 overall_rate	bigint,
 trans_rate	bigint,
-volume	varchar(16) not null,
-mover	varchar(32) not null,
+volume		varchar(16) not null,
+mover		varchar(32) not null,
 drive_id	varchar(16) not null,
 drive_sn	varchar(16) not null,
-elapsed	float not null,
+elapsed		float not null,
 media_changer	varchar(32) not null,
 mover_interface	varchar(32) not null,
-driver	varchar(16) not null,
+driver		varchar(16) not null,
 storage_group	varchar(16) not null,
-encp_ip	varchar(16) not null,
-encp_id varchar(64) not null);
+encp_ip		varchar(16) not null,
+encp_id 	varchar(64) not null,
+encp_version	varchar(48));
 
 create index xfr_date_idx on encp_xfer (date);
 create index xfr_node_idx on encp_xfer (node);
@@ -51,22 +52,22 @@ create index tape_mnts_type_idx on tape_mounts (type);
 create index tape_mnts_oid_idx on tape_mounts (oid);
 
 create table tape_mounts_tmp (
-volume varchar(16),
-state varchar(1),
-id bigint,
+volume	varchar(16),
+state	varchar(1),
+id	bigint,
 primary key (volume, state));
 
 create index tmt_oid_idx on tape_mounts_tmp (oid);
 
 create table event (
-tag varchar(48) primary key,
-name varchar(32) not null,
-node varchar(32) not null,
-username varchar(32) not null,
-start timestamp without time zone not null,
-finish timestamp without time zone,
-status int,
-comment varchar(64));
+tag		varchar(48) primary key,
+name		varchar(32) not null,
+node		varchar(32) not null,
+username	varchar(32) not null,
+start		timestamp without time zone not null,
+finish		timestamp without time zone,
+status		int,
+comment		varchar(64));
 
 create index event_name_idx on event(name);
 create index event_node_idx on event(node);
