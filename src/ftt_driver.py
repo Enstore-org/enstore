@@ -23,12 +23,13 @@ class FTTDriver(driver.Driver):
         self._bytes_transferred = 0
         self._start_time = None
         self._rate = self._last_rate = 0
-        self._fast_rate = 10*MB
         
     def open(self, device=None, mode=None, retry_count=10):
+        """Open will return 1 if there's a volume, 0 if there is no volume
+        but otherwise OK, -1 or exception on errors"""
         if mode not in (0,1):
             raise ValueError, ("illegal mode", mode)
-        mode = 1 #XXX HACK CGW!
+
         self.device = device
         if self.ftt and mode != self.mode:
             self.ftt.close()
@@ -37,16 +38,19 @@ class FTTDriver(driver.Driver):
         if not self.ftt:
             self.ftt = ftt.open(
                 self.device,
-                {0:ftt.RDONLY, 1:ftt.RDWR}[mode])
+                ftt.RDWR) ##Note: always open r/w since mode-switching causes
+                          ## loss of location information XXX
+            ###{0:ftt.RDONLY, 1:ftt.RDWR}[mode])
 
         self.mode = mode
         self._last_rate = 0
         self._rate = 0
         self._bytes_transferred = 0
         Trace.trace(25, "ftt_open returns %s" % (self.ftt,))
+        self.fd = None
         for retry in xrange(retry_count):
             if retry:
-                Trace.trace(25, "retrying open")
+                Trace.trace(25, "retrying open %s"%(retry,))
             try:
                 self.fd = self.ftt.open_dev()
                 break
@@ -56,30 +60,46 @@ class FTTDriver(driver.Driver):
                     time.sleep(5)
                 else:
                     break
+
+            
+        if self.fd is None:
+            return -1 #or exception?
+
+        Trace.trace(25, "ftt_open_dev returns %s" % (self.fd,))
+        
         for retry in xrange(retry_count):
             if retry:
                 Trace.trace(25, "retrying status")
             status = self.ftt.status(5)
+            Trace.trace(25, "ftt status returns %s"%(status,))
             if status & ftt.ONLINE:
                 break
-#        else:
-#            ftt.raise_ftt()  #this is BADSWMOUNT
-            
+        else:
+            return 0 #this is BADSWMOUNT
+        
         self._rate = self._last_rate = self._bytes_transferred = 0
-        Trace.trace(25, "ftt_open_dev returns %s" % (self.fd,))
-        return self.fd
+
+        return 1
     
     def rewind(self):
-        r = self.ftt.rewind()
-        Trace.trace(25, "ftt_rewind returns %s" % (r,))
-        return r
+        try:
+            r = self.ftt.rewind()
+            Trace.trace(25, "ftt_rewind returns %s" % (r,))
+            return r
+        except FTTError, detail:
+            Trace.log(e_errors.ERROR, "rewind: %s %s" % (detail, detail.errno))
+            return -1
 
     def tell(self):
         if not self.ftt:
             Trace.log(e_errors.ERROR, "tell: no ftt descriptor")
             return None
-        file, block = self.ftt.get_position()
-        Trace.trace(25, "ftt_get_position returns %s %s" % (file, block))
+        try:
+            file, block = self.ftt.get_position()
+            Trace.trace(25, "ftt_get_position returns %s %s" % (file, block))
+        except FTTError, detail:
+            Trace.log(e_errors.ERROR, "tell: %s %s" % (detail, detail.errno))
+            return -1
         return file
     
     def seek(self, target, eot_ok=0):
@@ -105,10 +125,16 @@ class FTTDriver(driver.Driver):
             except ftt.FTTError, detail:
                 if detail.errno == ftt.EBLANK and eot_ok:
                     pass
+                else:
+                    Trace.log(e_errors.ERROR, "seek: %s %s" % (detail, detail.errno))
+                    raise
         else:
-            self.ftt.skip_fm(target-current-1)
-            self.ftt.skip_fm(1)
-
+            try:
+                self.ftt.skip_fm(target-current-1)
+                self.ftt.skip_fm(1)
+            except FTTError, detail:
+                Trace.log(e_errors.ERROR, "skip_fm: %s %s" % (detail, detail.errno))
+                raise
         current = self.tell()
         Trace.trace(25,"seek2: current=%s target=%s" % (current, target))
         if current != target:
@@ -124,16 +150,22 @@ class FTTDriver(driver.Driver):
             self._bytes_transferred, now-self._start_time))
         if now>self._start_time and self._bytes_transferred:
             Trace.trace(25,  "rate: %.3g MB/sec" % (self._bytes_transferred/(now-self._start_time)/MB))
-
-        r = self.ftt.close_dev()
+        try:
+            r = self.ftt.close_dev()
+        except FTTError, detail:
+            Trace.log(e_errors.ERROR, "close_dev %s %s" % (detail, detail.errno))
         Trace.trace(25, "ftt_close_dev returns %s" % (r,))
         self.fd = -1
         return r
 
     def close(self):
         Trace.trace(25, "closing %s" % (self.ftt,))
-        r = self.ftt.close()
-        Trace.trace(25, "ftt_close returns %s" % (r,))
+        try:
+            r = self.ftt.close()
+            Trace.trace(25, "ftt_close returns %s" % (r,))
+        except FTTError, detail:
+            Trace.log(e_errors.ERROR, "close %s %s" % (detail, detail.errno))
+            r = -1
         self.ftt = None
         self.fd = -1
         return r
@@ -147,6 +179,7 @@ class FTTDriver(driver.Driver):
         try:
             r = self.ftt.read(buf, nbytes)
         except ftt.FTTError, detail:
+            Trace.log(e_errors.ERROR, "read %s %s" % (detail, detail.errno))
             raise e_errors.READ_ERROR, detail
         if r > 0:
             now = time.time()
@@ -165,7 +198,8 @@ class FTTDriver(driver.Driver):
         t0 = time.time()
         try:
             r = self.ftt.write(buf, nbytes)
-        except:
+        except ftt.FTTError, detail:
+            Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.errno))
             raise e_errors.WRITE_ERROR, detail
         if r > 0:
             now = time.time()
@@ -177,41 +211,50 @@ class FTTDriver(driver.Driver):
         return r
         
     def writefm(self):
-        r = self.ftt.writefm()
+        r=0
+        try:
+            r = self.ftt.writefm()
+        except ftt.FTTError, detail:
+            Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.errno))
         if r==-1:
             ftt.raise_ftt()
         return r
 
     def eject(self):
-        return self.ftt.unload()
+        try:
+            return self.ftt.unload()
+        except ftt.FTTError, detail:
+            Trace.log(e_errors.ERROR, "eject %s %s" % ( detail, detail.errno))
+            return -1
         
     def set_mode(self, density=None, compression=None, blocksize=None):
-        mode = self.ftt.get_mode()
+        r = -1
+        try:
+            mode = self.ftt.get_mode()
+        except FTTError, detail:
+            Trace.log(e_errors.ERROR, "get_mode %s %s" % (detail, detail.errno))
+            return -1
+        
         if density is None:
             density = mode[1]
         if compression is None:
             compression = mode[2]
         if blocksize is None:
             blocksize = mode[3]
-        r = self.ftt.set_mode(density, compression, blocksize)
-        Trace.trace(25, "ftt mode is %s" %  (self.ftt.get_mode(),))
-        self.fd = self.ftt.open_dev()
+
+        try:
+            r = self.ftt.set_mode(density, compression, blocksize)
+        except FTTError, detail:
+            Trace.log(e_errors.ERROR, "set_mode %s %s" % (detail, detail.errno))
+            return -1
+
+        try:
+            self.fd = self.ftt.open_dev()
+        except FTTError, detail:
+            Trace.log(e_errors.ERROR, "open_dev %s %s" % (detail, detail.errno))
+            return -1
+
         return r
-
-    def set_fast_rate(self, rate):
-        self._fast_rate = rate
-        
-    def ready_to_read(self):
-        ## r,w,x = select.select([self],[],[],0)  ##aarrggh!  select doesn't work on st devices! - cgw
-        if self._last_rate and self._last_rate < self._fast_rate:
-            return 0
-        return 1
-
-    def ready_to_write(self):
-        ### r,w,x = select.select([], [self],[],0)
-        if self._last_rate and self._last_rate < self._fast_rate:
-            return 0
-        return 1
 
     def rates(self):
         """returns a tuple (overall rate, instantaneous rate)"""
