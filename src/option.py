@@ -218,6 +218,7 @@ FILE_FAMILY = "file-family"                  #pnfs, encp
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs, encp
 FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs, encp
 FILESIZE = "filesize"                        #pnfs
+FILE_THREADS = "file-threads"                #scanfiles
 FORCE = "force"                              #volume
 FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups" #volume
 FORGET_IGNORED_STORAGE_GROUP = "forget-ignored-storage-group"   #volume
@@ -248,6 +249,7 @@ ID = "id"                                    #pnfs
 IGNORE_FAIR_SHARE = "ignore-fair-share"      #encp
 IGNORE_STORAGE_GROUP = "ignore-storage-group"   #volume
 IMPORT = "import"                            #volume
+INFILE = "infile"                            #scanfiles
 INFO = "info"                                #pnfs
 INPUT_DIR = "input_dir"                      #plotter
 IO = "io"                                    #pnfs
@@ -424,7 +426,7 @@ valid_option_list = [
     DOWN, DUMP, DUPLICATE,
     ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
-    FIND_SAME_FILE, FORCE, FULL,
+    FILE_THREADS, FIND_SAME_FILE, FORCE, FULL,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GENERATE_MESSAGES_FILE,
     GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_LOGFILE_NAME,
@@ -433,7 +435,8 @@ valid_option_list = [
     GET_WORK_SORTED, GET_SG_COUNT,
     GVOL, 
     HELP, HISTORY, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
-    ID, IGNORE_FAIR_SHARE, IGNORE_STORAGE_GROUP, IMPORT, INFO, INPUT_DIR, IO,
+    ID, IGNORE_FAIR_SHARE, IGNORE_STORAGE_GROUP,
+    IMPORT, INFILE, INFO, INPUT_DIR, IO,
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS,
