@@ -741,6 +741,40 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    # __has_undeleted_file(self, vol) -- check if all files are deleted
+
+    def __has_undeleted_file(self, vol):
+        Trace.log(e_errors.INFO, 'checking if files of volume %s are deleted'%(vol))
+        bfids = self.get_all_bfids(vol)
+        for bfid in bfids:
+            record = self.dict[bfid]
+            if record['deleted'] == 'yes':
+                return 1
+        return 0
+
+    # has_undeleted_file -- server service
+
+    def has_undeleted_file(self, ticket):
+        try:
+            vol = ticket["external_label"]
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket["status"] = (e_errors.OK, None)
+        # catch any failure
+        try:
+            result = self.__has_undeleted_file(vol)
+            ticket["status"] = (errors.OK, result)
+        except:
+            ticket["status"] = (e_errors.ERROR, "inquire failed")
+        # and return to the caller
+        self.reply_to_caller(ticket)
+        return
+
     # __restore_volume(self, vol) -- restore according to volmap
 
     def __restore_volume(self, vol):
