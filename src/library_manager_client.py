@@ -492,10 +492,14 @@ def do_work(intf):
             "label","mover","tot.time", "status", "system_inhibit",
             "user_inhibit", "updated", "volume family")
         for mover in ticket['movers']:
+            status=mover['state']
+            if status == "ACTIVE":
+                status=status+"-"+mover['operation']
             print "%-10s %-17s %-08s %-14s(%-05s) (%-08s %08s) (%-08s %08s) %-17s %-08s" %\
             (mover['external_label'], mover['mover'],
              int(mover['total_time']),
-             mover['state'],
+             #mover['state'],
+             status,
              mover['time_in_state'],
              mover['volume_status'][0][0], mover['volume_status'][0][1],
              mover['volume_status'][1][0], mover['volume_status'][1][1],
