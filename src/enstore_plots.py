@@ -308,7 +308,10 @@ class BpdDataFile(EnPlot):
 	    # now find the total bytes transferred over all days and the mean
 	    # size of all transfers.
 	    total = total + ndata[key]
-	    numxfers = numxfers + ctr[key]
+	    # there may not be any transfers on a certain date, so check the key
+	    # first.  above ndata has all dates initialized to 0 so no check is
+	    # necessary.
+	    numxfers = numxfers + ctr.get(key, 0)
 	    
 	# we must create our gnu plot command file too
 	gnucmds = BpdGnuFile(self.gnufile)
