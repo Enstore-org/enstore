@@ -70,7 +70,6 @@ Devcodes Devcodes.c
 STK STK.c -I. -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
 
 # EMASS/aci_shadow are not build unless ACI_DIR is defined ; see Makefile
-EMASS EMASS.c -I. -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
 aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
 derrno derrno_wrap.c -I$(ACI_DIR)/inc
 
