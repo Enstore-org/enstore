@@ -267,9 +267,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
             driver_object = self.hsm_driver.open( self.mvr_config['device'], 'a+')
             eod_cookie=self.vol_info['eod_cookie']
             external_label=self.vol_info['external_label']
-            ll = driver_object.format_eov1_header( external_label, eod_cookie)
-            if debug_paranoia: print "unbind_volume: writing EOV1 label", ll
-	    driver_object.write( ll )
+            label = driver_object.format_eov1_header( external_label, eod_cookie)
+            Trace.log(e_errors.INFO, "unbind_volume: writing EOV1 label"+label)
+            if debug_paranoia: print "unbind_volume: writing EOV1 label", label
+	    driver_object.write( label )
 	    driver_object.writefm()
             driver_object.close()
         self.inhibit_eov=0
@@ -538,8 +539,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
             if vol1_paranoia and self.mvr_config['driver']=='FTTDriver':
                 driver_object = self.hsm_driver.open( self.mvr_config['device'], 'r' )
                 if debug_paranoia: print "Rewinding (pre check-label)"
+                Trace.log(e_errors.INFO, "Rewinding tape %s to check VOL1 label"%(external_label,))
                 r=driver_object.rewind()
                 header_type, header_label, extra = driver_object.check_header()
+                Trace.log(e_errors.INFO, "header_type=%s, label=%s, cookie=%s" % (header_type,header_label,cookie))
                 if debug_paranoia: print "header_type=",header_type, "label=",header_label,"extra=",extra
                 if header_type == None:
                     ##This only happens if there was a read error, which is
@@ -577,14 +580,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
                     return 'VOL1_MISSING' 
                     
                 if debug_paranoia: print "Rewind (post check-label)"
+                Trace.log(e_errors.INFO, "Rewinding %s after checking label" % (external_label,))
                 # Note:  Closing the device seems to write a
                 #file mark (even though it was opened "r"!),
                 # so we better close *before* rewinding.
                 driver_object.close(skip=0)
                 driver_object = self.hsm_driver.open( self.mvr_config['device'], open_flag)
                 r=driver_object.rewind()
-                if debug_paranoia:
-                    print "post check-label rewind complete, returned",r
                 x=driver_object.tell()
                 if debug_paranoia: print "tell", x
             ##end of paranoid checks    
@@ -598,15 +600,17 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 # write an ANSI label and update the eod_cookie
                 label = driver_object.format_vol1_header( external_label )
                 if debug_paranoia: print "bind_volume: writing VOL1 label", label
+                Trace.log(e_errors.INFO, "bind_volume: writing VOL1 label"+label)
                 if tape_is_labelled:
                     if debug_paranoia:
                         print "Tape already labelled"
-
+                    Trace.log(e_errors.INFO,"bind_volume: tape %s already labelled"%(external_label,))
                     driver_object.skip_fm(1) #Take me past the VOL1 label
                     eod_cookie = driver_object.tell()
                     
                     if debug_paranoia:
                         print "EOD_COOKIE=", eod_cookie
+                    Trace.log(e_errors.INFO, "new EOD cookie=%s"%(eod_cookie,))
                 else:
                     driver_object.write( label )
                     driver_object.writefm()
@@ -615,12 +619,16 @@ class Mover(  dispatching_worker.DispatchingWorker,
                         label = driver_object.format_eov1_header  (
                         external_label, eod_cookie)
                         if debug_paranoia: print "bind_volume: writing EOV1 label", label
+                        Trace.log(e_errors.INFO,"bind_volume: writing EOV1 label"+label)
                         driver_object.write( label )
                         driver_object.writefm()
                         driver_object.skip_fm(-2)
-                        if debug_paranoia: print "TELL", driver_object.tell()
+                        x=driver_object.tell()
+                        if debug_paranoia: print "TELL", x
+                        Trace.log(e_errors.INFO,"bind_volume: driver reports position=%s"%(x,))
 
                 if debug_paranoia: print "eod_cookie=", eod_cookie
+                Trace.log(e_errors.INFO,"bind_volume: volume %s, eod_cookie=%s" %(external_label,eod_cookie))
                 tmp_vol_info['eod_cookie'] = eod_cookie
                 tmp_vol_info['remaining_bytes'] = driver_object.get_stats()['remaining_bytes']
                 self.vcc.set_remaining_bytes( external_label,
@@ -716,8 +724,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 if check_eov:
                     eov_valid=1
                     if debug_paranoia: print "checking EOV label"
-                    header_type, header_label, extra=driver_object.check_header()
-                    if debug_paranoia: print header_type, header_label, extra
+                    Trace.log(e_errors.INFO,"checking EOV1 label for volume %s" %(external_label,))
+                    header_type, header_label, cookie=driver_object.check_header()
+                    if debug_paranoia: print header_type, header_label, cookie
+                    Trace.log(e_errors.INFO,"header_type=%s, label=%s, cookie=%s" %(header_type, header_label,cookie))
                     if header_type != "EOV1":
                         eov_valid = 0
                         errmsg="Expected EOV1 label, got %s" % (header_type,)
@@ -730,16 +740,16 @@ class Mover(  dispatching_worker.DispatchingWorker,
                             Trace.log(e_errors.ERROR, errmsg)
                         try:
                             p1,b1,f1=string.split(self.vol_info['eod_cookie'],'_')
-                            p2,b2,f2=string.split(extra,'_')
+                            p2,b2,f2=string.split(cookie,'_')
                             p1,b1,f1=map(int,[p1,b1,f1])
                             p2,b2,f2=map(int,[p2,b2,f2])
                             if (p1!=p2) or (f1!=f2) or (b1 and b2 and b1!=b2):
                                 eov_valid=0
                                 errmsg="EOV1 label: location mismatch, expected %s, got %s" %\
-                                        (self.vol_info['eod_cookie'],extra)
+                                        (self.vol_info['eod_cookie'],cookie)
 
                         except:
-                            errmsg="EOV1 label: cannot parse location %s" %(extra,)
+                            errmsg="EOV1 label: cannot parse location %s" %(cookie,)
                             Trace.log(e_errors.ERROR, errmsg)
                     if not eov_valid:
                         self.vcc.set_system_noaccess( external_label )
@@ -841,7 +851,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.inhibit_eov = 1
                 if debug_paranoia:
                     print errmsg
-                    Trace.log(e_errors.ERROR,errmsg)
+                Trace.log(e_errors.ERROR,errmsg)
                 wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
                 self.vcc.update_counts( self.vol_info['external_label'],
                                         wr_err, rd_err, wr_access, rd_access )
@@ -957,9 +967,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 external_label = self.vol_info['external_label']
                 driver_object=self.hsm_driver.open( self.mvr_config['device'], 'w' )
                 if debug_paranoia: print "forked_read: writing EOV"
-                ll = driver_object.format_eov1_header( external_label, eod_cookie)
-                if debug_paranoia: print "forked_read writing EOV1 label", ll
-                driver_object.write( ll )
+                label = driver_object.format_eov1_header( external_label, eod_cookie)
+                if debug_paranoia: print "forked_read writing EOV1 label", label
+                Trace.log(e_errors.INFO,"forked_read_from_hsm: writing EOV1 label" + label)
+                driver_object.write( label )
                 driver_object.writefm()
                 driver_object.close()
             # open the hsm file for reading and read it
