@@ -174,7 +174,8 @@ class EncpLine:
                 if "disk)" in tmp_list:
                     # this is the new format with disk rate added
                     mover_index = 8
-                    drive_id_index = 9 
+                    drive_id_index = 9
+                    self.disk_rate = tmp_list[5][1:]
                 else:
                     # this is the old format (i hate this)
                     mover_index = 5
