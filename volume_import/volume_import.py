@@ -85,7 +85,7 @@ if __name__=="__main__":
     opts, args = getopt.getopt(arglist, "", longopts)
     media_type = None
     for opt,val in opts:
-        opt=string.replace('_','-')
+        opt=string.replace(opt,'_','-')
         if opt == "--config-host":
             config_host=val
         elif opt=="--config-port":
