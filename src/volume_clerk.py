@@ -688,7 +688,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # update the non-deleted file count if we wrote to the tape
         # this key gets decremented when we delete files
-        record['non_del_files'] = record['non_del_files'] + ticket['wr_access']
+        if not ticket.get('wr_err',0):
+            record['non_del_files'] = record['non_del_files'] + \
+                                      ticket['wr_access']
 
 	bfid = ticket.get("bfid")
 	if bfid: 
