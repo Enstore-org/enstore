@@ -56,6 +56,7 @@ def default_max_encp_lines():
 MY_NAME = "inquisitor"
 
 LOGFILE_DIR = "logfile_dir"
+LOGHTMLFILE_NAME = "enstore_logs.html"
 
 ALA_PREFIX =  "alarm server    : "
 FC_PREFIX =   "file clerk      : "
@@ -163,6 +164,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                 # we should try to restart the server.  try 3X
                                 i = 0
                                 self.alive_retries = 1
+                                Trace.log(e_errors.INFO,
+                                          "Attempting restart of %s"%i)
                                 while i < 3:
                                     Trace.trace(7, "Server restart: try %s"%i)
                                     os.system('ecmd restart --just %s'%key)
@@ -171,6 +174,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                                             (host, port),
                                                             prefix, time, key)
                                     if ret == DID_IT:
+                                        Trace.log(e_errors.INFO,
+                                                  "Restarted %s"%i)
                                         break
                                     else:
                                         i = i + 1
@@ -217,6 +222,29 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # do not monitor this server any more, remove him from our dict
 	    self.remove_key(key)
 	return ret
+
+    # create an html file that has a link to all of the current log files
+    def make_log_html_file(self):
+        # first get a list of all of the log files and their sizes
+        if self.logc.log_dir:
+            logfiles = {}
+            files = os.listdir(self.logc.log_dir)
+            # pull out the log files and get their sizes
+            for file in files:
+                if file[0:4] == enstore_status.LOG_PREFIX:
+                    logfiles[file] = os.stat('%s/%s'%(self.logc.log_dir,file))[6]
+            if logfiles:
+                # create the new log listing file.  create it with a different
+                # extension than the real one, we will mv the new one to the
+                # real name after its creation.
+                self.loghtmlfile.open()
+                self.loghtmlfile.write(self.logc.log_dir, logfiles,
+                                       self.log_dirs)
+                self.loghtmlfile.close()
+                # now we must move the new file to it's real name
+                os.system('mv %s/%s%s %s/%s'%(self.logc.log_dir,
+                                              LOGHTMLFILE_NAME, SUFFIX,
+                                              self.html_dir, LOGHTMLFILE_NAME))
 
     # get the library manager suspect volume list and output it
     def suspect_vols(self, lm, (host, port), key, time):
@@ -374,6 +402,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                     time, key)
 	self.htmlfile.output_alive(t['host'], IN_PREFIX, work_ticket,
                                    time, key)
+        # we need to save all of the ancillary log directories
+        self.get_log_dirs(t)
+
+        # update the web page that lists all the current log files
+        self.make_log_html_file()
+        
 	# we need to update the dict of servers that we are keeping track of.
 	# however we cannot do it now as we may be in the middle of a loop
 	# reading the keys of this dict.  so we just record the fact that this
@@ -390,6 +424,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # update any encp information from the log files
     def update_encp(self, key, time):
         if 0: print time # quiet lint
+        encplines = []
 	# look to see if the log server LOGs are accessible to us.  if so we
 	# will need to parse them to get encp information.
         try:
@@ -400,7 +435,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	logfile = t.get('logfile_name', "")
         # create the file which contains the encp lines from the most recent
         # log file.
-        if logfile:
+        if logfile and os.path.exists(logfile):
             encpfile = enstore_status.EnDataFile(logfile,
                                                  self.parsed_file+".encp",
                                                  "-e %s"%Trace.MSG_ENCP_XFER,
@@ -420,7 +455,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             except errno.errorcode[errno.ETIMEDOUT]:
                 pass
 	    logfile2 = t.get('last_logfile_name', "")
-	    if (logfile2 != logfile) and logfile2:
+	    if (logfile2 != logfile) and logfile2 and os.path.exists(logfile2):
 	        encpfile2 = enstore_status.EnDataFile(logfile2,
                                                   self.parsed_file+".encp2",
                                                   "-e %s"%Trace.MSG_ENCP_XFER,
@@ -922,6 +957,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.update_request = {}
         self.forked = {}
 
+        # save all of the keys of the form robot_xxxx_log_dir, to be used to
+        # create the log web page
+        self.get_log_dirs(keys)
+
         # if no timeout was entered on the command line, get it from the 
         # configuration file.  this variable is used in dispatching worker to
         # set how often the udp select times out.
@@ -998,6 +1037,9 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.htmlfile_orig = html_file
 	self.encpfile = enstore_status.EncpStatusFile(encp_file+SUFFIX,refresh)
 	self.encpfile_orig = encp_file
+        self.loghtmlfile = enstore_status.HTMLLogFile(self.logc.log_dir+"/"+\
+                                                      LOGHTMLFILE_NAME+SUFFIX,
+                                                      refresh)
 
 	# get the timeout for each of the servers from the configuration file.
 	self.last_update = {}
@@ -1031,6 +1073,15 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
 	# get all the servers we are to keep tabs on
 	self.prepare_keys()
+
+    # look for all keys that are of the form robot_xxxx_log_dir and pull out
+    # the xxxx and create a dictionary of the corresponding values
+    def get_log_dirs(self, inq_dict):
+        self.log_dirs = {}
+        for key in inq_dict.keys():
+            if (type(inq_dict[key]) == types.StringType) and \
+               (key[0:6] == "robot_") and (key[-8:] == "_log_dir"):
+                self.log_dirs[key[6:-8]] = inq_dict[key]
 
 
 class InquisitorInterface(generic_server.GenericServerInterface):
