@@ -1349,6 +1349,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		if server == media[key]:
 		    return 1
 	    else:
+                # see if this flag is in the other_saag_links section
+                if self.config_d.has_key("other_saag_links") and \
+                   self.config["other_saag_links"].has_key(server):
+                    return 1
 		return 0
 
     def update_schedule_file(self, ticket, func):
