@@ -14,8 +14,8 @@ def addpath(p):
         sys.path.insert(0,p)
 
 
-addpath(os.path.join(edir, '$ENSTORE_DIR/src'))
-addpath(os.path.join(edir, '$ENSTORE_DIR/modules'))
+addpath('$ENSTORE_DIR/src')
+addpath('$ENSTORE_DIR/modules')
 
 cdir = os.getcwd()
 addpath(os.path.join(cdir, '../modules'))
