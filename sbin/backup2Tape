@@ -60,6 +60,7 @@ FULL_BACKUP_DAYS="Mon Thu"
 FULL_BACKUP_FLAG=$VAULT/full_backup_needed
 FULL_BACKUP_LAST=$VAULT/full_backup_date
 
+doit "rm -f $VAULT/*.tar" # junk accumulates and takes up valuable space!
 
 ############################################################################
 # decided if we need to do a full backup or incremetal since last full backup
@@ -83,12 +84,10 @@ fi
 PNFS_TAR=$VAULT/pnfs.`date_string`.$kind.tar
 doit "tar $tar_options -cvf $PNFS_TAR $PNFS"
 doit "ls -l $PNFS_TAR"
-find $PNFS -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 ENSTORE_TAR=$VAULT/enstore.`date_string`.$kind.tar
 doit "tar $tar_options -cvf $ENSTORE_TAR $ENSTORE"
 doit "ls -l $ENSTORE_TAR"
-find $ENSTORE -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 ENSTORELOG_TAR=$VAULT/enstorelog.`date_string`.$kind.tar
 doit "tar $tar_options -cvf $ENSTORELOG_TAR $ENSTORELOG"
@@ -108,7 +107,13 @@ doit "$ENSTORE_DIR/volume_import/enstore_tape \
               $PNFS_TAR $ENSTORE_TAR $ENSTORELOG_TAR $AML2_TAR"
 
 doit "rm -f $PNFS_TAR $ENSTORE_TAR $ENSTORELOG_TAR $AML2_TAR"
+
+
+############################################################################
+# clean up to keep junk from accumulating
 doit "rm -f $VAULT/*.tar" # junk accumulates and takes up valuable space!
+find $PNFS -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
+find $ENSTORE -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 if [ $kind = "FULL" ]; then
   doit "rm -f $FULL_BACKUP_FLAG" # indicate we've done the full backup on selected day (not twice per day) 
