@@ -145,7 +145,7 @@ def do_work(intf):
 
     elif intf.get_patrol_file:
         ticket = alc.get_patrol_file()
-        print(ticket['patrol_file'])
+        print(ticket.get('patrol_file', ""))
         
     else:
 	intf.print_help()
