@@ -807,6 +807,7 @@ class Display(Tkinter.Canvas):
             
             # command does not require a mover name, will only put clients in a queue
             if words[0]=='client':
+                return #for now, don't show waiting clients
                 client_name = normalize_name(words[1])
                 client = self.clients.get(client_name) 
                 if client is None: #it's a new client
