@@ -62,7 +62,6 @@ for des in \
         "Baseboard Fan 1" \
         "Baseboard Fan 2" \
         "Baseboard -12V" \
-        "Baseboard -5V" \
         "Baseboard 1.5V" \
         "Baseboard 2.5V" \
         "Baseboard 3.3V" \
