@@ -22,10 +22,10 @@ if [ "${1:-}" = "-m" ]; then dm=1; mo=1; on=1; of=1; co=0; shift; fi
 
 #specify drive-tape, this can be an individual drive-tape or a set or aits/dlts/mammoths
 if [ -n "${1-}" ]; then
-  if   [ "$1"=="aits"];     then sets="$aits"
-  elif [ "$1"=="dlts"];     then sets="$dlts"
-  elif [ "$1"=="mammoths"]; then sets="$mammoths"
-  else                            sets="$1"
+  if   [ "$1" = "aits" ];     then sets="$aits"
+  elif [ "$1" = "dlts" ];     then sets="$dlts"
+  elif [ "$1" = "mammoths" ]; then sets="$mammoths"
+  else                             sets="$1"
   fi
   shift
 else
@@ -120,6 +120,8 @@ eoffline()  { drv=`echo $1 | tr '[a-z]' '[A-Z]'`
 
 while true; do
 
+echo $sets
+exit
 # offline the drives and check for offline drive status
   if [ $of -eq 1 ]; then
     for aset in $sets; do
