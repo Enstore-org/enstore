@@ -46,8 +46,10 @@ copyit()   { dname=`dirname $2`
                mkdir -p $dname
                check_status $? "mkdir -p $dname"
              fi
-             cp $1 $2;
-             check_status $? "cp $1 $2"; }
+             if [ -f $1 ]; then
+               cp $1 $2;
+               check_status $? "cp $1 $2"
+             fi ;}
 
 plint() { echo $1
           python $GADFLY_GRAMMAR/kjpylint.py $1 | egrep -v "^setup$|^loading$|^now parsing$|ref at .* before assign at|defined before .* not used"
@@ -438,6 +440,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 
                 mkdir $INSTALLDIR/volume_import
                 copyit $ENSTORE_DIR/src/ENCPBIN/encp            $INSTALLDIR/encp
+                copyit $ENSTORE_DIR/src/ENCPBIN/encp_t            $INSTALLDIR/encp_t
                 copyit $ENSTORE_DIR/src/ENCPBIN/enstore         $INSTALLDIR/enstore
                 copyit $ENSTORE_DIR/src/ENCPBIN/enroute2        $INSTALLDIR/enroute2
 # So far, make setuid installation manual
