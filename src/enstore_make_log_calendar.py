@@ -81,9 +81,9 @@ class LogPageInterface(generic_client.GenericClientInterface):
 	generic_client.GenericClientInterface.__init__(self)
 
     def options(self):
-	return self.help_options() +\
-	       ["logfile_dir=", "prefix=", "web_host=", "caption_title=",
-		"description=", "title=", "output="]
+	return self.help_options() +[
+            "logfile-dir=", "prefix=", "web-host=", "caption-title=",
+            "description=", "title=", "output="]
 
 def aml2_do_work(intf):
     # this is where the work is really done
