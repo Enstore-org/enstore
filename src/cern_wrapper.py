@@ -25,9 +25,9 @@ RECORDFORMAT = ['F', 'D', 'S']
 FIXED = 0       # index in to RECORDFORMAT
 VARIABLE = 1    # index in to RECORDFORMAT
 SEGMENTED = 2   # index in to RECORDFORMAT
-HEADERLEN = 80
+HDR_LABELLEN = 80
 FILENAMELEN1 = 17
-UHLNFILECHUNK = HEADERLEN - 4
+UHLNFILECHUNK = HDR_LABELLEN - 4
 MAXFILENAMELEN = (26*UHLNFILECHUNK)+FILENAMELEN1
 FERMILAB = "Fermilab"  # this string must remain 8 bytes long
 BLOCK_LEN_LIMIT = 99999L
@@ -98,12 +98,12 @@ class Label:
 	self.text = ""
 
     def text_len(self):
-	if not len(self.text) == HEADERLEN:
-	    # we need to be of length HEADERLEN
+	if not len(self.text) == HDR_LABELLEN:
+	    # we need to be of length HDR_LABELLEN
 	    raise INVALIDLENGTH, \
 		  "invalid length (%s) for %s, should be %s"%(len(self.text),
 							      self.label,
-							      HEADERLEN)
+							      HDR_LABELLEN)
 
 
 class Label1(Label):
@@ -468,7 +468,7 @@ class EnstoreLargeFileWrapper:
 	self.expiration_date = MINUS1             # CN - when data obsolete
 	self.file_access = SPACE                  # CN, FN - no access 
 	                                          #           restrictions
-	self.block_count = 6*ZERO                 # CN, FN - set in trailer
+	self.block_count = 6*ZERO                 # CN, FN - set in eof_label
 	self.implementation_1 = ticket.get(ENCPVERSION,
 					   "")    # CN, FN - ENCP version
 	self.implementation_1 = add_r_padding(self.implementation_1[:ENCPVERSION_L], 
@@ -553,14 +553,14 @@ class EnstoreLargeFileWrapper:
 	else:
 	    return rtn
 
-    # assemble the headers
-    def assemble_headers(self):
+    # assemble the hdr_labels
+    def assemble_hdr_labels(self):
 	return "%s%s%s%s%s%s%s"%(self.hdr1, self.hdr2, self.uhl1, self.uhl2,
 				 self.uhl3, self.uhl4, 
 				 self.assemble_uhlns(self.uhln_l))
 
-    # assemble the trailers
-    def assemble_trailers(self):
+    # assemble the eof_labels
+    def assemble_eof_labels(self):
 	return "%s%s%s%s%s%s%s"%(self.eof1, self.eof2, self.utl1, self.utl2,
 				 self.utl3, self.utl4, 
 				 self.assemble_uhlns(self.utln_l))
@@ -577,8 +577,8 @@ class EnstoreLargeFileWrapper:
 		i = i + 1
 		findex = findex + UHLNFILECHUNK
 
-    # make the headers
-    def headers(self):
+    # make the hdr_labels
+    def hdr_labels(self):
 	self.hdr1 = HDR1(self.filename, self.file_set_id, 
 			 self.file_section_number, self.file_seq_number,
 			 self.gen_number, self.gen_ver_number,
@@ -601,10 +601,10 @@ class EnstoreLargeFileWrapper:
 	self.uhln_l = []
 	self.get_filename_objects(self.uhln_l, UHLN)
 
-	return self.assemble_headers()
+	return self.assemble_hdr_labels()
 
-    # make the trailers
-    def trailers(self):
+    # make the eof_labels
+    def eof_labels(self):
 	self.eof1 = EOF1(self.filename, self.file_set_id, 
 			 self.file_section_number, self.file_seq_number,
 			 self.gen_number, self.gen_ver_number,
@@ -628,27 +628,27 @@ class EnstoreLargeFileWrapper:
 	self.utln_l = []
 	self.get_filename_objects(self.utln_l, UTLN)
 
-	return self.assemble_trailers()
-
-    def header_size(self):
-	hdr_size = 6 * HEADERLEN      # HDR1, HDR2, UHL1, UHL2, UHL3, UHL4
-	return hdr_size + (len(self.uhln_l) * HEADERLEN)  # add in UHLns
+	return self.assemble_eof_labels()
 
 # here starts the routines accessed via the user interface
 
-# construct the headers
-def headers(ticket):
+# construct the hdr_labels
+def hdr_labels(ticket):
     global efile
     efile = EnstoreLargeFileWrapper(ticket)
-    return efile.headers()
+    return efile.hdr_labels()
 
-# construct the trailers
-def trailers(file_checksum):
+# construct the eof_labels
+def eof_labels(file_checksum):
     global efile
     efile.file_checksum = file_checksum
-    return efile.trailers()
+    return efile.eof_labels()
+
+# the cern wrapper does not supply headers or trailers
+def headers(dummy):
+    return "", ""
 
 # return the size of the headers
 def header_size(hdr):
-    return len(hdr)
+    return 0
 
