@@ -35,16 +35,15 @@ DEFAULTPORT = 60126 #same as enstore_display.py
     
 def main():
     global s, dst
-    print "ARGV", sys.argv, len(sys.argv)
     if len(sys.argv) == 1:
-        host = os.uname()[1]
-        port = DEFAULTPORT
+        target_ip = os.uname()[1]
+        target_port = DEFAULTPORT
     elif len(sys.argv) != 3:
         print "Usage: %s host port" % (sys.argv[0],)
         print "  host and port refer to the host and port enstore_display is running on"
         sys.exit(1)
-        
-    target_ip, target_port = sys.argv[1:]
+    else:
+        target_ip, target_port = sys.argv[1:]
     target_port = int(target_port)
     dst = (target_ip, target_port)
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
