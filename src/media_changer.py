@@ -236,7 +236,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                         return
                 except:
                     e_errors.handle_error()
-                    Trace.log(e_errors.ERROR, "ERRROR %s"%(repr(i),))
+                    Trace.log(e_errors.ERROR, "ERROR %s"%(i,))
                     
         else:
             Trace.log(e_errors.INFO, 'REQUESTED  %s'%(ticket['function'],))
