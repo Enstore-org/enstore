@@ -103,6 +103,39 @@ def sumup(a):
 
 	return 0
 
+# simple syntax check for volume labels
+#
+# Characters        Constraint
+# 1-2               must be alphabetic in upper case
+# 3-4               alphanumerical
+# 5-6               numerical
+# 7-8               either L1 or blank
+# length must be 6 or 8.
+#
+# check_label() returns 0 if the label conforms above rule, otherwise
+# none zero is returned
+
+def check_label(label):
+    # cehck the length and suffix 'L1'
+    if len(label) == 8:
+        if label[-2:] != 'L1':
+            return 1
+    elif len(label) != 6:
+            return 1
+
+    # now check the rest of the rules
+    if  not label[0] in string.uppercase or \
+        not label[1] in string.uppercase or \
+        not label[2] in string.uppercase+string.digits or \
+        not label[3] in string.uppercase+string.digits or \
+        not label[4] in string.digits or \
+        not label[5] in string.digits:
+        return 1
+
+    return 0
+
+
+
 # a function to extract values from enstore vol --vols
 
 def extract_volume(v):    # v is a string
@@ -184,7 +217,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                                              # 1:"none" | "readonly" | "full"
             remaining_bytes = None
             ):
-        Trace.trace( 6, 'add label=%s'%(external_label,))
+        Trace.log(e_errors.INFO, 'add label=%s'%(external_label,))
         if storage_group == 'none':
             # the rest must be 'none' only
             file_family = 'none'
@@ -621,6 +654,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.volume = None
         self.assign_sg = None
         self.touch = None
+        self.bypass_label_check = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -677,6 +711,13 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_USAGE:option.REQUIRED}]},
         option.BACKUP:{option.HELP_STRING:
                        "backup voume journal -- part of database backup",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.BYPASS_LABEL_CHECK:{
+                       option.HELP_STRING:
+                       "skip syntatical label check when adding new volumes",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.VALUE_USAGE:option.IGNORED,
@@ -1088,6 +1129,11 @@ def do_work(intf):
         if ticket['status'][0] == e_errors.OK:
             pprint.pprint(ticket['status'][1])
     elif intf.add:
+        if not intf.bypass_label_check:
+            if self.check_label(intf.add):
+                print 'Error: label "%s" is not syntatically valid'%(intf.add)
+                sys.exit(1)
+
         #print intf.add, repr(intf.args)
         cookie = 'none'
         if intf.vol1ok:
