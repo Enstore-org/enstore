@@ -784,8 +784,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     csc = configuration_client.ConfigurationClient()
     dbinfo = csc.get('database')
 
-    vols = edb.VolumeDB(host=dbinfo['db_host'])
-    file = edb.FileDB(host=dbinfo['db_host'])
+    vols = edb.VolumeDB(host=dbinfo['db_host'], jou='/tmp')
+    file = edb.FileDB(host=dbinfo['db_host'], jou='/tmp')
 
     n_vols = 0L
     n_files = 0L
