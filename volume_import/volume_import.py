@@ -156,7 +156,11 @@ if __name__=="__main__":
     for vol_name in volume_dict.keys():
         vol = volume_dict[vol_name]
         library = "shelf"
-        file_family = vol.get("hostname", "import.unknown") #+".cpio_odc"
+        file_family = vol.get("hostname", "import_unknown")
+        if '.' in file_family:
+            file_family = string.replace(file_family, '.', '_')
+        #This is still not right.... it should have cpio_odc added to it
+        
         #media_type came from cmdline
         capacity_bytes=0
         remaining_bytes=0
