@@ -81,13 +81,31 @@ def move_file(input_filename, output_filename):
     #Filenames must be short enough.
     for directory in output_filename.split("/"):
         if len(directory) > 199:
-            print_error(e_errors.USERERROR, os.strerror(errno.ENAMETOOLONG))
+            print_error(e_errors.USERERROR,
+                        os.strerror(errno.ENAMETOOLONG) + ": " + directory)
             sys.exit(1)
 
-    p = pnfs.Pnfs(input_filename)
-    p.get_bit_file_id()
-    p.get_xreference()
+    #Obtain layer 1 and layer 4 information.
+    try:
+        p = pnfs.Pnfs(input_filename)
+    except (IOError, OSError), msg:
+        print_error(e_errors.USERERROR,
+                    "Trouble with pnfs: %s" % str(msg))
+        sys.exit(1)
+    try:
+        p.get_bit_file_id()
+    except (IOError, OSError), msg:
+        print_error(e_errors.USERERROR,
+                    "Unable to read layer 1: %s" % str(msg))
+        sys.exit(1)
+    try:
+        p.get_xreference()
+    except (IOError, OSError), msg:
+        print_error(e_errors.USERERROR,
+                    "Unable to read layer 4: %s" % str(msg))
+        sys.exit(1)
 
+    #Consistancy check that the bfids in layers 1 and 4 match.
     if p.bfid != p.bit_file_id:
         print_error(e_errors.CONFLICT, "Bit file ids do not match.")
         sys.exit(1)
@@ -256,7 +274,7 @@ def move_file(input_filename, output_filename):
                     "Pnfs layer 4 update failed: %s" % str(msg))
         sys.exit(1)
 
-    if in_fd: #If the rename failed and we did it the hard way.
+    if out_fd: #If the rename failed and we did it the hard way.
 
         #The file size, permissions, last access/modification time and
         # ownership must all be reset.
@@ -309,16 +327,16 @@ def move_file(input_filename, output_filename):
     if in_fd:
         try:
             os.close(in_fd)
-        except OSError:
+        except OSError, msg:
             print_error(e_errors.OSERROR,
-                        "Error closing %s." % input_filename)
+                        "Error closing %s: %s" % (input_filename, str(msg)))
             sys.stderr.flush()
     if out_fd:
         try:
             os.close(out_fd)
-        except OSError:
+        except OSError, msg:
             print_error(e_errors.OSERROR,
-                        "Error closing %s." % output_filename)
+                        "Error closing %s: %s" % (output_filename, str(msg)))
             sys.stderr.flush()
 
     #If we got here then the new file is in place and we need to take
@@ -332,9 +350,10 @@ def move_file(input_filename, output_filename):
             # used, the layer information is "trashed" and delfile would mark
             # the moved file as deleted.
             p.rm()
-    except OSError:
+    except OSError, msg:
         print_error(e_errors.OSERROR,
-                    "Unable to remove original file %s." % input_filename)
+                    "Unable to remove original file %s: %s" %
+                    (input_filename, str(msg)))
         sys.exit(1)
 
 class EnmvInterface(option.Interface):
