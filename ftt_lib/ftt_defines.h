@@ -66,7 +66,12 @@ extern int ftt_numeric_tab[];	/* table for ftt_{add,sub}_stats */
 #define FTT_FAIL_RETRIES	47 
 #define FTT_RESETS		48
 #define FTT_HARD_ERRORS		49
-#define FTT_MAX_STAT		50
+#define FTT_UNC_WRITE		50
+#define FTT_UNC_READ		51
+#define FTT_CMP_WRITE		52
+#define FTT_CMP_READ		53
+#define FTT_ERROR_CODE		54
+#define FTT_MAX_STAT		55
 
 extern int ftt_errno;
 extern int ftt_debug;

@@ -35,7 +35,7 @@ PROGS=ftt_suid asyncdemo ftt_checktable
 all: local $(LIB) $(PROGS)
 
 clean:
-	rm -f $(LIB) $(PROGS) *.o
+	rm -f $(LIB) $(PROGS) *.o local
 
 PRINTEM=$(SRC) $(HDR) Makefile
 

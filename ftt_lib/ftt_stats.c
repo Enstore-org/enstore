@@ -166,6 +166,11 @@ int ftt_numeric_tab[FTT_MAX_STAT] = {
     /*  FTT_FAIL_RETRIES	49 */ 1,
     /*  FTT_RESETS		50 */ 1,
     /*  FTT_HARD_ERRORS		51 */ 1,
+    /*  FTT_UNC_WRITE		50 */ 1,
+    /*  FTT_UNC_READ		51 */ 1,
+    /*  FTT_CMP_WRITE		52 */ 1,
+    /*  FTT_CMP_READ		53 */ 1,
+    /*  FTT_ERROR_CODE		54 */ 0,
 };
 
 void
@@ -225,7 +230,7 @@ ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 ** you pass in the statbuf pointer, the log sense data buffer
 ** and the page code and statistic number for each.
 */
-static void
+static double
 decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
     static char printbuf[128];
     unsigned char *page;
@@ -354,7 +359,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     }
 
     /* various mode checks */
-    stat_ops = ftt_get_stat_ops(d->prod_id);
+    if (0 == strncmp(d->controller,"SCSI",4)) {
+        stat_ops = FTT_DO_RS|FTT_DO_INQ;
+    } else {
+        stat_ops = 0;
+    }
 
     /*
     ** First do a request sense, and check for any error conditions
@@ -379,6 +388,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		"ABORTED_COMMAND", "NOT_USED", "VOLUME_OVERFLOW",
 		"NOT_USED", "RESERVED",
 	    };
+	    set_stat(b,FTT_ERROR_CODE, ftt_itoa((long)buf[0]&0xf), 0);
 	    set_stat(b,FTT_SENSE_KEY, ftt_itoa((long)buf[2]&0xf), 0);
 	    set_stat(b,FTT_TRANS_SENSE_KEY, sense_key_trans[buf[2]&0xf], 0);
 	    set_stat(b,FTT_FMK, ftt_itoa((long)bit(7,buf[2])), 0);
@@ -441,7 +451,14 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		tmp = d->prod_id;
 		d->prod_id = strdup(ftt_extract_stats(b,FTT_PRODUCT_ID));
 		free(tmp);
-		stat_ops = ftt_get_stat_ops(d->prod_id);
+
+		/*
+		 * look up based on ANSI version *and* product id, so
+		 * we can have generic SCSI-2 cases, etc.
+		 */
+
+		sprintf(buf, "%d%s", buf[2] & 0x3, d->prod_id);
+		stat_ops = ftt_get_stat_ops(buf);
 	    }
 	}
     }
@@ -469,6 +486,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		set_stat(b,FTT_CLEANED_BIT, ftt_itoa((long)bit(4,buf[21])), 0);
 
 		remain_tape=pack(0,buf[23],buf[24],buf[25]);
+		error_count = pack(0,buf[16],buf[17],buf[18]);
 
 		/* remain_tape *can* go negative(!!), so deal with it */
 
@@ -478,7 +496,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		}
 
 		set_stat(b,FTT_REMAIN_TAPE,ftt_itoa((long)remain_tape),0);
-		error_count = pack(0,buf[16],buf[17],buf[18]);
+		if (d->prod_id[5] == '9') {
+		     /* 8900's count 16k blocks, not 1k blocks */
+		     remain_tape *= 16;
+		}
 		if (d->data_direction ==  FTT_DIR_READING) {
 	            set_stat(b,FTT_READ_ERRORS,ftt_itoa((long)error_count),0);
 		} else {
@@ -576,6 +597,18 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    }
 	}
     }
+    if (stat_ops & FTT_DO_MS_Px0f) {
+	static unsigned char cdb_mode_sense_p09[]= 
+			{ 0x1a, 0x08, 0x0f, 0x00,   20, 0x00};
+
+	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p09, 
+				  6, buf, 20, 10, 0);
+	if(res < 0){
+	    ftt_errno = FTT_EPARTIALSTAT;
+	} else {
+	    set_stat(b,FTT_TRANS_COMPRESS,     ftt_itoa((long)((buf[4+2]>>7)&1)), 0);
+	}
+    }
     if (stat_ops & FTT_DO_MS_Px10) {
 
 	static unsigned char cdb_mode_sense_p10[]= 
@@ -587,7 +620,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
 	} else {
-	    set_stat(b,FTT_TRANS_COMPRESS,     ftt_itoa((long)buf[18]), 0);
+	    set_stat(b,FTT_TRANS_COMPRESS,     ftt_itoa((long)buf[4+14]), 0);
 	}
 	
     }
@@ -604,46 +637,69 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_TRANS_COMPRESS,    ftt_itoa( bit(6,buf[7])), 0);
 	}
     }
-    if (stat_ops & FTT_DO_LSRW) {
-	static unsigned char cdb_log_senser[]= {0x4d, 0x00, 0x43, 0x00, 0x00, 
-						0x00, 0x00, 0, 128, 0};
-	static unsigned char cdb_log_sensew[]= {0x4d, 0x00, 0x42, 0x00, 0x00, 
-						0x00, 0x00, 0, 128, 0};
+    if (stat_ops & FTT_DO_LS) {
+ 	int npages;
+	static char buf2[128];
+	static unsigned char cdb_log_sense[]= {0x4d, 0x00, 0x00, 0x00, 0x00, 
+						   0x00, 0x00, 0, 128, 0};
 
-	/* log sense read data */
-	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_senser, 10, 
-				  buf, 128, 10, 0);
-	if(res < 0){
-	    failures++;
-	} else {
-	    decrypt_ls(b,buf,3,FTT_READ_ERRORS,1);
-	    decrypt_ls(b,buf,5,FTT_READ_COUNT,1024);
-	}
 
-	/* log sense write data */
-	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sensew, 10, 
-				  buf, 128, 10, 0);
-	if(res < 0){
-	    failures++;
-	} else {
-	    decrypt_ls(b,buf,3,FTT_WRITE_ERRORS,1);
-	    decrypt_ls(b,buf,5,FTT_WRITE_COUNT,1024);
-	}
-	set_stat(b,FTT_COUNT_ORIGIN,"Log_Sense",0);
-    }
-    if (stat_ops & FTT_DO_LSC) {
-	static unsigned char cdb_log_sensec[]= {0x4d, 0x00, 0x72, 0x00, 0x00, 
-						0x00, 0x00, 0, 128, 0};
+        /* check supported page list, we want 0x32 or 0x39... */
+	cdb_log_sense[2] = 0;
+	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sense, 10, 
+				  buf2, 128, 10, 0);
 
-	/* log sense compression data */
-	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sensec, 10, 
-				  buf, 128, 10, 0);
-	if(res < 0){
-	    failures++;
-	} else {
-	    decrypt_ls(b,buf,0,FTT_READ_COMP,1);
-	    decrypt_ls(b,buf,1,FTT_WRITE_COMP,1);
-	}
+        npages = pack(0,0,buf2[2],buf2[3]);
+	for( i = 0; i <= npages; i++ ) {
+	    int do_page;
+
+	    do_page = buf2[4+i];
+            switch( do_page ) {
+	       	case 0x02:
+		case 0x03:
+	       	case 0x31: 
+		case 0x32:
+	       	case 0x39:
+
+		    cdb_log_sense[2] = 0x40 | do_page;
+		    res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sense, 10, 
+					      buf, 128, 10, 0);
+		    if(res < 0) {
+		    	failures++;
+		    } else { 
+		        switch( do_page ) {
+		        case 0x02:
+			    (void)decrypt_ls(b,buf,3,FTT_WRITE_ERRORS,1);
+			    (void)decrypt_ls(b,buf,5,FTT_WRITE_COUNT,1024);
+			    break;
+		        case 0x03:
+			    (void)decrypt_ls(b,buf,3,FTT_READ_ERRORS,1);
+			    (void)decrypt_ls(b,buf,5,FTT_READ_COUNT,1024);
+			    break;
+		        case 0x31:
+			    (void)decrypt_ls(b,buf,1,FTT_REMAIN_TAPE,1);
+		        case 0x32:
+			    (void)decrypt_ls(b,buf,0,FTT_READ_COMP,1);
+			    (void)decrypt_ls(b,buf,1,FTT_WRITE_COMP,1);
+			    (void)decrypt_ls(b,buf,3,FTT_UNC_READ,1);
+			    (void)decrypt_ls(b,buf,5,FTT_CMP_READ,1);
+			    (void)decrypt_ls(b,buf,7,FTT_UNC_WRITE,1);
+			    (void)decrypt_ls(b,buf,9,FTT_CMP_WRITE,1);
+		        case 0x39: {
+			    double uw, ur, cw, cr;
+			    uw = decrypt_ls(b,buf,5,FTT_UNC_WRITE,1024);
+			    ur = decrypt_ls(b,buf,6,FTT_UNC_READ,1024);
+			    cw = decrypt_ls(b,buf,7,FTT_CMP_WRITE,1024);
+			    cr = decrypt_ls(b,buf,8,FTT_CMP_READ,1024);
+			    set_stat(b,FTT_READ_COMP,  ftt_itoa((long)(100.0*cr/ur)), 0);
+			    set_stat(b,FTT_WRITE_COMP, ftt_itoa((long)(100.0*cw/uw)), 0);}
+		        }
+                    }
+		    break;
+             }
+	
+        }
+	
     }
     if (stat_ops & FTT_DO_RP || stat_ops & FTT_DO_RP_SOMETIMES) {
 	static unsigned char cdb_read_position[]= {0x34, 0x00, 0x00, 0x00, 0x00,
@@ -730,7 +786,12 @@ ftt_clear_stats(ftt_descriptor d) {
 	}
     }
 
-    stat_ops = ftt_get_stat_ops(d->prod_id);
+
+    if (0 == strncmp(d->controller,"SCSI",4)) {
+        stat_ops = FTT_DO_RS|FTT_DO_INQ;
+    } else {
+	stat_ops = 0;
+    }
     if (stat_ops & FTT_DO_TUR) {
         static unsigned char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
@@ -758,7 +819,7 @@ ftt_clear_stats(ftt_descriptor d) {
 	res = ftt_do_scsi_command(d,"Clear Request Sense", cdb_clear_rs, 6, buf, 30, 10, 0);
 	if (res < 0) return res;
     }
-    if (stat_ops & FTT_DO_LSRW) {
+    if (stat_ops & FTT_DO_LS) {
         static unsigned char cdb_clear_ls[] = { 0x4c, 0x02, 0x40, 0x00, 0x00, 0x00, 
 					0x00, 0x00, 0x00, 0x00};
 	res = ftt_do_scsi_command(d,"Clear Request Sense", cdb_clear_ls, 10, 0, 0, 10, 1);

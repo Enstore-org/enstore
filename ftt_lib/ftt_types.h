@@ -155,8 +155,8 @@ extern ftt_stat_entry ftt_stat_op_tab[];
 #define FTT_DO_MS     0x00000004   /* do basic modes sense */
 #define FTT_DO_RS     0x00000008   /* do basic request sense */
 #define FTT_DO_EXBRS  0x00000010   /* do Exabyte vendor specifics */
-#define FTT_DO_LSRW   0x00000020   /* do log sense for read/write stats */
-#define FTT_DO_LSC    0x00000080   /* do log sense for compression rate */
+#define FTT_DO_LS     0x00000020   /* do log sense for read/write stats */
+
 #define FTT_DO_05RS   0x00000100   /* EXABYTE 8x05 Request sense added bytes */
 #define FTT_DO_DLTRS  0x00000200   /* DLT Request sense added bytes */
 #define FTT_DO_TUR    0x00000400   /* do a test unit ready */
