@@ -15,13 +15,13 @@ clean:
 	rm -f $(SWIG_GENERATED_C_FILES)
 	rm -f $(SWIG_GENERATED_PY_FILES)
 
-../aci_shadow_wrap.c: aci_shadow.i aci.h aci_typemaps.i aci_typedefs.h
+../aci_shadow_wrap.c: aci_shadow.i aci_typemaps.i aci_typedefs.h
 	swig -shadow -python -D__STDC__ aci_shadow.i
 	mv aci_shadow_wrap.c ..
 	mv aci_shadow.py ..
 
 
-../derrno_wrap.c: aci_shadow.i aci.h aci_typemaps.i aci_typedefs.h
+../derrno_wrap.c: derrno.i
 	swig -python derrno.i
 	mv derrno_wrap.c ..
 
