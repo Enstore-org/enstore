@@ -68,7 +68,7 @@ ftt_free_stat(ftt_stat_buf b) {
 	}
 #endif
 
-static char *
+char *
 ftt_itoa(long n) {
 	static char buf[128];
 

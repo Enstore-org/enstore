@@ -324,21 +324,45 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
     }
     return res;
 }
+extern ftt_itoa(long n);
 
 int
 ftt_scsi_locate( ftt_descriptor d, int blockno) {
 
     int res = 0;
-    static unsigned char 
-        locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-     
-    locate_cmd[3] = (blockno >> 24) & 0xff;
-    locate_cmd[4] = (blockno >> 16) & 0xff;
-    locate_cmd[5] = (blockno >> 8)  & 0xff; 
-    locate_cmd[6] = blockno & 0xff;
-    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
-    res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
 
+    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
+	ftt_close_dev(d);
+	switch(ftt_fork(d)){
+	case -1:
+		return -1;
+
+	case 0:  /* child */
+		fflush(stdout);	/* make async_pf stdout */
+		fflush(d->async_pf_parent);
+		close(1);
+		dup2(fileno(d->async_pf_parent),1);
+		if (ftt_debug) {
+		    execlp("ftt_suid", "ftt_suid", "-x", "-l", ftt_itoa(blockno), d->basename, 0);
+		} else {
+		    execlp("ftt_suid", "ftt_suid", "-l", ftt_itoa(blockno), d->basename, 0);
+		}
+
+	default: /* parent */
+		res = ftt_wait(d);
+	}
+    } else {
+	static unsigned char 
+	    locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	 
+	locate_cmd[3] = (blockno >> 24) & 0xff;
+	locate_cmd[4] = (blockno >> 16) & 0xff;
+	locate_cmd[5] = (blockno >> 8)  & 0xff; 
+	locate_cmd[6] = blockno & 0xff;
+	res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
+	res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
+
+    }
     return res;
 }
 
@@ -504,7 +528,7 @@ int ftt_inquire(ftt_descriptor d) {
 /*
  This is a guess at what we need to format an ait cartridge - does not work
 */
-int ftt_format_ait(ftt_descriptor d, int size) {
+int ftt_format_ait(ftt_descriptor d) {
 
 # define MS31_LEN 22
 # define MS32_LEN 22
