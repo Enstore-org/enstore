@@ -22,7 +22,7 @@ if [ -z "${1-}" ] ; then
   # get all the volumes that have been defined
   #vols=`enstore volume --vols | cut -f1 -d\ | grep -v label`
   enstore volume --vols >> $out
-  vols=`cat $out | cut -f1 -d\ | egrep -v 'label|Date'`
+  vols=`cat $out | cut -f1 -d\ | egrep -v 'label|Date|\.deleted'`
 else
   vols="$1"
   output=""
@@ -68,3 +68,9 @@ for vol in $vols; do
     echo "$vinfo"
   fi
 done
+
+# clean up the output area
+if [ "$output" != "" ]; then
+  find $output -daystart -mtime +3 -exec rm -f {} \;
+done
+
