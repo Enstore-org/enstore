@@ -16,7 +16,6 @@ import enstore_functions
 # from Tkinter import *
 # import tkFont
 
-TEN_MINUTES=600   #600seconds = 10minutes
 
 #Set up paths to find our private copy of tcl/tk 8.3
 ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
@@ -328,7 +327,7 @@ class Mover:
         mover_stable_color  = colors('mover_stable_color')
         state_color         = colors('state_color')
         mover_color         = None
-        
+        print "state", state, "self.state", self.state
         if state == self.state:
             return
         self.state = state
@@ -360,8 +359,9 @@ class Mover:
                 print "Alert!  mover has a volume and shouldn't"
                 self.volume.loaded = 0
                 self.volume.ejected = 1
-                x, y = self.volume_position(ejected=1)
-                self.volume.moveto(x, y)
+                self.volume.draw()
+                #x, y = self.volume_position(ejected=1)
+                #self.volume.moveto(x, y)
         
     def update_timer(self, seconds):
         #timer color
@@ -395,8 +395,9 @@ class Mover:
             
         self.volume.loaded = 0
         self.volume.ejected = 1
-        x, y = self.volume_position(ejected=1)
-        self.volume.moveto(x, y)
+        self.volume.draw()
+        #x, y = self.volume_position(ejected=1)
+        #self.volume.moveto(x, y)
 
     def volume_position(self, ejected=0):
         if layout==CIRCULAR:
@@ -497,7 +498,6 @@ class Mover:
         self.font = get_font(self.height/4, 'Arial',
                              fit_string="DISMOUNT_WAIT",
                              width_wanted=(self.width -  self.width/3.0- 10))
-        print self.font.metrics(), int(self.height/4)
         if self.display.mover_label_width is None:
             max_width = 0
             #Find the width of the widest mover label
@@ -624,10 +624,13 @@ class Mover:
             self.connection.draw()
         
     def __del__(self):
-        self.undraw()
-        self.volume.undraw()
-        del self.volume
-        self.volume = None
+        if self.volume:
+            self.volume.undraw()
+            self.volume = None
+        try:
+            self.undraw()
+        except Tkinter.TclError:
+            pass #internal Tcl problems.
 
 class Volume:
     def __init__(self, name, display, x=None, y=None, loaded=0, ejected=0):
@@ -709,6 +712,8 @@ class Client:
         self.n_connections      = 0
         self.waiting            = 0
         i                       = 0
+        self.label              = None
+        self.outline            = None
         self.font = get_font(12, 'arial')
 
         
@@ -740,12 +745,14 @@ class Client:
             color    = client_active_color
         self.outline = self.display.create_oval(x, y, x+self.width,
                                                 y+self.height, fill=color)
-        self.label   = self.display.create_text(x+self.width/2,y+self.height/2,
-                                                text=self.name, font=self.font)
+        self.label = self.display.create_text(x+self.width/2, y+self.height/2,
+                                              text=self.name, font=self.font)
         
     def undraw(self):
-        self.display.delete(self.outline)
-        self.display.delete(self.label)
+        if self.outline:
+            self.display.delete(self.outline)
+        if self.label:
+            self.display.delete(self.label)
 
     def update_state(self):
 
@@ -757,7 +764,8 @@ class Client:
             color = client_wait_color 
         else:
             color =  client_active_color
-        self.display.itemconfigure(self.outline, fill = color) 
+        if self.outline:
+            self.display.itemconfigure(self.outline, fill = color) 
         
     def reposition(self):
         self.undraw()
@@ -781,10 +789,10 @@ class Connection:
         self.client             = client
         self.display            = display
         self.rate               = 0 #pixels/second, not MB
-        self.dashoffset = 0
+        self.dashoffset         = 0
         self.segment_start_time = 0
         self.segment_stop_time  = 0
-        self.line= None
+        self.line               = None
         
     def draw(self):
         #print self.mover.name, " connecting to ", self.client.name
@@ -809,7 +817,6 @@ class Connection:
                                              smooth=1)
    
     def undraw(self):
-        print "jasdfhljaihflakhlhasdfdsf"
         self.display.delete(self.line)
 
 
@@ -944,20 +951,18 @@ class Display(Tkinter.Canvas):
         """
             
         self.bind('<Button-1>', self.action)
-        self.bind('<Button-2>', self.reinit)
+        self.bind('<Button-3>', self.reinititalize)
+        self.bind('<Configure>', self.resize)
 
         #Draw the window and update the canvas size.
         self.update()
         self.width, self.height = self.winfo_width(), self.winfo_height()
 
     def cleanup(self):
-        print "ajlksdfaljkhf"
         for mover in self.movers.values():
             if mover.connection:
-                del mover.connection
-        del self.movers
+                mover.connection = None
         self.movers = {}
-        del self.clients
         self.clients = {}
         self.update()
         
@@ -965,9 +970,26 @@ class Display(Tkinter.Canvas):
         x, y = self.canvasx(event.x), self.canvasy(event.y)
         print self.find_overlapping(x-1, y-1, x+1, y+1)
 
-    def reinit(self, event):
-        self.stopped = -1
-        
+    def resize(self, event):
+        #If the user changed the window size, update.
+        if self.has_canvas_changed():
+            self.reposition_canvas()
+            self.update()
+        #Assume the only way to get here is that the window was closed.
+        else:
+            self.stopped = 1
+
+    def reinititalize(self, event):
+        self._reinit = 1
+        self.quit()
+
+    def reinit(self):
+        self._reinit = 0
+        self.stopped = 0
+
+    def attempt_reinit(self):
+        return self._reinit
+
     def create_movers(self, mover_names):
         #Create a Mover class instance to represent each mover.
         N = len(mover_names)
@@ -1125,7 +1147,7 @@ class Display(Tkinter.Canvas):
             if len(words) < 3:
                 print "Error, bad command", command
                 return
-
+            
             if words[0]=='state':
                 what_state = words[2]
                 time_in_state = 0
@@ -1133,8 +1155,10 @@ class Display(Tkinter.Canvas):
                     try:
                         time_in_state = int(float(words[3]))
                     except:
-                        print "bad numeric value", words[3]            
+                        print "bad numeric value", words[3]
+                print "updating state"
                 mover.update_state(what_state, time_in_state)
+                print "state updated to", what_state
                 if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
                     print "Need to disconnect because mover state ",
                     print "changed to : ", what_state
@@ -1201,48 +1225,20 @@ class Display(Tkinter.Canvas):
                     mover.connection.client.last_activity_time = time.time()
                 return
 
+    #overloaded 
+    def update(self):
+        try:
+            if Tkinter.Tk.winfo_exists(self):
+                Tkinter.Tk.update(self)
+        except Tkinter.TclError:
+            print "TclError...ignore"
+
+
     def mainloop(self):
-        # Our mainloop is different from the normal Tk mainloop in that we have
-        # (A) an interval timer to control animations and
-        # (B) we check for commands coming from standard input
-        ###(A) and (B) have been relocated to entv.py.
+        Tkinter.Tk.mainloop(self)
+        self.cleanup()
+        self.stopped = 1
 
-        # we will get all of the info from the event relay.
-        erc = event_relay_client.EventRelayClient()
-        erc.start([event_relay_messages.ALL,])
-        start = time.time()
-
-        while not self.stopped:
-
-            #If the user changed the window size, update.
-            if self.has_canvas_changed():
-                self.reposition_canvas()
-
-            #test whether there is a command ready to read, timeout in
-            # 1/30 second.
-            readable, junk, junk = select.select([erc.sock, 0], [], [], 1.0/30)
-            if not readable:
-                continue
-            now = time.time()
-            for fd in readable:
-                if fd == 0:
-                    # move along, no more to see here
-                    erc.unsubscribe()
-                    erc.sock.close()
-                    return
-                else:
-                    msg = enstore_functions.read_erc(erc)
-                    if msg:
-                        print time.ctime(now), msg.type, msg.extra_info
-                        command="%s %s" % (msg.type, msg.extra_info)
-                        self.handle_command(command)
-            if now - start > TEN_MINUTES:
-                # resubscribe
-                erc.subscribe()
-                start = now
-            
-            ####force the display to refresh
-            self.update()
 
 if __name__ == "__main__":
     if len(sys.argv)>1:

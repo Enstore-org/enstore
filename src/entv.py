@@ -20,18 +20,55 @@ import event_relay_client
 import udp_client
 import setpath
 import rexec
+import signal
+import errno
 
 _rexec = rexec.RExec()
 def eval(stuff):
     return _rexec.r_eval(stuff)
+
+TEN_MINUTES=600   #600seconds = 10minutes
+
+status_thread = None
+messages_thread = None
+periodic_thread = None
 
 debug=1
 
 _csc = None
 _config_cache = None
 
+#Should we need to stop (ie. cntl-C) this is the global flag.
+stop_now = 0
+
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
+
+def signal_handler(sig, frame):
+    global status_thread, periodic_thread, messages_thread
+    global stop_now
+
+    try:
+        if sig != signal.SIGTERM and sig != signal.SIGINT:
+            sys.stderr.write("Signal caught at: ", frame.f_code.co_filename,
+                             frame.f_lineno);
+            sys.stderr.flush()
+    except:
+        pass
+    
+    try:
+        sys.stderr.write("Caught signal %s, exiting\n" % (sig,))
+        sys.stderr.flush()
+    except:
+        pass
+
+    #flag the threads to stop.
+    stop_now = 1
+    status_thread.join()
+    periodic_thread.join()
+    messages_thread.join()
+
+    sys.exit(0)
 
 def dict_eval(data):
     ##This is like "eval" but it assumes the input is a
@@ -120,22 +157,6 @@ def get_mover_list():
 
     return movers
 
-def request_mover_status(display):
-
-    csc = get_csc()
-    config = get_config()
-    movers = get_mover_list()
-
-    for mover in movers:
-        mov = mover_client.MoverClient(csc, mover)
-        status = mov.status()
-        commands = handle_status(mover[:-6], status)
-        if not commands:
-            continue
-        print commands
-        for command in commands:
-            display.handle_command(command)
-
 def subscribe(event_relay_addr):
     erc = event_relay_client.EventRelayClient(
         event_relay_host=event_relay_addr[0],
@@ -149,7 +170,7 @@ def handle_status(mover, status):
     mover_state = "state %s %s %s" % (mover, state, time_in_state)
     volume = status.get('current_volume', None)
     if not volume:
-        return
+        return [mover_state]
     if state in ['ACTIVE', 'SEEK', 'HAVE_BOUND']:
         loaded = "loaded %s %s" % (mover, volume)
         return [mover_state, loaded]
@@ -172,9 +193,33 @@ def handle_status(mover, status):
 
     return [mover_state]
 
-def handle_periodic_actions(display):
+###
+### The following functions run in there own thread.
+###
 
-    while not display.stopped:
+def request_mover_status(display):
+    global stop_now
+
+    csc = get_csc()
+    config = get_config()
+    movers = get_mover_list()
+
+    for mover in movers:
+        if stop_now: #End imediatily.
+            return
+        mov = mover_client.MoverClient(csc, mover)
+        status = mov.status()
+        commands = handle_status(mover[:-6], status)
+        if not commands:
+            continue
+        print commands
+        for command in commands:
+            display.handle_command(command)
+
+def handle_periodic_actions(display):
+    global stop_now
+
+    while not display.stopped and not stop_now:
 
         ## Here is where we handle periodic things
         now = time.time()
@@ -195,8 +240,9 @@ def handle_periodic_actions(display):
             if now - client.last_activity_time > 5: # grace period
                 print "It's been longer than 5 seconds, ",
                 print client_name," client must be deleted"
-                del display.clients[client_name]
                 client.undraw()
+                del display.clients[client_name]
+
 
         #### Handle titling
         if display.title_animation:
@@ -207,18 +253,87 @@ def handle_periodic_actions(display):
 
         ####force the display to refresh
         display.update()
-            
-def main():
-    system_name = get_system_name()
 
-    entv_is_on = -1 #-1 means (re)init.  Otherwise, exit.
+
+def handle_messages(display):
+    global stop_now
+    
+    # we will get all of the info from the event relay.
+    erc = event_relay_client.EventRelayClient()
+    erc.start([event_relay_messages.ALL,])
+    erc.subscribe()
+    
+    start = time.time()
+    count = 0
+
+    while not display.stopped and not stop_now:
+
+        #test whether there is a command ready to read, timeout in
+        # 1 second.
+        try:
+            readable, junk, junk = select.select([erc.sock, 0], [], [], 1)
+        except select.error:
+            exc, msg, tb = sys.exc_info()
+            if msg.args[0] == errno.EINTR:
+                sys.exit(0)
+
+        #If nothing received for 60 seconds, resubscribe.
+        if count > 60:
+            erc.subscribe()
+            count = 0
+        count = count + 1            
+        if not readable:
+            continue
+
+        now = time.time()
+        for fd in readable:
+            if fd == 0:
+                # move along, no more to see here
+                erc.unsubscribe()
+                erc.sock.close()
+                print "Exiting early"
+                sys.exit(1)
+            else:
+                msg = enstore_functions.read_erc(erc)
+                if msg:
+                    print time.ctime(now), msg.type, msg.extra_info
+                    command="%s %s" % (msg.type, msg.extra_info)
+                    display.handle_command(command)
+        if now - start > TEN_MINUTES:
+            # resubscribe
+            erc.subscribe()
+            start = now
+
+    #End nicely.
+    erc.unsubscribe()
+    erc.sock.close()
+
+###
+###  main
+###
+def main():
+    global status_thread, periodic_thread, messages_thread
+    global stop_now
+
+    for sig in range(1, signal.NSIG):
+        if sig not in (signal.SIGTSTP, signal.SIGCONT,
+                       signal.SIGCHLD, signal.SIGWINCH):
+            try:
+                signal.signal(sig, signal_handler)
+            except:
+                sys.stderr.write("Setting signal %s to %s failed.\n" %
+                                 (sig, signal_handler))
+    
+    system_name = get_system_name()
 
     display = enstore_display.Display(master=None, title=system_name,
                                       window_width=700, window_height=1600,
                                       canvas_width=1000, canvas_height=2000,
                                       background='#add8e6')
 
-    while entv_is_on < 0:
+    while ( not display.stopped or display.attempt_reinit() ) and not stop_now:
+
+        display.reinit()
 
         #initalize the movers.
         movers = get_mover_list()
@@ -229,32 +344,31 @@ def main():
         #Inform the display the names of all the movers.
         display.handle_command(movers_command)
 
-        display.reposition_canvas()
-
-        display.update()
-
         #On average collecting the status of all the movers takes 10-15
         # seconds.  We don't want to wait that long.  This can be done
         # sychronously to displaying live data.
-        status_tread = threading.Thread(group=None,
-                                        target=request_mover_status,
-                                        name='', args=(display,), kwargs={})
-        status_tread.start() #wait for movers to sends status seperately.
+        status_thread = threading.Thread(group=None,
+                                         target=request_mover_status,
+                                         name='', args=(display,), kwargs={})
+        status_thread.start() #wait for movers to sends status seperately.
 
-        periodic_tread=threading.Thread(group=None,
-                                        target=handle_periodic_actions,
-                                        name='', args=(display,), kwargs={})
-        periodic_tread.start()
+        periodic_thread=threading.Thread(group=None,
+                                         target=handle_periodic_actions,
+                                         name='', args=(display,), kwargs={})
+        periodic_thread.start()
+
+        messages_thread=threading.Thread(group=None,
+                                         target=handle_messages,
+                                         name='', args=(display,), kwargs={})
+        messages_thread.start()
 
         #Loop until user says don't.
         display.mainloop()
-        display.cleanup()
-        entv_is_on = display.stopped
-        display.stopped = 0
-        while threading.activeCount() > 1:
-            pass #wait
+
+        status_thread.join()
+        periodic_thread.join()
+        messages_thread.join()
 
 
 if __name__ == "__main__":
     main()
-    
