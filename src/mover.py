@@ -117,9 +117,9 @@ def mode_name(mode):
     else:
         return ['READ','WRITE','ASSERT'][mode]
 
-KB=1L<<10
+#KB=1L<<10
 MB=1L<<20
-GB=1L<<30
+#GB=1L<<30
 
 SANITY_SIZE = 65536
 
@@ -1099,9 +1099,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             return 0
         
     def nowork(self, ticket):
+        x =ticket # to trick pychecker
         return {}
 
     def handle_mover_error(self, exc, msg, tb):
+        x = tb # to trick pychecker
         Trace.log(e_errors.ERROR, "handle mover error %s %s"%(exc, msg))
         Trace.trace(10, "%s %s" %(self.current_work_ticket, state_name(self.state)))
         if self.current_work_ticket:
@@ -2250,6 +2252,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
         self.timer('transfer_time')
+        after_dismount_function = None
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
@@ -2286,6 +2289,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             while self.error_times and now - self.error_times[0] > self.failure_interval:
                 self.error_times.pop(0)
             if len(self.error_times) >= self.max_failures:
+                if broken:
+                  after_dismount_function = self.offline 
                 broken =  "max_failures (%d) per failure_interval (%d) reached" % (self.max_failures,
                                                                                      self.failure_interval)
             ### network errors should not count toward rd_err, wr_err
@@ -2366,7 +2371,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.log_state()
                 
         if dismount_allowed:
-            self.dismount_volume()
+            self.dismount_volume(after_function=after_dismount_function)
 
         if save_state == DRAINING:
             self.dismount_volume()
@@ -2374,8 +2379,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.offline()
         else:
             if not encp_gone:
-                self.maybe_clean()
-                self.idle()
+                if not after_dismount_function:
+                    self.maybe_clean()
+                    self.idle()
         
         self.tr_failed = 0   
         #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
@@ -3154,6 +3160,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_failed(e_errors.ERROR, "invalid mode %s" % (self.mode,))
                 
     def status(self, ticket):
+        x = ticket # to trick pychecker
         now = time.time()
         status_info = (e_errors.OK, None)
         if self.state == ERROR:
@@ -3249,6 +3256,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return os.path.exists(self.lockfile_name())
         
     def start_draining(self, ticket):       # put itself into draining state
+        x = ticket # to trick pychecker
         save_state = self.state
         self.draining = 1 
         if self.state is ACTIVE:
@@ -3266,6 +3274,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return
 
     def stop_draining(self, ticket):        # put itself into draining state
+        x = ticket # to trick pychecker
         if self.state != OFFLINE:
             out_ticket = {'status':("EPROTO","Not OFFLINE")}
             self.reply_to_caller(out_ticket)
@@ -3295,6 +3304,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.alarm(e_errors.ERROR, "can not restart. State: %s" % (self.state,))
         
     def clean_drive(self, ticket):
+        x = ticket # to trick pychecker
         save_state = self.state
         if self.state not in (IDLE, OFFLINE):
             ret = {'status':("EPROTO", "Cleaning not allowed in %s state" % (state_name(self.state)))}
@@ -3452,6 +3462,7 @@ class DiskMover(Mover):
     # device_dump_S(self, ticket) -- server hook for device_dump()
 
     def device_dump_S(self, ticket):
+        x =ticket # to trick pychecker
         t = {"status":(e_errors.ERROR, "not implemented")}
         self.reply_to_caller(t)
 	return
@@ -3865,6 +3876,7 @@ class DiskMover(Mover):
         return string.join((ip_map,volume_family,'%s'%(long(time.time()*1000),)),':')
 
     def no_work(self, ticket):
+        x = ticket # to trick pychecker
         if self.state is HAVE_BOUND:
             self.dismount_volume()
         
@@ -4054,6 +4066,7 @@ class DiskMover(Mover):
         self.position_media(self.file)
         
     def position_media(self, file):
+        x = file # to trick pychecker
         have_tape = 0
         err = None
         Trace.trace(10, "position media")
@@ -4369,6 +4382,7 @@ class DiskMover(Mover):
         return
     
     def status(self, ticket):
+        x =ticket # to trick pychecker
         now = time.time()
         status_info = (e_errors.OK, None)
         if self.state == ERROR:
