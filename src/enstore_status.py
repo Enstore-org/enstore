@@ -235,7 +235,7 @@ class EnstoreStatus:
     # parse the library manager moverlist ticket
     def parse_lm_moverlist(self, work):
         Trace.trace(13,"{parse_lm_moverlist")
-	string = "    KNOWN MOVER           PORT    STATE         LAST CHECKED         TRY COUNT\n"
+	string = "    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT\n"
 	for mover in work:
 	    (address, port) = mover['address']
 	    time = self.format_time(mover['last_checked'])
