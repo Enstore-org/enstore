@@ -1697,6 +1697,9 @@ def clients(config_host,config_port,verbose):
     global logc
     logc = log_client.LoggerClient(csc, 'ENCP', 'logserver')
 
+    # convenient, but maybe not correct place, to hack in log message that shows how encp was called
+    Trace.trace(1, '%s' % sys.argv)
+
     uinfo = {}
     uinfo['uid'] = os.getuid()
     uinfo['gid'] = os.getgid()
@@ -2086,7 +2089,7 @@ class encp(interface.Interface):
 
 if __name__  ==  "__main__" :
     t0 = time.time()
-    Trace.init("encp")
+    Trace.init("ENCP")
     Trace.trace( 6, 'encp called at %s: %s'%(t0,sys.argv) )
 
     # use class to get standard way of parsing options
@@ -2128,6 +2131,6 @@ if __name__  ==  "__main__" :
 	    Trace.trace(0,emsg)
 	    jraise(errno.errorcode[errno.EPROTO],emsg)
 
-	Trace.trace(1,"encp finished at "+repr(time.time()))
+	Trace.trace(10,"encp finished at "+repr(time.time()))
 
 
