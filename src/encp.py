@@ -1692,10 +1692,14 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
         sys.stderr.write("cannot log error message %s\n" % (errmsg,))
         sys.stderr.write("internal error %s %s\n" % (str(exc), str(msg)))
 
+    if msg == None:
+        use_msg = ""  #log_encp_error() doesn't accept this as None.
+    else:
+        use_msg = msg
     acc = get_acc()
     acc.log_encp_error(inputfile, outputfile, filesize, storage_group,
                        unique_id, encp_client_version(),
-                       status, msg)
+                       status, use_msg)
 
 #######################################################################
 
