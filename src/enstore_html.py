@@ -998,59 +998,6 @@ class EnConfigurationPage(EnBaseHtmlDoc):
 	self.trailer(table)
 	self.append(table)							 
 
-class EnMiscPage(EnBaseHtmlDoc):
-
-    def __init__(self, refresh=600, system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, help_file="miscHelp.html",
-			       system_tag=system_tag)
-	self.title = "ENSTORE Miscellany"
-	self.script_title_gif = "en_misc.gif"
-	self.source_server = THE_INQUISITOR
-	self.description = ""
-
-    # create the body of the page, the incoming data is a list of strings
-    def body(self, (data_list, html_dir)):
-	table = self.table_top()
-	tr = HTMLgen.TR(self.make_th("Miscellaneous Command Output File"))
-	tr.append(self.make_th("Creation Date"))
-	file_table = HTMLgen.TableLite(tr, border=1, cellspacing=5, cellpadding=CELLP,
-				       align="LEFT", bgcolor=AQUA)
-	if data_list:
-	    # now the data
-	    data_list.sort()
-	    for item in data_list:
-		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Href(item, item), 
-							size="+2")))
-		# get the modification date of the file too
-		tr.append(HTMLgen.TD(enstore_functions.format_time(os.stat("%s/%s"%(html_dir,
-								     item))[stat.ST_MTIME])))
-		file_table.append(tr)
-	table.append(HTMLgen.TR(HTMLgen.TD(file_table)))
-	# output on the same page a list of the files indicating misc jobs are active
-	# this may aid in diagnosing problems with hung misc jobs.
-	table.append(empty_row())
-	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR())))
-	table.append(empty_row())
-	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold("Directories Created For Currently Running Miscellaneous Processes"), size="+4"))))
-	table.append(empty_row())
-	home = "%s/MISC"%(os.environ['HOME'],)
-        try:
-            dirs = os.listdir(home)
-        except OSError:
-            dirs = []
-	tr = HTMLgen.TR(self.make_th("Directory"))
-	tr.append(self.make_th("Creation Date"))
-	dirs_table = HTMLgen.TableLite(tr, border=1, cellspacing=5, cellpadding=CELLP,
-				       align="LEFT", bgcolor=AQUA)
-	for dir in dirs:
-	    file = "%s/%s"%(home, dir)
-	    tr = HTMLgen.TR(HTMLgen.TD(file))
-	    # get the modification date of the directory too
-	    tr.append(HTMLgen.TD(enstore_functions.format_time(os.stat(file)[stat.ST_MTIME])))
-	    dirs_table.append(tr)
-	table.append(HTMLgen.TR(HTMLgen.TD(dirs_table)))
-	self.trailer(table)
-	self.append(table)
 
 class EnLogPage(EnBaseHtmlDoc):
 
