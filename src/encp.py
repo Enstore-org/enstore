@@ -926,9 +926,11 @@ def jraise(errcode,errmsg,exit_code=1) :
 
     format = "Fatal error:"+str(errcode)+str(errmsg)
     print format
-    global logc
-    logc.send(log_client.ERROR, 1, format)
-
+    try:
+        global logc
+        logc.send(log_client.ERROR, 1, format)
+    except:
+        pass
     Trace.trace(0,"}encp.jraise and exitting with code="+\
                 repr(exit_code))
     sys.exit(exit_code)
