@@ -1,3 +1,4 @@
+import os
 import sys
 import posixfile
 import string
@@ -13,10 +14,10 @@ class ConfigurationDict(DispatchingWorker) :
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile) :
-	try:
-	    f = open(configfile)
-	except :
-	    return repr(configfile)+" does not exists"
+        try:
+            f = open(configfile)
+        except :
+            return repr(configfile)+" does not exists"
         line = ""
 
         print "ConfigurationDict load_config: "\
@@ -107,7 +108,35 @@ class ConfigurationServer(ConfigurationDict, GenericServer, UDPServer) :
         pprint.pprint(self.__dict__)
 
 if __name__ == "__main__" :
-    server_address = ("localhost",7500)
+
+    # defaults
+    host = "localhost"
+    port = "7500"
     configfile = "/pnfs/enstore/.(config)(flags)/enstore.conf"
+
+
+    # see what the user has specified
+    try:
+        host = sys.argv[1]
+
+        port = sys.argv[2]
+
+        configfile =  sys.argv[3]
+
+    # just use the defaults if the user didn't specify them
+    except:
+        pass
+
+    # bomb out if port isn't numeric
+    port = string.atoi(port)
+
+    # bomb out if we can't find the file
+    statinfo = os.stat(configfile)
+
+    # instantiate, or bomb our, and then start server
+    server_address = (host,port)
+    print "Instantiating Configuration Server at ", server_address\
+          , " using config file ",configfile
     cs =  ConfigurationServer( server_address, configfile)
+
     cs.serve_forever()
