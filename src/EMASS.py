@@ -65,19 +65,6 @@ status_table = (
     ("ERROR",   "vcc.new_library error(s)"),                            #38
     )
     
-tmpIareas = ("I01","I02","I03","I04","I05","I06","I07","I08")
-# R1 IObox
-tmpMediaIOassign = { "ACI_8MM"     :     # ....put into config file
-                 ["E02","E03","E04"],
-		  "ACI_DECDLT"  :
-		 ["E01"] }
-
-# R2 IObox
-#mediaIOassign = { "ACI_8MM"     :     # ....implement these
-#                 ["E06","E07","E08"],
-#		  "ACI_DECDLT"  :
-#		 ["E05"] }
-
 def mount(volume, drive, media_type):
     """mount(vol, drive, media type)"""
 
