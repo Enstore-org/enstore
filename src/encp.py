@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+
+###############################################################################
 #
 # $Id$
 #
+###############################################################################
 
 #############################################################################
 # Environmental variables that effect encp.
@@ -302,14 +305,26 @@ def is_bfid(bfid):
     return 0
 
 def is_volume(volume):
+    #The format for ANSI labeled volumes should be 6 characters long:
+    # characters 1 & 2: uppercase letters
+    # characters 3 & 4: uppercase letters or digits
+    # characters 5 & 6: digits
+    #LTO tapes also require an L1, L2, etc. appended to the label.
+    #Note: Not all (test/devel) tapes are stricly conforming to the pattern.
+    #
+    #The last type of volume tested for are disk volumes.  These are
+    # colon seperated values consiting of the library, volume_family
+    # and a unique number assigned by the disk mover.
+    
     if type(volume) == types.StringType:
-        if (len(volume) == 6 and \
-            re.compile("^[A-Z]{2}[A-Z0-9]{2}[0-9]{2}")):
+        if re.search("^[A-Z0-9]{6}$", volume):
             return 1   #If passed a volume.
-        elif (len(volume) == 8 and \
-            re.compile("^[A-Z]{2}[A-Z0-9]{2}[0-9]{2}(L)[12]")):
+        elif re.search("^[A-Z0-9]{6}(L)[0-9]{1}$", volume):
             return 1   #If passed a volume.
-
+        elif re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[0-9]+$"
+                      % (charset.charset, charset.charset,
+                         charset.charset, charset.charset), volume):
+            return 1   #If pass a disk volume.
     return 0
 
 def is_location_cookie(lc):
@@ -967,6 +982,7 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
 #  or a volume name string.
 def get_csc(parameter=None):
     global __csc  #For remembering.
+    global __acc
 
     #Set some default values.
     bfid = None
@@ -976,17 +992,7 @@ def get_csc(parameter=None):
     # Should only matter for reads.  On a success, the variable 'brand' should
     # contain the brand of the bfid to be used in the rest of the function.
     # On error return the default configuration server client (csc).
-    if not parameter:
-        if __csc != None:
-            return __csc
-        else:
-            config_host = enstore_functions2.default_host()
-            config_port = enstore_functions2.default_port()
-            __csc = configuration_client.ConfigurationClient((config_host,
-                                                              config_port))
-        return __csc
-    
-    elif type(parameter) == types.DictType: #If passed a ticket with bfid.
+    if type(parameter) == types.DictType: #If passed a ticket with bfid.
         bfid = parameter.get('fc', {}).get("bfid",
                                            parameter.get("bfid", None))
         volume = parameter.get('fc', {}).get('external_label',
@@ -998,23 +1004,61 @@ def get_csc(parameter=None):
     elif is_volume(parameter):  #If passed a volume.
         volume = parameter
 
+    #Remember this for comparisons later.
+    old_csc = __csc
+
     #Call the correct version of the underlying get_csc functions.    
     if bfid:  #If passed a bfid.
         brand = extract_brand(bfid)
-        return _get_csc_from_brand(brand)
+        csc = _get_csc_from_brand(brand)
     
     elif volume:  #If passed a volume.
-        return _get_csc_from_volume(volume)
+        csc = _get_csc_from_volume(volume)
 
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host, config_port))
+    else:
+        if __csc != None:
+            #Use the cached instance, if possible.
+            csc = __csc
+        else:
+            config_host = enstore_functions2.default_host()
+            config_port = enstore_functions2.default_port()
+            csc = configuration_client.ConfigurationClient((config_host,
+                                                            config_port))
+
+    #These are some things that only should be done if this is a new
+    # conifguration client.
+    if csc != old_csc:
+        #Snag the entire configuration.
+        config = csc.dump_and_save(10, 10)
+
+        if e_errors.is_timedout(config):
+            raise EncpError(errno.ETIMEDOUT,
+                            "Unable to obtain configuration information" \
+                            " from configuration server.",
+                            e_errors.CONFIGDEAD)
+        elif not e_errors.is_ok(config):
+            raise EncpError(None, str(config['status'][1]),
+                            config['status'][0])
+            
+        #Don't use the csc get() function to retrieve the
+        # event_relay information; doing so will clobber
+        # the dump-and-saved configuration.  Once, the
+        # enable_caching() function is called the csc get()
+        # function is okay to use.
+        er_info = config.get(enstore_constants.EVENT_RELAY)
+        er_addr = (er_info['hostip'], er_info['port'])
+        csc.new_config_obj.enable_caching(er_addr)
+        
+    __csc = csc
+    __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                        logc = __logc, alarmc = __alarmc)
     return csc  #Nothing valid, just return the default csc.
 
 # parameter: can be a dictionary containg a 'bfid' item or a bfid string
-def get_fcc(parameter = None):
+def __get_fcc(parameter = None):
     global __fcc
     global __csc
+    global __acc
 
     if not parameter:
         bfid = None
@@ -1032,7 +1076,7 @@ def get_fcc(parameter = None):
 
     if bfid == None:
         if __fcc != None: #No bfid, but have cached fcc.
-            return __fcc
+            return __fcc, None
         else:
             #Get the csc to use.
             if __csc == None:
@@ -1047,14 +1091,14 @@ def get_fcc(parameter = None):
             __fcc = file_clerk_client.FileClient(
                 csc, logc = __logc, alarmc = __alarmc,
                 rcv_timeout=5, rcv_tries=2)
-            return __fcc
+            return __fcc, None
     
 
     #First check that the cached version matches the bfid brand.
     if __fcc != None:
         file_info = __fcc.bfid_info(bfid, 5, 3)
         if e_errors.is_ok(file_info):
-            return __fcc
+            return __fcc, file_info
         #__fcc_brand = __fcc.get_brand()
         #if bfid[:len(__fcc_brand)] == __fcc_brand:
         #    return __fcc
@@ -1070,7 +1114,7 @@ def get_fcc(parameter = None):
             file_info = fcc.bfid_info(bfid, 5, 3)
             if e_errors.is_ok(file_info):
                 __fcc = fcc
-                return __fcc
+                return __fcc, file_info
             #fcc_brand = fcc.get_brand()
             #if bfid[:len(fcc_brand)] == fcc_brand:
             #    return __fcc
@@ -1084,14 +1128,21 @@ def get_fcc(parameter = None):
     if fcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
     else:
-        fcc_brand = fcc.get_brand(5, 3)
-        if not is_brand(fcc_brand):
-            Trace.log(e_errors.WARNING,
-                      "File clerk (%s) returned invalid brand: %s\n"
-                      % (fcc.server_address, fcc_brand))
-        elif bfid[:len(fcc_brand)] == fcc_brand:
+        file_info = fcc.bfid_info(bfid, 5, 3)
+        if e_errors.is_ok(file_info):
+            __csc = csc
             __fcc = fcc
-            return __fcc
+            __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                            logc = __logc, alarmc = __alarmc)
+            return __fcc, file_info
+        #fcc_brand = fcc.get_brand(5, 3)
+        #if not is_brand(fcc_brand):
+        #    Trace.log(e_errors.WARNING,
+        #              "File clerk (%s) returned invalid brand: %s\n"
+        #              % (fcc.server_address, fcc_brand))
+        #elif bfid[:len(fcc_brand)] == fcc_brand:
+        #    __fcc = fcc
+        #return __fcc
 
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
@@ -1100,7 +1151,12 @@ def get_fcc(parameter = None):
     else:
         __fcc = file_clerk_client.FileClient(
             csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
-        return __fcc
+        if bfid:
+            file_info = fcc.bfid_info(bfid, 5, 3)
+            if e_errors.is_ok(file_info):
+                return __fcc, file_info
+        else:
+            return __fcc, None
 
     #Loop through systems for the brand that matches the one we're looking for.
     for server in config_servers.keys():
@@ -1116,23 +1172,31 @@ def get_fcc(parameter = None):
 
             if fcc_test.server_address != None:
 		#If the fcc has been initialized correctly; use it.
-
-		system_brand = fcc_test.get_brand(5, 2)
-		if not is_brand(system_brand):
-		    Trace.log(e_errors.WARNING,
-			      "File clerk (%s) returned invalid brand: %s\n"
-			      % (fcc_test.server_address, system_brand))
+                file_info = fcc.bfid_info(bfid, 5, 3)
+                if e_errors.is_ok(file_info):
+                    __csc = csc_test
+                    __fcc = fcc
+                    __acc = accounting_client.accClient(
+                        __csc, logname = 'ENCP',
+                        logc = __logc, alarmc = __alarmc)
+                    return __fcc, file_info
+        
+		#system_brand = fcc_test.get_brand(5, 2)
+		#if not is_brand(system_brand):
+		#    Trace.log(e_errors.WARNING,
+		#	      "File clerk (%s) returned invalid brand: %s\n"
+		#	      % (fcc_test.server_address, system_brand))
 		#If things match then use this system.
-		if bfid[:len(system_brand)] == system_brand:
-		    if fcc.get_brand(5, 2) != system_brand:
-			brand = extract_brand(bfid)
-			msg = "Using %s based on brand %s." %  \
-			      (system_brand, brand)
-			Trace.log(e_errors.INFO, msg)
-
-		    __csc = csc_test  #Set global for performance reasons.
-		    __fcc = fcc_test
-		    return __fcc
+		#if bfid[:len(system_brand)] == system_brand:
+		#    if fcc.get_brand(5, 2) != system_brand:
+		#	brand = extract_brand(bfid)
+		#	msg = "Using %s based on brand %s." %  \
+		#	      (system_brand, brand)
+		#	Trace.log(e_errors.INFO, msg)
+                #
+		#    __csc = csc_test  #Set global for performance reasons.
+		#    __fcc = fcc_test
+		#    return __fcc
 
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -1140,13 +1204,28 @@ def get_fcc(parameter = None):
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
+    __csc = csc
     __fcc = file_clerk_client.FileClient(
-        csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
-    return __fcc
+        __csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
+    __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                        logc = __logc, alarmc = __alarmc)
+
+    if __fcc.server_address != None and bfid != None:
+        #If the fcc has been initialized correctly; use it.
+        file_info = __fcc.bfid_info(bfid, 5, 3)
+    else:
+        file_info = None
+
+    return __fcc, file_info
+
+def get_fcc(bfid = None):
+
+    return __get_fcc(bfid)[0]
     
-def get_vcc(parameter = None):
+def __get_vcc(parameter = None):
     global __vcc
     global __csc
+    global __acc
 
     if not parameter:
         volume = None
@@ -1164,7 +1243,7 @@ def get_vcc(parameter = None):
 
     if volume == None: 
         if __vcc != None: #No volume, but have cached vcc.
-            return __vcc
+            return __vcc, None
         else:
             #Get the csc to use.
             if __csc == None:
@@ -1179,13 +1258,13 @@ def get_vcc(parameter = None):
             __vcc = volume_clerk_client.VolumeClerkClient(
                 csc, logc = __logc, alarmc = __alarmc,
                 rcv_timeout=5, rcv_tries=2)
-            return __vcc
+            return __vcc, None
     
     #First check that the cached version knows about the volume.
     if __vcc != None:
         volume_info = __vcc.inquire_vol(volume, 5, 20)
         if e_errors.is_ok(volume_info):
-            return __vcc
+            return __vcc, volume_info
         else:
             Trace.log(e_errors.WARNING,
                       "Volume clerk (%s) knows nothing about %s.\n"
@@ -1203,7 +1282,7 @@ def get_vcc(parameter = None):
             volume_info = test_vcc.inquire_vol(volume, 5, 20)
             if e_errors.is_ok(volume_info):
                 __vcc = test_vcc
-                return __vcc
+                return __vcc, volume_info
             else:
                 Trace.log(e_errors.WARNING,
                           "Volume clerk (%s) knows nothing about %s.\n"
@@ -1219,8 +1298,14 @@ def get_vcc(parameter = None):
     if vcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default volume clerk failed.\n")
     #Before checking other systems, check the current system.
-    elif e_errors.is_ok(vcc.inquire_vol(volume)):
-        return vcc
+    else:
+        volume_info = vcc.inquire_vol(volume)
+        if e_errors.is_ok(volume_info):
+            __csc = csc
+            __vcc = vcc
+            __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                            logc = __logc, alarmc = __alarmc)
+            return __vcc, volume_info
 
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
@@ -1228,7 +1313,11 @@ def get_vcc(parameter = None):
         del config_servers['status']
     else:
         __vcc = vcc
-        return __vcc
+        if volume:
+            volume_info = __vcc.inquire_vol(volume, 5, 20)
+            return __vcc, volume_info
+        else:
+            return __vcc, None
 
     #Loop through systems for the tape that matches the one we're looking for.
     for server in config_servers.keys():
@@ -1245,17 +1334,20 @@ def get_vcc(parameter = None):
             if vcc_test.server_address == None:
                 #If we failed to find this volume clerk, move on to the
                 # next one.
-                #continue
-		pass
+                continue
+		#pass
 
-            elif e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
+            volume_info = vcc_test.inquire_vol(volume, 5, 2)
+            if e_errors.is_ok(volume_info):
                 msg = "Using %s based on volume %s." % \
                       (vcc_test.server_address, volume)
                 Trace.log(e_errors.INFO, msg)
 
                 __csc = csc_test  #Set global for performance reasons.
                 __vcc = vcc_test
-                return __vcc
+                __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                            logc = __logc, alarmc = __alarmc)
+                return __vcc, volume_info
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -1263,7 +1355,37 @@ def get_vcc(parameter = None):
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
     __vcc = vcc
-    return __vcc
+    
+    if vcc_test.server_address != None and volume != None:
+        #If the vcc has been initialized correctly; use it.
+        volume_info = __vcc.inquire_vol(volume, 5, 20)
+    else:
+        volume_info = None
+        
+    return __vcc, volume_info
+
+def get_vcc(volume = None):
+
+    return __get_vcc(volume)[0]
+
+def get_acc():
+    global __acc
+    global __csc
+
+    if __acc:
+        return __acc
+    elif __csc:
+        __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                            logc = __logc, alarmc = __alarmc)
+        return __acc
+    else:
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        __csc = configuration_client.ConfigurationClient((config_host,
+                                                          config_port))
+        __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                            logc = __logc, alarmc = __alarmc)
+        return __acc
 
 ############################################################################
             
@@ -1344,7 +1466,6 @@ def check_library(library, e):
             csc, lib, logc = __logc, alarmc = __alarmc,
             rcv_timeout = 5, rcv_tries = 20)
 
-        #status_ticket = lmc.alive(lmc.name, rcv_timeout=5, tries=5)
         status_ticket = lmc.get_lm_state()
 
         if e_errors.is_ok(status_ticket):
@@ -2256,24 +2377,19 @@ def create_zero_length_local_files(filenames):
 #######################################################################
 
 #Only one of bfid and volume should be specified at one time.
+#Note: Even though encp no longer uses this function; 'get' still does.
 def get_clerks(bfid_or_volume=None):
-
     global __acc
 
-    #Snag the configuration server client for the system that contains the
-    # file clerk where the file was stored.  This is determined based on
-    # the bfid's brand.
-    csc = get_csc(bfid_or_volume)
-
-    if is_volume(bfid_or_volume):
-        volume = bfid_or_volume
-        bfid = None
-    elif is_bfid(bfid_or_volume):
-        volume = None
-        bfid = bfid_or_volume
-    else:
-        volume = None
-        bfid = None
+    #if is_volume(bfid_or_volume):
+    #    volume = bfid_or_volume
+    #    bfid = None
+    #elif is_bfid(bfid_or_volume):
+    #    volume = None
+    #    bfid = bfid_or_volume
+    #else:
+    #    volume = None
+    #    bfid = None
         
     #If a bfid was passed in, we must obtain the fcc first.  This will
     # find the correct __csc.  The same is true with the vcc if a volume
@@ -2312,6 +2428,11 @@ def get_clerks(bfid_or_volume=None):
                         "Volume clerk not available",
                         e_errors.NET_ERROR, e_ticket)
 
+    #Snag the configuration server client for the system that contains the
+    # file clerk where the file was stored.  This is determined based on
+    # the bfid's brand.  By this time the csc is set correctly, thus
+    # don't pass it any parameters and we will get the cached csc.
+    csc = get_csc()   #(bfid_or_volume)
     # we only have the correct crc now (reads)
     __acc = accounting_client.accClient(csc, logname = 'ENCP',
                                         logc = __logc, alarmc = __alarmc)
@@ -3507,8 +3628,9 @@ def set_outfile_permissions(ticket):
 #This function prototype looking thing is here so that there is a defined
 # handle_retries() before internal_handle_retries() is defined.  While
 # python handles this without the pre-definition, mylint.py does not.
-def handle_retries(*args):
-    pass
+#8-23-2004: Modified mylint.py to ignore this error.
+#def handle_retries(*args):
+#    pass
 
 #This internal version of handle retries should only be called from inside
 # of handle_retries().
@@ -3535,6 +3657,7 @@ def internal_handle_retries(request_list, request_dictionary, error_dictionary,
 
 def handle_retries(request_list, request_dictionary, error_dictionary,
                    listen_socket, route_server, control_socket, encp_intf):
+    pprint.pprint(request_dictionary)
     #Extract for readability.
     max_retries = encp_intf.max_retry
     max_submits = encp_intf.max_resubmit
@@ -3572,8 +3695,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #csc = get_csc(request_dictionary)
         # get the volume clerk responce.
         #vcc = volume_clerk_client.VolumeClerkClient(csc)
-        vcc = get_vcc(request_dictionary)
-        vc_reply = vcc.inquire_vol(request_dictionary['fc']['external_label'])
+        #vcc = get_vcc(request_dictionary)
+        #vc_reply = vcc.inquire_vol(request_dictionary['fc']['external_label'])
+        vc_reply = get_volume_clerk_info(request_dictionary)
         vc_status = vc_reply['status']
     else:
         vc_status = (e_errors.OK, None)
@@ -4089,34 +4213,35 @@ def calculate_rate(done_ticket, tinfo):
             acc_transfer_rate = int(0.0)
         else:
             acc_transfer_rate = int(done_ticket['file_size'] / transfer_time)
+
+        acc = get_acc()
+	acc.log_encp_xfer(None,
+                          done_ticket['infile'],
+                          done_ticket['outfile'],
+                          done_ticket['file_size'],
+                          done_ticket["fc"]["external_label"],
+                          #The accounting db expects the rates in bytes
+                          # per second; not MB per second.
+                          acc_network_rate,
+                          acc_drive_rate,
+                          acc_disk_rate,
+                          acc_overall_rate,
+                          acc_transfer_rate,
+                          done_ticket["mover"]["name"],
+                          done_ticket["mover"]["product_id"],
+                          done_ticket["mover"]["serial_num"],
+                          time.time() - tinfo["encp_start_time"],
+                          done_ticket["mover"].get("media_changer",
+                                                   e_errors.UNKNOWN),
+                          done_ticket["mover"].get('data_ip',
+                                               done_ticket["mover"]['host']),
+                          done_ticket["mover"]["driver"],
+                          sg,
+                          done_ticket["encp_ip"],
+                          done_ticket['unique_id'],
+                          rw,
+                          encp_client_version(),)
         
-	__acc.log_encp_xfer(None,
-                            done_ticket['infile'],
-                            done_ticket['outfile'],
-                            done_ticket['file_size'],
-                            done_ticket["fc"]["external_label"],
-                            #The accounting db expects the rates in bytes
-                            # per second; not MB per second.
-                            acc_network_rate,
-                            acc_drive_rate,
-                            acc_disk_rate,
-                            acc_overall_rate,
-                            acc_transfer_rate,
-                            done_ticket["mover"]["name"],
-                            done_ticket["mover"]["product_id"],
-                            done_ticket["mover"]["serial_num"],
-                            time.time() - tinfo["encp_start_time"],
-                            done_ticket["mover"].get("media_changer",
-                                                     e_errors.UNKNOWN),
-                            done_ticket["mover"].get('data_ip',
-                                                done_ticket["mover"]['host']),
-                            done_ticket["mover"]["driver"],
-                            sg,
-                            done_ticket["encp_ip"],
-                            done_ticket['unique_id'],
-                            rw,
-                            encp_client_version(),)
-			
 
 ############################################################################
 
@@ -5632,11 +5757,14 @@ def verify_read_request_consistancy(requests_per_vol):
 
 #######################################################################
 
-def get_file_clerk_info(fcc, bfid):
+def get_file_clerk_info(bfid):
 
     #Get the clerk info.
-    fc_ticket = fcc.bfid_info(bfid, 5, 3)
+    #fc_ticket = fcc.bfid_info(bfid, 5, 3)
+    fcc, fc_ticket = __get_fcc(bfid)
 
+    # Determine if the information returned is complete.
+    
     if not e_errors.is_ok(fc_ticket['status'][0]):
         raise EncpError(None,
                         "Failed to obtain information for bfid %s." % bfid,
@@ -5657,12 +5785,13 @@ def get_file_clerk_info(fcc, bfid):
 
     return fc_ticket
 
-def get_volume_clerk_info(vcc, volume):
+def get_volume_clerk_info(volume):
 
     #Get the clerk info.
-    vc_ticket = vcc.inquire_vol(volume)
+    #vc_ticket = vcc.inquire_vol(volume)
+    vcc, vc_ticket = __get_vcc(volume)
 
-    # Determine if the information return is complete.
+    # Determine if the information returned is complete.
 
     if not e_errors.is_ok(vc_ticket['status'][0]):
         raise EncpError(None,
@@ -5716,17 +5845,17 @@ def get_volume_clerk_info(vcc, volume):
 
     return vc_ticket
 
-def get_clerks_info(vcc, fcc, bfid, e):
+def get_clerks_info(bfid, e):
 
     #Get the clerk info.  These functions raise EncpError on error.
 
     #For the file clerk.
-    fc_ticket = get_file_clerk_info(fcc, bfid)
+    fc_ticket = get_file_clerk_info(bfid)
 
     #The volume clerk is much more complicated.  In some situations we
     # may wish to override the NOACCESS and NOTALLOWED system inhibts.
     try:
-        vc_ticket = get_volume_clerk_info(vcc, fc_ticket['external_label'])
+        vc_ticket = get_volume_clerk_info(fc_ticket['external_label'])
     except EncpError, msg:
         if msg.type in [e_errors.NOACCESS, e_errors.NOTALLOWED] \
                and e.override_noaccess:
@@ -5830,7 +5959,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
         #Make sure there is a valid volume clerk inquiry.
         #try:
-        vc_reply = get_volume_clerk_info(vcc, e.volume)
+        vc_reply = get_volume_clerk_info(e.volume)
         #except EncpError, msg:
         #    raise EncpError(None, ,
         #                    msg.type, rest)
@@ -6136,7 +6265,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
             #try:
-            vcc, fcc = get_clerks(e.get_bfid)
+            #vcc, fcc = get_clerks(e.get_bfid)
             #except EncpError:
             #    print_data_access_layer_format(
             #        e.input, e.output, 0,
@@ -6146,12 +6275,14 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             #try:
             #Get the system information from the clerks.  In this case
             # e.input[i] doesn't contain the filename, but the bfid.
-            vc_reply, fc_reply = get_clerks_info(vcc, fcc, e.get_bfid, e)
+            #vc_reply, fc_reply = get_clerks_info(vcc, fcc, e.get_bfid, e)
             #except EncpError, msg:
             #    print_data_access_layer_format(
             #        e.get_bfid, e.output[0], 0,
             #        {'status':(msg.type, msg.strerror)})
             #    quit()
+
+            vc_reply, fc_reply = get_clerks_info(e.get_bfid, e)
 
             pnfsid = fc_reply.get("pnfsid", None)
             if not pnfsid:
@@ -6220,7 +6351,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
             #try:
-            vcc, fcc = get_clerks(bfid)
+            #vcc, fcc = get_clerks(bfid)
             #except EncpError:
             #    print_data_access_layer_format(
             #        e.input, e.output, 0,
@@ -6229,12 +6360,14 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
             #try:
             #Get the system information from the clerks.
-            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid, e)
+            #vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid, e)
             #except EncpError, msg:
             #    print_data_access_layer_format(
             #        e.get_cache, e.output[0], 0,
             #        {'status':(msg.type, msg.strerror)})
             #    quit()
+
+            vc_reply, fc_reply = get_clerks_info(bfid, e)
 
             if e.output[0] == "/dev/null":
                 ofullname = e.output[0]
@@ -6299,7 +6432,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
             #try:
-            vcc, fcc = get_clerks(bfid)
+            #vcc, fcc = get_clerks(bfid)
             #except EncpError:
             #    print_data_access_layer_format(
             #        e.input, e.output, 0,
@@ -6308,12 +6441,14 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 
             #try:
             #Get the system information from the clerks.
-            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid, e)
+            #vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid, e)
             #except EncpError, detail:
             #    print_data_access_layer_format(
             #        ifullname, ofullname, file_size,
             #        {'status':(detail.type, detail.strerror)})
             #    quit()
+
+            vc_reply, fc_reply = get_clerks_info(bfid, e)
 
             read_work = 'read_from_hsm'
 

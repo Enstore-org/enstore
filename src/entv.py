@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
+###############################################################################
+#
 # $Id$
+#
+###############################################################################
 
 #system imports
 import os
@@ -22,6 +26,7 @@ import gc
 import enstore_display
 import configuration_client
 import enstore_functions2
+import enstore_constants
 import enstore_erc_functions
 import e_errors
 import mover_client
@@ -154,7 +159,7 @@ def get_system(intf=None): #, system_name=None):
     return _system_csc
 """
 
-def get_all_systems(intf=None): #, system_name=None):
+def get_all_systems(csc, intf=None): #, system_name=None):
     #global _system_csc
     #if _system_csc:  #used cached version.
     #    return _system_csc
@@ -169,13 +174,6 @@ def get_all_systems(intf=None): #, system_name=None):
     if intf.movers_file:
         return None
     
-    default_config_host = enstore_functions2.default_host()
-    default_config_port = enstore_functions2.default_port()
-
-    # get a configuration server
-    csc = configuration_client.ConfigurationClient((default_config_host,
-                                                    default_config_port))
-
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
     if config_servers['status'][0] == e_errors.OK:
@@ -209,7 +207,8 @@ def get_all_systems(intf=None): #, system_name=None):
     if not config_servers:
         ip = socket.gethostbyname(config_host)
         addr_info = socket.gethostbyaddr(ip)
-        config_servers[addr_info[1][0]] = (ip, default_config_port)
+        config_servers[addr_info[1][0]] = (ip,
+                                           enstore_functions2.default_port())
         
     return config_servers
 
@@ -271,17 +270,17 @@ def get_entvrc_file():
 
     return lines
 
-def get_entvrc(intf):
+def get_entvrc(csc, intf):
 
     try:
         if intf.movers_file:
             address = "localhost"
         elif intf.args:
             # get a configuration server
-            default_config_host = enstore_functions2.default_host()
-            default_config_port = enstore_functions2.default_port()
-            csc = configuration_client.ConfigurationClient(
-                (default_config_host, default_config_port))
+            #default_config_host = enstore_functions2.default_host()
+            #default_config_port = enstore_functions2.default_port()
+            #csc = configuration_client.ConfigurationClient(
+            #    (default_config_host, default_config_port))
 
             config_servers = csc.get('known_config_servers', {})
 
@@ -388,7 +387,7 @@ def get_entvrc(intf):
 
     return rtn_dict
 
-def set_entvrc(display, intf):
+def set_entvrc(display, csc, intf):
     
     #If there isn't geometry don't do anything.
     if not hasattr(display, "geometry") or display.geometry == None:
@@ -399,10 +398,10 @@ def set_entvrc(display, intf):
             address = "localhost"
         elif intf.args:
             # get a configuration server
-            default_config_host = enstore_functions2.default_host()
-            default_config_port = enstore_functions2.default_port()
-            csc = configuration_client.ConfigurationClient(
-                (default_config_host, default_config_port))
+            #default_config_host = enstore_functions2.default_host()
+            #default_config_port = enstore_functions2.default_port()
+            #csc = configuration_client.ConfigurationClient(
+            #    (default_config_host, default_config_port))
 
             config_servers = csc.get('known_config_servers', {})
             #Based on the config file determine which config server was
@@ -503,9 +502,6 @@ def set_entvrc(display, intf):
 #fullnames true -> test01.mover
 #with_system true -> test01@test01
 def get_mover_list(intf, csc, fullnames=None, with_system=None):
-    movers = []
-
-    enstore_system = csc.get_enstore_system(3, 3)
 
     #If a 'canned' (aka recorded) entv is running, read the movers file
     # for the list of movers.
@@ -520,22 +516,47 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
                 # configuration file) are returned.
                 if fullnames:
                     data[i] = data[i] + ".mover"
+                if with_system:
+                    data[i] = data[i] + "@" + "ENSTORE"
             mf_fp.close()
             return data  #Return from here on success.
         except (OSError, IOError), msg:
             print str(msg)
             sys.exit(1)
 
+
+    if csc.new_config_obj.is_caching_enabled():
+        #If necessary, cache the entire mover_list.
+        config = csc.dump_and_save()
+        enstore_system = csc.get_enstore_system(3, 3)
+        mover_list = []
+        #Get the list of movers.
+        for key in config.keys():
+            if enstore_functions2.is_mover(key):
+                if fullnames:
+                    m_name = key
+                else:
+                    m_name = key.split(".")[0]  #Get the short name.
+                if with_system:
+                    m_name = m_name + "@" + enstore_system
+                mover_list.append(m_name)
+
+        return mover_list
+
+    #If necessary, do this the long way without using the cached config.
+
+    #Get the list of library managers.
     lm_dict = csc.get_library_managers({})
-    #If the user selected to hide some movers, remove their LM from the list.
     lm_list = lm_dict.keys()
 
+    #If the user selected to hide some movers, remove their LM from the list.
     for ds_lm_name in string.split(intf.dont_show, ","):
         if ds_lm_name in lm_list:
             del lm_list[lm_list.index(ds_lm_name)]
 
     #For each LM that should have its movers displayed, go through and
     # get each mover's name.
+    movers = []
     for lm in lm_list:
         try:
             mover_list = csc.get_movers(lm_dict[lm]['name'])
@@ -598,7 +619,7 @@ def handle_status(mover, status):
 
 def request_mover_status(display, csc, intf):
     global stop_now
-    
+
     #If running from 'canned' version.
     if intf.movers_file:
         return
@@ -620,7 +641,8 @@ def request_mover_status(display, csc, intf):
 
     for mover in movers:
         #Get the mover client and the mover status.
-        mov = mover_client.MoverClient(csc, mover)
+        mov = mover_client.MoverClient(csc, mover,
+                  flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,)
         status = mov.status(rcv_timeout=5, tries=1)
 
         try:
@@ -919,7 +941,17 @@ def main(intf):
     global status_thread, messages_thread
     global stop_now
 
-    cscs_info = get_all_systems(intf)# , intf.args[i])
+    # get a configuration server
+    default_config_host = enstore_functions2.default_host()
+    default_config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((default_config_host,
+                                                    default_config_port))
+    er_info = csc.dump_and_save().get(enstore_constants.EVENT_RELAY, {})
+    csc.new_config_obj.enable_caching((er_info['hostip'], er_info['port']))
+
+    #cscs_info contains the known_config_servers section of the configuration
+    # with all unspecified systems removed.
+    cscs_info = get_all_systems(csc, intf)
     if not cscs_info:
         sys.stderr.write("Unable to find configuration server.\n")
         sys.exit(1)
@@ -928,7 +960,7 @@ def main(intf):
     system_name = get_system_name(intf, cscs_info)
 
     #geometry, background, animate = get_entvrc(intf)
-    entvrc_dict = get_entvrc(intf)
+    entvrc_dict = get_entvrc(csc, intf)
     entvrc_dict['title'] = system_name #For simplicity put this here.
 
     #Get the main window and set it size.
@@ -938,34 +970,53 @@ def main(intf):
     continue_working = 1
 
     while continue_working:
+        print "111111111", csc.new_config_obj.have_new_config()
+        
         display = enstore_display.Display(entvrc_dict, master = master,
                               background = entvrc_dict.get('background', None))
 
-        #Inform the display the config server to use.  Don't do this
-        # if running 'canned' entv.  Make sure this is run before the
-        # movers_command is.
-        #if not intf.movers_file:
-            #display.handle_command("csc %s %s" % (intf.csc.server_address[0],
-            #                                      intf.csc.server_address[1]))
+        #Inform the display the config server to use.  Don't do
+        # this if running 'canned' entv.  Make sure this is run
+        # before the movers_command is.
+        if intf.movers_file:
+            mover_list = get_mover_list(intf, None, 0, 1)
 
-        Trace.trace(1, "updating movers list")
+        else:
+            cscs = []
+            mover_list = []
+            for address in cscs_info.values():
+                cscs.append(configuration_client.ConfigurationClient(address))
 
-        #initalize the movers.
-        movers_command = "movers"
-        for item in cscs_info.values():
-            csc = configuration_client.ConfigurationClient(item)
-            
-            #Inform the display the config server to use.  Don't do this
-            # if running 'canned' entv.  Make sure this is run before the
-            # movers_command is.
-            display.handle_command("csc %s %s" % (csc.server_address[0],
-                                                  csc.server_address[1]))
-            #Get the list of movers and append the names to the end
-            # of the movers_command.
-            movers = get_mover_list(intf, csc, 0, 1)
-            movers_command = movers_command + " " + string.join(movers, " ")
+                try:
+                    #Inform the display the config server to use.  Don't do
+                    # this if running 'canned' entv.  Make sure this is run
+                    # before the movers_command is.
+                    display.handle_command(
+                        "csc %s %s" % (cscs[-1].server_address[0],
+                                       cscs[-1].server_address[1]))
+                except:
+                    pass
+
+                try:
+                    config = cscs[-1].dump_and_save()
+
+                    #Don't use the csc get() function to retrieve the
+                    # event_relay information; doing so will clobber
+                    # the dump-and-saved configuration.  Once, the
+                    # enable_caching() function is called the csc get()
+                    # function is okay to use.
+                    er_info = config.get(enstore_constants.EVENT_RELAY)
+                    er_addr = (er_info['hostip'], er_info['port'])
+                    cscs[-1].new_config_obj.enable_caching(er_addr)
+
+                    #Append the new movers to the end of the list.
+                    mover_list = mover_list + get_mover_list(intf, cscs[-1],
+                                                             0, 1)
+                except:
+                    pass
 
         #Inform the display the names of all the movers.
+        movers_command = "movers" + " " + string.join(mover_list, " ")
         Trace.trace(1, "movers list: %s" % movers_command)
         display.handle_command(movers_command)
 
@@ -978,25 +1029,20 @@ def main(intf):
         #Start a thread for each event relay we should contact.
         status_threads = []
         messages_threads = []
-        for csc_addr in cscs_info.values():
-            csc = configuration_client.ConfigurationClient(csc_addr)
-            #try:
-            #    er_addr = (csc.get('event_relay', None)['hostip'],
-            #               csc.get('event_relay', None)['port'])
-            #except (KeyError, AttributeError):
-            #    continue
-
+        for i in range(len(cscs)):
             status_threads.append(threading.Thread(group=None,
                                                    target=request_mover_status,
                                                    name='',
-                                                   args=(display, csc, intf),
+                                                   args=(display, cscs[i],
+                                                         intf),
                                                    kwargs={}))
             status_threads[-1].start()
 
             messages_threads.append(threading.Thread(group=None,
                                                     target=handle_messages,
                                                     name='',
-                                                    args=(display, csc, intf),
+                                                    args=(display, cscs[i],
+                                                          intf),
                                                     kwargs={}))
             messages_threads[-1].start()
 
@@ -1004,7 +1050,7 @@ def main(intf):
         display.mainloop()
         
         #Set the geometry of the file (if necessary).
-        set_entvrc(display, intf)
+        set_entvrc(display, csc, intf)
 
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
@@ -1015,7 +1061,7 @@ def main(intf):
             messages_threads[i].join()
         Trace.trace(1, "message thread finished")
 
-        #Terminine if this is a reinitialization (True) or not (False).
+        #Determin if this is a reinitialization (True) or not (False).
         continue_working = ( not display.stopped or display.attempt_reinit() )\
                            and not stop_now
 
@@ -1033,7 +1079,7 @@ def main(intf):
         if uncollectable_count > 0:
             Trace.trace(0, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
 
-    #Perform the following two deletes explicitly to avoid obnoxios
+    #Perform the following two deletes explicitly to avoid obnoxious
     # tkinter warning messages printed to the terminal when using
     # python 2.2.
     try:

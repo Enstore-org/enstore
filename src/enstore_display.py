@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
+###############################################################################
+#
 # $Id$
+#
+###############################################################################
 
 import pprint
 import cmath
@@ -18,6 +22,7 @@ import re
 import Trace
 import mover_client
 import configuration_client
+import enstore_constants
 
 #Set up paths to find our private copy of tcl/tk 8.3
 
@@ -100,6 +105,10 @@ STILL = 0
 
 MMPC = 20.0     # Max Movers Per Column
 MIPC = 20       # Max Items Per Column
+
+REINIT_TIME = 3600000  #in milliseconds (1 hour)
+ANIMATE_TIME = 30      #in milliseconds (~1/3rd of second)
+UPDATE_TIME = 1000     #in milliseconds (1 second)
 
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
@@ -394,7 +403,7 @@ class Mover:
 
         self.update_timer(time.time())
         
-        self.display.after(1000, self.animate_timer)
+        self.display.after(UPDATE_TIME, self.animate_timer)
 
     #########################################################################
 
@@ -1806,10 +1815,12 @@ class Display(Tkinter.Canvas):
         self.after_reposition_id = self.after(100, self.reposition_canvas)
 
         try:
-            self.after_smooth_animation_id = self.after(1000,
+            self.after_smooth_animation_id = self.after(UPDATE_TIME,
                                                         self.smooth_animation)
-            self.after_clients_id = self.after(1000, self.disconnect_clients)
-            self.after_reinitialize_id = self.after(3600000, self.reinitialize)
+            self.after_clients_id = self.after(UPDATE_TIME,
+                                               self.disconnect_clients)
+            self.after_reinitialize_id = self.after(REINIT_TIME,
+                                                    self.reinitialize)
         except AttributeError:
             pass
 
@@ -1837,6 +1848,13 @@ class Display(Tkinter.Canvas):
         __pychecker__ = "no-argsused"
         
         self.stopped = 1
+
+        if self.framed_geometry == None:
+            #In __inin__ the widow was killed between the update() and
+            # winfo_toplevel().geometry() function calls.  Thus, without
+            # self.framed_geometry set continuing is not recommended.
+            self.geometry = None
+            return
 
         new_position = self.unframed_geometry.split("+", 1)[1]
         new_size = self.unframed_geometry.split("+")[0]
@@ -1926,7 +1944,7 @@ class Display(Tkinter.Canvas):
     def connection_animation(self):
 
         #If the user turned off animation, don't do it.
-        if not self.animate.get():
+        if self.animate and not self.animate.get():
             return
         
         now = time.time()
@@ -1942,7 +1960,7 @@ class Display(Tkinter.Canvas):
         #Only process the messages in the queue at this time.
         display_lock.acquire()
         number = len(self.command_queue)
-        
+
         while number > 0:
 
             #Process the next item in the queue.
@@ -1961,8 +1979,9 @@ class Display(Tkinter.Canvas):
         #If necessary, process the animation of the connections lines.
         self.connection_animation()
 
-        #Schedule the next 
-        self.after_smooth_animation_id = self.after(30, self.smooth_animation)
+        #Schedule the next animation.
+        self.after_smooth_animation_id = self.after(ANIMATE_TIME,
+                                                    self.smooth_animation)
 
     #Called from self.after().
     def disconnect_clients(self):
@@ -1986,7 +2005,8 @@ class Display(Tkinter.Canvas):
                 except KeyError:
                     pass
 
-        self.after_clients_id = self.after(1000, self.disconnect_clients)
+        self.after_clients_id = self.after(UPDATE_TIME,
+                                           self.disconnect_clients)
 
     #Called from entv.handle_periodic_actions().
     def handle_titling(self):
@@ -2005,16 +2025,18 @@ class Display(Tkinter.Canvas):
     #########################################################################
     
     def create_movers(self, mover_names):
-        #Create a Mover class instance to represent each mover.
+        #Shorten the number of movers.
         N = len(mover_names)
 
-        #Make sure to reserve the movers positions before creating them.
+        #Make sure to reserve the movers' positions before creating them.
         self.reserve_mover_columns(N)
+        #for k in range(N):
+        #    mover_name = mover_names[k]
+        #    self.add_mover_position(mover_name)
+        #Create a Mover class instance to represent each mover.
         for k in range(N):
             mover_name = mover_names[k]
             self.add_mover_position(mover_name)
-        for k in range(N):
-            mover_name = mover_names[k]
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
 
     def get_mover_color(self, library):
@@ -2242,6 +2264,9 @@ class Display(Tkinter.Canvas):
         try:
             csc = configuration_client.ConfigurationClient((command_list[1],
                                                          int(command_list[2])))
+            er_info = csc.dump_and_save().get(enstore_constants.EVENT_RELAY,{})
+            csc.new_config_obj.enable_caching((er_info['hostip'],
+                                               er_info['port']))
 
             #Before blindly setting the value.  Make sure that it is good.
             rtn = csc.get_enstore_system(3, 5)
@@ -2505,12 +2530,16 @@ class Display(Tkinter.Canvas):
     def queue_command(self, command):
         display_lock.acquire()
 
+        command = string.strip(command) #get rid of extra blanks and newlines
+        words = string.split(command)
+
         #If the queue is kinda long, and the new command is only a transfer
         # message; the message is discarded.
-        if len(self.command_queue) > min(20, (len(self.movers))) and \
-           command.split()[0] == "transfer":
+        if len(self.command_queue) > max(20, (len(self.movers))) and \
+           command.split()[0] in ["transfer"]:
             pass #Don't return, or the lock won't be released.
-        else:
+            
+        elif words[0] in self.comm_dict.keys():
             #Under normal situations.
             self.command_queue.append(command)
 
@@ -2596,6 +2625,11 @@ class Display(Tkinter.Canvas):
         #Words is a list of the split string command.
         words = self.get_valid_command(command)
 
+        #Don't bother processing transfer messages if we are not keeping up.
+        if words and words[0] in ["transfer"] and \
+               len(self.command_queue) > max(20, (len(self.movers))):
+            return
+
         if words:
             apply(self.comm_dict[words[0]]['function'], (self, words,))
             
@@ -2604,11 +2638,15 @@ class Display(Tkinter.Canvas):
     def display_idle(self):
         display_lock.acquire()
 
+        #while len(self.command_queue) > 0:
+        print len(self.command_queue)
+        
         if self.stopped: #If we should stop, then stop.
             self.quit()
         elif self.command_queue: #If the queue is not empty:
             self.handle_command(self.command_queue[0])
             del self.command_queue[0]
+                
         display_lock.release()
         self.after_idle_id = self.after_idle(self.display_idle)
 
@@ -2629,9 +2667,12 @@ class Display(Tkinter.Canvas):
 
 
     def mainloop(self, threshold = None):
-        self.after_smooth_animation_id = self.after(30, self.smooth_animation)
-        self.after_clients_id = self.after(1000, self.disconnect_clients)
-        self.after_reinitialize_id = self.after(3600000, self.reinitialize)
+        self.after_smooth_animation_id = self.after(ANIMATE_TIME,
+                                                    self.smooth_animation)
+        self.after_clients_id = self.after(UPDATE_TIME,
+                                           self.disconnect_clients)
+        self.after_reinitialize_id = self.after(REINIT_TIME,
+                                                self.reinitialize)
         self.after_reposition_id = None
         if threshold == None:
             self.master.mainloop()
