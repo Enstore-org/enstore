@@ -11,6 +11,15 @@ import e_errors				# required for default logging, ???
 import os				# required for default logging, ???
 import pwd				# required for default logging, ???
 import Ptrace				# basis for this work
+
+# message types.  a message type will be appended to every message so that
+# identifying which message is which will be easier
+MSG_TYPE = "MSG_TYPE="
+MSG_NONE = "%sNone "%MSG_TYPE
+MSG_ENCP_XFER = "%sENCP_XFER "%MSG_TYPE
+MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%MSG_TYPE
+MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%MSG_TYPE
+
 # define some short-cuts, for efficiency.  (I may wish to use
 # "from Ptrace import *)
 trace  = Ptrace.trace
