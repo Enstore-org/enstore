@@ -462,12 +462,6 @@ class VolumeClerkClient(generic_client.GenericClient,
                    }
         return  self.send(ticket)
 
-    def add_bfid(self, bfid, volume):
-        ticket = {'work': 'add_bfid',
-                  'bfid': bfid,
-                  'external_label': volume}
-        return self.send(ticket)
-
     def rename_volume(self, old, new):
         ticket = {'work': 'rename_volume2',
                   'old' : old,
