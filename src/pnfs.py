@@ -445,7 +445,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if self.valid != VALID or self.exists != EXISTS:
             self.const = UNKNOWN
             return
-        fname ="%s/.(const)(%s)"%(self.dir,self.file)
+        fname ="%s/.(const)(%s)"%(self.dir, self.file[0])
         f=open(fname,'r')
         self.const = f.readlines()
         f.close()
