@@ -908,7 +908,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # update any encp information from the log files
     def make_encp_html_file(self, now):
         self.last_encp_update = now
-        self.encp_xfer_but_no_update = 0
+        #self.encp_xfer_but_no_update = 0
         encplines = []
         encplines2 = []
         date = ''
@@ -1126,15 +1126,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def process_event_message(self, reason_called=TIMEOUT):
         # the event relay is alive
         now = time.time()
-        self.serverfile.output_alive(self.erc.event_relay_addr[0], 
-                                     ALIVE, now, enstore_constants.EVENT_RELAY)
+        #self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+        #                             ALIVE, now, enstore_constants.EVENT_RELAY)
         # if this is the first time alive after the event relay was thought 
 	# to be dead then we must adjust the last alive times for all of
 	# the servers,  otherwise we will think the server is dead immediately
 	# and not allow any time to receive the alive message from it.  
-        if not self.event_relay.is_alive():
-            for server in self.server_d.keys():
-                self.server_d[server].last_alive = now
+        #if not self.event_relay.is_alive():
+        #    for server in self.server_d.keys():
+        #        self.server_d[server].last_alive = now
 
         self.sent_event_relay_alarm = 0  
         # ignore messages that originated with us
@@ -1169,28 +1169,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             # a new config file was loaded into the config server, get it
             self.er_config_event.clear()
             self.make_config_html_file()
-        if self.er_encp_event.isSet():
-            self.event_relay.alive(now)
-            enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
-                                       "processing event relay message type ENCP XFER")
-            self.er_encp_event.clear()
-            # an encp xfer completed - update the encp history page, but only do
-            # this at most once per minute
-            if now - self.last_encp_update > 60:
-                # it has been more than 1 minute since the last update, so do it.
-                self.make_encp_html_file(now)
-            else:
-                # record the fact that we got an encp transfer notice, but it was too
-                # soon to do another update of the html file.  we will check this
-                # later to do the update if no other encp xfer comes thru to trigger
-                # an update.
-                self.encp_xfer_but_no_update = now
         # we may be stuck getting lots of event relay messages if the rest of
         # the system is backed up.  so, check if it has been more than 5
         # minutes since we last wrote out the web pages
-        now = time.time()
-        if  now - self.last_time_for_periodic_tasks > 300:
-            self.periodic_tasks()
+        #now = time.time()
+        #if  now - self.last_time_for_periodic_tasks > 300:
+        #    self.periodic_tasks()
 
 
     # these are the things we do periodically, this routine is called when an
@@ -1204,6 +1188,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				   "periodic timeout")
         # just output the inquisitor alive info, if we are doing this, we are alive.
         self.server_is_alive(self.inquisitor.name)
+        # check for all received event messages
+        self.process_event_message(reason_called)
         # see if there are any servers in cardiac arrest (no heartbeat)
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "periodic timeout - check last alive")
@@ -1222,7 +1208,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def encp_periodic_tasks(self, reason_called=TIMEOUT):
         # the encp web page is updated when notice of an encp transfer is received, but
-        # not more than 1/ minute.  thus if notice of 1 trnasfer arrives, the page is
+        # not more than 1/ update interval.  thus if notice of 1 transfer arrives, the page is
         # updated and then another notice comes almost immediately, the page will not have
         # been updated to include this one. so here we
         # see if there has been notice of an encp transfer which happened too soon after
@@ -1230,10 +1216,28 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # if so then we must hand trigger the web page update
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "encp periodic timeout")
-        if self.encp_xfer_but_no_update:
-            now = time.time()
-            if now - self.encp_xfer_but_no_update > ENCP_UPDATE_INTERVAL:
+        if self.er_encp_event.isSet():
+            self.event_relay.alive(now)
+            enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
+                                       "processing event relay message type ENCP XFER")
+            self.er_encp_event.clear()
+            # an encp xfer completed - update the encp history page, but only do
+            # this at most once per minute
+            if now - self.last_encp_update > ENCP_UPDATE_INTERVAL:
+                # it has been more than update interval since the last update, so do it.
                 self.make_encp_html_file(now)
+                # do not clear the event unless we update the web page.  otherwise we
+                # could miss doing an update.
+            #else:
+                # record the fact that we got an encp transfer notice, but it was too
+                # soon to do another update of the html file.  we will check this
+                # later to do the update if no other encp xfer comes thru to trigger
+                # an update.
+                #self.encp_xfer_but_no_update = now
+        #if self.encp_xfer_but_no_update:
+        #    now = time.time()
+        #    if now - self.encp_xfer_but_no_update > ENCP_UPDATE_INTERVAL:
+        #        self.make_encp_html_file(now)
 
     def log_periodic_tasks(self, reason_called=TIMEOUT):
         # update the web page that lists all the current log files
@@ -1755,7 +1759,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.add_interval_func(self.encp_periodic_tasks, ENCP_UPDATE_INTERVAL)
         self.add_interval_func(self.log_periodic_tasks, LOG_UPDATE_INTERVAL)
         self.add_interval_func(self.saag_periodic_tasks, OVERRIDE_UPDATE_INTERVAL)
-        self.add_interval_func(self.process_event_message, ER_UPDATE_INTERVAL)
+        #self.add_interval_func(self.process_event_message, ER_UPDATE_INTERVAL)
         self.add_interval_func(self.resubscribe, self.resubscribe_rate)
 
         self.event_relay_msg = event_relay_messages.EventRelayAliveMsg(self.inquisitor.host,
