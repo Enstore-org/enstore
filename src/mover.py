@@ -383,7 +383,7 @@ def bind_volume( object, external_label ):
 	    #   other mover responds promptly,
 	    #   more work for library manager arrives and is given to a
 	    #     new mover before the old volume was given back to the library
-	    # SHULD I RETRY????????
+	    # SHOULD I RETRY????????
 	    if rsp['status'][0] == 'media_in_another_device':
 		time.sleep (10)
 		return 'TAPEBUSY' # generic, not read or write specific
@@ -418,7 +418,7 @@ def bind_volume( object, external_label ):
 	pass
     elif external_label != object.vol_info['external_label']:
 	object.vol_info['err_external_label'] = external_label
-	fatal_enstore( object,"unbind label %s before read/write label %s"%(object.vol_info['external_label'],external_label) )
+	fatal_enstore( object, "unbind label %s before read/write label %s"%(object.vol_info['external_label'],external_label) )
 	return 'NOTAPE' # generic, not read or write specific
 
     return e_errors.OK  # bind_volume
@@ -506,9 +506,11 @@ def forked_write_to_hsm( self, ticket ):
             driver_object = self.hsm_driver.open( mvr_config['device'], 'a+' )
 	    self.no_xfers = self.no_xfers + 1
 	    t0 = time.time()
+	    # vol_info may be 'none' - seek can handle that and
+	    # tell will convert it.
 	    driver_object.seek( self.vol_info['eod_cookie'] )
+	    self.vol_info['eod_cookie'] = driver_object.tell()
 	    ticket['times']['seek_time'] = time.time() - t0
-	    self.vol_info['eod_cookie'] = driver_object.tell()# vol_info may be 'none'
 
 	    fast_write = 1
 
@@ -743,10 +745,13 @@ def forked_read_from_hsm( self, ticket ):
 		except: pass
 		pass
 
+	    # This if block is a place holder for the code that should
+	    # be executed when CRCs don't match.
 	    if     self.crc_flag != None \
 	       and ticket['fc']['complete_crc'] != None \
 	       and user_file_crc != ticket['fc']['complete_crc']:
 		pass
+
 	    tt = {'data_crc':ticket['fc']['complete_crc']}
             Trace.trace(11,'calling read_post_data')
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, post') )
@@ -787,9 +792,9 @@ def forked_read_from_hsm( self, ticket ):
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.READ_ERROR )
 	    pass
         except:
+	    # unanticipated exception: guess a cause and hope we can continue
 	    traceback.print_exc()
-            media_error = 1 # I don't know what else to do right now
-	    # this is bogus right now
+            media_error = 1
             wr_err,rd_err,wr_access,rd_access = (0,1,0,1)
 
         # we've sent the hsm file to the user, shut down data transfer socket
@@ -806,7 +811,7 @@ def forked_read_from_hsm( self, ticket ):
             send_user_done( self, ticket, e_errors.READ_ERROR )
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.READ_ERROR )
 
-        # drive errors are bad:  unbind volule it & tell user to retry
+        # drive errors are bad:  unbind volume it & tell user to retry
         elif drive_errors :
             vcc.set_hung( self.vol_info['external_label'] )
             send_user_done( self, ticket, e_errors.READ_ERROR )
@@ -858,7 +863,7 @@ def get_usr_driver( self, ticket ):
 		mode = 'w'
 		fname = ticket['wrapper']['fullname']+'.'+ticket['unique_id']
 		# do not worry about umask!?!
-		ticket['mover']['lcl_fname'] = fname# to chwon after exfer
+		ticket['mover']['lcl_fname'] = fname# to chown after exfer
 		pass
 	    else:
 		mode = 'r'
@@ -909,12 +914,11 @@ def idle_mover_next( self ):
 
 # create ticket that says we have bound volume x
 def have_bound_volume_next( self ):
-    next_req_to_lm =  { 'work'   : 'have_bound_volume',
-			'mover'  : mvr_config['name'],
-			'state'  : self.state,
-			'address': (mvr_config['hostip'],mvr_config['port']),
-			'vc'     : self.vol_info }
-    return next_req_to_lm
+    return { 'work'   : 'have_bound_volume',
+	     'mover'  : mvr_config['name'],
+	     'state'  : self.state,
+	     'address': (mvr_config['hostip'],mvr_config['port']),
+	     'vc'     : self.vol_info }
 
 # create ticket that says we need to unbind volume x
 def unilateral_unbind_next( self, error_info ):
@@ -922,14 +926,13 @@ def unilateral_unbind_next( self, error_info ):
     # there are some errors where the tape should be left in the drive. So
     # unilateral_unbind now just means that there was an error.
     # The response to this command can be either 'nowork' or 'unbind'
-    next_req_to_lm = {'work'           : 'unilateral_unbind',
-		      'mover'          : mvr_config['name'],
-		      'state'          : self.state,
-		      'address'        : (mvr_config['hostip'],mvr_config['port']),
-		      'external_label' : self.fc['external_label'],
-		      'state'          : self.state,
-		      'status'         : (error_info,None)}
-    return next_req_to_lm
+    return {'work'           : 'unilateral_unbind',
+	    'mover'          : mvr_config['name'],
+	    'state'          : self.state,
+	    'address'        : (mvr_config['hostip'],mvr_config['port']),
+	    'external_label' : self.fc['external_label'],
+	    'state'          : self.state,
+	    'status'         : (error_info,None)}
 
 
 import timer_task
@@ -1016,29 +1019,30 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 
     def status( self, ticket ):
 	tim = time.time()
+	obj_inst = self.client_obj_inst
 	# try getting wr_bytes 1st to prevent writing ahead of reading
-	wb  = self.client_obj_inst.hsm_driver.wr_bytes_get()
-	rb  = self.client_obj_inst.hsm_driver.rd_bytes_get()
+	wb  = obj_inst.hsm_driver.wr_bytes_get()
+	rb  = obj_inst.hsm_driver.rd_bytes_get()
 	tick = { 'status'       : (e_errors.OK,None),
-		 'drive_sn'     : self.client_obj_inst.hsm_drive_sn,
+		 'drive_sn'     : obj_inst.hsm_drive_sn,
 		 #
-		 'crc_flag'     : str(self.client_obj_inst.crc_flag),
+		 'crc_flag'     : str(obj_inst.crc_flag),
 		 'forked_state' : forked_state[
-            self.client_obj_inst.hsm_driver.user_state_get()],
-		 'state'        : self.client_obj_inst.state,
-		 'no_xfers'     : self.client_obj_inst.no_xfers,
-		 'local_mover'  : self.client_obj_inst.local_mover_enable,
+            obj_inst.hsm_driver.user_state_get()],
+		 'state'        : obj_inst.state,
+		 'no_xfers'     : obj_inst.no_xfers,
+		 'local_mover'  : obj_inst.local_mover_enable,
 		 'rd_bytes'     : rb,
 		 'wr_bytes'     : wb,
 		 # from "work ticket"
-		 'bytes_to_xfer': self.client_obj_inst.bytes_to_xfer,
-		 'files'        : self.client_obj_inst.files,
-		 'mode'         : self.client_obj_inst.mode,
-		 'tape'         : self.client_obj_inst.tape,
+		 'bytes_to_xfer': obj_inst.bytes_to_xfer,
+		 'files'        : obj_inst.files,
+		 'mode'         : obj_inst.mode,
+		 'tape'         : obj_inst.tape,
 		 'time_stamp'   : tim,
-		 'vol_info'     : self.client_obj_inst.vol_info,
+		 'vol_info'     : obj_inst.vol_info,
 		 # just include total "work ticket"
-		 'work_ticket'  : self.client_obj_inst.work_ticket,
+		 'work_ticket'  : obj_inst.work_ticket,
 		 'zlast_status' : self.last_status_tick }
 	self.reply_to_caller( tick )
 	self.last_status_tick = tick	# remember - duplicate reference -- 
@@ -1149,7 +1153,9 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		p_rr = self.client_obj_inst.prev_r_bytes
 		p_ww = self.client_obj_inst.prev_w_bytes
 		if rr == p_rr and ww == p_ww:
-		    if time.time()-self.client_obj_inst.stall_time > 60.0:# aritrary number
+		    # arbitrary time; to determine if a "stall" condition
+		    # exists, be it network or tape.
+		    if time.time()-self.client_obj_inst.stall_time > 60.0:# arbitrary number
 			try:    os.system( 'traceMode 0' )
 			except: pass
 			if self.client_obj_inst.mode == 'w':
@@ -1209,7 +1215,7 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	method = MoverClient.__dict__[client_function]
 	next_req_to_lm = method( self.client_obj_inst, rsp_ticket )
 	# note: order of check is important to avoid KeyError exception
-	if  len(self.summoned_while_busy) and not next_req_to_lm:
+	if  self.summoned_while_busy and not next_req_to_lm:
 	    # now check if next_req_to_lm=={} means we just started an xfer and
 	    # are waiting for completion.
 	    if self.client_obj_inst.state == 'idle':
@@ -1217,7 +1223,7 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 		address = self.summoned_while_busy[0]
 		del self.summoned_while_busy[0]
 		pass
-	elif len(self.summoned_while_busy) and next_req_to_lm['work']=='idle_mover':
+	elif self.summoned_while_busy and next_req_to_lm['work']=='idle_mover':
 	    # do not tell this lm idle as he may keep giving work
 	    next_req_to_lm = idle_mover_next( self.client_obj_inst )
 	    self.summoned_while_busy.append( address )
@@ -1246,7 +1252,6 @@ def get_state_build_next_lm_req( self, wait, exit_status ):
 	    if self.client_obj_inst.state != 'crazed':
                 if self.client_obj_inst.state != 'draining':
 		    self.client_obj_inst.state = 'idle'
-	    signal = status&0xff
 	    exit_status = status>>8
 	    next_req_to_lm = status_to_request( self.client_obj_inst,
 						exit_status )
@@ -1280,7 +1285,6 @@ def status_to_request( client_obj_inst, exit_status ):
 	else:
 	    next_req_to_lm = have_bound_volume_next( client_obj_inst )
 	    pass
-	#next_req_to_lm = unilateral_unbind_next( client_obj_inst, m_err[exit_status] )
 	next_req_to_lm['state'] = 'idle'
     elif m_err[exit_status] == e_errors.WRITE_ERROR:
 	next_req_to_lm = offline_drive( client_obj_inst, m_err[exit_status] )
