@@ -185,12 +185,9 @@ ALLOW_DSRV4="$ALLOW_BASE
 "
 
 # Extra for srv1
-# I doubt that these java ports are static across restarts, try for now.
 ALLOW_SRV1="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
-       LISTEN,java,:24123,TCP,x
-       LISTEN,java,:24124,TCP,x
-       LISTEN,java,:1039,TCP,x
+       LISTEN,java,:24123,TCP,/home/enstore/dcache/run
 "
 
 # Extra for dcache
