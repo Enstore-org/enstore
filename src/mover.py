@@ -244,7 +244,7 @@ class Mover:
             raise "volume clerk forgot about this volume"
 
         # setup values before transfer
-        nb = ticket["uinfo"]["size_bytes"]
+        nb = ticket["wrapper"]["size_bytes"]
         wr_size = 0
         media_error = 0
         media_full  = 0
@@ -253,7 +253,6 @@ class Mover:
         bof_space_cookie = 0
         sanity_crc = 0
         complete_crc = 0
-        pnfs = ticket["pinfo"]
 
         self.logc.send(log_client.INFO,2,"OPEN_FILE_WRITE")
         # open the hsm file for writing
@@ -292,8 +291,8 @@ class Mover:
 					     "Mover: Retry: media_error "+msg)})
             return
 
-        if wr_size != ticket["uinfo"]["size_bytes"]:
-            msg = "Expected "+repr(ticket["uinfo"]["size_bytes"])+\
+        if wr_size != ticket["wrapper"]["size_bytes"]:
+            msg = "Expected "+repr(ticket["wrapper"]["size_bytes"])+\
 		  " bytes  but only" +" stored"+repr(wr_size)
             self.logc.send(log_client.ERROR,1,msg)
             # tell user we're done, but there has been an error

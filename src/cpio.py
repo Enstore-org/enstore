@@ -95,18 +95,18 @@ class Cpio :
 
     # generate an enstore cpio archive: devices must be open and ready
     def write( self, ticket ):
-	inode        = ticket['pinfo']['inode']
-	mode         = ticket['pinfo']['mode']
-	uid          = ticket['pinfo']['uid']
-	gid          = ticket['pinfo']['gid']
-	mtime        = ticket['uinfo']['mtime']
-	filesize     = ticket['uinfo']['size_bytes']
-	major        = ticket['pinfo']['major']
-	minor        = ticket['pinfo']['minor']
-	rmajor       = ticket['pinfo']['rmajor']
-	rminor       = ticket['pinfo']['rminor']
-	filename     = ticket['pinfo']['pnfsFilename']
-	sanity_bytes = ticket["uinfo"]["sanity_size"]
+	inode        = ticket['wrapper']['inode']
+	mode         = ticket['wrapper']['mode']
+	uid          = ticket['wrapper']['uid']
+	gid          = ticket['wrapper']['gid']
+	mtime        = ticket['wrapper']['mtime']
+	filesize     = ticket['wrapper']['size_bytes']
+	major        = ticket['wrapper']['major']
+	minor        = ticket['wrapper']['minor']
+	rmajor       = ticket['wrapper']['rmajor']
+	rminor       = ticket['wrapper']['rminor']
+	filename     = ticket['wrapper']['pnfsFilename']
+	sanity_bytes = ticket["wrapper"]["sanity_size"]
 
         # generate the headers for the archive and write out 1st one
         format = "new"
@@ -463,19 +463,19 @@ if __name__ == "__main__" :
     rminor = 0
     sanity_bytes = 0
 
-    ticket = {'pinfo':{},'unifo':{}}
-    ticket['pinfo']['inode']       = statb[stat.ST_INO]
-    ticket['pinfo']['mode']        = statb[stat.ST_MODE]
-    ticket['pinfo']['uid']         = statb[stat.ST_UID]
-    ticket['pinfo']['gid']         = statb[stat.ST_GID]
-    ticket['uinfo']['mtime']       = statb[stat.ST_MTIME]
-    ticket['uinfo']['size_bytes']  = statb[stat.ST_SIZE]
-    ticket['pinfo']['major']       = major
-    ticket['pinfo']['minor']       = minor
-    ticket['pinfo']['rmajor']      = rmajor
-    ticket['pinfo']['rminor']      = rminor
-    ticket['pinfo']['pnfsFilename']= fin._file_.name
-    ticket["uinfo"]["sanity_size"] = sanity_bytes
+    ticket = {'wrapper':{},'unifo':{}}
+    ticket['wrapper']['inode']       = statb[stat.ST_INO]
+    ticket['wrapper']['mode']        = statb[stat.ST_MODE]
+    ticket['wrapper']['uid']         = statb[stat.ST_UID]
+    ticket['wrapper']['gid']         = statb[stat.ST_GID]
+    ticket['wrapper']['mtime']       = statb[stat.ST_MTIME]
+    ticket['wrapper']['size_bytes']  = statb[stat.ST_SIZE]
+    ticket['wrapper']['major']       = major
+    ticket['wrapper']['minor']       = minor
+    ticket['wrapper']['rmajor']      = rmajor
+    ticket['wrapper']['rminor']      = rminor
+    ticket['wrapper']['pnfsFilename']= fin._file_.name
+    ticket["wrapper"]["sanity_size"] = sanity_bytes
     (size,crc,sanity_cookie) = wrapper.write( ticket )
     print "Cpio.write returned: size:",size,"crc:",crc,\
           "sanity_cookie:",sanity_cookie

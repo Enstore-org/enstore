@@ -187,8 +187,8 @@ def next_work_any_volume(csc):
             vc = volume_clerk_client.VolumeClerkClient(csc)
             first_found = 0
             t1 = time.time()
-            v = vc.next_write_volume (w["vc"]["library"], w["uinfo"]\
-                                      ["size_bytes"],\
+            v = vc.next_write_volume (w["vc"]["library"],
+                                      w["wrapper"]["size_bytes"],\
                                       w["vc"]["file_family"], vol_veto_list,\
                                       first_found)
             t2 = time.time()-t1
@@ -227,7 +227,7 @@ def next_work_this_volume(v):
             w["vc"]["file_family"]   == v["file_family"] and
             v["user_inhibit"]        == "none"           and
             v["system_inhibit"]      == "none"           and
-            w["uinfo"]["size_bytes"] <= v["remaining_bytes"]):
+            w["wrapper"]["size_bytes"] <= v["remaining_bytes"]):
             w["fc"] = {} # clear old info or create new subticket
             w["fc"]["external_label"] = v["external_label"]
             # ok passed criteria, return write work ticket
@@ -359,11 +359,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         format = "write Q'd %s -> %s : library=%s family=%s requestor:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
-                                   repr(ticket["uinfo"]["fullname"]),
-                                   ticket["pinfo"]["pnfsFilename"],
+                                   repr(ticket["wrapper"]["fullname"]),
+                                   ticket["wrapper"]["pnfsFilename"],
                                    ticket["vc"]["library"],
                                    ticket["vc"]["file_family"],
-                                   ticket["uinfo"]["uname"])
+                                   ticket["wrapper"]["uname"])
 	if not ticket.has_key('lm'):
 	    lm = {}
 	    ticket['lm'] = lm
@@ -395,11 +395,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         format = "read Q'd %s -> %s : vol=%s bfid=%s requestor:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
-                                   ticket["pinfo"]["pnfsFilename"],
-                                   repr(ticket["uinfo"]["fullname"]),
+                                   ticket["wrapper"]["pnfsFilename"],
+                                   repr(ticket["wrapper"]["fullname"]),
                                    ticket["fc"]["external_label"],
                                    ticket["fc"]["bfid"],
-                                   ticket["uinfo"]["uname"])
+                                   ticket["wrapper"]["uname"])
 	if not ticket.has_key('lm'):
 	    lm = {}
 	    ticket['lm'] = lm
@@ -475,7 +475,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        w["fc"]["external_label"],
                                        w["work"],
                                        mticket["mover"],
-                                       w["uinfo"]["uname"])
+                                       w["wrapper"]["uname"])
 
             # put it into our bind queue and take it out of pending queue
             work_awaiting_bind.append(w)
@@ -519,7 +519,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        w["work"],
                                        w["fc"]["external_label"],
                                        mticket["mover"],
-                                       w["uinfo"]["uname"])
+                                       w["wrapper"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks
 	    if list:
 		print "MOVER WORK:"
@@ -540,7 +540,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        w["work"],
                                        w["fc"]["external_label"],
                                        mticket["mover"],
-                                       w["uinfo"]["uname"])
+                                       w["wrapper"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks
             pending_work.delete_job(w)
             w['mover'] = mticket['mover']

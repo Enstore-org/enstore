@@ -69,13 +69,13 @@ def write_to_hsm(input, output,
     maxretry = 2
     unique_id = []
     global logc # needs to be global so other defs can use it in this file
-    (csc,u,wrapper) = clients(config_host,config_port,list)
+    (csc,u,uinfo) = clients(config_host,config_port,list)
 
-    uinfo = {}                    # to be deleted shortly
-    for key in wrapper.keys():    # to be deleted shortly
-        uinfo[key] = wrapper[key] # to be deleted shortly
+    # create the wrapper subticket - copy all the user info into for starters
+    wrapper = {}
+    for key in uinfo.keys():
+        wrapper[key] = uinfo[key]
 
-        
     # make the part of the ticket that encp knows about (there's more later)
     encp = {}
     encp["basepri"] = pri
@@ -94,9 +94,7 @@ def write_to_hsm(input, output,
         print "csc=",csc
         print "u=",u
         print "logc=",logc
-        print "uinfo=",uinfo  # to be deleted shortly
-        print "wrapper=",wrapper
-        
+        print "uinfo=",uinfo
 
     if list>2:
         print "Checking input unix files:",input, "   cumt=",time.time()-t0
@@ -211,8 +209,12 @@ def write_to_hsm(input, output,
             tinfo1 = copy.deepcopy(tinfo)
 
             unique_id[i] = time.time()  # note that this is down to mS
-            uinfo["fullname"] = outputlist[i]   # to be deleted shortly
             wrapper["fullname"] = outputlist[i]
+
+            # store the pnfs information info into the wrapper
+            for key in pinfo[i].keys():
+                if not uinfo.has_key(key) : # the user key takes precedence over the pnfs key
+                    wrapper[key] = pinfo[i][key]
 
             # if old ticket exists, that means we are retrying
             #    then just bump priority and change unique id
@@ -226,18 +228,13 @@ def write_to_hsm(input, output,
                                 "file_family"        : file_family[i],\
                                 "file_family_width"  : width[i]} # technically width does not belong here, but it associated with the volume
 
-                uinfo["sanity_size"] = 5000        # to be deleted shortly
-                uinfo["size_bytes"] = file_size[i] # to be deleted shortly
-                uinfo["mtime"] = int(time.time())  # to be deleted shortly
-                wrapper["sanity_size"] = 5000 
+                wrapper["sanity_size"] = 5000
                 wrapper["size_bytes"] = file_size[i]
                 wrapper["mtime"] = int(time.time())
                 encp["delayed_dismount"] = delayed_dismount
                 work_ticket = {"work"               : "write_to_hsm",
                                "callback_addr"      : callback_addr,
                                "vc"                 : volume_clerk,
-                               "pinfo"              : pinfo[i],
-                               "uinfo"              : uinfo,
                                "wrapper"            : wrapper,
                                "encp"               : encp,
                                "times"              : times,
@@ -523,11 +520,11 @@ def read_from_hsm(input, output,
     vols_needed = {}
     delayed_dismount = 0
     global logc
-    (csc,u,wrapper) = clients(config_host,config_port,list)
+    (csc,u,uinfo) = clients(config_host,config_port,list)
 
-    uinfo = {}                    # to be deleted shortly
-    for key in wrapper.keys():    # to be deleted shortly
-        uinfo[key] = wrapper[key] # to be deleted shortly
+    wrapper = {}
+    for key in uinfo.keys():
+        wrapper[key] = uinfo[key]
 
     # make the part of the ticket that encp knows about (there's more later)
     encp = {}
@@ -547,8 +544,7 @@ def read_from_hsm(input, output,
         print "csc=",csc
         print "u=",u
         print "logc=",logc
-        print "uinfo=",uinfo  # to be deleted shortly
-        print "wrapper=",wrapper
+        print "uinfo=",uinfo
 
     if list>2:
         print "Checking input pnfs files:",input, "   cumt=",time.time()-t0
@@ -664,22 +660,22 @@ def read_from_hsm(input, output,
         for i in range(0,ninput):
             if volume[i]==vol:
                 unique_id[i] = time.time()  # note that this is down to mS
-                uinfo["fullname"] = outputlist[i]  # to be deleted shortly
-                uinfo["sanity_size"] = 5000        # to be deleted shortly
-                uinfo["size_bytes"] = file_size[i] # to be deleted shortly
                 wrapper["fullname"] = outputlist[i]
-                wrapper["sanity_size"] = 5000      
+                wrapper["sanity_size"] = 5000
                 wrapper["size_bytes"] = file_size[i]
                 encp["delayed_dismount"] = delayed_dismount
+
+                # store the pnfs information info into the wrapper
+                for key in pinfo[i].keys():
+                    if not uinfo.has_key(key) : # the user key takes precedence over the pnfs key
+                        wrapper[key] = pinfo[i][key]
 
                 # generate the work ticket
                 file_clerk = {"bfid"               : bfid[i]}
                 work_ticket = {"work"              : "read_from_hsm",
-                               "uinfo"             : uinfo,
                                "wrapper"           : wrapper,
                                "callback_addr"     : callback_addr,
                                "fc"                : file_clerk,
-                               "pinfo"             : pinfo[i],
                                "encp"              : encp,
                                "times"             : times,
                                "unique_id"         : unique_id[i]
@@ -970,17 +966,17 @@ def clients(config_host,config_port,list):
     global logc
     logc = log_client.LoggerClient(csc, 'ENCP', 'logserver')
 
-    wrapper = {}
-    wrapper['uid'] = os.getuid()
-    wrapper['gid'] = os.getgid()
-    wrapper['gname'] = grp.getgrgid(wrapper['gid'])[0]
-    wrapper['uname'] = pwd.getpwuid(wrapper['uid'])[0]
-    wrapper['machine'] = os.uname()
-    wrapper['fullname'] = "" # will be filled in later for each transfer
+    uinfo = {}
+    uinfo['uid'] = os.getuid()
+    uinfo['gid'] = os.getgid()
+    uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
+    uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
+    uinfo['machine'] = os.uname()
+    uinfo['fullname'] = "" # will be filled in later for each transfer
 
     Trace.trace(16,"}clients csc="+repr(csc)+" u="+repr(u)+\
-                " wrapper="+repr(wrapper))
-    return (csc,u,wrapper)
+                " uinfo="+repr(uinfo))
+    return (csc,u,uinfo)
 
 ##############################################################################
 
@@ -1022,7 +1018,7 @@ def pnfs_information(filelist,nfiles):
                    'major','minor','rmajor','rminor',\
                    'mode','pstat' ] :
             exec("pinf["+repr(k)+"] = p."+k)
-        pinf['inode'] = 0               # cpio wrapper needs this also
+        pinf['inode'] = 0                  # cpio wrapper needs this also
         pinfo.append(pinf)
 
     Trace.trace(16,"}pnfs_information bfid="+repr(bfid)+\

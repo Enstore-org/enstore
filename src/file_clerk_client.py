@@ -53,9 +53,8 @@ class FileClient(generic_client.GenericClient, \
         Trace.trace(16,"{get_bfids")
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-        uinfo = {"callback_addr" : (host, port)}
         ticket = {"work"         : "get_bfids",
-                  "uinfo"        : uinfo,
+                  "callback_addr": (host, port),
                   "unique_id"    : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
