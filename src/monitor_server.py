@@ -62,7 +62,7 @@ There are three connections opened for this test.
  |____| --- 3 TCP data socket -----> |____|
 
 This mimics the connections where in a real encp:
-1) ecnp to library manager
+1) encp to library manager
 2) library manager to encp
 3) encp to mover
 
