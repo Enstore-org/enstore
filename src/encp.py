@@ -38,6 +38,7 @@ d0sam_format = "INFILE=%s\n"+\
                "SEEK_TIME=%f\n"+\
                "MOUNT_TIME=%f\n"+\
                "QWAIT_TIME=%f\n"+\
+               "TIME2NOW=%f\n"+\
                "STATUS=%s\n"
 
 ##############################################################################
@@ -447,6 +448,7 @@ def write_to_hsm(input, output,
                    done_ticket["times"]["seek_time"],
                    done_ticket["times"]["mount_time"],
                    done_ticket["times"]["lm_dequeued"]-done_ticket["times"]["t0"],
+                   time.time()-done_ticket["times"]["t0"],
                    e_errors.OK)
 
         logc.send(log_client.INFO, 2, format,
@@ -889,6 +891,7 @@ def read_from_hsm(input, output,
                        done_ticket["times"]["seek_time"],
                        done_ticket["times"]["mount_time"],
                        done_ticket["times"]["lm_dequeued"]-done_ticket["times"]["t0"],
+                       time.time()-done_ticket["times"]["t0"],
                        e_errors.OK)
 
             logc.send(log_client.INFO, 2, format,
