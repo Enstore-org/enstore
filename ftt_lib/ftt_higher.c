@@ -344,7 +344,7 @@ ftt_undump_stats(ftt_stat_buf b, FILE *pf) {
 	    }
 	    if (0 == strcmp(name,ftt_stat_names[i])) {
 		b->value[i] = strdup(value);
-		fscanf(pf, "%s is %s\n", name, value);
+		fscanf(pf, "%s is %[^\n]\n", name, value);
 	    }
 	}
 	return 0;
