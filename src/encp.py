@@ -7871,18 +7871,21 @@ def log_encp_start(tinfo, intf):
 
     #If verbosity is turned on and the transfer is a write to enstore,
     # output the tag information.
-    if intf.put_cache:
-        p = pnfs.Pnfs(intf.put_cache, intf.pnfs_mount_point)
-        if getattr(p, "directory", None):
-            t = pnfs.Tag(p.directory)
-        else:
+    try:
+        if intf.put_cache:
+            p = pnfs.Pnfs(intf.put_cache, intf.pnfs_mount_point)
+            if getattr(p, "directory", None):
+                t = pnfs.Tag(p.directory)
+            else:
+                t = None
+        elif not intf.output:
             t = None
-    elif not intf.output:
+        elif os.path.isdir(intf.output[0]):
+            t = pnfs.Tag(intf.output[0])
+        else:
+            t = pnfs.Tag(os.path.dirname(intf.output[0]))
+    except (OSError, IOError):
         t = None
-    elif os.path.isdir(intf.output[0]):
-        t = pnfs.Tag(intf.output[0])
-    else:
-        t = pnfs.Tag(os.path.dirname(intf.output[0]))
         
     try:
         library = t.get_library()
