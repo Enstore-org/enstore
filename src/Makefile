@@ -41,7 +41,7 @@ encp:
 	mkdir MONITOR_CLIENT_BIN_TEMP
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYTHON_DIR)/Python-*/Modules -o MONITOR_CLIENT_BIN_TEMP monitor_client.py
 	(cd MONITOR_CLIENT_BIN_TEMP; LDFLAGS=-static; export LDFLAGS; make -e;)
-	cp MONITOR_CLIENT_BIN_TEMP/monitor_client      ENCPBIN/monitor_client
+	cp MONITOR_CLIENT_BIN_TEMP/monitor_client      ENCPBIN/enmonitor
 	rm -rf MONITOR_CLIENT_BIN_TEMP
 
 install: encp enstore_user
