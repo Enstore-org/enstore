@@ -28,16 +28,16 @@ class MoverClient(generic_client.GenericClient):
         self.server_address = self.get_server_address(self.mover)
 
     def status(self, rcv_timeout=0, tries=0):
-	return self.send({"work" : "status"}, rcv_timeout, tries)
+        return self.send({"work" : "status"}, rcv_timeout, tries)
 
     def clean_drive(self, rcv_timeout=0, tries=0):
         return self.send({"work":"clean_drive"}, rcv_timeout, tries)
 
     def start_draining(self, rcv_timeout=0, tries=0):
-	return self.send({"work" : "start_draining"}, rcv_timeout, tries)
+        return self.send({"work" : "start_draining"}, rcv_timeout, tries)
 
     def stop_draining(self, rcv_timeout=0, tries=0):
-	return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
+        return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
 
 
 class MoverClientInterface(generic_client.GenericClientInterface):
@@ -50,7 +50,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.local_mover = 0
         self.clean_drive = 0
         self.enable = 0
-	self.status = 0
+        self.status = 0
         self.start_draining = 0
         self.stop_draining = 0
         generic_client.GenericClientInterface.__init__(self)
@@ -60,9 +60,9 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-	    # start draining needs a parameter because the library manager uses the same
-	    # option and it needs a parameter.  the interface is dumb enough not to know
-	    # the difference between the mover and the library manager.
+            # start draining needs a parameter because the library manager uses the same
+            # option and it needs a parameter.  the interface is dumb enough not to know
+            # the difference between the mover and the library manager.
             return self.client_options()+["status", "clean-drive", "offline", "start-draining=", "stop-draining"]
 
     #  define our specific help
@@ -74,7 +74,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         interface.Interface.parse_options(self)
         # bomb out if we don't have a mover
         if len(self.args) < 1 :
-	    self.missing_parameter(self.parameters())
+            self.missing_parameter(self.parameters())
             self.print_help()
             sys.exit(1)
         else:
@@ -105,7 +105,7 @@ def do_work(intf):
 
     elif intf.status:
         ticket = movc.status(intf.alive_rcv_timeout,intf.alive_retries)
-	pprint.pprint(ticket)
+        pprint.pprint(ticket)
     elif intf.local_mover:
         ticket = movc.local_mover(intf.enable, intf.alive_rcv_timeout,
                                   intf.alive_retries)
@@ -117,7 +117,7 @@ def do_work(intf):
     elif intf.stop_draining:
         ticket = movc.stop_draining(intf.alive_rcv_timeout, intf.alive_retries)
     else:
-	intf.print_help()
+        intf.print_help()
         sys.exit(0)
 
     movc.check_ticket(ticket)
