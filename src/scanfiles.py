@@ -161,8 +161,9 @@ def check_file(f):
     elif os.path.isdir(f):
         # skip symbolic link to a directory
         if not os.path.islink(f):
-            # skip volmap
-            if os.path.split(f)[1] != 'volmap':
+            # skip volmap and .bad directory
+            lc = os.path.split(f)[1]
+            if lc != 'volmap' and lc != '.bad':
                 if os.access(f, os.R_OK) and os.access(f, os.X_OK):
                     for i in os.listdir(f):
                         check_file(os.path.join(f,i))
