@@ -1217,7 +1217,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             (self.current_volume,))
                 self.vcc.set_system_readonly(self.current_volume)
                 # trick ftt_close, so that it does not attempt to write FM
-                self.tape_driver.ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
+                ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
                 #initiate cleaning
                 self.force_clean = 1
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
