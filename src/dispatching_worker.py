@@ -87,21 +87,6 @@ class DispatchingWorker:
 
         self.server_bind()
 
-        # start up some threads for monitoring - experimental
-        # use telnet to get to it; use same node and port as UDP server 
-        try:
-            import tdb1 #tdb1 doesn't exist -- there is some problem. The mover child can't exit when tdb is active
-            t=tdb.TdbListener()
-            t.host=server_address[0]
-            t.port=server_address[1]
-            t.start()
-            tdb.install()
-            tdb.onoff(1)
-        except:
-            pass
-            #import traceback
-            #traceback.print_exc()
-                                            
     def fork(self):
         """Fork off a child process"""
         pid = os.fork()
