@@ -101,7 +101,9 @@ def get_vcc_list():
     for config in config_server_addr_list.values():
         _csc = configuration_client.ConfigurationClient(config)
         csc_list.append(_csc)
-        vcc_list.append(volume_clerk_client.VolumeClerkClient(_csc))
+        vcc_list.append(volume_clerk_client.VolumeClerkClient(_csc,
+                                                              rcv_timeout=5,
+                                                              rcv_tries=2))
 
     return csc_list, vcc_list
 
