@@ -1089,15 +1089,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if status[0] == e_errors.OK:
             w = rq.ticket
 
-            # if new work volume is different from mounted
-            # and work is write check if this volume can be written
-            # update volumes_at_movers
-            if (w["vc"]["external_label"] != mticket['external_label'] and
-                w['work'] == 'write_to_hsm'):
-                new_rq, st = self.check_write_request(w['vc']['external_label'], rq)
-                if st[0] == 'full':
-                    return
-                
             format = "%s next work on vol=%s mover=%s requester:%s"
             Trace.log(e_errors.INFO, format%(w["work"],
 					     w["vc"]["external_label"],
