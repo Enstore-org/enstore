@@ -13,6 +13,7 @@ import db
 import enstore_functions
 import checkBackedUpDatabases
 import configuration_client
+import volume_clerk
 
 #Grab the start time.
 t0 = time.time()
@@ -788,7 +789,7 @@ def sort_inventory(data_file, volume_list, tmp_dir):
 #Takes the full filepath name to the metadata file in the second parameter.
 #Takes the full path to the ouput directory in the third parameter.
 # If output_dir is set to /dev/stdout/ then everything is sent to standard out.
-def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
+def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
     volume_sums = {}   #The summation of all of the file sizes on a volume.
     volumes_allocated = {} #Stats on usage of storage groups.
 
@@ -868,6 +869,229 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     return len(volume_list), count_metadata
+
+#Proccess the inventory of the files specified.  This is the main source
+# function where all of the magic starts.
+#Takes the full filepath name to the volume file in the first parameter.
+#Takes the full filepath name to the metadata file in the second parameter.
+#Takes the full path to the ouput directory in the third parameter.
+# If output_dir is set to /dev/stdout/ then everything is sent to standard out.
+def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
+    # determine the output path
+    if string.find(output_dir, "/dev/stdout") != -1: 
+        last_access_file = "/dev/stdout"
+        volume_size_file = "/dev/stdout"
+        volumes_defind_file = "/dev/stdout"
+        volume_quotas_file = "/dev/stdout"
+        total_bytes_file = "/dev/stdout"
+    else:
+        last_access_file = output_dir + "LAST_ACCESS"
+        volume_size_file = output_dir + "VOLUME_SIZE"
+        volumes_defind_file = output_dir + "VOLUMES_DEFINED"
+        volume_quotas_file = output_dir + "VOLUME_QUOTAS"
+        total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
+
+    vols = db.DbTable('volume', os.path.split(volume_file)[0], '/tmp', [], 0)
+    files = db.DbTable('file', os.path.split(metadata_file)[0], '/tmp', ['external_label'], 0)
+
+    n_vols = 0L
+    n_files = 0L
+    volume_sums = {}   #The summation of all of the file sizes on a volume.
+    volumes_allocated = {} #Stats on usage of storage groups.
+
+    if string.find(output_dir, "/dev/stdout") != -1:
+        fd_output = 1
+    else:
+        fd_output = 0
+
+    # open file handles for statistics
+    la_file = open(last_access_file, "w")
+    vs_file = open(volume_size_file, "w")
+    vd_file = open(volumes_defind_file, "w")
+
+    vs_file.write("%10s %9s %9s %11s %9s %9s %9s\n" % ("Label",
+        "Actual", "Deleted", "Non-deleted", "Capacity", "Remaining",
+        "Expected"))
+
+    vd_file.write("Date this listing was generated: %s\n" % \
+        (time.ctime(time.time())))
+
+    vd_file.write("%-10s  %-8s %-17s %17s  %012s %-12s\n" % \
+        ("label", "avail.", "system_inhibit", "user_inhibit",
+         "library", "volume_family"))
+
+    #Process the tapes authorized file for the VOLUME_QUATAS page.
+    authorized_tapes = get_authorized_tapes()
+
+    # get quotas
+
+    csc = configuration_client.ConfigurationClient()
+    quotas = csc.get('quotas',timeout=15,retry=3)
+
+    # read volume ... one by one
+
+    vc = vols.newCursor()
+    vk, vv = vc.first()
+    while vk:
+        print 'processing', vk, '...',
+        if fd_output != 1:
+            fd_output = os.open(output_dir + vv['external_label'],
+                                os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                                0666)
+        print_header(vv, fd_output)
+
+        # some volume statistics
+
+        active = 0L
+        deleted = 0L
+        unknown = 0L
+        active_size = 0L
+        deleted_size = 0L
+        unknown_size = 0L
+
+        # dealing with files
+
+        fc = files.inx['external_label'].cursor()
+        fk, pfk = fc.set(vk)
+        while fk:
+            f = files[pfk]
+            if f.has_key('deleted'):
+                if f['deleted'] == 'yes':
+                    deleted = deleted + 1
+                    deleted_size = deleted_size + f['size']
+                else:
+                    active = active + 1
+                    active_size = active_size + f['size']
+            else:
+                unknown = unknown + 1
+                unknown_size = unknown_size + f['size']
+
+            # write out file information
+            os.write(fd_output, "%10s %15s %15s %22s %7s %s\n" % \
+                (f.get('external_label', "unknown"),
+                 f.get('bfid', "unknown"),
+                 f.get('size', "unknown"),
+                 f.get('location_cookie', "unknown"),
+                 f.get('deleted', "unknown"),
+                 f.get('pnfs_name0', "unknown")))
+
+            n_files = n_files + 1
+            fk, pfk = fc.nextDup()
+        fc.close()
+        total = active+deleted+unknown
+        total_size = active_size+deleted_size+unknown_size
+        os.write(fd_output, '\n\n%d/%d/%d/%d (active/deleted/unknown/total) files\n'% \
+                 (active, deleted, unknown, total))
+        os.write(fd_output, '%d/%d/%d/%d (active/deleted/unknown/total) bytes\n\n'% \
+                 (active_size, deleted_size, unknown_size,
+                  total_size))
+        print_footer(vv, fd_output)
+        if fd_output != 1:
+            os.close(fd_output)
+
+        # volume_sums[vk] = {'active':active, 'deleted':deleted,
+        #                    'active_size':active_size,
+        #                    'deleted_size':deleted_size}
+        volume_sums[vk] = (active_size+deleted_size, deleted_size,
+                           active_size)
+
+        # check quota stuff
+
+        storage_group = string.split(vv['volume_family'], '.')[0]
+        library = vv['library']
+        try:
+            quota = quotas['libraries'][library][storage_group]
+        except:
+            quota = 'N/A'
+
+        # for the list stuff
+        if total:
+            written_vol = 1
+            blank_vol = 0
+        else:
+            written_vol = 0
+            blank_vol = 1
+
+        if vv['system_inhibit'][0] == "DELETED":
+            deleted_vol = 1
+        else:
+            deleted_vol = 0
+
+        if volumes_allocated.has_key((library, storage_group)):
+            # This is a shallow copy
+            v_info = volumes_allocated[(library, storage_group)]
+            volumes_allocated[(library, storage_group)] = (
+                library,
+                storage_group,
+                v_info[2],     #quota
+                v_info[3] + 1, #volume allocated
+                v_info[4] + blank_vol,
+                v_info[5] + written_vol,
+                v_info[6] + deleted_vol,
+                v_info[7] + vv['capacity_bytes'] - vv['remaining_bytes'],
+                v_info[8] + active,
+                v_info[9] + deleted,
+                v_info[10] + unknown)
+        else:
+            volumes_allocated[(library, storage_group)] = (
+                library,
+                storage_group,
+                quota,    #quota
+                1, #volume allocated
+                blank_vol,
+                written_vol,
+                deleted_vol,
+                vv['capacity_bytes'] - vv['remaining_bytes'],
+                active,
+                deleted,
+                unknown)
+
+        # statistics stuff
+        la_file.write("%f, %s %s\n" % (vv['last_access'],
+                time.ctime(vv['last_access']), vv['external_label']))
+
+        key = vv['external_label']
+        format_tuple = (key,) + \
+                       format_storage_size(volume_sums[key][0]) + \
+                       format_storage_size(volume_sums[key][1]) + \
+                       format_storage_size(volume_sums[key][2]) + \
+                       format_storage_size(vv['capacity_bytes']) + \
+                       format_storage_size(vv['remaining_bytes']) + \
+                       format_storage_size(vv['capacity_bytes'] -
+                                           vv['remaining_bytes'])
+        format_string = \
+           "%10s %7.2f%-2s %7.2f%-2s %9.2f%-2s %7.2f%-2s %7.2f%-2s %7.2f%-2s\n"
+        
+        vs_file.write(format_string % format_tuple)
+        
+        formated_size = format_storage_size(vv['remaining_bytes'])
+        vd_file.write("%-10s %6.2f%s (%-08s %08s) (%-08s %08s) %-012s %012s\n" % \
+               (vv['external_label'],
+                formated_size[0], formated_size[1],
+                vv['system_inhibit'][0],
+                vv['system_inhibit'][1],
+                vv['user_inhibit'][0],
+                vv['user_inhibit'][1],
+                vv['library'],
+                vv['volume_family']))
+
+        n_vols = n_vols + 1
+        print 'done'
+        vk, vv = vc.next()
+
+    vc.close()
+    la_file.close()
+    vs_file.close()
+    vd_file.close()
+
+    #Create files that hold statistical data.
+    print_volume_quotas_status(volumes_allocated, authorized_tapes,
+                               volume_quotas_file)
+    print_volume_quota_sums(volumes_allocated, authorized_tapes,
+                            volume_quotas_file)
+    print_total_bytes_on_tape(volume_sums, total_bytes_file)
+
+    return n_vols, n_files
 
 
 
