@@ -80,7 +80,8 @@ SEEK_TIME=%.02f
 MOUNT_TIME=%.02f
 QUEUE_TIME=%.02f
 TOTAL_TIME=%.02f
-STATUS=%s\n"""
+TIME2NOW=%.02f
+STATUS=%s\n"""  #TIME2NOW is the old name for TOTAL_TIME
 
 class Flag:
     def __init__(self):
@@ -122,7 +123,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     mount_time = time_ticket.get('mount_time', 0)
     in_queue = time_ticket.get('in_queue', 0)
     now = time.time()
-    t0 = time_ticket.get('t0', now)
+    t0 = time_ticket.get('t0', now) ###XXX This makes no sense...
     total = now - t0
     sts =  ticket.get('status', ('Unknown', None))
     status = sts[0]
@@ -139,7 +140,9 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                                           external_label,location_cookie,
                                           device, device_sn,
                                           transfer_time, seek_time, mount_time, in_queue,
-                                          total, status))
+                                          total, total, status))  #total is repeated because
+                                                            ## we have TOTAL_TIME and TIME2NOW which
+                                                            ## are two different names for the same thing.
     out.write('\n')
     out.flush()
     if msg:
@@ -304,16 +307,17 @@ def inputfile_check(input_files, bytecount=None):
 
 def outputfile_check(inputlist,output):
     # can only handle 1 input file copied to 1 output file
-    # or multiple input files copied to 1 output directory
-    # this is just the current policy - nothing fundamental about it
+    # or multiple input files copied to 1 output directory or /dev/null
+
     if len(output)>1:
         print_data_access_layer_format('',output[0],0,{'status':(
             'USERERROR','Cannot have multiple output files')})
         quit()
 
-    # if user specified multiple input files, then output must be a directory or /dev/nulll
+    nfiles = len(inputlist)
+    # if user specified multiple input files, then output must be a directory or /dev/null
     outputlist = []
-    if len(inputlist)!=1:
+    if nfiles!=1:
         if not os.path.exists(output[0]):
             print_data_access_layer_format('',output[0],0,{'status':(
                 'USERERROR','No such directory %s'%(output[0],))})
@@ -328,8 +332,8 @@ def outputfile_check(inputlist,output):
 
     # Make sure we can open the files. If we can't, we bomb out to user
     # loop over all input files and generate full output file names
-    for i in range(0,len(inputlist)):
-        outputlist.append(output[0])
+    for i in range(nfiles):
+        outputlist.append(output[i])
 
         if outputlist[i] == '/dev/null':
             continue
@@ -380,7 +384,7 @@ def outputfile_check(inputlist,output):
     # this will cause the 2nd to just overwrite the 1st
     # In principle, this is already taken care of in the inputfile_check, but
     # do it again just to make sure in case someone changes protocol
-    for i in range(0,len(outputlist)):
+    for i in range(len(outputlist)):
         for j in range(i+1,len(outputlist)):
             if outputlist[i] == outputlist[j] and outputlist[i]!='/dev/null':
                 print_data_access_layer_format('',outputlist[j],0,{'status':(
@@ -412,7 +416,6 @@ def outputfile_check(inputlist,output):
 
 #######################################################################
 # return pnfs information,
-# and an open pnfs object so you can check if the system is enabled.
 
 def pnfs_information(filelist,write=1):
     bfid = []
@@ -748,7 +751,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     # loop on all input files sequentially
     ninput = len(input_files)
     for i in range(0,ninput):
-        unique_id.append(0) # will be set later when submitted
+        unique_id.append('') # will be set later when submitted
 
         # delete old tickets in case of a retry
         work_ticket=None
@@ -762,9 +765,8 @@ def write_to_hsm(input_files, output, output_file_family='',
             t1 = time.time() #-------------------------------Lap Start
 
             # store timing info for each transfer in pnfs, not for all
-            tinfo1 = tinfo.copy()  ## was deepcopy
-
-            #unique_id[i] = time.time()  # note that this is down to mS
+            tinfo1 = tinfo.copy()
+            
             unique_id[i] = "%s-%f-%d" % (thishost, time.time(), pid)
             wrapper["fullname"] = inputlist[i]
             wrapper["type"] = ff_wrapper[i]
@@ -818,7 +820,10 @@ def write_to_hsm(input_files, output, output_file_family='',
             while not reply_read:
                 ##start of resubmit block
                 Trace.trace(7,"write_to_hsm q'ing: %s"%(work_ticket,))
+
+                #Send work ticket to LM
                 ticket = u.send(work_ticket, (vticket['hostip'], vticket['port']))
+                
                 if verbose > 3:
                     print "ENCP: write_to_hsm LM returned"
                     pprint.pprint(ticket)
@@ -869,8 +874,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                         print "ENCP:write_to_hsm MV called back with"
                         pprint.pprint(ticket)
                     callback_id = ticket['unique_id']
-                    # compare strings not floats (floats fail comparisons)
-                    if str(unique_id[i])==str(callback_id):
+                    if unique_id[i]==callback_id:
                         Trace.trace(10,"write_to_hsm mover called back on control_socket=%s, address=%s"
                                     %(control_socket, address))
                         reply_read=1
@@ -938,6 +942,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                     control_socket.close()
                     continue
                 else:
+                    ### XXX data_access_layer_format!
                     quit()
 
             in_file = open(inputlist[i], "r")
@@ -963,15 +968,14 @@ def write_to_hsm(input_files, output, output_file_family='',
                                        data_path_socket.fileno(), 
                                        fsize, bufsize, crc_flag, 0)
             except EXfer.error, msg:
-                Trace.trace(6,"write_to_hsm EXfer error: %s %s"%
-                            (sys.argv, msg))
+                Trace.log(e_errors.ERROR,"write_to_hsm EXfer error: %s"%
+                          (msg,))
 
                 # might as well close our end --- we will either exit or
                 # loop back around
                 data_path_socket.close()
                 in_file.close()
 
-                #if str(err_msg) =="(32, 'fd_xfer - write - Broken pipe')":
                 if msg.args[1] == errno.EPIPE:
                     # could be network or could be mover closing socket...
                     # try to get done_ticket
@@ -980,54 +984,54 @@ def write_to_hsm(input_files, output, output_file_family='',
                     except:
                         # assume network error...
                         # no done_ticket!
-                        #print_data_access_layer_format(inputlist[i], outputlist[i],
-                        #                               file_size[i], done_ticket)
-                        # exit here
-                        print_data_access_layer_format(inputlist[i],outputlist[i],0,
+                        print_data_access_layer_format(inputlist[i],
+                                                       outputlist[i],0,
                                                        {'status':(
-                            'EPROTO', 'Network problem or mover reset')}) ##XXX RENAME
+                            'EPROTO', 'Network problem or mover reset')}) 
                         ## disconnected
                         quit()
 
                     control_socket.close()
 
-                    print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
+
                     if not e_errors.is_retriable(done_ticket["status"][0]):
-                        # exit here
+                        print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
                         quit()
+
                     print_error('EPROTO', "failed to transfer: status=%s"%(ticket['status'],))
                     retry = retry - 1
                     if retry>0:
                         sys.stderr.write("Retrying\n")
                         continue
                     else:
+                        print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
                         quit()
 
                 else:
                     #some other error that needs coding
-                    traceback.print_exc()
                     exc,msg,tb=sys.exc_info()
+                    Trace.alarm(e_errors.WARNING,
+                                "unhandled exception in encp: %s %s" %
+                                (exc,msg))
+                    traceback.print_exc()
+
                     raise exc,msg
 
 
-                # close the data socket and the file, we've sent it 
-                #to the mover
-                data_path_socket.close()
-                in_file.close()
+            # close the data socket and the file, we've sent it 
+            #to the mover
+            data_path_socket.close()
+            in_file.close()
 
-                tinfo1["sent_bytes%d"%(i,)] = time.time()-t1 #-----Lap-End
-                if verbose>1:
-                    if tinfo1["sent_bytes%d"%(i,)]!=0:
-                        wtrate = 1.*fsize/1024./1024./tinfo1["sent_bytes%d"%(i,)]
-                    else:
-                        wdrate = 0.0
-                        print "  bytes:",fsize, " Socket Write Rate = ", wtrate," MB/S"
-                        print "  dt:",tinfo1["sent_bytes%d"%(i,)]," elapsed=",time.time()-t0
-                        pass
+            tinfo1["sent_bytes%d"%(i,)] = time.time()-t1 #-----Lap-End
+            if verbose>1:
+                if tinfo1["sent_bytes%d"%(i,)]!=0:
+                    wtrate = 1.*fsize/1024./1024./tinfo1["sent_bytes%d"%(i,)]
+                else:
+                    wdrate = 0.0
+                    print "  bytes:",fsize, " Socket Write Rate = ", wtrate," MB/S"
+                    print "  dt:",tinfo1["sent_bytes%d"%(i,)]," elapsed=",time.time()-t0
 
-                    pass
-
-                pass
 
             if verbose>1:
                 print "Waiting for final mover dialog  elapsed=",time.time()-t0
@@ -1124,22 +1128,25 @@ def write_to_hsm(input_files, output, output_file_family='',
                 p.set_xreference(done_ticket["fc"]["external_label"],
                                  done_ticket["fc"]["location_cookie"],
                                  done_ticket["fc"]["size"],
+
                                  drive)
+                # add the pnfs ids and filenames to the file clerk ticket and store it
+                done_ticket["fc"]["pnfsid"] = p.id
+                done_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
+                done_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
+                done_ticket["fc"]["pnfs_mapname"] = p.mapfile
+                done_ticket["fc"]["drive"] = drive
+                done_ticket["work"] = "set_pnfsid"
+                fc_reply = u.send(done_ticket, (fticket['hostip'], 
+                                                fticket['port']))
+                if verbose > 3:
+                    print "ENCP: write_to_hsm FC returned"
+                    pprint.pprint(fc_reply)
             except:
                 exc,msg,tb=sys.exc_info()
                 Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s, continuing" %(exc,msg))
-            # add the pnfs ids and filenames to the file clerk ticket and store it
-            done_ticket["fc"]["pnfsid"] = p.id
-            done_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
-            done_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
-            done_ticket["fc"]["pnfs_mapname"] = p.mapfile
-            done_ticket["fc"]["drive"] = drive
-            done_ticket["work"] = "set_pnfsid"
-            fc_reply = u.send(done_ticket, (fticket['hostip'], 
-                                             fticket['port']))
-            if verbose > 3:
-                print "ENCP: write_to_hsm FC returned"
-                pprint.pprint(fc_reply)
+
+
             if done_ticket['status'][0] != e_errors.OK :
                 print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
                 quit()
@@ -1238,12 +1245,6 @@ def write_to_hsm(input_files, output, output_file_family='',
     if verbose:
         print msg
 
-    # tell library manager we are done - this allows it to delete 
-    # our unique id in
-    # its dictionary - this keeps things cleaner and stops memory 
-    # from growing
-    # u.send_no_wait({"work":"done_cleanup"}, (vticket['hostip'], 
-    # vticket['port']))
 
     if verbose > 3:
         print "DONE TICKET"
@@ -1333,15 +1334,8 @@ def submit_read_requests(requests, client, tinfo, vols, verbose, retry_flag):
 
   # now when we have request list per volume lets sort it
   # according file location
-  #print "BEFORE SORTING"
-  #for j in range(0, len(rq_list)):
-      #print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
 
   rq_list.sort(compare_location)
-
-  #print "AFTER SORTING"
-  #for j in range(0, len(rq_list)):
-      #print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
 
   # submit requests
   for j in range(0, len(rq_list)):
@@ -1453,8 +1447,7 @@ def read_hsm_files(listen_socket, submitted, requests,
             callback_id = ticket['unique_id']
             forus = 0
             for j in range(0,ninput):
-                # compare strings not floats (floats fail comparisons)
-                if str(requests[j]['unique_id'])==str(callback_id):
+                if requests[j]['unique_id']==callback_id:
                     forus = 1
                     break
 
@@ -1476,7 +1469,6 @@ def read_hsm_files(listen_socket, submitted, requests,
                                            requests[j]['file_size'],
                                            ticket)
             if not e_errors.is_retriable(ticket["status"][0]):
-
 
                 del(requests[j])
                 if files_left > 0:
@@ -1541,6 +1533,7 @@ def read_hsm_files(listen_socket, submitted, requests,
                 out_fd_closed = 0
             else:
                 out_fd = os.open(localname, os.O_CREAT|os.O_RDWR, 0)
+                out_fd_closed = 0
         except:
             error = e_errors.USERERROR
             done_ticket = {'status':(error,"Can't write %s"%(localname,))}
@@ -1562,22 +1555,22 @@ def read_hsm_files(listen_socket, submitted, requests,
                                        crc_flag, 0)
             except EXfer.error, msg: 
 
-                Trace.trace(6,"read_from_hsm EXfer error: %s %s"%
-                            (sys.argv,msg))
+                Trace.log(e_errors.ERROR,"read_from_hsm EXfer error: %s" %
+                          (msg,))
 
-                if verbose > 1: traceback.print_exc()
 
                 if msg.args[1]==errno.ENOSPC:
                     try:
                         if localname!="/dev/null":
                             os.unlink(localname)
+                            delete_at_exit.unregister(localname)
                     except:
                         pass
                     print_data_access_layer_format(
                         requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
                         {'status':("ENOSPC", "No space left on device")})
                     quit()
-                ###XXX we shouldn't be matching literal strings here... this is really wrong 
+
                     error = 1
                     data_path_socket.close()
                     try:
@@ -1594,6 +1587,7 @@ def read_hsm_files(listen_socket, submitted, requests,
                         try:
                             if localname!="/dev/null":
                                 os.unlink(localname)
+                                delete_at_exit.unregister(localname)
                         except:
                             pass
                         quit()
@@ -1625,16 +1619,16 @@ def read_hsm_files(listen_socket, submitted, requests,
             fsize = requests[j]['file_size']
             # fd_xfer does not check for EOF after reading the specified
             # number of bytes.
+            ##XXX I think these next two lines should go - cgw
             buf = data_path_socket.recv(bufsize)# there should not be any more
             fsize = fsize + len(buf)
+            
             if not data_path_socket_closed:
                 data_path_socket.close()
                 if not out_fd_closed:
-                    out_fd_closed=1
                     os.close(out_fd)
+                    out_fd_closed=1
                 data_path_socket_closed = 1 
-                pass
-
 
 
         t2 = time.time() #----------------------------------------Lap-Start
