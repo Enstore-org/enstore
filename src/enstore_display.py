@@ -142,7 +142,7 @@ class Mover:
         self.volume.draw(load_state)
 
     def unload_tape(self, volume):
-        if volume != self.volume.name: #XXXXXXXXXXX
+        if volume != self.volume.name: 
             print "Mover does not have this tape : ", volume
         else:
             k=self.index
@@ -152,7 +152,16 @@ class Mover:
             self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
             self.volume.moveto(self.volume.x, self.volume.y)
             self.volume.draw(load_state='loaded')
-   
+
+    def robot_remove_tape(self, volume_name):
+        robot=self.display.robot
+        k=self.index
+        N=self.N
+        angle=math.pi/(N-1)
+        x, y =.99+.5*math.cos(math.pi/2 + angle*k),  .45*math.sin(math.pi/2 + angle*k)
+        robot.x, robot.y = scale_to_display(x, y, self.display.width, self.display.height)
+        robot.moveto(robot.x, robot.y)
+        robot.draw()
             
     def show_progress(self, percent_done):
         x,y=self.x,self.y
@@ -398,23 +407,38 @@ class Connection:
 class Robot:
     def __init__(self,display):
         self.display = display
+        self.x, self.y = display.width, display.height/2
+        
 
     def draw(self):
-        self.robot_shoulder = self.display.create_line(self.display.width-80,self.display.height/2,
-                                                                               self.display.width,self.display.height/2, fill='black', width = 15)
-        self.robot_arm = self.display.create_line(self.display.width-80,self.display.height/2,
-                                                                               self.display.width-100,self.display.height/2-60, fill='black', width = 15)
-        self.robot_hand = self.display.create_line(self.display.width-125,self.display.height/2-60,
-                                                                               self.display.width-65,self.display.height/2-60, fill='black', width = 15)
-        self.bolt = self.display.create_oval(self.display.width-68,self.display.height/2-8,
-                                                                               self.display.width-88,self.display.height/2+8, fill='grey')
+       
+        self.robot_hand = self.display.create_line(self.x-125,self.y-60, self.x-65,self.y-60, fill='black', width = 15)
+        self.robot_arm = self.display.create_line(self.x-80,self.y, self.x-100,self.y-60, fill='black', width = 15)
+        self.robot_shoulder = self.display.create_line(self.x-80,self.y, self.x,self.y, fill='black', width = 15)
+        self.bolt = self.display.create_oval(self.x-68,self.y-8, self.x-88,self.y+8, fill='grey')
 
     def robot_remove_tape(self,vol_name):
         pass
 
-    def move_to():
-        pass
+    def moveto(self, x, y):
+        self.display.move(self.robot_hand, x,y)
+        self.display.move(self.robot_arm, x, y)
+        self.display.move(self.robot_shoulder, x, y)
+        self.display.move(self.bolt,x,y)
+        self.x, self.y=x,y
     
+    def undraw(self):
+        self.display.delete(self.robot_shoulder)
+        self.display.delete(self.robot_arm)
+        self.display.delete(self.robot_hand)
+        self.display.delete(self.bolt)
+  
+    def __del__(self):
+        self.undraw()
+
+
+    
+
 
 ######################################
 #
@@ -548,8 +572,8 @@ class Display(Canvas):
             return
 
         if words[0]=='robot':
-            robot=Robot(self)
-            robot.draw()
+            self.robot=Robot(self)
+            self.robot.draw()
             return
 
         if words[0]=='title':
@@ -625,6 +649,11 @@ class Display(Canvas):
         if words[0]=='unload':
             what_volume = words[2]
             mover.unload_tape(what_volume)
+            return
+
+        if words[0] =='remove':
+            what_volume = words[2]
+            mover.robot_remove_tape(what_volume)
             return
         
         if len(words)<4: 
