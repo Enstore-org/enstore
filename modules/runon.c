@@ -22,13 +22,9 @@ int cpu;
 {
 #ifdef __sgi
 	if (sysmp(MP_MUSTRUN, cpu) == -1)
-	{
-		return(errno);
-	}
+	    return errno;
 	else
-	{
-		return(0);
-	}
+	    return 0;
 #else
 	return(ENOSYS);
 #endif
@@ -40,13 +36,9 @@ int pid;
 {
 #ifdef __sgi
 	if(sysmp(MP_MUSTRUN_PID, cpu, pid) == -1)
-	{
-		return(errno);
-	}
+	    return(errno);
 	else
-	{
-		return(0);
-	}
+	    return(0);
 #else
 	return(ENOSYS);
 #endif
