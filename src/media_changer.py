@@ -292,21 +292,21 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	# if function is insert, reopen work queue
 	sts = self.doWaitingInserts()
 
-# EMASS robot loader server
-class EMASS_MediaLoader(MediaLoaderMethods):
+# aml2 robot loader server
+class AML2_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self, medch, maxwork, csc)
 	# robot choices are 'R1', 'R2' or 'Both'
 	if self.mc_config.has_key('RobotArm'):   # error if robot not in config
 	    self.robotArm = string.strip(self.mc_config['RobotArm'])
 	else:
-            Trace.log(e_errors.ERROR, "ERROR:EMASS no robot arm key in configuration")
+            Trace.log(e_errors.ERROR, "ERROR:aml2 no robot arm key in configuration")
 	    self.robotArm = string.strip(self.mc_config['RobotArm']) # force the exception          
 	    return
 	if self.mc_config.has_key('IOBoxMedia'):   # error if IO box media assignments not in config
 	    self.mediaIOassign = (self.mc_config['IOBoxMedia']) 
 	else:
-            Trace.log(e_errors.ERROR, "ERROR:EMASS no IO box media assignments in configuration")
+            Trace.log(e_errors.ERROR, "ERROR:aml2 no IO box media assignments in configuration")
 	    self.mediaIOassign = (self.mc_config['IOBoxMedia']) # force the exception
 	    return
 	if self.mc_config.has_key('IdleTimeHome'):
@@ -314,48 +314,48 @@ class EMASS_MediaLoader(MediaLoaderMethods):
             if type(temp) == types.IntType:
 	        if temp < 20:   # wait at least 20 seconds
 	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
-                    Trace.log(e_errors.ERROR, "ERROR:EMASS IdleHomeTimeTooSmall(>20), default used")
+                    Trace.log(e_errors.ERROR, "ERROR:aml2 IdleHomeTimeTooSmall(>20), default used")
 		else:
 	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
 	    else:
-                Trace.log(e_errors.ERROR, "ERROR:EMASS IdleHomeTimeNotAnInt, default used")
+                Trace.log(e_errors.ERROR, "ERROR:aml2 IdleHomeTimeNotAnInt, default used")
 
-	import EMASS
-        self.load=EMASS.mount
-        self.unload=EMASS.dismount
-        self.prepare=EMASS.dismount
-        self.robotHome=EMASS.robotHome
-        self.robotStatus=EMASS.robotStatus
-        self.robotStart=EMASS.robotStart
+	import aml2
+        self.load=aml2.mount
+        self.unload=aml2.dismount
+        self.prepare=aml2.dismount
+        self.robotHome=aml2.robotHome
+        self.robotStatus=aml2.robotStatus
+        self.robotStart=aml2.robotStart
 
     def insert(self, ticket):
-        import EMASS
+        import aml2
         classTicket = { 'mcSelf' : self }
 	ticket['timeOfCmd'] = time.time()
 	ticket['medIOassign'] = self.mediaIOassign
-	rt = EMASS.insert(ticket, classTicket)
+	rt = aml2.insert(ticket, classTicket)
         return rt
 	
     def eject(self, ticket):
-        import EMASS
+        import aml2
         classTicket = { 'mcSelf' : self }
 	ticket['medIOassign'] = self.mediaIOassign
-	rt = EMASS.eject(ticket, classTicket)
+	rt = aml2.eject(ticket, classTicket)
         return rt
 
     def robotHomeAndRestart(self, ticket):
-        import EMASS
+        import aml2
         classTicket = { 'mcSelf' : self }
 	ticket['robotArm'] = self.robotArm
-	rt = EMASS.robotHomeAndRestart(ticket, classTicket)
+	rt = aml2.robotHomeAndRestart(ticket, classTicket)
         return rt
     
     # view - to replace below tgj1
     #def view(self, external_label, drive, media_type):
     def view(self, external_label, media_type): #leave view's code body alone
 	"get current state of the tape"
-        import EMASS
-	rt = EMASS.view(external_label, media_type)
+        import aml2
+	rt = aml2.view(external_label, media_type)
         if 'O' == rt[5] :
           state = 'O'
         elif 'M' == rt[5] :
