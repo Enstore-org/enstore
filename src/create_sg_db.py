@@ -58,8 +58,10 @@ def test():
     print "classify by library-storage group"
     sg_dict = opdb.create_sg_dict()
     print sg_dict
+    print "create DB"
+    opdb.create_db()
     print "make dictionary"
-    print opdb.make_dict(sg_dict)
+    print opdb.make_dict()
 
 
 if __name__=='__main__':

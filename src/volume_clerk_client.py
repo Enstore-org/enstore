@@ -77,7 +77,6 @@ class VolumeClerkClient(generic_client.GenericClient,
             media_type,            # media
             external_label,        # label as known to the system
             capacity_bytes,        #
-            remaining_bytes,       #
             eod_cookie  = "none",  # code for seeking to eod
             user_inhibit  = ["none","none"],# 0:"none" | "readonly" | "NOACCESS"
             error_inhibit = "none",# "none" | "readonly" | "NOACCESS" | "writing"
@@ -113,7 +112,6 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'media_type'      : media_type,
                    'external_label'  : external_label,
                    'capacity_bytes'  : capacity_bytes,
-                   'remaining_bytes' : remaining_bytes,
                    'eod_cookie'      : eod_cookie,
                    'user_inhibit'    : user_inhibit,
                    'error_inhibit'   : error_inhibit,
@@ -164,7 +162,7 @@ class VolumeClerkClient(generic_client.GenericClient,
 
 
     # get a list of all volumes
-    def get_vols(self, key=None,state=None, not_cond=None):
+    def get_vols(self, key=None,state=None, not_cond=None, print_list=1):
         import cPickle
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
@@ -224,21 +222,23 @@ class VolumeClerkClient(generic_client.GenericClient,
                   +"ticket[\"status\"]="+ticket["status"]
 
         if volumes.has_key("header"):        # full info
-            print "%-10s  %-8s %-17s %17s %012s %-012s"%(
-                "label","avail.", "system_inhibit","user_inhibit",
-                "library","    volume_family")
-            for v in volumes["volumes"]:
-                print "%-10s"%(v['volume'],),
-                print capacity_str(v['remaining_bytes']),
-                print " (%-08s %08s) (%-08s %08s) %-012s %012s"%(
-                    v['system_inhibit'][0],v['system_inhibit'][1],
-                    v['user_inhibit'][0],v['user_inhibit'][1],
-                    v['library'],v['volume_family'])
+            if print_list:
+                print "%-10s  %-8s %-17s %17s %012s %-012s"%(
+                    "label","avail.", "system_inhibit","user_inhibit",
+                    "library","    volume_family")
+                for v in volumes["volumes"]:
+                    print "%-10s"%(v['volume'],),
+                    print capacity_str(v['remaining_bytes']),
+                    print " (%-08s %08s) (%-08s %08s) %-012s %012s"%(
+                        v['system_inhibit'][0],v['system_inhibit'][1],
+                        v['user_inhibit'][0],v['user_inhibit'][1],
+                        v['library'],v['volume_family'])
         else:
             vlist = ''
             for v in volumes.get("volumes",[]):
                 vlist = vlist+v['volume']+" "
-            print vlist
+            if print_list:
+                print vlist
                 
         ticket['volumes'] = volumes['volumes']
         return ticket
@@ -508,7 +508,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     def print_add_args(self):
         print "   add arguments: volume_name library storage_group file_family wrapper"\
-              +" media_type volume_byte_capacity remaining_capacity"
+              +" media_type volume_byte_capacity"
 
     def print_clear_args(self):
         print "usage: --clear volume_name"
@@ -584,8 +584,8 @@ def do_work(intf):
                                    ticket['user_inhibit'])
     elif intf.add:
         print repr(intf.args)
-        library, storage_group, file_family, wrapper, media_type, capacity, remaining = intf.args[:7]
-        capacity, remaining = my_atol(capacity), my_atol(remaining)
+        library, storage_group, file_family, wrapper, media_type, capacity = intf.args[:6]
+        capacity = my_atol(capacity)
         # if wrapper is empty create a default one
         if not wrapper:
             if media_type == 'null': #media type
@@ -598,7 +598,6 @@ def do_work(intf):
                          media_type,     
                          intf.add,                  # name of this volume
                          capacity,
-                         remaining,
                          wrapper=wrapper)           # rem cap'y of volume
     elif intf.modify:
         d={}

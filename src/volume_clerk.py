@@ -23,7 +23,7 @@ import e_errors
 import configuration_client
 import bfid_db
 import volume_family
-
+import sg_db
 
 def hack_match(a,b): #XXX clean this up
     a = string.split(a, '.')
@@ -255,10 +255,34 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
+        inc_counter = 0
+        # first check quota
+        if ticket.has_key('library') and ticket.has_key('storage_group'):
+            library = ticket['library']
+            sg = ticket['storage_group']
+            if sg != 'none':
+                # check if quota is enabled
+                q_dict = self.quota_enabled(library, sg)
+                if q_dict:
+                    if self.check_quota(q_dict, library, sg):
+                        inc_counter = 1
+                    else:
+                        msg="Volume Clerk: Quota exceeded, contact enstore admin."
+                        ticket["status"] = (e_errors.NOVOLUME, msg)
+                        Trace.log(e_errors.ERROR,msg)
+                        self.reply_to_caller(ticket)
+                        return
+        else:
+            msg= "Volume Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+            
         # mandatory keys
         for key in  ['external_label','media_type', 'library',
-                     'eod_cookie', 'storage_group', 'file_family',
-                     'wrapper', 'remaining_bytes', 'capacity_bytes']:
+                     'eod_cookie', 'storage_group',
+                     'capacity_bytes']:
             try:
                 record[key] = ticket[key]
             except KeyError, detail:
@@ -267,7 +291,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.log(e_errors.ERROR,msg)
                 self.reply_to_caller(ticket)
                 return
-
+        # set remaining bytes
+        record['remaining_bytes'] = record['capacity_bytes']
         # check if library key is valid library manager name
         llm = self.csc.get_library_managers(ticket)
 
@@ -278,8 +303,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                       % (ticket['library'],))
 
         # form a volume family
-        record['volume_family'] = volume_family.make_volume_family(ticket['storage_group'],
-                                               ticket['file_family'], ticket['wrapper'])
+        try:
+            record['volume_family'] = volume_family.make_volume_family(ticket['storage_group'],
+                                                                       ticket['file_family'],
+                                                                       ticket['wrapper'])
+        except KeyError, detail:
+            msg="Volume Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR,msg)
+            self.reply_to_caller(ticket)
+            return
         # optional keys - use default values if not specified
         record['last_access'] = ticket.get('last_access', -1)
         record['first_access'] = ticket.get('first_access', -1)
@@ -308,6 +341,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # write the ticket out to the database
         self.dict[external_label] = record
+        if inc_counter: self.sgdb.inc_sg_counter(library, sg)
         # initialize the bfid database for this volume
         self.bfid_db.init_dbfile(external_label)
         ticket["status"] = (e_errors.OK, None)
@@ -416,6 +450,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
         # if volume has not been written delete it
         if record['sum_wr_access'] == 0:
+            # see what is the current counter
+            library = record['library']
+            sg = volume_family.extract_storage_group(record['volume_family'])
+            if sg != 'none':
+                vol_count = self.sgdb.get_sg_counter(library, sg) - 1
+                Trace.trace(21, "delvol: volume_counter %s" % (vol_count,))
+                if vol_count >= 0: self.sgdb.inc_sg_counter(library, sg, increment=-1)
+                if vol_count == 0: self.sgdb.delete_sg_counter(library, sg)
             del self.dict[external_label]
             #clear the bfid database file too
             self.bfid_db.delete_all_bfids(external_label)
@@ -631,6 +673,41 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         return vol
         
     
+    # check if quota is enabled in the configuration
+    def quota_enabled(self, library, storage_group):
+        q_dict = self.csc.get('quotas')
+        if q_dict['status'][0] == e_errors.KEYERROR:
+            # no quota defined in the configuration
+            return None
+        enabled = q_dict.get('enabled',None)
+        if not enabled:
+            # enabled key does not exist. Wrong cofig.
+            return None
+        if 'y' not in string.lower(enabled):
+            # do not use quota
+            return None
+        else:
+            return q_dict
+        
+    # check quota
+    def check_quota(self, quotas, library, storage_group):
+        if not quotas.has_key('libraries'):
+            Trace.log(e_errors.ERROR, "Wrong quota config")
+            return 0
+            
+        if quotas['libraries'].has_key(library):
+            vol_count = self.sgdb.get_sg_counter(library, storage_group)
+            quota = quotas['libraries'][library].get(storage_group, 0)
+            Trace.trace(21, "storage group %s, vol counter %s, quota %s" % (storage_group, vol_count, quota)) 
+            if quota == 0 or (vol_count >= quota):
+                return 0
+            else: return 1
+        else:
+            Trace.log(e_errors.ERROR, "no library %s defined in the quota configuration" % (library))
+            return 0
+        return 0
+            
+    
     # Get the next volume that satisfy criteria
     def next_write_volume (self, ticket):
         Trace.trace(20, "next_write_volume %s" % ticket)
@@ -650,6 +727,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         sg = volume_family.extract_storage_group(vol_fam)
         ff = volume_family.extract_file_family(vol_fam)
         Trace.trace(20, "next_write_volume %s %s" % (vol_fam, vol_fam))
+
         pool = vol_fam
         vol = self.find_matching_volume(library, vol_fam, pool,
                                         wrapper_type, vol_veto_list,
@@ -688,7 +766,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                             min_remaining_bytes,exact_match=0)
         
             Trace.trace(20, "find matching volume returned %s" % vol)
-                    
+
+        inc_count = 0
         if not vol or len(vol) == 0:
             # nothing was available - see if we can assign a blank from a
             # common pool
@@ -698,6 +777,20 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                             vol_veto_list, first_found,
                                             min_remaining_bytes, exact_match=0)
             Trace.trace(20, "find matching volume returned %s" % vol)
+
+            if vol and len(vol) != 0:
+                # check if quota is enabled
+                q_dict = self.quota_enabled(library, sg)
+                if q_dict:
+                    if self.check_quota(q_dict, library, sg):
+                        inc_counter = 1
+                    else:
+                        msg="Volume Clerk: Quota exceeded, contact enstore admin."
+                        ticket["status"] = (e_errors.NOVOLUME, msg)
+                        Trace.log(e_errors.ERROR,msg)
+                        self.reply_to_caller(ticket)
+                        return
+
         # return blank volume we found
         if vol and len(vol) != 0:
             label = vol['external_label']
@@ -705,8 +798,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 vol_fam = volume_family.make_volume_family(sg, label, wrapper_type)
             vol['volume_family'] = vol_fam
             vol['wrapper'] = wrapper_type
-            Trace.log(e_errors.INFO, "Assigning blank volume %s from storage group %s to library %s, volume family %s"
-                      % (label, pool, library, vol_fam))
+            if vol['sum_wr_access'] != 0:
+                msg = ''
+            else:
+                msg = 'blank'
+            Trace.log(e_errors.INFO, "Assigning %s volume %s from storage group %s to library %s, volume family %s"
+                      % (msg, label, pool, library, vol_fam))
+            if inc_count: self.sgdb.inc_sg_counter(library, sg)
+
             self.dict[label] = vol  
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
@@ -1130,7 +1229,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                 msg["volumes"].append(dict)
                 else:
                     dict = {"volume"         : key}
-                    for k in ["remaining_bytes", "system_inhibit",
+                    for k in ["capacity_bytes","remaining_bytes", "system_inhibit",
                               "user_inhibit", "library", "volume_family"]:
                         dict[k]=value[k]
                     if msg:
@@ -1152,7 +1251,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             exc, msg, tb = sys.exc_info()
             e_errors.handle_error(exc,msg,tb)
         os._exit(0)
-
 
     # get a port for the data transfer
     # tell the user I'm your volume clerk and here's your ticket
@@ -1239,6 +1337,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
         self.bfid_db=bfid_db.BfidDb(dbHome)
+        self.sgdb = sg_db.SGDb(dbHome)
         
 class VolumeClerkInterface(generic_server.GenericServerInterface):
         pass
