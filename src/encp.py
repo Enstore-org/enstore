@@ -239,6 +239,8 @@ def get_csc(ticket_or_bfid=None):
     config_servers = csc.get('known_config_servers', {})
     if config_servers['status'][0] == e_errors.OK:
         del config_servers['status']
+    else:
+        return csc
 
     #Loop through systems for the brand that matches the one we're looking for.
     for server in config_servers.keys():
@@ -475,14 +477,14 @@ def filesystem_check(target_filesystem, inputfile):
               % (size, filesystem_max)
 
 #Make sure that the wrapper can handle the filesize.
-def wrappersize_check(target_filesystem, inputfile):
+def wrappersize_check(target_filepath, inputfile):
 
     #Get filesize
     size = get_file_size(inputfile)
 
     #Get the remote pnfs wrapper.  If the maximum size of the
     # wrapper isn't in the configuration file, assume 2GB-1.
-    pout = pnfs.Pnfs(target_filesystem)
+    pout = pnfs.Pnfs(target_filepath)
     pout.get_file_family_wrapper()
     # get a configuration server and the max filesize the wrappers allow.
     csc = get_csc()
@@ -496,13 +498,13 @@ def wrappersize_check(target_filesystem, inputfile):
               % (size, pout.file_family_wrapper, wrapper_max)
     
 #Make sure that the library can handle the filesize.
-def librarysize_check(target_filesystem, inputfile):
+def librarysize_check(target_filepath, inputfile):
 
     #Get filesize
     size = get_file_size(inputfile)
 
     #Determine the max allowable size for the given library.
-    pout = pnfs.Pnfs(target_filesystem)
+    pout = pnfs.Pnfs(target_filepath)
     pout.get_library()
     csc = get_csc()
     library = csc.get(pout.library + ".library_manager", {})
@@ -668,7 +670,8 @@ def outputfile_check(inputlist, output, dcache):
 
             #Make sure the output file system can handle a file as big as
             # the input file.  Also, make sure that the maximum size that
-            # the wrapper uses is greater than the filesize.
+            # the wrapper and library use are greater than the filesize.
+            # These function will raise a USERERROR on an error.
             if "/pnfs/" == inputlist[i][:6]: #READS
                 filesystem_check(outputlist[i], inputlist[i])
             else: #WRITES
@@ -691,23 +694,23 @@ def outputfile_check(inputlist, output, dcache):
 
         except (e_errors.USERERROR, e_errors.UNKNOWN):
             exc, msg, tb = sys.exc_info()
-            print_data_access_layer_format(ifullname, ofullname, 0,
+            size = get_file_size(ifullname)
+            print_data_access_layer_format(ifullname, ofullname, size,
                                            {'status':(exc, msg)})
             quit()
         except (e_errors.EEXIST,), detail:
             if not dcache:
                 exc, msg, tb = sys.exc_info()
-                print_data_access_layer_format(ifullname, ofullname, 0,
+                size = get_file_size(ifullname)
+                print_data_access_layer_format(ifullname, ofullname, size,
                                                {'status':(exc, msg)})
                 quit()
             else: #dache
                 #Since, the file exists, we can get its file size.
-                statinfo = os.stat(outputlist[i])
-                if statinfo[stat.ST_SIZE]:
+                size = get_file_size(ofullname)
+                if size:
                     msg = "disk cache requires zero length file"
-                    print_data_access_layer_format(ifullname,
-                                                   ofullname,
-                                                   statinfo[stat.ST_SIZE],
+                    print_data_access_layer_format(ifullname, ofullname, size,
                                                    {'status':(e_errors.EEXIST,
                                                               msg)})
                     quit()
@@ -720,7 +723,7 @@ def outputfile_check(inputlist, output, dcache):
         #now try to atomically create each file
         for f in outputlist:
             try:
-                fd = atomic.open(f, mode=0666)
+                fd = atomic.open(f, mode=0666) #raises OSError on error.
                 if fd<0:
                     #The return code is the negitive return value.
                     error = int(math.fabs(fd))
