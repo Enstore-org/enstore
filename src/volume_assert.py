@@ -13,7 +13,6 @@ import pprint
 import time
 import errno
 import re
-import time
 
 # enstore imports
 import configuration_client
@@ -26,52 +25,30 @@ import Trace
 import host_config
 import udp_server
 import hostaddr
+import encp
+import generic_client
+import enstore_functions
 
-_counter = 0
+MY_NAME = "ASSERT"
 
-def generate_unique_id():
-    global _counter
-    thishost = hostaddr.gethostinfo()[0]
-    ret = "%s-%d-%d-%d" % (thishost, int(time.time()),_counter, os.getpid())
-    _counter = _counter + 1
-    return ret
+############################################################################
+############################################################################
 
-def get_callback_addr(ip=None):
-    # get a port to talk on and listen for connections
-    (host, port, listen_socket) = callback.get_callback(
-        verbose=0, ip=ip)
-    callback_addr = (host, port)
-    listen_socket.listen(4)
-
-    Trace.message(1,
-                  "Waiting for mover(s) to call back on (%s, %s)." %
-                  callback_addr)
-
-    return callback_addr, listen_socket
-
-def get_routing_callback_addr(udps=None):
-    # get a port to talk on and listen for connections
-    if udps == None:
-        udps = udp_server.UDPServer(None,
-                                    receive_timeout=900)
-    else:
-        udps.__init__(None, receive_timeout=900)
-        
-    route_callback_addr = (udps.server_address[0], udps.server_address[1])
-    
-    Trace.message(1,
-                  "Waiting for mover(s) to send route back on (%s, %s)." %
-                  route_callback_addr)
-
-    return route_callback_addr, udps
-
+#Parse the file containing the volumes to be asserted.  It expects the first
+# word on each line to be the volume.  Reamining text on a line is ignored.
+# This is so that a multi-line copy-paste from "enstore vol --vols" doesn't
+# need to be pased down to the volume names.  Also, any line beginning with
+# a "#" is a comment and ignored.
 def parse_file(filename):
     file=open(filename, "r")
     data=map(string.strip, file.readlines())
     tmp = []
     for item in data:
 	try:
-	    tmp.append(string.split(item)[0])
+            line = string.split(item)[0]
+            line.strip()
+            if line[0] != "#":
+                tmp.append(string.split(item)[0])
 	except IndexError:
 	    continue #This happens for blank lines
 
@@ -82,14 +59,17 @@ def get_vcc_list():
     #Determine the entire valid list of configuration servers.
     csc = configuration_client.ConfigurationClient()
     config_server_addr_list = csc.get('known_config_servers')
-    if config_server_addr_list['status'] != (e_errors.OK, None):
-        print config_server_addr_list['status']
+    if not enstore_functions.is_ok(config_server_addr_list['status']):
+        sys.stderr.write(str(config_server_addr_list['status']) + "\n")
         sys.exit(1)
+        
     #Add this hosts default csc.
     config_server_addr_list[socket.gethostname()] = csc.server_address
     #Remove status.
     del config_server_addr_list['status']
 
+    #For all systems that respond get the volume clerk and configuration
+    # server clients.
     csc_list = []
     vcc_list = []
     for config in config_server_addr_list.values():
@@ -99,134 +79,27 @@ def get_vcc_list():
 
     return csc_list, vcc_list
 
-############################################################################
-############################################################################
-
-def open_routing_socket(route_server, unique_id_list, mover_timeout):
-
-    route_ticket = None
-
-    if not route_server:
-        return
-
-    start_time = time.time()
-    while(time.time() - start_time < mover_timeout):
-
-        try:
-            route_ticket = route_server.process_request()
-        except socket.error:
-            continue
-        
-        #If route_server.process_request() fails it returns None.
-        if not route_ticket:
-            continue
-        #If route_server.process_request() returns incorrect value.
-        elif route_ticket == type({}) and hasattr(route_ticket, 'unique_id') \
-           and route_ticket['unique_id'] not in unique_id_list:
-            continue
-        #It is what we were looking for.
-        else:
-            break
-    else:
-        raise socket.error(errno.ETIMEDOUT, "Mover did not call back.")
-
-    #set up any special network load-balancing voodoo
-    interface=host_config.check_load_balance(mode=0)
-    #load balencing...
-    if interface:
-        ip = interface.get('ip')
-        if ip and route_ticket.get('mover_ip', None):
-	    #With this loop, give another encp 10 seconds to delete the route
-	    # it is using.  After this time, it will be assumed that the encp
-	    # died before it deleted the route.
-	    start_time = time.time()
-	    while(time.time() - start_time < 10):
-
-		host_config.update_cached_routes()
-		route_list = host_config.get_routes()
-		for route in route_list:
-		    if route_ticket['mover_ip'] == route['Destination']:
-			break
-		else:
-		    break
-
-		time.sleep(1)
-	    
-            #This is were the interface selection magic occurs.
-            host_config.setup_interface(route_ticket['mover_ip'], ip)
-
-
-    (route_ticket['callback_addr'], listen_socket) = \
-				    get_callback_addr(ip=ip)
-    route_server.reply_to_caller_using_interface_ip(route_ticket, ip)
-
-    return route_ticket, listen_socket
-
-    ##########################################################################
-
-def open_control_socket(listen_socket, mover_timeout):
-
-
-    read_fds,write_fds,exc_fds=select.select([listen_socket], [], [],
-                                             mover_timeout)
-
-    #If there are no successful connected sockets, then select timedout.
-    if not read_fds:
-        raise socket.error(errno.ETIMEDOUT,
-                           "Mover did not call back.")
-    
-    control_socket, address = listen_socket.accept()
-
-    if not hostaddr.allow(address):
-        control_socket.close()
-        raise socket.error(errno.EPERM, "host %s not allowed" % address[0])
-
-    read_fds,write_fds,exc_fds=select.select([control_socket], [], [],
-                                             mover_timeout)
-
-    try:
-        ticket = callback.read_tcp_obj(control_socket)
-    except e_errors.TCP_EXCEPTION:
-        raise socket.error(errno.EPROTO, "Unable to obtain mover responce")
-    
-    return control_socket, address, ticket
-
-    ##########################################################################
-
-def receive_final_dialog(control_socket):
-    # File has been sent - wait for final dialog with mover. 
-    # We know the file has hit some sort of media.... 
-    
-    try:
-        done_ticket = callback.read_tcp_obj(control_socket)
-    except e_errors.TCP_EXCEPTION, msg:
-        done_ticket = {'status':(e_errors.TCP_EXCEPTION,
-                                 msg)}
-        
-    return done_ticket
-
-############################################################################
-############################################################################
-
-def main():
-    #Read in the list of vols.
-    vol_list = parse_file(sys.argv[1])
+def create_assert_list(vol_list, intf):
 
     #The list of volume clerks to check.
     csc_list, vcc_list = get_vcc_list()
 
     #Determine the calback address.
-    callback_addr, listen_socket = get_callback_addr()
+    callback_addr, listen_socket = encp.get_callback_addr(intf)
     #Determine the routing callback address.
     config = host_config.get_config()
     if config and config.get('interface', None):
         route_selection = 1
-        routing_callback_addr, udp_server = get_routing_callback_addr()
+        routing_callback_addr, udp_server = \
+                               encp.get_routing_callback_addr(intf)
     else:
         route_selection = 0
         routing_callback_addr, udp_server = None, None
 
-    unique_id_list = []
+    #For each volume in the list, determine which system it belongs in by
+    # asking each volume clerk until one responds positively.  When one does
+    # build the ticket and add it to the list to assert.
+    assert_list = []
     for vol in vol_list:
 	e_msg = None #clear this error variable.
         for i in range(len(vcc_list)):
@@ -236,79 +109,238 @@ def main():
             if vc['status'] != (e_errors.OK, None):
 		if e_msg: #If error is already set, skip it.
 		    continue
-		e_msg = "Volume %s has state %s and unassertable." % \
+		e_msg = "Volume %s has state %s and unassertable.\n" % \
 			(vol, vc['status'])
                 continue
 	    #If the volume is not a tape, skip it.
 	    if vc['media_type'] == "null" or vc['media_type'] == "disk":
 		if e_msg: #If error is already set, skip it.
 		    continue
-		e_msg = "Volume %s is a %s volume and unassertable." % \
+		e_msg = "Volume %s is a %s volume and unassertable.\n" % \
 			(vol, vc['media_type'])
 		continue
 
 	    #Create the ticket to submit to the library manager.
             ticket = {}
-            ticket['unique_id'] = generate_unique_id()
+            ticket['unique_id'] = encp.generate_unique_id()
             ticket['callback_addr'] = callback_addr
             ticket['routing_callback_addr'] = routing_callback_addr
 	    ticket['route_selection'] = route_selection
             ticket['vc'] = vc
             ticket['vc']['address'] = vcc_list[i].server_address  #vcc instance
-            #easier to do this than modify the mover.
+            #Easier to do this than modify the mover.
 	    ticket['fc'] = {}
+            #Internally used values.
+            ticket['_csc'] = csc_list[i].server_address
+            #The following are for the inquisitor.
+            ticket['fc']['external_label'] = vc['external_label']
+            ticket['fc']['location_cookie'] = "0000_000000000_0000000"
 	    ticket['times'] = {}
 	    ticket['times']['t0'] = time.time()
 	    ticket['encp'] = {}
 	    ticket['encp']['adminpri'] = -1
 	    ticket['encp']['basepri'] = 1
+            ticket['encp']['curpri'] = 0  #For transfers, this is set by LM.
+            ticket['encp']['delpri'] = 0
+            ticket['encp']['agetime'] = 0
+            ticket['infile'] = ""
+            ticket['outfile'] = ""
+            ticket['wrapper'] = encp.get_uinfo()
+            ticket['wrapper']['size_bytes'] = 0
+            ticket['wrapper']['machine'] = os.uname()
+            ticket["wrapper"]["pnfsFilename"] = ""
+            ticket["wrapper"]["fullname"] = ""
 
-	    print "Submitting assert request for %s volume %s." % \
-		  (ticket['vc']['media_type'], vol)
+            #Add the assert work ticket to the list of volume asserts.
+            assert_list.append(ticket)
 
-            lmc = library_manager_client.LibraryManagerClient(
-                csc_list[i], ticket['vc']['library'] + ".library_manager")
-            responce_ticket = lmc.volume_assert(ticket, 10, 1)
+            break  #When the correct vcc is found skip the rest.
 
-	    if responce_ticket['status'] != (e_errors.OK, None):
-		print "Submittion for %s failed: %s" % \
-		      (vol, responce_ticket['status'])
-		continue
+        else:
+            sys.stderr.write(e_msg)
 
-	    unique_id_list.append(ticket['unique_id'])
+    return assert_list, listen_socket, udp_server
 
-            break #When the correct vcc is found skip the rest.
-	
-	else:
-	    print e_msg
+def submit_assert_requests(assert_list):
+    unique_id_list = []
 
-    for i in range(len(unique_id_list)):
-        if route_selection == 1:
-	    #There is no need to do this on a non-multihomed machine.
-            route_ticket, listen_socket = open_routing_socket(
-		udp_server, unique_id_list, 900)
-        socket, addr, callback_ticket = open_control_socket(listen_socket, 900)
+    #Submit each request to the library manager.  The necessary information
+    # is in the ticket.  While submiting the assert work requests, create
+    # a list of the unique_ids created.
+    for ticket in assert_list:
+        Trace.trace(1, "Submitting assert request for %s volume %s." % \
+              (ticket['vc']['media_type'], ticket['vc']['external_label']))
 
-        #print "RESPONCE TICKET"
-        #pprint.pprint(callback_ticket)
+        #Instantiate the library_manager_client class and send it the
+        # volume assert.
+        lmc = library_manager_client.LibraryManagerClient(
+            ticket['_csc'], ticket['vc']['library'] + ".library_manager")
+        responce_ticket = lmc.volume_assert(ticket, 10, 1)
 
-        print "Asserting volume %s." % callback_ticket['vc']['external_label']
-
-        if callback_ticket['status'][0] != e_errors.OK:
+        if responce_ticket['status'] != (e_errors.OK, None):
+            sys.stderr.write("Submittion for %s failed: %s\n" % \
+                             (ticket['vc']['external_label'],
+                              responce_ticket['status']))
             continue
 
-        done_ticket = receive_final_dialog(socket)
+        unique_id_list.append(ticket['unique_id'])
 
-        #print "DONE TICKET"
-        #pprint.pprint(done_ticket)
+    return unique_id_list  #return the list of unique ids to wait for.
 
-        print "Volume status is %s" % (done_ticket['status'],)
+#Unique_id_list is a list of just the unique ids.  Assert_list is a list of
+# the complete tickets.
+def handle_assert_requests(unique_id_list, assert_list, listen_socket,
+                           udp_server, intf):
 
-        socket.close()
+    error_id_list = []
+    completed_id_list = []
+    
+    while len(error_id_list) + len(completed_id_list) < len(assert_list):
+        
+        try:
+            #Obtain the control socket and if necessary the routing socket.
+            if udp_server:
+	        #There is no need to do this on a non-multihomed machine.
+                route_ticket, listen_socket = encp.open_routing_socket(
+                    udp_server, unique_id_list, intf.mover_timeout)
+            socket, addr, callback_ticket = \
+                    encp.open_control_socket(listen_socket, intf.mover_timeout)
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
+        except:
+            #Output a message.
+            exc, msg, tb = sys.exc_info()
+            sys.stderr.write(str(msg) + "\n")
+
+            uncompleted_list = []
+            for i in range(len(assert_list)):
+                if assert_list[i]['unique_id'] not in error_id_list or \
+                   assert_list[i]['unique_id'] not in completed_id_list:
+                    #If an error occured, update the unique id.
+                    if msg.errno != errno.ETIMEDOUT:
+                        assert_list[i]['unique_id'] = encp.generate_unique_id()
+                    uncompleted_list.append(assert_list[i])
+            #Resend or resubmit the volume request.
+            submit_assert_requests(uncompleted_list)
+            continue
+
+        Trace.trace(10, "RESPONCE TICKET")
+        Trace.trace(10, pprint.pformat(callback_ticket))
+
+        Trace.trace(1, "Asserting volume %s." % \
+                    callback_ticket['vc']['external_label'])
+
+        if not enstore_functions.is_ok(callback_ticket['status']):
+            #Output a message.
+            sys.stderr.write(str(callback_ticket['status']) + "\n")
+            #Do not retry from error.
+            error_id_list.append(callback_ticket['unique_id'])
+            continue
+
+        try:
+            #Obtain the results of the volume assert by the mover.
+            done_ticket = encp.receive_final_dialog(socket)
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
+        except:
+            #Output a message.
+            exc, msg, tb = sys.exc_info()
+            sys.stderr.write(str(msg) + "\n")
+            #Do not retry from error.
+            error_id_list.append(callback_ticket['unique_id'])
+            continue
+        
+        Trace.trace(5, "DONE TICKET")
+        Trace.trace(5, pprint.pformat(done_ticket))
+
+        Trace.trace(1, "Volume status is %s" % (done_ticket['status'],))
+
+        completed_id_list.append(done_ticket['unique_id'])
+
+        #Close the socket or risk crashing with to many open files.
+        try:
+            socket.close()
+        except socket.error:
+            pass
+        
+    #This is still open.  Close it for good programming technique.
+    try:
+        listen_socket.close()
+    except socket.error:
+        pass
+
+############################################################################
+############################################################################
+
+
+class VolumeAssertInterface(option.Interface):
+
+    def __init__(self, args=sys.argv, user_mode=1):
+        # fill in the defaults for the possible options
+        self.verbose = 0
+        self.mover_timeout = 60*60
+        option.Interface.__init__(self, args=args, user_mode=user_mode)
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.volume_assert_options)
+    
+    # parse the options like normal but make sure we have other args
+    def parse_options(self):
+
+        generic_client.GenericClientInterface.parse_options(self)
+
+    parameters = ["volume_list_file"]
+    
+    volume_assert_options = {
+        option.VERBOSE:{option.HELP_STRING:"print out information.",
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.USER_LEVEL:option.USER,},
+        option.MOVER_TIMEOUT:{option.HELP_STRING:"set mover timeout period "\
+                              " in seconds (default 1 hour)",
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.VALUE_TYPE:option.INTEGER,
+                              option.USER_LEVEL:option.USER,},
+        }
+
+############################################################################
+############################################################################
+    
+def main(intf):
+
+    Trace.init(MY_NAME)
+    for x in xrange(0, intf.verbose+1):
+        Trace.do_print(x)
+    Trace.trace(3, 'Volume assert called with args: %s'%(sys.argv,))
+    
+    #Read in the list of vols.
+    vol_list = parse_file(intf.args[0])
+
+    #Create the list of assert work requests.
+    assert_list, listen_socket, udp_server = create_assert_list(vol_list, intf)
+
+    #Submit the work requests to the library manager.
+    unique_id_list = submit_assert_requests(assert_list)
+
+    #Wait for mover to call back with the volume assert status.
+    handle_assert_requests(unique_id_list, assert_list,
+                           listen_socket, udp_server, intf)
+    
+############################################################################
+############################################################################
         
 if __name__ == "__main__":
+
+    encp.setup_signal_handling()
+
+    intf = VolumeAssertInterface(user_mode=0)
+
+    intf._mode = "admin"
+
     try:
-	main()
+	main(intf)
     except KeyboardInterrupt:
         sys.stderr.write("KeyboardInterrupt\n")
         sys.stderr.flush()
