@@ -48,19 +48,8 @@ class FTTDriver(driver.Driver):
         self._bytes_transferred = 0
         Trace.trace(25, "ftt_open returns %s" % (self.ftt,))
         self.fd = None
-        for retry in xrange(retry_count):
-            if retry:
-                Trace.trace(25, "retrying open %s"%(retry,))
-            try:
-                self.fd = self.ftt.open_dev()
-                break
-            except ftt.FTTError, detail:
-                Trace.log(e_errors.ERROR, "%s %s" %(detail, detail.errno))
-                if detail.errno == ftt.EBUSY:
-                    time.sleep(5)
-                else:
-                    break
 
+        self.__open_dev__(retry_count)
             
         if self.fd is None:
             return -1 #or exception?
@@ -74,6 +63,9 @@ class FTTDriver(driver.Driver):
             Trace.trace(25, "ftt status returns %s"%(status,))
             if status & ftt.ONLINE:
                 break
+            Trace.trace(25, "closing ftt device to get status to update")
+            self.ftt.close_dev()
+            self.__open_dev__(2)
         else:
             return 0 #this is BADSWMOUNT
         
@@ -81,6 +73,20 @@ class FTTDriver(driver.Driver):
 
         return 1
     
+    def __open_dev__(self, retry_count):
+        for retry in xrange(retry_count):
+            if retry:
+                Trace.trace(25, "retrying open %s"%(retry,))
+            try:
+                self.fd = self.ftt.open_dev()
+                break
+            except ftt.FTTError, detail:
+                Trace.log(e_errors.ERROR, "%s %s" %(detail, detail.errno))
+                if detail.errno == ftt.EBUSY:
+                    time.sleep(5)
+                else:
+                    break
+                
     def rewind(self):
         try:
             r = self.ftt.rewind()
