@@ -39,7 +39,6 @@ import priority_selector
 import mover_constants
 import charset
 import discipline
-import option
 
 KB=1L<<10
 MB=1L<<20
