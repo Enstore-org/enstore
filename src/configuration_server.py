@@ -252,14 +252,16 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(out_ticket)
  
         
-    def get_dict_element(self, ticket):
-        ret = {"status" : (e_errors.OK, None)}
+    def get_dict_entry(self, skeyValue):
         slist = []
-        skeyValue = ticket['keyValue']
         for key in self.configdict.keys():
             if skeyValue in self.configdict[key].items():
                 slist.append(key)
-        ret['servers'] = slist
+        return slist
+
+    def get_dict_element(self, ticket):
+        ret = {"status" : (e_errors.OK, None)}
+        ret['servers'] = self.get_dict_entry(ticket['keyValue'])
         self.reply_to_caller(ret)
         Trace.trace(6,"get_dict_element"+repr(ret))
 
