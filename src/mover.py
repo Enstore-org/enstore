@@ -508,8 +508,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         
     def read_client(self):
-        Trace.trace(10, "read_client,  bytes_to_read=%s" % (self.bytes_to_read,))
-
+        Trace.trace(8, "read_client starting,  bytes_to_read=%s" % (self.bytes_to_read,))
         driver = self.net_driver
         if self.bytes_read == 0 and self.header: #splice in cpio headers, as if they came from client
             nbytes = self.buffer.header_size
@@ -553,11 +552,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.write_ok.set()
 
             
-        Trace.trace(10, "read_client: state = %s, read %s/%s bytes" %
-                    (state_name(self.state), self.bytes_read, self.bytes_to_read))
+        Trace.trace(8, "read_client exiting, read %s/%s bytes" %(self.bytes_read, self.bytes_to_read))
                         
     def write_tape(self):
-        Trace.trace(10, "write_tape, bytes_to_write=%s" % (self.bytes_to_write,))
+        Trace.trace(8, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         driver = self.tape_driver
         count = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
@@ -603,8 +601,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.read_ok.set()
         
             
-        Trace.trace(10, "write_tape, state = %s, wrote %s/%s bytes" %
-                    (state_name(self.state), self.bytes_written, self.bytes_to_write))
+        Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
 
         if self.bytes_written == self.bytes_to_write:
             if self.single_filemark:
@@ -624,7 +621,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def read_tape(self):
-        Trace.trace(10, "read_tape, bytes_to_read=%s" % (self.bytes_to_read,))
+        Trace.trace(8, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         driver = self.tape_driver
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             
@@ -663,11 +660,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
             
-        Trace.trace(10, "read_tape: state=%s, read %s/%s bytes" %
-                    (state_name(self.state), self.bytes_read, self.bytes_to_read))
+        Trace.trace(8, "read_tape exiting, read %s/%s bytes" % (self.bytes_read, self.bytes_to_read))
                 
     def write_client(self):
-        Trace.trace(10, "write_client, bytes_to_write=%s" % (self.bytes_to_write,))
+        Trace.trace(8, "write_client starting, bytes_to_write=%s" % (self.bytes_to_write,))
         driver = self.net_driver
         if self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
             while self.buffer.header_size is None and self.state in (ACTIVE, DRAINING):
@@ -703,8 +699,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not self.buffer.full():
                 self.buffer.read_ok.set()
             
-        Trace.trace(10, "write_client: state=%s, wrote %s/%s bytes" %
-                    (state_name(self.state), self.bytes_written, self.bytes_to_write))
+        Trace.trace(8, "write_client exiting: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
   
         if self.bytes_written == self.bytes_to_write:
             self.transfer_completed()
