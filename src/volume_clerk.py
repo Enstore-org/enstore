@@ -504,7 +504,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.sgdb.inc_sg_counter(library, sg, increment=-1)
             # deleting blank?
             if sg == 'none':
-                sgc = self.sgdb.get_sg_counter((library, 'none'))
+                sgc = self.sgdb.get_sg_counter(library, 'none')
                 if sgc < self.common_blank_low['warning']:
                     msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
                     Trace.alarm(e_error.WARNING, msg)
@@ -699,7 +699,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # adjust sg-count
         self.sgdb.inc_sg_counter(library, storage_group)
         self.sgdb.inc_sg_counter(library, 'none', increment=-1)
-        sgc = self.sgdb.get_sg_counter((library, 'none'))
+        sgc = self.sgdb.get_sg_counter(library, 'none')
         if sgc < self.common_blank_low['warning']:
             msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
             Trace.alarm(e_error.WARNING, msg)
@@ -1328,7 +1328,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 self.sgdb.inc_sg_counter(library, sg)
                 self.sgdb.inc_sg_counter(library, osg, increment=-1)
                 if osg == 'none':
-                    sgc = self.sgdb.get_sg_counter((library, osg))
+                    sgc = self.sgdb.get_sg_counter(library, osg)
                     if sgc < self.common_blank_low['warning']:
                         msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
                         Trace.alarm(e_error.WARNING, msg)
