@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read
+all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read ecrc
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -53,6 +53,9 @@ t_rand: t_rand.c
 
 t_read: t_read.c
 	$(CC) t_read.c -o t_read
+ecrc: ecrc.c
+	$(CC) -I. -o ecrc ecrc.c adler32.a
+	cp ecrc ../sbin
 
 installpyc:
 	for m in $(PYMODULES) the-end; do \
