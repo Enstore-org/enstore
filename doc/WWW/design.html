@@ -2412,54 +2412,62 @@ communications flow before the Mover contacts the Library Manager.
 <p>
 <ul>
 <li>
-The user (through <em>encp</em>) contacts <em>pnfs</em> asking for a bit file ID (bfid)
+The user (through <em>encp</em>) contacts PNFS asking for a bit file ID (bfid)
 for the named file.
 <li>
-<em>pnfs</em> returns the bfid to <em>encp</em>.
+PNFS returns the bfid to <em>encp</em>.
 <li>
 <em>Encp</em> asks the Configuration Server with which File Clerk should it be
 communicating.
 <li>
 The Configuration Server returns the location of the appropriate File Clerk.
 <li>
-<em>Encp</em> sends the read request to the File Clerk.
+<em>encp</em> asks the File Clerk the information about the file with given bit file ID.
 <li>
-The file Clerk asks the Volume Clerk with which Library manger should it be
-communicating.
+The File Clerk asks the Volume Clerk information for the given Volume Label
 <li>
-The Volume Clerk returns the location of the appropriate Library Manager.
+The Volume Clerk returns the information to the File Clerk
+
 <li>
-The File Clerk asks the Library Manager to read the file.
+The File Clerk returns file information containing the Volume Label and the Library Manager name
 <li>
-The Library Manager tells the File Clerk that the request has been placed in
-it's queue.
+<em>encp</em> asks the Configuration Server the location of the Library Manager
+dealing with this File Family
 <li>
-The File Clerk informs <em>encp</em> that the read request has been queued.
+The Configuration Server returns the location of the Library manager
 <li>
-The Mover asks the Configuration Server with which Library Manager should it
-be communicating.
+<em>encp</em> sends the read request to the Library Manager
 <li>
-The Configuration Server returns the location of the appropriate Library
-Manager.
+The Library Manager asks the Volume Clerk if the volume for the
+requested file has a read access.
 <li>
-The Mover asks the Library Manager if there is any work for it to do.
+The Volume Clerk confirms access permission
 <li>
-The Library Manager tells the Mover which volume to mount.
+The Library Manager puts read request into internal request queue and
+tells the encp that the request has been accepted
+<li>
+The Library Manager finds next potentially available mover in its list
+of movers and sends summon message to it initiating mover dialog with
+this Library manager
+<li>
+The Mover "wakes up" receiving summon message from the Library Manager
+and asks the Library Manager if there is any work for it to do.
+<li>
+The Library Manager moves the file internally from request queue to
+work queue. 
+<li>
+The Library Manager tells the Mover which file to read and which volume to
+mount. 
+<li>
+The Mover tells <em>encp</em> from which host and port to read the data.
 <li>
 The Mover asks the Media Changer to mount a particular volume.
 <li>
 The Media Changer responds once the volume is mounted.
 <li>
-The Mover tells the Library Manager that the volume is mounted.
+The Mover sends the data to <em>encp</em>.
 <li>
-The Library Manager tells the Mover which file to read.
-<li>
-The Mover tells <em>encp</em> from which host and port to read the data.
-<li>
-The Mover send the data to <em>encp</em>.
-<li>
-The Mover tells <em>encp</em> when all the data has been transferred and sends
-the crc information.
+The Mover tells encp when all the data has been transferred and sends the crc information.
 <li>
 The read has completed.
 <li>
@@ -2483,50 +2491,49 @@ communications flow before the Mover contacts the Library Manager.
 <p>
 <ul>
 <li>
-The user (through <em>encp</em>) contacts <em>pnfs</em>with a request to create a file.
+The user (through <em>encp</em>) contacts PNFS with a request to create a file.
 <li>
-<em>pnfs</em>returns the file family and volume library information to <em>encp</em>.
+PNFS returns the file family and volume library information to <em>encp</em>.
 <li>
-<em>Encp</em> asks the Configuration Server with which Library Manager should
+<em>encp</em> asks the Configuration Server with which Library Manager should
 it be communicating.
 <li>
 The Configuration Server returns the location of the appropriate Library
 Manager.
 <li>
-<em>Encp</em> sends the write request to the Library Manager, including file
+<em>encp</em> sends the write request to the Library Manager, including file
 family and number of bytes.
 <li>
-The Library Manager tells the <em>encp</em> that the request has been placed in
-it's queue.
+The Library Manager puts write request into internal request queueand tells
+the <em>encp</em> that the request has been accepted.
 <li>
-The Mover asks the Configuration Server with which Library Manager should it
-be communicating.
+The Library Manager finds next potentially available mover in its list
+of movers and sends summon message to it initiating mover dialog with
+this Library manager
 <li>
-The Configuration Server returns the location of the appropriate Library
-Manager.
-<li>
-The Mover asks the Library Manager if there is any work for it to do.
+The Mover "wakes up" receiving summon message from the Library Manager
+and asks the Library Manager if there is any work for it to do.
 <li>
 The Library Manager asks the Volume Clerk for a volume for the file with the
-specified size and file family.
+specified size and file family. 
 <li>
-The Volume Clerk returns the volume to the Library Manager.
+The Volume Clerk returns the volume to the Library Manager. 
 <li>
-The Library Manager moves the file internally from one queue to another.
+The Library Manager moves the file internally from request queue to
+work queue. 
 <li>
-The Library Manager tells the Mover which volume to mount.
+The Library Manager tells the Mover which file to write and which volume to
+mount. 
 <li>
 The Mover asks the Media Changer to mount a particular volume.
 <li>
 The Media Changer responds once the volume is mounted.
 <li>
-The Mover tells the Library Manager that the volume is mounted.
-<li>
 The Mover tells <em>encp</em> to which host and port to write the data.
 <li>
-The Mover tells the Volume Clerk that he is appending to this volume.
+The Mover tells the Volume Clerk that he is appending to this volume. 
 <li>
-The Volume Clerk acknowledges this.
+The Volume Clerk acknowledges this. 
 <li>
 <em>Encp</em> sends the data to the Mover.
 <li>
@@ -2537,12 +2544,12 @@ The Volume Clerk acknowledges this.
 <li>
 The Mover tells the File Clerk which file has been created.
 <li>
-The File Clerk responds with the bit file ID.
+The File Clerk responds with the bit file id.
 <li>
 The Mover tells <em>encp</em> that the file has been written and sends the bit
 file ID and the crc.
 <li>
-<em>Encp</em> tells <em>pnfs</em>that the file has been created, and the bfid should
+<em>Encp</em> tells PNFS that the file has been created, and the bfid should
 be stored.
 <li>
 The write has completed.
