@@ -5,7 +5,7 @@
 
 static	char	*version = "$Revision$ $Date$ $Author$";
 
-void
+int
 main(  int	argc
      , char	*argv[] )
 {
@@ -29,6 +29,10 @@ main(  int	argc
 	else if (strcmp(argv[opt],"-ct") == 0)
 	{   opt_ct = 1;
 	}
+	else if (strcmp(argv[opt],"--version") == 0)
+	{   printf( "%s\n", version );
+	    return (0);
+	}
     }
 
     while (fscanf(stdin,"%[^\n]\n",buf2) && !sscanf(buf2,"%lf%[^\n]\n",&x,buf))
@@ -42,14 +46,14 @@ main(  int	argc
 	    char	*c_p = ctime(&xx);
 	    c_p[strlen(c_p)-1] = ' '; /* strip '\n' */
 	    c_p[strlen(c_p)] = '\0'; /* strip '\n' */
-	    fprintf( stdout, "%18.6lf %s %s\n", delta, c_p, buf );
+	    fprintf( stdout, "%18.6f %s %s\n", delta, c_p, buf );
 	}
 	else
-	{   fprintf( stdout, "%18.6lf %18.6lf%s\n", delta, x, buf );
+	{   fprintf( stdout, "%18.6f %18.6f%s\n", delta, x, buf );
 	}
     }
     else
-	fprintf( stdout, "%18.6lf %s\n", delta, buf );
+	fprintf( stdout, "%18.6f %s\n", delta, buf );
 
     while (fscanf( stdin,"%lf%[^\n]\n", &x, buf ) == 2)
     {   
@@ -63,15 +67,15 @@ main(  int	argc
 		char	*c_p = ctime(&xx);
 		c_p[strlen(c_p)-1] = ' '; /* strip '\n' */
 		c_p[strlen(c_p)] = '\0'; /* strip '\n' */
-		fprintf( stdout, "%18.6lf %s %s\n", delta, c_p, buf );
+		fprintf( stdout, "%18.6f %s %s\n", delta, c_p, buf );
 	    }
 	    else
-	    {   fprintf( stdout, "%18.6lf %18.6lf%s\n", delta, x, buf );
+	    {   fprintf( stdout, "%18.6f %18.6f%s\n", delta, x, buf );
 	    }
 	}
 	else
-	    fprintf( stdout, "%18.6lf %s\n", delta, buf );
+	    fprintf( stdout, "%18.6f %s\n", delta, buf );
         sav = x;
     }
-
+    return (0);
 }

@@ -146,4 +146,4 @@ do\
     (trc_ent_sp+idx)->tid = trc_tid;\
     (trc_ent_sp+idx)->lvl = lvl;\
 }\
-while (0)
+while (tp==0)/*IRIX warns "controlling expr. is const." if just 0 is used*/

@@ -50,7 +50,11 @@ static	char	*version = "Release- $Revision$ $Date$ $Author$";
 
 char	*trc_key_file = "";
 
-#define OPT_ARG( x )	do{if(++arg==argc){printf("arg required\n");exit(1);} x=argv[arg]; } while (0)
+#define OPT_ARG( x )	\
+do\
+{   if(++arg==argc){printf("arg required\n");return(1);}\
+    x=argv[arg];\
+} while (x==0)/*IRIX warns "controlling expr. is const." if just 0 is used*/
 
 int
 main(  int	argc
@@ -69,13 +73,13 @@ main(  int	argc
 	    else if (strcmp(argv[arg],"-nr") == 0)       optRevr=0;
 	    else if (strcmp(argv[arg],"-ct") == 0)       optCt=1;
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
-	    else if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
+	    else if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); return (0); }
 	    else if (strcmp(argv[arg],"-noindent") == 0) incINDT=0;
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] [delta_time [lines]]\n"
 			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid options: -nohdr,-lvl,-noindent,-r,-nr,-ct\n" );
-		exit( 1 );
+		return (1);
 	    }
 	}
 	if ((argc>arg) && (atoi(argv[arg])>=1)) delta_t=1;
@@ -86,13 +90,13 @@ main(  int	argc
     else if (strcmp(trc_basename(argv[0],'/'),"traceInfo") == 0)
     {   int	arg, start=0, num=TRC_MAX_PIDS+TRC_MAX_PROCS;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
-	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
+	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); return (0); }
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] [num_procs [start_proc]]\n"
 			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid option: --version\n" );
-		exit( 1 );
+		return (1);
 	    }
 	}
 	if (argc-arg >= 2)
@@ -106,13 +110,13 @@ main(  int	argc
     else if (strcmp(trc_basename(argv[0],'/'),"traceReset") == 0)
     {   int	arg;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
-	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
+	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); return (0); }
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else
 	    {   fprintf(  stderr, "usage: %s [options]\n"
 			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid option: --version\n" );
-		exit( 1 );
+		return (1);
 	    }
 	}
 	trace_init_trc( trc_key_file );
@@ -121,7 +125,7 @@ main(  int	argc
     else if (strcmp(trc_basename(argv[0],'/'),"traceMode") == 0)
     {   int	arg, mode, optVerbose=0;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
-	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
+	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); return (0); }
 	    else if (strcmp(argv[arg],"-v")   == 0)   optVerbose=1;
 	    else if (strcmp(argv[arg],"-key") == 0)   OPT_ARG(trc_key_file);
 	    else if (strcmp(argv[arg],"-super") == 0)    trc_super = 1;
@@ -129,19 +133,19 @@ main(  int	argc
 	    {   fprintf(  stderr, "usage: %s [options] <0-15>\n"
 			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid option: -v, --version, -key\n" );
-		exit( 1 );
+		return (1);
 	    }
 	}
 	if ((argc-arg) == 0)
 	{   trace_init_trc( trc_key_file );
 	    printf( "%d\n", trc_cntl_sp->mode );
-	    exit (0);
+	    return (0);
 	}
 	if (   (argc-arg>1)
 	    || (sscanf(argv[arg],"%d",&mode)!=1)
 	    || ((mode<0)||(mode>15)))
 	{   fprintf( stderr, "usage: %s [-v] <0-15>\n", trc_basename(argv[0],'/') );
-	    exit( 1 );
+	    return (1);
 	}
 	trace_init_trc( trc_key_file );
 	exit_sts = traceMode( mode );
@@ -155,7 +159,7 @@ main(  int	argc
 	char            *modes="1";
 #       define          O_USAGE "<TIDorNANE> <lvl1> <lvl2>"
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
-	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
+	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); return (0); }
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else if (strcmp(argv[arg],"-modes") == 0)    OPT_ARG(modes);
 	    else if (strcmp(argv[arg],"-super") == 0)    trc_super = 1;
@@ -163,7 +167,7 @@ main(  int	argc
 	    {   fprintf(  stderr, "usage: %s [options] " O_USAGE "\n"
 			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid option: --version, -key, -modes\n" );
-		exit( 1 );
+		return (1);
 	    }
 	}
 	if (   ((argc-arg)!=3)
@@ -171,7 +175,7 @@ main(  int	argc
 	    || (sscanf(argv[3+arg-1],"%d",&lvl2)!=1))
 	{   fprintf( stderr, "usage: %s [options] " O_USAGE "\n"
 		    , trc_basename(argv[0],'/') );
-	    exit( 1 );
+	    return (1);
 	}
 	trace_init_trc( trc_key_file );
 	exit_sts = traceOnOff(  (strcmp(trc_basename(argv[0],'/'),"traceOn")==0)?1:0
@@ -180,7 +184,7 @@ main(  int	argc
 	trc_super = 0;
     }
 
-    exit( exit_sts );
+    return (exit_sts);
 }   /* main */
 
 
@@ -298,7 +302,7 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT, int optRev
 	    fflush( stdout );
 	    if (trace_get_press() == 'q')
 	    {   printf( "\n" );
-		return(1);
+		return (1);
 	    }
 	    printf( "\n" );
 	    line_count=0;

@@ -6,38 +6,42 @@
 # $Revision$
 # $Date$
 
-WARN=  `if [ \`uname\` = Linux ];then echo "-Wall"; fi`
-#CC=cc
+WARN=  `case \`uname\` in Linux) echo "-Wall";;IRIX*) echo "-fullwarn";;esac`
 CC=`grep '^CC=' $(PYTHON_DIR)/lib/python*/config/Makefile | sed -e 's/CC=[       ]*//'`
-#CFLAGS=-D`uname` -g `if [ \`uname\` = IRIX ];then echo "-n32"; fi`
-CFLAGS=-D`uname` -g 
+CFLAGS=-D`uname` -g
 
 all:		traceShow lib trace_delta
 
 lib:		trace.a
 
 trace_delta:	trace_delta.c
-		$(CC) $(CFLAGS) -o trace_delta trace_delta.c
+		@echo $(CC) $(CFLAGS) $(WARN) -o trace_delta trace_delta.c
+		@$(CC) $(CFLAGS) $(WARN) -o trace_delta trace_delta.c
 
 trace.a:	trace.o
 		ar r trace.a trace.o
 
 trace_test:	trace.o trace_test.o
-		$(CC) $(CFLAGS) -o trace_test trace_test.o trace.o
+		@ echo $(CC) $(CFLAGS) -o trace_test trace_test.o trace.o
+		@$(CC) $(CFLAGS) -o trace_test trace_test.o trace.o
 
 traceShow:	traceShow.o trace.o
-		$(CC) $(CFLAGS) -o traceShow traceShow.o trace.o
+		@echo $(CC) $(CFLAGS) -o traceShow traceShow.o trace.o
+		@$(CC) $(CFLAGS) -o traceShow traceShow.o trace.o
 
 
 trace.o:	trace.c trace.h
-		$(CC) $(CFLAGS) $(WARN) -o trace.o -c trace.c
+		@echo $(CC) $(CFLAGS) $(WARN) -o trace.o -c trace.c
+		@$(CC) $(CFLAGS) $(WARN) -o trace.o -c trace.c
 
 trace_test.o:	trace_test.c trace.h
-		$(CC) $(CFLAGS) $(WARN) -o trace_test.o -c trace_test.c
+		@echo $(CC) $(CFLAGS) $(WARN) -o trace_test.o -c trace_test.c
+		@$(CC) $(CFLAGS) $(WARN) -o trace_test.o -c trace_test.c
 
 
 traceShow.o:	traceShow.c trace.h
-		$(CC) $(CFLAGS) $(WARN) -o traceShow.o -c traceShow.c
+		@echo $(CC) $(CFLAGS) $(WARN) -o traceShow.o -c traceShow.c
+		@$(CC) $(CFLAGS) $(WARN) -o traceShow.o -c traceShow.c
 
 clean:
 		rm -f *.o *.a traceShow trace_delta
