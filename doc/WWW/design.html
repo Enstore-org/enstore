@@ -36,7 +36,7 @@
 <li><a href="#library_manager">1.3.3 Library Manager</a>
 <li><a href="#user_request">1.3.3.1 Users' Requests</a>
 <li><a href="#mover_request">1.3.3.2 Movers' Requests</a>
-<li><a href="#pub_request">1.3.3.3 Publisher Requests</a>
+<li><a href="#lm_commands">1.3.3.3 Library Manager Commands Requests</a>
 <li><a href="#mover">1.3.4 Mover</a>
 <li><a href="#mover_cmds">1.3.4.1 Command Line Control of the Mover</a>
 <li><a href="#mover_config">1.3.4.2 Mover Config File Values</a>
@@ -1743,12 +1743,66 @@ The File Clerk supports the following requests:
 </h3>
 The Library Manager is a server which queues up and dispatches work for
 a virtual library. There is one Library Manager for each virtual library.
-It has three types of clients
+It has two types of clients and can be also accessed from a command line interface
 <ol>
 <li><em>Users</em> -- seeking to have their files read or written files.
 <li><em>Movers</em> -- seeking to actually read or write files.
-<li><em>Publishers</em> -- seeking HTML describing the library's current work.
 </ol>
+System does not restrict a number of Library Managers in the system and the
+relation between Library Managers and Movers is many to many, that is one
+Library Manger may have many Movers associated with it and, one Mover may have
+more than one Library Managers associated with it.
+
+Information about Library Managers is contained in the enstore configuration
+dictionary and is available to client via requests to the Configuration Server.
+Each Library Manager is presented in the configuration dictionary as follows:
+configdict['sphinxdisk.library_manager'] = { 'host'    : 'sphinx', \
+                                           'port'    : 7503, \
+                                           'logname' : 'HLIBM'}
+
+where 'sphinxdisk.library_manager' is a name of the Library Manager
+'host' is a host name where the Library Manager runs
+'port' is the Library Manager's command communication port
+'logname' is a name identifying the Library Manger in the log file.
+
+
+When the Library Manager starts it requests from Configuration Server a list
+of Movers associated with it and stores them into internal Mover List. Each
+Mover has an entry in the configuration dictionary describing the Library
+Manager(s) associated with it. This entry can be a single name or a list of
+names:
+<pre>
+configdict['sphinxdisk.mover'] = { 'device'         : './sphinxdisk.fake', \
+				 'host'	: 'sphinx', \
+				 'port'		: 7508, \
+                                 'library'    : 'sphinxdisk.library_manager', \
+                                 'driver'         : 'RawDiskDriver', \
+                                 'mc_device' : '1', \
+                                 'media_changer': 'sphinxdisk.media_changer', \
+                                 'logname'        : 'HMOV'}
+
+configdict['sphinxdisk1.mover'] = { 'device'         : './sphinxdisk.fake', \
+				 'host'	: 'sphinx', \
+				 'port'		: 7508, \
+                                 'library'    : ['sphinxdisk.library_manager', 'sphinxdisk1.library_manager']\
+                                 'driver'         : 'RawDiskDriver', \
+                                 'mc_device' : '1', \
+                                 'media_changer': 'sphinxdisk.media_changer', \
+                                 'logname'        : 'HMOV'}
+</pre>
+
+<p>
+The Mover List is used to select Movers to do the work and evenly distribute
+works between all Movers associated with particular Library Manager.
+
+<p>
+When the Mover starts it sends command("idle_mover") to all Library Managers
+associated with it to declare itself as an active. If the Library Manager
+did not have this Mover in its Mover List, it will be added to the list upon
+receipt of this command. This Mover - Library Manager initial communication
+allows to dynamically change the configuration of Movers without restarting
+the Library Manager.
+
 <h3><a name="user_request">
 1.3.3.1 Users' Requests
 </h3>
@@ -1760,54 +1814,136 @@ associated with the destination directory, identifies
     a write request and contact the appropriate Library Manager
     directly.
     The Library Manager queues the work, and acknowledges the request.
+    When a write request is completed the Library Manager will dismount
+     corresponding volume. Library Manager does not know that there is another
+     request for the same volume coming a little bit later. However the User
+     knows. To inform the Library Manger that there may be another request for
+     the same volume user supplies a "delayed_dismount" flag in a current
+     request. If this flag is set, Library Manager will not dismount the
+     volume even if there are no current requests for it. Instead it will
+     postpone the dismount for a certain period of time and, if there is
+     still no requests for this volume after time out, Library Manager will
+     communicate with corresponding Mover to dismount the volume.
 
-<dt>Read from the system
-<dd>Given the fact that users may mv the <em>pnfs</em> files, on reads from the system,
+<dt>Reads from the system
+<dd>Given the fact that users may mv the pnfs files, on reads from the system,
      <em>pnfs</em> can only provide the bit
     file ID associated with the file. In this case, <em>encp</em> contacts the
-     bit File Clerk, and that
-    software ultimately contacts the appropriate Library Manager to
-    queue up the work.
+     File Clerk, which returns bit file ID and additional information about
+     requested file as well as the Library Manager associated with this file.
+     Then encp sends read request to this Library Manager.
+<dt>Inquiries
+<dd>Currently there is only one kind of such a request allowing to observe requests queued in the Library Manager queues. Below is an output of a query request. This command asks the Library Manager to provide information about all current requests from user node sphinx.fnal.gov. The output format is: <br>
+[user node] [user name] [input file] [output file] [request status]
+     request status can be either P (pending) or M (at Mover)<br>
+[enter command] ecmd encp --queue sphinx.fnal.gov<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/callback.pyc /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/callback.pyc P<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/alarm_server.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/alarm_server.py P<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/mover.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/mover.py P<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/admin_clerk.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/admin_clerk.py P<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/admin_clerk_client.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/admin_clerk_client.py P<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/admin_clerk_client.pyc /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/admin_clerk_client.pyc P<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/backup.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/backup.py P<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/backup_client.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/backup_client.py P<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/callback.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/callback.py P<br>
+sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/alarm_client.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/alarm_client.py P<br>
+ 
+
 </dl>
+<p>
 Work can be prioritized.
-Larger priority numbers means higher priority.
+Smaller priority number means higher priority.
 Currently, write and read are both priority 1 for our test purposes.
 Any priority mechanism should be able to be developed.
 However, the system will exhaust all work for a volume,
 given that it has been mounted, regardless of priority.
 <p>
+The Library Manager tries to sort read requests according to file location on
+the tape. If read request has been already sent to the Mover the next request
+to this Mover for the same tape will be for the file which location number is
+higher than the current one. If location number is less than current it will
+be placed at the end of the request list.
+
+<p>
+Once a User request comes the Library Manager tries to pick up the next
+available(marked as "idle") Mover an send a "summon" message to it. The purpose
+of this message is to cause a Mover to send a Mover Request to the Library
+Manger. Mover Requests are described in the next section.
+The mechanism of the selection of a particular Mover allows to control some
+error conditions and implement a retry logic. For this purpose there is dynamic
+list of volumes on which write or read requests failed - Suspected Volumes
+List.
+It is keyed by the volume external label and contains sublists of Movers on
+which the request for this volume failed. This allow to not use the same Mover
+when User retries its request.
+
+When the Library Manager "summons" a Mover it changes the Mover state into the
+Mover List to "summoned" and puts in into the Summoned Movers List. Every time
+the Library Manager sends a message there is a time out handler that is being
+invoked if a response does not arrive before the time out expires. Time out
+handler will retry to "summon" the mover which time out has expired and,
+eventually remove the Mover for which "summon" retries expire, from the Mover
+List.
+
 <h3><a name="mover_request">
 1.3.3.2 Movers' Requests
 </h3>
-Movers seek to transport data between media and users over a TCP socket.
-Movers contact Library Managers seeking work. If the Library Manager
-has work, the Mover is requested to mount a volume, and report
-back. When reporting back, the Mover may be told to contact a waiting
-<em>encp</em> program and read or write a file.
-The Mover may be told to unmount a volume as there is no more work for
-the volume.
-A Mover may have dismounted a volume unilaterally because it ran into
-trouble.  This is summarized in the tables below
-<center><table>
+<p>
+The Enstore system keeps unassigned read and write requests in a queue of
+unallocated (pending) work in the Library Manager. Once a request for the next work comes from the Mover ("idle" or "have bound volume: idle"), the Library Manager puts the request in a "work at mover" queue and responds to the Mover with appropriate ticket. The reason for this is to track the
+volumes for scheduling : the Library Manager must not submit to a Mover
+request a volume for which is already in use by another Mover. It is the Mover, and not the Library Manager which completes requests.
+The two Library Manager request queues are:
+<ul>
+<li>pending work
+<li>work at a Mover.
+</ul>
+<p>
+It is important to keep these queues consistent. Volume and reading
+errors are handled in the Mover and partially in the Library Manager.
+<p>
+Movers seek to transport data
+between media and users over a TCP socket.
+When "summoned" or have completed a work Movers contact Library Managers
+seeking work. If the Library Manager
+has work, it send send a corresponding ticket to the Mover, which in turn
+mounts the volume if necessary and transfers the data between user and media
+When Mover completes a work it sends to the Library Manager request for another
+work and if it gets a reply that there no more work for it, it dismount a
+volume. 
+A Mover may also have decided to dismount a volume unilaterally because it
+ran into trouble. But it actually does it receiving no_work reply from the
+Library Manager. Library Manager - Mover communications are in the tables
+below
+<table>
+<td><b>Library Manager sends </b>
+<td><b>Mover Sends</b>
+<tr>
+<td valign=top>summon
+<td>idle - ready to do a work;
+<br>have bound volume:busy - doing work;
+<br>or have bound volume:idle - volume is mounted but no work
+</table>
+<table>
 <td><b>Mover sends</b>
 <td><b>Library Manager may respond</b>
 <tr>
 <td valign=top>idle_mover
-<td>if work needs to be done - bind a volume; <br>or if no work - just acknowledge
+<td>if work needs to be done - read/write; <br>or no_work
 <tr>
 <td valign=top>have_bound_volume
-<td>if reads/writes pending for the volume - read/write;  <br>or if no work - unbind volume
+<td>if reads/writes pending for the volume - read/write;  <br>or if no work - unbind_volume
 <tr>
 <td>unilateral_unbind
-<td>just acknowledge
-</table></center>
+<td>no work
+</table>
 
-<center><table>
+<table>
 <td valign=top><b>Library has just responded</b>
 <td valign=top><b>Mover sends</b>
 <td valign=top><b>Library Manager presumes</b>
 <tr>
-<td valign=top>bind or...<br>read or...<br>write
+<td valign=top>read or...<br>write
 <td valign=top>idle_mover
 <td valign=top>Mover crashed and was re-started
 <tr>
@@ -1815,14 +1951,14 @@ trouble.  This is summarized in the tables below
 <td valign=top>have_bound_volume
 <td valign=top>look for work on that volume<br>
     if work, give it<br>
-    if none, give unbind volume
+    if none, unbind_volume
 <tr>
 <td valign=top>
 <td valign=top>unilateral_unbind
-<td valign=top>take any work reserved for that Mover and put it back
-   in the unassigned work queue
+<td valign=top>update Suspected Volumes List and respond with no_work
 <tr>
-<td valign=top>acknowledged a...<br>unilateral unbind or..<br>idle Mover
+<td valign=top>acknowledged a...<br>unilateral unbind or..<br>idle Mover <br>
+no_work
 <td valign=top>idle_mover
 <td valign=top>Mover is available for work, If more work available, bind a
     volume
@@ -1833,22 +1969,253 @@ trouble.  This is summarized in the tables below
     instance of me, tell it to unbind
 <tr>
 <td valign=top>
-<td valign=top>Unilateral_unbind
-<td valign=top>Just acknowledge
-</table></center>
+<td valign=top>unilateral_unbind
+<td valign=top>no work
+</table>
 
 Note that if a Mover should crash holding a volume, the worst that can
 happen is that the Library Manager will be unable to schedule work for
 that volume. If the physical library has more than one drive, the system
 should be able to continue servicing requests.
 <p>
-<h3><a name="pub_request">
-1.3.3.3 Publisher Requests
+<h3><a name="lm_commands">
+1.3.3.3 Library Manager Commands
 </h3>
 It is possible to query the Library Manager and get information about its
-internal queues thereby knowing where work is.  The prototype has a
-rudimentary implementation of this feature. More work needs to be done before
-this can be considered functional.
+internal queues thereby knowing where work is.
+Some of these commands are general to all servers and are described in the other section. Here we will consider only Library Manager specific commands. They are:
+<b>getwork</b> - get lists of all work requests currently in the Library Manager
+queues. The first list is a list of pending work requests, and the second is a list works at Movers. Below is an output of <b>getwork</b> command.
+<pre>
+[enter command] ecmd lmc --getwork sphinxdisk.library_manager
+[{'callback_addr': ('131.225.81.23', 7600),
+  'encp': {'adminpri': -1,
+           'agetime': 0,
+           'basepri': 1,
+           'curpri': 1,
+           'delayed_dismount': 0,
+           'delpri': 0},
+  'fc': {'bfid': '91548494800000L',
+         'complete_crc': 2048910256,
+         'external_label': 'flop1',
+         'location_cookie': '000000063488',
+         'pnfsid': '000200000000000000514A98',
+         'sanity_cookie': (9045, 2048910256),
+         'size': 9045},
+  'lm': {'address': ('131.225.81.23', 7503)},
+  'retry_cnt': 0,
+  'status': ('ok', None),
+  'times': {'t0': 915731751.891, 'job_queued': 915731758.979},
+  'unique_id': 'sphinx.fnal.gov-915731758.238293-3793',
+  'vc': {'blocksize': 512,
+         'capacity_bytes': 1400000L,
+         'declared': 915469931.313,
+         'eod_cookie': '000000108032',
+         'external_label': 'flop1',
+         'file_family': 'sphinx',
+         'first_access': 915469958.425,
+         'last_access': 915728933.0,
+         'library': 'sphinxdisk',
+         'media_type': 'diskfile',
+         'remaining_bytes': 1291968L,
+         'status': ('ok', None),
+         'sum_rd_access': 0,
+         'sum_rd_err': 0,
+         'sum_wr_access': 0,
+         'sum_wr_err': 0,
+         'system_inhibit': 'none',
+         'user_inhibit': 'none',
+         'wrapper': 'cpio'},
+  'work': 'read_from_hsm',
+  'wrapper': {'fullname':'/usr/hppc_home/moibenko/enstore_test/enstore/src/tst/
+admin_clerk_client.pyc',
+              'gid': 5440,
+              'gname': 'hppc',
+              'inode': 0,
+              'machine': ('Linux',
+                          'sphinx.fnal.gov',
+                          '2.0.35',
+                          '#1 Thu Jul 23 14:01:04 EDT 1998',
+                          'i686'),
+              'major': 0,
+              'minor': 5,
+              'mode': 33268,
+              'pnfsFilename': '/pnfs/enstore/sphinx/t1/admin_clerk_client.pyc',
+              'pstat': (33204,
+                        38881944,
+                        5,
+                        1,
+                        6849,
+                        5440,
+                        9045,
+                        915484948,
+                        915484948,
+                        915485267),
+              'rmajor': 0,
+              'rminor': 0,
+              'sanity_size': 65535,
+              'size_bytes': 9045,
+              'uid': 6849,
+              'uname': 'moibenko'}},
+ {'callback_addr': ('131.225.81.23', 7600),
+  'encp': {'adminpri': -1,
+           'agetime': 0,
+           'basepri': 1,
+           'curpri': 1,
+           'delayed_dismount': 0,
+           'delpri': 0},
+  'fc': {'bfid': '91548792000000L',
+         'complete_crc': -1493930591,
+         'external_label': 'flop1',
+         'location_cookie': '000000073216',
+         'pnfsid': '000200000000000000514B40',
+         'sanity_cookie': (4538, -1493930591),
+         'size': 4538},
+  'lm': {'address': ('131.225.81.23', 7503)},
+  'retry_cnt': 0,
+  'status': ('ok', None),
+  'times': {'t0': 915731751.891, 'job_queued': 915731759.085},
+  'unique_id': 'sphinx.fnal.gov-915731758.243841-3793',
+  'vc': {'blocksize': 512,
+         'capacity_bytes': 1400000L,
+         'declared': 915469931.313,
+         'eod_cookie': '000000108032',
+         'external_label': 'flop1',
+         'file_family': 'sphinx',
+         'first_access': 915469958.425,
+         'last_access': 915728933.0,
+         'library': 'sphinxdisk',
+         'media_type': 'diskfile',
+         'remaining_bytes': 1291968L,
+         'status': ('ok', None),
+         'sum_rd_access': 0,
+         'sum_rd_err': 0,
+         'sum_wr_access': 0,
+         'sum_wr_err': 0,
+         'system_inhibit': 'none',
+         'user_inhibit': 'none',
+         'wrapper': 'cpio'},
+  'work': 'read_from_hsm',
+  'wrapper': {'fullname':'/usr/hppc_home/moibenko/enstore_test/enstore/src/tst/
+backup.py',
+              'gid': 5440,
+              'gname': 'hppc',
+              'inode': 0,
+              'machine': ('Linux',
+                          'sphinx.fnal.gov',
+                          '2.0.35',
+                          '#1 Thu Jul 23 14:01:04 EDT 1998',
+                          'i686'),
+              'major': 0,
+              'minor': 5,
+              'mode': 33268,
+              'pnfsFilename': '/pnfs/enstore/sphinx/t1/backup.py',
+              'pstat': (33204,
+                        38882112,
+                        5,
+                        1,
+                        6849,
+                        5440,
+                        4538,
+                        915487920,
+                        915487920,
+                        915488239),
+              'rmajor': 0,
+              'rminor': 0,
+              'sanity_size': 65535,
+              'size_bytes': 4538,
+              'uid': 6849,
+              'uname': 'moibenko'}},]
+
+[{'callback_addr': ('131.225.81.23', 7600),
+  'encp': {'adminpri': -1,
+           'agetime': 0,
+           'basepri': 1,
+           'curpri': 1,
+           'delayed_dismount': 0,
+           'delpri': 0},
+  'fc': {'bfid': '91548494100000L',
+         'complete_crc': 1614017314,
+         'external_label': 'flop1',
+         'location_cookie': '000000055296',
+         'pnfsid': '0002000000000000005149F8',
+         'sanity_cookie': (7581, 1614017314),
+         'size': 7581},
+  'lm': {'address': ('131.225.81.23', 7503)},
+  'mover': 'sphinxdisk.mover',
+  'retry_cnt': 0,
+  'status': ('ok', None),
+  'times': {'in_queue': 1.77947795391,
+            'lm_dequeued': 915731760.655,
+            't0': 915731751.891},
+  'unique_id': 'sphinx.fnal.gov-915731758.236400-3793',
+  'vc': {'blocksize': 512,
+         'capacity_bytes': 1400000L,
+         'declared': 915469931.313,
+         'eod_cookie': '000000108032',
+         'external_label': 'flop1',
+         'file_family': 'sphinx',
+         'first_access': 915469958.425,
+         'last_access': 915728933.0,
+         'library': 'sphinxdisk',
+         'media_type': 'diskfile',
+         'remaining_bytes': 1291968L,
+         'status': ('ok', None),
+         'sum_rd_access': 0,
+         'sum_rd_err': 0,
+         'sum_wr_access': 0,
+         'sum_wr_err': 0,
+         'system_inhibit': 'none',
+         'user_inhibit': 'none',
+         'wrapper': 'cpio'},
+  'work': 'read_from_hsm',
+  'wrapper': {'fullname':'/usr/hppc_home/moibenko/enstore_test/enstore/src/tst/
+admin_clerk_client.py',
+              'gid': 5440,
+              'gname': 'hppc',
+              'inode': 0,
+              'machine': ('Linux',
+                          'sphinx.fnal.gov',
+                          '2.0.35',
+                          '#1 Thu Jul 23 14:01:04 EDT 1998',
+                          'i686'),
+              'major': 0,
+              'minor': 5,
+              'mode': 33268,
+              'pnfsFilename': '/pnfs/enstore/sphinx/t1/admin_clerk_client.py',
+              'pstat': (33204,
+                        38881784,
+                        5,
+                        1,
+                        6849,
+                        5440,
+                        7581,
+                        915484942,
+                        915484942,
+                        915485261),
+              'rmajor': 0,
+              'rminor': 0,
+              'sanity_size': 65535,
+              'size_bytes': 7581,
+              'uid': 6849,
+              'uname': 'moibenko'}}]
+
+</pre>
+<b>getmoverlist</b> - get list of the Movers currently known to this Library Manager and their status. Below is an output of <b>getmoverlist</b> command.
+<pre>
+[enter command] ecmd lmc --getmoverlist sphinxdisk.library_manager
+[{'address': ('131.225.81.23', 7508),
+  'last_checked': 915731762.917,
+  'mover': 'sphinxdisk.mover',
+  'state': 'idle_mover',
+  'summon_try_cnt': 0,
+  'tr_error': 'ok'}]
+</pre>
+<b>get_suspect_vols</b> - get list of suspected volumes. A description and a purpose of this list has been already discussed above. This list contains volumes requests for which had failed but are retryable. Below is an output of <b>get_suspect_vols</b> command.
+<pre>
+[enter command] ecmd lmc --get_suspect_vols sphinxdisk.library_manager
+[{'external_label': 'flop1', 'movers': ['sphinxdisk.mover']}]
+</pre>
 
 <h3><a name="mover">
 1.3.4 Mover
