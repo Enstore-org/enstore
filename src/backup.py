@@ -57,8 +57,8 @@ def backup_dbase(dbHome):
     	dbFiles=dbFiles+" "+name
     logfiles = string.join(glob.glob('log.*'),' ')
     statfiles = string.join(glob.glob('*.stat'),' ')
-    BFIDS = string.join(glob.glob('BFIDS'),' ')
-    cmd="tar cvf dbase.tar %s %s %s %s"%(dbFiles,logfiles,statfiles,BFIDS)
+    STORAGE_GROUPS = string.join(glob.glob('STORAGE_GROUPS'),' ')
+    cmd="tar cvf dbase.tar %s %s %s %s"%(dbFiles,logfiles,statfiles,STORAGE_GROUPS)
     logthis(e_errors.INFO,cmd)
     
     ret=os.system(cmd)
@@ -137,9 +137,22 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         if os.system(cmd):
             Trace.log(e_errors.ERROR, "Failed: "+cmd)
             sys.exit(1)
-        
+            
+        now=time.gmtime(time.time())
+        day=now[7]
+        hour=now[3]
+        node=os.uname()[1]
+        gang=node[0:3]
+        if gang == 'd0e':
+            gang = 'd0'
+
         tarfiles=glob.glob("*.tar*")
         for file in tarfiles:
+            # copy the files over to a "paranoid" backup copy. Continue if error
+            cmd = "enrcp %s cachen2a:/diska/enstore_backup/%sen/database/%s.%s.%s"%(file,gang,day,hour,file)
+            logthis(e_errors.INFO,cmd)
+            if os.system(cmd):
+                Trace.log(e_errors.ERROR, "Failed,ignored: "+cmd)
             os.unlink(file)
 
 def archive_clean(ago,hst_local,hst_bck,bckHome):
