@@ -1,8 +1,3 @@
-<html>
-<head>
-<title>
-The Design of Enstore
-</title>
 <body>
 <font size=7><b><i>
 Enstore Data Storage System
@@ -11,51 +6,30 @@ Enstore Data Storage System
 <img src="undercon.gif"> the author is still working very hard on this
 page.
 <p>
-<h1>
-1 Introduction
-</h1>
-The Enstore system provides a generic interface for end users to efficiently
-use mass storage systems as easily as if they were native file systems.
-Enstore is architected as a <em>simple</em>, <em>efficient</em>,
-<em>reliable</em> and <em>very flexible</em><font color=#ff0000>(anything else?)</font>
-system.
-It is <em>simple</em> because most of the operations are transparent to users.
-It is <em>efficient</em> because the system performance is monitored
-and is fine tunable.
-It is <em>reliable</em> because a great deal of care has been taken to
-ensure it is able to prevent or to recover from the worst case scenario.
-It is <em>flexible</em> because it is based on a true client-server
-model that allows hot swapping components and dynamic configuration, and,
-it is platform independent and runs on heterogeneous environments.
-This document will address the architecture behind it.
-
-<h2>
-2 Objectives
-</h2>
-
-<em>Enstore</em> is designed to accomplish the followings:
-<br>
-<font color=#ff8800><blink>Blah! Blah! Blah! ...</blink></font>
-<br>
-<font color=#0000ff>
-(Say something about the presumed requirements as the goal of design)
-</font>
 
 <h2>
 3 Overview of Enstore Architecture
 </h2>
 
-The Enstore system supports multiple distributed tape robots,
+Enstore system supports multiple distributed media robots,
 each of which may handle multiple media types,
 and multiple distributed mover nodes.
+The system architecture does not dictate an exact hardware architecture.
+Rather, it specifies a set of general and generic networked hardware
+and software components.
+These components are loosely coupled in the sense that each one can be
+replaced easily without affecting the rest of the system and
+each class of the components can be easily expanded to accomodate
+the increased demand in performance or capacity.
+<p>
 Currently, the system is written in <em>python</em>, a scripting
 language that has advanced object-oriented features.
-It provides a sound environment for quick turn-around prototyping and
-a seamless integration/migration path for portion or whole system to
-fully compiled languages, such as C and C++, shall there is a demand
+Python provides a sound environment for quick turn-around prototyping
+and a seamless integration/migration path to
+fully compiled languages, such as C and C++, if there is a demand
 for even better performance.
 <p>
-The Enstore system has four major kinds of software components:
+Enstore has four major kinds of software components:
 <ul>
 <li><em>Namespace</em>, implemented by the <em>pnfs</em> package from
 	<em>DESY</em>
@@ -72,8 +46,8 @@ The Enstore system has four major kinds of software components:
 <li><em>encp</em>, a program used to copy files to and from tape libraries
 <li><em>administration tools</em>.
 </ul>
-These software components, as well as hardware components, can be
-described in the following system context diagram.
+These software components, as well as hardware components,
+are shown in the following system context diagram.
 Hardware components are connected via IP.
 Great care has been taken to ensure that the system will function well
 under extreme load conditions.
@@ -81,63 +55,35 @@ By design, there is no preset limit on the number of concurrent user
 computers nor on the number of physical tape libraries or tape drives.
 The system is only limited by the availability of physical resources.
 We control all of the source code for the system except for that of
-<em>pnfs</em>.
+<em>pnfs</em>, which is a property of DESY.
 <p>
-<font color=#ff0000><blink>Will be replaced by real picture</blink></font>
-<pre>
-			+-----------------------------+
-			|   USERS COMPUTER            |
-			|  mkdir,ls           encp    |
-			|  find                       |
-			|  ....                       |
-			+-----------------------------+
-                          /                       \\
-                      info                        data
-                      /                             \\
-+-----------------------------+	               +-----------------------------+
-|  pnfs                       |	               |   Enstore Servers           |
-|  surrogate files            |	               |                             |
-|  administrative files       |	               |                             |
-|  configuration files        |	               |                             |
-|                             |	               |                             |
-+-----------------------------+	               +-----------------------------+
-                                                    |           ^
-                                                 write        read
-                                                    v           |
-             +---------------------------------------------------------------+
-             >           T A P E            T A P E          T A P E         >
-             <                                                               <
-             +---------------------------------------------------------------+
-</pre>
-<font color=#ff0000><blink>the figure is not quite right. need to say more about "info" and "data"</blink></font>
+<img src="enstore.gif">
 <p>
-Version 1.0 does not yet support a disk cache in front of tape.
-However, one is conceivable once the basic design principles are proved.
+Enstore does not yet support a disk cache or buffer in front of tape.
+However, one is conceivable and planned for a future release.
 <p>
 Like <em>tcp</em>, the system is architected with distributed and
 peer-to-peer reliability.
 Each request originating from the <em>encp</em> program is branded
-with a unique i.d..
+with a unique ID.
 <em>encp</em> retries under well-defined circumstances, issuing
-an equivalent request with a new unique i.d..
+an equivalent request with a new unique ID.
 The system can instruct <em>encp</em> to re-try if it needs to back out
 of an operation.
-<p>
-The details of each software component are described in the following
-sections.
+
 <h2>
-3.1 Namespace
+3.1 pnfs Namespace
 </h2>
-The <em>pnfs</em> package implements an <em>nfs</em> daemon and mount
-daemon.
+The DESY <em>pnfs</em> package implements an <em>nfs</em> daemon and
+mount daemon.
 These daemons do not actually serve a file system, but, instead make a
 collection of database entries <em>look like</em> a file system,
 and provide control information for the system.
 <p>
-<p>
-To inspect files, users mount the <em>pnfs</em> file system on their own
-computers, and interact with it using the native operating system
-utilities.  For example, users can <em>ls</em>, <em>stat</em>,
+To inspect files, users mount thieir portion of the <em>pnfs</em> file
+system on their own computers,
+and interact with it using the native operating system utilities.
+For example, users can <em>ls</em>, <em>stat</em>,
 <em>mv</em>, <em>rm</em> or <em>touch</em> existing "files",
 but are given errors on attempts to read
 or write the content of the files.
@@ -149,17 +95,23 @@ are used to prevent unauthorized access to the name space.
 <h2>
 3.2 ENCP
 </h2>
-Reading and writing files means interacting with tapes.
+Reading and writing files means interacting with media.
 This is done with an enstore-provided utility, <em>encp</em>.
-
+<em>encp</em> is very similar to <em>cp</em> command in UNIX.
+The syntax is:
+<pre>
+% encp [options] src_file dst_file
+</pre>
+<p>
 <em>encp</em> interacts with <em>pnfs</em>.
 There are three kinds of accesses:
 <ol>
-<li>Interact with Administration
+<li>Administration Interactions
     <br>
     An administrator can create special files in <em>pnfs</em> name space.
     For example, one type of file signifies that the system needs to be
-    drained. Existence of the file causes <em>encp</em> to stall.
+    drained. Existence of the file causes <em>encp</em> to stall,
+    preventing users from submitting additional jobs.
     <p>
 <li>Configuration Information
     <br>
@@ -174,18 +126,13 @@ There are three kinds of accesses:
 	pnfs_quota_family = "family_raw"
 	pnfs_file_family = "family_raw"
 	pnfs_file_family_width = 2
-	pnfs_uid = 01000
-	pnfs_uname = "petravic"
-	pnfs_gid = 0100
-	pnfs_file_mode = 0644
 </pre>
-    More  about some of this information later.
     <p>
-<li>File information
+<li>User File information
     <br>
     The rest of the system identifies a file by a 64-bit numeric
-    identifier, dubbed a "bit file id".
-    <em>pnfs</em> binds a bit file i.d. to names of regular files in
+    identifier, dubbed a "bit file ID".
+    <em>pnfs</em> binds a bit file ID to names of regular files in
     the <em>pnfs</em> name space.
     <em>encp</em> can access this bit file id, giving it to the servers
     when fetching data from tape.
@@ -206,7 +153,7 @@ are implemented using two TCP ports.
 A fixed number, currently 30, of pre-allocated TCP ports are
 arbitrated among all instances of <em>encp</em> on a given machine.
 Consequently, the system will survive the worst sort of abuse,
-for example, a student forking off 200 copy requests,
+for example, someone forking off 200 copy requests,
 since at most 15 will be active in the system at any time.
 
 <h2>
@@ -218,7 +165,7 @@ future release, disk caches.
 The high level  concepts are as follows:
 <dl>
 <dt><em>Physical library</em>
-<dd>Physical Library represents a real, tangible collection of tapes
+<dd>Physical Library represents a real, tangible collection of media
 along with software drivers/utilities to manipulate, read and write
 and organize them.
 
@@ -233,7 +180,7 @@ A physical library can be thought of as consisting of
 <p>
 <em>Virtual Library</em> -- A virtual library contains one and only one
 kind of media.
-For example, we are constrained to divide an STK powderhorn
+For example, Enstore divides an STK powderhorn
 library holding 50, 20 and 10 GB redwood media into at least three
 virtual libraries.  In common usage, the term "library" in Enstore
 refers to virtual library. Writes are directed to a specific (virtual)
@@ -241,10 +188,8 @@ library, thus selecting the media.
 <p>
 <em>Drives</em> -- Drives are bound to special processes called mover
 clients.
-In the near future, we might be supporting 50 AIT drives in a grau robot;
-today, we might have to support one redwood drive in a library with 3
-virtual libraries. Rest assured the system handles this, and the number
-of drives may be less than the number of virtual libraries.
+The drives can be dynamically assigned allowing the number of drives
+to be less than the number of virtual libraries.
 <p>
 <em>Volumes</em> -- Are uniquely identified by an external label,
 which is known to the media changer.
@@ -268,18 +213,13 @@ family will be placed on the volume.
 By design, there is no pre-set limit on the number of file families.
 Clever use of file families will allow volumes to be faulted out to
 "shelf", and also to decrease access times for subsequent reads.
-This can also effect transfer rates into the library by groups of users
-(that are writing files associated with a specific file family).
 </dl>
-Twists to all of this are the special libraries -- shelf and
-manually mounted libraries.
-Shelf libraries bounce requests for tapes. The net effect is that
-users are informed that this data is currently unavailable, and if
+Media ejected to shelf are put into a shelf virtual library and
+are controlled by a shelf library manager.
+Users are informed that this data is currently unavailable, and if
 they really want the data, arrangements should be made to have the
-tapes placed in a library which is accessible. (n.b. Enstore keeps a
-log file, which would allow an administrator to identify the tapes)
-Manually Mounted library are tapes in a drawer (or whatever) and an
-operator.
+tapes placed in a library which is accessible,
+or get it manually later.
 <p>
 <h3>
 3.3.1 Volume Clerk
@@ -288,8 +228,119 @@ The volume clerk has a single table database.
 There is one record for each volume known to the system.
 The record is looked up by a key.
 The key is the volume's external label.
-The details of volume clerk are discussed in the following
-<em>"Databases in Enstore"</em> section.
+The information tracked for each volume is described in the table below:
+The default values are shown in parentheses ().
+<table>
+<td valign=top><b>Column Name</b>
+<td valign=top><b>Type</b>
+<td valign=top><b>Comments</b>
+<tr>
+<td valign=top>external_label
+<td valign=top>string (primary_key)
+<td valign=top>Volume name specified by user on volume creation; is used to 
+display volume meta-data.
+<tr>
+<td valign=top>file_family
+<td valign=top>string ("none")
+<td valign=top>File family name, specified by user on volume creation; only
+files that belong to this family will be stored on this volume.
+<tr>
+<td valign=top>media_type
+<td valign=top>string
+<td valign=top>Specified at volume creation; defines the block-size; used for
+writing.
+<tr>
+<td valign=top>library
+<td valign=top>string 
+<td valign=top>Specified by user on volume creation; defines which (virtual)
+library currently holds the volume
+<tr>
+<td valign=top>first_access
+<td valign=top>int (-1)
+<td valign=top>Set by volume clerk when user issues the first <em>encp</em>
+command to copy to the media.
+<tr>
+<td valign=top>last_access 
+<td valign=top>int (-1)
+<td valign=top>Set by volume clerk when user issues the first <em>encp</em>
+command to copy to the media.
+<tr>
+<td valign=top>declared
+<td valign=top>int
+<td valign=top>Set by volume clerk at time of volume creation.
+<tr>
+<td valign=top>capacity_bytes
+<td valign=top>64-bit int
+<td valign=top>Specified by user on volume creation; estimate of the number of
+bytes that would fit on the media.
+<tr>
+<td valign=top>blocksize
+<td valign=top>int
+<td valign=top>Set by the volume clerk; defined by the media type.
+<tr>
+<td valign=top>remaining_bytes
+<td valign=top>64-bit int
+<td valign=top>Specified by the user on volume creation; estimate of the number
+of bytes that would fit on the media; updated by the volume clerk every time
+data are written to the media.
+<tr>
+<td valign=top>eod_cookie
+<td valign=top>string ("none")
+<td valign=top>Tells the driver how to space to the end of the volume; it is
+driver specific; updated by the volume clerk when data are written on the
+media.
+<tr>
+<td valign=top>wrapper
+<td valign=top>string ("cpio")
+<td valign=top>Wrapper method; currently specifies the format of the files on
+the media.
+<tr>
+<td valign=top>sum_rd_err
+<td valign=top>int (0)
+<td valign=top>Read error count; volume clerk updates this field when the mover
+receives an error while reading from the media.
+<tr>
+<td valign=top>sum_rd_access
+<td valign=top>int (0)
+<td valign=top>Access error count; volume clerk updates this field when the
+mover receives an error while accessing the media for read.
+<tr>
+<td valign=top>sum_wr_err
+<td valign=top>int (0)
+<td valign=top>Write error count; volume clerk updates this field when the
+mover receives an error while writing to the media.
+<tr>
+<td valign=top>sum_wr_access
+<td valign=top>int (0)
+<td valign=top>Access error count; volume clerk updates this field when the
+mover receives an error while accessing the media for write.
+<tr>
+<td valign=top>user_inhibit
+<td valign=top>string ("none" or "readonly", "all")
+<td valign=top>Specified by user at volume creation; access level for this
+volume, updated by volume clerk.
+<tr>
+<td valign=top>system_inhibit
+<td valign=top>string ("none" or "writing", "readonly", "full") 
+<td valign=top>Enstore generated limitation on the kind of access permitted to
+this volume; update by volume clerk when data are written on the media, an
+error occurred while data were being written or the file size exceeded the
+remaining number of bytes on the media.
+</table>
+<p>
+The volume clerk does short, atomic operations. Operations are:
+<ul>
+<li>show the name of all the volumes
+<li>show volume information
+<li>add a volume
+<li>delete a volume
+<li>find the appropriate volume on which to write the file
+<li>change the number of remaining bytes on the volume
+<li>set the number of read/write errors
+<li>set the current status of the volume
+<li>set the volume as readonly
+<li>start/stop backup of volume journals
+</ul>
 
 <h3>
 3.3.2 File Clerk
@@ -298,8 +349,41 @@ The file clerk tracks files in the system. There is one record for each file
 in the system.
 The records are keyed.
 The key is the string version of the bitfile i.d.
-The details of file clerk are discussed in the following
-<em>"Databases in Enstore"</em> section.
+The fields tracked are as follows:
+<table>
+<td valign=top><b>Column Name</b>
+<td valign=top><b>Type</b>
+<td valign=top><b>Comments</b>
+<tr>
+<td valign=top>bfid
+<td valign=top>primary key
+<td valign=top>bit file id; uniquely identifies every file in the system.
+<tr>
+<td valign=top>external_label
+<td valign=top>string 
+<td valign=top>Volume name on which the file has been written; same as the
+external_label in the volume table.
+<tr>
+<td valign=top>bof_space_cookie
+<td valign=top>string
+<td valign=top>Driver specific string telling how to space to the file on the
+media.
+<tr>
+<td valign=top>complete_crc
+<td valign=top>int
+<td valign=top>crc of all the bits sent by the user.
+<tr>
+<td valign=top>sanity_cookie
+<td valign=top>string ("(0,0)")
+<td valign=top>Number of bytes used for a sanity crc and the sanity crc itself.
+</table>
+<p>
+The file clerk supports the following requests:
+<ul>
+<li>show bfid of all the files
+<li>show file information
+<li>start/stop backup of file journals
+</ul>
 
 <h3>
 3.3.3 Library Manager
@@ -479,7 +563,31 @@ either media or drive.  If drive, mark the tape as hung, and kill ourselves.
 If media, mark the media as no access.  If the user drops the control tcp
 channel unilaterally, assume he has aborted.
 <p>
-<font color=#ff0000><blink>Missing configuration server, log servers, and media changer</blink></font>
+<h2>
+3.3.5 Configuration Server
+</h2>
+Configuration server maintains the crucial information about
+system configuration, such as the location and status of each server.
+The first thing that every other server does when it starts up is to
+ask the configuration server for information.
+<br>
+<blink><font color=#ff0000>Need more content</font></blink>
+<h2>
+3.3.6 Log Server
+</h2>
+Log server receives messages from client, processes and logs them into
+formatted log files.
+Basically, these messages are transactional records.
+Log files are lable by dates.
+At midnight each day, currently opened log file gets closed and another
+one is opened.
+<blink><font color=#ff0000>Need more content</font></blink>
+<h2>
+3.3.7 Media Changer
+</h2>
+Media Changer mounts and dismounts the media into and from the drive
+according to the request from mover.
+<blink><font color=#ff0000>Need more content</font></blink>
 <h2>
 4 More Detailed Block Diagram
 </h2>
@@ -545,9 +653,7 @@ configuration when it dismounts a tape.
 <h2>
 5 Databases in Enstore
 </h2>
-
-Enstore requires databases that it will use to provide the following
-functionality
+The database used in <em>Enstore</em> must provide the followings:
 <ul>
 <li>
 Support "python dictionary" interface.
@@ -561,242 +667,9 @@ Support performing daily backups of the database, log, and journal files.
 Support recovery of corrupted databases using the journal or log files.
 </ul>
 
-<h3>
-5.1 Database Layout
-</h3>
 
-Currently, the database consists of two tables: "Volume" and "File".
-These tables are accessed/modified via the volume and file clerks.
-Any column which does not have a named default,
-must be specified at volume creation time.
-The default values are shown in parentheses ().
-<p>
-<table>
-<td valign=top><b>Volume Table</b>
-<tr>
-<td valign=top><b>Column Name</b>
-<td valign=top><b>Type</b>
-<td valign=top><b>Comments</b>
-<tr>
-<td valign=top>external_label
-<td valign=top>string (primary_key)
-<td valign=top>Volume name specified by user on volume creation; is used to 
-display volume meta-data.
-<tr>
-<td valign=top>file_family
-<td valign=top>string ("none")
-<td valign=top>File family name, specified by user on volume creation; only
-files that belong to this family will be stored on this volume.
-<tr>
-<td valign=top>media_type
-<td valign=top>string
-<td valign=top>Specified at volume creation; defines the block-size; used for
-writing.
-<tr>
-<td valign=top>library
-<td valign=top>string 
-<td valign=top>Specified by user on volume creation; defines which (virtual)
-library currently holds the volume
-<tr>
-<td valign=top>first_access
-<td valign=top>int (-1)
-<td valign=top>Set by volume clerk when user issues the first <em>encp</em>
-command to copy to the media.
-<tr>
-<td valign=top>last_access 
-<td valign=top>int (-1)
-<td valign=top>Set by volume clerk when user issues the first <em>encp</em>
-command to copy to the media.
-<tr>
-<td valign=top>declared
-<td valign=top>int
-<td valign=top>Set by volume clerk at time of volume creation.
-<tr>
-<td valign=top>capacity_bytes
-<td valign=top>64-bit int
-<td valign=top>Specified by user on volume creation; estimate of the number of
-bytes that would fit on the media.
-<tr>
-<td valign=top>blocksize
-<td valign=top>int
-<td valign=top>Set by the volume clerk; defined by the media type.
-<tr>
-<td valign=top>remaining_bytes
-<td valign=top>64-bit int
-<td valign=top>Specified by the user on volume creation; estimate of the number
-of bytes that would fit on the media; updated by the volume clerk every time
-data are written to the media.
-<tr>
-<td valign=top>eod_cookie
-<td valign=top>string ("none")
-<td valign=top>Tells the driver how to space to the end of the volume; it is
-driver specific; updated by the volume clerk when data are written on the
-media.
-<tr>
-<td valign=top>wrapper
-<td valign=top>string ("cpio")
-<td valign=top>Wrapper method; currently specifies the format of the files on
-the media.
-<tr>
-<td valign=top>sum_rd_err
-<td valign=top>int (0)
-<td valign=top>Read error count; volume clerk updates this field when the mover
-receives an error while reading from the media.
-<tr>
-<td valign=top>sum_rd_access
-<td valign=top>int (0)
-<td valign=top>Access error count; volume clerk updates this field when the
-mover receives an error while accessing the media for read.
-<tr>
-<td valign=top>sum_wr_err
-<td valign=top>int (0)
-<td valign=top>Write error count; volume clerk updates this field when the
-mover receives an error while writing to the media.
-<tr>
-<td valign=top>sum_wr_access
-<td valign=top>int (0)
-<td valign=top>Access error count; volume clerk updates this field when the
-mover receives an error while accessing the media for write.
-<tr>
-<td valign=top>user_inhibit
-<td valign=top>string ("none" or "readonly", "all")
-<td valign=top>Specified by user at volume creation; access level for this
-volume, updated by volume clerk.
-<tr>
-<td valign=top>system_inhibit
-<td valign=top>string ("none" or "writing", "readonly", "full") 
-<td valign=top>Enstore generated limitation on the kind of access permitted to
-this volume; update by volume clerk when data are written on the media, an
-error occurred while data were being written or the file size exceeded the
-remaining number of bytes on the media.
-<tr>
-<td valign=top><b>File Table</b>
-<tr>
-<td valign=top><b>Column Name</b>
-<td valign=top><b>Type</b>
-<td valign=top><b>Comments</b>
-<tr>
-<td valign=top>bfid
-<td valign=top>primary key
-<td valign=top>bit file id; uniquely identifies every file in the system.
-<tr>
-<td valign=top>external_label
-<td valign=top>string 
-<td valign=top>Volume name on which the file has been written; same as the
-external_label in the volume table.
-<tr>
-<td valign=top>bof_space_cookie
-<td valign=top>string
-<td valign=top>Driver specific string telling how to space to the file on the
-media.
-<tr>
-<td valign=top>complete_crc
-<td valign=top>int
-<td valign=top>crc of all the bits sent by the user.
-<tr>
-<td valign=top>sanity_cookie
-<td valign=top>string ("(0,0)")
-<td valign=top>Number of bytes used for a sanity crc and the sanity crc itself.
-</table>
-
-<h3>
-5.2 Volume clerk operations
-</h3>
-The volume clerk supports the following requests:
-<ul>
-<li>show the name of all the volumes
-<li>show volume information
-<li>add a volume
-<li>delete a volume
-<li>find the appropriate volume on which to write the file
-<li>change the number of remaining bytes on the volume
-<li>set the number of read/write errors
-<li>set the current status of the volume
-<li>set the volume as readonly
-<li>start/stop backup of volume journals
-</ul>
-
-<h3>
-5.3 File clerk operations
-</h3>
-The file clerk supports the following requests:
-<ul>
-<li>show bfid of all the files
-<li>show file information
-<li>start/stop backup of file journals
-</ul>
-
-<h3>
-5.4 Summary of MSS RUN II Requirements Impact on the Database
-</h3>
-
-<h4>
-5.4.1 Table Changes
-</h4>
-
-Based on MSS RUN II Requirements the following additional information should
-be stored in the database Volume table:
-
-<ul>
-<li>location indicator (internal/external/mark for ejection)
-<li>access indicator after tape ejection
-<li>user/group authorized to access this volume and change the access
-permissions
-</ul>
-
-And the following additional information should be stored in the File table:
-
-<ul>
-<li>name of the file
-<li>data of creation/change
-<li>location indicator (internal/external)
-</ul>
-
-<h4>
-5.4.2 Addition to Functionality
-</h4>
-
-The volume clerk should provide the following new operations:
-
-<ul>
-<li>user should be able to mark the volume as readonly
-<li>set the media as external/internal/mark for ejection to the library
-<li>set the access indicator for the media marked for ejection
-</ul>
-
-The file clerk should provide the following new operations:
-<ul>
-<li>change the access for files on the media that has been ejected from the
-library
-</ul>
-
-<h4>
-5.4.3 Administrative Tools
-</h4>
-
-Administrative tools should provide the following operations:
-<ul>
-<li>Display the volume for a specified media
-<li>List all the files and their location on a single or set of media
-<li>List file/files on the media by creation date
-<li>List all the media that belongs to a specified file family
-<li>List files that belongs to a specified file family
-<li>Display the date of the last mount for a specified volume
-<li>List all media belonging to a file family sorted by the most recent media
-mount date
-<li>List all media belonging to a file family where the last access date is
-before a specified date
-<li>Export meta-data of ejected media into a flat file
-<li>Import meta-data from a flat file when importing the media from outside the
-Enstore system
-<li>List all files/volumes that belong to user/group
-<li>Mark the volume as readonly if all of the files on the media are older
-than a specified date
-</ul>
-
-
-<h3>
-5.5 Current Underlying Database Implemented in Enstore
+<h2>
+5.1 Current Underlying Database Implemented in Enstore
 </h3>
 
 The current Enstore implementation uses LIBTP (BSD DB v2.3) as the underlying
@@ -861,62 +734,206 @@ It provides tools for database transaction logging, database backup and
 recovery.
 </ul>
 
-<h4>
-5.5.1 Disadvantages and Options for the Future
-</h4>
+<h2>
+5.2 Administrative Tools
+</h2>
 
-LIBTP interprets stored data items as unstructured BLOBs, which does not
-allow any other way to select data items other then by primary key. Probably, 
-this is the most critical limitation for the Enstore
-project. Although, it may not be necessary for Enstore's internal needs,
-implementation of maintenance functionality is not realistically possible
-without having some way to select data by
-data attributes instead of the primary database key. There are two possible
-ways to solve this problem.
-<dl>
-<dt>
-<b>Implementation of additional indices</b>
-<dd>
-A database "table" may be accompanied by one or more "index" tables, each of
-which would store binary trees of values of particular attributes and refer 
-to keys of data stored in the main table.
-Implementation of this idea does not seem to be difficult, but it may require
-some re-design of the database clients to make them use this feature.
-<dt>
-<b>Using a relational database product</b>
-<dd>
-Conceptually, a relational database provides the same level of data access
-with respect to any combination  of columns (data attributes) used as the
-search key. Data lookup may be further optimized
-by creation of additional indices. Such additional optimization can be done
-at any time and does not require any modification of the clients provided
-the client is designed to use the relational database.
-</dl>
-<p>
-For the Enstore project, switching to a relational database product will
-require substantial redesign or even re-engineering from scratch of 
-database servers, clients, client-server communication protocol and server 
-journal file module because all of these components are designed
-based on the assumption that the database interface is compatible with a
-Python dictionary interface.
-<br><font color=#ff0000>
-(The above paraghaph is not quite right. A RDBMS may be hidden behind a
-python API nicely. IMHO, the decision is on whether we need the extra
-benefit [and complexity] from using a RDBMS, such as writing queries in
-relational algebra {multiple select, joints, ... etc.}, and at what
-cost we want to pay for it.
-If what we want is just a big table with multiple indices,
-a RDBMS can be used as such and it would not be difficult to encopreate
-that to enstore.
-Then, the question is, why do we have to pay for the [much] extra cost?<br>
--- Chih-Hao)
-</font>
+Administrative tools will provide the following operations:
+<ul>
+<li>Display the volume for a specified media
+<li>List all the files and their location on a single or set of media
+<li>List file/files on the media by creation date
+<li>List all the media that belongs to a specified file family
+<li>List files that belongs to a specified file family
+<li>Display the date of the last mount for a specified volume
+<li>List all media belonging to a file family sorted by the most recent media
+mount date
+<li>List all media belonging to a file family where the last access date is
+before a specified date
+<li>Export meta-data of ejected media into a flat file
+<li>Import meta-data from a flat file when importing the media from outside the
+Enstore system
+<li>List all files/volumes that belong to user/group
+<li>Mark the volume as readonly if all of the files on the media are older
+than a specified date
+</ul>
 
 <h2>
 6 Communication Protocols
 </h2>
-<font color=#ff8800>Protocol and the figures go here</font>
-<h2>
+The base protocol for Enstore is UDP for "brief" messages and TCP for data
+transfers.
+
+Transfers that use UDP are all less than size of max UDP packet so there
+will be no problems with potential packet re-ordering (receiving packets out
+of order).
+<p>
+The base server protocol is the same for all servers.  State-fullness is
+minimized, not eliminated.
+<p>
+Each transmission has a unique ID, timeout and maximum number of retries
+associated with it.  The timeout allows for debugging.
+For each reception, the "message" is checked against messages received to see
+if the reception is a repeat. If the reception is a *repeat request*, send a
+saved copy of the response; if the reception is *repeat response*, just
+ignored it. This will take care of the case when a timeout/retry happens just
+before a response is received.
+
+<h3>
+6.1 Read Protocol
+</h3>
+The communications performed during a read operation are illustrated in the
+diagram below and described more fully in the following text.
+<p>
+NOTE: The communications between the Mover and the Configuration server happens
+approximately every two minutes.  It has been added to the following drawing 
+to show that this communication is important, but it can occur anywhere in the
+communications flow before the Mover contacts the Library manager.
+<p>
+<img src=read.gif>
+<p>
+<ul>
+<li>
+The User (through <em>encp</em>) contacts PNFS asking for a bit file id (bfid)
+for the named file.
+<li>
+PNFS returns the bfid to <em>encp</em>.
+<li>
+<em>encp</em> asks the Configuration server with which File clerk should it be
+communicating.
+<li>
+The Configuration server returns the location of the appropriate File clerk.
+<li>
+<em>encp</em> sends the read request to the File clerk.
+<li>
+The file clerk asks the Volume clerk with which Library manger should it be
+communicating.
+<li>
+The Volume clerk returns the location of the appropriate Library manager.
+<li>
+The File clerk asks the Library Manager to read the file.
+<li>
+The Library manager tells the File clerk that the request has been placed in 
+it's queue.
+<li>
+The File clerk informs <em>encp</em> that the read request has been queued.
+<li>
+The Mover asks the Configuration server with which Library manager should it
+be communicating.
+<li>
+The Configuration server returns the location of the appropriate Library
+manager.
+<li>
+The Mover asks the Library manager if there is any work for it to do.
+<li>
+The Library manager tells the Mover which volume to mount.
+<li>
+The Mover asks the Media changer to mount a particular volume.
+<li>
+The Media changer responds once the volume is mounted.
+<li>
+The Mover tells the Library manager that the volume is mounted.
+<li>
+The Library Manager tells the Mover which file to read.
+<li>
+The Mover tells <em>encp</em> from which host and port to read the data.
+<li>
+The Mover send the data to <em>encp</em>.
+<li>
+The Mover tells <em>encp</em> when all the data has been transferred and sends
+the crc information.
+<li>
+The read has completed.
+<li>
+The Mover tells the Library manager that he still has the volume mounted.
+</ul>
+
+<h3>
+6.2 Write Protocol
+</h3>
+The communications performed during a write operation are illustrated in the
+diagram below and described more fully in the following text.
+<p>
+NOTE: The communications between the Mover and the Configuration server happens
+approximately every two minutes.  It has been added to the following drawing 
+to show that this communication is important, but it can occur anywhere in the
+communications flow before the Mover contacts the Library manager.
+<p>
+<img src=write.gif>
+<p>
+<ul>
+<li>
+The User (through <em>encp</em>) contacts PNFS with a request to create a file.
+<li>
+PNFS returns the file family information to <em>encp</em>.
+<li>
+<em>encp</em> asks the Configuration server with which Library manager should 
+it be communicating.
+<li>
+The Configuration server returns the location of the appropriate Library
+manager.
+<li>
+<em>encp</em> sends the write request to the Library manager, including file 
+family and number of bytes.
+<li>
+The Library manager tells the <em>encp</em> that the request has been placed in
+it's queue.
+<li>
+The Mover asks the Configuration server with which Library manager should it
+be communicating.
+<li>
+The Configuration server returns the location of the appropriate Library
+manager.
+<li>
+The Mover asks the Library manager if there is any work for it to do.
+<li>
+The Library manager asks the Volume clerk for a volume for the file with the
+specified size and file family.
+<li>
+The Volume clerk returns the volume to the Library manager.
+<li>
+The Library manager moves the file internally from one queue to another.
+<li>
+The Library manager tells the Mover which volume to mount.
+<li>
+The Mover asks the Media changer to mount a particular volume.
+<li>
+The Media changer responds once the volume is mounted.
+<li>
+The Mover tells the Library manager that the volume is mounted.
+<li>
+The Mover tells <em>encp</em> to which host and port to write the data.
+<li>
+The Mover tells the Volume clerk that he is appending to this tape.
+<li>
+The Volume clerk acknowledges this.
+<li>
+<em>encp</em> sends the data to the Mover.
+<li>
+The Mover tells the Volume clerk that the append operation is done and how much
+space is left on the tape.
+<li>
+The Volume clerk acknowledges this.
+<li>
+The Mover tells the File clerk which file has been created.
+<li>
+The file Clerk responds with the bit file id.
+<li>
+The Mover tells <em>encp</em> that the file has been written and sends the bit
+file id and the crc.
+<li>
+<em>encp</em> tells PNFS that the file has been created, and the bfid should
+be stored.
+<li>
+The write has completed.
+<li>
+The Mover tells the Library manager that he still has the volume mounted.
+<li>
+The Library manager tells the mover that there is no work to be done.
+<li>
+The mover tells the Media changer to dismount the volume.
+</ul>
+
 7 Error Control
 </h2>
 
@@ -1235,4 +1252,5 @@ This is O.K. The system degrades as specified.
 <p>
 <font color=#ff0000><blink>Not done yet below this line</blink></font>
 <hr>
+<font color=#ff0000><blink>Don't forget to check consistency of the names/words</blink></font>
 </body>
