@@ -25,9 +25,11 @@ case `uname -n` in
     cmd="python /home/bakken/enstore/src/configuration_server.py  --config_file=/home/bakken/enstore/etc/rip.conf &"; doit
     cmd="python /home/bakken/enstore/src/log_server.py &"; doit
     cmd="python /home/bakken/enstore/src/alarm_server.py &"; doit
-    (sleep 2;ecmd cc --alive; if [ $? -ne 0 ]; then echo CONFIG DEAD; else echo config alive;fi) &
-    (sleep 2;ecmd lc --alive; if [ $? -ne 0 ]; then echo LOG DEAD;    else echo log alive;   fi) &
-    (sleep 2;ecmd ac --alive; if [ $? -ne 0 ]; then echo ALARM DEAD;  else echo alarm alive; fi) &
+    cmd="python /home/bakken/enstore/src/media_changer.py adicr1.media_changer &"; doit
+    (sleep 2;ecmd cc  --alive;                      if [ $? -ne 0 ]; then echo CONFIG DEAD;               else echo config alive;               fi) &
+    (sleep 2;ecmd lc  --alive;                      if [ $? -ne 0 ]; then echo LOG DEAD;                  else echo log alive;                  fi) &
+    (sleep 2;ecmd ac  --alive;                      if [ $? -ne 0 ]; then echo ALARM DEAD;                else echo alarm alive;                fi) &
+    (sleep 2;ecmd mcc --alive adicr1.media_changer; if [ $? -ne 0 ]; then echo ADICR1.MEDIA_CHANGER DEAD; else echo adicr1.media_changer alive; fi) &
     ;;
 
    rip6*)
@@ -52,18 +54,16 @@ case `uname -n` in
 
    rip1*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/media_changer.py grau.media_changer &"; doit
-    (sleep 2;ecmd mcc --alive grau.media_changer; if [ $? -ne 0 ]; then echo GRAU.MEDIA_CHANGER DEAD; else echo grau.media_changer alive; fi) &
     ;;
 
    rip2*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/mover.py DE13DLT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py DE15DLT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py DC11MAM.mover &"; doit
-    (sleep 2;ecmd mvc --alive DE13DLT.mover; if [ $? -ne 0 ]; then echo DE13DLT.MOVER DEAD; else echo de13dlt.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DE15DLT.mover; if [ $? -ne 0 ]; then echo DE15DLT.MOVER DEAD; else echo de15dlt.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DC11MAM.mover; if [ $? -ne 0 ]; then echo DC11MAM.MOVER DEAD; else echo dc11mam.mover alive; fi) &
+    #cmd="python /home/bakken/enstore/src/mover.py DE13DLT.mover &"; doit
+    #cmd="python /home/bakken/enstore/src/mover.py DE15DLT.mover &"; doit
+    #cmd="python /home/bakken/enstore/src/mover.py DC11MAM.mover &"; doit
+    #(sleep 2;ecmd mvc --alive DE13DLT.mover; if [ $? -ne 0 ]; then echo DE13DLT.MOVER DEAD; else echo de13dlt.mover alive; fi) &
+    #(sleep 2;ecmd mvc --alive DE15DLT.mover; if [ $? -ne 0 ]; then echo DE15DLT.MOVER DEAD; else echo de15dlt.mover alive; fi) &
+    #(sleep 2;ecmd mvc --alive DC11MAM.mover; if [ $? -ne 0 ]; then echo DC11MAM.MOVER DEAD; else echo dc11mam.mover alive; fi) &
     ;;
 
    rip7*)
@@ -71,14 +71,18 @@ case `uname -n` in
     cmd="python /home/bakken/enstore/src/library_manager.py disk.library_manager &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py null.library_manager &"; doit
     cmd="python /home/bakken/enstore/src/media_changer.py disk.media_changer &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py disk.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py null.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py disk1.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py disk2.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py null1.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py null2.mover &"; doit
     cmd="python /home/bakken/enstore/src/inquisitor.py &"; doit
     (sleep 2;ecmd lmc --alive disk.library_manager; if [ $? -ne 0 ]; then echo DISK.LIBRARY_MANAGER DEAD; else echo disk.library_manager alive; fi) &
     (sleep 2;ecmd lmc --alive null.library_manager; if [ $? -ne 0 ]; then echo NULL.LIBRARY_MANAGER DEAD; else echo null.library_manager alive; fi) &
     (sleep 2;ecmd mcc --alive disk.media_changer;   if [ $? -ne 0 ]; then echo DISK.MEDIA_CHANGER DEAD;   else echo disk.media_changer alive;   fi) &
-    (sleep 2;ecmd mvc --alive disk.mover;           if [ $? -ne 0 ]; then echo DISK.MOVER DEAD;           else echo disk.mover alive;           fi) &
-    (sleep 2;ecmd mvc --alive null.mover;           if [ $? -ne 0 ]; then echo NULL.MOVER DEAD;           else echo null.mover alive;           fi) &
+    (sleep 2;ecmd mvc --alive disk1.mover;          if [ $? -ne 0 ]; then echo DISK1.MOVER DEAD;          else echo disk1.mover alive;          fi) &
+    (sleep 2;ecmd mvc --alive disk2.mover;          if [ $? -ne 0 ]; then echo DISK2.MOVER DEAD;          else echo disk2.mover alive;          fi) &
+    (sleep 2;ecmd mvc --alive null1.mover;          if [ $? -ne 0 ]; then echo NULL1.MOVER DEAD;          else echo null1.mover alive;          fi) &
+    (sleep 2;ecmd mvc --alive null2.mover;          if [ $? -ne 0 ]; then echo NULL2.MOVER DEAD;          else echo null2.mover alive;          fi) &
     (sleep 2;ecmd ic  --alive;                      if [ $? -ne 0 ]; then echo INQUISITOR DEAD;           else echo inquisitor alive;           fi) &
     ;;
 
@@ -98,10 +102,10 @@ case `uname -n` in
 
    fntt*)
     stopit; starttrc
-    cmd="python /export/home/bakken/enstore/src/mover.py DM05AIT.mover &"; doit
-    cmd="python /export/home/bakken/enstore/src/mover.py DM07AIT.mover &"; doit
-    (sleep 2;ecmd mvc --alive DM05AIT.mover; if [ $? -ne 0 ]; then echo DM05AIT.MOVER DEAD; else echo dm05ait.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DM07AIT.mover; if [ $? -ne 0 ]; then echo DM07AIT.MOVER DEAD; else echo dm07ait.mover alive; fi) &
+    #cmd="python /export/home/bakken/enstore/src/mover.py DM05AIT.mover &"; doit
+    #cmd="python /export/home/bakken/enstore/src/mover.py DM07AIT.mover &"; doit
+    #(sleep 2;ecmd mvc --alive DM05AIT.mover; if [ $? -ne 0 ]; then echo DM05AIT.MOVER DEAD; else echo dm05ait.mover alive; fi) &
+    #(sleep 2;ecmd mvc --alive DM07AIT.mover; if [ $? -ne 0 ]; then echo DM07AIT.MOVER DEAD; else echo dm07ait.mover alive; fi) &
     ;;
 
    samson*)
