@@ -891,26 +891,32 @@ class Interface:
                 return key #in other words return the long opt.
         return None
 
-    some_args = sys.argv[1:]
     #Return the next argument in the argument list after the one specified
     # as argument.  If one does not exist, return None.
     #some_args is used to avoid problems with duplicate arguments on the
     # command line.
     def next_argument(self, argument):
+
+        #Get a copy of the command line with values specified with equal
+        # signs seperated.
+        self.some_args = []
+        self.some_args[:] = sys.argv[1:]
+        self.split_on_equals(self.some_args)
+
         #Get the next option after the option passed in.
         for arg in self.some_args:
             #For comparision, change underscores to dashes, but only for
-            # those that are options.
-            if self.is_long_option(arg.replace("_", "-")):
-                #only do this for known options (aka switches).
-                compare_arg = arg.replace("_", "-")
-            else:
+            # those that are options.  Also, use only things up to the first
+            # "=" if present.
+            compare_arg = arg.split("=")[0].replace("_", "-")
+            if not self.is_long_option(compare_arg):
+                #only use this old string for unknown options (aka values).
                 compare_arg = arg
 
             #Look for the current argument in the list.  Since, it looks for
             # things based on string.find() placing the "--" before the
             # value of argument is ok to handle the substring problem that
-            # argument has the "--" and "-" removed.  
+            # argument has the "--" and "-" removed.
             if string.find("--"+argument, compare_arg) != -1:
                 #Now that the current item in the argument list is found,
                 # make sure it isn't the last and return the next.
