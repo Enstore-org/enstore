@@ -44,7 +44,7 @@ node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`/home/enstore/enstore/sbin/gang`
 
 LOG=/tmp/netscan.log
-ACTIVE=/tmp/netscan.ACTIVE
+ACTIVE=/root/CRON/netscanACTIVE
 
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           if [ "${2:-}"x = "psx" ]; then
@@ -54,7 +54,7 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
         }
 
 
-mkdir $ACTIVE 1>/dev/null 2>/dev/null
+mkdir -p $ACTIVE 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ] ; then
    msg="netscan on $node already ACTIVE... exiting"
    logit "$msg"
