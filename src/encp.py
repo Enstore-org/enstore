@@ -1272,6 +1272,10 @@ def max_attempts(library, encp_intf):
     #Also, determine how many times encp resends the request to the lm
     # and the mover fails to call back.
 
+    if encp_intf.use_max_retry and encp_intf.use_max_resubmit:
+        #The user overrode both values, no need to continue.
+        return
+
     #If the shortname was supplied, make it the longname.
     if library[-16:] == ".library_manager":
         lib = library
@@ -1287,8 +1291,14 @@ def max_attempts(library, encp_intf):
         #If we get here, then check the other enstore config servers.
         # be prepared to find the correct system if necessary.
         kcs = csc.get("known_config_servers", 5, 5)
-        kcs[socket.gethostname()] = (socket.getfqdn(),
-                              int(os.environ.get('ENSTORE_CONFIG_PORT', 7500)))
+        #new_key = csc.get_enstore_system()
+        kcs['default'] = (enstore_functions2.default_host(),
+                          enstore_functions2.default_port())
+        if e_errors.is_ok(kcs):
+            del kcs['status']
+        else:
+            return # Give up on error.
+
         for item in kcs.values():
             _csc = configuration_client.ConfigurationClient(address = item)
             lm = _csc.get(lib, 5, 5)
@@ -1302,12 +1312,20 @@ def max_attempts(library, encp_intf):
     # was not found in config file(s)... very unlikely) then go with
     # the defaults.
 
-    if encp_intf.max_retry == None:
+    if not encp_intf.use_max_retry:
         encp_intf.max_retry = lm.get('max_encp_retries',
-                                     enstore_constants.DEFAULT_ENCP_RETRIES)
-    if encp_intf.max_resubmit == None:
+                                 enstore_constants.DEFAULT_ENCP_RETRIES)
+        try:
+            encp_intf.max_retry = int(encp_intf.max_retry) #make integer.
+        except TypeError:
+            encp_intf.max_retry = None
+    if not encp_intf.use_max_resubmit:
         encp_intf.max_resubmit = lm.get('max_encp_resubmits',
-                                enstore_constants.DEFAULT_ENCP_RESUBMISSIONS)
+                                 enstore_constants.DEFAULT_ENCP_RESUBMISSIONS)
+        try:
+            encp_intf.max_resubmit = int(encp_intf.max_resubmit) #make integer.
+        except TypeError:
+            encp_intf.max_resubmit = None
 
 def check_library(library, e):
     #Check if the library is accepting requests.
@@ -2943,11 +2961,11 @@ def submit_one_request(ticket):
     except SystemExit:
         #On error the library manager client calls sys.exit().  This
         # should catch that so we can handle it.
-        ticket['status'] = (e_errors.TIMEDOUT,
+        ticket['status'] = (e_errors.USERERROR,
               "Unable to locate %s.library_manager." % ticket['vc']['library'])
         return ticket
         
-    if is_read(ticket):  #ticket['infile'][:5] == "/pnfs":
+    if is_read(ticket):
         responce_ticket = lmc.read_from_hsm(ticket)
     else:
         responce_ticket = lmc.write_to_hsm(ticket)
@@ -4675,8 +4693,8 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
                    time.time() - tinfo['encp_start_time']))
 
     # send the work ticket to the library manager
-    while work_ticket['retry'] <= encp_intf.max_retry:
-
+    while encp_intf.max_retry == None or \
+              work_ticket['retry'] <= encp_intf.max_retry:
         ##start of resubmit block
         Trace.trace(17,"write_to_hsm q'ing: %s"%(work_ticket,))
 
@@ -4708,7 +4726,7 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
 def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
     #Loop around in case the file transfer needs to be retried.
-    while work_ticket.get('retry', 0) <= e.max_retry:
+    while e.max_retry == None or work_ticket.get('retry', 0) <= e.max_retry:
         
         Trace.message(TRANSFER_LEVEL,
                       "Waiting for mover to call back.   elapsed=%s" % \
@@ -6916,8 +6934,10 @@ class EncpInterface(option.Interface):
 	self.threaded_exfer = 0    # true if EXfer should run multithreaded
         
         #options effecting encp retries and resubmits
-        self.max_retry = None      # number of times to try again
-        self.max_resubmit = None   # number of times to try again
+        self.max_retry = enstore_constants.DEFAULT_ENCP_RETRIES
+        self.max_resubmit = enstore_constants.DEFAULT_ENCP_RESUBMISSIONS
+        self.use_max_retry = 0     # If --max-retry was used.
+        self.use_max_resubmit = 0  # If --max-resubmit was used.
         self.mover_timeout = 15*60 # seconds to wait for mover to call back,
                                    # before resubmitting req. to lib. mgr.
                                    # 15 minutes
@@ -7099,16 +7119,26 @@ class EncpInterface(option.Interface):
                             option.USER_LEVEL:option.ADMIN,},
         option.MAX_RETRY:{option.HELP_STRING:
                           "Specifies number of non-fatal errors that can "
-                          "occur before encp gives up. (default = 3)",
+                          "occur before encp gives up.  Use None "
+                          "to specify never. (default = 3)",
+                          option.DEFAULT_NAME:'use_max_retry',
+                          option.DEFAULT_VALUE:option.DEFAULT,
+                          option.DEFAULT_TYPE:option.INTEGER,
                           option.VALUE_USAGE:option.REQUIRED,
-                          option.VALUE_TYPE:option.INTEGER,
-                          option.USER_LEVEL:option.ADMIN,},
+                          #option.VALUE_TYPE:option.INTEGER,
+                          option.USER_LEVEL:option.ADMIN,
+                          option.FORCE_SET_DEFAULT:option.FORCE},
         option.MAX_RESUBMIT:{option.HELP_STRING:
                              "Specifies number of resubmissions encp makes "
-                             "when mover does not callback. (default = never)",
+                             "when mover does not callback.  Use None "
+                             "to specify never. (default = never)",
+                             option.DEFAULT_NAME:'use_max_resubmit',
+                             option.DEFAULT_VALUE:option.DEFAULT,
+                             option.DEFAULT_TYPE:option.INTEGER,
                              option.VALUE_USAGE:option.REQUIRED,
-                             option.VALUE_TYPE:option.INTEGER,
-                             option.USER_LEVEL:option.ADMIN,},
+                             #option.VALUE_TYPE:option.INTEGER,
+                             option.USER_LEVEL:option.ADMIN,
+                             option.FORCE_SET_DEFAULT:option.FORCE},
         option.MMAP_IO:{option.HELP_STRING:
                         "Use memory mapped i/o for disk access on supporting "
                         "filesystems.",
@@ -7208,6 +7238,28 @@ class EncpInterface(option.Interface):
             self.print_usage()
         if hasattr(self, "version") and self.version:
             self.print_version()
+
+        #The values for --max-retry and --max-resubmit need special processing.
+        # This is so that the special non integer value of 'None' gets
+        # processed correctly.
+        if type(self.max_retry) != types.StringType:
+            pass  #Skip the int and None cases.  Only consider string cases.
+        elif self.max_retry.upper() == "NONE":
+            self.max_retry = None
+        elif self.max_retry.isdigit():
+            self.max_retry = max(int(self.max_retry), 0)
+        else:
+            self.print_usage("Argument for max_retry must be a positive " \
+                             "integer or None.")
+        if type(self.max_resubmit) != types.StringType:
+            pass  #Skip the int and None cases.  Only consider string cases.
+        elif self.max_resubmit.upper() == "NONE":
+            self.max_resubmit = None
+        elif self.max_resubmit.isdigit():
+            self.max_resubmit = max(int(self.max_resubmit), 0)
+        else:
+            self.print_usage("Argument for max_resubmit must be a positive " \
+                             "integer or None.")
 
         # bomb out if we don't have an input/output if a special command
         # line was given.  (--volume, --get-cache, --put-cache, --bfid)
