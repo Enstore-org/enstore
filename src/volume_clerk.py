@@ -158,7 +158,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                         vols.append(key)
                     key,value=dict.cursor("next")
                 dict.cursor("close")
-            else: vols.append(ticket["external_label"])
+            else:
+                if dict.has_key(ticket["external_label"]):
+                    record = dict[ticket["external_label"]]
+                    if record["system_inhibit"] == e_errors.DELETED:
+                        vols.append(ticket["external_label"])
             for vol in vols:
                 ret = self.remove_deleted_volume(vol)
                 msg="VOLUME "+vol

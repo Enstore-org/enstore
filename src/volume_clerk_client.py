@@ -523,7 +523,7 @@ def do_work(intf):
     elif intf.rmvol:
         # optional argument
         if intf.rmvol == 'all': intf.rmvol = None
-        ticket = vcc.remove_deleted_vols(intf.vol)
+        ticket = vcc.remove_deleted_vols(intf.rmvol)
         print ticket['volumes']
     elif intf.next:
         ticket = vcc.next_write_volume(intf.args[0], #library
