@@ -18,7 +18,6 @@ turnoff "$enstore_db/`uname -n`-mover*pids"           "movers"
 turnoff "$enstore_db/`uname -n`-media_changer*pids"   "media_changers"
 turnoff "$enstore_db/`uname -n`-library_manager*pids" "library manager"
 turnoff "$enstore_db/`uname -n`-configuration*pids"   "configuration server"
-turnoff "$enstore_db/`uname -n`-log_server*pids"      "library manager"
 turnoff "$enstore_db/`uname -n`-log_server*pids"      "log server"
 turnoff "$enstore_db/`uname -n`-*pids"                "what else"
 
