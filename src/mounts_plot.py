@@ -36,19 +36,20 @@ if __name__ == '__main__':
 	while l:
 		t = string.split(l)
 		if len(t) > 8 and t[0] != 'Date':
-			m = int(string.split(t[-2], '<')[0])
-			if m == -1:
-				m = 0
-			mts.append(m)
-			sg = string.split(t[-1], '.')[0]
-			if mtsg.has_key(sg):
-				mtsg[sg].append(m)
-			else:
-				mtsg[sg] = [m]
-			if m > low_water_mark:
-				tol = tol + 1
-			if m > high_water_mark:
-				toh = toh + 1
+			sg, ff, wp = string.split(t[-1], '.')
+			if wp != 'null':
+				m = int(string.split(t[-2], '<')[0])
+				if m == -1:
+					m = 0
+				mts.append(m)
+				if mtsg.has_key(sg):
+					mtsg[sg].append(m)
+				else:
+					mtsg[sg] = [m]
+				if m > low_water_mark:
+					tol = tol + 1
+				if m > high_water_mark:
+					toh = toh + 1
 
 		l = f.readline()
 
