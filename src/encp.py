@@ -281,7 +281,7 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
 # return some information about who we are so it can be used in the ticket
 
 def clients(config_host,config_port):
-    # get a configuration server
+    # get a configuration serverg432
     csc = configuration_client.ConfigurationClient((config_host,config_port))
 
     # send out an alive request - if config not working, give up
@@ -329,8 +329,30 @@ def access_check(path, mode):
         time.sleep(1)
     return os.access(path, mode)
 
-# check the input file list for consistency
+#Make sure that the filename is valid.
+def filename_check(filename):
+    #pnfs (v3.1.7) only supports filepaths segments that are
+    # less than 200 characters.
+    for directory in filename.split("/"):
+        if len(directory) > 200:
+            status = ('USERERROR',
+                      'Filepath segment %s exceeds 200 characters with %s' %
+                      (directory, len(directory)))
+            return status
 
+    #limit the usable characters for a filename.
+    if not charset.is_in_filenamecharset(filename):
+        st = ""
+        for ch in filename: #grab all illegal characters.
+            if ch not in charset.filenamecharset:
+                st = st + ch
+        status = ('USERERROR',
+                  'Filepath uses non-printable characters: %s' % (st,))
+        return status
+
+    return (e_errors.OK, None)
+    
+# check the input file list for consistency
 def inputfile_check(input_files, bytecount=None):
     # create internal list of input unix files even if just 1 file passed in
     if type(input_files)==type([]):
@@ -352,6 +374,14 @@ def inputfile_check(input_files, bytecount=None):
         # get fully qualified name
         machine, fullname, dirname, basename = fullpath(inputlist[i])
         inputlist[i] = fullname
+
+        #check to make sure that the filename string doesn't have any
+        # wackiness to it.
+        status = filename_check(inputlist[i])
+        if status != (e_errors.OK, None):
+            print_data_access_layer_format(inputlist[i], '', 0,
+                                           {'status':status})
+            quit()
 
         # input files must exist
         if not access_check(inputlist[i], os.R_OK):
@@ -421,9 +451,16 @@ def outputfile_check(inputlist, output, dcache):
             imachine, ifullname, idir, ibasename = fullpath(inputlist[i])
             omachine, ofullname, odir, obasename = fullpath(outputlist[i])
 
+            #check to make sure that the filename string doesn't have any
+            # wackiness to it.
+            status = filename_check(outputlist[i])
+            if status != (e_errors.OK, None):
+                print_data_access_layer_format('', outputlist[i], 0,
+                                               {'status':status})
+                quit()
+
             #In this if...elif...else determine if the user entered in
             # valid file or directory names appropriately.
-            
             if access_check(outputlist[i], os.W_OK):
                 #File or directory exists with write permissions.
                 if os.path.isdir(outputlist[i]):
@@ -1506,6 +1543,9 @@ def set_pnfs_settings(ticket, client, verbose):
                          ticket["fc"]["location_cookie"],
                          ticket["fc"]["size"],
                          drive)
+    except KeyboardInterrupt:
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
     except:
         exc,msg,tb=sys.exc_info()
         Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s."
@@ -1533,19 +1573,22 @@ def set_pnfs_settings(ticket, client, verbose):
         Trace.message(4, pprint.pformat(fc_reply))
 
         ticket['status'] = fc_reply['status']
+    except KeyboardInterrupt:
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
     except:
         exc,msg,tb=sys.exc_info()
         Trace.log(e_errors.INFO, "Unable to send info. to file clerk. %s %s."
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
 
-    # set file permission here
-    set_outfile_permissions(ticket)
-
     # file size needs to be the LAST metadata to be recorded
     try:
         # set the file size
         p.set_file_size(ticket['file_size'])
+
+        ###Why was this put here?  If setting it failed the first time, why
+        ### try a second time???
         if p.file_size != ticket['file_size']:
             # try to set a file size one more time
             p.set_file_size(ticket['file_size'])
@@ -1553,7 +1596,6 @@ def set_pnfs_settings(ticket, client, verbose):
                 msg = "Cannot set file size %s %s %s"%(p.pnfsFilename,p.file_size,ticket['file_size'])
                 Trace.alarm(e_errors.ERROR,msg)
                 ticket['status'] = (e_errors.WRONG_PNFS_FILE_SIZE, msg)
-        
     except KeyboardInterrupt:
         exc, msg, tb = sys.exc_info()
         raise exc, msg, tb
@@ -1820,6 +1862,20 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         elif not e_errors.is_retriable(result_dict['status'][0]):
             return combine_dict(result_dict, work_ticket)
 
+        #Set the UNIX file permissions.
+        #Writes errors to log file.
+        set_outfile_permissions(done_ticket)
+
+        ###What kind of check should be done here?
+        #This error should result in the file being left where it is, but it
+        # is still considered a failed transfer (aka. exit code = 1 and
+        # data access layer is still printed).
+        if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
+            print_data_access_layer_format(done_ticket['infile'],
+                                           done_ticket['outfile'],
+                                           done_ticket['file_size'],
+                                           done_ticket)
+            
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
         set_pnfs_settings(done_ticket, client, e.verbose)
@@ -1831,21 +1887,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             continue
         elif not e_errors.is_retriable(result_dict['status'][0]):
             return combine_dict(result_dict, work_ticket)
-
-        # The following line has been moved into set_pnfs_settings()
-        # set_outfile_permissions(done_ticket)
-
-        #Writes errors to log file.
-        ###What kind of check should be done here?
-        #This error should result in the file being left where it is, but it
-        # is still considered a failed transfer (aka. exit code = 1 and
-        # data access layer is still printed).
-
-        if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
-            print_data_access_layer_format(done_ticket['infile'],
-                                           done_ticket['outfile'],
-                                           done_ticket['file_size'],
-                                           done_ticket)
+        
 
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
