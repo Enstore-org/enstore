@@ -1305,6 +1305,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	
     def update_client_info( self, ticket ):
         if self.mode == 'c':     # cleaning
+            print "!!!!!!!!!!!!!!!!!!!!"
             self.state = 'idle'
             return
 	self.vol_info = ticket['vol_info']
@@ -1471,7 +1472,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 #os.system( 'ps alxwww' )
                 #raise
                 pass
-            self.state = 'idle'
             if pid == self.pid:
                 self.pid = 0
                 if self.state != 'crazed':
