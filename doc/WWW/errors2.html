@@ -25,18 +25,94 @@ made about Run II operating conditions:
 	<LI>Mover nodes may crash, with minimal disruption of the system.
 
 	<LI>The system should generate alarms and recieve immediate service
-	   when its thoughput faLls below pre-defined levels.
+	   when its thoughput falls below pre-defined levels.
 
 	<LI>Routine error conditions should be cleared in normal
 	   business hours.
 
-	<LI> It shall be possible to re-direct writes to another library
+	<LI>It shall be possible to re-direct writes to another library
 	   in case of library failure.
+
+	<LI>The system shall be suseptable to monitoring by PATROL.
 
 </UL>
 </P>
 
 <h2>Overview</h2>
+
+<P> Enstore is a distributed system. For a transfer to succeed, many of the
+Enstore processes must be up and running.  Therefore, the servers shall be
+robust, and run on reliable computers. Nevertheless, it is good to consider
+the the intrinsic ability for the system to recover when a process or system
+running a process crashes.  This is summarized in the table below:
+
+
+<TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
+
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Process</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>What State?</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Effect of Crash</B></FONT></FONT></TH>
+
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>ENCP</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>A transfer</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Transfer is canceled/aborted</B> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>Configuration Server</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Static configuration File</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Wait for Restart of Server</B> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>File Clerk</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Persistent Database Table</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Wait for Restart of Server</B> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>Volume Clerk</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Persistent Database Table</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Wait for Restart of Server</B> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>Library Manager</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>In-memory lists of what work is queued, and what work
+is at what mover</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Recovery of state is not yet implemented. recovery of state is possible through ENCP retries.</B> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>Mover</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>If busy, the current transfer + the current volume</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>ENCP retries writes, exits with errors on writes.</B> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>PNFS NFS Servers</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>DBM database "file meta data"</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>NFS retry mechanisms</B> </FONT> </TD>
+
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>Media Changer</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>In memory lists of work presented to library micro</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>State refreshed by UDP retry mechanism</B> </FONT> </TD>
+
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>Log Server</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>None</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Logs are not written</B> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><B>Inquisitor</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>None</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><B>Displays are not refreshed until restart</B> </FONT> </TD>
+
+
+
+</TABLE>
+
+
+<h2>Detailed Errors</h2>
 
 <P>Much of the system state is stored within the user's encp client.
 This allows the encp client to retry on a large number of different
