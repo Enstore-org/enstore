@@ -1,0 +1,30 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+
+# returns the checksum for a file
+
+USAGE="`basename $0` filename"
+if [ ! "${1-}" ];then 
+    echo $USAGE
+    exit 1
+else
+    file=$1
+fi
+python -c '
+import posix
+import sys
+import ECRC
+max=1024*1024
+crc=0
+f=open("'$file'")
+while 1:
+    buf=f.read(max)
+    if buf!="":
+        crc=ECRC.ECRC(buf,crc)
+    else:
+        break
+print hex(crc)
+'
