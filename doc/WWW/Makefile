@@ -62,7 +62,7 @@ PIC_PS_FILES = \
 #
 # TARGETS
 #
-all: pics www_new warn
+all: pics www_new
 
 pics: PS_pics GIF_pics
 
@@ -78,21 +78,6 @@ gifs: $(PIC_GIF_FILES)
 GIF_pics: 
 	make gifs
 
-#
-# The template defines things at the top of HTML files which are
-# important, for example, a stanrdar button to go back to the index.
-# check all the HTML for the standard style.
-#
-# The test that is implemented is to look for "bookshelf.gif" at the 
-# top of the file.
-#
-
-warn:
-	for h in *.html ; do if head -30 $$h | fgrep bookshelf.gif > /dev/null ; \
-	then true ; else \
-	echo warning: $$h does not have a standard header. Get one from \
-	the templates directory ; fi ; \
-	done 
 #
 # Move into the distribution directory.
 #
