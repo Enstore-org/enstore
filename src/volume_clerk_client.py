@@ -103,6 +103,46 @@ def sumup(a):
 		return sum
 
 	return 0
+
+# a function to extract values from enstore vol --vols
+
+def extract_volume(v):    # v is a string
+    system_inhibit = ["", ""]
+    si_time = (0, 0)
+    t = string.split(v, '(')
+    t1 = t[0]
+    label, avail = string.split(t1)
+    tt = string.split(t[1], ')')
+    ttt = string.split(tt[1])
+    library = ttt[0]
+    volume_family = ttt[1]
+    if len(ttt) == 3:
+        comment = ttt[2]
+    else:
+        comment = ""
+    t = string.split(tt[0])
+    system_inhibit = [t[0], ""]
+    if len(t) == 2:
+        system_inhibit[1] = t[1]
+        si_time = (0,0)
+    elif len(t) == 3:
+        if t[1][0] in string.digits:    # time stamp
+            si_time = (t[1], '')
+            system_inhibit[1] = t[2]
+        else:
+            system_inhibit[1] = t[1]
+            si_time = ('', t[2])
+    elif len(t) == 4:
+        system_inhibit[1] = t[2]
+        si_time = (t[1], t[3])
+
+    return {'label': label,
+            'avail': avail,
+            'system_inhibit': system_inhibit,
+            'si_time': si_time,
+            'library': library,
+            'volume_family': volume_family,
+            'comment': comment}
 		
 class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
