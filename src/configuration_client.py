@@ -65,7 +65,6 @@ class ConfigurationClient(generic_client.GenericClient):
         request = {'work' : 'dump',
                    'callback_addr'  : (host,port)
                    }
-        print self.server_address
         reply = self.send(request, timeout, retry)
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
