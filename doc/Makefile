@@ -12,8 +12,8 @@ SHELL = /bin/sh
 .obj.ps:
 	@tgif -print -ps -color $*.obj
 
-.obj.gif:
-	@tgif -print -gif -color $*.obj
+.ps.gif:
+	@convert $*.ps $@
 
 WWW  = ./www/
 WWW_NEW = ./www_new/
@@ -38,9 +38,16 @@ GIF_FILES = $(WWW)/bookshelf.gif $(WWW)/read.gif $(WWW)/write.gif \
 
 LOG_FILES = $(WWW)/redwoodfiber.log $(WWW)/redwoodlocal.log
 
-PIC_FILES = christmas.ps christmas.gif \
-	    hardware.ps hardware.gif \
-	    superficial_overviewobj.ps superficial_overviewobj.gif
+PIC_FILES = \
+	Server-card.ps Server-card.gif \
+	christmas.ps christmas.gif \
+	enstore.ps enstore.gif \
+	hardware.ps hardware.gif \
+	library_manager.ps library_manager.gif \
+	mover_write.ps mover_write.gif \
+	pnfs.ps pnfs.gif \
+	superficial_overviewobj.ps superficial_overviewobj.gif \
+	test-stand.ps test-stand.gif
 
 WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(GIF_FILES) $(LOG_FILES) \
 	$(HOME_FILE)

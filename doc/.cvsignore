@@ -18,9 +18,5 @@ data
 9
 *_pids
 www_new
-hardware.ps
-hardware.gif
-christmas.gif
-christmas.ps
-superficial_overviewobj.ps
-superficial_overviewobj.gif
+*.gif
+*.ps
