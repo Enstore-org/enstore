@@ -962,11 +962,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         #At this point the media changer claims the correct volume is loaded; now position it
         label_tape = 0
         have_tape = 0
+        err = None
         for retry_open in range(3):
             Trace.trace(10, "position media")
             have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
             self.tape_driver.set_mode(blocksize = 0)
             if have_tape == 1:
+                err = None
                 break
             else:
                 try:
@@ -978,13 +980,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                     r=p.read()
                     s=p.close()
                     ### r=self.tape_driver.rewind()
+                    err = r
                     Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
 
                 except:
                     exc, detail, tb = sys.exc_info()
+                    err = detail
                     Trace.log(e_errors.ERROR, "rewind/retry: %s %s" % ( exc, detail))
         else:
-            self.error("cannot open tape device for positioning")
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
+            self.dismount_volume(after_function=self.idle)
+##            self.error("cannot open tape device for positioning")
             return
         self.state = SEEK ##XXX start a timer here?
         eod = self.vol_info['eod_cookie']
@@ -1260,10 +1266,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                     control_socket.connect(ticket['callback_addr'])
                     break
                 except socket.error, detail:
-                    Trace.log(e_errors.ERROR, "%s %s" % (detail, ticket['callback_addr']))
+                    Trace.log(e_errors.ERROR, "%s %s" %
+                              (detail, ticket['callback_addr']))
+                    if detail[0] == errno.ECONNREFUSED:
+                        return None, None
                     time.sleep(1)
             else:
-                Trace.log(e_errors.ERROR, "timeout connecting to %s" % (ticket['callback_addr'],))
+                Trace.log(e_errors.ERROR, "timeout connecting to %s" %
+                          (ticket['callback_addr'],))
                 return None, None
             fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags)
             Trace.trace(10, "connected")
