@@ -239,11 +239,11 @@ class ConfigurationServer(ConfigurationDict,\
 
 if __name__ == "__main__":
     Trace.init("configsrvr")
-    Trace.trace(1,"{ called at "+repr(t0)+":"+repr(sys.argv))
+    Trace.mode(0xffff)
+    Trace.trace(1,"{ called args="+repr(sys.argv))
     import os
     import sys
     import getopt
-    import time
     import timeofday
     # Import SOCKS module if it exists, else standard socket module socket
     # This is a python module that works just like the socket module, but uses
@@ -307,4 +307,4 @@ if __name__ == "__main__":
                   sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
 
-    Trace.trace(1,"} finished at "+repr(time.time()))
+    Trace.trace(1,"} finished")
