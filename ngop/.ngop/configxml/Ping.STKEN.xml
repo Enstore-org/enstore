@@ -1,0 +1,20 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+  <System ID="Ping2" Cluster="STKEN">
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkensrv0"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkensrv1"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkensrv2"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkensrv3"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkensrv4"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkenmvr1a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkenmvr2a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkenmvr3a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkenmvr4a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkenmvr5a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="stkenmvr6a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="rip9"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="rip10"/>
+  </System>
+</NGOPConfig>
+

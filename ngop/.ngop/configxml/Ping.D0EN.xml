@@ -1,0 +1,35 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+  <System ID="Ping" Cluster="D0EN">
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0ensrv1"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0ensrv2"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0ensrv3"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0ensrv4"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0ensrv5"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr1a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr2a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr3a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr4a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr5a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr6a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr7a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr8a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr9a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr10a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr11a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr12a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr13a"/> 
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr14a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr15a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr16a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr17a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr18a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr19a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr20a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr21a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0enmvr22a"/>
+     <MonitoredElement ID="ping"  Type="Hardware" Host="d0ensrv0"/>
+  </System>
+</NGOPConfig>
+
