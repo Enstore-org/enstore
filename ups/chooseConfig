@@ -16,6 +16,7 @@ buffalo=buffalo.fnal.gov
 happy=happy.fnal.gov
 water=water.fnal.gov
 airedale=airedale.fnal.gov
+odyssey=odyssey,fnal,gov
 sirius=sirius
 
 complain=1
@@ -60,6 +61,8 @@ case $node in
   airedale) ENSTORE_CONFIG_HOST=$airedale
 	    ENSTORE_CONFIG_FILE=airedale.conf
             complain=0
+            ;;
+  odyssey)  complain=0
             ;;
   *sam*|*d0*)
             ENSTORE_CONFIG_HOST=$d0en
