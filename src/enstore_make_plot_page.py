@@ -1,4 +1,4 @@
-import enstore_plots.py
+import enstore_plots
 import generic_client
 
 TMP = ".tmp"
