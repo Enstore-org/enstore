@@ -63,6 +63,8 @@ cat << EOF >>$output
 </body>
 EOF
 
+
+ left="`/usr/bin/rsh $silo_node -l acsss "echo query lsm all |/export/home/ACSSS/bin/cmd_proc 2>> /dev/null" </dev/null | grep online | sed -e 's/, /,/'`"
 silos="`egrep ' STK' $volfile | cut -c30-36|sort | uniq`"
 IFSave="$IFS"
 IFS="
@@ -70,7 +72,9 @@ IFS="
 for silo in $silos; do 
   s=`echo $silo| sed -e 's/ //g' -e 's/,$//'`
   n="`egrep ' STK' $volfile | grep "$silo"|wc|awk '{print $1}'`"
-  echo `date` $s $n >>/tmp/STK_USED_SLOTS."$s" 
+  nleft=`echo "$left" | grep "$s"|awk '{print $3}'`
+ echo `date` $s $n $nleft >>/tmp/STK_USED_SLOTS."$s" 
+ echo `date` $s $n $nleft
 done
 IFS="$IFSave"
 
@@ -87,8 +91,10 @@ else
     silo=`basename $i | cut -f2 -d.`
     rm -f /tmp/stk.us.gnu /tmp/used
     echo $i $silo
-    cat $i | while read x mon day time tz year silo n; do
-      echo `date --date "$mon $day $time $tz $year" +"%Y-%m-%d:%H:%M:%S"` $n >> /tmp/used
+    cat $i | while read x mon day time tz year silo n nleft; do
+      nleft=${nleft:-0}
+      tot=`expr $n + $nleft`
+      echo `date --date "$mon $day $time $tz $year" +"%Y-%m-%d:%H:%M:%S"` $n tot >> /tmp/used
     done
     #cat /tmp/used
     echo "set output \"/tmp/silo.$silo.ps\"
@@ -103,7 +109,7 @@ set grid
 set yrange [0: ]
 set format x \"%m-%d\"
 set nokey
-plot \"/tmp/used\" using 1:2 t \"Used Slots\" w impulses" > /tmp/stk.us.gnu 
+plot \"/tmp/used\" using 1:2 t \"Used Slots\" w impulses", using 1:3 w impulses > /tmp/stk.us.gnu 
      #cat /tmp/stk.us.gnu 
      gnuplot /tmp/stk.us.gnu 
      convert -rotate 90 /tmp/silo.$silo.ps /tmp/silo.$silo.jpg
