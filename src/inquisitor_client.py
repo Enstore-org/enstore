@@ -140,10 +140,10 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(16,"}get_timeout")
 	return s
 
-    def plot_bpt (self, logfile_dir="", start_time="", stop_time=""):
-	Trace.trace(16,"{plot_bpt")
+    def plot (self, logfile_dir="", start_time="", stop_time=""):
+	Trace.trace(16,"{plot")
 	# tell the inquisitor to plot bytes per unit of time
-	t = {"work"        : "plot_bpt" }
+	t = {"work"        : "plot" }
 	if not logfile_dir == "":
 	    t["logfile_dir"] = logfile_dir
 	if not start_time == "":
@@ -151,7 +151,7 @@ class Inquisitor(generic_client.GenericClient):
 	if not stop_time == "":
 	    t["stop_time"] = stop_time
 	s = self.send(t)
-        Trace.trace(16,"}plot_bpt")
+        Trace.trace(16,"}plot")
 	return s
 
 
@@ -287,7 +287,7 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.CLIENT
 
     elif intf.plot:
-	ticket = iqc.plot_bpt(intf.logfile_dir, intf.start_time, intf.stop_time)
+	ticket = iqc.plot(intf.logfile_dir, intf.start_time, intf.stop_time)
 	msg_id = generic_cs.CLIENT
 
     else:

@@ -86,6 +86,10 @@ START_TIME = "start_time"
 STOP_TIME = "stop_time"
 
 DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
+                "09", "10", "11", "12", "13", "14", "15", "16", \
+                "17", "18", "19", "20", "21", "22", "23"]
+
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
@@ -819,8 +823,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # always print the name of the file at the beginning of the line.
     def search_logfiles(self, string, input_dir, output):
 	try:
-	    os.system("fgrep "+string+" "+input_dir+"/"+LOG_PREFIX+\
-	              "* /dev/null> "+output)
+	    os.system("cd "+input_dir+";fgrep '"+string+"' "+\
+	              LOG_PREFIX+"* /dev/null> "+output)
 	except:
 	    format = timeofday.tod()+" "+\
 	             str(sys.argv)+" "+\
@@ -835,7 +839,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# split the line into the date/time and all the rest
 	[datetime, rest] = string.split(line, None, 1)
 	# remove the beginning LOG_PREFIX
-	l = regsub.gsub(LOG_PREFIX, "", line)
+	l = regsub.gsub(LOG_PREFIX, "", datetime)
 	# now see if the date/time is between the start time and the end time
 	time_ok = TRUE
 	if not start_time == "":
@@ -876,10 +880,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    pass
 	return matched_lines
 
-    # make the total transfers per unit of time and the bytes moved per day
-    # plot
-    def plot_bpt(self, ticket):
-        Trace.trace(10,"{plot_bpt "+repr(ticket))
+    #  make all the plots
+    def plot(self, ticket):
+        Trace.trace(10,"{plot "+repr(ticket))
 	# find out where the log files are located
 	if ticket.has_key(LOGFILE_DIR):
 	    lfd = ticket[LOGFILE_DIR]
@@ -887,6 +890,49 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    t = self.csc.get("logserver")
 	    lfd = t["log_file_path"]
 
+	self.encp_plot(ticket, lfd)
+	self.mount_plot(ticket, lfd)
+	ret_ticket = { 'status'   : (e_errors.OK, None) }
+	self.send_reply(ret_ticket)
+        Trace.trace(10,"}plot ")
+
+    # make the mount plots (mounts per hour and mount latency
+    def mount_plot(self, ticket, lfd):
+        Trace.trace(11,"{mount_plot "+repr(ticket))
+	ofn = lfd+"/mounts."+enstore_status.get_ts()
+
+	# parse out the mount information from the log files
+	self.search_logfiles("oftware mount", lfd, ofn)
+
+	# only extract the information from the newly created file that is
+	# within the requested timeframe.
+	lines = self.extract_lines(ofn, ticket)
+	self.enprint("Lines found to plot = "+repr(len(lines)), 
+	             generic_cs.SERVER, self.verbose)
+	# now pull out the info we are going to plot from the lines
+	data = []
+	for line in lines:
+	    minfo = enstore_status.parse_mount_line(line)
+	    # the time info may contain the file directory which we must
+	    # strip off
+	    self.strip_file_dir(minfo)
+	    data.append([minfo[enstore_status.MDEV],
+                        string.replace(minfo[enstore_status.ETIME], \
+	                LOG_PREFIX, ""), minfo[enstore_status.MSTART]])
+	mph_file = lfd+"/mph.pts"
+	mlat_file = lfd+"/mlat.pts"
+	gnu_file = lfd+"/mph.gnuplot"
+	if not len(data) == 0:
+	    self.make_mph_plot_files(mph_file, data, gnu_file)
+	    self.gnuplot(lfd, gnu_file, mph_file, self.html_dir)
+	    self.make_mlat_plot_file(mlat_file, data)
+	    self.gnuplot(lfd, lfd+"/mlat.gnuplot", mlat_file, self.html_dir)
+        Trace.trace(11,"}mount_plot ")
+
+    # make the total transfers per unit of time and the bytes moved per day
+    # plot
+    def encp_plot(self, ticket, lfd):
+        Trace.trace(11,"{encp_plot "+repr(ticket))
 	ofn = lfd+"/bytes_moved."+enstore_status.get_ts()
 
 	# parse out the ENCP information from the log files
@@ -905,10 +951,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	       log_client.sevdict[log_client.INFO]:
 	        # the time info may contain the file directory which we must
 	        # strip off
-	        ind = string.rfind(einfo[enstore_status.ETIME], "/")
-	        if not ind == -1:
-	            einfo[enstore_status.ETIME] = \
-	                         einfo[enstore_status.ETIME][(ind+1):]
+	        self.strip_file_dir(einfo)
 	        data.append([string.replace(einfo[enstore_status.ETIME], \
 	                     LOG_PREFIX, ""), einfo[enstore_status.EBYTES]])
 	pts_file = lfd+"/bpt.pts"
@@ -918,19 +961,122 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.gnuplot(lfd, lfd+"/bpt.gnuplot", pts_file, self.html_dir)
 	    self.make_bytes_per_day_plot_file(bpd_file, data)
 	    self.gnuplot(lfd, lfd+"/bytes.gnuplot", bpd_file, self.html_dir)
-	ret_ticket = { 'plot_bpt' : len(lines), \
-	               'status'   : (e_errors.OK, None) }
-	self.send_reply(ret_ticket)
-        Trace.trace(10,"}plot_bpt ")
+        Trace.trace(11,"}encp_plot ")
+
+    # parse out the file directory , a remnant from the grep in the time field
+    def strip_file_dir(self, minfo):
+        ind = string.rfind(minfo[enstore_status.ETIME], "/")
+	if not ind == -1:
+	    minfo[enstore_status.ETIME] = \
+	                         minfo[enstore_status.ETIME][(ind+1):]
+
+    # mount data (mount requests and the actual mounting) are not necessarily
+    # time ordered when read from the files.  2 or more mount requests may
+    # occur before any actual volume has been mounted.  also, since log files
+    # are closed/opened on day boundaries with no respect as to whats going on
+    # in the system, a log file may begin with several mount satisfied messages
+    # which have no matching requests in the file.  also the file may end with
+    # several requests that are not satisifed until the next day or the next
+    # log file. to make things simpler for us to plot, the data will be 
+    # ordered so that each mount request is immediately followed by the actual
+    # mount satisfied message.
+    def order_mount_data(self, data):
+	# order data so that all the requests for each device are grouped
+	# together and in addition are time ordered
+	data.sort()
 
     # run gnuplot on the file to create a plot
     def gnuplot(self, dir, cmds, pts_file, output_dir):
 	os.system("cd "+dir+"; gnuplot "+cmds+";cp "+pts_file+".ps "+\
 	          output_dir)
 
+    # make the mounts per hour plot file
+    def make_mph_plot_files(self, filename, data, gnu_file):
+	Trace.trace(12,"{make_mph_plot_file ")
+	# sum the data together based on hour boundaries. we will only plot 1
+	# day per plot though.
+	date_only = {}
+	ndata = {}
+	for [dev, time, strt] in data:
+	    if strt == enstore_status.MMOUNT:
+	        # this was the record of the mount having been done
+	        adate = time[0:13]
+	        date_only[time[0:10]] = 0
+	        try:
+	            ndata[adate] = ndata[adate] + 1
+	        except:
+	            ndata[adate] = 1
+	# open the file for each day and write out the data points
+	days = date_only.keys()
+	days.sort()
+	gfile = 0
+	for day in days:
+	    # we will only create one plot file, so output the first bit of
+	    # info to it only once
+	    fn = filename+"."+day
+	    if gfile == 0:
+	        gfile = open(gnu_file, 'w')
+	        gfile.write("set output '"+filename+".ps'\nset terminal postscript color\nset xlabel 'Hour'\nset yrange [0 : ]\nset xrange [ : ]\nset ylabel 'Mounts'\nset grid\n")
+
+	    pfile = open(fn, 'w')
+	    total = 0
+	    for hour in HOURS_IN_DAY:
+	        tm = day+":"+hour
+	        try:
+	            pfile.write(hour+" "+repr(ndata[tm])+"\n")
+	            total = total + ndata[tm]
+	        except:
+	            pfile.write(hour+" 0\n")
+	    else:
+	        # now we must make the gnuplot file with instructions to
+	        # process this file in particular
+	        gfile.write("set title 'Mounts Per Hour For "+day+" (Total = "+repr(total)+")'\nplot '"+fn+"' using 1:2 t '' with boxes\n")
+	        pfile.close()
+	else:
+	    gfile.close()
+	Trace.trace(12,"}make_mph_plot_file ")
+
+    # make the mount latency plot file
+    def make_mlat_plot_file(self, filename, data):
+	Trace.trace(12,"{make_mlat_plot_file ")
+	self.order_mount_data(data)
+	last_mount_req = ""
+	# open the file and write out the data points
+	pfile = open(filename, 'w')
+	for [dev, time, strt] in data:
+	    if strt == enstore_status.MMOUNT:
+	        # this was the record of the mount having been done
+	        if not last_mount_req == "":
+	            # we have recorded a mount req 
+	            ltnc = self.latency(last_mount_req, time)
+	            pfile.write(time+" "+repr(ltnc)+"\n")
+
+	            # initialize so any trailing requests are not plotted
+	            last_mount_req == ""
+	    else:
+	        # this was the mount request
+	        last_mount_req = time
+	else:
+	    pfile.close()
+	Trace.trace(12,"}make_mlat_plot_file ")
+
+    # subtract two times and return their difference
+    def latency(self, time1, time2):
+	# first convert each time into a tuple of the form -
+	#  (year, month, day, hour, minutes, seconds, 0, 0, -1)
+	# then convert the tuple into a seconds value and subtract the
+	# two to get the latency in seconds
+	t1 = (string.atoi(time1[0:4]), string.atoi(time1[5:7]), \
+	      string.atoi(time1[8:10]), string.atoi(time1[11:13]), \
+	      string.atoi(time1[14:16]), string.atoi(time1[17:]), 0, 0, -1)
+	t2 = (string.atoi(time2[0:4]), string.atoi(time2[5:7]), \
+	      string.atoi(time2[8:10]), string.atoi(time2[11:13]), \
+	      string.atoi(time2[14:16]), string.atoi(time2[17:]), 0, 0, -1)
+	return (time.mktime(t2) - time.mktime(t1))
+
     # make the file with the plot points in them
     def make_xfer_plot_file(self, filename, data):
-	Trace.trace(11,"{make_xfer_plot_file ")
+	Trace.trace(12,"{make_xfer_plot_file ")
 	# open the file and write out the data points
 	pfile = open(filename, 'w')
 	if len(data[0]) == 2:
@@ -940,12 +1086,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    for [xpt, ypt, zpt] in data:
 	        pfile.write(xpt+" "+ypt+" "+zpt+"\n")
 	pfile.close()
-	Trace.trace(11,"}make_xfer_plot_file ")
+	Trace.trace(12,"}make_xfer_plot_file ")
 
     # make the file with the bytes per day format, first we must sum the data
     # that we have based on the day
     def make_bytes_per_day_plot_file(self, filename, data):
-	Trace.trace(11,"{make_bytes_per_day_plot_file ")
+	Trace.trace(12,"{make_bytes_per_day_plot_file ")
 	# initialize the new data hash
 	ndata = self.init_date_hash(data[0][0], data[len(data)-1][0])
 	# sum the data together based on day boundaries
@@ -959,7 +1105,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	for key in keys:
 	    pfile.write(key+" "+repr(ndata[key])+"\n")
 	pfile.close()
-	Trace.trace(11,"}make_bytes_per_day_plot_file ")
+	Trace.trace(12,"}make_bytes_per_day_plot_file ")
 
     # init the following hash from the first date given to the last date
     def init_date_hash(self, sdate, edate):

@@ -21,7 +21,7 @@ ascii_file = 0
 html_file = 1
 force = 1
 
-# ENCP line pieces
+# ENCP line pieces from log file
 ETIME = 0
 ENODE = 1
 EUSER = 2
@@ -30,6 +30,14 @@ EXRATE = 4
 EBYTES = 5
 EDEV = 6
 EURATE = 7
+
+# different MOUNT line pieces from log file
+MDEV = 3
+MSTART = 4
+
+# message is either a mount request or an actual mount
+MREQUEST = 0
+MMOUNT = 1
 
 bg_color = "FFFFFF"
 tdata = "<TD NOSAVE>"
@@ -43,18 +51,15 @@ html_header2 = "\">\n"+\
 
 # format the timestamp value
 def get_ts():
-    ts = regsub.gsub(" ", "_", format_time(time.time()))
-    return ts
+    return format_time(time.time(), "_")
 
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
-def format_time(theTime):
-    Trace.trace(12,"{format_time ")
-    ftime = time.strftime("%c", time.localtime(theTime))
-    (dow, mon, day, tod, year) = string.split(ftime)
-    ntime = "%s-%s-%s %s" % (year, mon, day, tod)
+def format_time(theTime, sep=" "):
+    Trace.trace(12,"{format_time '"+sep+"'")
+    ftime = time.strftime("%Y-%b-%d"+sep+"%H:%M:%S", time.localtime(theTime))
     Trace.trace(12,"}format_time ")
-    return ntime
+    return ftime
 
 # parse the encp line
 def parse_encp_line(line):
@@ -81,6 +86,20 @@ def parse_encp_line(line):
 	    return [etime, enode, euser, estatus, erest]
     Trace.trace(12,"}parse_encp_line ")
     return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7]]
+
+# parse the mount line
+def parse_mount_line(line):
+    Trace.trace(12,"{parse_mount_line "+repr(line))
+    [etime, enode, etmp, euser, estatus, etmp2, erest] = \
+                                                   string.split(line, None, 6)
+    [wd1, wd2, wd3, dev, file] = string.splitfields(erest, " ")
+    if wd1 == "Requesting":
+	# this is the request for the mount
+	start = MREQUEST
+    else:
+	start = MMOUNT
+    Trace.trace(12,"}parse_mount_line ")
+    return [etime, enode, euser, dev, start]
 
 class EnStatus:
 
