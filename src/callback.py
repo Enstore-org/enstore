@@ -190,9 +190,10 @@ def read_tcp_raw(sock):
 
 
 def read_tcp_obj(sock) :
-    s = read_tcp_raw(sock)
-    if not s: return None
-    return eval(read_tcp_raw(sock))
+    s=read_tcp_raw(sock)
+    if not s:
+        raise "TCP connection closed"
+    return eval(s)
 
     
 # return a mover tcp socket
