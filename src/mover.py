@@ -2430,7 +2430,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(status[0], status[1], error_source=TAPE)
                 return 0
         location = cookie_to_long(self.target_location)
-        time.sleep(600)
         self.run_in_thread('seek_thread', self.seek_to_location,
                            args = (location, self.mode==WRITE),
                            after_function=self.start_transfer)
