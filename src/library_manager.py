@@ -711,6 +711,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 else: ticket['status'] = (status, None)
                 
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        if ticket['status'][0] == e_errors.INPROGRESS:
+            # we did not put request
+            format = "write NOT Q'd %s -> %s : library=%s family=%s requester:%s"
+            Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
+                                             ticket["wrapper"]["pnfsFilename"],
+                                             ticket["vc"]["library"],
+                                             ticket["vc"]["file_family"],
+                                             ticket["wrapper"]["uname"]))
+            return
 	if not movers:
 	    Trace.trace(11,"write_to_hsm: No movers available")
 	    return
