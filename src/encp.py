@@ -1463,13 +1463,18 @@ def open_control_socket(listen_socket, mover_timeout):
         raise EncpError(errno.EPROTO, "Unable to obtain mover responce",
                         e_errors.TCP_EXCEPTION)
 
+    if not e_errors.is_ok(ticket):
+        #If the mover already returned an error, don't bother checking if
+        # it is closed already...
+        return control_socket, address, ticket
+
     fds, junk, junk = select.select([control_socket], [], [], 5)
     try:
         if fds:
             ticket = callback.read_tcp_obj(control_socket)
     except e_errors.TCP_EXCEPTION:
         raise EncpError(errno.ENOTCONN,
-                        "Control socket to longer usable after initalization.",
+                        "Control socket no longer usable after initalization.",
                         e_errors.TCP_EXCEPTION, ticket)
 
     return control_socket, address, ticket
