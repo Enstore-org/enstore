@@ -121,6 +121,10 @@ def hdr_labels(dummy):
 def eof_labels(dummy):
     return ""
 
+def vol_labels(volume_label, ticket, own_id=""):
+    vol1_label = 'VOL1'+ volume_label[0:6]
+    return vol1_label+ (79-len(vol1_label))*' ' + '0'
+
 min_header_size = 76
 
 def header_size(header_start):
@@ -134,3 +138,4 @@ def create_wrapper_dict(ticket):
     # the wrapper section already contains all of the information that we need
     wrapper_d = ticket['wrapper']
     return wrapper_d
+
