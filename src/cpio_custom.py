@@ -387,7 +387,7 @@ if __name__ == "__main__" :
     fin  = diskdriver_open(sys.argv[2],"r")
     fout = diskdriver_open(sys.argv[1]+".copy","w")
 
-    wrapper = Cpio(fin,fout,ECRC.ECRC)
+    wrapper = Wrapper(fin,fout,ECRC.ECRC)
     (read_size, read_crc) = wrapper.read(sanity_cookie)
     generic_cs.enprint("cpio.read returned: size: "+repr(read_size)+" crc: "+\
 	               repr(read_crc))
