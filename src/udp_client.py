@@ -16,6 +16,7 @@ import interface
 import timeofday
 import Trace
 import ECRC
+import generic_cs
 
 TRANSFER_MAX=16384
 
