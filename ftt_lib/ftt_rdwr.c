@@ -185,6 +185,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	d->writelo &= (1<<10) - 1;
 	d->current_block++;
         if ( res != length ) {
+	    ftt_errno = FTT_EPARTIALWRITE;
             ftt_eprintf("Notice: wrote fewer bytes than requested.");
         }
     } else {

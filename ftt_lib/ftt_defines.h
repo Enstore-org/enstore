@@ -142,6 +142,7 @@ extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 #define FTT_EFILEMARK		27
 #define FTT_ELOST		28
 #define FTT_ENOTBOT		29
+#define FTT_EPARTIALWRITE	30
 
 
 /* ftt_status return bitflags 

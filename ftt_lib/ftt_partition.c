@@ -115,13 +115,54 @@ ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
 }
 
 
-int		
-ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
+static unsigned char wp_buf[BD_SIZE+136];
 
-    static unsigned char buf[BD_SIZE+136];
+int
+ftt_part_util_get(ftt_descriptor d) {
     static unsigned char cdb_modsen11[6] = {0x1a, DBD, 0x11, 0x00,BD_SIZE+136, 0x00};
+    return  ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, wp_buf, BD_SIZE+136, 10, 0);
+}
+
+int ftt_part_util_set(ftt_descriptor d,  ftt_partbuf p ) {
+    int res, i;
+    int len;
     static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00,BD_SIZE+136, 0x00};
 
+    wp_buf[0] = 0;
+    wp_buf[1] = 0;
+
+    len = wp_buf[BD_SIZE+1] + BD_SIZE + 2;
+
+    if ( len < BD_SIZE + 10 + 2 * p->n_parts ) {
+	len =  BD_SIZE + 10 + 2 * p->n_parts;
+	wp_buf[BD_SIZE + 1] = 8 + 2 * p->n_parts;
+    }
+
+    cdb_modsel[4] = len;
+
+    DEBUG3(stderr,"Got length of %d\n", len);
+
+    /* set number of partitions */
+    wp_buf[BD_SIZE+3] = p->n_parts;
+
+    /* set to write initiator defined partitions, in MB */
+    wp_buf[BD_SIZE+4] = 0x20 | 0x10;
+
+    /* fill in partition sizes... */
+    for( i = 0 ; i <= p->n_parts; i++ ) {
+	wp_buf[BD_SIZE+8 + 2*i + 0] = (p->partsizes[i] & 0xff00) >> 8;
+	wp_buf[BD_SIZE+8 + 2*i + 1] = p->partsizes[i] & 0x00ff;
+    }
+    for( i = p->n_parts + 1 ; i <= p->max_parts; i++ ) {
+	wp_buf[BD_SIZE+8 + 2*i + 0] = 0;
+	wp_buf[BD_SIZE+8 + 2*i + 1] = 0;
+    }
+    res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, wp_buf, len, 3600, 1);
+    return res;
+}
+
+int		
+ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
     int res, i;
     int len;
     int pd[2];
@@ -175,39 +216,10 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 	}
 
     } else {
-	res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, BD_SIZE+136, 10, 0);
+        res = ftt_part_util_get( d );
 	if (res < 0) return res;
-
-	buf[0] = 0;
-	buf[1] = 0;
-
-	len = buf[BD_SIZE+1] + BD_SIZE + 2;
-
-        if ( len < BD_SIZE + 10 + 2 * p->n_parts ) {
-            len =  BD_SIZE + 10 + 2 * p->n_parts;
-            buf[BD_SIZE + 1] = 8 + 2 * p->n_parts;
-        }
-
-        cdb_modsel[4] = len;
-
-        DEBUG3(stderr,"Got length of %d\n", len);
-
-	/* set number of partitions */
-	buf[BD_SIZE+3] = p->n_parts;
-
-	/* set to write initiator defined partitions, in MB */
-	buf[BD_SIZE+4] = 0x20 | 0x10;
-
-	/* fill in partition sizes... */
-	for( i = 0 ; i <= p->n_parts; i++ ) {
-	    buf[BD_SIZE+8 + 2*i + 0] = (p->partsizes[i] & 0xff00) >> 8;
-	    buf[BD_SIZE+8 + 2*i + 1] = p->partsizes[i] & 0x00ff;
-	}
-	for( i = p->n_parts + 1 ; i <= p->max_parts; i++ ) {
-	    buf[BD_SIZE+8 + 2*i + 0] = 0;
-	    buf[BD_SIZE+8 + 2*i + 1] = 0;
-	}
-	res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, buf, len, 3600, 1);
+	res =  ftt_part_util_set(d, p);
+	if (res < 0) return res;
     }
     return res;
 }
@@ -387,7 +399,8 @@ ftt_set_mount_partition(ftt_descriptor d, int partno) {
 	len = buf[BD_SIZE+1] + BD_SIZE + 2;
 
 	/* set load partition */
-	buf[BD_SIZE+3] = (partno << 1) & 0x7e;
+	buf[BD_SIZE+3] &= ~0x7e;
+	buf[BD_SIZE+3] |= (partno << 1) & 0x7e;
 
 	/* reserved fields */
 	buf[BD_SIZE+2] = 0;
@@ -398,3 +411,117 @@ ftt_set_mount_partition(ftt_descriptor d, int partno) {
     }
     return res;
 }
+
+
+int
+ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table *pb) {
+
+   int   res;
+   int   i;
+
+    static unsigned char
+        mod_sen31[6] = {0x1a, 0x00, 0x31, 0x00, 0x16, 0x00 },
+        mod_sel31[6] = {0x15, 0x10, 0x00, 0x00, 0x16, 0x00 },
+
+        ait_conf_buf[4+8+10];
+
+
+    ENTERING("ftt_format_ait");
+
+    CKNULL("ftt_descriptor", d);
+    DEBUG2(stderr, "Entering ftt_format_ait\n");
+    res = 0;
+    if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
+
+        res = ftt_open_scsi_dev(d);
+        if(res < 0) return res;
+
+        res = ftt_part_util_get(d);
+        if(res < 0) return res;
+        
+        /* get the AIT Device Configuration page 0x31 */
+        DEBUG2(stderr, "CALLING ----- mod_sen31\n");
+        res = ftt_do_scsi_command(d, "Mode Sense 0x31", mod_sen31, 6,
+           ait_conf_buf, 4+8+10, 5, 0);
+        if (res < 0) return res;
+
+        /* switch device into native AIT mode */
+        ait_conf_buf[0] = 0x00;                        /* reserved */
+        ait_conf_buf[1] = 0x00;                        /* reserved */
+        ait_conf_buf[2] = 0x7f;                        /* reserved */
+        ait_conf_buf[5] = 0x00;                        /* reserved */
+        ait_conf_buf[6] = 0x00;                        /* reserved */
+        ait_conf_buf[7] = 0x00;                        /* reserved */
+        ait_conf_buf[8] = 0x00;                        /* reserved */
+        ait_conf_buf[4+8+0] &= 0x3f;                   /* reserved */
+        if ( on ) {
+          if ((ait_conf_buf[4+8+4] & 0x80) != 0 ) {
+            /* volume has a MIC */
+            ait_conf_buf[4+8+2] = 0xf3;               /* enable full AIT mode */
+          } else {
+            /* volume has no MIC */
+            ait_conf_buf[4+8+2] = 0xc0;               /* enable AIT mode */
+          }
+          ait_conf_buf[4+8+4] &= 0x80;                /* reserved */
+       } else {
+          ait_conf_buf[4+8+2] &= ~0xf3;             /* disable AIT mode */
+       }
+
+        /* set the AIT Device Configuration page and switch format mode */
+        DEBUG2(stderr, "CALLING ----- mod_sel31\n");
+        res = ftt_do_scsi_command(d, "Mode Select 0x31", mod_sel31, 6,
+           ait_conf_buf, 4+8+10, 180, 1);
+
+        if(res < 0) return res;
+
+	res =  ftt_part_util_set(d, pb);
+
+    } else {
+        int pd[2];
+        FILE *topipe;
+        pipe(pd);
+        ftt_close_dev(d);
+        ftt_close_scsi_dev(d);
+	switch(ftt_fork(d)){
+	static char s1[10];
+	case -1:
+		return -1;
+
+	case 0:  /* child */
+		/* output -> async_pf */
+		fflush(stdout);	/* make async_pf stdout */
+		fflush(d->async_pf_parent);
+		close(1);
+		dup2(fileno(d->async_pf_parent),1);
+                fclose(d->async_pf_parent);
+
+		/* stdin <- pd[0] */
+                fclose(stdin);
+		close(pd[1]);
+		dup2(pd[0],0);
+                close(pd[0]);
+
+		sprintf(s1, "%d", on);
+
+		if (ftt_debug) {
+		    execlp("ftt_suid", "ftt_suid", "-x",  "-A", s1, d->basename, 0);
+		} else {
+		     execlp("ftt_suid", "ftt_suid", "-A", s1, d->basename, 0);
+		}
+		break;
+
+	default: /* parent */
+		/* close the read end of the pipe... */
+                close(pd[0]);
+
+		/* send the child the partition data */
+		topipe = fdopen(pd[1],"w");
+		ftt_dump_partitions(pb,topipe);
+  		fclose(topipe);
+
+		res = ftt_wait(d);
+	}
+    }
+    return res;
+}
+

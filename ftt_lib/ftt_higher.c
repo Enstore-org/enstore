@@ -508,7 +508,10 @@ ftt_retry( ftt_descriptor d, int  n, int (*op)(ftt_descriptor, char *, int),
     res = ftt_get_position(d, &curfile, &curblock); 	if (res<0) return res;
 
     res = (*op)(d, buf, len);
-    while( res < 0 && n-- > 0 ) {
+
+    /* eblank is the end of data error, so don't retry it */
+
+    while( res < 0 && ftt_errno != FTT_EBLANK && n-- > 0 ) {
 	d->nretries++;
 	/* recover position -- skip back over filemark and forward again */
  	res = ftt_skip_fm(d, -1);   			if (res<0) return res;

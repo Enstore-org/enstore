@@ -258,6 +258,7 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
     DEBUG3(stderr,"entering decrypt_ls for parameter %d stat %d\n", param, stat);
     page = buf + 4;
     length = pack(0,0,buf[2],buf[3]);
+    DEBUG3(stderr,"decrypt_ls: page is %d length is %d \n", page, length);
     while( page < (buf + length) ) {
 	thisparam = pack(0,0,page[0],page[1]);
 	thislength = page[3];
@@ -267,7 +268,12 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
 	}
 	DEBUG3(stderr, "parameter %d, length %d value %f\n", thisparam, thislength, value);
 	if ( thisparam == param ) {
-	    sprintf(printbuf, "%.0f", value / divide);
+	    if ( value / divide > 1.0e+127 ) {
+		/* do something if its really huge... */
+		sprintf(printbuf, "%g", value / divide );
+	    } else {
+		sprintf(printbuf, "%.0f", value / divide);
+            }
 	    set_stat(b,stat,printbuf,0);
 	    DEBUG3(stderr," stat %d - value %s = %.0f \n",stat,printbuf,value / divide);
 	}
@@ -538,9 +544,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		} else {
 	            set_stat(b,FTT_WRITE_ERRORS,ftt_itoa((long)error_count),0);
 		}
-	    } else {
-		/* fake some stats we can... */
-		set_stat(b, FTT_TNP, ftt_itoa('0' == *ftt_extract_stats(b,FTT_READY)),0);
             }
 	    if (stat_ops & FTT_DO_05RS) {
 		set_stat(b,FTT_TRACK_RETRY, ftt_itoa((long)buf[26]), 0);
@@ -581,6 +584,14 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_DENSITY,  ftt_itoa((long)hwdens), 0);
 	    set_stat(b,FTT_WRITE_PROT,  ftt_itoa((long)bit(7,buf[2])),0);
 	    set_stat(b,FTT_MEDIA_TYPE,  ftt_itoa((long)buf[1]), 0);
+
+	    if (0 == b->value[FTT_TNP]) {
+		if (buf[1] == 0) {
+		   set_stat(b,FTT_TNP,  "1", 0);
+		} else {
+		   set_stat(b,FTT_TNP,  "0", 0);
+		}
+            }
 
 	    n_blocks =     pack(0,buf[5],buf[6],buf[7]);
 	    block_length = pack(0,buf[9],buf[10],buf[11]);

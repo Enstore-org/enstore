@@ -224,11 +224,18 @@ ftt_get_driveid(char *basename,char *os) {
 	    /* Actually look it up... */
             ftt_descriptor tmp;
             ftt_stat_buf b;
+            char *pc;
 
+ 	    tmp = ftt_open_logical(basename,  ftt_get_os(), "XXXXXX", 1);
             b = ftt_alloc_stat();
- 	    tmp = ftt_open_logical(basename, "", ftt_get_os(), 1);
             ftt_get_stats(tmp, b);
-            sprintf(output, "%s\n", ftt_extract_stats(b,FTT_PRODUCT_ID));
+            if (ftt_debug > 3) {
+		printf("stats at open are:\n");
+		ftt_dump_stats(b,stdout);
+            }
+            pc = ftt_extract_stats(b,FTT_PRODUCT_ID);
+            res = strcpy(output,  pc);
+            strcat(output, "\n");
             ftt_free_stat(b);
             ftt_close(tmp);
         }
