@@ -246,7 +246,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
         then
         echo "Volume Clerk already started"
       else
-        start_db_daemons
         echo "Starting Volume Clerk"
         out=$PID_DIR/volume_clerk
         rm -f $out
@@ -258,6 +257,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-volume_clerk_pids
+	start_db_daemons
       fi
     fi
 
@@ -282,7 +282,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
         then
         echo "File Clerk already started"
       else
-        start_db_daemons
         echo "Starting File Clerk"
         out=$PID_DIR/file_clerk
         rm -f $out
@@ -294,6 +293,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-file_clerk_pids
+	start_db_daemons
       fi
     fi
 
