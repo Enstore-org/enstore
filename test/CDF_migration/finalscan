@@ -1,0 +1,32 @@
+#!/bin/sh
+. /data1/setup-enstore
+set -u
+tape=$1
+files=/tmp/scan.$tape
+command=/tmp/command.$tape
+finalscan=/tmp/finalscan.$tape
+rm -f $files $command $finalscan
+enstore fil --ls-active $tape >$files
+
+echo "encp --delayed=3 " >$command
+n=0
+cat $files | while read f; do
+  n=`expr $n + 1`
+  echo `date` $n $f
+  echo $f " " >>$command
+done
+echo "/dev/null" >>$command
+
+cmd=`cat $command`
+rm -f $command $files
+echo `date` $cmd
+eval $cmd >$finalscan 2>&1
+rc=$?
+if [ $rc -ne 0 ]; then
+    echo `date` ERROR $tape bad return code
+    /usr/bin/Mail -s "$tape migration error" bakken@fnal.gov < $finalscan
+else
+    echo `date` $tape All files read
+fi
+date
+exit $rc
