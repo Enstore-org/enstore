@@ -2181,7 +2181,7 @@ def submit_one_request(ticket):
     Trace.log(e_errors.INFO, msg)
 
     csc = get_csc(ticket)
-    Trace.message(CONFIG_LEVEL, format_class_for_print(csc, "csc"))
+    Trace.message(TICKET_LEVEL, format_class_for_print(csc, "csc"))
 
     #Send work ticket to LM
     #Get the library manager info information.
@@ -3354,17 +3354,18 @@ def set_pnfs_settings(ticket, intf_encp):
         #t.get_file_family()
         p.get_bit_file_id()
         p.get_id()
-        p.set_xreference(ticket["fc"]["external_label"],
-                         ticket["fc"]["location_cookie"],
-                         ticket["fc"]["size"],
-                         ticket["vc"]["file_family"],
-                         p.pnfsFilename,
-                         "", #p.volume_filepath,
-                         p.id,
-                         "", #p.volume_fileP.id,
-                         p.bit_file_id,
-                         drive,
-                         crc)
+        p.set_xreference(
+            ticket["fc"]["external_label"],
+            ticket["fc"]["location_cookie"],
+            ticket["fc"]["size"],
+            volume_family.extract_file_family(ticket["vc"]["volume_family"]),
+            p.pnfsFilename,
+            "", #p.volume_filepath,
+            p.id,
+            "", #p.volume_fileP.id,
+            p.bit_file_id,
+            drive,
+            crc)
     except KeyboardInterrupt:
         raise sys.exc_info()
     except:
