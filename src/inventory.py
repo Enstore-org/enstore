@@ -327,6 +327,8 @@ def print_volume_size_stats(volume_sums, volume_list, output_file):
         
         usage_file.write(format_string % format_tuple)
 
+    usage_file.close()
+
 #Print the last access info to the output file LAST_ACCESS.
 def print_last_access_status(volume_list, output_file):
     volume_list.sort(la_sort)
@@ -336,6 +338,7 @@ def print_last_access_status(volume_list, output_file):
                       % (volume['last_access'],
                          time.asctime(time.localtime(volume['last_access'])),
                          volume['external_label']))
+    la_file.close()
 
 def print_volumes_defind_status(volume_list, output_file):
     volume_list.sort(el_sort)
@@ -361,7 +364,8 @@ def print_volumes_defind_status(volume_list, output_file):
                          volume['user_inhibit'][1],
                          volume['library'],
                          volume['volume_family']))
-
+    vd_file.close()
+    
 def print_volume_quotas_status(volume_quotas, output_file):
     vq_file = open(output_file, "w")
 
@@ -381,7 +385,7 @@ def print_volume_quotas_status(volume_quotas, output_file):
                          volume_quotas[keys][7:]
         vq_file.write("%-10s %-13s %-6d %-10d %-12d %-7d %7.2f%-3s %-12d %-13d %d\n"
                       % formated_tuple)
-
+    vq_file.close()
 
 def print_total_bytes_on_tape(volume_sums, output_file):
     sum = 0
@@ -391,7 +395,8 @@ def print_total_bytes_on_tape(volume_sums, output_file):
     tbot_file = open(output_file, "w")
 
     tbot_file.write("%.2f %s\n" % format_storage_size(sum))
-    
+
+    tbot_file.close()
 
 ##############################################################################
 ##############################################################################
@@ -426,25 +431,16 @@ def create_fd_list(volume_list, output_dir):
 
 def process_out_string(short_list, fd):
     for vol in short_list:
-        try:
-            out_string = "%10s %15s %15s %22s %7s %s\n" % \
-                         (vol['external_label'],
-                          vol['bfid'],
-                          vol['size'],
-                          vol['location_cookie'],
-                          vol['deleted'],
-                          vol['pnfs_name0'])
-        #there is a possibility that the last two options (deleted and
-        # pnfs_name0) are not present.  Print 'unknown' in their place.
-        except KeyError:
-            out_string = "%10s %15s %15s %22s %7s %s\n" % \
-                         (vol['external_label'],
-                          vol['bfid'],
-                          vol['size'],
-                          vol['location_cookie'],
-                          "unknown",
-                          "unknown")
-            
+        label = vol.get('external_label', "unknown")
+        bfid = vol.get('bfid', "unknown")
+        size = vol.get('size', "unknown")
+        lc = vol.get('location_cookie', "unknown")
+        deleted = vol.get('deleted', "unknown")
+        pnfs = vol.get('pnfs_name0', "unknown")
+        
+        out_string = "%10s %15s %15s %22s %7s %s\n" % \
+                         (label, bfid, size, lc, deleted, pnfs)
+        
         #It doesn't matter if the value in out_string was set with or
         # without an exception being thrown.  Just stream it out.
         os.write(fd, out_string)
