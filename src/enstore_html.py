@@ -370,6 +370,10 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    tr = HTMLgen.TR(self.spacer_data("ID"))
 	    tr.append(HTMLgen.TD(qelem[enstore_status.ID], colspan=5))
 	    table.append(tr)
+	    if qelem.has_key(enstore_status.REJECT_REASON):
+		tr = HTMLgen.TR(self.spacer_data("Reason for Pending"))
+		tr.append(HTMLgen.TD(qelem[enstore_status.REJECT_REASON], colspan=5))
+		table.append(tr)
 	    table.append(self.empty_row(6))
 	return HTMLgen.TR(HTMLgen.TD(table, colspan=5))
 
