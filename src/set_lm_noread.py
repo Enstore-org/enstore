@@ -5,7 +5,7 @@ import library_manager_client
 import configuration_client
 import volume_family
 import log_client
-import enstore_functions
+#import enstore_functions
 import option
 import Trace
 import e_errors
@@ -64,10 +64,10 @@ if config_host and config_port:
 	ff_k = ff_d.keys()
 	lmc = library_manager_client.LibraryManagerClient(csc, lm)
 	ticket = lmc.get_lm_state()
-	if enstore_functions.is_ok(ticket):
+	if e_errors.is_ok(ticket):
 	    state = ticket['state']
 	    ticket = lmc.getworks_sorted()
-	    if enstore_functions.is_ok(ticket):
+	    if e_errors.is_ok(ticket):
 		pq = ticket['pending_works']
 		adminq = pq['admin_queue']
 		writeq = pq['write_queue']
