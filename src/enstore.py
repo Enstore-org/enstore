@@ -40,7 +40,6 @@ import info_client
 import enstore_up_down
 import enstore_saag
 import enstore_saag_network
-import dbs
 import ratekeeper_client
 import pnfs
 import enstore_start
@@ -48,8 +47,21 @@ import enstore_stop
 import enstore_restart
 import backup
 
-CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
-#CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDc)
+# define in 1 place all the hoary pieces of the command needed to access an
+# entire enstore system.
+# Yes, all those blasted backslashes are needed and I agree it is insane. We should
+# loop on rsh and dump rgang
+
+## Some of the backslash-itis is cured by using Python raw strings.
+
+CMDa = "(F=~/\\\\\\`hostname\\\\\\`."
+CMDb = ";echo >>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\\\\$F 2>&1; setup enstore>>\\\\\\$F 2>&1;"
+CMDc = ";echo >>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\\\\$F 2>&1; setup enstore efb>>\\\\\\$F 2>&1;"
+# the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
+CMD2 = " 2>&1 |tee /dev/console>>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1) 1>&- 2>&- <&- &"
+
+CMD1 = "%s%s%s"%(CMDa, "startup", CMDb)
+#CMD1 = "%s%s%s"%(CMDa, "startup", CMDc)
 
 DEFAULT_AML2_NODE = "rip10"
 ERROR = "ERROR"
@@ -99,8 +111,6 @@ server_functions = {
                 volume_clerk_client.do_work, option.USER],
     "info" : [info_client.InfoClientInterface,
               info_client.do_work, option.USER],
-    "database" : [dbs.Interface,
-                  dbs.do_work, option.ADMIN],
     "ratekeeper" : [ratekeeper_client.RatekeeperClientInterface,
                     ratekeeper_client.do_work, option.ADMIN],
     "start" : [enstore_start.EnstoreStartInterface,
@@ -163,21 +173,21 @@ PROMPT = "prompt"
 remote_scripts = {
     #"Estart":["Estart  [farmlet]  (Enstore start on all/specified farmlet nodes)",
     #          ("enstore",
-    #           ("%s enstore-start " % (CMD1,), get_argv3("enstore"), dbs.CMD2),
+    #           ("%s enstore-start " % (CMD1,), get_argv3("enstore"), CMD2),
     #           VERIFY)],
     #"Estop":["Estop   [farmlet]  (Enstore stop on all/specified farmlet nodes)",
     #         ("enstore-down",
     #          ("%s enstore-stop " % (CMD1,),
-    #           get_argv3("enstore-down"), dbs.CMD2),
+    #           get_argv3("enstore-down"), CMD2),
     #          PROMPT, VERIFY), ],
     "Estart":["Estart  [farmlet]  (Enstore start on all/specified farmlet nodes)",
               ("enstore ",
-               ("%s enstore start " % (CMD1,), get_argv3(""), dbs.CMD2),
+               ("%s enstore start " % (CMD1,), get_argv3(""), CMD2),
                VERIFY)],
     "Estop":["Estop   [farmlet]  (Enstore stop on all/specified farmlet nodes)",
              ("enstore-down",
               ("%s enstore stop " % (CMD1,),
-               get_argv3(""), dbs.CMD2),
+               get_argv3(""), CMD2),
               PROMPT, VERIFY), ],
     "EPS":["EPS  [farmlet]   (Enstore-associated ps on all/specified farmlet nodes)",
            ("enstore",
