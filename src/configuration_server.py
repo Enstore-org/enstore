@@ -167,6 +167,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
 
     # get list of the Library manager movers
+    ## XXX this function is misleadingly named - it gives movers for a particular library
+    ## as specified in ticket['library']
     def get_movers(self, ticket):
 	ret = self.get_movers_internal(ticket)
 	self.reply_to_caller(ret)
