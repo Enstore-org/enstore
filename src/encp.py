@@ -1127,6 +1127,10 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 	# number of bytes.
 	buf = data_path_socket.recv(bufsize)# there should not be any more
 	fsize = fsize + len(buf)
+        if not data_path_socket_closed:
+            data_path_socket.close()
+            f.close()
+            data_path_socket_closed = 1 
 
         tinfo["recvd_bytes"+repr(j)] = time.time()-t2 #-------------Lap-End
         if verbose>1:
