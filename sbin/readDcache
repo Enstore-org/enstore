@@ -52,29 +52,7 @@ case $gang in
          do_dccpwrite=1
          do_readback=1
           ;;
-  d0en*) namespace=/pnfs/sam/dzero
-	 weak_port=24126
-	 strong_port=24127
-         #date_string_d() { date +"%Y/%m" --date="1 week ago" ; }
-	 #place=$namespace/`date_string_d`
-         #file=`find $place -type f -print | head -n 1`
-	 # new file once/day, asumming the head of directory is constant (bad assumption)
-         file=`find $namespace -type f -size +0 -print | head -n $N | tail -n 1` 2>/dev/null
-         f2=`echo $file | sed -e 's%/pnfs%%'`
-         f3=`echo $file | sed -e 's%/pnfs/archive%%'`
-         w=/pnfs/archive/dcache-tests/$N.dcache
-         w2=`echo $w | sed -e 's%/pnfs%%'`
-         w3=`echo $w | sed -e 's%/pnfs/archive%%'`
-         dcache=fndca
-         do_active=1
-         do_passive=1
-         do_nonkerb_active=1
-         do_nonkerb_passive=1
-         do_kftp_write=1
-         do_dccp=1
-         do_double=1
-         do_dccpwrite=1
-         do_readback=1
+   d0en*) namespace="UNKNOWN"
           ;;
        *) namespace="UNKNOWN"
           ;;
@@ -85,23 +63,6 @@ read_back=/tmp/dcache_read_back
 
 rm -f $test_file
 cp /var/log/messages $test_file
-
-
-source /usr/local/etc/setups.sh
-if [ $? ]; then
-    echo "Unable to source /usr/local/etc/setups.sh."
-    exit 9
-fi
-setup kftp
-if [ $? ]; then
-    echo "Unable to setup kftp."
-    exit 8
-fi
-setup dcap
-if [ $? ]; then
-    echo "Unable to setup dcap."
-    exit 8
-fi
 
 
 # get a file that is old.  As time moves on, choose a different
