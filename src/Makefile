@@ -8,10 +8,16 @@ clean:
 	rm -f *.pyc encp
 
 encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/ETape.o $(ENSTORE_DIR)/modules/EXfer.o $(ENSTORE_DIR)/modules/Trace.o
+	- rm -rf ENCPBIN_TEMP
 	mkdir ENCPBIN_TEMP
 	python $(PYTHON_DIR)/Python-*/Tools/freeze/freeze.py -e $(ENSTORE_DIR)/modules -o ENCPBIN_TEMP encp.py
-	(cd ENCPBIN_TEMP; make; cp encp ..)
+	(cd ENCPBIN_TEMP; make; cp encp ..;)
 	rm -rf ENCPBIN_TEMP
+	- rm -rf ENCPBIN
+	mkdir ENCPBIN
+	cp encp ENCPBIN
+	cp ../ups/encp.table ENCPBIN
+
 
 install: encp
 	cp encp $ENSTORE_DIR/bin
