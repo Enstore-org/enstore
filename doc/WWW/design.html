@@ -2657,6 +2657,7 @@ developed at SLAC and enhanced and modified at DESY.  It is currently in use at
 these institutions and at Fermilab.  We have begun investigating its use in
 association with the Enstore system. ***
 <p>
+
 <hr>
 <h2><a name="server_protocols">
 1.4 Server Protocols
@@ -2667,30 +2668,28 @@ and dispatching_worker.py which contain the classes UDPclient and DispatchingWor
 For example, a mover is a client of the media_changer; i.e., it sends mount and dismount requests
 to the media_changer and waits for replies.  The client and the server may run on the same or
 different machines and messages, that is requests and replies, are passed using the UDP network protocol.
-UDP is not a guaranteed reliable protocol but the Enstore protocols, described later, implement reliability.
+UDP is not a guaranteed reliable protocol but the enstore protocols, described later, implement reliability.
 
 <p>
 Generally, each server module has a corresponding client module that implements the client interface
-to the server.   For example, the media_changer has a media_change_client.py module that the mover imports 
-and the mover calls methods like mount and dismount in the media_change_client.
+to the server.   For the media_changer, the the mover imports media_change_client.py n which 
+implements load and unload methods.
 So,  mover.py imports media_changer_client which encapsulates the media_changer interface and media_changer_client
 imports udp_client which encapsulates the UDP communications.   On the server side, media changer
 imports dispatching_worker which encapsulates server UDP implementation.
-
-<p>
 So far, we have mentioned modules that are imported with the python "import" command.  Within the
 modules, there are python "new" commands that instantiate the corresponding classes.
 
 <p>
 All clients are themselves clients of the configuration_server server; so, each time they send
 a request to their server, they send a request to the configuration server to get the address
-of their server.   In this way the configuration server is the only which has a hard coded address
-and when each process is started it is given the IP address of its configuration server.
+of their server.   In this way the configuration server is the only server that has a hard coded address.
+When each process starts it is given the IP address and port number of its configuration server.
 <p>
 When a client is instantiated it determines a free UDP port on its machine on which it sends requests
 to its server.
-When the server reads requests it also gets the address (host, port) of the client which sent the request.
-It saves this address and uses it to reply.
+When the server reads a request it also gets the address (host, port) of the client which sent the request
+and uses it to reply.
 <p>
 Client requests are called tickets and they are python dictionaries.  The items in the dictionary
 are agreed upon between the client and the server.   For example the media changer ticket
@@ -2698,46 +2697,59 @@ must contain a volume id and a drive id.
 <p>
 One item required in the ticket dictionary is "work".  The "work" item in the dictionary
 is used in dispatching_worker as a method name and a corresponding method in the server
-is called to perform the work that that the client requests.   For example, the media changer
+is called to perform the work that the client requests.   For example, the media changer
 ticket must contain a "work" item with a value "load"  or "unload" and the media changer
 server has methods named load and unload.
 <p>
-When UDPClient sends the request it first prepends a client identification stamp and a time stamp (which
-serves as a unique identification) to the
+When UDPClient sends a request it first prepends a client identification stamp and a request time stamp (which
+serve as a unique identification) to the
 ticket and stringifies the result.  Then it calculates a CRC of the message and appends a stringified
 version of the CRC to the message.   Finally it sends the message to the server and waits for a response.
 <p>
-The response format is identification number, response message, and server time stamp.  If any response
-does not start with the original identification number or if the wait for the response times out then
-the request is sent again.
+The response format is client timestamp, response message, and server time stamp.  If 
+the client receives any response that 
+does not start with the original client time stamp or if the wait for the response times out then
+the request is resent.   More about this later.
 <p>
 The server implementation of the protocol in DispatchingWorker does a select on a list of read
 file descriptors which includes the socket (host, port) as issued by the the configuration
 server.   The select is repeated if it times out.
 <p>
 When input is detected on the socket, the server reads the request; checks the check sum; unpacks
-and saves the client id, the id number, and the ticket; converts the ticket to a python dictionary; 
+and saves the client id, the client time stamp, and the ticket ; 
+converts the ticket to a python dictionary; 
 and calls the method specified by the "work" item in the ticket.   If any of these things fail
 then the request is ignored presuming the client will resend the request.
 <p>
-The "work" is a text string but python is interpreted and allows runtime interpretation of method
+The "work" is a text string but python is interpreted and allows runtime evaluation of method
 names.  In the media changer the load method is in the media_changer.py module which has imported
 and instantiated a DispatchingWorker class.   When the work method is finished it calls the DispatchingWorker
 method reply_to_caller with a status result ticket.
 <p>
-reply_to_caller builds a stringified reply with the clients unique id, the status ticket, and
+reply_to_caller builds a stringified reply with the client time stamp, the status ticket, and
 its own time stamp.  It sends the reply to the client; saves the clients address, the client message id,
 and the complete reply in case of errors; and waits for more requests.
 <p>
 We save the complete reply in case of errors because we may get a request resent to the server which
-the server has executed the request but whose response was not reliably returned.   Some requests,
+the server has executed but whose response was not reliably returned.   Some requests,
 for example, mounting a tape are not redoable; so, we save the reply and simply resend the reply.
 When DispatchingWorker gets a request it first checks its request dictionary for a request that has the
-same client id and request id and if it finds a match it resends the reply.
+same client id and time stamp and if it finds a match it resends the reply rather than executing the request.
 <p>
-If the request dictionary grows beyond a certain size (currently 1000 entries) then entries older
-than 30 minutes are deleted.
+The request dictionary contains all replies.
+If it grows beyond a certain size (currently 1000 entries) then entries older
+than 10 minutes are deleted.
+<p>
 
+he scheme described so far rquires that servers handle one request at a time and that clients
+queue in the the servers udp input buffer waiting their turn.  This is satisfactory if requests
+are guaranteed to finsih quickly; however, the media changers operation may take a long time to complete
+while other operations might be done simultaneously.   To accomodate this, dispatching_worker was extended
+to allow forking in servers.
+<p>
+The select in dispatching_worker now watches for input from the client socket and a list of pipe
+fds on which the forked servers report their final status.  The parent server process then
+reports this status back to the client.
 <hr>
 <h2><a name="db">
 2 Databases in Enstore
