@@ -71,6 +71,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    self.enprint("make sure tape "+external_label+" is in drive "+\
 	                 drive)
 	    time.sleep( self.mc_config['delay'] )
+	    self.enprint( 'continuing with reply' )
 	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
