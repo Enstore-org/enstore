@@ -20,6 +20,7 @@ ENGLISH_TITLES = {
 		   "checkPNFS" : "(r)Check PNFS for Errors",
 		   "checkdb" : "(e)Scan Db keys",
 		   "chkcrons" : "(r)Make CRON plots",
+                   "chk_prod_code" : "(e)Check Production Code Consistency",
 		   "cleaning_report" : "(e)Get # Cleanings/Tapes",
 		   "copy_ran_file" : "(e)Read 3 Random Files",
 		   "delfile" : "(r)PNFS delete",
