@@ -2068,6 +2068,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         except:
             exc, msg = sys.exc_info()[:2]
             Trace.handle_error(exc,msg)
+            return 0
         return 1
 
     #### DONE
