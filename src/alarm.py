@@ -4,6 +4,7 @@ import time
 import string
 
 # enstore imports
+import enstore_status
 import e_errors
 
 # key to get at a server supplied short text string
@@ -66,7 +67,8 @@ class GenericAlarm:
         # ths simple string has the following format -
         #         servername on node - text string
         # where servername and node are replaced with the appropriate values
-        str = self.source+" on "+self.host+" - "
+        str = "%s on %s at %s - "%(self.source, self.host,
+                                   enstore_status.format_time(self.timedate))
 
         # look in the info dict.  if there is a key "short_text", use it to get
         # the text, else use default text just signaling a problem
