@@ -20,6 +20,10 @@ QUALIFIERS = ""
 
         setupRequired("ftt")
 
+	# aci is the EMASS tape library and admin tool product
+	# the media changer is the only server that interfaces to it
+	setupOptional("aci")
+
         # the setup of python is tricky
         # if user has python declared, set that up and use it
         setupOptional("python")
