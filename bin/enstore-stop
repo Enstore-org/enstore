@@ -164,7 +164,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
     turnoff "$PID_DIR/`uname -n`-log_server*pids"      "log server"
 fi
 
-if [ "${opt_just-}" = "" ];then
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep data`" ];then
     turnoff_s "$PID_DIR/`uname -n`-db_checkpoint_pids*" "db_checkpoint"
     turnoff   "$PID_DIR/`uname -n`-db_deadlock_pids*"   "db_deadlock"
     /bin/rm -f $PID_DIR/db_checkpoint # nothing in this file - delete or else db_checkpoint won't start again
