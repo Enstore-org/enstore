@@ -15,7 +15,7 @@ here=`pwd`
 wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED 2>/dev/null
 rc=$?; if [ $rc -ne 0 ]; then echo "wget VOLUMES_DEFINED FAILED"l exit $rc;fi
 cat VOLUMES_DEFINED | egrep -v 'CLN|null|^Date|^label' >V_D
-rm VOLUMES_DEFINED
+rm -f VOLUMES_DEFINED
 N=`wc V_D| awk '{print $1}'`
 
 
@@ -27,18 +27,18 @@ while [ $done -gt 0 ]; do
 
   cd $here
   loops=`expr $loops + 1`
-  if [ $loops -ge 1000 ]; then echo "TOO MANY LOOPS = $loops, EXIT"; exit 1; fi
+  if [ $loops -ge 1000 ]; then echo "TOO MANY LOOPS = $loops, EXIT"; rm -f V_D;exit 1; fi
 
   # choose a random volume from the list
   ran=`python -c "import whrandom;print whrandom.randint(1,"$N")"`
   tape=`head -n $ran V_D|tail -n 1| awk '{print $1}'`
   wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null
   rc=$?; if [ $rc -ne 0 ]; then echo "wget $tape FAILED "l exit $rc;fi
-  if [ `egrep -c 'NOACCESS|NOTALLOWED' $tape` -ne 0 ]; then continue; fi
+  if [ `egrep -c 'NOACCESS|NOTALLOWED' $tape` -ne 0 ]; then rm -f $tape; continue; fi
   grep /pnfs $tape | grep -v deleted > ${tape}_
-  rm $tape
+  rm -f $tape
   NF=`wc ${tape}_| awk '{print $1}'`
-  if [ $NF -le 0 ]; then continue; fi
+  if [ $NF -le 0 ]; then rm  ${tape}_; continue; fi
 
   # choose a random file on the random volume
   ran=`python -c "import whrandom;print whrandom.randint(1,"$NF")"`
@@ -50,18 +50,18 @@ while [ $done -gt 0 ]; do
   if [ ! -r $F ]; then
     bfid=`echo $file | awk '{print $NF}'`
     info=`enstore file --bfid $bfid 2>/dev/null`
-    if [ $? -ne 0 ]; then continue; fi
+    if [ $? -ne 0 ]; then rm  ${tape}_; continue; fi
     pnfsid=`echo $info | sed -e "s/.*pnfsid': '//" -e "s/'.*//"`
     D=`dirname $F`
     cd $D 2>/dev/null
-    if [ $? -ne 0 ]; then continue; fi
+    if [ $? -ne 0 ]; then rm  ${tape}_; continue; fi
     FN=`cat ".(nameof)($pnfsid)" 2>/dev/null`
-    if [ $? -ne 0 ]; then continue; fi
-    if [ ! -r $FN ]; then continue; fi
+    if [ $? -ne 0 ]; then rm  ${tape}_; continue; fi
+    if [ ! -r $FN ]; then rm  ${tape}_; continue; fi
     file="$FN $R"
     F=$FN
   fi
-  rm ${tape}_
+  rm -f ${tape}_
 
   # ok, just tell the user the name of the file and do another if needed
   # or copy the file to /dev/null if user requested this
@@ -77,7 +77,7 @@ while [ $done -gt 0 ]; do
   done=`expr $done - 1`
 done
 
-rm V_D
+rm -f V_D
 cd $here
 
 exit $RC
