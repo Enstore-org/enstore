@@ -35,13 +35,13 @@ MY_SERVER = "volume_clerk"
 
 #turn byte count into a nicely formatted string
 def capacity_str(x,mode="GB"):
-    x=1.0*x    ## make x floating-point
-    neg=x<0    ## remember the sign of x
-    x=abs(x)   ##  make x positive so that "<" comparisons work
-
     if mode == "GB":
         z = x/1024./1024./1024. # GB
         return "%7.2fGB"%(z,)
+
+    x=1.0*x    ## make x floating-point
+    neg=x<0    ## remember the sign of x
+    x=abs(x)   ##  make x positive so that "<" comparisons work
 
     for suffix in ('B ', 'KB', 'MB', 'GB', 'TB', 'PB'):
         if x <= 1024:
