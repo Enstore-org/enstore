@@ -2,29 +2,28 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+# this script runs as user enstore
+
+node=`hostname -s`
 gang=`gang`
 case $gang in
-  stken) robot="ISD AML/J"
-         ;;
-   d0en) robot="D0 AML/2"
-         ;;
-      *) robot="UNKNOWN"
-          ;;
+   d0en) media=3480
+	 ;;
+  stken) media=DECDLT
+	 ;;
+      *) echo \"$0\" not supported on $gang
+	 exit 1
+	 ;;
 esac
 
-set +u
-. /usr/local/etc/setups.sh
-setup das >/dev/null 2>&1
-set -u
+robot="D0 ADIC AML/2"
 
-volfile=/tmp/ROBOT-VOLUMES-$gang
+volfile=/tmp/ADICROBOT-VOLUMES-$gang
+rm -f $volfile
 
 output=${1:-/dev/tty}
 shift
-if [ `echo $output | grep -c /dev/` -eq 0 ] ; then 
-  rm -f $output
-fi
+[ -f $output ] && rm -f $output
 
 cat << EOF >>$output
 <html> <head> <title>$robot Volume Status Page</title> </head>
@@ -35,36 +34,35 @@ cat << EOF >>$output
 <hr>
 EOF
 
-rm -f $volfile
+do_awk() { awk -v Media=$1 -v Volfile=$2 '
+	   END {do {pipe=sprintf("dasadmin qvolsrange \"%s\" \"\" 1000", Next)
+		    while ((pipe | getline) > 0)
+		      if ( $1 == "volser" && $4 == Media ) print >Volfile
+		      else if ( $0 ~ /^more data/ )	   More++
+		      else if ( $0 ~ /no more data/ )	   More=0
+		      else if ( $0 ~ /next volser/ )	   Next=$3
+		      else if ( $0 ~ /count/ )  	   Count+=$2
+		    close(pipe)
+		   } while ( More > 0 && More < 30 )
+		 print Count}' /dev/null
+	 }
 
-more=1
-nomore="no more data"
-while [ $more -ne 0 ]; do
-  if [ $more -eq 1 ]; then
-     dasadmin qvolsrange "" "" 1000 >$volfile
-  else
-     dasadmin qvolsrange $first "" 1000 >>$volfile
-  fi
-  if [ `grep -c "$nomore" $volfile` -ne 0 ]; then break; fi
-  more=`expr $more + 1`
-  if [ $more -gt 30 ]; then break; fi
-  first=`tail -n1 $volfile | awk '{print $2}'` 
-done
+total=`do_awk $media $volfile`
 
 cat << EOF >>$output
+<h1><center>Total Volumes Fetched : $total</center><h1>
 <h1><center>$robot Volume Fetch Done : `date`</center><h1>
 <hr>
 EOF
 
-#cmd="egrep 'PRF|PRE' $volfile  | egrep -v 'Ejected|DECDLT'"
-cmd="egrep volser $volfile"
+filter="awk -v Media=$media '\$4 == Media'"
 
 cat << EOF >>$output
-<h1> Tapes in the $robot satisfying: $cmd
+<h1>Tapes in the $robot satisfying: "$filter"
 <pre>
 EOF
 
-eval $cmd >>$output
+cat $volfile >>$output
 
 cat << EOF >>$output
 </pre>
@@ -74,10 +72,9 @@ cat << EOF >>$output
 </body>
 EOF
 
-for remote_copy in $*
+for remote_copy
 do
-  if [ `echo $output | grep -c /dev/` -eq 0 -a `echo $remote_copy | grep -c /dev/` -eq 0 ] ; then 
-    echo enrcp $output $remote_copy
-         enrcp $output $remote_copy
+  if [ ! \( -c $output -o -c $remote_copy \) ] ; then
+    enrcp $output $remote_copy
   fi
 done
