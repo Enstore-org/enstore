@@ -12,6 +12,7 @@ PROD=ftt
 
 # version for ups
 VERS=v2_0
+VERSIONFILES=Makefile README ups/INSTALL_NOTE ftt_lib/ftt_version.c
 
 # dependency flags for declares
 DEPEND=
@@ -61,6 +62,7 @@ clean:
 
 
 #
+# - - - - - - - - - - - - - cut here - - - - - - - - - - - - - - - - - 
 #---------------------------------------------------------------------------
 # Standard Product Distribution/Declaration Targets
 #---------------------------------------------------------------------------
