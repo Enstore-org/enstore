@@ -86,6 +86,11 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			Trace.log(e_errors.ERROR, "key %s is missing"  % (detail))
 
 		try:
+			firmware_version = ticket['firmware_version']
+		except:
+			firmware_version = ''
+
+		try:
 			wp = ticket['wp']
 		except:
 			wp = 0
