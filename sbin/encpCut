@@ -85,8 +85,10 @@ product=`echo $productCut | sed -e 's/Cut//'`
 
 if [ $product = "encp" ]; then
   productmate=enstore
+  productUps=""
 elif [ $product = "enstore" ]; then
   productmate=encp
+  productUps="/ups"
 else
   check_status 1 "Do not know anything about $productCut"
 fi
@@ -465,9 +467,9 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
            fi
            ;;
 
-       11) echo "Step $Step:  ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV    `starting`"
+       11) echo "Step $Step:  ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
-                 $UPS_DIR/bin/ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV
+                 $UPS_DIR/bin/ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
                  check_status $? "ups declare"
            fi
            ;;
@@ -482,9 +484,9 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
            fi
            ;;
 
-        13) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV   `starting`"
+        13) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps -m $product.table $product $REV   `starting`"
            if [ "$try" = "doit" ] ; then
-              $UPD_DIR/bin/upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV
+              $UPD_DIR/bin/upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps -m $product.table $product $REV
               check_status $? "upd addproduct"
            fi
            ;;
