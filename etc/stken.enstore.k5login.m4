@@ -1,5 +1,6 @@
 ifelse(HOSTNAME, stkensrv2, `oleynik/cron/stkenmvr20a.fnal.gov@FNAL.GOV', `dnl')
 enstore/cd/hppc.fnal.gov@FNAL.GOV
+enstore/cd/cmspnfs1.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv0.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv1.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv2.fnal.gov@FNAL.GOV
@@ -28,9 +29,9 @@ enstore/cd/stkenmvr17a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr18a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr19a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr23a.fnal.gov@FNAL.GOV
+enstore/cd/stkenmvr24a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr25a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr26a.fnal.gov@FNAL.GOV
-enstore/cd/stkenmvr27a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV

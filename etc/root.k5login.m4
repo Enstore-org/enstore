@@ -5,11 +5,13 @@ bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
 djholm@FNAL.GOV
+ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
 genser@FNAL.GOV
 george@FNAL.GOV
 huangch@FNAL.GOV
 ivm@FNAL.GOV
 jonest@FNAL.GOV
+ifelse(HOSTNAME, cdfensrv1, `kennedy@FNAL.GOV', `dnl')
 moibenko@FNAL.GOV
 neilsen@FNAL.GOV
 oleynik@FNAL.GOV
@@ -22,8 +24,6 @@ tvrdik@FNAL.GOV
 vsergeev@FNAL.GOV
 wellner@FNAL.GOV
 zalokar@FNAL.GOV
-ifelse(HOSTNAME, cdfensrv1, `kennedy@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
 host/rip1.fnal.gov@FNAL.GOV
 host/rip2.fnal.gov@FNAL.GOV
 host/rip3.fnal.gov@FNAL.GOV
@@ -95,6 +95,7 @@ host/d0enmvr48a.fnal.gov@FNAL.GOV
 host/d0enmvr49a.fnal.gov@FNAL.GOV
 host/d0enout1a.fnal.gov@FNAL.GOV
 host/d0enout2a.fnal.gov@FNAL.GOV
+host/cmspnfs1.fnal.gov@FNAL.GOV
 host/stkensrv0.fnal.gov@FNAL.GOV
 host/stkensrv1.fnal.gov@FNAL.GOV
 host/stkensrv2.fnal.gov@FNAL.GOV
@@ -123,9 +124,9 @@ host/stkenmvr17a.fnal.gov@FNAL.GOV
 host/stkenmvr18a.fnal.gov@FNAL.GOV
 host/stkenmvr19a.fnal.gov@FNAL.GOV
 host/stkenmvr23a.fnal.gov@FNAL.GOV
+host/stkenmvr24a.fnal.gov@FNAL.GOV
 host/stkenmvr25a.fnal.gov@FNAL.GOV
 host/stkenmvr26a.fnal.gov@FNAL.GOV
-host/stkenmvr27a.fnal.gov@FNAL.GOV
 host/stkendm1a.fnal.gov@FNAL.GOV
 host/stkendm2a.fnal.gov@FNAL.GOV
 host/stkendm3a.fnal.gov@FNAL.GOV
