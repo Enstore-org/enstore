@@ -65,7 +65,10 @@ class NullDriver(driver.Driver):
         
     def close(self):
         Trace.trace(25, "close")
-        r = os.close(self.fd)
+        try:
+            r = os.close(self.fd)
+        except:
+            pass
         self.fd = -1
         return r
 
