@@ -85,7 +85,7 @@ class FTTDriver(driver.Driver):
                 break
             except ftt.FTTError, detail:
                 Trace.log(e_errors.ERROR, "ftt open dev: %s %s" %(detail, detail.value))
-                if detail.errno in ftt.EBUSY
+                if detail.errno == ftt.EBUSY:
                     time.sleep(5)
                 elif detail.errno == ftt.EROFS:
                     ###XXX HACK!  Tape may have write-protect tab set.  But we really
