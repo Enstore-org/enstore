@@ -2697,6 +2697,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_failed(msg[0], msg[1], error_source=TAPE, dismount_allowed=0)
             #self.send_client_done(self.current_work_ticket, msg[0], msg[1])
             #self.state = self.save_state
+            self.idle()
             return 
         
         self.buffer.set_wrapper(self.wrapper)
