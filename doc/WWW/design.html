@@ -3564,7 +3564,7 @@ association with the Enstore system. ***
 <p>
 Communications between clients and servers is implemented in the python modules udp_client.py
 and dispatching_worker.py which contain the classes UDPclient and DispatchingWorker respectively.
-For example, a mover is a client of the media_changer; i.e., it sends mount and dismount requests
+For example, a mover is a client of the edia_changer; i.e., it sends mount and dismount requests
 to the media_changer and waits for replies.  The client and the server may run on the same or
 different machines and messages, that is requests and replies, are passed using the UDP network protocol.
 UDP is not a guaranteed reliable protocol but the Enstore protocols, described later, implement reliability.
@@ -3654,11 +3654,11 @@ reports this status back to the client.
 1.5 Trace 
 </h3>
 Trace is a utility to trace execution of code through information saved in
-the circular buffer, resided in a shared memory and available via special
+the circular buffer, residing in shared memory and available via special
 commands. It was adapted from previous work where it has been used in the
 real-time environment and is designed to have a minimal impact on the
 performance of components of the system, as well as the overall performance.
-Trace is widely used in all the <em>Enstore</em> modules.
+Trace is widely used in all of the <em>Enstore</em> modules.
 <hr>
 <h2><a name="db">
 2 Databases in Enstore
@@ -3682,9 +3682,9 @@ Support performing daily backups of the database, log, and journal files.
 <li>
 Support recovery of corrupted databases using the journal or log files.
 <li>
-Support "python dictionary" interface.
+Support the "python dictionary" interface.
 </ul>
-The directory that contains all database related files is called
+The directory that contains all database related files is called the
 "database directory" and is defined in configuration.
 
 <h3><a name="current_db">
@@ -3756,16 +3756,16 @@ recovery.
 It is readily obtainable and free.
 </ul>
 
-<p> WE have examined Lib TP, and find that it meets the current mdest database
-requirements of the project.  We have exploited "freeware" aspect
+<p> We have examined LibTP, and find that it meets the current modest database
+requirements of the project.  We have exploited the "freeware" aspect
 of it putting up many test stands.
 
-We could replace LibTP a Run II standard
+We could replace LibTP with a Run II standard
 database. However, we have no definite plans to do this, given our experience
 with the tool, and the lack of any driving requirement to do this.
 
 <p>
-In addition to databases, file clerk and volume clerk also maintain
+In addition to the databases, the File Clerk and Volume Clerk also maintain
 separate journal files.
 These journal files can be used to recover databases when they can not
 be recovered under normal circumstances.
@@ -3781,11 +3781,11 @@ any time or routinely using a cron job.
 Currently the files that are backed up are database
 files which contain the persistent data, log files which record the
 transactions and journal files which are secondary transaction records
-implemented to further help the recovery of database if there is a need.
-Enstore does live backup.
+implemented to further help the recovery of the database if there is a need.
+Enstore does live backups.
 It copies those files to a
 designated directory on a remote host.
-The remote host and directory are defined in configuration server.
+The remote host and directory are defined in the Configuration Server.
 The backup procedure will perform the following actions:
 <p>
 <center><table>
@@ -3816,7 +3816,7 @@ journal file, release database access)
 <td valign=top>Archives creation
 <td valign=top><ul>
 <li>creates new directory on remote host under designated
-"root archival" director (name dbase.time_stamp)
+"root archival" directory (name dbase.time_stamp)
 <li>moves all the tar files to this area
 </ul>
 <tr>
@@ -3883,7 +3883,7 @@ than a specified date
 
 In addition, tools will be provided to implement the administrative functions
 mentioned in the D0 Functional Specification section of this document.
-
+<p>
 <hr>
 <h2><a name="protocol">
 3 Communication Protocols
@@ -3891,7 +3891,7 @@ mentioned in the D0 Functional Specification section of this document.
 The base protocol for Enstore is UDP for "brief" messages and TCP for data
 transfers.
 
-UDP message sizes are all less than size of maximum UDP packet size so the
+UDP message sizes are all less than the size of the maximum UDP packet size so the
 protocol is very simple.
 
 <p>
@@ -3902,8 +3902,8 @@ Each transmission has a unique ID, timeout and maximum number of retries
 associated with it.  The timeout allows for debugging.
 For each reception, the "message" is checked against messages received to see
 if the reception is a repeat. If the reception is a *repeat request*, send a
-saved copy of the response; if the reception is *repeat response*, just
-ignored it. This will take care of the case when a timeout/retry happens just
+saved copy of the response; if the reception is a *repeat response*, just
+ignore it. This will take care of the case when a timeout/retry happens just
 before a response is received.
 <p>
 Some transfers do not require replies and using a described UDP communication
@@ -3936,19 +3936,18 @@ communicating.
 <li>
 The Configuration Server returns the location of the appropriate File Clerk.
 <li>
-<em>encp</em> asks the File Clerk the information about the file with given bit file ID.
+<em>encp</em> asks the File Clerk for the information about the file with the given bit file ID.
 <li>
-The File Clerk asks the Volume Clerk information for the given Volume Label
+The File Clerk asks the Volume Clerk for information for the given Volume Label
 <li>
 The Volume Clerk returns the information to the File Clerk
-
 <li>
 The File Clerk returns file information containing the Volume Label and the Library Manager name
 <li>
 <em>encp</em> asks the Configuration Server the location of the Library Manager
 dealing with this File Family
 <li>
-The Configuration Server returns the location of the Library manager
+The Configuration Server returns the location of the Library Manager
 <li>
 <em>encp</em> sends the read request to the Library Manager
 <li>
@@ -3957,17 +3956,17 @@ requested file has a read access.
 <li>
 The Volume Clerk confirms access permission
 <li>
-The Library Manager puts read request into internal request queue and
-tells the <em>encp</em> that the request has been accepted
+The Library Manager puts the read request into an internal request queue and
+tells <em>encp</em> that the request has been accepted
 <li>
-The Library Manager finds next potentially available mover in its list
-of movers and sends summon message to it initiating mover dialog with
-this Library manager
+The Library Manager finds the next potentially available Mover in its list
+of Movers and sends a summon message to it initiating Mover dialog with
+this Library Manager
 <li>
-The Mover "wakes up" receiving summon message from the Library Manager
+The Mover "wakes up" receiving the summon message from the Library Manager
 and asks the Library Manager if there is any work for it to do.
 <li>
-The Library Manager moves the file internally from request queue to
+The Library Manager moves the file internally from the request queue to the
 work queue. 
 <li>
 The Library Manager tells the Mover which file to read and which volume to
@@ -4018,14 +4017,14 @@ Manager.
 <em>encp</em> sends the write request to the Library Manager, including file
 family and number of bytes.
 <li>
-The Library Manager puts write request into internal request queue and tells
-the <em>encp</em> that the request has been accepted.
+The Library Manager puts the write request into an internal request queue and tells
+<em>encp</em> that the request has been accepted.
 <li>
-The Library Manager finds next potentially available mover in its list
-of movers and sends summon message to it initiating mover dialog with
-this Library manager
+The Library Manager finds the next potentially available Mover in its list
+of Movers and sends a summon message to it initiating Mover dialog with
+this Library Manager
 <li>
-The Mover "wakes up" receiving summon message from the Library Manager
+The Mover "wakes up" receiving a summon message from the Library Manager
 and asks the Library Manager if there is any work for it to do.
 <li>
 The Library Manager asks the Volume Clerk for a volume for the file with the
@@ -4049,7 +4048,7 @@ The Mover tells the Volume Clerk that he is appending to this volume.
 <li>
 The Volume Clerk acknowledges this. 
 <li>
-<em>Encp</em> sends the data to the Mover.
+<em>encp</em> sends the data to the Mover.
 <li>
 The Mover tells the Volume Clerk that the append operation is done and how much
 space is left on the volume.
@@ -4063,8 +4062,7 @@ The File Clerk responds with the bit file id.
 The Mover tells <em>encp</em> that the file has been written and sends the bit
 file ID and the crc.
 <li>
-<em>Encp</em> tells <em>pnfs</em> that the file has been created, and the bfid should
-be stored.
+<em>encp</em> tells <em>pnfs</em> that the file has been created, and the bfid should be stored.
 <li>
 The write has completed.
 <li>
@@ -4116,72 +4114,72 @@ Enstore processes must be up and running.  Therefore, the servers are
 robust, and run on reliable computers. Nevertheless, it is good to consider
 the intrinsic ability for the system to recover when a process or
 system running a process crashes.  This is summarized in the table below:
-
+<p>
 
 <center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
 
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Process</B></FONT></FONT></TH>
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Where is State?</B></FONT></FONT></TH>
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Effect of Crash</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><B>Process</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><B>Where is State?</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><B>Effect of Crash</B></FONT></FONT></TH>
 
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><em>Encp</em> </FONT> </TD>
-<TD> <P><FONT SIZE=2>In the user's <em>encp</em> transfer command </FONT> </TD>
-<TD> <P><FONT SIZE=2>Transfer is canceled/aborted </FONT> </TD>
+<TD> <P><em>Encp</em> </FONT> </TD>
+<TD> <P>In the user's <em>encp</em> transfer command </FONT> </TD>
+<TD> <P>Transfer is canceled/aborted </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Configuration Server </FONT> </TD>
-<TD> <P><FONT SIZE=2>Static configuration file </FONT> </TD>
-<TD> <P><FONT SIZE=2>Wait for restart of server </FONT> </TD>
+<TD> <P>Configuration Server </FONT> </TD>
+<TD> <P>Static configuration file </FONT> </TD>
+<TD> <P>Wait for restart of server </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>File Clerk </FONT> </TD>
-<TD> <P><FONT SIZE=2>Persistent database table </FONT> </TD>
-<TD> <P><FONT SIZE=2>Wait for restart of server </FONT> </TD>
+<TD> <P>File Clerk </FONT> </TD>
+<TD> <P>Persistent database table </FONT> </TD>
+<TD> <P>Wait for restart of server </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Volume Clerk </FONT> </TD>
-<TD> <P><FONT SIZE=2>Persistent database table </FONT> </TD>
-<TD> <P><FONT SIZE=2>Wait for restart of server </FONT> </TD>
+<TD> <P>Volume Clerk </FONT> </TD>
+<TD> <P>Persistent database table </FONT> </TD>
+<TD> <P>Wait for restart of server </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Library Manager </FONT> </TD>
-<TD> <P><FONT SIZE=2>In-memory lists of what work is queued, and what work
+<TD> <P>Library Manager </FONT> </TD>
+<TD> <P>In-memory lists of what work is queued, and what work
 is at what mover </FONT> </TD>
-<TD> <P><FONT SIZE=2>Recovery of state is not yet implemented. Recovery of state is possible through <em>encp</em> retries. </FONT> </TD>
+<TD> <P>Recovery of state is not yet implemented. Recovery of state is possible through <em>encp</em> retries. </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Mover </FONT> </TD>
-<TD> <P><FONT SIZE=2>If busy, the current transfer + the current volume </FONT> </TD>
-<TD> <P><FONT SIZE=2><em>Encp</em> retries writes, exits with errors on read. </FONT> </TD>
+<TD> <P>Mover </FONT> </TD>
+<TD> <P>If busy, the current transfer + the current volume </FONT> </TD>
+<TD> <P><em>Encp</em> retries writes, exits with errors on read. </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><em>pnfs</em> NFS Servers </FONT> </TD>
-<TD> <P><FONT SIZE=2>DBM database "file metadata" </FONT> </TD>
-<TD> <P><FONT SIZE=2>NFS retry mechanisms </FONT> </TD>
-
-
-<TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Media Changer </FONT> </TD>
-<TD> <P><FONT SIZE=2>In memory lists of work given to library micro </FONT> </TD>
-<TD> <P><FONT SIZE=2>State refreshed by Enstore UDP retry protocol mechanism </FONT> </TD>
+<TD> <P><em>pnfs</em> NFS Servers </FONT> </TD>
+<TD> <P>DBM database "file metadata" </FONT> </TD>
+<TD> <P>NFS retry mechanisms </FONT> </TD>
 
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Log Server </FONT> </TD>
-<TD> <P><FONT SIZE=2>None </FONT> </TD>
-<TD> <P><FONT SIZE=2>Logs are not written </FONT> </TD>
+<TD> <P>Media Changer </FONT> </TD>
+<TD> <P>In memory lists of work given to library micro </FONT> </TD>
+<TD> <P>State refreshed by Enstore UDP retry protocol mechanism </FONT> </TD>
+
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Inquisitor </FONT> </TD>
-<TD> <P><FONT SIZE=2>None </FONT> </TD>
-<TD> <P><FONT SIZE=2>Displays are not refreshed until restart </FONT> </TD>
+<TD> <P>Log Server </FONT> </TD>
+<TD> <P>None </FONT> </TD>
+<TD> <P>Logs are not written </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P>Inquisitor </FONT> </TD>
+<TD> <P>None </FONT> </TD>
+<TD> <P>Displays are not refreshed until restart </FONT> </TD>
 
 
 
 </TABLE></center>
-
+<p>
 
 <h3><a name="edet">
 4.3 Detailed Error Discussion
@@ -4227,31 +4225,31 @@ interim, Enstore will make the following working assumptions:
 <center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
 	<TR VALIGN=TOP>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Error Code</B></FONT></FONT></TH>
+			<P><FONT COLOR="#0000ff"><B>Error Code</B></FONT></FONT></TH>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Description</FONT></FONT></TH>
+			<P><FONT COLOR="#0000ff">Description</FONT></FONT></TH>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Administrator</FONT></FONT></P>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+			<P><FONT COLOR="#0000ff">Administrator</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff">Responsibility</FONT></FONT></TH>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Mover</FONT></FONT></P>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+			<P><FONT COLOR="#0000ff">Mover</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff">Responsibility</FONT></FONT></TH>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Library Manager</FONT></FONT></P>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+			<P><FONT COLOR="#0000ff">Library Manager</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff">Responsibility</FONT></FONT></TH>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2><em>encp</em></FONT></FONT></P>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+			<P><FONT COLOR="#0000ff"><em>encp</em></FONT></FONT></P>
+			<P><FONT COLOR="#0000ff">Responsibility</FONT></FONT></TH>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Retry</FONT></FONT></TH>
+			<P><FONT COLOR="#0000ff">Retry</FONT></FONT></TH>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Volume </FONT></FONT>
+			<P><FONT COLOR="#0000ff">Volume </FONT></FONT>
 			</P>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>State</FONT></FONT></TH>
+			<P><FONT COLOR="#0000ff">State</FONT></FONT></TH>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Drive </FONT></FONT>
+			<P><FONT COLOR="#0000ff">Drive </FONT></FONT>
 			</P>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>State</FONT></FONT></TH>
+			<P><FONT COLOR="#0000ff">State</FONT></FONT></TH>
 	</TR>
 	<TR>
 		<TH COLSPAN=9 VALIGN=TOP>
@@ -4262,33 +4260,33 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR>
 		<TH COLSPAN=9 VALIGN=TOP>
-			<P><FONT COLOR="#ff3333"><FONT SIZE=2>Volume Write Errors</FONT></FONT></TH>
+			<P><FONT COLOR="#ff3333">Volume Write Errors</FONT></FONT></TH>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_NOTAPE</B> </FONT>
+			<P><B>WRITE_NOTAPE</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Requested volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
+			<P>Requested volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check volume in morning </FONT>
+			<P>Check volume in morning </FONT>
 		</TD> 
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P>Mark volume no access</FONT></P>
 			<P><BR>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Retry </FONT>
+			<P>Retry </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P>Yes </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No access </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -4296,31 +4294,31 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_TAPEBUSY</B> </FONT>
+			<P><B>WRITE_TAPEBUSY</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Requested volume is in another drive. Enstore bug,
+			<P>Requested volume is in another drive. Enstore bug,
 			or some other system has mounted volume or library micro put
 			volume elsewhere. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check volume in morning </FONT>
+			<P>Check volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P>Mark volume no access</FONT></P>
 			<P><BR>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Retry </FONT>
+			<P>Retry </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P>Yes </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No access </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -4328,170 +4326,170 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_DRIVEBUSY</B> </FONT>
+			<P><B>WRITE_DRIVEBUSY</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>A volume is already in drive. Enstore bug or
+			<P>A volume is already in drive. Enstore bug or
 			misconfiguration. Note: mover waits for automatic cleaning tape to
 			be ejected. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and configuration in morning </FONT>
+			<P>Check drive and configuration in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline the drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Retry </FONT>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>Retry </FONT>
+		</TD>
+		<TD>
+			<P>Yes </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_BADMOUNT</B> </FONT>
+			<P><B>WRITE_BADMOUNT</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mount failure or load operation failed. Must
+			<P>Mount failure or load operation failed. Must
 			assume jammed volume. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
-			<P><FONT SIZE=2>Offline the drive </FONT>
+			<P>Mark volume no access</FONT></P>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Retry </FONT>
+			<P>Retry </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P>Yes </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No access </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_BADSPACE</B> </FONT>
+			<P><B>WRITE_BADSPACE</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>EOD cookie does not produce EOD. Wrong volume,
+			<P>EOD cookie does not produce EOD. Wrong volume,
 			Enstore bug or drive space error. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
-			<P><FONT SIZE=2>Offline the drive </FONT>
+			<P>Mark volume no access</FONT></P>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Retry </FONT>
+			<P>Retry </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P>Yes </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No access </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_ERROR</B> </FONT>
+			<P><B>WRITE_ERROR</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Error writing data block or file mark. </FONT>
+			<P>Error writing data block or file mark. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive in morning </FONT>
+			<P>Check drive in morning </FONT>
 			</P>
 			<P><BR><BR>
 			</P>
-			<P><FONT SIZE=2>Check volume in morning </FONT>
+			<P>Check volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>If several errors occur with different volumes,
+			<P>If several errors occur with different volumes,
 			offline the drive.</FONT></P>
-			<P><FONT SIZE=2>If several errors occurs with different drives,
+			<P>If several errors occurs with different drives,
 			mark volume as read only </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Retry </FONT>
+			<P>Retry </FONT>
 			</P>
 			<P><BR><BR>
 			</P>
-			<P><FONT SIZE=2>Retry </FONT>
+			<P>Retry </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P>Yes </FONT>
 			</P>
 			<P><BR><BR>
 			</P>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P>Yes </FONT>
 		</TD>
 		<TD>
 			<P><BR><BR>
 			</P>
 			<P><BR><BR>
 			</P>
-			<P><FONT SIZE=2>Read Only</FONT></P>
+			<P>Read Only</FONT></P>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_EOT</B> </FONT>
+			<P><B>WRITE_EOT</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Hit EOT while writing data block or file mark. </FONT>
-		</TD>
-		<TD>
-			<P><BR>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Mark volume as full and read only </FONT>
+			<P>Hit EOT while writing data block or file mark. </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Retry </FONT>
+			<P>Mark volume as full and read only </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Read only </FONT>
+			<P>Retry </FONT>
+		</TD>
+		<TD>
+			<P>Yes </FONT>
+		</TD>
+		<TD>
+			<P>Read only </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -4499,79 +4497,76 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_UNLOAD</B> </FONT>
+			<P><B>WRITE_UNLOAD</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Error unloading volume from drive. Must assume
+			<P>Error unloading volume from drive. Must assume
 			jammed volume. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
-			<P><FONT SIZE=2>Offline the drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Not involved </FONT>
+			<P>Mark volume no access</FONT></P>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>Not involved </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P><BR>
+		</TD>
+		<TD>
+			<P>No access </FONT>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_UNMOUNT</B> </FONT>
+			<P><B>WRITE_UNMOUNT</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Error unmounting volume. Volume is hanging in the
+			<P>Error unmounting volume. Volume is hanging in the
 			drive. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
-			<P><FONT SIZE=2>Offline the drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Not involved </FONT>
+			<P>Mark volume no access</FONT></P>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>Not involved </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P><BR>
+		</TD>
+		<TD>
+			<P>No access </FONT>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_NOBLANKS</B> </FONT>
+			<P><B>WRITE_NOBLANKS</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No more blank volumes. </FONT>
+			<P>No more blank volumes. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Administrator should be paged.</FONT></P>
-			<P><FONT SIZE=2>DAQ should switch to alternate library. </FONT>
-		</TD>
-		<TD>
-			<P><BR>
+			<P>Administrator should be paged.</FONT></P>
+			<P>DAQ should switch to alternate library. </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -4580,7 +4575,10 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P><BR>
+		</TD>
+		<TD>
+			<P>No </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -4591,13 +4589,13 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>WRITE_MOVER_CRASH</B></FONT></TD>
+			<P><B>WRITE_MOVER_CRASH</B></FONT></TD>
 		<TD>
-			<P><FONT SIZE=2>If mover is connected to an <em>encp</em>, <em>encp</em> will notice
+			<P>If mover is connected to an <em>encp</em>, <em>encp</em> will notice
 			its sockets being torn down prematurely. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -4606,16 +4604,16 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume as no access, retry </FONT>
+			<P>Mark volume as no access, retry </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P>Yes </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No access </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR>
@@ -4627,21 +4625,21 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR>
 		<TH COLSPAN=9>
-			<P><FONT COLOR="#ff3333"><FONT SIZE=2><B>Volume Read Errors</B></FONT></FONT></TH>
+			<P><FONT COLOR="#ff3333"><B>Volume Read Errors</B></FONT></FONT></TH>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_NOTAPE</B> </FONT>
+			<P><B>READ_NOTAPE</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Requested volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
+			<P>Requested volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
 
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check volume in morning </FONT>
+			<P>Check volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P>Mark volume no access</FONT></P>
 			<P><BR>
 		</TD>
 		<TD>
@@ -4651,10 +4649,10 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No access </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -4662,18 +4660,18 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_TAPE_BUSY</B> </FONT>
+			<P><B>READ_TAPE_BUSY</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Requested volume is in another drive. Enstore bug,
+			<P>Requested volume is in another drive. Enstore bug,
 			or some other system has mounted volume or library micro put
 			volume elsewhere. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check volume in morning </FONT>
+			<P>Check volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P>Mark volume no access</FONT></P>
 			<P><BR>
 		</TD>
 		<TD>
@@ -4683,10 +4681,10 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No access </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -4694,310 +4692,310 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_DRIVEBUSY</B> </FONT>
+			<P><B>READ_DRIVEBUSY</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>A volume is already in drive. Enstore bug or
+			<P>A volume is already in drive. Enstore bug or
 			misconfiguration. Note: mover waits for automatic cleaning tape to
 			be ejected. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and configuration in morning </FONT>
+			<P>Check drive and configuration in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline the drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Retry </FONT>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Yes </FONT>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>Retry </FONT>
+		</TD>
+		<TD>
+			<P>Yes </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_BADMOUNT</B> </FONT>
+			<P><B>READ_BADMOUNT</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mount failure or load operation failed. Must
+			<P>Mount failure or load operation failed. Must
 			assume jammed volume. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
-			<P><FONT SIZE=2>Offline the drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
+			<P>Mark volume no access</FONT></P>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>No access </FONT>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_BADLOCATE</B> </FONT>
+			<P><B>READ_BADLOCATE</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Failed space or initial CRC's don't match. Either
+			<P>Failed space or initial CRC's don't match. Either
 			file location cookie is corrupted, wrong volume in the drive or
 			drive cannot space properly. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
-			<P><FONT SIZE=2>Offline the drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
+			<P>Mark volume no access</FONT></P>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>No access </FONT>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_ERROR</B> </FONT>
+			<P><B>READ_ERROR</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Error reading data block. Run of the mill read
+			<P>Error reading data block. Run of the mill read
 			error. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive in morning </FONT>
+			<P>Check drive in morning </FONT>
 			</P>
 			<P><BR><BR>
 			</P>
-			<P><FONT SIZE=2>Check volume in morning </FONT>
+			<P>Check volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>If several errors occur with different volumes,
+			<P>If several errors occur with different volumes,
 			offline the drive.</FONT></P>
-			<P><FONT SIZE=2>If several errors occurs with different drives,
+			<P>If several errors occurs with different drives,
 			mark volume as read only </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Retry </FONT>
+			<P>Retry </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Yes</FONT></P>
+			<P>Yes</FONT></P>
 			<P><BR><BR>
 			</P>
-			<P><FONT SIZE=2>No </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
 			<P><BR><BR>
 			</P>
 			<P><BR><BR>
 			</P>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No access </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_COMP_CRC</B> </FONT>
+			<P><B>READ_COMP_CRC</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>CRC mismatch Drive and the volume are suspicious.
+			<P>CRC mismatch Drive and the volume are suspicious.
 			Corrupt file location cookie, drive space error, wrong volume in
 			the drive, etc. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume as no access</FONT></P>
-			<P><FONT SIZE=2>Offline drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
+			<P>Mark volume as no access</FONT></P>
+			<P>Offline drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>No access </FONT>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_EOT</B> </FONT>
+			<P><B>READ_EOT</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Hit EOT when reading. Corrupt file location
+			<P>Hit EOT when reading. Corrupt file location
 			cookie, drive space error, or wrong volume in the drive. Should
 			have hit an EOF. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume as no access</FONT></P>
-			<P><FONT SIZE=2>Offline drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
+			<P>Mark volume as no access</FONT></P>
+			<P>Offline drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>No access </FONT>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_EOD</B> </FONT>
+			<P><B>READ_EOD</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Hit EOD when reading. Corrupt file location
+			<P>Hit EOD when reading. Corrupt file location
 			cookie, drive space error, or wrong volume in the drive. Should
 			have hit an EOF. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume as no access</FONT></P>
-			<P><FONT SIZE=2>Offline drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
+			<P>Mark volume as no access</FONT></P>
+			<P>Offline drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>No access </FONT>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_UNLOAD</B> </FONT>
+			<P><B>READ_UNLOAD</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Error unloading volume from drive. Must assume
+			<P>Error unloading volume from drive. Must assume
 			jammed volume. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
-			<P><FONT SIZE=2>Offline the drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Not involved </FONT>
+			<P>Mark volume no access</FONT></P>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>Not involved </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P><BR>
+		</TD>
+		<TD>
+			<P>No access </FONT>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_UNMOUNT</B> </FONT>
+			<P><B>READ_UNMOUNT</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Error when unmounting volume. Volume is hanging in
+			<P>Error when unmounting volume. Volume is hanging in
 			the drive. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+			<P>Check drive and volume in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access</FONT></P>
-			<P><FONT SIZE=2>Offline the drive </FONT>
-		</TD>
-		<TD>
-			<P><BR>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Not involved </FONT>
+			<P>Mark volume no access</FONT></P>
+			<P>Offline the drive </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No access </FONT>
+			<P>Not involved </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P><BR>
+		</TD>
+		<TD>
+			<P>No access </FONT>
+		</TD>
+		<TD>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>READ_MOVER_CRASH</B></FONT></TD>
+			<P><B>READ_MOVER_CRASH</B></FONT></TD>
 		<TD>
-			<P><FONT SIZE=2>If a Mover is connected to an <em>encp</em>, <em>encp</em> will
+			<P>If a Mover is connected to an <em>encp</em>, <em>encp</em> will
 			notice its sockets being torn down prematurely. The volume is tied
 			up at a mover. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check volume and drive in the morning </FONT>
+			<P>Check volume and drive in the morning </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -5006,16 +5004,16 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume no access </FONT>
+			<P>Mark volume no access </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No Access </FONT>
+			<P>No Access </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 	<TR>
@@ -5027,29 +5025,29 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR>
 		<TH COLSPAN=9>
-			<P><FONT COLOR="#ff3333"><FONT SIZE=2><B>Other Errors</B></FONT></FONT></TH>
+			<P><FONT COLOR="#ff3333"><B>Other Errors</B></FONT></FONT></TH>
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>ENCP_GONE</B> </FONT>
+			<P><B>ENCP_GONE</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>User has gone away while request is queued. </FONT>
-		</TD>
-		<TD>
-			<P><BR>
-		</TD>
-		<TD>
-			<P><FONT SIZE=2>Unilateral unbind </FONT>
+			<P>User has gone away while request is queued. </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
+			<P>Unilateral unbind </FONT>
+		</TD>
+		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P><BR>
+		</TD>
+		<TD>
+			<P>No </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -5060,16 +5058,16 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>TCP_HUNG</B> </FONT>
+			<P><B>TCP_HUNG</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>It appears that the data TCP link is hung.</FONT>
+			<P>It appears that the data TCP link is hung.</FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check with user in morning </FONT>
+			<P>Check with user in morning </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Compute an anticipated transfer time for every
+			<P>Compute an anticipated transfer time for every
 			socket operation and abort the transfer if the actual transfer
 			takes more than three times the expected value. </FONT>
 		</TD>
@@ -5080,7 +5078,7 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>No </FONT>
+			<P>No </FONT>
 		</TD>
 		<TD>
 			<P><BR>
@@ -5091,10 +5089,10 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>LM_CRASH</B> </FONT>
+			<P><B>LM_CRASH</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Library Manager crashes, and loses its queue of
+			<P>Library Manager crashes, and loses its queue of
 			pending work. The <em>encp's</em> will never be called back, and will wait
 			forever. </FONT>
 		</TD>
@@ -5108,7 +5106,7 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Ping Library Manager, every N mins (30) to see if
+			<P>Ping Library Manager, every N mins (30) to see if
 			its request has gotten lost. </FONT>
 		</TD>
 		<TD>
@@ -5123,18 +5121,18 @@ interim, Enstore will make the following working assumptions:
 	</TR>
 	<TR VALIGN=TOP>
 		<TD>
-			<P><FONT SIZE=2><B>MOVER_CRASH</B></FONT></TD>
+			<P><B>MOVER_CRASH</B></FONT></TD>
 		<TD>
-			<P><FONT SIZE=2>Mover is idle. The system degrades. </FONT>
+			<P>Mover is idle. The system degrades. </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Check drive in morning </FONT>
+			<P>Check drive in morning </FONT>
 		</TD>
 		<TD>
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Remove from list when mover fails to respond to
+			<P>Remove from list when mover fails to respond to
 			summon </FONT>
 		</TD>
 		<TD>
@@ -5147,7 +5145,7 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Offline </FONT>
+			<P>Offline </FONT>
 		</TD>
 	</TR>
 </TABLE></center>
@@ -5279,7 +5277,7 @@ transfers of data. Volume import is not as easy as export and, therefore, it is 
 transfers.
 
 Planning is important.
-Tapes in a robot require special labels so that can be automatically
+Tapes in a robot require special labels that can be automatically
 scanned and placed in the robot. The labels must be unique within a robot and
 within an Enstore system. You will need to procure tape volumes with labels
 meeting these requirements. Imported tapes are read-only in Enstore. (Details
@@ -5527,11 +5525,11 @@ that will most likely be used in conjunction with the EMASS robot.
 <h3>Preliminary Rates Measurements:</h3>
 <center><table cols=5 width="80%">
 <tr>
-<td> Device
-<td> Writing
-<td> Reading
-<td> Network
-<td> "Mem->tape"
+<td> <B>Device</B>
+<td> <B>Writing</B>
+<td> <B>Reading</B>
+<td> <B>Network</B>
+<td> <B>"Mem->tape"</B>
 <tr>
 <td> &nbsp;
 <td> (MB/S)
@@ -5584,14 +5582,14 @@ that will most likely be used in conjunction with the EMASS robot.
 <center><table cols=3 width="40%">
 <tr>
 <td> &nbsp;
-<td> Mover
-<td> User's <em>Encp</em>
+<td> <B>Mover</B>
+<td> <B>User's <em>Encp</em></B>
 <tr>
-<td> no crc
+<td> <B>no crc</B>
 <td> 5-10%
 <td> 5-10%
 <tr>
-<td> crc
+<td> <B>crc</B>
 <td> 10-20%
 <td> 10-20%
 </table></center>
@@ -5605,141 +5603,141 @@ that will most likely be used in conjunction with the EMASS robot.
 Below is an (incomplete) summary of interfaces that are intrinsic to
 the Enstore software. They are specified and coded as
 part of the software project.
-
+<p>
 <center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
 
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Function</B></FONT></FONT></TH>
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Person</B></FONT></FONT></TH>
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Software</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><B>Function</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><B>Person</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><B>Software</B></FONT></FONT></TH>
 
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Initiate a specific transfer between tape and disk </FONT> </TD>
-<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
-<TD> <P><FONT SIZE=2><em>encp</em> </FONT> </TD>
+<TD> <P>Initiate a specific transfer between tape and disk </FONT> </TD>
+<TD> <P>Experimenter </FONT> </TD>
+<TD> <P><em>encp</em> </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Organize names </FONT> </TD>
-<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
-<TD> <P><FONT SIZE=2><em>pnfs</em> </FONT> </TD>
+<TD> <P>Organize names </FONT> </TD>
+<TD> <P>Experimenter </FONT> </TD>
+<TD> <P><em>pnfs</em> </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Choose library to write to </FONT> </TD>
-<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
-<TD> <P><FONT SIZE=2><em>pnfs</em> </FONT> </TD>
+<TD> <P>Choose library to write to </FONT> </TD>
+<TD> <P>Experimenter </FONT> </TD>
+<TD> <P><em>pnfs</em> </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Create file families, administer width </FONT> </TD>
-<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
-<TD> <P><FONT SIZE=2><em>pnfs</em> </FONT> </TD>
+<TD> <P>Create file families, administer width </FONT> </TD>
+<TD> <P>Experimenter </FONT> </TD>
+<TD> <P><em>pnfs</em> </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Current status on web </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administrator </FONT> </TD>
-<TD> <P><FONT SIZE=2>Inquisitor </FONT> </TD>
+<TD> <P>Current status on web </FONT> </TD>
+<TD> <P>Enstore Administrator </FONT> </TD>
+<TD> <P>Inquisitor </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Summary status on Web </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administrator </FONT> </TD>
-<TD> <P><FONT SIZE=2>Inquisitor </FONT> </TD>
+<TD> <P>Summary status on Web </FONT> </TD>
+<TD> <P>Enstore Administrator </FONT> </TD>
+<TD> <P>Inquisitor </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Routine periodic monitoring </FONT> </TD>
-<TD> <P><FONT SIZE=2>TBD </FONT> </TD>
-<TD> <P><FONT SIZE=2>Patrol  (or TBD?) + Alarm module </FONT> </TD>
+<TD> <P>Routine periodic monitoring </FONT> </TD>
+<TD> <P>TBD </FONT> </TD>
+<TD> <P>Patrol  (or TBD?) + Alarm module </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Move volumes between shelf and library </FONT> </TD>
-<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+<TD> <P>Move volumes between shelf and library </FONT> </TD>
+<TD> <P>Experimenter </FONT> </TD>
+<TD> <P>Enstore Administration Utility </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Move volumes between shelf and out-of-system (includes new volumes) </FONT> </TD>
-<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+<TD> <P>Move volumes between shelf and out-of-system (includes new volumes) </FONT> </TD>
+<TD> <P>Experimenter </FONT> </TD>
+<TD> <P>Enstore Administration Utility </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Drain system </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administrator  </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+<TD> <P>Drain system </FONT> </TD>
+<TD> <P>Enstore Administrator  </FONT> </TD>
+<TD> <P>Enstore Administration Utility </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Shutdown system </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administrator </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+<TD> <P>Shutdown system </FONT> </TD>
+<TD> <P>Enstore Administrator </FONT> </TD>
+<TD> <P>Enstore Administration Utility </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>(Re)Start system </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administrator </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+<TD> <P>(Re)Start system </FONT> </TD>
+<TD> <P>Enstore Administrator </FONT> </TD>
+<TD> <P>Enstore Administration Utility </FONT> </TD>
 
 </TABLE></center>
 
 <p> Interfacing to an experiment means placing Enstore in a larger
 system context. 
  From the point of view of Enstore with network attached tapes, there is an
-Enstore system which interfaces to the rest of D0 on at the NIC-card cable
+Enstore system which interfaces to the rest of D0 on the NIC-card cable
 connector. In addition to the interfaces to the user and administrators (which
 are intrinsic to Enstore software), there are other miscellaneous interface
 issues associated with a real instance of the software, since the whole system
 must conform to the Experiments, Division's and Laboratories system
 constraints:
-
+<P>
 <center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
 
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Type</FONT></FONT></TH>
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Constraint</FONT></FONT></TH>
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Imposed by</FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><B>Type</FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><B>Constraint</FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><B>Imposed by</FONT></FONT></TH>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Network </FONT> </TD>
-<TD> <P><FONT SIZE=2>Conforming Physical Media </FONT> </TD>
-<TD> <P><FONT SIZE=2>System </FONT> </TD>
+<TD> <P>Network </FONT> </TD>
+<TD> <P>Conforming Physical Media </FONT> </TD>
+<TD> <P>System </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Network </FONT> </TD>
-<TD> <P><FONT SIZE=2>Protocol Extensions </FONT> </TD>
-<TD> <P><FONT SIZE=2>System </FONT> </TD>
+<TD> <P>Network </FONT> </TD>
+<TD> <P>Protocol Extensions </FONT> </TD>
+<TD> <P>System </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Network </FONT> </TD>
-<TD> <P><FONT SIZE=2>16K minimum UDP Datagram size </FONT> </TD>
-<TD> <P><FONT SIZE=2>Enstore </FONT> </TD>
+<TD> <P>Network </FONT> </TD>
+<TD> <P>16K minimum UDP Datagram size </FONT> </TD>
+<TD> <P>Enstore </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Network </FONT> </TD>
-<TD> <P><FONT SIZE=2>Traffic pattern to machines where one NIC card is not sufficient, </FONT> </TD>
-<TD> <P><FONT SIZE=2>System </FONT> </TD>
+<TD> <P>Network </FONT> </TD>
+<TD> <P>Traffic pattern to machines where one NIC card is not sufficient, </FONT> </TD>
+<TD> <P>System </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Siting </FONT> </TD>
-<TD> <P><FONT SIZE=2>Location </FONT> </TD>
-<TD> <P><FONT SIZE=2>System </FONT> </TD>
+<TD> <P>Siting </FONT> </TD>
+<TD> <P>Location </FONT> </TD>
+<TD> <P>System </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Operations </FONT> </TD>
-<TD> <P><FONT SIZE=2>Run II Operations Software Framework (Patrol or TBD) </FONT> </TD>
-<TD> <P><FONT SIZE=2>System </FONT> </TD>
+<TD> <P>Operations </FONT> </TD>
+<TD> <P>Run II Operations Software Framework (Patrol or TBD) </FONT> </TD>
+<TD> <P>System </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Operations </FONT> </TD>
-<TD> <P><FONT SIZE=2>Failure planning (i.e. broken tape library, Power) </FONT> </TD>
-<TD> <P><FONT SIZE=2>System </FONT> </TD>
+<TD> <P>Operations </FONT> </TD>
+<TD> <P>Failure planning (i.e. broken tape library, Power) </FONT> </TD>
+<TD> <P>System </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Operations </FONT> </TD>
-<TD> <P><FONT SIZE=2>Upgrade-ability </FONT> </TD>
-<TD> <P><FONT SIZE=2>System </FONT> </TD>
+<TD> <P>Operations </FONT> </TD>
+<TD> <P>Upgrade-ability </FONT> </TD>
+<TD> <P>System </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Operations + Security </FONT> </TD>
-<TD> <P><FONT SIZE=2>Standard Administration </FONT> </TD>
-<TD> <P><FONT SIZE=2>System </FONT> </TD>
+<TD> <P>Operations + Security </FONT> </TD>
+<TD> <P>Standard Administration </FONT> </TD>
+<TD> <P>System </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2>Security </FONT> </TD>
-<TD> <P><FONT SIZE=2>Authentication etc are TBD </FONT> </TD>
-<TD> <P><FONT SIZE=2>System </FONT> </TD>
+<TD> <P>Security </FONT> </TD>
+<TD> <P>Authentication etc are TBD </FONT> </TD>
+<TD> <P>System </FONT> </TD>
 
 </TABLE></center>
 
@@ -5747,7 +5745,7 @@ constraints:
 <p>All production hardware is to come from the D0 Budget, requisitioned by
 D0. This includes the Enstore system, tape drives and other peripherals.
 D0 have a baseline system design. From the point of view of the storage
-management project, the main features the D0 system are:    
+management project, the main features of the D0 system are:    
 
 <ul>
  <li>IP Based connectivity.
@@ -5774,12 +5772,12 @@ management project, the main features the D0 system are:
       machines.
 </ul>
 
-<p> To keep transfers efficient, It is important to have a network design
+<p> To keep transfers efficient, it is important to have a network design
 which avoids congestion.  
 
 <p> It is important to characterize the rate achievable on a NIC card, and the
 amount of CPU required to drive NIC cards.  Typically, there is less CPU/BYTE
-when writing to the network, then when reading from it. One vendor reports, for
+when writing to the network, than when reading from it. One vendor reports, for
 CPU's available in late 1998:
 
 <pre>
