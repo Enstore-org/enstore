@@ -1055,9 +1055,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                 user_file_crc,complete_crc))
 
                     
-                   and ticket['fc']['sanity_cookie'][1] != None \
-                   and san_crc != ticket['fc']['sanity_cookie'][1]:
-                    pass
                 if (ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]) > 0:
                     Trace.trace(11,'calling fd_xfer -rest size=%s'%
                                 (ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]))
