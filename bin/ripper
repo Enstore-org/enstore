@@ -78,14 +78,26 @@ case `uname -n` in
 
    rip1*)
     stopit; starttrc
+    cmd="python /home/bakken/enstore/src/library_manager.py null1.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py disk1.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py null11.mover  &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py null12.mover  &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py null13.mover  &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py null14.mover  &"; doit
     cmd="python /home/bakken/enstore/src/mover.py DC03MAM.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py DC04MAM.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py DC05MAM.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py DC06MAM.mover &"; doit
-    (sleep 2;ecmd mvc --alive DC03MAM.mover; if [ $? -ne 0 ]; then echo DC03MAM.MOVER DEAD; else echo dc03mam.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DC04MAM.mover; if [ $? -ne 0 ]; then echo DC04MAM.MOVER DEAD; else echo dc04mam.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DC05MAM.mover; if [ $? -ne 0 ]; then echo DC05MAM.MOVER DEAD; else echo dc05mam.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DC06MAM.mover; if [ $? -ne 0 ]; then echo DC06MAM.MOVER DEAD; else echo dc06mam.mover alive; fi) &
+    (sleep 2;ecmd lmc --alive null1.library_manager; if [ $? -ne 0 ]; then echo NULL1.LIBRARY_MANAGER DEAD; else echo null1.library_manager alive; fi) &
+    (sleep 2;ecmd mcc --alive disk1.media_changer;   if [ $? -ne 0 ]; then echo DISK1.MEDIA_CHANGER DEAD;   else echo disk1.media_changer alive;   fi) &
+    (sleep 2;ecmd mvc --alive null11.mover;          if [ $? -ne 0 ]; then echo NULL11.MOVER DEAD;          else echo null11.mover alive;          fi) &
+    (sleep 2;ecmd mvc --alive null12.mover;          if [ $? -ne 0 ]; then echo NULL12.MOVER DEAD;          else echo null12.mover alive;          fi) &
+    (sleep 2;ecmd mvc --alive null13.mover;          if [ $? -ne 0 ]; then echo NULL13.MOVER DEAD;          else echo null13.mover alive;          fi) &
+    (sleep 2;ecmd mvc --alive null14.mover;          if [ $? -ne 0 ]; then echo NULL14.MOVER DEAD;          else echo null14.mover alive;          fi) &
+    (sleep 2;ecmd mvc --alive DC03MAM.mover;         if [ $? -ne 0 ]; then echo DC03MAM.MOVER DEAD;         else echo dc03mam.mover alive;         fi) &
+    (sleep 2;ecmd mvc --alive DC04MAM.mover;         if [ $? -ne 0 ]; then echo DC04MAM.MOVER DEAD;         else echo dc04mam.mover alive;         fi) &
+    (sleep 2;ecmd mvc --alive DC05MAM.mover;         if [ $? -ne 0 ]; then echo DC05MAM.MOVER DEAD;         else echo dc05mam.mover alive;         fi) &
+    (sleep 2;ecmd mvc --alive DC06MAM.mover;         if [ $? -ne 0 ]; then echo DC06MAM.MOVER DEAD;         else echo dc06mam.mover alive;         fi) &
     ;;
 
    rip2*)
