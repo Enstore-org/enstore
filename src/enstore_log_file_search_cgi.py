@@ -70,7 +70,7 @@ def go():
 	    logfile_names.sort()
             # if the period was yesterday, we do not need today
             if logfile == log_client.YESTERDAY:
-                logfile = [logfile[0],]
+                logfile_names = [logfile_names[0],]
 	    # for each name, search the file using the  search string
 	    enstore_utils_cgi.pgrep_html(search_string, logfile_names, 0)
     finally:
