@@ -306,12 +306,16 @@ class EnstoreStatus:
 	    str = str+spacing+etime+" on "+enode+" by "+euser
 	    spacing = "       "
 	    if estatus == log_client.sevdict[log_client.INFO]:
-	        [etmp3, ctime]=string.splitfields(line,"cumt=")
-	        # remove final cr from ctime
-	        otime = string.splitfields(ctime)
-	        str = str+" (total time : "+otime[0]+" secs)"
-	        [str1, str2, erest2] = string.splitfields(erest,":", 2)
-	        str = str+prefix+string.replace(str2, "requester","")+"\n"
+	        [erest2, erest3] = string.splitfields(erest, ":", 1)
+	        # erest2 has the file name info which we do not need, get the 
+	        # total data transfer rate from the end of erest3
+	        [erest2, tt] = string.splitfields(erest3, "(",1)
+	        [tt, etmp] = string.splitfields(tt, ")",1)
+	        str = str+" (Data Transfer Rate : "+tt+")"
+	        # what's left in erest2 is what we want, but make it clearer
+	        # that the rate in this line is the user rate
+	        str = str+prefix+string.replace(erest2, " at ", \
+	                                        " at a user rate of ")+"\n"
 	    else:
 	        # there was an error or warning
 	        try:
