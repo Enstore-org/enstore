@@ -12,6 +12,12 @@ from getline import getline
 class PyGdb(Gdb):
     def __init__(self, args):
         Gdb.__init__(self,['python']+args)
+        pd=os.environ.get("PYTHON_DIR",None)
+        if pd:
+            pd=pd+"/Python-1.5.2"
+            self.gdb_command("dir %s/Python" % pd)
+            self.gdb_command("dir %s/Objects" % pd)
+            self.gdb_command("dir %s/Modules" % pd)
         self.gdb_command("b ceval.c:1539") #set_lineno
         self.breakpoints = {}
         self.breakpoint_number = 0
