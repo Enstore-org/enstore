@@ -216,7 +216,8 @@ class DbTable:
      t.commit()
 
   def close(self):
-     self.jou.close()
+     if self.auto_journal:
+        self.jou.close()
      if cursor_open==1:
 	self.cursor("close")
      self.db.close()
