@@ -95,6 +95,7 @@ typedef struct {
 #define FTT_FLAG_REOPEN_R_W	0x00000020	/* reopen on r/w switch */
 #define FTT_FLAG_ASYNC_REWIND	0x00000040	/* Async. rewind call 	*/
 #define FTT_FLAG_SUID_SCSI	0x00000080	/* must be root to do scsi */
+#define FTT_FLAG_CHK_BOT_AT_FMK	0x00000100	/* check for reset/rewinds */
 
 typedef struct {
 	char *value[50];

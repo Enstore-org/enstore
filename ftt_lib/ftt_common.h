@@ -45,7 +45,8 @@
 #define FTT_COUNT_ORIGIN	42
 #define FTT_N_READS		43
 #define FTT_N_WRITES		44
-#define FTT_MAX_STAT		45
+#define FTT_TNP			45
+#define FTT_MAX_STAT		46
 
 extern int ftt_errno, ftt_debug;
 extern char ftt_eprint_buf[];

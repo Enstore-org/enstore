@@ -1,13 +1,14 @@
-LIBS=-lds
 
 OS="`funame -s`+`funame -r | cut -c1`"
 
+LIBS=`cat libs.$$OS`
+
 SYSOBJ= ftt_scsi.o ftt_machdep.o
 
-SCSISRC= ftt_scsi_AIX+3.c ftt_scsi_IRIX+4.c ftt_scsi_IRIX+5.c \
+SCSISRC= ftt_scsi_AIX+2.c ftt_scsi_IRIX+4.c ftt_scsi_IRIX+5.c \
 	ftt_scsi_SunOS+5.c ftt_scsi_VMS.c
 
-MACHDEPSRC=ftt_machdep_IRIX+5.c ftt_machdep_AIX+3.c
+MACHDEPSRC=ftt_machdep_IRIX+5.c ftt_machdep_AIX+2.c
 
 SUIDSRC= ftt_suid.c 
 SUIDOBJ= ftt_suid.o
@@ -33,7 +34,7 @@ all: $(LIB) $(PROGS)
 
 install: all
 	cp libftt.a $(FTT_DIR)/lib
-	cp ftt.h ftt_common.h ftt_scsi.h $(FTT_DIR)/include
+	cp ftt.h ftt_common.h ftt_scsi.h ftt_voidtypes.h $(FTT_DIR)/include
 
 testtables:
 	rm -f ftt_error.o
@@ -44,10 +45,10 @@ print:
 	a2ps Makefile $(SRC) $(SCSISRC) | flpr
 
 ftt_suid: $(SUIDOBJ) $(LIB)
-	cc -o $@ $(SUIDOBJ) $(LIB) $(LIBS)
+	OS=$(OS); cc -o $@ $(SUIDOBJ) $(LIB) $(LIBS)
 
 asyncdemo: asyncdemo.c $(LIB)
-	cc $(CFLAGS) -o $@ asyncdemo.c $(LIB) $(LIBS)
+	OS=$(OS); cc $(CFLAGS) -o $@ asyncdemo.c $(LIB) $(LIBS)
 
 $(LIB): $(OBJ)
 	rm -f $(LIB)

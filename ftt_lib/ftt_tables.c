@@ -333,7 +333,7 @@ ftt_dev_entry devtable[] = {
         { "/dev/rmt/%d.3",        0,  0,   0, 0,  1,        0|FTT_RTOO, 0},
         { 0, },
     }},
-    {"IRIX+5", "DLT", "SCSI", FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+5", "DLT", "SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/tps%dd%d", 2, IRIXfind, {
     /*   string                  den mod hwd pas fxd rewind            ,1st */
@@ -346,7 +346,7 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/tps%dd%dnrv", 4,  0,0x1A, 0,  0,                 0, 1},
         { 0,},
     }},
-    {"IRIX+5", "EXB-85", "SCSI", FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+5", "EXB-85", "SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/tps%dd%d",  2, IRIXfind, {
     /*   string                  den mod hwd pas fxd rewind            1st */
@@ -368,7 +368,7 @@ ftt_dev_entry devtable[] = {
 { "/dev/rmt/tps%dd%dv.8500",      1,  0,0x15, 0,  0,          FTT_RWOC, 1},
         { 0,},
     }},
-    {"IRIX+5", "EXB-82","SCSI",  FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+5", "EXB-82","SCSI",  FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/tps%dd%d", 2, IRIXfind, {
     /*   string                  den mod hwd pas fxd rewind            sf,1st */
@@ -381,7 +381,7 @@ ftt_dev_entry devtable[] = {
 { "/dev/rmt/tps%dd%dv",           0,  0,   0, 0,  0,          FTT_RWOC, 1},
 { 0,},
     }},
-    {"IRIX+4", "EXB-85", "SCSI", FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+4", "EXB-85", "SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/tps%dd%d", 2, IRIXfind, {
     /*   string                  den mod hwd pas fxd rewind            1st */
@@ -408,7 +408,7 @@ ftt_dev_entry devtable[] = {
 { "/dev/rmt/tps%dd%dnsv.8500",    1,  0,0x15, 0,  0,          FTT_RWOC, 1},
 { 0,},
     }},
-    {"IRIX+4", "EXB-82", "SCSI",  FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+4", "EXB-82", "SCSI",  FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/tps%dd%d", 2, IRIXfind, {
     /*   string                  den mod hwd pas fxd rewind            1st */
@@ -423,7 +423,7 @@ ftt_dev_entry devtable[] = {
 { "/dev/rmt/tps%dd%dnrnsv",       0,  0,   0, 0,  0,                 0, 0},
 	{ 0,},
     }},
-    {"IRIX+5", "DLT", "VME-SCSI", FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+5", "DLT", "VME-SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/jag%dd%d", 2, IRIXfindVME,{
     /*   string                  den mod hwd pas fxd rewind            ,1st */
@@ -436,7 +436,7 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/jag%dd%dnrv", 4,  0,0x1A, 0,  0,                 0, 1},
         { 0,},
     }},
-    {"IRIX+5", "EXB-85", "VME-SCSI", FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+5", "EXB-85", "VME-SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/jag%dd%d", 2, IRIXfindVME,{
     /*   string                  den mod hwd pas fxd rewind            1st */
@@ -458,7 +458,7 @@ ftt_dev_entry devtable[] = {
 { "/dev/rmt/jag%dd%dv.8500",      1,  0,0x15, 0,  0,          FTT_RWOC, 1},
         { 0,},
     }},
-    {"IRIX+5", "EXB-82","VME-SCSI",  FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+5", "EXB-82","VME-SCSI",  FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/jag%dd%d", 2, IRIXfindVME, {
     /*   string                  den mod hwd pas fxd rewind            1st */
@@ -471,7 +471,7 @@ ftt_dev_entry devtable[] = {
 { "/dev/rmt/jag%dd%dnrv",         0,  0,   0, 0,  0,                 0, 0},
 { 0,},
     }},
-    {"IRIX+4", "EXB-85", "VME-SCSI", FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+4", "EXB-85", "VME-SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/jag%dd%d", 2, IRIXfindVME, {
     /*   string                  den mod hwd pas fxd rewind            1st */
@@ -497,7 +497,7 @@ ftt_dev_entry devtable[] = {
 { "/dev/rmt/jag%dd%dnsv.8500",    1,  0,0x15, 0,  0,          FTT_RWOC, 1},
 { 0,},
     }},
-    {"IRIX+4", "EXB-82", "VME-SCSI",  FTT_FLAG_ASYNC_REWIND, 
+    {"IRIX+4", "EXB-82", "VME-SCSI",  FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
 	"/dev/rmt/jag%dd%d", 2, IRIXfindVME, {
     /*   string                  den mod hwd pas fxd rewind            1st */

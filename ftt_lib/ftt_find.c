@@ -63,7 +63,7 @@ ftt_get_driveid(char *basename,char *os) {
     int bus, id;
     FILE *pf;
     char *res = 0;
-    int i;
+    int i, len;
 
     DEBUG2(stderr, "Entering ftt_get_driveid\n");
     i = ftt_findslot(basename, os, "",  &bus, &id);
@@ -74,10 +74,12 @@ ftt_get_driveid(char *basename,char *os) {
     DEBUG3(stderr,"Running \"%s\" to get drivid\n", cmdbuf);
     pf = popen(cmdbuf, "r");
     if (pf) {
-	fgets(output, 255,pf);
+	res = fgets(output, 255,pf);
 	pclose(pf);
-	output[strlen(output)-1] = 0;
-        res = strdup(output);
+	if (res != 0) {
+	    output[strlen(output)-1] = 0;
+	    res = strdup(output);
+	}
     }
     DEBUG3(stderr, "returning %s\n", res);
     return res;

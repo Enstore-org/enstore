@@ -84,7 +84,7 @@ int ftt_numeric_tab[FTT_MAX_STAT] = {
     /*  FTT_BLOCK_TOTAL		22 */ 0,
     /*  FTT_TRANS_DENSITY	23 */ 0,
     /*  FTT_TRANS_COMPRESS	24 */ 0,
-    /*  FTT_REMAIN_TAPE		25 */ 1,
+    /*  FTT_REMAIN_TAPE		25 */ 0,
     /*  FTT_USER_READ		26 */ 1,
     /*  FTT_USER_WRITE		27 */ 1,
     /*  FTT_CONTROLLER		28 */ 0,
@@ -308,7 +308,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     if (stat_ops & FTT_DO_MS) {
 	static char cdb_mode_sense[]= {0x1a, 0x00, 0x00, 0x00,   18, 0x00};
 
-	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 29, 10, 0);
+	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 18, 10, 0);
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
 	    return res;
@@ -384,6 +384,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		    d->current_block = 0;
 		    d->current_valid = 1;
 		}
+		set_stat(b,FTT_TNP,	    itoa(bit(1,buf[19])), 0);
 		set_stat(b,FTT_PF,          itoa(bit(7,buf[19])), 0);
 		set_stat(b,FTT_WRITE_PROT,  itoa(bit(5,buf[20])), 0);
 		set_stat(b,FTT_PEOT,        itoa(bit(2,buf[21])), 0);
@@ -397,16 +398,22 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		** the following lies still allow reasonable results
 		** from doing before/after deltas
 		** we'll override them with log sense data if we have it.
+		** The following is a fudge factor for the amount of
+		** tape thats shows as the difference between tape size
+		** and remaining tape on an EXB-8200 when rewound
 		*/
+#define 	EXB_FUDGE_FACTOR 1279
 		error_count = (buf[16]<<16)+(buf[17]<<8)+buf[18];
 		if (d->data_direction == FTT_DIR_READING) {
 		    set_stat(b,FTT_READ_ERRORS,itoa(error_count),0);
-		    set_stat(b,FTT_READ_COUNT,itoa(tape_size - remain_tape),0);
+		    set_stat(b,FTT_READ_COUNT,itoa(
+			tape_size - remain_tape - EXB_FUDGE_FACTOR),0);
 		    set_stat(b,FTT_WRITE_ERRORS,"0",0);
 		    set_stat(b,FTT_WRITE_COUNT,"0",0);
 		} else {
 		    set_stat(b,FTT_WRITE_ERRORS,itoa(error_count),0);
-		    set_stat(b,FTT_WRITE_COUNT,itoa(tape_size - remain_tape),0);
+		    set_stat(b,FTT_WRITE_COUNT,itoa(
+			tape_size - remain_tape - EXB_FUDGE_FACTOR),0);
 		    set_stat(b,FTT_READ_ERRORS,"0",0);
 		    set_stat(b,FTT_READ_COUNT,"0",0);
 		}

@@ -17,6 +17,12 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
     CKNULL("volume label", vollabel);
 
     res = ftt_status(d,timeout);	if (res < 0) return res;
+    if (0 == (res & FTT_ONLINE)) {
+	return FTT_ENOTAPE;
+    }
+    if (0 != (res & FTT_BUSY)) {
+	return FTT_EBUSY;
+    }
     if (0 != (res & FTT_PROT) && rdonly == FTT_RDWR) {
 	ftt_eprintf("ftt_verify_vol_label found unexpected write protection\n");
 	ftt_errno = FTT_EROFS;
@@ -46,7 +52,6 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
     }
     return -1;
 }
-
 
 int
 ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel){
@@ -206,7 +211,8 @@ char *ftt_stat_names[] = {
  /* FTT_COUNT_ORIGIN	42 */ "FTT_COUNT_ORIGIN",
  /* FTT_N_READS		43 */ "FTT_N_READS",
  /* FTT_N_WRITES	44 */ "FTT_N_WRITES",
- /* FTT_MAX_STAT	45 */ "FTT_MAX_STAT",
+ /* FTT_TNP		45 */ "FTT_TNP",
+ /* FTT_MAX_STAT	46 */ "FTT_MAX_STAT",
  0
 };
 
