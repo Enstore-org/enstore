@@ -1,0 +1,309 @@
+#!/bin/sh 
+set -u  
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+test_to_do=""
+if [ "${1:-q}" != "-q" ] ; then test_to_do=$1; shift; fi
+
+# bin/$RCSfile$  $Revision$
+
+# useful functions
+raise_alarm() {
+    msg=$1
+    item_to_override=$2
+    error_code=$3
+    echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail -s "pageDcache error on $item_to_override" enstore-admin@fnal.gov
+    (setup enstore;enstore alarm --raise --severity "A" --root-error "$msg")
+    (setup enstore;enstore sched --override $item_to_override --saagstatus red --time="$msg")
+    # do not turn the ball red any more ...
+    #enstore sched --override enstore    --saagstatus red --time="$msg"
+    exit $error_code
+}
+
+transfer_setup() {
+    file=$1
+    error_code=$2
+    try=0
+    maxtry=3
+    delay=30
+    stat=1
+    rm -f $file
+    touch $file
+    if [ $? -ne 0 ]; then echo `date` ERROR: Can not touch $file; exit $exit_code; fi
+}
+
+do_transfer() {
+    xfer=$1
+    xfer_file=$2
+    progress_file=$3
+    while [ $stat -ne 0 -a $try -lt $maxtry ]; do
+	try=`expr $try + 1`
+	rm -f $xfer_file
+	echo `date` Try $try of $maxtry: $xfer
+	                                 $xfer
+	stat=$?
+	if [ $stat -eq 0 ]; then 
+	    rm -f $progress_file
+	else
+	    echo `date` sleep $delay
+	                sleep $delay
+	fi
+    done
+}
+
+setup_products_error() {
+    echo `date` ERROR: unable to setup $1.
+    exit 8
+}
+
+setup_product() {
+    setup $1
+    if [ $? -gt 0 ]; then
+	setup_products_error $1
+    fi
+}
+
+setup_products() {
+    source /usr/local/etc/setups.sh
+    if [ $? -gt 0 ]; then
+	echo `date` ERROR: unable to source /usr/local/etc/setups.sh.
+	exit 9
+    fi
+    if [ -z "${KFTP_DIR:-}" ]; then
+	setup_product kftp
+    fi
+    if [ -z "${GSSPY_GSI_DIR:-}" ]; then
+	setup_product gsspy_gsi
+    fi
+    if [ -z "${GSSPY_KRB_DIR:-}" ]; then
+	setup_product gsspy_krb
+    fi
+    if [ -z "${DCAP_DIR:-}" ]; then
+	setup_product dcap
+    fi
+
+# always setup python to make sure we get the correct version.
+    setup_product python
+}
+
+not_enough_parameters() {
+    # not enough parameters
+    echo "ERROR: Not enough parameters for $1"
+    exit 6
+
+}
+
+#######################################################################
+
+dccp_test() {
+    read_back=/tmp/dcache_page_read_back_$$
+    rm -f $read_back
+
+    write_in_progress=/tmp/dcache_page_write_in_progress_$$
+    read_in_progress=/tmp/dcache_page_read_in_progress_$$
+
+# dccp write
+    transfer_setup $write_in_progress 7
+    do_transfer "dccp $test_file $w" $w $write_in_progress
+ 
+    if [ -r $write_in_progress ]; then
+	raise_alarm "$dcache dcache write failed." $dcache_saag 6
+    fi
+
+# dccp readback
+
+    transfer_setup $read_in_progress 5
+    do_transfer "dccp $w $read_back" $read_back $read_in_progress
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "$dcache dcache read failed" $dcache_saag 4
+    fi
+
+# file comparison
+
+    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "$dcache dcache cmp failed" $dcache_saag 3
+    fi
+}
+#######################################################################
+
+kftp_test() {
+    read_back=/tmp/dcache_page_read_back_kftp_$$
+    rm -f $read_back
+
+    write_in_progress=/tmp/dcache_page_write_in_progress_kftp_$$
+    read_in_progress=/tmp/dcache_page_read_in_progress_kftp_$$
+
+# kftp passive write
+    transfer_setup $write_in_progress 7
+    # we need to strip off the pnfs dir from $wp
+    wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -p $strong_port -m -p -v $test_file enstore@$dcache:$wp1" $wp $write_in_progress
+
+    if [ -r $write_in_progress ]; then
+	raise_alarm "$dcache dcache passive kftp write failed." $dcache_saag 6
+    fi
+
+# kftp passive readback
+    transfer_setup $read_in_progress 5
+    # we need to strip off the pnfs dir from $wp
+    wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -p $strong_port -m -p -v enstore@$dcache:$wp1 $read_back" $read_back $read_in_progress
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "$dcache dcache passive kftp read failed" $dcache_saag 4
+    fi
+
+# kftp passive readback file comparison
+    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "$dcache dcache passive kftp cmp failed" $dcache_saag 3
+    fi
+
+# kftp active write
+    transfer_setup $write_in_progress 7
+    # we need to strip off the pnfs dir from $wa
+    wa1=`echo $wa|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -p $strong_port -v $test_file enstore@$dcache:$wa1" $wa $write_in_progress
+ 
+    if [ -r $write_in_progress ]; then
+	raise_alarm "$dcache dcache write failed." $dcache_saag 6
+    fi
+
+# kftp active readback
+    transfer_setup $read_in_progress 5
+    # we need to strip off the pnfs dir from $wa
+    wa1=`echo $wa|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -p $strong_port -v enstore@$dcache:$wa1 $read_back" $read_back $read_in_progress
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "$dcache dcache read failed" $dcache_saag 4
+    fi
+
+# kftp active readback file comparison
+
+    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "$dcache dcache kftp active cmp failed" $dcache_saag 3
+    fi
+}
+#######################################################################
+
+ftp_test() {
+    read_back=/tmp/dcache_page_read_back_ftp_$$
+    rm -f $read_back
+
+    write_in_progress=/tmp/dcache_page_write_in_progress_ftp_$$
+    read_in_progress=/tmp/dcache_page_read_in_progress_ftp_$$
+
+    ftp_file=`echo $wa|sed -e "s%${strip_dir}%%"`
+# ftp readback
+    transfer_setup $read_in_progress 5
+
+    while [ $stat -ne 0 -a $try -lt $maxtry ]; do
+	try=`expr $try + 1`
+	rm -f $read_back
+	echo `date` Try $try of $maxtry: anonymous ftp read of $ftp_file
+	python -c '
+from ftplib import FTP
+import sys
+ftp=FTP()
+ftp.connect("'$dcache'",'$weak_port')
+ftp.login("enstore-test","anon-read")
+print ftp.retrbinary("RETR '$ftp_file'", open("'$read_back'", "wb").write)
+ftp.quit()
+'
+	stat=$?
+	if [ $stat -eq 0 ]; then 
+	    rm -f $read_in_progress
+	else
+	    echo `date` sleep $delay
+		        sleep $delay
+	fi
+    done
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "$dcache dcache ftp read failed" $dcache_saag 4
+    fi
+
+# ftp readback file comparison
+
+    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "$dcache dcache ftp cmp failed" $dcache_saag 3
+    fi
+}
+#######################################################################
+
+gridftp_test() {
+}
+
+#######################################################################
+
+srmcp_test() {
+}
+
+#######################################################################
+
+kftp_cert_test() {
+}
+
+#######################################################################
+#######################################################################
+
+# set up any necessary products
+setup_products
+
+# parse the common parameters
+if [ $# -lt 3];
+then
+    not_enough_parameters "the common parameters"
+fi
+
+test_file=$1
+shift
+dcache=$1
+shift
+dcache_saag=$1
+shift
+
+case $test_to_do in
+    dccp) # get the specific parameters first
+	  if [ $# -ne 1 ];
+	  then
+	      not_enough_parameters dccp
+	  fi
+	  w=$1
+	  dcap_test
+	  ;;
+    kftp) # get the specific parameters first
+	  if [ $# -ne 4 ];
+	  then
+	      not_enough_parameters kftp
+	  fi
+	  strip_dir=$1
+	  strong_port=$2
+	  wp=$3
+	  wa=$4
+	  kftp_test
+	  ;;
+     ftp) # get the specific parameters first
+	  if [ $# -ne 3 ];
+	  then
+	      not_enough_parameters ftp
+	  fi
+	  strip_dir=$1
+	  weak_port=$2
+	  wa=$3
+	  ftp_test
+	  ;;
+esac
+
+#clean up of old junk
+echo cleanup: rm -f ${l}*
+              rm -f ${l}*
+echo cleanup: rm -f $test_file $read_back $write_in_progress $read_in_progress
+              rm -f $test_file $read_back $write_in_progress $read_in_progress
+
+echo `date` Finished.
+exit 0
