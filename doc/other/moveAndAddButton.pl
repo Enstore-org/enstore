@@ -14,8 +14,6 @@
 #
 $tempfile = "temp.html";
 $hfile = "header.html";
-$header = `cat $hfile`;
-@lines = split /\n/, $header;
 
 $target = @ARGV[0];
 
@@ -24,11 +22,6 @@ foreach $i (1 .. $#ARGV) {
   @filename = split /\//, $sfile;
   $tfile = "$target/@filename[$#filename]";
 
-  $rtn = `fgrep -l "@lines[0]" $sfile`;  # is string in file
-  chop($rtn);                           # remove the <CR>
-  if ("$rtn" ne "$sfile") {              # string is not in file
-    $rtn = `cat $hfile $sfile>$tfile`;
-  } else {                              # string already in file
-    $rtn = `cp $sfile $target`;
-  }
+  $rtn = `cat $hfile $sfile>$tfile`;
+
 }
