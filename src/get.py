@@ -68,8 +68,16 @@ def transfer_file(in_fd, out_fd):
             status = (e_errors.TIMEDOUT, "Read")
             return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
             break
-        
-        data = os.read(in_fd, 1048576)
+
+        #READ in the data.
+        try:
+            data = os.read(in_fd, 1048576)
+        except OSError, detail:
+            status = (e_errors.OSERROR, str(detail))
+            return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
+        except IOError, detail:
+            status = (e_errors.IOERROR, str(detail))
+            return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
 
         if len(data) == 0: #If read the EOF, return number of bytes transfered.
             status = (e_errors.OK, None)
@@ -83,7 +91,21 @@ def transfer_file(in_fd, out_fd):
             return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
             break
 
-        bytes = bytes + os.write(out_fd, data)
+        #WRITE out the data.
+        try:
+            bytes = bytes + os.write(out_fd, data)
+        except OSError, detail:
+            #Handle the ENOSPC error differently.
+            if detail.get('errno', None) == errno.ENOSPC:
+                status = (e_errors.NOSPACE, str(detail))
+            #Handle OSErrors
+            else:
+                status = (e_errors.OSERROR, str(detail))
+            #The status gets returned in the same way.
+            return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
+        except IOError, detail:
+            status = (e_errors.IOERROR, str(detail))
+            return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
 
         #Calculate the checksum
         crc = checksum.adler32(crc, data, len(data))
@@ -137,16 +159,16 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                 raise socket.error(errno.ENOTCONN,
                                    errno.errorcode[errno.ENOTCONN])
 
-            done_ticket = {'status':(e_errors.OK, None)}
+            work_ticket['status'] = (e_errors.OK, None)
         except (encp.EncpError, socket.error), detail:
             #sys.stderr.write("Unable to open data socket with mover: %s\n" %
             #                 (str(detail),))
             #encp.quit(1)
-            done_ticket = {'status':(e_errors.NET_ERROR, str(detail))}
+            work_ticket['status'] = (e_errors.NET_ERROR, str(detail))
 
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          done_ticket, None,
+                                          work_ticket, None,
                                           None, None, e)
 
         if not e_errors.is_ok(result_dict):
@@ -163,11 +185,30 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         Trace.message(5, "Waiting for data")
 
         # Stall starting the count until the first byte is ready for reading.
-        read_fd, write_fd, exc_fd = select.select([data_path_socket], [],
-                                                  [data_path_socket], 15 * 60)
+        read_fd, write_fd, exc_fd = select.select([data_path_socket], [], [],
+                                                  e.mover_timeout)
 
         if data_path_socket not in read_fd:
-            return {'status':(e_errors.TIMEDOUT, "No data received")}
+            work_ticket['status'] = (e_errors.TIMEDOUT, "No data received")
+        print "WORK_TICKET:"
+        pprint.pprint(work_ticket)
+        # Verify that everything went ok with the transfer.
+        result_dict = encp.handle_retries([work_ticket], work_ticket,
+                                          work_ticket, None,
+                                          None, None, e)
+        print "RESULT_DICT:"
+        pprint.pprint(result_dict)
+        if not e_errors.is_ok(result_dict):
+            #Don't loose the non-retirable error.
+            if e_errors.is_non_retriable(result_dict):
+                work_ticket = encp.combine_dict(result_dict, work_ticket)
+            # Close these descriptors before they are forgotten about.
+            encp.close_descriptors(out_fd)
+
+            #Log the error and return.
+            Trace.log(e_errors.ERROR, str(result_dict['status']))
+            print "1111111111111111111111111111"
+            return work_ticket
 
         Trace.message(5, "Reading data from tape.")
 
@@ -274,6 +315,43 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             Trace.log(e_errors.ERROR, str(mover_done_ticket['status']))
             return work_ticket
 
+        ####################################################################
+        #This is a work-around for a file_clerk and mover communication bug.
+        # Occasionally the fc/mv does not send the updated fc sub-ticket.
+        ####################################################################
+        if len(work_ticket.get('fc', {}).keys()) > 0 and \
+           work_ticket.get('fc', {}).get('bfid', "no_bfid") == None:
+
+            #Get the file info list dump of the tape.
+            vcc, fcc = encp.get_clerks(e.volume)
+            tape_ticket = fcc.tape_list(e.volume)
+            
+            #First check that everything is okay.
+            if e_errors.is_ok(tape_ticket):
+                #Locate the record for this file based on its location.
+                for item in tape_ticket.get("tape_list", {}).values():
+                    if item.get('location_cookie', "no_lc") == \
+                       work_ticket.get('fc', {}).get('location_cookie', None):
+
+                        Trace.message(2, "Applying GETs workaround for fc/mv "
+                                      " communication error.")
+                        Trace.log(e_errors.ERROR,
+                                  "Applying GETs workaround for fc/mv "
+                                  " communication error.")
+                        
+                        work_ticket['fc']['location_cookie'] = \
+                                                    item['location_cookie']
+                        work_ticket['fc']['complete_crc'] = \
+                                                    item['complete_crc']
+                        work_ticket['fc']['deleted'] = item['deleted']
+                        work_ticket['fc']['drive'] = item['drive']
+                        work_ticket['fc']['sanity_cookie'] = \
+                                                    item['sanity_cookie']
+                        work_ticket['fc']['size'] = item['size']
+                        break
+
+        ###################################################################
+
         #Before continueing, double check the number bytes said to be
         # moved by the mover and encp.
         encp_size = work_ticket.get('exfer', {}).get('bytes', None)
@@ -282,12 +360,12 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             work_ticket['status'] = (e_errors.UNKNOWN,
                                      "Get does not know number of bytes"
                                      " transfered.")
-            return work_ticket
+            #return work_ticket
         elif mover_size == None:
             work_ticket['status'] = (e_errors.UNKNOWN,
                                      "Mover did not report how many bytes"
                                      " where transfered.")
-            return work_ticket
+            #return work_ticket
         elif long(encp_size) != long(mover_size):
             #We get here if the two sizes to not match.  This is a very bad
             # thing to occur.
@@ -295,13 +373,30 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                    "Encp bytes read (%s) do not match the mover "
                    "bytes written (%s)." % (encp_size, mover_size))
             work_ticket['status'] = (e_errors.CONFLICT, msg)
-            return work_ticket
+            #return work_ticket
         else:
             if work_ticket['file_size'] == None:
                 #If the number of bytes transfered is consistant with Get and
                 # the mover, then set this value.  This is only necessary
                 # when no file information is available.
                 work_ticket['file_size'] = long(encp_size)
+
+        # Verify that the sizes reported from the mover and encp are good.
+        result_dict = encp.handle_retries([work_ticket], work_ticket,
+                                          work_ticket, None,
+                                          None, None, e)
+        
+        if not e_errors.is_ok(result_dict):
+            #Don't loose the non-retirable error.
+            if e_errors.is_non_retriable(result_dict):
+                work_ticket = encp.combine_dict(result_dict, work_ticket)
+
+            # Close these descriptors before they are forgotten about.
+            encp.close_descriptors(out_fd, data_path_socket)
+
+            #Log the error and return.
+            Trace.log(e_errors.ERROR, str(work_ticket['status']))
+            return work_ticket
         
         #Check the crc.
         encp.check_crc(work_ticket, e, out_fd)
@@ -332,6 +427,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         encp.calculate_rate(work_ticket, tinfo)
         
         #work_ticket = encp.combine_dict(result_dict, work_ticket)
+        work_ticket['status'] = (e_errors.OK, None) #Success.
         return work_ticket
         
 def set_metadata(ticket, intf):
@@ -342,7 +438,14 @@ def set_metadata(ticket, intf):
     ticket['file_size'] = ticket['exfer'].get("bytes", 0L)
 
     #Create the pnfs file.
-    encp.create_zero_length_files(ticket['infile'])
+    try:
+        encp.create_zero_length_files(ticket['infile'], raise_error = 1)
+    except OSError, detail:
+        msg = "Metadata update failed for %s: %s" % (ticket['infile'],
+                                                     str(detail))
+        Trace.message(5, msg)
+        Trace.log(e_errors.INFO, msg)
+        return
 
     Trace.message(10, "SETTING METADATA WITH:")
     Trace.message(10, pprint.pformat(ticket))
@@ -538,11 +641,27 @@ def main(e):
         try:
             #There is no need to do this on a non-multihomed machine.
             #if config and config.get('interface', None):
-
+ 
+            #Keep the udp socket queues clear.
+            start_time = time.time()
             Trace.message(4, "Opening routing socket.")
+            while time.time() < start_time + e.mover_timeout:
+                #Keep looping until one of these two messages arives.  Ignore
+                # any other that my be received.
+                rticket, use_listen_socket = encp.open_routing_socket(
+                    udp_socket, [request['unique_id']], e)
 
-            rticket, use_listen_socket = encp.open_routing_socket(
-                udp_socket, [request['unique_id']], e)
+                #If requested output the raw message.
+                Trace.trace(11, "RTICKET MESSAGE:")
+                Trace.trace(11, pprint.pformat(rticket))
+
+                #Make sure the messages are what we expect.
+                if rticket == None: #Something happened, keep trying.
+                    continue
+                elif not e_errors.is_ok(rticket.get('status', None)):
+                    continue
+                else:
+                    break
 
             #Print out the final ticket.
             Trace.message(10, "ROUTING TICKET:")
@@ -711,10 +830,10 @@ def main(e):
             #The requested file does not exist on the tape.  (i.e. the
             # tape has only 6 files and the seventh file was requested.)
             elif done_ticket['status'] == (e_errors.READ_ERROR,
-                                         e_errors.READ_EOD):
+                                           e_errors.READ_EOD):
                 #Tell the user what happend.
                 Trace.message(1, "File %s read failed: %s" %
-                              (request['ifile'], done_ticket['status']))
+                              (request['infile'], done_ticket['status']))
                 Trace.log(e_errors.ERROR, "File %s read failed: %s" %
                               (request['infile'], done_ticket['status']))
 
@@ -728,6 +847,7 @@ def main(e):
                 #Tell the calling process, of those files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
+                Trace.message(1, "Get exit status: %s" % (0,))
                 encp.quit(0)
             #Give up.
             elif e_errors.is_non_retriable(done_ticket['status'][0]):
@@ -747,6 +867,7 @@ def main(e):
                 #Tell the calling process, of those files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
+                Trace.message(1, "Get exit status: %s" % (1,))
                 encp.quit(1)
             #Keep trying.
             elif e_errors.is_retriable(done_ticket['status'][0]):
@@ -763,6 +884,7 @@ def main(e):
                 #continue #The retry alread sent request to mover.
 
     #Perform any necessary file cleanup.
+    Trace.message(1, "Get exit status: %s" % (0,))
     encp.quit(0)
 
 def do_work(intf):
