@@ -106,11 +106,9 @@ def is_pnfsid(pnfsid):
     #This is an attempt to deterime if a string is a pnfsid.
     # 1) Is it a string?
     # 2) Is it 24 characters long?
-    # 3) Does the string as a filepath not exist?
-    # 4) All characters are in the capital hex character set.
+    # 3) All characters are in the capital hex character set.
     #Note: Does it need to be capital set of hex characters???
-    if type(pnfsid) == types.StringType and len(pnfsid) == 24 and \
-       not os.path.exists(pnfsid):
+    if type(pnfsid) == types.StringType and len(pnfsid) == 24:
         allowable_characters = string.upper(string.hexdigits)
         for c in pnfsid:
             if c not in allowable_characters:
