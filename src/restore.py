@@ -497,7 +497,7 @@ if __name__ == "__main__":		# main
 
 	indexf = getIndex(dbHome, dbs)
 
-	print "Restoring databse ..."
+	print "Restoring database ..."
 	for i in dbs:
 		d = DbTable(i, dbHome, jouHome, indexf[i]) 
 		print cctime()
