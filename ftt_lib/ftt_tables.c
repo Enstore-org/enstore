@@ -485,7 +485,7 @@ static char OSF1find[] =
 	do\n\
 	    if [ $dnum = -1 ]\n\
 	    then\n\
-		echo $line | sed -e 's/.*([^ ]* \\(.*\\)).*/\\1/'\n\
+		echo $line | sed -e 's/.*[      ]\\([^ ][^ ]*\\)  *\\([^ ][^ ]*\\)).*/\\1/'\n\
 		exit\n\
 	    fi\n\
 	    case \"$line\" in\n\
@@ -672,18 +672,18 @@ ftt_dev_entry devtable[] = {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
     /* Default, passthru */
-        { "/dev/nrmt%dh",         1,  0,0x15, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "/dev/nrmt%dh",         1,  0,0x15, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
         { "/dev/nrmt%dh",        -1,  0,  -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Usable */
-        { "/dev/nrmt%dl",         0,  0,0x14, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-        { "/dev/nrmt%dm",         1,  0,0x15, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "/dev/nrmt%dl",         0,  0,0x14, 0,  0,          FTT_RDNW, 1, EXB_MAX_BLKSIZE},
+        { "/dev/nrmt%dm",         1,  0,0x14, 0,  0,          FTT_RDNW, 1, EXB_MAX_BLKSIZE},
         { "/dev/nrmt%dh",         1,  0,0x15, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "/dev/nrmt%da",         1,  0,0x15, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-    /* descriptive */
+    /* Descriptive */
         { "/dev/rmt%dm",          1,  0,0x15, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "/dev/rmt%dh",          1,  0,0x15, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "/dev/rmt%dl",          0,  0,0x14, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
-        { "/dev/rmt%da",          1,  0,0x15, 0,  0,          FTT_RWOC, 0, EXB_MAX_BLKSIZE},
+        { "/dev/rmt%da",          1,  0,0x14, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
 	{ 0 },
      }},
     {"OSF1", "EXB-8505", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
@@ -691,18 +691,18 @@ ftt_dev_entry devtable[] = {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
     /* Default, passthru */
-        { "/dev/nrmt%dh",         1,  0,0x15, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "/dev/nrmt%dh",         1,  0,0x15, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
         { "/dev/nrmt%dh",        -1,  0,  -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Usable */
-        { "/dev/nrmt%dl",         0,  0,0x14, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-        { "/dev/nrmt%dm",         0,  1,0x8c, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "/dev/nrmt%dl",         0,  0,0x14, 0,  0,          FTT_RDNW, 1, EXB_MAX_BLKSIZE},
+        { "/dev/nrmt%dm",         0,  1,0x8c, 0,  0,          FTT_RDNW, 1, EXB_MAX_BLKSIZE},
         { "/dev/nrmt%dh",         1,  0,0x15, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-        { "/dev/nrmt%da",         1,  1,0x90, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "/dev/nrmt%da",         1,  1,0x90, 0,  0,          FTT_RDNW, 1, EXB_MAX_BLKSIZE},
     /* Descriptive */
         { "/dev/rmt%dl",          0,  0,0x14, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "/dev/rmt%dm",          0,  1,0x8c, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "/dev/rmt%dh",          1,  0,0x15, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
-        { "/dev/rmt%da",          1,  1,0x90, 0,  0,          FTT_RWOC, 0, EXB_MAX_BLKSIZE},
+        { "/dev/rmt%da",          1,  1,0x90, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
 	{ 0 },
      }},
     {"OSF1", "DLT", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
@@ -713,7 +713,7 @@ ftt_dev_entry devtable[] = {
         { "/dev/nrmt%dh",         5,  0,0x1A, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
         { "/dev/nrmt%dh",        -1,  0,  -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Usable */
-        { "/dev/nrmt%dl",         4,  0,0x19, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "/dev/nrmt%dl",         4,  0,0x18, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "/dev/nrmt%dm",         4,  1,0x19, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "/dev/nrmt%dh",         5,  0,0x1A, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "/dev/nrmt%da",         5,  1,0x1A, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},

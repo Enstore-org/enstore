@@ -29,6 +29,7 @@ install: all
 	-mv $(FTT_DIR)/bin/ftt_random $(FTT_DIR)/bin/ftt_random.bak
 	cp ftt_test $(FTT_DIR)/bin
 	cp ftt_random $(FTT_DIR)/bin
+	cp scripts/ftt_* $(FTT_DIR)/bin
 
 libftt_test.a: $(OBJ)
 	rm -f libftt_test.a
