@@ -577,9 +577,12 @@ def forked_read_from_hsm( self, ticket ):
 
 	    # create the wrapper instance (could be different for different tapes)
 	    tmp_vinfo = vcc.inquire_vol(ticket['fc']['external_label'])
+	    print "WRAPPER",tmp_vinfo['wrapper']
             wrapper=wrapper_selector.select_wrapper(tmp_vinfo['wrapper'])
 	    if wrapper == None:
+		print "TRYING DEFAULT"
 		wrapper=wrapper_selector.select_wrapper("cpio_custom")
+		print "DEFAULT WRAPPER", wrapper
 		if wrapper == None:
 		    raise errno.errorcode[errno.EINVAL], "Invalid wrapper"
 
