@@ -879,15 +879,7 @@ class VolumeClerk(VolumeClerkMethods,\
         Trace.trace(10, '}__init__')
 
 class VolumeClerkInterface(generic_server.GenericServerInterface):
-
-    def __init__(self):
-        Trace.trace(10,'{vcsi.__init__')
-        # fill in the defaults for possible options
-        generic_server.GenericServerInterface.__init__(self)
-
-        # now parse the options
-        self.parse_options()
-        Trace.trace(10,'}vcsi.__init__')
+	pass
 
 if __name__ == "__main__":
     import sys

@@ -169,15 +169,7 @@ class AdminClerk(AdminClerkMethods, generic_server.GenericServer) :
 
 
 class AdminClerkInterface(generic_server.GenericServerInterface):
-
-    def __init__(self):
-        Trace.trace(10,'{acsi.__init__')
-        # fill in the defaults for possible options
-        generic_server.GenericServerInterface.__init__(self)
-
-        # now parse the options
-        self.parse_options()
-        Trace.trace(10,'}acsi.__init__')
+    pass
 
 if __name__=="__main__":
     import string

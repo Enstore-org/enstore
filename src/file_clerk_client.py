@@ -145,9 +145,6 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         generic_client.GenericClientInterface.__init__(self)
-
-        # now parse the options
-        self.parse_options()
         Trace.trace(10,'}fci.__init')
 
     # define the command line options that are valid

@@ -46,6 +46,9 @@ class Interface:
 	self.check_host()
 	self.check_port(port)
 
+        # now parse the options
+        self.parse_options()
+
     def charopts(self):
         return [""]
 

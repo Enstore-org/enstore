@@ -1212,9 +1212,6 @@ class LibraryManagerInterface(generic_server.GenericServerInterface):
 	self.summon = 1
 	self.debug = 0
         generic_server.GenericServerInterface.__init__(self)
-
-        # now parse the options
-        self.parse_options()
         Trace.trace(10,'}lmsi.__init__')
 
     # define the command line options that are valid

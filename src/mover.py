@@ -1002,9 +1002,6 @@ class MoverInterface(generic_server.GenericServerInterface):
         # fill in the defaults for possible options
         self.summon = 1
         generic_server.GenericServerInterface.__init__(self)
-
-        # now parse the options
-        self.parse_options()
         Trace.trace(10,'}lmsi.__init__')
 
     #  define our specific help

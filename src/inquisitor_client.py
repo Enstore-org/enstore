@@ -179,9 +179,6 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.start_time = ""
 	self.stop_time = ""
         generic_client.GenericClientInterface.__init__(self)
-
-        # now parse the options
-        self.parse_options()
         Trace.trace(10,'}iqc.__init')
 
     #  define our specific help

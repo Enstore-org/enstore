@@ -112,9 +112,6 @@ class AdminClerkClientInterface(generic_client.GenericClientInterface) :
         self.criteria={}
         generic_client.GenericClientInterface.__init__(self)
 
-        # parse the options
-        self.parse_options()
-
     def set_dbname(self, dbname="volume"):
         self.dbname=dbname
 

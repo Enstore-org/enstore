@@ -123,9 +123,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 	self.get_susp_vols = 0
         generic_client.GenericClientInterface.__init__(self)
 
-	# parse the options
-        self.parse_options()
-
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\

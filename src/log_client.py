@@ -176,9 +176,6 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
 	self.get_last_logfile_name = 0
         generic_client.GenericClientInterface.__init__(self)
 
-        # fill in the options
-        self.parse_options()
-
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\

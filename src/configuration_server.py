@@ -358,9 +358,6 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
 	self.config_file = ""
         generic_server.GenericServerInterface.__init__(self)
 
-        # now parse the options
-        self.parse_options()
-
         # bomb out if we can't find the file
         statinfo = os.stat(self.config_file)
 

@@ -231,9 +231,6 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
         # fill in the defaults for possible options
         self.maxwork=10
         generic_server.GenericServerInterface.__init__(self)
-
-        # now parse the options
-        self.parse_options()
         Trace.trace(10,'}mlsi.__init__')
 
     # define the command line options that are valid

@@ -1332,9 +1332,6 @@ class InquisitorInterface(generic_server.GenericServerInterface):
 	self.max_encp_lines = -1
 	self.refresh = -1
 	generic_server.GenericServerInterface.__init__(self)
-
-	# now parse the options
-	self.parse_options()
 	Trace.trace(10,'}iqsi.__init__')
 
     # define the command line options that are valid

@@ -321,9 +321,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.rdovol = 0
         self.noavol = 0
         generic_client.GenericClientInterface.__init__(self)
-
-        # parse the options
-        self.parse_options()
         Trace.trace(10,'}__init__ vcci')
 
     # define the command line options that are valid

@@ -189,9 +189,6 @@ class LoggerInterface(generic_server.GenericServerInterface):
 	self.config_file = ""
 	self.test = 0
         generic_server.GenericServerInterface.__init__(self)
-
-        # now parse the options
-        self.parse_options()
         Trace.trace(10,'}logi.__init__')
 
     # define the command line options that are valid
