@@ -2771,6 +2771,12 @@ The reason for the MAXWORK parameter is because when the EMASS robot has an oper
 it reports a timeout failure even though it eventually finishes the operation.  The MAXWORK parameter
 can be set to 0 when it is necessary to perform work on a robot.
 <p>
+The media changer returns three status values:
+<ul>
+<li>The status returned by the underlying agent
+<li>A translation of the underlying status with the values, SUCCESS, DRIVE_ERR, MEDIA_ERR, GNEREAL_ERR
+<li>A text description returned by the underlying agent
+<p>
 The media changer supports the following requests:
 <ul>
 <li>LOAD &ltvolume id&gt &ltdrive id&gt &ltmedia type&gt
@@ -2798,6 +2804,8 @@ The media changer does not keep tape drive or cartridge statistics.  Summary sta
 are not very useful and the media does not run on the machine connected to the tape drive.
 <p>
 Enstore writes detail error statistics to its log when a file is closed.
+
+
 
 <hr>
 <h3><a name="inquisitor">
