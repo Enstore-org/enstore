@@ -1,4 +1,4 @@
-#######################################################################
+######################################################################
 # src/$RCSfile$   $Revision$
 #
 # system imports
@@ -30,17 +30,17 @@ import Trace
 import ECRC
 import library_manager_client
 
-d0sam_format = "INFILE=%s\n"+\
-               "OUTFILE=%s\n"+\
-               "FILESIZE=%d\n"+\
-               "LABEL=%s\n"+\
-               "DRIVE=%s\n"+\
-               "TRANSFER_TIME=%f\n"+\
-               "SEEK_TIME=%f\n"+\
-               "MOUNT_TIME=%f\n"+\
-               "QWAIT_TIME=%f\n"+\
-               "TIME2NOW=%f\n"+\
-               "STATUS=%s\n"
+data_access_layer_format = "INFILE=%s\n"+\
+                           "OUTFILE=%s\n"+\
+                           "FILESIZE=%d\n"+\
+                           "LABEL=%s\n"+\
+                           "DRIVE=%s\n"+\
+                           "TRANSFER_TIME=%f\n"+\
+                           "SEEK_TIME=%f\n"+\
+                           "MOUNT_TIME=%f\n"+\
+                           "QWAIT_TIME=%f\n"+\
+                           "TIME2NOW=%f\n"+\
+                           "STATUS=%s\n"
 
 #######################################################################
 
@@ -60,9 +60,9 @@ def write_to_hsm(input, output,
     tinfo = {}
     tinfo["abs_start"] = t0
 
-    # check if there special d0sam printing requested. This is 
+    # check if there special data_access_layer printing requested. This is 
     # designated by having bit 2^12 set (4096)
-    d0sam = (ilist & 0x1000) !=0
+    data_access_layer = (ilist & 0x1000) !=0
     verbose = ilist & 0x0fff
 
     if verbose>2:
@@ -196,7 +196,7 @@ def write_to_hsm(input, output,
 		"file clerk")
     fticket = csc.get("file_clerk")
     if fticket['status'][0] != e_errors.OK:
-	print_d0sam_format('', '', 0, fticket)
+	print_data_access_layer_format('', '', 0, fticket)
 	jraise(vticket['status'][0], " encp.write_to_hsm: " \
 	       + ", ticket[\"status\"]="+repr(fticket["status"]))
 
@@ -222,7 +222,7 @@ def write_to_hsm(input, output,
                 library[0]+".library_manager")
     vticket = csc.get(library[0]+".library_manager")
     if vticket['status'][0] != e_errors.OK:
-	print_d0sam_format('', '', 0, vticket)
+	print_data_access_layer_format('', '', 0, vticket)
 	jraise(vticket['status'][0], " encp.write_to_hsm: " \
 	       + ", ticket[\"status\"]="+repr(vticket["status"]))
 	
@@ -309,9 +309,7 @@ def write_to_hsm(input, output,
                 print "ENCP: write_to_hsm LM returned"
                 pprint.pprint(ticket)
             if ticket['status'][0] != e_errors.OK :
-		print_d0sam_format(inputlist[i], outputlist[i], \
-				   file_size[i],
-				   ticket)
+		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], ticket)
                 jraise(errno.errorcode[errno.EPROTO],\
 		       " encp.write_to_hsm: "\
                        "from u.send to " +library[i]+" at "\
@@ -370,8 +368,7 @@ def write_to_hsm(input, output,
             # ok, we've been called back with a matched id - how's 
 	    # the status?
             if ticket["status"][0] != e_errors.OK :
-		print_d0sam_format(inputlist[i], outputlist[i], \
-				   file_size[i], ticket)
+		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], ticket)
 
                 jraise(errno.errorcode[errno.EPROTO],\
 		       " encp.write_to_hsm: "+\
@@ -438,8 +435,8 @@ def write_to_hsm(input, output,
 		    except:
 			# assume network error...
 			# no done_ticket!
-			#print_d0sam_format(inputlist[i], outputlist[i],
-			#                   file_size[i], done_ticket)
+			#print_data_access_layer_format(inputlist[i], outputlist[i],
+			#                               file_size[i], done_ticket)
 			# exit here
 			jraise(errno.errorcode[errno.EPROTO],
 			       " encp.write_to_hsm: network problem "+\
@@ -448,8 +445,7 @@ def write_to_hsm(input, output,
 
 		    control_socket.close()
 
-		    print_d0sam_format( inputlist[i], outputlist[i],
-					file_size[i], done_ticket )
+		    print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
 		    if not e_errors.is_retriable(done_ticket["status"][0]):
 			# exit here
 			jraise(errno.errorcode[errno.EPROTO],
@@ -509,8 +505,7 @@ def write_to_hsm(input, output,
 
 	    # make sure mover thinks transfer went ok
 	    if done_ticket["status"][0] != e_errors.OK :
-		print_d0sam_format(inputlist[i], outputlist[i],
-				   file_size[i], done_ticket)
+		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
 		# exit here
 		if not e_errors.is_retriable(done_ticket["status"][0]):
 		    jraise(errno.errorcode[errno.EPROTO],
@@ -532,8 +527,7 @@ def write_to_hsm(input, output,
 	    # Check the CRC
             if chk_crc != 0:
                 if done_ticket["fc"]["complete_crc"] != mycrc :
-		    print_d0sam_format(inputlist[i], outputlist[i], 
-				       file_size[i], done_ticket)
+		    print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.write_to_hsm: CRC's mismatch: "\
                            +repr(done_ticket["fc"]["complete_crc"])+\
@@ -570,8 +564,7 @@ def write_to_hsm(input, output,
 		print "ENCP: write_to_hsm FC returned"
 		pprint.pprint(binfo)
 	    if done_ticket['status'][0] != e_errors.OK :
-		print_d0sam_format(inputlist[i], outputlist[i], 
-				   file_size[i], done_ticket)
+		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
 
 		jraise(errno.errorcode[errno.EPROTO],
 		       " encp.write_to_hsm: from u.send to FC at "+\
@@ -616,8 +609,8 @@ def write_to_hsm(input, output,
 		       tinfo1["rate"+repr(i)],
                        tinfo1["transrate"+repr(i)],
 		       time.time()-t0)
-	    if d0sam:
-		print d0sam_format % \
+	    if data_access_layer:
+		print data_access_layer_format % \
 		      (inputlist[i],
 		       outputlist[i],
 		       fsize,
@@ -688,9 +681,9 @@ def read_from_hsm(input, output,
     tinfo = {}
     tinfo["abs_start"] = t0
 
-    # check if there special d0sam printing requested. This is designated by
+    # check if there special data_access_layer printing requested. This is designated by
     # the having bit 2^12 set (4096)
-    d0sam = (ilist & 0x1000) !=0
+    data_access_layer = (ilist & 0x1000) !=0
     verbose = ilist & 0x0fff
 
     if verbose>2:
@@ -799,7 +792,7 @@ def read_from_hsm(input, output,
         binfo  = client['u'].send({'work': 'bfid_info', 'bfid': bfid[i]},
                         (fticket['hostip'],fticket['port']))
         if binfo['status'][0]!=e_errors.OK:
-	    print_d0sam_format('', '', 0, binfo)
+	    print_data_access_layer_format('', '', 0, binfo)
             jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                    +" can not get info on bfid"+repr(bfid[i]))
         Trace.trace(7,"read_from_hsm on volume="+\
@@ -807,7 +800,7 @@ def read_from_hsm(input, output,
 	print "BINFO",binfo
 	if binfo['vc']['system_inhibit'] == e_errors.NOACCESS:
 	    binfo['status'] = (e_errors.NOACCESS, None)
-	    print_d0sam_format('', '', 0, binfo)
+	    print_data_access_layer_format('', '', 0, binfo)
 	    continue
 
 	request = {}
@@ -892,7 +885,7 @@ def read_from_hsm(input, output,
 		files_left, brcvd = read_hsm_files(listen_socket, submitted,
 						   files_left, request_list,
 						   tinfo, 
-						   chk_crc, d0sam, 
+						   chk_crc, data_access_layer, 
 						   maxretry, verbose)
 		bytes = bytes + brcvd
 		if verbose: print "FILES_LEFT ", files_left
@@ -936,9 +929,9 @@ def query_lm_queue(node,
                   ilist=0):
     Trace.trace(6,"{query_lm_queue host="+node)
 
-    # check if there special d0sam printing requested. This is designated by
+    # check if there special data_access_layer printing requested. This is designated by
     # the having bit 2^12 set (4096)
-    d0sam = (ilist & 0x1000) !=0
+    data_access_layer = (ilist & 0x1000) !=0
     verbose = ilist & 0x0fff
 
     # initialize - and get config, udp and log clients
@@ -1068,10 +1061,10 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
 	    pprint.pprint(lmticket)
 	    Trace.trace(0,"submit_read_requests. lmget failed"+ \
 			repr(lmticket["status"]))
-	    print_d0sam_format(rq_list[j]["infile"], 
-			       rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
-			       rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
-			       lmticket)
+	    print_data_access_layer_format(rq_list[j]["infile"], 
+                                           rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
+                                           rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
+                                           lmticket)
 	    print_error(errno.errorcode[errno.EPROTO],\
 			" submit_read_requests. lmget failed "+\
 			repr(lmticket["status"]))
@@ -1088,10 +1081,10 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
 	    print "ENCP:read_from_hsm FC read_from_hsm returned"
 	    pprint.pprint(ticket)
 	if ticket['status'][0] != "ok" :
-	    print_d0sam_format(rq_list[j]["infile"], 
-			       rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
-			       rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
-			       lmticket)
+	    print_data_access_layer_format(rq_list[j]["infile"], 
+                                           rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
+                                           rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
+                                           lmticket)
 	    print_error(errno.errorcode[errno.EPROTO],\
 			" encp.read_from_hsm: from"\
 			+"u.send to LM at "+lmticket['hostip']+"/"\
@@ -1134,7 +1127,7 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
 # read hsm files in the loop after read requests have been submitted
 
 def read_hsm_files(listen_socket, submitted, ninput,requests,  
-		   tinfo, chk_crc, d0sam, maxretry, verbose):
+		   tinfo, chk_crc, data_access_layer, maxretry, verbose):
     for rq in requests: 
 	Trace.trace(7,"{read_hsm_files:"+repr(rq['infile']))
     files_left = ninput
@@ -1180,10 +1173,10 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
         # ok, we've been called back with a matched id - how's the status?
         if ticket["status"][0] != e_errors.OK :
-	    # print error to stdout in d0sam format
-	    print_d0sam_format(requests[j]['infile'], requests[j]['outfile'], 
-			       requests[j]['file_size'],
-			       ticket)
+	    # print error to stdout in data_access_layer format
+	    print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
+                                           requests[j]['file_size'],
+                                           ticket)
 	    if not e_errors.is_retriable(ticket["status"][0]):
 		# exit here
 		jraise(errno.errorcode[errno.EPROTO],\
@@ -1297,9 +1290,9 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         # make sure the mover thinks the transfer went ok
         if done_ticket["status"][0] != e_errors.OK:
 	    os.remove(tempname)
-	    # print error to stdout in d0sam format
-	    print_d0sam_format(requests[j]['infile'], requests[j]['outfile'], 
-			       requests[j]['file_size'], done_ticket)
+	    # print error to stdout in data_access_layer format
+	    print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
+                                           requests[j]['file_size'], done_ticket)
 	    # exit here
 	    if not e_errors.is_retriable(ticket["status"][0]):
 		jraise(errno.errorcode[errno.EPROTO], \
@@ -1326,12 +1319,12 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         # verify that the crc's match
         if chk_crc != 0 :
             if done_ticket["fc"]["complete_crc"] != mycrc :
-		# print error to stdout in d0sam format
+		# print error to stdout in data_access_layer format
 		done_ticket['status'] = (e_errors.READ_COMPCRC,'crc mismatch')
-		print_d0sam_format(requests[j]['infile'], 
-				   requests[j]['outfile'], 
-				   requests[j]['file_size'],
-				   done_ticket)
+		print_data_access_layer_format(requests[j]['infile'], 
+                                               requests[j]['outfile'], 
+                                               requests[j]['file_size'],
+                                               done_ticket)
 
                 print_error(errno.errorcode[errno.EPROTO],\
                        " encp.read_from_hsm: CRC's mismatch: "\
@@ -1391,9 +1384,9 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                    tinfo["rate"+repr(j)],
                    tinfo["transrate"+repr(j)],
                    time.time()-t0)
-        if d0sam:
-	    print_d0sam_format(requests[j]['infile'], requests[j]['outfile'], 
-			       fsize, done_ticket)
+        if data_access_layer:
+	    print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
+                                           fsize, done_ticket)
 
         logc.send(log_client.INFO, 2, format,
                   requests[j]['infile'], requests[j]['outfile'], fsize,
@@ -1449,8 +1442,8 @@ def print_error(errcode,errmsg) :
     Trace.trace(0,"}encp.print_error")
 
 ##############################################################################
-# print statistics in d0sam format
-def print_d0sam_format(inputfile, outputfile, filesize, ticket):
+# print statistics in data_access_layer format
+def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
     try:
 	external_label = ticket["fc"]["external_label"]
@@ -1484,9 +1477,9 @@ def print_d0sam_format(inputfile, outputfile, filesize, ticket):
 	status = ticket["status"][0]
     except:
 	status = 'Unknown'
-    print d0sam_format % (inputfile, outputfile, filesize, external_label,
-	   device, transfer_time, seek_time, mount_time, in_queue, total,
-	   status)
+    print data_access_layer_format % (inputfile, outputfile, filesize, external_label,
+                                      device, transfer_time, seek_time, mount_time, in_queue, total,
+                                      status)
 
 
 ##############################################################################
@@ -1536,7 +1529,7 @@ def clients(config_host,config_port,verbose):
         inputfile = ""
         outputfile = ""
         filesize = 0
-        print_d0sam_format(inputfile, outputfile, filesize, stati)
+        print_data_access_layer_format(inputfile, outputfile, filesize, stati)
         jraise(stati['status']," NO response on alive to config",1)
     
     # get a udp client
@@ -1807,13 +1800,13 @@ class encp(interface.Interface):
     def __init__(self):
         Trace.trace(16,"{encp.__init__")
 
-        self.chk_crc = 0 # we will not check the crc unless told to
-        self.pri = 1     # lowest priority
-        self.delpri = 0  # priority doesn't change
-        self.agetime = 0 # priority doesn't age
-        self.d0sam = 0   # no special sam listings
-        self.verbose = 0 # no output yet
-	self.delayed_dismount = 0 # delayed dismount time is set to 0
+        self.chk_crc = 0           # we will not check the crc unless told to
+        self.pri = 1               # lowest priority
+        self.delpri = 0            # priority doesn't change
+        self.agetime = 0           # priority doesn't age
+        self.data_access_layer = 0 # no special listings
+        self.verbose = 0           # no output yet
+	self.delayed_dismount = 0  # delayed dismount time is set to 0
 
         host = 'localhost'
         port = 0
@@ -1829,7 +1822,7 @@ class encp(interface.Interface):
         Trace.trace(16,"{encp.options")
 
         the_options = self.config_options()+\
-                      ["verbose=","crc","pri=","delpri=","agetime=","delayed_dismount=", "d0sam", "queue"]+\
+                      ["verbose=","crc","pri=","delpri=","agetime=","delayed_dismount=", "data_access_layer", "d0sam", "queue"]+\
                       self.help_options()
 
         Trace.trace(16,"}encp.options options="+repr(the_options))

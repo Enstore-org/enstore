@@ -776,7 +776,7 @@ class Pnfs:
 # numbers on a specified tape
 
 def findfiles(mainpnfsdir,                  # directory above volmap directory
-                                            #  zB: /pnfs/enstore or /pnfs/d0sam
+                                            #  zB: /pnfs/enstore 
               label,                        # tape label
               filenumberlist):              # list of files wanted (count from 0)
                                             #  zB: [1,2,3] or [8,45,31] or 19
