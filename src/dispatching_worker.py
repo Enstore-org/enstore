@@ -23,7 +23,7 @@ request_dict = {}
 #
 # Purge entries older than 30 minutes. Dict is a dictionary
 #    The first entry, dict[0], is the key
-#    The second entry, dict[1], is the message, client number, ticket, and time
+#    The second entry, dict[1], is the message: (client number, ticket, and time)
 #        which becomes list[0-2]
 def purge_stale_entries(request_dict):
     stale_time = time.time() - 1800
@@ -343,8 +343,8 @@ class DispatchingWorker:
     def reply_with_list(self, list):
         Trace.trace(19,"reply_with_list number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
-        request_dict[self.current_id] = list[:]
-        self.socket.sendto(request_dict[self.current_id], self.reply_address)
+        request_dict[self.current_id] = list[0],list[1].copy(),list[2]
+        self.socket.sendto(repr(list), self.reply_address)
 
     # for requests that are not handled serialy reply_address, current_id, and client_number
     # number must be reset.  In the forking media changer these are in the forked child
