@@ -1,0 +1,307 @@
+<html> <head>
+
+<title> D0EnSrv1 </title>
+
+</head>
+
+<body BGCOLOR=#FFFFFF>
+
+<font size=7><b><i>
+<center> D0EnSrv1</center>
+</i></b></font>
+<br><p>
+
+<br><p>
+<center>$Revision$</center>
+<center>$Date$GMT</center>
+<br><p>
+
+<br><p>
+
+D0EnSrv1 is the node that contains all information that needs to be
+backed up and preserved.  That is, it has the Enstore file and volume
+databases, and the pnfs databases.
+
+<p>
+<p>
+The console servers have these major purposes:
+
+<ul>
+
+<li> Provide access to the Enstore PC root consoles via its ttyS0.
+
+     <br> To get a console:
+
+     <ul>
+
+         <li> Log in as root to one of the console servers.
+
+         <li> If you are running X11, type "cons nodename"; for
+         example "cons d0ensrv2" or "cons d0enmvr11a". Make sure you
+         allow console server xhost access to your local node.
+
+         <li> If you are not running X11, then type "console nodename"
+         and the software runs in your current environment.
+
+         <li> If you actually typing on the console monitor, you can
+         use the start menu or right-button menu to do the same thing.
+
+     </ul>
+
+<p>
+<li> Provide access to the Enstore PC boot bios via its ttyS1.
+    <br>
+    <ul>
+          <li> Getting a console for the boot bios is the same as the
+          kernel consoles, except you attach "bios" to the node
+          name. For example, "cons d0ensmvr11abios".
+
+          <li> The boot bios screens are only active when the PC is
+          booting.
+
+          <li> Eventually, it will be possible to reset the node using
+          the serial reset capabilities of the BMC over the bios
+          windows.
+     </ul>
+
+
+<p>
+<li> Provide backup storage (disk and tape) for primary pnfs and
+enstore databases and other important information. This only runs on
+d0ensrv3 for now.
+   <br>
+    <ul>
+          <li> Once an hour, the pnfs databases are copied from
+          d0ensrv1 to /diska/pnfs-backup. Files are kept on disk for
+          approximately 1 week.
+
+          <li> Once an hour, the enstore databases are copied from
+          d0ensrv1 to /diska/enstore-backup. Files are kept on disk
+          for approximately 1 week.
+
+          <li> Once an hour, the entire (except for unreadable files
+          MPTN/ETC/TRUSERS|OS2/SYSTEM/SWAPPER.DAT|tcpip/DOS/ETC/TRUSERS)
+          from the AML/2 OS/2 node adic2 is mirrored to
+          /diska/aml2Shadow. This provides a simple way to see what is
+          on the adic2 node as well as a backup.
+
+          <li> Every 15 minutes, the enstore log files are copied from
+          d0ensrv2 to /diska/enstore-log-backup. These files are not
+          critical to keeping the system running, but are our source
+          of what happened.  They are copied more frequently than the
+          critical files because this is the only copy we have (the
+          d0ensrv1 databases are on mirrored and duplicated disks).
+          Files are kept on disk for approximately 1 week.
+
+          <li> Twice a day, at 7 AM and 7 PM, a backup of files
+          currently on disk is made to tape.  There is a full backup
+          Monday and Thursday mornings.  [This is a sticky flag, a
+          full backup is attempted until it is successful.]  The other
+          backups are incremental since the last full backup.
+
+             <ul>
+
+                <li> The tape drive is a local (not in the AML/2
+                robot) mammoth-1 drive.
+
+                 <li> Tapes get full, and then need to be replaced,
+                 about once a month.
+
+                 <li> Enstore's volume-import procedure is used to
+                 create the backup of the disks (not fmb).  This
+                 allows us to insert the tape, if we need to, into the
+                 AML/2 robot and read the information with
+                 Enstore. The volume import information resides in
+                 /diska/BackupTapeDB.
+
+                 <li> Individual files are not copied to tape. Rather
+                 a tar container of each major section is created
+                 first and that is what is backed up to tape.  These
+                 tar containers are created in /diska/BackupToTape.
+
+              </ul>
+
+    </ul>
+
+
+<p>
+<li> Provide a netscape browser for examining Enstore's current state.
+    <br>
+    <ul>
+
+          <li> The easiest way to get the browser is log in as root
+          and type "donet". This will bring up the correct status page
+          for you automatically and with the correct uid.
+
+          <li> Alternatively, you can just type "netscape" and then
+          hit the "home" button. But don't run netscape as root. Log
+          in as enstore instead.
+
+          <li> If you actually typing on the console monitor, you can
+          use the start menu or right-button menu to do the same
+          thing.
+
+     </ul>
+
+<p>
+<li> Provide a logical place to control or monitor Enstore.  The
+console servers are the nodes people should log into and not any of
+the other ones.
+
+    <br> To monitor/control the other nodes:
+    <ul>
+
+          <li> Log in as enstore (not as root!)
+
+          <li> Get the correct environment "setup enstore"
+
+          <li> To issue an enstore command: "enstore command &lt
+          farmlet &gt &lt options &gt". For example, "enstore EPS"
+          will list the enstore processes on all enstore nodes;
+          "enstore EPS d0enmvr" will list the enstore processes on
+          just the mover nodes; and "enstore EPS d0ensrv1" will list
+          the enstore processes on just d0ensrv1.  See other sections
+          for more details on controlling enstore.
+
+    </ul>
+
+<p>
+<li> There is a local mammoth-1 tape drive that allows administrators
+to examine and/or copy tapes.  This allows detailed investigation
+outside the AML/2 and without affecting the users.
+
+</ul>
+
+<br>
+<br>
+<br>
+Cron jobs executing on d0ensrv1:
+<ul>
+
+<li> user root - plog.  If this fails, either you are out of disk
+space on /diska for the pnfs logs or else something is not configured
+correctly. (This cronjob runs in the pnfs framework, not the enstore
+one).
+
+<li> user root - pnfsFastBackup. If this fails either you are out of
+disk space on /diska for the backups, or the backup node, d0ensrv3, is
+down or out of disk space, or the network connection to the backup
+node is down. (This cronjob runs in the pnfs framework, not the
+enstore one).
+
+<li> user root - delfile. If this fails, there is probably with the
+file clerk.
+
+<li> user root - rsync. If this fails, there are problems with the
+raid disks, /diska or /diskb.
+
+<li> user enstore backup.  If this fails either you are out of disk
+space on /diskb for the backups, or the backup node, d0ensrv3, is down
+or out of disk space, or the network connection to the backup node is
+down.
+
+<li> user enstore - checkfile. This doesn't work right now.
+
+<li> user enstore - checkvolume. This doesn't work right now.
+
+<li> user root - tarit. If this fails, the most likely reason is
+because either rip8 (the backup node for the ide system disk) or the
+network connection to rip8 is down.
+
+</ul>
+
+
+
+<br>
+<br>
+<br>
+Raid Software
+<ul>
+
+<li> Mirroring has been disabled in the standard linux kernel.  To
+re-enable it, a patch from
+ftp://ftp.kernel.org/pub/linux/daemons/raid/alpha/raid0145-19990824-2.2.11.patch
+was applied to the 2.2.13 linux kernel.  This went smoothly.
+
+<li> Up to date raid tools, not available via the standard
+distribution, also had to be installed to make mirroring work
+properly. These raidtools were gotten from the same place as the raid
+patch,
+ftp://ftp.kernel.org/pub/linux/daemons/raid/alpha/raidtools-19990824-0.90.tar.gz
+
+<li> The raid devices are declared in /etc/raidtab (not the older
+/etc/mdtab). There are 2 raid disks on d0ensrv1 and each one is
+composed of 2 9 GB scsi disks to form 1 9 GB scsi disk.  There are no
+spare disks in the configuration.
+
+<li> You can check the <a
+href="http://d0ensrv2/enstore/d0ensrv1_raid_status.txt"> Raid Status
+Page </a> to look for errors.  This page is updated every few
+minutes. You can also log into d0ensrv1 and type "raidinfo" to get
+current values.  One needs to pay particular attention to the 1st few
+lines that show the disk's current state.
+
+</ul>
+
+
+
+<br>
+<br>
+<br>
+Bootup
+<ul>
+
+<li> Raidstart is invoked.
+
+<li> Each raid disk has e2fsck run on it to correct any errors
+
+<li> The pnfs servers are started.
+
+<li> The Enstore servers are started.
+
+<li> FTT makes /dev/rmt scsi devices.
+
+<li> The BMC watchdog is armed and deadman is started at real-time
+priority.
+
+
+</ul>
+
+<br>
+<br>
+<br>
+Some Details:
+<ul>
+
+<li> Each serial line is configured at 19200 baud rate.
+
+<li> The linux kernel, via lilo, has been configured to send its root
+console output to ttyS0. The kernel sends its output to ttyS0 by
+adding "append="console=ttyS0,19200 console=tty0 ..." to the kernel
+stanza.
+
+<li> The barracuda 9 GB hard drives needs to have several options
+enabled to operate efficiently.  Do this by adding a line to each
+stanza of lilo.conf: append=".... console=tty0
+ncr53c8xx=tags:4,sync:10,ultra:y"
+
+<li> The bios needs to be configured to use vt100 terminals, xon/xoff
+flow control, and ???.  Also lilo needs to have the following line
+once, ahead of all stanzas, "serial=0,19200n8".
+
+<li> Gettys need to be running on in order to open a tty session. The
+/etc/inittab has to have "c:12345:respawn:/sbin/mingetty ttyS0" line.
+
+<li> A backup of the system ide disk is made once per day to
+rip8:/fnal/enstore/servers/srv1.  This allows one to have an
+up-to-date copy in order to replace a failed node. Procedures (tarit
+and loadit in /root) are in place to do this; One also needs the
+d0enrtbt floppy to create a replacement system disk.
+
+<li> Although a system disk backup is made daily, the user's home
+directory files are not copied. No one should be saving files on these
+nodes without copies in appropriately backed up machines.
+
+</ul>
+
+</body></html>
