@@ -22,7 +22,7 @@ complain=1
 
 case $node in
 
-  stken*|rip9)
+  stken*|rip9|rip10)
             ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
             complain=0
