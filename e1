@@ -7,4 +7,4 @@ export ENSTORE_DIR=`pwd`
 
 export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/willow.conf
 export ENSTORE_CONFIG_PORT=7510
-export ENSTORE_CONFIG_HOST=pcfarm4.fnal.gov
+export ENSTORE_CONFIG_HOST=localhost
