@@ -28,6 +28,17 @@ import EXfer
 import interface
 import Trace
 
+d0sam_format = "INFILE=%s\n"+\
+               "OUTFILE=%s\n"+\
+               "FILESIZE=%d\n"+\
+               "LABEL=%s\n"+\
+               "DRIVE=%s\n"+\
+               "TRANSFER_TIME=%f\n"+\
+               "SEEK_TIME=%f\n"+\
+               "MOUNT_TIME=%f\n"+\
+               "QWAIT_TIME=%f\n"+\
+               "STATUS=%d\n"
+
 ##############################################################################
 
 def write_to_hsm(input, output,
@@ -222,9 +233,9 @@ def write_to_hsm(input, output,
             system_enabled(p) # make sure system still enabled before submitting
             Trace.trace(7,"write_to_hsm q'ing:"+repr(work_ticket))
             ticket = u.send(work_ticket, (vticket['hostip'], vticket['port']))
-	    if list > 3:
-		print "ENCP: write_to_hsm LM returned"
-		pprint.pprint(ticket)
+            if list > 3:
+                print "ENCP: write_to_hsm LM returned"
+                pprint.pprint(ticket)
             if ticket['status'] != "ok" :
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        "from u.send to " +library[i]+" at "\
@@ -251,16 +262,16 @@ def write_to_hsm(input, output,
             # some sort of old call-back to this very same port. It is dicey
             # to time out, as it is probably legitimate to wait for hours....
 
-	    #sys.exit(1)
+            #sys.exit(1)
 
             while 1 :
                 Trace.trace(10,"write_to_hsm listening for callback")
                 control_socket, address = listen_socket.accept()
                 ticket = callback.read_tcp_socket(control_socket,\
                              "encp write_to_hsm, mover call back")
-		if list > 3:
-		    print "ENCP:write_to_hsm MV called back with"
-		    pprint.pprint(ticket)
+                if list > 3:
+                    print "ENCP:write_to_hsm MV called back with"
+                    pprint.pprint(ticket)
                 callback_id = ticket['unique_id']
                 # compare strings not floats (floats fail comparisons)
                 if str(unique_id[i])==str(callback_id):
@@ -407,12 +418,22 @@ def write_to_hsm(input, output,
 
         if list:
             print format %\
-                  (inputlist[i], outputlist[i], fsize,\
-                   done_ticket["fc"]["external_label"],\
-                   tinfo1["rate"+repr(i)], uinfo["uname"],\
+                  (inputlist[i], outputlist[i], fsize,
+                   done_ticket["fc"]["external_label"],
+                   tinfo1["rate"+repr(i)], uinfo["uname"],
                    time.time()-t0)
         if d0sam:
-            print "hello igor - write"
+            print d0sam_format % \
+                  (inputlist[i],
+                   outputlist[i],
+                   fsize,
+                   done_ticket["fc"]["external_label"],
+                   done_ticket["mover"]["device"],
+                   -1.0,
+                   -2.0,
+                   -3.0,
+                   -4.0,
+                   0)
 
         logc.send(log_client.INFO, 2, format,
                   inputlist[i], outputlist[i], fsize,
@@ -637,9 +658,9 @@ def read_from_hsm(input, output,
                 # send ticket to file clerk who sends it to right library manger
                 Trace.trace(7,"read_from_hsm q'ing:"+repr(work_ticket))
                 ticket = u.send(work_ticket, (fticket['hostip'], fticket['port']))
-		if list > 3:
-		    print "ENCP:read_from_hsm FC read_from_hsm returned"
-		    pprint.pprint(ticket)
+                if list > 3:
+                    print "ENCP:read_from_hsm FC read_from_hsm returned"
+                    pprint.pprint(ticket)
                 if ticket['status'] != "ok" :
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.read_from_hsm: from"\
@@ -691,9 +712,9 @@ def read_from_hsm(input, output,
                 control_socket, address = listen_socket.accept()
                 ticket = callback.read_tcp_socket(control_socket,\
                              "encp read_from_hsm, mover call back")
-		if list > 3:
-		    print "ENCP:read_from_hsm MV called back with"
-		    pprint.pprint(ticket)
+                if list > 3:
+                    print "ENCP:read_from_hsm MV called back with"
+                    pprint.pprint(ticket)
                 callback_id = ticket['unique_id']
                 forus = 0
                 for j in range(0,ninput):
@@ -831,7 +852,17 @@ def read_from_hsm(input, output,
                        tinfo["rate"+repr(j)], uinfo["uname"],\
                        time.time()-t0)
             if d0sam:
-                print "hello igor - read"
+                print d0sam_format % \
+                      (inputlist[i],
+                       outputlist[i],
+                       fsize,
+                       done_ticket["fc"]["external_label"],
+                       done_ticket["mover"]["device"],
+                       -1.0,
+                       -2.0,
+                       -3.0,
+                       -4.0,
+                       0)
 
             logc.send(log_client.INFO, 2, format,
                       inputlist[j], outputlist[j], fsize,
@@ -959,7 +990,7 @@ def pnfs_information(filelist,nfiles):
                    'major','minor','rmajor','rminor',\
                    'mode','pstat' ] :
             exec("pinf["+repr(k)+"] = p."+k)
-	pinf['inode'] = 0		# cpio wrapper needs this also
+        pinf['inode'] = 0               # cpio wrapper needs this also
         pinfo.append(pinf)
 
     Trace.trace(16,"}pnfs_information bfid="+repr(bfid)+\
