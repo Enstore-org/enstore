@@ -126,10 +126,12 @@ class Queue:
 		     v['vc']['current_location']:
 		      self.queue[i]['at_the_top'] = self.queue[i]['at_the_top']+1
 		      return self.queue[i]
+
       # no match has been found, return first for this volume
       for i in range (0, len(self.queue)):
 	  if self.queue[i]['vc']['external_label'] ==v['vc']["external_label"]:
 	      self.queue[i]['at_the_top'] = self.queue[i]['at_the_top']+1
+	      self.queue[i]['status'] = v['vc']['status']
 	      return self.queue[i]
       return
 
