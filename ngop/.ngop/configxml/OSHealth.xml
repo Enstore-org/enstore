@@ -10,6 +10,7 @@
   <System Name="OSHealth" Cluster="{%H}">
      <MonitoredElement Name="inetd"   Type="Daemon"     Host="{%H}"/>
      <MonitoredElement Name="crond"   Type="Daemon"     Host="{%H}"/>
+     <MonitoredElement Name="timeSync" Type="Daemon"    Host="{%H}"/>
      <MonitoredElement Name="syslogd" Type="Daemon"     Host="{%H}"/>
      <MonitoredElement Name="/home"   Type="FileSystem" Host="{%H}"/>
      <MonitoredElement Name="cpuLoad" Type="sysUsage"   Host="{%H}"/>
