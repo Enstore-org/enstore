@@ -18,9 +18,9 @@ import option
 import pnfs
 import volume_family
 import e_errors
-from encp import e_access  #for e_access().
+#from encp import e_access  #for e_access().
 
-os.access = e_access   #Hack for effective ids instead of real ids.
+#os.access = e_access   #Hack for effective ids instead of real ids.
 
 infc = None
 ff = {} #File Family cache.
@@ -54,11 +54,122 @@ def errors_and_warnings(fname, error, warning):
         print 'OK'
 
 
+#The os.access() and the access(2) C library routine use the real id when
+# testing for access.  This function does the same thing but for the
+# effective ID.
+def e_access(path, mode):
+    
+    #Test for existance.
+    try:
+        file_stats = os.stat(path)
+        #stat_mode = file_stats[stat.ST_MODE]
+    except OSError:
+        return 0
+
+    return check_permissions(file_stats, mode)
+
+def check_permissions(file_stats, mode):
+
+    stat_mode = file_stats[stat.ST_MODE]
+
+    #Make sure a valid mode was passed in.
+    if mode & (os.F_OK | os.R_OK | os.W_OK | os.X_OK) != mode:
+        return 0
+
+    # Need to check for each type of access permission.
+
+    if mode == os.F_OK:
+        # In order to get this far, the file must exist.
+        return 1
+
+    if mode & os.R_OK:  #Check for read permissions.
+        #If the user is user root.
+        if os.geteuid() == 0:
+            #return 1
+            pass
+        #Anyone can read this file.
+        elif (stat_mode & stat.S_IROTH):
+            #return 1
+            pass
+        #This is the files owner.
+        elif (stat_mode & stat.S_IRUSR) and \
+           file_stats[stat.ST_UID] == os.geteuid():
+            #return 1
+            pass
+        #The user has group access.
+        elif (stat_mode & stat.S_IRGRP) and \
+           (file_stats[stat.ST_GID] == os.geteuid() or
+            file_stats[stat.ST_GID] in os.getgroups()):
+            #return 1
+            pass
+        else:
+            return 0
+
+    if mode & os.W_OK:  #Check for write permissions.
+        #If the user is user root.
+        if os.geteuid() == 0:
+            #return 1
+            pass
+        #Anyone can write this file.
+        elif (stat_mode & stat.S_IWOTH):
+            #return 1
+            pass
+        #This is the files owner.
+        elif (stat_mode & stat.S_IWUSR) and \
+           file_stats[stat.ST_UID] == os.geteuid():
+            #return 1
+            pass
+        #The user has group access.
+        elif (stat_mode & stat.S_IWGRP) and \
+           (file_stats[stat.ST_GID] == os.geteuid() or
+            file_stats[stat.ST_GID] in os.getgroups()):
+            #return 1
+            pass
+        else:
+            return 0
+    
+    if mode & os.X_OK:  #Check for execute permissions.
+        #If the user is user root.
+        if os.geteuid() == 0:
+            #return 1
+            pass
+        #Anyone can execute this file.
+        elif (stat_mode & stat.S_IXOTH):
+            #return 1
+            pass
+        #This is the files owner.
+        elif (stat_mode & stat.S_IXUSR) and \
+           file_stats[stat.ST_UID] == os.geteuid():
+            #return 1
+            pass
+        #The user has group access.
+        elif (stat_mode & stat.S_IXGRP) and \
+           (file_stats[stat.ST_GID] == os.geteuid() or
+            file_stats[stat.ST_GID] in os.getgroups()):
+            #return 1
+            pass
+        else:
+            return 0
+
+    return 1
+
+
+
 def layer_file(f, n):
     pn, fn = os.path.split(f)
-    return os.path.join(pn, '.(use)(%d)(%s)'%(n, fn))
+    return os.path.join(pn, ".(use)(%d)(%s)" % (n, fn))
 
-def check_link(l):
+def id_file(f):
+    pn, fn = os.path.split(f)
+    return os.path.join(pn, ".(id)(%s)" % (fn, ))
+
+def parent_file(f, id):
+    pn, fn = os.path.split(f)
+    return os.path.join(pn, ".(parent)(%s)" % (id))
+
+
+def check_link(l, f_stats):
+    __pychecker__ = "unusednames=f_stats"
 
     msg = []
     warn = []
@@ -68,7 +179,7 @@ def check_link(l):
 
     return msg, warn
 
-def check_dir(d):
+def check_dir(d, f_stats):
 
     msg = []
     warn = []
@@ -79,7 +190,7 @@ def check_dir(d):
            or lc[:8] == '.removed':
         return msg, warn
         
-    if os.access(d, os.R_OK | os.X_OK):
+    if check_permissions(f_stats, os.R_OK | os.X_OK):
         for entry in os.listdir(d):
 
             #Skip blacklisted files.
@@ -92,7 +203,7 @@ def check_dir(d):
 
     return msg, warn
 
-def check_file(f):
+def check_file(f, f_stats):
 
     msg = []
     warn = []
@@ -104,6 +215,7 @@ def check_file(f):
         msg.append("found temporary file")
         return msg, warn
 
+    """
     #Determine if the file exists and we can access it.
     try:
         f_stats = os.stat(f)
@@ -115,15 +227,7 @@ def check_file(f):
             #No read permission is the likeliest at this point...
             msg.append('no read permission')
             return msg, warn
-
-    # get xref from layer 4 (?)
-    try:
-        pf = pnfs.File(f)
-    except (KeyboardInterrupt, SystemExit), msg:
-        raise msg
-    except OSError:
-        msg.append('corrupted layer 4 metadata')
-        #return msg, warn
+    """
 
     # get bfid from layer 1
     try:
@@ -133,7 +237,15 @@ def check_file(f):
     except OSError:
         msg.append('corrupted layer 1 metadata')
 
-    if msg:
+    # get xref from layer 4 (?)
+    try:
+        pf = pnfs.File(f)
+    except (KeyboardInterrupt, SystemExit), msg:
+        raise msg
+    except OSError:
+        msg.append('corrupted layer 4 metadata')
+
+    if msg or warn:
         return msg, warn
 
     #Look for missing pnfs information.
@@ -159,7 +271,7 @@ def check_file(f):
     fr = infc.bfid_info(bfid)
     if fr['status'][0] != e_errors.OK:
         msg.append('not in db')
-	return msg, warn
+        return msg, warn
 
     # Look for missing file database information.
     if not fr.has_key('pnfs_name0'):
@@ -170,6 +282,7 @@ def check_file(f):
     if msg or warn:
         return msg, warn
 
+    
     #Compare pnfs metadata with file database metadata.
     
     # volume label
@@ -256,18 +369,25 @@ def check_file(f):
     except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no deleted field')
 
+    if msg or warn:
+        return msg, warn
+
     # parent id
     try:
-        target = os.path.dirname(f)
-        target_name = os.path.join(os.path.dirname(target),
-                                   ".(id)(%s)" % os.path.basename(target))
+        parent_id = pf.get_parent_id()
+    except (OSError, IOError):
+        msg.append('corrupted pnfs metadata')
+        return msg, warn
+    try:
+        #Get the id of the directory that claims to be the parent of the file.
+        target_name = id_file(os.path.dirname(f))
         target_file = open(target_name)
         parent_dir_id = target_file.readline()[:-1]
         target_file.close()
-    except:
+    except OSError:
         parent_dir_id = ""
-    if pf.parent_id != parent_dir_id:
-        msg.append("parent_id(%s, %s)" % (pf.parent_id, parent_dir_id))
+    if parent_id != parent_dir_id:
+        msg.append("parent_id(%s, %s)" % (parent_id, parent_dir_id))
 
     return msg, warn
 
@@ -301,17 +421,17 @@ def check(f):
         return
 
     if stat.S_ISLNK(f_stats[stat.ST_MODE]):
-        res, wrn = check_link(f)
+        res, wrn = check_link(f, f_stats)
         errors_and_warnings(f, res, wrn)
         
     # if f is a directory, recursively check its files
     elif stat.S_ISDIR(f_stats[stat.ST_MODE]):
-        res, wrn = check_dir(f)
+        res, wrn = check_dir(f, f_stats)
         if res or wrn:
             errors_and_warnings(f, res, wrn)
             
     elif stat.S_ISREG(f_stats[stat.ST_MODE]):
-        res, wrn = check_file(f)
+        res, wrn = check_file(f, f_stats)
         errors_and_warnings(f, res, wrn)
         
     else:
@@ -321,14 +441,14 @@ def check(f):
 
 def start_check(line):
     line = line.strip()
-    """
+    
     import profile
     import pstats
     profile.run("check(line)", "/tmp/scanfiles_profile")
     p = pstats.Stats("/tmp/scanfiles_profile")
     p.sort_stats('cumulative').print_stats(100)
-    """
-    check(line)
+    
+    #check(line)
 
 if __name__ == '__main__':
 

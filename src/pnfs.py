@@ -2464,7 +2464,7 @@ class File:
 		else:
 			self.path = os.path.abspath(file)
 			# does it exist?
-			if os.access(self.path, os.F_OK):
+                        try:
 				f = open(self.layer_file(4))
 				finfo = map(string.strip, f.readlines())
 				f.close()
@@ -2499,7 +2499,7 @@ class File:
 				#	print 'different paths'
 				#	print '\t f>', self.path
 				#	print '\t 4>', p_path
-			else:
+                        except OSError:
 				self.volume = ""
 				self.location_cookie = ""
 				self.size = 0
@@ -2512,42 +2512,31 @@ class File:
 				self.complete_crc = ''
 				self.p_path = self.path
 
-                        #file id
-                        id_name = os.path.join(os.path.dirname(self.path),
-                                     ".(id)(%s)" % os.path.basename(self.path))
-                        try:
-                            id_file = open(id_name)
-                            self.r_pnfs_id = id_file.readline()[:-1]
-                            id_file.close()
-                        except (OSError, IOError):
-                            self.r_pnfs_id = ""
-                        #parent id
-                        if self.r_pnfs_id:
-                            parent_name = os.path.join(
-                                os.path.dirname(self.path),
-                                ".(parent)(%s)" % self.r_pnfs_id)
-                            try:
-                                paren = open(parent_name)
-                                self.parent_id = paren.readline()[:-1]
-                                paren.close()
-                            except (OSError, IOError):
-                                self.parent_id = ""
-                        else:
-                            self.parent_id = ""
-                        
 		return
 
 	# layer_file(i) -- compose the layer file name
 	def layer_file(self, i):
-		return os.path.join(self.dir(), '.(use)(%d)(%s)'%(i, self.file()))
+		return os.path.join(self.dir(),
+                                    '.(use)(%d)(%s)'%(i, self.file()))
 
 	# id_file() -- compose the id file name
 	def id_file(self):
 		return os.path.join(self.dir(), '.(id)(%s)'%(self.file()))
 
+        # parent_file() -- compose the parent id file name
+        def parent_file(self):
+                try:
+                        #Try and avoid unecessary .(id)() (P)NFS quires.
+                        use_id = self.r_pnfs_id
+                except AttributeError:
+                        use_id = self.get_pnfs_id()
+
+                return os.path.join(self.dir(), '.(parent)(%s)' % (use_id))
+
 	# size_file -- compose the size file, except for the actual size
 	def size_file(self):
-		return os.path.join(self.dir(), '.(fset)(%s)(size)'%(self.file()))
+		return os.path.join(self.dir(),
+                                    '.(fset)(%s)(size)'%(self.file()))
 
 	# dir() -- get the directory of this file
 	def dir(self):
@@ -2560,9 +2549,16 @@ class File:
 	# get_pnfs_id() -- get pnfs id from pnfs id file
 	def get_pnfs_id(self):
 		f = open(self.id_file())
-		pnfs_id = string.strip(f.read())
+                self.r_pnfs_id = f.readline()[:-1]  #.strip()
 		f.close()
-		return pnfs_id
+		return self.r_pnfs_id
+
+        # get_parent_id() -- get parent pnfs id from pnfs id file
+        def get_parent_id(self):
+                f = open(self.parent_file())
+                self.parent_id = f.readline()[:-1]  #.strip()
+                f.close()
+                return self.parent_id
 
 	def show(self):
 		print "           file =", self.path
