@@ -32,7 +32,7 @@ global_logger = ENNONE
 global_severity = ENNONE
 
 def add_id(id, msg):
-    Trace.trace(5,"{add_id "+repr(id))
+    Trace.trace(25,"{add_id "+repr(id))
     global global_print_id
 
     # add id on to the front if we have one
@@ -44,7 +44,7 @@ def add_id(id, msg):
 	    nmsg = global_print_id+": "+repr(msg)
     else:
 	nmsg = id+": "+repr(msg)
-    Trace.trace(5,"}add_id ")
+    Trace.trace(25,"}add_id ")
     return nmsg
 
 # keep a logger
@@ -57,7 +57,7 @@ def add_logger(logger, log_severity=ENNONE):
 
 # send the message to the logger
 def send_to_logger(logger, log_severity, msg):
-    Trace.trace(5,"{send_to_logger "+repr(logger))
+    Trace.trace(25,"{send_to_logger "+repr(logger))
     if logger != ENNONE:
         l_logger = logger
     else:
@@ -70,11 +70,11 @@ def send_to_logger(logger, log_severity, msg):
 
     if l_logger != ENNONE:
         l_logger.send(l_log_severity, 1, msg)
-    Trace.trace(5,"}send_to_logger "+repr(l_logger))
+    Trace.trace(25,"}send_to_logger "+repr(l_logger))
 
 def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, \
 	    log_severity=ENNONE, id=""):
-    Trace.trace(4,"{enprint "+repr(msg))
+    Trace.trace(24,"{enprint "+repr(msg))
     global global_print_id
 
     # send the message to STDOUT.
@@ -115,13 +115,13 @@ def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, \
     # reset the following so if the next time we are called generically,
     # we do not retain the old value.
     global_print_id = ""
-    Trace.trace(4,"}enprint ")
+    Trace.trace(24,"}enprint ")
 
 class GenericCS:
 
     def enprint(self, msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, \
  	        log_severity=ENNONE):
-	Trace.trace(3,"{self.enprint ")
+	Trace.trace(23,"{self.enprint ")
 	global global_print_id
 
 	# use an object data member as a prefix to the message if available
@@ -140,9 +140,10 @@ class GenericCS:
 	    l_logger = logger
 
 	enprint(msg, msg_bit, verbosity, l_logger, log_severity)
-	Trace.trace(3,"}self.enprint ")
+	Trace.trace(23,"}self.enprint ")
 
     def add_logger(self, logger, log_severity=ENNONE):
-	Trace.trace(3,"{self.add_logger ")
+	Trace.trace(23,"{self.add_logger ")
 	add_logger(logger, log_severity)
-	Trace.trace(3,"}self.add_logger ")
+	Trace.trace(23,"}self.add_logger ")
+
