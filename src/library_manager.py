@@ -2123,7 +2123,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w:
             Trace.trace(11,"mover_error: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
-        if mticket['state'] == mover_constants.OFFLINE: # mover finished request and went offline
+        if ((mticket['state'] == mover_constants.OFFLINE) or # mover finished request and went offline
+            (mticket['status'][0] == e_errors.ENCP_GONE)):
             self.volumes_at_movers.delete(mticket)
             #self.reply_to_caller({'work': 'no_work'})
             return

@@ -2236,6 +2236,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.state is HAVE_BOUND:
                 self.dismount_time = time.time() + self.default_dismount_delay
             self.need_lm_update = (1, self.state, 1, None)
+            self.send_error_msg(error_info=(e_errors.ENCP_GONE, None), error_source = None) 
             #self.update_lm(reset_timer=1)
             return 0
 
