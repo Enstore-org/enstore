@@ -80,6 +80,7 @@ import driver
 import FTT				# needed for FTT.error
 import EXfer				# needed for EXfer.error
 import e_errors
+import write_stats
 
 # for status via exit status (initial method), set using exit_status=m_err.index(e_errors.WRITE_NOTAPE),
 #                            and convert back using just ticket['status']=m_err[exit_status]
@@ -353,6 +354,16 @@ class MoverClient:
 	del self.vol_vcc[self.vol_info['external_label']]
 	self.vol_info['external_label'] = ''
 	
+	#get status information and write it to a file
+	WSstatus,WSdata = self.writeAll(driver_object, mvr_config['device'], outParam=['cleaning_bit',], inParam={'work':'afterUnload'})
+        Trace.log(e_errors.INFO,"Writing statistics, status = "+str(WSstatus))
+	if WSstatus == 0:
+	    if WSdata['cleaning_bit'] == 1:
+	        rr = self.mcc.doCleaningCycle(mvr_config, self.vol_info, self.vol_vcc)
+                Trace.log(e_errors.INFO,"Media changer cleaningCycle status"+str(rr['status']))
+	else:
+            Trace.log(e_errors.ERROR,"ERROR: Get-statistics status "+str(WSstatus))
+	
 	return_or_update_and_exit( self, self.vol_info['from_lm'], e_errors.OK )
 	pass
 
@@ -365,6 +376,51 @@ class MoverClient:
     def read_from_hsm( self, ticket ):
 	self.fc = ticket['fc']
 	return forked_read_from_hsm( self, ticket )
+	
+    def writeAll(self, driverObject, device, outParam=None, inParam={}):
+        path = mvr_config['statistics_path']
+        if outParam is None:
+	    outParam = []
+        status = 0
+	data = {}
+	try:
+	    fd = open(path,'a')
+	except IOError, xx:
+	    status = 1
+	    Trace.log(e_errors.INFO, "IOError: %s"%xx)
+	    return status, data
+
+	ss = driverObject.statisticsOpen
+        for skey in ss.keys():
+	    s1 = string.replace(repr(skey),"'","")
+	    s2 = string.replace(repr(ss[skey]),"'","")
+	    buf = s1+' = '+s2+'\n'
+            fd.write(buf)
+	for item in inParam.keys():
+	    s1 = string.replace(repr(item),"'","")
+	    s2 = string.replace(repr(inParam[item]),"'","")
+	    buf = s1+' = '+s2+'\n'
+            fd.write(buf)
+	fd.write('\n')
+
+	ss = driverObject.statisticsClose
+        for skey in ss.keys():
+	    for item in outParam:
+	        if item == skey:
+		    data['item'] = ss[item]
+	    s1 = string.replace(repr(skey),"'","")
+	    s2 = string.replace(repr(ss[skey]),"'","")
+	    buf = s1+' = '+s2+'\n'
+            fd.write(buf)
+	for item in inParam.keys():
+	    s1 = string.replace(repr(item),"'","")
+	    s2 = string.replace(repr(inParam[item]),"'","")
+	    buf = s1+' = '+s2+'\n'
+            fd.write(buf)
+	fd.write('\n')
+
+	fd.close()
+	return status, data
 
     pass
 
@@ -403,13 +459,15 @@ def bind_volume( object, external_label ):
 	# opposed to data cartridge) in drive?"
 	# If we can detect "cleaning in progress" we can wait for it to
 	# complete before ejecting.
+	# the media_changer ignores mount and dismount requests for a drive that
+	# is in the midst of a cleaning cycle.-- tgj
 	if mvr_config['do_eject'] == 'yes':
             Trace.log(e_errors.INFO,'Performing precautionary offline/eject of device'+str(mvr_config['device']))
 	    object.hsm_driver.offline(mvr_config['device'])
             Trace.log(e_errors.INFO,'Completed  precautionary offline/eject of device'+str(mvr_config['device']))
             pass
 
-	object.vol_info['read_errors_this_mover'] = 0
+	object.vol_info['read_errors_this_mover'] = 0	
         tmp_mc = ", "+str({"media_changer":mvr_config['media_changer']})
         Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_REQ+'Requesting media changer load '+str(tmp_vol_info)+
                   " "+tmp_mc+' '+str(mvr_config['mc_device']))
@@ -1158,6 +1216,12 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	self.reply_to_caller( out_ticket )
 	return
 
+    def clean_drive( self, ticket ):
+        self.client_obj_inst.mcc.doCleaningCycle(mvr_config, self.client_obj_inst.vol_info, self.client_obj_inst.vol_vcc)
+	out_ticket = {'status':(e_errors.OK,None)}
+	self.reply_to_caller( out_ticket )
+        return
+    
     def status( self, ticket ):
 	tim = time.time()
 	obj_inst = self.client_obj_inst
