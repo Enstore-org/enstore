@@ -636,10 +636,54 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def __erase_volume(self, vol):
         Trace.log(e_errors.INFO, 'erasing files of volume %s'%(vol))
         bfids = self.get_all_bfids(vol)
+
+        # check to see if volmap can be deleted
+        volmap_dir = None
         for bfid in bfids:
+            record = self.dict[bfid]
+            if record.has_key('pnfs_mapname'):
+                if not volmap_dir:
+                    volmap_dir, f = os.path.split(record["pnfs_mapname"])
+                if not os.access(record["pnfs_mapname"]):
+                    error_msg = "no write permission to %s"%(record["pnfs_mapname"])
+                    Trace.log(e_errors.ERROR, error_msg)
+                    return 'EACCESS', error_msg
+
+        # check to see if volmap directory can be deleted
+        if volmap_dir:
+            if not os.access(volmap_dir, os.W_OK):
+                error_msg = "no write permission to %s"%(volmap_dir)
+                Trace.log(e_errors.ERROR, error_msg)
+                return 'EACCESS', error_msg
+            p, f = os.path.split(volmap_dir)
+            if not os.access(p, os.W_OK):
+                error_msg = "no write permission to %s"%(p)
+                Trace.log(e_errors.ERROR, error_msg)
+                return 'EACCESS', error_msg
+
+        # remove file record
+        for bfid in bfids:
+            record = self.dict[bfid]
+            if record.has_key('pnfs_mapname'):
+                try:
+                    os.remove(record['pnfs_mapname'])
+                except:
+                    error_msg = "fail to remove %s"%(record['pnfs_mapname'])
+                    Trace.log(e_errors.ERROR, error_msg)
+                    return 'EACCESS', error_msg
             del self.dict[bfid]
+
+        # remove volmap directory
+        if volmap_dir:
+            try:
+                os.rmdir(volmap_dir)
+            except:
+                error_msg = "fail to remove directory %s"%(volmap_dir)
+                Trace.log(e_errors.ERROR, error_msg)
+                return 'EACCESS', error_msg
+
         Trace.log(e_errors.INFO, 'files of volume %s are erased'%(vol))
-        return
+        return e_errors.OK, None
 
     # erase_volume -- server service
 
@@ -656,9 +700,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         # catch any failure
         try:
-            self.__erase_volume(vol)
+            ticket['status'] = self.__erase_volume(vol)
         except:
-            ticket["status"] = (e_errors.OK, "erase failed")
+            ticket["status"] = (e_errors.ERROR, "erase failed")
         # and return to the caller
         self.reply_to_caller(ticket)
         return
@@ -692,7 +736,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             self.__delete_volume(vol)
         except:
-            ticket["status"] = (e_errors.OK, "delete failed")
+            ticket["status"] = (e_errors.ERROR, "delete failed")
         # and return to the caller
         self.reply_to_caller(ticket)
         return
@@ -726,7 +770,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             self.__restore_volume(vol)
         except:
-            ticket["status"] = (e_errors.OK, "restore failed")
+            ticket["status"] = (e_errors.ERROR, "restore failed")
         # and return to the caller
         self.reply_to_caller(ticket)
         return
