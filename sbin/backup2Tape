@@ -12,10 +12,13 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 #  TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
 #  $ENSTORE_DIR/volume_import/enstore_tape --init --erase --volume_label=LABEL
 
-# you can store the LABEL name in $VAULT/CURRENT_TAPE and this script
-#   will use that if you don't specify one on the command line
+dofull=${1:-0}
 
-LABEL=${1:-NOLABL}; export LABEL
+# you store the LABEL name in $VAULT/CURRENT_TAPE
+
+LABEL=NOLABL; export LABEL
+
+
 
 # function to return date so it can be used in filename
 date_string() { date +"%Y-%m-%d.%H.%M" }
@@ -59,7 +62,7 @@ today=`date +"%b %d"`
 now=`date +"%s"`
 
 #FULL_BACKUP_DAYS="Mon Thu"
-FULL_BACKUP_DAYS="Tue"
+FULL_BACKUP_DAYS="Wed"
 
 START_BACKUP_DATE=$VAULT/start_backup_date
 rm -f $START_BACKUP_DATE
@@ -78,19 +81,22 @@ FULL_BACKUP_FLAG=$VAULT/full_backup_needed
 FULL_BACKUP_LAST=$VAULT/full_backup_date
 
 if [ `echo $FULL_BACKUP_DAYS | grep -c "\`date +'%a'\`"` -ne 0 -a -r $FULL_BACKUP_FLAG ]; then
-   echo "FULL BACKUP being performed"
    tar_options=""
-   #find_options=""
-   find_options="-newer \"$LAST_BACKUP_DATE\""    #full backup doesn't make sense most of the time
+   if [ "$dofull" = "1" ]; then
+     echo "FULL BACKUP of everything being performed"
+     find_options=""
+   else
+     find_options="-newer $LAST_BACKUP_DATE"    #full backup doesn't make sense most of the time
+   fi
    TOUCHME=$FULL_BACKUP_LAST
    kind=FULL
 else
    reference="`date -r $FULL_BACKUP_LAST`"
    #echo "INCREMENTAL BACKUP since $reference"
-   echo "INCREMENTAL BACKUP since $last"
+   #echo "INCREMENTAL BACKUP since $last"
    #tar_options="--newer=\"$reference\""
-   tar_options="--newer=\"$LAST_BACKUP_DATE\""
-   find_options="-newer \"$LAST_BACKUP_DATE\""
+   tar_options="--newer=\"$last\""
+   find_options="-newer $LAST_BACKUP_DATE"
    TOUCHME=$FULL_BACKUP_FLAG # indicate that another full backup is needed when the right day rolls around
    kind=INCREMENTAL
 fi
@@ -98,15 +104,20 @@ fi
 
 #### PNFS Database Backup ##################################################
 # bzip2/copy the files that have not been copied to tape
-#PNFS_TAR=$VAULT/pnfs.`date_string`.$kind.tbz2
-#doit "tar $tar_options -cv $PNFS | bzip2 > $PNFS_TAR"
-#ls -l $PNFS_TAR
 
 PNFS_FILES=$VAULT/pnfs.files
 rm -f $PNFS_FILES
 find $PNFS -type f $find_options -print > $PNFS_FILES
+lines=`wc -l $PNFS_FILES | awk '{print $1}'`
+echo ""
+echo "PNFS databases backup: $lines files to backup to tape"
+cat $PNFS_FILES
+echo ""
+counter=0
 cat $PNFS_FILES| while read file; do
-  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --pnfs-dir=/pnfs/backups $file"
+  counter=`expr $counter + 1`;
+  echo "$counter of $lines PNFS database files"
+  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --verbose --pnfs-dir=/pnfs/backups $file"
 done
 rm -f $PNFS_FILES
 find $PNFS -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
@@ -114,15 +125,20 @@ find $PNFS -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 #### Enstore Database Backup ###############################################
 # bzip2/copy the files that have not been copied to tape
-#ENSTORE_TAR=$VAULT/enstore.`date_string`.$kind.tbz2
-#doit "tar $tar_options -cv $ENSTORE | bzip2 > $ENSTORE_TAR"
-#ls -l $ENSTORE_TAR
 
 ENSTORE_FILES=$VAULT/enstore.files
 rm -f $ENSTORE_FILES
 find $ENSTORE -type f $find_options -print > $ENSTORE_FILES
+lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
+echo ""
+echo "ENSTORE databases backup: $lines files to backup to tape"
+cat $ENSTORE_FILES
+echo ""
+counter=0
 cat $ENSTORE_FILES| while read file; do
-  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --pnfs-dir=/pnfs/backups  $file"
+  counter=`expr $counter + 1`;
+  echo "$counter of $lines ENSTORE database files"
+  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --verbose --pnfs-dir=/pnfs/backups  $file"
 done
 rm -f $ENSTORE_FILES
 find $ENSTORE -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
@@ -131,17 +147,21 @@ find $ENSTORE -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 #### Enstore Log Backup ####################################################
 # bzip2/copy the files that have not been copied, excluding today's, to tape
 
-#ENSTORELOG_TAR=$VAULT/enstorelog.`date_string`.$kind.tbz2
-#ENSTORELOG_TAR=$VAULT/enstorelog.`date_string`.$kind.tbz2
-#doit "tar $tar_options -cv $ENSTORELOG | bzip2 > $ENSTORELOG_TAR"
-#ls -l $ENSTORELOG_TAR
 ENSTORELOG_FILES=$VAULT/enstorelog.files
 rm -f $ENSTORELOG_FILES
 find $ENSTORELOG -type f $find_options  -exec ls -l {} \; | grep -v "$today" | awk '{print $NF}' > $ENSTORELOG_FILES
+lines=`wc -l $ENSTORELOG_FILES | awk '{print $1}'`
+echo ""
+echo "ENSTORE log backup: $lines files to backup to tape"
+cat $ENSTORELOG_FILES
+echo ""
+counter=0
 cat $ENSTORELOG_FILES| while read file; do
+  counter=`expr $counter + 1`;
+  echo "$counter of $lines ENSTORE log files"
   output=$VAULT/`basename $file`.$now.tbz2
   doit "bzip2 < $file > $output"
-  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --pnfs-dir=/pnfs/backups $output"
+  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --verbose --pnfs-dir=/pnfs/backups $output"
   rm -f $output
 done
 rm -f $ENSTORELOG_FILES
@@ -149,10 +169,13 @@ rm -f $ENSTORELOG_FILES
 
 #### AML/2 Shadow Backup ###################################################
 # full and incrementally in bzip2'd tar files
+
 AML2_TAR=$VAULT/aml2.`date_string`.$kind.tbz2
-doit "tar $tar_options -cv $AML2 | bzip2 > $AML2_TAR"
+echo "$kind backup performed for AML/2 shadow"
+doit "tar $tar_options -cf - $AML2 | bzip2 > $AML2_TAR"
 ls -l $AML2_TAR
-doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --pnfs-dir=/pnfs/backups $AML2_TAR"
+doit "bunzip2 < $AML2_TAR | tar -tvf -"
+doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --verbose --pnfs-dir=/pnfs/backups $AML2_TAR"
 rm -f $AML2_TAR
 
 
