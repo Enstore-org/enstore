@@ -695,7 +695,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
 class EnEncpStatusPage(EnBaseHtmlDoc):
 
-    error_text = {"USER ERROR" : "STATUS=USERERROR"}
+    error_text = {"USER ERROR"       : "STATUS=USERERROR",
+                  "USER ERROR-Access": "STATUS=EACCES",
+                  "USER ERROR Access": "Fatal error:EACCES" }
 
     def __init__(self, refresh = 120):
 	EnBaseHtmlDoc.__init__(self, refresh)
