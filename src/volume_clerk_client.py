@@ -61,7 +61,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
                sum_rd_access = 0,     # total number of read mounts
                wrapper = "cpio_odc",  # kind of wrapper for volume
                blocksize = -1,        # blocksize (-1 =  media type specifies)
-               non_del_files = 0      # non-deleted files
+               non_del_files = 0,     # non-deleted files
+               system_inhibit = "none" # "none" | "readonly" | "NOACCESS"
                ):
         Trace.trace( 6, 'add_vol label=%s'%external_label )
         ticket = { 'work'            : 'addvol',
@@ -83,7 +84,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
                    'sum_rd_access'   : sum_rd_access,
                    'wrapper'         : wrapper,
                    'blocksize'       : blocksize,
-                   'non_del_files'   : non_del_files
+                   'non_del_files'   : non_del_files,
+                   'system_inhibit'  : system_inhibit
                    }
         x = self.send(ticket)
         return x
