@@ -48,11 +48,20 @@ class MoverError(exceptions.Exception):
     def __init__(self, arg):
         exceptions.Exception.__init__(self,arg)
 
-IDLE, MEDIA_WAIT, ACTIVE, HAVE_BOUND, DRAINING, OFFLINE, CLEANING = range(7)
-state_names=['IDLE', 'MEDIA_WAIT', 'ACTIVE', 'HAVE_BOUND', 'DRAINING',
-             'OFFLINE', 'CLEANING']
+IDLE, MOUNT_WAIT, ACTIVE, HAVE_BOUND, DISMOUNT_WAIT, DRAINING, OFFLINE, CLEANING, ERROR = range(9)
+
+_state_names=['IDLE', 'MOUNT_WAIT', 'ACTIVE', 'HAVE_BOUND', 'DISMOUNT_WAIT',
+              'DRAINING', 'OFFLINE', 'CLEANING', 'ERROR']
+
+def state_name(state):
+    return _state_names(state)
 
 READ, WRITE = range(2)
+def  mode_name(mode):
+    if mode is None:
+        return None
+    else:
+        return ['READ','WRITE'][mode]
 
 MB=1L<<20
 
@@ -88,14 +97,18 @@ class Mover(  dispatching_worker.DispatchingWorker,
         
         self.udpc =  udp_client.UDPClient()
         self.state = IDLE
+        self.last_error = ()
         if self.check_lockfile():
             self.state = OFFLINE
-        
+
+        self.current_location = "0L"
         self.mode = None # READ or WRITE
         self.bytes_to_transfer = 0
         self.bytes_read = 0
         self.bytes_written = 0
-        self.tape = '' # like vol_info['external_label'], just for "status"
+        self.external_label = None
+        self.volume_family = None
+        self.volume_status = ((None,None), (None,None))
         self.files = ('','')
         self.work_ticket = {}
         self.hsm_drive_sn = ''
@@ -107,9 +120,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
         self.vol_info = {'external_label':'', 'media_type':''}
         self.vol_vcc = {}               # vcc associated with a particular
-
-        # vol_label (useful when other lib man summons during delayed
-        # dismount -- labels must be unique
+                                        ## vol_label (useful when other lib man summons
+                                        ## during delayed dismount -- labels must be unique
 
         self.read_error = [0,0]         # error this vol ([0]) and last vol ([1])
         self.crc_flag = 1
@@ -152,35 +164,59 @@ class Mover(  dispatching_worker.DispatchingWorker,
         
         self.do_collect = 0 # Don't let dispatching_worker's loop do a waitpid, we want to catch children ourself.
 
-        self.lib_config = {}
-        if type(self.config['library']) == type([]):
-            for lib in  self.config['library']:
-                self.lib_config[lib] = {'startup_polled':'not_yet'}
-                self.lib_config[lib].update( self.csc.get_uncached(lib) )
+        self.libraries = []
+        lib_list = self.config['library']
 
-        else:
-            lib = self.config['library']
-            self.config['library'] = [lib]	# make it a list
-            self.lib_config[lib] = {'startup_polled':'not_yet'}
-            self.lib_config[lib].update( self.csc.get_uncached(lib) )
+        if type(lib_list) != type([]):
+            lib_list = [lib_list]
+            
+        for lib in lib_list:
+            lib_config = self.csc.get(lib)
+            self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
 
         self.set_interval_func(self.update_lm, 1)
 
 
-    def read_tape(fd):
+    def read_tape(self, fd):
         pass
 
-    def write_tape(fd):
+    def write_tape(self, fd):
         pass
 
-    def read_user(fd):
+    def read_user(self, fd):
         pass
 
-    def write_user(fd):
+    def write_user(self, fd):
         pass
         
     def update_lm(self):
-        print "Hi!"
+        status = e_errors.OK, None
+        if self.state is IDLE:
+            work = "idle"
+        elif self.state in (MOUNT_WAIT, HAVE_BOUND):
+            work = "have_bound"
+        elif self.state in (ACTIVE, DISMOUNT_WAIT):
+            work = "busy"
+        elif self.state is ERROR:
+            work = "error"
+            status = self.last_error
+        else: #cleaning, draining or offline
+            return
+        
+        ticket =  {
+            "mover":  self.name,
+            "external_label":  self.external_label,
+            "current_location": self.current_location,
+            "status": status, 
+            "volume_family": self.volume_family,
+            "volume_status": self.volume_status,
+            "operation": mode_name(self.mode),
+            "work": work,
+            }
+        
+        for lib, addr in self.libraries:
+            print "Send", ticket, "to", addr
+            self.udpc.send_no_wait(ticket, addr)
 
     def nowork( self, ticket ):
 	return {}
@@ -327,7 +363,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
             self.bytes_to_transfer = ticket['fc']['size']
             # save some stuff for "status"
-            self.tape = ticket['fc']['external_label']
+            self.external_label = ticket['fc']['external_label']
             self.files = ("%s:%s"%(ticket['wrapper']['machine'][1],
                                    ticket['wrapper']['fullname']),
                           ticket['wrapper']['pnfsFilename'])
@@ -1047,11 +1083,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
 		 'bytes_to_transfer': self.bytes_to_transfer,
 		 'files'        : self.files,
 		 'mode'         : self.mode,
-		 'tape'         : self.tape,
+                 'external_label': self.external_label,
 		 'time_stamp'   : time.time(),
-		 'vol_info'     : self.vol_info,
-		 # just include total "work ticket"
-		 'work_ticket'  : self.work_ticket,
                  }
 
 	self.reply_to_caller( tick )
