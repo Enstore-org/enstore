@@ -229,14 +229,14 @@ def default_log_func( time, pid, name, args ):
 set_log_func(default_log_func)
 
 # log traceback info
-def handle_error(exc=None, value=None, tb=None):
+def handle_error(exc=None, value=None, tb=None, msg_type=MSG_DEFAULT):
 
     # store traceback info
     if not exc:
 	exc, value, tb = sys.exc_info()
     # log it
     for l in traceback.format_exception( exc, value, tb ):
-	log( e_errors.ERROR, l, MSG_DEFAULT, "TRACEBACK")
+	log( e_errors.ERROR, l, msg_type, "TRACEBACK")
     return exc, value, tb
 
 
