@@ -162,10 +162,11 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 
     ftt_errno = d->errortrans[opn][terrno];
 
-#   define SKIPS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC)
+#   define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
+			|FTT_OP_READ)
 
     if ((0 == res && FTT_OPN_READ == opn && 0 !=(d->flags&FTT_FLAG_VERIFY_EOFS))
-    		|| (-1 == res && ((1<<opn)&SKIPS) )) {
+    		|| (-1 == res && ((1<<opn)&CHECKS) )) {
 	/* 
 	** save errno and ftt_errno so we can restore them 
 	** after getting status 

@@ -249,7 +249,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     int n_blocks, block_length;
     int stat_ops;
 
-    CKOK(d,"ftt_get_stats",0,0);
+    ENTERING("ftt_get_stats");
     CKNULL("ftt_descriptor", d);
     CKNULL("statistics buffer pointer", b);
 
@@ -316,6 +316,14 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     /* various mode checks */
     stat_ops = ftt_get_stat_ops(d->prod_id);
 
+    /*
+    ** First do a request sense, and check for any error conditions
+    ** etc. that an inquiry might clear.
+    ** Then we'll do an inquiry, and find out what kind of drive
+    ** this *really* is, then *another* request sense, and check
+    ** for drive specific data.
+    */
+
     if (stat_ops & FTT_DO_RS) {
 	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   32, 0x00};
 
@@ -371,7 +379,46 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			set_stat(b,FTT_CLEANING_BIT,"1",0);
 			break;
 	    }
+	}
+    }
 
+    if (stat_ops & FTT_DO_INQ) {
+	static unsigned char cdb_inquiry[]   = {0x12, 0x00, 0x00, 0x00,   56, 0x00};
+
+	/* basic scsi inquiry */
+	res = ftt_do_scsi_command(d,"Inquiry", cdb_inquiry, 6, buf, 56, 10, 0);
+	if(res < 0){
+	    failures++;
+	} else {
+	    set_stat(b,FTT_VENDOR_ID,  (char *)buf+8,  (char *)buf+16);
+	    set_stat(b,FTT_PRODUCT_ID, (char *)buf+16, (char *)buf+32);
+	    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
+	    if ( 0 != strcmp(d->prod_id, ftt_extract_stats(b,FTT_PRODUCT_ID))) {
+		char *tmp;
+
+		/* update or product id and stat_ops if we were wrong */
+
+		tmp = d->prod_id;
+		d->prod_id = strdup(ftt_extract_stats(b,FTT_PRODUCT_ID));
+		free(tmp);
+		stat_ops = ftt_get_stat_ops(d->prod_id);
+	    }
+	}
+    }
+
+    /* 
+    ** Get other request sense available data now that we know for sure
+    ** what kind of drive this is from the inquiry data.
+    */
+
+    if (stat_ops & FTT_DO_RS) {
+	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   32, 0x00};
+
+	/* request sense data */
+	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 32, 10, 0);
+	if(res < 0){
+	    failures++;
+	} else {
 	    if (stat_ops & FTT_DO_EXBRS) {
 		set_stat(b,FTT_BOT,         itoa(bit(0,buf[19])), 0);
 		set_stat(b,FTT_TNP,	    itoa(bit(1,buf[19])), 0);
@@ -398,29 +445,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		set_stat(b,FTT_MOTION_HOURS,itoa(pack(0,0,buf[19],buf[20])),0);
 		set_stat(b,FTT_POWER_HOURS, itoa(pack(buf[21],buf[22],buf[23],buf[24])),0);
 		set_stat(b,FTT_REMAIN_TAPE, itoa(pack(buf[25],buf[26],buf[27],buf[28])*4),0); 
-	    }
-	}
-    }
-    if (stat_ops & FTT_DO_INQ) {
-	static unsigned char cdb_inquiry[]   = {0x12, 0x00, 0x00, 0x00,   56, 0x00};
-
-	/* basic scsi inquiry */
-	res = ftt_do_scsi_command(d,"Inquiry", cdb_inquiry, 6, buf, 56, 10, 0);
-	if(res < 0){
-	    failures++;
-	} else {
-	    set_stat(b,FTT_VENDOR_ID,  (char *)buf+8,  (char *)buf+16);
-	    set_stat(b,FTT_PRODUCT_ID, (char *)buf+16, (char *)buf+32);
-	    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
-	    if ( 0 != strcmp(d->prod_id, ftt_extract_stats(b,FTT_PRODUCT_ID))) {
-		char *tmp;
-
-		/* update or product id and stat_ops if we were wrong */
-
-		tmp = d->prod_id;
-		d->prod_id = strdup(ftt_extract_stats(b,FTT_PRODUCT_ID));
-		free(tmp);
-		stat_ops = ftt_get_stat_ops(d->prod_id);
 	    }
 	}
     }

@@ -3,8 +3,8 @@
 
 Instance: 		v1_4
 Database: 		/usr/products/src1/devel_database
-Flavor : 		OSF1+V3
-Home_dir:		/usr/products/src2/ftt/OSF1+V3.d
+Flavor : 		SunOS+5
+Home_dir:		/usr/products/src2/ftt/SunOS+5.d
 Declared date:		10-8-96
 Declarer:		mengel
 Master Source:		Source not available
