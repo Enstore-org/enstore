@@ -17,8 +17,6 @@ import e_errors
 import Trace
 import pprint
 
-MAX_REG_PRIORITY = 100
-
 class Restrictor:
 
     def read_config(self):
