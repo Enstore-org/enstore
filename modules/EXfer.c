@@ -1425,8 +1425,14 @@ static void* thread_monitor(void *monitor_info)
     if(pthread_mutex_lock(&done_mutex))
       pthread_exit(NULL);
 
-    /* Check the old time versus the new time to make sure it has changed. */
+    /* Check the old time versus the new time to make sure it has changed.
+       Also, check if the other thread has something to do (which means both
+       are going equally slow/fast) and if the time is cleared; this is
+       to avoid false positves. */
+
     if(!read_info->done && buffer_empty(read_info->array_size) &&
+       (read_info->start_transfer_function.tv_sec > 0) &&
+       (read_info->start_transfer_function.tv_usec > 0) &&
        (start_read.tv_sec == read_info->start_transfer_function.tv_sec) && 
        (start_read.tv_usec == read_info->start_transfer_function.tv_usec))
     {
@@ -1472,6 +1478,8 @@ static void* thread_monitor(void *monitor_info)
       return NULL;
     }
     if(!write_info->done && buffer_full(write_info->array_size) &&
+       (write_info->start_transfer_function.tv_sec > 0) &&
+       (write_info->start_transfer_function.tv_usec > 0) &&
        (start_write.tv_sec == write_info->start_transfer_function.tv_sec) && 
        (start_write.tv_usec == write_info->start_transfer_function.tv_usec))
     {
@@ -1635,6 +1643,22 @@ static void* thread_read(void *info)
 		   bytes_remaining, info);
 	if(sts < 0)
 	  return NULL;
+      }
+      
+      /* Since the read call returned, clear the timeval struct. */
+      if(pthread_mutex_lock(&monitor_mutex))
+      {
+	pack_return_values(read_info, 0, errno, THREAD_ERROR,
+			   "mutex lock failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
+      read_info->start_transfer_function.tv_sec = 0;
+      read_info->start_transfer_function.tv_usec = -1;
+      if(pthread_mutex_unlock(&monitor_mutex))
+      {
+	pack_return_values(read_info, 0, errno, THREAD_ERROR,
+			   "mutex unlock failed", 0.0, __FILE__, __LINE__);
+	return NULL;
       }
 
       /* Record the time the read operation completes. */
@@ -1835,6 +1859,22 @@ static void* thread_write(void *info)
 		  bytes_remaining, info);
 	if(sts < 0)
 	  return NULL;
+      }
+
+      /* Since the write call returned, clear the timeval struct. */
+      if(pthread_mutex_lock(&monitor_mutex))
+      {
+	pack_return_values(write_info, 0, errno, THREAD_ERROR,
+			   "mutex lock failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
+      write_info->start_transfer_function.tv_sec = 0;
+      write_info->start_transfer_function.tv_usec = -1;
+      if(pthread_mutex_unlock(&monitor_mutex))
+      {
+	pack_return_values(write_info, 0, errno, THREAD_ERROR,
+			   "mutex unlock failed", 0.0, __FILE__, __LINE__);
+	return NULL;
       }
 
       /* Record the time that this thread wakes up from waiting for the
