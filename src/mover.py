@@ -635,6 +635,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.need_lm_update = (0, None, 0, None)
         self.asc = None
         self.send_update_cnt = 0
+        self.control_socket = None
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -780,10 +781,9 @@ class Mover(dispatching_worker.DispatchingWorker,
     def update_stat(self):
         if self.driver_type != 'FTTDriver': return
         if self.stats_on and self.tape_driver and self.tape_driver.ftt:
-            import ftt
             stats = self.tape_driver.ftt.get_stats()
             Trace.log(e_errors.INFO, "volume %s write protection %s  override_ro_mount %s"%(self.current_volume,
-                                                                       stats[ftt.WRITE_PROT],
+                                                                       stats[self.ftt.WRITE_PROT],
                                                                        self.override_ro_mount))
             if self.stat_file:
                 if not os.path.exists(self.stat_file):
@@ -793,52 +793,53 @@ class Mover(dispatching_worker.DispatchingWorker,
                 fd = open(self.stat_file, "w")
                 fd.write("FORMAT VERSION:         %d\n"%(22,))
                 fd.write("INIT FLAG:              %d\n"%(1,))
-                fd.write("DRIVE SERNO:            %s\n"%(stats[ftt.SERIAL_NUM],))
-                fd.write("VENDOR:                 %s\n"%(stats[ftt.VENDOR_ID],))
-                fd.write("PROD TYPE:              %s\n"%(stats[ftt.PRODUCT_ID],))
+                fd.write("DRIVE SERNO:            %s\n"%(stats[self.ftt.SERIAL_NUM],))
+                fd.write("VENDOR:                 %s\n"%(stats[self.ftt.VENDOR_ID],))
+                fd.write("PROD TYPE:              %s\n"%(stats[self.ftt.PRODUCT_ID],))
                 fd.write("LOGICAL NAME:           %s\n"%(self.logname,))
                 fd.write("HOST:                   %s\n"%(self.config['host'],))
                 fd.write("VOLSER:                 %s\n"%(self.current_volume,))
                 fd.write("OPERATION               %s\n"%(self.mode,))
-                fd.write("CLEANING BIT:           %s\n"%(stats[ftt.CLEANING_BIT],))
-                fd.write("PWR HRS:                %s\n"%(stats[ftt.POWER_HOURS],))
-                fd.write("MOT HRS:                %s\n"%(stats[ftt.MOTION_HOURS],))
-                fd.write("RD ERR:                 %s\n"%(stats[ftt.READ_ERRORS],))
-                fd.write("WR ERR:                 %s\n"%(stats[ftt.WRITE_ERRORS],))
-                fd.write("MB UREAD:               %s\n"%(long(stats[ftt.USER_READ])/1024.,))
-                fd.write("MB UWRITE:              %s\n"%(long(stats[ftt.USER_WRITE])/1024.,))
-                fd.write("MB DREAD:                  %s\n"%(long(stats[ftt.READ_COUNT])/1024.,))
-                fd.write("MB DWRITE:                 %s\n"%(long(stats[ftt.WRITE_COUNT])/1024.,))
-                fd.write("RETRIES:                %s\n"%(stats[ftt.TRACK_RETRY],))
-                fd.write("WRITEPROT:               %s\n"%(stats[ftt.WRITE_PROT],))
-                fd.write("UNDERRUN:               %s\n"%(stats[ftt.UNDERRUN],))
+                fd.write("CLEANING BIT:           %s\n"%(stats[self.ftt.CLEANING_BIT],))
+                fd.write("PWR HRS:                %s\n"%(stats[self.ftt.POWER_HOURS],))
+                fd.write("MOT HRS:                %s\n"%(stats[self.ftt.MOTION_HOURS],))
+                fd.write("RD ERR:                 %s\n"%(stats[self.ftt.READ_ERRORS],))
+                fd.write("WR ERR:                 %s\n"%(stats[self.ftt.WRITE_ERRORS],))
+                fd.write("MB UREAD:               %s\n"%(long(stats[self.ftt.USER_READ])/1024.,))
+                fd.write("MB UWRITE:              %s\n"%(long(stats[self.ftt.USER_WRITE])/1024.,))
+                fd.write("MB DREAD:                  %s\n"%(long(stats[self.ftt.READ_COUNT])/1024.,))
+                fd.write("MB DWRITE:                 %s\n"%(long(stats[self.ftt.WRITE_COUNT])/1024.,))
+                fd.write("RETRIES:                %s\n"%(stats[self.ftt.TRACK_RETRY],))
+                fd.write("WRITEPROT:               %s\n"%(stats[self.ftt.WRITE_PROT],))
+                fd.write("UNDERRUN:               %s\n"%(stats[self.ftt.UNDERRUN],))
                 
             if self.send_stats:
-                self.dsc.log_stat(stats[ftt.SERIAL_NUM],
-                                  stats[ftt.VENDOR_ID],
-                                  stats[ftt.PRODUCT_ID],
+                self.dsc.log_stat(stats[self.ftt.SERIAL_NUM],
+                                  stats[self.ftt.VENDOR_ID],
+                                  stats[self.ftt.PRODUCT_ID],
                                   self.config['host'],
                                   self.logname,
                                   "ABSOLUTE",
                                   time.time(),
                                   self.current_volume,
-                                  stats[ftt.POWER_HOURS],
-                                  stats[ftt.MOTION_HOURS],
-                                  stats[ftt.CLEANING_BIT],
-                                  long(stats[ftt.USER_READ])/1024.,
-                                  long(stats[ftt.USER_WRITE])/1024.,
-                                  long(stats[ftt.READ_COUNT])/1024.,
-                                  long(stats[ftt.WRITE_COUNT])/1024.,
-                                  long(stats[ftt.READ_ERRORS]),
-                                  long(stats[ftt.WRITE_ERRORS]),
-                                  stats[ftt.TRACK_RETRY],
-                                  stats[ftt.UNDERRUN],
+                                  stats[self.ftt.POWER_HOURS],
+                                  stats[self.ftt.MOTION_HOURS],
+                                  stats[self.ftt.CLEANING_BIT],
+                                  long(stats[self.ftt.USER_READ])/1024.,
+                                  long(stats[self.ftt.USER_WRITE])/1024.,
+                                  long(stats[self.ftt.READ_COUNT])/1024.,
+                                  long(stats[self.ftt.WRITE_COUNT])/1024.,
+                                  long(stats[self.ftt.READ_ERRORS]),
+                                  long(stats[self.ftt.WRITE_ERRORS]),
+                                  stats[self.ftt.TRACK_RETRY],
+                                  stats[self.ftt.UNDERRUN],
                                   0,
-                                  int(stats[ftt.WRITE_PROT]))
+                                  int(stats[self.ftt.WRITE_PROT]))
                 
     def start(self):
         name = self.name
         self.t0 = time.time()
+        self.tr_failed = 0
         self.config = self.csc.get(name)
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
@@ -1019,7 +1020,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.compression > 1: self.compression = None
             self.device = self.config['device']
             import ftt_driver
-            import ftt
+            self.ftt = __import__("ftt")
             self.tape_driver = ftt_driver.FTTDriver()
             have_tape = 0
             if self.state is IDLE:
@@ -1027,9 +1028,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
 
                 stats = self.tape_driver.ftt.get_stats()
-                self.config['product_id'] = stats[ftt.PRODUCT_ID]
-                self.config['serial_num'] = stats[ftt.SERIAL_NUM]
-                self.config['vendor_id'] = stats[ftt.VENDOR_ID]
+                self.config['product_id'] = stats[self.ftt.PRODUCT_ID]
+                self.config['serial_num'] = stats[self.ftt.SERIAL_NUM]
+                self.config['vendor_id'] = stats[self.ftt.VENDOR_ID]
 
                 if have_tape == 1:
                     status = self.tape_driver.verify_label(None)
@@ -1216,28 +1217,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 pass
 
-    ## ready to read the tape
-    def tape_read_ready(self): ## REMOVE!!!!
-        self.state = HAVE_BOUND
-        
-        """
-        thread = threading.currentThread()
-        if thread:
-            thread_name = thread.getName()
-        else:
-            thread_name = None
-        # if running in the main thread update lm
-        if thread_name is 'MainThread':
-            self.update_lm() 
-        else: # else just set the update flag
-            self.need_lm_update = (1, None, 0, None)
-        """
-        ticket = copy.deepcopy(self.current_work_ticket)
-        ticket['work'] = 'mover_bound_volume'
-        Trace.log (e_errors.INFO,"Tape read. Sending %s"%(ticket,))
-        callback.write_tcp_obj(self.control_socket, ticket)
-
-         
     ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
         self.need_lm_update = (0, None, 0, None)
@@ -1416,12 +1395,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # if work is mover_busy or mover_error
                 # send no_wait message
                 if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
-                    Trace.trace(20,"update_lm: send with no wait %s to %s"%(ticket['work'],addr))
                     if ticket['work'] == 'mover_busy' and addr == self.udp_control_address:
                         #do not send mover_busy to get
                         set_cm_sent = 0
                         pass
                     else:
+                        Trace.trace(20,"update_lm: send with no wait %s to %s"%(ticket['work'],addr))
                         self.udpc.send_no_wait(ticket, addr)
             if self.method and self.method == 'read_next' and set_cm_sent:
                 self.udp_cm_sent = 1
@@ -1642,7 +1621,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # trick ftt_close, so that it does not attempt to write FM
                 if self.driver_type == 'FTTDriver':
                     import ftt
-                    ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
+                    self.ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
                 #initiate cleaning
                 self.force_clean = 1
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
@@ -1747,7 +1726,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # trick ftt_close, so that it does not attempt to write FM
                 if self.driver_type == 'FTTDriver':
                     import ftt
-                    ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
+                    self.ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
                 #initiate cleaning
                 self.force_clean = 1
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
@@ -1924,6 +1903,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         buffer_full_t = 0   #time when buffer full has been detected
         buffer_full_cnt = 0 # number of times buffer was cosequtively full
         nblocks = 0
+        header_size = 0 # to avoit a silly exception
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         Trace.notify("transfer %s %s %s media %s %.3f" %
@@ -1991,20 +1971,27 @@ class Mover(dispatching_worker.DispatchingWorker,
             except e_errors.READ_ERROR, detail:
                 if type(detail) != type(""):
                     detail = str(detail)
-                if detail == 'FTT_SUCCESS' and self.method == 'read_next':
+                if self.method == 'read_next':
                     prev_loc = self.current_location
                     self.current_location = self.tape_driver.tell()
-                    if self.current_location - prev_loc == 1:
-                        break_here = 1
-                        Trace.log(e_errors.INFO, "hit EOF while reading tape. Current Location %s Previous location %s"%
-                                  (self.current_location, prev_loc))
-                        if self.bytes_read == 0 and bytes_read == 0:
-                            #End of tape
-                            Trace.log(e_errors.INFO, "hit EOT while reading tape. Current Location %s Previous location %s"%
+                    if detail == 'FTT_SUCCESS':
+                        if self.current_location - prev_loc == 1:
+                            break_here = 1
+                            Trace.log(e_errors.INFO, "hit EOF while reading tape. Current Location %s Previous location %s"%
                                       (self.current_location, prev_loc))
-                            self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
-                            failed = 1
-                            break
+                            if self.bytes_read == 0 and bytes_read == 0:
+                                #End of tape
+                                Trace.log(e_errors.INFO, "hit EOT while reading tape. Current Location %s Previous location %s"%
+                                          (self.current_location, prev_loc))
+                                #self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
+                                #failed = 1
+                                break
+                    elif detail == 'FTT_EBLANK':
+                        Trace.log(e_errors.INFO, "perhaps EOT.Current Location %s Previous location %s"%
+                                  (self.current_location, prev_loc))
+                        self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
+                        failed = 1
+                        break
                             
                     else:
                         Trace.log(e_errors.ERROR, "Read failed. Current Location %s Previous location %s"%
@@ -2026,6 +2013,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 failed = 1
                 break
             if bytes_read <= 0:
+                Trace.trace(98, "method %s bytes %s"%(self.method,bytes_read)) 
                 if bytes_read == 0 and self.method == 'read_next':
                     pass
                 else:
@@ -2111,6 +2099,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.file_info['pnfs_name0'] = None # it may later come in get ticket
                         
                         ret = self.fcc.create_bit_file(self.file_info)
+                        # update file info
                         Trace.trace(98, "updated file info %s"%(ret,))
                         if ret['status'][0] != e_errors.OK:
                             Trace.log(e_errors.ERROR, "cannot assign new bfid %s"%(ret,))
@@ -2118,9 +2107,29 @@ class Mover(dispatching_worker.DispatchingWorker,
                             return
                         self.file_info.update(ret['fc'])
                         self.current_work_ticket['fc'].update(self.file_info)
-                        self.current_work_ticket['vc'].update(self.vol_info)
                         self.current_work_ticket['bfid'] = self.file_info['bfid']
                         Trace.trace(98, "updated file db %s"%(self.current_work_ticket['fc'],))
+                        # update volume DB and volume info
+                        self.vcc.update_counts(self.current_volume, wr_access=1)
+                        self.vol_info['eod_cookie'] = loc_to_cookie(self.current_location)
+
+                        if self.driver_type == 'FTTDriver' and self.rem_stats:
+                            stats = self.tape_driver.ftt.get_stats()
+                            remaining = stats[self.ftt.REMAIN_TAPE]
+                            if remaining is not None:
+                                remaining = long(remaining)
+                                self.vol_info['remaining_bytes'] = remaining * 1024L
+                                ##XXX keep everything in KB?
+                        ret = self.vcc.set_remaining_bytes(self.current_volume,
+                                                           self.vol_info['remaining_bytes'],
+                                                           self.vol_info['eod_cookie'])
+                        if ret['status'][0] != e_errors.OK:
+                            self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
+                            return
+                        self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
+                        self.current_work_ticket['vc'].update(self.vol_info)
+                        Trace.trace(98, "updated volume db %s"%(self.current_work_ticket['vc'],))
+                        
                     else:
                         Trace.log(e_errors.WARNING, "found complete CRC set to None in file DB for %s. Changing cookie to %s and CRC to %s" %
                                   (self.file_info['bfid'],sanity_cookie, self.buffer.complete_crc))
@@ -2153,7 +2162,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             do_crc = 0
         driver = self.net_driver
-        Trace.trace(99, "wrapper %s"%(self.wrapper.__name__,)) # REMOVE !!!
         #be careful about 0-length files
         if self.bytes_to_write > 0 and self.bytes_written == 0 and self.wrapper and self.wrapper.__name__ != "null_wrapper": #Skip over cpio or other headers
             while self.buffer.header_size is None and self.state in (ACTIVE, DRAINING):
@@ -2644,11 +2652,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(10,"rewind")
                     self.tape_driver.rewind()
                     if self.driver_type == 'FTTDriver':
-                        import ftt
                         time.sleep(3)
                         stats = self.tape_driver.ftt.get_stats()
-                        Trace.trace(10,"WRITE_PROT=%s"%(stats[ftt.WRITE_PROT],))
-                        write_prot = stats[ftt.WRITE_PROT]
+                        Trace.trace(10,"WRITE_PROT=%s"%(stats[self.ftt.WRITE_PROT],))
+                        write_prot = stats[self.ftt.WRITE_PROT]
                         if type(write_prot) is type(''):
                             write_prot = string.atoi(write_prot)
                         if write_prot:
@@ -2685,9 +2692,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.target_location = eod
                 self.vol_info['eod_cookie'] = loc_to_cookie(eod)
                 if self.driver_type == 'FTTDriver' and self.rem_stats:
-                    import ftt
                     stats = self.tape_driver.ftt.get_stats()
-                    remaining = stats[ftt.REMAIN_TAPE]
+                    remaining = stats[self.ftt.REMAIN_TAPE]
                     if remaining is not None:
                         remaining = long(remaining)
                         self.vol_info['remaining_bytes'] = remaining * 1024L
@@ -2724,7 +2730,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             t = self.media_transfer_time
         if t == 0.:
-            t = ticket['times']['transfer_time']
+            t = ticket['times'].get('transfer_time', 0.)
         ticket['times']['drive_transfer_time'] = t
         self.log_state()
         if self.tr_failed:
@@ -2756,7 +2762,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tr_failed = 0
             return
 
-        Trace.log(e_errors.INFO, "STATE %s"%(state_name(self.state),)) #REMOVE
         # this only can happen when initial communication with get failed
         # just return here as no tape was mounted yet
         if self.udp_control_address and self.udp_cm_sent:
@@ -2956,13 +2961,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(24, "estimate remainig %s" % (r2,))
         ## XXX OO: this should be a driver method
         if self.driver_type == 'FTTDriver' and self.rem_stats:
-            import ftt
             stats = None
             try:
                 stats = self.tape_driver.ftt.get_stats()
-                r2 = long(stats[ftt.REMAIN_TAPE]) * 1024L
+                r2 = long(stats[self.ftt.REMAIN_TAPE]) * 1024L
                 Trace.trace(24, "reported remainig %s" % (r2,))
-            except ftt.FTTError, detail:
+            except self.ftt.FTTError, detail:
                 Trace.log(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%
                           (detail,))
             except:
@@ -2970,7 +2974,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.handle_error(exc, detail, tb)
                 try:
                     Trace.log(e_errors.ERROR, "REMAIN_TAPE: type %s value %s"%
-                              (type(stats[ftt.REMAIN_TAPE]), stats[ftt.REMAIN_TAPE]))
+                              (type(stats[self.ftt.REMAIN_TAPE]), stats[self.ftt.REMAIN_TAPE]))
                 except:
                     exc, detail, tb = sys.exc_info()
                     Trace.handle_error(exc, detail, tb)
@@ -3464,8 +3468,12 @@ class Mover(dispatching_worker.DispatchingWorker,
     
     def dismount_volume(self, after_function=None):
         Trace.trace(10, "state %s"%(state_name(self.state),))
-        self.nowork({})
+        if self.state == IDLE:
+            Trace.log(e_errors.INFO, "Must be a mistake. No dismount in the state %s"%(state_name(self.state),))
+            return
         broken = ""
+        if self.method == 'read_next':
+            self.nowork({})
         self.dismount_time = None
         self.method = None
         Trace.log(e_errors.INFO, "Updating stats")
@@ -3489,6 +3497,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.draining:
                 #self.state = OFFLINE
                 self.offline()
+                self.nowork({})
             return
 
         self.state = DISMOUNT_WAIT
@@ -3522,7 +3531,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)                
 
                 self.broken(broken)
-
+                self.nowork({})
                 return
         Trace.log(e_errors.INFO, "Tape is ejected")
 
@@ -3561,6 +3570,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not vol_info: vol_info = self.vol_info
 
         self.unload_volume(vol_info, after_function=after_function)
+        self.nowork({})
         
     def unload_volume(self, vol_info,after_function=None):
         broken= ''
@@ -4041,6 +4051,7 @@ class DiskMover(Mover):
     def start(self):
         name = self.name
         self.t0 = time.time()
+        self.tr_failed = 0
         self.config = self.csc.get(name)
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
@@ -5232,7 +5243,7 @@ if __name__ == '__main__':
                 for l in full_tb:
                     Trace.log(e_errors.ERROR, l[:-1], {}, "TRACEBACK")
                 Trace.log(e_errors.INFO, "restarting after exception")
-                mover.start()
+                mover.restart()
             except:
                 pass
 
