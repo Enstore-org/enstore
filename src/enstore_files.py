@@ -703,9 +703,7 @@ class HtmlSaagFile(EnFile):
 	      status_file_name):
         if self.openfile:
             doc = enstore_html.EnSaagPage(system_tag=self.system_tag)
-            media = enstore_functions.get_from_config_file(www_server.WWW_SERVER,
-                                                       www_server.MEDIA_TAG,
-                                                       www_server.MEDIA_TAG_DEFAULT)
+            media = enstore_functions.get_media()
             doc.body(enstore_contents, network_contents, media_contents, 
                      alarm_contents, node_contents, outage, offline, media,
 		     status_file_name)

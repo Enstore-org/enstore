@@ -5,15 +5,25 @@ import exceptions
 import socket
 import tempfile
 import types
+import pwd
 
 import configuration_server
 import enstore_constants
 import enstore_files
 import Trace
 import e_errors
+import www_server
 import option
 
 DEFAULTHTMLDIR = "."
+
+# return both the user associated with the uid and the euid.
+def get_user():
+    uid = os.getuid()
+    euid = os.geteuid()
+    username = pwd.getpwuid(uid)[0]
+    eusername = pwd.getpwuid(euid)[0]
+
 
 # return a string version of a list
 def print_list(aList, sep=" "):
@@ -71,6 +81,11 @@ def get_from_config_file(server, keyword, default):
             return default
     else:
         return default
+
+def get_media():
+    return get_from_config_file(www_server.WWW_SERVER,
+				www_server.MEDIA_TAG,
+				www_server.MEDIA_TAG_DEFAULT)
 
 # return the location of the html files from the config file
 def get_html_dir():

@@ -12,7 +12,7 @@ WWW_SERVER = "www_server"
 SYSTEM_TAG = "system_tag"
 SYSTEM_TAG_DEFAULT = ""
 MEDIA_TAG = "media"
-MEDIA_TAG_DEFAULT = "aml/2 robot (TBD)"
+MEDIA_TAG_DEFAULT = {"aml/2" : "aml/2 robot (TBD)"}
 
 import errno
 

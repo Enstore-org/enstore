@@ -1688,8 +1688,8 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	# now create the table with the data in it, first do the row with
 	# the headings
 	tr = HTMLgen.TR(valign="CENTER")
-	headings = ["Time", "Node", "User", "Mover Interface", "Bytes", "Volume",
-		    "Data Transfer Rate (MB/S)", "User Rate (MB/S)"]
+	headings = ["Time", "Node", "User/Storage Group", "Mover Interface", "Bytes", 
+		    "Volume", "Data Transfer Rate (MB/S)", "User Rate (MB/S)"]
 	num_headings = len(headings)
 	for hding in headings:
 	    tr.append(self.make_th(hding))
@@ -2340,6 +2340,23 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    table.append(empty_row())
 	    table.append(empty_row())
 	    
+    def get_med_list(self, dict):
+	keys = dict.keys()
+	keys.sort()
+	new_list = []
+	# make a list of dicts out of it
+	for key in keys:
+	    elem = dict[key]
+	    new_list.append({elem[1]:elem[0]})
+	return new_list
+
+    def add_to_row(self, tr, val, dict, outage_d, offline_d):
+	tr.append(self.get_color_ball(dict, val, "RIGHT"))
+	txt = HTMLgen.Font(val, size="+2")
+	if dict.has_key(enstore_constants.URL):
+	    txt = HTMLgen.Href(dict[enstore_constants.URL], txt)
+	tr.append(self.get_element(dict, val, outage_d, offline_d, txt))
+
     def make_overall_table(self, enstat_d, netstat_d, medstat_d, alarms_d, outage_d, 
 			   offline_d):
 	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
@@ -2347,17 +2364,23 @@ class EnSaagPage(EnBaseHtmlDoc):
 	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Overall Status"), 
 						    size="+3", color=BRICKRED)))
 	entable.append(empty_row(6))
+	# first get a list of the media tags we will have (1 per row)
+	med_l = self.get_med_list(medstat_d)
 	tr = HTMLgen.TR()
-	for (val, dict) in [(enstore_constants.ENSTORE, enstat_d),
-			    (medstat_d[TAG], medstat_d),
-			    (enstore_constants.NETWORK, netstat_d),
-			    (enstore_constants.ANYALARMS, alarms_d)]:
-	    tr.append(self.get_color_ball(dict, val, "RIGHT"))
-	    txt = HTMLgen.Font(val, size="+2")
-	    if dict.has_key(enstore_constants.URL):
-		txt = HTMLgen.Href(dict[enstore_constants.URL], txt)
-	    tr.append(self.get_element(dict, val, outage_d, offline_d, txt))
+	med_keys = med_l[0].keys()
+	self.add_to_row(tr, enstore_constants.ENSTORE, enstat_d, outage_d, offline_d)
+	self.add_to_row(tr, med_keys[0], med_l[0], outage_d, offline_d)
+	del med_l[0]
+	self.add_to_row(tr, enstore_constants.NETWORK, netstat_d, outage_d, offline_d)
+	self.add_to_row(tr, enstore_constants.ANYALARMS, alarms_d, outage_d, offline_d)
 	entable.append(tr)
+	# get any more media rows if needed
+	for item in med_l:
+	    tr = HTMLgen.TR()
+	    tr.append(empty_data(2)) # cover for no enstore element
+	    self.add_to_row(tr, item.keys()[0], item, outage_d, offline_d)
+	    tr.append(empty_data(4)) # cover for no network & alarm elements
+	    entable.append(tr)
 	return entable
 
     def get_time_row(self, dict):
@@ -2530,12 +2553,14 @@ class EnSaagPage(EnBaseHtmlDoc):
 	table = self.table_top()
 	# add the table with the general status
 	# fake this for now, remove when get this working
-	if offline_d.has_key(media_tag):
-	    # mark the robot as down
-	    stat = enstore_constants.DOWN
-	else:
-	    stat = enstore_constants.UP
-	medstat_d = {media_tag : stat, TAG : media_tag}
+	medstat_d = {}
+	mtags = media_tag.keys()
+	for mtag in mtags:
+	    if offline_d.has_key(mtag):
+		# mark the robot as down
+		medstat_d[mtag] = [enstore_constants.DOWN, media_tag[mtag]]
+	    else:
+		medstat_d[mtag] = [enstore_constants.UP, media_tag[mtag]]
 	self.check_for_red(enstat_d, table)
 	table.append(HTMLgen.TR(HTMLgen.TD(self.make_overall_table(enstat_d, 
 								   netstat_d,

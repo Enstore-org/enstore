@@ -42,8 +42,7 @@ server_map = {"log_server" : enstore_constants.LOGS,
 	      "volume_clerk" : enstore_constants.VOLC,
 	      "enstore" : enstore_constants.ENSTORE,
 	      "network" : enstore_constants.NETWORK,
-	      "alarms" : enstore_constants.ANYALARMS,
-	      "media" : ""}
+	      "alarms" : enstore_constants.ANYALARMS}
 server_keys = server_map.keys()
 
 # start of global variables
@@ -1244,7 +1243,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return 1
 	else:
 	    # this server was not listed in the config file
-	    return 0
+	    # see if it is one of the media tags
+	    media = enstore_functions.get_media()
+	    keys = media.keys()
+	    for key in keys:
+		if server == media[key]:
+		    return 1
+	    else:
+		return 0
 
     def update_schedule_file(self, ticket, func):
 	ticket["status"] = (e_errors.OK, None)
