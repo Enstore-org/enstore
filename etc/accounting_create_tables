@@ -1,5 +1,5 @@
 create table encp_xfer (
-date	datetime not null,
+date	timestamp not null,
 node	varchar(32) not null,
 pid	int not null,
 username	varchar(32) not null,
@@ -37,8 +37,8 @@ node	varchar(32) not null,
 volume	varchar(16) not null,
 type	varchar(32) not null,
 logname	varchar(16) not null,
-start	datetime not null,
-finish	datetime,
+start	timestamp not null,
+finish	timestamp,
 state	char(1) not null);
 
 create index tape_mnts_node_idx on tape_mounts (node);
