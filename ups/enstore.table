@@ -92,6 +92,9 @@ QUALIFIERS = ""
 	# this provides compatibility with the encp product and allows people to just say "encp" and not "ecmd encp"
 	execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/encp ]; then ln -s $ENSTORE_DIR/src/encp.py $ENSTORE_DIR/bin/encp; fi"',NO_UPS_ENV)
 	
+	# create an enstore link in the bin area
+	execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/enstore ]; then ln -s $ENSTORE_DIR/src/enstore_admin.py $ENSTORE_DIR/bin/enstore; fi"',NO_UPS_ENV)
+	
         # default "control" environmental variables
         envSet(ENSTORE_CONFIG_FILE, "${UPS_PROD_DIR}/etc/pcfarm.conf")
         envSet(ENSTORE_CONFIG_PORT, 7500)
