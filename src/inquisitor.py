@@ -669,6 +669,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # the pending queue.  if there is nothing, ff_width  = 0, but we don't care
 	    wam_dict = self.num_in_queue(node, lib_man.wam_queue)
 	    # the pending queue is actually 3 queues, ignore the read queue
+            enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
+                                       "num in queue = %s"%(len(lib_man.pend_queue[enstore_constants.READ_QUEUE],),))
 	    pend_dict2 = self.num_in_queue(node, 
 					  lib_man.pend_queue[enstore_constants.ADMIN_QUEUE])
 	    pend_dict = self.num_in_queue(node, 
