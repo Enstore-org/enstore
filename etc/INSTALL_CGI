@@ -10,8 +10,7 @@ runs the web server -
 
 	o Copy $ENSTORE_DIR/src/enstore_*_cgi.py to cgi-bin/enstore
 
-	o the above cgi files may have to have the location of python
-		changed too.
+	o you may have to add a link in /usr/local/bin to your python
 
 	o Copy $ENSTORE_DIR/etc/enstore.htaccess to cgi-bin/enstore/.htaccess
 
