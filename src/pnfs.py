@@ -954,10 +954,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 test_dir = os.path.join(directory, "volmap")
 
                 #If the volmap directory hasn't been found, keep trying.
-                #Don't include lc in the existence test, otherwise every
-                # write operation will fail.
-                test_dir2 = os.path.join(test_dir, ff, vol)
-                if not os.path.exists(test_dir2):
+                #Don't include ff, vol and lc in the existence test,
+                # otherwise write operations will fail.
+                if not os.path.exists(test_dir):
                     raise errno.ENOENT
                 self.volume_filepath = os.path.join(test_dir, ff, vol, lc)
                 return self.volume_filepath
