@@ -293,7 +293,7 @@ int do_initialize(void)
   return stat;
 }
 
-#ifdef 0
+#if 0
 /**************************************************************************************
 	initialize - initialize ACI library for use; it does not change drive state
 */
