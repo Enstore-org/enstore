@@ -33,6 +33,7 @@ SOURCE = "source"
 ALARM = "alarm"
 ANYALARMS = "alarms"
 URL = "url"
+ROOT_ERROR = "root_error"
 
 ALIVE_INTERVAL = "alive_interval"
 DEFAULT_ALIVE_INTERVAL = "default_alive_interval"
