@@ -18,37 +18,68 @@ import event_relay_messages
 import Trace
 import mover_client
 import types
-# from Tkinter import *
-# import tkFont
-
 
 #Set up paths to find our private copy of tcl/tk 8.3
+
+#Get the environmental variables.
+ENSTORE_DIR = os.environ.get("ENSTORE_DIR", None)
+PYTHONLIB = os.environ.get("PYTHONLIB", None)
+IMAGE_DIR = None
+LIB = None
+
+#Determine the expected location of the local copy of Tcl/Tk.
 try:
-    ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
-except OSError, msg:
-    sys.stderr.write(str(msg))
-    sys.exit(1)
-try:
-    CWD = os.getcwd()
-except OSError, msg:
-    sys.stderr.write(str(msg) + ": No current working directory")
-    sys.exit(1)
-TCLTK_DIR=None
-if ENSTORE_DIR:
+    #Determine the expected location of the local copy of Tcl/Tk.
     TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
-if TCLTK_DIR is None or not os.path.exists(TCLTK_DIR):
-    TCLTK_DIR=os.path.normpath(os.path.join(CWD,'..','etc','TclTk'))
-os.environ["TCL_LIBRARY"]=os.path.join(TCLTK_DIR, 'tcl8.3')
-os.environ["TK_LIBRARY"]=os.path.join(TCLTK_DIR, 'tk8.3')
-sys.path.insert(0, os.path.join(TCLTK_DIR, sys.platform))
 
-IMAGE_DIR=None
-if ENSTORE_DIR:
-    IMAGE_DIR=os.path.join(ENSTORE_DIR, 'etc', 'Images')
-if IMAGE_DIR is None or not os.path.exists(IMAGE_DIR):
-    IMAGE_DIR=os.path.normpath(os.path.join(CWD,'..','etc','Images'))
+    #If the local copy of tcl/tk is found, use it.
+    temp_dir_tcl = os.path.join(TCLTK_DIR, 'tcl8.3')
+    temp_dir_tk = os.path.join(TCLTK_DIR, 'tk8.3')
+    temp_dir_lib = os.path.join(TCLTK_DIR, sys.platform)
+    if os.path.exists(temp_dir_tcl) and os.path.exists(temp_dir_tk) and \
+       os.path.exists(temp_dir_lib):
+        os.environ["TCL_LIBRARY"] = temp_dir_tcl
+        os.environ["TK_LIBRARY"] = temp_dir_tk
+        LIB = temp_dir_lib
+    else:
+        #Don't use the local copy.
+        temp_dir = os.path.join(PYTHONLIB, "lib-dynload")
+        if(os.path.exists(temp_dir)):
+            LIB = temp_dir
+except:
+    pass
 
-##print "IMAGE_DIR=", IMAGE_DIR
+#This is a very important line.  Includes the library's directory in the
+# system search path.
+try:
+    if LIB == None:
+        raise "Library path error"
+    
+    sys.path.insert(0, LIB)
+except:
+    sys.stderr.write("Unable to access shared library: %s\n" % LIB)
+    sys.exit(1)
+
+#Make sure the environment has at least one copy of TCL/TK.
+if not os.environ.get("TCL_LIBRARY", None):
+    sys.stderr.write("Tcl library not found.\n")
+    sys.exit(1)
+if not os.environ.get("TK_LIBRARY", None):
+    sys.stderr.write("Tk library not found.\n")
+    sys.exit(1)
+
+try:
+    #Determine where the images are located.
+    temp_dir = os.path.join(ENSTORE_DIR, 'etc', 'Images')
+    if(os.path.exists(temp_dir)):
+        IMAGE_DIR = temp_dir
+except:
+    sys.stderr.write("Images directory not found.\n")
+    sys.exit(1)
+
+#print "_tkinter.so =", LIB
+#print "TCL_LIBRARY =", os.environ["TCL_LIBRARY"]
+#print "TK_LIBRARY =", os.environ["TK_LIBRARY"]
 
 import Tkinter
 import tkFont
