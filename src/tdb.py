@@ -3,11 +3,8 @@ import time
 import  socket
 import string
 
-dog = {'cat' : 1} 
-
 import sys
 Quit = "Quit"
-nl = "\n"
 
 class Tdb(threading.Thread) :
     inFile = sys.stdin
@@ -45,13 +42,13 @@ class Tdb(threading.Thread) :
                 else :
                     self.help()
             elif toks[0] ==   "who" :
-                self.who()
+                self.who(string.strip(line[3:]))
             elif toks[0] == "eval" :
                 self.eval(line[4:])
-            elif toks[0] == "module" :
-                self.module(string.strip(line[6:]))
             elif toks[0] == "help":
                 self.help()
+            elif toks[0] == "modules":
+                self.modules()
             elif toks[0] ==  "quit" :
                 self.quit()
             else :
@@ -62,27 +59,24 @@ class Tdb(threading.Thread) :
         for l in  range (string.atoi(lineno), string.atoi(lineno) + 10) :
             self.writeln(linecache.getline(filename, l))
 
-    def who(self):
-#        for g in globals().keys() :
-#            self.writeln(repr(g)  + '=' + repr(globals()[g]))
-
-	for e in self.mod.__dict__.keys() :
-            self.writeln(repr(e)  + '=' + repr(self.mod.__dict__[e]))
+    def who(self, m):
+        d = sys.modules[m].__dict__
+	for e in d.keys() :
+            self.writeln(repr(e)  + '=' + repr(d[e]))
             
     def eval(self, e):
         self.writeln(eval(e))
 
-    def module(self, m):
-        
-	self.writeln("AAAAAAAAAAAAAAAAA" + `len(m)`)
-	self.writeln(sys.modules[m])
-	self.mod = sys.modules[m]
+    def modules(self):
+	for m in sys.modules.keys() :
+            self.writeln(m)
 
     def  help(self):
         self.writeln(
-	  "help, module <name>,l ist filename line, who, eval expresion, quit")
+	  "help,list <filename> <line>, who <module>, eval <expression>, modules, quit")
     
     def quit(self):
+        if 0 : print self # quiet the linter
         raise Quit
         
 class TdbListener(threading.Thread):
@@ -99,6 +93,7 @@ class TdbListener(threading.Thread):
         s.listen(2)
         while  1 :
             ns, who = s.accept()
+            if 0 : print who # for the linter
             tdb = Tdb()
             tdb.inFile = ns.makefile('r')
             tdb.outFile  = ns.makefile('w')
@@ -106,8 +101,9 @@ class TdbListener(threading.Thread):
             ns.close()
         
 if __name__ == "__main__" :
+    dog = {'cat' : 1} 
     TdbListener().start()
     while 1:
-        print "visit me at localhost 9999        !!!! "
+        print "visit me at localhost 9999        !!!! ", dog
         time.sleep(10)
 
