@@ -46,7 +46,7 @@ def busy_vols_in_family (family_name):
         if w["file_family"] == family_name :
             vols.append(w["external_label"])
      except:
-        import pprint 
+        import pprint
         pprint.pprint(w)
         pprint.pprint(work_at_movers)
         pprint.pprint(work_awaiting_bind)
@@ -140,6 +140,8 @@ def next_work_this_volume(v) :
         # writing to this volume?
         if (w["work"]           == "write_to_hsm"    and
             w["file_family"]    == v["file_family"]  and
+            v["user_inhibit"]   == "none"            and
+            v["system_inhibit"] == "none"            and
             w["size_bytes"]    <= v["remaining_bytes"]) :
             w["external_label"] = v["external_label"]
             # ok passed criteria, return write work ticket

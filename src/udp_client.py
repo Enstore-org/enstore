@@ -55,6 +55,26 @@ class UDPClient:
                   "too big. Size = ",+repr(len(message))+" Max = "+\
                   repr(TRANSFER_MAX)+" "+repr(message)
 
+        # make sure the socket is empty before we start
+        try:
+            f = self.socket.fileno()
+            r, w, x = select.select([f],[],[f],0)
+            if r:
+                badsock = self.socket.getsockopt(socket.SOL_SOCKET,
+                                                 socket.SO_ERROR)
+                if badsock != 0 :
+                    print "udp_client send, clearout error:",\
+                          errno.errorcode[badsock]
+                reply , server = self.socket.recvfrom(TRANSFER_MAX)
+                print "udp_client.send: read old info:",reply,server
+                badsock = self.socket.getsockopt(socket.SOL_SOCKET,
+                                                 socket.SO_ERROR)
+                if badsock != 0 :
+                    print "udp_client send, clearout error:",\
+                          errno.errorcode[badsock]
+        except:
+            print "clearout",sys.exc_info()[0],sys.exc_info()[1]
+
         # send the udp message until we get a response that it was sent
         number = 0  # impossible number
         while number != self.number:
@@ -79,7 +99,7 @@ class UDPClient:
                   errno.errorcode[badsock]
 
             # check for a response
-            f  = self.socket.fileno()
+            f = self.socket.fileno()
             r, w, x = select.select([f],[],[f],10)
 
             # exception mean trouble
