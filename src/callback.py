@@ -99,8 +99,9 @@ def timeout_recv(sock,nbytes,timeout=15*60):
 def read_tcp_raw(sock, timeout=15*60):
     tmp = timeout_recv(sock,8, timeout) 
     try:
-        bytecount = string.atoi(tmp)
+        bytecount = int(tmp)
     except:
+        Trace.handle_error()
         bytecount = None
     if len(tmp)!=8 or bytecount is None:
         Trace.log(e_errors.ERROR,"read_tcp_raw: bad bytecount %s"%(tmp,))
