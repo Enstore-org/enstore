@@ -145,6 +145,21 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
             return self.client_options()+[
                 "config_file=","summary","show","load"]
 
+    #  define our specific help
+    def parameters(self):
+        return "element"
+
+    # parse the options like normal but see if we have a server
+    def parse_options(self):
+        interface.Interface.parse_options(self)
+        # see if we have an element 
+        if self.show:
+            if len(self.args) < 1 :
+                # no parameter, show all
+                self.element = ""
+            else:
+                self.element = self.args[0]
+
 def do_work(intf):
 
     csc = ConfigurationClient((intf.config_host, intf.config_port))
@@ -154,8 +169,11 @@ def do_work(intf):
         pass
     elif intf.show:
         result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
-        pprint.pprint(result['dump'])
-        
+        if intf.element:
+            pprint.pprint(result["dump"].get(intf.element, {}))
+        else:
+            pprint.pprint(result["dump"])
+
     elif intf.load:
         result= csc.load(intf.config_file, intf.alive_rcv_timeout,
 	                intf.alive_retries)
