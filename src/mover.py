@@ -1190,7 +1190,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
                 if self.buffer.complete_crc != saved_complete_crc:
                     Trace.alarm(e_errors.ERROR, "selective CRC check error")
-                    self.transfer_failed(e_errors.WIRTE_ERROR, "selective CRC check error")
+                    self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error")
                     return
                 Trace.log(e_errors.INFO, "selective CRC check after writing file completed successfuly")
                 self.buffer.restore_settings()
