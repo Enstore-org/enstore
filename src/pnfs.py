@@ -419,7 +419,7 @@ class Pnfs:
 
     # store the cross-referencing data
     def set_xreference(self,volume,location_cookie,size):
-        Trace.trace(11,'{pnfs.set_xref'+" "+repr(volume)+" "+repr(location_cookie)+" "+repr(size))
+        Trace.trace(11,'pnfs.set_xref'+" "+repr(volume)+" "+repr(location_cookie)+" "+repr(size))
         self.volmap_filename(volume,location_cookie)
         Trace.trace(11,'making volume_file='+repr(self.volume_file))
         self.make_volmap_file()
@@ -436,7 +436,6 @@ class Pnfs:
         self.writelayer(4,value)
         self.get_xreference()
         self.fill_volmap_file()
-        Trace.trace(11,'}pnfs.set_xreference')
 
     # get the bit file id
     def get_bit_file_id(self):
@@ -731,7 +730,6 @@ class Pnfs:
 
     # create a duplicate entry in pnfs that is ordered by file number on tape
     def make_volmap_file(self):
-        Trace.trace(11,'{make_volmap_file')
         if self.volume_file!=UNKNOWN:
             if posixpath.exists(self.voldir) == 0:
                 dir = ""
@@ -753,12 +751,10 @@ class Pnfs:
             self.volume_fileP = Pnfs(self.volume_file)
             self.volume_fileP.touch()
             self.volume_fileP.set_file_size(self.file_size)
-            Trace.trace(11,'}make_volmap_file')
 
 
     # file in the already existing volume map file
     def fill_volmap_file(self):
-        Trace.trace(11,'{pnfs.fill_volmap_file')
         if self.volume_file!=UNKNOWN:
             # now copy the appropriate layers to the volmap file
             for layer in [1,4]: # bfid and xref
@@ -773,7 +769,6 @@ class Pnfs:
             os.chmod(self.volume_file,0644)  # disable write access except for owner
             Trace.trace(11,'changing to roor.root ownership')
             os.chown(self.volume_file,0,0)   # make the owner root.root
-            Trace.trace(11,'}pnfs.fill_volmap_file')
 
     # retore the original entry based on info from the duplicate
     def restore_from_volmap(self):
@@ -842,7 +837,6 @@ def findfiles(mainpnfsdir,                  # directory above volmap directory
 class PnfsInterface(interface.Interface):
 
     def __init__(self):
-        Trace.trace(10,'{pnfsi.__init__')
         # fill in the defaults for the possible options
         self.test = 0
         self.status = 0
@@ -853,11 +847,9 @@ class PnfsInterface(interface.Interface):
 
         # now parse the options
         self.parse_options()
-        Trace.trace(10,'}pnfs.__init')
 
     # define the command line options that are valid
     def options(self):
-        Trace.trace(16,"{}options")
         return ["test","status","file=","restore="] +\
                self.help_options()
 
@@ -883,7 +875,7 @@ if __name__ == "__main__":
         count = 0
         for pf in base+"/"+repr(time.time()), "/impossible/path/test":
             count = count+1;
-            Trace.trace(14,"\nSelf test from "+__name__+" using file "+\
+            Trace.trace(14,"Self test from "+__name__+" using file "+\
                                repr(count)+": "+repr(pf))
 
             p = Pnfs(pf)
@@ -907,7 +899,7 @@ if __name__ == "__main__":
 
                 nv = "crunch"
                 nvn = 222222
-                Trace.trace(14, "\nChanging to new values")
+                Trace.trace(14, "Changing to new values")
 
                 p.set_library(nv)
                 if p.library == nv:
@@ -944,7 +936,7 @@ if __name__ == "__main__":
                           +repr(p.file_size))
 
                 p.dump()
-                Trace.trace(14, "\nRestoring original values")
+                Trace.trace(14, "Restoring original values")
 
                 p.set_library(l)
                 if p.library == l:

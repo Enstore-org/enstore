@@ -10,44 +10,28 @@
 
 # system imports
 import sys
+import string
 
 #enstore imports
-import configuration_client
 import udp_client
 import interface
 import generic_client
-import generic_cs
 import Trace
-import e_errors
 
 class MoverClient(generic_client.GenericClient):
-    def __init__(self, csc=0, verbose=0, name="", \
-                 host=interface.default_host(), \
-                 port=interface.default_port()):
-	self.print_id = "MOVERC"
+    def __init__(self, csc, name=""):
         self.mover=name
-	self.verbose = verbose
-        configuration_client.set_csc(self, csc, host, port, verbose)
+        self.log_name = string.upper(name)
+        generic_client.GenericClient.__init__(self, csc, self.log_name)
         self.u = udp_client.UDPClient()
-        ticket = self.csc.get(name)
-	try:
-            self.print_id = ticket['logname']
-        except:
-            pass
 
     def status(self, rcv_timeout=0, tries=0):
-	Trace.trace(12,"{status")
-	t = self.send({"work" : "status"}, rcv_timeout, tries)
-	Trace.trace(12,"}status")
-	return t
+	return self.send({"work" : "status"}, rcv_timeout, tries)
 
     def send (self, ticket, rcv_timeout=0, tries=0) :
-        Trace.trace(12,"{send"+repr(ticket))
         vticket = self.csc.get(self.mover)
-        s = self.u.send(ticket, (vticket['hostip'], vticket['port']), \
+        return self.u.send(ticket, (vticket['hostip'], vticket['port']), \
 	                rcv_timeout, tries)
-        Trace.trace(12,"}send"+repr(s))
-	return s
 
 class MoverClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
@@ -78,30 +62,24 @@ class MoverClientInterface(generic_client.GenericClientInterface):
 
 
 if __name__ == "__main__" :
-    Trace.init("mover cli")
-    Trace.trace(1,"movc called with args "+repr(sys.argv))
+    Trace.init("MOVER CLI")
+    Trace.trace(6,"movc called with args "+repr(sys.argv))
 
     # fill in the interface
     intf = MoverClientInterface()
 
     # get a mover client
-    movc = MoverClient(0, intf.verbose, intf.mover, \
-                      intf.config_host, intf.config_port)
+    movc = MoverClient((intf.config_host, intf.config_port), intf.mover)
+    Trace.init(movc.get_name(movc.log_name))
 
     ticket = {}
     msg_id = None
 
     if intf.alive:
         ticket = movc.alive(intf.alive_rcv_timeout,intf.alive_retries)
-	msg_id = generic_cs.ALIVE
     elif intf.status:
         ticket = movc.status(intf.alive_rcv_timeout,intf.alive_retries)
-	generic_cs.enprint(ticket)
-	msg_id = generic_cs.CLIENT
-    elif intf.got_server_verbose:
-        ticket = movc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
-	                          intf.alive_retries)
-	msg_id = generic_cs.CLIENT
+	print repr(ticket)
     else:
 	intf.print_help()
         sys.exit(0)
@@ -109,4 +87,4 @@ if __name__ == "__main__" :
     del movc.csc.u
     del movc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    movc.check_ticket(ticket, msg_id)
+    movc.check_ticket(ticket)

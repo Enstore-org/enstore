@@ -4,62 +4,85 @@
 #system imports
 import sys
 import errno
+import pprint
+import types
 
 #enstore imports
 import Trace
-import generic_cs
 import e_errors
 import interface
 
 class GenericClientInterface(interface.Interface):
 
     def __init__(self):
-	self.verbose = 0
-	self.got_server_verbose = 0
 	self.dump = 0
 	self.alive = 0
 	interface.Interface.__init__(self)
 
     def client_options(self):
-	return self.config_options() + self.verbose_options()+ \
+	return self.config_options() + \
 	       self.alive_options()  + self.help_options()
+    
+init_done = 0
 
+class GenericClient:
 
-class GenericClient(generic_cs.GenericCS):
+    def __init__(self, csc, name):
+        global init_done
+        if not init_done:
+            # we only want to get these clients once per process
+            init_done = 1
+            import configuration_client
+            import log_client
+            import alarm_client
+            if csc and (type(csc) == types.TupleType):
+                self.csc = configuration_client.ConfigurationClient((csc[0],
+                                                                    csc[1]))
+            elif csc:
+                # it is not a tuple of address and port, so we assume that it
+                # is a configuration client object
+                self.csc = csc
+            # try to find the logname for this object in the config dict.  use
+            # the lowercase version of the name as the server key.  if this
+            # object is not defined in the config dict, then just use the
+            # passed in name.
+            self.log_name = self.get_name(name)
+            if not self.__dict__.get('is_logger', 0):
+                self.logc = log_client.LoggerClient(self.csc, self.log_name,
+                                                    'log_server')
+            if not self.__dict__.get('is_alarm', 0):
+                self.alarmc = alarm_client.AlarmClient(self.csc)
+        else:
+            if csc and (not type(csc) == types.TupleType):
+                # we assume this is a configuration client object since it is
+                # not a tuple of the address and port.
+                self.csc = csc
+
+    # return the name used for this client/server
+    def get_name(self, name):
+        return name
 
     # check on alive status
     def alive(self, rcv_timeout=0, tries=0):
 	try:
             x = self.send({'work':'alive'},rcv_timeout,tries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    Trace.trace(14,"}alive - ERROR, alive timed out")
+	    Trace.trace(14,"alive - ERROR, alive timed out")
 	    x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
 
     # examine the final ticket to check for any errors
-    def check_ticket(self, ticket, msg_id):
+    def check_ticket(self, ticket):
 	if not 'status' in ticket.keys(): return None
         if ticket['status'][0] == e_errors.OK:
-	    self.enprint(ticket, generic_cs.PRETTY_PRINT|msg_id, self.verbose)
-            Trace.trace( 6, '%s exit ok'%self.print_id )
+            Trace.trace(14, repr(ticket))
+            Trace.trace(14, 'exit ok' )
             sys.exit(0)
         else:
-            self.enprint("BAD STATUS: "+repr(ticket), generic_cs.PRETTY_PRINT)
-            Trace.trace(2, self.print_id+" BAD STATUS - "+\
-	                repr(ticket['status']))
+            pprint.pprint("BAD STATUS: "+repr(ticket))
+            Trace.trace(14, " BAD STATUS - "+repr(ticket['status']))
             sys.exit(1)
 	return None
-
-    # cover ourselves just in case our sub class does not have a send
-    def send(self, work, timeout=0, retry=0):
-        if 0: print self,work,timeout,retry # quiet lint
-	pass
-
-    # reset the verbosity in the server
-    def set_verbose(self, verbosity, rcv_timeout=0, tries=0):
-        x = self.send({'work':'set_verbose', 'verbose': verbosity}, \
-	              rcv_timeout, tries)
-        return x
 
     # tell the server to spill it's guts
     def dump(self, rcv_timeout=0, tries=0):

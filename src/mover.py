@@ -58,7 +58,6 @@ import string				# find
 
 # enstore modules
 import generic_server
-import generic_cs
 import interface
 import dispatching_worker
 import volume_clerk_client		# -.
@@ -176,40 +175,29 @@ def sigstop( sig, stack ):
     return None
     
 
-def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT LIBRARY MANAGER CAN RSP UNBIND??
+def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT --
+    # LIBRARY MANAGER CAN RSP UNBIND??
     vcc.set_system_noaccess( self.vol_info['err_external_label'] )
-
-    logc.send( e_errors.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
-
+    Trace.log( e_errors.ERROR,
+               "MOVER SETTING VOLUME \"SYSTEM NOACCESS\" %s %s",
+               error_info, self.vol_info )
     return unilateral_unbind_next( self, error_info )
 
 def freeze_tape_in_drive( self, error_info ):
     vcc.set_system_noaccess( self.vol_info['err_external_label'] )
-
-    logc.send( e_errors.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
-
+    Trace.log( e_errors.ERROR,
+               "MOVER SETTING VOLUME \"SYSTEM NOACCESS\" %s %s",
+               error_info, self.vol_info )
     return offline_drive( self, error_info )
 
 def offline_drive( self, error_info ):	# call directly for READ_ERROR
-    logc.send( e_errors.ERROR, 1, "MOVER OFFLINE "+str(error_info) )
-
-    if error_info == e_errors.READ_ERROR:
-	if self.read_error[1]:
-	    next_req_to_lm = {}		# so what if library manager is left in the dark???
-	    self.state = 'offline'
-	else:
-            #self.unbind( {} )
-	    next_req_to_lm = unilateral_unbind_next( self, error_info )
-	    pass
-	pass
-    else:
-        #self.unbind( {} )
-	next_req_to_lm = unilateral_unbind_next( self, error_info )
-    return next_req_to_lm
+    Trace.log( e_errors.ERROR, "MOVER OFFLINE "+str(error_info) )
+    self.state = 'offline'
+    return unilateral_unbind_next( self, error_info )
 
 
 def fatal_enstore( self, error_info ):
-    logc.send( e_errors.ERROR, 1, "FATAL ERROR - MOVER - "+str(error_info) )
+    Trace.log( e_errors.ERROR, "FATAL ERROR - MOVER - "+str(error_info) )
     rsp = udpc.send( {'work':"unilateral_unbind",'status':error_info}, self.lm_origin_addr )
     while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
     return
@@ -230,9 +218,9 @@ def send_user_done( self, ticket, error_info ):
 # ticket received.
 #
 class MoverClient:
-    def __init__( self, config ):
-	self.print_id = 'MOVER'
+    def __init__( self, config, csc ):
 	self.config = config
+        self.csc = csc
 	self.state = 'idle'
 	# needs to be initialized for status
 	self.mode = ''			# will be either 'r' or 'w'
@@ -242,6 +230,10 @@ class MoverClient:
 	self.work_ticket = {}
 
 	self.pid = 0
+
+        # need a media changer to control (mount/load...) the volume
+        self.mcc = media_changer_client.MediaChangerClient( self.csc,
+                                             mvr_config['media_changer'] )
 
 	self.vol_info = {'external_label':''}
 	self.vol_vcc = {}		# vcc associated with a particular
@@ -255,16 +247,16 @@ class MoverClient:
 	if config['device'][0] == '$':
 	    dev_rest=config['device'][string.find(config['device'],'/'):]
 	    if dev_rest[0] != '/':
-		self.enprint("device '"+config['device']+\
-	                     "' configuration ERROR")
+		Trace.log(e_errors.INFO, "device '"+config['device']+\
+                          "' configuration ERROR")
 		sys.exit(1)
 		pass
 	    dev_env = config["device"][1:string.find(config['device'],'/')]
 	    try:
 		dev_env = os.environ[dev_env];
 	    except:
-		self.enprint("device '"+config['device']+\
-	                     "' configuration ERROR")
+		Trace.log(e_errors.INFO, "device '"+config['device']+\
+                          "' configuration ERROR")
 		sys.exit(1)
 		pass
 	    config['device'] = dev_env + dev_rest
@@ -274,7 +266,7 @@ class MoverClient:
 	# eval( "driver.%s()"%config['driver'] )  (we do not like to use eval)
         try: self.hsm_driver = getattr(driver, config['driver']) ()
         except AttributeError:
-            self.enprint("No such driver: "+config['driver'])
+            Trace.log(e_errors.INFO, "No such driver: "+config['driver'])
             self.hsm_driver = None
                         
 
@@ -303,7 +295,7 @@ class MoverClient:
 	    return {}
 
 	# child or single process???
-	logc.send(e_errors.INFO,2,'UNBIND start'+str(ticket))
+	Trace.log(e_errors.INFO,'UNBIND start'+str(ticket))
 	    
 	# do any driver level rewind, unload, eject operations on the device
 	if mvr_config['do_eject'] == 'yes':
@@ -312,11 +304,11 @@ class MoverClient:
 	    Trace.log( e_errors.INFO, "Completed  offline/eject of device %s"%mvr_config['device'] )
 	    pass
 	# now ask the media changer to unload the volume
-	logc.send(e_errors.INFO,2,"Requesting media changer unload")
-	rr = mcc.unloadvol( self.vol_info, self.config['name'], 
-			    self.config['mc_device'],
-			    self.vol_vcc[self.vol_info['external_label']] )
-	logc.send(e_errors.INFO,2,"Media changer unload status"+str(rr['status']))
+	Trace.log(e_errors.INFO,"Requesting media changer unload")
+	rr = self.mcc.unloadvol( self.vol_info, self.config['name'], 
+                                 self.config['mc_device'],
+                                self.vol_vcc[self.vol_info['external_label']] )
+	Trace.log(e_errors.INFO,"Media changer unload status"+str(rr['status']))
 	if rr['status'][0] != "ok":
 	    #return freeze_tape_in_drive( self, e_errors.UNMOUNT )
 	    return_or_update_and_exit( self, self.vol_info['from_lm'], e_errors.UNMOUNT )
@@ -376,16 +368,17 @@ def bind_volume( self, external_label ):
 	# If we can detect "cleaning in progress" we can wait for it to
 	# complete before ejecting.
 	if mvr_config['do_eject'] == 'yes':
-            logc.send(e_errors.INFO,2,'Performing precautionary offline/eject of device'+str(mvr_config['device']))
+            Trace.log(e_errors.INFO,'Performing precautionary offline/eject of device'+str(mvr_config['device']))
 	    self.hsm_driver.offline(mvr_config['device'])
-            logc.send(e_errors.INFO,2,'Completed  precautionary offline/eject of device'+str(mvr_config['device']))
+            Trace.log(e_errors.INFO,'Completed  precautionary offline/eject of device'+str(mvr_config['device']))
 
 	self.vol_info['read_errors_this_mover'] = 0
-	logc.send(e_errors.INFO,2,'Requesting media changer load '+str(tmp_vol_info)+' '+str(self.config['mc_device']))
-	try: rsp = mcc.loadvol( tmp_vol_info, self.config['name'],
+	Trace.log(e_errors.INFO,'Requesting media changer load '+str(tmp_vol_info)+' '+str(self.config['mc_device']))
+	try: rsp = self.mcc.loadvol( tmp_vol_info, self.config['name'],
 				self.config['mc_device'], vcc )
-	except: rsp = { 'status':('ETIMEDOUT',None) }
-	logc.send(e_errors.INFO,2,'Media changer load status'+str(rsp['status']))
+	except errno.errorcode[errno.ETIMEDOUT]:
+            rsp = { 'status':('ETIMEDOUT',None) }
+	Trace.log(e_errors.INFO,'Media changer load status'+str(rsp['status']))
 	if rsp['status'][0] != 'ok':
 	    # it is possible, under normal conditions, for the system to be
 	    # in the following race condition:
@@ -399,12 +392,12 @@ def bind_volume( self, external_label ):
 		return 'TAPEBUSY' # generic, not read or write specific
 	    else: return 'BADMOUNT'
 	try:
-            logc.send(e_errors.INFO,2,'Requesting software mount '+str(external_label)+' '+str(mvr_config['device']))
+            Trace.log(e_errors.INFO,'Requesting software mount '+str(external_label)+' '+str(mvr_config['device']))
 	    self.hsm_driver.sw_mount( mvr_config['device'],
 				      tmp_vol_info['blocksize'],
 				      tmp_vol_info['remaining_bytes'],
 				      external_label )
-            logc.send(e_errors.INFO,2,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
+            Trace.log(e_errors.INFO,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
 	except: return 'BADMOUNT' # generic, not read or write specific
 	self.vol_info.update( tmp_vol_info )
 	pass
@@ -421,9 +414,9 @@ def do_fork( self, ticket, mode ):
     ticket['mover'] = self.config
     if mode == 'w' or mode == 'r':
 	# get vcc and fcc for this xfer
-	fcc = file_clerk_client.FileClient( csc, 0, 0, 0, 0,
+	fcc = file_clerk_client.FileClient( self.csc, 0,
 					    ticket['fc']['address'] )
-	vcc = volume_clerk_client.VolumeClerkClient( csc, 0, 0, 0,
+	vcc = volume_clerk_client.VolumeClerkClient( self.csc,
 						     ticket['vc']['address'] )
 	self.vol_vcc[ticket['fc']['external_label']] = vcc# remember for unbind
 	ticket['mover']['local_mover'] = 0  # potentially changed in get_usr_driver
@@ -435,10 +428,10 @@ def do_fork( self, ticket, mode ):
 	self.files = ("%s:%s"%(ticket['wrapper']['machine'][1],
 			       ticket['wrapper']['fullname']),
 		      ticket['wrapper']['pnfsFilename'])
+        self.work_ticket = ticket	#just save the whole thing for "status"
 	pass
     self.state = 'busy'
     self.mode = mode			# client mode, not driver mode
-    self.work_ticket = ticket		# just save the whole thing for "status"
 
     self.pid = os.fork()
     if self.pid == 0:
@@ -456,7 +449,7 @@ def forked_write_to_hsm( self, ticket ):
 	pass
     else:
 	# child or single process???
-	logc.send(e_errors.INFO,2,'WRITE_TO_HSM start'+str(ticket))
+	Trace.log(e_errors.INFO,'WRITE_TO_HSM start'+str(ticket))
 
 	self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
     
@@ -487,7 +480,7 @@ def forked_write_to_hsm( self, ticket ):
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
 
-        logc.send(e_errors.INFO,2,"OPEN_FILE_WRITE")
+        Trace.log(e_errors.INFO,"OPEN_FILE_WRITE")
         # open the hsm file for writing
         try:
 	    # if forked, our eod info is not correct (after previous write)
@@ -508,7 +501,7 @@ def forked_write_to_hsm( self, ticket ):
 		raise errno.errorcode[errno.EINVAL], "Invalid wrapper"+\
 		      str(ticket['wrapper']['type'])
 
-            logc.send(e_errors.INFO,2,"WRAPPER.WRITE")
+            Trace.log(e_errors.INFO,"WRAPPER.WRITE")
 	    t0 = time.time()
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
 	    wrapper.blocksize = self.vol_info['blocksize']
@@ -530,7 +523,7 @@ def forked_write_to_hsm( self, ticket ):
 				       san_crc )
 	    else: file_crc = san_crc
 
-	    logc.send(e_errors.INFO,2,'done with write fd_xfers')
+	    Trace.log(e_errors.INFO,'done with write fd_xfers')
 	    
 	    Trace.trace( 11, 'done with rest of data' )
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, post') )
@@ -551,7 +544,7 @@ def forked_write_to_hsm( self, ticket ):
 
         #except EWHATEVER_NET_ERROR:
 	except (FTT.error, EXfer.error), err_msg:
-            logc.send( e_errors.ERROR,1,
+            Trace.log( e_errors.ERROR,
 		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    #traceback.print_exc()
 	    #print 'type of err_msg is',type(err_msg),'type of sys.exc_info()[1]) is',type(sys.exc_info()[1])
@@ -603,12 +596,12 @@ def forked_write_to_hsm( self, ticket ):
 					 'external_label':self.vol_info['external_label'],
 					 'complete_crc':file_crc}} )
 	if rsp['status'][0] != e_errors.OK:
-	    logc.send( e_errors.ERROR, 1,
+	    Trace.log( e_errors.ERROR,
 		       "XXXXXXXXXXXenstore software error" )
 	    pass
 	ticket['fc'] = rsp['fc']
 	
-	logc.send(e_errors.INFO,2,"WRITE DONE"+str(ticket))
+	Trace.log(e_errors.INFO,"WRITE DONE"+str(ticket))
 	
 	Trace.trace( 11, 'b4 send_user_done' )
 	send_user_done( self, ticket, e_errors.OK )
@@ -624,7 +617,7 @@ def forked_read_from_hsm( self, ticket ):
     if mvr_config['do_fork'] and self.pid != 0:
 	pass
     else:
-	logc.send(e_errors.INFO,2,"READ_FROM_HSM start"+str(ticket))
+	Trace.log(e_errors.INFO,"READ_FROM_HSM start"+str(ticket))
 
 	self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
 
@@ -673,7 +666,7 @@ def forked_read_from_hsm( self, ticket ):
 		if wrapper == None:
 		    raise errno.errorcode[errno.EINVAL], "Invalid wrapper"
 
-            logc.send(e_errors.INFO,2,"WRAPPER.READ")
+            Trace.log(e_errors.INFO,"WRAPPER.READ")
 	    if ticket['fc']['sanity_cookie'][1] == None:# when reading...
 		crc_func = None
 	    else: crc_func = self.crc_func
@@ -701,7 +694,7 @@ def forked_read_from_hsm( self, ticket ):
 		user_file_crc = san_crc
 		pass
 
-	    logc.send(e_errors.INFO,2,'done with read fd_xfers')
+	    Trace.log(e_errors.INFO,'done with read fd_xfers')
 	    
 	    if ticket['mover']['local_mover']:
 		# give the file to the user
@@ -729,7 +722,7 @@ def forked_read_from_hsm( self, ticket ):
 	    wr_access,rd_access = 0,1
         #except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
 	except (FTT.error, EXfer.error), err_msg:
-            logc.send( e_errors.ERROR,1,
+            Trace.log( e_errors.ERROR,
 		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    traceback.print_exc()
 	    self.usr_driver.close()
@@ -767,7 +760,7 @@ def forked_read_from_hsm( self, ticket ):
         ticket['vc'] = self.vol_info
 	ticket['vc']['current_location'] = ticket['fc']['location_cookie']
 
-        logc.send(e_errors.INFO,2,'READ DONE'+str(ticket))
+        Trace.log(e_errors.INFO,'READ DONE'+str(ticket))
 
 	send_user_done( self, ticket, e_errors.OK )
 	return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
@@ -776,7 +769,7 @@ def forked_read_from_hsm( self, ticket ):
 
 
 def return_or_update_and_exit( self, origin_addr, status ):
-    if status != e_errors.OK: logc.send( e_errors.ERROR, 1, str(status) )
+    if status != e_errors.OK: Trace.log( e_errors.ERROR, str(status) )
     if mvr_config['do_fork']:
 	# need to send info to update parent: vol_info and
 	# hsm_driver_info (read: hsm_driver.position
@@ -800,7 +793,6 @@ def return_or_update_and_exit( self, origin_addr, status ):
 # data transfer takes place on tcp sockets, so get ports & call user
 # Info is added to ticket
 def get_usr_driver( self, ticket ):
-    Trace.trace( 10, "get_usr_driver ticket=%s"%ticket )
     self.hsm_driver.user_state_set( forked_state.index('encp check') )
     try:
 	if self.local_mover_enable and ticket['wrapper']['machine']==os.uname():
@@ -881,14 +873,48 @@ def unilateral_unbind_next( self, error_info ):
 
 import timer_task
 # Gather everything together and add to the mess
+
 class MoverServer(  dispatching_worker.DispatchingWorker
 	     	  , generic_server.GenericServer
 		  , timer_task.TimerTask ):
-    def __init__( self, server_address, verbose=0 ):
-	self.client_obj_inst = MoverClient( mvr_config )
-	self.verbose = verbose
+    def __init__( self, csc_address, name):
+        global mvr_config, udpc
+        generic_server.GenericServer.__init__(self, csc_address, name)
+        Trace.init( self.log_name )
+        Trace.on( self.log_name, 0, 31 )
+
+        # get my (localhost) configuration from the configuration server
+        mvr_config = self.csc.get( name )
+        if mvr_config['status'][0] != 'ok':
+            raise 'could not start mover',name,' up:' + mvr_config['status']
+        # clean up the mvr_config a bit
+        mvr_config['name'] = name
+        mvr_config['do_fork'] = 1
+        if not 'do_eject' in mvr_config.keys(): mvr_config['do_eject'] = 'yes'
+        del mvr_config['status']
+
+        # get clients -- these will be (readonly) global object instances
+        udpc =  udp_client.UDPClient()     # for server to send (client) request
+
+        # now get my library manager's config ---- COULD HAVE MULTIPLE???
+        # get info asssociated with our volume manager
+        libm_config_dict = {}
+        if type(mvr_config['library']) == types.ListType:
+            for lib in  mvr_config['library']:
+                libm_config_dict[lib] = {'startup_polled':'not_yet'}
+                libm_config_dict[lib].update( self.csc.get_uncached(lib) )
+                pass
+            pass
+        else:
+            lib = mvr_config['library']
+            mvr_config['library'] = [lib]	# make it a list
+            libm_config_dict[lib] = {'startup_polled':'not_yet'}
+            libm_config_dict[lib].update( self.csc.get_uncached(lib) )
+            pass        
+
+	self.client_obj_inst = MoverClient( mvr_config, self.csc )
 	self.summoned_while_busy = []
-        logc.send( e_errors.INFO, 0, 'Mover starting - contacting libman')
+        Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
 	for lm in mvr_config['library']:# should be libraries
 	    # a "respone" to server being summoned
 	    try:
@@ -896,12 +922,12 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		next_req_to_lm = idle_mover_next( self.client_obj_inst )
 		do_next_req_to_lm( self, next_req_to_lm, address )
 	    except KeyError:    
-		logc.send( e_errors.ERROR, 1, "ERROR GETTING LM:%s FROM Config Server "+\
+		Trace.log( e_errors.ERROR, "ERROR GETTING LM:%s FROM Config Server "+\
 			   str(sys.exc_info()[0])+ "  "+\
 			   str(sys.exc_info()[1]), repr(lm))
 
 	    pass
-	dispatching_worker.DispatchingWorker.__init__( self, server_address)
+	dispatching_worker.DispatchingWorker.__init__( self,(mvr_config['hostip'],mvr_config['port']) )
 	self.last_status_tick = {}
 	#print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
 	#timer_task.TimerTask.__init__( self, self.rcv_timeout )
@@ -960,16 +986,16 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 
     def quit(self,ticket):		# override dispatching_worker -
 	#  method which does not clean up
-        Trace.trace(10,"{quit address="+str(self.server_address))
+        Trace.trace(10,"quit address="+str(self.server_address))
 	del self.client_obj_inst	# clean up shm??? I should not have to!
 	# Note: 11-30-98 python v1.5 does cleans-up shm upon SIGINT (2)
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = posix.getpid()
         try:
-            self.enprint("QUITTING... via os_exit python call")
+            Trace.log(e_errors.INFO, "QUITTING... via os_exit python call")
         except:
-            generic_cs.enprint("QUITTING-e... via os_exit python call")
+            Trace.log(e_errors.INFO, "QUITTING-e... via os_exit python call")
         self.reply_to_caller(ticket)
         os._exit(0)
 	return
@@ -1021,7 +1047,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 					ticket['hsm_driver']['cur_loc_cookie']
 	self.client_obj_inst.hsm_driver.no_xfers = \
 					ticket['hsm_driver']['no_xfers']
-	logc.send( e_errors.INFO, 2,
+	Trace.log( e_errors.INFO,
 		   "update_client_info - pid:"+str(self.client_obj_inst.pid)+
 		   "ticket['pid']:"+str(ticket['pid']) )
 	wait = 0
@@ -1062,7 +1088,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 			    if rr >= ww+bs: msg = msg + 'network stall'
 			    else:              msg = msg + 'tape stall'
 			    pass
-			logc.send( e_errors.ERROR,1,msg+' - should abort' )
+			Trace.log( e_errors.ERROR,msg+' - should abort' )
 			self.client_obj_inst.stall_time = time.time()
 			pass
 		    pass
@@ -1083,14 +1109,15 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	if next_req_to_lm['work'] == 'unilateral_unbind':
 	    # FOR SOME ERRORS I FREEZE
 	    #if next_req_to_lm['status'] in [ ]:
-	 	#logc.send( e_errors.ERROR, 1, 'MOVER FREEZE - told busy mover to do work' )
+	 	#Trace.log( e_errors.ERROR, 'MOVER FREEZE - told busy mover to do work' )
 		#while 1: time.sleep( 1 )# freeze
 		#pass
 	    pass
 	# STATE COULD BE 'BUSY' OR 'OFFLINE'
 	if self.client_obj_inst.state != 'idle' and rsp_ticket['work'] != 'nowork':
-	    logc.send( e_errors.ERROR, 1, 'FATAL ENSTORE - libman told busy mover to do work' )
-	    while 1: time.sleep( 1 )	# freeze
+	    Trace.log( e_errors.ERROR,
+                       'FATAL ENSTORE - libm gave busy or offline move work' )
+	    while 1: time.sleep( 1 )	# freeze???
 	    pass
 	# Exceptions are caught (except block) in dispatching_worker.py.
 	# The reply is the command (i.e the network is the computer).
@@ -1124,7 +1151,7 @@ def get_state_build_next_lm_req( self, wait, exit_status ):
 	try: pid, status = posix.waitpid( self.client_obj_inst.pid, wait )
 	except:
 	    traceback.print_exc()
-	    logc.send( e_errors.ERROR, 1,
+	    Trace.log( e_errors.ERROR,
 		       'waitpid-for pid:%s exit_status:%s exc_info:%s'%(self.client_obj_inst.pid,
 									exit_status,
 									sys.exc_info()[0:2]) )
@@ -1175,7 +1202,12 @@ def status_to_request( client_obj_inst, exit_status ):
     elif m_err[exit_status] == e_errors.WRITE_ERROR:
 	next_req_to_lm = offline_drive( client_obj_inst, m_err[exit_status] )
     elif m_err[exit_status] == e_errors.READ_ERROR:
-	next_req_to_lm = offline_drive( client_obj_inst, m_err[exit_status] )
+	if self.read_error[1]:
+            next_req_to_lm = offline_drive( client_obj_inst,m_err[exit_status])
+	else:
+	    next_req_to_lm = unilateral_unbind_next( client_obj_inst,
+                                                     m_err[exit_status] )
+	    pass
 	pass
     elif m_err[exit_status] in [e_errors.WRITE_NOTAPE,
 				e_errors.WRITE_TAPEBUSY,
@@ -1196,7 +1228,7 @@ def status_to_request( client_obj_inst, exit_status ):
 	next_req_to_lm = freeze_tape_in_drive( client_obj_inst, m_err[exit_status] )
     else:
 	# new error
-	logc.send( e_errors.ERROR, 1, 'FATAL ERROR - MOVER - unknown transfer status - fix me now' )
+        Trace.log( e_errors.ERROR, 'FATAL ERROR - MOVER - unknown transfer status - fix me now' )
 	while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
 	pass
     return next_req_to_lm
@@ -1204,11 +1236,9 @@ def status_to_request( client_obj_inst, exit_status ):
 class MoverInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
-        Trace.trace(10,'{lmsi.__init__')
         # fill in the defaults for possible options
         self.summon = 1
         generic_server.GenericServerInterface.__init__(self)
-        Trace.trace(10,'}lmsi.__init__')
 
     #  define our specific help
     def parameters(self):
@@ -1232,59 +1262,14 @@ import sys				# sys.argv[1:]
 import socket                           # gethostname (local host)
 import string				# atoi
 import types				# see if library config is list
-import configuration_client
 import udp_client
-import log_client
 
 # get an interface, and parse the user input
 intf = MoverInterface()
 
-# get configuration client
-csc  = configuration_client.ConfigurationClient( intf.config_host, 
-                                                 intf.config_port, 0 )
-
-# get my (localhost) configuration from the configuration server
-mvr_config = csc.get( intf.name )
-if mvr_config['status'][0] != 'ok':
-    raise 'could not start mover',intf.name,' up:' + mvr_config['status']
-# clean up the mvr_config a bit
-mvr_config['name'] = intf.name
+mvr_srvr =  MoverServer( (intf.config_host, intf.config_port), intf.name )
 del intf
-mvr_config['do_fork'] = 1
-if not 'do_eject' in mvr_config.keys(): mvr_config['do_eject'] = 'yes'
-del mvr_config['status']
 
-# get clients -- these will be (readonly) global object instances
-udpc =          udp_client.UDPClient()	# for server to send (client) request
-logc =          log_client.LoggerClient( csc, mvr_config['logname'], 'logserver', 0 )
-
-# need a media changer to control (mount/load...) the volume
-mcc = media_changer_client.MediaChangerClient( csc, 0,
-					       mvr_config['media_changer'] )
-
-# now get my library manager's config ---- COULD HAVE MULTIPLE???
-# get info asssociated with our volume manager
-libm_config_dict = {}
-if type(mvr_config['library']) == types.ListType:
-    for lib in  mvr_config['library']:
-	libm_config_dict[lib] = {'startup_polled':'not_yet'}
-	libm_config_dict[lib].update( csc.get_uncached(lib) )
-	pass
-    pass
-else:
-    lib = mvr_config['library']
-    mvr_config['library'] = [lib]	# make it a list
-    libm_config_dict[lib] = {'startup_polled':'not_yet'}
-    libm_config_dict[lib].update( csc.get_uncached(lib) )
-    pass
-
-
-mvr_srvr =  MoverServer( (mvr_config['hostip'],mvr_config['port']) )
-mvr_srvr.client_obj_inst.print_id = mvr_config['logname']
-mvr_srvr.logc = logc			# for enprint
-
-Trace.init( mvr_config['logname'] )
-Trace.on( mvr_config['logname'], 0, 31 )
 mvr_srvr.serve_forever()
 
-generic_cs.enprint('ERROR?')
+Trace.log(e_errors.INFO, 'ERROR?')

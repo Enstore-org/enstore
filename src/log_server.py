@@ -30,13 +30,11 @@
 import sys
 import os
 import time
+import string
 
 #enstore imports
-import configuration_client
 import dispatching_worker
 import generic_server
-import generic_cs
-import interface
 import e_errors
 import socket
 import Trace
@@ -46,25 +44,23 @@ import Trace
    recommended. It is assumed that the only one Log Server will serve the
    whole system.
 """
+MY_NAME = "log_server"
+
 class Logger(  dispatching_worker.DispatchingWorker
 	     , generic_server.GenericServer):
 
-    def __init__(self, csc=0, host=interface.default_host(), \
-                 port=interface.default_port(), test=0, verbose=0):
-        Trace.trace(10, '{__init__')
-	self.print_id = "LOGGERS"
-        # get the config server
-        configuration_client.set_csc(self, csc, host, port, verbose)
+    def __init__(self, csc, test=0):
+        # need the following definition so the generic client init does not
+        # get a logger client
+        self.is_logger = 1
+        generic_server.GenericServer.__init__(self, csc, MY_NAME)
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
         #   exit if the host is not this machine
-        keys = self.csc.get("logserver")
-	try:
-	    self.print_id = keys['logname']
-	except:
-	    pass
-	self.enprint(keys, generic_cs.SERVER, verbose)
+        keys = self.csc.get(MY_NAME)
+        Trace.init(self.log_name)
+        Trace.trace(12, repr(keys))
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']))
         if keys["log_file_path"][0] == '$':
@@ -72,29 +68,26 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    try:
 	        tmp = os.environ[tmp];
 	    except:
-	        self.enprint("log_file_path '"+keys["log_file_path"]+\
-	                     "' configuration ERROR")
+	        Trace.log(12, "log_file_path '%s' configuration ERROR"\
+                          %keys["log_file_path"])
 	        sys.exit(1)
 	    self.logfile_dir_path = tmp
 	else:
 	    self.logfile_dir_path =  keys["log_file_path"]
 	self.test = test
-	self.verbose = verbose
-        Trace.trace(10, '}__init__')
 
     def open_logfile(self, logfile_name) :
         # try to open log file for append
-	self.enprint("opening "+logfile_name, generic_cs.SERVER, self.verbose)
         try:
             self.logfile = open(logfile_name, 'a')
-	    self.enprint("opened for append ", generic_cs.SERVER, self.verbose)
+            Trace.trace(13, "opened for append")
         except :
 	    try:
 		self.logfile = open(logfile_name, 'w')
 	    except:
-	        self.enprint("Can not open log "+logfile_name)
+	        Trace.trace(12, "Can not open log %s"%logfile_name)
 		os._exit(1)
-	    self.enprint("opened for write", generic_cs.SERVER, self.verbose)
+            Trace.trace(13, "opened for write")
 
     # return the current log file name
     def get_logfile_name(self, ticket):
@@ -122,11 +115,10 @@ class Logger(  dispatching_worker.DispatchingWorker
                    host,
                    ticket['message'])
 
-	self.enprint(message, generic_cs.SERVER, self.verbose)
+        Trace.trace(12, repr(message))
         res = self.logfile.write(message)    # write log message to the file
         self.logfile.flush()
-	self.enprint(res, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
-	             self.verbose)
+        Trace.trace(12, repr(res))
 
     def serve_forever(self):                      # overrides UDPServer method
         tm = time.localtime(time.time())          # get the local time
@@ -181,37 +173,33 @@ class Logger(  dispatching_worker.DispatchingWorker
 class LoggerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
-        Trace.trace(10,'{logi.__init__')
         # fill in the defaults for possible options
 	self.config_file = ""
 	self.test = 0
         generic_server.GenericServerInterface.__init__(self)
-        Trace.trace(10,'}logi.__init__')
 
     # define the command line options that are valid
     def options(self):
-        Trace.trace(16, "{}options")
         return generic_server.GenericServerInterface.options(self)+\
 	       ["config_file=", "test"]
 
 
 if __name__ == "__main__" :
     import socket
-    Trace.init("log server")
+    Trace.init(string.upper(MY_NAME))
     Trace.trace(6,"log server called with args "+repr(sys.argv))
 
     # get the interface
     intf = LoggerInterface()
 
-    logserver = Logger(0, intf.config_host, \
-	               intf.config_port, intf.test, intf.verbose)
+    logserver = Logger((intf.config_host, intf.config_port), intf.test)
 
     while 1:
         try:
             Trace.trace(6,'Log Server (re)starting')
             logserver.serve_forever()
         except:
-	    logserver.serve_forever_error("log server")
-            Trace.trace(0,"log_server main loop exception")
+	    logserver.serve_forever_error(logserver.log_name)
+            Trace.trace(6,"log_server main loop exception")
             continue
-    Trace.trace(1,"Log Server finished (impossible)")
+    Trace.trace(6,"Log Server finished (impossible)")

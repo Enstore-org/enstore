@@ -8,13 +8,10 @@ import traceback
 import sys
 
 # enstore imports
-import log_client
-import configuration_client
 import volume_clerk_client
 import callback
 import dispatching_worker
 import generic_server
-import generic_cs
 import interface
 import Trace
 import udp_client
@@ -68,9 +65,9 @@ def get_movers(config_client, lm_name):
 	    item.has_key('address')):
 	    add_mover(item['mover'], item['address'])
     if movers:
-	Trace.trace(7, "}get_movers %s"%movers)
+	Trace.trace(7, "get_movers %s"%movers)
     else:
-	Trace.trace(7, "}get_movers: no movers defined in the configuration for this LM")
+	Trace.trace(7, "get_movers: no movers defined in the configuration for this LM")
 
     
 # update mover list
@@ -200,7 +197,7 @@ def next_work_any_volume(self, csc):
                 w=pending_work.get_next()
                 continue
             # otherwise we have found a volume that has read work pending
-	    Trace.trace(11,"}next_work_any_volume %s"%w)
+	    Trace.trace(11,"next_work_any_volume %s"%w)
             # ok passed criteria
 	    # sort requests according file locations
 	    w = pending_work.get_init_by_location()
@@ -284,7 +281,7 @@ def next_work_any_volume(self, csc):
 		pending_work.delete_job(w)
 		send_regret(self, w)
 		Trace.log(e_errors.ERROR,"next_work_any_volume: cannot do"
-			  "the work for %s status:%s" % 
+			  "the work for %s status:%s" % \
 			  (w['fc']['external_label'], 
 			   vol_info['system_inhibit']))
 		return {"status" : (e_errors.NOWORK, None)}
@@ -306,7 +303,6 @@ def next_work_this_volume(v):
             w["fc"]["external_label"] = v['vc']["external_label"]
             w["fc"]["size"] = w["wrapper"]["size_bytes"]
             # ok passed criteria, return write work ticket
-	    Trace.trace(13,"}next_work_this_volume " + repr(w))
             return w
 
         # reading from this volume?
@@ -381,7 +377,6 @@ def is_mover_suspect(self, mover, external_label):
 def idle_mover_next(self, external_label):
     global mover_cnt
     global mover_index
-    Trace.trace(13,"{idle_mover_next ")
     idle_mover_found = 0
     j = mover_index
     for i in range(0, mover_cnt):
@@ -412,15 +407,14 @@ def idle_mover_next(self, external_label):
 # send a regret
 def send_regret(self, ticket):
     # fork off the regret sender
-    Trace.trace(12,"FORKING REGRET SENDER")
     ret = self.fork()
     if ret == 0:
 	try:
-	    Trace.trace(13,"{send_regret "+repr(ticket))
+	    Trace.trace(13,"send_regret "+repr(ticket))
 	    callback.send_to_user_callback(ticket)
-	    Trace.trace(13,"}send_regret ")
+	    Trace.trace(13,"send_regret ")
 	except:
-	    Trace.trace(1,"send_regret "+str(sys.exc_info()[0])+\
+	    Trace.log(1,"send_regret "+str(sys.exc_info()[0])+\
 			str(sys.exc_info()[1])+repr(ticket))
 
 	os._exit(0)
@@ -439,14 +433,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     del_dismount_list = []
     max_suspect_movers = 2 # maximal number of movers in the suspect volume
 
-    def __init__(self, libman, csc=0, verbose=0, \
-                 host=interface.default_host(), port=interface.default_port()):
-        Trace.trace(10, '{__init__')
-	self.verbose = verbose
-	self.print_id = libman
+    def __init__(self, libman, csc):
+        self.name_ext = "LM"
+        generic_server.GenericServer.__init__(self, csc, libman)
 	self.name = libman
-        # get the config server
-        configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
@@ -456,18 +446,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	# instantiate volume clerk client
 	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
 
-	try:
-	    self.print_id = self.keys['logname']
-	except:
-	    pass
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
                                                       self.keys['port']))
 	timer_task.TimerTask.__init__( self, 10 )
-        # get a logger
-        self.logc = log_client.LoggerClient(self.csc, self.keys["logname"], \
-                                            'logserver', 0)
 	self.set_udp_client()
-        Trace.trace(10, '}__init__')
 
     def set_udp_client(self):
 	self.udpc = udp_client.UDPClient()
@@ -538,7 +520,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			except:
 			    # there was no external label: must be write
 			    next_mover = idle_mover_next(self, None)
-			Trace.trace(14,"current mover %snext mover %s"%
+			Trace.trace(14,"current mover %snext mover %s"%\
 				    (mv, next_mover))
 			if next_mover:
 			    summon_mover(self,next_mover,mv["work_ticket"])
@@ -670,7 +652,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	label = ticket['fc']['external_label']
 	if len(suspect_volume['movers']) >= self.max_suspect_movers:
 	    ticket['status'] = (e_errors.NOACCESS, None)
-	    Trace.trace(13,"Number of movers for suspect volume %" %
+	    Trace.trace(13,"Number of movers for suspect volume %" %\
 			len(suspect_v['movers']))
 				
 	    # set volume as noaccess
@@ -681,7 +663,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    # delete the job 
 	    pending_work.delete_job(ticket)
 	    send_regret(self, ticket)
-	    Trace.trace(13,"idle_mover: failed on more than %s for %s"%
+	    Trace.trace(13,"idle_mover: failed on more than %s for %s"%\
 			(self.max_suspect_movers,suspect_volume))
 	    ret_val = 1
 	elif mover_cnt == 1:
@@ -700,7 +682,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    except:
 		# there was no external label: must be write
 		next_mover = idle_mover_next(self, None)
-	    Trace.trace(14,"current mover %snext mover %s"%
+	    Trace.trace(14,"current mover %snext mover %s"%\
 			(mticket['mover'], next_mover))
 	    if next_mover:
 		Trace.trace(14, "will summon mover %s"%next_mover)
@@ -794,7 +776,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					  'mounting', mticket["mover"])
 		if v['status'][0] != e_errors.OK:
 		    format = "cannot change to 'mounting' vol=%s mover=%s state=%s"
-		    Trace.log(e_errors.INFO, format%
+		    Trace.log(e_errors.INFO, format%\
 				   (w["fc"]["external_label"],
 				    v['at_mover'][1], 
 				    v['at_mover'][0]))
@@ -803,12 +785,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		else:
 		   w['vc']['at_mover'] = v['at_mover'] 
 	    else:
+                Trace.log(e_errors.INFO,
+                          "Cannot satisfy request. Vol %s is %s"%\
+                          (w['fc']['external_label'],vol_info['at_mover'][0])) 
 		self.reply_to_caller({"work" : "nowork"})
 		return
 		
             # reply now to avoid deadlocks
             format = "%s work on vol=%s state=%smover=%s requester:%s"
-            Trace.log(e_errors.INFO, format%
+            Trace.log(e_errors.INFO, format%\
 			   (w["work"],
 			   w["fc"]["external_label"],
 			   w['vc']['at_mover'],
@@ -826,7 +811,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # alas
         else:
-	    Trace.trace(0,"idle_mover: assertion error w=%s ticket=%"%
+	    Trace.log(1,"idle_mover: assertion error w=%s ticket=%"%\
 			(w, mticket))
             raise "assertion error"
 
@@ -920,13 +905,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    mticket["mover"])
 		if v['status'][0] != e_errors.OK:
 		    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
-		    Trace.log(e_errors.INFO, format%
+		    Trace.log(e_errors.INFO, format%\
 			      (mticket['vc']['external_label'],
 			       v['at_mover'][1], 
 			       v['at_mover'][0]))
 		
 		format = "unbind vol %s mover=%s"
-		Trace.log(e_errors.INFO, format %
+		Trace.log(e_errors.INFO, format %\
 			  (mticket['vc']["external_label"],
 			   mticket["mover"]))
 		mv['state'] = 'unbind_sent'
@@ -934,7 +919,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # alas
         else:
-	    Trace.trace(0,"have_bound_volume: assertion error %s %s"%(w,mticket))
+	    Trace.log(1,"have_bound_volume: assertion error %s %s"%(w,mticket))
             raise "assertion error"
 
 
@@ -963,15 +948,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    ticket["mover"])
 		if v['status'][0] != e_errors.OK:
 		    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
-		    Trace.log(e_errors.INFO, format %
-			      ticket['external_label'],
+		    Trace.log(e_errors.INFO, format %\
+			      (ticket['external_label'],
 			      v['at_mover'][1], 
-			      v['at_mover'][0])
+			      v['at_mover'][0]))
+                    self.reply_to_caller({"work" : "nowork"})
 		else:
 		    timer_task.msg_cancel_tr(summon_mover, 
 					     self, mv['mover'])
 		    format = "unbind vol %s mover=%s"
-		    Trace.log(e_errors.ERROR, format %
+		    Trace.log(e_errors.ERROR, format %\
 			       (ticket['external_label'],
 			       ticket["mover"]))
 		    self.reply_to_caller({"work" : "unbind_volume"})
@@ -1006,12 +992,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # what is next on our list of work?
     def schedule(self):
-	Trace.trace(13,"{schedule ")
         while 1:
             w = next_work_any_volume(self, self.csc)
             if w["status"][0] == e_errors.OK or \
 	       w["status"][0] == e_errors.NOWORK:
-		Trace.trace(13,"}schedule " + repr(w))
                 return w
             # some sort of error, like write work and no volume available
             # so bounce. status is already bad...
@@ -1107,7 +1091,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                   "library_manager get_suspect_volumes, \
 				  controlsocket")
         self.control_socket.close()
-	Trace.trace(13,"}get_suspect_volumes ")
+	Trace.trace(13,"get_suspect_volumes ")
         os._exit(0)
 
     # get list of delayed dismounts 
@@ -1170,15 +1154,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
-        Trace.trace(10,'{lmsi.__init__')
         # fill in the defaults for possible options
 	self.summon = 1
         generic_server.GenericServerInterface.__init__(self)
-        Trace.trace(10,'}lmsi.__init__')
 
     # define the command line options that are valid
     def options(self):
-        Trace.trace(16, "{}options")
         return generic_server.GenericServerInterface.options(self)+\
                ["debug", "nosummon"]
 
@@ -1201,7 +1182,7 @@ class LibraryManagerInterface(generic_server.GenericServerInterface):
 if __name__ == "__main__":
     import sys
     import string
-    Trace.init("libman")
+    Trace.init("LIBMAN")
     Trace.trace(6, "libman called with args "+repr(sys.argv) )
 
     # get an interface
@@ -1209,8 +1190,7 @@ if __name__ == "__main__":
     summon = intf.summon
 
     # get a library manager
-    lm = LibraryManager(intf.name, 0, intf.verbose, intf.config_host, \
-	                intf.config_port)
+    lm = LibraryManager(intf.name, (intf.config_host, intf.config_port))
 
     # get initial list of movers potentially belonging to this
     # library manager from the configuration server
@@ -1220,7 +1200,7 @@ if __name__ == "__main__":
     while 1:
         try:
             #Trace.init(intf.name[0:5]+'.libm')
-            Trace.init(lm.keys["logname"])
+            Trace.init(lm.log_name)
             Trace.log(e_errors.INFO, "Library Manager %s (re)starting"%intf.name)
             lm.serve_forever()
         except:

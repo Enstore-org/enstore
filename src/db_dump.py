@@ -5,5 +5,5 @@
 import restore
 import sys
 
-d = restore.DbTable(sys.argv[1], '', [])
+d = restore.DbTable(sys.argv[1], [])
 d.dump()

@@ -5,6 +5,7 @@
 
 #system imports
 import sys
+import string
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses
@@ -19,64 +20,73 @@ except ImportError:
 
 # enstore imports
 import Trace
-import generic_cs
 import traceback
 import timeofday
-import log_client
 import e_errors
 import interface
+import generic_client
 
 class GenericServerInterface(interface.Interface):
 
     def __init__(self):
-	self.verbose = 0
 	interface.Interface.__init__(self)
 
     def options(self):
-	return self.config_options() + ["verbose="]+\
-	       self.help_options()
+	return self.config_options() + self.help_options()
 
+DOT = '.'
 
-class GenericServer(generic_cs.GenericCS):
+class GenericServer(generic_client.GenericClient):
 
-    # this overrides the server_bind in TCPServer for the hsm system
-    def server_bind(self):
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.bind(self.server_address)
+   def __init__(self, csc, name):
+      # do this in order to centralize getting a log, alarm and configuration
+      # client. and to record the fact that we only want to do it once.
+      generic_client.GenericClient.__init__(self, csc, name)
 
-    # we got an uncaught error while in serve_forever
-    def serve_forever_error(self, id, logger=0):
-        traceback.print_exc()
-        format = timeofday.tod()+" "+str(sys.argv)+" "+\
-                 str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])+" "+\
-                 id+" serve_forever continuing"
-        self.enprint(format)
-	if logger:
-            logger.send(e_errors.ERROR, 1, format)
+   # given a server name, return the name mutated into a name appropriate for
+   # identification in log and trace. this means, upcase the name and possibly
+   # shorten it.  so if the name can be split into 'part1.part2', shorten
+   # part1 to only be 8 characters.  also if there is an alternate part2
+   # specified in the instance, use it.
+   def get_log_name(self, name):
+      parts = string.split(name, DOT)
+      if len(parts) == 2:
+         new_name = "%s.%s"%(string.upper(parts[0][0:8]),
+                             string.upper(self.__dict__.get("name_ext",
+                                                            parts[1])))
+      else:
+         new_name = string.upper(name)
+      return new_name
 
-    # reset the verbosity
-    def set_verbose(self, ticket):
-        ticket["status"] = (e_errors.OK, None)
-	id = "verbose"
-	if self.__dict__.has_key(id):
-	    # set both just in case
-	    self.verbose = ticket[id]
-	    verbose = ticket[id]
-            if 0: print verbose #quiet lint
-	    ticket["variable"] = "self.verbose, verbose"
-	else:
-	    verbose = ticket[id]
-	    ticket["variable"] = "verbose"
-	self.send_reply(ticket)
-	
-    # send back our response
-    def send_reply(self, t):
-	self.enprint(t, generic_cs.SERVER, self.verbose)
-        try:
-           self.reply_to_caller(t)
-        # even if there is an error - respond to caller so he can process it
-        except:
-           t["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-           self.reply_to_caller(t)
-           Trace.trace(1,"}send_reply "+repr(t))
-           return
+   # return the server name
+   def get_name(self, name):
+      configD = self.csc.get(name)
+      if not configD['status'][0] == 'KEYERROR':
+         name = configD.get('logname', self.get_log_name(name))
+      else:
+         name = self.get_log_name(name)
+      return name
+
+   # this overrides the server_bind in TCPServer for the hsm system
+   def server_bind(self):
+      self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+      self.socket.bind(self.server_address)
+
+   # we got an uncaught error while in serve_forever
+   def serve_forever_error(self, id):
+      traceback.print_exc()
+      format = timeofday.tod()+" "+str(sys.argv)+" "+\
+               str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])+" "+\
+               id+" serve_forever continuing"
+      Trace.log(e_errors.ERROR, repr(format))
+
+   # send back our response
+   def send_reply(self, t):
+      try:
+         self.reply_to_caller(t)
+      except:
+         # even if there is an error - respond to caller so he can process it
+         t["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         self.reply_to_caller(t)
+         Trace.trace(7,"send_reply "+repr(t))
+         return

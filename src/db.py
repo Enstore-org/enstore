@@ -5,16 +5,12 @@
 import os
 import time
 import copy
-import string
 
 # enstore imports
-import log_client
 import journal
-import table
 import Trace
 import interface
 import configuration_client
-import generic_cs
 import e_errors
 
 import libtpshelve
@@ -38,12 +34,12 @@ cursor_open=0
 #junk 	return str
 
 class DbTable:
-  def __init__(self,dbname,logc=0,indlst=[], auto_journal=1):
+  def __init__(self,dbname,indlst=[], auto_journal=1):
     self.auto_journal = auto_journal
     try:
 	self.dbHome=configuration_client.ConfigurationClient(\
-		interface.default_host(),\
-		interface.default_port(), 3).get('database')['db_dir']
+		(interface.default_host(),\
+		interface.default_port())).get('database')['db_dir']
     except:
 	self.dbHome=os.environ['ENSTORE_DIR']
     dbEnvSet={'create':1,'init_mpool':1, 'init_lock':1, 'init_txn':1}
@@ -60,7 +56,6 @@ class DbTable:
         self.count=0
 
     self.name=dbname
-    self.logc=logc
     if self.auto_journal:
       if len(self.jou):
         self.start_backup()
@@ -220,9 +215,9 @@ class DbTable:
   def dump(self):
      t=self.db.txn()
      c=self.db.cursor(t)
-     generic_cs.enprint(c.first())
+     Trace.log(e_errors.INFO,repr(c.first()))
      while c:
-	 generic_cs.enprint(c.next())
+	 Trace.log(e_errors.INFO,c.next())
      c.close()
      t.commit()
 
@@ -237,8 +232,7 @@ class DbTable:
      #import regex,string
      if self.auto_journal:
         del self.jou
-     if self.logc:
-        self.logc.send(e_errors.INFO, 1, "Start checkpoint for "+self.name+" journal")
+     Trace.log(e_errors.INFO, "Start checkpoint for "+self.name+" journal")
      cmd="mv " + self.dbHome +"/"+self.name+".jou " + \
                         self.dbHome +"/"+self.name+".jou."+ \
                         repr(time.time())
@@ -246,40 +240,38 @@ class DbTable:
      if self.auto_journal:
         self.jou = journal.JournalDict({},self.dbHome+"/"+self.name+".jou")
      self.count=0
-     if self.logc:
-        self.logc.send(e_errors.INFO, 1, "End checkpoint for "+self.name)
+     Trace.log(e_errors.INFO, "End checkpoint for "+self.name)
   def start_backup(self):
      global  backup_flag
      backup_flag=0
-     if self.logc:
-        self.logc.send(e_errors.INFO, 1, "Start backup for "+self.name)
+     Trace.log(e_errors.INFO, "Start backup for "+self.name)
      self.checkpoint()
   def stop_backup(self):
      global  backup_flag
      backup_flag=1
-     if self.logc:
-        self.logc.send(e_errors.INFO, 1, "End backup for "+self.name)
+     Trace.log(e_errors.INFO, "End backup for "+self.name)
 def do_backup(name):
      cwd=os.getcwd()
      try:
          dbHome = configuration_client.ConfigurationClient(\
-		interface.default_host(),\
-		interface.default_port(), 3).get('database')['db_dir']
+		(interface.default_host(),\
+		interface.default_port()), 3).get('database')['db_dir']
+
      except:
          dbHome = os.environ['ENSTORE_DIR']
      os.chdir(dbHome)
      cmd="tar cvf "+name+".tar "+name+" "+name+".jou.*"
-     generic_cs.enprint(cmd)
+     Trace.log(e_errors.INFO, repr(cmd))
      os.system(cmd)
      cmd="rm "+name +".jou.*"
-     generic_cs.enprint(cmd)
+     Trace.log(e_errors.INFO, repr(cmd))
      os.system(cmd)
      os.chdir(cwd)
 if __name__=="__main__":
   import sys
-  Trace.init("dbclerk")
-  Trace.trace(1,"dbc called with args "+repr(sys.argv))
+  Trace.init("DBCLERK")
+  Trace.trace(6,"dbc called with args "+repr(sys.argv))
 
   dict= DbTable(sys.argv[1],0)
   dict.dump()
-  Trace.trace(1,"dbc exit ok")
+  Trace.trace(6,"dbc exit ok")

@@ -203,7 +203,7 @@ def send_to_user_callback(ticket) :
 
 if __name__ == "__main__" :
     import sys
-    Trace.init("callback")
+    Trace.init("CALLBACK")
     Trace.trace(6,"callback called with args "+repr(sys.argv))
 
     c = get_callback()

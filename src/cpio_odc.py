@@ -259,7 +259,7 @@ def diskdriver_open(name, mode='r', bufsize=-1):
 if __name__ == "__main__" :
     import sys
     import Devcodes
-    Trace.init("Cpio")
+    Trace.init("CPIO")
 
     fin  = diskdriver_open(sys.argv[1],"r")
     fout = diskdriver_open(sys.argv[2],"w")

@@ -7,61 +7,45 @@ import string
 import errno
 
 # enstore imports
-import configuration_client
 import generic_client
-import generic_cs
 import backup_client
 import udp_client
 import db
 import callback
-import interface
 import Trace
 import e_errors
+
+MY_NAME = "FILE_C_CLIENT"
 
 class FileClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
 
-    def __init__( self, csc=0, verbose=0, host=interface.default_host(),
-                  port=interface.default_port(), bfid=0, servr_addr=None ):
-        Trace.trace( 10, '{__init__' )
-	self.print_id = "FILECC"
+    def __init__( self, csc, bfid=0, servr_addr=None ):
+        generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
 	self.bfid = bfid
-	self.verbose = verbose
-        configuration_client.set_csc( self, csc, host, port, verbose )
         ticket = self.csc.get( "file_clerk" )
 	if servr_addr != None: self.servr_addr = servr_addr
 	else:                  self.servr_addr = (ticket['hostip'],ticket['port'])
-	try:    self.print_id = ticket['logname']
-        except: pass
-        Trace.trace( 10, '}__init' )
 
     def send (self, ticket, rcv_timeout=0, tries=0):
-        Trace.trace( 12, '{send to volume clerk '+repr(self.servr_addr) )
+        Trace.trace( 12, 'send to volume clerk '+repr(self.servr_addr) )
         x = self.u.send( ticket, self.servr_addr, rcv_timeout, tries )
-        Trace.trace( 12, '}send '+repr(x) )
         return x
 
     def new_bit_file(self, ticket):
-        Trace.trace(12,"{new_bit_file")
         r = self.send(ticket)
-        Trace.trace(12,"}new_bit_file"+repr(r))
         return r
 
     def set_pnfsid(self, ticket):
-        Trace.trace(12,"{set_pnfsid")
         r = self.send(ticket)
-        Trace.trace(12,"}set_pnfsid"+repr(r))
         return r
 
     def set_delete(self, ticket):
-        Trace.trace(12,"{set_delete")
         r = self.send(ticket)
-        Trace.trace(12,"}set_delete"+repr(r))
         return r
 
     def get_bfids(self):
-        Trace.trace(16,"{get_bfids")
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"         : "get_bfids",
@@ -85,7 +69,8 @@ class FileClient(generic_client.GenericClient, \
                 listen_socket.close()
                 break
             else:
-	        self.enprint("get_bfids - imposter called us back, trying again")
+                Trace.log(e_errors.INFO,
+                          "get_bfids - imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
@@ -93,7 +78,7 @@ class FileClient(generic_client.GenericClient, \
                   +"1st (pre-work-read) file clerk callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
-            Trace.trace(0,msg)
+            Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
@@ -105,8 +90,9 @@ class FileClient(generic_client.GenericClient, \
           msg=callback.read_tcp_buf(data_path_socket,"file  clerk "+"client get_bfids, reading worklist")
           if len(msg)==0:
                 break
-	  generic_cs.enprint(msg)
+	  Trace.log(e_errors.INFO, msg)
         worklist = ticket
+        worklist['bfids'] = workmsg
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with file clerk
@@ -118,14 +104,12 @@ class FileClient(generic_client.GenericClient, \
                   +"2nd (post-work-read) file clerk callback on socket "\
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
-            Trace.trace(0,msg)
+            Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
 
-        Trace.trace(16,"}get_bfids")
         return worklist
 
     def tape_list(self,external_label):
-        Trace.trace(16,"{tape_list")
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"          : "tape_list",
@@ -150,7 +134,8 @@ class FileClient(generic_client.GenericClient, \
                 listen_socket.close()
                 break
             else:
-	        self.enprint("tape_list - imposter called us back, trying again")
+	        Trace.log(e_errors.INFO,
+                          "tape_list - imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
@@ -158,7 +143,7 @@ class FileClient(generic_client.GenericClient, \
                   +"1st (pre-work-read) file clerk callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
-            Trace.trace(0,msg)
+            Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
@@ -187,33 +172,27 @@ class FileClient(generic_client.GenericClient, \
                   +"2nd (post-work-read) file clerk callback on socket "\
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
-            Trace.trace(0,msg)
+            Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
 
-        Trace.trace(16,"}tape_list")
-        print workmsg
+        #print workmsg
         return worklist
 
 
     def bfid_info(self):
-        Trace.trace(10,"{bfid_info")
         r = self.send({"work" : "bfid_info",\
                        "bfid" : self.bfid } )
-        Trace.trace(10,"}bfid_info"+repr(r))
         return r
 
     def set_deleted(self,deleted):
-        Trace.trace(10,"{set_delete")
         r = self.send({"work"   : "set_deleted",
                        "bfid"   : self.bfid,
                        "deleted": deleted} )
-        Trace.trace(10,"}set_delete"+repr(r))
         return r
 
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
-        Trace.trace(10,'{fci.__init__')
         # fill in the defaults for the possible options
         self.bfids = 0
         self.tape_list = 0
@@ -223,68 +202,52 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         generic_client.GenericClientInterface.__init__(self)
-        Trace.trace(10,'}fci.__init')
 
     # define the command line options that are valid
     def options(self):
-        Trace.trace(16,"{}options")
         return self.client_options()+["bfids","bfid=","deleted=","tape_list=","backup"]
 
 
 if __name__ == "__main__" :
     import sys
-    Trace.init("FC client")
+    Trace.init(MY_NAME)
     Trace.trace(6,"fcc called with args "+repr(sys.argv))
 
     # fill in interface
     intf = FileClerkClientInterface()
 
     # now get a file clerk client
-    fcc = FileClient(0, intf.verbose, intf.config_host, \
-                          intf.config_port, intf.bfid)
+    fcc = FileClient((intf.config_host, intf.config_port), intf.bfid)
+    Trace.init(fcc.get_name(MY_NAME))
 
     if intf.alive:
         ticket = fcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
-	msg_id = generic_cs.ALIVE
-
-    elif intf.got_server_verbose:
-        ticket = fcc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
-	                         intf.alive_retries)
-	msg_id = generic_cs.CLIENT
 
     elif intf.backup:
         ticket = fcc.start_backup()
         db.do_backup("file")
         ticket = fcc.stop_backup()
-	msg_id = generic_cs.CLIENT
 
     elif intf.deleted and intf.bfid:
         ticket = fcc.set_deleted(intf.deleted)
-        try:
-            if intf.verbose:
-                generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
-        except:
-            pass
-	msg_id = generic_cs.CLIENT
+        Trace.trace(13, repr(ticket))
 
     elif intf.bfids:
         ticket = fcc.get_bfids()
-	msg_id = generic_cs.CLIENT
+        print repr(ticket['bfids'])
 
     elif intf.tape_list:
         ticket = fcc.tape_list(intf.tape_list)
-	msg_id = generic_cs.CLIENT
         aticket = fcc.alive(intf.alive_rcv_timeout,intf.alive_retries) #clear out any zombies from the forked file clerk
 
     elif intf.bfid:
         ticket = fcc.bfid_info()
 	if ticket['status'][0] ==  e_errors.OK:
-	    generic_cs.enprint(ticket['fc'], generic_cs.PRETTY_PRINT)
-	    generic_cs.enprint(ticket['vc'], generic_cs.PRETTY_PRINT)
-	msg_id = generic_cs.CLIENT
+	    print repr(ticket['fc'])
+	    print repr(ticket['vc'])
 
     else:
 	intf.print_help()
         sys.exit(0)
 
-    fcc.check_ticket(ticket, msg_id)
+    fcc.check_ticket(ticket)

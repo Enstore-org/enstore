@@ -204,7 +204,7 @@ class DispatchingWorker:
         Interface required by select().
 
         """
-        Trace.trace(16,"fileno ="+self.socket.fileno())
+        Trace.trace(16,"fileno ="+repr(self.socket.fileno()))
         return self.socket.fileno()
 
     # Process the  request that was (generally) sent from UDPClient.send

@@ -25,60 +25,41 @@ import socket
 import configuration_client
 import dispatching_worker
 import generic_server
-import generic_cs
 import interface
-import log_client
 import Trace
 import e_errors
-
 
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	                 generic_server.GenericServer) :
-
     work_list = []
 
-    def __init__(self, medch, maxwork, csc=0, verbose=0,\
-	         host=interface.default_host(), \
-	         port=interface.default_port()):
+    def __init__(self, medch, maxwork, csc):
+        self.name = medch
+        self.name_ext = "MC"
+        generic_server.GenericServer.__init__(self, csc, medch)
+        Trace.init(self.log_name)
         self.MaxWork = maxwork
-	self.verbose = verbose
-	self.print_id = medch
-        # get the config server
-        configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.mc_config = self.csc.get(medch)
-
-	try:
-	    self.print_id = self.mc_config['logname']
-	except:
-	    pass
-        Trace.init(self.mc_config["logname"])
         dispatching_worker.DispatchingWorker.__init__(self, \
 	                 (self.mc_config['hostip'], self.mc_config['port']))
-        # get a logger
-        self.logc = log_client.LoggerClient(self.csc, \
-	                                    self.mc_config["logname"], \
-                                            'logserver', 0)
 
     # wrapper method for client - server communication
     def loadvol(self, ticket):        
-        Trace.trace(10, '>mount')
         ticket["function"] = "mount"
         return self.DoWork( self.load, ticket)
 
     # wrapper method for client - server communication
     def unloadvol(self, ticket):
-        Trace.trace(10, '>dismount')
         ticket["function"] = "dismount"
         return self.DoWork( self.unload, ticket)
 
     # wrapper method for client - server communication
     def viewvol(self, ticket):
-        Trace.trace(10, '>view')
         ticket["status"] = self.view(ticket["vol_ticket"]["external_label"], \
 	               ticket["vol_ticket"]["media_type"])
         self.reply_to_caller(ticket)
@@ -101,9 +82,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
              media_type) :	# media type
         if 0: print media_type #lint fix
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-	    self.enprint("make sure tape "+external_label+" is in drive "+drive)
+	    Trace.log(e_errors.INFO,
+                      "make sure tape "+external_label+" is in drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
-	    self.enprint( 'continuing with reply' )
+	    Trace.log(e_errors.INFO, 'continuing with reply' )
 	return (e_errors.OK, 0, None)
 
     # unload volume from the drive;  default overridden for other media changers
@@ -113,7 +95,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	       media_type) :         # drive id
         if 0: print media_type #lint fix
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-	    self.enprint("remove tape "+external_label+" from drive "+drive)
+            Trace.log(e_errors.INFO,
+                      "remove tape "+external_label+" from drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
 	return (e_errors.OK, 0, None)
 
@@ -141,17 +124,19 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def DoWork(self, function, ticket):
 
         Trace.trace(10, '>mcDoWork')
-        self.logc.send(e_errors.INFO, 2,"REQUESTED "+ticket['function']+" "  +\
-                                          ticket['vol_ticket']['external_label']+" "  +\
-                                          ticket['drive_id']+" "  +\
-                                          ticket['vol_ticket']['media_type'] )
+        Trace.log(e_errors.INFO, "REQUESTED "+ticket['function']+" "  +\
+                  ticket['vol_ticket']['external_label']+" "  +\
+                  ticket['drive_id']+" "  +\
+                  ticket['vol_ticket']['media_type'] )
         #if we have max number of working children, assume client will resend
         if len(self.work_list) >= self.MaxWork :
-            self.logc.send(e_errors.INFO, 2, "MC Overflow: "+ repr(self.MaxWork) + " " +\
-                      ticket['vol_ticket']['external_label'] + " " + ticket['drive_id'])
+            Trace.log(e_errors.INFO,
+                      "MC Overflow: "+ repr(self.MaxWork) + " " +\
+                      ticket['vol_ticket']['external_label'] + " " + \
+                      ticket['drive_id'])
         # otherwise, we can do this
         else:
-            #self.enprint( "DOWORK"+repr(ticket))
+            #Trace.log(e_errors.INFO, "DOWORK "+repr(ticket))
             # set the reply address - note this could be a general thing in dispatching worker
             ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
             # if this a duplicate request, drop it
@@ -163,19 +148,19 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             if not os.fork() :
                 # if in child process
                 Trace.trace(10, 'mcDoWork>forked')
-                #self.enprint( "FORKED"+repr(ticket))
+                #Trace.log(e_errors.INFO, "FORKED "+repr(ticket))
                 os.close(pipe[0])
                 # do the work, if this is a mount, dismount first
                 if ticket['function'] == "mount":
                     Trace.trace(10, 'mcDoWork>dismount for mount')
-                    #self.enprint( "PREPARE"+repr(ticket))
+                    #Trace.log(e_errors.INFO, "PREPARE "+repr(ticket))
 		    sts=self.prepare(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
 
                 Trace.trace(10, 'mcDoWork>>> '+ticket['function'])
-                #self.enprint( "MOUNT"+repr(ticket))
+                #Trace.log(e_errors.INFO, "MOUNT "+repr(ticket))
                 count = self.getNretry()
                 sts=("",0)
 		while count > 0 and sts[0] != e_errors.OK:
@@ -186,7 +171,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 			ticket['drive_id'],
 			ticket['vol_ticket']['media_type'])
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
-                #self.enprint( "STS"+repr(ticket))
                 Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"			# so dispatching_worker calls WorkDone
                 ticket["status"]=sts
@@ -209,10 +193,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
            if i["ra"] == ticket["ra"]:
               self.work_list.remove(i)
               break
-        self.logc.send(e_errors.INFO, 2,"FINISHED "+ticket['function']+" "  +\
-                                          ticket['vol_ticket']['external_label']+" "  +\
-                                          ticket['drive_id']+" "  +\
-                                          repr(ticket['status']) )
+        Trace.log(e_errors.INFO, "FINISHED "+ticket['function']+" "  +\
+                  ticket['vol_ticket']['external_label']+" "  +\
+                  ticket['drive_id']+" "  +\
+                  repr(ticket['status']) )
         # report back to original client - probably a mover
         Trace.trace(10, '<<< mcWorkDone')
         # reply_with_address uses the "ra" entry in the ticket
@@ -220,10 +204,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
 # EMASS robot loader server
 class EMASS_MediaLoader(MediaLoaderMethods) :
-    def __init__(self, medch, maxwork=10,csc=0, verbose=0,\
-                 host=interface.default_host(), \
-                 port=interface.default_port()):
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
+    def __init__(self, medch, maxwork=10, csc):
+        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
         import EMASS
         self.load=EMASS.mount
         self.unload=EMASS.dismount
@@ -244,10 +226,8 @@ class EMASS_MediaLoader(MediaLoaderMethods) :
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods) :
-    def __init__(self, medch, maxwork=10,csc=0, verbose=0,\
-                 host=interface.default_host(), \
-                 port=interface.default_port()):
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
+    def __init__(self, medch, maxwork=10, csc):
+        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
         import STK
         self.load=STK.mount
         self.unload=STK.dismount
@@ -255,10 +235,8 @@ class STK_MediaLoader(MediaLoaderMethods) :
 
 # Raw Disk and stand alone tape media server
 class RDD_MediaLoader(MediaLoaderMethods) :
-    def __init__(self, medch, maxwork=1, csc=0, verbose=0,\
-                 host=interface.default_host(), \
-                 port=interface.default_port()):
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
+    def __init__(self, medch, maxwork=1, csc):
+        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
 
     def view(self, external_label, media_type):
 	"get current state of the tape"
@@ -299,10 +277,9 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
       'ERRDsmRsh': (e_errors.DISMOUNTFAILED, "mc:Shlf dismount rsh error")
       }
 
-    def __init__(self, medch, maxwork=1, csc=0, verbose=0,\
-                 host=interface.default_host(), \
-                 port=interface.default_port()):
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
+    def __init__(self, medch, maxwork=1, csc):
+        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
+	#self.prepare=self.unload  #  override prepare with dismount
 	self.prepare=self.unload #override prepare with dismount and deallocate
 	
 	fnstatusO = self.getOCSHost()
@@ -566,15 +543,12 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
 class MediaLoaderInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
-        Trace.trace(10,'{mlsi.__init__')
         # fill in the defaults for possible options
         self.maxwork=10
         generic_server.GenericServerInterface.__init__(self)
-        Trace.trace(10,'}mlsi.__init__')
 
     # define the command line options that are valid
     def options(self):
-        Trace.trace(16, "{}options")
         return generic_server.GenericServerInterface.options(self)+\
 	       ["log=","maxwork="]
 
@@ -596,20 +570,20 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
 
 if __name__ == "__main__" :
-    Trace.init("medchanger")
+    Trace.init("MEDCHANGER")
     Trace.trace( 6, "media changer called with args: %s"%sys.argv )
 
     # get an interface
     intf = MediaLoaderInterface()
 
-    csc  = configuration_client.ConfigurationClient( intf.config_host, 
-                                                 intf.config_port, 0 )
+    csc  = configuration_client.ConfigurationClient((intf.config_host, 
+                                                     intf.config_port) )
     keys = csc.get(intf.name)
     try:
 	mc_type = keys['type']
     except:
-	generic_cs.enprint("MC Error "+str(sys.exc_info()[0])+\
-                     str(sys.exc_info()[1]), generic_cs.SERVER, 1)
+	Trace.log(e_errors.ERROR,
+                  "MC Error "+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
 	sys.exit(1)
 
     del(csc)
@@ -617,15 +591,15 @@ if __name__ == "__main__" :
     # and create an object of that class based on the value of args[0]
     # for now there is just one possibility
 
-    mc = eval(mc_type+"("+repr(intf.name)+","+repr(intf.maxwork)+","+repr(0)+","+\
-	      repr(intf.verbose)+","+repr(intf.config_host)+","+\
-	      repr(intf.config_port)+")")
+    mc = eval(mc_type+"("+repr(intf.name)+","+repr(intf.maxwork)+",("+\
+              repr(intf.config_host)+","+repr(intf.config_port)+"))")
     while 1:
         try:
             #Trace.init(intf.name[0:5]+'.medc')
-            mc.logc.send(e_errors.INFO, 1, "Media Changer"+intf.name+"(re) starting")
+            Trace.log(e_errors.INFO, "Media Changer %s (re) starting"%\
+                      intf.name)
             mc.serve_forever()
         except:
-	    mc.serve_forever_error("media changer", mc.logc)
+	    mc.serve_forever_error("media changer")
             continue
-    Trace.trace(1,"Media Changer finished (impossible)")
+    Trace.trace(6,"Media Changer finished (impossible)")

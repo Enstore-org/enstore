@@ -10,24 +10,21 @@ import string
 # enstore imports
 import traceback
 import callback
-import log_client
-import configuration_client
 import volume_clerk_client
 import dispatching_worker
 import generic_server
-import generic_cs
-import interface
 import db
 import Trace
 import e_errors
 
 dict="" # quiet lint
 
+MY_NAME = "file_clerk"
+
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # we need a new bit field id for each new file in the system
     def new_bit_file(self, ticket):
-     Trace.trace(10,'{new_bit_file '+repr(ticket))
      # input ticket is a file clerk part of the main ticket
      try:
         # create empty record and control what goes into database
@@ -48,22 +45,21 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["fc"]["bfid"] = bfid
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        Trace.trace(10,'}new_bit_file bfid='+repr(bfid))
+        Trace.trace(10,'new_bit_file bfid='+repr(bfid))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
-         Trace.trace(0,"}new_bit_file "+str(sys.exc_info()[0])+\
+         Trace.trace(10,"new_bit_file "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
 	 traceback.print_exc()
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         Trace.log(e_errors.INFO, repr(ticket))
          self.reply_to_caller(ticket)
          return
 
     # update the database entry for this file - add the pnfs file id
     def set_pnfsid(self, ticket):
-     Trace.trace(12,'{set_pnfsid '+repr(ticket))
      try:
 
         # everything is based on bfid - make sure we have this
@@ -73,9 +69,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key+" key is missing")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"set_pnfsid "+repr(ticket["status"]))
             return
 
         # also need new pnfsid - make sure we have this
@@ -91,9 +87,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 pass
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"set_pnfsid "+repr(ticket["status"]))
             return
 
         # look up in our dictionary the request bit field id
@@ -102,9 +98,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: bfid "+repr(bfid)+" not found")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
             return
 
         # add the pnfsid
@@ -122,20 +118,19 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         dict[bfid] = copy.deepcopy(record)
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        Trace.trace(12,'}set_pnfsid '+repr(ticket))
+        Trace.trace(12,'set_pnfsid '+repr(ticket))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         Trace.log(e_errors.INFO, repr(ticket))
          self.reply_to_caller(ticket)
-         Trace.trace(0,"}set_pnfsid "+repr(ticket["status"]))
+         Trace.trace(10,"set_pnfsid "+repr(ticket["status"]))
          return
 
     # change the delete state element in the dictionary
     def set_deleted(self, ticket):
-     Trace.trace(12,'{set_deleted '+repr(ticket))
      try:
 
         # everything is based on bfid - make sure we have this
@@ -145,9 +140,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key+" key is missing")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"set_deleted "+repr(ticket["status"]))
+            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
             return
 
         # also need new value of the delete element- make sure we have this
@@ -162,9 +157,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 decr_count = -1
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"set_deleted "+repr(ticket["status"]))
+            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
             return
 
         # look up in our dictionary the request bit field id
@@ -173,18 +168,18 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: bfid "+repr(bfid)+" not found")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"set_deleted "+repr(ticket["status"]))
+            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
             return
         
         if record["deleted"] == deleted:
             ticket["status"] = (e_errors.USER_ERROR,
                                 "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
-            self.logc.send(e_errors.USER_ERROR, 1,
-                           "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
+            Trace.log(e_errors.USER_ERROR, 
+            "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
             self.reply_to_caller(ticket)
-            Trace.trace(12,'}set_deleted '+repr(ticket))
+            Trace.trace(12,'set_deleted '+repr(ticket))
             return
             
         # mod the delete state
@@ -197,27 +192,27 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # record our changes
         dict[bfid] = copy.deepcopy(record)
 
-        self.logc.send(e_errors.INFO, 2, "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
-                       (bfid,record["pnfs_name0"],record["deleted"],record["external_label"],vticket["non_del_files"],record["pnfs_mapname"]))
+        Trace.log(e_errors.INFO,
+                  "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
+                  (bfid,record["pnfs_name0"],record["deleted"],record["external_label"],vticket["non_del_files"],record["pnfs_mapname"]))
 
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
         ticket["fc"] = record
         ticket["vc"] = vticket
         self.reply_to_caller(ticket)
-        Trace.trace(12,'}set_deleted '+repr(ticket))
+        Trace.trace(12,'set_deleted '+repr(ticket))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         Trace.log(e_errors.INFO, repr(ticket))
          self.reply_to_caller(ticket)
-         Trace.trace(0,"}set_deleted "+repr(ticket["status"]))
+         Trace.trace(10,"set_deleted "+repr(ticket["status"]))
          return
 
     def get_user_sockets(self, ticket):
-        Trace.trace(16,"{get_user_sockets "+repr(ticket))
         file_clerk_host, file_clerk_port, listen_socket =\
                            callback.get_callback()
         listen_socket.listen(4)
@@ -228,12 +223,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if 0: print address # quiet lint
         self.data_socket = data_socket
         listen_socket.close()
-        Trace.trace(16,"}get_user_sockets host="+repr(file_clerk_host)+\
+        Trace.trace(16,"get_user_sockets host="+repr(file_clerk_host)+\
                     " file_clerk_port="+repr(file_clerk_port))
 
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket):
-     Trace.trace(10,"{get_bfids  R U CRAZY? "+repr(ticket))
      ticket["status"] = (e_errors.OK, None)
      try:
         self.reply_to_caller(ticket)
@@ -241,7 +235,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      except:
         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
-        Trace.trace(0,"get_bfids "+repr(ticket["status"]))
+        Trace.trace(10,"get_bfids "+repr(ticket["status"]))
         return
      self.get_user_sockets(ticket)
      ticket["status"] = (e_errors.OK, None)
@@ -265,14 +259,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      callback.write_tcp_socket(self.control_socket,ticket,
                                   "file_clerk get bfids, controlsocket")
      self.control_socket.close()
-     Trace.trace(10,"}get_bfids")
      return
 
 
     # return all info about a certain bfid - this does everything that the
     # read_from_hsm method does, except send the ticket to the library manager
     def bfid_info(self, ticket):
-     Trace.trace(10,'{bfid_info '+repr(ticket))
      try:
         # everything is based on bfid - make sure we have this
         try:
@@ -281,9 +273,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key+" key is missing")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
             return
 
         # look up in our dictionary the request bit field id
@@ -292,9 +284,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: bfid "+repr(bfid)+" not found")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
             return
 
         # copy all file information we have to user's ticket
@@ -312,9 +304,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key+" key is missing")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
             return
 
         # ask the volume clerk server which library has "external_label" in it
@@ -322,9 +314,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                     repr(external_label))
         vticket = vcc.inquire_vol(external_label)
         if vticket["status"][0] != e_errors.OK:
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(vticket)
-            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
             return
         library = vticket["library"]
         Trace.trace(11,"bfid_info volume="+repr(external_label)+" in "+
@@ -335,20 +327,19 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        Trace.trace(10,"}bfid_info bfid="+repr(bfid))
+        Trace.trace(10,"bfid_info bfid="+repr(bfid))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         Trace.log(e_errors.INFO, repr(ticket))
          self.reply_to_caller(ticket)
-         Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+         Trace.trace(10,"bfid_info "+repr(ticket["status"]))
          return
 
     # change the delete state element in the dictionary
     def del_bfid(self, ticket):
-     Trace.trace(12,'{del_bfid '+repr(ticket))
      try:
 
         # everything is based on bfid - make sure we have this
@@ -358,9 +349,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key+" key is missing")
-            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"del_bfid "+repr(ticket["status"]))
+            Trace.trace(10,"del_bfid "+repr(ticket["status"]))
             return
 
         # now just delete the bfid
@@ -369,38 +360,35 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        Trace.trace(12,'}del_bfid '+repr(ticket))
+        Trace.trace(12,'del_bfid '+repr(ticket))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         Trace.log(e_errors.INFO, repr(ticket))
          self.reply_to_caller(ticket)
-         Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+         Trace.trace(10,"bfid_info "+repr(ticket["status"]))
          return
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
     def unique_bit_file_id(self):
-     Trace.trace(10,'}unique_bit_file_id')
      try:
         bfid = time.time()
         bfid = long(bfid)*100000
         while dict.has_key(repr(bfid)):
             bfid = bfid + 1
-        Trace.trace(10,'}unique_bit_file_id bfid='+repr(bfid))
         return repr(bfid)
      # even if there is an error - respond to caller so he can process it
      except:
          msg = "can not generate a bit file id!!"+\
                str(sys.exc_info()[0])+str(sys.exc_info()[1])
-         self.enprint(msg)
-         Trace.trace(0,"unique_bit_file_id "+msg)
+         Trace.log(e_errors.INFO, repr(msg))
+         Trace.trace(10,"unique_bit_file_id "+msg)
          sys.exit(1)
 
     def tape_list(self,ticket):
-     Trace.trace(10,'{tape_list '+repr(ticket))
      # everything is based on external_label - make sure we have this
      try:
          key="external_label"
@@ -409,9 +397,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          self.reply_to_caller(ticket)
      except KeyError:
          ticket["status"] = (e_errors.KEYERROR,"File Clerk: "+key+" key is missing")
-         self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         Trace.log(e_errors.INFO, repr(ticket))
          self.reply_to_caller(ticket)
-         Trace.trace(0,"}tape_list "+repr(ticket["status"]))
+         Trace.trace(10,"tape_list "+repr(ticket["status"]))
          return
 
      if self.fork() != 0:
@@ -448,48 +436,30 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      self.data_socket.close()
      callback.write_tcp_socket(self.control_socket,ticket, "file_clerk tape_list, controlsocket")
      self.control_socket.close()
-     Trace.trace(10,"}tape_list")
      return
 
     def start_backup(self,ticket):
-        Trace.trace(10,'{start_backup '+repr(ticket))
         dict.start_backup()
         self.reply_to_caller({"status" : (e_errors.OK, None),\
                 "start_backup"  : 'yes' })
-        Trace.trace(10,'}start_backup')
 
     def stop_backup(self,ticket):
-        Trace.trace(10,'{stop_backup '+repr(ticket))
         dict.stop_backup()
         self.reply_to_caller({"status" : (e_errors.OK, None),\
                 "stop_backup"  : 'yes' })
-        Trace.trace(10,'}stop_backup')
 
 class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
-    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
-                 port=interface.default_port()):
-	Trace.trace(10, '{__init__')
-	self.print_id = "FCS"
-	self.verbose = verbose
-	# get the config server
-	configuration_client.set_csc(self, csc, host, port, verbose)
+    def __init__(self, csc):
+        generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        Trace.init(self.log_name)
 	#   pretend that we are the test system
 	#   remember, in a system, there is only one bfs
 	#   get our port and host from the name server
 	#   exit if the host is not this machine
-	keys = self.csc.get("file_clerk")
-        try:
-            self.print_id = keys['logname']
-        except:
-            pass
-        Trace.init(keys["logname"])
+	keys = self.csc.get(MY_NAME)
 	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
-        # get a logger
-        self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
-                                            'logserver', 0)
-	Trace.trace(10, '}__init__')
 
 
 class FileClerkInterface(generic_server.GenericServerInterface):
@@ -497,23 +467,22 @@ class FileClerkInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__":
     import sys
-    Trace.init("file clerk")
+    Trace.init(string.upper(MY_NAME))
     Trace.trace(6,"file clerk called with args "+repr(sys.argv))
 
     # get the interface
     intf = FileClerkInterface()
 
     # get a file clerk
-    fc = FileClerk(0, intf.verbose, intf.config_host, intf.config_port)
+    fc = FileClerk((intf.config_host, intf.config_port))
 
     indlst=['external_label']
-    dict = db.DbTable("file",fc.logc,indlst)
+    dict = db.DbTable("file", indlst)
     while 1:
         try:
-            Trace.trace(6,'File Clerk (re)starting')
-            fc.logc.send(e_errors.INFO, 1, "File Clerk (re)starting")
+            Trace.log(e_errors.INFO, "File Clerk (re)starting")
             fc.serve_forever()
         except:
-	    fc.serve_forever_error("file clerk", fc.logc)
+	    fc.serve_forever_error(fc.log_name)
             continue
-    Trace.trace(1,"File Clerk finished (impossible)")
+    Trace.trace(6,"File Clerk finished (impossible)")

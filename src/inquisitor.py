@@ -1,8 +1,14 @@
 #
-# Still to do to the inquisitor:
+# This server uses the following data structures:
 #
-#  o allow it to respond to alive requests when it is in the middle of 
-#	updating the servers.
+#   NAME                KEY TYPE               DESCRIPTION
+#   self.last_alive{}   same as config dict    last time found alive
+#   self.last_update{}  same as config dict    last time updated
+#   self.reset{}        same as config dict    timeouts reset on command line
+#   self.timeouts{}     same as config dict    timeouts for updates
+#
+#   self.server_keys[]                         list of servers (and others) to
+#                                                 ping
 #
 ##############################################################################
 # system import
@@ -16,16 +22,12 @@ import os
 # enstore imports
 import timeofday
 import traceback
-import log_client
-import configuration_client
 import volume_clerk_client
 import file_clerk_client
 import library_manager_client
 import media_changer_client
-import alarm_client
 import mover_client
 import dispatching_worker
-import interface
 import generic_server
 import Trace
 import e_errors
@@ -44,29 +46,35 @@ def default_alive_rcv_timeout():
 def default_alive_retries():
     return 2
 
-TRUE = 1
-FALSE = 0
+def default_max_encp_lines():
+    return 50
+
+MY_NAME = "inquisitor"
+
 LOGFILE_DIR = "logfile_dir"
 ENCP = "ENCP"
 
-class InquisitorMethods(dispatching_worker.DispatchingWorker):
+ALA_PREFIX =  "alarm server    : "
+FC_PREFIX =   "file clerk      : "
+LOGC_PREFIX = "log server      : "
+IN_PREFIX =   "inquisitor      : "
+VC_PREFIX =   "volume clerk    : "
+BL_PREFIX =   "blocksizes      : "
+CFG_PREFIX =  "config server   : "
 
-    trailer = " : "
-    suffix = ".new"
-    server_keyword = 'server'
-    did_it = 0
-    timed_out = 1
-    ala_prefix =  "alarm server    : "
-    fc_prefix =   "file clerk      : "
-    logc_prefix = "log server      : "
-    in_prefix =   "inquisitor      : "
-    vc_prefix =   "volume clerk    : "
-    bl_prefix =   "blocksizes      : "
-    cfg_prefix =  "config server   : "
+DID_IT = 0
+TIMED_OUT = 1
+
+TRAILER = " : "
+SUFFIX = ".new"
+SERVER_KEYWORD = "server"
+TIMED_OUT_SP = "    "
+DEFAULT_SERVER_TIMEOUT = "default_server_timeout"
+
+class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the alive status of the server and output it
     def alive_status(self, client, (host, port), prefix, time, key):
-        Trace.trace(14,"{alive_status "+repr(host)+" "+repr(port))
 	stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
 	if not stat['status'] == ('TIMEDOUT', None):
 	    self.asciifile.output_alive(host, prefix, stat, time, key)
@@ -78,118 +86,103 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                                  last_time)
 	    self.htmlfile.output_etimedout((host, port), prefix, time, key, \
 	                                   last_time)
-            Trace.trace(14,"}alive_status - ERROR, alive timed out")
-	    return self.timed_out
-        Trace.trace(14,"}alive_status")
-	return self.did_it
+            Trace.trace(14,"alive_status - ERROR, alive timed out")
+	    return TIMED_OUT
+	return DID_IT
 
     # send alive to the server and handle any errors
     def do_alive_check(self, key, time, client, prefix):
-        Trace.trace(13,"{do_alive_check "+prefix)
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.asciifile.output_noconfigdict(prefix, time, key)
 	    self.htmlfile.output_noconfigdict(prefix, time, key)
-            Trace.trace(13,"}do_alive_check - ERROR, getting config dict timed out ")
-	    return self.timed_out
+            Trace.trace(13,"do_alive_check - ERROR, getting config dict timed out ")
+	    return TIMED_OUT
 
-	ret = self.did_it
+	ret = DID_IT
         if t['status'] == (e_errors.OK, None):
 	    ret = self.alive_status(client, (t['host'], t['port']),\
 	                            prefix, time, key)
 	elif t['status'][0] == 'KEYERROR':
 	    # do not monitor this server any more, remove him from our dict
 	    self.remove_key(key)
-        Trace.trace(13,"}do_alive_check ")
 	return ret
 
     # get the library manager suspect volume list and output it
     def suspect_vols(self, lm, (host, port), key, time):
-        Trace.trace(13,"{suspect_vols "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.get_suspect_volumes()
-	    self.asciifile.output_suspect_vols(stat, key, self.verbose)
-	    self.htmlfile.output_suspect_vols(stat, key, self.verbose)
+	    self.asciifile.output_suspect_vols(stat, key)
+	    self.htmlfile.output_suspect_vols(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.asciifile.output_etimedout((host, port), "    ", time, key)
-	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
-	    Trace.trace(13, "}suspect_vols - ERROR, timed out")
-	    return
-        Trace.trace(13,"}suspect_vols")
+	    self.asciifile.output_etimedout((host, port), TIMED_OUT_SP, time,
+                                            key)
+	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+                                           key)
+	    Trace.trace(13, "suspect_vols - ERROR, timed out")
 
     # get the library manager work queue and output it
     def work_queue(self, lm, (host, port), key, time):
-        Trace.trace(13,"{work_queue "+repr(host)+" "+repr(port))
 	try:
-	    stat = lm.getwork(self.verbose)
-	    self.asciifile.output_lmqueues(stat, key, self.verbose)
-	    self.htmlfile.output_lmqueues(stat, key, self.verbose)
+	    stat = lm.getwork()
+	    self.asciifile.output_lmqueues(stat, key)
+	    self.htmlfile.output_lmqueues(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.asciifile.output_etimedout((host, port), "    ", time, key)
-	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
-	    Trace.trace(13, "}work_queue - ERROR, timed out")
-	    return
-        Trace.trace(13,"}work_queue ")
+	    self.asciifile.output_etimedout((host, port), TIMED_OUT_SP, time,
+                                            key)
+	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+                                           key)
+	    Trace.trace(13, "work_queue - ERROR, timed out")
 
     # get the library manager mover list and output it
     def mover_list(self, lm, (host, port), key, time):
-        Trace.trace(13,"{mover_list "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.getmoverlist()
-	    self.asciifile.output_lmmoverlist(stat, key, self.verbose)
-	    self.htmlfile.output_lmmoverlist(stat, key, self.verbose)
+	    self.asciifile.output_lmmoverlist(stat, key)
+	    self.htmlfile.output_lmmoverlist(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.asciifile.output_etimedout((host, port), "    ", time, key)
-	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
-	    Trace.trace(13, "}mover_list - ERROR, timed out")
-	    return
-        Trace.trace(13,"}mover_list ")
+	    self.asciifile.output_etimedout((host, port), TIMED_OUT_SP, time,
+                                            key)
+	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+                                           key)
+	    Trace.trace(13, "mover_list - ERROR, timed out")
 
     # get the movers' status
     def mover_status(self, movc, (host, port), key, time):
-        Trace.trace(13,"{mover_status "+repr(host)+" "+repr(port))
 	try:
 	    stat = movc.status(self.alive_rcv_timeout, self.alive_retries)
-	    self.asciifile.output_moverstatus(stat, key, self.verbose)
-	    self.htmlfile.output_moverstatus(stat, key, self.verbose)
+	    self.asciifile.output_moverstatus(stat, key)
+	    self.htmlfile.output_moverstatus(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.asciifile.output_etimedout((host, port), "    ", time, key)
-	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
-	    Trace.trace(13, "}mover_list - ERROR, timed out")
-	    return
-        Trace.trace(13,"}mover_status")
+	    self.asciifile.output_etimedout((host, port), TIMED_OUT_SP, time,
+                                            key)
+	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+                                           key)
+	    Trace.trace(13, "mover_status - ERROR, timed out")
 
 
     # get the information from the configuration server
     def update_config_server(self, key, time):
-        Trace.trace(12,"{update_config_server "+repr(self.asciifile.file_name))
 	self.alive_status(self.csc, self.csc.get_address(), \
-	                  self.cfg_prefix, time, key)
-        Trace.trace(12,"}update_config_server")
+	                  CFG_PREFIX, time, key)
 
     # get the information from the library manager(s)
     def update_library_manager(self, key, time):
-        Trace.trace(12,"{update_library_manager "+\
-                         repr(self.asciifile.file_name)+" "+repr(key))
 	# get info on this library_manager
 	try:
-	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
-	                              self.alive_retries)
+	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(key+self.trailer, time, key)
-	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
-	    Trace.trace(12,"}update_library_manager - ERROR, getting config dict timed out")
+	    self.asciifile.output_noconfigdict(key+TRAILER, time, key)
+	    self.htmlfile.output_noconfigdict(key+TRAILER, time, key)
+	    Trace.trace(12,"update_library_manager - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
 	    # get a client and then check if the server is alive
-	    lmc = library_manager_client.LibraryManagerClient(self.csc, 0,
-	                                                      key, \
-                                                              t['hostip'], \
-	                                                      t['port'])
+	    lmc = library_manager_client.LibraryManagerClient(self.csc, key)
 	    ret = self.alive_status(lmc, (t['host'], t['port']), \
-	                            key+self.trailer, time, key)
-	    if ret == self.did_it:
+	                            key+TRAILER, time, key)
+	    if ret == DID_IT:
 	        self.suspect_vols(lmc, (t['host'], t['port']), key, time)
 	        self.mover_list(lmc, (t['host'], t['port']), key, time)
 	        self.work_queue(lmc, (t['host'], t['port']), key, time)
@@ -197,105 +190,97 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    del lmc.u
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
-        Trace.trace(12,"}update_library_manager ")
 
     # get the information from the movers
     def update_mover(self, key, time):
-        Trace.trace(12,"{update_mover "+repr(self.asciifile.file_name)+" "+\
-                        repr(key))
 	# get info on this mover
 	try:
 	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
 	                              self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(key+self.trailer, time, key)
-	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
-            Trace.trace(12,"}update_mover - ERROR, getting config dict timed out")
+	    self.asciifile.output_noconfigdict(key+TRAILER, time, key)
+	    self.htmlfile.output_noconfigdict(key+TRAILER, time, key)
+            Trace.trace(12,"update_mover - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
-	    movc = mover_client.MoverClient(self.csc, 0, key, t['hostip'], \
-	                                    t['port'])
+	    movc = mover_client.MoverClient(self.csc, key)
 	    ret = self.alive_status(movc, (t['host'], t['port']),\
-	                            key+self.trailer, time, key)
-	    if ret == self.did_it:
+	                            key+TRAILER, time, key)
+	    if ret == DID_IT:
 	        self.mover_status(movc, (t['host'], t['port']), key, time)
 	    # get rid of this in preparation for the next time through
 	    del movc.u
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
-        Trace.trace(12,"}update_mover")
-
-    # get the information from the file clerk
-    def update_file_clerk(self, key, time):
-        Trace.trace(12,"{update_file_clerk "+repr(self.asciifile.file_name))
-	self.do_alive_check(key, time, self.fcc, self.fc_prefix)
-        Trace.trace(12,"}update_file_clerk ")
-
-    # get the information from the log server
-    def update_logserver(self, key, time):
-        Trace.trace(12,"{update_log_server "+repr(self.asciifile.file_name))
-	self.do_alive_check(key, time, self.logc, self.logc_prefix)
-        Trace.trace(12,"}update_log_server ")
 
     # get the information from the media changer(s)
     def update_media_changer(self, key, time):
-        Trace.trace(12,"{update_media_changer "+repr(self.asciifile.file_name)+\
-	                " "+repr(key))
 	# get info on this media changer
 	try:
-	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
-	                              self.alive_retries)
+	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(key+self.trailer, time, key)
-	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
-            Trace.trace(12,"}update_media_changer - ERROR, getting config dict timed out")
+	    self.asciifile.output_noconfigdict(key+TRAILER, time, key)
+	    self.htmlfile.output_noconfigdict(key+TRAILER, time, key)
+            Trace.trace(12,"update_media_changer - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
 	    # get a client and then check if the server is alive
-	    mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, \
-	                                              t['hostip'], t['port'])
-	    self.alive_status(mcc, (t['host'], t['port']), key+self.trailer, \
+	    mcc = media_changer_client.MediaChangerClient(self.csc, key)
+	    self.alive_status(mcc, (t['host'], t['port']), key+TRAILER, \
 	                      time, key)
 	    # get rid of this in preparation for the next time through
 	    del mcc.u
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
-        Trace.trace(12,"}update_media_changer")
+
+    # get the information from the file clerk
+    def update_file_clerk(self, key, time):
+	self.do_alive_check(key, time, self.fcc, FC_PREFIX)
+
+    # get the information from the log server
+    def update_log_server(self, key, time):
+	self.do_alive_check(key, time, self.logc, LOGC_PREFIX)
+
+    # get the information from the volume clerk server
+    def update_volume_clerk(self, key, time):
+	self.do_alive_check(key, time, self.vcc, VC_PREFIX)
+
+    # get the information from the alarm server
+    def update_alarm_server(self, key, time):
+	self.do_alive_check(key, time, self.alarmc, ALA_PREFIX)
 
     # get the information from the inquisitor
     def update_inquisitor(self, key, time):
-        Trace.trace(12,"{update_inquisitor "+repr(self.asciifile.file_name))
 	# get info on the inquisitor
 	try:
 	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
 	                              self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(self.in_prefix, time, key)
-	    self.htmlfile.output_noconfigdict(self.in_prefix, time, key)
-            Trace.trace(12,"}update_inquisitor - ERROR, getting config dict timed out")
+	    self.asciifile.output_noconfigdict(IN_PREFIX, time, key)
+	    self.htmlfile.output_noconfigdict(IN_PREFIX, time, key)
+            Trace.trace(12,"update_inquisitor - ERROR, getting config dict timed out")
 	    return
 
 	# just output our info, if we are doing this, we are alive.
-	self.asciifile.output_alive(t['host'], self.in_prefix, \
-	                          { 'work' : "alive",\
-	                            'address' : (t['host'], t['port']), \
-                                    'status' : (e_errors.OK, None)}, time, key)
-	self.htmlfile.output_alive(t['host'], self.in_prefix, \
-	                          { 'work' : "alive",\
-	                            'address' : (t['host'], t['port']), \
-                                    'status' : (e_errors.OK, None)}, time, key)
+        work_ticket = { 'work' : "alive",
+                        'address' : (t['host'], t['port']), 
+                        'status' : (e_errors.OK, None)}
+	self.asciifile.output_alive(t['host'], IN_PREFIX, work_ticket,
+                                    time, key)
+	self.htmlfile.output_alive(t['host'], IN_PREFIX, work_ticket,
+                                   time, key)
 	# we need to update the dict of servers that we are keeping track of.
 	# however we cannot do it now as we may be in the middle of a loop
 	# reading the keys of this dict.  so we just record the fact that this
 	# needs to get done and we will do it later
 	self.doupdate_server_dict = 1
 	self.new_timeouts = t['timeouts']
-	self.set_default_server_timeout(t)
+        self.default_server_timeout = t.get(DEFAULT_SERVER_TIMEOUT,
+                                            default_server_timeout())
 
 	# clear out the cache in the config client so we can get new info on
 	# any of the servers in case the info has changed.
 	self.csc.clear()
-        Trace.trace(12,"}update_inquisitor ")
 
     # update any encp information from the log files
     def update_encp(self, key, time):
@@ -304,6 +289,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# will need to parse them to get encp information.
 	t = self.logc.get_logfile_name()
 	logfile = t['logfile_name']
+        # create the file which contains the encp lines from the most recent
+        # log file.
 	encpfile = enstore_status.EnDataFile(logfile,\
                                              self.parsed_file+".encp", ENCP,\
 	                                     "", "|sort -r")
@@ -318,7 +305,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # log file and do the same.
 	    t = self.logc.get_last_logfile_name()
 	    logfile2 = t['last_logfile_name']
-	    if (logfile2 != logfile) and (logfile2 != ""):
+	    if (logfile2 != logfile) and logfile2:
 	        encpfile2 = enstore_status.EnDataFile(logfile2,\
 	                                    self.parsed_file+".encp2", ENCP,\
 	                                    "", "|sort -r")
@@ -329,73 +316,54 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.asciifile.output_encp(encplines, key)
 	self.encpfile.output_encp(encplines, key)
 
-    # get the default server timeout, either from the inquisitor config dict
-    # or from the routine
-    def set_default_server_timeout(self, inq_dict={}):
-        self.default_server_timeout = inq_dict.get("default_server_timeout",
-                                                   default_server_timeout())
-
-    # get the information from the volume clerk server
-    def update_volume_clerk(self, key, time):
-        Trace.trace(12,"{update_volume_clerk "+repr(self.asciifile.file_name))
-	self.do_alive_check(key, time, self.vcc, self.vc_prefix)
-        Trace.trace(12,"}update_volume_clerk ")
-
-    # get the information from the alarm server
-    def update_alarm_server(self, key, time):
-        Trace.trace(12,"{update_alarm_server "+repr(self.asciifile.file_name))
-	self.do_alive_check(key, time, self.alc, self.ala_prefix)
-        Trace.trace(12,"}update_alarm_server ")
-
     # get the information about the blocksizes
     def update_blocksizes(self, key, time):
-        Trace.trace(12,"{update_blocksizes "+repr(self.asciifile.file_name))
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.asciifile.output_noconfigdict(self.bl_prefix, time, key)
-	    self.htmlfile.output_noconfigdict(self.bl_prefix, time, key)
-            Trace.trace(12,"}update_blocksizes - ERROR, getting config dict timed out")
+	    self.asciifile.output_noconfigdict(BL_PREFIX, time, key)
+	    self.htmlfile.output_noconfigdict(BL_PREFIX, time, key)
+            Trace.trace(12,"update_blocksizes - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
-	    self.asciifile.output_blocksizes(t, self.bl_prefix, key)
-	    self.htmlfile.output_blocksizes(t, self.bl_prefix, key)
+	    self.asciifile.output_blocksizes(t, BL_PREFIX, key)
+	    self.htmlfile.output_blocksizes(t, BL_PREFIX, key)
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
-        Trace.trace(12,"}update_blocksizes")
 
     # we do not need to report these
     def update_database(self, key, time):
         if 0: print self, key, time # quiet lint
 	pass
+
     def update_backup(self, key, time):
         if 0: print self, key, time # quiet lint
 	pass
 
     # get the keys from the inquisitor part of the config file ready for use
     def prepare_keys(self):
-        Trace.trace(12,"{prepare_keys")
 	self.server_keys = self.timeouts.keys()
 	self.server_keys.sort()
-        Trace.trace(12,"}prepare_keys")
 
-    # delete the key (server) from the main looping dict and from the text
+    # delete the key (server) from the main looping list and from the text
     # output to the various files
     def remove_key(self, key):
-	Trace.trace(12,"{remove_key")
-        for item in self.server_keys[:]:
-	    if item == key:
-	        self.server_keys.remove(item)
+        try:
+            self.server_keys.remove(key)
+        except ValueError:
+            pass
 	self.asciifile.remove_key(key)
 	self.htmlfile.remove_key(key)
 	self.encpfile.remove_key(key)
-	Trace.trace(12,"}remove_key")
 
-    # fix up the server list that we are keeping track of
+    # fix up the server list that we are keeping track of.  this is part of the
+    # update of the inquisitor information
     def update_server_dict(self):
-        Trace.trace(12,"{update_server_dict")
 	self.timeouts = self.new_timeouts
-
+	# now we must look thru the whole config file and use the default
+	# server timeout for any servers that were not included in the
+	# inquisitors' 'timeouts' dict element
+	self.fill_in_default_timeouts()
 	# now look thru any server timeouts that may have reset by hand and
 	# keep the reset value
 	for key in self.reset.keys():
@@ -403,36 +371,41 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        self.timeouts[key] = self.reset[key]
 	    else:
 	        del self.reset[key]
-	# now we must look thru the whole config file and use the default
-	# server timeout for any servers that were not included in the
-	# 'timeouts' dict element
-	self.fill_in_default_timeouts()
+        # get a list of the servers that we will ping
 	self.prepare_keys()
-        Trace.trace(12,"}update_server_dict")
 
     # fill in a default timeout for any servers that did not have one specified
     def fill_in_default_timeouts(self, ctime=time.time()):
-        Trace.trace(12,"{fill_in_default_timeouts")
 	itk = "inq_timeout"
 	try:
+            # get a list of the servers/keys in the config dictionary
 	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, \
 	                                 self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-            Trace.trace(12,"}fill_in_default_timeouts - ERROR, getting config dict timed out")
+            Trace.trace(12,"fill_in_default_timeouts - ERROR, getting config dict timed out")
 	    return
+        # for each server, get its config dict element and see if it specifies
+        # an inquisitor timeout. if so, use it.
 	for a_key in csc_keys['get_keys']:
 	    k = self.csc.get(a_key)
 	    if k.has_key(itk):
+                # we found an inquisitor timeout key in the server dict element
 	        self.timeouts[a_key] = k[itk]
+                # if we have not yet kept track of the last successful update
+                # of this server, set it to now.
 	        if not self.last_update.has_key(a_key):
 	            self.last_update[a_key] = ctime
 	    else:
+                # if neither the inq dict element or the individual server dict
+                # element had a timeout value, and we currently don't have one,
+                # use the default
 	        if not self.timeouts.has_key(a_key):
 	            self.timeouts[a_key] = self.default_server_timeout
 	            if not self.last_update.has_key(a_key):
 	                self.last_update[a_key] = ctime
 	# now get rid of any keys that are in timeouts and not in csc_keys
-	# make an exception for config_server and encp
+	# make an exception for config_server and encp.  this takes care of the
+        # case where a server was removed from the config dict.
 	for a_key in self.timeouts.keys():
 	    if a_key not in csc_keys['get_keys']:
 	        if a_key != "config_server" and a_key != "encp":
@@ -445,20 +418,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.timeouts["config_server"] = self.default_server_timeout
 	if not self.timeouts.has_key("encp"):
 	    self.timeouts["encp"] = self.default_server_timeout
-        Trace.trace(12,"}fill_in_default_timeouts")
 
     # flush the files we have been writing to
     def flush_files(self):
-        Trace.trace(12,"{flush_files")
 	self.asciifile.flush()
 	self.htmlfile.flush()
 	self.encpfile.flush()
-        Trace.trace(12,"}flush_files")
 
     # output a line if an update was requested of a server that we do not have
     # a function for
     def update_nofunc(self, server):
-	Trace.trace(12,"{update_nofunc "+server)
 	# if the config file entry had a keyword 'inq_ignore' (set to 
 	# anything), then this information is not to be displayed anyway.
 	ticket = self.csc.get(server)
@@ -472,22 +441,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.asciifile.remove_key(server)
 	    self.htmlfile.remove_key(server)
 	    self.encpfile.remove_key(server)
-	Trace.trace(12,"}update_nofunc ")
 
     # update the enstore system status information
-    def do_update(self, do_all=FALSE):
-        Trace.trace(11,"{do_update ")
+    def do_update(self, do_all=0):
 
 	# check the ascii file and see if it has gotten too big and needs to be
 	# backed up and opened fresh.
 	self.asciifile.timestamp()
 
-	# open the html file and output the header to it
-	self.htmlfile.open(self.verbose)
-	self.encpfile.open(self.verbose)
+	# open the html files and output the header to them
+	self.htmlfile.open()
+	self.encpfile.open()
 
 	# we will need the current time to decide which servers to poke with
-	# the soft cushions
+	# the soft cushions (i.e. - ping)
 	ctime = time.time()
 
 	# see which servers we need to get info from this time around
@@ -507,9 +474,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # if the timeout was set to -1.  this 'disables' getting info on
 	    # this server.  do it if either we were asked to get info on all 
 	    # the servers or it has been longer than timeout since we last
-	    # gathered info on this server.
+	    # gathered info on this server, or we were asked to get info on
+            # this server specifically.
 	    if self.timeouts[key] != -1:
-	        if do_all or delta >= self.timeouts[key]:
+	        if do_all or delta >= self.timeouts[key] \
+                   or self.update_request.has_key(key):
+                    # clean up the update_request dict
+                    if self.update_request.has_key(key):
+                        del self.update_request[key]
+                    
 	            # time to ping this server. some keys are of the form
 	            # name.real_key, so we have to get the real key to find the
 	            # function to call
@@ -521,7 +494,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                if type(InquisitorMethods.__dict__[inq_func]) == \
 	                   types.FunctionType:
 	                    exec("self."+inq_func+"(key, ctime)")
+                            # we just updated the server info so record the
+                            # current time as the last time updated.
 	                    self.last_update[key] = ctime
+                            # record the fact that we have done something. this
+                            # will be used later to either update the html
+                            # files or clean up.
 	                    if inq_func == "update_encp":
 	                        did_some_encp_work = 1
 	                    else:
@@ -541,25 +519,25 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.doupdate_server_dict = 0
 	        
 	# only flush the files if something was written to them this time
-	if did_some_work:
+	if did_some_work or did_some_encp_work:
 	    self.flush_files()
 
-	# now we must close the html file and move it to itself without the
-	# suffix tacked on the end. i.e. the file becomes for example inq.html
-	# not inq.html.new. only move the file if we actually did something
+	# now we must close the html files and move them to themselves without
+        # the suffix tacked on the end. i.e. the file becomes for example
+        # inq.html not inq.html.new. only move the file if we actually did
+        # something.  else, remove it.
 	self.htmlfile.close()
 	self.encpfile.close()
 	self.move_file(did_some_work, self.htmlfile_orig)
 	self.move_file(did_some_encp_work, self.encpfile_orig)
-        Trace.trace(11,"}do_update ")
 
     # try to move the just written file to the displayed copy
     def move_file(self, flag, afile):
 	try:
 	    if flag:
-	        os.system("mv "+afile+self.suffix+" "+afile)
+	        os.system("mv "+afile+SUFFIX+" "+afile)
 	    else:
-	        os.system("rm "+afile+self.suffix)
+	        os.system("rm "+afile+SUFFIX)
 	except:
 	    traceback.print_exc()
 	    format = timeofday.tod()+" "+\
@@ -567,112 +545,83 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	             str(sys.exc_info()[0])+" "+\
 	             str(sys.exc_info()[1])+" "+\
 	             "inquisitor update system error"
-	    self.logc.send(e_errors.ERROR, 1, format)
-
-    # loop here forever doing what inquisitors do best (overrides UDP one)
-    def serve_forever(self) :
-	Trace.trace(4,"{serve_forever "+repr(self.rcv_timeout))
-
-	# get a file clerk client, volume clerk client, alarm client.
-	# connections to library manager client(s), media changer client(s)
-	# and a connection to the movers will be gotten dynamically.
-	# these will be used to get the status
-	# information from the servers. we do not need to pass a host and port
-	# to the class instantiators because we are giving them a configuration
-	# client and they do not need to connect to the configuration server.
-	self.fcc = file_clerk_client.FileClient(self.csc, self.verbose)
-	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-	                                                 self.verbose)
-        self.alc = alarm_client.AlarmClient(self.csc, self.verbose)
-
-	# get all the servers we are to keep tabs on
-	self.prepare_keys()
-
-        while 1:
-            self.handle_request()
-	Trace.trace(4,"}serve_forever ")
+	    Trace.log(e_errors.ERROR, format)
 
     def handle_timeout(self):
-	Trace.trace(14,"{handle_timeout ")
 	self.do_update(0)
-	Trace.trace(14,"}handle_timeout ")
 
     # our client said to update the enstore system status information
     def update(self, ticket):
-        Trace.trace(10,"{update "+repr(ticket))
 	# if the ticket holds a server name then only update that one, else
 	# update everything we know about
-	if ticket.has_key(self.server_keyword):
-	    if self.timeouts.has_key(ticket[self.server_keyword]):
+	if ticket.has_key(SERVER_KEYWORD):
+	    if self.timeouts.has_key(ticket[SERVER_KEYWORD]):
 	        # mark as needing an update when call do_update
-	        self.last_update[ticket[self.server_keyword]] = 0
-	        do_all = FALSE
+                self.update_request[ticket[SERVER_KEYWORD]] = 1
+	        do_all = 0
 	    else:
 	        # we have no knowledge of this server, maybe it was a typo
 	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
 		self.send_reply(ticket)
-	        Trace.trace(10,"}update")
 	        return
 	else:
-	    do_all = TRUE
+	    do_all = 1
 	self.do_update(do_all)
         ticket["status"] = (e_errors.OK, None)
 	self.send_reply(ticket)
-        Trace.trace(10,"}update")
 
     #  make all the plots
     def plot(self, ticket):
-        Trace.trace(10,"{plot "+repr(ticket))
 	# find out where the log files are located
 	if ticket.has_key(LOGFILE_DIR):
 	    lfd = ticket[LOGFILE_DIR]
 	else:
-	    t = self.csc.get("logserver")
+	    t = self.csc.get("log_server")
 	    lfd = t["log_file_path"]
 
 	self.encp_plot(ticket, lfd)
 	self.mount_plot(ticket, lfd)
 	ret_ticket = { 'status'   : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
-        Trace.trace(10,"}plot ")
 
-    # dump everything we have
+    # spill our guts
     def dump(self, ticket):
-	Trace.trace(10,"{dump "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
-	self.enprint("last_update - "+repr(self.last_update))
-	self.enprint("last_alive - "+repr(self.last_alive))
-	self.enprint("timeouts    - "+repr(self.timeouts))
-	self.enprint("server_keys - "+repr(self.server_keys))
-	self.enprint("reset       - "+repr(self.reset))
-	self.enprint(self.htmlfile_orig)
-	self.enprint(self.encpfile_orig)
-	self.enprint(self.parsed_file)
+        Trace.trace(11, "last_update - %s"%self.last_update)
+	Trace.trace(11, "last_alive - %s"%self.last_alive)
+	Trace.trace(11, "timeouts    - %s"%self.timeouts)
+	Trace.trace(11, "server_keys - %s"%self.server_keys)
+	Trace.trace(11, "reset       - %s"%self.reset)
+	Trace.trace(11, "htmlfile_orig - %s"%self.htmlfile_orig)
+	Trace.trace(11, "encpfile_orig - %s"%self.encpfile_orig)
+	Trace.trace(11, "parsed_file - %s"%self.parsed_file)
 	self.send_reply(ticket)
-	Trace.trace(10,"}dump")
 
-    # set a new timeout value
+    # set a new timeout value.  if a server keyword was entered, set the
+    # ping timeout value for that server.  else, set the timeout for the
+    # inq server in the udp select.
     def set_timeout(self,ticket):
-        Trace.trace(10,"{set_timeout "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
-	if ticket.has_key(self.server_keyword):
-	    if self.timeouts.has_key(ticket[self.server_keyword]):
-	        self.timeouts[ticket[self.server_keyword]] = ticket["timeout"]
-		self.reset[ticket[self.server_keyword]] = ticket["timeout"]
+	if ticket.has_key(SERVER_KEYWORD):
+	    if self.timeouts.has_key(ticket[SERVER_KEYWORD]):
+	        self.timeouts[ticket[SERVER_KEYWORD]] = ticket["timeout"]
+		self.reset[ticket[SERVER_KEYWORD]] = ticket["timeout"]
 	    else:
 	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
 	else:
             self.rcv_timeout = ticket["timeout"]
 	self.send_reply(ticket)
-        Trace.trace(10,"}set_timeout")
 
     # reset the timeout value to what was in the config file
+    # if a server keyword was entered, reset the ping timeout value for that
+    # server.  else, reset the timeout for the inq server in the udp select.
     def reset_timeout(self,ticket):
-        Trace.trace(10,"{reset_timeout "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
-	if ticket.has_key(self.server_keyword):
-	    if self.reset.has_key(ticket[self.server_keyword]):
-		del self.reset[ticket[self.server_keyword]]
+	if ticket.has_key(SERVER_KEYWORD):
+	    if self.reset.has_key(ticket[SERVER_KEYWORD]):
+                # delete the reset timeout, so we will use the one from the
+                # config file
+		del self.reset[ticket[SERVER_KEYWORD]]
 	    else:
 	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
 	else:
@@ -680,87 +629,71 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                     self.alive_retries)
             self.rcv_timeout = t["timeout"]
 	self.send_reply(ticket)
-        Trace.trace(10,"}set_timeout")
 
     # set a new timestamp value
     def set_maxi_size(self, ticket):
-        Trace.trace(10,"{set_maxi_size "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
         self.asciifile.set_max_ascii_size(ticket['max_ascii_size'])
 	self.send_reply(ticket)
-        Trace.trace(10,"}set_maxi_size")
 
-    # set a new refresh value for the html file
+    # set a new refresh value for the html files
     def set_refresh(self, ticket):
-        Trace.trace(10,"{set_refresh "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
         self.htmlfile.set_refresh(ticket['refresh'])
         self.encpfile.set_refresh(ticket['refresh'])
 	self.send_reply(ticket)
-        Trace.trace(10,"}set_refresh")
 
     # return the current refresh value
     def get_refresh(self, ticket):
-        Trace.trace(10,"{get_refresh "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
         ticket["refresh"] = self.htmlfile.get_refresh()
 	self.send_reply(ticket)
-        Trace.trace(10,"}get_refresh")
 
     # set a new max encp lines displayed value
     def set_max_encp_lines(self, ticket):
-        Trace.trace(10,"{set_max_encp_lines "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
 	self.max_encp_lines = ticket['max_encp_lines']
 	self.send_reply(ticket)
-        Trace.trace(10,"}set_max_encp_lines")
 
     # return the current number of displayed encp lines
     def get_max_encp_lines(self, ticket):
-        Trace.trace(10,"{get_max_encp_lines "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
         ticket["max_encp_lines"] = self.max_encp_lines
 	self.send_reply(ticket)
-        Trace.trace(10,"}get_max_encp_lines")
 
     # timestamp the current ascii file, and open a new one
     def do_timestamp(self, ticket):
-        Trace.trace(10,"{do_timestamp "+repr(ticket))
 	ticket['status'] = (e_errors.OK, None)
 	self.asciifile.timestamp(enstore_status.FORCE)
 	self.send_reply(ticket)
-        Trace.trace(10,"}do_timestamp")
 
     # get the current timeout value
+    # if a server keyword was entered, get the ping timeout value for that
+    # server.  else, get the timeout for the inq server in the udp select.
     def get_timeout(self, ticket):
-        Trace.trace(10,"{get_timeout "+repr(ticket))
-	if ticket.has_key(self.server_keyword):
-	    if self.timeouts.has_key(ticket[self.server_keyword]):
+	if ticket.has_key(SERVER_KEYWORD):
+	    if self.timeouts.has_key(ticket[SERVER_KEYWORD]):
 	        ret_ticket = { \
-	               'timeout' : self.timeouts[ticket[self.server_keyword]],\
-	               self.server_keyword  : ticket[self.server_keyword], \
+	               'timeout' : self.timeouts[ticket[SERVER_KEYWORD]],\
+                       SERVER_KEYWORD: ticket[SERVER_KEYWORD], \
 	               'status'  : (e_errors.OK, None) }
 	    else:        
 	        ret_ticket = { 'timeout' : -1,\
-	                  self.server_keyword  : ticket[self.server_keyword], \
+	                  SERVER_KEYWORD  : ticket[SERVER_KEYWORD], \
 	                  'status'  : (e_errors.DOESNOTEXIST, None) }
 	else:
 	    ret_ticket = { 'timeout' : self.rcv_timeout,\
 	                   'status'  : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
-        Trace.trace(10,"}get_maxi_size")
 
     # get the current maximum ascii file size
     def get_maxi_size(self, ticket):
-        Trace.trace(10,"{get_maxi_size "+repr(ticket))
-	ret_ticket = { 'max_ascii_size' : self.asciifile.get_max_ascii_size(),\
-	               'status'  : (e_errors.OK, None) }
-	self.send_reply(ret_ticket)
-        Trace.trace(10,"}get_timeout")
+	ticket['max_ascii_size'] = self.asciifile.get_max_ascii_size()
+	ticket['status'] = (e_errors.OK, None)
+	self.send_reply(ticket)
 
     # make the mount plots (mounts per hour and mount latency
     def mount_plot(self, ticket, lfd):
-        Trace.trace(11,"{mount_plot "+repr(ticket))
 	ofn = lfd+"/mount_lines.txt"
 
 	# parse the log files to get the media changer mount/dismount
@@ -791,12 +724,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	mlatfile.plot(mountfile.data)
 	mlatfile.close()
 	mlatfile.install(self.html_dir)
-        Trace.trace(11,"}mount_plot ")
 
     # make the total transfers per unit of time and the bytes moved per day
     # plot
     def encp_plot(self, ticket, lfd):
-        Trace.trace(11,"{encp_plot "+repr(ticket))
 	ofn = lfd+"/bytes_moved.txt"
 
 	# always add /dev/null to the end of the list of files to search thru 
@@ -824,142 +755,105 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	xferfile.plot(encpfile.data)
 	xferfile.close()
 	xferfile.install(self.html_dir)
-        Trace.trace(11,"}encp_plot ")
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
-    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
-                 port=interface.default_port(), timeout=-1, ascii_file="", \
+    def __init__(self, csc, timeout=-1, ascii_file="", \
                  html_file="", alive_rcv_to=-1, alive_retries=-1, \
 	         max_ascii_size=-1, max_encp_lines=-1, refresh=-1):
-	Trace.trace(10, '{__init__')
-	self.print_id = "INQS"
-	self.verbose = verbose
-	self.name = "inquisitor"
+        generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        Trace.init(self.log_name)
+	self.name = MY_NAME
 	# set a timeout and retry that we will use the first time to get the
 	# inquisitor information from the config server.  we do not use the
 	# passed values because they might have been defaulted and we need to
 	# look them up in the config file which we have not gotten yet.
 	use_once_timeout = 5
 	use_once_retry = 1
-
-	# get the config server
-	configuration_client.set_csc(self, csc, host, port, verbose)
-	#   pretend that we are the test system
-	#   remember, in a system, there is only one bfs
-	#   get our port and host from the name server
-	#   exit if the host is not this machine
 	keys = self.csc.get(self.name, use_once_timeout, use_once_retry)
-	try:
-	    self.print_id = keys['logname']
-	except:
-	    pass
-        Trace.init(self.print_id)
 	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
 
 	# initialize
 	self.doupdate_server_dict = 0
 	self.reset = {}
+        self.update_request = {}
 
         # if no timeout was entered on the command line, get it from the 
-        # configuration file.
+        # configuration file.  this variable is used in dispatching worker to
+        # set how often the udp select times out.
         if timeout == -1:
-            try:
-                self.rcv_timeout = keys['timeout']
-            except:
-                self.rcv_timeout = default_timeout()
+            self.rcv_timeout = keys.get('timeout', default_timeout())
         else:
             self.rcv_timeout = timeout
 
 	# if no alive timeout was entered on the command line, get it from the 
 	# configuration file.
 	if alive_rcv_to == -1:
-	    try:
-	        self.alive_rcv_timeout = keys['alive_rcv_timeout']
-	    except:
-	        self.alive_rcv_timeout = default_alive_rcv_timeout()
+            self.alive_rcv_timeout = keys.get('alive_rcv_timeout',
+                                              default_alive_rcv_timeout())
 	else:
 	    self.alive_rcv_timeout = alive_rcv_to
 
 	# if no alive retry # was entered on the command line, get it from the 
 	# configuration file.
 	if alive_retries == -1:
-	    try:
-	        self.alive_retries = keys['alive_retries']
-	    except:
-	        self.alive_retries = default_alive_retries()
+            self.alive_retries = keys.get('alive_retries',
+                                          default_alive_retries())
 	else:
 	    self.alive_retries = alive_retries
 
 	# if no max file size was entered on the command line, get it from the 
 	# configuration file.
 	if max_ascii_size == -1:
-	    try:
-	        max_ascii_size = keys['max_ascii_size']
-	    except:
-	        pass
-	else:
-	    max_ascii_size = max_ascii_size
+            max_ascii_size = keys.get('max_ascii_size', max_ascii_size)
 
 	# if no max number of encp lines was entered on the command line, get 
 	# it from the configuration file.
 	if max_encp_lines == -1:
-	    try:
-	        self.max_encp_lines = keys['max_encp_lines']
-	    except:
-	        self.max_encp_lines = 50
+            self.max_encp_lines = keys.get('max_encp_lines',
+                                           default_max_encp_lines())
 	else:
 	    self.max_encp_lines = max_encp_lines
 
 	# get the ascii output file.  this should be in the configuration file.
-	if ascii_file == "":
-	    try:
-	        ascii_file = keys['ascii_file']+"/"+\
-                             enstore_status.ascii_file_name()
-	    except:
-	        ascii_file = enstore_status.default_ascii_file()
+	if not ascii_file:
+            if keys.has_key('ascii_file'):
+	        self.parsed_file = keys['ascii_file']+"/"+\
+                                   enstore_status.ascii_file_name()
+	    else:
+	        self.parsed_file = enstore_status.default_ascii_file()
 
 	# get the directory where the files we create will go.  this should
 	# be in the configuration file.
-	if html_file == "":
-	    try:
+	if not html_file:
+            if keys.has_key('html_file'):
 	        self.html_dir = keys['html_file']
 	        html_file = self.html_dir+"/"+\
                             enstore_status.status_html_file_name()
 	        encp_file = self.html_dir+"/"+\
                             enstore_status.encp_html_file_name()
-	    except:
+	    else:
 	        self.html_dir = enstore_status.default_dir
 	        html_file = enstore_status.default_status_html_file()
 	        encp_file = enstore_status.default_encp_html_file()
 
-	# get a logger
-	self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
-	                                    'logserver', 0)
-
         # if no html refresh was entered on the command line, get it from
         # the configuration file.
         if refresh == -1:
-            try:
-	        refresh = keys['refresh']
-            except:
-	        pass
+            refresh = keys.get('refresh', refresh)
 
 	# get an ascii system status file, and open it
-	self.parsed_file = ascii_file
-	self.asciifile = enstore_status.AsciiStatusFile(ascii_file, \
-	                                              max_ascii_size)
-	self.asciifile.open(verbose)
+	self.asciifile = enstore_status.AsciiStatusFile(self.parsed_file, \
+                                                        max_ascii_size)
+	self.asciifile.open()
 
-	# add a suffix to it because we will write to this file and 
+	# add a suffix to the html file because we will write to this file and 
 	# maintain another copy of the file (with the user entered name) to
-	# be displayed
-	self.htmlfile = enstore_status.HTMLStatusFile(html_file+self.suffix,\
-	                                              refresh)
+	# be displayed.
+	self.htmlfile = enstore_status.HTMLStatusFile(html_file+SUFFIX,refresh)
 	self.htmlfile_orig = html_file
-	self.encpfile = enstore_status.EncpStatusFile(encp_file+self.suffix,\
-	                                              refresh)
+	self.encpfile = enstore_status.EncpStatusFile(encp_file+SUFFIX,refresh)
 	self.encpfile_orig = encp_file
 
 	# get the timeout for each of the servers from the configuration file.
@@ -967,8 +861,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.last_alive = {}
 	if keys.has_key('timeouts'):
 	    self.timeouts = keys['timeouts']
-	    # now we will create a dictionary, initiallizing it to the current
-	    # time. this array records the last time that the associated server
+	    # this dict records the last time that the associated server
 	    # info was updated. everytime we get a particular servers' info we
 	    # will update this time. start out at 0 so we do an update right
 	    # away
@@ -978,14 +871,28 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# now we must look thru the whole config file and use the default
 	# server timeout for any servers that were not included in the
 	# 'timeouts' dict element
-	self.set_default_server_timeout(keys)
+        self.default_server_timeout = keys.get(DEFAULT_SERVER_TIMEOUT,
+                                               default_server_timeout())
 	self.fill_in_default_timeouts(0)
-	Trace.trace(10, '}__init__')
+
+	# get a file clerk client, volume clerk client.
+	# connections to library manager client(s), media changer client(s)
+	# and a connection to the movers will be gotten dynamically.
+        # a log client, and alarm client were already gotten in the generic
+	# server init.  these will be used to get the status
+	# information from the servers. we do not need to pass a host and port
+	# to the class instantiators because we are giving them a configuration
+	# client and they do not need to connect to the configuration server.
+	self.fcc = file_clerk_client.FileClient(self.csc)
+	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+
+	# get all the servers we are to keep tabs on
+	self.prepare_keys()
+
 
 class InquisitorInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
-	Trace.trace(10,'{iqsi.__init__')
 	# fill in the defaults for possible options
 	self.ascii_file = ""
 	self.html_file = ""
@@ -996,35 +903,34 @@ class InquisitorInterface(generic_server.GenericServerInterface):
 	self.max_encp_lines = -1
 	self.refresh = -1
 	generic_server.GenericServerInterface.__init__(self)
-	Trace.trace(10,'}iqsi.__init__')
 
     # define the command line options that are valid
     def options(self):
-	Trace.trace(16, "{}options")
 	return generic_server.GenericServerInterface.options(self)+\
 	       ["ascii_file=","html_file=","timeout="] +\
 	       ["max_ascii_size=", "max_encp_lines=", "refresh="]+\
 	       self.alive_rcv_options()
 
 if __name__ == "__main__":
-    Trace.init("inquisitor")
-    Trace.trace(1,"inquisitor called with args "+repr(sys.argv))
+    Trace.init(string.upper(MY_NAME))
+    Trace.trace(6,"inquisitor called with args "+repr(sys.argv))
 
     # get interface
     intf = InquisitorInterface()
 
     # get the inquisitor
-    inq = Inquisitor(0, intf.verbose, intf.config_host, intf.config_port, \
+    inq = Inquisitor((intf.config_host, intf.config_port), \
                      intf.timeout, intf.ascii_file, intf.html_file,\
                      intf.alive_rcv_timeout, intf.alive_retries,\
 	             intf.max_ascii_size, intf.max_encp_lines,intf.refresh)
+    # we no longer need the interface
+    del intf
 
     while 1:
         try:
-            Trace.trace(1,'Inquisitor (re)starting')
-            inq.logc.send(e_errors.INFO, 1, "Inquisitor (re)starting")
+            Trace.log(e_errors.INFO, "Inquisitor (re)starting")
             inq.serve_forever()
         except:
-	    inq.serve_forever_error(inq.name, inq.logc)
+	    inq.serve_forever_error(inq.log_name)
             continue
-    Trace.trace(1,"Inquisitor finished (impossible)")
+    Trace.trace(6,"Inquisitor finished (impossible)")

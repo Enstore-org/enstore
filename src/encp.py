@@ -52,7 +52,7 @@ def write_to_hsm(input, output, output_file_family='',
                  t0=0):
     if t0==0:
         t0 = time.time()
-    Trace.trace(6,"{write_to_hsm input="+repr(input)+\
+    Trace.trace(6,"write_to_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+\
 		repr(config_host)+\
                 " config_port="+repr(config_port)+" verbose="+\
@@ -462,7 +462,8 @@ def write_to_hsm(input, output, output_file_family='',
 					   data_path_socket.fileno(), 
 					   fsize, bufsize, crc_fun )
 		except (EXfer.error), err_msg:
-		    Trace.trace(0,"write_to_hsm EXfer error:"+\
+                    # this error used to be a 0
+		    Trace.trace(6,"write_to_hsm EXfer error:"+\
 				str(sys.argv)+" "+\
 				str(sys.exc_info()[0])+" "+\
 				str(sys.exc_info()[1]))
@@ -679,7 +680,7 @@ def write_to_hsm(input, output, output_file_family='',
 		       time.time()-done_ticket["times"]["t0"],
 		       e_errors.OK)
 
-	    logc.send(e_errors.INFO, 2, format,
+	    Trace.log(e_errors.INFO, format,
 		      inputlist[i], outputlist[i], fsize,
 		      done_ticket["fc"]["external_label"],
 		      tinfo1["rate"+repr(i)], 
@@ -725,7 +726,7 @@ def write_to_hsm(input, output, output_file_family='',
         print "DONE TICKET"
         pprint.pprint(done_ticket)
 
-    Trace.trace(6,"}write_to_hsm "+msg)
+    Trace.trace(6,"write_to_hsm "+msg)
 
 #######################################################################
 def read_from_hsm(input, output,
@@ -735,7 +736,7 @@ def read_from_hsm(input, output,
                   t0=0):
     if t0==0:
         t0 = time.time()
-    Trace.trace(6,"{read_from_hsm input="+repr(input)+\
+    Trace.trace(6,"read_from_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
                 " config_port="+repr(config_port)+" verbose="+repr(ilist)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
@@ -1002,7 +1003,7 @@ def read_from_hsm(input, output,
         print "DONE TICKET"
         pprint.pprint(done_ticket)
 
-    Trace.trace(6,"}read_from_hsm "+msg)
+    Trace.trace(6,"read_from_hsm "+msg)
     sys.exit(error)
 
     # tell file clerk we are done - this allows it to delete our unique id in
@@ -1013,7 +1014,6 @@ def read_from_hsm(input, output,
 def query_lm_queue(node,
                   config_host, config_port,
                   ilist=0):
-    Trace.trace(6,"{query_lm_queue host="+node)
 
     # check if there special data_access_layer printing requested. This is designated by
     # the having bit 2^12 set (4096)
@@ -1028,7 +1028,7 @@ def query_lm_queue(node,
     keys = csc.get_keys()
     for key in keys['get_keys']:
 	if string.find(key, "library_manager") != -1:
-	    lmc=library_manager_client.LibraryManagerClient(0, 0, key, config_host, config_port)
+	    lmc=library_manager_client.LibraryManagerClient((config_host, config_port), key)
 	    ticket = lmc.getwork(0)
 	    pw_list = ticket["pending_work"]
 	    at_list = ticket["at movers"]
@@ -1049,8 +1049,6 @@ def query_lm_queue(node,
 		    print "%s %s %s %s M" % (host,user,pnfsfn,fn)
 	    del(lmc)
 
-    Trace.trace(6,"}query_lm_queue")
-
 
 ##############################################################################
 
@@ -1062,7 +1060,7 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
     t2 = time.time() #--------------------------------------------Lap-Start
     rq_list = []
     for rq in requests: 
-	Trace.trace(7,"{read_hsm_files:"+repr(rq['infile'])+" t2="+repr(t2))
+	Trace.trace(7,"read_hsm_files:"+repr(rq['infile'])+" t2="+repr(t2))
     Qd=""
     current_library = ''
     submitted = 0
@@ -1146,7 +1144,8 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
 	lmticket = client['csc'].get(current_library+".library_manager")
 	if lmticket["status"][0] != e_errors.OK:
 	    pprint.pprint(lmticket)
-	    Trace.trace(0,"submit_read_requests. lmget failed"+ \
+            # this error used to be a 0
+	    Trace.trace(6,"submit_read_requests. lmget failed"+ \
 			repr(lmticket["status"]))
 	    print_data_access_layer_format(rq_list[j]["infile"], 
                                            rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
@@ -1205,8 +1204,6 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
 		      tinfo["send_ticket"+repr(rq_list[j]["index"])], \
 		      time.time()-tinfo['abs_start'])
     
-    Trace.trace(7,"}submit_read_requests. submitted="+repr(submitted)+ \
-		" Qd:"+repr(Qd))
     return submitted, Qd
 
 
@@ -1216,7 +1213,7 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
 def read_hsm_files(listen_socket, submitted, ninput,requests,  
 		   tinfo, chk_crc, data_access_layer, maxretry, verbose):
     for rq in requests: 
-	Trace.trace(7,"{read_hsm_files:"+repr(rq['infile']))
+	Trace.trace(7,"read_hsm_files:"+repr(rq['infile']))
     files_left = ninput
     bytes = 0
     control_socket_closed = 0
@@ -1335,7 +1332,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		mycrc = EXfer.fd_xfer( data_path_socket.fileno(), _f_.fileno(),
 				       requests[j]['file_size'], bufsize, crc_fun )
             except (EXfer.error), err_msg:
-		Trace.trace(0,"read_from_hsm EXfer error:"+\
+                # this error used to be a 0
+		Trace.trace(6,"read_from_hsm EXfer error:"+\
 			    str(sys.argv)+" "+\
 			    str(sys.exc_info()[0])+" "+\
 			    str(sys.exc_info()[1]))
@@ -1543,7 +1541,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
                                            fsize, done_ticket)
 
-        logc.send(e_errors.INFO, 2, format,
+        Trace.log(e_errors.INFO, format,
                   requests[j]['infile'], requests[j]['outfile'], fsize,
                   done_ticket["fc"]["external_label"],
                   tinfo["rate"+repr(j)], 
@@ -1563,7 +1561,6 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
     
     if not data_path_socket_closed: data_path_socket.close(); _f_.close()
     if not control_socket_closed: control_socket.close()
-    Trace.trace(7,"}read_hsm_files. files left=:"+repr(files_left))
     return files_left, bytes, error
 	    
 ##############################################################################
@@ -1580,19 +1577,15 @@ def compare_location(t1,t2):
 # log the error to the logger and print it to the stderr
 
 def print_error(errcode,errmsg) :
-    Trace.trace(0,"{encp.print_error errcode="+repr(errcode)+\
-                " errmsg="+repr(errmsg))
-
     format = "Fatal error:"+str(errcode)+str(errmsg)
     x=sys.stdout;sys.stdout=sys.stderr
     print format
     try:
         global logc
-        logc.send(e_errors.ERROR, 1, format)
+        Trace.log(e_errors.ERROR, format)
     except:
         pass
     sys.stdout=x
-    Trace.trace(0,"}encp.print_error")
 
 ##############################################################################
 # print statistics in data_access_layer format
@@ -1639,7 +1632,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
 	format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f"+\
 		 "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
 
-        logc.send(e_errors.ERROR, 1, format, inputfile, outputfile, filesize, 
+        Trace.log(e_errors.ERROR, format, inputfile, outputfile, filesize, 
 		  external_label, device, transfer_time, seek_time, mount_time, in_queue, total,
 		  status)
     except:
@@ -1651,19 +1644,17 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
 # log the error to the logger, print it to the console and exit
 
 def jraise(errcode,errmsg,exit_code=1) :
-    Trace.trace(0,"{encp.jraise errcode="+repr(errcode)+\
-                " errmsg="+repr(errmsg)+" exit_code="+repr(exit_code))
-
     format = "Fatal error:"+str(errcode)+str(errmsg)+" Exit code:"+\
 	     str(exit_code)
     x=sys.stdout;sys.stdout=sys.stderr
     print format
     try:
         global logc
-        logc.send(e_errors.ERROR, 1, format)
+        Trace.log(e_errors.ERROR, format)
     except:
         pass
-    Trace.trace(0,"}encp.jraise and exitting with code="+\
+    # this error used to be a 0
+    Trace.trace(6,"encp.jraise and exitting with code="+\
                 repr(exit_code))
     sys.stdout=x
     sys.exit(exit_code)
@@ -1674,12 +1665,8 @@ def jraise(errcode,errmsg,exit_code=1) :
 # return some information about who we are so it can be used in the ticket
 
 def clients(config_host,config_port,verbose):
-    Trace.trace(16,"{clients config_host="+repr(config_host)+\
-                " port="+repr(config_port)+" verbose="+repr(verbose))
-
     # get a configuration server
-    csc = configuration_client.ConfigurationClient(config_host,config_port,\
-                                                    verbose)
+    csc = configuration_client.ConfigurationClient((config_host,config_port))
 
     # send out an alive request - if config not working, give up
     rcv_timeout = 20
@@ -1701,7 +1688,7 @@ def clients(config_host,config_port,verbose):
 
     # get a logger client
     global logc
-    logc = log_client.LoggerClient(csc, 'ENCP', 'logserver')
+    logc = log_client.LoggerClient(csc, 'ENCP', 'log_server')
 
     # convenient, but maybe not correct place, to hack in log message that shows how encp was called
     Trace.trace(e_errors.INFO, '%s' % sys.argv)
@@ -1714,8 +1701,6 @@ def clients(config_host,config_port,verbose):
     uinfo['machine'] = os.uname()
     uinfo['fullname'] = "" # will be filled in later for each transfer
 
-    Trace.trace(16,"}clients csc="+repr(csc)+" u="+repr(u)+\
-                " uinfo="+repr(uinfo))
     return (csc,u,uinfo)
 
 ##############################################################################
@@ -1723,13 +1708,11 @@ def clients(config_host,config_port,verbose):
 # check if the system is still running by checking the wormhole file
 
 def system_enabled(p):                 # p is a  pnfs object
-    Trace.trace(10,"{system_enabled p="+repr(p))
-
     running = p.check_pnfs_enabled()
     if running != pnfs.ENABLED :
         jraise(errno.errorcode[errno.EACCES]," encp.system_enabeld: "\
                +"system disabled"+running)
-    Trace.trace(10,"}system_enabled running="+running)
+    Trace.trace(10,"system_enabled running="+running)
 
 ##############################################################################
 
@@ -1737,8 +1720,6 @@ def system_enabled(p):                 # p is a  pnfs object
 # and an open pnfs object so you can check if  the system is enabled.
 
 def pnfs_information(filelist,nfiles):
-    Trace.trace(16,'{pnfs_information filelist='+repr(filelist)+\
-                " nfiles="+repr(nfiles))
     bfid = []
     pinfo = []
     library = []
@@ -1769,7 +1750,7 @@ def pnfs_information(filelist,nfiles):
         pinf['inode'] = 0                  # cpio wrapper needs this also
         pinfo.append(pinf)
 
-    Trace.trace(16,"}pnfs_information bfid="+repr(bfid)+\
+    Trace.trace(16,"pnfs_information bfid="+repr(bfid)+\
                 " library="+repr(library)+" file_family="+repr(file_family)+\
                 " wrapper type"+repr(ff_wrapper)+" width="+repr(width)+\
 		" pinfo="+repr(pinfo)+" p="+repr(p))
@@ -1780,8 +1761,6 @@ def pnfs_information(filelist,nfiles):
 # generate the full path name to the file
 
 def fullpath(filename):
-    Trace.trace(16,'{fullpath filename='+filename)
-
     machine = socket.gethostbyaddr(socket.gethostname())[0]
     dir, file = os.path.split(filename)
 
@@ -1802,8 +1781,6 @@ def fullpath(filename):
     dir = regsub.sub("//","/",dir)
     file = regsub.sub("//","/",file)
 
-    Trace.trace(16,"}fullpath machine="+machine+\
-                " filename="+filename+" dir="+dir+" file="+file)
     return (machine, filename, dir, file)
 
 ##############################################################################
@@ -1811,8 +1788,6 @@ def fullpath(filename):
 # check the input file list for consistency
 
 def inputfile_check(input):
-    Trace.trace(16,"{inputfile_check input="+repr(input))
-
     # create internal list of input unix files even if just 1 file passed in
     try:
         ninput = len(input)
@@ -1855,8 +1830,6 @@ def inputfile_check(input):
                 jraise(errno.errorcode[errno.EPROTO]," encp.inputfile_check: "\
                        +inputlist[i]+" is the duplicated - not allowed")
 
-    Trace.trace(16,"}inputfile_check ninput="+repr(ninput)+\
-                " inputlist="+repr(inputlist)+" file_size="+repr(file_size))
     return (ninput, inputlist, file_size)
 
 ##############################################################################
@@ -1865,9 +1838,6 @@ def inputfile_check(input):
 # generate names based on input list if required
 
 def outputfile_check(ninput,inputlist,output):
-    Trace.trace(16,"{outputfile_check ninput="+repr(ninput)+\
-                " inputlist="+repr(inputlist)+" output="+repr(output))
-
     # can only handle 1 input file  copied to 1 output file
     #  or      multiple input files copied to 1 output directory
     # this is just the current policy - nothing fundamental about it
@@ -1964,7 +1934,6 @@ def outputfile_check(ninput,inputlist,output):
                 jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "\
                        +outputlist[i]+" is the duplicated - not allowed")
 
-    Trace.trace(16,"}outputfile_check outputlist="+repr(outputlist))
     return outputlist
 
 ##############################################################################
@@ -1972,8 +1941,6 @@ def outputfile_check(ninput,inputlist,output):
 class encp(interface.Interface):
 
     def __init__(self):
-        Trace.trace(16,"{encp.__init__")
-
         self.chk_crc = 0           # we will not check the crc unless told to
         self.pri = 1               # lowest priority
         self.delpri = 0            # priority doesn't change
@@ -1990,31 +1957,25 @@ class encp(interface.Interface):
 
         # parse the options
         self.parse_options()
-        Trace.trace(16,"{encp.__init__")
 
     ##########################################################################
     # define the command line options that are valid
     def options(self):
-        Trace.trace(16,"{encp.options")
-
         the_options = self.config_options()+\
                       ["verbose=","crc","pri=","delpri=","agetime=","delayed_dismount=", "file_family=", "ephemeral", "data_access_layer", "d0sam", "queue"]+\
                       self.help_options()
 
-        Trace.trace(16,"}encp.options options="+repr(the_options))
         return the_options
 
     ##########################################################################
     #  define our specific help
     def help_line(self):
-        Trace.trace(16,"{encp.help_line")
         prefix = self.help_prefix()
         the_help = "%s%s\n or\n  %s%s\n or\n  %s%s%s" % (
             prefix, self.parameters1(),
             prefix, self.parameters2(),
             prefix, self.parameters3(), self.format_options(self.options(),
                                                             "\n\t\t"))
-        Trace.trace(16,"}encp.help_line help_line="+the_help)
         return the_help
 
     ##########################################################################
@@ -2035,8 +1996,6 @@ class encp(interface.Interface):
     ##########################################################################
     # parse the options from the command line
     def parse_options(self):
-        Trace.trace(16,"{encp.parse_options")
-
         # normal parsing of options
         interface.Interface.parse_options(self)
 	try:
@@ -2088,7 +2047,7 @@ class encp(interface.Interface):
         dictlist = ""
         for key in self.__dict__.keys():
             dictlist = dictlist+" "+key+":"+repr(self.__dict__[key])
-        Trace.trace(16,"}encp.parse_options objectdict="+dictlist)
+        Trace.trace(16,"encp.parse_options objectdict="+dictlist)
 
 
 ##############################################################################
@@ -2134,7 +2093,8 @@ if __name__  ==  "__main__" :
 
 	else:
 	    emsg = "ERROR: Can not process arguments "+repr(e.args)
-	    Trace.trace(0,emsg)
+            # this error used to be a 0
+	    Trace.trace(6,emsg)
 	    jraise(errno.errorcode[errno.EPROTO],emsg)
 
 	Trace.trace(10,"encp finished at "+repr(time.time()))

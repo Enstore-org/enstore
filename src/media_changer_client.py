@@ -10,35 +10,26 @@
 
 #system imports
 import sys
+import string
 
 #enstore imports
-import configuration_client
 import udp_client
 import interface
 import generic_client
-import generic_cs
-import log_client
 import Trace
 import volume_clerk_client
 import e_errors
-import log_client
+
+MY_NAME = ".MC"
 
 class MediaChangerClient(generic_client.GenericClient):
-    def __init__(self, csc=0, verbose=0, name="", \
-                 host=interface.default_host(), \
-                 port=interface.default_port()):
-	self.print_id = "MEDCHC"
+    def __init__(self, csc, name=""):
         self.media_changer=name
-	self.verbose = verbose
-        configuration_client.set_csc(self, csc, host, port, verbose)
+        self.log_name = string.upper(string.replace(name, ".media_changer",
+                                                    MY_NAME))
+        generic_client.GenericClient.__init__(self, csc, self.log_name)
+
         self.u = udp_client.UDPClient()
-	self.logc = log_client.LoggerClient( csc, self.print_id, 
-					     'logserver', 0 )
-        ticket = self.csc.get(name)
-	try:
-            self.print_id = ticket['logname']
-        except:
-            pass
 
     # send the request to the Media Changer server and then send answer to user
     #      rcv_timeout is set to 300sec, the STK mnt/dismnt time is ~35 sec.   This
@@ -59,14 +50,10 @@ class MediaChangerClient(generic_client.GenericClient):
 	    v = vcc.set_at_mover(vol_ticket['external_label'], 'mounted',mover)
 	    if v['status'][0] != e_errors.OK:
 		format = "cannot change to 'mounted' vol=%s mover=%s state=%s"
-		logticket = self.logc.send(e_errors.INFO, 2, format,
-					   vol_ticket["external_label"],
-					   v['at_mover'][1], v['at_mover'][0])
-                if 0: print logticket #lint fix
+		Trace.log(e_errors.INFO, format,
+                          vol_ticket["external_label"],
+                          v['at_mover'][1], v['at_mover'][0])
 	    rt['status'] =  v['status']
-	    return rt
-	
-
         return rt
 
     def unloadvol(self, vol_ticket, mover, drive, vcc):
@@ -80,10 +67,9 @@ class MediaChangerClient(generic_client.GenericClient):
 				mover)
 	    if v['status'][0] != e_errors.OK:
 		format = "cannot change to 'unmounted' vol=%s mover=%s state=%s"
-		logticket = self.logc.send(e_errors.INFO, 2, format,
-					   vol_ticket["external_label"],
-					   v['at_mover'][1], v['at_mover'][0])
-                if 0: print logticket #lint fix
+		Trace.log(e_errors.INFO, format,
+                          vol_ticket["external_label"],
+                          v['at_mover'][1], v['at_mover'][0])
 		rt['status'] =  v['status']
 		return rt
         return rt
@@ -136,7 +122,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
             sys.exit(1)
         else:
             self.media_changer = self.args[0]
-        if (self.alive == 0) and (self.verbose == 0) and (self.maxwork==-1) and \
+        if (self.alive == 0) and (self.maxwork==-1) and \
            (self.getwork==0) and (self.view == 0) and (self.viewattrib == 0):
             # bomb out if we number of arguments is wrong
             self.print_help()
@@ -145,42 +131,35 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # print out our extended help
     def print_help(self):
         interface.Interface.print_help(self)
-        generic_cs.enprint("        --maxwork=N        Max simultaneous operations allowed (may be 0)")
-        generic_cs.enprint("        --getwork          List oprations in progress")
+        print "        --maxwork=N        Max simultaneous operations allowed (may be 0)"
+        print "        --getwork          List oprations in progress"
         
 if __name__ == "__main__" :
-    Trace.init("medch cli")
-    Trace.trace(1,"mcc called with args "+repr(sys.argv))
+    Trace.init("MEDCH CLI")
+    Trace.trace(6,"mcc called with args "+repr(sys.argv))
 
     # fill in the interface
     intf = MediaChangerClientInterface()
 
     # get a media changer client
-    mcc = MediaChangerClient(0, intf.verbose, intf.media_changer, \
-                            intf.config_host, intf.config_port)
+    mcc = MediaChangerClient((intf.config_host, intf.config_port),
+                             intf.media_changer)
+    Trace.init(mcc.get_name(mcc.log_name))
+                            
 
     if intf.alive:
         ticket = mcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
-	msg_id = generic_cs.ALIVE
     elif intf.view:
         # get a volume clerk client
-        vcc = volume_clerk_client.VolumeClerkClient(0, intf.verbose, \
-	                                 intf.config_host, intf.config_port)
+        vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
         v_ticket = vcc.inquire_vol(intf.view)
 	ticket=mcc.viewvol(v_ticket)
 	del vcc
-        msg_id = generic_cs.CLIENT
-    elif intf.verbose:
-        ticket = mcc.set_verbose(intf.verbose, intf.alive_rcv_timeout,\
-	                         intf.alive_retries)
-	msg_id = generic_cs.CLIENT
     elif intf.maxwork  >= 0:
         ticket=mcc.MaxWork(intf.maxwork)
-	msg_id = generic_cs.CLIENT
     elif intf.getwork:
         ticket=mcc.GetWork()
-        generic_cs.enprint(ticket['worklist'], generic_cs.PRETTY_PRINT)
-	msg_id = generic_cs.CLIENT
+        print repr(ticket['worklist'])
     else:
         intf.print_help()
         sys.exit(0)
@@ -188,21 +167,4 @@ if __name__ == "__main__" :
     del mcc.csc.u
     del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    mcc.check_ticket(ticket, msg_id)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    mcc.check_ticket(ticket)

@@ -3,6 +3,10 @@ import os
 import getopt
 import sys
 
+# enstore imports
+import Trace
+import e_errors
+
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
 # SOCKS protocol to make connections through a firewall machine.
@@ -13,28 +17,58 @@ try:
     socket = SOCKS
 except ImportError:
     import socket
-import generic_cs
 
 def getenv(var, default=None):
     val = os.environ.get(var)
     if val is None:
-        generic_cs.enprint("%s not set in environment - reverting to %s" %
-                           (var, default))
+        used_default = 1
         val = default
-    return val
+    else:
+        used_default = 0
+    return val, used_default
+
+DEFAULT_HOST = 'localhost'
+DEFAULT_PORT = '7500'
+
+used_default_config_host = 0
+used_default_config_port = 0
 
 def default_host():
-    return getenv('ENSTORE_CONFIG_HOST', default='localhost')
+    val, used_default = getenv('ENSTORE_CONFIG_HOST', default=DEFAULT_HOST)
+    if used_default:
+        global used_default_config_host
+        used_default_config_host = 1
+    return val
 
 def default_port():
-    return string.atoi(getenv('ENSTORE_CONFIG_PORT', default='7500'))
+    val, used_default = getenv('ENSTORE_CONFIG_PORT', default=DEFAULT_PORT)
+    val = string.atoi(val)
+    if used_default:
+        global used_default_config_port
+        used_default_config_port = 1
+    return val
 
 def default_file():
     return "/pnfs/enstore/.(config)(flags)/enstore.conf"
 
+def log_using_default(var, default):
+    Trace.log(e_errors.INFO,
+              "%s not set in environment or command line - reverting to %s"\
+              %(var, default))
+
+def check_for_config_defaults():
+    # check if we are using the default host and port.  if this is true
+    # then nothing was set in the environment or passed on the command
+    # line. warn the user.
+    if used_default_config_host:
+        log_using_default('CONFIG HOST', DEFAULT_HOST)
+    if used_default_config_port:
+        log_using_default('CONFIG PORT', DEFAULT_PORT)
+     
+    
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
-        if host == "localhost" :
+        if host == 'localhost' :
             self.check_host(socket.gethostname())
         else:            
             self.check_host(host)
@@ -64,10 +98,6 @@ class Interface:
         if 0: print self # lint fix
 	return ["alive_rcv_timeout=","alive_retries="]
 
-    def verbose_options(self):
-        if 0: print self # lint fix
-	return ["verbose=","server_verbose="]
-
     def alive_options(self):
         if 0: print self # lint fix
 	return ["alive"]+self.alive_rcv_options()
@@ -84,7 +114,7 @@ class Interface:
 
     def missing_parameter(self, param):
         if 0: print self # lint fix
-	generic_cs.enprint("ERROR: missing parameter "+repr(param))
+        Trace.trace(13,"ERROR: missing parameter %s"%param)
 
     def parameters(self):
         if 0: print self # lint fix
@@ -109,10 +139,11 @@ class Interface:
             self.config_port = port
 
     def print_help(self):
-        generic_cs.enprint("USAGE:\n  "+self.help_line()+"\n")
+        print "USAGE:\n"+self.help_line()+"\n"
 
     def print_usage_line(self):
-        generic_cs.enprint("["+self.format_options(self.options(), " ")+"] "+self.parameters()+"\n")
+        print "["+self.format_options(self.options(), " ")+\
+              "] "+self.parameters()+"\n"
 
     def parse_config_host(self, value):
         try:
@@ -137,15 +168,14 @@ class Interface:
             optlist,self.args=getopt.getopt(sys.argv[1:],self.charopts(),
                                             self.options())
         except:
-            generic_cs.enprint("ERROR: "+str(sys.exc_info()[0])+" "+\
-	                       str(sys.exc_info()[1]))
+            Trace.trace(9, "ERROR: "+str(sys.exc_info()[0])+" "+\
+                        str(sys.exc_info()[1]))
             self.print_help()
             sys.exit(1)
 	    
         for (opt,value) in optlist :
             value=self.strip(value)
-	    generic_cs.enprint("opt = "+repr(opt)+", value = "+repr(value), \
-	                       generic_cs.INTERFACE, self.verbose)
+            Trace.trace(10, "opt = %s, value = %s"%(opt,value))
             if opt == "--config_host" :
                 self.parse_config_host(value)
             elif opt == "--config_port" :
@@ -297,9 +327,6 @@ class Interface:
             elif opt == "--data_access_layer" or opt == "--d0sam":
                 # if data_access_layer has been requested, just add 4096 to verbose option
                 self.verbose = self.verbose | 0x1000 
-            elif opt == "--server_verbose" :
-	        self.got_server_verbose = 1
-	        self.server_verbose = string.atoi(value)
             elif opt == "--logfile_dir":
                 self.logfile_dir = value
             elif opt == "--start_time":

@@ -18,9 +18,9 @@ class DbTable(db.DbTable):
 	# __init__() is almost the same as db.DbTable.__init__()
 	# plus a "deletes" list containing the deleted keys
 
-	def __init__(self, dbname, logc='', indlst=[]):
+	def __init__(self, dbname, indlst=[]):
 		self.dbname = dbname
-		db.DbTable.__init__(self, dbname, logc, indlst, 0)
+		db.DbTable.__init__(self, dbname, indlst, 0)
 
 		# Now let's deal with all the journal files
 
@@ -126,7 +126,7 @@ class DbTable(db.DbTable):
 if __name__ == "__main__":		# main
 
 	for i in sys.argv[1:]:
-		d = DbTable(i, '', [])
+		d = DbTable(i, [])
 		print "Checking "+i+" ... "
 		err = d.cross_check()
 		if err:

@@ -3,10 +3,9 @@
 import sys
 import socket
 import os
+import string
 
 # enstore imports
-import log_client
-import configuration_client
 import dispatching_worker
 import interface
 import enstore_status
@@ -21,13 +20,12 @@ def default_alive_rcv_timeout():
 def default_alive_retries():
     return 2
 
+MY_NAME = "alarm_server"
+
 DEFAULT_FILE_NAME = "/enstore_alarms.txt"
 DEFAULT_PATROL_FILE_NAME = "/enstore_patrol.txt"
 DEFAULT_SUSP_VOLS_THRESH = 3
 
-SERVER = "server"
-SUS_VOLS = "suspect_volumes"
-LM = "library_manager"
 ALARM = "alarm"
 
 SEVERITY = "severity"
@@ -176,7 +174,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                 file.write(self.alarms[key])
 
     def get_log_path(self):
-        log = self.csc.get("logserver")
+        log = self.csc.get("log_server")
         if log.has_key("log_file_path"):
             return log["log_file_path"]
         else:
@@ -208,28 +206,23 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
 class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 
-    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
-                 port=interface.default_port()):
+    def __init__(self, csc):
+        # need the following definition so the generic client init does not
+        # get an alarm client
+        self.is_alarm = 1
+        generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        Trace.init(self.log_name)
+
         self.alarms = {}
         self.info_alarms = {}
-        self.print_id = "ALRMS"
-        self.verbose = verbose
         self.uid = os.getuid()
         self.pid = os.getpid()
-
-	# get the config server
-        configuration_client.set_csc(self, csc, host, port, verbose)
-        keys = self.csc.get("alarm_server")
+        keys = self.csc.get(MY_NAME)
         self.hostip = keys['hostip']
-        Trace.init(keys["logname"])
         self.sus_vol_thresh = keys.get("susp_vol_thresh",
                                        DEFAULT_SUSP_VOLS_THRESH)
-        self.print_id = keys.get("logname", self.print_id)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
-        # get a logger
-        self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
-                                            'logserver', 0)
 
         # see if an alarm file exists. if it does, open it and read it in.
         # these are the alarms that have not been dealt with.
@@ -243,7 +236,6 @@ class AlarmServerInterface(interface.Interface):
 
     def __init__(self):
         # fill in the defaults for possible options
-        self.verbose = 0
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -252,25 +244,23 @@ class AlarmServerInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options()+\
-	       ["verbose="] +\
 	       self.help_options()
 
 if __name__ == "__main__":
-    Trace.init("alarm_server")
+    Trace.init(string.upper(MY_NAME))
     Trace.trace( 6, "alarm server called with args "+repr(sys.argv) )
 
     # get interface
     intf = AlarmServerInterface()
 
     # get the alarm server
-    als = AlarmServer(0, intf.verbose, intf.config_host, intf.config_port)
+    als = AlarmServer((intf.config_host, intf.config_port))
 
     while 1:
         try:
-            Trace.trace(1,'Alarm Server (re)starting')
-            als.logc.send(e_errors.INFO, 1, "Alarm Server (re)starting")
+            Trace.log(e_errors.INFO, "Alarm Server (re)starting")
             als.serve_forever()
         except:
-	    als.serve_forever_error("alarm_server", als.logc)
+	    als.serve_forever_error(als.log_name)
             continue
-    Trace.trace(1,"Alarm Server finished (impossible)")
+    Trace.trace(6,"Alarm Server finished (impossible)")
