@@ -16,6 +16,7 @@ Here are the user options:
    enstore pnfs --file_family [value]       sets file family tag to value (must have correct cwd)
    enstore pnfs --file_family_wrapper [value] sets file family wrapper tag to value (must have correct cwd)
    enstore pnfs --file_family_width [value] sets library tag to value (must have correct cwd)
+   enstore pnfs --storage_group [value] sets storage group tag to value (must have correct cwd)
 
    enstore pnfs --files volmap-tape   lists all the files on specified tape in volmap
 

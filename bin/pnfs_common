@@ -138,6 +138,13 @@ pfile_family_width()
                 ptagecho "$1" file_family_width
               fi; }
 
+pstorage_group()
+            { if [ -z "${1-}" ] ; then
+                ptagcat storage_group
+              else
+                ptagecho "$1" storage_group
+              fi; }
+
 
 penstore_state()  
             { if [ -z "${1-}" ] ; then p_error "enstore_state <pnfs_directory>"; fi
