@@ -5,6 +5,7 @@ import exceptions
 
 import configuration_server
 import enstore_constants
+import interface
 import Trace
 import e_errors
 
@@ -34,7 +35,15 @@ def get_from_config_file(server, keyword, default):
 def get_html_dir():
     return get_from_config_file("inquisitor", "html_file", DEFAULTHTMLDIR)
 
- # translate time.time output to a person readable format.
+# return a dictionary of the configuration server host and port
+def get_config_server_info():
+    port, junk = interface.getenv('ENSTORE_CONFIG_PORT',
+				  interface.DEFAULT_PORT)
+    dict = {'port' : string.atoi(port)}
+    dict['host'], junk = interface.getenv('ENSTORE_CONFIG_HOST', interface.DEFAULT_HOST)
+    return dict
+
+# translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
 def format_time(theTime, sep=" "):
     return time.strftime("%Y-%b-%d"+sep+"%H:%M:%S", time.localtime(theTime))
