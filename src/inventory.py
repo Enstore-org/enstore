@@ -978,6 +978,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         ("label", "avail.", "system_inhibit", "user_inhibit",
          "library", "mounts",  "volume_family"))
 
+    de_file.write("Date this listing was generated: %s\n\n"%(
+        time.ctime(time.time())))
     de_file.write("%12s\t%12s\t%12s\t%16s\t%16s\n\n"%("volume", "actual size", "capacity", "library", "media type"))
     #Process the tapes authorized file for the VOLUME_QUATAS page.
     authorized_tapes = get_authorized_tapes()
