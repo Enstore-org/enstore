@@ -27,6 +27,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile,verbose=1):
      Trace.trace(6,"{load_config configfile="+repr(configfile))
+     xconfigdict = {} # we will be loading new config file into xconfigdict - clear it
      try:
         try:
             f = open(configfile)
@@ -230,8 +231,9 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
               count3 = count3 + 1
               if count3 != 1:
                  formatted= formatted + "\n"
-                 for ks in range(len2):
-                    formatted= formatted + " "
+                 #for ks in range(len2):
+                 #   formatted= formatted + " "
+                 formatted= formatted + " "*len2
                  formatted= formatted + "                   '" + key2 + "'  : " + repr(self.configdict[key][key2])
               else:
                  formatted= formatted + " '"  + key2 + "'  : " + repr(self.configdict[key][key2])
@@ -311,12 +313,16 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
 
 
     def reply_configdict( self, ticket ):
+        Trace.trace(6,"{reply_configdict "+repr(ticket))
         out_ticket = {"status" : (e_errors.OK, None), "list" : self.configdict }
         self.reply_to_caller(out_ticket)
+        Trace.trace(6,"}reply_configdict"+repr(out_ticket))
 
     def reply_serverlist( self, ticket ):
+        Trace.trace(6,"{reply_serverlist "+repr(ticket))
         out_ticket = {"status" : (e_errors.OK, None), "server_list" : self.serverlist }
         self.reply_to_caller(out_ticket)
+        Trace.trace(6,"}reply_serverlist"+repr(out_ticket))
 	 
 
 class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
@@ -335,6 +341,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
         # make a configuration dictionary
         cd =  ConfigurationDict()
+        Trace.trace(10,'init ConfigurationDict ',+repr(cd))
 
         # default socket initialization - ConfigurationDict handles requests
         dispatching_worker.DispatchingWorker.__init__(self, (host, port))
@@ -360,7 +367,7 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
 
         # bomb out if we can't find the file
         statinfo = os.stat(self.config_file)
-
+        Trace.trace(10,'stat for '+repr(self.config_file)+' '+repr(statinfo))
         Trace.trace(10,'}csi.__init__')
 
     # define the command line options that are valid
@@ -374,8 +381,6 @@ if __name__ == "__main__":
     Trace.init("configsrvr")
     Trace.trace(1,"{called args="+repr(sys.argv))
     import sys
-    import timeofday
-    import traceback
 
 
     # get the interface
