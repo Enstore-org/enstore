@@ -471,7 +471,7 @@ def forked_read_from_hsm( self, ticket ):
 	    # check the san_crc!!!
 	    if     self.san_func != None \
 	       and ticket['fc']['sanity_cookie'][1] != None \
-	       san_crc != ticket['fc']['sanity_cookie'][1]:
+	       and san_crc != ticket['fc']['sanity_cookie'][1]:
 		pass
 	    if (ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]) > 0:
                 Trace.trace(11,'calling fd_xfer -rest size='+repr(ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]))
