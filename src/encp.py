@@ -275,10 +275,10 @@ def inputfile_check(input_files, bytecount=None):
         inputlist[i] = os.path.join(dir,basename)
 
         # input files must exist
-        if not os.access(inputlist[i],os.R_OK):
+        if not os.access(inputlist[i], os.R_OK):
             print_data_access_layer_format(inputlist[i],
                                            '',0,
-                                           {'status':('USERERROR','No such file %s'%(inputlist[i],))}) 
+                                           {'status':('USERERROR','Cannot read file %s'%(inputlist[i],))}) 
             quit()
 
         # get the file size
