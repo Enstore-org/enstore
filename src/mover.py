@@ -38,9 +38,9 @@ import Trace
 
 """TODO:
 
-   Create a change_state function, so all state transitions can be logged.
-   Find out why --clean doesn't work
-   
+Make a class for EOD objects to handle all conversions from loc_cookie to integer
+automatically.  It's confusing in this code when `eod' is a cookie vs a plain old int.
+
 
 """
 
@@ -961,7 +961,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.error("cannot open tape device for positioning")
             return
-        self.state = SEEK  ##XXX start a timer here
+        self.state = SEEK ##XXX start a timer here?
         eod = self.vol_info['eod_cookie']
         if eod=='none':
             eod = None
@@ -1138,20 +1138,28 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, " current location %s <= eod %s" %
                       (self.current_location, previous_eod))
             return 0
-        
-        remaining = self.vol_info['remaining_bytes']-self.bytes_written
-        ## XXX make this a driver method
+
+        r0 = self.vol_info['remaining_bytes']  #value prior to this write
+        r1 = r0 - self.bytes_written           #value derived from simple subtraction
+        r2 = r1                                #value reported from drive, if possible
+        ## XXX OO: this should be a driver method
         if self.driver_type == 'FTTDriver':
             import ftt
-            stats = self.tape_driver.ftt.get_stats()
-            if stats[ftt.REMAIN_TAPE]:
-                rt = stats[ftt.REMAIN_TAPE]
-                if rt is not None:
-                    rt = long(rt)
-                    remaining = rt  * 1024L
+            try:
+                stats = self.tape_driver.ftt.get_stats()
+                r2 = long(stats[ftt.REMAIN_TAPE]) * 1024L
+            except:
+                Trace.log(e_errors.ERROR, "ftt.get_stats cannot get remaining capacity")
+
+        capacity = self.vol_info['capacity_bytes']
+        if r1 <= 0.1 * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
+            remaining = min(r1, r2)
+        else:                     #trust what the drive tells us, as long as we are under 90% full
+            remaining = r2
+
+        self.vol_info['remaining_bytes']=remaining
         eod = loc_to_cookie(self.current_location)
         self.vol_info['eod_cookie'] = eod
-        self.vol_info['remaining_bytes']=remaining
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
         fc_ticket = {  'location_cookie': loc_to_cookie(self.last_seek),
