@@ -47,6 +47,11 @@ SEVERITY = "severity"
 
 NULL_DRIVER = "NullDriver"
 
+NO_CSC = 1
+NO_ALARM = 2
+NO_LOG = 4
+NO_UDP = 8
+
 ALIVE_INTERVAL = "alive_interval"
 DEFAULT_ALIVE_INTERVAL = "default_alive_interval"
 CONFIG_SERVER_ALIVE_INTERVAL = 30 # there is none in config file
@@ -66,6 +71,7 @@ INQ = "Inquisitor"
 VOLC = "Volume Clerk"
 EV_RLY = "Event Relay"
 UP_DOWN = "up_down"
+RATE = "Ratekeeper"
 
 # server names used in config file
 LOG_SERVER = "log_server"
@@ -84,7 +90,8 @@ SERVER_NAMES = {LOGS : LOG_SERVER,
 		INQ : INQUISITOR,
 		VOLC : VOLUME_CLERK,
 		CONFIGS : CONFIG_SERVER,
-		EV_RLY : EVENT_RELAY}
+		EV_RLY : EVENT_RELAY,
+		RATE : RATEKEEPER}
 
 OUTAGEFILE = "enstore_outage.py"
 SEENDOWNFILE = "enstore_seen_down.py"
@@ -182,7 +189,7 @@ MOVER = "mover"
 NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
 GENERIC_SERVERS = [ ALARM_SERVER, CONFIG_SERVER, EVENT_RELAY, FILE_CLERK, INQUISITOR,
-		    LOG_SERVER, VOLUME_CLERK]
+		    LOG_SERVER, VOLUME_CLERK, RATEKEEPER]
 
 # Trace.trace output levels used by the inquisitor
 INQERRORDBG = 1

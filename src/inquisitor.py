@@ -40,6 +40,7 @@ server_map = {"log_server" : enstore_constants.LOGS,
 	      "file_clerk" : enstore_constants.FILEC,
 	      "inquisitor" : enstore_constants.INQ,
 	      "volume_clerk" : enstore_constants.VOLC,
+	      "ratekeeper" : enstore_constants.RATEKEEPER,
 	      "enstore" : enstore_constants.ENSTORE,
 	      "network" : enstore_constants.NETWORK,
 	      "alarms" : enstore_constants.ANYALARMS}
@@ -1501,6 +1502,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         cdict = self.config_d.get(enstore_constants.CONFIG_SERVER, {})
         self.config_server = monitored_server.MonitoredConfigServer(cdict)
 	self.servers_by_name[enstore_constants.CONFIG_SERVER] = self.config_server
+
+        cdict = self.config_d.get(enstore_constants.RATEKEEPER, {})
+        self.ratekeeper = monitored_server.MonitoredRatekeeper(cdict)
+	self.servers_by_name[enstore_constants.RATEKEEPER] = self.ratekeeper
 
         for server_key in self.server_d.keys():
             server = self.server_d[server_key]
