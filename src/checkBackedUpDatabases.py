@@ -110,11 +110,11 @@ def configure(configuration = None):
     #Return the directory the backup file is in and the directory the backup
     # file will be ungzipped and untared to, respectively.  Lastly, return
     # the current directory.
-    return backup_dir, check_dir, current_dir
+    return backup_dir, check_dir, current_dir, backup_node
 
 
 
-def check_backup(backup_dir):
+def check_backup(backup_dir, backup_node):
     # backups are saved in separate files - get the most recent one
     bdirs = os.listdir(backup_dir)
     if len(bdirs) == 0:
@@ -191,8 +191,8 @@ if __name__ == "__main__":
     print timeofday.tod(), 'Checking Enstore on',config,'with timeout of',
     print timeout,'and tries of',tries
 
-    (backup_node, backup_dir, check_dir, current_dir) = configure(1) #non-None argument!
-    extract_backup(check_dir, check_backup(backup_node, backup_dir))
+    (backup_dir, check_dir, current_dir, backup_node) = configure(1) #non-None argument!
+    extract_backup(check_dir, check_backup(backup_dir, backup_node))
     check_files(check_dir)
     clean_up(current_dir)
     
