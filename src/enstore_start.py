@@ -244,12 +244,13 @@ def check_db(csc, name, intf, cmd):
            not info.get('hostip', None) in this_host():
         return
 
-    if intf.nocheck:
-        rtn = 0
-    else:
-        print "Checking %s." % name
+    # ignore nocheck
+    # if intf.nocheck:
+    #    rtn = 0
+    # else:
+    print "Checking %s." % name
 
-        rtn = os.popen("ps -elf | grep %s | grep -v grep" % name).readlines()
+    rtn = os.popen("ps -elf | grep %s | grep -v grep" % name).readlines()
     
     if not rtn:
         print "Starting %s." % name
