@@ -56,6 +56,11 @@ encp.EncpInterface.encp_options[option.SEQUENTIAL_FILENAMES] = {
     option.VALUE_USAGE:option.IGNORED,
     option.VALUE_TYPE:option.INTEGER,
     option.USER_LEVEL:option.USER,}
+encp.EncpInterface.encp_options[option.SKIP_DELETED_FILES] = {
+    option.HELP_STRING: "Skip over deleted files.",
+    option.VALUE_USAGE:option.IGNORED,
+    option.VALUE_TYPE:option.INTEGER,
+    option.USER_LEVEL:option.USER,}
 try:
     del encp.EncpInterface.encp_options[option.EPHEMERAL]
     del encp.EncpInterface.encp_options[option.FILE_FAMILY]

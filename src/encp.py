@@ -6281,11 +6281,18 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             #Check to make sure that this file is not marked
             # as deleted.  If so, print error and exit.
             if fc_reply.get('deleted', None) == "yes":
-                status = (e_errors.USERERROR,
-                          "Requesting file (%s) that has been deleted."
-                          % (generate_location_cookie(number),))
-                raise EncpError(None, status[1], status[0],
-                                {'volume' : e.volume})
+                #If the user has specified the --skip-deleted-files switch
+                # then ignore this file and move onto the next.
+                if e.skip_deleted_files:
+                    sys.stdout.write("Skipping deleted file (%s) %s.\n" %
+                                     (number, filename))
+                    continue
+                else:
+                    status = (e_errors.USERERROR,
+                              "Requesting file (%s) that has been deleted."
+                              % (generate_location_cookie(number),))
+                    raise EncpError(None, status[1], status[0],
+                                    {'volume' : e.volume})
 
             #These lines should NEVER give an error.
             bfid = fc_reply['bfid']
@@ -7249,6 +7256,7 @@ class EncpInterface(option.Interface):
         self.storage_info = None   # Not used yet.
         self.volume = None         # True if it is to read an entire volume.
         self.list = None           # Used for "get" only.
+        self.skip_deleted_files = None # Used for "get" only.
 
         #Sometimes the kernel lies about the max size of files supported
         # by the filesystem; skip the test if that is needed.

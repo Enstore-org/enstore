@@ -352,6 +352,7 @@ SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOW_QUOTA = "show-quota"                    #volume
 SHOWID = "showid"                            #pnfs
 SIZE = "size"                                #pnfs
+SKIP_DELETED_FILES = "skip-deleted-files"    #get
 SKIP_PNFS = "skip-pnfs"                      #super_remove
 START_DRAINING = "start-draining"            #library
 START_TIME = "start-time"                    #plotter
@@ -456,7 +457,7 @@ valid_option_list = [
     SAAG_STATUS, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,
     SHORTCUT, SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA,
-    SHOW_BAD, SIZE, SKIP_PNFS, SHOW_BY_LIBRARY,
+    SHOW_BAD, SIZE, SKIP_DELETED_FILES, SKIP_PNFS, SHOW_BY_LIBRARY,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
