@@ -58,7 +58,14 @@ char *path;
 	}
 #endif
 
-	strcpy(path, "/usr/local/bin/enroute2");
+	if ((p = getenv("ENROUTE2")) != NULL)
+	{
+		strcpy(path, p);
+	}
+	else
+	{
+		strcpy(path, "/usr/local/bin/enroute2");
+	}
 
 	if (access(path, X_OK))
 	{
