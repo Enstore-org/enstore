@@ -89,6 +89,7 @@ entv:
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENTV_TEMP entv.py
 	(cd ENTV_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENTV_TEMP/entv ../ups/chooseConfig ENTVBIN
+	cp -r $(ENSTORE_DIR)/etc/TclTk/tcl8.3  $(ENSTORE_DIR)/etc/TclTk/tk8.3 $(ENSTORE_DIR)/etc/Images ENTVBIN
 	sed -e 's/encp/entv/g' $(ENSTORE_DIR)/ups/encp.table > ENTVBIN/entv.table
 	- rm -rf ENTV_TEMP
 
