@@ -411,6 +411,7 @@ def do_work(intf):
         if intf.add != "None":
             d['bfid']=intf.add # bfid
         ticket = fcc.add(d)
+        print "bfid =", ticket['bfid']
     elif intf.dont_try_this_at_home_erase:
         ticket = fcc.del_bfid(intf.dont_try_this_at_home_erase)
     elif intf.get_crcs:
