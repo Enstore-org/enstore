@@ -2418,10 +2418,23 @@ Suppose half the tapes belong to Group A  and the half to Group B. We want to gu
 Group A have one third of the tape drives, Group B have one third, and the last third
 be shared.  The Movers can be configured to do this easily.  And with some slight
 changes, this is how we can guarantee resources to data acquisition.
+
 <p>
-
-
-DUPLICATE DATA SECTION NEEDED.
+There has been a request to duplicate (write to two tapes) critical
+data. This feature had been discussed but not implemented as a specific
+method of implementation has not been decided upon. The following are
+among the possible implementations:
+<ul>
+  <li> Assign two tape drives to one mover.  If the mover has a list of two
+       volumes in the write_to_hsm response, the mover binds both volumes
+       and writes to both drives.  This mover could be give a single volume
+       for "normal" data writing.
+  <li> Have the library manager summon two movers and tell one it is a
+       master and the other it is a slave. The master receives data from
+       the user and in addition to writing to it's tape drive, it also send
+       the data on to the slave mover. The slave mover receives data from
+       the master mover.
+</ul>
 
 <!-- ----------------------------------------------------->
 When the Mover starts up, the 'idle_mover' request/command is sent to each
@@ -2443,7 +2456,8 @@ Otherwise, the Library Manager can respond with 'no_work,'
 'read_from_hsm,' or 'write_to_hsm.'
 
 When the mover receives 'read_from_hsm' or 'write_to_hsm' it forks a
-subprocess which handles the transfer utilizing a shared memory buffer. The
+subprocess which handles the transfer utilizing a shared memory buffer for
+both data transfer and communication with parent process. The
 main Mover process can read shared memory locations to get the status of
 the transfer.
 
