@@ -124,7 +124,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             try:
                 pnfsFilename = self.get_path(self.id)
             except (OSError, IOError):
-                #No long do just the following: pnfsFilename = ""
+                #No longer do just the following: pnfsFilename = ""
                 # on an exception.  Attempt to get the ".(access)(<pnfs id>)"
                 # version of the filename.
                 #This was done in response to the pnfs database being
@@ -139,6 +139,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if pnfsFilename:
             (self.machine, self.filepath, self.directory, self.filename) = \
                            fullpath(pnfsFilename)
+            #self.pstatinfo(update=1)
+            self.get_stat()
 
         try:
             self.pnfsFilename = self.filepath
@@ -702,16 +704,28 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     ##########################################################################
 
     # get the stat of file, or if non-existant, its directory
-    def get_stat(self):
+    def get_stat(self, filepath=None):
+
+        #Get the xref layer information.
+        if filepath:
+            fname = filepath
+        else:
+            fname = self.filepath
+            
         try:
             # first the file itself
-            self.pstat = os.stat(self.filepath)
+            pstat = os.stat(fname)
         except OSError, msg:
             # if that fails, try the directory
             try:
-                self.pstat = os.stat(os.path.dirname(self.filepath))
+                pstat = os.stat(os.path.dirname(fname))
             except OSError:
                 raise msg
+
+        if not filepath:
+            self.pstat = pstat
+
+        return pstat
 
     # get the uid from the stat member
     def pstat_decode(self):
@@ -777,15 +791,27 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             if os.path.exists(self.filepath):
                 self.file_size = self.pstat[stat.ST_SIZE]
+                if self.file_size == 1L:
+                    self.file_size = self.get_file_size()
+            else:
+                try:
+                    del self.file_size
+                except AttributeError:
+                    pass  #Was not present.
         except KeyboardInterrupt:
             raise sys.exc_info()
         except:
             pass
 
-        #Get the inode.
+        #Get the file inode.
         try:
-            #if os.path.exists(self.filepath):
-            self.inode = self.pstat[stat.ST_INO]
+            if os.path.exists(self.filepath):
+                self.inode = self.pstat[stat.ST_INO]
+            else:
+                try:
+                    del self.inode
+                except AttributeError:
+                    pass #Was not present.
         except KeyboardInterrupt:
             raise sys.exc_info()
         except:
@@ -803,7 +829,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             pass
 
     # update all the stat info on the file, or if non-existent, its directory
-    def pstatinfo(self,update=1):
+    def pstatinfo(self, update=1):
         #Get new stat() information if requested.
         if update:
             self.get_stat()
