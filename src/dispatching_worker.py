@@ -68,10 +68,8 @@ class DispatchingWorker:
     address_family = socket.AF_INET
 
     def __init__(self, server_address):
-        """Constructor.  May be extended, do not override or will need to call
-	   directly.
-	"""
         self.server_address = server_address
+        self.server_fds = []    # fds that the worker/server also wants watched with select
         ## flag for whether we are in a child process
         ## Server loops should be conditional on "self.is_child" rather than 'while 1'
         self.is_child = 0
@@ -133,7 +131,7 @@ class DispatchingWorker:
 	except:
 	    self.handle_error(request, client_address)
 
-    server_fds = []    # fds that the worker/server also wants watched with select
+
 
     # a server can add an fd to the server_fds list
     def add_select_fd(self,fd):
@@ -220,7 +218,7 @@ class DispatchingWorker:
             # UDPClient resends messages if it doesn't get a response
             # from us, see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
-            list = eval(repr(request_dict[idn]))
+            list = eval(repr(request_dict[idn]))  ## XXX What is this???
             if list[0] == number:
                 Trace.trace(6,"process_request "+repr(idn)+" already handled")
                 self.reply_with_list(list)
@@ -337,7 +335,7 @@ class DispatchingWorker:
     def reply_with_list(self, list):
         Trace.trace(19,"reply_with_list number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
-        request_dict[self.current_id] = list
+        request_dict[self.current_id] = list[:]
         self.socket.sendto(repr(list), self.reply_address)
 
     # for requests that are not handled serialy reply_address, current_id, and client_number
