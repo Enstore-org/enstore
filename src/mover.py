@@ -1692,7 +1692,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.tape_driver
         failed = 0
         self.media_transfer_time = 0.
-
+        nblocks = 0
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         Trace.notify("transfer %s %s %s media %s %.3f" %
@@ -1714,7 +1714,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 continue
             
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
-            Trace.trace(33,"bytes to read00 %s"%(nbytes,))
             self.buffer.bytes_for_crc = nbytes
             if self.bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
                 nbytes = self.buffer.blocksize
@@ -1725,6 +1724,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(33,"bytes to read %s"%(nbytes,))
                 bytes_read = self.buffer.block_read(nbytes, driver)
                 Trace.trace(33,"bytes read %s"%(bytes_read,))
+                nblocks = nblocks + 1
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             except "CRC_ERROR":
                 Trace.alarm(e_errors.ERROR, "CRC error reading tape",
@@ -1779,6 +1779,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
+
+
+        Trace.log(e_errors.INFO, "read bytes %s/%s, blocks %s header %s" %(self.bytes_read, self.bytes_to_read, nblocks, header_size))
+
         if self.tr_failed:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             return
