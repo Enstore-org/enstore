@@ -15,13 +15,21 @@ import driver
 import os				# os.stat
 import stat				# stat.ST_SIZE
 import time				# time.time (xfer rate)
+import pprint				# for stats
+import FTT				# to get stats directly
+import string				# support for the pprint mission
 
+def tt():
+    return time.strftime("%a %b %d %H:%M:%S %Z %Y",time.localtime(time.time()))
 
 infile     = sys.argv[1]
 tapedev    = sys.argv[2]
 eod_cookie = sys.argv[3]
 
-os.system( "echo %s, %s, %s, %s >&2"%(sys.argv[0],infile,tapedev,eod_cookie) )
+stdout_sav = sys.stdout
+sys.stdout = sys.stderr
+
+print "%s, %s, %s, %s"%(sys.argv[0],infile,tapedev,eod_cookie)
 
 external_label = "test"
 
@@ -37,8 +45,9 @@ bytes = statinfo[stat.ST_SIZE]
 fo = open( infile, 'r' )
 
 hsm_driver = driver.FTTDriver()
+#hsm_driver = driver.NullDriver()
 
-os.system( "echo -n sw_mount... >&2" ); sys.stderr.flush()
+print "%s:         sw_mount... "%tt(),          #; sys.stdout.flush()
 hsm_driver.sw_mount( tapedev, 102400, 30520749568L, external_label, eod_cookie )
 
 
@@ -46,7 +55,7 @@ hsm_driver.sw_mount( tapedev, 102400, 30520749568L, external_label, eod_cookie )
 do = hsm_driver.open( tapedev, 'a+' )
 if do.is_bot(do.tell()) and do.is_bot(eod_cookie):
     # write an ANSI label and update the eod_cookie
-    os.system( "echo >&2;echo -n label... >&2" ); sys.stderr.flush()
+    print '\n%s:         label...'%tt(),
     ll = do.format_label( external_label )
     do.write( ll )
     do.writefm()
@@ -61,29 +70,38 @@ do = hsm_driver.open( tapedev, 'a+' )
 
 
 #################################################
-os.system( "echo >&2;echo -n seek to %s... >&2"%eod_cookie ); sys.stderr.flush()
+print '\n%s:         seek to %s... '%(tt(),eod_cookie),
 do.seek( eod_cookie )
 ##################################
 
 
-os.system( "echo >&2;echo -n 'do.fd_xfer( fo.fileno(), %s, 0,0 )' >&2"%bytes ); sys.stderr.flush()
+print '\n%s:         do.fd_xfer( fo.fileno(), %s, 0,0 )'%(tt(),bytes),
 t0 = time.time()
 crc = do.fd_xfer( fo.fileno(), bytes, 0,0 )
 t1 = time.time()
 
 
 #######################################
-os.system( "echo >&2;echo -n writefm... >&2" ); sys.stderr.flush()
+print '\n%s:         writefm... '%tt(),
 do.writefm()
 eod_cookie = do.tell()
-stats = do.get_stats()
+print '\n%s:         get_stats... '%tt(),
+if isinstance( hsm_driver, driver.FTTDriver ): stats = FTT.get_stats()
+else:                                          stats = do.get_stats()
+xx = tt()
+for ll in string.split( pprint.pformat(stats), '\012' ): print '\n%s:         %s'%(xx,ll),
+
 ##########################################
 
 do.close()			# b/c of fm above, this is purely sw.
 
 fo.close()
 
-os.system( "echo >&2; echo 'crc is %s  %d bytes in %s seconds (%s bytes/sec)' >&2"%(crc,bytes,t1-t0,
-							  bytes/(t1-t0)) )
+print '\n%s:         crc is %s  %d bytes in %s seconds (%s bytes/sec)'%(tt(),
+									crc,
+									bytes,
+									t1-t0,
+									bytes/(t1-t0))
 
+sys.stdout = stdout_sav
 print eod_cookie
