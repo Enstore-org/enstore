@@ -155,6 +155,29 @@ plot \"$busy_cdf\" using 1:4 t \"9940 in use\" w impulses" >$pltcmd
 	 convert -geometry 120x120 -modulate -20 $plot9940.jpg ${plot9940}_stamp.jpg
 
 
+	 # dimitri wants dots instead of lines... 
+         plot9940=/fnal/ups/prd/www_pages/enstore/9940_Utilization_dl
+         pltcmd=/tmp/stkdu.gnu
+
+         rm -f $pltcmd
+         echo "set output \"$plot9940.ps\"
+set terminal postscript color solid
+set title \"STK 9940 DL Drive Utilization $now\"
+set xlabel \"Date\"
+set timefmt \"%Y-%m-%d:%H:%M:%S\"
+set xdata time
+set xrange [\"$Quarter_ago\" : ]
+set ylabel \"Number in use\"
+set grid
+set yrange [0: ]
+set format x \"%m-%d\"
+set nokey
+plot \"$busy_cdf\" using 1:4 t \"9940 in use\" " >$pltcmd
+         gnuplot $pltcmd
+         convert -rotate 90 $plot9940.ps $plot9940.jpg
+	 convert -geometry 120x120 -modulate -20 $plot9940.jpg ${plot9940}_stamp.jpg
+
+
         else
          echo \"$0 $command\" can only be run on $plotnode, $plotnode_d0, or $plotnode_cdf because that is the only one that has a web server
         fi
