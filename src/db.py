@@ -436,11 +436,10 @@ class DbTable:
   def dump(self):
      t=self.db.txn()
      c=self.db.cursor(t)
-     Trace.log(e_errors.INFO,repr(c.first()))
-     while c:
-#	No! You don't want to dump the whole database into Trace.log ...
-#	 Trace.log(e_errors.INFO,c.next())
-         print c.next()
+     key, value = c.next()
+     while key:
+         print `key`+':'+`value`
+         key, value = c.next()
      c.close()
      t.commit()
 
