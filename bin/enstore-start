@@ -27,6 +27,9 @@ while opt=`expr "${1-}" : '--\(.*\)'`;do
     esac"
 done
 
+# this works for the case where opt_just is null
+opt_just_ere=`echo ${opt_just-} | sed -e 's/ /|/g' -e 's/,/|/g'`
+
 place=`pwd`
 cd $PID_DIR
 
@@ -288,6 +291,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
 	exit 1
     fi
     for i in $enstore_libraries; do
+        do_server=`echo $i | egrep "$opt_just_ere"`
+        if [ ! "$do_server" ];then continue; fi
+
         if [ ! "${opt_ping-}" ];then
             if     [ ! "${opt_nocheck-}" ]\
                 && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep $i|sed -e 's/.*://'` $timeout >/dev/null
@@ -305,7 +311,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
                 else
                     eval "$cmd &"
                 fi
-                echo $! >> $PID_DIR/`uname -n`-library_manager_pids
+                echo $! > $PID_DIR/`uname -n`-$i-library_manager_pid
             fi
         fi
         echo "Checking $i Library Manager"
@@ -323,6 +329,9 @@ fi
 # media changer
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
     for i in $enstore_media_changers; do
+        do_server=`echo $i | egrep "$opt_just_ere"`
+        if [ ! "$do_server" ];then continue; fi
+
         if [ ! "${opt_ping-}" ];then
             if     [ ! "${opt_nocheck-}" ]\
                 && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep $i|sed -e 's/.*://'` $timeout >/dev/null
@@ -340,7 +349,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
                 else
                     eval "$cmd &"
                 fi
-                echo $! >> $PID_DIR/`uname -n`-media_changer_pids
+                echo $! >> $PID_DIR/`uname -n`-$i-media_changer_pid
             fi
         fi
         echo "Checking $i Media Changer"
@@ -370,6 +379,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
 	exit 1
     fi
     for i in $enstore_movers; do
+        do_server=`echo $i | egrep "$opt_just_ere"`
+        if [ ! "$do_server" ];then continue; fi
+
         if [ ! "${opt_ping-}" ];then
             if     [ ! "${opt_nocheck-}" ]\
                 && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep $i|sed -e 's/.*://'` $timeout >/dev/null
@@ -386,7 +398,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
                 else
                     eval "$cmd &"
                 fi
-                echo $! >> $PID_DIR/`uname -n`-mover_pids
+                echo $! >> $PID_DIR/`uname -n`-$i-mover_pid
             fi
         fi
         echo "Checking $i Mover"
