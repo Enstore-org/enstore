@@ -836,7 +836,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        record["system_inhibit"][0] = "none"
+        if record["remaining_bytes"] == 0:
+            record["system_inhibit"][1] = "full"
+        else:
+            record["system_inhibit"][0] = "none"
+            
         record["last_access"] = time.time()
         if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
