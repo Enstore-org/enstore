@@ -228,7 +228,7 @@ def bind_volume( self, external_label ):
     if self.vol_info['external_label'] == '':
 
 	# NEW VOLUME FOR ME - find out what volume clerk knows about it
-	self.vol_info['err_external_labe'] = external_label
+	self.vol_info['err_external_label'] = external_label
 	tmp_vol_info = vcc.inquire_vol( external_label )
 	if tmp_vol_info['status'][0] != "ok": return 'NOTAPE' # generic, not read or write specific
 
@@ -254,7 +254,7 @@ def bind_volume( self, external_label ):
 	self.vol_info.update( tmp_vol_info )
 	pass
     elif external_label != self.vol_info['external_label']:
-	self.vol_info['err_external_labe'] = external_label
+	self.vol_info['err_external_label'] = external_label
 	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],external_label) )
 	return 'NOTAPE' # generic, not read or write specific
 
@@ -643,7 +643,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	    do_next_req_to_lm( self, next_req_to_lm, address )
 	    pass
 	dispatching_worker.DispatchingWorker.__init__( self, server_address)
-	print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
+	#print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
 	#timer_task.TimerTask.__init__( self, self.rcv_timeout )
 	timer_task.TimerTask.__init__( self, 5 )
 	#timer_task.msg_add( 5, tt,1 )
@@ -664,12 +664,9 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	    pass
 	return
 
-    def set_timeout( self, ticket ):
-	out_ticket = {'status':(e_errors.OK,None),'old timeout':self.rcv_timeout}
-	out_ticket['extra status'] = 'changed'
-	try:    self.rcv_timeout = ticket['timeout']
-	except: out_ticket['extra status'] = 'not changed'
-	out_ticket['new timeout'] = self.rcv_timeout
+    def debug_status( self, ticket ):
+	out_ticket = {'status':(e_errors.OK,None)}
+	out_ticket['vol_info'] = self.client_obj_inst.vol_info
 	self.reply_to_caller( out_ticket )
 	return
 
