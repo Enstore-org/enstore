@@ -29,6 +29,9 @@ import os
 import Trace
 import e_errors
 
+# to maintain a backward compatible BerkeleyDB
+import db
+
 default_database = 'enstoredb'
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
@@ -92,7 +95,7 @@ def str_value(v):
 # self.exprot_format(self, s) -- translate database output to external format
 
 class DbTable:
-	def __init__(self, host, port, database, table, pkey, jouHome ='.', auto_journal=0):
+	def __init__(self, host, port, database, table, pkey, jouHome ='.', auto_journal=0, db=None):
 		self.host = host
 		self.port = port
 		self.database = database
@@ -114,7 +117,10 @@ class DbTable:
 		self.update_query = "update "+self.table+" set %s where "+self.pkey+" = '%s';"
 		self.delete_query = "delete from "+self.table+" where "+self.pkey+" = '%s';"
 
-		self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
+		if db:
+			self.db = db
+		else:
+			self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
 
 	# translate database output to external format
 	def export_format(self, s):
@@ -212,8 +218,13 @@ class DbTable:
 		pass
 
 class FileDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database):
-		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal = 1)
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, db=None, dbHome=None):
+		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal = 1, db = db)
+		if dbHome:
+			self.bdb = db.DbTable(self.name, dbHome, jou, ['library', 'volume_family'])
+		else:
+			self.dbd = None
+
 		self.retrieve_query = "\
         		select \
                 		bfid, crc, deleted, drive, \
@@ -307,10 +318,19 @@ class FileDB(DbTable):
 			'sanity_cookie_1': sanity_cookie_1,
 			'size': s['size']
 			}
+	def __setitem__(self, key, value):
+		DbTable.__setitem__(self, key, value)
+		if self.bdb != None:
+			self.dbd[key] = value
 
 class VolumeDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database):
-		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal = 1)
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, db=None, dbHome=None):
+		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal = 1, db = db)
+		if dbHome:
+			self.bdb = db.DbTable(self.name, dbHome, jou, ['library', 'volume_family'])
+		else:
+			self.dbd = None
+
 		self.retrieve_query = "\
         		select \
 				label, block_size, capacity_bytes, \
@@ -404,3 +424,8 @@ class VolumeDB(DbTable):
 			'wrapper': s['wrapper'],
 			'comment': s['comment']
 			}
+
+	def __setitem__(self, key, value):
+		DbTable.__setitem__(self, key, value)
+		if self.bdb != None:
+			self.dbd[key] = value

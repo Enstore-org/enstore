@@ -974,7 +974,7 @@ if __name__ == "__main__":
     db_port = dbInfo['db_port']
 
     Trace.log(e_errors.INFO,"opening file database using DbTable")
-    fc.dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome)
+    fc.dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome, dbHome=dbHome)
     
     while 1:
         try:
