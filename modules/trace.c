@@ -303,7 +303,7 @@ trace_init_trc( const char *key_file_spec )
     sem_chk_s = trc_sem_get_s;  sem_chk_s.sem_num = 1; /* too big, to causes EFBIG below */
     /* AFTER THIS FOR CODE BLOCK,
        trc_sem_id, trc_cntl_sp, and trc_ent_sp will be set correctly */
-    for (idx=40; idx--; )
+    for (idx=30; idx--; )
     {   int	r_sts;
 	lck_fd = open( lck_file, O_CREAT|O_EXCL ); /* ref. open(2) */
 	if (lck_fd != -1)
@@ -384,7 +384,7 @@ trace_init_trc( const char *key_file_spec )
 	sleep( 1 );
     }
     if (idx == -1)
-    {   printf( "fatal error initializing trace\n" );
+    {   printf( "Fatal error initializing trace. You may need to remove the lock file:\n   %s\n",lck_file );
 	exit (1);
     }
     return;	
