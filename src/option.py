@@ -282,6 +282,7 @@ PTS_NODES = "pts_nodes"                      #plotter
 PVOLS = "pvols"                              #volume
 RAISE = "raise"                              #alarm
 READ_ONLY = "read-only"                      #volume
+REASON = "reason"                            #inquisitor
 REBUILD_SG_COUNT = "rebuild-sg-count"        #volume
 RECYCLE = "recycle"                          #volume
 REMEDY_TYPE = "remedy_type"                  #alarm_server
@@ -395,7 +396,7 @@ valid_option_list = [
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE,
     POSITION, PREFIX, PRIORITY, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,
-    RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH,
+    RAISE, READ_ONLY, REASON, RECURSIVE, RECYCLE, REFRESH,
     REMEDY_TYPE, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,

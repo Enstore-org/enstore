@@ -9,6 +9,7 @@ import generic_client
 import udp_client
 import enstore_constants
 import enstore_functions
+import enstore_functions2
 import option
 import Trace
 
@@ -185,6 +186,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.up = ""
 	self.down = ""
 	self.time = ""
+        self.reason = ""
 	self.outage = ""
 	self.nooutage = ""
 	self.override = ""
@@ -271,6 +273,13 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                          option.VALUE_LABEL:"server[,server]",
                          option.USER_LEVEL:option.ADMIN,
                          },
+        option.REASON:{option.HELP_STRING:"information associated with a "
+                     "server marked down or with an outage",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"string",
+                     option.USER_LEVEL:option.ADMIN,
+                     },
         option.REFRESH:{option.HELP_STRING:"set the refresh interval for "
                         "inquisitor created web pages",
                         option.VALUE_TYPE:option.INTEGER,
@@ -337,6 +346,12 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                                 },
         }
 
+def concat_time_reason(time, reason):
+    if time:
+        return "%s - %s"%(time, reason)
+    else:
+        return reason
+
 # this is where the work is actually done
 def do_work(intf):
     # now get an inquisitor client
@@ -384,9 +399,11 @@ def do_work(intf):
 	ticket = iqc.up(intf.up)
 
     elif intf.down:
+        intf.time = concat_time_reason(intf.time, intf.reason)
 	ticket = iqc.down(intf.down, intf.time)
 
     elif intf.outage:
+        intf.time = concat_time_reason(intf.time, intf.reason)
 	ticket = iqc.outage(intf.outage, intf.time)
 
     elif intf.nooutage:
