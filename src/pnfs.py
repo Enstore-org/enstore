@@ -19,11 +19,11 @@ import regsub
 # enstore imports
 import Trace
 import lockfile
-import generic_cs
+import e_errors
 try:
     import Devcodes # this is a compiled enstore module
 except ImportError:
-    generic_cs.enprint("Devcodes unavailable")
+    Trace.log(e_errors.INFO, "Devcodes unavailable")
 import interface
 
 ENABLED = "enabled"
@@ -64,12 +64,11 @@ class Pnfs:
         if all:
             self.get_pnfs_info()
         if timeit != 0:
-            generic_cs.enprint("pnfs__init__ dt: "+time.time()-t1)
+            Trace.log(e_errors.INFO, "pnfs__init__ dt: "+time.time()-t1)
 
     # list what is in the current object
-    def dump(self, verbose):
-        generic_cs.enprint(self.__dict__, \
-                         generic_cs.PRETTY_PRINT|generic_cs.PNFS, verbose)
+    def dump(self):
+        Trace.trace(14, repr(self.__dict__))
 
     ##########################################################################
 
@@ -135,7 +134,7 @@ class Pnfs:
                     f = open(self.pnfsFilename,'w')
                     f.close()
                 else:
-                    generic_cs.enprint("problem with pnfsFilename = "+ \
+                    Trace.log(e_errors.INFO, "problem with pnfsFilename = "+ \
                                        self.pnfsFilename)
                     raise sys.exc_info()[0],sys.exc_info()[1]
             self.pstatinfo()
@@ -149,7 +148,7 @@ class Pnfs:
                 t = int(time.time())
                 os.utime(self.pnfsFilename,(t,t))
             except os.error:
-                generic_cs.enprint("can not utime: "+str(sys.exc_info()[0])+\
+                Trace.log(e_errors.INFO, "can not utime: "+str(sys.exc_info()[0])+\
                                    " "+str(sys.exc_info()[1]))
             self.pstatinfo()
 
@@ -189,18 +188,18 @@ class Pnfs:
                     # LOCK_NB 4    /* Don't block when locking.  */
                     fcntl.flock(f.fileno(),2+4)
                     fcntl.flock(f.fileno(),8)
-                    generic_cs.enprint("locked/unlocked - worked, a miracle")
+                    Trace.log(e_errors.INFO, "locked/unlocked - worked, a miracle")
                 except:
-                    generic_cs.enprint("Could not lock or unlock "\
+                    Trace.log(e_errors.INFO, "Could not lock or unlock "\
                           +self.pnfsFilename+" "+str(sys.exc_info()[1]))
 
             if 0:
                 try:
                     lockfile.readlock(f)
                     lockfile.unlock(f)
-                    generic_cs.enprint("locked/unlocked - worked, a miracle")
+                    Trace.log(e_errors.INFO, "locked/unlocked - worked, a miracle")
                 except:
-                    generic_cs.enprint("Could not lock or unlock "\
+                    Trace.log(e_errors.INFO, "Could not lock or unlock "\
                           +self.pnfsFilename+" "+str(sys.exc_info()[1]))
 
             f.close()
@@ -360,7 +359,7 @@ class Pnfs:
                     #self.utime()
                     self.pstatinfo()
                 except os.error:
-                    generic_cs.enprint("enoent path taken again!")
+                    Trace.log(e_errors.INFO, "enoent path taken again!")
                     if sys.exc_info()[1][0] == errno.ENOENT:
                         # maybe this works??
                         f = open(self.dir+'/.(fset)('\
@@ -371,7 +370,7 @@ class Pnfs:
                     else:
                         raise sys.exc_info()[0],sys.exc_info()[1]
                 if self.file_size != 0:
-                    generic_cs.enprint("can not set file size to 0 - oh well!")
+                    Trace.log(e_errors.INFO, "can not set file size to 0 - oh well!")
             f = open(self.dir+'/.(fset)('+self.file+')(size)('\
                      +repr(size)+')','w')
             f.close()
@@ -689,7 +688,7 @@ class Pnfs:
                 else:
                     k = ""
                     item = "6"
-                    generic_cs.enprint("unknown OS:"+repr(machtype)+" "+repr(item))
+                    Trace.log(e_errors.INFO, "unknown OS:"+repr(machtype)+" "+repr(item))
 
                 # we need to find the mount point and create the volume file there
                 #command = 'df '+k+' | grep /pnfs| awk "{print \$'+item+'}" '
@@ -706,7 +705,7 @@ class Pnfs:
             else:
                 dir_elements = string.split(self.dir,'/')
                 if dir_elements[1] != "pnfs":
-                    Trace.trace(0,'bad filename for - no pnfs as first element'+self.file)
+                    Trace.trace(6,'bad filename for - no pnfs as first element'+self.file)
                     self.voldir=UNKNOWN
                 else:
                     vd="/pnfs"
@@ -739,7 +738,7 @@ class Pnfs:
                 dir_elements = string.split(self.voldir,'/')
                 for element in dir_elements:
                     dir=dir+'/'+element
-                    #generic_cs.enprint(dir)
+                    #Trace.log(e_errors.INFO, dir)
                     if posixpath.exists(dir) == 0:
                         # try to make the directory - just bomb out if we fail
                         #   since we probably require user intervention to fix
@@ -831,7 +830,7 @@ def findfiles(mainpnfsdir,                  # directory above volmap directory
     bfids = []
     for i in range(0,n):
         if i == last:
-            generic_cs.enprint("skipping duplicate request: "+repr(i))
+            Trace.log(e_errors.INFO, "skipping duplicate request: "+repr(i))
             continue
         else:
             last = i
@@ -849,7 +848,6 @@ class PnfsInterface(interface.Interface):
         self.status = 0
         self.info = 0
         self.file = ""
-        self.verbose = 0
         self.restore = 0
         interface.Interface.__init__(self)
 
@@ -860,7 +858,7 @@ class PnfsInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16,"{}options")
-        return ["verbose=","test","status","file=","restore="] +\
+        return ["test","status","file=","restore="] +\
                self.help_options()
 
 ##############################################################################
@@ -870,10 +868,10 @@ if __name__ == "__main__":
 
     if intf.info:
         p=Pnfs(intf.file,1,1)
-        p.dump(intf.verbose)
+        p.dump()
 
     elif intf.status:
-        generic_cs.enprint("not yet")
+        Trace.log(e_errors.INFO, "not yet")
 
     elif intf.restore:
         p=Pnfs(intf.file)
@@ -885,24 +883,22 @@ if __name__ == "__main__":
         count = 0
         for pf in base+"/"+repr(time.time()), "/impossible/path/test":
             count = count+1;
-            generic_cs.enprint("\nSelf test from "+__name__+" using file "+\
-                               repr(count)+": "+repr(pf), generic_cs.PNFS, \
-                               intf.verbose)
+            Trace.trace(14,"\nSelf test from "+__name__+" using file "+\
+                               repr(count)+": "+repr(pf))
 
             p = Pnfs(pf)
 
             e = p.check_pnfs_enabled()
-            generic_cs.enprint("enabled: "+repr(e), generic_cs.PNFS, \
-                               intf.verbose)
+            Trace.trace(14, "enabled: "+repr(e))
 
             if p.valid == VALID:
                 if count==2:
-                    generic_cs.enprint("ERROR: File "+repr(count)\
+                    Trace.log(e_errors.INFO, "ERROR: File "+repr(count)\
                           +" is invalid - but valid flag is set")
                     continue
                 p.jon1()
                 p.get_pnfs_info()
-                p.dump(intf.verbose)
+                p.dump()
                 l = p.library
                 f = p.file_family
                 w = p.file_family_width
@@ -911,106 +907,93 @@ if __name__ == "__main__":
 
                 nv = "crunch"
                 nvn = 222222
-                generic_cs.enprint("\nChanging to new values", \
-                                   generic_cs.PNFS, intf.verbose)
+                Trace.trace(14, "\nChanging to new values")
 
                 p.set_library(nv)
                 if p.library == nv:
-                    generic_cs.enprint(" library changed", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " library changed")
                 else:
-                    generic_cs.enprint(" ERROR: didn't change library tag: still is "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't change library tag: still is "\
                           +p.library)
 
                 p.set_file_family(nv)
                 if p.file_family == nv:
-                    generic_cs.enprint(" file_family changed", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " file_family changed")
                 else:
-                    generic_cs.enprint(" ERROR: didn't change file_family tag: still is "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't change file_family tag: still is "\
                           +p.file_family)
 
                 p.set_file_family_width(nvn)
                 if p.file_family_width == nvn:
-                    generic_cs.enprint(" file_family_width changed", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " file_family_width changed")
                 else:
-                    generic_cs.enprint(" ERROR: didn't change file_family_width tag: "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't change file_family_width tag: "\
                           +"still is "+repr(p.file_family_width))
 
                 p.set_bit_file_id(nv,nvn)
                 if p.bit_file_id == nv:
-                    generic_cs.enprint(" bit_file_id changed", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " bit_file_id changed")
                 else:
-                    generic_cs.enprint(" ERROR: didn't change bit_file_id layer: still is "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't change bit_file_id layer: still is "\
                           +repr(p.bit_file_id))
 
                 if p.file_size == nvn:
-                    generic_cs.enprint(" file_size changed", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " file_size changed")
                 else:
-                    generic_cs.enprint(" ERROR: didn't change file_size: still is "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't change file_size: still is "\
                           +repr(p.file_size))
 
-                p.dump(intf.verbose)
-                generic_cs.enprint("\nRestoring original values", \
-                                       generic_cs.PNFS, intf.verbose)
+                p.dump()
+                Trace.trace(14, "\nRestoring original values")
 
                 p.set_library(l)
                 if p.library == l:
-                    generic_cs.enprint(" library restored", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " library restored")
                 else:
-                    generic_cs.enprint(" ERROR: didn't restore library tag: still is "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore library tag: still is "\
                           +p.library)
 
                 p.set_file_family(f)
                 if p.file_family == f:
-                    generic_cs.enprint(" file_family restored", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " file_family restored")
                 else:
-                    generic_cs.enprint(" ERROR: didn't restore file_family tag: still is "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore file_family tag: still is "\
                           +p.file_family)
 
                 p.set_file_family_width(w)
                 if p.file_family_width == w:
-                    generic_cs.enprint(" file_family_width restored", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " file_family_width restored")
                 else:
-                    generic_cs.enprint(" ERROR: didn't restore file_family_width tag: "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore file_family_width tag: "\
                           +"still is "+repr(p.file_family_width))
 
                 p.set_bit_file_id(i,s)
                 if p.bit_file_id == i:
-                    generic_cs.enprint(" bit_file_id restored", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " bit_file_id restored")
                 else:
-                    generic_cs.enprint(" ERROR: didn't restore bit_file_id layer: "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore bit_file_id layer: "\
                           +"still is "+repr(p.bit_file_id))
 
                 if p.file_size == s:
-                    generic_cs.enprint(" file size restored", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, " file size restored")
                 else:
-                    generic_cs.enprint(" ERROR: didn't restore file_size: still is "\
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore file_size: still is "\
                           +repr(p.file_size))
 
-                p.dump(intf.verbose)
+                p.dump()
                 p.rm()
                 if p.exists != EXISTS:
-                    generic_cs.enprint(p.pnfsFilename+ "deleted", \
-                                       generic_cs.PNFS, intf.verbose)
+                    Trace.trace(14, p.pnfsFilename+ "deleted")
                 else:
-                    generic_cs.enprint("ERROR: could not delete "+\
+                    Trace.log(e_errors.INFO, "ERROR: could not delete "+\
                                        p.pnfsFilename)
 
             else:
                 if count==2:
                     continue
                 else:
-                    generic_cs.enprint("ERROR: File "+repr(count)\
+                    Trace.log(e_errors.INFO, "ERROR: File "+repr(count)\
                           +" is valid - but invvalid flag is set")
-                    generic_cs.enprint(p.pnfsFilename+\
+                    Trace.log(e_errors.INFO, p.pnfsFilename+\
                                        "file is not a valid pnfs file")
 

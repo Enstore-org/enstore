@@ -11,7 +11,8 @@ import FTT
 import EXfer
 import IPC
 import time				# sleep used in FTT sw_mount
-import generic_cs			# enprint
+import e_errors
+import Trace
 
 SEEK_SET =       0   
 SEEK_CUR =       1   
@@ -231,7 +232,7 @@ class  FTTDriver(GenericDriver) :
 	    x = x -1
 	    pass
 	if x == 0:
-	    generic_cs.enprint( "sw_mount error" )
+	    Trace.log( e_errors.INFO, "sw_mount error" )
 	    raise "sw_mount error"
 	FTT.rewind()
 	FTT.close()

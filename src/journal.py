@@ -31,12 +31,11 @@ or may not be necessary to flush changes to disk.
 
 # enstore imports
 import Trace
-import generic_cs
+import e_errors
 
 class JournalDict:
 
 	def __init__(self, dict, journalfile):
-		Trace.trace(10,'__init__ journaldict file='+repr(journalfile))
 		self.dict = dict
 		have_old_file = 1
 		try:
@@ -50,63 +49,49 @@ class JournalDict:
 				exec(l)
 			f.close()
 		self.jfile = open(journalfile,"a")
-		Trace.trace(10,'}__init__ journaldict')
 
 	def keys(self):
-		Trace.trace(20,'{}keys')
 		return self.dict.keys()
 
 	def __len__(self):
-		Trace.trace(20,'{}__len__')
 		return len(self.dict)
 
 	def has_key(self, key):
-		Trace.trace(20,'{}has_key')
 		return self.dict.has_key(key)
 
 	def __getitem__(self, key):
-		Trace.trace(20,'__getitem__')
 		return self.dict[key]
 
 
 	def __setitem__(self, key, value):
-		Trace.trace(20,'{__setitem')
 		self.dict[key] = value
 		j = "self.dict['%s'] = %s\n" % (key, value)
 		self.jfile.write(j)
 		self.jfile.flush()
-		Trace.trace(20,'}__setitem')
 
 	def __delitem__(self, key):
-		Trace.trace(20,'{__delitem')
 		# log the value of deleted item so that it may be
 		# recovered later on
 		v = self.dict[key]
 		j = "del self.dict['%s'] # %s\n" % (key, v)
 		self.jfile.write(j)
 		self.jfile.flush()
-		Trace.trace(20,'}__delitem')
 
 	def close(self):
-		Trace.trace(20,'{}close')
 #		if hasattr(self.dict, 'close'):
 #		self.dict.close()
 		self.dict = {}
 
 	def __del__(self):
-		Trace.trace(20,'{__del__')
 		self.close()
 		self.jfile.close()
-		Trace.trace(20,'}__del__')
 
 def printdict(dict) :
-	Trace.trace(10,'{printdict')
-	generic_cs.enprint(dict)
+	Trace.log(e_errors.INFO, repr(dict))
 	for k in dict.keys():
 	        msg = "%s %s" % (k, `dict[k]`)
-		generic_cs.enprint(msg)
-		generic_cs.enprint(type(dict[k]))
-	Trace.trace(10,'}printdict')
+		Trace.log(e_errors.INFO, repr(msg))
+		Trace.log(e_errors.INFO, type(dict[k]))
 
 if __name__ == "__main__" :
 

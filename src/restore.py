@@ -6,7 +6,6 @@
 import db
 import regsub
 import os
-#import generic_cs
 import sys
 
 cursor_open = 0

@@ -32,6 +32,8 @@ import errno
 import time
 import select
 
+import e_errors
+
 def Select (R, W, X, timeout) :
 
 # we have an error under linux where we get an error, and
@@ -154,7 +156,7 @@ class cleanUDP :
 			  self.previous_sendto_address)
 
 		Trace.trace( 6, etext )
-		# self.enprint(etext)
+		# Trace.log(e_errors.INFO, repr(etext))
 
 if __name__ == "__main__" :
 	sout = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)

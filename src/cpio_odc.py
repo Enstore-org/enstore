@@ -11,10 +11,10 @@ import time
 import traceback
 
 # enstore imports
-import generic_cs
 import EXfer
 import Trace
 import ECRC
+import e_errors
 
 """
 
@@ -154,8 +154,9 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
     # set this dang mode to something that works on all machines!
     if ((mode & 0777000) != 0100000) & (filename != "TRAILER!!!"):
 	jonmode = 0100664
-	generic_cs.enprint("Mode "+repr(mode)+ " is invalid, setting to "+\
-			   repr(jonmode)+" so cpio valid")
+	Trace.log(e_errors.INFO,
+                  "Mode "+repr(mode)+ " is invalid, setting to "+\
+                  repr(jonmode)+" so cpio valid")
     else :
 	jonmode = mode
 
@@ -292,8 +293,9 @@ if __name__ == "__main__" :
     ticket['wrapper']['pnfsFilename']= fin._file_.name
     ticket["wrapper"]["sanity_size"] = sanity_bytes
     (size,crc,sanity_cookie) = wrapper.write( ticket )
-    generic_cs.enprint("Cpio.write returned: size: "+repr(size)+" crc: "+\
-	               repr(crc)+" sanity_cookie: "+repr(sanity_cookie))
+    Trace.log(e_errors.INFO,
+              "Cpio.write returned: size: "+repr(size)+" crc: "+\
+              repr(crc)+" sanity_cookie: "+repr(sanity_cookie))
 
     fin.close()
     fout.close()
@@ -310,8 +312,9 @@ if __name__ == "__main__" :
 
     wrapper1 = Wrapper()
     (read_size, read_crc) = wrapper1.read(sanity_cookie)
-    generic_cs.enprint("cpio.read returned: size: "+repr(read_size)+" crc: "+\
-	               repr(read_crc))
+    Trace.log(e_errors.INFO,
+              "cpio.read returned: size: "+repr(read_size)+" crc: "+\
+              repr(read_crc))
 
     fin.close()
     fout.close()
