@@ -427,7 +427,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.state != self._last_state:
                 Trace.trace(10, "Send %s to %s" % (ticket, addr))
             self.udpc.send_no_wait(ticket, addr)
-            
+
         self._last_state = self.state
         self.check_dismount_timer()
 
@@ -595,6 +595,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.READ_ERROR, detail)
                 break
             if self.bytes_read==0: #Handle variable-sized cpio header
+                if len(self.buffer._buf) != 1:
+                    Trace.log(e_errors.ERROR, "read_tape: error skipping over cpio header, len(buf)=%s"%(len(self.buffer._buf)))
                 b0 = self.buffer._buf[0]
                 if len(b0) >= self.wrapper.min_header_size:
                     header_size = self.wrapper.header_size(b0)
@@ -614,6 +616,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(10, "write_client, bytes_to_write=%s" % (self.bytes_to_write,))
         driver = self.net_driver
         if self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
+            while self.buffer.header_size == 0 and self.state in (ACTIVE, DRAINING):
+                Trace.trace(15, "write_client: waiting for read_tape to set header info")
+                self.buffer.write_ok.clear()
+                self.buffer.write_ok.wait(1)
+                
             self.buffer.stream_write(self.buffer.header_size, None)
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
