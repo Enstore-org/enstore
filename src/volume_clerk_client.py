@@ -7,6 +7,7 @@ import string
 import time
 import errno
 import socket
+import select
 import pprint
 import rexec
 
@@ -15,6 +16,7 @@ def eval(stuff):
 
 # enstore imports
 import callback
+import hostaddr
 import interface
 import generic_client
 import backup_client
@@ -176,8 +178,8 @@ class VolumeClerkClient(generic_client.GenericClient,
                   "callback_addr" : (host, port),
                   "key"           : key,
                   "in_state"      : state,
-                  "not"           : not_cond,
-                  "unique_id"     : str(time.time()) }
+                  "not"           : not_cond}
+
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
@@ -185,26 +187,23 @@ class VolumeClerkClient(generic_client.GenericClient,
                        'vcc.get_vols: sending ticket: %s'%(ticket,) )
             return ticket
 
-        while 1:
-            control_socket, address = listen_socket.accept()
-            new_ticket = callback.read_tcp_obj(control_socket)
-            if ticket["unique_id"] == new_ticket["unique_id"]:
-                listen_socket.close()
-                break
-            else:
-                Trace.log(e_errors.WARNING,
-                          "get_vols - imposter called us back, trying again")
-                control_socket.close()
-        ticket = new_ticket
-        if ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"vcc.get_vols: "\
-                  +"1st (pre-work-read) volume clerk callback on socket "\
-                  +str(address)+", failed to setup transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
+        r,w,x = select.select([listen_socket], [], [], 15)
+        if not r:
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for volume clerk callback"
+        
+        control_socket, address = listen_socket.accept()
+        
+        if not hostaddr.allow(address):
+            control_socket.close()
+            listen_socket.close()
+            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+        
+        ticket = callback.read_tcp_obj(control_socket)
 
-        # If the system has called us back with our own  unique id, call back
-        # the volume clerk on the volume clerk's port and read the
-        # work queues on that port.
+        listen_socket.close()
+
+        if ticket["status"][0] != e_errors.OK:
+            return ticket
 
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         data_path_socket.connect(ticket['volume_clerk_callback_addr'])
@@ -217,10 +216,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"vcc.get_vols "\
-                  +"2nd (post-work-read) volume clerk callback on socket "\
-                  +str(address)+", failed to transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
+            return done_ticket
 
         if volumes.has_key("header"):        # full info
             if print_list:
@@ -256,28 +252,21 @@ class VolumeClerkClient(generic_client.GenericClient,
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols: sending ticket %s"%(ticket,)
+            return ticket
+        r,w,x = select.select([listen_socket], [], [], 15)
+        if not r:
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for volume clerk callback"
+        
+        control_socket, address = listen_socket.accept()
+        if not hostaddr.allow(address):
+            control_socket.close()
+            listen_socket.close()
+            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+        
+        ticket = callback.read_tcp_obj(control_socket)
 
-        while 1:
-            control_socket, address = listen_socket.accept()
-            new_ticket = callback.read_tcp_obj(control_socket)
-            if ticket["unique_id"] == new_ticket["unique_id"]:
-                listen_socket.close()
-                break
-            else:
-                Trace.log(e_errors.WARNING,
-                          "remove_deleted_vols - imposter called us back, trying again")
-                control_socket.close()
-        ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols: "\
-                  +"1st (pre-work-read) volume clerk callback on socket "\
-                  +str(address)+", failed to setup transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
-
-        # If the system has called us back with our own  unique id, call back
-        # the library manager on the library manager's port and read the
-        # work queues on that port.
+            return ticket
 
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         data_path_socket.connect(ticket['volume_clerk_callback_addr'])
@@ -292,16 +281,11 @@ class VolumeClerkClient(generic_client.GenericClient,
         ticket['volumes'] = volumes
         data_path_socket.close()
 
-
         # Work has been read - wait for final dialog with volume clerk
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols "\
-                  +"2nd (post-work-read) volume clerk callback on socket "\
-                  +str(address)+", failed to transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
-
+            return done_ticket
         return ticket
 
     # what is the current status of a specified volume?
