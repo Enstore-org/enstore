@@ -7,7 +7,13 @@ SHELL = /bin/sh
 #
 
 .IGNORE:
-.SUFFIXES: .ps .html
+.SUFFIXES: .ps .gif .html .obj 
+
+.obj.ps:
+	@tgif -print -ps -color $*.obj
+
+.obj.gif:
+	@tgif -print -gif -color $*.obj
 
 WWW  = ./www/
 WWW_NEW = ./www_new/
@@ -32,13 +38,17 @@ GIF_FILES = $(WWW)/bookshelf.gif $(WWW)/read.gif $(WWW)/write.gif \
 
 LOG_FILES = $(WWW)/redwoodfiber.log $(WWW)/redwoodlocal.log
 
+PIC_FILES = christmas.ps christmas.gif \
+	    hardware.ps hardware.gif \
+	    superficial_overviewobj.ps superficial_overviewobj.gif
+
 WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(GIF_FILES) $(LOG_FILES) \
 	$(HOME_FILE)
 
 #
 # TARGETS
 #
-all: www_new obj.ps other
+all: www_new obj.ps other pics
 
 #
 www_new: $(WWW_NEW_FILES)
@@ -56,6 +66,8 @@ obj.ps:
 
 other:
 	./class4module
+
+pics:	$(PIC_FILES)
 
 #
 # Move into the distribution directory.
@@ -88,4 +100,5 @@ clean :
 	@ $(ENSTORE_DIR)/bin/enstoreClean
 	@rm -f [1-9].out *.dot *.ps classes.known
 	@rm -rf www_new
+	@rm -rf $(PIC_FILES)
 
