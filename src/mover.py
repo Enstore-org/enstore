@@ -2026,6 +2026,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 stats = self.tape_driver.ftt.get_stats()
                 r2 = long(stats[ftt.REMAIN_TAPE]) * 1024L
+            except FTTError, detail:
+                Trace.log(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%
+                          (detail,))
             except:
                 Trace.log(e_errors.ERROR, "ftt.get_stats cannot get remaining capacity")
 
