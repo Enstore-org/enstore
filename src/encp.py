@@ -21,7 +21,7 @@ import log_client
 import configuration_client
 import udp_client
 import EXfer
-import base_defaults
+import generic_client_server
 import Trace
 
 ##############################################################################
@@ -1094,7 +1094,7 @@ def outputfile_check(ninput,inputlist,output):
 
 ##############################################################################
 
-class encp(base_defaults.BaseDefaults):
+class encp(generic_client_server.GenericClientServer):
 
     def __init__(self):
         Trace.trace(16,"{encp.__init__")
@@ -1102,7 +1102,7 @@ class encp(base_defaults.BaseDefaults):
         self.chk_crc = 1
         host = 'localhost'
         port = 0
-        base_defaults.BaseDefaults.__init__(self, host, port)
+        generic_client_server.GenericClientServer.__init__(self, host, port)
         Trace.trace(16,"{encp.__init__")
 
     ##########################################################################
@@ -1110,10 +1110,10 @@ class encp(base_defaults.BaseDefaults):
     def options(self):
         Trace.trace(16,"{encp.options")
 
-        the_options = base_defaults.BaseDefaults.config_options(self) + \
-                      base_defaults.BaseDefaults.list_options(self)   + \
+        the_options = generic_client_server.GenericClientServer.config_options(self)+\
+                      generic_client_server.GenericClientServer.list_options(self)+\
                       ["nocrc"] +\
-                      base_defaults.BaseDefaults.options(self)
+                      generic_client_server.GenericClientServer.options(self)
 
         Trace.trace(16,"}encp.options options="+repr(the_options))
         return the_options
@@ -1123,9 +1123,9 @@ class encp(base_defaults.BaseDefaults):
     def help_line(self):
         Trace.trace(16,"{encp.help_line")
 
-        the_help = base_defaults.BaseDefaults.help_line(self)+\
+        the_help = generic_client_server.GenericClientServer.help_line(self)+\
                    " inputfilename outputfilename \n  or\n"+\
-                   base_defaults.BaseDefaults.help_line(self)+\
+                   generic_client_server.GenericClientServer.help_line(self)+\
                    " inputfilename1 ... inputfilenameN outputdirectory"
 
         Trace.trace(16,"}encp.help_line help_line="+the_help)
@@ -1137,7 +1137,7 @@ class encp(base_defaults.BaseDefaults):
         Trace.trace(16,"{encp.parse_options")
 
         # normal parsing of options
-        base_defaults.BaseDefaults.parse_options(self)
+        generic_client_server.GenericClientServer.parse_options(self)
 
         # bomb out if we don't have an input and an output
         arglen = len(self.args)
