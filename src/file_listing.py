@@ -91,7 +91,8 @@ def getinfo(v):
 		if fc[i] == "sS'pnfs_name0'":
 			i = i + 2
 			pnfs_name0 = fc[i]
-		if fc[i] == "sS'location_cookie'":
+		if fc[i] == "sS'location_cookie'" or \
+			fc[i] == "tsS'location_cookie'":
 			i = i + 2
 			location_cookie = fc[i][2:-1]
 	# fix for crc = None
