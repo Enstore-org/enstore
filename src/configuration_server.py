@@ -135,8 +135,8 @@ if __name__ == "__main__" :
             list = 0
         elif opt == "--help" :
             print sys.argv[0], options
-	    print "   do not forget the '--' in front of each option"
-	    sys.exit(0)
+            print "   do not forget the '--' in front of each option"
+            sys.exit(0)
 
     # bomb out if can't translate host
     ip = socket.gethostbyname(host)
