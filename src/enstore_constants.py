@@ -9,6 +9,7 @@ MLAT = "mlat"
 MPH = "mph"
 MPD = "mpd_total"
 MPD_MONTH = "mpd_month"
+UTIL = "Utilization"
 LOG = ".log"
 LOG_PREFIX = "LOG-"
 
@@ -22,6 +23,7 @@ BPD_FILE_R = "%s_r"%(BPD_FILE,)
 BPD_FILE_W = "%s_w"%(BPD_FILE,)
 XFER_FILE = "%s%s"%(FILE_PREFIX, XFER)
 XFERLOG_FILE = "%s%s"%(XFER_FILE, LOG)
+UTIL_FILE = "%s%s"%(FILE_PREFIX, UTIL)
 # ratekeeper generated plot data files
 NULL_RATES = "null_rates"
 REAL_RATES = "real_rates"
