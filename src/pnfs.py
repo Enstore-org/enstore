@@ -2519,7 +2519,7 @@ class File:
 		if long(self.size) > 2147483647L:
 			size2 = 1
 		else:
-			size2 = self.size
+			size2 = long(self.size)
 		real_size = os.stat(self.path)[stat.ST_SIZE]
 		if long(real_size) == long(size2):	# do nothing
 			return
