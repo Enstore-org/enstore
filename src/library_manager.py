@@ -837,16 +837,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	mv = find_mover(mticket, movers, self.verbose)
 	if mv:
 	    try:
+		# try to remove work from work_at_movers list
+		work_at_movers.remove(mv['work_ticket'])
+		format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
+		logticket = self.logc.send(log_client.INFO, 2, format,
+					       repr(mv['work_ticket']),
+					       repr(mv))
+		# check if tape is stuck in in the mounting state
 		vc = volume_clerk_client.VolumeClerkClient(self.csc)
 		vol_info = vc.inquire_vol(mv['work_ticket']['fc']['external_label'])
 		if vol_info['at_mover'][0] == 'mounting':
+		    # force set volume to unmounted
 		    v = vc.set_at_mover(mv['work_ticket']['fc']['external_label'], 'unmounted', 
 					mticket["mover"], 1)
-		    format = "mover idle with tape in mounting state."\
-			     " Removing work from work at movers queue. Work:%s mover:%s"
-		    logticket = self.logc.send(log_client.INFO, 2, format,
-					       repr(mv['work_ticket']),
-					       repr(mv))
 		
 		    work_at_movers.remove(mv['work_ticket'])
 		    del(mv["work_ticket"])
