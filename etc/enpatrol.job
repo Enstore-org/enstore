@@ -14,4 +14,4 @@ $PDIR/patrol3.6a/patrol.pl -l $POUT/patrol.`hostname |cut -f 1 -d .`.obs -c $PDI
 
 sleep 15
 
-$PDIR/patrol3.6a/patrol.pl -i www -s $POUT -c $PDIR/enpatrol.cf -w $PDIR/patrol3.6a/www -t $POUT & 
+$PDIR/patrol3.6a/patrol.pl -i www -s $POUT -c $PDIR/enpatrol.cf -w $PDIR/v3_6a/www -t $POUT & 
