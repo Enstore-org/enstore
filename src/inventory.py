@@ -13,7 +13,6 @@ import db
 import checkBackedUpDatabases
 import configuration_client
 import enstore_constants
-import volume_clerk
 import cPickle
 
 #Grab the start time.
