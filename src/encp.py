@@ -2821,7 +2821,9 @@ def calculate_rate(done_ticket, tinfo):
 ############################################################################
 
 def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
-    # Calculate an overall rate: all bytes, all time
+    #Determine the average of each time (overall, transfer, network,
+    # tape and disk) of all transfers done for the encp.  If only one file
+    # was transfered, then these rates should equal the files rates.
 
     statistics = {}
     
@@ -2833,10 +2835,29 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     bytes_per_MB = 1024 * 1024
     MB_transfered = float(bytes) / float(bytes_per_MB)
 
-    if tinfo['total']: #protect against division by zero.
-        statistics['MB_per_S_total'] = MB_transfered / tinfo['total']
+    #get all the overall rates from the dictionary.
+    overall_rate  = 0L
+    count = 0
+    for value in tinfo.keys():
+        if string.find(value, "overall_rate") != -1:
+            count = count + 1
+            overall_rate = overall_rate + tinfo[value]
+    if count:
+        statistics['MB_per_S_overall'] = overall_rate / count
     else:
-        statistics['MB_per_S_total'] = 0.0
+        statistics['MB_per_S_overall'] = 0.0
+
+    #get all the transfer rates from the dictionary.
+    transfer_rate  = 0L
+    count = 0
+    for value in tinfo.keys():
+        if string.find(value, "transfer_rate") != -1:
+            count = count + 1
+            transfer_rate = transfer_rate + tinfo[value]
+    if count:
+        statistics['MB_per_S_transfer'] = transfer_rate / count
+    else:
+        statistics['MB_per_S_transfer'] = 0.0
 
     #get all the drive rates from the dictionary.
     drive_rate  = 0L
@@ -2844,39 +2865,56 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     for value in tinfo.keys():
         if string.find(value, "drive_rate") != -1:
             count = count + 1
-            drive_rate  = drive_rate  + tinfo[value]
+            drive_rate = drive_rate + tinfo[value]
     if count:
         statistics['MB_per_S_drive'] = drive_rate / count
     else:
         statistics['MB_per_S_drive'] = 0.0
 
-    #get all the drive rates from the dictionary.
+    #get all the network rates from the dictionary.
     network_rate  = 0L
     count = 0
     for value in tinfo.keys():
         if string.find(value, "network_rate") != -1:
             count = count + 1
-            network_rate  = network_rate  + tinfo[value]
+            network_rate = network_rate + tinfo[value]
     if count:
         statistics['MB_per_S_network'] = network_rate / count
     else:
         statistics['MB_per_S_network'] = 0.0
+        
+    #get all the disk rates from the dictionary.
+    disk_rate  = 0L
+    count = 0
+    for value in tinfo.keys():
+        if string.find(value, "disk_rate") != -1:
+            count = count + 1
+            disk_rate = disk_rate + tinfo[value]
+    if count:
+        statistics['MB_per_S_disk'] = disk_rate / count
+    else:
+        statistics['MB_per_S_disk'] = 0.0
     
     msg = "%s transferring %s bytes in %s files in %s sec.\n" \
-          "\tOverall rate = %.3g MB/sec.  Drive rate = %.3g MB/sec.\n" \
-          "\tNetwork rate = %.3g MB/sec.  Exit status = %s."
+          "\tOverall rate = %.3g MB/sec.  Transfer rate = %.3g MB/sec.\n" \
+          "\tNetwork rate = %.3g MB/sec.  Drive rate = %.3g MB/sec.\n" \
+          "\tDisk rate = %.3g MB/sec.  Exit status = %s."
     
     if exit_status:
-        msg = msg % ("Error after", bytes, number_of_files,
-                     tinfo['total'], statistics["MB_per_S_total"],
-                     statistics['MB_per_S_drive'],
+        msg = msg % ("Error after", bytes, number_of_files, tinfo['total'],
+                     statistics["MB_per_S_overall"],
+                     statistics["MB_per_S_transfer"],
                      statistics['MB_per_S_network'],
+                     statistics['MB_per_S_drive'],
+                     statistics["MB_per_S_disk"],
                      exit_status)
     else:
-        msg = msg % ("Completed", bytes, number_of_files,
-                     tinfo['total'], statistics["MB_per_S_total"],
-                     statistics['MB_per_S_drive'],
+        msg = msg % ("Completed", bytes, number_of_files, tinfo['total'],
+                     statistics["MB_per_S_overall"],
+                     statistics["MB_per_S_transfer"],
                      statistics['MB_per_S_network'],
+                     statistics['MB_per_S_drive'],
+                     statistics["MB_per_S_disk"],
                      exit_status)
 
     done_ticket = {}
