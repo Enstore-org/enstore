@@ -53,13 +53,13 @@ class TimerTask:
 
 
 def msg_add( time, func, *args ):
-    timerTaskDict[str(func)] = {'time':time,
+    timerTaskDict[str(func)+str(args)] = {'time':time,
 			   'func':func,
 			   'args':args}
     return None
 
-def msg_cancel( func ):
-    try: del timerTaskDict[str(func)]
+def msg_cancel( func, *args ):
+    try: del timerTaskDict[str(func)+str(args)]
     except: pass
     return None
 
