@@ -615,7 +615,8 @@ class EnEncpDataFile(EnDataFile):
 		    # date and time
                     etime = enstore_functions.strip_file_dir(encp_line.time)
                     self.data.append([string.replace(etime, prefix, ""), 
-                                      encp_line.bytes, encp_line.direction, encp_line.mover])
+                                      encp_line.bytes, encp_line.direction, 
+				      encp_line.mover, encp_line.drive_id])
 
 class EnSgDataFile(EnDataFile):
 

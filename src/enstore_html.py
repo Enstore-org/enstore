@@ -2105,7 +2105,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 		    just_mover = string.replace(text[index:], file_label[0], "")
 		    # get rid of _stamp.jpg too
 		    index = string.find(just_mover, enstore_constants.STAMP)
-		    return "%s (%s)"%(file_label[1], just_mover[0:index])
+		    return "%s %s"%(just_mover[0:index], file_label[1])
 		elif file_label[0] == enstore_constants.MPD_FILE or \
 		     file_label[0] == enstore_constants.MPD_MONTH_FILE or \
 		     file_label[0] == enstore_constants.MLAT_FILE:

@@ -22,6 +22,7 @@ TOTAL = "total"
 READS = "reads"
 WRITES = "writes"
 CTR = "ctr"
+DRIVE_ID = "drive_id"
 LARGEST = "largest"
 SMALLEST = "smallest"
 
@@ -526,7 +527,7 @@ class XferDataFile(EnPlot):
     # make the file with the plot points in them
     def plot(self, data):
 	# write out the data points
-	for [xpt, ypt, type, mover] in data:
+	for [xpt, ypt, type, mover, drive_id] in data:
 	    if type == WRITE:
 		# this was a write request
 		self.openfile.write("%s %s %s\n"%(xpt, ypt, ypt))
@@ -647,10 +648,27 @@ class BpdDataFile(EnPlot):
 	    openfile.close()
 	    self.per_mover_files_d[mover] = openfile
 
+    def sum_movers(self, mover_d):
+	drive_id = mover_d[DRIVE_ID]
+	if not self.movers_d.has_key(drive_id):
+	    self.movers_d[drive_id] = {TOTAL : 0.0, CTR : 0}
+	drive_id_d = self.movers_d[drive_id]
+	for date in mover_d.keys():
+	    if date in [TOTAL, CTR, DRIVE_ID]:
+		continue
+	    # now we have only dates
+	    if not drive_id_d.has_key(date):
+		drive_id_d[date] = [0.0, 0.0]
+	    drive_id_d[date][0] = drive_id_d[date][0] + mover_d[date][0]
+	    drive_id_d[date][1] = drive_id_d[date][1] + mover_d[date][1]
+	else:
+	    drive_id_d[TOTAL] = drive_id_d[TOTAL] + mover_d[TOTAL]
+	    drive_id_d[CTR] = drive_id_d[CTR] + mover_d[CTR]
+
     def sum_data(self, ndata, data):
 	self.read_ctr = 0
 	self.write_ctr = 0
-	for [xpt, ypt, type, mover] in data:
+	for [xpt, ypt, type, mover, drive_id] in data:
 	    adate = xpt[0:10]
 	    fypt = string.atof(ypt)
 	    day = ndata[adate]
@@ -670,7 +688,8 @@ class BpdDataFile(EnPlot):
 		    self.movers_d[mover][adate] = [0.0, 0.0]
 	    else:
 		self.movers_d[mover] = {adate : [0.0, 0.0],
-					TOTAL : 0.0, CTR : 0 }
+					TOTAL : 0.0, CTR : 0,
+					DRIVE_ID : drive_id}
 
 	    if type == WRITE:
 		day[WRITES] = day[WRITES] + fypt
@@ -682,6 +701,10 @@ class BpdDataFile(EnPlot):
 		self.read_ctr = self.read_ctr + 1
 	    self.movers_d[mover][TOTAL] = self.movers_d[mover][TOTAL] + fypt
 	    self.movers_d[mover][CTR] = self.movers_d[mover][CTR] + 1
+	else:
+	    # now sum the data based on mover type
+	    for mover in self.movers_d.keys():
+		self.sum_movers(self.movers_d[mover])
 
     # make the file with the bytes per day format, first we must sum the data
     # that we have based on the day
