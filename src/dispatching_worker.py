@@ -1,6 +1,9 @@
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import errno
 import time
@@ -8,11 +11,11 @@ import os
 import traceback
 import checksum
 import sys
-import socket
+#import socket
 import signal
-import string
+#import string
 import copy
-import types
+#import types
 
 #enstore imports
 import udp_server
@@ -30,22 +33,28 @@ DEFAULT_TTL = 60 #One minute lifetime for child processes
 class DispatchingWorker(udp_server.UDPServer):
     
     def __init__(self, server_address):
-        udp_server.UDPServer.__init__(self, server_address, receive_timeout=60.)
+        udp_server.UDPServer.__init__(self, server_address,
+                                      receive_timeout=60.0)
         #If the UDPServer socket failed to open, stop the server.
         if self.server_socket == None:
             msg = "The udp server socket failed to open.  Aborting.\n"
             sys.stdout.write(msg)
             sys.exit(1)
             
-        # deal with multiple interfaces
-        self.read_fds = []    # fds that the worker/server also wants watched with select
-        self.write_fds = []   # fds that the worker/server also wants watched with select
-        self.callback = {} #callback functions associated with above
-        self.interval_funcs = {} # functions to call periodically - key is function, value is [interval, last_called]
+        #Deal with multiple interfaces.
 
-        
-        ## flag for whether we are in a child process
-        ## Server loops should be conditional on "self.is_child" rather than 'while 1'
+        # fds that the worker/server also wants watched with select
+        self.read_fds = []    
+        self.write_fds = []
+        # callback functions associated with above
+        self.callback = {}
+        # functions to call periodically -
+        #  key is function, value is [interval, last_called]
+        self.interval_funcs = {} 
+
+        ## Flag for whether we are in a child process.
+        ## Server loops should be conditional on "self.is_child"
+        ## rather than 'while 1'.
         self.is_child = 0
         self.n_children = 0
         self.kill_list = []
@@ -79,7 +88,8 @@ class DispatchingWorker(udp_server.UDPServer):
                 self.n_children = self.n_children - 1
                 if pid in self.kill_list:
                     self.kill_list.remove(pid)
-                Trace.trace(6, "collect_children: collected %d, nchildren = %d" % (pid, self.n_children))
+                Trace.trace(6, "collect_children: collected %d, nchildren = %d"
+                            % (pid, self.n_children))
             except os.error, msg:
                 if msg.errno == errno.ECHILD: #No children to collect right now
                     break
@@ -167,7 +177,8 @@ class DispatchingWorker(udp_server.UDPServer):
             self.process_request(request, client_address)
         except KeyboardInterrupt:
             traceback.print_exc()
-        except SystemExit, code:        # processing may fork (forked process will call exit)
+        except SystemExit, code:
+            # processing may fork (forked process will call exit)
             sys.exit( code )
         except:
             self.handle_error(request, client_address)
@@ -216,7 +227,8 @@ class DispatchingWorker(udp_server.UDPServer):
                 now = time.time()
                 for func, time_data in self.interval_funcs.items():
                     interval, last_called, one_shot = time_data
-                    rcv_timeout = min(rcv_timeout, interval - (now - last_called))
+                    rcv_timeout = min(rcv_timeout,
+                                      interval - (now - last_called))
 
                 rcv_timeout = max(rcv_timeout, 0)
 
@@ -232,14 +244,18 @@ class DispatchingWorker(udp_server.UDPServer):
 
             #now handle other incoming requests
             for fd in r:
-                if type(fd) == type(1) and fd in self.read_fds and self.callback[fd]==None: #XXX this is special-case code,
-                                                        ##for old usage in media_changer
+                if type(fd) == type(1) \
+                   and fd in self.read_fds \
+                   and self.callback[fd]==None: #XXX this is special-case code,
+                                                #for old usage in media_changer
                     msg = os.read(fd, 8)
 
                     try:
-                        bytecount = string.atoi(msg)
-                    except:
-                        Trace.trace(20,'get_request_select: bad bytecount %s %s' % (msg,len(msg)))
+                        bytecount = int(msg)
+                    except ValueError:
+                        Trace.trace(20,
+                                    'get_request_select: bad bytecount %s %s'
+                                    % (msg, len(msg)))
                         break
                     msg = ""
                     while len(msg)<bytecount:
@@ -247,33 +263,42 @@ class DispatchingWorker(udp_server.UDPServer):
                         if not tmp:
                             break
                         msg = msg+tmp
-                    request= (msg,())                    #             if so read it
+                    request= (msg,())          # if so read it
                     self.remove_select_fd(fd)
                     os.close(fd)
                     return request
                 elif fd == self.server_socket:
-                    req,addr = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
+                    #Get the 'raw' request and the address from whence it came.
+                    req, addr = self.server_socket.recvfrom(
+                        self.max_packet_size, self.rcv_timeout)
+
+                    #Determine if the address the request came from is
+                    # one that we should be responding to.
                     try:
-                        host_address = hostaddr.allow(addr)
+                        is_valid_address = hostaddr.allow(addr)
                     except IndexError, detail:
-                        Trace.log(e_errors.ERROR, "hostaddr failed with %s Req.= %s, addr= %s"%(detail,req, addr))
+                        Trace.log(e_errors.ERROR,
+                                  "hostaddr failed with %s Req.= %s, addr= %s"\
+                                  % (detail, req, addr))
                         request = None
                         return (request, addr)
-                        #raise IndexError
+                    #If it should not be responded to, handle the error.
+                    if not is_valid_address:
+                        Trace.log(e_errors.ERROR,
+                               "attempted connection from disallowed host %s" \
+                                  % (addr[0],))
+                        request = None
+                        return (request, addr)
                     
-                    if not host_address:
-                        Trace.log(e_errors.ERROR, "attempted connection from disallowed host %s" % (addr[0],))
-                        request = None
                     gotit = 1
-                    request,inCRC = self.r_eval(req)
-                    if request == None:
-                        return (request, addr)
+                    request, inCRC = self.r_eval(req)
                     # calculate CRC
                     crc = checksum.adler32(0L, request, len(request))
                     if (crc != inCRC) :
-                        Trace.log(e_errors.INFO, "BAD CRC request: "+request)
+                        Trace.log(e_errors.INFO, "BAD CRC request: " + request)
                         Trace.log(e_errors.INFO,
-                                  "CRC: "+repr(inCRC)+" calculated CRC: "+repr(crc))
+                                  "CRC: " + repr(inCRC) +
+                                  " calculated CRC: " + repr(crc))
                         request=None
 
         return (request, addr)
@@ -284,8 +309,11 @@ class DispatchingWorker(udp_server.UDPServer):
         # to get this information)
         self.reply_address = client_address
         idn, number, ticket = self.r_eval(request)
-        if idn == None or type(ticket) != type({}) or not ticket.has_key("work"):
-            Trace.log(e_errors.ERROR,"Malformed request from %s %s"%(client_address, request,))
+        if idn == None \
+               or type(ticket) != type({}) \
+               or not ticket.has_key("work"):
+            Trace.log(e_errors.ERROR, "Malformed request from %s %s" %
+                      (client_address, request,))
             reply = (0L,{'status': (e_errors.MALFORMED, None)},None)
             self.server_socket.sendto(repr(reply), self.reply_address)
             return
@@ -316,8 +344,10 @@ class DispatchingWorker(udp_server.UDPServer):
             function = getattr(self,function_name)
         except (KeyError, AttributeError), detail:
             ticket = {'status' : (e_errors.KEYERROR, 
-                                  "cannot find requested function `%s'"%(function_name,))}
-            Trace.trace(6,"%s process_request %s %s"%(detail,ticket,function_name))
+                                  "cannot find requested function `%s'"
+                                  % (function_name,))}
+            Trace.trace(6,"%s process_request %s %s"
+                        % (detail, ticket, function_name))
             self.reply_to_caller(ticket)
             return
 
@@ -389,9 +419,14 @@ class DispatchingWorker(udp_server.UDPServer):
         os._exit(0) ##MWZ: Why not sys.exit()?  No servers fork() anymore...
 
     # cleanup if we are done with this unique id
-    def done_cleanup(self,ticket):
+    def done_cleanup(self, ticket):
+        #The parameter ticket is necessary since that is part of the
+        # interface.  All other 'work' related functions also have it.
+        __pychecker__ = "unusednames=ticket"
+        
         try:
-            Trace.trace(6,"done_cleanup id %s %s "%(self.current_id, self.request_dict[self.current_id]))
+            Trace.trace(6,"done_cleanup id %s %s " %
+                        (self.current_id, self.request_dict[self.current_id]))
             ##Trace.trace(6,"done_cleanup %s"%(self.request_dict,))
             del self.request_dict[self.current_id]
             ##Trace.trace(6,"done_cleanup after %s"%(self.request_dict,))
@@ -411,5 +446,7 @@ class DispatchingWorker(udp_server.UDPServer):
         if self.reply_address[0] in self.ipaddrlist:
              return None
 
-        return (e_errors.ERROR, "This restricted service can only be requested from node %s"%(self.node_name))
+        return (e_errors.ERROR,
+                "This restricted service can only be requested from node %s"
+                % (self.node_name))
     
