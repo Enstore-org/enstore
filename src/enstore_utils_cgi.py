@@ -8,6 +8,7 @@ import getpass
 import posixpath
 import regex_syntax
 import regex
+import glob
 
 TMP_DIR = "/tmp/enstore"
 TIMEOUT = 3
