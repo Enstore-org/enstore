@@ -91,6 +91,12 @@ case $cmd in
     python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
+
+  backup)
+    python $ENSTORE_DIR/src/backup.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
+    stat=$?
+    ;;
+
   addvol)
     python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --addvol $@
     stat=$?
