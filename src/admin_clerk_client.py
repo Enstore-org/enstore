@@ -62,7 +62,7 @@ class AdminClerkClient(generic_client.GenericClient) :
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
         # work queues on that port.
-        data_path_socket = callback.admin_clerk_callback_socket(ticket)
+        data_path_socket = callback.admin_server_callback_socket(ticket)
 	ticket= callback.read_tcp_socket(data_path_socket, "admin clerk"\
 		  +"client select, ac final dialog")
 	msg=""
