@@ -822,7 +822,7 @@ def requests_outstanding(request_list):
     return files_left
 
 #Update the ticket so that next file can be read.
-def next_request_update(work_ticket, file_number):
+def next_request_update(work_ticket, file_number, encp_intf):
 
     #Update the location cookie with the new file mark posistion.
     lc = "0000_000000000_%07d" % file_number
@@ -859,7 +859,21 @@ def next_request_update(work_ticket, file_number):
         work_ticket['wrapper']['fullname'] = work_ticket['outfile']
 
     #Get the stat of the parent directory where the pnfs file will be placed.
-    stats = os.stat(os.path.dirname(work_ticket['infile']))
+    if not encp_intf.pnfs_is_automounted:
+        stats = os.stat(os.path.dirname(work_ticket['infile']))
+    else:
+        # automaticall retry 6 times, one second delay each
+        i = 0
+        dirname = os.path.dirname(work_ticket['infile'])
+        while i < 6:
+            try:
+                stats = os.stat(dirname)
+                break
+            except OSError:
+                time.sleep(1)
+                i = i + 1
+        else:
+            stats = os.stat(dirname)
 
     #Clear this wrapper information.
     work_ticket['wrapper']['inode'] = 0
@@ -886,7 +900,7 @@ def get_next_request(request_list, e): #, filenumber = None):
         else:
             filenumber = encp.extract_file_number(request_list[-1]['fc']['location_cookie'])
             request = next_request_update(copy.deepcopy(request_list[0]),
-                                          filenumber + 1)
+                                          filenumber + 1, e)
             request_list.append(request)
             return request, (len(request_list) - 1)
         
