@@ -80,12 +80,6 @@ To extract:   cpio -idmv < archive
 
 """
 
-def hex_string_to_signed_int32(s):
-    if s[:2] not in ('0x','0X'):
-        s = '0x'+s
-    return eval(s)
-
-
 
 class Wrapper :
 
@@ -276,10 +270,9 @@ def encrc( buffer ):
         filename_size = string.atoi(buffer[94:102],16)
         data_offset = 110+filename_size
         data_offset =data_offset + (4-(data_offset%4))%4
-        # We have switched to 32 bit crcs.  This means that string.atoi now
-        # causes an overflow when the crc value has the sign bit set.  The most
-        # obvious solution of going to atol doesn't work. 
-        crc = hex_string_to_signed_int32(buffer[data_offset:data_offset+8])
+        # We have switched to 32 bit crcs.
+        # We are using Python long integers to represent them so they don't go negative
+        crc = string.atol(buffer[data_offset:data_offset+8])
         return crc
 
 ###############################################################################
