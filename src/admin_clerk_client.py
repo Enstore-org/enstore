@@ -3,6 +3,8 @@
 #
 # system imports
 import time
+import errno
+import sys
 
 # enstore imports
 import callback
@@ -95,9 +97,9 @@ class AdminClerkClient(generic_client.GenericClient) :
 
     def printRec(self,msg):
         import regex
-   	index=regex.search("}",msg)
+        index=regex.search("}",msg)
 	self.enprint(msg[:index+1], generic_cs.PRETTY_PRINT)
-   	if index==len(msg)-1:
+        if index==len(msg)-1:
 	   msg=""
 	else:
 	   msg=msg[index+1:]
@@ -171,7 +173,6 @@ class AdminClerkClientInterface(generic_client.GenericClientInterface) :
 
 
 if __name__ == "__main__" :
-    import sys
     Trace.init("admin cli")
     Trace.trace(1,"acc called with args "+repr(sys.argv))
 
@@ -194,7 +195,7 @@ if __name__ == "__main__" :
 	   for key in intf.criteria.keys():
 		if key != 'external_label':
 		   intf.set_dbname("volume,file")
-    	ticket=acc.select(intf.criteria,intf.dbname) 
+        ticket=acc.select(intf.criteria,intf.dbname) 
 	msg_id = generic_cs.CLIENT
 
     del acc.csc.u
