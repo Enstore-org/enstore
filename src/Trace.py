@@ -50,13 +50,13 @@ def dont_print(levels):
         if print_levels.has_key(level):
             del print_levels[level]
 
-def do_log(level):
+def do_log(levels):
     if type(levels) != type([]):
         levels = [levels]
     for level in levels:
         log_levels[level]=1
 
-def dont_log(level):
+def dont_log(levels):
     if level<5:
         raise "Not allowed"
     if log_levels.has_key(level):
