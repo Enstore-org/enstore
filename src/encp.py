@@ -209,7 +209,7 @@ def write_to_hsm(input, output,
             # if old ticket exists, that means we are retrying
             #    then just bump priority and change unique id
             try:
-		oldtick = work_ticket["encp"]["curpri"] # get a name error if this is new ticket
+                oldtick = work_ticket["encp"]["curpri"] # get a name error if this is new ticket
                 work_ticket["encp"]["basepri"] = work_ticket["encp"]["basepri"] + 4
                 work_ticket["priority"] = workticket["priority"]+4 # this will be deleted shortly
 
@@ -226,12 +226,12 @@ def write_to_hsm(input, output,
                 uinfo["mtime"] = int(time.time())
                 work_ticket = {"work"               : "write_to_hsm",
                                "priority"           : 1,
-			       "callback_addr"      : callback_addr,
+                               "callback_addr"      : callback_addr,
                                "fc"                 : file_clerk,
                                "pinfo"              : pinfo[i],
                                "uinfo"              : uinfo,
                                "encp"               : encp,
-			       "times"              : times,
+                               "times"              : times,
                                "unique_id"          : unique_id[i]
                                }
 
@@ -661,11 +661,11 @@ def read_from_hsm(input, output,
                 file_clerk = {"bfid"               : bfid[i]}
                 work_ticket = {"work"              : "read_from_hsm",
                                "uinfo"             : uinfo,
-			       "callback_addr"     : callback_addr,
+                               "callback_addr"     : callback_addr,
                                "fc"                : file_clerk,
                                "pinfo"             : pinfo[i],
                                "encp"              : encp,
-			       "times"             : times,
+                               "times"             : times,
                                "unique_id"         : unique_id[i]
                                }
 
@@ -1292,6 +1292,33 @@ class encp(interface.Interface):
             self.outtype="hsmfile"
         else:
             self.outtype="unixfile"
+
+
+        # we need to know config_host
+        try:
+            ch = self.config_host
+        except:
+            # not specified - try to get it from the environment
+            try:
+                self.config_host =dbHome=os.environ['ENSTORE_CONFIG_HOST']
+            except:
+                print "ERROR: config_host not specified and ENSTORE_CONFIG_HOST",\
+                      " is not defined in the environment"
+                self.print_help()
+                sys.exit(1)
+
+        # we need to know config_port
+        try:
+            ch = self.config_port
+        except:
+            # not specified - try to get it from the environment
+            try:
+                self.config_port =dbHome=os.environ['ENSTORE_CONFIG_PORT']
+            except:
+                print "ERROR: config_host not specified and ENSTORE_CONFIG_PORT",\
+                      " is not defined in the environment"
+                self.print_help()
+                sys.exit(1)
 
         # tracing info
         dictlist = ""
