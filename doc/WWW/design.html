@@ -827,23 +827,19 @@ It is readily obtainable and free.
 </ul>
 
 We don't consider the current selection of the LIBTP database to be
-necessarily the final one.  For example, although it may not be necessary for
-Enstore's internal needs, implementation of maintenance functionality is not
-realistically possible without a way to select data  using 
-attributes other than the primary database key. There are two possible ways to
-solve this problem. One way is to create additional database index
-tables. This is a straightforward extension on top of LIBTP, although
-probably not the most elegant solution. Another possible method we are
-considering is to use relational databases in Enstore.
-
-<p>
-
-For the Enstore project, databases are a modular component and switching
-databases means modifying a module only. If a new database is chosen, we
-are expecting that the database servers and clients will have to be
-redesigned to take advantage of the relational features.  Python interfaces
-will also have to be developed to allow the current framework to keep
-working.
+necessarily the final one.  For example, although it may not be necessary
+for Enstore's internal needs, implementation of maintenance functionality
+is not realistically possible without a way to select data using attributes
+other than the primary database key. There are two possible ways to solve
+this problem. One way is to create additional database index tables. This
+is a straightforward extension on top of LIBTP, although probably not the
+most elegant solution. Another possible method we are considering is to use
+relational databases in Enstore.  For the Enstore project, databases are a
+modular component and switching databases means modifying a module only. If
+a new database is chosen, we are expecting that the database servers and
+clients will have to be redesigned to take advantage of the relational
+features.  Python interfaces will also have to be developed to allow the
+current framework to keep working.
 
 <h2><a name="admin_tools">
 2.3 Administrative Tools
