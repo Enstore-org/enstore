@@ -91,7 +91,12 @@ class  RawDiskDriver(GenericDriver) :
 		self.eod = last_byte
 		self.eod = self.eod + (
 			self.blocksize - (self.eod % self.blocksize))
-		return `(first_byte, last_byte)`  #cookie describing the file
+		# If the data is being written to a file on a hard drive, the
+		# file has to be blanked filled to the next blocksize.
+		# Otherwise, the next open_write doesn't seek to end
+		empty = self.eod-last_byte-1      # number of empty bytes
+		self.write_block("J"*empty)       # needs to filled out for hard
+		return `(first_byte, last_byte)`  # cookie describing the file
 
 	def get_eod_cookie(self):
 		return `self.eod`
@@ -106,6 +111,7 @@ class  RawDiskDriver(GenericDriver) :
 			self.remaining_bytes = (self.remaining_bytes - 
 				len(data))
 			self.df.write(data)
+			self.df.flush()
 			if self.first_write_block :
 			     self.first_write_block = 0
 			     self.eod = self.df.tell() - len(data)
