@@ -86,15 +86,11 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
 
         rc = -1 #poll() returns -1 when the process is still alive.
         line = 1 #Somethig true.
-        while rc == -1 and line:
+        while rc == -1 or line:
             line = pipeObj.fromchild.readline()[:-1]
             if rc == -1:
                 rc = pipeObj.poll() # Don't get if we already have it.
-            #if rc != -1:
-            #    rc = rc >> 8
             if line:
-                if len(line)> 1:
-                    line=line[:-1]
                 #This will put all of the standard out and err output from
                 # get to sdsscp's standard out.  There is probably a better
                 # way, but for now this will work.
@@ -106,26 +102,13 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
                     except IndexError, detail:
                         sys.stderr.write("%s\n" % (detail,))
             else:
+                #Get the exit status when the pipe has been closed.
+                rc = pipeObj.wait()
                 break
 
-        rc = rc >> 8
+        rc = rc >> 8 #This needs to be shifted 8.
         if rc == 0 or rc == 2:
             break
-        #else:
-        #    print "stat",rc
-        #    while 1:
-        #        line = pipeObj.childerr.readline() # don't cut out \n there may be such lines
-        #        if line:
-        #            sys.stderr.write(line)
-        #            if len(line) > 1: line=line[:-1]
-        #            if line.find("error_output") != -1:
-        #                items = line.split()
-        #                try:
-        #                    missingFiles.append(items[1])
-        #                except IndexError, detail:
-        #                   sys.stderr.write("%s\n"%(detail,))
-        #        else:
-        #            break
 
         del(pipeObj)
         print "missing files", missingFiles
