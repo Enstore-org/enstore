@@ -314,8 +314,8 @@ class EnStatus:
 				     add_commas(str(ticket["bytes_to_xfer"])))
                 self.get_location_cookie(ticket, key)
 		self.text[key][FILES] = []
-		self.text[key][FILES][0] = "%s -->"%(ticket['files'][1],)
-		self.text[key][FILES][1] = ticket['files'][0]
+		self.text[key][FILES].append("%s -->"%(ticket['files'][1],))
+		self.text[key][FILES].append(ticket['files'][0])
 		self.text[key][VOLUME] = ticket['tape']
 	    elif ticket["mode"] == "w":
 	        self.text[key][STATE] = "%s writing %s bytes to Enstore"%\
@@ -323,8 +323,8 @@ class EnStatus:
 				     add_commas(str(ticket["bytes_to_xfer"])))
                 self.get_eod_cookie(ticket, key)
 		self.text[key][FILES] = []
-		self.text[key][FILES][0] = "%s -->"%(ticket['files'][0],)
-		self.text[key][FILES][1] = ticket['files'][1]
+		self.text[key][FILES].append("%s -->"%(ticket['files'][0],))
+		self.text[key][FILES].append(ticket['files'][1])
 		self.text[key][VOLUME] = ticket['tape']
             elif ticket["mode"] == "u":
                 self.text[key][STATE] = "%s dismounting volume %s"%\
@@ -345,14 +345,14 @@ class EnStatus:
                     self.get_location_cookie(ticket, key)
 		    self.text[key][VOLUME] = ticket['tape']
 		    self.text[key][FILES] = []
-		    self.text[key][FILES][0] = "%s -->"%(ticket['files'][1],)
-		    self.text[key][FILES][1] = ticket['files'][0]
+		    self.text[key][FILES].append("%s -->"%(ticket['files'][1],))
+		    self.text[key][FILES].append(ticket['files'][0])
                 elif string.find(work, "write") != -1:
                     self.get_eod_cookie(ticket, key)
 		    self.text[key][VOLUME] = ticket['tape']
 		    self.text[key][FILES] = []
-		    self.text[key][FILES][1] = ticket['files'][0]
-		    self.text[key][FILES][0] = "%s -->"%(ticket['files'][1],)
+		    self.text[key][FILES].append(ticket['files'][0])
+		    self.text[key][FILES].append("%s -->"%(ticket['files'][1],))
         else:
 	    self.text[key][STATE] = ticket["state"]
 
