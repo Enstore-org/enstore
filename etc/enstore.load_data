@@ -1,2 +1,0 @@
-copy rvolume from '/home/huangch/db/vol.dmp';
-copy rfile from '/home/huangch/db/file.dmp';

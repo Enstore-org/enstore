@@ -16,7 +16,7 @@ provided to read the message.
 
 DEFAULT_PORT = 55510
 
-DEFAULT_TIMEOUT = 3
+DEFAULT_TIMEOUT = 10
 DEFAULT_TRIES = 1
 
 def get_event_relay_host(csc):
@@ -109,7 +109,6 @@ class EventRelayClient:
     def send(self, msg):
         try:
             if not self.invalid:
-                
                 msg.send(self.sock, self.event_relay_addr)
                 return self.SUCCESS
             else:
@@ -215,7 +214,7 @@ class EventRelayClient:
         if self.start([event_relay_messages.ALIVE,]) == self.SUCCESS:
             self.event_relay_heartbeat()
             # wait for events
-            readable, junk, junk = select.select([self.sock], [], [], DEFAULT_TIMEOUT)
+            readable, junk, junk = select.select([self.sock], [], [], 25)
             if readable:
                 for fd in readable:
                     msg = enstore_erc_functions.read_erc(self)
