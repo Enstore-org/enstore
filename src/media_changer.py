@@ -552,7 +552,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
       OCS Installation/Administration Guide, Version 3.1, details this 
       mechanism.
     """
-    status_message = {
+    status_message_dict = {
       'OK':        (e_errors.OK, "request successful"),
       'ERRCfgHst': (e_errors.NOACCESS, "mc:Shlf config OCShost incorrect"),
       'ERRNoLoHN': (e_errors.NOACCESS, "mc:Shlf local hostname not accessable"),
@@ -576,6 +576,19 @@ class Shelf_MediaLoader(MediaLoaderMethods):
       'ERRDsmRsh': (e_errors.DISMOUNTFAILED, "mc:Shlf dismount rsh error")
       }
 
+    def status_message(s):
+        if s in self.status_message_dict.keys():
+            return self.status_message_dict[s][1]
+        else:
+            return s
+
+    def status_code(s):
+        if s in self.status_message_dict.keys():
+            return self.status_message_dict[s][0]
+        else:
+            return e_errors.ERROR
+
+        
     def __init__(self, medch, maxwork=1, csc=None): #Note: maxwork may need to be changed, tgj
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
 	self.prepare=self.unload #override prepare with dismount and deallocate
@@ -593,22 +606,27 @@ class Shelf_MediaLoader(MediaLoaderMethods):
 	        self.cmdSuffix = "'"
                 fnstatus = self.checkRemoteConnection()
 		if fnstatus != 'OK' :
-                    Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+                    Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
+                              (fnstatus, self.status_message(fnstatus)))
 		    return
 	else :
             ## XXX fnstatusR not defined at this point...
-            #Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatusR, self.status_message[fnstatusR][1]) )
-            Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+            #Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
+            # (fnstatusR, self.status_message(fnstatusR))
+            Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
+                      (fnstatus, self.status_message(fnstatus)))
 	    return
         fnstatus = self.checkOCSalive()
         if fnstatus != 'OK' :
-             Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+             Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
+                       (fnstatus, self.status_message(fnstatus)))
              return
      	#fnstatus = self.deallocateOCSdrive("AllTheTapeDrives")
         #if fnstatus != 'OK' :
-        #     Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+        #     Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
+        #                   (fnstatus, self.status_message(fnstatus)))
         #     return
-        Trace.log(e_errors.INFO, "Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+        Trace.log(e_errors.INFO, "Shelf init %s %s" % (fnstatus, self.status_message(fnstatus)))
 	return
 
     def getOCSHost(self):
@@ -699,7 +717,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
          	    pos=string.find(retstring," ")
 		    if pos != -1 :
 		        wrongdrive=string.strip(retstring[pos+1:])
-                        Trace.log(e_errors.ERROR, "ERROR:Shelf aOd rsh wrongdrive=" % wrongdrive )
+                        Trace.log(e_errors.ERROR, "ERROR:Shelf aOd rsh wrongdrive=%s" % wrongdrive )
 		    fnstatusR = self.deallocateOCSdrive(drive)
                     return fnstatus
 	else :
@@ -795,8 +813,9 @@ class Shelf_MediaLoader(MediaLoaderMethods):
 	    status = 0
 	else :
 	    status = 1
-            Trace.log(e_errors.ERROR, "ERROR:Shelf load exit fnst=%s %s %s" % (status, fnstatus, self.status_message[fnstatus][1]) )
-        return self.status_message[fnstatus][0], status, self.status_message[fnstatus][1]
+            Trace.log(e_errors.ERROR, "ERROR:Shelf load exit fnst=%s %s %s" %
+                      (status, fnstatus, self.status_message(fnstatus)))
+        return self.status_code(fnstatus), status, self.status_message(fnstatus)
 
     def unload(self, external_label, drive, media_type):
 	"unload a tape"
@@ -804,14 +823,16 @@ class Shelf_MediaLoader(MediaLoaderMethods):
      	fnstatus = self.deallocateOCSdrive(drive)
         Trace.log(e_errors.INFO, "Shelf unload deallocate exit fnstatus=%s" % fnstatus)
 	if fnstatusTmp != 'OK' :
-            Trace.log(e_errors.ERROR, "ERROR:Shelf unload deall exit fnst=%s %s %s" % (status, fnstatus, self.status_message[fnstatus][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:Shelf unload deall exit fnst= %s %s" %
+                      (fnstatus, self.status_message(fnstatus)))
 	    fnstatus = fnstatusTmp
 	if fnstatus == 'OK' :
 	    status = 0
 	else :
 	    status = 1
-            Trace.log(e_errors.ERROR, "ERROR:Shelf unload exit fnst=%s %s %s" % (status, fnstatus, self.status_message[fnstatus][1]) )
-        return self.status_message[fnstatus][0], status, self.status_message[fnstatus][1]
+            Trace.log(e_errors.ERROR, "ERROR:Shelf unload exit fnst= %s %s" %
+                      (fnstatus, self.status_message(fnstatus)))
+        return self.status_code(fnstatus), status, self.status_message(fnstatus)
 
     def getNretry(self):
         numberOfRetries = 1
