@@ -320,8 +320,8 @@ class LoggerClient(generic_client.GenericClient):
         except:
             self.uname = 'unknown'
         self.log_priority = 7
-	lticket = self.csc.get( servername )
-	self.logger_address = (lticket['hostip'], lticket['port'])
+	self.logger_address = self.get_server_address(servername)
+        lticket = self.csc.get( servername )
         self.log_dir = lticket.get("log_file_path", "")
         self.u = udp_client.UDPClient()
 	Trace.set_log_func( self.log_func )
@@ -345,7 +345,8 @@ class LoggerClient(generic_client.GenericClient):
 		msg_type = genMsgType(msg, ln, e_errors.sevdict[severity])
 	    except NameError:
 		msg_type = "%sNAME_ERROR"%(Trace.MSG_TYPE,)
-            msg = "%s %s" % (msg, msg_type)
+            if msg_type[:7] !='MISCERR':
+                msg = "%s %s" % (msg, msg_type)
 
 	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
 				       e_errors.sevdict[severity],name,msg)
