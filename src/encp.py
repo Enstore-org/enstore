@@ -1481,7 +1481,7 @@ def get_callback_addr(ip = None):  #encp_intf, ip=None):
 
     return callback_addr, listen_socket
 
-def get_routing_callback_addr(encp_intf, udps=None):
+def get_udp_callback_addr(encp_intf, udps=None):
     # get a port to talk on and listen for connections
     if udps == None:
         udps = udp_server.UDPServer(None,
@@ -1495,14 +1495,25 @@ def get_routing_callback_addr(encp_intf, udps=None):
         # cause some timeout errors, but that is life.
         if udps.server_socket == None:
             udps.__init__(None, receive_timeout=encp_intf.mover_timeout)
-                          
-    route_callback_addr = (udps.server_address[0], udps.server_address[1])
+
+    if udps.server_socket:
+        #This servers two purposes.  First, should the route change
+        # while the socket is still in use and antispoofing is turned on
+        # at the routers, the packets will continue using the original route.
+        # Second, we don't want to assume that everything will want this
+        # functionality; thus it is not set in udp_server itself.
+        #Reliability was choosen because this is UDP and any boost in
+        # delivering the packets is good.
+        udps.server_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
+                                      socket.IPTOS_RELIABILITY)
+
+    udp_callback_addr = (udps.server_address[0], udps.server_address[1])
     
     Trace.message(CONFIG_LEVEL,
                   "Listening for mover(s) to send route back on (%s, %s)." %
-                  route_callback_addr)
+                  udp_callback_addr)
 
-    return route_callback_addr, udps
+    return udp_callback_addr, udps
 
 ##############################################################################
 
@@ -2391,7 +2402,9 @@ def open_udp_socket(udp_server, unique_id_list, encp_intf):
         raise EncpError(errno.ETIMEDOUT,
                         "Mover did not call udp back.", e_errors.TIMEDOUT)
 
-    udp_server.reply_to_caller_using_interface_ip(udp_ticket, udp_ticket['callback_addr'][0])
+    #udp_server.reply_to_caller_using_interface_ip(
+    #    udp_ticket, udp_ticket['callback_addr'][0])
+    udp_server.reply_to_caller(udp_ticket)
 
     return udp_ticket
 
@@ -2416,13 +2429,18 @@ def open_routing_socket(mover_ip, encp_intf):
     interface=host_config.check_load_balance(mode=mode)
     #load balencing...
     if interface:
+        #Record which interface was choosen.
+        if_name = interface.get('interface', "unknown")
+        Trace.message(4, "Choosing interface: %s" % if_name)
+        Trace.log(e_errors.INFO, "Choosing interface: %s" % if_name)
+
         ip = interface.get('ip')
 	if ip and mover_ip:   #route_ticket.get('mover_ip', None):
-	    #With this loop, give another encp 10 seconds to delete the route
+	    #With this loop, give another encp 2 seconds to delete the route
 	    # it is using.  After this time, it will be assumed that the encp
 	    # died before it deleted the route.
 	    start_time = time.time()
-	    while(time.time() - start_time < 10):
+	    while(time.time() - start_time < 2):
 
                 try:
                     host_config.update_cached_routes()
@@ -2604,12 +2622,12 @@ def open_data_socket(mover_addr, interface_ip = None):
     Trace.log(e_errors.INFO,
               "Data socket %s is connected to %s. " % (sockname, peername))
 
-    #try:
-	#data_path_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
-		#		    socket.IPTOS_THROUGHPUT)
-    #except socket.error, msg:
-#	sys.stderr.write("Socket error setting IPTOS_THROUGHPUT option: %s\n" %
-	#		 str(msg))
+    try:
+	data_path_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
+				    socket.IPTOS_THROUGHPUT)
+    except socket.error, msg:
+	sys.stderr.write("Socket error setting IPTOS_THROUGHPUT option: %s\n" %
+                         str(msg))
 
     return data_path_socket
 
@@ -3571,10 +3589,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # are some cases (most notably when internal_handle_retries()
         # is used) that there isn't a socket passed in to change.
         if request_list[0].get('route_selection', None) and route_server:
-            routing_addr = get_routing_callback_addr(
+            udp_callback_addr = get_udp_callback_addr(
                 encp_intf, route_server)[0] #Ignore the returned socket ref.
         else:
-            routing_addr = None
+            udp_callback_addr = None
 
         for req in request_list:
             try:
@@ -3591,8 +3609,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                         pass
 
                 #Update the ticket before sending it to library manager.
-                if routing_addr:
-                    req['routing_callback_addr'] = routing_addr
+                if udp_callback_addr:
+                    #The ticket item of 'routing_callback_addr' is a
+                    # legacy name.
+                    req['routing_callback_addr'] = udp_callback_addr
 
                 #Send this to log file.
                 Trace.log(e_errors.WARNING, (e_errors.RESUBMITTING,
@@ -4331,7 +4351,7 @@ def set_pnfs_settings(ticket, intf_encp):
 #Functions for writes.
 ############################################################################
 
-def create_write_requests(callback_addr, routing_addr, e, tinfo):
+def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
     request_list = []
 
@@ -4506,11 +4526,12 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
                         "storage_group"      : storage_group,}
         file_clerk = {'address' : fcc.server_address}
 
-        config = host_config.get_config()
-        if config and config.get('interface', None):
-            route_selection = 1
-        else:
-            route_selection = 0
+        #config = host_config.get_config()
+        #if config and config.get('interface', None):
+        #    route_selection = 1
+        #else:
+        #    route_selection = 0
+        route_selection = 0 #1 to use udp_server, 0 for no.
 
         work_ticket = {}
         work_ticket['callback_addr'] = callback_addr
@@ -4524,8 +4545,8 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         work_ticket['outfile'] = ofullname
         work_ticket['override_ro_mount'] = e.override_ro_mount
         work_ticket['retry'] = 0 #retry,
-        work_ticket['routing_callback_addr'] = routing_addr
-        work_ticket['route_selection'] = route_selection
+        work_ticket['routing_callback_addr'] = udp_callback_addr #"get" only.
+        work_ticket['route_selection'] = route_selection #"get" only.
         work_ticket['times'] = tinfo.copy() #Only info now in tinfo needed.
         work_ticket['unique_id'] = generate_unique_id()
         work_ticket['vc'] = volume_clerk
@@ -4837,7 +4858,7 @@ def write_to_hsm(e, tinfo):
     # get a port to talk on and listen for connections
     callback_addr, listen_socket = get_callback_addr()  #e)
     #Get an ip and port to listen for the mover address for routing purposes.
-    routing_addr, udp_server = get_routing_callback_addr(e)
+    udp_callback_addr, udp_server = get_udp_callback_addr(e)
 
     #If the sockets do not exist, do not continue.
     if listen_socket == None or udp_server.server_socket == None:
@@ -4848,7 +4869,7 @@ def write_to_hsm(e, tinfo):
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
     try:
-        request_list = create_write_requests(callback_addr, routing_addr,
+        request_list = create_write_requests(callback_addr, udp_callback_addr,
                                              e, tinfo)
     except (OSError, IOError, EncpError), msg:
         if isinstance(msg, EncpError):
@@ -5524,7 +5545,7 @@ def get_clerks_info(vcc, fcc, bfid):
 #Functions for reads.
 #######################################################################
 
-def create_read_requests(callback_addr, routing_addr, tinfo, e):
+def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
     nfiles = 0
     requests_per_vol = {}
@@ -5629,13 +5650,17 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         #Obtain the complete listing of the volume.  It is best to do
         # this now as opposed to each iteration in the large while
         # loop below.
-        tape_ticket = fcc.tape_list(e.volume)
+        try:
+            tape_ticket = fcc.tape_list(e.volume)
+        except (e_errors.TCP_EXCEPTION, select.error, socket.error), msg:
+            tape_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
         
         #First check for errors.
         if not e_errors.is_ok(tape_ticket):
             rest = {'volume':e.volume}
-            raise EncpError(None, "Error obtaining tape listing.",
-                            e_errors.BROKEN, rest)
+            status = tape_ticket.get('status', (e_errors.BROKEN, "failed"))
+            message = "Error obtaining tape listing: %s" % status[1]
+            raise EncpError(None, message, status[0], rest)
 
         try:
             #When a volume is read, "encp --volume <volume>..." will set
@@ -6142,11 +6167,12 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         #    quit()
 
         #There is no need to deal with routing on non-multihomed machines.
-        config = host_config.get_config()
-        if config and config.get('interface', None):
-            route_selection = 0  #1
-        else:
-            route_selection = 0
+        #config = host_config.get_config()
+        #if config and config.get('interface', None):
+        #    route_selection = 0  #1
+        #else:
+        #    route_selection = 0
+        route_selection = 0  #1 to use udp_server, 0 for no.
 
         # allow library manager selection based on the environment variable
         lm = os.environ.get('ENSTORE_SPECIAL_LIB')
@@ -6165,8 +6191,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         request['outfile'] = ofullname
         request['override_ro_mount'] = e.override_ro_mount
         request['retry'] = 0
-        request['routing_callback_addr'] = routing_addr
-        request['route_selection'] = route_selection
+        request['routing_callback_addr'] = udp_callback_addr #"get" only.
+        request['route_selection'] = route_selection  #"get" only.
         request['times'] = tinfo.copy() #Only info now in tinfo needed.
         request['unique_id'] = generate_unique_id()
         request['vc'] = vc_reply
@@ -6541,7 +6567,7 @@ def read_from_hsm(e, tinfo):
     # get a port to talk on and listen for connections
     callback_addr, listen_socket = get_callback_addr()  #e)
     #Get an ip and port to listen for the mover address for routing purposes.
-    routing_addr, udp_server = get_routing_callback_addr(e)
+    udp_callback_addr, udp_server = get_udp_callback_addr(e)
 
     #If the sockets do not exist, do not continue.
     if listen_socket == None:
@@ -6555,8 +6581,8 @@ def read_from_hsm(e, tinfo):
     
     #Create all of the request dictionaries.
     try:
-        requests_per_vol = create_read_requests(callback_addr, routing_addr,
-                                                tinfo, e)
+        requests_per_vol = create_read_requests(callback_addr,
+                                                udp_callback_addr, tinfo, e)
     except (OSError, IOError, EncpError), msg:
         if hasattr(msg, "type"):
             error = msg.type

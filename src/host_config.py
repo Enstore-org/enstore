@@ -372,15 +372,16 @@ def set_route(dest, interface_ip):
     if not interfaces:
         return
     
-    for interface in get_interfaces():
+    for interface in interfaces: #get_interfaces():
     	if interface_ip == config['interface'][interface]['ip']:
     	    gateway = config['interface'][interface]['gw']
+            if_name = interface
 	    break
     else:
 	return
 
     #Attempt to set the new route.
-    err=enroute.routeAdd(dest, gateway)
+    err=enroute.routeAdd(dest, gateway, if_name)
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
 	raise OSError(errno.EPERM, "Routing:" + enroute.errstr(err))
@@ -403,15 +404,16 @@ def update_route(dest, interface_ip):
     if not interfaces:
         return
     
-    for interface in get_interfaces():
+    for interface in interfaces: #get_interfaces():
     	if interface_ip == config['interface'][interface]['ip']:
     	    gateway = config['interface'][interface]['gw']
+            if_name = interface
 	    break
     else:
 	return
 
     #Attempt to reset an existing route.
-    err=enroute.routeChange(dest, gateway)
+    err=enroute.routeChange(dest, gateway, if_name)
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
 	raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
@@ -528,7 +530,6 @@ def check_load_balance(mode = None):
     # best choice for load balancing.
     choose.sort()
     unused, unused, unused, interface = choose[0]
-    Trace.trace(10, "Choosing interface: %s" % interface)
     return get_interface_info(interface)
 
 ##############################################################################
@@ -549,7 +550,8 @@ def setup_interface(dest, interface_ip):
         return
 
     #Some architecures (like IRIX) attach a network card to a processor.
-    # make sure the process runs on the correct cpu for the interface selected.
+    # make sure the process runs on the correct cpu for the interface
+    # selected.
     for interface in interface_dict.keys():
         if interface_dict[interface]['ip'] == interface_ip:
             #pass in the interface (ie. eg0, eth0)

@@ -84,9 +84,10 @@ def untried_output(request_list):
 
 def mover_handshake(listen_socket, udp_socket, request, encp_intf):
     #Grab a new clean udp_socket.
-    unused, unused = encp.get_routing_callback_addr(encp_intf, udp_socket)
-    request['routing_callback_addr'] = \
-				     udp_socket.server_socket.getsockname()
+    udp_callback_addr, unused = encp.get_udp_callback_addr(encp_intf,
+                                                           udp_socket)
+    #The ticket item of 'routing_callback_addr' is a legacy name.
+    request['routing_callback_addr'] = udp_callback_addr
 
     #Open the routing socket.
     #config = host_config.get_config()
@@ -186,8 +187,9 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 		# Since, there was an exception, "rticket" is still
 		# the ticket returned from the routing call.
 		elif getattr(msg, "errno", None) == errno.ETIMEDOUT:
-		    udp_socket.reply_to_caller_using_interface_ip(
-			rticket, listen_socket.getsockname()[0])
+		    #udp_socket.reply_to_caller_using_interface_ip(
+                    #rticket, listen_socket.getsockname()[0])
+                    udp_socket.reply_to_caller(rticket)
 		else:
 		    if isinstance(msg, (socket.error, select.error)):
 			ticket = {'status' : (e_errors.NET_ERROR,
@@ -391,9 +393,10 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         # create_read_requests().
         work_ticket['method'] = "read_next"
         #Grab a new clean udp_socket.
-        unused, unused = encp.get_routing_callback_addr(e, udp_socket)
-        work_ticket['routing_callback_addr'] = \
-                                         udp_socket.server_socket.getsockname()
+        udp_callback_addr, unused = encp.get_udp_callback_addr(e, udp_socket)
+        #The ticket item of 'routing_callback_addr' is a legacy name.
+        work_ticket['routing_callback_addr'] = udp_callback_addr
+
         #Send the actual request to the mover.
         Trace.message(10, "MOVER_REQUEST_SUBMISSION:")
         Trace.message(10, pprint.pformat(work_ticket))
@@ -905,7 +908,7 @@ def main(e):
     callback_addr, listen_socket = encp.get_callback_addr()  #e)
     #Get an ip and port to listen for the mover address for
     # routing purposes.
-    routing_addr, udp_socket = encp.get_routing_callback_addr(e)
+    udp_callback_addr, udp_socket = encp.get_udp_callback_addr(e)
 
     #If the sockets do not exist, do not continue.
     if listen_socket == None:
@@ -919,7 +922,7 @@ def main(e):
     Trace.message(4, "Creating read requests.")
     try:
         requests_per_vol = encp.create_read_requests(callback_addr,
-                                                     routing_addr,
+                                                     udp_callback_addr,
                                                      tinfo, e)
     except KeyboardInterrupt:
         raise sys.exc_info()
@@ -1158,8 +1161,8 @@ def main(e):
             sys.stderr.flush()
 
             #Grab a new clean udp_socket.
-            unused, unused = encp.get_routing_callback_addr(e,
-                                                            udp_socket)
+            udp_callback_addr, unused = encp.get_udp_callback_addr(e,
+                                                                   udp_socket)
 
             #Combine the ticket from the mover with the current information.
             # Remember the ealier dictionaries 'win' in setting values.
@@ -1168,8 +1171,8 @@ def main(e):
             # pieces of information that is old in the other ticket.
             request['mover'] = ticket['mover']
             request['callback_addr'] = listen_socket.getsockname()
-            request['routing_callback_addr'] = \
-                                     udp_socket.server_socket.getsockname()
+            #The ticket item of 'routing_callback_addr' is a legacy name.
+            request['routing_callback_addr'] = udp_callback_addr
             #Encp create_read_request() gives each file a new unique id.
             # The LM can't deal with multiple mover file requests from one
             # LM request.  Thus, we need to set this back to the last unique
