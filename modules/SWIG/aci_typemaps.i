@@ -37,6 +37,22 @@
     $target = return_list($target,o);
 }
 
+
+/* aci_client_entry */
+%typemap(python, ignore) struct aci_client_entry *client {
+    static struct aci_client_entry result;
+    $target = &result;
+}
+
+%typemap(python, argout) struct aci_client_entry *client {
+    char ptr[128];
+
+    SWIG_MakePtr(ptr, $source, "_struct_aci_client_entry_p");
+    $target = return_list($target, PyString_FromString(ptr));
+}
+
+
+/* aci_req_entry */
 %typemap(python, ignore) struct aci_req_entry* [ANY] {
     static struct aci_req_entry *result[$dim0];
     $target = result;
@@ -52,6 +68,7 @@
     }
 }
 
+/* aci_drive_entry */
 %typemap(python, ignore) struct aci_drive_entry* [ANY] {
     static struct aci_drive_entry *result[$dim0];
     $target = result;
@@ -68,27 +85,14 @@
 
 }
 
-%typemap(python, ignore) struct aci_client_entry * {
-    static struct aci_client_entry result;
-    $target = &result;
-}
+/* aci_vol_desc */
 
-%typemap(python, argout) struct aci_client_entry * {
-    char ptr[128];
-
-    SWIG_MakePtr(ptr, $source, "_struct_aci_client_entry_p");
-    $target = return_list($target, PyString_FromString(ptr));
-}
-
-
-
-
-%typemap(python, ignore) struct aci_vol_desc * {
+%typemap(python, ignore) struct aci_vol_desc *desc {
     static struct aci_vol_desc result;
     $target = &result;
 }
 
-%typemap(python, argout) struct aci_vol_desc * {
+%typemap(python, argout) struct aci_vol_desc *desc {
     char ptr[128];
 
     SWIG_MakePtr(ptr, $source, "_struct_aci_vol_desc_p");
@@ -133,37 +137,3 @@ typedef int bool_t;
 }
 
 
-#ifdef HANDLE_ACI_VOLSER_RANGE
-/* handle arrays of range strings  (in struct aci_client_entry)  - doesn't work yet
-*/
-%typemap(python, memberin) aci_range{
-    int len, i;
-    PyObject *o;
-    PyObject *seq = $source;
-    if (!PySequence_Check(o)){
-	PyErr_SetString(PyExc_TypeError,"not a sequence");
-	return NULL;
-    }
-    len = PySequence_Length(o);
-    if (len>ACI_MAX_RANGES) {
-	/* XXX truncation warning */
-	len = ACI_MAX_RANGES;
-    }
-    for (i=0;i<len;++i){
-	o = PySequence_GetItem(seq,i);
-	if (!PyString_Check(o)){
-	    PyErr_SetString(PyExc_TypeError,"not a string");
-	    return NULL;
-	}
-	strncpy($target[i],PyString_AsString(o),ACI_RANGE_LEN);
-    }
-}
-
-%typemap(python, memberout) aci_range{
-    int i;
-    for (i=0; i<ACI_MAX_RANGES && $source[i][0]; ++i){
-	$target = return_list($target,PyString_FromString($source[i]));
-    }
-}
-
-#endif
