@@ -38,7 +38,7 @@ import Trace
 def print_args(*args):
     print args
 
-verbose=0
+verbose=10
     
 
 class MoverError(exceptions.Exception):
@@ -373,14 +373,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt_driver
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
-            self.tape_driver.open(self.device, 0)
+            self.tape_driver.verbose = verbose
+            self.tape_driver.open(self.device, mode=0, retry_count=2)
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
             self.config['serial_num'] = stats[ftt.SERIAL_NUM]
             self.config['vendor_id'] = stats[ftt.VENDOR_ID]
             self.tape_driver.close()
             try: #see if there's a tape already loaded
-                self.tape_driver.open(self.device, 0)
+                self.tape_driver.open(self.device, mode=0, retry_count=2)
                 self.tape_driver.set_mode(compression = 0, blocksize = 0)
                 self.tape_driver.rewind()
                 buf=80*' '
@@ -819,7 +820,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             if verbose:
                 print 'stats[REMAIN_TAPE] = %s' % stats[ftt.REMAIN_TAPE]
             if stats[ftt.REMAIN_TAPE]:
-                remaining = stats[ftt.REMAIN_TAPE] * 1024L
+                rt = stats[ftt.REMAIN_TAPE]
+                if rt is not None:
+                    rt = long(rt)
+                    remaining = rt  * 1024L
 
         if verbose: print "current location: %s type %s, remain_tape=%s" % (
             self.current_location, type(self.current_location), remaining)
@@ -930,7 +934,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.mount_volume(volume_label)
         
-        self.tape_driver.open(self.device, iomode)
+        self.tape_driver.open(self.device, iomode, retry_count=10)
         self.tape_driver.set_mode(compression = 0, blocksize = 0)            
 
         if iomode is WRITE:
@@ -954,6 +958,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     stats = self.tape_driver.ftt.get_stats()
                     rt = stats[ftt.REMAIN_TAPE]
                     if rt is not None:
+                        rt = long(rt)
                         vol_info['remaining_bytes'] = rt * 1024L #XXX keep everything in KB?
                 self.vcc.set_remaining_bytes( volume_label,
                                               vol_info['remaining_bytes'],
@@ -965,7 +970,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return 0# Can only write at end of tape
         
         location = cookie_to_long(location)
-        self.seek_to_location(location)
+        self.seek_to_location(location, location==eod)
         self.last_seek = self.current_location
         return 1
     
@@ -1021,6 +1026,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def dismount_volume(self):
         self.dismount_time = None
+        self.tape_driver.eject()
         self.state = DISMOUNT_WAIT
         vol_info = self.vol_info.copy()
         vcc = self.vcc
@@ -1055,10 +1061,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.timer('mount_time')
         if volume_label != self.current_volume:
             if verbose:
-                print "sending loadvol request"
+                print "sending loadvol request", self.vol_info
             mcc_reply = self.mcc.loadvol(self.vol_info, self.name, self.mc_device, self.vcc)
             if verbose:
-                print "media changer reply", mc_reply
+                print "media changer reply", mcc_reply
             status = mcc_reply.get('status')
             if status and status[0]==e_errors.OK:
                 self.state = ACTIVE
@@ -1070,9 +1076,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_volume = volume_label
         return
     
-    def seek_to_location(self, location):
+    def seek_to_location(self, location, eod_ok=0):
         if verbose: print "seek to", location
-        self.tape_driver.seek(location)
+        self.tape_driver.seek(location, eod_ok)
         self.timer('seek_time')
         self.current_location = self.tape_driver.tell()
         
