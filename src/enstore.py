@@ -37,6 +37,7 @@ import enstore_up_down
 import enstore_saag
 import enstore_schedule
 import dbs
+import ratekeeper_client
 
 CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
 #CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDc)
@@ -70,7 +71,9 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                      "volume" : [volume_clerk_client.VolumeClerkClientInterface,
                                  volume_clerk_client.do_work],
 		     "database" : [dbs.Interface,
-			           dbs.do_work]
+			           dbs.do_work],
+                     "ratekeeper" : [ratekeeper_client.RatekeeperClientInterface,
+                                     ratekeeper_client.do_work]
                          }
 
 # these general functions perform various system functions
