@@ -390,7 +390,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt_driver
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
-            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=10)
+            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
             self.config['serial_num'] = stats[ftt.SERIAL_NUM]
@@ -1027,6 +1027,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return
             
     def connect_client(self):
+        Trace.trace(10, "connecting to client")
         # cgw - Should this thread out?
         try:
             ticket = self.current_work_ticket
@@ -1036,15 +1037,19 @@ class Mover(dispatching_worker.DispatchingWorker,
             ticket['mover']['callback_addr'] = (host,port) #client expects this
 
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
             control_socket.connect(ticket['callback_addr'])
+            Trace.trace(10, "connected")
             try:
                 callback.write_tcp_obj(control_socket, ticket)
             except exceptions.Exception, detail:
                 Trace.log(e_errors.ERROR,"error in connect_client_done: %s" % (detail,))
             # we expect a prompt call-back here
-            
+            Trace.trace(10, "select: listening for client callback")
             read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],60) # one minute timeout
+            Trace.trace(10, "select returned %s" % ((listen_socket in read_fds),))
             if listen_socket in read_fds:
+                Trace.trace(10, "accepting client connection")
                 client_socket, address = listen_socket.accept()
                 listen_socket.close()
                 self.net_driver.fdopen(client_socket)
