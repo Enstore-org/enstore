@@ -279,9 +279,9 @@ class EnstoreStatus:
 	if ticket["state"] == "busy":
 	    p = "Current Transfer : "
 	    if ticket["mode"] == "r":
-	        m = " reading from HSM"
+	        m = " reading "+repr(ticket["bytes_to_xfer"])+" bytes from the HSM"
 	    else:
-	        m = " writing to HSM"
+	        m = " writing "+repr(ticket["bytes_to_xfer"])+" bytes to the HSM"
 	elif ticket["state"] == "idle":
 	    p = "Last Transfer : "
 	    m = " "
@@ -289,7 +289,7 @@ class EnstoreStatus:
 	string = string+",  Current State : "+ticket["state"]+m
 	string = string+spacing+p+" Read "+\
 	             repr(ticket["rd_bytes"])+" bytes,  Wrote "+\
-	             repr(ticket["wr_bytes"])+" bytes\n\n" 
+	             repr(ticket["wr_bytes"])+" bytes\n\n"
         Trace.trace(12,"}format_moverstatus ")
 	return string
 
@@ -314,8 +314,12 @@ class EnstoreStatus:
 	        str = str+prefix+string.replace(str2, "requester","")+"\n"
 	    else:
 	        # there was an error or warning
-	        [str1, str2, erest2] = string.splitfields(erest, ":", 2)
-	        str = str+prefix+str1+" : "+str2+prefix+erest2
+	        try:
+	            [str1, str2, erest2] = string.splitfields(erest, ":", 2)
+	            str = str+prefix+str1+" : "+str2+prefix+erest2
+	        except:
+	            # the leftover text was formatted funny, just output it
+	            str = str+prefix+erest
 	Trace.trace(13,"}format_encp ")
 	return str
 
