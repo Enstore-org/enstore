@@ -568,8 +568,11 @@ def get_all_ips(config_host, config_port, csc):
             ip = details['hostip']      #other server
         else:
             continue
-        ip = socket.gethostbyname(ip)  #canonicalize int dot notation
-        ip_dict[ip] = 1                #dictionary will strike duplicates
+        try:
+            ip = socket.gethostbyname(ip)  #canonicalize int dot notation
+            ip_dict[ip] = 1                #dictionary will strike duplicates
+        except socket.error:
+            pass  #If the name can not be found, skip it.
     return ip_dict.keys()              #keys of the dict is a tuple of IPs
 
 
