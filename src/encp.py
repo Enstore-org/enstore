@@ -1944,7 +1944,7 @@ def check_crc(done_ticket, chk_crc):
 
         elif mover_crc != encp_crc:
             msg = "CRC mismatch: %d != %d" % (mover_crc, encp_crc)
-            done_ticket['status'] = (e_errors.CRC_ERROR, msg)
+            done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
 
 ############################################################################
             
