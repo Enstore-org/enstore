@@ -217,7 +217,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 #   define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
 			|FTT_OP_READ|FTT_OP_REWIND)
 
-    if ( -1 == res && ((1<<opn)&CHECKS) && guess_errno == FTT_EIO ) {
+    if ( -1 == res && ((1<<opn)&CHECKS) && (guess_errno == FTT_EIO || guess_errno == FTT_ELEADER)) {
 	int statres;
 
 	 DEBUG3(stderr, "Checking for blank tape on other error\n");
