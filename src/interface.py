@@ -64,7 +64,17 @@ def check_for_config_defaults():
         log_using_default('CONFIG HOST', DEFAULT_HOST)
     if used_default_config_port:
         log_using_default('CONFIG PORT', DEFAULT_PORT)
-     
+
+def str_to_tuple(str):
+    # convert the string of the form "(val1, val2)" to a tuple of the form
+    # (val1, val2) by doing the following -
+    #              remove all surrounding whitespace
+    #              remove the first char : the '(' char
+    #              remove the last char  : the ')' char
+    #              split into two based on ',' char
+    tmp = string.strip(str)
+    tmp = tmp[1:-1]
+    return tuple(string.split(tmp, ",", 1))
     
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
@@ -316,6 +326,9 @@ class Interface:
                     self.verbose = self.verbose | string.atoi(value)
             elif opt == "--status":
                 self.status = 1
+            elif opt == "--local_mover":
+                self.local_mover = 1
+                self.enable = string.atoi(value)
             elif opt == "--maxwork":
                 self.maxwork = string.atoi(value)
             elif opt == "--refresh":
@@ -357,8 +370,12 @@ class Interface:
                 self.root_error = value
             elif opt == "--severity" :
                 self.severity = string.atoi(value)
+            elif opt == "--mc" :
+                self.mc = string.split(value, ",")
+            elif opt == "--key_value" :
+                self.key_value = str_to_tuple(value)
             elif opt == "--help" :
-	        self.print_help()
+                self.print_help()
                 sys.exit(0)
             elif opt == "--usage_line" :
 	        self.print_usage_line()

@@ -21,12 +21,16 @@ import Trace
 class MoverClient(generic_client.GenericClient):
     def __init__(self, csc, name=""):
         self.mover=name
-        self.log_name = string.upper(name)
+        self.log_name = "C_"+string.upper(name)
         generic_client.GenericClient.__init__(self, csc, self.log_name)
         self.u = udp_client.UDPClient()
 
     def status(self, rcv_timeout=0, tries=0):
 	return self.send({"work" : "status"}, rcv_timeout, tries)
+
+    def local_mover(self, enable, rcv_timeout=0, tries=0):
+	return self.send({"work" : "local_mover",
+                          "enable" : enable}, rcv_timeout, tries)
 
     def send (self, ticket, rcv_timeout=0, tries=0) :
         vticket = self.csc.get(self.mover)
@@ -38,12 +42,14 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.mover = ""
+        self.local_mover = 0
+        self.enable = 0
 	self.status = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+["status"]
+        return self.client_options()+["status", "local_mover="]
 
     #  define our specific help
     def parameters(self):
@@ -62,7 +68,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
 
 
 if __name__ == "__main__" :
-    Trace.init("MOVER CLI")
+    Trace.init("MOVER_CLI")
     Trace.trace(6,"movc called with args "+repr(sys.argv))
 
     # fill in the interface
@@ -80,6 +86,9 @@ if __name__ == "__main__" :
     elif intf.status:
         ticket = movc.status(intf.alive_rcv_timeout,intf.alive_retries)
 	print repr(ticket)
+    elif intf.local_mover:
+        ticket = movc.local_mover(intf.enable, intf.alive_rcv_timeout,
+                                  intf.alive_retries)
     else:
 	intf.print_help()
         sys.exit(0)
