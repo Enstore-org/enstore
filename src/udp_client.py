@@ -75,17 +75,21 @@ class UDPClient:
     def __init__(self):
         self.host, self.port, self.socket = get_client()
         self.txn_counter = 0L
-        self.pid = None
+        self.pid = os.getpid()
+        self._ident = self.mkident()
         self.where_sent = {}
 
     def ident(self):
         pid=os.getpid()  
         if pid != self.pid:  #recompute ident and get new sockets each time we fork
             self.host, self.port, self.socket = get_client()
-            Trace.log(e_errors.INFO, "child UPD client got new sockets")
             self.pid = pid
-            self._ident = "%s-%d-%f-%d" % (self.host, self.port, time.time(), self.pid )
+            Trace.log(e_errors.INFO, "child UPD client got new sockets")
+            self._ident = self.mkident()
         return self._ident 
+
+    def mkident(self):
+        return "%s-%d-%f-%d" % (self.host, self.port, time.time(), self.pid )
         
     def __del__(self):
         # tell file clerk we're done - this allows it to delete our unique id in
