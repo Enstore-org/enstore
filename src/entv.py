@@ -85,7 +85,7 @@ def signal_handler(sig, frame):
             sys.stderr.write("Signal caught at: ", frame.f_code.co_filename,
                              frame.f_lineno);
             sys.stderr.flush()
-    except (OSError, IOError):
+    except (OSError, IOError, TypeError):
         pass
     
     try:

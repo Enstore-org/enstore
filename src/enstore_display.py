@@ -901,7 +901,10 @@ class Mover:
             self.t1 = mover_time
         else:
             self.t1 = time.time()
-        rate    = (self.b1-self.b0)/(self.t1-self.t0)
+        try:
+            rate    = (self.b1-self.b0)/(self.t1-self.t0)
+        except ZeroDivisionError:
+            rate = 0
         self.b0 = self.b1
         self.t0 = self.t1
         return rate
