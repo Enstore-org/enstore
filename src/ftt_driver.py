@@ -65,6 +65,7 @@ class FTTDriver(driver.Driver):
         for retry in xrange(retry_count):
             if retry:
                 Trace.trace(25, "retrying status %d" % retry)
+                time.sleep(5)
             status = self.ftt.status(5)
             Trace.trace(25, "ftt status returns %s"%(status,))
             if status & ftt.ONLINE:
