@@ -15,6 +15,7 @@ import Trace
 import configuration_client	# to talk to configuration server
 import interface		# to get default host and port
 import e_errors                 # error information
+import log_client               # for getting info into the log
 
 dbHome=""    # quiet lint
 dir_bck=""   # quiet lint
@@ -23,6 +24,11 @@ hst_bck=""   # quiet lint
 hst_local="" # quiet lint
 
 # get_size(dbFile) -- get the number of records and size of a dbFile
+
+def logthis(code, message):
+    #Trace.log(code,message)
+    log_client.logthis(code,message)
+    print "Logging", code, message
 
 def get_size(dbFile):
 
@@ -38,16 +44,17 @@ def backup_dbase():
     for name in os.popen("db_archive -s  -h"+dbHome).readlines():
         (nkeys, size) = get_size(name[:-1])
         stmsg = name[:-1] + " : Number of keys = "+nkeys+"  Database size = " + repr(size)
-        Trace.log(e_errors.INFO, stmsg) 
+        logthis(e_errors.INFO, stmsg)
         fp = open(name[:-1]+".stat", "w")
         fp.write(stmsg)
 	fp.close()
     	dbFile=dbFile+" "+name[:-1]
     cmd="tar cvf dbase.tar "+dbFile+" log.* *.stat"
-    Trace.log(e_errors.INFO,repr(cmd))
+    logthis(e_errors.INFO,repr(cmd))
+    
     ret=os.system(cmd)
     if ret !=0 :
-	Trace.log(e_errors.INFO, "Failed: %s"%repr(cmd))
+	logthis(e_errors.INFO, "Failed: %s"%repr(cmd))
 	sys.exit(1)	
     for name in os.popen("db_archive  -h"+dbHome).readlines():
 	os.system("rm "+name[:-1])
@@ -59,8 +66,7 @@ def archive_backup():
 	try:
 	   os.mkdir(dir_bck)
 	except os.error:
-	   Trace.log(e_errors.INFO,
-                     "Error: "+dir_bck+" "+str(sys.exc_info()[1][1]))
+	   logthis(e_errors.INFO,"Error: "+dir_bck+" "+str(sys.exc_info()[1][1]))
 	   sys.exit(1)
 
         # try to compress the tared file
@@ -71,17 +77,17 @@ def archive_backup():
             os.system("compress *.tar")
 
 	cmd="mv *.tar* "+dir_bck
-	Trace.log(e_errors.INFO,cmd)
+	logthis(e_errors.INFO,cmd)
 	ret=os.system(cmd)	
 	if ret !=0 :
-	   Trace.log(e_errors.INFO, "Failed: %s"%cmd)
+	   logthis(e_errors.INFO, "Failed: %s"%cmd)
 	   sys.exit(1)
     else :
 	cmd="rsh "+hst_bck+" 'mkdir -p "+dir_bck+"'"
-	Trace.log(e_errors.INFO,cmd)
+	logthis(e_errors.INFO,cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
-	   Trace.log(e_errors.INFO, "Failed: %s"%cmd)
+	   logthis(e_errors.INFO, "Failed: %s"%cmd)
 	   sys.exit(1)
 
         # try to compress the tared file
@@ -92,14 +98,14 @@ def archive_backup():
             os.system("compress *.tar")
 
 	cmd="rcp *.tar* " + hst_bck+":"+dir_bck
-	Trace.log(e_errors.INFO, cmd)
+	logthis(e_errors.INFO, cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
-           Trace.log(e_errors.INFO,"Failed: %s"%cmd)
+           logthis(e_errors.INFO,"Failed: %s"%cmd)
 	   sys.exit(1)
 	ret=os.system("rm *.tar*")
 	if ret !=0 :
-	   Trace.log(e_errors.INFO, "Failed: %s"%cmd)
+	   logthis(e_errors.INFO, "Failed: %s"%cmd)
 	   sys.exit(1)		   
  
     
@@ -109,29 +115,29 @@ def archive_clean(ago):
     day=ago*24*60*60
     lastday=today-day
     if hst_bck==hst_local :
-       Trace.log(e_errors.INFO, repr(bckHome))
+       logthis(e_errors.INFO, repr(bckHome))
        for name in os.listdir(bckHome):
 	statinfo=os.stat(bckHome+"/"+name)
 	if statinfo[stat.ST_MTIME] < lastday :
 	   cmd="rm -rf "+bckHome+"/"+name
-	   Trace.log(e_errors.INFO, repr(cmd))
+	   logthis(e_errors.INFO, repr(cmd))
 	   ret=os.system(cmd)
 	   if ret !=0 :
-		 Trace.log(e_errors.INFO, "Failed: %s"%cmd)
+		 logthis(e_errors.INFO, "Failed: %s"%cmd)
     else :
 	remcmd="find "+bckHome+" -type d -mtime +"+repr(ago)
 	cmd="rsh "+hst_bck+" "+"'"+remcmd+"'"
-	Trace.log(e_errors.INFO, repr(cmd))
+	logthis(e_errors.INFO, repr(cmd))
 	for name in os.popen(cmd).readlines():
 		name=name[:-1]
-		Trace.log(e_errors.INFO, repr(name))
+		logthis(e_errors.INFO, repr(name))
 		if name :
 		   if name != bckHome:
 		      cmd="rsh "+hst_bck+" 'rm -rf "+name+"'"
-		      Trace.log(e_errors.INFO, repr(cmd))
+		      logthis(e_errors.INFO, repr(cmd))
 		      ret=os.system(cmd)
 		      if ret != 0 :
-			Trace.log(e_errors.INFO, "Command %s failed"%cmd)
+			logthis(e_errors.INFO, "Command %s failed"%cmd)
 		
 if __name__=="__main__":
     import string
@@ -160,7 +166,7 @@ if __name__=="__main__":
     try:
     	os.chdir(dbHome)
     except os.error:
-	Trace.log(e_errors.INFO,
+	logthis(e_errors.INFO,
                   "Backup Error: os.chdir "+dbHome+" "+\
                   str(sys.exc_info()[0])+(sys.exc_info()[1]))
 	sys.exit(1)
@@ -182,7 +188,7 @@ if __name__=="__main__":
 	    if sys.exc_info()[1][0] == errno.EEXIST :
 		pass
 	    else :
-                Trace.log(e_errors.INFO, "backup Error - mkdir "+bckHome+\
+                logthis(e_errors.INFO, "backup Error - mkdir "+bckHome+\
                             str(sys.exc_info()[0])+str(sys.exc_info()[1]))
 		sys.exit(1)
     dir_bck=bckHome+"/dbase."+repr(time.time())
@@ -191,20 +197,20 @@ if __name__=="__main__":
         hst_bck = backup_config['host']
     except:
 	hst_bck=hst_local
-    Trace.log(e_errors.INFO, "Start database backup")
+    logthis(e_errors.INFO, "Start database backup")
     backup_dbase()
-    Trace.log(e_errors.INFO, "End database backup")
-    Trace.log(e_errors.INFO, "Start volume backup")
+    logthis(e_errors.INFO, "End database backup")
+    logthis(e_errors.INFO, "Start volume backup")
     os.system("enstore volume --backup")
-    Trace.log(e_errors.INFO, "End  volume backup")
-    Trace.log(e_errors.INFO, "Start file backup")
+    logthis(e_errors.INFO, "End  volume backup")
+    logthis(e_errors.INFO, "Start file backup")
     os.system("enstore file --backup")
-    Trace.log(e_errors.INFO, "End file backup")
-    Trace.log(e_errors.INFO, "Start moving to archive")
+    logthis(e_errors.INFO, "End file backup")
+    logthis(e_errors.INFO, "Start moving to archive")
     archive_backup()
-    Trace.log(e_errors.INFO, "Stop moving to archive")
-    # Trace.log(e_errors.INFO, "Start cleanup archive")
+    logthis(e_errors.INFO, "Stop moving to archive")
+    # logthis(e_errors.INFO, "Start cleanup archive")
     # archive_clean(ago)
-    # Trace.log(e_errors.INFO, "End  cleanup archive")
+    # logthis(e_errors.INFO, "End  cleanup archive")
     Trace.trace(6,"backup exit ok")
     sys.exit(0)
