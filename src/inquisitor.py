@@ -9,6 +9,9 @@
 #
 #   self.server_keys[]                         list of servers (and others) to
 #                                                 ping
+#   self.forked{}       same as config dict    if exists, means we forked to
+#                                              restart that server. cleared
+#                                              once the server is alive again.
 #
 ##############################################################################
 # system import
@@ -74,7 +77,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the alive status of the server and output it
     def alive_status(self, client, (host, port), prefix, time, key):
-	stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
+	stat = client.alive(key, self.alive_rcv_timeout, self.alive_retries)
 	if not stat['status'] == ('TIMEDOUT', None):
 	    self.asciifile.output_alive(host, prefix, stat, time, key)
 	    self.htmlfile.output_alive(host, prefix, stat, time, key)
@@ -89,6 +92,95 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return TIMED_OUT
 	return DID_IT
 
+    # check if a server is alive, if not, try to restart it.  this restarting
+    # may be overridden in the config file on a per server basis.
+    def alive_and_restart(self, client, (host, port), prefix, time, key):
+        ret = self.alive_status(client, (host, port), prefix, time, key)
+        if ret == TIMED_OUT:
+            # could not communicate with the server.  do the following -
+            #    1. make sure the server is still listed in the config file
+            #    2. try sending the alive again but wait longer and retry more
+            #    3. if still timed out, try to restart the server
+            #    4. if not restarted, raise an alarm
+            try:
+                t = self.csc.get_uncached(key, self.alive_rcv_timeout,
+                                          self.alive_retries)
+            except errno.errorcode[errno.ETIMEDOUT]:
+                self.asciifile.output_noconfigdict(prefix, time, key)
+                self.htmlfile.output_noconfigdict(prefix, time, key)
+                Trace.trace(13,"alive_and_restart - ERROR, getting config dict timed out ")
+                return TIMED_OUT
+            if t['status'][0] == 'KEYERROR':
+                # 1. do not monitor this server any more, remove from our dict
+                self.remove_key(key)
+            else:
+                # 2. the server appears dead.  do not fork to restart if the
+                #    last time we did the fork.
+                if not self.forked.has_key(key):
+                    # fork off here so that the child can do the longer wait to
+                    # see if the server is really alive not just busy.  we must
+                    # keep track of the fact that we forked off so the next
+                    # time we find the server dead we do not do this again.
+                    Trace.trace(8,"Inquisitor forking to restart %s"%key)
+                    self.forked[key] = 1
+                    self.pid = os.fork()
+                    if self.pid == 0:
+                        # we are the child ###################################
+                        Trace.init("INQ_CHILD")
+                        # we need to get new udp clients so we don't collide
+                        # with our parent.
+                        import udp_client
+                        client.u = udp_client.UDPClient()
+                        self.csc.u = udp_client.UDPClient()
+                        self.logc.u = udp_client.UDPClient()
+                        self.alarmc.u = udp_client.UDPClient()
+                        # Check on server status but wait a long time
+                        self.alive_rcv_timeout = 180
+                        self.alive_retries = 2
+                        ret = self.alive_status(client, (t['host'], t['port']),
+                                                prefix, time, key)
+                        if ret == TIMED_OUT:
+                            # 3. if we raise an alarm we need to include the 
+                            #     following info.
+                            alarm_info = {'server' : key}
+                            if t.has_key("norestart"):
+                                # do not restart, raise an alarm that the
+                                # server is dead.
+                                Trace.alarm(e_errors.ERROR,
+                                            e_errors.SERVERDIED, alarm_info)
+                            else:
+                                # we should try to restart the server.  try 3X
+                                i = 0
+                                self.alive_retries = 1
+                                while i < 3:
+                                    Trace.trace(7, "Server restart: try %s"%i)
+                                    os.system('ecmd restart --just %s'%key)
+                                    # check if alive
+                                    ret = self.alive_status(client,
+                                                            (host, port),
+                                                            prefix, time, key)
+                                    if ret == DID_IT:
+                                        break
+                                    else:
+                                        i = i + 1
+                                else:
+                                    # 4. we could not restart the server
+                                    Trace.alarm(e_errors.ERROR,
+                                                e_errors.CANTRESTART,
+                                                alarm_info)
+                        del client.u
+                        del self.csc.u
+                        del self.logc.u
+                        del self.alarmc.u
+                        os._exit(0)
+                        # end of the child ##################################
+        else:
+            # the server was alive, clear out any record that we forked to
+            # restart it because apparently it worked.
+            if self.forked.has_key(key):
+                del self.forked[key]
+        return ret
+
     # send alive to the server and handle any errors
     def do_alive_check(self, key, time, client, prefix):
 	try:
@@ -101,7 +193,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	ret = DID_IT
         if t['status'] == (e_errors.OK, None):
-	    ret = self.alive_status(client, (t['host'], t['port']),\
+	    ret = self.alive_and_restart(client, (t['host'], t['port']),\
 	                            prefix, time, key)
 	elif t['status'][0] == 'KEYERROR':
 	    # do not monitor this server any more, remove him from our dict
@@ -163,8 +255,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the configuration server
     def update_config_server(self, key, time):
-	self.alive_status(self.csc, self.csc.get_address(), \
-	                  CFG_PREFIX, time, key)
+	self.alive_and_restart(self.csc, self.csc.get_address(), \
+                               CFG_PREFIX, time, key)
 
     # get the information from the library manager(s)
     def update_library_manager(self, key, time):
@@ -178,9 +270,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
         if t['status'] == (e_errors.OK, None):
 	    # get a client and then check if the server is alive
-	    lmc = library_manager_client.LibraryManagerClient(self.csc, key)
-	    ret = self.alive_status(lmc, (t['host'], t['port']), \
-	                            key+TRAILER, time, key)
+            lmc = library_manager_client.LibraryManagerClient(self.csc, key)
+	    ret = self.alive_and_restart(lmc, (t['host'], t['port']), \
+                                         key+TRAILER, time, key)
 	    if ret == DID_IT:
 	        self.suspect_vols(lmc, (t['host'], t['port']), key, time)
 	        self.mover_list(lmc, (t['host'], t['port']), key, time)
@@ -194,8 +286,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_mover(self, key, time):
 	# get info on this mover
 	try:
-	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
-	                              self.alive_retries)
+	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.asciifile.output_noconfigdict(key+TRAILER, time, key)
 	    self.htmlfile.output_noconfigdict(key+TRAILER, time, key)
@@ -203,14 +294,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
         if t['status'] == (e_errors.OK, None):
 	    movc = mover_client.MoverClient(self.csc, key)
-	    ret = self.alive_status(movc, (t['host'], t['port']),\
-	                            key+TRAILER, time, key)
+	    ret = self.alive_and_restart(movc, (t['host'], t['port']),\
+                                         key+TRAILER, time, key)
 	    if ret == DID_IT:
 	        self.mover_status(movc, (t['host'], t['port']), key, time)
 	    # get rid of this in preparation for the next time through
 	    del movc.u
-	elif t['status'][0] == 'KEYERROR':
-	    self.remove_key(key)
 
     # get the information from the media changer(s)
     def update_media_changer(self, key, time):
@@ -225,8 +314,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if t['status'] == (e_errors.OK, None):
 	    # get a client and then check if the server is alive
 	    mcc = media_changer_client.MediaChangerClient(self.csc, key)
-	    self.alive_status(mcc, (t['host'], t['port']), key+TRAILER, \
-	                      time, key)
+	    self.alive_and_restart(mcc, (t['host'], t['port']), key+TRAILER,
+                                   time, key)
 	    # get rid of this in preparation for the next time through
 	    del mcc.u
 	elif t['status'][0] == 'KEYERROR':
@@ -252,8 +341,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_inquisitor(self, key, time):
 	# get info on the inquisitor
 	try:
-	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
-	                              self.alive_retries)
+	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.asciifile.output_noconfigdict(IN_PREFIX, time, key)
 	    self.htmlfile.output_noconfigdict(IN_PREFIX, time, key)
@@ -353,6 +441,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             self.server_keys.remove(key)
         except ValueError:
             pass
+        if self.forked.has_key(key):
+            del self.forked[key]
 	self.asciifile.remove_key(key)
 	self.htmlfile.remove_key(key)
 	self.encpfile.remove_key(key)
@@ -494,7 +584,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	            if InquisitorMethods.__dict__.has_key(inq_func):
 	                if type(InquisitorMethods.__dict__[inq_func]) == \
 	                   types.FunctionType:
-	                    exec("self."+inq_func+"(key, ctime)")
+	                    exec("self.%s(key, ctime)"%inq_func)
                             # we just updated the server info so record the
                             # current time as the last time updated.
 	                    self.last_update[key] = ctime
@@ -803,6 +893,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.doupdate_server_dict = 0
 	self.reset = {}
         self.update_request = {}
+        self.forked = {}
 
         # if no timeout was entered on the command line, get it from the 
         # configuration file.  this variable is used in dispatching worker to
