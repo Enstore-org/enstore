@@ -315,6 +315,183 @@ def get_mib_info(list, path, filenum):
         dat_d[i] = getit(str, miblist[filenum])
     return dat_d
 
+#########################################################################
+## This function prints the summarized information of the monitored MIB #
+## group or the monitored node, decises the state for the group or the  #
+## node according to the statistics of the values and returns the       #
+## corresponding state, value, description, event name and sever level. #
+#########################################################################
+def sumThem(r, o, y, u, val, obj, dscc):
+        print "\nThere are totally %s values reaching red threshold"%(r,)
+        print "There are total %s values reaching orange threshold"%(o,)
+        print "There are total %s values reaching yellow threshold"%(y,)
+        print "There are total %s values undefined"%(u,)
+
+        if r != 0:
+                state = DOWN
+                sev = 0
+        elif o != 0:
+                state = UP
+                sev = 4
+        elif y != 0:
+                state = UP
+                sev = 1
+        else:
+                state = UNDEFINED
+                sev = 2
+        val = val
+        evt = obj
+        dsc="There_are_totally_%s_red_thresholds__%s_orange_thresholds__\
+%s_yellow_thresholds__%s_undefined__They_are%s"%(r, o, y, u, dscc)
+        
+        return  state, val, dsc, evt, sev
+
+########################################################################
+## This function sets the flag for the monitored object, formats the   #
+## description, counts the state for the monitored objects and returns #
+## updated flag, descrition, state, value, event name, sever level and #
+## the statistics of the monitored object state to the caller.         #
+########################################################################
+def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
+    flag = 1
+    dscc = "%s_%s_%s"%(dscc, name, dsc1)
+    state, val, dsc, evt, sev = state1, val1, dsc1, evt1, sev1
+    print name, state, val, dsc, evt, sev
+    if state == DOWN and sev == 0:
+        r = r + 1
+    elif sev == 4:
+        o = o + 1
+    elif sev == 1:
+        y = y + 1
+    else:
+        u = u + 1
+    return flag, dscc, state, val, dsc, evt, sev, r, o, y, u
+
+#########################################################################
+## This function subtracts the value from the dictionary, calculates the#
+## dispression, compares the dispression with the given threshold and   #
+## returns the conrresponding state, value, event name to the calller.  #
+## There is one level threshold to be compared.                         #   
+#########################################################################
+def checkVal(d, str, targetVal, name, d0):
+    evt = "%s%s"%(name, str)
+    if not len(d):
+        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
+    else:
+        val = string.atoi(d[str]) - string.atoi(d0[str])
+        if val < 0:
+                val = - val
+        
+        if val > targetVal:
+                return DOWN, val, "%s_great_%s"%(str,targetVal), evt, 0
+        else:
+                return UP, val, "OK", evt, 0
+
+
+##########################################################################
+## This function subtracts the value from a given dictionary, calculates #
+## the dispression, compares the dispression with the given threshold and#
+## returns the conrresponding state, value, event name to the calller.   #
+## There are two levels threshold to be compared.                        #
+##########################################################################
+def check2Val(d, str, redVal, orgVal, name, d0):
+    evt = "%s%s"%(name, str)
+    if not len(d):
+        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
+    else:
+        val = string.atoi(d[str]) - string.atoi(d0[str])
+        if val < 0:
+                val = - val
+        
+        if val > redVal:
+                return DOWN, val, "%s_great_%s"%(str,redVal), evt, 0
+        elif val > orgVal and val <= redVal:
+                return UP, val, "%s_great_%s"%(str,orgVal),evt,4
+        else:
+                return UP, val, "OK", evt, 0
+
+##########################################################################
+## This function subtracts the value from a given dictionary, calculates #
+## the dispression, compares the dispression with the given threshold and#
+## returns the conrresponding state, value, event name to the calller.   #
+## There are three levels threshold to be compared.                      #
+##########################################################################
+def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
+    evt = "%s%s"%(name, str)
+    if not len(d):
+        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
+    else:
+        val = string.atoi(d[str]) - string.atoi(d0[str])
+        if val < 0:
+                val = - val
+        
+        if val > redVal:   
+                return DOWN, val, "%s_great_%s"%(str,redVal), evt, 0
+        elif val > orgVal:
+                return UP, val, "%s_great_%s"%(str,orgVal), evt, 4  
+        elif val > ylwVal:
+                return UP, val, "%s_great_%s"%(str,ylwVal), evt, 1
+        else:
+                return UP, val, "OK", evt, 0
+                
+##########################################################################
+## This function subtracts a string that indicates the state of the      #
+## monitored object from a given dictionary, compares the string with the#
+## given threshold string and returns the conrresponding state, value,   #
+## event name to the calller.                                            #
+## There are two levels threshold to be compared.                        #
+##########################################################################
+def check2Stat(d, str, redVal, orgVal, name):
+    evt = "%s%s"%(name, str)
+    if not len(d):
+        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
+    else:
+        val = d[str]
+        if val == redVal:  
+                return DOWN, d[str], "%s_is_%s"%(str, redVal), evt, 0
+        elif val == orgVal:
+                return UP, d[str], "%s_is_%s"%(str, orgVal), evt, 4 
+        else:
+                return UP, d[str], "OK", evt, 0
+
+##########################################################################
+## This function subtracts a string from a given dictionary, compares    #
+## the string with the given threshold string and returns the            #
+## conrresponding state, value, event name to the calller.               #
+## There are one level threshold to be compared.                         #
+##########################################################################
+def checkStr(d, str, goodStr, name):
+    evt = "%s%s"%(name, str)
+    if not len(d):
+        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
+    else:
+        val = d[str]
+        if val != goodStr:  
+                return DOWN, d[str], "%s_not_good"%(str,), evt, 0
+        else:
+                return UP, d[str], "OK", evt, 0
+        
+        
+##########################################################################
+## This function subtracts a string from a given dictionary, compares    #
+## the string with the given threshold strings and returns the           #
+## conrresponding state, value, event name to the calller.               #
+## There are two level threshold to be compared.                         #
+##########################################################################
+def check2Str(d, str, goodStr, warnStr, name):
+    evt = "%s%s"%(name, str)
+    if not len(d):
+        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
+    else:
+        val = d[str]
+        if val == warnStr:
+                return UP, d[str], "%s_not_good"%(str,), evt, 4
+        elif val == goodStr:
+                return UP, d[str], "OK", evt, 0
+        else:
+                print "value is %s"%(val,)
+                return UNDEFINED, val, "Undefined_string", str, 2
+
 
 #####################################################################
 ## This  function  checkes  the  monitored  object  variables.      #
@@ -498,184 +675,6 @@ def checkNode(elmName):
     else:
 	return UNDEFINED, -1, "Unable_to_execute", "Undefined event", 2
 
-#########################################################################
-## This function prints the summarized information of the monitored MIB #
-## group or the monitored node, decises the state for the group or the  #
-## node according to the statistics of the values and returns the       #
-## corresponding state, value, description, event name and sever level. #
-#########################################################################
-def sumThem(r, o, y, u, val, obj, dscc):
-        print "\nThere are totally %s values reaching red threshold"%(r,)
-        print "There are total %s values reaching orange threshold"%(o,)
-        print "There are total %s values reaching yellow threshold"%(y,)
-        print "There are total %s values undefined"%(u,)
-
-        if r != 0:
-          	state = DOWN
-        	sev = 0
-        elif o != 0:
-                state = UP
-                sev = 4 
-        elif y != 0:
-                state = UP
-                sev = 1
-        else:
-                state = UNDEFINED
-                sev = 2
-        val = val
-        evt = obj
-        dsc="There_are_totally_%s_red_thresholds__%s_orange_thresholds__\
-%s_yellow_thresholds__%s_undefined__They_are%s"%(r, o, y, u, dscc)
-	
-	return  state, val, dsc, evt, sev
-
-
-########################################################################
-## This function sets the flag for the monitored object, formats the   #
-## description, counts the state for the monitored objects and returns #
-## updated flag, descrition, state, value, event name, sever level and #
-## the statistics of the monitored object state to the caller.         #
-########################################################################
-def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
-    flag = 1
-    dscc = "%s_%s_%s"%(dscc, name, dsc1)
-    state, val, dsc, evt, sev = state1, val1, dsc1, evt1, sev1
-    print name, state, val, dsc, evt, sev
-    if state == DOWN and sev == 0:
-        r = r + 1
-    elif sev == 4:
-        o = o + 1
-    elif sev == 1:
-        y = y + 1
-    else:
-        u = u + 1
-    return flag, dscc, state, val, dsc, evt, sev, r, o, y, u
-
-
-#########################################################################
-## This function subtracts the value from the dictionary, calculates the# 
-## dispression, compares the dispression with the given threshold and   #
-## returns the conrresponding state, value, event name to the calller.  #
-## There is one level threshold to be compared.                         #
-#########################################################################
-def checkVal(d, str, targetVal, name, d0):
-    evt = "%s%s"%(name, str)
-    if not len(d):
-        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
-    else:
-        val = string.atoi(d[str]) - string.atoi(d0[str])
-	if val < 0:
-                val = - val
-
-        if val > targetVal:
-                return DOWN, val, "%s_great_%s"%(str,targetVal), evt, 0
-        else:
-                return UP, val, "OK", evt, 0
-
-
-##########################################################################
-## This function subtracts the value from a given dictionary, calculates #
-## the dispression, compares the dispression with the given threshold and#
-## returns the conrresponding state, value, event name to the calller.   #
-## There are two levels threshold to be compared.                        #
-##########################################################################
-def check2Val(d, str, redVal, orgVal, name, d0):
-    evt = "%s%s"%(name, str)
-    if not len(d):
-        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
-    else:
-        val = string.atoi(d[str]) - string.atoi(d0[str])
-        if val < 0:
-         	val = - val
-
-        if val > redVal:
-                return DOWN, val, "%s_great_%s"%(str,redVal), evt, 0
-        elif val > orgVal and val <= redVal:
-                return UP, val, "%s_great_%s"%(str,orgVal),evt,4
-        else:
-                return UP, val, "OK", evt, 0
-
-##########################################################################
-## This function subtracts the value from a given dictionary, calculates #
-## the dispression, compares the dispression with the given threshold and#
-## returns the conrresponding state, value, event name to the calller.   #
-## There are three levels threshold to be compared.                      #
-##########################################################################
-def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
-    evt = "%s%s"%(name, str)
-    if not len(d):
-        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
-    else:
-        val = string.atoi(d[str]) - string.atoi(d0[str])
-        if val < 0:
-                val = - val
-
-        if val > redVal:   
-                return DOWN, val, "%s_great_%s"%(str,redVal), evt, 0
-        elif val > orgVal:
-                return UP, val, "%s_great_%s"%(str,orgVal), evt, 4
-        elif val > ylwVal:
-                return UP, val, "%s_great_%s"%(str,ylwVal), evt, 1
-        else:
-                return UP, val, "OK", evt, 0
-    
-##########################################################################
-## This function subtracts a string that indicates the state of the      #
-## monitored object from a given dictionary, compares the string with the#
-## given threshold string and returns the conrresponding state, value,   # 
-## event name to the calller.                                            #
-## There are two levels threshold to be compared.                        #
-##########################################################################
-def check2Stat(d, str, redVal, orgVal, name):
-    evt = "%s%s"%(name, str)
-    if not len(d):
-       	return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
-    else:
-    	val = d[str]
-    	if val == redVal:
-        	return DOWN, d[str], "%s_is_%s"%(str, redVal), evt, 0
-        elif val == orgVal:
-                return UP, d[str], "%s_is_%s"%(str, orgVal), evt, 4
-    	else:
-        	return UP, d[str], "OK", evt, 0
-
-##########################################################################  
-## This function subtracts a string from a given dictionary, compares    #
-## the string with the given threshold string and returns the            #
-## conrresponding state, value, event name to the calller.               #
-## There are one level threshold to be compared.                         #
-##########################################################################
-def checkStr(d, str, goodStr, name):
-    evt = "%s%s"%(name, str)
-    if not len(d):
-       	return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
-    else:
-    	val = d[str]
-    	if val != goodStr:
-  		return DOWN, d[str], "%s_not_good"%(str,), evt, 0 
-    	else:
-		return UP, d[str], "OK", evt, 0
-   
-
-##########################################################################
-## This function subtracts a string from a given dictionary, compares    #
-## the string with the given threshold strings and returns the           #
-## conrresponding state, value, event name to the calller.               #
-## There are two level threshold to be compared.                         #
-##########################################################################     
-def check2Str(d, str, goodStr, warnStr, name):
-    evt = "%s%s"%(name, str)  
-    if not len(d):
-        return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
-    else:
-        val = d[str]
-        if val == warnStr:
-                return UP, d[str], "%s_not_good"%(str,), evt, 4
-        elif val == goodStr:
-                return UP, d[str], "OK", evt, 0
-        else:
-                print "value is %s"%(val,)
-                return UNDEFINED, val, "Undefined_string", str, 2
 
 ##########################################################################
 ## This function set up html tables for the MIB groups by HTMLgen.       #
