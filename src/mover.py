@@ -267,6 +267,8 @@ class Buffer:
         return r
     
     def _freespace(self, s):
+        if len(s) != self.blocksize:
+            return # don't need this partial block around!
         self._lock.acquire()
         self._freelist.append(s)
         self._lock.release()
