@@ -856,7 +856,9 @@ def do_work(intf):
     elif intf.check:
         ticket = vcc.inquire_vol(intf.check)
         ##pprint.pprint(ticket)
-        print "%-10s  %s %s %s" % (ticket['external_label'],
+        # guard against error
+        if ticket['status'][0] == e_errors.OK:
+            print "%-10s  %s %s %s" % (ticket['external_label'],
                                    capacity_str(ticket['remaining_bytes']),
                                    ticket['system_inhibit'],
                                    ticket['user_inhibit'])
