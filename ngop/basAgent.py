@@ -504,7 +504,7 @@ def checkNode(elmName):
 ## node according to the statistics of the values and returns the       #
 ## corresponding state, value, description, event name and sever level. #
 #########################################################################
-global def sumThem(r, o, y, u, val, obj, dscc):
+def sumThem(r, o, y, u, val, obj, dscc):
         print "\nThere are totally %s values reaching red threshold"%(r,)
         print "There are total %s values reaching orange threshold"%(o,)
         print "There are total %s values reaching yellow threshold"%(y,)
@@ -536,7 +536,7 @@ global def sumThem(r, o, y, u, val, obj, dscc):
 ## updated flag, descrition, state, value, event name, sever level and #
 ## the statistics of the monitored object state to the caller.         #
 ########################################################################
-global def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
+def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
     flag = 1
     dscc = "%s_%s_%s"%(dscc, name, dsc1)
     state, val, dsc, evt, sev = state1, val1, dsc1, evt1, sev1
@@ -558,7 +558,7 @@ global def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
 ## returns the conrresponding state, value, event name to the calller.  #
 ## There is one level threshold to be compared.                         #
 #########################################################################
-global def checkVal(d, str, targetVal, name, d0):
+def checkVal(d, str, targetVal, name, d0):
     evt = "%s%s"%(name, str)
     if not len(d):
         return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -579,7 +579,7 @@ global def checkVal(d, str, targetVal, name, d0):
 ## returns the conrresponding state, value, event name to the calller.   #
 ## There are two levels threshold to be compared.                        #
 ##########################################################################
-global def check2Val(d, str, redVal, orgVal, name, d0):
+def check2Val(d, str, redVal, orgVal, name, d0):
     evt = "%s%s"%(name, str)
     if not len(d):
         return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -601,7 +601,7 @@ global def check2Val(d, str, redVal, orgVal, name, d0):
 ## returns the conrresponding state, value, event name to the calller.   #
 ## There are three levels threshold to be compared.                      #
 ##########################################################################
-global def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
+def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
     evt = "%s%s"%(name, str)
     if not len(d):
         return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -626,7 +626,7 @@ global def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
 ## event name to the calller.                                            #
 ## There are two levels threshold to be compared.                        #
 ##########################################################################
-global def check2Stat(d, str, redVal, orgVal, name):
+def check2Stat(d, str, redVal, orgVal, name):
     evt = "%s%s"%(name, str)
     if not len(d):
        	return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -645,7 +645,7 @@ global def check2Stat(d, str, redVal, orgVal, name):
 ## conrresponding state, value, event name to the calller.               #
 ## There are one level threshold to be compared.                         #
 ##########################################################################
-global def checkStr(d, str, goodStr, name):
+def checkStr(d, str, goodStr, name):
     evt = "%s%s"%(name, str)
     if not len(d):
        	return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -663,7 +663,7 @@ global def checkStr(d, str, goodStr, name):
 ## conrresponding state, value, event name to the calller.               #
 ## There are two level threshold to be compared.                         #
 ##########################################################################     
-global def check2Str(d, str, goodStr, warnStr, name):
+def check2Str(d, str, goodStr, warnStr, name):
     evt = "%s%s"%(name, str)  
     if not len(d):
         return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
