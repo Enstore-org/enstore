@@ -211,14 +211,8 @@ class Vetos:
         return socket.gethostbyname(some_ip)
     
         
-
-if __name__ == "__main__":
-    
-
-    intf = MonitorServerClientInterface()
-    
-    Trace.init(MY_NAME)
-    Trace.trace( 6, 'msc called with args: %s'%(sys.argv,) )
+# we need this in order to be called by the enstore.py code
+def do_work(intf):
     csc = configuration_client.ConfigurationClient((intf.config_host,
                                                     intf.config_port))
     config = csc.get('active_monitor')
@@ -251,5 +245,14 @@ if __name__ == "__main__":
         #pprint.pprint(measurement)
         print "  Success.  Network rate measured at ",msc.send_measurement(measurement)," MB/S"
     msc.flush_measurements()
-        
+
+
+if __name__ == "__main__":
     
+
+    intf = MonitorServerClientInterface()
+    
+    Trace.init(MY_NAME)
+    Trace.trace( 6, 'msc called with args: %s'%(sys.argv,) )
+
+    do_work(intf)

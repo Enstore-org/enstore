@@ -20,6 +20,7 @@ import library_manager_client
 import log_client
 import media_changer_client
 import mover_client
+import monitor_client
 import volume_clerk_client
 import dbs
 
@@ -42,6 +43,8 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                               log_client.do_work],
                      "media" : [media_changer_client.MediaChangerClientInterface,
                                 media_changer_client.do_work],
+                     "monitor" : [monitor_client.MonitorServerClientInterface,
+                                monitor_client.do_work],
                      "mover" : [mover_client.MoverClientInterface,
                                 mover_client.do_work],
                      "volume" : [volume_clerk_client.VolumeClerkClientInterface,
@@ -90,6 +93,7 @@ class UserOptions(GenericUserOptions):
     server_options = {
         "file" : ["bfid=", "restore=", "list=", "recursive"],
         "library" : ["priority=", "delete_work=", "get_queue"],
+	"monitor" : [],
         "volume" : ["add=", "delete=", "new_library=", "no_access=",
                     "read_only=", "restore=", "update=", "vol="]
         }
