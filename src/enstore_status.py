@@ -344,7 +344,7 @@ class EnStatus:
     def output_lmstate(self, ticket, key):
         if not self.text.has_key(key):
             self.text[key] = {}
-        self.text[key][enstore_constants.LMSTATE] = ticket['state']
+        self.text[key][enstore_constants.LMSTATE] = ticket.get('state', "")
 
     # output the library manager queues
     def output_lmqueues(self, ticket, key):
