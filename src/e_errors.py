@@ -3,6 +3,9 @@
 #
 
 import sys
+import string
+import Trace
+import traceback
 
 OK         = 'ok'
 TIMEDOUT = 'TIMEDOUT'
@@ -270,13 +273,12 @@ def is_retriable(e):
 
 # log traceback info
 def handle_error(exc=None, value=None, tb=None):
-    import Trace
-    import traceback
+
     # store traceback info
     if not exc:
 	exc, value, tb = sys.exc_info()
     # log it
     for l in traceback.format_exception( exc, value, tb ):
 	#print l[0:len(l)-1]
-	Trace.log( ERROR, l[:-1], Trace.MSG_DEFAULT, "TRACEBACK")
+	Trace.log( ERROR, string.join(l,'\n'), Trace.MSG_DEFAULT, "TRACEBACK")
     return exc, value, tb

@@ -304,7 +304,14 @@ class DispatchingWorker:
                       
     def handle_error(self, request, client_address):
         exc, msg, tb = sys.exc_info()
-        Trace.trace(6,"handle_error %s %s"%(exc,msg))
+
+        filename = tb.tb_frame.f_code.co_filename
+        if not filename or type(filename)!=type(""):
+            filename="???"
+        lineno = tb.tb_lineno
+        Trace.alarm(e_errors.ERROR,
+            "Exception in file %s at line %s: %s. See system log for details." % (
+            filename, lineno, msg))
         Trace.log(e_errors.INFO,'-'*40)
         Trace.log(e_errors.INFO,
                   'Exception during request from %s, request=%s'%
