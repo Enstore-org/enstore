@@ -21,7 +21,7 @@ html_file = 1
 force = 1
 
 html_header = "<title>Inquisitor</title>\n"+\
-              "<meta http-equiv=\"Refresh\" content=\"11\">\n"+\
+              "<meta http-equiv=\"Refresh\" content=\"5\">\n"+\
               "<body bgcolor=\"FFFFFF\">\n<pre>\n"
 
 class EnstoreStatus:
@@ -270,18 +270,18 @@ class EnstoreStatus:
 	spacing = "\n    "
 	string = spacing+"Completed Transfers : "+repr(ticket["no_xfers"])
 	if ticket["state"] == "busy":
-	    p = "Current"
+	    p = "Current Transfer : "
 	    if ticket["mode"] == "r":
-	        m = " reading"
+	        m = " reading from HSM"
 	    else:
-	        m = " writing"
+	        m = " writing to HSM"
 	elif ticket["state"] == "idle":
-	    p = "Last"
+	    p = "Last Transfer : "
 	    m = " "
 
 	string = string+",  Current State : "+ticket["state"]+m
-	string = string+spacing+p+" Read : "+\
-	             repr(ticket["rd_bytes"])+" bytes,  "+p+" Write : "+\
+	string = string+spacing+p+" Read "+\
+	             repr(ticket["rd_bytes"])+" bytes,  Wrote "+\
 	             repr(ticket["wr_bytes"])+" bytes\n\n" 
         Trace.trace(12,"}format_moverstatus ")
 	return string
