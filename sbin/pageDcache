@@ -48,20 +48,22 @@ check_exit_code() {
     fi
 }
 
+get_ports() {
+    # get the ftp/kftp ports
+    tmp_file=/tmp/dCacheSetup
+    enrcp $dcache:~enstore/dcache-deploy/config/dCacheSetup $tmp_file
+    set +u;. $tmp_file;set -u
+    rm $tmp_file
+    strong_port=$kerberosFtpPort
+    weak_port=$ftpPort
+}
+
 # assume success exit code
 ec=0
 
 # N will have a leading 0 (if < 100) unless we pipe it to sed.
 N=`date +"%j"|sed -e 's%^0%%'` #day of year
 N1=`expr $N - 1`
-
-# get the ftp/kftp ports
-tmp_file=/tmp/dCacheSetup
-enrcp $dcache:~enstore/dcache-deploy/config/dCacheSetup $tmp_file
-set +u;. $tmp_file;set -u
-rm $tmp_file
-strong_port=$kerberosFtpPort
-weak_port=$ftpPort
 
 test_file=/tmp/dcache_page_file_$$
 rm -f $test_file
@@ -76,6 +78,8 @@ output_ftp=/tmp/dcache_page_output_ftp_$$
 exit_code_ftp=/tmp/dcache_page_exit_code_ftp_$$
 rm_tmp_files
 
+# do the tests. spawn off the dccp test.  however the ftp test depends on the kftp
+# test finishing and writing a file to dcache.  so let them go in series.
 gang=`gang`
 case $gang in
   stken) case $dcacheToTest in
@@ -85,10 +89,11 @@ case $gang in
 		   strip_dir="/pnfs/eagle"
 		   dcache=cmsdca
 		   dcache_saag="dcache_cms"
+		   get_ports
 		   get_ticket
-		   `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		   `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
-		   `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		   `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		   pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
+		   pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
 		   ;;
 	     lqcd) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
 		   wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
@@ -96,52 +101,53 @@ case $gang in
 		   strip_dir="/pnfs/eagle"
 		   dcache=lqcd-cache
 		   dcache_saag="dcache_lqcd"
+		   get_ports
 		   get_ticket
-		   `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		   `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
-		   `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		   `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		   pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
+		   pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
 		   ;;
-	    fndca) 
-	        *) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
+	  fndca|*) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
 		   wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
 		   wa=/pnfs/eagle/dcache-tests/$N.dcache_page_a_$$
 		   strip_dir="/pnfs/eagle"
 		   dcache=fndca
 		   dcache_saag="dcache_stk"
+		   get_ports
 		   get_ticket
-		   `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		   `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
-		   `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		   `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		   pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
+		   pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
 		   ;;
 	 esac
 	 ;;
   cdfen) case $dcacheToTest in
-	      cdfen)
-	          *) w=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_$$
+	    cdfen|*) w=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_$$
 		     wp=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_p_$$
 		     wa=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_a_$$
 		     strip_dir="/pnfs/cdfen"
 		     dcache=cdfdca
 		     dcache_saag="dcache_cdf"
+		     get_ports
 		     get_ticket
-		     `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		     `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
-		     `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		     `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		     pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
+		     pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
 		     ;;
 	 esac
 	 ;;
   d0en)  case $dcacheToTest in
-	      d0en)
-		 *) w=/pnfs/archive/dcache-tests/$N.dcache_page_$$
+	    d0en|*) w=/pnfs/archive/dcache-tests/$N.dcache_page_$$
 		    wp=/pnfs/archive/dcache-tests/$N.dcache_page_p_$$
 		    wa=/pnfs/archive/dcache-tests/$N.dcache_page_a_$$
 		    strip_dir="/pnfs"
 		    dcache=d0dca
 		    dcache_saag="dcache_d0"
+		    get_ports
 		    get_ticket
-		    `page_dcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		    `page_dcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp`&
-		    `page_dcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp`&
+		    `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
+		    pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
+		    pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
 		    ;;
 	 esac
          ;;
@@ -151,9 +157,9 @@ case $gang in
         ;;
 esac
 
-# we have spawned off all tests to run in parallel,
+# we have spawned off all tests we could to run in parallel,
 # wait for all of our children to completed.
-# jobs -p returns a list of pids that are space separated
+# jobs -p returns a space separated list of pids
 wait `jobs -p`
 
 # all the children have finished, echo anything they said.
