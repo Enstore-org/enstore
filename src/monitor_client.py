@@ -16,6 +16,7 @@ import threading
 # enstore imports
 import callback
 import interface
+import hostaddr
 import generic_client
 import backup_client
 import udp_client
@@ -114,10 +115,6 @@ class MonitorServerClient(generic_client.GenericClient):
                  'block_size' : ticket['block_size'],
                  'block_count': ticket['block_count']}
         
-        #when bad routing takes place an accept should take about 12 minutes to
-        # retry given the number of tries and the exponential backoff.
-        # we will use a select and the configurebale timeout instead
-        # since no one will wait 12 minutes in practice
         r,w,ex = select.select([self.c_socket], [], [self.c_socket],
                                self.timeout)
         if not r :
@@ -127,6 +124,9 @@ class MonitorServerClient(generic_client.GenericClient):
 
         #simulate the control socket between encp and the mover
         ms_socket, address = self.c_socket.accept()
+        if not hostaddr.allow(address):
+            return reply
+            
         returned_ticket = callback.read_tcp_obj(ms_socket)
         ms_socket.close()
         data_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
