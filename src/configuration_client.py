@@ -57,12 +57,13 @@ class ConfigurationClient(generic_client.GenericClient) :
         Trace.trace(16,'}clear')
 
     # get value for requested item from server, store locally in own cache
-    def get_uncached(self, key):
+    def get_uncached(self, key, timeout=0, retry=0):
         Trace.trace(11,'{get_uncached key='+repr(key))
         request = {'work' : 'lookup', 'lookup' : key }
         while 1:
             try:
-                self.cache[key] = self.u.send(request, self.config_address )
+                self.cache[key] = self.u.send(request, self.config_address,\
+                                              timeout, retry)
                 break
             except socket.error:
                 if sys.exc_info()[1][0] == errno.CONNREFUSED:
@@ -81,24 +82,25 @@ class ConfigurationClient(generic_client.GenericClient) :
         return self.cache[key]
 
     # return cached (or get from server) value for requested item
-    def get(self, key):
+    def get(self, key, timeout=0, retry=0):
         Trace.trace(11,'{get (cached) key='+repr(key))
         # try the cache
         try:
             val = self.cache[key]
         except:
-            val = self.get_uncached(key)
+            val = self.get_uncached(key, timeout, retry)
         Trace.trace(11,'}get (cached) key='+repr(key)+'='+repr(val))
         return val
 
 
     # dump the configuration dictionary
-    def list(self):
+    def list(self, timeout=0, retry=0):
         Trace.trace(16,'{list')
         request = {'work' : 'list' }
         while 1:
             try:
-                self.config_list = self.u.send(request, self.config_address )
+                self.config_list = self.u.send(request, self.config_address,\
+	                                       timeout, retry )
                 break
             except socket.error:
                 if sys.exc_info()[1][0] == errno.CONNREFUSED:
@@ -116,12 +118,13 @@ class ConfigurationClient(generic_client.GenericClient) :
         Trace.trace(16,'}list')
 
     # get all keys in the configuration dictionary
-    def get_keys(self):
+    def get_keys(self, timeout=0, retry=0):
         Trace.trace(16,'{get_keys')
         request = {'work' : 'get_keys' }
         while 1:
             try:
-                keys = self.u.send(request, self.config_address )
+                keys = self.u.send(request, self.config_address, timeout,\
+	                           retry )
                 Trace.trace(16,'}get_keys ' + repr(keys))
                 return keys
             except socket.error:
@@ -140,12 +143,12 @@ class ConfigurationClient(generic_client.GenericClient) :
         Trace.trace(16,'}get_keys')
 
     # reload a new  configuration dictionary
-    def load(self, configfile):
+    def load(self, configfile, timeout=0, retry=0):
         Trace.trace(10,'{load configfile='+repr(configfile))
         request = {'work' : 'load' ,  'configfile' : configfile }
         while 1:
             try:
-                x = self.u.send(request, self.config_address)
+                x = self.u.send(request, self.config_address, timeout, retry)
                 Trace.trace(16,'}load '+repr(x))
                 return x
             except socket.error:
@@ -171,12 +174,12 @@ class ConfigurationClient(generic_client.GenericClient) :
         return x
 
     # get list of the Library manager movers
-    def get_movers(self, library_manager):
+    def get_movers(self, library_manager, timeout=0, retry=0):
         Trace.trace(10,'{get_movers for '+repr(library_manager))
         request = {'work' : 'get_movers' ,  'library' : library_manager }
         while 1:
             try:
-                x = self.u.send(request, self.config_address)
+                x = self.u.send(request, self.config_address, timeout, retry)
                 Trace.trace(16,'}get_movers '+repr(x))
                 return x
             except socket.error:
@@ -236,20 +239,21 @@ if __name__ == "__main__":
         if intf.list:
             pprint.pprint(stati)
     elif intf.dict:
-        csc.list()
+        csc.list(intf.alive_rcv_timeout,intf.alive_retries)
         if intf.list:
             print csc.config_list["list"]
             #pprint.pprint(csc.config_list)
         stat = csc.config_list['status']
 
     elif intf.load:
-        stati= csc.load(intf.config_file)
+        stati= csc.load(intf.config_file, intf.alive_rcv_timeout, \
+	                intf.alive_retries)
         if intf.list:
             pprint.pprint(stati)
         stat=stati['status']
 
     elif intf.get_keys:
-        stati= csc.get_keys()
+        stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
         if intf.list:
             pprint.pprint(stati)
         stat=stati['status']
