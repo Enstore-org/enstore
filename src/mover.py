@@ -233,7 +233,9 @@ class Mover:
 
         # double check that we are talking about the same volume
 	if self.external_label == '':
+	    t0 = time.time()
 	    self.bind_volume({'external_label':ticket["fc"]["external_label"]})
+	    ticket['times']['mount_time'] = time.time() - t0
         elif ticket["fc"]["external_label"] != self.external_label:
             raise "volume manager and I disagree on volume"
 
@@ -257,11 +259,15 @@ class Mover:
         self.logc.send(log_client.INFO,2,"OPEN_FILE_WRITE")
         # open the hsm file for writing
         try:
+	    t0 = time.time()
             self.driver.open_file_write()
+	    ticket['times']['seek_time'] = time.time() - t0
 	    # create the wrapper instance
             self.logc.send(log_client.INFO,2,"CPIO")
 	    fast_write = 1
+	    t0 = time.time()
             self.wrapper = cpio.Cpio(self, self.driver, binascii.crc_hqx, fast_write )
+	    ticket['times']['transfer_time'] = time.time() - t0
 
 	    # now write the file
             self.logc.send(log_client.INFO,2,"WRAPPER.WRITE")
@@ -336,8 +342,9 @@ class Mover:
                       'wr_err', 'wr_access']:
                 exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
-        self.logc.send(log_client.INFO,2,"WRITE"+str(ticket))
+
         # finish up and tell user about the transfer
+        self.logc.send( log_client.INFO, 2, "WRITE"+str(ticket) )
         self.send_user_last(ticket)
 
         # go around for more
@@ -360,7 +367,9 @@ class Mover:
 
         # double check that we are talking about the same volume
 	if self.external_label == '':
+	    t0 = time.time()
 	    self.bind_volume({'external_label':ticket["fc"]["external_label"]})
+	    ticket['times']['mount_time'] = time.time() - t0
         elif ticket["fc"]["external_label"] != self.external_label:
             raise "volume manager and I disagree on volume"
 
@@ -387,8 +396,12 @@ class Mover:
 
         # open the hsm file for reading and read it
         try:
+	    t0 = time.time()
             self.driver.open_file_read(ticket["fc"]["bof_space_cookie"])
+	    ticket['times']['seek_time'] = time.time() - t0
+	    t0 = time.time()
             (bytes_sent, complete_crc) = self.wrapper.read(sanity_cookie)
+	    ticket['times']['transfer_time'] = time.time() - t0
              #print "cpio.read  size:",wr_size,"crc:",complete_crc
 
 	    # close hsm file
@@ -449,8 +462,10 @@ class Mover:
                 exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
 
-        # tell user
-        self.logc.send(log_client.INFO,2,"READ"+str(ticket))
+	ticket['times']['xfer_time'] = time.time() - t0
+
+        # finish up and tell user about the transfer
+        self.logc.send( log_client.INFO, 2, "READ"+str(ticket) )
         self.send_user_last(ticket)
 
         # go around for more
