@@ -159,9 +159,13 @@ class AsciiAlarm(GenericAlarm):
     def __init__(self, text):
         GenericAlarm.__init__(self)
 
-        [self.id, self.host, self.pid, self.uid, sev,
-         self.source, self.root_error, self.alarm_info] = eval(text)
-	self.severity, self.num_times_raised = self.split_severity(sev)
+	# sometimes the alarm file has junk in it. so protect against that
+	try:
+	    [self.id, self.host, self.pid, self.uid, sev,
+	     self.source, self.root_error, self.alarm_info] = eval(text)
+	    self.severity, self.num_times_raised = self.split_severity(sev)
+	except TypeError:
+	    self.id = 0    # not a valid alarm
 
 class LogFileAlarm(GenericAlarm):
 

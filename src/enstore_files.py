@@ -677,7 +677,8 @@ class EnAlarmFile(EnFile):
                         break
                     else:
                         theAlarm = alarm.AsciiAlarm(line)
-                        enAlarms[theAlarm.id] = theAlarm
+			if not theAlarm.id == 0:
+			    enAlarms[theAlarm.id] = theAlarm
             except IOError:
                 pass
         return enAlarms
