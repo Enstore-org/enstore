@@ -17,7 +17,8 @@ doit() { echo "$1"
 
 if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
 
- cmd="rdist -c /diska/enstore-log/ enstore@d0ensrv3.fnal.gov:/diska/enstore-log-backup"
+ # cmd="rdist -c /diska/enstore-log/ enstore@d0ensrv3.fnal.gov:/diska/enstore-log-backup"
+ cmd="/usr/bin/rsync   -l -p -o -g -D -t -x --delete --force /diska/enstore-log/*LOG-* enstore@d0ensrv3.fnal.gov:/diska/enstore-log-backup"
  doit "$cmd"
 
 else
