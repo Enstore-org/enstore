@@ -297,7 +297,7 @@ class Enstore(EnstoreInterface):
                 str = "ps auxww"
             else:
                 str = "ps -ef"
-            rtn = os.system('/usr/local/bin/rgang %s %s| egrep "python|ecmd|encp|reader|writer|dasadmin|mt |db_"'%(farmlet, str))
+            rtn = os.system('/usr/local/bin/rgang %s %s| egrep "python|enstore|encp|reader|writer|dasadmin|mt |db_"'%(farmlet, str))
         else:
             if arg1 == "help" or arg1 == "--help" or arg1 == '': 
                 rtn = 0
