@@ -101,7 +101,7 @@ class Pnfs:
                 if msg.errno == errno.ENOENT:
                     return ENABLED
                 else:
-                    raise exc,msg
+                    raise os.error,msg
                 f = open(self.dir+'/.(config)(flags)/disabled')
                 why = f.readlines()
                 f.close()

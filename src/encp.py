@@ -1395,7 +1395,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                                            {'status':("EPROTO",
                                                                       "Network problem or mover crash")})
                             jraise(errno.errorcode[errno.EPROTO],
-                                   " encp._read_from_hsm: network problem or mover crash %s"%err_msg)
+                                   " encp._read_from_hsm: network problem or mover crash %s"%msg)
 
                             pass
                         control_socket.close()
