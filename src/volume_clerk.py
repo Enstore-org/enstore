@@ -502,6 +502,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             library = record['library']
             sg = volume_family.extract_storage_group(record['volume_family'])
             self.sgdb.inc_sg_counter(library, sg, increment=-1)
+            # deleting blank?
+            if sg == 'none':
+                sgc = self.sgdb.get_sg_counter((library, 'none'))
+                if sgc < self.common_blank_low['warning']:
+                    msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
+                    Trace.alarm(e_error.WARNING, msg)
+                if sgc < self.common_blank_low['alarm']:
+                    msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
+                    Trace.alarm(e_errors.ERROR, msg)
 
         return status
 
@@ -687,7 +696,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record['volume_family'] = string.join((storage_group, ff, wp), '.')
 
         self.dict[vol] = record
+        # adjust sg-count
         self.sgdb.inc_sg_counter(library, storage_group)
+        self.sgdb.inc_sg_counter(library, 'none', increment=-1)
+        sgc = self.sgdb.get_sg_counter((library, 'none'))
+        if sgc < self.common_blank_low['warning']:
+            msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
+            Trace.alarm(e_error.WARNING, msg)
+        if sgc < self.common_blank_low['alarm']:
+            msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
+            Trace.alarm(e_errors.ERROR, msg)
         ticket['status'] = (e_errors.OK, None)
         Trace.log(e_errors.INFO, "volume %s is assigned to storage group %s"%(vol, storage_group))
         self.reply_to_caller(ticket)
@@ -1297,6 +1315,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             label = vol['external_label']
             if ff == 'ephemeral':
                 vol_fam = volume_family.make_volume_family(sg, label, wrapper_type)
+            osg = volume_family.extract_storage_group(vol['volume_family'])
             vol['volume_family'] = vol_fam
             vol['wrapper'] = wrapper_type
             if vol['sum_wr_access'] != 0:
@@ -1305,7 +1324,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 msg = 'blank'
             Trace.log(e_errors.INFO, "Assigning %s volume %s from storage group %s to library %s, volume family %s"
                       % (msg, label, pool, library, vol_fam))
-            if inc_counter: self.sgdb.inc_sg_counter(library, sg)
+            if inc_counter:
+                self.sgdb.inc_sg_counter(library, sg)
+                self.sgdb.inc_sg_counter(library, osg, increment=-1)
+                if osg == 'none':
+                    sgc = self.sgdb.get_sg_counter((library, osg))
+                    if sgc < self.common_blank_low['warning']:
+                        msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
+                        Trace.alarm(e_error.WARNING, msg)
+                    if sgc < self.common_blank_low['alarm']:
+                        msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
+                        Trace.alarm(e_errors.ERROR, msg)
             self.dict[label] = vol  
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
@@ -2330,6 +2359,14 @@ class VolumeClerk(VolumeClerkMethods):
             Trace.alarm(e_errors.ERROR,msg, {})
             Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
             sys.exit(1)
+
+        # get common pool low water mark
+	# default to be 10
+        res = self.csc.get('common_blank_low')
+        if res['status'][0] == e_error.OK:
+            self.common_blank_low = res
+        else:
+            self.common_blank_low = {'warning':100, 'alarm':10}
 
         # rebuild it if it was not loaded
         if len(self.sgdb) == 0:
