@@ -65,7 +65,13 @@ elif [ `uname -n | grep -c hppc` -eq 1 ] ; then
   enstore_libraries="hppcdisk.library_manager"
   enstore_media_changers="hppcdisk.media_changer"
   enstore_movers="hppcdisk.mover"
-
+  if [ `whoami` = "berman" ] ; then
+    enstore_start_config=1
+    enstore_start_fileclerk=1
+    enstore_start_volumeclerk=1
+    enstore_start_log=1
+    enstore_start_admin=1
+  fi
 fi
 
 # if the user has environmental variable set, use them - or else use the defaults
