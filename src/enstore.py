@@ -245,6 +245,7 @@ class EnstoreInterface(UserOptions):
     def print_help(self):
         cmd = "enstore"
         if not self.user_mode:
+            call_function("$ENSTORE_DIR/bin/pnfs", "")
             print "\n%s start   [--just server --ping]"%cmd
             print   "%s stop    [--just server --xterm server]"%cmd
             print   "%s restart [--just server --xterm server]"%cmd
@@ -311,6 +312,8 @@ class Enstore(EnstoreInterface):
         elif not self.user_mode and arg1 == "Esys":
             command=". /usr/local/etc/setups.sh; setup enstore; EPS"
             rtn = do_rgang_command("enstore",command)
+        elif not self.user_mode and arg1 == "pnfs": 
+            rtn = call_function("$ENSTORE_DIR/bin/pnfs", sys.argv[2:])
         else:
             if arg1 == "help" or arg1 == "--help" or arg1 == '': 
                 rtn = 0
