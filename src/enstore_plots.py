@@ -752,12 +752,21 @@ class BpdDataFile(EnPlot):
 		fields = string.split(string.strip(line))
 		if not self.ndata.has_key(fields[0]):
 		    # we do not have data for this day yet
-		    self.ndata[fields[0]] = { TOTAL : fields[1],
-					 READS : fields[2],
-					 WRITES : fields[3],
-					 SMALLEST : fields[4],
-					 LARGEST : fields[5],
-					 CTR : long(float(fields[1])/float(fields[6])) }
+		    if len(fields) > 1:
+			self.ndata[fields[0]] = { TOTAL : fields[1],
+						  READS : fields[2],
+						  WRITES : fields[3],
+						  SMALLEST : fields[4],
+						  LARGEST : fields[5],
+						  CTR : long(float(fields[1])/feloat(fields[6])) }
+		    else:
+			self.ndata[fields[0]] = {TOTAL : 0,
+						 READS : 0,
+						 WRITES : 0,
+						 SMALLEST : 0,
+						 LARGEST : 0,
+						 CTR : 0 }
+
     def open(self):
 	if os.path.isfile(self.ptsfile):
 	    EnPlot.open(self, 'r')
