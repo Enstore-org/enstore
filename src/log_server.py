@@ -261,7 +261,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                     # (size+1 so can skip ".")
                     if matching_l[-1] != filename:
                         self.index = int(matching_l[-1][size+1:]) + 1
-                return matching_l[-1]
+                    return matching_l[-1]
         return filename
 
     def serve_forever(self):                      # overrides UDPServer method
