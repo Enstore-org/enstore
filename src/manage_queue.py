@@ -17,7 +17,7 @@ class Queue:
       deltas=0
       if ticket["encp"]["agetime"] > 0:
          # deltas is the number of delta time periods 
-         deltas=int(time.time()-ticket["times"]["t0"])/60/ticket["encp"]["agetime"]
+         deltas=int(time.time()-ticket["times"]["job_queued"])/60/ticket["encp"]["agetime"]
          p=p + ticket["encp"]["delpri"]*deltas
       #self.enprint(p+" "+repr(ticket["encp"]["basepri"])+" "+repr(deltas)+\
       #            " "+repr(ticket["encp"]["agetime"])+" "+\
