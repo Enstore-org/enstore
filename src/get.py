@@ -114,14 +114,9 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
 
         # Send the request to the mover. (evil hacks)
         work_ticket['method'] = "read_next"
-        #work_ticket['request_addr'] = request_addr #This may not be necessary.
-        #This may not be necessary...
-        #message_id = request_socket.send_deferred(work_ticket,
-        #                                work_ticket['mover']['mover_address'])
-        #This works out of dumb luck.  If the udp_server socket is ever
-        # closed, make sure that we go back to the very beginning.
         request  = udp_socket.process_request()
-        print "RQ",request
+        Trace.message(10, "MOVER_MESSAGE:")
+        Trace.message(10, pprint.pformat(request))
         udp_socket.reply_to_caller(work_ticket)
 
         Trace.message(5, "Opening the data socket.")
@@ -153,19 +148,16 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         
         # Read the file from the mover.
         done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
-        print "DONE_TICKET", done_ticket
-        request  = udp_socket.process_request()
-        print "RQ",request
-        
 
         Trace.message(5, "Completed reading from tape.")
+        Trace.message(10, "DONE_TICKET:")
+        Trace.message(10, pprint.pformat(done_ticket))
 
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
                                      done_ticket, None,
                                      None, None, e)
 
-        print "RESULT_DICT",result_dict 
         if not e_errors.is_ok(result_dict):
             work_ticket = encp.combine_dict(result_dict,
                                             work_ticket)
@@ -173,6 +165,11 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
             return work_ticket
+
+        #Pretend we are the library manager.
+        request = udp_socket.process_request()
+        Trace.message(10, "LM MESSAGE:")
+        Trace.message(10, pprint.pformat(request))
 
         #Combine these tickets.  Encp would have this already done, in
         # its transfer_file() function, but not gets transfer_file() function.
@@ -185,12 +182,14 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         Trace.message(5, "Waiting for final dialog (1).")
         mover_done_ticket = encp.receive_final_dialog(control_socket)
         Trace.message(5, "Received final dialog (1).")
-        print mover_done_ticket
+        Trace.message(10, "MOVER_DONE_TICKET:")
+        Trace.message(10, pprint.pformat(mover_done_ticket))
         Trace.message(5, "Waiting for final dialog. (2)")
         #Keep the udp socket queues clear.
         mover_request = udp_socket.process_request()
         Trace.message(5, "Received final dialog. (2)")
-        print mover_request
+        Trace.message(10, "MOVER_REQUEST:")
+        Trace.message(10, pprint.pformat(mover_request))
         
         # Verify that everything went ok with the transfer.
         mover_result_dict = encp.handle_retries([work_ticket], work_ticket,
@@ -264,13 +263,14 @@ def requests_outstanding(request_list):
 
     return files_left
 
+#Return the next uncompleted transfer.
 def get_next_request(request_list):
 
-    for request in request_list:
-        if request.get('completion_status', None) == None:
-            return request
+    for i in range(len(request_list)):
+        if request_list[i].get('completion_status', None) == None:
+            return request_list[i], i
 
-    return None
+    return None, 0
             
 def main(e):
 
@@ -312,7 +312,7 @@ def main(e):
     while requests_outstanding(requests_per_vol[e.volume]):
 
         #Get the next volume in the list to transfer.
-        request = get_next_request(requests_per_vol[e.volume])
+        request, index = get_next_request(requests_per_vol[e.volume])
 
         #Only the first submition goes to the LM for volume reads.
         request['method'] = "read_tape_start" #evil hacks
@@ -341,8 +341,7 @@ def main(e):
 
             rticket, use_listen_socket = encp.open_routing_socket(
                 udp_socket, [request['unique_id']], e)
-            print "RTICKET:"
-            pprint.pprint(rticket)
+
             if not e_errors.is_ok(rticket):
                 sys.stderr.write("Unable to handle routing: %s\n",
                                  (rticket['status'],))
@@ -385,6 +384,8 @@ def main(e):
 
             #Combine the ticket from the mover with the current information.
             request = encp.combine_dict(ticket, request)
+            #Store these changes back into the master list.
+            requests_per_vol[e.volume][index] = request
             
             Trace.message(4, "Preparing to read %s." % request['outfile'])
             
@@ -399,15 +400,14 @@ def main(e):
                 Trace.log(e_errors.ERROR,
                           "File %s copied successfully." % request['infile'])
 
+                #Combine the tickets:
+                request = encp.combine_dict(done_ticket, request)
                 #Don't delete.
                 delete_at_exit.unregister(request['outfile']) 
                 #Remember the completed transfer.
                 files_transfered = files_transfered + 1
-                #Set the metadata.
-                #set_metadata(request, e) #Under what conditions?
 
                 if request.get('bfid', None) == None:
-                    print "11111111111111111111111"
                     #The fields need to be updated for the next file
                     # on the tape to be read.
                     #Note: This will not work for the cern wrapper.  For this
@@ -415,11 +415,17 @@ def main(e):
                     # the tape.
                     file_number = file_number + 1
                     next_request_update(request, file_number)
+
+                    #Set the metadata.
+                    set_metadata(request, e)
                 else:
-                    print "22222222222222222222"
                     #Set completion status to successful.
                     request['completion_status'] = SUCCESS
 
+                #Store these changes back into the master list.
+                requests_per_vol[e.volume][index] = request
+                #Get the next request before continueing.
+                request, index = get_next_request(requests_per_vol[e.volume])
                 continue
             #The requested file does not exist on the tape.  (i.e. the
             # tape has only 6 files and the seventh file was requested.)
