@@ -139,7 +139,7 @@ def do_work(intf):
     filename = "%s/%s"%(html_dir, enstore_constants.ENSTORESTATUSFILE)
     es_file = enstore_files.EnstoreStatusFile(filename)
     es_file.open()
-    es_file.write(enstat, outage_d, offline_d)
+    es_file.write(enstat, outage_d, offline_d, override_d)
     es_file.close()
     es_file.install()
 
