@@ -57,13 +57,13 @@ def state_name(state):
     return _state_names[state]
 
 #modes
-READ, WRITE, CLEANING = range(3)
+READ, WRITE = range(2)
 
 def  mode_name(mode):
     if mode is None:
         return None
     else:
-        return ['READ','WRITE','CLEANING'][mode]
+        return ['READ','WRITE'][mode]
 
 KB=1L<<10
 MB=1L<<20
@@ -598,16 +598,29 @@ class Mover(dispatching_worker.DispatchingWorker,
         ##vol_info got set as a side-effect of prepare_volume
 
         self.buffer.set_blocksize(self.vol_info['blocksize'])
+
         self.wrapper_type = self.vol_info.get('wrapper')
         if self.wrapper_type is None:
             ##XXX hack - why is wrapper not coming in on the vc ticket?
             ff = self.vol_info['file_family']
             self.wrapper_type = string.split(ff,'.')[-1]
-        
-        self.wrapper = __import__(self.wrapper_type + '_wrapper')
-        self.wrapper_info = ticket['wrapper']
-        self.bytes_to_transfer = long(fc['size'])
+            
+        try:
+            self.wrapper = __import__(self.wrapper_type + '_wrapper')
+        except ImportError, detail:
+            print detail
+            self.wrapper = None
+            
+        self.client_filename = ticket['wrapper'].get('fullname','?')
+        self.pnfs_filename = ticket['wrapper'].get('pnfsFilename', '?')
 
+        if self.mode == READ:
+            self.files = (self.pnfs_filename, self.client_filename)
+        elif self.mode == WRITE:
+            self.files = (self.client_filename, self.pnfs_filename)
+        
+        self.bytes_to_transfer = long(fc['size'])
+        
         return 1
         
     def transfer_failed(self, msg=None):
