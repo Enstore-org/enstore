@@ -89,8 +89,11 @@ class Mover:
         self.last_activity_time = now
         self.connection = None
         self.rate = 0.0
+        self.b0 = 0
+        self.t0 = 0
         self.x, self.y = 0, 0 # Not placed yet
         self.volume = None
+        self.client = None
         #These 3 pieces make up the progress gauge display
         self.progress_bar = None
         self.progress_bar_bg = None
@@ -136,12 +139,17 @@ class Mover:
         self.display.delete(self.timer_display)
         self.timer_display = self.display.create_text(x+100, y+22, text=self.timer_string,fill='white')
 
-    def load_tape(self, volume_name,load_state):
-        self.volume = Volume(volume_name, self.display)
+    def load_tape(self, volume_name, load_state):
+        if not self.volume:
+            self.volume = Volume(volume_name, self.display)
+        self.volume.loaded = load_state
         self.volume.x, self.volume.y = self.x + 5, self.y + 2
-        self.volume.draw(load_state)
+        self.volume.draw()
 
     def unload_tape(self, volume):
+        if not self.volume:
+            print "Mover has no tape"
+            return
         if volume != self.volume.name: 
             print "Mover does not have this tape : ", volume
         else:
@@ -151,7 +159,8 @@ class Mover:
             x, y =.75+.5*math.cos(math.pi/2 + angle*k),  .65*math.sin(math.pi/2 + angle*k)
             self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
             self.volume.moveto(self.volume.x, self.volume.y)
-            self.volume.draw(load_state='loaded')
+            self.volume.loaded = 0
+            self.volume.draw()
 
     def robot_remove_tape(self, volume_name):
         robot=self.display.robot
@@ -210,7 +219,6 @@ class Mover:
         self.display.delete(self.outline)
         self.display.delete(self.label)
         self.display.delete(self.state_display)
-        self.display.delete(self.tape_slot)
         self.display.delete(self.progress_bar_bg)
         self.display.delete(self.progress_bar)
         self.display.delete(self.progress_percent_display)
@@ -256,8 +264,8 @@ class Volume:
         self.display = display
         self.loaded = 0
     
-    def draw(self,load_state):
-        self.loaded=load_state
+    def draw(self):
+        load_state = self.loaded
         x, y = self.x, self.y
         if self.loaded:
             tape_color = 'orange'
@@ -521,10 +529,10 @@ class Display(Canvas):
             M.draw()
 
     def reposition_movers(self):
-        items = self.clients.items()
+        items = self.movers.items()
         N = len(items) #need this to determine angle
         for mover_name, mover in items:
-            mover.reposition(N)            
+            mover.reposition(N)
                 
     def reposition_clients(self):
         for client_name, client in self.clients.items():
@@ -666,8 +674,10 @@ class Display(Canvas):
             percent_done = abs(int(100 * num_bytes/total_bytes))
             mover.show_progress(percent_done)
             rate = mover.transfer_rate(num_bytes, total_bytes) / (256*1024)
-            mover.connection.update_rate(rate)
-            mover.client.last_activity_time = time.time()
+            if mover.connection:
+                mover.connection.update_rate(rate)
+            if mover.client:
+                mover.client.last_activity_time = time.time()
 
             
     def mainloop(self):
