@@ -21,8 +21,8 @@ html_file = 1
 force = 1
 
 html_header = "<title>Inquisitor</title>\n"+\
-              "<meta http-equiv=\"Refresh\" content=\"10\">\n"+\
-              "<body bgcolor=\"FFFFFF\">\n<pre>"
+              "<meta http-equiv=\"Refresh\" content=\"11\">\n"+\
+              "<body bgcolor=\"FFFFFF\">\n<pre>\n"
 
 class EnstoreStatus:
 
@@ -32,6 +32,7 @@ class EnstoreStatus:
 	self.file_type = fileType
 	self.max_ascii_size = max_ascii_size
 	self.header = html_header
+	self.text = {}
         Trace.trace(10,'}__init__')
 
     # write the header to the file
@@ -41,8 +42,8 @@ class EnstoreStatus:
         Trace.trace(12,"}write_header ")
 
     # open the file
-    def doopen(self, list=0):
-        Trace.trace(12,"{doopen "+self.file_name)
+    def open(self, list=0):
+        Trace.trace(12,"{open "+self.file_name)
 	if list :
             print "opening " + self.file_name
         # try to open status file for append
@@ -54,79 +55,29 @@ class EnstoreStatus:
             self.file = open(self.file_name, 'w')
             if list :
                 print "opened for write"
-        Trace.trace(12,"}doopen ")
+        Trace.trace(12,"}open")
 
     # close the file
-    def doclose(self):
-        Trace.trace(12,"{doclose "+self.file_name)
+    def close(self):
+        Trace.trace(12,"{close "+self.file_name)
 	if self.file_type == html_file:
 	    self.file.write("</pre>\n")
 	self.file.close()
-        Trace.trace(12,"}doclose")
+        Trace.trace(12,"}close")
 
-    # output the passed alive status
-    def output_alive(self, host, tag, status):
-        Trace.trace(12,"{output_alive "+repr(tag)+" "+repr(host))
-	str = self.unquote(tag)+self.unquote(status['work'])+" at "+\
-	      self.format_ip_address(host, status['address'])+" is "+\
-	      self.format_status(status['status'])+"\n"
-	if self.file_type == html_file:
-	    pass
-	self.file.write(str)
-        Trace.trace(12,"}output_alive")
+    # flush everything to the file
+    def flush(self):
+        Trace.trace(10,'{flush')
+	# well, nothing has really been written to the file, it is all stored
+	# in a hash.  so we must write it all now
+	self.file.write("\nENSTORE SYSTEM STATUS\n")
+	keys = self.text.keys()
+	keys.sort()
+	for key in keys:
+	    self.file.write(self.text[key])
 
-    # format the status, just use the first element
-    def format_status(self, status):
-        Trace.trace(12,"{format_status "+repr(status))
-	return self.unquote(status[0])
-        Trace.trace(12,"}format_status ")
-
-    # format the ip address - replace the ip address with the actual host name
-    def format_ip_address(self, host, address):
-        Trace.trace(12,"{format_ip_address "+repr(host)+" "+repr(address))
-	return "("+self.unquote(host)+", "+repr(address[1])+")"
-        Trace.trace(12,"}format_ip_address ")
-
-    # output the timeout error
-    def output_etimedout(self, address, tag):
-        Trace.trace(12,"{output_etimedout "+repr(tag)+" "+repr(address))
-	stat = tag + "timed out at "+self.unquote(repr(address))+"\n"
-	if self.file_type == html_file:
-	    pass
-	self.file.write(stat)
-        Trace.trace(12,"}output_etimedout")
-
-    # get the current time and output it
-    def output_time(self):
-        Trace.trace(12,"{output_time "+repr(self.file_name))
-	tm = time.localtime(time.time())
-	atm = "\nENSTORE SYSTEM STATUS at %04d-%02d-%02d %02d:%02d:%02d\n" % (tm[0], tm[1], tm[2], tm[3], tm[4], tm[5])
-	if self.file_type == html_file:
-	    pass
- 	self.file.write(atm)
-        Trace.trace(12,"}output_time ")
-
-    # output the library manager queues
-    def output_lmqueues(self, ticket, list):
-        Trace.trace(12,"{output_lmqueues "+repr(ticket))
-	fq = self.format_lm_queues(ticket)
-	if list:
-	  pprint.pprint(fq)
-	if self.file_type == html_file:
-	    pass
-	self.file.write(fq)
-        Trace.trace(12,"}output_lmqueues ")
-
-    # output the library manager mover list
-    def output_lmmoverlist(self, ticket, list):
-        Trace.trace(12,"{output_lmmoverlist "+repr(ticket))
-	fq = self.format_lm_moverlist(ticket)
-	if list:
-	  pprint.pprint(fq)
-	if self.file_type == html_file:
-	    pass
-	self.file.write(fq)
-        Trace.trace(12,"}output_lmmoverlist ")
+	self.file.flush()
+        Trace.trace(10,'}flush')
 
     # remove all single quotes
     def unquote(self, string):
@@ -140,19 +91,11 @@ class EnstoreStatus:
 	s = os.stat(self.file_name)
 	if (self.max_ascii_size > 0) or (really == 1):
 	    if (s[stat.ST_SIZE] >= self.max_ascii_size) or (really == 1):
-	        self.doclose()
+	        self.close()
 	        ts = regsub.gsub(" ", "_", self.format_time(time.time()))
 	        os.system("mv "+self.file_name+" "+self.file_name+"."+ts)
-	        self.doopen()
+	        self.open()
         Trace.trace(11,"}timestamp ")
-
-    # set a new timestamp value
-    def set_max_ascii_size(self, value):
-	self.max_ascii_size = value
-
-    # get the timestamp value
-    def get_max_ascii_size(self):
-	return self.max_ascii_size
 
     # translate time.time output to a person readable format.
     # strip off the day and reorganize things a little
@@ -163,6 +106,18 @@ class EnstoreStatus:
 	ntime = "%s-%s-%s %s" % (year, mon, day, tod)
         Trace.trace(12,"}format_time ")
 	return ntime
+
+    # format the status, just use the first element
+    def format_status(self, status):
+        Trace.trace(12,"{format_status "+repr(status))
+	return self.unquote(status[0])
+        Trace.trace(12,"}format_status ")
+
+    # format the ip address - replace the ip address with the actual host name
+    def format_ip_address(self, host, address):
+        Trace.trace(12,"{format_ip_address "+repr(host)+" "+repr(address))
+	return "("+self.unquote(host)+", "+repr(address[1])+")"
+        Trace.trace(12,"}format_ip_address ")
 
     # parse the library manager queues returned from "getwork"
     def parse_lm_queues(self, work, spacing, prefix):
@@ -277,8 +232,47 @@ class EnstoreStatus:
         Trace.trace(12,"}format_lm_moverlist ")
 	return string
 
-    # flush everything to the file
-    def flush(self):
-        Trace.trace(10,'{flush')
-	self.file.flush()
-        Trace.trace(10,'}flush')
+    # output the passed alive status
+    def output_alive(self, host, tag, status, time, key):
+        Trace.trace(12,"{output_alive "+repr(tag)+" "+repr(host))
+	ftime = self.format_time(time)
+	str = self.unquote(tag)+self.unquote(status['work'])+" on "+\
+	      self.format_ip_address(host, status['address'])+" at "+\
+	      ftime+"\n"
+	self.text[key] = str
+        Trace.trace(12,"}output_alive")
+
+    # output the timeout error
+    def output_etimedout(self, address, tag, time, key):
+        Trace.trace(12,"{output_etimedout "+repr(tag)+" "+repr(address))
+	ftime = self.format_time(time)
+	str = tag + "timed out on "+self.unquote(repr(address))+" at "+\
+	       ftime+"\n"
+	self.text[key] = str
+        Trace.trace(12,"}output_etimedout")
+
+    # output the library manager queues
+    def output_lmqueues(self, ticket, key, list):
+        Trace.trace(12,"{output_lmqueues "+repr(ticket))
+	fq = self.format_lm_queues(ticket)
+	if list:
+	  pprint.pprint(fq)
+	self.text[key] = self.text[key]+fq
+        Trace.trace(12,"}output_lmqueues ")
+
+    # output the library manager mover list
+    def output_lmmoverlist(self, ticket, key, list):
+        Trace.trace(12,"{output_lmmoverlist "+repr(ticket))
+	fq = self.format_lm_moverlist(ticket)
+	if list:
+	  pprint.pprint(fq)
+	self.text[key] = self.text[key]+fq
+        Trace.trace(12,"}output_lmmoverlist ")
+
+    # set a new timestamp value
+    def set_max_ascii_size(self, value):
+	self.max_ascii_size = value
+
+    # get the timestamp value
+    def get_max_ascii_size(self):
+	return self.max_ascii_size

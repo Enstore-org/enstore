@@ -33,18 +33,26 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(12,"}send"+repr(s))
         return s
 
-    def update (self, list=0):
+    def update (self, server="", list=0):
 	Trace.trace(16,"{update")
+	t = {"work"       : "update" }
+	# see if we have a server or not
+	if server != "":
+	    t['server'] = server
 	# tell the inquisitor to update the enstore system status info
-	s = self.send({"work"       : "update" } )
+	s = self.send(t)
         Trace.trace(16,"}update")
 	return s
 
-    def set_timeout (self, tout):
+    def set_timeout (self, tout, server=""):
 	Trace.trace(16,"{set_timeout")
+	t = {"work"       : "set_timeout" ,\
+	     "timeout"    : tout }
+	# see if we have a server or not
+	if server != "":
+	    t['server'] = server
 	# tell the inquisitor to reset the timeout between gathering stats
-	s = self.send({"work"       : "set_timeout" ,\
-	               "timeout"    : tout } )
+	s = self.send(t)
         Trace.trace(16,"}set_timeout")
 	return s
 
@@ -71,10 +79,14 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(16,"}get_max_ascii_size")
 	return s
 
-    def get_timeout (self):
+    def get_timeout (self, server=""):
 	Trace.trace(16,"{get_timeout")
+	t = {"work"       : "get_timeout" }
+	# see if we have a server or not
+	if server != "":
+	    t['server'] = server
 	# tell the inquisitor to return the timeout between gathering stats
-	s = self.send({"work"       : "get_timeout" } )
+	s = self.send(t)
         Trace.trace(16,"}get_timeout")
 	return s
 
@@ -98,6 +110,19 @@ class InquisitorClientInterface(interface.Interface):
         # now parse the options
         self.parse_options()
         Trace.trace(10,'}iqc.__init')
+
+    #  define our specific help
+    def help_line(self):
+        return interface.Interface.help_line(self)+" server"
+
+    # parse the options like normal but see if we have a server
+    def parse_options(self):
+        interface.Interface.parse_options(self)
+        # see if we have a server
+        if len(self.args) < 1 :
+	    self.server = ""
+        else:
+            self.server = self.args[0]
 
     # define the command line options that are valid
     def options(self):
@@ -127,13 +152,13 @@ if __name__ == "__main__" :
         ticket = iqc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 
     elif intf.update:
-        ticket = iqc.update(intf.list)
+        ticket = iqc.update(intf.server, intf.list)
 
     elif intf.timeout:
-        ticket = iqc.set_timeout(intf.timeout)
+        ticket = iqc.set_timeout(intf.timeout, intf.server)
 
     elif intf.get_timeout:
-        ticket = iqc.get_timeout()
+        ticket = iqc.get_timeout(intf.server)
 
     elif intf.timestamp:
         ticket = iqc.timestamp()
