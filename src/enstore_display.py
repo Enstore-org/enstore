@@ -65,11 +65,17 @@ def my_atof(s):
 _font_cache = {}
 
 def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
+
     height_wanted = int(height_wanted)
-    f = _font_cache.get((height_wanted, family))
+
+    f = _font_cache.get((height_wanted, width_wanted, len(fit_string), family))
     if f:
-        return f
-    size = min(height_wanted * 2, 50) #We know this will be too big
+        if width_wanted and f.measure(fit_string) > width_wanted:
+            pass
+        else:
+            return f
+
+    size = height_wanted
     while size > 0:
         f = tkFont.Font(size=size, family=family)
         metrics = f.metrics()  #f.metrics returns something like:
@@ -84,7 +90,7 @@ def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
         else:
             size = size - 1 #Try a little bit smaller...
 
-    _font_cache[(height_wanted, family)] = f
+    _font_cache[(height_wanted, width_wanted, len(fit_string), family)] = f
     return f
 
 def rgbtohex(r,g,b):
@@ -211,22 +217,23 @@ class Mover:
         self.color      = None
         self.connection = None         
         self.display    = display
-        self.height     = 0
         self.index      = index
         self.name       = name
-        self.N          =N
-        self.width      = 170
-        self.x, self.y  = 0, 0 # Not placed yet
+        self.N          = N
         self.column = 0 #Movers may be laid out in multiple columns
-        if N >= 20:
-            self.height = 0.75 * (self.display.height - 40) / (N/2.0+1.0)
-        else:
-            self.height = 0.75 * (self.display.height - 40) / N
-        self.height = min(self.height, self.display.height/3)
-        
-        self.x, self.y  = self.position(N)     
-        self.font = get_font(12, 'arial')
 
+        #Set geometry of mover.
+        self.resize(N) #Even though this is the initial size, still works.
+        self.x, self.y  = self.position(N)
+
+        #Font geometry.
+        self.font = get_font(self.height/2.5, 'arial',
+                             width_wanted=self.max_font_width(),
+                             fit_string="DISMOUNT_WAIT")
+        self.label_font = get_font(self.height/2.5, 'arial',
+                                   width_wanted=self.max_label_font_width(),
+                                   fit_string=self.name)
+        
         #These 3 pieces make up the progress gauge display
         self.progress_bar             = None
         self.progress_bar_bg          = None
@@ -262,6 +269,7 @@ class Mover:
         self.state_offset            = XY(124, 6)
         self.timer_offset            = XY(124, 18)
         self.tape_offset = (5, 2)
+
         self.draw()
     
     def draw(self):
@@ -281,7 +289,8 @@ class Mover:
         self.label   = self.display.create_text(x+self.label_offset.x,
                                                 y+self.label_offset.y,
                                                 text=self.name,
-                                            anchor=Tkinter.SW,font = self.font)
+                                                anchor=Tkinter.SW,
+                                                font = self.label_font)
         
         img          = find_image(self.state + '.gif')
         if img:
@@ -328,7 +337,7 @@ class Mover:
         mover_stable_color  = colors('mover_stable_color')
         state_color         = colors('state_color')
         mover_color         = None
-        print "state", state, "self.state", self.state
+
         if state == self.state:
             return
         self.state = state
@@ -496,28 +505,14 @@ class Mover:
                                 self.display.height)
 
     def position_linear(self, N):
-        self.font = get_font(self.height/4, 'Arial',
-                             fit_string="DISMOUNT_WAIT",
-                             width_wanted=(self.width -  self.width/3.0- 10))
-        if self.display.mover_label_width is None:
-            max_width = 0
-            #Find the width of the widest mover label
-            #print "Finding widest label..."
-            for m in  self.display.movers.keys():
-                #print m
-                max_width = max(max_width, self.font.measure(m))
-            #print "Done"
-            self.display.mover_label_width = max_width
-        len_text = self.font.measure(self.name)
-        label_width = self.display.mover_label_width
 
         #k = number of movers
         k = self.index
 
         #total number of columns 
         num_cols = (N / 20) + 1
-        #total number of rows in this movers column
-        num_rows = (N / num_cols) + 1
+        #total number of rows in the largest column
+        num_rows = int(round(float(N) / float(num_cols)))
         #this movers column and row
         column = (k / num_rows)
         row = (k % num_rows)
@@ -528,27 +523,28 @@ class Mover:
         space = (self.height - space) * ((19.0 - num_rows) / 19.0) + space
 
         #The following offsets the y values for a second column.
-        y_offset = ((self.height + space) / 2) * (column % 2)
+        y_offset = ((self.height + space) / 2.0) * (column % 2)
 
         #Calculate the y position for rows with odd and even number of movers.
         #These calculation start in the middle of the window, subtract the
-        # first have of them, then add the position that the current mover
+        # first half of them, then add the position that the current mover
         # is in.
-        if N % 2:
-            y = (self.display.height / 2) - \
-                ((num_rows - 1) / 2 * (space + self.height)) - \
-                (self.height / 2) + (row * (space + self.height)) + \
+        if num_rows % 2: #odd
+            y = (self.display.height / 2.0) - \
+                ((num_rows - 1) / 2.0 * (space + self.height)) - \
+                (self.height / 2.0) + (row * (space + self.height)) + \
                 y_offset
-        else:
-            y = (self.display.height / 2) - \
-                ((num_rows / 2) * (space + self.height)) + \
+        else:    #even
+            y = (self.display.height / 2.0) - \
+                ((num_rows / 2.0) * (space + self.height)) + \
                 (row * (space + self.height)) + \
                 y_offset
 
         #Adding 1 to the column values in the following line,
         # mathematically gives the clients their own column
-        x = (self.display.width / float(num_cols + 1)) * (column + 1)
-
+        column_width = (self.display.width / float(num_cols + 1))
+        x =  column_width * (column + 1)
+        
         #This value is used when drawing the dotted connection line.
         self.column = column
         self.display.mover_columns[self.column] = int(x)
@@ -568,20 +564,50 @@ class Mover:
         self.height = ((self.display.height - 40) / 20)
         #This line assumes that their will not be 30 or more movers.
         self.width = (self.display.width/4.0)
-    
+
+    def max_font_width(self):
+        return (self.width - self.width/3.0) - 10
+
+    def max_label_font_width(self):
+        #total number of columns 
+        num_cols = (self.N / 20) + 1
+        #size of column
+        column_width = (self.display.width / float(num_cols + 1))
+        #difference of column width and mover rectangle with fudge factor.
+        return (column_width - self.width) - 10
+
+    def find_widest_mover_label(self):
+        font = get_font(12, 'Arial')
+                        #fit_string="DISMOUNT_WAIT",
+                        #width_wanted=(self.width - self.width/3.0 - 10))
+        if self.display.mover_label_width is None:
+            max_width = 0
+            mover = ""
+            #Find the widest mover label
+            for m in self.display.movers.keys():
+                if font.measure(m) > max_width:
+                    max_width = font.measure(m)
+                    mover = m
+            return mover
+
     def reposition(self, N, state=None):
 
         self.resize(N)
-
-        font = get_font(self.height/2.5, 'arial')
-        len_text = font.measure(self.name)
-
         self.x, self.y = self.position(N)
+
+        self.font = get_font(self.height/2.5, 'arial',
+                             width_wanted=self.max_font_width(),
+                             fit_string="DISMOUNT_WAIT")
+        self.label_font = get_font(self.height/2.5, 'arial',
+                                   width_wanted=self.max_label_font_width(),
+                                   fit_string=self.name)
+                                   
+        #len_text = self.label_font.measure(self.name)
 
         #These are the new offsets
         self.label_offset          = XY(self.width+5, self.height)
-        self.state_offset          = XY(self.width/1.3, self.height/3.)
         self.img_offset            = XY(self.width/2.3, self.height/8.)
+        self.state_offset          = XY(self.width/1.4, self.height/3.)
         self.timer_offset          = XY(self.width/1.3, self.height/1.3)
         self.percent_disp_offset   = XY(self.width/1.9, self.height/1.2)#green
         self.progress_bar_offset1  = XY(self.width/25., self.height/1.6)#yellow
@@ -612,7 +638,7 @@ class Mover:
                 fill=mover_color)
             self.label = self.display.create_text(
                 self.x+self.label_offset.x, self.y+self.label_offset.y,
-                text=self.name, anchor=Tkinter.SW, font = self.font)
+                text=self.name, anchor=Tkinter.SW, font = self.label_font)
         # "undraw" the prev. state message
         self.display.delete(self.state_display)
         img = find_image(state+'.gif')
@@ -629,13 +655,13 @@ class Mover:
             #self.volume.font= font
             self.volume.vol_width = self.width/2.5
             self.volume.vol_height = self.height/2.25
-            if self.volume.ejected == 0:
-                x, y = self.volume_position(self.volume.ejected)
-                self.volume.moveto(x,y)
-            else:
-                self.tape_offset = XY(self.width/20, self.height*2)
-                x, y = self.volume_position(self.volume.ejected)
-                self.volume.moveto(x,y)
+            #if self.volume.ejected == 0:
+            x, y = self.volume_position(self.volume.ejected)
+            self.volume.moveto(x,y)
+            #else:
+            #    self.tape_offset = XY(self.width/20, self.height*2)
+            #    x, y = self.volume_position(self.volume.ejected)
+            #    self.volume.moveto(x,y)
 
         if self.connection:
             self.connection.undraw()
@@ -945,7 +971,8 @@ class Display(Tkinter.Canvas):
         self.width =  int(self['width'])
         self.height = int(self['height'])
         self.pack()
-        
+
+        self.mover_names      = [] ## List of mover names.
         self.movers           = {} ## This is a dictionary keyed by mover name,
                                    ##value is an instance of class Mover
         self.mover_columns    = {} #x-coordinates for columns of movers
@@ -975,7 +1002,8 @@ class Display(Tkinter.Canvas):
         
     def action(self, event):
         x, y = self.canvasx(event.x), self.canvasy(event.y)
-        print self.find_overlapping(x-1, y-1, x+1, y+1)
+        #print self.find_overlapping(x-1, y-1, x+1, y+1)
+        print (x, y)
 
     def resize(self, event):
         #If the user changed the window size, update.
@@ -1096,11 +1124,11 @@ class Display(Tkinter.Canvas):
 
         now = time.time()
         #### Handle titling
-        if display.title_animation:
-            if now > display.title_animation.stop_time:
-                display.title_animation = None
+        if self.title_animation:
+            if now > self.title_animation.stop_time:
+                self.title_animation = None
             else:
-                display.title_animation.animate(now)
+                self.title_animation.animate(now)
 
         ####force the display to refresh
         self.update()
@@ -1154,7 +1182,8 @@ class Display(Tkinter.Canvas):
 
             # command needs (N) words
             if words[0]=='movers':
-                self.create_movers(words[1:])
+                self.mover_names = words[1:]
+                self.create_movers(self.mover_names)
                 return
             
             # command does not require a mover name, will only put clients
