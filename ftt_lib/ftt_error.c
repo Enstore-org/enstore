@@ -228,14 +228,16 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
          if (! (statres & FTT_ONLINE)) {
 	     guess_errno = FTT_ENOTAPE;
 	     res = -1;
-         } else if (statres & FTT_AEOT) {
-	     guess_errno = FTT_EBLANK;
-	     res = -1;
-	 } else if ( statres & FTT_ABOT ) {
-	     guess_errno = FTT_ELEADER;
-	     res = -1;
+         } else {
+             if (statres & FTT_AEOT) {
+		 guess_errno = FTT_EBLANK;
+		 res = -1;
+             }
+	     if ( statres & FTT_ABOT ) {
+		 guess_errno = FTT_ELEADER;
+		 res = -1;
+             }
 	 } else {
-
 
 	    if (FTT_EBLANK == guess_errno && opn == FTT_OPN_READ &&
 			d->current_file == 0 && d->current_block == 0 &&

@@ -1678,6 +1678,48 @@ ftt_dev_entry devtable[] = {
         { "dev/nrmt%da",         0,  0,0x00, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
 	{ 0 },
      }},
+     {"OSF1", "SDX-5", "SCSI", FTT_FLAG_SUID_DRIVEID|FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, AIT_density_trans,
+	"dev/%*[nr]mt%d", "dev/rmt%d", 1, OSF1find,  {
+    /*   string                  den mod hwd   pas fxd rewind            1st */
+    /*   ======                  === === ===   === === ======            === */
+    /* Default, Passthru  */
+        { "dev/nrmt%dh",         1,  0,0x31, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dh",        -1,  0,  -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
+    /* Usable */
+        { "dev/nrmt%dh",         1,  1,0x31, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dl",         0,  0,0x30, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dl",         0,  1,0x30, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+    /* Descritptive */
+        { "dev/rmt%dl",          0,  1,0x30, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%dm",          0,  1,0x30, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dm",         0,  1,0x30, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%dh",          0,  1,0x30, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dh",         1,  1,0x31, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%da",          1,  1,0x31, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%da",         1,  1,0x31, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+	{ 0 },
+    }},
+     {"OSF1", "SDX-3", "SCSI", FTT_FLAG_SUID_DRIVEID|FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, AIT_density_trans,
+	"dev/%*[nr]mt%d", "dev/rmt%d", 1, OSF1find,  {
+    /*   string                  den mod hwd   pas fxd rewind            1st */
+    /*   ======                  === === ===   === === ======            === */
+    /* Default, Passthru  */
+        { "dev/nrmt%dh",         0,  0,0x00, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dh",        -1,  0,  -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
+    /* Usable */
+        { "dev/nrmt%dh",         0,  1,0x30, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dl",         0,  0,0x30, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dl",         0,  1,0x30, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+    /* Descritptive */
+        { "dev/rmt%dl",          0,  1,0x30, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%dm",          0,  1,0x30, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dm",         0,  1,0x30, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%dh",          0,  1,0x30, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dh",         0,  1,0x30, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%da",          0,  1,0x30, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%da",         0,  1,0x30, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+	{ 0 },
+    }},
      {"OSF1", "Mammoth2", "SCSI", FTT_FLAG_SUID_DRIVEID|FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
 	"dev/%*[nr]mt%d", "dev/rmt%d", 1, OSF1find,  {
     /*   string                  den mod hwd   pas fxd rewind            1st */
