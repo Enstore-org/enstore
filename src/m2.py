@@ -22,7 +22,7 @@ dump_code(device, path=None, sendto=[], notify=[], comment=None)
     example:
 
 	dump_code('/dev/rmt/tps3d0n', '/tmp', ['MartinD@Exabyte.COM'],
-		['enstore_admin@fnal.gov'], 'This is mover XXX')
+		['enstore-admin@fnal.gov'], 'This is mover XXX')
 
 ----
 
@@ -76,8 +76,12 @@ def dump_code(device, path=None, sendto=None, notify=None, comment=None):
 	example:
 
 	dump_code('/dev/rmt/tps3d0n', '/tmp', ['MartinD@Exabyte.COM'],
-		['enstore_admin@fnal.gov'], 'This is mover XXX')
+		['enstore-admin@fnal.gov'], 'This is mover XXX')
 	"""
+
+	# make sure m2probe exists
+	if os.access('m2probe', os.X_OK):
+		return 'can not find m2probe'
 
 	# use prefix to fake the path
 	if path:
