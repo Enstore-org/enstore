@@ -9,6 +9,7 @@
 
 import sys
 import os
+import pwd
 import time
 import select
 import exceptions
@@ -46,6 +47,8 @@ class LoggerClient:
         self.i_am = i_am_a
         self.pid = os.getpid()
         self.uid = os.getuid()
+	pwdb_entry = pwd.getpwuid(self.uid)
+	self.uname = pwdb_entry[0]
         self.logger = servername
         self.debug = debug
 
@@ -61,7 +64,7 @@ class LoggerClient:
     """
     def send (self, severity, format, *args) :
         if severity in range(ERROR, MISC) :
-            msg = '%.6d %.6d' % (self.pid, self.uid)
+            msg = '%.6d %.8s' % (self.uid, self.uname)
             msg = msg + ' ' + sevdict[severity] + ' ' + self.i_am + ' '
             str = format % args
             msg = msg + ' ' + str
