@@ -497,7 +497,7 @@ def forked_write_to_hsm( self, ticket ):
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
 
-        Trace.log(e_errors.INFO,"OPEN_FILE_WRITE "+str(self.vol_info['eod_cookie']) )
+        Trace.log(e_errors.INFO,"OPEN_FILE_WRITE "+str(self.vol_info['external_label'])+":"+str(self.vol_info['eod_cookie']) )
         # open the hsm file for writing
         try:
 	    # if forked, our eod info is not correct (after previous write)
@@ -521,7 +521,7 @@ def forked_write_to_hsm( self, ticket ):
 		raise errno.errorcode[errno.EINVAL], "Invalid wrapper"+\
 		      str(ticket['wrapper']['type'])
 
-            Trace.log(e_errors.INFO,"WRAPPER.WRITE")
+            Trace.log(e_errors.INFO,"WRAPPER.WRITE "+str(self.vol_info['external_label']))
 	    t0 = time.time()
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
 	    wrapper.blocksize = self.vol_info['blocksize']
@@ -685,7 +685,7 @@ def forked_read_from_hsm( self, ticket ):
         bytes_sent = 0			# reset below, BUT not used afterwards!!!!!!!!!!!!!
         user_file_crc = 0		# reset below, BUT not used afterwards!!!!!!!!!!!!!
 
-        Trace.log(e_errors.INFO,"OPEN_FILE_READ "+str(ticket['fc']['location_cookie']))
+        Trace.log(e_errors.INFO,"OPEN_FILE_READ "+str(ticket['fc']['external_label'])+":"+str(ticket['fc']['location_cookie']))
         # open the hsm file for reading and read it
         try:
             Trace.trace(11, 'driver_open '+mvr_config['device'])
@@ -704,7 +704,7 @@ def forked_read_from_hsm( self, ticket ):
 		if wrapper == None:
 		    raise errno.errorcode[errno.EINVAL], "Invalid wrapper"
 
-            Trace.log(e_errors.INFO,"WRAPPER.READ")
+            Trace.log(e_errors.INFO,"WRAPPER.READ "+str(ticket['fc']['external_label']))
 	    if ticket['fc']['sanity_cookie'][1] == None:# when reading...
 		crc_flag = None
 	    else: crc_flag = self.crc_flag
