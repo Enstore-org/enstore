@@ -11,6 +11,7 @@ import FTT
 import EXfer
 import IPC
 import time				# sleep used in FTT sw_mount
+import generic_cs			# enprint
 
 
 class GenericDriver:
@@ -172,7 +173,7 @@ class  FTTDriver(GenericDriver) :
 	# make cur_loc_cookie such that an ordered list can be produced (for pnfs)
 	self.cur_loc_cookie = int2loc( self, (0,0,0) )# partition, blk offset, filemarks
 	FTT.open( device, 'r' )
-	x = 60				# for now, after 60 ftt_rewind will
+	x = 120				# for now, after ??? ftt_rewind will
 					# raise exception
 	while x:
 	    try:
@@ -183,7 +184,9 @@ class  FTTDriver(GenericDriver) :
 	    time.sleep( 1 )
 	    x = x -1
 	    pass
-	#if x == 0: problem???
+	if x == 0:
+	    generic_cs.enprint( "sw_mount error" )
+	    raise "sw_mount error"
 	FTT.rewind()
 	FTT.close()
 	# get blocksize into FTT so we do not have to pass it as param to
