@@ -8,7 +8,9 @@
 #include <sys/time.h>
 #ifdef THREADED
 #include <pthread.h>
+#ifdef _POSIX_PRIORITY_SCHEDULING
 #include <sched.h>
+#endif
 #endif
 
 /***************************************************************************
@@ -20,8 +22,11 @@
 #define ARRAY_SIZE 5
 #endif
 
-/* define DEBUG only for extra debugging output */
+/* Define DEBUG only for extra debugging output */
 /*#define DEBUG*/
+
+/* Number of seconds before timing out. (15min * 60sec/min = 900sec)*/
+#define TIMEOUT 900
 
 /***************************************************************************
  definitions
@@ -176,7 +181,9 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
   /* get the threads going. */
   pthread_create(&write_tid, NULL, &thread_write, &writes);
   pthread_create(&read_tid, NULL, &thread_read, &reads);
+#ifdef _POSIX_PRIORITY_SCHEDULING
   sched_yield();
+#endif
 
   /*This screewy loop of code is used to detect if a thread has terminated.
      If an error occurs either thread could return in any order.  If
@@ -220,89 +227,128 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
   fflush(stderr);
 #endif
 
-  /* Set the crc value to the passed by reference variable and snag the
-     exit status. */
+  /* Get the pointer to the checksum. */
   *crc_p = (*(struct return_values*)(*write_val)).crc_i;
-  exit_status = (*(struct return_values*)(*write_val)).exit_status;
-  
+  /* Get the exit status. */
+  if((*(struct return_values*)(*write_val)).exit_status)
+    exit_status = (*(struct return_values*)(*write_val)).exit_status;
+  else if((*(struct return_values*)(*read_val)).exit_status)
+    exit_status = (*(struct return_values*)(*read_val)).exit_status;
+  else
+    exit_status = 0;
+  /* The errno in the variable gets overridden by thread code if an error
+     occurs. Set it back if necessary. */
+  if((*(struct return_values*)(*write_val)).errno_val)
+    errno = (*(struct return_values*)(*write_val)).errno_val;
+  else if((*(struct return_values*)(*read_val)).errno_val)
+    errno = (*(struct return_values*)(*read_val)).errno_val;
+  else
+    errno = 0;
+
+  /* Print out an error message.  This information currently is not returned
+     to encp.py. */
+  if(exit_status)
+  {
+    if((*(struct return_values*)(*write_val)).errno_val)
+    {
+      fprintf(stderr, "Low-level write failure: [Errno %d] "
+	      "%s: higher encp levels will process this error "
+	      "and retry if possible\n", errno, strerror(errno));
+      fflush(stderr);
+    }
+    else if((*(struct return_values*)(*read_val)).errno_val)
+    {
+      fprintf(stderr, "Low-level read failure: [Errno %d] "
+	      "%s: higher encp levels will process this error "
+	      "and retry if possible\n", errno, strerror(errno));
+      fflush(stderr);
+    }
+  }
+
   /*free the dynamic memory*/
   free(stored);
   free(buffer);
   free(buffer_lock);
 
-  /* The errno in the variable gets overridden by thread code if an error
-     occurs. Set it back if necessary.*/
-  if((*(struct return_values*)(*write_val)).errno_val)
-  {
-    errno = (*(struct return_values*)(*write_val)).errno_val;
-  }
-  else if((*(struct return_values*)(*read_val)).errno_val)
-  {
-    errno = (*(struct return_values*)(*read_val)).errno_val;
-  }
   return exit_status;
 }
 
 
 void* thread_read(void *info)
 {
-  struct transfer read_info = *((struct transfer*)info);
-  int rd_fd = read_info.fd;
-  long long bytes = read_info.size;
-  int crc_flag = read_info.crc_flag;
-  int block_size = read_info.block_size;
-  int bytes_to_transfer;
-  int sts;
-  int bin = 0;
-  fd_set fds;
-  struct timeval timeout;
-  struct timeval start, end;
+  struct transfer read_info = *((struct transfer*)info); /* dereference */
+  int rd_fd = read_info.fd;                /* File descriptor to write to. */
+  long long bytes = read_info.size;        /* Number of bytes to transfer. */
+  int crc_flag = read_info.crc_flag;       /* Flag to enable crc checking. */
+  int block_size = read_info.block_size;   /* Bytes to transfer at one time. */
+  int bytes_to_transfer;        /* Bytes to transfer in a single loop. */
+  int sts;                      /* Return value from various C system calls. */
+  int bin = 0;                  /* The current bin (bucket) to use. */
+  unsigned long crc_i = 0;      /* Calculated checksum. */
+  fd_set fds;                   /* For use with select(2). */
+  struct timeval timeout = {TIMEOUT, 0};  /* For use with select(2). */
   struct return_values *retval = malloc(sizeof(struct return_values));
-  unsigned long crc_i = 0;
 
+  /* Clear this memory. */
   memset(retval, 0, sizeof(struct return_values));
 
   while(bytes)
   {
-    /*Get status*/
+    /* Determine if the lock for the buffer_lock bin, bin, is ready. */
     pthread_mutex_lock(&buffer_lock[bin]);
     if(stored[bin])
     {
       pthread_mutex_unlock(&buffer_lock[bin]);
-      sched_yield();
+#ifdef _POSIX_PRIORITY_SCHEDULING
+      sched_yield(); /* yield execution */
+#endif
       continue;
     }
     pthread_mutex_unlock(&buffer_lock[bin]);
 
-    gettimeofday(&start, NULL);
-    while(start.tv_sec - end.tv_sec < 15 && start.tv_usec - end.tv_usec < 0)
-    {
-      FD_ZERO(&fds);
-      FD_SET(rd_fd,&fds);
-      timeout.tv_sec = 15 * 60;
-      timeout.tv_usec = 0;
-      
-      sts = select(rd_fd+1, &fds, NULL, NULL, &timeout);
-      if (sts == 0)
-      { /* timeout - treat as an EOF */
-	pthread_mutex_lock(&done_mutex);
-	retval->exit_status = (-2);
-	read_done = 1;
-	pthread_cond_signal(&done_cond);
-	pthread_mutex_unlock(&done_mutex);
-	return retval;
-      }
+    /* Wait for there to be data on the descriptor ready for reading. */
+    errno = 0;
+    FD_ZERO(&fds);
+    FD_SET(rd_fd,&fds);
+    sts = select(rd_fd+1, &fds, NULL, NULL, &timeout);
+    if (sts == -1)
+    { /* return/break - read error */
+      pthread_mutex_lock(&done_mutex);
+      retval->crc_i = crc_i;        /* Checksum */
+      retval->errno_val = errno;    /* Errno value if error occured. */
+      retval->exit_status = (-1);   /* Exit status of the tread. */
+      retval->size = bytes;         /* Number of bytes left to transfer. */
+      read_done = 1;
+      pthread_cond_signal(&done_cond);
+      pthread_mutex_unlock(&done_mutex);
+      return retval;
     }
-    /*Dertermine how much to read*/
+    if (sts == 0)
+    { /* timeout - treat as an EOF */
+      pthread_mutex_lock(&done_mutex);
+      retval->crc_i = crc_i;        /* Checksum */
+      retval->errno_val = errno;    /* Errno value if error occured. */
+      retval->exit_status = (-2);   /* Exit status of the tread. */
+      retval->size = bytes;         /* Number of bytes left to transfer. */
+      read_done = 1;
+      pthread_cond_signal(&done_cond);
+      pthread_mutex_unlock(&done_mutex);
+      return retval;
+    }
+
+    /* Dertermine how much to read. Attempt block size read. */
     bytes_to_transfer = (bytes<block_size)?bytes:block_size;
 
-    /* read in the data */
+    /* Read in the data. */
+    errno = 0;
     sts = read(rd_fd, (buffer+bin*block_size), bytes_to_transfer);
     if (sts == -1)
     { /* return/break - read error */
       pthread_mutex_lock(&done_mutex);
-      retval->errno_val = errno;
-      retval->exit_status = (-1);
+      retval->crc_i = crc_i;        /* Checksum */
+      retval->errno_val = errno;    /* Errno value if error occured. */
+      retval->exit_status = (-1);   /* Exit status of the tread. */
+      retval->size = bytes;         /* Number of bytes left to transfer. */
       read_done = 1;
       pthread_cond_signal(&done_cond);
       pthread_mutex_unlock(&done_mutex);
@@ -311,34 +357,37 @@ void* thread_read(void *info)
     if (sts == 0)
     { /* return/break - unexpected eof error */
       pthread_mutex_lock(&done_mutex);
-      retval->errno_val = errno;
-      retval->exit_status = (-2);
+      retval->crc_i = crc_i;        /* Checksum */
+      retval->errno_val = errno;    /* Errno value if error occured. */
+      retval->exit_status = (-2);   /* Exit status of the tread. */
+      retval->size = bytes;         /* Number of bytes left to transfer. */
       read_done = 1;
       pthread_cond_signal(&done_cond);
       pthread_mutex_unlock(&done_mutex);
       return retval;
     }
     
+    /* Calculate the crc (if applicable). */
     switch (crc_flag)
     {
     case 0:  
-	break;
+      break;
     case 1:  
-      crc_i=adler32(crc_i, (buffer+bin*block_size), sts);
+      crc_i = adler32(crc_i, (buffer+bin*block_size), sts);
       break;
     default:  
-      printf("fd_xfer: invalid crc flag"); 
-      crc_i=0; 
+      crc_i = 0; 
       break;
     }
 
-    /*Set up status array*/
+    /* Set up status array. */
     pthread_mutex_lock(&buffer_lock[bin]);
-    stored[bin] = sts; /*FULL;*/
+    stored[bin] = sts; /* Store the number of bytes in the bin. */
     pthread_mutex_unlock(&buffer_lock[bin]);
 
-    /*Determine where to put the data*/
+    /* Determine where to put the data. */
     bin = (bin + 1) % ARRAY_SIZE;
+    /* Determine the number of bytes left to transfer. */
     bytes -= sts;
 
 #ifdef DEBUG
@@ -351,10 +400,10 @@ void* thread_read(void *info)
   }
 
   pthread_mutex_lock(&done_mutex);
-  retval->exit_status = (0);
-  retval->crc_i = crc_i;
-  retval->size = bytes;
-  retval->errno_val = 0;
+  retval->crc_i = crc_i;      /* Checksum */
+  retval->errno_val = 0;      /* Errno value if error occured. */
+  retval->exit_status = (0);  /* Exit status of the tread. */
+  retval->size = bytes;       /* Number of bytes left to transfer. */
   read_done = 1;
   pthread_cond_signal(&done_cond);
   pthread_mutex_unlock(&done_mutex);
@@ -365,49 +414,88 @@ void* thread_read(void *info)
 
 void* thread_write(void *info)
 {
-  struct transfer write_info = *((struct transfer*)info);
-  int wr_fd = write_info.fd;
-  long long bytes = write_info.size;
-  int crc_flag = write_info.crc_flag;
-  int block_size = write_info.block_size;
-  int bytes_to_transfer;
-  int sts;
-  int bin = 0;
+  struct transfer write_info = *((struct transfer*)info); /* dereference */
+  int wr_fd = write_info.fd;               /* File descriptor to write to. */
+  long long bytes = write_info.size;       /* Number of bytes to transfer. */
+  int crc_flag = write_info.crc_flag;      /* Flag to enable crc checking. */
+  int block_size = write_info.block_size;  /* Bytes to transfer at one time. */
+  int bytes_to_transfer;        /* Bytes to transfer in a single loop. */
+  int sts;                      /* Return value from various C system calls. */
+  int bin = 0;                  /* The current bin (bucket) to use. */
+  unsigned long crc_i = 0;      /* Calculated checksum. */
+  fd_set fds;                   /* For use with select(2). */
+  struct timeval timeout = {TIMEOUT, 0};  /* For use with select(2). */
   struct return_values *retval = malloc(sizeof(struct return_values));
-  unsigned long crc_i = 0;
 
+  /* Clear this memory. */
   memset(retval, 0, sizeof(struct return_values));
 
   while(bytes)
   {
-    /*Get status*/
+    /* Determine if the lock for the buffer_lock bin, bin, is ready. */
     pthread_mutex_lock(&buffer_lock[bin]);
     if(stored[bin] == 0)
     {
       pthread_mutex_unlock(&buffer_lock[bin]);
+#ifdef _POSIX_PRIORITY_SCHEDULING
       sched_yield();
+#endif
       continue;
     }
 
-    /*Dertermine how much to write*/
+    /* Dertermine how much to write.  Attempt block size write. */
     bytes_to_transfer = (stored[bin]<block_size)?stored[bin]:block_size;
     
-    /*unlock this mutex*/
+    /* Unlock this mutex. */
     pthread_mutex_unlock(&buffer_lock[bin]);
 
-    /* write out the data */
-    sts = write(wr_fd, (buffer+bin*block_size), bytes_to_transfer);
+    /* Wait for there to be room for the descriptor to write to. */
+    errno = 0;
+    FD_ZERO(&fds);
+    FD_SET(wr_fd, &fds);
+    sts = select(wr_fd+1, NULL, &fds, NULL, &timeout);
     if (sts == -1)
     { /* return a write error */
       pthread_mutex_lock(&done_mutex);
-      retval->errno_val = errno;
-      retval->exit_status = (-3);
+      retval->crc_i = crc_i;        /* Checksum */
+      retval->errno_val = errno;    /* Errno value if error occured. */
+      retval->exit_status = (-3);   /* Exit status of the tread. */
+      retval->size = bytes;         /* Number of bytes left to transfer. */
+      write_done = 1;
+      pthread_cond_signal(&done_cond);
+      pthread_mutex_unlock(&done_mutex);
+      return retval;
+    }
+    if (sts == 0)
+    { /* timeout - treat as an EOF */
+      pthread_mutex_lock(&done_mutex);
+      retval->crc_i = crc_i;        /* Checksum */
+      retval->errno_val = errno;    /* Errno value if error occured. */
+      retval->exit_status = (-2);   /* Exit status of the tread. */
+      retval->size = bytes;         /* Number of bytes left to transfer. */
       write_done = 1;
       pthread_cond_signal(&done_cond);
       pthread_mutex_unlock(&done_mutex);
       return retval;
     }
 
+    /* Write out the data */
+    errno = 0;
+    sts = write(wr_fd, (buffer+bin*block_size), bytes_to_transfer);
+    if (sts == -1)
+    { /* return a write error */
+      pthread_mutex_lock(&done_mutex);
+      retval->crc_i = crc_i;      /* Checksum */
+      retval->errno_val = errno;  /* Errno value if error occured. */
+      retval->exit_status = (-3); /* Exit status of the tread. */
+      retval->size = bytes;       /* Number of bytes left to transfer. */
+      write_done = 1;
+      pthread_cond_signal(&done_cond);
+      pthread_mutex_unlock(&done_mutex);
+      return retval;
+    }
+
+    /* Calculate the crc (if applicable). */
     switch (crc_flag)
     {
     case 0:  
@@ -418,21 +506,18 @@ void* thread_write(void *info)
       /*crc_i=adler32(crc_i, (buffer), sts);*/
       break;
     default:  
-      printf("fd_xfer: invalid crc flag"); 
       crc_i=0; 
       break;
     }
 
-    /*Set up status array*/
+    /* Set up status array. */
     pthread_mutex_lock(&buffer_lock[bin]);
-    stored[bin] = 0;
+    stored[bin] = 0; /* Set the number of bytes left in buffer to zero. */
     pthread_mutex_unlock(&buffer_lock[bin]);
 
-    /*printf("bytes: %lld bytes_to_transfer: %d\n", bytes, bytes_to_transfer);
-      fflush(stdout);*/
-
-    /*Determine where to get the data*/
+    /* Determine where to get the data. */
     bin = (bin + 1) % ARRAY_SIZE;
+    /* Determine the number of bytes left to transfer. */
     bytes -= sts;
 
 #ifdef DEBUG
@@ -445,16 +530,17 @@ void* thread_write(void *info)
   }
 
   pthread_mutex_lock(&done_mutex);
-  retval->exit_status = 0;
-  retval->crc_i = crc_i;
-  retval->size = bytes;
-  retval->errno_val = 0;
+  retval->crc_i = crc_i;      /* Checksum */
+  retval->errno_val = 0;      /* Errno value if error occured. */
+  retval->exit_status = (0);  /* Exit status of the tread. */
+  retval->size = bytes;       /* Number of bytes left to transfer. */
   write_done = 1;
   pthread_cond_signal(&done_cond);
   pthread_mutex_unlock(&done_mutex);
   return retval;
 }
 
+#ifdef DEBUG
 void print_status(FILE* fd)
 {
   int i;
@@ -464,6 +550,7 @@ void print_status(FILE* fd)
   }
   fprintf(fd, "\n");
 }
+#endif
 
 #else
 static int
@@ -489,14 +576,33 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
 	    timeout.tv_usec = 0;
 	    errno=0;
 	    sts = select(rd_fd+1, &fds, NULL, NULL, &timeout);
+	    if (sts == -1)
+		{   /* return/break - read error */
+		    fprintf(stderr, "Low-level I/O failure: " 
+			    "select(%d, [%d], [], [], {%ld, %ld}) [Errno %d] "
+                            "%s: higher encp levels will process this error "
+                            "and retry if possible\n",
+			    rd_fd+1, rd_fd, timeout.tv_sec, timeout.tv_usec,
+			    errno, strerror(errno));
+		    fflush(stderr);
+		    return (-1);
+		}
 	    if (sts == 0){
 		/* timeout - treat as an EOF */
 		return (-2);
 	    }
+
 	    errno = 0;
 	    sts = read(rd_fd, buffer, bytes_to_xfer);
 	    if (sts == -1)
 		{   /* return/break - read error */
+		    fprintf(stderr, "Low-level I/O failure: "
+			    "read(%d, %#x, %lld) -> %lld, [Errno %d] %s: "
+			    "higher encp levels will process this error "
+                            "and retry if possible\n",
+			    rd_fd, (unsigned)buffer, (long long)bytes_to_xfer,
+			    (long long)sts, errno, strerror(errno));
+		    fflush(stderr);
 		    return (-1);
 		}
 	    if (sts == 0)
@@ -509,13 +615,15 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
 	    do {
 	        errno=0;
 	        sts = write(wr_fd, b_p, bytes_to_xfer);
-	        if (sts != bytes_to_xfer){
-		  fprintf(stderr, "write(%d, %#x, %lld) -> %lld, errno=%d\n",
-			  wr_fd, (unsigned)b_p, (long long)bytes_to_xfer,
-			  (long long)sts, errno);
-		  fflush(stderr);
-		}
-		if (sts == -1) {   /* return a write error */
+		if (sts == -1)
+		{   /* return a write error */
+		    fprintf(stderr, "Low-level I/O failure: "
+			    "write(%d, %#x, %lld) -> %lld, [Errno %d] %s:"
+			    "higher encp levels will process this error "
+                            "and retry if possible\n",
+			    wr_fd, (unsigned)b_p, (long long)bytes_to_xfer,
+			    (long long)sts, errno, strerror(errno));
+		    fflush(stderr);
 		    return (-3);
 		}
 		switch (crc_flag) {
