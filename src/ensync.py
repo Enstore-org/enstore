@@ -8,6 +8,7 @@ import sys
 import os
 import stat
 import string
+import errno
 
 # enstore modules
 import Trace
@@ -63,17 +64,27 @@ def ensync(original_dir, pnfs_backup_dir):
 
     #Loop through each file in the original directory.  Only those that are
     # in this list and not in the matching pnfs directory are looked at.
-    for file in original_list:
+    for filename in original_list:
 
-        filepath = os.path.join(original_dir, file)
-        new_filepath = os.path.join(pnfs_backup_dir, os.path.basename(file))
+        filepath = os.path.join(original_dir, filename)
+        new_filepath = os.path.join(pnfs_backup_dir,
+                                    os.path.basename(filename))
 
         #If the file (directory, symbolic link, etc.) is not in pnfs.
         if file not in pnfs_backup_list:
             #This is not a good thing to jump accros file systems.
-            if os.path.ismount(filepath) or os.path.ismount(new_filepath):
-                sys.stderr.write("Detected a mount point.  Aborting.\n")
-                sys.exit(1)
+            if os.path.ismount(filepath):
+                sys.stderr.write("Detected a mount point.  Skipping: %s\n"
+                                 % filepath)
+                continue
+            if os.path.ismount(new_filepath):
+                sys.stderr.write("Detected a mount point. Skipping: %s\n"
+                                 % new_filepath)
+                continue
+
+            #The output target should not exist.
+            if os.path.exists(new_filepath):
+                continue
             
             #Handle symbolic links carefully.  Not all possible links can be
             # correctly handled.
@@ -85,6 +96,20 @@ def ensync(original_dir, pnfs_backup_dir):
                     target = os.path.join(original_dir, os.readlink(filepath))
                 target = os.path.abspath(target)
 
+                try:
+                    os.lstat(new_filepath)
+
+                    #The link already exists, skip it.
+                    continue
+                except OSError, msg:
+                    if msg.errno == errno.ENOENT:
+                        pass
+                    else:
+                        sys.stderr.write(
+                        "Unable to handle new link: %s -> %s\n" % \
+                        (new_filepath, target))
+                        continue
+                    
                 #If the target is on the same file system, handle it.
                 if get_mount_point(target) == get_mount_point(filepath):
                     new_target = os.path.join(pnfs_backup_dir,
@@ -139,7 +164,9 @@ class EnsyncInterface(generic_client.GenericClientInterface):
         # fill in the defaults for the possible options
         self.verbose = 0
         
-        option.Interface.__init__(self, args=args, user_mode=user_mode)
+        #option.Interface.__init__(self, args=args, user_mode=user_mode)
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.help_options, self.ensync_options)
@@ -150,10 +177,10 @@ class EnsyncInterface(generic_client.GenericClientInterface):
         generic_client.GenericClientInterface.parse_options(self)
 
         #Process these at the beginning.
-        if getattr(self, "help") and self.help:
-            ret = self.print_help()
-        if getattr(self, "usage") and self.usage:
-            ret = self.print_usage()
+        if getattr(self, option.HELP, None):
+            self.print_help()
+        if getattr(self, option.USAGE, None):
+            self.print_usage()
 
         #There should be two directories in self.args.  They correspond to
         # the to values in the parameters list (see below).
