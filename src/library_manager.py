@@ -1695,10 +1695,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # its volumes at movers table
             self.reply_to_caller({'work': 'no_work'})
             return
-        if self.lm_lock in ('pause', e_errors.BROKEN):
-            Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
-            self.reply_to_caller({'work': 'no_work'})
-            return
         # just did some work, delete it from queue
         w = self.get_work_at_movers(mticket['external_label'])
         if w:
@@ -1715,6 +1711,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 Trace.trace(11, "FILE_FAMILY=%s" % (w['vc']['volume_family'],))  # REMOVE
             self.work_at_movers.remove(w)
 
+        if self.lm_lock in ('pause', e_errors.BROKEN):
+            Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
+            self.reply_to_caller({'work': 'no_work'})
+            return
         # see if this volume will do for any other work pending
         rq, status = self.next_work_this_volume(mticket['external_label'], mticket['volume_family'],
                                                 last_work, mticket,
