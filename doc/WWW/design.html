@@ -1030,7 +1030,7 @@ Currently there is no wild-carding allowed, but this is a straight forward
 extension to <em>encp</em>.
 
 <h3>
-<a NAME="encp_options"></a>1.2.1<em>Encp</em> command line options</h3>
+<a NAME="encp_options"></a>1.2.1 <em>Encp</em> command line options</h3>
 
 <center><table BORDER COLS=3 WIDTH="100%" NOSAVE >
 <tr VALIGN=CENTER NOSAVE>
@@ -1101,7 +1101,7 @@ transfer is completed </td>
 
 <tr NOSAVE>
 <td NOSAVE>copied files to specified file family</td>
-<td NOSAVE>--family valuetd>
+<td NOSAVE>--family value<td>
 <td NOSAVE>None</td>
 
 <tr NOSAVE>
@@ -1120,18 +1120,21 @@ transfer is completed </td>
 <p>The d0sam option provides the output of <em>encp</em> in a format required
 by the D0 SAM system. The example output is below:
 <pre>
-$ encp --d0sam /pnfs/rip6/M1 .
-INFILE=/pnfs/rip6/M1
-OUTFILE=/home/moibenko/enstore/src/tst/M1
-FILESIZE=21036
-LABEL=rip6-01
-DRIVE=/rip6a/rip6/rip6.fake
-TRANSFER_TIME=0.008138
-SEEK_TIME=0.000161
-MOUNT_TIME=0.043744
-QWAIT_TIME=0.023627
-TIME2NOW=0.888241
+$  encp --d0sam 1GB.trand  /pnfs/grau/ait/jon1/
+INFILE=/rip8a/enstore/random/1GB.trand
+OUTFILE=/pnfs/grau/ait/jon1/1GB.trand
+FILESIZE=1073741824
+LABEL=CA2901
+DRIVE=/dev/rmt/tps2d2n
+TRANSFER_TIME=384.365273
+SEEK_TIME=0.004476
+MOUNT_TIME=24.688773
+QWAIT_TIME=1.581097
+TIME2NOW=434.628970
 STATUS=ok
+
+1 GB   copied to CA2901 at user 2.4 MB/S (2.7 MB/S IO rate)
+
 </pre>
 
 This output is easily parsable and provides information about input and
@@ -5810,7 +5813,7 @@ constraints:
 <TD> <P>System </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P>Siting </FONT> </TD>
+<TD> <P>Site</FONT> </TD>
 <TD> <P>Location </FONT> </TD>
 <TD> <P>System </FONT> </TD>
 
@@ -6672,7 +6675,7 @@ mode.</TD>
 <TD>When an Enstore job fails because of a tape error or failure of the
 receiving <em>encp</em> (or network or whatever) the job queue of Enstore should
 be cleaned up appropriately.
-<br><em> Failed transfers are flushed from the Enstore queues. <p></em>
+<br><p><em> Failed transfers are flushed from the Enstore queues. <p></em>
 </TD>
 
 <TD>Could live without this in 1st implementation, but would be nice to
@@ -6708,6 +6711,14 @@ and the network bandwidth.</TD>
 8.3 Other D0 Requests to Enstore
 </h3>
 
+Besides the preceding requests from SAM, other D0 experimenters have
+suggested features, based on their experience, that would make Enstore more
+usuable.  We consider these requests valid and we will try to implement
+them; however, since some of the requests are outside of the main
+SAM framework, we assign them a lower priority and, in the cases where they
+conflict with mainline SAM architecture, we will only start them after all
+SAM requests have been satisfied and have extensive testing.
+
 <ul>
 
   <li> Enstore should assign drives randomly, not just the first few drives.
@@ -6739,8 +6750,12 @@ and the network bandwidth.</TD>
 
 <li> Enstore should be able to deal in volumes. Ie, transfer a whole tape to
    disk and vice versa.
-     <p> The current method of using lists might already be adequate. Otherwise,
-     this can be developed. <p>
+     <p> <b>All SAM traffic is with files, so this request is contrary to the
+     SAM architecture. It is currently possible to write a list of files to
+     a tape. </b> It is also possible to query the system to list the files that
+     are on a tape, and then use that list to copy all the files to the
+     disk. We believe these methods to be adequate. Otherwise,
+     this can be developed and represents new work. <p>
 
 <li> D0 needs a scripts to create Enstore importable tapes.
      <p> Enstore will provide these. <p>
@@ -6751,11 +6766,13 @@ and the network bandwidth.</TD>
 
 <li> Enstore needs the capability to override its priority queue and do
     things in the exact order requested.
-     <p><b> This is not straightforward and requires defeating the Enstore
-     system in many ways. More explicit needs will be addressed as they arise.</b> <p>
+     <p><b> This request is outside the mainline SAM architecture which has
+     indicated it wants priorities and optimal transversals of tapes.
+     Moreover, this request is not straightforward and requires defeating the Enstore
+     system in many ways and we'd prefer not to do it. More explicit needs can be addressed as they arise.</b> <p>
 
 <li> Enstore needs to guarantee a certain set of files are grouped on tape.
-     <p> This can be done with file families that have a (temporary) width
+     <p> This can be done with ephemeral file families that have a width
      of 1. Or, it can be done if only 1 user is writing to the file family
      at a time. <p>
 
