@@ -2,7 +2,6 @@
 # src/$RCSfile$   $Revision$
 #
 #system imports
-import pprint
 import sys
 
 #enstore imports
@@ -21,16 +20,20 @@ class GenericClient(generic_cs.GenericCS):
         return x
 
     # examine the final ticket to check for any errors
-    def check_ticket(self, str, ticket):
+    def check_ticket(self, ticket, msg_id, client_id):
         if ticket['status'][0] == e_errors.OK:
-            if self.verbose:
-                pprint.pprint(ticket)
-            Trace.trace(1, str+" exit ok")
+	    generic_cs.enprint(ticket, generic_cs.NO_LOGGER, \
+	                       generic_cs.PRETTY_PRINT | msg_id, \
+	                       client_id, self.verbose)
+            Trace.trace(1, client_id+" exit ok")
             sys.exit(0)
         else:
-            print "BAD STATUS:",ticket['status']
-            pprint.pprint(ticket)
-            Trace.trace(0, str+" BAD STATUS - "+repr(ticket['status']))
+	    generic_cs.enprint("BAD STATUS: "+repr(ticket['status']), \
+                               generic_cs.NO_LOGGER, \
+	                       generic_cs.PRETTY_PRINT, client_id)
+	    generic_cs.enprint(ticket, generic_cs.NO_LOGGER,\
+	                       generic_cs.PRETTY_PRINT, client_id)
+            Trace.trace(0, client_id+" BAD STATUS - "+repr(ticket['status']))
             sys.exit(1)
 
     # cover ourselves just in case our sub class does not have a send

@@ -25,6 +25,8 @@ try:
 except ImportError:
     import socket
 
+configid = "CONFIGC"
+
 def set_csc(self, csc=0, host=interface.default_host(),\
             port=interface.default_port(), verbose=0):
     Trace.trace(10,'{set_csc csc='+repr(csc))
@@ -39,9 +41,9 @@ class ConfigurationClient(generic_client.GenericClient):
     def __init__(self, config_host, config_port, verbose):
         Trace.trace(10,'{__init__ cc')
         self.clear()
-	if verbose>3 :
-            print "Connecting to configuration server at ",\
-	        config_host, config_port
+	self.enprint("Connecting to configuration server at "+\
+	             config_host+" "+repr(config_port), generic_cs.NO_LOGGER,\
+	             generic_cs.CONNECTING, configid, verbose)
 	self.verbose = verbose
         self.config_address=(config_host,config_port)
         self.u = udp_client.UDPClient()
@@ -68,20 +70,27 @@ class ConfigurationClient(generic_client.GenericClient):
                                               timeout, retry)
                 break
             except socket.error:
-                if sys.exc_info()[1][0] == errno.CONNREFUSED:
-                    delay = 3
-                    Trace.trace(0,"}get_uncached retrying "+\
-                                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                    print sys.exc_info()[1][0], "socket error. configuration "\
-                          +"sending to",self.config_address\
-                          ,"server down?  retrying in ",delay," seconds"
-                    time.sleep(delay)
-                else:
-                    Trace.trace(0,"}get_uncached "+str(sys.exc_info()[0])+\
-                                str(sys.exc_info()[1]))
-                    raise sys.exc_info()[0],sys.exc_info()[1]
+	        self.output_socket_error("get_uncached")
         Trace.trace(11,'}get_uncached key='+repr(key)+'='+repr(self.cache[key]))
         return self.cache[key]
+
+    # output the socket error
+    def output_socket_error(self, id):
+        if sys.exc_info()[1][0] == errno.CONNREFUSED:
+            delay = 3
+            Trace.trace(0,"}"+id+" retrying "+ \
+	                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+	    self.enprint(sys.exc_info()[1][0]+" "+\
+	                 "socket error. configuration sending to "+\
+	                 repr(self.config_address)+\
+                         "server down?  retrying in "+repr(delay)+" seconds",\
+	                 generic_cs.NO_LOGGER, generic_cs.SOCKET_ERROR, \
+	                 configid, self.verbose)
+            time.sleep(delay)
+        else:
+            Trace.trace(0,"}+id+"+str(sys.exc_info()[0])+\
+                        str(sys.exc_info()[1]))
+            raise sys.exc_info()[0],sys.exc_info()[1]
 
     # return cached (or get from server) value for requested item
     def get(self, key, timeout=0, retry=0):
@@ -105,18 +114,7 @@ class ConfigurationClient(generic_client.GenericClient):
 	                                       timeout, retry )
                 break
             except socket.error:
-                if sys.exc_info()[1][0] == errno.CONNREFUSED:
-                    delay = 3
-                    Trace.trace(0,"}list retrying "+\
-                                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                    print sys.exc_info()[1][0], "socket error. configuration "\
-                          +"sending to",self.config_address\
-                          ,"server down?  retrying in ",delay," seconds"
-                    time.sleep(delay)
-                else:
-                    Trace.trace(0,"}list "+str(sys.exc_info()[0])+\
-                                str(sys.exc_info()[1]))
-                    raise sys.exc_info()[0],sys.exc_info()[1]
+	        self.output_socket_error("list")
         Trace.trace(16,'}list')
 
     # get all keys in the configuration dictionary
@@ -130,18 +128,7 @@ class ConfigurationClient(generic_client.GenericClient):
                 Trace.trace(16,'}get_keys ' + repr(keys))
                 return keys
             except socket.error:
-                if sys.exc_info()[1][0] == errno.CONNREFUSED:
-                    delay = 3
-                    Trace.trace(0,"}get_keys retrying "+\
-                                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                    print sys.exc_info()[1][0], "socket error. configuration "\
-                          +"sending to",self.config_address\
-                          ,"server down?  retrying in ",delay," seconds"
-                    time.sleep(delay)
-                else:
-                    Trace.trace(0,"}get_keys "+str(sys.exc_info()[0])+\
-                                str(sys.exc_info()[1]))
-                    raise sys.exc_info()[0],sys.exc_info()[1]
+	        self.output_socket_error("get_keys")
         Trace.trace(16,'}get_keys')
 
     # reload a new  configuration dictionary
@@ -154,18 +141,7 @@ class ConfigurationClient(generic_client.GenericClient):
                 Trace.trace(16,'}load '+repr(x))
                 return x
             except socket.error:
-                if sys.exc_info()[1][0] == errno.CONNREFUSED:
-                    delay = 3
-                    Trace.trace(0,"}load retrying "+\
-                                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                    print sys.exc_info()[1][0], "socket error. configuration "\
-                          +"sending to",self.config_address\
-                          ,"server down?  retrying in ",delay," seconds"
-                    time.sleep(delay)
-                else:
-                    Trace.trace(0,"}load "+str(sys.exc_info()[0])+\
-                                str(sys.exc_info()[1]))
-                    raise sys.exc_info()[0],sys.exc_info()[1]
+	        self.output_socket_error("load retrying")
         Trace.trace(16,'}load')
 
     # check on alive status
@@ -185,18 +161,7 @@ class ConfigurationClient(generic_client.GenericClient):
                 Trace.trace(16,'}get_movers '+repr(x))
                 return x
             except socket.error:
-                if sys.exc_info()[1][0] == errno.CONNREFUSED:
-                    delay = 3
-                    Trace.trace(0,"}get_movers retrying "+\
-                                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                    print sys.exc_info()[1][0], "socket error. configuration "\
-                          +"sending to",self.config_address\
-                          ,"server down?  retrying in ",delay," seconds"
-                    time.sleep(delay)
-                else:
-                    Trace.trace(0,"}get_movers "+str(sys.exc_info()[0])+\
-                                str(sys.exc_info()[1]))
-                    raise sys.exc_info()[0],sys.exc_info()[1]
+	        self.output_socket_error("get_movers")
         Trace.trace(16,'}get_movers')
 	
 
@@ -225,7 +190,6 @@ class ConfigurationClientInterface(interface.Interface):
 
 if __name__ == "__main__":
     import sys
-    import pprint
     Trace.init("config cli")
     Trace.trace(1,"config client called with args "+repr(sys.argv))
 
@@ -238,26 +202,26 @@ if __name__ == "__main__":
 
     if intf.alive:
         stati = csc.alive(intf.alive_rcv_timeout,intf.alive_retries)
-        if intf.verbose:
-            pprint.pprint(stati)
+	msg_id = generic_cs.ALIVE
 
     elif intf.dict:
         csc.list(intf.alive_rcv_timeout,intf.alive_retries)
-        print csc.config_list["list"]
-        stati = csc.config_list['status']
+	generic_cs.enprint(csc.config_list["list"])
+        stati = csc.config_list
+	msg_id = generic_cs.CLIENT
 
     elif intf.load:
         stati= csc.load(intf.config_file, intf.alive_rcv_timeout, \
 	                intf.alive_retries)
-        if intf.verbose:
-            pprint.pprint(stati)
+	print stati
+	msg_id = generic_cs.CLIENT
 
     elif intf.get_keys:
         stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
-	pprint.pprint(stati['get_keys'])
-        if intf.verbose:
-            pprint.pprint(stati)
+	generic_cs.enprint(stati['get_keys'], generic_cs.NO_LOGGER, \
+	                   generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
 
     del csc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    csc.check_ticket("cc", stati)
+    csc.check_ticket(stati, msg_id, configid)

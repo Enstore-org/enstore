@@ -6,12 +6,15 @@ import string
 # enstore imports
 import configuration_client
 import generic_client
+import generic_cs
 import backup_client
 import udp_client
 import callback
 import interface
 import Trace
 import e_errors
+
+inqid = "INQC"
 
 class Inquisitor(generic_client.GenericClient):
 
@@ -150,7 +153,6 @@ class InquisitorClientInterface(interface.Interface):
 
 if __name__ == "__main__" :
     import sys
-    import pprint
     Trace.init("IQ client")
     Trace.trace(1,"iqc called with args "+repr(sys.argv))
 
@@ -163,32 +165,42 @@ if __name__ == "__main__" :
 
     if intf.alive:
         ticket = iqc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+	msg_id = generic_cs.ALIVE
 
     elif intf.update:
         ticket = iqc.update(intf.server, intf.verbose)
+	msg_id = generic_cs.CLIENT
 
     elif intf.timeout:
         ticket = iqc.set_timeout(intf.timeout, intf.server)
+	msg_id = generic_cs.CLIENT
 
     elif intf.get_timeout:
         ticket = iqc.get_timeout(intf.server)
-	pprint.pprint(ticket['timeout'])
+	iqc.enprint(ticket['timeout'], generic_cs.NO_LOGGER, \
+	            generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
 
     elif intf.reset_timeout:
         ticket = iqc.reset_timeout(intf.server)
+	msg_id = generic_cs.CLIENT
 
     elif intf.timestamp:
         ticket = iqc.timestamp()
+	msg_id = generic_cs.CLIENT
 
     elif intf.max_ascii_size:
         ticket = iqc.max_ascii_size(intf.max_ascii_size)
+	msg_id = generic_cs.CLIENT
 
     elif intf.get_max_ascii_size:
         ticket = iqc.get_max_ascii_size()
-	pprint.pprint(ticket['max_ascii_size'])
+	iqc.enprint(ticket['max_ascii_size'], generic_cs.NO_LOGGER, \
+	            generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
 
     del iqc.csc.u
     del iqc.u           # del now, otherwise get name exception (just for python v1.5???)
 
-    iqc.check_ticket("inq", ticket)
+    iqc.check_ticket(ticket, msg_id, inqid)
 

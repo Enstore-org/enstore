@@ -16,8 +16,11 @@ import configuration_client
 import udp_client
 import interface
 import generic_client
+import generic_cs
 import Trace
 import e_errors
+
+medchid = "MEDCHC"
 
 class MediaChangerClient(generic_client.GenericClient):
     def __init__(self, csc=0, verbose=0, name="", \
@@ -94,7 +97,6 @@ class MediaChangerClientInterface(interface.Interface):
 
 if __name__ == "__main__" :
     import sys
-    import pprint
     Trace.init("medch cli")
     Trace.trace(1,"mcc called with args "+repr(sys.argv))
 
@@ -107,11 +109,13 @@ if __name__ == "__main__" :
 
     if intf.alive:
         ticket = mcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+	msg_id = generic_cs.ALIVE
     else:
         ticket = mcc.unloadvol(intf.volume, intf.drive)
-        print 'unload returned:' + ticket['status']
+	mcc.enprint('unload returned:'+ticket['status'])
+	msg_id = generic_cs.CLIENT
 
     del mcc.csc.u
     del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    mcc.check_ticket("mcc", ticket)
+    mcc.check_ticket(ticket, msg_id, medchid)

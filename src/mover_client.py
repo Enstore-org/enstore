@@ -15,8 +15,11 @@ import configuration_client
 import udp_client
 import interface
 import generic_client
+import generic_cs
 import Trace
 import e_errors
+
+moverid = "MOVERC"
 
 class MoverClient(generic_client.GenericClient):
     def __init__(self, csc=0, verbose=0, name="", \
@@ -69,7 +72,6 @@ class MoverClientInterface(interface.Interface):
 
 if __name__ == "__main__" :
     import sys
-    import pprint
     Trace.init("mover cli")
     Trace.trace(1,"movc called with args "+repr(sys.argv))
 
@@ -82,16 +84,9 @@ if __name__ == "__main__" :
 
     if intf.alive:
         ticket = movc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+	msg_id = generic_cs.ALIVE
 
     del movc.csc.u
     del movc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if ticket['status'][0] == e_errors.OK :
-        if intf.verbose:
-            pprint.pprint(ticket)
-        Trace.trace(1,"movc exit ok")
-        sys.exit(0)
-    else :
-        print "BAD STATUS:",ticket['status']
-        pprint.pprint(ticket)
-        Trace.trace(0,"movc BAD STATUS - "+repr(ticket['status']))
-        sys.exit(1)
+
+    movc.check_ticket(ticket, msg_id, moverid)

@@ -10,10 +10,12 @@ import configuration_client
 import callback
 import interface
 import generic_client
+import generic_cs
 import udp_client
 import Trace
 import e_errors
 
+libmanid = "LIBMANC"
 
 def getlist(self, work):
     # get a port to talk on and listen for connections
@@ -42,7 +44,8 @@ def getlist(self, work):
             listen_socket.close()
             break
         else:
-            print ("lmc."+work+": imposter called us back, trying again")
+	    self.enprint("lmc."+work+": imposter called us back, trying again",\
+	                 generic_cs.NO_LOGGER, 0, libmanid)
             control_socket.close()
     ticket = new_ticket
     if ticket["status"][0] != e_errors.OK:
@@ -136,7 +139,6 @@ class LibraryManagerClientInterface(interface.Interface) :
 
 if __name__ == "__main__" :
     import sys
-    import pprint
     Trace.init("libm cli")
     Trace.trace(1,"lmc called with args "+repr(sys.argv))
 
@@ -149,19 +151,27 @@ if __name__ == "__main__" :
 
     if intf.alive:
         ticket = lmc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+	msg_id = generic_cs.ALIVE
     elif  intf.getwork:
         ticket = lmc.getwork(intf.verbose)
-	pprint.pprint(ticket['pending_work'])
-	pprint.pprint(ticket['at movers'])
+	lmc.enprint(ticket['pending_work'], generic_cs.NO_LOGGER, 
+	            generic_cs.PRETTY_PRINT)
+	lmc.enprint(ticket['at movers'], generic_cs.NO_LOGGER, 
+	            generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
     elif  intf.getmoverlist:
 	ticket = lmc.getmoverlist()
-	pprint.pprint(ticket['moverlist'])
+	lmc.enprint(ticket['moverlist'], generic_cs.NO_LOGGER, 
+	            generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
     elif  intf.get_susp_vols:
 	ticket = lmc.get_suspect_volumes()
-	pprint.pprint(ticket['suspect_volumes'])
+	lmc.enprint(ticket['suspect_volumes'], generic_cs.NO_LOGGER, 
+	            generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
 
     del lmc.csc.u
     del lmc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    lmc.check_ticket("lcc", ticket)
+    lmc.check_ticket(ticket, msg_id, libmanid)
 

@@ -14,6 +14,9 @@ import e_errors
 
 import interface
 import generic_client
+import generic_cs
+
+adminid = "ADMINC"
 
 class AdminClerkClient(generic_client.GenericClient) :
 
@@ -46,12 +49,12 @@ class AdminClerkClient(generic_client.GenericClient) :
             control_socket, address = listen_socket.accept()
             new_ticket = callback.read_tcp_socket(control_socket, "admin"+\
                                   "clerk client select,  ac call back")
-            import pprint
             if ticket["unique_id"] == new_ticket["unique_id"] :
                 listen_socket.close()
                 break
             else:
-                print ("acc.select: imposter called us back, trying again")
+	        self.enprint("select - imposter called us back, trying again",\
+	                     self.logc, 0, adminid)
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
@@ -90,7 +93,8 @@ class AdminClerkClient(generic_client.GenericClient) :
     def printRec(self,msg):
         import regex
    	index=regex.search("}",msg)
-   	pprint.pprint(msg[:index+1])
+	self.enprint(msg[:index+1], generic_cs.NO_LOGGER,
+	             generic_cs.PRETTY_PRINT, 0, adminid)
    	if index==len(msg)-1:
 	   msg=""
 	else:
@@ -129,7 +133,8 @@ class AdminClerkClientInterface(interface.Interface) :
         index=regex.search("[^0-9><=!]",value)
         if index==-1:
 	    return value
-        print "ERROR: Wrong syntax: ",value
+	generic_cs.enprint("ERROR: Wrong syntax: "+repr(value),
+	                   generic_cs.NO_LOGGER, 0, adminid)
         self.print_help()
         sys.exit(1)
 
@@ -142,34 +147,35 @@ class AdminClerkClientInterface(interface.Interface) :
 
     def print_help(self):
         interface.Interface.print_help(self)
-        print "help             : to see this messsage and exit"
-        print "dbname           : table name (volume or file)"
-        print "faccess,laccess  : time(YYYYMMDDHHMM) of first/last access"
-        print "declared         : creation time(YYYYMMDDHHMM)" 
-        print "capacity         : number of bytes on this volume"
-        print "rem_bytes        : number of free bytes on this volume"
-        print "do not forget the '-' in front of following option:"
-        print "f : file family"
-        print "v : volume name"
-        print "m : media type"
-        print "w : wraper"
-        print "u : user inhibit"
-        print "s : system inhibit" 
-        print "possible operators : '==','>=','<=','!=','<','>','<>'(between)"
-        print "Examples:"
-        print "Select all volume from media1,file_family type1 and type3, with"
-        print "wraper cpio that were decalred before 06/10 1998 12:00 pm :"
-        print "--dbname volume -m media1 -f type1,type3 -w cpio --declared '>199806101200'"	
-        print "Select all files that are loacted on volume1 ,volume3 and volume5:"
-        print "--dbname file -v volume1,volume,volume5"
-        print "Warning: if you didn't specify one of the following options"
-        print "selection could be very slow:"
-        print "f(file_family),m(media_type),v(volume name for file table)"
+	msg = "help             : to see this messsage and exit\n"+\
+         "dbname           : table name (volume or file)\n"+\
+         "faccess,laccess  : time(YYYYMMDDHHMM) of first/last access\n"+\
+         "declared         : creation time(YYYYMMDDHHMM)\n"+\
+         "capacity         : number of bytes on this volume\n"+\
+         "rem_bytes        : number of free bytes on this volume\n"+\
+         "do not forget the '-' in front of following option:\n"+\
+         "  f : file family\n"+\
+         "  v : volume name\n"+\
+         "  m : media type\n"+\
+         "  w : wraper\n"+\
+         "  u : user inhibit\n"+\
+         "  s : system inhibit\n"+\
+         "possible operators : '==','>=','<=','!=','<','>','<>'(between)\n"+\
+         "Examples:\n"+\
+         "Select all volume from media1,file_family type1 and type3, with\n"+\
+         "wraper cpio that were decalred before 06/10 1998 12:00 pm :\n"
+	generic_cs.enprint(msg)
+	generic_cs.enprint("--dbname volume -m media1 -f type1,type3 -w cpio --declared '>199806101200'\n")
+	msg = "Select all files that are loacted on volume1 ,volume3 and volume5:\n"+\
+         "--dbname file -v volume1,volume,volume5\n"+\
+         "Warning: if you didn't specify one of the following options\n"+\
+         "selection could be very slow:\n"+\
+         "f(file_family),m(media_type),v(volume name for file table)\n"
+	generic_cs.enprint(msg)
 
 
 if __name__ == "__main__" :
     import sys
-    import pprint
     Trace.init("admin cli")
     Trace.trace(1,"acc called with args "+repr(sys.argv))
 
@@ -182,14 +188,16 @@ if __name__ == "__main__" :
 
     if intf.alive:
         ticket = acc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+	msg_id = generic_cs.ALIVE
     else :
 	if intf.dbname=="file" and len(acc.criteria)>0:
 	   for key in acc.criteria.keys():
 		if key != 'external_label':
 		   intf.set_dbname("volume,file")
     	ticket=acc.select(acc.criteria,intf.dbname) 
+	msg_id = generic_cs.CLIENT
 
     del acc.csc.u
     del acc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    acc.check_ticket("acc", ticket)
+    acc.check_ticket(ticket, msg_id, adminid)

@@ -21,10 +21,10 @@ import socket
 
 #enstore imports
 import generic_client
+import generic_cs
 import configuration_client
 import interface
 import udp_client
-import pprint
 import Trace
 import e_errors
 
@@ -34,6 +34,8 @@ USER_ERROR=1
 WARNING=2
 INFO=3
 MISC=4
+
+logid = "LOGC"
 
 # severity translator
 sevdict = { ERROR      : 'E', \
@@ -98,8 +100,8 @@ class LoggerClient(generic_client.GenericClient):
             str = format % args
 	    Trace.trace( severity, str )
             msg = msg + ' ' + str
-            if self.debug:
-                print msg
+	    self.enprint(msg, generic_cs.NO_LOGGER, generic_cs.DEBUG, logid,
+	                 self.verbose)
             ticket = {'work' : 'log_message',
                       'message' : msg }
             lticket = self.csc.get(self.logger)
@@ -150,12 +152,8 @@ class LoggerClientInterface(interface.Interface):
                ["verbose=", "config_file=", "test", "logit="] +\
                self.alive_options()+self.help_options()
 
-    # our help stuff
-    def help_line(self):
-        return interface.Interface.help_line(self)+" media_changer volume drive"
 
-    """ send the request to the Media Loader server and then send answer
-    to user.
+    """ 
     This function takes arbitrary number of arguments. The mandatory arguments
     are:
        severity - see severity codes above
@@ -172,7 +170,6 @@ class LoggerClientInterface(interface.Interface):
 
 
 if __name__ == "__main__" :
-    import pprint
     import sys
     Trace.init("log client")
     Trace.trace(1,"logc called with args "+repr(sys.argv))
@@ -186,15 +183,18 @@ if __name__ == "__main__" :
 
     if intf.alive:
         ticket = logc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+	msg_id = generic_cs.ALIVE
 
     elif intf.test:
         ticket = logc.send(ERROR, 1, "This is a test message %s %d", 'TEST', 3456)
+	msg_id = generic_cs.CLIENT
         #ticket = logc.send(INFO, 21, "this is an INFO message")
 
     elif intf.logit:
         ticket = logit(intf.logmsg)
+	msg_id = generic_cs.CLIENT
 
     del logc.csc.u
     del logc.u		# del now, otherwise get name exception (just for python v1.5???)
 
-    logc.check_ticket("logc", ticket)
+    logc.check_ticket(ticket, msg_id, logid)

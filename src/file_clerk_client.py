@@ -8,6 +8,7 @@ import string
 # enstore imports
 import configuration_client
 import generic_client
+import generic_cs
 import backup_client
 import udp_client
 import db
@@ -15,6 +16,8 @@ import callback
 import interface
 import Trace
 import e_errors
+
+filecc = "FILECC"
 
 class FileClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
@@ -72,12 +75,12 @@ class FileClient(generic_client.GenericClient, \
             control_socket, address = listen_socket.accept()
             new_ticket = callback.read_tcp_socket(control_socket, "file"+\
                                   "clerk client get_bfids,  fc call back")
-            import pprint
             if ticket["unique_id"] == new_ticket["unique_id"]:
                 listen_socket.close()
                 break
             else:
-                print ("fcc:get_bfids: imposter called us back, trying again")
+	        self.enprint("get_bfids - imposter called us back, trying again",
+	                     self.logc, 0, filecc)
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
@@ -97,10 +100,10 @@ class FileClient(generic_client.GenericClient, \
         while 1:
           msg=callback.read_tcp_buf(data_path_socket,"file  clerk "+"client get_bfids, reading worklist")
           if len(msg)==0:
-                pprint.pprint(workmsg)
+	        self.enprint(workmsg)
                 break
           workmsg = workmsg+msg
-          pprint.pprint( workmsg[:string.rfind( workmsg,',',0)])
+	  self.enprint(workmsg[:string.rfind( workmsg,',',0)])
           workmsg=msg[string.rfind(msg,',',0)+1:]
         worklist = ticket
         data_path_socket.close()
@@ -119,6 +122,7 @@ class FileClient(generic_client.GenericClient, \
 
         Trace.trace(16,"}get_bfids")
         return worklist
+
 
     def bfid_info(self):
         Trace.trace(10,"{bfid_info")
@@ -155,7 +159,6 @@ class FileClerkClientInterface(interface.Interface):
 
 if __name__ == "__main__" :
     import sys
-    import pprint
     Trace.init("FC client")
     Trace.trace(1,"fcc called with args "+repr(sys.argv))
 
@@ -168,18 +171,25 @@ if __name__ == "__main__" :
 
     if intf.alive:
         ticket = fcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+	msg_id = generic_cs.ALIVE
 
     elif intf.backup:
         ticket = fcc.start_backup()
         db.do_backup("file")
         ticket = fcc.stop_backup()
+	msg_id = generic_cs.CLIENT
 
     elif intf.bfids:
         ticket = fcc.get_bfids()
+	msg_id = generic_cs.CLIENT
 
     elif intf.bfid:
         ticket = fcc.bfid_info()
-        pprint.pprint(ticket['fc'])
-        pprint.pprint(ticket['vc'])
+	if ticket['status'][0] ==  e_errors.OK:
+	    fcc.enprint(ticket['fc'], generic_cs.NO_LOGGER, \
+	                generic_cs.PRETTY_PRINT)
+	    fcc.enprint(ticket['vc'], generic_cs.NO_LOGGER, \
+	                generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
 
-    fcc.check_ticket("fcc", ticket)
+    fcc.check_ticket(ticket, msg_id, filecc)

@@ -13,6 +13,7 @@ import callback
 import dict_to_a
 import interface
 import generic_client
+import generic_cs
 import backup_client
 import configuration_client
 import udp_client
@@ -20,6 +21,8 @@ import db
 import Trace
 import pdb
 import e_errors
+
+volid = "VOLC"
 
 class VolumeClerkClient(generic_client.GenericClient,\
                         backup_client.BackupClient):
@@ -130,12 +133,12 @@ class VolumeClerkClient(generic_client.GenericClient,\
             control_socket, address = listen_socket.accept()
             new_ticket = callback.read_tcp_socket(control_socket, "volume"+\
                                   "clerk client get_vols,  vc call back")
-            import pprint
             if ticket["unique_id"] == new_ticket["unique_id"]:
                 listen_socket.close()
                 break
             else:
-                print ("vcc.get_vols: imposter called us back, trying again")
+	        self.enprint("get_vols - imposter called us back, trying again",\
+	                     generic_cs.NO_LOGGER, 0, volid)
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
@@ -159,7 +162,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                                     "client get_vols, reading worklist")
           if len(msg)==0:
                 break
-          pprint.pprint(msg)
+	  self.enprint(msg)
         worklist = ticket
         data_path_socket.close()
 
@@ -341,18 +344,18 @@ class VolumeClerkClientInterface(interface.Interface):
     # print clr_inhibit arguments
     def print_clr_inhibit_args(self):
         Trace.trace(20,'{}print_clr_inhibit_args')
-        print "   clr_inhibit arguments: volume_name"
+        generic_cs.enprint("   clr_inhibit arguments: volume_name")
 
     # print addvol arguments
     def print_addvol_args(self):
         Trace.trace(20,'{}print_addvol_args')
-        print "   addvol arguments: library file_family media_type"\
-              +", volume_name, volume_byte_capacity remaining_capacity"
+        generic_cs.enprint("   addvol arguments: library file_family media_type"\
+              +", volume_name, volume_byte_capacity remaining_capacity")
 
     # print delvol arguments
     def print_delvol_args(self):
         Trace.trace(20,'{}print_delvol_args')
-        print "   delvol arguments: volume_name"
+        generic_cs.enprint("   delvol arguments: volume_name")
 
     # print out our extended help
     def print_help(self):
@@ -365,7 +368,6 @@ class VolumeClerkClientInterface(interface.Interface):
 
 if __name__ == "__main__":
     import sys
-    import pprint
     Trace.init("VC client")
     Trace.trace(1,"vcc called with args "+repr(sys.argv))
 
@@ -378,21 +380,26 @@ if __name__ == "__main__":
 
     if intf.alive:
         ticket = vcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+	msg_id = generic_cs.ALIVE
     elif intf.backup:
         ticket = vcc.start_backup()
         db.do_backup("volume")
         ticket = vcc.stop_backup()
+	msg_id = generic_cs.CLIENT
     elif intf.vols:
         ticket = vcc.get_vols()
+	msg_id = generic_cs.CLIENT
     elif intf.nextvol:
         ticket = vcc.next_write_volume(intf.args[0], #library
                                        string.atol(intf.args[1]), #min_remaining_byte
                                        intf.args[2], #file_family
                                             [], #vol_veto_list
                                              1) #first_found
+	msg_id = generic_cs.CLIENT
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
-	pprint.pprint(ticket)
+	vcc.enprint(ticket, generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
     elif intf.addvol:
         ticket = vcc.addvol(intf.args[0],              # library
                             intf.args[1],              # file family
@@ -400,9 +407,12 @@ if __name__ == "__main__":
                             intf.args[3],              # name of this volume
                             string.atol(intf.args[4]), # cap'y of vol (bytes)
                             string.atol(intf.args[5])) # rem cap'y of volume
+	msg_id = generic_cs.CLIENT
     elif intf.delvol:
         ticket = vcc.delvol(intf.args[0])              # name of this volume
+	msg_id = generic_cs.CLIENT
     elif intf.clrvol:
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
+	msg_id = generic_cs.CLIENT
 
-    vcc.check_ticket("vcc", ticket)
+    vcc.check_ticket(ticket, msg_id, volid)
