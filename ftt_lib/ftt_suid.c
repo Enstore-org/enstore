@@ -107,6 +107,7 @@ main(int argc, char **argv) {
 		res = ftt_set_blocksize(d,arg);
 		break;
 	case 'd':
+		ftt_set_mode_dev(d, basename,0);
 		res = ftt_set_hwdens(d,arg);
 		break;
 	}

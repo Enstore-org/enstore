@@ -42,6 +42,16 @@ ftt_check_table(FILE *pf) {
 	    for( l = 0; l < k ; l++ ) {
 		if (0 == strcmp(pd[k].device_name, pd[l].device_name) 
 				&& 1 == pd[l].first ) {
+		    if (first_seen) {
+			/* already saw a first flag for this name */
+			fprintf(pf, 
+			      "entry for os '%s' basename '%s' prod_id '%s' controller '%s':\n\
+			       extra 'first' flag in slot %d, name '%s'\n",
+			       d1->os, d1->basename, d1->prod_id,
+			       d1->controller, l, pd[l].device_name);
+			/* change it for now, so we don't keep warning about it */
+			pd[l].first = 0;
+		    }
 		    first_seen = 1;
 		}
 	    }

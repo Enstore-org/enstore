@@ -95,15 +95,23 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
     char *logical;
     static char cmd[512];
     int res;
+    int minor;
+    int which_dens;
 
     DEBUG2(stderr,"Entering ftt_set_hwdens\n");
     if (0 == geteuid()) {
+	if (1 == sscanf(d->devinfo[d->which_is_default].device_name,
+			"/dev/rmt%*d.%d", &minor) && minor > 3) {
+	    which_dens = 2;
+	} else {
+	    which_dens = 1;
+	}
 	logical = strrchr(d->basename, '/');
 	DEBUG3(stderr,"Looking for last / in %s, found %s\n", d->basename, logical);
 	if (logical != 0) {
 	    logical++;
-	    sprintf(cmd, "/usr/sbin/chdev -l %s -a density_set_2=%d >/dev/null\n", 
-			logical,  hwdens);
+	    sprintf(cmd, "/usr/sbin/chdev -l %s -a density_set_%d=%d >/dev/null\n", 
+			 logical,  which_dens, hwdens);
 	    DEBUG3(stderr,"Running \"%s\" to change density\n", cmd);
 	    res = system(cmd);
 	    if ( res != -1 && WIFEXITED(res) ) {
@@ -137,9 +145,9 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 		dup2(fileno(d->async_pf_parent),1);
 		sprintf(s1, "%d", hwdens);
 		if (ftt_debug) {
-		 execlp("ftt_suid", "ftt_suid", "-x", "-d", s1, d->basename, 0);
+		 execlp("ftt_suid", "ftt_suid", "-x", "-d", s1, d->devinfo[d->which_is_default].device_name, 0);
 		} else {
-		 execlp("ftt_suid", "ftt_suid", "-d", s1, d->basename, 0);
+		 execlp("ftt_suid", "ftt_suid", "-d", s1, d->devinfo[d->which_is_default].device_name, 0);
 		}
 
 		ftt_eprintf("ftt_set_hwdens: exec of ftt_suid failed");
