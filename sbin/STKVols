@@ -34,7 +34,7 @@ EOF
 
 rm -f $volfile
 
-enrsh fntt -l acsss "echo query vol all |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garbx" < /dev/null >>$volfile
+rsh fntt -l acsss "echo query vol all |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garbx" < /dev/null >>$volfile
 
 cat << EOF >>$output
 <h1><center>$robot Volume Fetch Done : `date`</center><h1>

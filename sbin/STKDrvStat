@@ -32,7 +32,7 @@ cat << EOF >>$output
 <pre>
 EOF
 
-enrsh fntt -l acsss "echo query drive all |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garby" < /dev/null >>$output
+/usr/bin/rsh fntt -l acsss "echo query drive all |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garby" < /dev/null >>$output
 
 
 ######################################################################################Q
