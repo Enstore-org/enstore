@@ -996,6 +996,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "current_location": loc_to_cookie(self.current_location),
             "read_only" : 0, ###XXX todo: multiple drives on one scsi bus, write locking
             "returned_work": returned_work,
+            "state": state_name(self.state)
             "status": status, 
             "volume_family": self.volume_family,
             "volume_status": self.volume_status,
