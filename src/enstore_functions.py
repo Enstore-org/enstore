@@ -102,6 +102,13 @@ def is_generic_server(server):
         return 1
     return 0
 
+def get_status(dict):
+    status = dict.get('status', None)
+    if status is None or type(status) != type(()):
+        return None
+    else:
+        return status[0]
+
 # check if the status in the dictionary signals a time out
 def is_timedout(dict):
     status = dict.get('status', None)
