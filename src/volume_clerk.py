@@ -52,6 +52,11 @@ KB=1024
 MB=KB*KB
 GB=MB*KB
 
+# make pychecker happy
+
+if GB:
+    pass
+
 SAFETY_FACTOR=1.05
 #MIN_LEFT=long(300*MB)
 MIN_LEFT=long(0) # for now, this is disabled.
@@ -84,7 +89,18 @@ class newBfidDB:
 		# do nothing
 		return
 
-class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
+class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
+
+    def __init__(self, csc):
+        # basically, to make pychecker happy
+        generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        self.keys = self.csc.get(MY_NAME)
+        dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], self.keys['port']))
+        self.dict = None
+        self.bfid_db = None
+        self.sgdb = None
+        self.paused_lms = {}
+        return
 
     # check if volume is full
     def is_volume_full(self, v, min_remaining_bytes):
@@ -1857,17 +1873,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller({"status" : (e_errors.OK, None)})
          
 
-class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
+class VolumeClerk(VolumeClerkMethods):
     def __init__(self, csc):
-        generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        VolumeClerkMethods.__init__(self, csc)
         Trace.init(self.log_name)
-        self.keys = self.csc.get(MY_NAME)
 	self.alive_interval = monitored_server.get_alive_interval(self.csc,
 								  MY_NAME,
 								  self.keys)
-
-        dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'],
-                                                             self.keys['port']))
 
         Trace.log(e_errors.INFO,"determine dbHome and jouHome")
         try:
