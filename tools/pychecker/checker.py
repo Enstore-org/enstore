@@ -17,10 +17,6 @@ import imp
 import os
 import glob
 
-# see __init__.py for meaning, this must match the version there
-LOCAL_MAIN_VERSION = 1
-
-
 def setupNamespace(path) :
     # remove pychecker if it's the first component, it needs to be last
     if sys.path[0][-9:] == 'pychecker' :
@@ -38,25 +34,18 @@ from pychecker import printer
 from pychecker import warn
 from pychecker import OP
 from pychecker import Config
-from pychecker import function
-from pychecker.Warning import Warning
 
 # Globals for storing a dictionary of info about modules and classes
 _allModules = {}
 _cfg = None
 
 # Constants
-_DEFAULT_MODULE_TOKENS = ('__builtins__', '__doc__', '__file__', '__name__',
-                          '__path__')
-_DEFAULT_CLASS_TOKENS = ('__doc__', '__name__', '__module__')
+_DEFAULT_MODULE_TOKENS = [ '__builtins__', '__doc__', '__file__', '__name__', ]
+_DEFAULT_CLASS_TOKENS = [ '__doc__', '__name__', '__module__', ]
 
-_VERSION_MISMATCH_ERROR = '''
-There seem to be two versions of PyChecker being used.
-One is probably in python/site-packages, the other in a local directory.
-If you want to run the local version, you must remove the version
-from site-packages.  Or you can install the current version
-by doing python setup.py install.
-'''
+_ARGS_ARGS_FLAG = 4
+_KW_ARGS_FLAG = 8
+
 
 def _flattenList(list) :
     "Returns a list which contains no lists"
@@ -67,10 +56,10 @@ def _flattenList(list) :
             new_list.extend(_flattenList(element))
         else :
             new_list.append(element)
-
+    
     return new_list
 
-def getModules(arg_list) :
+def _getModules(arg_list) :
     "Returns a list of module names that can be imported"
 
     new_arguments = []
@@ -95,7 +84,7 @@ def getModules(arg_list) :
             module_name = os.path.basename(arg)[:-PY_SUFFIX_LEN]
             if arg_dir not in sys.path :
                 sys.path.insert(1, arg_dir)
-            arg = module_name
+	    arg = module_name
         modules.append(arg)
 
     return modules
@@ -110,33 +99,19 @@ def _findModule(name, path = sys.path) :
         # smt = (suffix, mode, type)
         file, filename, smt = imp.find_module(p, path)
         if smt[-1] == imp.PKG_DIRECTORY :
-            try :
-                # package found - read path info from init file
-                m = imp.load_module(p, file, filename, smt)
-            finally :
-                if file is not None :
-                    file.close()
+            # package found - read path info from init file
+            m = imp.load_module(p, file, filename, smt)
 
             # importing xml plays a trick, which replaces itself with _xmlplus
             # both have subdirs w/same name, but different modules in them
             # we need to choose the real (replaced) version
             if m.__name__ != p :
-                try :
-                    file, filename, smt = imp.find_module(m.__name__, path)
-                    m = imp.load_module(p, file, filename, smt)
-                finally :
-                    if file is not None :
-                        file.close()
+                file, filename, smt = imp.find_module(m.__name__, path)
+                m = imp.load_module(p, file, filename, smt)
 
-            new_path = m.__path__
-            if type(new_path) == types.ListType :
-                new_path = filename
-            if new_path not in path :
-                path.insert(1, new_path)
+            path.insert(1, m.__path__)
         else:
             if p is not packages[-1] :
-                if file is not None :
-                    file.close()
                 raise ImportError, "No module named %s" % packages[-1]
             return file, filename, smt
 
@@ -150,7 +125,23 @@ class Variable :
     def __init__(self, name, type):
         self.name = name
         self.type = type
-        self.value = None
+
+
+class Function :
+    "Class to hold all information about a function"
+
+    def __init__(self, function, isMethod = None) :
+        self.function = function
+        self.maxArgs = function.func_code.co_argcount
+        if isMethod :
+            self.maxArgs = self.maxArgs - 1
+        self.minArgs = self.maxArgs
+        if function.func_defaults != None :
+            self.minArgs = self.minArgs - len(function.func_defaults)
+        # if function uses *args, there is no max # args
+        if function.func_code.co_flags & _ARGS_ARGS_FLAG != 0 :
+            self.maxArgs = None
+        self.supportsKW = function.func_code.co_flags & _KW_ARGS_FLAG
 
 
 def _filterDir(object, ignoreList) :
@@ -173,7 +164,6 @@ class Class :
         self.name = name
         self.module = module
         self.classObject = getattr(module, name)
-        self.ignoreAttrs = 0
         self.methods = {}
         self.members = { '__class__': types.ClassType,
                          '__doc__': types.StringType,
@@ -220,7 +210,7 @@ class Class :
 
         if not methodName :
             methodName = self.__getMethodName(method.func_name, className)
-        self.methods[methodName] = function.Function(method)
+        self.methods[methodName] = Function(method, 1)
 
     def addMethods(self, classObject) :
         for classToken in _getClassTokens(classObject) :
@@ -231,7 +221,7 @@ class Class :
                 self.members[classToken] = type(token)
 
         # add standard methods
-        for methodName in ('__class__',) :
+        for methodName in [ '__class__', ] :
             self.addMethod(methodName, classObject.__name__)
 
     def addMembers(self, classObject) :
@@ -257,7 +247,7 @@ class Class :
                     stack.append(operand)
                 elif OP.STORE_ATTR(op) :
                     if len(stack) > 0 :
-                        if stack[-1] == _cfg.methodArgName :
+                        if stack[-1] == 'self' :
                             value = None
                             if len(stack) > 1 :
                                 value = type(stack[-2])
@@ -272,6 +262,21 @@ def importError(moduleName, info):
     sys.stderr.write("  Problem importing module %s - %s\n" % (moduleName, info))
 
 
+class FakeFunction :
+    "This is a holder class for turning code at module level into a function"
+
+    def __init__(self, file, filename, module) :
+        self.func_name = self.__name__ = "__main__"
+        self.func_doc  = self.__doc__  = "ignore"
+
+        # Make sure the file is at the beginning
+        #   if python compiled the file, it will be at the end
+        file.seek(0)
+        self.func_code = compile(file.read(), filename, 'exec')
+        self.func_defaults = None
+        self.func_globals = module.__dict__
+
+
 class Module :
     "Class to hold all information for a module"
 
@@ -282,7 +287,7 @@ class Module :
         self.classes = {}
         self.modules = {}
         self.moduleLineNums = {}
-        self.attributes = [ '__dict__' ]
+        self.attributes = None
         self.main_code = None
         self.module = None
         self.check = check
@@ -293,7 +298,7 @@ class Module :
         self.variables[var] = Variable(var, varType)
 
     def addFunction(self, func) :
-        self.functions[func.__name__] = function.Function(func)
+        self.functions[func.__name__] = Function(func)
 
     def __addAttributes(self, c, classObject) :
         for base in classObject.__bases__ :
@@ -304,22 +309,18 @@ class Module :
     def addClass(self, name) :
         self.classes[name] = c = Class(name, self.module)
         packages = string.split(str(c.classObject), '.')
-        c.ignoreAttrs = packages[0] in _cfg.blacklist
-        if not c.ignoreAttrs :
+        if packages[0] not in _cfg.blacklist :
             self.__addAttributes(c, c.classObject)
 
     def addModule(self, name) :
-        module = _allModules.get(name, None)
-        if module is None :
+        if not _allModules.has_key(name) :
             self.modules[name] = module = Module(name, 0)
             if imp.is_builtin(name) == 0 :
                 module.load()
             else :
                 globalModule = globals().get(name)
                 if globalModule :
-                    module.attributes.extend(dir(globalModule))
-        else :
-            self.modules[name] = module
+                    module.attributes = dir(globalModule)
 
     def filename(self) :
         if not self.module :
@@ -337,8 +338,7 @@ class Module :
                     return self.initModule(sys.modules[self.moduleName])
                 return 1
 
-            file, filename, smt = _findModule(self.moduleName)
-            # FIXME: if the smt[-1] == imp.PKG_DIRECTORY : load __all__
+	    file, filename, smt = _findModule(self.moduleName)
             try :
                 module = imp.load_module(self.moduleName, file, filename, smt)
                 self.setupMainCode(file, filename, module)
@@ -346,11 +346,8 @@ class Module :
                 if file != None :
                     file.close()
             return self.initModule(module)
-        except (SystemExit, KeyboardInterrupt) :
-            exc_type, exc_value, exc_tb = sys.exc_info()
-            raise exc_type, exc_value
         except :
-            return importError(self.moduleName, sys.exc_info()[1])
+            return importError(self.moduleName, sys.exc_value)
 
     def initModule(self, module) :
         self.module = module
@@ -360,7 +357,8 @@ class Module :
             tokenType = type(token)
             if tokenType == types.ModuleType :
                 # get the real module name, tokenName could be an alias
-                self.addModule(token.__name__)
+                moduleName = getattr(self.module, tokenName).__name__
+                self.addModule(moduleName)
             elif tokenType == types.FunctionType :
                 self.addFunction(token)
             elif tokenType == types.ClassType :
@@ -372,10 +370,10 @@ class Module :
 
     def setupMainCode(self, file, filename, module) :
         if file :
-            self.main_code = function.create_from_file(file, filename, module)
+            self.main_code = Function(FakeFunction(file, filename, module))
 
 
-def getAllModules() :
+def _getAllModules() :
     "Returns a list of all modules that should be checked."
     modules = []
     for module in _allModules.values() :
@@ -383,26 +381,8 @@ def getAllModules() :
             modules.append(module)
     return modules
 
-_BUILTIN_MODULE_ATTRS = { 'sys': [ 'ps1', 'ps2', 'tracebacklimit', 
-                                   'exc_type', 'exc_value', 'exc_traceback',
-                                   'last_type', 'last_value', 'last_traceback',
-                                 ],
-                        }
 
-def fixupBuiltinModules() :
-    for moduleName in sys.builtin_module_names :
-        module = _allModules.get(moduleName, None)
-        if module is not None :
-            try :
-                m = imp.init_builtin(moduleName)
-            except ImportError :
-                pass
-            else :
-                extra_attrs = _BUILTIN_MODULE_ATTRS.get(moduleName, [])
-                module.attributes = [ '__dict__' ] + dir(m) + extra_attrs
-
-
-def _printWarnings(warnings, stream = sys.stdout) :
+def _printWarnings(warnings) :
     warnings.sort()
     lastWarning = None
     for warning in warnings :
@@ -412,76 +392,35 @@ def _printWarnings(warnings, stream = sys.stdout) :
                 continue
             # print blank line between files
             if lastWarning.file != warning.file :
-                stream.write("\n")
+                print ""
 
         lastWarning = warning
-        warning.output(stream)
-
-
-def processFiles(files, cfg = None, pre_process_cb = None) :
-    # insert this here, so we find files in the local dir before std library
-    if sys.path[0] != '' :
-        sys.path.insert(0, '')
-
-    # ensure we have a config object, it's necessary
-    global _cfg
-    if cfg is not None :
-        _cfg = cfg
-    elif _cfg is None :
-        _cfg = Config.Config()
-
-    warnings = []
-    for moduleName in getModules(files) :
-        if callable(pre_process_cb) :
-            pre_process_cb(moduleName)
-        module = Module(moduleName)
-        if not module.load() :
-            w = Warning(module.filename(), 1, "NOT PROCESSED UNABLE TO IMPORT")
-            warnings.append(w)
-    return warnings
-
-
-def getWarnings(files, cfg = None, suppressions = None):
-    warnings = processFiles(files, cfg)
-    fixupBuiltinModules()
-    return warnings + warn.find(getAllModules(), _cfg, suppressions)
-
-
-def _print_processing(name) :
-    if not _cfg.quiet :
-        sys.stderr.write("Processing %s...\n" % name)
+        warning.output()
 
 
 def main(argv) :
-    import pychecker
-    if LOCAL_MAIN_VERSION != pychecker.MAIN_MODULE_VERSION :
-        sys.stderr.write(_VERSION_MISMATCH_ERROR)
-        sys.exit(100)
-
     global _cfg
-    _cfg, files, suppressions = Config.setupFromArgs(argv[1:])
-    if not files :
-        return 0
+    _cfg, files = Config.setupFromArgs(argv[1:])
+    importWarnings = []
+    for moduleName in _getModules(files) :
+        sys.stderr.write("Processing %s...\n" % moduleName)
+        module = Module(moduleName)
+        if not module.load() :
+            w = warn.Warning(module.filename(), 1, "NOT PROCESSED UNABLE TO IMPORT")
+            importWarnings.append(w)
 
-    # insert this here, so we find files in the local dir before std library
-    sys.path.insert(0, '')
-
-    importWarnings = processFiles(files, _cfg, _print_processing)
-    fixupBuiltinModules()
     if _cfg.printParse :
-        for module in getAllModules() :
+        for module in _getAllModules() :
             printer.module(module)
 
-    warnings = warn.find(getAllModules(), _cfg, suppressions)
-    if not _cfg.quiet :
-        print "\nWarnings...\n"
+    print "\nWarnings...\n"
+    warnings = warn.find(_getAllModules(), _cfg)
     if warnings or importWarnings :
         _printWarnings(importWarnings + warnings)
         return 1
-
-    if not _cfg.quiet :
+    else :
         print "None"
-    return 0
+        return 0
 
 
 if __name__ == '__main__' :
@@ -489,4 +428,3 @@ if __name__ == '__main__' :
         sys.exit(main(sys.argv))
     except Config.UsageError :
         sys.exit(127)
-
