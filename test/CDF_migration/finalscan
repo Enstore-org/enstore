@@ -10,7 +10,7 @@ enstore fil --ls-active $tape >$files
 
 #echo "export  ENSTORE_SPECIAL_LIB=CDF-Migration;"  > $command
 #echo "export ENSTORE_SPECIAL_LIB" >> $command 
-echo "encp --delayed=3 ---priority=300000 "          >> $command
+echo "encp --delayed=3 --priority=300000 "          >> $command
 n=0
 cat $files | while read f; do
   n=`expr $n + 1`
