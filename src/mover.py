@@ -1385,6 +1385,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                     if addr == self.udp_control_address:
                                         # break a connection with get
                                         self.nowork({})
+                                        if not msg:
+                                            msg = "%s sending to %s"%(e_errors.TIMEDOUT, addr)
                                         self.transfer_failed(e_errors.ENCP_GONE, msg, error_source=NETWORK)
                                 else:
                                     x = {'status' : (str(exc), str(msg))}
