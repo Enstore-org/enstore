@@ -855,9 +855,15 @@ class MoverServer(  dispatching_worker.DispatchingWorker
         logc.send( log_client.INFO, 0, 'Mover starting - contacting libman')
 	for lm in mvr_config['library']:# should be libraries
 	    # a "respone" to server being summoned
-	    address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
-	    next_req_to_lm = idle_mover_next( self.client_obj_inst )
-	    do_next_req_to_lm( self, next_req_to_lm, address )
+	    try:
+		address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
+		next_req_to_lm = idle_mover_next( self.client_obj_inst )
+		do_next_req_to_lm( self, next_req_to_lm, address )
+	    except KeyError:    
+		logc.send( log_client.ERROR, 1, "ERROR GETTING LM FROM Config Server "+\
+			   str(sys.exc_info()[0])+ "  "+\
+			   str(sys.exc_info()[1]))
+
 	    pass
 	dispatching_worker.DispatchingWorker.__init__( self, server_address)
 	#print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
