@@ -385,16 +385,21 @@ def set_entvrc(display, intf):
 def get_mover_list(intf, fullnames=None):
     movers = []
 
+    #If a 'canned' (aka recorded) entv is running, read the movers file
+    # for the list of movers.
     if intf.movers_file:
         try:
             mf_fp = open(intf.movers_file, "r")
             data = mf_fp.readlines()
             for i in range(len(data)):
                 data[i] = data[i][:-1]
+                #If fullnames is python true, then make sure that the
+                # entire ".mover" appended names (as they appears in the
+                # configuration file) are returned.
                 if fullnames:
                     data[i] = data[i] + ".mover"
             mf_fp.close()
-            return data
+            return data  #Return from here on success.
         except (OSError, IOError), msg:
             print str(msg)
             sys.exit(1)
@@ -407,6 +412,9 @@ def get_mover_list(intf, fullnames=None):
     for ds_lm_name in string.split(intf.dont_show, ","):
         if ds_lm_name in lm_list:
             del lm_list[lm_list.index(ds_lm_name)]
+
+    #For each LM that should have its movers displayed, go through and
+    # get each mover's name.
     for lm in lm_list:
         try:
             mover_list = csc.get_movers(lm_dict[lm]['name'])
@@ -417,15 +425,24 @@ def get_mover_list(intf, fullnames=None):
 
         try:
             for mover in mover_list:
+                #If fullnames is python false, then make sure that the
+                # ".mover" appended names (as they appears in the
+                # configuration file) are truncated before being returned.
                 if not fullnames:
-                    movers = movers + [mover['mover'][:-6]]
+                    mover_name = mover['mover'][:-6]
                 else:
-                    movers = movers + [mover['mover']]
+                    mover_name = mover['mover']
+
+                #If the mover name is not in the list of mover names; add it.
+                # If it already is, then don't add it another time.  This
+                # can happen for movers belonging to multiple libraries.
+                if mover_name not in movers:
+                    movers = movers + [mover_name,]
         except (ValueError, TypeError, IndexError, KeyError):
             exc, msg = sys.exc_info()[:2]
             Trace.trace(1, "No movers found: %s" % str(msg))
-    movers.sort()
 
+    movers.sort()
     return movers
 
 def handle_status(mover, status):
