@@ -855,35 +855,28 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	# instance mover detects that encp is gone and returns idle or
 	# mover crashes and then restarts
 	
-	# if mover has been removed from the summon list check it
-	if not mv:
-	    # print "LOOK FOR MOVER IN MOVER QUEUE" 
-	    mv = find_mover(mticket, movers, self.verbose)
-	if mv:
-	    try:
-		# try to remove work from work_at_movers list
-		# print "REMOVING",mv 
-		work_at_movers.remove(mv['work_ticket'])
+	for wt in work_at_movers:
+	    if wt['mover'] == mticket['mover']:
+		work_at_movers.remove(wt)
 		format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
 		self.logc.send(e_errors.INFO, 2, format,
-			       repr(mv['work_ticket']),
-			       repr(mv))
+			       repr(wt),
+			       repr(mticket))
 		# check if tape is stuck in in the mounting state
-		vol_info = vc.inquire_vol(mv['work_ticket']['fc']['external_label'])
+		vol_info = vc.inquire_vol(wt['fc']['external_label'])
 		if vol_info['at_mover'][0] == 'mounting':
+		    format = "FORCING  vol:%s to %s. mover:%s"
+		    self.logc.send(e_errors.INFO, 2, format,
+				   repr(wt['fc']['external_label']),
+				   'unmounted',
+				   repr(wt['mover']))
+		
 		    # force set volume to unmounted
 		    # print "FORCING", vol_info['at_mover']
-		    v = vc.set_at_mover(mv['work_ticket']['fc']['external_label'], 'unmounted', 
-					mticket["mover"], 1)
+		    v = vc.set_at_mover(wt['fc']['external_label'],'unmounted', 
+					wt["mover"], 1)
+		break
 		
-		    #work_at_movers.remove(mv['work_ticket'])
-		    del(mv["work_ticket"])
-	    except (KeyError, ValueError):
-		# print "NOT REMOVED",str(sys.exc_info()[0]), str(sys.exc_info()[1])
-		pass
-	    except:
-		traceback.print_exc()
-	
         w = self.schedule()
 
         self.enprint("SCHEDULE RETURNED "+repr(w), generic_cs.DEBUG, \
