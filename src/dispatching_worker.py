@@ -54,7 +54,6 @@ class DispatchingWorker:
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address) :
-
         # the real info and work is in the ticket - get that
         exec ( "idn, number, ticket = " + request)
         self.reply_address = client_address
@@ -94,7 +93,7 @@ class DispatchingWorker:
             return
 
         if len(dict) > 200:
-             purge_stale_entries(dict)
+            purge_stale_entries(dict)
 
         # call the user function
         exec ("self." + function + "(ticket)")
@@ -108,6 +107,10 @@ class DispatchingWorker:
         ticket['status'] = "ok"
         self.reply_to_caller(ticket)
 
+    # cleanup if we are done with this unique id
+    def done_cleanup(self,ticket):
+        del dict[self.current_id]
+    
     # reply to sender with her number and ticket (which has status)
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
@@ -138,4 +141,3 @@ class DispatchingWorker:
         if badsock != 0 :
             print "dispatching_worker reply_with_list, post-sendto error:",\
                   errno.errorcode[badsock]
-

@@ -132,7 +132,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
         if list:
             print "  ",vticket["host"],vticket["port"],"dt:",tinfo["get_libman"],\
                   "   cum=",time.time()-t0
-    
+
         # send the work ticket to the library manager
         t1 = time.time()
         if list:
@@ -151,7 +151,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
                   "family:",ticket["file_family"],\
                   "bytes:", ticket["size_bytes"],\
                   "dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
-    
+
         # We have placed our work in the system and now we have to wait for
         # resources. All we  need to do is wait for the system to call us back,
         # and make sure that is it calling _us_ back, and not some sort of old
@@ -176,7 +176,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
                +repr(address)+", failed to setup transfer: "\
                +"ticket[\"status\"]="+ticket["status"],2)
         data_path_socket = callback.mover_callback_socket(ticket)
-    
+
         # If the system has called us back with our own  unique id, call back
         # the mover on the mover's port and send the file on that port.
         t1 = time.time()
@@ -185,12 +185,12 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
             print "  ",ticket["mover_callback_host"],\
                   ticket["mover_callback_port"], \
                   "   cum=",time.time()-t0
-    
+
         t1 = time.time()
         mycrc = 0
         if list:
             print "Sending data", "   cum=",time.time()-t0
-    
+
         try:
     	    mycrc = EXfer.usrTo_( in_file, data_path_socket, binascii.crc_hqx,
     				  65536/2, chk_crc )
@@ -297,6 +297,10 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
                +"2nd (post-file-send) mover callback on socket "\
                +repr(address)+", failed to transfer: "\
                +"ticket[\"status\"]="+ticket["status"])
+
+    # tell library manager we are done - this allows it to delete our unique id in
+    # its dictionary - this keeps things cleaner and stops memory from growing
+    u.send_no_wait({"work":"done_cleanup"}, (vticket['host'], vticket['port']))
 
 ##############################################################################
 
@@ -547,6 +551,9 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
                +repr(address)+", failed to transfer: "\
                +"ticket[\"status\"]="+ticket["status"])
 
+    # tell file clerk we are done - this allows it to delete our unique id in
+    # its dictionary - this keeps things cleaner and stops memory from growing
+    u.send_no_wait({"work":"done_cleanup"}, (fticket['host'], fticket['port']))
 
 ##############################################################################
 
