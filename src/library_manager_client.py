@@ -124,7 +124,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
 	return self.send({"work":"load_mover_list"})
 
     def get_mc(self):
-	return self.send({"work":"get_mc"})
+	mc = self.send({"work":"get_mc"})
+	if mc:
+	    return mc['mc']
+	return None
 	
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self) :
