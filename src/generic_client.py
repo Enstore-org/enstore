@@ -232,7 +232,7 @@ class GenericClient:
             x = {'status' : (e_errors.TIMEDOUT, None)}
         except KeyError, detail:
             sys.stderr.write("Unknown server %s\n" % (server,))
-            sys.exit(-1)
+            sys.exit(1)
         return x
     
     

@@ -31,8 +31,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
         self.send_tries = rcv_tries
         self.server_address = self.get_server_address(self.name, self.send_to, self.send_tries)
         if not self.server_address:
-            print "%s does not exist"%(self.name)
-            sys.exit(-1)
+            sys.stderr.write("%s does not exist\n"%(self.name,))
+            sys.exit(1)
 
     def write_to_hsm(self, ticket) :
         return self.send(ticket)
