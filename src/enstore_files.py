@@ -26,6 +26,7 @@ ETIME = 0
 ENODE = 1
 EUSER = 2
 ESTATUS = 3
+ETEXT = 4
 EXRATE = 4
 EBYTES = 5
 EDEV = 6
@@ -172,6 +173,8 @@ class HTMLEncpStatusFile(EnStatusFile):
 		    eline.append([einfo[ETIME], einfo[ENODE], einfo[EUSER], 
 				  einfo[EBYTES], einfo[EDEV], einfo[EXRATE], 
 				  einfo[EURATE]])
+		elif len(einfo) and einfo[ESTATUS] == e_errors.sevdict[e_errors.ERROR]:
+		    eline.append([einfo[ETIME], einfo[ENODE], einfo[EUSER], einfo[ETEXT]])
 	    else:
 		doc = enstore_html.EnEncpStatusPage(self.refresh)
 		doc.body(eline)

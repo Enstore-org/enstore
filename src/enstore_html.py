@@ -703,17 +703,41 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	# now create the table with the data in it, first do the row with
 	# the headings
 	tr = HTMLgen.TR(valign="CENTER")
-	for hding in ["Time", "Node", "User", "Bytes", "Volume",
-		      "Data Transfer Rate (MB/S)", "User Rate (MB/S)"]:
+	headings = ["Time", "Node", "User", "Bytes", "Volume",
+		    "Data Transfer Rate (MB/S)", "User Rate (MB/S)"]
+	num_headings = len(headings)
+	for hding in headings:
 	    tr.append(self.make_th(hding))
 	en_table = HTMLgen.TableLite(tr, border=1, bgcolor=AQUA, width="100%",
 				     cols=7, cellspacing=5, cellpadding=CELLP,
 				     align="CENTER")
+	num_errors = 0
+	errors = []
 	for row in data_list:
 	    tr = HTMLgen.TR(HTMLgen.TD(row[0]))
-	    for item in row[1:]:
-		tr.append(HTMLgen.TD(item))
+	    if not len(row) == 4:
+		# this is a normal encp data transfer row
+		for item in row[1:]:
+		    tr.append(HTMLgen.TD(item))
+	    else:
+		# this row is an error row
+		tr.append(HTMLgen.TD(row[1]))
+		tr.append(HTMLgen.TD(row[2]))
+		num_errors = num_errors + 1
+		errors.append(row[3])
+		tr.append(HTMLgen.TD(HTMLgen.Href("#%s"%(num_errors),
+						  HTMLgen.Bold("ERROR (%s)"%(num_errors,))),
+				     colspan=(num_headings-3)))
 	    en_table.append(tr)
+	table.append(HTMLgen.TR(HTMLgen.TD(en_table)))
+	# now make the table with the error information
+	en_table = HTMLgen.TableLite()
+	for i in range(num_errors):
+	    si = "%s"%(i+1,)
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(si), size="+2")))
+	    tr.append(HTMLgen.TD(HTMLgen.Name(si, errors[i])))
+	    en_table.append(tr)
+	    en_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR(), colspan=2)))
 	table.append(HTMLgen.TR(HTMLgen.TD(en_table)))
 	self.append(table)							 
 

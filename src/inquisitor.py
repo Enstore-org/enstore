@@ -595,10 +595,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	logfile = t.get('logfile_name', "")
         # create the file which contains the encp lines from the most recent
         # log file.
+	search_text = "-e %s -e \" E ENCP \""%(Trace.MSG_ENCP_XFER,)
         if logfile and os.path.exists(logfile):
-            encpfile = enstore_files.EnDataFile(logfile,
-						parsed_file+".encp",
-						"-e %s"%(Trace.MSG_ENCP_XFER,),
+            encpfile = enstore_files.EnDataFile(logfile, parsed_file+".encp", search_text,
 						"", "|sort -r")
             encpfile.open('r')
             encplines = encpfile.read(self.max_encp_lines)
@@ -617,10 +616,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 t = {}
 	    logfile2 = t.get('last_logfile_name', "")
 	    if (logfile2 != logfile) and logfile2 and os.path.exists(logfile2):
-	        encpfile2 = enstore_files.EnDataFile(logfile2,
-						     parsed_file+".encp2",
-						     "-e %s"%(Trace.MSG_ENCP_XFER,),
-						     "", "|sort -r")
+	        encpfile2 = enstore_files.EnDataFile(logfile2, parsed_file+".encp2",
+						     search_text, "", "|sort -r")
 	        encpfile2.open('r')
 	        encplines = encplines + encpfile2.read(self.max_encp_lines-i)
 	        encpfile2.close()

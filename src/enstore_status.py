@@ -113,23 +113,27 @@ def add_commas(str):
 
 # parse the encp line
 def parse_encp_line(line):
-    [etime, enode, etmp, euser, estatus, etmp2, etype, erest] = \
-                                                   string.split(line, None, 7)
-    try:
-        [erest2, erest3] = string.splitfields(erest, ":", 1)
-        # erest2 has the file name info which we do not need, get the 
-        # total data transfer rate from the end of erest3
-        [erest2, tt] = string.splitfields(erest3, "(", 1)
-	# check if this is a read from enstore or a write to enstore
-        [tt, etmp] = string.splitfields(tt, ")",1)
-        # pull out the name of the media changer
-        mc = get_dict(etmp)
-        [tt, etmp] = string.splitfields(tt, " ",1)
-        erate = string.splitfields(erest2, " ")
-    except ValueError:
-        # we do not handle this formatting
-        return []
-    return [etime, enode, euser, estatus, tt, erate[1], "%s %s"%(erate[4], erate[5]), erate[7], mc, erate[4]]
+    [etime, enode, etmp, euser, estatus, etmp2, erest] = string.split(line, None, 6)
+    if estatus == e_errors.sevdict[e_errors.INFO]:
+	try:
+	    [etype, erest] = string.split(erest, None, 1)
+	    [erest2, erest3] = string.splitfields(erest, ":", 1)
+	    # erest2 has the file name info which we do not need, get the 
+	    # total data transfer rate from the end of erest3
+	    [erest2, tt] = string.splitfields(erest3, "(", 1)
+	    # check if this is a read from enstore or a write to enstore
+	    [tt, etmp] = string.splitfields(tt, ")",1)
+	    # pull out the name of the media changer
+	    mc = get_dict(etmp)
+	    [tt, etmp] = string.splitfields(tt, " ",1)
+	    erate = string.splitfields(erest2, " ")
+	except ValueError:
+	    # we do not handle this formatting
+	    return []
+	return [etime, enode, euser, estatus, tt, erate[1], "%s %s"%(erate[4], erate[5]), erate[7], mc, erate[4]]
+    else:
+	return [etime, enode, euser, estatus, erest]
+	
 
 # given a list of media changers and a log file message, see if any of the
 # media changers are mentioned in the log file message
