@@ -422,9 +422,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.reset_interval_timer()
         ticket = self.format_lm_ticket()
         for lib, addr in self.libraries:
+            if self.state is OFFLINE and self._last_state is OFFLINE:
+                continue
             if self.state != self._last_state:
                 Trace.trace(10, "Send %s to %s" % (ticket, addr))
             self.udpc.send_no_wait(ticket, addr)
+            
         self._last_state = self.state
         self.check_dismount_timer()
 
@@ -964,6 +967,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     
     def format_lm_ticket(self, state=None, error_info=None):
         status = e_errors.OK, None
+        work = None
         if state is None:
             state = self.state
         if state is IDLE:
@@ -972,12 +976,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             work = "mover_bound_volume"
         elif state in (ACTIVE, SEEK, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT):
             work = "mover_busy"
-        elif state is ERROR:
+        elif state in (ERROR, OFFLINE):
             work = "mover_error"
             if error_info is None:
                 status = self.last_error
             else:
                 status = error_info
+        if work is None:
+            Trace.log(e_errors.ERROR, "state: %s work: %s" %
+                      (state_name(state),work))
         ticket =  {
             "mover":  self.name,
             "address": self.address,
