@@ -20,7 +20,7 @@ import host_config
 import Trace
 import udp_client
 import checksum
-
+import udp_server
 
 def print_usage():
     print "Usage:", os.path.basename(sys.argv[0]), \
@@ -117,6 +117,8 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         #                                work_ticket['mover']['mover_address'])
         #This works out of dumb luck.  If the udp_server socket is ever
         # closed, make sure that we go back to the very beginning.
+        request  = udp_socket.process_request()
+        print "RQ",request
         done_ticket = udp_socket.reply_to_caller(work_ticket)
         
 
@@ -149,6 +151,10 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         
         # Read the file from the mover.
         done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
+        print "DONE_TICKET", done_ticket
+        request  = udp_socket.process_request()
+        print "RQ",request
+        
 
         Trace.message(5, "Completed reading from tape.")
 
@@ -157,6 +163,7 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
                                      done_ticket, None,
                                      None, None, e)
 
+        print "RESULT_DICT",result_dict 
         if not e_errors.is_ok(result_dict):
             work_ticket = encp.combine_dict(result_dict,
                                             work_ticket)
@@ -175,10 +182,12 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         Trace.message(5, "Waiting for final dialog (1).")
         mover_done_ticket = encp.receive_final_dialog(control_socket)
         Trace.message(5, "Received final dialog (1).")
+        print mover_done_ticket
         Trace.message(5, "Waiting for final dialog. (2)")
         #Keep the udp socket queues clear.
-        udp_socket.process_request()
+        mover_request = udp_socket.process_request()
         Trace.message(5, "Received final dialog. (2)")
+        print mover_request
         
         # Verify that everything went ok with the transfer.
         mover_result_dict = encp.handle_retries([work_ticket], work_ticket,
@@ -196,7 +205,7 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
             
         #Check the crc.  Note: done_ticket has any error status set to it by
         # check_crc.
-        encp.check_crc(done_ticket, e, out_fd)
+        encp.check_crc(mover_done_ticket, e, out_fd)
 
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
@@ -215,7 +224,7 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         # Close these desriptors before they are forgotten about.
         encp.close_descriptors(out_fd, data_path_socket)
 
-        return work_ticket
+        return work_ticket,mover_request
         
         # Can we get here?
         #return {'status' : (e_errors.TOO_MANY_RETRIES, None)}
@@ -236,11 +245,10 @@ def main(e):
     callback_addr, listen_socket = encp.get_callback_addr(e)
     #Get an ip and port to listen for the mover address for routing purposes.
     routing_addr, udp_server = encp.get_routing_callback_addr(e)
-
+    #return
     #Create all of the request dictionaries.
     requests_per_vol = encp.create_read_requests(callback_addr, routing_addr,
                                                  tinfo, e)
-
     #Set the max attempts that can be made on a transfer.
     check_lib = requests_per_vol.keys()
     encp.max_attempts(requests_per_vol[check_lib[0]][0]['vc']['library'], e)
@@ -279,12 +287,11 @@ def main(e):
         
             Trace.message(4, "Opening routing socket.")
             
-            ticket, use_listen_socket = encp.open_routing_socket(
+            rticket, use_listen_socket = encp.open_routing_socket(
                 udp_server,
                 [requests_per_vol[e.volume][0]['unique_id']], #unique_id_list
                 e)
-
-            if not e_errors.is_ok(ticket):
+            if not e_errors.is_ok(rticket):
                 sys.stderr.write("Unable to handle routing: %s\n",
                          (reply_ticket['status'],))
                 encp.quit(1)
@@ -326,9 +333,10 @@ def main(e):
             Trace.message(4, "Preparing to read %s." % request['outfile'])
             
             #Read from tape.
-            done_ticket = get_single_file(request, control_socket,
+            done_ticket,mover_request = get_single_file(request, control_socket,
                                           udp_server, e)
 
+            print "mover_request",mover_request
             if e_errors.is_ok(done_ticket):
                 Trace.message(1,
                            "File %s copied successfully." % request['infile'])
@@ -373,9 +381,9 @@ def main(e):
             #pprint.pprint(done_ticket)
 
     #We are done, tell the mover.
-    nowork_ticket = {'work': "nowork", 'method' : "no_work"}
+    nowork_ticket = {'work': "nowork"}
     try:
-        done_ticket = callback.write_tcp_obj(control_socket, nowork_ticket)
+        udp_socket.reply_to_caller(nowork_ticket)
     except e_errors.TCP_EXCEPTION:
         sys.stderr.write("Unable to terminate communication "
                          "with mover cleanly.\n")
