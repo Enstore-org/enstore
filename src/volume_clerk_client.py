@@ -396,5 +396,6 @@ if __name__ == "__main__":
         sys.exit(1)
     elif intf.list:
         pprint.pprint(ticket)
-        Trace.trace(1,"vcc exit ok")
-        sys.exit(0)
+
+    Trace.trace(1,"vcc exit ok")
+    sys.exit(0)

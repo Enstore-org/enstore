@@ -24,7 +24,7 @@ import Trace
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # we need a new bit field id for each new file in the system
-    def new_bit_file(self, ticket) :
+    def new_bit_file(self, ticket):
      Trace.trace(10,'{new_bit_file '+repr(ticket))
      # input ticket is a file clerk part of the main ticket
      try:
@@ -71,7 +71,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = "File Clerk: "+key+" key is missing"
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(0,"read_from_hsm "+ticket["status"])
+            Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
             return
 
         # look up in our dictionary the request bit field id
@@ -92,7 +92,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 print "not found on retry either!"
                 Trace.trace(0,"read_from_hsm not found on retry either")
             self.reply_to_caller(ticket)
-            Trace.trace(0,"read_from_hsm "+ticket["status"])
+            Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
             return
 
         # copy all file information we have to user's ticket
@@ -111,7 +111,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = "File Clerk: "+key+" key is missing"
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(0,"read_from_hsm "+ticket["status"])
+            Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
             return
 
         # ask the volume clerk server which library has "external_label" in it
@@ -121,7 +121,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if vticket["status"] != "ok":
             pprint.pprint(ticket)
             self.reply_to_caller(vticket)
-            Trace.trace(0,"read_from_hsm "+ticket["status"])
+            Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
             return
         library = vticket["library"]
         Trace.trace(9,"read from hsm volume="+repr(external_label)+" in "+
@@ -136,7 +136,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if vmticket["status"] != "ok":
             pprint.pprint(ticket)
             self.reply_to_caller(vmticket)
-            Trace.trace(0,"read_from_hsm "+ticket["status"])
+            Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
             return
 
         # send to library manager and tell user
@@ -152,7 +152,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
-         Trace.trace(0,"read_from_hsm "+ticket["status"])
+         Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
          return
 
     def get_user_sockets(self, ticket):
@@ -179,7 +179,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      except:
         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
         self.reply_to_caller(ticket)
-        Trace.trace(0,"get_bfids "+ticket["status"])
+        Trace.trace(0,"get_bfids "+repr(ticket["status"]))
         return
      self.get_user_sockets(ticket)
      ticket["status"] = "ok"
@@ -219,7 +219,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = "File Clerk: "+key+" key is missing"
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(0,"bfid_info "+ticket["status"])
+            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
 
         # look up in our dictionary the request bit field id
@@ -229,7 +229,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(0,"bfid_info "+ticket["status"])
+            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
 
         # copy all file information we have to user's ticket
@@ -248,7 +248,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = "File Clerk: "+key+" key is missing"
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(0,"bfid_info "+ticket["status"])
+            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
 
         # ask the volume clerk server which library has "external_label" in it
@@ -258,7 +258,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if vticket["status"] != "ok":
             pprint.pprint(ticket)
             self.reply_to_caller(vticket)
-            Trace.trace(0,"bfid_info "+ticket["status"])
+            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
             return
         library = vticket["library"]
         Trace.trace(11,"bfid_info volume="+repr(external_label)+" in "+
@@ -277,7 +277,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
-         Trace.trace(0,"bfid_info "+ticket["status"])
+         Trace.trace(0,"bfid_info "+repr(ticket["status"]))
          return
 
     # A bit file id is defined to be a 64-bit number whose most significant
