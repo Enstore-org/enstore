@@ -158,8 +158,10 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
     char *p;
     int keep_errno;   /* errno when we started */
     int guess_errno;  /* best guess so far */
-    int keep_res = res;
+    int keep_res;     /* res when we started */
 
+    /* save initial state */
+    keep_res = res;
     keep_errno = errno;
 
     DEBUG3(stderr,"Entering ftt_translate_error -- opn == %d, op = %s, res=%d, what=%s recoverable=%d\n",
@@ -171,22 +173,33 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	return -1;
     }
 
-    if (keep_errno == 75) {	/* linux gives this when out of buffers... */
+    /* linux gives this when out of buffers. For some reason we bail here? */
+    if (keep_errno == 75) {	
 	terrno = ENOMEM;
-        guess_errno = d->errortrans[opn][terrno];
+        ftt_errno = d->errortrans[opn][terrno];
 	errno = keep_errno;
         return ftt_describe_error(d, opn, op, keep_res, res, what, recoverable);
     }
 
+    /* 
+    ** otherwise we pick an errno to translate to make sure its not 
+    ** past the table end
+    */
     if (keep_errno >= MAX_TRANS_ERRNO) {
         terrno = MAX_TRANS_ERRNO - 1;
     } else {
 	terrno = keep_errno;
     } 
 
-
+    /*
+    ** our initial guess for ftt_errno comes from the table
+    */
     guess_errno = d->errortrans[opn][terrno];
 
+    /*
+    ** Now we may need to verify that we have a real eof versus a fake one
+    ** that should have been a read-past-eot error, if we do that here
+    */
     if (0 == res && FTT_OPN_READ == opn && 0 !=(d->flags&FTT_FLAG_VERIFY_EOFS)) {
 	DEBUG2(stderr, "translate_error: Verifying an eof...\n");
 	ftt_get_stats(d, &sbuf);
@@ -216,6 +229,11 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	}
     }
 
+
+    /*
+    ** now if we have an EIO error and we're file skipping or rewinding,
+    ** it could be end of tape, or no tape, so figure that out
+    */
 #   define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
 			|FTT_OP_READ|FTT_OP_REWIND)
 
@@ -253,6 +271,9 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
         }
     }
 
+    /*
+    ** blank check on writes
+    */
     if (FTT_EBLANK == guess_errno && opn == FTT_OPN_WRITE || opn == FTT_OPN_WRITEFM ) {
 
 	/* people don't take  "Blank" seriously on writes... */
