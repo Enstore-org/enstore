@@ -31,12 +31,13 @@ import e_errors
 
 list = 0
 mc_config = {}
+logc = 0				# will be an object
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
 
     def __init__(self, medch, csc=0, list=0, host=interface.default_host(), \
 	         port=interface.default_port()):
-	global mc_config
+	global mc_config, logc
         Trace.trace(10, '{__init__')
         # get the config server
         configuration_client.set_csc(self, csc, host, port, list)
@@ -48,7 +49,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
         dispatching_worker.DispatchingWorker.__init__(self, (mc_config['hostip'], \
                                                       mc_config['port']))
         # get a logger
-        self.logc = log_client.LoggerClient(self.csc, mc_config["logname"], \
+        logc = log_client.LoggerClient(self.csc, mc_config["logname"], \
                                             'logserver', 0)
         Trace.trace(10, '}__init__')
 
