@@ -128,7 +128,7 @@ done
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes in NO_ACCESS or NOT_ALLOWED state"
-egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED | grep -v 'mgrated'
+egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED | egrep -v 'mgrated'
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
@@ -179,8 +179,7 @@ done
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes in NOACCESS or NOT_ALLOWED state"
-egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED |
-egrep -v "migrated" | egrep -v ^IA
+egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED | egrep -v "migrated" | egrep -v ^IA
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
