@@ -321,7 +321,7 @@ gridftp_test() {
 
 # gftp write
     transfer_setup $write_in_progress 7
-    do_transfer "globus-url-copy file://$test_file gsiftp://stkendca3a:2811/$w" $w $write_in_progress
+    do_transfer "globus-url-copy file://$test_file gsiftp://$dcache:2811/$w" $w $write_in_progress
  
     if [ -r $write_in_progress ]; then
 	raise_alarm "$dcache dcache gridFtp write failed." $dcache_saag 6
@@ -329,7 +329,7 @@ gridftp_test() {
 
 # gftp readback
     transfer_setup $read_in_progress 5
-    do_transfer "globus-url-copy gsiftp://stkendca3a:2811/$w file://$read_back" $read_back $read_in_progress
+    do_transfer "globus-url-copy gsiftp://$dcache:2811/$w file://$read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
 	raise_alarm "$dcache dcache gridFtp read failed" $dcache_saag 4
@@ -355,7 +355,7 @@ srmcp_test() {
 
 # srmcp write
     transfer_setup $write_in_progress 7
-    do_transfer "srmcp file://localhost/$test_file srm://stkendca3a:8443/$w" $w $write_in_progress
+    do_transfer "srmcp file://localhost/$test_file srm://$dcache:8443/$w" $w $write_in_progress
  
     if [ -r $write_in_progress ]; then
 	raise_alarm "$dcache dcache srmcp write failed." $dcache_saag 6
@@ -363,7 +363,7 @@ srmcp_test() {
 
 # srmcp readback
     transfer_setup $read_in_progress 5
-    do_transfer "srmcp srm://stkendca3a:8443/$w file://localhost/$read_back" $read_back $read_in_progress
+    do_transfer "srmcp srm://$dcache:8443/$w file://localhost/$read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
 	raise_alarm "$dcache dcache srmcp read failed" $dcache_saag 4
