@@ -30,6 +30,6 @@ QUALIFIERS = ""
 	sourceRequired(${UPS_PROD_DIR}/etc/defaults, NO_UPS_ENV)
 	envUnset(ver)
 	envUnset(PVER)
-	pathAppend( PATH, ${UPS_PROD_DIR}/sbin )
+	pathPrepend( PATH, ${UPS_PROD_DIR}/sbin )
 
 
