@@ -1,11 +1,26 @@
 #!/bin/sh
+exec  >>/tmp/CDF_migrate2.`date +'%s'` 2>&1 <&-
 
 set -u
+
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ -z "${1:-}" ] ; then echo `date` Usage $0 '<volume|file-with-list-of-volumes>' ; exit 1; fi
 
-if [ -z "${1:-}" ] ; then echo `date` Usage $0 volume; exit 1; fi
+#tape=$1
+if [ -r $1 ]; then
+ f=$1
+ removef=0
+else
+ f=/tmp/f.$$.`date +"%s"`
+ removef=1
+ rm -f $f
+ echo $1 >$f
+fi
 
-tape=$1
+#tape=$1
+cat $f | while read tape; do 
+echo `date` Starting tape $tape 
+
 log=/tmp/$tape.migrate
 status=/data1/status
 copy=$status/$tape.copy2b
@@ -18,14 +33,22 @@ if [ -r $halt ]; then echo `date` ERROR: $halt exists ... trouble; exit 0; fi
 sp=0
 snooze=60
 while [ ! -r $copy ]; do
-    if [ -r $done ]; then echo `date` $tape already finished; exit 0; fi
+    if [ -r $done ]; then 
+       echo `date` $tape already finished
+       #exit 0
+       break
+    fi
     if [ $sp -eq 0 ]; then 
       echo `date` Waiting for $tape to be ready to copy.
       sp=1
     fi
     sleep $snooze
 done
-if [ -r $done ]; then echo `date` $tape already finished; exit 0; fi
+if [ -r $done ]; then 
+    echo `date` $tape already finished
+    #exit 0
+    break 
+fi
 
 echo `date` Starting copy to B tape for $tape
 $ENSTORE_DIR/test/CDF_migration/migrate_tape -b $tape >> $log 2>&1
@@ -39,3 +62,6 @@ else
     touch $stop
     touch $halt
 fi
+
+done
+if [ $removef -eq 1 ]; then rm $f; fi

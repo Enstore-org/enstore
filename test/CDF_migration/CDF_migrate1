@@ -1,11 +1,26 @@
 #!/bin/sh
+exec  >>/tmp/CDF_migrate1.`date +'%s'` 2>&1 <&-
 
 set -u
+
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ -z "${1:-}" ] ; then echo `date` Usage $0 '<volume|file-with-list-of-volumes>' ; exit 1; fi
 
-if [ -z "${1:-}" ] ; then echo `date` Usage $0 volume; exit 1; fi
+#tape=$1
+if [ -r $1 ]; then
+ f=$1
+ removef=0
+else
+ f=/tmp/f.$$.`date +"%s"`
+ removef=1
+ rm -f $f
+ echo $1 >$f
+fi
 
-tape=$1
+#tape=$1
+cat $f | while read tape; do 
+echo `date` Starting tape $tape 
+
 log=/tmp/$tape.migrate
 gotit=/tmp/$tape.gotit.$$
 status=/data1/status
@@ -16,14 +31,19 @@ halt=$status/HALT
 
 if [ -r $halt ]; then echo `date` ERROR: $halt exists ... trouble; exit 0; fi
 
-if [ -r $done ]; then echo `date` $tape already migrated; exit 0; fi
+if [ -r $done ]; then 
+    echo `date` $tape already migrated 
+    #exit 0
+    break
+fi
 
 if [ -r $copy ]; then
    $ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape >> $log 2>&1
    rc=$?
    if [ $rc -eq  0 ]; then
       echo `date` $tape already ready for migrating
-      exit 0
+      #exit 0
+      break
    else
       echo `date` $tape NOT ready, but copy2b file found. doing rm $copy
       rm $copy
@@ -35,7 +55,8 @@ rc=$?
 if [ $rc -eq 0 ]; then
    echo `date` $tape already ready for migrating
    touch $copy
-   exit 0
+   #exit 0
+   break
 fi
 
 echo `date` Starting to get files from $tape
@@ -67,7 +88,12 @@ done
 
 if [ -r $gotit ]; then
     rm $gotit
-    exit 0
+    #exit 0
+    break
 else
-    exit 1
+    #exit 1
+    break
 fi
+
+done
+if [ $removef -eq 1 ]; then rm $f; fi
