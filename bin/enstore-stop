@@ -142,7 +142,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
 	fi
 
         # note: turnoff function assumes filename globbing, so we must add an *
-        turnoff "$serv*" "library managers"
+        turnoff_s "$serv*" "library managers"
     done
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
