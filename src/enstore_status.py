@@ -110,6 +110,7 @@ class EncpLine:
         self.outfile = QUESTION
         self.msg_type = QUESTION
         self.xfer_rate = QUESTION
+	self.storage_group = None
         self.mc = QUESTION
 	self.interface = QUESTION
         # parse all success messages and pull out the interesting information
@@ -139,7 +140,7 @@ class EncpLine:
                 [self.xfer_rate, tmp2] = string.splitfields(tmp2, " ",1)
 		# get the dictionary at the end
 		self.dict = get_dict(tmp2)
-                # pull out the name of the media changer
+                # pull out the name of the media changer and other things
 		for aDict in self.dict:
 		    if aDict.has_key(enstore_constants.MEDIA_CHANGER):
 			self.mc = aDict[enstore_constants.MEDIA_CHANGER]
@@ -147,6 +148,8 @@ class EncpLine:
 			self.interface = aDict[enstore_constants.MOVER_INTERFACE]
 			# get rid of .fnal.gov
 			self.interface = enstore_functions.strip_node(self.interface)
+		    if aDict.has_key(enstore_constants.STORAGE_GROUP):
+			self.storage_group = aDict[enstore_constants.STORAGE_GROUP]
                 tmp_list = string.splitfields(tmp1, " ")
                 self.bytes = tmp_list[0]
                 self.direction = tmp_list[3]
