@@ -2930,16 +2930,15 @@ can be set to 0 when it is necessary to perform work on a robot.
 <p>
 The Media Changer returns three status values:
 <ul>
+<li>A canonical translation of the underlying status with the values: ok , TAPE, DRIVE,BAD 
 <li>The status returned by the underlying agent
-<li>A translation of the underlying status with the values, SUCCESS, DRIVE_ERR, MEDIA_ERR, GENERAL_ERR
 <li>A text description returned by the underlying agent
 </ul>
 <p>
-The Media Changer supports the following requests:
+The Media Changer and the Media Changer Client support the following requests:
 <ul>
-<li>LOAD &lt volume id&gt &lt drive id&gt &lt media type&gt
-<li>UNLOAD &lt volume id&gt &lt drive id&gt &lt media type&gt
-<li>MAXWORK &lt max simultaneous operation&gt 
+<li>maxwork=&lt max simultaneous operation&gt 
+<li>getwork
 </ul>
 <p>
 The Media Changer mounting agents:
