@@ -71,6 +71,6 @@ def pgrep_html(pat, files):
 	lineno = 1
 	for line in open(file, 'r').readlines():
 	    if patr.search(line) >=0:
-		print '[<B>%s</B>] %04d) ' %(file, lineno), line
+		print '[<B>%s</B>] %04d) %s\n' %(file, lineno, line)
 	    lineno = lineno + 1
 	print "<HR>"
