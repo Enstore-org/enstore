@@ -224,6 +224,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         ticket["function"] = "waitingCleanCycle"
         return self.DoWork( self.waitingCleanCycle, ticket)
 
+    def robotQuery(self,ticket):
+        return (e_errors.OK, 0, None)
+
     def getNretry(self):
         numberOfRetries = 3
         return numberOfRetries
@@ -664,6 +667,12 @@ class stk_MediaLoader(MediaLoaderMethods):
                media_type):     # media type
         return self.retry_function(self.dismount,external_label,drive,media_type)
 
+    # see how my good friend the robot is doing
+    def robotQuery(self,ticket):
+        # don't retry this query - want to know current status
+        ticket['status'] =  self.query_server()
+        self.reply_to_caller(ticket)
+
 
     #FIXME - what the devil is this?
     def getVolState(self, ticket):
@@ -680,6 +689,12 @@ class stk_MediaLoader(MediaLoaderMethods):
         return (rt[0], rt[1], rt[2], state)
 
 
+    # simple elapsed timer
+    def delta_t(self,begin):
+            (ut, st,cut, cst,now) = os.times()
+            return (now-begin, now)
+
+
     # execute a stk cmd_proc command, but don't wait forever for it to complete
     #mostly stolen from Demo/tkinter/guido/ShellWindow.py - spawn function
     def timed_command(self,cmd,min_response_length=0,timeout=60):
@@ -691,6 +706,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 
         # can not use dispatching work fork because we are already child.
         # need to kill explictly and children can't kill
+        (dum,mark) = self.delta_t(0)
         pid = os.fork()
 
         if pid == 0:
@@ -760,10 +776,10 @@ class stk_MediaLoader(MediaLoaderMethods):
         except:
             exc, msg, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "timed_command wait for child failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
-            return -1,[]
+            return -1,[], self.delta_t(mark)[0]
 
         if p==0:
-            return -2,[]
+            return -2,[], self.delta_t(mark)[0]
 
         # now read response from the pipe
         message = ""
@@ -778,7 +794,7 @@ class stk_MediaLoader(MediaLoaderMethods):
         response = string.split(message,'\012')
         size = len(response)
         if size <= 19:
-            return -3,[]
+            return -3,[], self.delta_t(mark)[0]
         status = 0
         for look in range(19,size): # 1st part of response is STK copyright information
             if string.find(response[look], cmd_lookfor, 0) == 0:
@@ -794,7 +810,7 @@ class stk_MediaLoader(MediaLoaderMethods):
             rsp = [now,response[look:],rightnow]
             pprint.pprint(rsp)
 
-        return status,response[look:]
+        return status,response[look:], self.delta_t(mark)[0]
 
     def query(self,volume, media_type=""):
 
@@ -803,7 +819,7 @@ class stk_MediaLoader(MediaLoaderMethods):
         answer_lookfor = "%s " % (volume,)
 
         # execute the command and read the response
-        status,response = self.timed_command(command,4,60)
+        status,response, delta = self.timed_command(command,4,60)
         if status != 0:
             E=1
             msg = "QUERY %i: %s => %i,%s" % (E,command,status,response)
@@ -843,7 +859,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 
         # execute the command and read the response
         # FIXME - what if this hangs?
-        status,response = self.timed_command(command,4,60)
+        status,response, delta = self.timed_command(command,4,60)
         if status != 0:
             E=4
             msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
@@ -915,7 +931,7 @@ class stk_MediaLoader(MediaLoaderMethods):
                 return ("ERROR", E, response, '', msg)
 
         # execute the command and read the response
-        status,response = self.timed_command(command,2,60*10)
+        status,response, delta = self.timed_command(command,2,60*10)
         if status != 0:
             E=12
             msg = "MOUNT %i: %s => %i,%s" % (E,command,status,response)
@@ -963,7 +979,7 @@ class stk_MediaLoader(MediaLoaderMethods):
                     return (e_errors.OK, 0,response, '',msg)
 
         # execute the command and read the response
-        status,response = self.timed_command(command,2,60*10)
+        status,response,delta = self.timed_command(command,2,60*10)
         if status != 0:
             E=16
             msg = "DISMOUNT %i: %s => %i,%s" % (E,command,status,response)
@@ -981,6 +997,31 @@ class stk_MediaLoader(MediaLoaderMethods):
         Trace.log(e_errors.INFO, msg)
         return (e_errors.OK, 0,msg)
 
+
+    def query_server(self):
+
+        # build the command, and what to look for in the response
+        command = "query server"
+        answer_lookfor = "run"
+
+        # execute the command and read the response
+        status,response,delta = self.timed_command(command,5,60)
+        if status != 0:
+            E=18
+            msg = "query server %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        # got response, parse it and put it into the standard form
+        answer = string.strip(response[4])
+        if string.find(answer, answer_lookfor,0) != 0:
+            E=19
+            msg = "query_server %i: %s => %i,%s, %f" % (E,command,status,response,delta)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+        msg = "%s => %i,%s, %f" % (command,status,answer[0:17],delta)
+        Trace.log(e_errors.INFO, msg)
+        return (e_errors.OK, 0,msg)
 
 # manual media changer
 class Manual_MediaLoader(MediaLoaderMethods):
