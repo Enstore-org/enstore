@@ -128,6 +128,7 @@ class EncpLine:
 	self.interface = QUESTION
 	self.mover = QUESTION
 	self.drive_id = QUESTION
+        self.encp_ip = None
         # parse all success messages and pull out the interesting information
         if self.status == e_errors.sevdict[e_errors.INFO]:
             try:
@@ -165,6 +166,8 @@ class EncpLine:
 			self.interface = enstore_functions2.strip_node(self.interface)
 		    if aDict.has_key(enstore_constants.STORAGE_GROUP):
 			self.storage_group = aDict[enstore_constants.STORAGE_GROUP]
+                    if aDict.has_key(enstore_constants.ENCP_IP):
+                        self.encp_ip = aDict[enstore_constants.ENCP_IP]
                 tmp_list = string.splitfields(tmp1, " ")
                 self.bytes = tmp_list[0]
                 self.direction = tmp_list[3]

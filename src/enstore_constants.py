@@ -80,6 +80,7 @@ DEAD = "dead"
 FILE_LIST_NAME = "enstore_files.html"
 PAGE_THRESHOLDS= "page_thresholds"
 FILE_LIST = "file_list"
+ENCP_IP = "encp_ip"
 
 # server names used in enstore_up_down
 LOGS = "Logger"

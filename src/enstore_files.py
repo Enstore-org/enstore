@@ -16,6 +16,7 @@ import enstore_functions2
 import enstore_status
 import enstore_constants
 import e_errors
+import hostaddr
 import www_server
 
 TRUE = 1
@@ -399,10 +400,14 @@ class HTMLEncpStatusFile(EnStatusFile):
 		    user = "%s/%s"%(encp_line.user, encp_line.storage_group)
 		else:
 		    user = encp_line.user
+                if encp_line.encp_ip:
+                    node = enstore_functions2.strip_node(hostaddr.address_to_name(\
+                        encp_line.encp_ip))
+                else:
+                    node = encp_line.node
                 if encp_line.status == e_errors.sevdict[e_errors.INFO]:
                     formatted_lines.append(["%s %s"%(day, encp_line.time), 
-                                            encp_line.node, user,
-                                            encp_line.bytes, 
+                                            node, user, encp_line.bytes, 
                                             "%s %s"%(encp_line.direction, 
                                                      encp_line.volume), 
                                             encp_line.xfer_rate, encp_line.user_rate,
@@ -410,8 +415,7 @@ class HTMLEncpStatusFile(EnStatusFile):
 					    encp_line.interface])
                 elif encp_line.status == e_errors.sevdict[e_errors.ERROR]:
                     formatted_lines.append(["%s %s"%(day, encp_line.time), 
-                                            encp_line.node, user, 
-                                            encp_line.text])
+                                            node, user, encp_line.text])
 
     # output the encp info
     def write(self, day1, lines1, day2, lines2):
