@@ -142,7 +142,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         if not key == ALARM_S:
                             self.alarmc.u = udp_client.UDPClient()
                         # Check on server status but wait a long time
-                        self.alive_rcv_timeout = 180
+                        self.alive_rcv_timeout = 5
                         self.alive_retries = 2
                         ret = self.alive_status(client, (t['host'], t['port']),
                                                 prefix, time, key)
@@ -239,7 +239,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # real name after its creation.
                 self.loghtmlfile.open()
                 self.loghtmlfile.write(self.logc.log_dir, logfiles,
-                                       self.log_dirs)
+                                       self.log_dirs, self.www_host)
                 self.loghtmlfile.close()
                 # now we must move the new file to it's real name
                 os.system('mv %s/%s%s %s/%s'%(self.logc.log_dir,
@@ -950,6 +950,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	keys = self.csc.get(self.name, use_once_timeout, use_once_retry)
 	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
+        # this will be used when creating the log html file
+        self.www_host = keys.get('www_host', "file:")
 
 	# initialize
 	self.doupdate_server_dict = 0

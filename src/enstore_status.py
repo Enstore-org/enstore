@@ -720,7 +720,7 @@ class HTMLLogFile(EnStatusFile, EnHTMLFile):
             self.filedes.write(self.header)
 
     # format the log files and write them to the file
-    def write(self, logfile_dir, logfiles, log_dirs):
+    def write(self, logfile_dir, logfiles, log_dirs, www_host):
         # first we will create links in the file to all log file directories
         # that have been specified in the configuration file with the
         # name format robot_xxxx_dir, where 'xxxx' becomes the name of the
@@ -743,7 +743,7 @@ class HTMLLogFile(EnStatusFile, EnHTMLFile):
                 self.filedes.write('<TABLE BGCOLOR="#DFDFF0" NOSAVE >\n')
                 self.filedes.write('<TR><TD><B>FILE</B></TD><TD ALIGN=CENTER><B>SIZE</B></TD></TR>\n')
                 for log in log_keys:
-                    self.filedes.write('<TR><TD><A HREF="%s/%s"><B>%s</B></A></TD><TD>%s</TD></TR>\n'%(logfile_dir, log, log, logfiles[log]))
+                    self.filedes.write('<TR><TD><A HREF="%s%s/%s"><B>%s</B></A></TD><TD>%s</TD></TR>\n'%(www_host, logfile_dir, log, log, logfiles[log]))
                 self.filedes.write('</TABLE>\n')
                     
 class EnDataFile(EnFile):
