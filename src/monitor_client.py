@@ -60,8 +60,7 @@ class MonitorServerClient:
     # ping a server like ENCP would
     def monitor_one_interface(self, remote_interface):
 
-        c_hostip, c_port, c_socket = callback.get_callback(
-            use_multiple=0,verbose=0)
+        c_hostip, c_port, c_socket = callback.get_callback(verbose=0)
         
         c_socket.listen(4)
         ticket= { 'work'           : 'simulate_encp_transfer',
@@ -170,7 +169,7 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.help_options() + ["summary", "html_gen_host="]
+            return self.help_options() + ["summary", "html-gen-host="]
 
 def get_all_ips(config_host, config_port, csc):
     """
