@@ -13,7 +13,7 @@ cd /diskc/enstore/$gang
 today=`date +"%Y-%m-%d-%H"`
 year=`date +"%Y"`
 BACKUP=/pnfs/eagle/${gang}-sys-backups/$year/$today
-mkdir $BACKUP
+mkdir -p $BACKUP
 if [ $? -ne 0 ]; then echo "`date` can not mkdir $BACKUP on $node "; exit 1; fi
 
 rc=0
