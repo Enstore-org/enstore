@@ -132,6 +132,7 @@ filecheck() { thefile=${2:-/var/spool/cron/root}
 allow() { tt=$1
           for i in $ALLOW; do
             t=`$ECHO $i | $CUT -f1 -d,`
+	    if [ -z ${t-} ]; then echo $i; fi
             if [ $t != $tt ]; then continue; fi
             a=`$ECHO $i | $CUT -f2 -d,`
             b=`$ECHO $i | $CUT -f3 -d,`
@@ -183,6 +184,8 @@ ALLOW_BASE="
        LISTEN,dccp,:,TCP,x
        LISTEN,netserver,:,TCP,x
        LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh
+       LISTEN,sh,inet,TCP,MSG_TYPE
+       LISTEN,ALARM_CLIENT,inet,TCP,x
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
        UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
        UDP,xntpd,:ntp,UDP,x
@@ -196,8 +199,6 @@ ALLOW_BASE="
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
        TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
        TCP,netserver,TCP,:netperf,x
-       TCP,ALARM_CLIENT,TCP, inet ,x
-       TCP,sh, inet ,MSG_TYPE
 "
 #       LISTEN,autorpm,:,TCP,perl /usr/sbin/autorpm
 
