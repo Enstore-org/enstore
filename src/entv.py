@@ -147,14 +147,12 @@ def main():
         u.send_no_wait(ticket, mover_addr)
         reqs[tsd.txn_counter] = mover
         
-    
     # Subscribe to the event notifier
     if debug:
         print "subscribe"
     s.sendto("notify %s %s" % (dst),
              (event_relay_host, event_relay_port))
 
-            
     #Tell the event_relay that we want to hear about Enstore
     #events.
     #This gets us 15 minutes worth of update messages, so re-subscribe
@@ -178,12 +176,9 @@ def main():
             
         now = time.time()
         if now - last_sub >= 600:
-            try:
-                s.sendto("notify %s %s" % (dst,),
-                         (event_relay_host, event_relay_port))
-                last_sub = now
-            except:
-                pass
+            s.sendto("notify %s %s" % (dst,),
+                     (event_relay_host, event_relay_port))
+            last_sub = now
         
 if __name__ == "__main__":
     main()
