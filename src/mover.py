@@ -78,6 +78,9 @@ class Buffer:
         self.header_size = 0L
         self.trailer_size = 0L
 
+        self.read_ok = threading.Condition()
+        self.write_ok = threading.Condition()
+        
         self._lock = threading.Lock()
         self._buf = []
         self._buf_bytes = 0L
@@ -89,6 +92,11 @@ class Buffer:
 
     def reset(self):
         self._lock.acquire()
+
+        #notify anybody who is waiting on this? - cgw
+        self.read_ok = threading.Condition()
+        self.write_ok = threading.Condition()
+        
         self._buf = []
         self._freelist = []
         self._buf_bytes = 0
@@ -353,6 +361,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
             have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
+            Trace.trace(10, "checking for loaded tape, open returns %s" % (have_tape,))
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
             self.config['serial_num'] = stats[ftt.SERIAL_NUM]
@@ -363,6 +372,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 buf=80*' '
                 try:
                     self.tape_driver.read(buf, 0, 80)
+                    Trace.trace(10, "checking for label: read %s" % (buf,))
                 except (e_errors.READ_ERROR, ftt.FTTError), detail:
                     Trace.log(e_errors.ERROR, "while checking for loaded tape: %s"%(detail,))
                 tok = string.split(buf)
@@ -374,6 +384,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.state = HAVE_BOUND
                     Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                     self.dismount_time = time.time() + self.default_dismount_delay
+            ##XXX do a dismount here - cgw
             self.tape_driver.close()
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
@@ -402,7 +413,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(exc, msg)
             except:
                 pass
-                
     
     def update(self, reset_timer=None):
         Trace.trace(20,"update: %s" % (state_name(self.state)))
@@ -467,6 +477,13 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
+
+            self.buffer.read_ok.acquire()
+            while self.state in (ACTIVE, DRAINING) and self.buffer.full():
+                Trace.log(15, "read_client: buffer full %s/%s" % (self.buffer.nbytes(), self.buffer.max_bytes))
+                self.buffer.read_ok.wait(1)
+            self.buffer.read_ok.release()
+            
             bytes_read = 0
             try:
                 bytes_read = self.buffer.stream_read(nbytes, driver)
@@ -479,24 +496,21 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
-            while self.buffer.full():
-                time.sleep(1) #ZZZ
+            if self.buffer.nbytes() > self.buffer.min_bytes:
+                self.buffer.write_ok.acquire()
+                self.buffer.write_ok.notify()
+                self.buffer.write_ok.release()
                 
-##            self.buffer.read_ok.acquire()
-##            while self.buffer.full():
-##                self.buffer.read_ok.wait(1)
-##                if self.buffer.full():
-##                    Trace.log(e_errors.INFO, "read_client: buffer too full %s" %
-##                              (self.buffer.nbytes(),))
-##            self.buffer.read_ok.release()
-            
         if self.bytes_read == self.bytes_to_read:
             if self.trailer:
                 nbytes = self.buffer.trailer_size
                 bytes_read = self.buffer.stream_read(nbytes, self.trailer)
                 Trace.trace(10, "read %s bytes of  trailer" % bytes_read)
             self.buffer.read_eof() #pushes last partial block onto the fifo
-
+            self.buffer.write_ok.acquire()
+            self.buffer.write_ok.notify()
+            self.buffer.write_ok.release()
+            
         Trace.trace(10, "read_client: state = %s, read %s/%s bytes" %
                     (state_name(self.state), self.bytes_read, self.bytes_to_read))
                         
@@ -518,16 +532,20 @@ class Mover(dispatching_worker.DispatchingWorker,
                         optimal_buf = max(optimal_buf, 2*self.buffer.blocksize)
                         Trace.trace(15,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
                         if self.buffer.min_bytes != optimal_buf:
-                            Trace.trace(15,"Changing buffer size from %s to %s"%(self.buffer.min_bytes, optimal_buf))
+                            Trace.trace(15,"Changing buffer size from %s to %s"%
+                                        (self.buffer.min_bytes, optimal_buf))
                             self.buffer.set_min_bytes(optimal_buf)
 
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
-            if (nbytes > self.buffer.nbytes()
-                or  self.bytes_read < self.bytes_to_read and self.buffer.low()):
-                Trace.trace(10,"only have %s"%( self.buffer.nbytes(),))
-                #not enough data in buffer to keep tape streaming
-                time.sleep(1) #ZZZ
-                continue
+
+            self.buffer.write_ok.acquire()
+            while (self.state in (ACTIVE, DRAINING) and
+                   (nbytes > self.buffer.nbytes()
+                    or  self.bytes_read < self.bytes_to_read and self.buffer.low())):
+                Trace.trace(15,"write_tape: buffer low %s/%s"%
+                            ( self.buffer.nbytes(), self.buffer.min_bytes))
+                self.buffer.write_ok.wait(1)
+            self.buffer.write_ok.release()
 
             bytes_written = 0
             try:
@@ -540,6 +558,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 break
             self.bytes_written = self.bytes_written + bytes_written
 
+            if not self.buffer.full():
+                self.buffer.read_ok.acquire()
+                self.buffer.read_ok.notify()
+                self.buffer.read_ok.release()
+            
+        
+            
         Trace.trace(10, "write_tape, state = %s, wrote %s/%s bytes" %
                     (state_name(self.state), self.bytes_written, self.bytes_to_write))
 
@@ -556,6 +581,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(10, "read_tape, bytes_to_read=%s" % (self.bytes_to_read,))
         driver = self.tape_driver
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+
+            self.buffer.read_ok.acquire()
+            while self.state in (ACTIVE, DRAINING) and self.buffer.full():
+                Trace.trace(15, "read_tape: buffer full %s/%s" % (self.buffer.nbytes(), self.buffer.max_bytes))
+                self.buffer.read_ok.wait(1)
+            self.buffer.read_ok.release()
+            
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
             if self.bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
                 nbytes = self.buffer.blocksize
@@ -579,8 +611,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.bytes_read > self.bytes_to_read: #this is OK, we read a cpio trailer or something
                 self.bytes_read = self.bytes_to_read
 
-            if self.buffer.full():
-                time.sleep(1) #ZZZ
+            if not self.buffer.empty():
+                self.buffer.write_ok.acquire()
+                self.buffer.write_ok.notify()
+                self.buffer.write_ok.release()
             
         Trace.trace(10, "read_tape: state=%s, read %s/%s bytes" %
                     (state_name(self.state), self.bytes_read, self.bytes_to_read))
@@ -592,12 +626,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.stream_write(self.buffer.header_size, None)
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
-            ###keep pumping data out to the client
-            nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
 
-            if self.bytes_read < self.bytes_to_read and self.buffer.low():
-                time.sleep(1) # ZZZ
-            
+            self.buffer.write_ok.acquire()
+            while (self.state in (ACTIVE, DRAINING) and self.buffer.empty()):
+                Trace.trace(15, "write_client: buffer empty %s/%s" % (self.buffer.nbytes(), self.buffer.min_bytes))
+                self.buffer.write_ok.wait(1)
+            self.buffer.write_ok.release() 
+
+            nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
             bytes_written = 0
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
@@ -611,6 +647,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 pass #this is not unexpected, since we send with MSG_DONTWAIT
             self.bytes_written = self.bytes_written + bytes_written
 
+            if not self.buffer.full():
+                self.buffer.read_ok.acquire()
+                self.buffer.read_ok.notify()
+                self.buffer.read_ok.release()
+            
         Trace.trace(10, "write_client: state=%s, wrote %s/%s bytes" %
                     (state_name(self.state), self.bytes_written, self.bytes_to_write))
   
