@@ -21,6 +21,9 @@
          	<ci>cpuLoad</ci>
          	<cn>4.0</cn>
     		</apply>
+               <Action ID="email" Host="ngopsrv" Type="central" Gap="9000" Counter="3">
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+               </Action>
        	  </Condition>
           <Condition State="1" SevLevel="6" Description="Average cpu load is between 3 and 4 during last 15 min">
                 <apply>
@@ -36,7 +39,7 @@
                   <cn>4.0</cn>
                 </apply>
 		</apply>
-               <Action ID="email" Host="ngopsrv" Type="central">
+               <Action ID="email" Host="ngopsrv" Type="central" Gap="9000" Counter="3">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
           </Condition>
@@ -54,7 +57,7 @@
                   <cn>3.0</cn>
                 </apply>
 		</apply>
-              <Action ID="email" Host="ngopsrv" Type="central">
+              <Action ID="email" Host="ngopsrv" Type="central" Gap="9000" Counter="3">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
           </Condition>
