@@ -745,6 +745,11 @@ def write_to_hsm(input_files, output, output_file_family='',
             unique_id[i] = generate_unique_id()
             wrapper["fullname"] = inputlist[i]
             wrapper["type"] = ff_wrapper[i]
+            #If the environmental variable exists, send it to the lm.
+            try:
+                encp_daq = os.environ['ENCP_DAQ']
+            except KeyError:
+                encp_daq = None
             # store the pnfs information info into the wrapper
             for key in pinfo[i].keys():
                 if not uinfo.has_key(key) : 
@@ -762,6 +767,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                 unique_id[i] = generate_unique_id()
                 work_ticket["unique_id"] = unique_id[i]
                 work_ticket["retry"] = retry
+                work_ticket["encp_daq"] = encp_daq
             else:
                 if file_fam: rq_file_family = file_fam
                 else: rq_file_family = file_family[i]
@@ -787,7 +793,8 @@ def write_to_hsm(input_files, output, output_file_family='',
                                "retry"              : retry,
                                "times"              : times,
                                "unique_id"          : unique_id[i],
-                               "client_crc"         : chk_crc
+                               "client_crc"         : chk_crc,
+                               "encp_daq"           : encp_daq
                                }
             # send the work ticket to the library manager
             reply_read=0
@@ -1618,15 +1625,23 @@ def read_hsm_files(listen_socket, submitted, requests,
                     error_description = msg.args[0]
                 else:
                     error_description = done_ticket['status'][1]
-                
-                print_data_access_layer_format(
-                    requests[j]['infile'], requests[j]['outfile'], 
-                    requests[j]['file_size'], 
-                    {'status':(error_type, error_description)})
+
+                #Jon doesn't want the message printed out if the transfer will
+                # be retried.
+                #print_data_access_layer_format(
+                #    requests[j]['infile'], requests[j]['outfile'], 
+                #    requests[j]['file_size'], 
+                #    {'status':(error_type, error_description)})
 
                 #If there is no more space left on the device, there is no
                 # point in proceding.
                 if msg.args[1] == errno.ENOSPC:
+                    #Since this isn't a retrable error, print.
+                    print_data_access_layer_format(
+                        requests[j]['infile'], requests[j]['outfile'], 
+                        requests[j]['file_size'], 
+                        {'status':(e_errors.NOSPACE,
+                                   os.strerror(errno.ENOSPC))})
                     quit()
 
                 if not e_errors.is_retriable(done_ticket["status"][0]):
@@ -1641,8 +1656,8 @@ def read_hsm_files(listen_socket, submitted, requests,
             # fd_xfer does not check for EOF after reading the specified
             # number of bytes.
             ##XXX I think these next two lines should go - cgw
-            buf = data_path_socket.recv(bufsize)# there should not be any more
-            fsize = fsize + len(buf)
+            #buf = data_path_socket.recv(bufsize)# there should not be any more
+            #fsize = fsize + len(buf)
             
             if not data_path_socket_closed:
                 data_path_socket.close()
@@ -1970,6 +1985,11 @@ def read_from_hsm(input_files, output,
             print_data_access_layer_format(inputlist[i], ofile, 0, fc_reply)
             continue
 
+        #check for this environmental variable.
+        try:
+            encp_daq = os.environ["ENCP_DAQ"]
+        except KeyError:
+            encp_daq = None
 
         request = {}
         label = fc_reply['fc']['external_label']
@@ -1986,6 +2006,7 @@ def read_from_hsm(input_files, output,
         request['retry'] = 0
         request['unique_id'] = ''
         request['client_crc'] = chk_crc
+        request['encp_daq'] = encp_daq
 
         #Verify that the external labels named by the file clerk and volume
         # clerk are the same.
