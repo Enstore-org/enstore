@@ -222,6 +222,12 @@ class MonitoredConfigServer(MonitoredServer):
 	self.update_config(config)
 
 
+class MonitoredRatekeeper(MonitoredServer):
+
+    def __init__(self, config):
+	MonitoredServer.__init__(self, config, enstore_constants.RATEKEEPER)
+
+
 class MonitoredMover(MonitoredServer):
 
     def __init__(self, config, name, csc):
