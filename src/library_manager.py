@@ -95,10 +95,16 @@ class SG_FF:
             self.sg[sg].remove((mover, volume))
             if len(self.sg[sg]) == 0:
                 del(self.sg[sg])
+        else:
+            Trace.log('can not remove from sg %s %s' % (mover, volume))
+            Trace.log('SG: %s' % (self.sg,))
         if self.vf.has_key(vf) and (mover, volume) in self.vf[vf]:
             self.vf[vf].remove((mover, volume))
             if len(self.vf[vf]) == 0:
                 del(self.vf[vf])
+        else:
+            Trace.log('can not remove from vf %s %s' % (mover, volume))
+            Trace.log('SG: %s' % (self.vf,))
 
     def put(self, mover, volume, sg, vf):
         self.delete(mover, volume, sg, vf) # delete entry to update content
@@ -139,10 +145,12 @@ class AtMovers:
                 return
         self.at_movers[mover] = mover_info
         self.sg_vf.put(mover, mover_info['external_label'], storage_group, vol_family)
-        Trace.trace(13,"AtMovers put: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
+        Trace.trace(13,"AtMovers put: at_movers: %s" % (self.at_movers,))
+        Trace.trace(13,"AtMovers put: sg_vf: %s" % (self.sg_vf,))
 
     def delete(self, mover_info):
-        Trace.trace(13, "AtMovers delete. before: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
+        Trace.trace(13, "AtMovers delete. before: %s" % (self.at_movers,))
+        Trace.trace(13, "AtMovers delete. before: sg_vf: %s" % (self.sg_vf,))
         mover = mover_info['mover']
         if self.at_movers.has_key(mover):
             Trace.trace(13, "MOVER %s" % (self.at_movers[mover],))
@@ -164,7 +172,8 @@ class AtMovers:
             storage_group = volume_family.extract_storage_group(vol_family)
             self.sg_vf.delete(mover, label, storage_group, vol_family) 
             del(self.at_movers[mover])
-        Trace.trace(13,"AtMovers delete: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
+        Trace.trace(13,"AtMovers delete: at_movers: %s" % (self.at_movers,))
+        Trace.trace(13,"AtMovers delete: sg_vf: %s" % (self.sg_vf,))
 
    # return a list of busy volumes for a given volume family
     def busy_volumes (self, volume_family_name):
@@ -565,7 +574,7 @@ class LibraryManagerMethods:
         ########################################################
         ### from old idle_mover
         # check if the volume for this work had failed on this mover
-        Trace.trace(13,"SUSPECT_VOLS %s"%(self.suspect_volumes.list,))
+        Trace.trace(15,"SUSPECT_VOLS %s"%(self.suspect_volumes.list,))
         suspect_v,suspect_mv = self.is_mover_suspect(requestor['mover'], rq.ticket['fc']['external_label'])
         if suspect_mv:
             # determine if this volume had failed on the maximal
@@ -1211,7 +1220,7 @@ class LibraryManagerMethods:
         else: label = None
         if len(suspect_volume['movers']) >= self.max_suspect_movers:
             ticket['status'] = (e_errors.NOACCESS, None)
-            Trace.trace(13,"Number of movers for suspect volume %d" %
+            Trace.trace(15,"Number of movers for suspect volume %d" %
                         (len(suspect_volume['movers']),))
                                 
             # set volume as noaccess
@@ -1223,11 +1232,11 @@ class LibraryManagerMethods:
             self.suspect_volumes.remove(suspect_volume)
             # delete the job
             rq, err = self.pending_work.find(ticket)
-            Trace.trace(13,"bad volume: find returned %s %s"%(rq, err))
+            Trace.trace(15,"bad volume: find returned %s %s"%(rq, err))
             if rq:
                 self.pending_work.delete_job(rq)
                 self.send_regret(ticket)
-            Trace.trace(13,"bad_volume: failed on more than %s for %s"%\
+            Trace.trace(15,"bad_volume: failed on more than %s for %s"%\
                         (self.max_suspect_movers,suspect_volume))
             ret_val = 1
         return ret_val
@@ -1235,7 +1244,7 @@ class LibraryManagerMethods:
     # update suspect volumer list
     def update_suspect_vol_list(self, external_label, mover):
         # update list of suspected volumes
-        Trace.trace(14,"SUSPECT VOLUME LIST BEFORE %s"%(self.suspect_volumes.list,))
+        Trace.trace(15,"SUSPECT VOLUME LIST BEFORE %s"%(self.suspect_volumes.list,))
         if not external_label: return None
         vol_found = 0
         for vol in self.suspect_volumes.list:
@@ -1259,7 +1268,7 @@ class LibraryManagerMethods:
                 Trace.alarm(e_errors.WARNING, e_errors.ABOVE_THRESHOLD,
                             {"volumes":"Number of suspect volumes is above threshold"}) 
             
-        Trace.trace(14, "SUSPECT VOLUME LIST AFTER %s" % (self.suspect_volumes,))
+        Trace.trace(15, "SUSPECT VOLUME LIST AFTER %s" % (self.suspect_volumes,))
         return vol
 
 class LibraryManager(dispatching_worker.DispatchingWorker,
@@ -1921,23 +1930,23 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 Trace.trace(15,"found backed up mover %s " % (mticket['mover'], ))
                 self.reply_to_caller({'work': 'no_work'})
                 return
-            Trace.trace(13,"removing %s  from the queue"%(w,))
+            Trace.trace(18,"removing %s  from the queue"%(w,))
             # file family may be changed by VC during the volume
             # assignment. Set file family to what VC has returned
             if mticket['external_label']:
                 w['vc']['volume_family'] = mticket['volume_family']
-                Trace.trace(11, "FILE_FAMILY=%s" % (w['vc']['volume_family'],))  # REMOVE
+                Trace.trace(18, "FILE_FAMILY=%s" % (w['vc']['volume_family'],))  # REMOVE
             self.work_at_movers.remove(w)
 
         if self.lm_lock in ('pause', e_errors.BROKEN):
-            Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
+            Trace.trace(18,"LM state is %s no mover request processing" % (self.lm_lock,))
             self.reply_to_caller({'work': 'no_work'})
             return
         # see if this volume will do for any other work pending
         rq, status = self.next_work_this_volume(mticket['external_label'], mticket['volume_family'],
                                                 last_work, mticket,
                                                 mticket['current_location'])
-        Trace.trace(11, "mover_bound_volume: next_work_this_volume returned: %s %s"%(rq,status))
+        Trace.trace(18, "mover_bound_volume: next_work_this_volume returned: %s %s"%(rq,status))
         if status[0] == e_errors.OK:
             w = rq.ticket
 
@@ -2046,7 +2055,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # use alternative fuction
             w = self.get_work_at_movers_m(mticket['mover'])
         if w:
-            Trace.trace(13,"mover_error: work_at_movers %s"%(w,))
+            Trace.trace(14,"mover_error: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
         if mticket['state'] == mover_constants.OFFLINE: # mover finished request and went offline
             self.volumes_at_movers.delete(mticket)
@@ -2088,7 +2097,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
                 #remove entry from suspect volume list
                 self.suspect_volumes.remove(vol)
-                Trace.trace(13,"removed from suspect volume list %s"%(vol,))
+                Trace.trace(15,"removed from suspect volume list %s"%(vol,))
 
                 #self.send_regret(w)
                 # send regret to all clients requested this volume and remove
@@ -2193,7 +2202,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.data_socket.close()
             callback.write_tcp_obj_new(self.control_socket,ticket)
             self.control_socket.close()
-            Trace.trace(13,"get_suspect_volumes ")
+            Trace.trace(15,"get_suspect_volumes ")
         except:
             pass
         os._exit(0)
