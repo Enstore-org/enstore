@@ -55,7 +55,7 @@ installpyc:
 
 clean:
 	-rm Makefile.modules
-	-rm -f *.o *.so *~ *# so_locations sedscript enroute2 m2probe
+	-rm -f *.a *.o *.so *~ *# so_locations sedscript enroute2 m2probe
 	-rm -rf mksetup
 	-rm -rf tape_copy
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
