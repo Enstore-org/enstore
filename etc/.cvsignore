@@ -5,6 +5,7 @@
 *.pyc
 *.jou
 *.dat
+*.old
 data
 1
 2
@@ -15,4 +16,4 @@ data
 7
 8
 9
-x.x
+*_pids

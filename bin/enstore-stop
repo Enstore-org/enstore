@@ -3,6 +3,18 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
+for pid in $ENSTORE_DIR/etc/*_pids; do
+    if [ "$pid" = "$ENSTORE_DIR/etc/*_pids" ] ; then break; fi
+    pidkill $pid
+done
+exit
+
+# The rest is trash!
+
+
+
+
+
 #
 # TOO MANY TASSK TRY TO KILL THEM ALL.
 

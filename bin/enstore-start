@@ -15,6 +15,7 @@ cd $ENSTORE_DIR/etc
 
 # the configuration server needs to be the 1st thing started
 python $ENSTORE_DIR/src/configuration_server.py --config_host=$config_host --config_port=$config_port --config_file=$config_file &
+echo $! >> configuration_pids
 sleep 1
 
 # now check to see if it is really running
@@ -25,11 +26,21 @@ if [ $? -ne 0 ] ; then
     exit 1
 fi
 
-# the other servers can start now
+# volume clerk
 python $ENSTORE_DIR/src/volume_clerk.py    --config_host $config_host --config_port $config_port &
+echo $! >> volume_clerk_pids
+
+# file clerk
 python $ENSTORE_DIR/src/file_clerk.py      --config_host $config_host --config_port $config_port &
+echo $! >> file_clerk_pids
+
+# library manager
 python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port activelibrary &
+echo $! >> library_manager_pids
+
+# mover: raw disk mover
 python $ENSTORE_DIR/src/mover.py fd0.mover --config_host $config_host --config_port $config_port &
+echo $! >> mover_pids
 
 # really need to add a check to make sure they are working
 sleep 1

@@ -5,6 +5,7 @@
 *.pyc
 *.jou
 *.dat
+*.old
 data
 1
 2

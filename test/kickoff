@@ -1,4 +1,4 @@
 #!/bin/sh
 
 ./longtest &
-echo $$ >> $ENSTORE_DIR/test/longtest_pids
+echo $! >> $ENSTORE_DIR/test/longtest_pids

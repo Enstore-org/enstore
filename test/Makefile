@@ -2,9 +2,11 @@
 dpnfs = `echo "/pnfs/enstore/test1-\`whoami\`"`
 
 olddbs:
-	enstore-stop
-
-	enstore-start
+	- killall -9 longtest
+	- pidkill $$ENSTORE_DIR/test/longtest_pids
+	- for d in 1 2 3 4 5 6 7 8 9 ; do \
+		pidkill $$d/loop_longtest.pids ;\
+	done
 
 	rm -f $$ENSTORE_DIR/test/longtest_pids
 	for d in 1 2 3 4 5 6 7 8 9 ; do \
@@ -16,9 +18,15 @@ olddbs:
 
 
 newdbs:
+	- killall -9 longtest
+	- pidkill $$ENSTORE_DIR/test/longtest_pids
+	- for d in 1 2 3 4 5 6 7 8 9 ; do \
+		pidkill $$d/loop_longtest.pids ;\
+	done
+
 	enstore-stop
 
-	rm -f *.jou
+	rm -f $$ENSTORE_DIR/etc/*.jou
 
 	enstore-start
 
@@ -45,7 +53,6 @@ newdbs:
 		echo $$f2 >> $$ENSTORE_DIR/test/files.in ; \
 	done ; )
 
-	rm -f $$ENSTORE_DIR/test/longtest_pids
 	for d in 1 2 3 4 5 6 7 8 9 ; do \
 		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
 		( cd $$d; rm -f *; \
@@ -56,8 +63,15 @@ newdbs:
 	@ echo "Tests are running. Do a    killall -9 longtest    to stop"
 	@ echo "   It takes a bit for them to die off"
 
-clean:
+stop:
 	- killall -9 longtest
+	- pidkill $$ENSTORE_DIR/test/longtest_pids
+	- for d in 1 2 3 4 5 6 7 8 9 ; do \
+		pidkill $$d/loop_longtest.pids ; \
+	done
+
+clean:
+	- pidkill $$ENSTORE_DIR/test/longtest_pids
 	@ $(ENSTORE_DIR)/bin/enstoreClean
 	for d in 1 2 3 4 5 6 7 8 9 data ; do rm -rf $$d ; done
 	rm -f *.jou
