@@ -126,9 +126,9 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.get_work=0
         self.max_work=-1
         self.volume = 0
-	self.view = 0
-	self.insertvol = 0
-	self.ejectvol = 0
+	self.update = 0
+	self._import = 0
+	self._export = 0
 	self.viewattrib = 0
         self.drive = 0
         generic_client.GenericClientInterface.__init__(self)
@@ -136,8 +136,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["maxwork=","view=","get_work","insertvol",
-	        "ejectvol"]
+               ["maxwork=","update=","get_work","import",
+	        "export"]
     #  define our specific help
     def parameters(self):
         if 0: print self.keys() #lint fix
@@ -146,7 +146,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # parse the options like normal but make sure we have other args
     def parse_options(self):
         interface.Interface.parse_options(self)
-	if self.insertvol:
+	if self._import:
             if len(self.args) < 2:
 	        self.missing_parameter("media_changer")
                 self.print_help()
@@ -158,7 +158,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
 		if len(self.args) > 2:
 		    for pos in range(2,len(self.args)):
 		        self.ioarea.append(self.args[pos])
-	elif self.ejectvol:
+	elif self._export:
             if len(self.args) < 3:
 	        self.missing_parameter("media_changer/media_type/volumeList")
                 self.print_help()
@@ -177,8 +177,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
             else:
                 self.media_changer = self.args[0]
         if (self.alive == 0) and (self.max_work==-1) and \
-           (self.get_work==0) and (self.view == 0) and \
-           (self.insertvol==0) and (self.ejectvol == 0) and \
+           (self.get_work==0) and (self.update == 0) and \
+           (self._import==0) and (self._export == 0) and \
 	   (self.viewattrib == 0):
             # bomb out if number of arguments is wrong
             self.print_help()
@@ -205,15 +205,15 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = mcc.alive(intf.media_changer, intf.alive_rcv_timeout,
                            intf.alive_retries)
-    elif intf.view:
+    elif intf.update:
         # get a volume clerk client
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
         v_ticket = vcc.inquire_vol(intf.view)
 	ticket=mcc.viewvol(v_ticket)
 	del vcc
-    elif intf.insertvol:
+    elif intf._import:
 	ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
-    elif intf.ejectvol:
+    elif intf._export:
         ticket=mcc.ejectvol(intf.media_type, intf.volumeList)
     elif intf.max_work  >= 0:
         ticket=mcc.MaxWork(intf.max_work)

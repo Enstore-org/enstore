@@ -254,12 +254,10 @@ class Interface:
                 self.vol = value
             elif opt == "--check" :
                 self.check = value
-            elif opt == "--view" :
-                self.view = value
-            elif opt == "--insertvol" :
-                self.insertvol = 1
-            elif opt == "--ejectvol" :
-                self.ejectvol = 1
+            elif opt == "--import" :
+                self._import = 1
+            elif opt == "--export" :
+                self._export = 1
             elif opt == "--new_library" :
                 self.new_library = value
             elif opt == "--read_only" :
