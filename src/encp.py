@@ -1241,7 +1241,7 @@ def receive_final_dialog(control_socket):
 def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
 
     encp_crc = 0
-    
+
     #Read/Write in/out the data to/from the mover and write/read it out to
     # file.  Also, total up the crc value for comparison with what was
     # sent from the mover.
@@ -1816,7 +1816,7 @@ def set_pnfs_settings(ticket):
     drive = "%s:%s" % (mover_ticket.get('device', 'Unknown'),
                        mover_ticket.get('serial_num','Unknown'))
     try:
-        t.get_file_family()
+        #t.get_file_family()
         p.get_bit_file_id()
         p.get_id()
 
@@ -2144,10 +2144,16 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
         tstring = '%s_elapsed_time' % work_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_time #--------------------------End
 
+        try:
+            delete_at_exit.register_bfid(done_ticket['fc']['bfid'])
+        except IndexError:
+            Trace.log(e_errors.INFO, "unable to register bfid")
+        
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
                       (work_ticket['outfile'],
                        time.time()-tinfo['encp_start_time']))
 
+        #Don't need these anymore.
         close_descriptors(control_socket, data_path_socket, in_fd)
 
         #Verify that everything is ok on the mover side of the transfer.
@@ -2203,11 +2209,11 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
             continue
         elif not e_errors.is_retriable(result_dict['status'][0]):
             return combine_dict(result_dict, work_ticket)
-        
 
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
         delete_at_exit.unregister(done_ticket['outfile']) #localname
+        delete_at_exit.unregister_bfid(done_ticket['fc']['bfid'])
 
         Trace.message(TRANSFER_LEVEL,
                       "File status after verification: %s   elapsed=%s" %
