@@ -11,6 +11,8 @@ import string
 import setpath
 import ftt_low
 
+ascii_error = ftt_low.cvar.ftt_ascii_error
+
 #grab all the constants, which start with "FTT_"
 
 for k in dir(ftt_low):
@@ -28,10 +30,11 @@ class FTTError(exceptions.Exception):
         self.strerror = cleanup(args[0])
         self.errno = args[1]
     def __str__(self):
-        return self.strerror
+        return ascii_error[self.errno]
 
-def raise_ftt():
-    err=ftt_low.ftt_get_error()
+def raise_ftt(err=None):
+    if err is None:
+        err=ftt_low.ftt_get_error()
     if err[1]!=0:
         raise FTTError(err)
     else:
@@ -127,6 +130,7 @@ class stat_buf:
     def __init__(self):
         self.b = ftt_low.ftt_alloc_stat()
 
+        
     def __del__(self):
         try:
             ftt_low.ftt_free_stat(self.b)
@@ -134,7 +138,8 @@ class stat_buf:
             pass
 
     def __getitem__(self, key):
-        return check(ftt_low.ftt_extract_stats(self.b, key), None)
+        r = ftt_low.ftt_extract_stats(self.b,key)
+        return r
 
     def dump(self, file=sys.stdout):
         return ftt_low.ftt_dump_stats(self.b, file)
