@@ -9,6 +9,7 @@ usage="
 ecmd start   (no options/arguments)
 ecmd ping    (no options/arguments)
 ecmd stop    (no options/arguments)
+ecmd restart (no options/arguments)
 
 ecmd encp    [--config_list --list --help ] inputfilename outputfilename
 
@@ -53,7 +54,7 @@ stat=0
 case $cmd in
   start|enstore-start)
     $ENSTORE_DIR/bin/enstore-start
-    sleep 2
+    sleep 1
     $ENSTORE_DIR/bin/enstore-start --ping
     stat=$?
     ;;
@@ -63,6 +64,13 @@ case $cmd in
     ;;
   stop|enstore-stop)
     $ENSTORE_DIR/bin/enstore-stop
+    stat=$?
+    ;;
+  restart)
+    $ENSTORE_DIR/bin/enstore-stop
+    $ENSTORE_DIR/bin/enstore-start
+    sleep 1
+    $ENSTORE_DIR/bin/enstore-start --ping
     stat=$?
     ;;
 
