@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 ###############################################################################
-# src/$RCSfile$   $Revision$
+#
+# $Id$
 #
 #########################################################################
 # Log Server.                                                           #
@@ -34,13 +35,12 @@ import os
 import time
 import string
 import glob
+import pwd
 
 #enstore imports
-import setpath
-
 import dispatching_worker
 import generic_server
-import event_relay_client
+#import event_relay_client
 import monitored_server
 import enstore_constants
 import event_relay_messages
@@ -55,7 +55,7 @@ import option
    recommended. It is assumed that the only one Log Server will serve the
    whole system.
 """
-MY_NAME = "log_server"
+MY_NAME = enstore_constants.LOG_SERVER   #"log_server"
 FILE_PREFIX = "LOG-"
 NO_MAX_LOG_FILE_SIZE = -1L
 
@@ -69,7 +69,8 @@ class Logger(  dispatching_worker.DispatchingWorker
 
     def __init__(self, csc, test=0):
 	flags = enstore_constants.NO_LOG
-        generic_server.GenericServer.__init__(self, csc, MY_NAME, flags=flags)
+        generic_server.GenericServer.__init__(self, csc, MY_NAME, flags=flags,
+                                              function = self.handle_er_msg)
         self.repeat_count = 0
         self.index = 1
         self.last_message = ''
@@ -79,6 +80,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         #   exit if the host is not this machine
         keys = self.csc.get(MY_NAME)
         Trace.init(self.log_name)
+        Trace.set_log_func(self.log_func)  #Log function for itself.
 	self.alive_interval = monitored_server.get_alive_interval(self.csc,
 								  MY_NAME,
 								  keys)
@@ -109,9 +111,34 @@ class Logger(  dispatching_worker.DispatchingWorker
 	self.msg_type_keys = self.msg_type_logs.keys()
 	self.extra_logfiles = {}
 
+        # setup the communications with the event relay task
+        self.erc.start([event_relay_messages.NEWCONFIGFILE])
 	# start our heartbeat to the event relay process
 	self.erc.start_heartbeat(enstore_constants.LOG_SERVER, 
 				 self.alive_interval)
+
+    #This is the function for Trace.log to use from withing the log server.
+    def log_func( self, time, pid, name, args ):
+        #Even though this implimentation of log_func() does not use the time
+        # parameter, others will.
+        __pychecker__ = "unusednames=time"
+
+        #Note: The code to create the variable ticket was taken from
+        # the log client.
+
+        severity = args[0]
+	msg      = args[1]
+        if severity > e_errors.MISC:
+            msg = '%s %s' % (severity, msg)
+            severity = e_errors.MISC
+            
+	msg = '%.6d %.8s %s %s  %s' % (pid, pwd.getpwuid(os.getuid())[0],
+				       e_errors.sevdict[severity], name, msg)
+	ticket = {'work':'log_message', 'message':msg}
+
+        #Use the same function to write to the log file as it uses for
+        # everythin else.
+        self.log_message(ticket)
 
     def open_extra_logs(self, mode='w'):
 	for msg_type in self.msg_type_keys:
