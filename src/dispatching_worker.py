@@ -15,8 +15,10 @@ import fcntl
 import FCNTL
 import copy
 import types
+import rexec
 
 #enstore imports
+import hostaddr
 import cleanUDP
 import Trace
 import e_errors
@@ -28,15 +30,12 @@ DEFAULT_TTL = 60 #One minute lifetime for child processes
 # Note that the get_request actually read the data from the socket
 
 class DispatchingWorker:
-
     
     def __init__(self, server_address):
         self.socket_type = socket.SOCK_DGRAM
         self.max_packet_size = 16384
         self.rcv_timeout = 60.   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
-        
-
         self.server_address = server_address
         self.read_fds = []    # fds that the worker/server also wants watched with select
         self.write_fds = []   # fds that the worker/server also wants watched with select
@@ -56,10 +55,15 @@ class DispatchingWorker:
                                     self.socket_type)
         self.custom_error_handler = None
 
+        self.rexec = rexec.RExec()
+        
         # set this socket to be closed in case of an exec
         fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
         self.server_bind()
 
+    def r_eval(self, stuff):
+        return self.rexec.r_eval(stuff)
+    
     def add_interval_func(self, func, interval, one_shot=0):
         now = time.time()
         self.interval_funcs[func] = [interval, now, one_shot]
@@ -182,6 +186,9 @@ class DispatchingWorker:
                     self.interval_funcs[func][1] =  now
                 func()
 
+        if request is None: #Invalid request sent in
+            return
+        
         if request == '':
             # nothing returned, must be timeout
             self.handle_timeout()
@@ -255,7 +262,6 @@ class DispatchingWorker:
                 if self.callback.has_key(fd) and self.callback[fd]:
                     self.callback[fd](fd)
 
-
             #now handle other incoming requests
             for fd in r:
                 if fd in self.read_fds and self.callback[fd]==None: #XXX this is special-case code,
@@ -275,23 +281,23 @@ class DispatchingWorker:
                     request= (msg,())                    #             if so read it
                     self.remove_select_fd(fd)
                     os.close(fd)
-
                     return request
                 elif fd == self.server_socket:
-                    req = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
+                    req,addr = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
+                    if not hostaddr.allow(addr):
+                        Trace.log(e_errors.ERROR, "attempted connection from disallowed host %s" % (addr[0],))
+                        request = None
                     gotit = 1
-                    request,inCRC = eval(req[0])
+                    request,inCRC = self.r_eval(req)
                     # calculate CRC
                     crc = checksum.adler32(0L, request, len(request))
                     if (crc != inCRC) :
-                        Trace.trace(6,"handle_request - bad CRC inCRC="+repr(inCRC)+
-                                    " calcCRC="+repr(crc))
                         Trace.log(e_errors.INFO, "BAD CRC request: "+request)
                         Trace.log(e_errors.INFO,
                                   "CRC: "+repr(inCRC)+" calculated CRC: "+repr(crc))
-                        request=""
+                        request=None
 
-        return (request, req[1])
+        return (request, addr)
 
     def handle_timeout(self):
         # override this method for specific timeout hadling
@@ -309,7 +315,7 @@ class DispatchingWorker:
     def process_request(self, request, client_address):
         # ref udp_client.py (i.e. we may wish to have a udp_client method
         # to get this information)
-        idn, number, ticket = eval(request)
+        idn, number, ticket = self.r_eval(request)
         self.reply_address = client_address
         self.client_number = number
         self.current_id = idn
