@@ -1,0 +1,26 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# sbin/$RCSfile$  $Revision$
+
+# script to dump *ftt* drive stats
+# this should not effect drive position
+
+USAGE="`basename $0` <device>"
+
+if [ ! "${1:}" ];then
+    echo "$USAGE"
+    exit
+fi
+
+export FTT_TAPE
+FTT_TAPE=$1
+
+$FTT_DIR/bin/ftt_test <<EOD
+ftt_open
+ftt_get_stats
+ftt_dump_stats
+ftt_close
+EOD
+
