@@ -90,6 +90,12 @@ def get_media():
 def get_html_dir():
     return get_from_config_file("inquisitor", "html_file", DEFAULTHTMLDIR)
 
+# return a dictionary of the configuration server host and port
+def get_config_server_info():
+    dict = {'port' : option.default_port()}
+    dict['host'] = option.default_host()
+    return dict
+
 def get_www_host():
     default = get_config_server_info()['host']
     return get_from_config_file("inquisitor", "www_host", default)
@@ -130,12 +136,6 @@ def override_to_status(override):
 	override = override[0]
     index = enstore_constants.SAAG_STATUS.index(override)
     return enstore_constants.REAL_STATUS[index]
-
-# return a dictionary of the configuration server host and port
-def get_config_server_info():
-    dict = {'port' : option.default_port()}
-    dict['host'] = option.default_host()
-    return dict
 
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
