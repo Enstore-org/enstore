@@ -42,7 +42,7 @@ except:
 f = open(thefile+".tapes","r")
 o = open(thefile+".data", "w")
 
-when = None
+when = t_when = None # to make lint happy
 start = 0
 tot = 0
 gigs = 0
