@@ -551,7 +551,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         c = db.join(self.dict, [lc, vc])
         while 1:
             label,v = c.next()
-            print "CGW2", label, v
             if not label:
                 break
             if v["user_inhibit"] != ["none",  "none"]:
@@ -620,7 +619,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         volume_family = ticket['volume_family']
         first_found = ticket["first_found"]
         wrapper_type = ticket["wrapper"]
-        print "CGW1: lib='%s' fam='%s' wrap='%s'"%(library,volume_family,wrapper_type)
+
         # go through the volumes and find one we can use for this request
         # first use exact match
         vol = self.find_matching_volume(library, volume_family, volume_family,
