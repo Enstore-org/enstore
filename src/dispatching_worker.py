@@ -44,7 +44,6 @@ def dodebug(a,b):
 import signal
 signal.signal(3,dodebug)
 
-verbose = 0 #CGW XXX
 
 # check for any children that have exitted (zombies) and collect them
 def collect_children():
@@ -82,6 +81,7 @@ class DispatchingWorker:
 	self.server_socket = cleanUDP.cleanUDP (self.address_family,
                                     self.socket_type)
         self.custom_error_handler = None
+
         # set this socket to be closed in case of an exec
         fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
         self.do_collect = 1 # allow clients to override the "collect_children"
@@ -161,7 +161,6 @@ class DispatchingWorker:
 
     # a server can add an fd to the server_fds list
     def add_select_fd(self, fd, write=0, callback=None):
-        if verbose: print "add fd", fd, ['read','write'][write], callback
         if fd is None:
             return
         if write:
@@ -173,7 +172,6 @@ class DispatchingWorker:
         self.callback[fd]=callback
         
     def remove_select_fd(self, fd):
-        if verbose: print "disable fd", fd
         if fd is None:
             return
 
