@@ -15,7 +15,7 @@ def main(argv):
     
 
     d = db.DbTable("volume", dbHome, jouHome, ['library', 'file_family'])
-    bfid_db=bfid_db.BfidDb(dbHome)
+    bdb=bfid_db.BfidDb(dbHome)
 
     d.cursor('open')
     vol,data = d.cursor('first')
@@ -28,9 +28,9 @@ def main(argv):
             del data['bfids']
             #update the database
             d[vol]=data
-            bfid_db.init_dbfile(vol)
+            bdb.init_dbfile(vol)
             for bfid in bfids:
-                bfid_db.add_bfid(vol,bfid)
+                bdb.add_bfid(vol,bfid)
         vol,data=d.cursor('next')
 
 if __name__=='__main__':
