@@ -62,6 +62,9 @@ def move_file(input_filename, output_filename):
             #If the destination is a directory, append the filename.
             output_filename = os.path.join(output_filename,
                                            os.path.basename(input_filename))
+        elif input_filename == output_filename:
+            #If the file move is to itself, don't error.
+            pass
         else:
             print_error(e_errors.USERERROR, "Output file already exists.")
             sys.exit(1)
@@ -274,8 +277,20 @@ def move_file(input_filename, output_filename):
         sys.stderr.flush()
         sys.exit(1)
 
-    os.close(in_fd)
-    os.close(out_fd)
+    if in_fd:
+        try:
+            os.close(in_fd)
+        except OSError:
+            print_error(e_errors.OSERROR,
+                        "Error closing %s." % input_filename)
+            sys.stderr.flush()
+    if out_fd:
+        try:
+            os.close(out_fd)
+        except OSError:
+            print_error(e_errors.OSERROR,
+                        "Error closing %s." % output_filename)
+            sys.stderr.flush()
 
     #If we got here then the new file is in place and we need to take
     # this new file off of the list of cleanup deletions.
@@ -283,8 +298,11 @@ def move_file(input_filename, output_filename):
 
     try:
         if in_fd:
-           #Remove the orginal file.
-           os.remove(input_filename)
+            #Remove the orginal file.  Also, this remove the pnfs layers
+            # before the actual file is deleted.  If os.remove() were to be
+            # used, the layer information is "trashed" and delfile would mark
+            # the moved file as deleted.
+            p.rm()
     except OSError:
         print_error(e_errors.OSERROR,
                     "Unable to remove original file %s." % input_filename)
