@@ -167,10 +167,10 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          MALFORMED,
                          VERSION_MISMATCH, #ENCP to old
                          WRONG_PNFS_FILE_SIZE,
-                         LOCKED,           # Library is locked for the access
-                         NOREAD,           # Library is locked for the read access
-                         NOWRITE,           # Library is locked for the write access
-
+                         LOCKED,  # Library is locked for the access
+                         NOREAD,  # Library is locked for the read access
+                         NOWRITE, # Library is locked for the write access
+                         NOSPACE,
                          )
 
 raise_alarm_errors = ( CRC_ERROR,
