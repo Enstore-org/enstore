@@ -193,7 +193,7 @@ class VolumeClerkMethods(DispatchingWorker) :
                     waste = left/totb*100.
                 print k,"is now full, bytes remaining = ",left,\
                       "wasted=",waste,"%"
-                dict[repr(k)] = v
+                dict[k] = v
                 continue
             vetoed = 0
             extl = v["external_label"]
