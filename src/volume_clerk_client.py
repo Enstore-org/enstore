@@ -360,7 +360,7 @@ class VolumeClerkClient(generic_client.GenericClient,
             if print_list:
                 print vlist
                 
-        ticket['volumes'] = volumes.get('volumes',{})
+        ticket['volumes'] = volumes.get('volumes',[])
         return ticket
 
     # rebuild sg scounts
@@ -708,6 +708,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.clear = ""
         self.backup = 0
         self.vols = 0
+        self.pvols = 0
+        self.just = 0
         self.labels = 0
         self.in_state = 0
         self.next = 0
@@ -1009,6 +1011,16 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.USER},
+        option.PVOLS:{option.HELP_STRING:"list all problem volumes",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER},
+        option.JUST:{option.HELP_STRING:"used with --pvols to list problem",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER},
         option.REBUILD_SG_COUNT:{
                      option.HELP_STRING:"rebuild sg count db",
                      option.DEFAULT_VALUE:option.DEFAULT,
@@ -1069,6 +1081,43 @@ def do_work(intf):
             key = None
             in_state = None 
         ticket = vcc.get_vols(key, in_state, not_cond)
+    elif intf.pvols:
+        ticket = vcc.get_vols(print_list=0)
+	problem_vol = {}
+	for i in ticket['volumes']:
+            if i['volume'][:-8] != '.deleted':
+                for j in [0, 1]:
+                    if i['system_inhibit'][j] != 'none':
+                        if problem_vol.has_key(i['system_inhibit'][j]):
+                            problem_vol[i['system_inhibit'][j]].append(i)
+                        else:
+                            problem_vol[i['system_inhibit'][j]] = [i]
+
+        if intf.just:
+            interested = intf.args
+        else:
+            interested = problem_vol.keys()
+        for k in problem_vol.keys():
+            if k in interested:
+                output = []
+                print '====', k
+                for v in problem_vol[k]:
+                    si0t = '*'
+                    si1t = '*'
+                    if v.has_key('si_time'):
+                        if v['si_time'][0] > 0:
+                            si0t = time.strftime("%m%d-%H%M",
+                                   time.localtime(v['si_time'][0]))
+                        if v['si_time'][1] > 0:
+                            si1t = time.strftime("%m%d-%H%M",
+                                   time.localtime(v['si_time'][1]))
+                    output.append("%-10s %012s %9s %12s %9s"%(
+                            v['volume'],
+                            v['system_inhibit'][0], si0t,
+                                v['system_inhibit'][1], si1t,))
+                output.sort()
+                for i in output:
+                    print i
     elif intf.labels:
         ticket = vcc.get_vol_list()
         if ticket['status'][0] == e_errors.OK:
