@@ -48,7 +48,9 @@ def go():
 		    # file prefix to the name of the entered logfile
 		    break
 	    else:
-		if not logfile[0:4] == log_server.FILE_PREFIX:
+		# assume that if the first character of the log file is a nubmer, then
+		# we need to add the file prefix.
+		if logfile[0] in string.digits:
 		    logfile = "%s%s"%(log_server.FILE_PREFIX, logfile)
         else:
             # the user did not enter a logfile name assume all
