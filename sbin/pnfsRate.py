@@ -136,7 +136,7 @@ if __name__=="__main__":
                                 parts = string.split(lssizecmd)
                                 node = parts[0]
                                 location = parts[1]
-                                command = "enrsh "+node+" ' ls -alsF "+location+"'"
+                                command = "enrsh "+node+" ' ls -alsFh "+location+"'"
                                 #print 'command=',command
                                 sizes = os.popen(command,'r').readlines()
                                 print '<h1><center>PNFS Database Sizes: %s %s</center><h1>' % (parts,tod())
