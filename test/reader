@@ -1,13 +1,20 @@
 #!/bin/sh
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-usage="USAGE: $0 base_read_dir_path"
+usage="USAGE: $0 base_read_dir_path sleep_time"
 
 if [ -n "${1-}" ] ; then
     base=$1
 else
     echo "$usage"
     exit 1
+fi
+
+if [ -n "${2-}" ] ; then
+    sleep_time=$2
+else
+    echo "$usage"
+    exit 2
 fi
 
 set -u  # force better programming and ability to use check for not set
@@ -19,10 +26,10 @@ read_list=./reader_list.$$
 
 while /bin/true; do
     rm -f reader_list*
-    if [ -r $ENSTORE_DIR/test/readstop ] ; then exit 2; fi
+    if [ -r readstop ] ; then exit 2; fi
     find $base/ -type f -print >> $read_list
     cat $read_list | while read f; do
-        if [ -r $ENSTORE_DIR/test/readstop ] ; then exit 2; fi
+        if [ -r readstop ] ; then exit 2; fi
         fb=`basename $f`
         fo=$fb.out.$$
         fc=$ENSTORE_DIR/test/data/`echo $f | eval sed -e s@$base/@@ | sed -e s/__.*//`
@@ -39,6 +46,7 @@ while /bin/true; do
         else
            rm -f $fo
         fi
+        sleep $sleep_time
     done
     if [ $? -eq 2 ] ; then
        echo "FINISHED $base"

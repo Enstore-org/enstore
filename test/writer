@@ -1,7 +1,7 @@
 #!/bin/sh
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-usage="USAGE: $0 base_write_dir_path write_file_list"
+usage="USAGE: $0 base_write_dir_path write_file_list sleep_time"
 
 if [ -n "${1-}" ] ; then
     base=$1
@@ -17,6 +17,13 @@ else
     exit 2
 fi
 
+if [ -n "${3-}" ] ; then
+    sleep_time=$3
+else
+    echo "$usage"
+    exit 3
+fi
+
 set -u  # force better programming and ability to use check for not set
 
 p=`uname -n``echo $$`
@@ -24,14 +31,14 @@ p=`uname -n``echo $$`
 
 while /bin/true; do
     cat $write_list | while read f; do
-        if [ -r $ENSTORE_DIR/test/writestop ] ; then exit 2; fi
+        if [ -r writestop ] ; then exit 2; fi
         fb=`basename $f`
         output=$base/${fb}__`date +"%b%d%H%M%S"`$p
         ecmd encp $f $output
         if [ $? -eq 2 ] ; then
             exit 2
         fi
-        sleep 10
+        sleep $sleep_time
     done
     if [ $? -eq 2 ] ; then
        echo "FINISHED $base"

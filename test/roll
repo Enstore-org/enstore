@@ -2,10 +2,6 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
-rm -f longstop
-rm -f readstop
-rm -f writestop
-
 writem=1
 if [ "${1:-}" = "-nowrite" ] ; then
     shift
@@ -37,15 +33,22 @@ else
   subdirs="$3"
 fi
 
+if [ -z "${4-}" ] ; then
+  sleep_time="10"
+else
+  sleep_time="$4"
+fi
 
 if [ $writem -eq 1 ] ; then
    for d in $subdirs; do
-      (cd $d; echo starting writer in `pwd`; rm -f writer.output; ./writer $place $datain >writer.output 2>&1 &)
+      (cd $d; echo starting writer. directory: `pwd`,  files to write: $datain,  next request delay: $sleep_time; \
+       rm -f writestop writer.output; ./writer $place $datain $sleep_time >writer.output 2>&1 &)
    done
 fi
 
 if [ $readem -eq 1 ] ; then
    for d in $subdirs; do
-      (cd $d; echo starting reader in `pwd`; rm -f reader.output; ./reader $place  >reader.output 2>&1 &)
+      (cd $d; echo starting reader. directory:`pwd`, next request delay: $sleeptime; \
+       rm -f readstop reader.output; ./reader $place $sleep_time >reader.output 2>&1 &)
    done
 fi
