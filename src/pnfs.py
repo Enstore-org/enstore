@@ -1999,6 +1999,17 @@ class File:
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid = finfo
 					self.drive = "unknown:unknown"
+				else:	# missing layer 4
+					self.volume = ""
+					self.location_cookie = ""
+					self.size = 0
+					self.file_family = ""
+					self.volmap = ""
+					self.pnfs_id = ""
+					self.pnfs_vid = ""
+					self.bfid = ""
+					self.drive = ""
+					self.p_path = self.path
 					
 				# if self.p_path != self.path:
 				#	raise 'DIFFERENT_PATH'
