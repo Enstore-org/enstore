@@ -466,8 +466,10 @@ class EnFile:
             os.remove(self.file_name)
         else:
             if pts_dir:
-                # move these files somewhere
-                os.rename(self.file_name, pts_dir)
+                # move these files somewhere, do a copy and remove in case we
+                # are moving across disks
+                os.system("cp %s %s"%(self.file_name, pts_dir))
+                os.remove(self.file_name)
 
 class EnStatusFile(EnFile):
 

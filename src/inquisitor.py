@@ -248,10 +248,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 self.loghtmlfile.write(self.http_log_file_path, logfiles,
                                        log_dirs, self.www_host)
                 self.loghtmlfile.close()
-                # now we must move the new file to it's real name
-                os.rename("%s/%s%s"%(self.logc.log_dir, LOGHTMLFILE_NAME,
-                                     SUFFIX),
-                          "%s/%s"%(self.html_dir, LOGHTMLFILE_NAME))
+                # now we must move the new file to it's real name. do a copy
+                # and then a delete as this will work across disks
+                os.system("cp %s/%s%s %s/%s"%(self.logc.log_dir,
+                                              LOGHTMLFILE_NAME,
+                                              SUFFIX, self.html_dir,
+                                              LOGHTMLFILE_NAME))
+                os.remove("%s/%s%s"%(self.logc.log_dir, LOGHTMLFILE_NAME,
+                                     SUFFIX))
 
     # update the file that contains the configuration file information
     def make_config_html_file(self):
