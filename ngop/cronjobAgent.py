@@ -107,9 +107,9 @@ class CJFunc(Worker):
            mins = self.setTime(m, 60)
            return 60*24*(self.calcuTime(dm, 31)-1) + 60*(hrs-1) + mins
         elif dw == '*' and dm == '*':
-           hrs = setTime(h, 24)
-           mins = setTime(m, 60)
-           return 60*24*31*(calcuTime(my,12)-1) + 60*24*(-1) + 60*(hrs-1) + mins
+           hrs = self.setTime(h, 24)
+           mins = self.setTime(m, 60)
+           return 60*24*31*(self.calcuTime(my,12)-1) + 60*24*(-1) + 60*(hrs-1) + mins
         elif my == "*" and dm == "*":
            hrs = self.setTime(h, 24)
            mins = self.setTime(m, 60)
