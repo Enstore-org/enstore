@@ -507,7 +507,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 sgc = self.sgdb.get_sg_counter(library, 'none')
                 if sgc < self.common_blank_low['warning']:
                     msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
-                    Trace.alarm(e_error.WARNING, msg)
+                    Trace.alarm(e_errors.WARNING, msg)
                 if sgc < self.common_blank_low['alarm']:
                     msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
                     Trace.alarm(e_errors.ERROR, msg)
@@ -702,7 +702,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         sgc = self.sgdb.get_sg_counter(library, 'none')
         if sgc < self.common_blank_low['warning']:
             msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
-            Trace.alarm(e_error.WARNING, msg)
+            Trace.alarm(e_errors.WARNING, msg)
         if sgc < self.common_blank_low['alarm']:
             msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
             Trace.alarm(e_errors.ERROR, msg)
@@ -1331,7 +1331,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     sgc = self.sgdb.get_sg_counter(library, osg)
                     if sgc < self.common_blank_low['warning']:
                         msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
-                        Trace.alarm(e_error.WARNING, msg)
+                        Trace.alarm(e_errors.WARNING, msg)
                     if sgc < self.common_blank_low['alarm']:
                         msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
                         Trace.alarm(e_errors.ERROR, msg)
