@@ -73,6 +73,7 @@ www_new: pics
 	mkdir $(WWW_NEW)
 	@- cp ../operations/d0en/consoles.html ./d0en_consoles.html
 	@- cp ../operations/d0en/operations.html ./d0en_operations.html
+	@- cp ../operations/d0en/check.html ./d0en_check.html
 	../moveAndAddButton.pl $(WWW_NEW) `justfiles`
 
 PS_pics: $(PIC_PS_FILES)
