@@ -54,7 +54,7 @@ def get_client() :
 
 
 def wait_rsp( sock, address, rcv_timeout ):
-    # init return vals
+
     reply,server=None,None
 
     r, w, x, rcv_timeout = cleanUDP.Select( [sock], [], [sock], rcv_timeout)
@@ -83,7 +83,6 @@ class UDPClient:
         if pid != self.pid:  #recompute ident and get new sockets each time we fork
             self.host, self.port, self.socket = get_client()
             self.pid = pid
-            ##Trace.log(e_errors.INFO, "child UDP client got new sockets")
             self._ident = self.mkident()
         return self._ident 
 
