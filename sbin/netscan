@@ -56,7 +56,7 @@ UNAME="/bin/uname"
 PS="/bin/ps"
 CMP="/usr/bin/cmp"
 ECHO="/bin/echo"
-if [ -e "/usr/local/bin/lsof" ]
+if [ -x /usr/local/bin/lsof ]
 then
     LSOF="/usr/local/bin/lsof"
 else
@@ -68,9 +68,9 @@ WC="/usr/bin/wc"
 DATE="/bin/date"
 SORT="/bin/sort"
 UNIQ="/usr/bin/uniq"
-if [ -r /usr/bin/cut ]; then
+if [ -x /usr/bin/cut ]; then
   CUT="/usr/bin/cut"
-elif [ -r /bin/cut ]; then
+elif [ -x /bin/cut ]; then
   CUT="/bin/cut"
 else
   echo "Can not find cut"
@@ -123,6 +123,25 @@ getfilemode() { set `stat -t $1 2>/dev/null`
 		fi
 	      }
 
+# function to check the mode of a file or device
+check_mode() { if [ ! -r $1 ]; then
+		 msg1="BAD CONFIGURATION: $1 does not exist"
+		 logit "$msg1"
+		 if [ $ALARM -eq 1 ]; then
+		    enstore alarm --raise --severity "A" --root-error "$msg1"
+		 fi
+	       else
+		 fmode=`getfilemode $1`
+		 if [ $((fmode & 0777)) -ne $(($2)) ]; then
+		    [ -e /PRODUCTION ] && chmod $2 $1
+		    msg1="BAD CONFIGURATION: Changing $1 mode ($fmode to $2)"
+		    logit "$msg1"
+		 elif [ $QUIET -ne 1 ]; then
+		    logit "$1 mode is $2, ok"
+		 fi
+	       fi
+	     }
+
 # function to check the owner of a file or directory
 check_owner() { theUsr=${2:-enstore}
 		theGrp=${3:-$theUsr}
@@ -135,7 +154,7 @@ check_owner() { theUsr=${2:-enstore}
 		else
 		  fowner=`ls -ld $1 | $AWK '{print $3"."$4}'`
 		  if [ "$fowner" != "${theUsr}.${theGrp}" ]; then
-		     chown "${theUsr}.${theGrp}" $1
+		     [ -e /PRODUCTION ] && chown "${theUsr}.${theGrp}" $1
 		     msg1="BAD CONFIGURATION: Changing $1 owner ($fowner to ${theUsr}.${theGrp})"
 		     logit "$msg1"
 		  elif [ $QUIET -ne 1 ]; then
@@ -166,18 +185,11 @@ right_file() { if [ ! -r $1 -o ! -r $2 ]; then
 		  if [ $QUIET -ne 1 ]; then
 		     logit "$2 matches $1, ok"
 		  fi
-		  if [ $# -eq 3 ]; then
-		     fmode=`getfilemode $2`
-		     if [ $((fmode & 0x7fff)) -ne $(($3)) ]; then
-			chmod $3 $2
-			msg1="BAD CONFIGURATION: Changing $2 mode ($fmode to $3)"
-			logit "$msg1"
-		     elif [ $QUIET -ne 1 ]; then
-			logit "$2 mode is $3, ok"
-		     fi
-		  fi
-		  if $ECHO $2 | $EGREP '^/(etc|root)'; then
+		  if $ECHO $2 | $EGREP '^/(etc|root)' 1>/dev/null; then
 		     check_owner $2 root
+		  fi
+		  if [ $# -eq 3 ]; then
+		     check_mode $2 $3
 		  fi
 	       fi
 	     }
@@ -212,7 +224,7 @@ check_file() { thefile=${2:-/var/spool/cron/root}
 #
 allow() { tt=${1:-UNKNOWN}
 	  local psline=""
-	  for i in `$ECHO -e -n $ALLOW | $AWK -F, -v TT=$tt -v CMD=$command -v REST="$rest" '$1 ~ TT && $2 == CMD && REST ~ $3 && REST ~ $4 {print "a=" $2 ";b=" $3 ";c=" $4 ";p=" $5}'`; do
+	  for i in `$ECHO -e -n $ALLOW | $AWK -F, -v TT=$tt -v CMD=$command -v REST="$rest" '$1 ~ TT && $2 == CMD && REST ~ $3 && REST ~ $4 {print "a=\"" $2 "\";b=\"" $3 "\";c=\"" $4 "\";p=\"" $5 "\""}'`; do
 	    eval $i
 	    if [ $p != x ]; then
 	       if [ -z "$psline" ]; then
@@ -256,9 +268,9 @@ fi
 # We allow these everywhere
 ALLOW_BASE="
 	LISTEN,$INETD,:ftp,TCP,x\n
-	LISTEN,$INETD,:telnet,TCP,x\n
 	LISTEN,$INETD,:kshell,TCP,x\n
 	LISTEN,$INETD,:klogin,TCP,x\n
+	LISTEN,$INETD,:telnet,TCP,x\n
 	LISTEN,$INETD,:eklogin,TCP,x\n
 	LISTEN,$INETD,:netperf,TCP,x\n
 	LISTEN,python,:,TCP,$ENSTORE/(bin|src)|/home/petravic/Zope|ftpcp.py\n
@@ -270,10 +282,6 @@ ALLOW_BASE="
 	LISTEN,grep,inet,TCP,MSG_TYPE|enstore\n
 	LISTEN,sort,inet,TCP,MSG_TYPE|enstore\n
 	LISTEN,ALARM_CLIENT,inet,TCP,x\n
-	UDP,python,:7499,UDP,$ENSTORE/src/monitor_server.py\n
-	UDP,python,:,UDP,$ENSTORE/(bin/encp|src/(monitor_server|volume_assert|mover).py|ngop/cronjobAgent.py)|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py\n
-	UDP,xntpd,:ntp,UDP,x\n
-	UDP,tee,:,UDP,tee#/dev/tty\n
 	TCP,xemacs,:x11,TCP,x\n
 	TCP,rsh,:kshell,TCP,x\n
 	TCP,rsh,:,TCP,/usr/krb5/bin/rsh\n
@@ -281,30 +289,34 @@ ALLOW_BASE="
 	TCP,kshd,:,TCP,kshd#kshd#-5c\n
 	TCP,klogind,:eklogin,TCP,x\n
 	TCP,telnetd,:telnet,TCP,telnetd#-Pa#valid\n
-	TCP,python,:,TCP,$ENSTORE/(bin/encp|src/monitor_server|mover).py\n
 	TCP,netserver,TCP,:netperf,x\n
+	TCP,python,:,TCP,$ENSTORE/(bin/encp|src/(encp|monitor_server).py\n
+	UDP,python,:,UDP,$ENSTORE/(bin/encp|src/(encp|monitor_server|volume_assert).py|ngop/cronjobAgent.py)|/local/ups/prd/ngop/v.*/ma/PlugInAgent.py\n
+	UDP,python,:7499,UDP,$ENSTORE/src/monitor_server.py\n
+	UDP,xntpd,:ntp,UDP,x\n
+	UDP,tee,:,UDP,tee#/dev/tty\n
 "
 #	LISTEN,autorpm,:,TCP,perl#/usr/sbin/autorpm\n
 
-# Extra for srv5
-ALLOW_SRV5="$ALLOW_BASE
-	LISTEN,portmap,:sunrpc,TCP,x\n
+# Extra for console servers
+ALLOW_CONS="$ALLOW_BASE
 	LISTEN,conserver,:console,TCP,x\n
 	LISTEN,conserver,:,TCP,conserver#-d\n
 	LISTEN,X,:x11,TCP,x\n
-	UDP,portmap,:sunrpc,UDP,x\n
 	TCP,console,:console,TCP,x\n
 "
 
-# Extra for srv3
-ALLOW_SRV3="$ALLOW_SRV5
+# Extra for srv3 - console + nfs server
+ALLOW_SRV3="$ALLOW_CONS
 	LISTEN,rpc.mount,:,TCP,rpc.mountd\n
 	LISTEN,rpc.nfsd,:(nfs|2049),TCP,x\n
+	LISTEN,portmap,:sunrpc,TCP,x\n
 	UDP,rpc.mount,:mount,UDP,x\n
 	UDP,rpc.nfsd,:(nfs|2049),UDP,x\n
+	UDP,portmap,:sunrpc,UDP,x\n
 "
 
-# Extra for srv2
+# Extra for srv2 - web server
 ALLOW_SRV2="$ALLOW_BASE
 	LISTEN,httpd,:http,TCP,/local/ups/prd/apache/\n
 	LISTEN,mv,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,mv\n
@@ -312,24 +324,34 @@ ALLOW_SRV2="$ALLOW_BASE
 	LISTEN,grep,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,grep\n
 	LISTEN,sort,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sort\n
 	LISTEN,python,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,$ENSTORE/src/inquisitor.py\n
+	LISTEN,portmap,:sunrpc,TCP,x\n
+	UDP,portmap,:sunrpc,UDP,x\n
 "
-
 #	LISTEN,sendmail,:smtp,TCP,x\n
 
-# Extra for srv1
+# Extra for srv1 - pnfs server
 ALLOW_SRV1="$ALLOW_BASE
-	LISTEN,portmap,:sunrpc,TCP,x\n
 	LISTEN,java,:,TCP,/home/enstore/dcache/run|[java]\n
+	LISTEN,portmap,:sunrpc,TCP,x\n
+	UDP,portmap,:sunrpc,UDP,x\n
 "
 
-# Extra for srv0
-ALLOW_SRV0="$ALLOW_BASE
-	LISTEN,postmaste,:(postgres|5432|8076),TCP,x\n
+# Extra for postgres db servers
+ALLOW_PGDB="$ALLOW_BASE
+	LISTEN,postmaste,:(postgres|5432|8076|8888),TCP,x\n
 "
 
-# Extra for d0ensrv2
-ALLOW_DSRV2="$ALLOW_SRV2
-	LISTEN,mirror,d0ensrv2p.fnal.gov:,TCP,mirror#logs:adic2.fnal.gov\n
+# Extra for adic (portmap is also needed for dasadmin)
+ALLOW_ADIC="$ALLOW_BASE
+	LISTEN,dasadmin,:663,TCP,x\n
+	LISTEN,dasadmin,:,TCP,dasadmin\n
+	LISTEN,portmap,:sunrpc,TCP,x\n
+	UDP,portmap,:sunrpc,UDP,x\n
+"
+
+# Extra for d0ensrv4 - makes stk and adic calls
+ALLOW_DSRV4="$ALLOW_ADIC
+	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
 "
 
 # Extra for d0ensrv3
@@ -337,28 +359,34 @@ ALLOW_DSRV3="$ALLOW_SRV3
 	LISTEN,perl,d0ensrv3p.fnal.gov:,TCP,mirror#everything:adic2.fnal.gov\n
 "
 
-# Extra for d0ensrv4 - portmapper is needed for adic calls
-ALLOW_DSRV4="$ALLOW_BASE
-	LISTEN,portmap,:sunrpc,TCP,x\n
-	LISTEN,dasadmin,:663,TCP,x\n
-	LISTEN,dasadmin,:,TCP,dasadmin\n
+# Extra for d0ensrv2
+ALLOW_DSRV2="$ALLOW_SRV2
+	LISTEN,mirror,d0ensrv2p.fnal.gov:,TCP,mirror#logs:adic2.fnal.gov\n
+"
+
+# Extra for stkensrv4 - makes stk and adic calls
+ALLOW_SSRV4="$ALLOW_ADIC
 	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
 "
 
-# Extra for stkensrv2
+# Extra for stkensrv2 - nfs server
 ALLOW_SSRV2="$ALLOW_SRV2
-	LISTEN,portmap,:sunrpc,TCP,x\n
 	LISTEN,rpc.mount,:,TCP,rpc.mountd\n
+	LISTEN,rpc.nfsd,:(nfs|2049),TCP,x\n
+	UDP,rpc.mount,:mount,UDP,x\n
+	UDP,rpc.nfsd,:(nfs|2049),UDP,x\n
 "
 
-# Extra for stkensrv4
-ALLOW_SSRV4="$ALLOW_BASE
-	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
-"
-
-# Extra for cdfensrv4
+# Extra for cdfensrv4 - makes stk calls
 ALLOW_CSRV4="$ALLOW_BASE
 	LISTEN,rsh,:,TCP,fntt2#-l#acsss#echo\n
+"
+
+# Extra for movers
+ALLOW_MVR="$ALLOW_BASE
+	LISTEN,python,:,TCP,$ENSTORE/src/mover.py\n
+	TCP,python,:,TCP,$ENSTORE/src/mover.py\n
+	UDP,python,:,UDP,$ENSTORE/src/mover.py\n
 "
 
 # Extra for dcache
@@ -368,13 +396,9 @@ ALLOW_DCA="$ALLOW_BASE
 	LISTEN,java,:,TCP,/home/enstore/dcache/run/diskCache|[java]|dmg.cells.services.Domain\n
 "
 
-# Extra for movers
-ALLOW_MVR="$ALLOW_BASE
-"
-
 # make the choice
 case $node in
-       *srv0|rip1) ALLOW=$ALLOW_SRV0;  logit "Comparing to srv0";;
+       *srv0|rip1) ALLOW=$ALLOW_PGDB;  logit "Comparing to srv0";;
        *srv1|rip6) ALLOW=$ALLOW_SRV1;  logit "Comparing to srv1";;
     d0ensrv2)      ALLOW=$ALLOW_DSRV2; logit "Comparing to d0ensrv2";;
    stkensrv2)      ALLOW=$ALLOW_SSRV2; logit "Comparing to stkensrv2";;
@@ -384,8 +408,8 @@ case $node in
     d0ensrv4)      ALLOW=$ALLOW_DSRV4; logit "Comparing to d0ensrv4";;
    stkensrv4)      ALLOW=$ALLOW_SSRV4; logit "Comparing to stkensrv4";;
    cdfensrv4)      ALLOW=$ALLOW_CSRV4; logit "Comparing to cdfensrv4";;
-    *srv[57])      ALLOW=$ALLOW_SRV5;  logit "Comparing to srv5";;
-       *srv6)      ALLOW=$ALLOW_SRV0;  logit "Comparing to srv6";;
+    *srv[57])      ALLOW=$ALLOW_CONS;  logit "Comparing to srv5";;
+       *srv6)      ALLOW=$ALLOW_PGDB;  logit "Comparing to srv6";;
        *mvr*|rip*) ALLOW=$ALLOW_MVR;   logit "Comparing to mvr";;
        *dca*)      ALLOW=$ALLOW_DCA;   logit "Comparing to dca";;
 	   *)      ALLOW=$ALLOW_BASE;  logit "Comparing to base";;
@@ -427,6 +451,9 @@ else
 fi
 
 
+# make this a dry run if we are not a production node
+[ -e /PRODUCTION ] || logit "Dry Run - bad file attributes are not corrected"
+
 # check these files
 right_file $ENSTORE/sbin/routes			/root/routes
 right_file $ENSTORE/sbin/gettkt			/home/enstore/gettkt
@@ -440,8 +467,10 @@ right_file $ENSTORE/etc/krb5.conf		/etc/krb5.conf				0644
 right_file $ENSTORE/etc/xserverrc		/etc/X11/xinit/xserverrc		0755
 right_file $ENSTORE/bin/enstore-boot		/etc/rc.d/init.d/enstore-boot		0755
 
-chmod 755 /etc/rc.d/rc.sysinit	# just force this
-chmod 755 /etc/rc.d/rc.local	# just force this
+check_mode /etc/rc.d/rc.sysinit	0755
+check_mode /etc/rc.d/rc.local	0755
+check_mode /dev/console		0622
+check_mode /PRODUCTION		0644
 
 # there needs to be more logic for xinetd or inetd files
 if [ "$INETD" = unknown ]; then
@@ -462,11 +491,14 @@ right_file $ENSTORE/etc/enstore.bashrc	  	/home/enstore/.bashrc
 right_file $ENSTORE/etc/enstore.bash_profile	/home/enstore/.bash_profile
 right_file $ENSTORE/etc/$gang.step-tickers	/etc/ntp/step-tickers
 
-# check these files only on srv0 nodes
+# check these files only on db server nodes
 case $node in
-  d0ensrv0|stkensrv0|cdfensrv0)
+  d0ensrv0|stkensrv6|cdfensrv0)
     right_file $ENSTORE/sbin/enstore-drivestat	/etc/rc.d/init.d/enstore-drivestat	0755
     right_file $ENSTORE/sbin/enstore-pgdb	/etc/rc.d/init.d/enstore-pgdb		0755
+    ;;
+  stkensrv0)
+    right_file $ENSTORE/sbin/enstore-db		/etc/rc.d/init.d/enstore-db		0755
     ;;
   *)
     ;;
@@ -607,10 +639,10 @@ fi
 NPROC=`$PS aux | wc -l | $SED -e 's/ //g'`
 if [ `$ECHO $node | $EGREP -c dca` -eq 1 ]; then
     maxproc=300  # disk cache
-elif [ `$ECHO $node | $EGREP -c mvr` -eq 1 ]; then
-    maxproc=100  # movers
-else
+elif [ `$ECHO $node | $EGREP -c srv` -eq 1 ]; then
     maxproc=200  # servers
+else
+    maxproc=100  # movers
 fi
 
 if [ $NPROC -ge $maxproc ]; then
@@ -677,7 +709,7 @@ esac
 
 
 # check that the keytabs are "correct"
-$KEYTAB_CHECK -a
+$KEYTAB_CHECK `[ $ALARM -eq 1 ] && $ECHO '-a'`  `[ $QUIET -eq 1 ] && $ECHO '-q'`
 
 
 # get open files - twice - get ps in between - only take connections that survive past this
@@ -713,7 +745,11 @@ done
 
 # check that farmlets match
 if [ $gang != "rip" ]; then
-  msg="`$FARMLETS 2>&1`"
+  if [ $ALARM -eq 1 ]; then
+    msg="`$FARMLETS -a 2>&1`"
+  else
+    msg="`$FARMLETS 2>&1`"
+  fi
   if [ $? -ne 0 ]; then
      logit "$msg"
   elif [ $QUIET -ne 1 ]; then
