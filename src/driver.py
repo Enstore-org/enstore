@@ -36,6 +36,9 @@ class Driver:
     def seek(self, where, eot_ok=0):
         raise NotImplementedError
 
+    def skipfm(self, n):
+        raise NotImplementedError
+    
     def get_status(self):
         raise NotImplementedError
 

@@ -159,7 +159,10 @@ class FTTDriver(driver.Driver):
         Trace.trace(25,"seek2: current=%s target=%s" % (current, target))
         if current != target:
             raise "XXX Positioning error", (current, target)
-        
+
+    def skipfm(self, n):
+        return self.ftt.skip_fm(n)
+    
     def fileno(self):
         return self.fd
 
@@ -231,6 +234,8 @@ class FTTDriver(driver.Driver):
         return r
         
     def writefm(self):
+        ## Write one and only one filemark.  Letting ftt close the device for us
+        ## results in writing two and backspacing over one.
         r=0
         try:
             r = self.ftt.writefm()
