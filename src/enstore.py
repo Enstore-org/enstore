@@ -212,8 +212,8 @@ class EnstoreInterface(UserOptions):
                     append_string = ".mover"
                 elif self.matched_server == "library":
                     append_string = ".library_manager"
-                elif self.matched_server == "media":
-                    append_string = ".media_changer"
+#                elif self.matched_server == "media":
+#                    append_string = ".media_changer"
                 else:
                     append_string = ""
                 
