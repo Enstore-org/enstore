@@ -4,16 +4,125 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 if [ `uname -n | grep -c d0ensrv` -ne 0 ]; then
   outdir=/pnfs/sam/mammoth/jon/cron_writer
+  addcmd="sammam jonbakken.cpio_odc 8MM 20113227776 20113227776"
 else
   echo "Do not know about node `uname -n`... fix $0 script"
   exit 1
 fi
+
+F=/tmp/files
+T=/tmp/tapes
+U=/tmp/tapes_u
+MAXFILES=24
+#MAXFILES=2
+SLEEP=`expr 60 \* 5`
 
 now=`date +"%Y-%m-%d.%H.%M.%S"`
 file=/tmp/now
 
 echo "$now" > $file
 
+# write a simple small file to make sure everything is working
 echo encp --crc --verbose=1 --data_access_layer $file $outdir/$now
      encp --crc --verbose=1 --data_access_layer $file $outdir/$now
+RC=$?
 
+#set -xv
+# don't let the number of files grow without bound
+for p in 1 2; do
+  files=$F$p
+  rm -f $files
+  touch $files
+  find $outdir -type f >> $files
+  n=`wc $files|awk '{print $1}'`
+  eval nf$p=$n
+  if [ $n -lt $MAXFILES -a $p -eq 1 ]; then exit $RC; fi
+
+  tapes=$T$p
+  rm -f $tapes
+  touch $tapes
+  first=1
+  for f in `cat $files`; do
+    # get the tape the file is on
+    enstore pnfs cat $f 4| head -n 1 >> $tapes
+    if [ $first -eq 1 ]; then first=0; continue; fi
+    # delete all files except for 1
+    if [ $p -eq 1 ]; then echo rm $f; rm $f; fi
+  done
+
+  tapes_u=$U$p
+  rm -f $tapes_u
+  touch $tapes_u
+  uniq <$tapes>>$tapes_u
+  eval n$p=`wc -l $tapes_u | awk '{print $1}'`
+done
+
+if [ $n2 -ne 1 -o $nf2 -ne 1 ]; then
+  echo "More than 1 ( $n2 )  tape left??? = `cat ${U}2`"
+  echo
+  echo "More than 1 ( $nf2 ) file left??? = `cat ${F}2`"
+  echo
+  exit `expr $RC + 100`
+fi
+T2=`cat ${U}2`
+
+tapes=${U}3
+rm -f $tapes
+touch $tapes
+for t in `cat ${U}1`; do
+ if [ $t != $T2 ]; then echo $t >> $tapes; fi
+done
+
+# wait for files to be deleted
+echo sleep $SLEEP
+     sleep $SLEEP
+
+#delete the old volumes, except for the one that still has a file on it
+for t in `cat $tapes`;do
+  echo enstore vol --del $t
+       enstore vol --del $t
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    echo "Can not delete tape $t"
+    RC=`expr $RC + $rc`
+  fi
+done
+
+# now try to delete the tape that has a file still on it
+echo "enstore vol --del $T2 (should fail)"
+      enstore vol --del $T2
+rc=$?
+if [ $rc -eq 0 ]; then
+  echo "DELETED tape $T2 which still had files on it"
+  RC=`expr $RC + 200`
+  exit $RC
+fi
+
+# now delete the remaining file
+echo rm -f `cat ${F}2`
+     rm -f `cat ${F}2`
+
+# wait for the last file to be deleted
+echo sleep $SLEEP
+     sleep $SLEEP
+
+# delete the remaining tape
+echo enstore vol --del $T2
+     enstore vol --del $T2
+rc=$?
+if [ $rc -ne 0 ]; then
+    echo "Can not delete tape $T2"
+    RC=`expr $RC + $rc`
+fi
+
+# now defime the tape again
+echo enstore vol --add $T2 $addcmd
+     enstore vol --add $T2 $addcmd
+rc=$?
+if [ $rc -ne 0 ]; then
+    echo "Can not add tape $T2"
+    RC=`expr $RC + $rc`
+    exit $RC
+fi
+
+exit $RC
