@@ -19,9 +19,12 @@ remaining = {}
 for line in os.popen('enstore vol --vols','r').readlines():
     if string.find(line, "CleanTape")>0:
         vol, count = string.split(line)[:2]
-        dot = string.find(count, '.')
-        count = int(count[:dot])
-        remaining[vol]=count
+        info = os.popen('enstore vol --vol %s'%(vol,),'r').readlines()
+        for iline in info:
+            if string.find(iline,'remaining_bytes')>0:
+                n=string.split(iline,":")[1]
+                count=int(string.split(n,"L")[0])
+                remaining[vol]=count
 
 vols = remaining.keys()
 vols.sort()
