@@ -140,6 +140,10 @@ _msg_counter = 0
 # 1 seeded dcache CRCs with the 0 seeded enstore CRCs.
 BASE = 65521
 
+#Completion status field values.
+SUCCESS = "SUCCESS"
+FAILURE = "FAILURE"
+
 # int32(v) -- if v > 2^31-1, make it long
 #
 # a quick fix for those 64 bit machine that consider int is 64 bit ...
@@ -790,6 +794,43 @@ def e_access(path, mode):
         
     else:
         return 0
+
+############################################################################
+
+#Return the number of files in the list left to transfer.
+def requests_outstanding(request_list):
+
+    files_left = 0
+
+    for request in request_list:
+        completion_status = request.get('completion_status', None)
+        if completion_status == None: # or completion_status == EOD: 
+            files_left = files_left + 1
+
+    return files_left
+
+#Return the next uncompleted transfer.
+def get_next_request(request_list):
+
+    for i in range(len(request_list)):
+        completion_status = request_list[i].get('completion_status', None)
+        if completion_status == None:
+            return request_list[i], i
+
+    return None, 0
+
+#Return the index that the specified request refers to.
+def get_request_index(request_list, request):
+
+    unique_id = request.get('unique_id', None)
+    if not unique_id:
+        return None
+
+    for i in range(len(request_list)):
+        if unique_id == request_list[i]['unique_id']:
+            return i
+
+    return None
     
 ############################################################################
 
@@ -2672,7 +2713,7 @@ def open_udp_socket(udp_server, unique_id_list, encp_intf):
             raise EncpError(msg.args[0], str(msg),
                             e_errors.NET_ERROR)
 
-        #If route_server.process_request() fails it returns None.
+        #If udp_server.process_request() fails it returns None.
         if type(udp_ticket) != types.DictionaryType:
             continue
         #Something really bad happened.
@@ -3600,7 +3641,7 @@ def verify_file_size(ticket):
     except (OSError, IOError), detail:
         ticket['status'] = (e_errors.OSERROR, str(detail))
         return
-    
+
     try:
         pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
         pnfs_filesize = pnfs_stat[stat.ST_SIZE]
@@ -3618,14 +3659,13 @@ def verify_file_size(ticket):
     #except (OSError, IOError), detail:
     #    ticket['status'] = (e_errors.OSERROR, str(detail))
     #    return
-    
+
     #try:
     #    out_stat = os.stat(ticket['outfile'])
     #    out_filesize = out_stat[stat.ST_SIZE]
     #except (OSError, IOError), detail:
     #    ticket['status'] = (e_errors.OSERROR, str(detail))
     #    return
-    
 
     #Handle making sure the local inode did not change during the transfer.
     local_inode = ticket.get("local_inode", None)
@@ -3645,8 +3685,8 @@ def verify_file_size(ticket):
 
     #Handle large files.
     if pnfs_filesize == 1:
-        #Until pnfs supports NFS version 3 (for large file support) make sure
-        # we are using the correct file_size for the pnfs side.
+        #Until pnfs supports NFS version 3 (for large file support) make
+        # sure we are using the correct file_size for the pnfs side.
         try:
             p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
             pnfs_real_size = p.get_file_size()
@@ -4597,7 +4637,6 @@ def verify_write_request_consistancy(request_list):
             # that two file to not have the same output name.
             outputfile_dict[request['outfile']] = request['infile']
 
-
         #Consistancy check for valid pnfs tag values.  These values are
         # placed inside the 'vc' sub-ticket.
         tags = ["file_family", "wrapper", "file_family_width",
@@ -5169,11 +5208,40 @@ def stall_write_transfer(data_path_socket, e):
 ############################################################################
 
 
-def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
+def write_hsm_file(listen_socket, work_ticket, tinfo, e):
 
     #Loop around in case the file transfer needs to be retried.
     while e.max_retry == None or \
               work_ticket['resend'].get('retry', 0) <= e.max_retry:
+
+        Trace.message(TICKET_LEVEL, "WORK_TICKET")
+        Trace.message(TICKET_LEVEL, pprint.pformat(work_ticket))
+
+        Trace.message(TRANSFER_LEVEL,
+                      "Sending ticket to library manager,  elapsed=%s" %
+                      (time.time() - tinfo['encp_start_time'],))
+        
+        #Send the request to write the file to the library manager.
+        done_ticket = submit_write_request(work_ticket, tinfo, e)
+
+        Trace.message(TICKET_LEVEL, "LM RESPONCE TICKET")
+        Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
+
+        work_ticket = combine_dict(done_ticket, work_ticket)
+
+        #handle_retries() is not required here since submit_write_request()
+        # handles its own retrying when an error occurs.
+        if not e_errors.is_ok(work_ticket):
+            #exit_status = 1
+            #continue
+            return work_ticket
+
+        Trace.message(TRANSFER_LEVEL,
+              "File queued: %s library: %s family: %s bytes: %d elapsed=%s" %
+                      (work_ticket['infile'], work_ticket['vc']['library'],
+                       work_ticket['vc']['file_family'],
+                       long(work_ticket['file_size']),
+                       time.time() - tinfo['encp_start_time']))
         
         #Trace.message(TRANSFER_LEVEL,
         #              "Waiting for mover to call back.   elapsed=%s" % \
@@ -5192,7 +5260,6 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         external_label = work_ticket.get('fc', {}).get('external_label', None)
         result_dict = handle_retries([work_ticket], work_ticket, ticket, e,
                                      listen_socket = listen_socket,
-                                     udp_server = route_server,
                                      local_filename = local_filename,
                                      external_label = external_label)
 
@@ -5226,9 +5293,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         done_ticket = open_local_file(work_ticket, e)
 
-        result_dict = handle_retries([work_ticket], work_ticket, done_ticket,
-                                     e, listen_socket = listen_socket,
-                                     udp_server = route_server)
+        result_dict = handle_retries([work_ticket], work_ticket,
+                                     done_ticket, e)
         
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket)
@@ -5256,7 +5322,6 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
             result_dict = handle_retries([work_ticket], work_ticket,
                                          done_ticket, e,
                                          listen_socket = listen_socket,
-                                         udp_server = route_server,
                                          control_socket = control_socket,
                                          external_label = external_label)
 
@@ -5291,10 +5356,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Verify that everything is ok on the mover side of the transfer.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e,
-                                     listen_socket = listen_socket,
-                                     udp_server = route_server)
-
+                                     done_ticket, e)
+        
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
@@ -5313,9 +5376,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e,
-                                     listen_socket = listen_socket,
-                                     udp_server = route_server)
+                                     done_ticket, e)
+        
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
@@ -5330,9 +5392,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Verify that the pnfs info was set correctly.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e,
-                                     listen_socket = listen_socket,
-                                     udp_server = route_server)
+                                     done_ticket, e)
+        
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
@@ -5360,6 +5421,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
                                            done_ticket['outfile'],
                                            done_ticket['file_size'],
                                            done_ticket)
+            #We want to set this here, just in case the error isn't technically
+            # non-retriable.
+            done_ticket['completion_status'] = FAILURE
 
         tstring = '%s_overall_time' % done_ticket['unique_id']
         tinfo[tstring] = time.time() - overall_start #-------------Overall End
@@ -5409,7 +5473,7 @@ def write_to_hsm(e, tinfo):
     if listen_socket == None:
         done_ticket = {'status':(e_errors.NET_ERROR,
                                  "Unable to obtain control socket.")}
-        return done_ticket
+        return done_ticket, None
     #if udp_server.server_socket == None:
     #    done_ticket = {'status':(e_errors.NET_ERROR,
     #                             "Unable to obtain udp socket.")}
@@ -5437,12 +5501,12 @@ def write_to_hsm(e, tinfo):
         #print_data_access_layer_format("", "", 0, e_ticket)
         #delete_at_exit.quit()
         #e_ticket['exit_status'] = 1
-        return e_ticket
+        return e_ticket, None
 
     #If this is the case, don't worry about anything.
     if len(request_list) == 0:
         done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer.")}
-        return done_ticket
+        return done_ticket, request_list
 
     #This will halt the program if everything isn't consistant.
     try:
@@ -5453,9 +5517,9 @@ def write_to_hsm(e, tinfo):
         #print_data_access_layer_format("", "", 0, msg.ticket)
         #delete_at_exit.quit()
         #msg.ticket['exit_status'] = 1
-        if not msg.ticket.get('status', None):
-            msg.ticket['status'] = (msg.type, msg.strerror)
-        return msg.ticket
+        #if not msg.ticket.get('status', None):
+        #    msg.ticket['status'] = (msg.type, msg.strerror)
+        return msg.ticket, request_list
 
     #Determine the name of the library.
     check_lib = request_list[0]['vc']['library'] + ".library_manager"
@@ -5472,16 +5536,17 @@ def write_to_hsm(e, tinfo):
         try:
             return check_library(check_lib, e)
         except EncpError, msg:
-            return {'status' : (msg.type, str(msg))}
+            return {'status' : (msg.type, str(msg))}, request_list
 
     #Create the zero length file entry.
     if not e.put_cache: #Skip this for dcache transfers.
-        for request in request_list:
+        #for request in request_list:
+        for i in range(len(request_list)):
             try:
-                create_zero_length_pnfs_files(request)
+                create_zero_length_pnfs_files(request_list[i])
             except OSError, msg:
-                request['status'] = (e_errors.OSERROR, msg.strerror)
-                return request
+                request_list[i]['status'] = (e_errors.OSERROR, msg.strerror)
+                return request_list[i], request_list
                 #print_data_access_layer_format(request['infile'], "",
                 #                               0, request)
                 #delete_at_exit.quit()
@@ -5492,35 +5557,9 @@ def write_to_hsm(e, tinfo):
         Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % str(len(request_list)-i))
 
         work_ticket = request_list[i]
-        Trace.message(TICKET_LEVEL, "WORK_TICKET")
-        Trace.message(TICKET_LEVEL, pprint.pformat(work_ticket))
-
-        Trace.message(TRANSFER_LEVEL,
-                      "Sending ticket to library manager,  elapsed=%s" %
-                      (time.time() - tinfo['encp_start_time'],))
-        
-        #Send the request to write the file to the library manager.
-        done_ticket = submit_write_request(work_ticket, tinfo, e)
-
-        Trace.message(TICKET_LEVEL, "LM RESPONCE TICKET")
-        Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
-
-        #handle_retries() is not required here since submit_write_request()
-        # handles its own retrying when an error occurs.
-        if not e_errors.is_ok(done_ticket['status'][0]):
-            exit_status = 1
-            continue
-
-        Trace.message(TRANSFER_LEVEL,
-              "File queued: %s library: %s family: %s bytes: %d elapsed=%s" %
-                      (work_ticket['infile'], work_ticket['vc']['library'],
-                       work_ticket['vc']['file_family'],
-                       long(work_ticket['file_size']),
-                       time.time() - tinfo['encp_start_time']))
 
         #Send (write) the file to the mover.
-        done_ticket = write_hsm_file(listen_socket, udp_server,
-                                     work_ticket, tinfo, e)
+        done_ticket = write_hsm_file(listen_socket, work_ticket, tinfo, e)
 
         Trace.message(TICKET_LEVEL, "DONE WRITTING TICKET")
         Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
@@ -5530,10 +5569,28 @@ def write_to_hsm(e, tinfo):
         exfer_ticket = done_ticket.get('exfer', {'bytes_transfered' : 0L})
         bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
 
+        #Store the combined tickets back into the master list.
+        work_ticket = combine_dict(done_ticket, work_ticket)
+        request_list[i] = work_ticket
+
         #handle_retries() is not required here since write_hsm_file()
         # handles its own retrying when an error occurs.
-        if not e_errors.is_ok(done_ticket['status'][0]):
+        if e_errors.is_ok(done_ticket):
+            #Set completion status to successful.
+            work_ticket['completion_status'] = SUCCESS
+            #Store these changes back into the master list.
+            request_list[i] = work_ticket
+            
+        elif e_errors.is_non_retriable(done_ticket):
+            #Set completion status to successful.
+            work_ticket['completion_status'] = FAILURE
+            #Store these changes back into the master list.
+            request_list[i] = work_ticket
+
             exit_status = 1
+            
+        if not e_errors.is_ok(done_ticket):
+            #exit_status = 1
             continue
 
         # calculate some kind of rate - time from beginning 
@@ -5560,12 +5617,12 @@ def write_to_hsm(e, tinfo):
         ff = string.split(done_ticket["vc"]["file_family"], ".")
         Trace.message(DONE_LEVEL, "New File Family Created: %s" % ff)
 
-    done_ticket = combine_dict(calc_ticket, done_ticket)
+    #done_ticket = combine_dict(calc_ticket, done_ticket)
 
-    Trace.message(TICKET_LEVEL, "DONE TICKET")
-    Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
+    Trace.message(TICKET_LEVEL, "CALC TICKET")
+    Trace.message(TICKET_LEVEL, pprint.pformat(calc_ticket))
 
-    return done_ticket
+    return calc_ticket, request_list
 
 #######################################################################
 #Support function for reads.
@@ -5659,21 +5716,22 @@ def verify_read_request_consistancy(requests_per_vol):
             
         for request in request_list:
 
-            #This block of code makes sure the the user is not moving
-            # two files with the same basename in different directories
-            # into the same destination directory.
-            result = outputfile_dict.get(request['outfile'], None)
-            if result: 
-                #If the file is already in the list, give error.
-                raise EncpError(None,
-                                'Duplicate file entry: %s' % (result,),
-                                e_errors.USERERROR,
-                                {'infile' : request['infile'],
-                                 'outfile' : request['outfile']})
-            else:
-                #Put into one place all of the output names.  This is to check
-                # that two file to not have the same output name.
-                outputfile_dict[request['outfile']] = request['infile']
+            if request['outfile'] != "/dev/null":
+                #This block of code makes sure the the user is not moving
+                # two files with the same basename in different directories
+                # into the same destination directory.
+                result = outputfile_dict.get(request['outfile'], None)
+                if result: 
+                    #If the file is already in the list, give error.
+                    raise EncpError(None,
+                                    'Duplicate file entry: %s' % (result,),
+                                    e_errors.USERERROR,
+                                    {'infile' : request['infile'],
+                                     'outfile' : request['outfile']})
+                else:
+                    #Put into one place all of the output names.  This is to
+                    # check that two file to not have the same output name.
+                    outputfile_dict[request['outfile']] = request['infile']
 
             try:
                 #Verify that file clerk and volume clerk returned the same
@@ -6857,17 +6915,16 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
 # submit read_from_hsm requests
 def submit_read_requests(requests, tinfo, encp_intf):
+    submitted = 0
 
     #Sort the requests by location cookie.
     requests.sort(sort_cookie)
 
-    submitted = 0
-    requests_to_submit = requests[:] #Don't change the original copy.
-
-    for req in requests_to_submit:
-        #Clear this flag such that resubmissions will enter the while loop.
-        req['submitted'] = None
-        while req.get("submitted", None) == None:
+    for req in requests:
+        #After enough failures handle_retries() will eventually abort
+        # the transfer.
+        
+        while req.get('completion_status', None) == None:
             Trace.message(TRANSFER_LEVEL, 
                      "Submitting %s read request.  elapsed=%s" % \
                      (req['outfile'], time.time() - tinfo['encp_start_time']))
@@ -6879,18 +6936,22 @@ def submit_read_requests(requests, tinfo, encp_intf):
             Trace.message(TICKET_LEVEL, "LIBRARY MANAGER")
             Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
             
-            result_dict = handle_retries(requests_to_submit, req, ticket,
-                                         encp_intf)
-            if e_errors.is_retriable(result_dict['status'][0]):
-                continue
-            elif e_errors.is_non_retriable(result_dict['status'][0]):
-                #del requests_to_submit[requests_to_submit.index(req)]
-                req['submitted'] = 0 #This in not 1 nor None.
-                break
+            result_dict = handle_retries(requests, req, ticket, encp_intf)
             
-            #del requests_to_submit[requests_to_submit.index(req)]
-            req['submitted'] = 1
-            submitted = submitted + 1
+            if e_errors.is_retriable(result_dict):
+                continue
+            elif e_errors.is_non_retriable(result_dict):
+                req['completion_status'] = FAILURE
+                return submitted, ticket
+            else:
+                submitted = submitted + 1
+                break
+
+    Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % submitted)
+    Trace.message(TICKET_LEVEL, pprint.pformat(requests))
+
+    Trace.message(TRANSFER_LEVEL, "Files queued.   elapsed=%s" %
+                  (time.time() - tinfo['encp_start_time']))
 
     return submitted, ticket
 
@@ -6955,304 +7016,331 @@ def stall_read_transfer(data_path_socket, work_ticket, e):
 #   did not succeed.  bytes is the total running sum of bytes transfered
 #   for this encp.
 
-def read_hsm_files(listen_socket, route_server, submitted,
-                   request_list, tinfo, e):
+def read_hsm_file(listen_socket, request_list, tinfo, e):
 
     for rq in request_list: 
         Trace.trace(17,"read_hsm_files: %s"%(rq['infile'],))
 
-    files_left = submitted
-    bytes = 0L
-    failed_requests = []
-    succeeded_requests = []
+    #files_left = submitted
+    #bytes = 0L
+    #failed_requests = []
+    #succeeded_requests = []
 
     #for waiting in range(submitted):
-    while files_left:
-        Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % files_left)
+    #while files_left:
+        #Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % files_left)
         #Trace.message(TRANSFER_LEVEL,
         #              "Waiting for mover to call back.  elapsed=%s" %
         #              (time.time() - tinfo['encp_start_time'],))
             
-        #Wait for the mover to establish the control socket.  See if the
-        # id matches one the the tickets we submitted.  Establish data socket
-        # connection with the mover.
-        control_socket, data_path_socket, request_ticket = mover_handshake(
-            listen_socket, request_list, e)
+    #Wait for the mover to establish the control socket.  See if the
+    # id matches one of the tickets we submitted.  Establish data socket
+    # connection with the mover.
+    control_socket, data_path_socket, request_ticket = mover_handshake(
+        listen_socket, request_list, e)
 
-        overall_start = time.time() #----------------------------Overall Start
+    overall_start = time.time() #----------------------------Overall Start
 
-        done_ticket = request_ticket #Make sure this exists by this point.
-        local_filename = request_ticket.get('wrapper',{}).get('fullname', None)
-        external_label = request_ticket.get('fc',{}).get('external_label',None)
-        result_dict = handle_retries(request_list, request_ticket,
-                                     request_ticket, e,
-                                     listen_socket = listen_socket,
-                                     udp_server = route_server,
-                                     local_filename = local_filename,
+    done_ticket = request_ticket #Make sure this exists by this point.
+    local_filename = request_ticket.get('wrapper',{}).get('fullname', None)
+    external_label = request_ticket.get('fc',{}).get('external_label',None)
+    result_dict = handle_retries(request_list, request_ticket,
+                                 request_ticket, e,
+                                 listen_socket = listen_socket,
+                                 local_filename = local_filename,
+                                 external_label = external_label)
+
+    if not e_errors.is_ok(result_dict):
+        return combine_dict(result_dict, request_ticket)
+    #
+    #if e_errors.is_resendable(result_dict['status']):
+    #    continue
+    #elif result_dict['status'][0] == e_errors.TOO_MANY_RESUBMITS:
+    #    n = 0
+    #    while n < files_left:
+    #        failed_requests.append(request_ticket) #Why use same ticket??
+    #    files_left = 0
+    #    continue
+    #elif e_errors.is_non_retriable(result_dict['status'][0]):
+    #    files_left = result_dict['queue_size']
+    #    failed_requests.append(request_ticket)
+    #    continue
+
+    #Be paranoid.  Check this the ticket again.
+    try:
+        if not e.volume: #Skip this test for volume transfers.
+            verify_read_request_consistancy(
+          {request_ticket.get("external_label","label"):[request_ticket]},)
+    except EncpError, msg:
+        msg.ticket['status'] = (msg.type, msg.strerror)
+        result_dict = handle_retries(request_list, msg.ticket,
+                                     msg.ticket, e)
+
+        if not e_errors.is_ok(result_dict):
+            close_descriptors(control_socket, data_path_socket)
+            return combine_dict(result_dict, request_ticket)
+        
+        #if e_errors.is_resendable(result_dict['status']):
+        #    continue
+        #elif result_dict['status'][0] == e_errors.TOO_MANY_RESUBMITS:
+        #    for n in range(files_left):
+        #        failed_requests.append(request_ticket)
+        #    files_left = 0
+        #    continue
+        #elif e_errors.is_non_retriable(result_dict['status'][0]):
+        #    files_left = result_dict['queue_size']
+        #    failed_requests.append(request_ticket)
+        #    continue
+
+    Trace.message(TRANSFER_LEVEL, "Mover called back.  elapsed=%s" %
+                  (time.time() - tinfo['encp_start_time'],))
+    Trace.message(TICKET_LEVEL, "REQUEST:")
+    Trace.message(TICKET_LEVEL, pprint.pformat(request_ticket))
+
+    #Open the output file.
+    done_ticket = open_local_file(request_ticket, e)
+
+    result_dict = handle_retries(request_list, request_ticket,
+                                 done_ticket, e)
+                                 #listen_socket = listen_socket,
+                                 #udp_server = route_server)
+
+    if not e_errors.is_ok(result_dict):
+        close_descriptors(control_socket, data_path_socket)
+        return combine_dict(result_dict, request_ticket)
+    else:
+        out_fd = done_ticket['fd']
+    
+    #if e_errors.is_non_retriable(result_dict['status'][0]):
+    #    files_left = result_dict['queue_size']
+    #    failed_requests.append(request_ticket)
+    #
+    #    close_descriptors(control_socket, data_path_socket)
+    #    continue
+    #elif not e_errors.is_ok(result_dict['status'][0]):
+    #    print done_ticket
+    #    continue
+    #else:
+    #    out_fd = done_ticket['fd']
+
+    Trace.message(TRANSFER_LEVEL, "Output file %s opened.  elapsed=%s" %
+              (request_ticket['outfile'],
+               time.time() - tinfo['encp_start_time']))
+
+    #We need to stall the transfer until the mover is ready.
+    done_ticket = stall_read_transfer(data_path_socket, request_ticket, e)
+
+    if not e_errors.is_ok(done_ticket):
+        #Make one last check of everything before entering transfer_file().
+        # Only test control_socket if a known problem exists.  Otherwise,
+        # for small files it is possible that a successful final dialog
+        # message gets 'eaten' up.
+
+        external_label = request_ticket.get('fc',{}).get('external_label',
+                                                         None)
+        result_dict = handle_retries([request_ticket], request_ticket,
+                                     done_ticket, e,
+                                     #listen_socket = listen_socket,
+                                     #udp_server = route_server,
+                                     control_socket = control_socket,
                                      external_label = external_label)
 
-        if e_errors.is_resendable(result_dict['status']):
-            continue
-        #if result_dict['status'][0]== e_errors.RETRY or \
-        #   result_dict['status'][0]== e_errors.RESUBMITTING:
+        if not e_errors.is_ok(result_dict):
+            close_descriptors(control_socket, data_path_socket, out_fd)
+            return combine_dict(result_dict, request_ticket)
+        
+        #if e_errors.is_retriable(result_dict['status'][0]):
+        #    close_descriptors(control_socket, data_path_socket, out_fd)
         #    continue
-        elif result_dict['status'][0] == e_errors.TOO_MANY_RESUBMITS:
-            n = 0
-            while n < files_left:
-                failed_requests.append(request_ticket) #Why use same ticket??
-            files_left = 0
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            files_left = result_dict['queue_size']
-            failed_requests.append(request_ticket)
-            continue
+        #elif e_errors.is_non_retriable(result_dict['status'][0]):
+        #    close_descriptors(control_socket, data_path_socket, out_fd)
+        #    return combine_dict(result_dict, request_ticket)
 
-        #Be paranoid.  Check this the ticket again.
-        try:
-            if not e.volume: #Skip this test for volume transfers.
-                verify_read_request_consistancy(
-              {request_ticket.get("external_label","label"):[request_ticket]},)
-        except EncpError, msg:
-            msg.ticket['status'] = (msg.type, msg.strerror)
-            result_dict = handle_retries(request_list, msg.ticket,
-                                         msg.ticket, e)
+    lap_start = time.time() #----------------------------------------Start
 
-            if e_errors.is_resendable(result_dict['status']):
-                continue
-            elif result_dict['status'][0] == e_errors.TOO_MANY_RESUBMITS:
-                for n in range(files_left):
-                    failed_requests.append(request_ticket)
-                files_left = 0
-                continue
-            elif e_errors.is_non_retriable(result_dict['status'][0]):
-                files_left = result_dict['queue_size']
-                failed_requests.append(request_ticket)
-                continue
+    done_ticket = transfer_file(data_path_socket, out_fd,
+                                control_socket, request_ticket,
+                                tinfo, e)
 
-        Trace.message(TRANSFER_LEVEL, "Mover called back.  elapsed=%s" %
-                      (time.time() - tinfo['encp_start_time'],))
-        Trace.message(TICKET_LEVEL, "REQUEST:")
-        Trace.message(TICKET_LEVEL, pprint.pformat(request_ticket))
+    lap_end = time.time()  #-----------------------------------------End
+    tstring = "%s_transfer_time" % request_ticket['unique_id']
+    tinfo[tstring] = lap_end - lap_start
 
-        #Open the output file.
-        done_ticket = open_local_file(request_ticket, e)
-
-        result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, e,
-                                     listen_socket = listen_socket,
-                                     udp_server = route_server)
-        if e_errors.is_non_retriable(result_dict['status'][0]):
-            files_left = result_dict['queue_size']
-            failed_requests.append(request_ticket)
-
-            close_descriptors(control_socket, data_path_socket)
-            continue
-        elif not e_errors.is_ok(result_dict['status'][0]):
-            print done_ticket
-            continue
-        else:
-            out_fd = done_ticket['fd']
-
-        Trace.message(TRANSFER_LEVEL, "Output file %s opened.  elapsed=%s" %
-                  (request_ticket['outfile'],
+    Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
+                  (request_ticket['infile'],
                    time.time() - tinfo['encp_start_time']))
 
-        #We need to stall the transfer until the mover is ready.
-        done_ticket = stall_read_transfer(data_path_socket, request_ticket, e)
+    #Verify that everything went ok with the transfer.
+    result_dict = handle_retries(request_list, request_ticket,
+                                 done_ticket, e)
+                                 #listen_socket = listen_socket,
 
-        if not e_errors.is_ok(done_ticket):
-            #Make one last check of everything before entering transfer_file().
-            # Only test control_socket if a known problem exists.  Otherwise,
-            # for small files it is possible that a successful final dialog
-            # message gets 'eaten' up.
-                                         
-            external_label = request_ticket.get('fc',{}).get('external_label',
-                                                             None)
-            result_dict = handle_retries([request_ticket], request_ticket,
-                                         done_ticket, e,
-                                         listen_socket = listen_socket,
-                                         udp_server = route_server,
-                                         control_socket = control_socket,
-                                         external_label = external_label)
-
-            if e_errors.is_retriable(result_dict['status'][0]):
-                close_descriptors(control_socket, data_path_socket, out_fd)
-                continue
-            elif e_errors.is_non_retriable(result_dict['status'][0]):
-                close_descriptors(control_socket, data_path_socket, out_fd)
-                return combine_dict(result_dict, request_ticket)
-        
-        lap_start = time.time() #----------------------------------------Start
-
-        #done_ticket = transfer_file(data_path_socket.fileno(),out_fd,
-        done_ticket = transfer_file(data_path_socket, out_fd,
-                                    control_socket, request_ticket,
-                                    tinfo, e)
-
-        lap_end = time.time()  #-----------------------------------------End
-        tstring = "%s_transfer_time" % request_ticket['unique_id']
-        tinfo[tstring] = lap_end - lap_start
-
-        Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
-                      (request_ticket['infile'],
-                       time.time() - tinfo['encp_start_time']))
-
-        #Verify that everything went ok with the transfer.
-        result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, e,
-                                     listen_socket = listen_socket,
-                                     udp_server = route_server)
-        
-        if e_errors.is_retriable(result_dict['status'][0]):
-            close_descriptors(control_socket, data_path_socket, out_fd)
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            files_left = result_dict['queue_size']
-            failed_requests.append(request_ticket)
-            close_descriptors(control_socket, data_path_socket, out_fd)
-            continue
-
-        #For simplicity combine everything together.
-        #done_ticket = combine_dict(result_dict, done_ticket)
-        
-        #Trace.message(TRANSFER_LEVEL, "File %s transfered.  elapsed=%s" %
-        #              (request_ticket['infile'],
-        #               time.time() - tinfo['encp_start_time']))
-        #Trace.message(TICKET_LEVEL, "FINAL DIALOG")
-        #Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
-
-        #These functions write errors/warnings to the log file and put an
-        # error status in the ticket.
-        verify_file_size(done_ticket) #Verify size is the same.
-
-        #Verfy that the file transfered in tacted.
-        result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, e,
-                                     listen_socket = listen_socket,
-                                     udp_server = route_server)
-        
-        if e_errors.is_retriable(result_dict['status'][0]):
-            close_descriptors(control_socket, data_path_socket, out_fd)
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            files_left = result_dict['queue_size']
-            failed_requests.append(request_ticket)
-            close_descriptors(control_socket, data_path_socket, out_fd)
-            continue
-
-        #Update the running bytes transfered count.
-        exfer_ticket = done_ticket.get('exfer', {'bytes_transfered' : 0L})
-        bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
-        
-        check_crc(done_ticket, e, out_fd) #Check the CRC.
-
-        #Verfy that the file transfered in tacted.
-        result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, e,
-                                     listen_socket = listen_socket,
-                                     udp_server = route_server)
-        if e_errors.is_retriable(result_dict['status'][0]):
-            close_descriptors(control_socket, data_path_socket, out_fd)
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            files_left = result_dict['queue_size']
-            failed_requests.append(request_ticket)
-            close_descriptors(control_socket, data_path_socket, out_fd)
-            continue
-
-        #If no error occured, this is safe to close now.
+    if not e_errors.is_ok(result_dict):
         close_descriptors(control_socket, data_path_socket, out_fd)
+        return combine_dict(result_dict, request_ticket)
+    
+    #if e_errors.is_retriable(result_dict['status'][0]):
+    #    close_descriptors(control_socket, data_path_socket, out_fd)
+    #    continue
+    #elif e_errors.is_non_retriable(result_dict['status'][0]):
+    #    files_left = result_dict['queue_size']
+    #    failed_requests.append(request_ticket)
+    #    close_descriptors(control_socket, data_path_socket, out_fd)
+    #    continue
 
-        #Update the last access and modification times respecively.
-        update_times(done_ticket['infile'], done_ticket['outfile'])
+    #For simplicity combine everything together.
+    #done_ticket = combine_dict(result_dict, done_ticket)
 
-        #This function writes errors/warnings to the log file and puts an
-        # error status in the ticket.
-        set_outfile_permissions(done_ticket) #Writes errors to log file.
-        ###What kind of check should be done here?
-        #This error should result in the file being left where it is, but it
-        # is still considered a failed transfer (aka. exit code = 1 and
-        # data access layer is still printed).
-        if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
-            print_data_access_layer_format(done_ticket['infile'],
-                                           done_ticket['outfile'],
-                                           done_ticket['file_size'],
-                                           done_ticket)
+    #Trace.message(TRANSFER_LEVEL, "File %s transfered.  elapsed=%s" %
+    #              (request_ticket['infile'],
+    #               time.time() - tinfo['encp_start_time']))
+    #Trace.message(TICKET_LEVEL, "FINAL DIALOG")
+    #Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
 
-        #Remove the new file from the list of those to be deleted should
-        # encp stop suddenly.  (ie. crash or control-C).
-        delete_at_exit.unregister(done_ticket['outfile']) #localname
+    #These functions write errors/warnings to the log file and put an
+    # error status in the ticket.
+    verify_file_size(done_ticket) #Verify size is the same.
 
-        # remove file requests if transfer completed succesfuly.
-        #del(request_ticket)
-        del request_list[request_list.index(request_ticket)]
-        if files_left > 0:
-            files_left = files_left - 1
+    if not e_errors.is_ok(done_ticket):
+        close_descriptors(control_socket, data_path_socket, out_fd)
+        return done_ticket
 
-        tstring = "%s_overall_time" % done_ticket['unique_id']
-        tinfo[tstring] = time.time() - overall_start #-------------Overall End
+    #Verfy that the file transfered in tacted.
+    #result_dict = handle_retries(request_list, request_ticket,
+    #                             done_ticket, e,
+    #                             listen_socket = listen_socket,
+    #                             udp_server = route_server)
+    #
+    #if e_errors.is_retriable(result_dict['status'][0]):
+    #    close_descriptors(control_socket, data_path_socket, out_fd)
+    #    continue
+    #elif e_errors.is_non_retriable(result_dict['status'][0]):
+    #    files_left = result_dict['queue_size']
+    #    failed_requests.append(request_ticket)
+    #    close_descriptors(control_socket, data_path_socket, out_fd)
+    #    continue
 
-        Trace.message(TRANSFER_LEVEL,
-                      "File status after verification: %s   elapsed=%s" %
-                      (done_ticket["status"],
-                       time.time() - tinfo['encp_start_time']))
-        
-        # calculate some kind of rate - time from beginning to wait for
-        # mover to respond until now. This doesn't include the overheads
-        # before this, so it isn't a correct rate. I'm assuming that the
-        # overheads I've neglected are small so the quoted rate is close
-        # to the right one.  In any event, I calculate an overall rate at
-        # the end of all transfers
-        calculate_rate(done_ticket, tinfo)
+    #Update the running bytes transfered count.
+    #exfer_ticket = done_ticket.get('exfer', {'bytes_transfered' : 0L})
+    #bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
 
-        #With the transfer a success, we can now add the ticket to the list
-        # of succeses.
-        succeeded_requests.append(done_ticket)
+    check_crc(done_ticket, e, out_fd) #Check the CRC.
+
+    if not e_errors.is_ok(done_ticket):
+        close_descriptors(control_socket, data_path_socket, out_fd)
+        return done_ticket
+
+    #Verfy that the file transfered in tacted.
+    #result_dict = handle_retries(request_list, request_ticket,
+    #                             done_ticket, e,
+    #                             listen_socket = listen_socket,
+    #                             udp_server = route_server)
+    #if e_errors.is_retriable(result_dict['status'][0]):
+    #    close_descriptors(control_socket, data_path_socket, out_fd)
+    #    continue
+    #elif e_errors.is_non_retriable(result_dict['status'][0]):
+    #    files_left = result_dict['queue_size']
+    #    failed_requests.append(request_ticket)
+    #    close_descriptors(control_socket, data_path_socket, out_fd)
+    #    continue
+
+    #If no error occured, this is safe to close now.
+    close_descriptors(control_socket, data_path_socket, out_fd)
+
+    #Update the last access and modification times respecively.
+    update_times(done_ticket['infile'], done_ticket['outfile'])
+
+    #This function writes errors/warnings to the log file and puts an
+    # error status in the ticket.
+    set_outfile_permissions(done_ticket) #Writes errors to log file.
+    ###What kind of check should be done here?
+    #This error should result in the file being left where it is, but it
+    # is still considered a failed transfer (aka. exit code = 1 and
+    # data access layer is still printed).
+    if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
+        print_data_access_layer_format(done_ticket['infile'],
+                                       done_ticket['outfile'],
+                                       done_ticket['file_size'],
+                                       done_ticket)
+        #We want to set this here, just in case the error isn't technically
+        # non-retriable.
+        done_ticket['completion_status'] = FAILURE
+
+    #Remove the new file from the list of those to be deleted should
+    # encp stop suddenly.  (ie. crash or control-C).
+    delete_at_exit.unregister(done_ticket['outfile']) #localname
+
+    # remove file requests if transfer completed succesfuly.
+    #del(request_ticket)
+    #del request_list[request_list.index(request_ticket)]
+    #if files_left > 0:
+    #    files_left = files_left - 1
+
+    tstring = "%s_overall_time" % done_ticket['unique_id']
+    tinfo[tstring] = time.time() - overall_start #-------------Overall End
+
+    Trace.message(TRANSFER_LEVEL,
+                  "File status after verification: %s   elapsed=%s" %
+                  (done_ticket["status"],
+                   time.time() - tinfo['encp_start_time']))
+
+    # calculate some kind of rate - time from beginning to wait for
+    # mover to respond until now. This doesn't include the overheads
+    # before this, so it isn't a correct rate. I'm assuming that the
+    # overheads I've neglected are small so the quoted rate is close
+    # to the right one.  In any event, I calculate an overall rate at
+    # the end of all transfers
+    calculate_rate(done_ticket, tinfo)
+
+    #With the transfer a success, we can now add the ticket to the list
+    # of succeses.
+    #succeeded_requests.append(done_ticket)
 
     Trace.message(TICKET_LEVEL, "DONE TICKET")
     Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
 
     #Pull out the failed transfers that occured while trying to open the
     # control socket.
-    unknown_failed_transfers = []
-    for transfer in failed_requests:
-        if len(transfer) < 3:
-            unknown_failed_transfers.append(transfer)
+    #unknown_failed_transfers = []
+    #for transfer in failed_requests:
+    #    if len(transfer) < 3:
+    #        unknown_failed_transfers.append(transfer)
 
     #Extract the unique ids for the two lists.
-    succeeded_ids = []
-    failed_ids = []
-    for req in succeeded_requests:
-        try:
-            succeeded_ids.append(req['unique_id'])
-        except KeyError:
-            sys.stderr.write("Error obtaining unique id list of successes.\n")
-            sys.stderr.write(pprint.pformat(req) + "\n")
-    for req in failed_requests:
-        try:
-            failed_ids.append(req['unique_id'])
-        except KeyError:
-            sys.stderr.write("Error obtaining unique id list of failures.\n")
-            sys.stderr.write(pprint.pformat(req) + "\n")
+    #succeeded_ids = []
+    #failed_ids = []
+    #for req in succeeded_requests:
+    #    try:
+    #        succeeded_ids.append(req['unique_id'])
+    #    except KeyError:
+    #        sys.stderr.write("Error obtaining unique id list of successes.\n")
+    #        sys.stderr.write(pprint.pformat(req) + "\n")
+    #for req in failed_requests:
+    #    try:
+    #        failed_ids.append(req['unique_id'])
+    #    except KeyError:
+    #        sys.stderr.write("Error obtaining unique id list of failures.\n")
+    #        sys.stderr.write(pprint.pformat(req) + "\n")
 
     #For each transfer that failed without even succeeding to open a control
     # socket, print out their data access layer.
-    for transfer in request_list:
-        if transfer['unique_id'] not in succeeded_ids and \
-           transfer['unique_id'] not in failed_ids:
-            try:
-                transfer = combine_dict(unknown_failed_transfers[0], transfer)
-                del unknown_failed_transfers[0] #shorten this list.
+    #for transfer in request_list:
+    #    if transfer['unique_id'] not in succeeded_ids and \
+    #       transfer['unique_id'] not in failed_ids:
+    #        try:
+    #            transfer = combine_dict(unknown_failed_transfers[0], transfer)
+    #            del unknown_failed_transfers[0] #shorten this list.
+    #
+    #            print_data_access_layer_format(transfer['infile'],
+    #                                           transfer['outfile'],
+    #                                           transfer['file_size'],
+    #                                           transfer)
+    #        except IndexError, msg:
+    #            #msg = "Unable to print data access layer.\n"
+    #            sys.stderr.write(str(msg)+"\n")
 
-                print_data_access_layer_format(transfer['infile'],
-                                               transfer['outfile'],
-                                               transfer['file_size'],
-                                               transfer)
-            except IndexError, msg:
-                #msg = "Unable to print data access layer.\n"
-                sys.stderr.write(str(msg)+"\n")
-
-    return failed_requests, bytes, done_ticket
+    #return failed_requests, bytes, done_ticket
+    return done_ticket
 
 #######################################################################
 
@@ -7276,7 +7364,7 @@ def read_from_hsm(e, tinfo):
     if listen_socket == None:
         done_ticket = {'status':(e_errors.NET_ERROR,
                                  "Unable to obtain control socket.")}
-        return done_ticket
+        return done_ticket, None
     #if udp_server.server_socket == None:
     #    done_ticket = {'status':(e_errors.NET_ERROR,
     #                             "Unable to obtain udp socket.")}
@@ -7305,12 +7393,12 @@ def read_from_hsm(e, tinfo):
         #print_data_access_layer_format("", "", 0, e_ticket)
         #delete_at_exit.quit()
         #e_ticket['exit_status'] = 1
-        return e_ticket
+        return e_ticket, None
 
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
         done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer.")}
-        return done_ticket
+        return done_ticket, requests_per_vol
 
     #This will halt the program if everything isn't consistant.
     try:
@@ -7324,7 +7412,7 @@ def read_from_hsm(e, tinfo):
         #msg.ticket['exit_status'] = 1
         if not msg.ticket.get('status', None):
             msg.ticket['status'] = (msg.type, msg.strerror)
-        return msg.ticket
+        return msg.ticket, requests_per_vol
 
     #Determine the name of the library.
     check_lib = requests_per_vol.values()[0][0]['vc']['library'] + \
@@ -7342,17 +7430,19 @@ def read_from_hsm(e, tinfo):
         try:
             return check_library(check_lib, e)
         except EncpError, msg:
-            return {'status' : (msg.type, str(msg))}
+            return {'status' : (msg.type, str(msg))}, requests_per_vol
 
     #Create the zero length file entry.
     for vol in requests_per_vol.keys():
-        for request in requests_per_vol[vol]:
+        #for request in requests_per_vol[vol]:
+        for i in range(len(requests_per_vol[vol])):
             try:
-               create_zero_length_local_files(request)
+               create_zero_length_local_files(requests_per_vol[vol][i])
             except OSError, msg:
-                request['status'] = (e_errors.OSERROR, msg.strerror)
+                requests_per_vol[vol][i]['status'] = (e_errors.OSERROR,
+                                                      msg.strerror)
                 #request['exit_status'] = 1
-                return request
+                return requests_per_vol[vol][i], requests_per_vol
                 #print_data_access_layer_format("", request['outfile'],
                 #                               0, request)
                 #delete_at_exit.quit()
@@ -7370,42 +7460,73 @@ def read_from_hsm(e, tinfo):
         #The return value is the number of files successfully submitted.
         # This value may be different from len(request_list).  The value
         # of request_list is not changed by this function.
-        submitted, reply_ticket = submit_read_requests(request_list, tinfo, e)
-        
+        submitted, reply_ticket = submit_read_requests(request_list,
+                                                       tinfo, e)
+
         #If at least one submission succeeded, follow through with it.
-        if submitted != 0:
-            Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % submitted)
-            Trace.message(TICKET_LEVEL, pprint.pformat(request_list))
-            
-            Trace.message(TRANSFER_LEVEL, "Files queued.   elapsed=%s" %
-                          (time.time() - tinfo['encp_start_time']))
+        if submitted > 0:
+            while requests_outstanding(request_list):
+                #Since request_list contains all of the entires, submitted must
+                # also be passed so read_hsm_files knows how many elements of
+                # request_list are valid.
+                #requests_failed, brcvd, data_access_layer_ticket = read_hsm_file(
+                done_ticket = read_hsm_file(
+                    listen_socket, request_list, tinfo, e)
 
-            #Since request_list contains all of the entires, submitted must
-            # also be passed so read_hsm_files knows how many elements of
-            # request_list are valid.
-            requests_failed, brcvd, data_access_layer_ticket = read_hsm_files(
-                listen_socket, udp_server, submitted, request_list, tinfo, e)
+                #if len(requests_failed) > 0 or \
+                #   not e_errors.is_ok(data_access_layer_ticket['status'][0]):
+                #    #When delete_at_exit.quit() called, exit_status passed in.
+                #    exit_status = 1 
+                #    Trace.message(ERROR_LEVEL,
+                #                  "TRANSFERS FAILED: %s" % len(requests_failed))
+                #    Trace.message(TICKET_LEVEL, pprint.pformat(requests_failed))
+                #Sum up the total amount of bytes transfered.
+                #bytes = bytes + brcvd
+                #Set the value of bytes to the number of bytes transfered
+                # before the error occured.
+                exfer_ticket = done_ticket.get('exfer',
+                                               {'bytes_transfered' : 0L})
+                bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
 
-            Trace.message(TRANSFER_LEVEL,
-                          "Files read for volume %s   elapsed=%s" %
-                          (vol, time.time() - tinfo['encp_start_time']))
+                index = get_request_index(request_list, done_ticket)
 
-            if len(requests_failed) > 0 or \
-               not e_errors.is_ok(data_access_layer_ticket['status'][0]):
-                #When delete_at_exit.quit() called, exit_status passed in.
-                exit_status = 1 
-                Trace.message(ERROR_LEVEL,
-                              "TRANSFERS FAILED: %s" % len(requests_failed))
-                Trace.message(TICKET_LEVEL, pprint.pformat(requests_failed))
-            #Sum up the total amount of bytes transfered.
-            bytes = bytes + brcvd
+                #handle_retries() is not required here since write_hsm_file()
+                # handles its own retrying when an error occurs.
+                if e_errors.is_ok(done_ticket) and index != None:
+                    #Combine the dictionaries.
+                    work_ticket = combine_dict(done_ticket,
+                                               request_list[index])
+                    #Set completion status to successful.
+                    work_ticket['completion_status'] = SUCCESS
+                    #Store these changes back into the master list.
+                    request_list[index] = work_ticket
+
+                elif e_errors.is_non_retriable(done_ticket) and index != None:
+                    #Combine the dictionaries.
+                    work_ticket = combine_dict(done_ticket,
+                                               request_list[index])
+                    #Set completion status to successful.
+                    work_ticket['completion_status'] = FAILURE
+                    #Store these changes back into the master list.
+                    request_list[index] = work_ticket
+
+                    exit_status = 1
+
+                if not e_errors.is_ok(done_ticket):
+                    continue
+
         else:
             #If all submits fail (i.e using an old encp), this avoids crashing.
-            if not e_errors.is_ok(reply_ticket['status'][0]):
-                data_access_layer_ticket = reply_ticket
-            else:
-                data_access_layer_ticket = {}
+            #if not e_errors.is_ok(reply_ticket['status'][0]):
+            #    data_access_layer_ticket = reply_ticket
+            #else:
+            #    data_access_layer_ticket = {}
             exit_status = 1
+
+        Trace.message(TRANSFER_LEVEL,
+                      "Files read for volume %s   elapsed=%s" %
+                      (vol, time.time() - tinfo['encp_start_time']))
+
 
     Trace.message(TRANSFER_LEVEL, "Files read for all volumes.   elapsed=%s" %
                   (time.time() - tinfo['encp_start_time'],))
@@ -7420,12 +7541,12 @@ def read_from_hsm(e, tinfo):
     calc_ticket = calculate_final_statistics(bytes, number_of_files,
                                              exit_status, tinfo)
 
-    done_ticket = combine_dict(calc_ticket, data_access_layer_ticket)
+    #done_ticket = combine_dict(calc_ticket, data_access_layer_ticket)
 
     Trace.message(TICKET_LEVEL, "DONE TICKET")
     Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
 
-    return done_ticket
+    return calc_ticket, requests_per_vol
 
 ##############################################################################
 ##############################################################################
@@ -8244,32 +8365,28 @@ def main(intf):
 
     #Special handling for use with dcache.
     if intf.get_cache:
-        done_ticket = read_from_hsm(intf, tinfo)
+        done_ticket, work_list = read_from_hsm(intf, tinfo)
 
     #Special handling for use with dcache.
     elif intf.put_cache:
-        done_ticket = write_to_hsm(intf, tinfo)
+        done_ticket, work_list = write_to_hsm(intf, tinfo)
         
     ## have we been called "encp unixfile hsmfile" ?
-    elif intf.intype == "unixfile" and \
-             intf.outtype == "hsmfile" :
-        done_ticket = write_to_hsm(intf, tinfo)
+    elif intf.intype == "unixfile" and intf.outtype == "hsmfile" :
+        done_ticket, work_list = write_to_hsm(intf, tinfo)
         
     ## have we been called "encp hsmfile unixfile" ?
-    elif intf.intype == "hsmfile" and \
-             intf.outtype == "unixfile" :
-        done_ticket = read_from_hsm(intf, tinfo)
+    elif intf.intype == "hsmfile" and intf.outtype == "unixfile" :
+        done_ticket, work_list = read_from_hsm(intf, tinfo)
 
     ## have we been called "encp unixfile unixfile" ?
-    elif intf.intype == "unixfile" and \
-             intf.outtype == "unixfile" :
+    elif intf.intype == "unixfile" and intf.outtype == "unixfile" :
         emsg = "encp copies to/from tape.  It is not involved in copying " \
                "%s to %s." % (intf.intype, intf.outtype)
         done_ticket = {'status':("USERERROR", emsg)}
 
     ## have we been called "encp hsmfile hsmfile?
-    elif intf.intype == "hsmfile" and \
-             intf.outtype == "hsmfile" :
+    elif intf.intype == "hsmfile" and intf.outtype == "hsmfile" :
         emsg = "encp tape to tape is not implemented. Copy file to local " \
                "disk and then back to tape."
         done_ticket = {'status':("USERERROR", emsg)}
