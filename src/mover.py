@@ -1029,18 +1029,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ##  need to safeguard against relabeling here
                 status = self.tape_driver.verify_label(None)
                 Trace.trace(10, "verify label returns %s" % (status,))
-                if status[0] == e_errors.OK:
-                    if status[1] == volume_label:
-                        label_tape = 0
-                    else:
-                        Trace.log(e_errors.ERROR, "volume %s already labeled as %s" %
-                                  (volume_label, status[1]))
-                        self.transfer_failed(e_errors.WRITE_VOL1_WRONG, "%s should be %s"%
-                                             (status[1], volume_label), error_source=TAPE)
+                if status[0] == e_errors.OK:  #There is a label present!
+                        msg = "volume %s already labeled %s" % (volume_label,status[1])
+                        Trace.log(e_errors.ERROR, msg)
+                        self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
+                        self.vcc.set_system_noaccess(volume_label)
                         self.error(status[1], status[0])
-                        ##XXX set volume noaccess? Eject it?
                         return 0
-            if label_tape:
+
                 self.tape_driver.rewind()
                 vol1_label = 'VOL1'+ volume_label
                 vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
