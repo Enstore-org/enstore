@@ -492,7 +492,10 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
         t1 = time.time()
         if list:
             print "Updating pnfs last parked", "   cum=",time.time()-t0
-        p.set_lastparked(repr(uinfo['fullname']))
+        try:
+            p.set_lastparked(repr(uinfo['fullname']))
+        except:
+            print "Failed to update last parked info"
         tinfo["last_parked"] = time.time()-t1
         if list:
             print "  dt:",tinfo["last_parked"], "   cum=",time.time()-t0
