@@ -711,7 +711,7 @@ jon-ait-1 (file family)
 <TD NOSAVE>pcmd ls   file [layer]</TD>
 <TD NOSAVE><pre>
 $ pcmd ls testfile 3
-4 -rw-rw-r--   1 bakken   g023         3692 Jan  5 00:55 ./.(use)(3)(testfile)
+4 -rw-rw-r-- bakken g023 3692 Jan 5 00:55 ./.(use)(3)(testfile)
 </pre></TD>
 </TR>
 
@@ -1157,18 +1157,18 @@ Here is the output of an actual test:
 $ encp $P/ran-1       $P/ran-2        $P/ran-3        $P/ran-4 \
        $P/test2/ran-5 $P/test2/ran-6  $P/test2/ran-7  $P/test2/ran-8 \
        $P/test3/ran-9 $P/test3/ran-10 $P/test3/ran-11 $P/test3/ran-12 .
-/pnfs/enstore/airedale/test2/ran-5 -> /home/bakken/enstore/src/ran-5 : 102400 bytes copied from flop302 at 0.19 MB/S  requestor:bakken     cum= 3.5
-/pnfs/enstore/airedale/test2/ran-6 -> /home/bakken/enstore/src/ran-6 : 102400 bytes copied from flop302 at 0.42 MB/S  requestor:bakken     cum= 3.7
-/pnfs/enstore/airedale/test2/ran-7 -> /home/bakken/enstore/src/ran-7 : 102400 bytes copied from flop302 at 0.46 MB/S  requestor:bakken     cum= 3.9
-/pnfs/enstore/airedale/test2/ran-8 -> /home/bakken/enstore/src/ran-8 : 102400 bytes copied from flop302 at 0.46 MB/S  requestor:bakken     cum= 4.2
-/pnfs/enstore/airedale/test3/ran-9 -> /home/bakken/enstore/src/ran-9 : 102400 bytes copied from flop303 at 0.12 MB/S  requestor:bakken     cum= 5.4
-/pnfs/enstore/airedale/test3/ran-10 -> /home/bakken/enstore/src/ran-10 : 102400 bytes copied from flop303 at 0.49 MB/S  requestor:bakken   cum= 5.6
-/pnfs/enstore/airedale/test3/ran-11 -> /home/bakken/enstore/src/ran-11 : 102400 bytes copied from flop303 at 0.45 MB/S  requestor:bakken   cum= 5.8
-/pnfs/enstore/airedale/test3/ran-12 -> /home/bakken/enstore/src/ran-12 : 102400 bytes copied from flop303 at 0.45 MB/S  requestor:bakken   cum= 6.1
-/pnfs/enstore/airedale/ran-1 -> /home/bakken/enstore/src/ran-1 : 102400 bytes copied from flop301 at 0.124436148701 MB/S  requestor:bakken cum= 7.4
-/pnfs/enstore/airedale/ran-2 -> /home/bakken/enstore/src/ran-2 : 102400 bytes copied from flop301 at 0.45439695057 MB/S  requestor:bakken  cum= 7.6
-/pnfs/enstore/airedale/ran-3 -> /home/bakken/enstore/src/ran-3 : 102400 bytes copied from flop301 at 0.422761844505 MB/S  requestor:bakken cum= 7.8
-/pnfs/enstore/airedale/ran-4 -> /home/bakken/enstore/src/ran-4 : 102400 bytes copied from flop301 at 0.454517460805 MB/S  requestor:bakken cum= 8.0
+$P/test2/ran-5  -> ./ran-5  : 102400 bytes copied from flop302 at 0.19 MB/S  requestor:bakken cum= 3.5
+$P/test2/ran-6  -> ./ran-6  : 102400 bytes copied from flop302 at 0.42 MB/S  requestor:bakken cum= 3.7
+$P/test2/ran-7  -> ./ran-7  : 102400 bytes copied from flop302 at 0.46 MB/S  requestor:bakken cum= 3.9
+$P/test2/ran-8  -> ./ran-8  : 102400 bytes copied from flop302 at 0.46 MB/S  requestor:bakken cum= 4.2
+$P/test3/ran-9  -> ./ran-9  : 102400 bytes copied from flop303 at 0.12 MB/S  requestor:bakken cum= 5.4
+$P/test3/ran-10 -> ./ran-10 : 102400 bytes copied from flop303 at 0.49 MB/S  requestor:bakken cum= 5.6
+$P/test3/ran-11 -> ./ran-11 : 102400 bytes copied from flop303 at 0.45 MB/S  requestor:bakken cum= 5.8
+$P/test3/ran-12 -> ./ran-12 : 102400 bytes copied from flop303 at 0.45 MB/S  requestor:bakken cum= 6.1
+$P/ran-1        -> ./ran-1  : 102400 bytes copied from flop301 at 0.12 MB/S  requestor:bakken cum= 7.4
+$P/ran-2        -> ./ran-2  : 102400 bytes copied from flop301 at 0.45 MB/S  requestor:bakken cum= 7.6
+$P/ran-3        -> ./ran-3  : 102400 bytes copied from flop301 at 0.42 MB/S  requestor:bakken cum= 7.8
+$P/ran-4        -> ./ran-4  : 102400 bytes copied from flop301 at 0.45 MB/S  requestor:bakken cum= 8.0
 </pre>
 
 
@@ -2800,17 +2800,17 @@ one is opened. Below is an excerpt from the log file:
 10:03:50 sphinx.fnal.gov 006849 moibenko I HMC  Media Changersphinxdisk.media_changer(re) starting
 10:03:55 sphinx.fnal.gov 006849 moibenko I HMOV  Mover starting - contacting libman
 10:03:59 sphinx.fnal.gov 006849 moibenko I ADMC  Admin Clerk (re)starting
-10:09:34 sphinx.fnal.gov 006849 moibenko I HLIBM  read Q'd /pnfs/enstore/sphinx/ut1/mover.py -> '/usr/hppc_home/moibenko/enstore_test/enstore/src/tst/mover.py' : vol=flop1 bfid=91546995800000L requester:moibenko
+10:09:34 sphinx.fnal.gov 006849 moibenko I HLIBM  read Q'd /pnfs/enstore/sphinx/ut1/mover.py -> ........
 10:09:34 sphinx.fnal.gov 006849 moibenko I HLIBM  read_from_hsm work on vol=flop1 mover=sphinxdisk.mover requester:moibenko
-10:09:34 sphinx.fnal.gov 006849 moibenko I HMOV  READ_FROM_HSM start{'times': {'t0': 915725367.144, 'in_queue': 0.0595669746399}, ...........
+10:09:34 sphinx.fnal.gov 006849 moibenko I HMOV  READ_FROM_HSM start{'times': {'t0': 915725367.144, ...........
 10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Performing precautionary offline/eject of device./sphinxdisk.fake
 10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Completed  precautionary offline/eject of device./sphinxdisk.fake
-10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Requesting media changer load {'first_access': 915469958.425, 'sum_rd_err': 0, 'last_access': 915488183.702, 'media_type': 'diskfile', 'capacity_bytes': 1400000L, 'blocksize': 512, 'library': 'sphinxdisk', 'file_family': 'sphinx', 'sum_wr_access': 0, 'sum_rd_access': 0, 'remaining_bytes': 1291968L, 'wrapper': 'cpio', 'sum_wr_err': 0, 'external_label': 'flop1'...........
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Requesting media changer load {'first_access': 915469958.425, ............
 10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Media changer load status('ok', None)
 10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Requesting software mount flop1 ./sphinxdisk.fake
 10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Software mount complete flop1 ./sphinxdisk.fake
 10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  WRAPPER.READ........
-10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  READ DONE{'unique_id': 'sphinx.fnal.gov-915725374.048321-1071', 'retry_cnt': 0, 'mover': {'config_port': 7500, 'media_changer': 'sphinxdisk.media_changer', 'port': 7508, 'device': './sphinxdi
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  READ DONE{'unique_id': 'sphinx.fnal.gov-915725374.048321-1071', .............
 </pre>
 Fields in a log file are:
 <ul>
