@@ -103,14 +103,14 @@ if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
     x=`$XNTPDC -p`
     logit "NO TIME SYNC"
     logit "$x"
-    if [ $QUIET -ne 1 ]; then
+    if [ $ALARM -eq 1 ]; then
       enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
     fi
 fi
 
 if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
    logit "ONLY 1 PROCESSOR RUNNING"
-    if [ $QUIET -ne 1 ]; then
+    if [ $ALARM -eq 1 ]; then
       enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
     fi
 fi   
