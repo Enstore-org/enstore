@@ -10,9 +10,9 @@ HDRS=volume_import.h
 all: $(PROGS)
 
 #For Linux
-CC=gcc -Wall
+#CC=gcc -Wall
 #For Irix and others
-#CC=cc
+CC=cc
 
 enstore_tape: $(OBJS)
 	$(CC) -o enstore_tape $(OBJS)
