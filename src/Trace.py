@@ -18,6 +18,7 @@ import types
 
 import event_relay_messages
 import event_relay_client
+import enstore_constants
 
 if __name__== '__main__':
     print "No unit test, sorry"
@@ -129,11 +130,13 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
         
 def alarm(severity, root_error, rest={}):
     rest['severity'] = severity
-    rest['root_error'] = root_error
+    rest[enstore_constants.ROOT_ERROR] = root_error
     #log(severity, root_error, MSG_ALARM)
     if alarm_func:
         alarm_func(
-            time.time, os.getpid(), logname, ("root_error:%s"%(rest['root_error'],), rest ))
+            time.time, os.getpid(), logname, root_error,
+	    ("%s:%s"%(enstore_constants.ROOT_ERROR,
+		      rest[enstore_constants.ROOT_ERROR],), rest ))
     if print_levels.has_key(severity):
         try:
             print root_error
@@ -167,7 +170,7 @@ def set_log_func(func):
 
 # defaults (templates) -- called from trace
 
-def default_alarm_func(time, pid, name, args):
+def default_alarm_func(time, pid, name, root_error, args):
     lvl = args[0]
     msg = args[1]
     print "default alarm_func", args

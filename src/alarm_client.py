@@ -51,7 +51,7 @@ class AlarmClient(generic_client.GenericClient):
         Trace.set_alarm_func( self.alarm_func )
         self.alarm_func_lock = Lock() 
         
-    def alarm_func(self, time, pid, name, args):
+    def alarm_func(self, time, pid, name, root_error, args):
         # prevent infinite recursion (i.e if some function call by this
         # function does a trace and the alarm bit is set
         if self.alarm_func_lock.test_and_set(): return None
@@ -60,6 +60,7 @@ class AlarmClient(generic_client.GenericClient):
         ticket[enstore_constants.UID] = self.uid
         ticket[enstore_constants.PID] = pid
         ticket[enstore_constants.SOURCE] = name
+	ticket[enstore_constants.ROOT_ERROR] = root_error
         if args[0] == e_errors.ALARM:
             # we were called from Trace.alarm and args will be a dict
             ticket.update(args[2])
