@@ -279,7 +279,7 @@ def encrc( buffer ):
         # We have switched to 32 bit crcs.  This means that string.atoi now
         # causes an overflow when the crc value has the sign bit set.  The most
         # obvious solution of going to atol doesn't work. 
-        crc = hex_string_to_signed_int32(buffer[data_offset:data_offset+8]))
+        crc = hex_string_to_signed_int32(buffer[data_offset:data_offset+8])
         return crc
 
 ###############################################################################
