@@ -12,3 +12,7 @@ class BackupClient:
     def stop_backup(self):
         r = self.send({'work':'stop_backup'})
         return r
+
+    def backup(self):
+	r = self.send({'work':'backup'})
+        return r

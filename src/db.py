@@ -33,16 +33,19 @@ cursor_open=0
 #junk 	return str
 
 class DbTable:
-  def __init__(self,dbname,indlst=None, auto_journal=1):
+  def __init__(self,dbname, db_home, jou_home, indlst=None, auto_journal=1):
     if indlst is None:
         indlst = []
     self.auto_journal = auto_journal
-    try:
-	self.dbHome=configuration_client.ConfigurationClient(\
-		(interface.default_host(),\
-		interface.default_port())).get('database')['db_dir']
-    except:
-	self.dbHome=os.environ['ENSTORE_DIR']
+    self.dbHome = db_home
+    self.jouHome = jou_home
+
+#    try:
+#	self.dbHome=configuration_client.ConfigurationClient(\
+#		(interface.default_host(),\
+#		interface.default_port())).get('database')['db_dir']
+#    except:
+#	self.dbHome=os.environ['ENSTORE_DIR']
     dbEnvSet={'create':1,'init_mpool':1, 'init_lock':1, 'init_txn':1}
     dbEnv=libtpshelve.env(self.dbHome,dbEnvSet)
     self.db=libtpshelve.open(dbEnv,dbname,type='btree')
@@ -53,7 +56,7 @@ class DbTable:
 #junk     	self.inx[name]=MyIndex(self.dbindex,name)
 
     if self.auto_journal:
-        self.jou=journal.JournalDict({},self.dbHome+"/"+dbname+".jou")
+        self.jou=journal.JournalDict({},self.jouHome+"/"+dbname+".jou")
         self.count=0
 
     self.name=dbname
@@ -234,12 +237,12 @@ class DbTable:
      if self.auto_journal:
         del self.jou
      Trace.log(e_errors.INFO, "Start checkpoint for "+self.name+" journal")
-     cmd="mv " + self.dbHome +"/"+self.name+".jou " + \
-                        self.dbHome +"/"+self.name+".jou."+ \
+     cmd="mv " + self.jouHome +"/"+self.name+".jou " + \
+                        self.jouHome +"/"+self.name+".jou."+ \
                         repr(time.time())
      os.system(cmd)
      if self.auto_journal:
-        self.jou = journal.JournalDict({},self.dbHome+"/"+self.name+".jou")
+        self.jou = journal.JournalDict({},self.jouHome+"/"+self.name+".jou")
      self.count=0
      Trace.log(e_errors.INFO, "End checkpoint for "+self.name)
   def start_backup(self):
@@ -251,17 +254,38 @@ class DbTable:
      global  backup_flag
      backup_flag=1
      Trace.log(e_errors.INFO, "End backup for "+self.name)
-def do_backup(name):
-     cwd=os.getcwd()
-     try:
-         dbHome = configuration_client.ConfigurationClient(\
-		(interface.default_host(),\
-		interface.default_port()), 3).get('database')['db_dir']
 
-     except:
-         dbHome = os.environ['ENSTORE_DIR']
+  # backup is a method of DbTable
+  def backup(self):
+     cwd=os.getcwd()
+     os.chdir(self.dbHome)
+     cmd="tar cf "+self.name+".tar "+self.name
+     Trace.log(e_errors.INFO, repr(cmd))
+     os.system(cmd)
+     os.chdir(self.jouHome)
+     cmd="tar rf "+self.dbHome+"/"+self.name+".tar"+" "+self.name+".jou.*"
+     Trace.log(e_errors.INFO, repr(cmd))
+     os.system(cmd)
+     cmd="rm "+ self.name +".jou.*"
+     Trace.log(e_errors.INFO, repr(cmd))
+     os.system(cmd)
+     os.chdir(cwd)
+
+def do_backup(name, dbHome, jouHome):
+     cwd=os.getcwd()
+#     try:
+#         dbHome = configuration_client.ConfigurationClient(\
+#		(interface.default_host(),\
+#		interface.default_port()), 3).get('database')['db_dir']
+#
+#     except:
+#         dbHome = os.environ['ENSTORE_DIR']
      os.chdir(dbHome)
-     cmd="tar cvf "+name+".tar "+name+" "+name+".jou.*"
+     cmd="tar cf "+name+".tar "+name
+     Trace.log(e_errors.INFO, repr(cmd))
+     os.system(cmd)
+     os.chdir(jouHome)
+     cmd="tar rf "+dbHome+"/"+name+".tar"+" "+name+".jou.*"
      Trace.log(e_errors.INFO, repr(cmd))
      os.system(cmd)
      cmd="rm "+name +".jou.*"

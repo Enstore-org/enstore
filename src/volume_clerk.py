@@ -15,6 +15,7 @@ import generic_server
 import db
 import Trace
 import e_errors
+import configuration_client
 
 # require 5% more space on a tape than the file size,
 #    this accounts for the wrapper overhead and "some" tape rewrites
@@ -1163,6 +1164,19 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller({"status"       : status,
                                   "stop_backup"  : 'no' })
 
+    def backup(self,ticket):
+        try:
+            Trace.log(e_errors.INFO,"backup")
+            dict.backup()
+            self.reply_to_caller({"status"       : (e_errors.OK, None),
+                                  "backup"  : 'yes' })
+        # catch any error and keep going. server needs to be robust
+        except:
+            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            Trace.log(e_errors.ERROR,"backup "+repr(status))
+            self.reply_to_caller({"status"       : status,
+                                  "backup"  : 'no' })
+
 
 class VolumeClerk(VolumeClerkMethods,\
                   generic_server.GenericServer):
@@ -1187,8 +1201,21 @@ if __name__ == "__main__":
     vc = VolumeClerk((intf.config_host, intf.config_port))
     Trace.log(e_errors.INFO, '%s' % sys.argv)
 
+    Trace.log(e_errors.INFO,"determine dbHome and jouHome")
+    try:
+        dbInfo = configuration_client.ConfigurationClient(
+		(intf.config_host, intf.config_port)).get('database')
+        dbHome = dbInfo['db_dir']
+        try:  # backward compatible
+            jouHome = dbInfo['jou_dir']
+        except:
+            jouHome = dbHome
+    except:
+        dbHome = os.environ['ENSTORE_DIR']
+        jouHome = dbHome
+
     Trace.log(e_errors.INFO,"opening volume database using DbTable")
-    dict = db.DbTable("volume",[])
+    dict = db.DbTable("volume", dbHome, jouHome, [])
     Trace.log(e_errors.INFO,"hurrah, volume database is open")
 
     while 1:

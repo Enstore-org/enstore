@@ -116,12 +116,15 @@ if __name__=="__main__":
 	#dbHome = configuration_client.ConfigurationClient(\
 	#		(interface.default_host(),\
 	#		interface.default_port()), 3).get('database')['db_dir']
-	dbHome = configuration_client.ConfigurationClient(\
+	dbInfo = configuration_client.ConfigurationClient(\
 			(interface.default_host(),\
-			interface.default_port())).get('database')['db_dir']
+			interface.default_port())).get('database')
+        dbHome = dbInfo['db_dir']
+	jouHome = dbInfo['jou_dir']
 
     except:
 	dbHome=os.environ['ENSTORE_DIR']
+        jouHome=dbHome
     try:
     	os.chdir(dbHome)
     except os.error:

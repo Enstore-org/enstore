@@ -5,6 +5,7 @@
 import sys
 import time
 import string
+import os
 
 # enstore imports
 import traceback
@@ -15,6 +16,7 @@ import generic_server
 import db
 import Trace
 import e_errors
+import configuration_client
 
 dict="" # quiet lint
 
@@ -543,15 +545,56 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      self.control_socket.close()
      return
 
+#    def start_backup(self,ticket):
+#        dict.start_backup()
+#        self.reply_to_caller({"status" : (e_errors.OK, None),
+#                "start_backup"  : 'yes' })
+#
+#    def stop_backup(self,ticket):
+#        dict.stop_backup()
+#        self.reply_to_caller({"status" : (e_errors.OK, None),
+#                "stop_backup"  : 'yes' })
+
     def start_backup(self,ticket):
-        dict.start_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),
-                "start_backup"  : 'yes' })
+        try:
+            Trace.log(e_errors.INFO,"start_backup")
+            dict.start_backup()
+            self.reply_to_caller({"status"        : (e_errors.OK, None),
+                                  "start_backup"  : 'yes' })
+        # catch any error and keep going. server needs to be robust
+        except:
+            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            Trace.log(e_errors.ERROR,"start_backup "+repr(status))
+            self.reply_to_caller({"status"       : status,
+                                  "start_backup" : 'no' })
+
 
     def stop_backup(self,ticket):
-        dict.stop_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),
-                "stop_backup"  : 'yes' })
+        try:
+            Trace.log(e_errors.INFO,"stop_backup")
+            dict.stop_backup()
+            self.reply_to_caller({"status"       : (e_errors.OK, None),
+                                  "stop_backup"  : 'yes' })
+        # catch any error and keep going. server needs to be robust
+        except:
+            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            Trace.log(e_errors.ERROR,"stop_backup "+repr(status))
+            self.reply_to_caller({"status"       : status,
+                                  "stop_backup"  : 'no' })
+
+    def backup(self,ticket):
+        try:
+            Trace.log(e_errors.INFO,"backup")
+            dict.backup()
+            self.reply_to_caller({"status"       : (e_errors.OK, None),
+                                  "backup"  : 'yes' })
+        # catch any error and keep going. server needs to be robust
+        except:
+            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            Trace.log(e_errors.ERROR,"backup "+repr(status))
+            self.reply_to_caller({"status"       : status,
+                                  "backup"  : 'no' })
+
 
 class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
@@ -580,8 +623,21 @@ if __name__ == "__main__":
     fc = FileClerk((intf.config_host, intf.config_port))
     Trace.log(e_errors.INFO, '%s' % sys.argv)
 
+    Trace.log(e_errors.INFO,"determine dbHome and jouHome")
+    try:
+        dbInfo = configuration_client.ConfigurationClient(
+		(intf.config_host, intf.config_port)).get('database')
+        dbHome = dbInfo['db_dir']
+        try:  # backward compatible
+            jouHome = dbInfo['jou_dir']
+        except:
+            jouHome = dbHome
+    except:
+        dbHome = os.environ['ENSTORE_DIR']
+        jouHome = dbHome
+
     Trace.log(e_errors.INFO,"opening file database using DbTable")
-    dict = db.DbTable("file", [])
+    dict = db.DbTable("file", dbHome, jouHome, [])
     Trace.log(e_errors.INFO,"hurrah, file database is open")
 
     while 1:

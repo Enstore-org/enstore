@@ -249,7 +249,7 @@ if __name__ == "__main__" :
 
     elif intf.backup:
         ticket = fcc.start_backup()
-        db.do_backup("file")
+        ticket = fcc.backup()
         ticket = fcc.stop_backup()
 
     elif intf.deleted and intf.bfid:

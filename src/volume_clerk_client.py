@@ -470,7 +470,7 @@ if __name__ == "__main__":
                            intf.alive_retries)
     elif intf.backup:
         ticket = vcc.start_backup()
-        db.do_backup("volume")
+        ticket = vcc.backup()
         ticket = vcc.stop_backup()
     elif intf.vols:
         ticket = vcc.get_vols()
