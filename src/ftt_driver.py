@@ -357,7 +357,9 @@ class FTTDriver(driver.Driver):
         ## for differint kinds of devices
         ## NOT RECOMMENDED to specify dencity other than None
         ## compressin must be either None (default compression), or 0, or 1
-        ## if 
+        ##
+
+        ## to actually set mode ftt.open_dev() must be used.
         #return 0
     
         r = -1
@@ -423,7 +425,7 @@ class FTTDriver(driver.Driver):
                 return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
             if volume_label is None:
                 return e_errors.OK, s[0]
-            if s[0] != volume_label:
+            if s[0] != volume_label[0:6]:
                 return {0:e_errors.READ_VOL1_WRONG, 1:e_errors.WRITE_VOL1_WRONG}[mode], s[0]
 
             return e_errors.OK, None
