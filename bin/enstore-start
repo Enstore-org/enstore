@@ -54,7 +54,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
         cmd="python $ENSTORE_DIR/src/configuration_server.py \
             --config_host=$enstore_config_host --config_port=$enstore_config_port --config_file=$enstore_config_file"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|conf'; then
-            title="Config Server"
+            title="Enstore "Config Server"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
@@ -123,7 +123,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
         echo "Starting Log Server"
         cmd="python $ENSTORE_DIR/src/log_server.py --config_host=$enstore_config_host --config_port=$enstore_config_port"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|log'; then
-            title="Log Server"
+            title="Enstore Log Server"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
@@ -148,7 +148,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
         echo "Starting Volume Clerk"
         cmd="python $ENSTORE_DIR/src/volume_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|vol'; then
-            title="Config Server"
+            title="Enstore Volume Clerk"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
@@ -173,7 +173,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
         echo "Starting File Clerk"
         cmd="python $ENSTORE_DIR/src/file_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|fil'; then
-            title="File Clerk"
+            title="Enstore File Clerk"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
@@ -198,7 +198,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
       echo "Starting $i Library Manager"
       cmd="python $ENSTORE_DIR/src/library_manager.py --config_host=$enstore_config_host --config_port=$enstore_config_port $i"
       if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|lib'; then
-          title="Library Manager $i"
+          title="Enstore Library Manager $i"
           eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
       else
           eval "$cmd &"
@@ -224,7 +224,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
       echo "Starting $i Media Changer"
       cmd="python $ENSTORE_DIR/src/media_changer.py --config_host=$enstore_config_host --config_port=$enstore_config_port $i"
       if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|med'; then
-          title="Media Changer $i"
+          title="Enstore Media Changer $i"
           eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
       else
           eval "$cmd &"
@@ -250,7 +250,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
       echo "Starting $i Mover"
       cmd="python $ENSTORE_DIR/src/mover.py --config_host=$enstore_config_host --config_port=$enstore_config_port $i"
       if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|mov'; then
-          title="Mover $i"
+          title="Enstore Mover $i"
           eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
       else
           eval "$cmd &"
