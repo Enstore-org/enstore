@@ -68,7 +68,7 @@ if __name__ == '__main__':
 	outf.write("set ylabel 'Mounts'\n")
 	outf.write("set terminal postscript color solid\n")
 	outf.write("set output '"+postscript_output+"'\n")
-	outf.write("set title 'Tape mounts per volume (plotted at %s)'\n"%(time.ctime(time.time())))
+	outf.write("set title 'Tape Mounts per Volume (plotted at %s)'\n"%(time.ctime(time.time())))
 	outf.write("set arrow 1 from %d,%d to %d,%d head\n"%(count-toh-500, high_water_mark-500, count-toh, high_water_mark))
 	outf.write("set arrow 2 from %d,%d to %d,%d head\n"%(count-tol-500, low_water_mark+500, count-tol, low_water_mark))
 	outf.write("set label 1 '%d' at %d,%d right\n"%(toh, count-toh-500, high_water_mark-500))
