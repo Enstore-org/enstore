@@ -2023,6 +2023,8 @@ class File:
 ##############################################################################
 def do_work(intf):
 
+    rtn = 0
+
     if intf.file:
         p=Pnfs(intf.file)
         t=None
