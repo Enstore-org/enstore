@@ -142,7 +142,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+["status", "local_mover=", "clean_drive", "start_draining" ]
+            return self.client_options()+["status", "local_mover=", "clean_drive", "start_draining=" ]
 
     #  define our specific help
     def parameters(self):
