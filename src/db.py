@@ -10,10 +10,11 @@ import copy
 import log_client
 import journal
 import table
+import Trace
 
 import libtpshelve
 
-JOURNAL_LIMIT=1000 
+JOURNAL_LIMIT=1000
 backup_flag=1
 cursor_open=0
 
@@ -40,13 +41,13 @@ class dBTable:
     self.db=libtpshelve.open(dbEnv,dbname,type='btree')
     self.dbindex=libtpshelve.open(dbEnv,"index",type='btree')
     self.inx={}
-    for name in indlst :
+    for name in indlst:
     	self.inx[name]=myIndex(self.dbindex,name)
     self.jou=journal.JournalDict({},dbname+".jou")
     self.count=0
     self.name=dbname
     self.logc=logc
-    if len(self.jou) :
+    if len(self.jou):
     	self.start_backup()
 	self.checkpoint()
 	self.stop_backup()
@@ -59,19 +60,19 @@ class dBTable:
     global t
     global cursor_open
     if action=="open":
-       if cursor_open==0 :
+       if cursor_open==0:
           t=self.db.txn()
           c=self.db.cursor(t)
           key,value=c.first()
           cursor_open=1
           return key
     if action=="close":
-       if cursor_open :
+       if cursor_open:
           c.close()
           t.commit()
           cursor_open=0
           return 0
-    if action=="len" :
+    if action=="len":
        if cursor_open:
           pos,value=c.get()
           len=0
@@ -87,9 +88,9 @@ class dBTable:
           pos,value=c.get()
           key,value=c.set(key)
           c.set(pos)
-          if key :
+          if key:
 		return 1
-          else :
+          else:
                 return 0
 
     if action=="delete":
@@ -98,15 +99,15 @@ class dBTable:
     if action=="get":
         key,value=c.set(key)
         return value
-    if action=="update" :
+    if action=="update":
         c.set(key)
         c.update(value)
         return key
     if action=="next":
         key,value=c.next()
-        if key :
+        if key:
            pass
-        else :
+        else:
            self.cursor("close")
         return key
 
@@ -114,7 +115,7 @@ class dBTable:
   def keys(self):
     return self.db.keys()
   def __len__(self):
-    if cursor_open==1 :
+    if cursor_open==1:
         return self.cursor("len")
     t=self.db.txn()
     c=self.db.cursor(t)
@@ -129,16 +130,16 @@ class dBTable:
     return len
   def has_key(self,key):
      return self.db.has_key(key)
-  def __setitem__(self,key,value) :
+  def __setitem__(self,key,value):
      if 'db_flag' in value.keys(): del value['db_flag']
-     self.jou[key]=copy.deepcopy(value)               
+     self.jou[key]=copy.deepcopy(value)
      self.jou[key]['db_flag']='add'
      self.count=self.count+1
-     if self.count > JOURNAL_LIMIT and backup_flag :
+     if self.count > JOURNAL_LIMIT and backup_flag:
            self.checkpoint()
      for name in self.inx.keys():
         self.inx[name][value[name]]=key
-     if cursor_open==1 :
+     if cursor_open==1:
            self.cursor("update",key,value)
 	   return
      t=self.db.txn()
@@ -154,9 +155,9 @@ class dBTable:
 	return self.inx[field][field_val]
        except:
 	return []
-	
+
   def __getitem__(self,key):
-     if cursor_open==1 :
+     if cursor_open==1:
      	return self.cursor("get",key)
      return self.db[key]
 
@@ -164,19 +165,19 @@ class dBTable:
      value=self.db[key]
      if self.jou.has_key(key) == 0:
       	self.jou[key]=copy.deepcopy(self.db[key])
-     else :
+     else:
 	if self.jou[key]['db_flag']=='delete':
-		return      
+		return
      self.jou[key]['db_flag']='delete'
      del self.jou[key]
      t=self.db.txn()
      del self.db[(key,t)]
-     t.commit()      
+     t.commit()
      self.count=self.count+1
-     if self.count > JOURNAL_LIMIT and backup_flag :
+     if self.count > JOURNAL_LIMIT and backup_flag:
       	self.checkpoint()
      for name in self.inx.keys():
-        del self.inx[name][(key,value[name])] 
+        del self.inx[name][(key,value[name])]
   def dump(self):
      t=self.db.txn()
      c=self.db.cursor(t)
@@ -187,7 +188,7 @@ class dBTable:
      t.commit()
   def close(self):
      self.jou.close()
-     if cursor_open==1 :
+     if cursor_open==1:
 	self.cursor("close")
      self.db.close()
   def checkpoint(self):
@@ -203,12 +204,12 @@ class dBTable:
      self.count=0
      self.logc.send(log_client.INFO, 1, "End checkpoint for "+self.name)
   def start_backup(self):
-     global  backup_flag            
+     global  backup_flag
      backup_flag=0
      self.logc.send(log_client.INFO, 1, "Start backup for "+self.name)
      self.checkpoint()
   def stop_backup(self):
-     global  backup_flag           
+     global  backup_flag
      backup_flag=1
      self.logc.send(log_client.INFO, 1, "End backup for "+self.name)
 def do_backup(name):
@@ -236,6 +237,10 @@ def do_backup(name):
      os.system(cmd)
      os.chdir(cwd)
 if __name__=="__main__":
-	import sys
-	dict= dBTable(sys.argv[1],0)
-	dict.dump()
+  import sys
+  Trace.init("dbclerk")
+  Trace.trace(1,"dbc called with args "+repr(sys.argv))
+
+  dict= dBTable(sys.argv[1],0)
+  dict.dump()
+  Trace.trace(1,"dbc exit ok")

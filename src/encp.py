@@ -1193,7 +1193,7 @@ class encp(generic_client_server.GenericClientServer):
 if __name__  ==  "__main__" :
     t0 = time.time()
     Trace.init("encp")
-    Trace.trace(1,"encp called at "+repr(t0)+":"+repr(sys.argv))
+    Trace.trace(1,"encpcalled with args "+repr(sys.argv))
 
     # use class to get standard way of parsing options
     e = encp()
@@ -1228,4 +1228,4 @@ if __name__  ==  "__main__" :
         Trace.trace(0,emgs)
         jraise(errno.errorcode[errno.EPROTO],emsg)
 
-    Trace.trace(1,"encp finished at "+repr(time.time()))
+    Trace.trace(1,"encp finished")
