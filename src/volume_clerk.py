@@ -474,10 +474,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         label = ticket["external_label"]
         record = self.dict[label]  
         ret_stat = (e_errors.OK,None)
+        Trace.trace(35, "is_vol_available system_inhibit = %s user_inhibit = %s ticket = %s" %
+                    (record['system_inhibit'],
+                     record['user_inhibit'],
+                     ticket))
         if record["system_inhibit"][0] == e_errors.DELETED:
             ret_stat = (record["system_inhibit"][0],None)
         else:
             if work == 'read_from_hsm':
+                Trace.trace(35, "is_vol_available: reading")
                 # if system_inhibit is NOT in one of the following 
                 # states it is NOT available for reading
                 if record['system_inhibit'][0] != 'none':
@@ -497,6 +502,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 else:
                     ret_stat = (e_errors.OK,None)
             elif work == 'write_to_hsm':
+                Trace.trace(35, "is_vol_available: writing")
                 if record['system_inhibit'][0] != 'none':
                     ret_stat = (record['system_inhibit'][0], None)
                 elif (record['system_inhibit'][1] == 'readonly' or
@@ -520,6 +526,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             else:
                 ret_stat = (e_errors.UNKNOWN,None)
         ticket['status'] = ret_stat
+        Trace.trace(35, "is_volume_available: returning %s " %(ret_stat,))
         self.reply_to_caller(ticket)
 
     # find volume that matches given volume family
