@@ -50,27 +50,13 @@ class Wrapper :
 	return
 
     def read_pre_data( self, driver, info ):
-        """ I do not understand this
-        if type(ticket) == types.DictType:
-            fileInfo = ticket['hsm_driver']['cur_loc_cookie']
-            fileNumber = int(string.split(fileInfo,"_")[2])
-	elif type(ticket) == types.IntType:
-	    fileNumber = ticket
-	else:
-	    raise IOError, "bad file number input " + repr(ticket)
-        """
-        if info:
-           fileNumber = info['location_cookie']
-        else:
-           fileNumber = 0 
-        if fileNumber == 0: # so if it is a first file on a tape then there's one more header?
-            self.vol = driver.read(self.recordLength)
-	self.header1 = driver.read(self.recordLength)
-	self.header2 = driver.read(self.recordLength)
-	self.header3 = driver.read(self.recordLength)
-	self.header4 = driver.read(self.recordLength)
+        header = driver.read(self.recordLength)
+        if headerheader[0:3] == "VOL":
+            header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
 	return
-
 
     def read_post_data( self, driver, info ):
 	self.tail1 = driver.read(self.recordLength)
