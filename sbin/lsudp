@@ -1,0 +1,78 @@
+#!/bin/sh
+
+# Print a table in the form of
+# udp_port_number  commandline
+#
+# for all processes havin udp sockets on the system 
+
+if [ "$1" = -x ] ; then set  -x ; shift ; fi
+
+ 
+# given a link in /proc/<pid>/fd
+# print its inode number
+inode() {
+# useage inode $1
+    echo `ls -al $1 | cut -d: -f 3`
+}
+
+
+#
+# given an inode number 
+# print a null string if the inode does _not_ corespond to a UDP port
+# print the port number if the inode number corresponds to a UDP port
+#
+inode_to_port() {
+# useage : inode_to_port inode
+
+    if [ -z "$1" ] ; then return ; fi
+    match=`grep ${1} /proc/net/udp` #/proc/net/udp is such that inode is last
+    if [ ! -z "$match" ] ; then
+       hexport=$match
+       hexport=`echo $match | cut -d: -f3  | cut -f 1 -d' '` 
+       decport=`echo 16 i $hexport p | dc`
+       echo $decport
+    fi
+}
+
+#
+# really fdo the work
+# Must be root to do this.
+#   Loop o\ver all processa dn adn all open files
+#   if file is a udp port, print the port number and command line
+#   Notice that the commnd line is "funny" and contines null strings.
+for p in /proc/[0-9]* ; do
+    
+    for l in $p/fd/* ; do
+	if [ -L $l ] ; then
+	    port=`inode_to_port $(inode $l)`
+	    if [ ! -z "$port" ] ; then
+		echo -n $port" " > /dev/tty  
+		cat $p/cmdline > /dev/tty
+		echo
+	    fi
+ 	fi
+    done ;
+
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
