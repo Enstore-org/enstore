@@ -42,6 +42,42 @@ quit() {
   exit $code
 }
 
+# Modified by huangch@fnal.gov to take arguments
+#
+# $0 [[-setup product] | [-D VARIABLE=value]]* cmd
+#
+# where product is any ups product that needs to be setup
+#   and VARIABLE=value is an assignment of environmental variable
+#
+# product can be of the syntax with multiple products
+#
+# multiple -setup and -D are allowed
+
+# additional products
+
+products=
+
+while [ $1 = "-setup" ] || [ $1 = "-D" ]
+do
+	case $1 in
+	-setup)
+		if [ -z "${products}" ]
+		then
+			products=$2
+		else
+			products=${products},$2
+		fi
+		;;
+	-D)
+		var=`echo $2 | cut -f 1 -d '='`
+		eval $2
+		export $var
+		;;
+	esac
+	shift
+	shift
+done
+
 procName=$1
 
 procInfos=~/$procName
@@ -69,6 +105,13 @@ if [ ! -f $setup ] ; then quit "$setup not found" 4; fi
 . $setup
 # should check that enstore was setup properly as well
 setup enstore
+
+# setup additional products, if any
+
+if [ -n "${products}" ]
+then
+ 	setup ${products}
+fi
 
 shift
 #echo  Executing: $procName $*
