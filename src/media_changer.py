@@ -17,7 +17,7 @@ from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
-from log_client import *
+# from log_client import *
 import string
 
 list = 0
@@ -202,8 +202,8 @@ if __name__ == "__main__" :
     mls.set_csc(csc)
 
     # create a log client
-    logc = LoggerClient(csc, ml_name, 'logserver', 0)
-    logc.send(INFO, "Starting Media Changer. Type=%s", args[0])
+#    logc = LoggerClient(csc, ml_name, 'logserver', 0)
+#    logc.send(INFO, "Starting Media Changer. Type=%s", args[0])
 
     while 1:
         try:
