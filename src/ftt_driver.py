@@ -223,7 +223,7 @@ class FTTDriver(driver.Driver):
                 self._burst_rate = r / t
                 self._rate = self._active_time * self._rate + t * self._burst_rate
                 self._active_time = self._active_time + t
-                self._rate = self.rate / self._active_time
+                self._rate = self._rate / self._active_time
             self._bytes_transferred = self._bytes_transferred + r
         return r
     
@@ -245,7 +245,7 @@ class FTTDriver(driver.Driver):
                 self._burst_rate = r / t
                 self._rate = self._active_time * self._rate + t * self._burst_rate
                 self._active_time = self._active_time + t
-                self._rate = self.rate / self._active_time
+                self._rate = self._rate / self._active_time
             self._bytes_transferred = self._bytes_transferred + r
         return r
         
@@ -346,8 +346,9 @@ class FTTDriver(driver.Driver):
                 return {0:e_errors.READ_VOL1_WRONG, 1:e_errors.WRITE_VOL1_WRONG}[mode], s[0]
 
             return e_errors.OK, None
-        except exceptions.Exception, detail:
-            Trace.log(e_errors.ERROR, "reading VOL1 label: %s" % (detail,))
+        except:
+            exc, msg, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "reading VOL1 label: %s %s" % (exc, msg))
             return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], str(detail)
         
     def rates(self):
