@@ -350,14 +350,15 @@ class EnStatus:
 
     # parse the library manager moverlist ticket
     def parse_lm_moverlist(self, work):
-	string = "    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT\n"
+	s = "    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT\n"
 	for mover in work:
 	    (address, port) = mover['address']
 	    time = format_time(mover['last_checked'])
-	    string = string+"    %(m)-18.18s    %(p)-4.4d    %(s)-10.10s    %(lc)-20.20s    %(tc)-3d\n" % {'m':mover['mover'], 'p':port, 's':mover['state'], 'lc':time, 'tc':mover['summon_try_cnt']}
+	    s = s+"    %-18.18s    %-4.4d    %-10.10s    %-20.20s    %-3d\n" % \
+                (mover['mover'], port, mover['state'], time, mover['summon_try_cnt'])
 
-	string = string+"\n"
-	return string
+	s = s+"\n"
+	return s
 
     # format the library manager mover list for output
     def format_lm_moverlist(self, ticket):
