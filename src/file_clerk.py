@@ -38,6 +38,7 @@ class FileClerkMethods(DispatchingWorker) :
             ticket["external_label"]   = finfo["external_label"]
             ticket["sanity_cookie"]    = finfo["sanity_cookie"]
             ticket["complete_crc"]     = finfo["complete_crc"]
+            ticket["beginning_crc"]    = finfo["beginning_crc"]
 
         except KeyError :
             self.reply_to_caller({"status" : "bfid not found" })
@@ -84,6 +85,7 @@ class FileClerkMethods(DispatchingWorker) :
             ticket["external_label"]   = finfo["external_label"]
             ticket["sanity_cookie"]    = finfo["sanity_cookie"]
             ticket["complete_crc"]     = finfo["complete_crc"]
+            ticket["beginning_crc"]    = finfo["beginning_crc"]
 
         except KeyError :
             self.reply_to_caller({"status" : "bfid not found" })
