@@ -7,9 +7,11 @@ gang=`gang`
 case $gang in
   stken) robot="PowderHorn 9310"
 	 silo_node=fntt
+	 copy_node=stkensrv4
           ;;
   cdfen) robot="PowderHorn 9310"
 	 silo_node=fntt2
+	 copy_node=cdfensrv4
           ;;
    d0en*) robot="UNKNOWN"
           ;;
@@ -24,7 +26,7 @@ if [ `echo $output | grep -c /dev/` -eq 0 ] ; then
   rm -f $output
 fi
 
-if [ $node = "stkensrv4" ] ; then
+if [ $node = "stkensrv4" -o $node = "cdfensrv4" ] ; then
 
 cat << EOF >>$output
 <html> <head> <title>$robot Volume Status Page</title> </head>
