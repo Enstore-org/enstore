@@ -23,6 +23,8 @@ ALLOW_BASE="
        TCP,xemacs,:6000,TCP,x
        TCP,rsh,:kshell,TCP,x
        TCP,rsh,,TCP,/usr/krb5/bin/rsh
+       TCP,kshd,:kshell,TCP,x
+       TCP,kshd,:,TCP,kshd kshd -5c
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
        TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
 "
@@ -91,8 +93,11 @@ allow() { tt=$1
                return 0
             fi
           done
-          echo UNAUTHORIZED $node $tt $command $pid $rest
-          ps -wwwwfp $pid|grep -v PPID
+          msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
+          msg2=`ps -wwwwfp $pid|grep -v PPID`
+          echo $msg1
+          echo $msg2
+          enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
           return 1
          }
 
