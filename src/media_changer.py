@@ -129,7 +129,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         ticket["function"] = "cleanCycle"
         return self.DoWork( self.cleanCycle, ticket)
 
-    def max_work(self,ticket):
+    def set_max_work(self,ticket):
         self.max_work = ticket["max_work"]
         self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
 

@@ -97,8 +97,8 @@ class MediaChangerClient(generic_client.GenericClient):
 	rt = self.send(ticket,300,10)
         return rt
 
-    def max_work(self, max_work):
-        ticket = {'work'           : 'max_work',
+    def set_max_work(self, max_work):
+        ticket = {'work'           : 'set_max_work',
                   'max_work'        : max_work
                  }
         return self.send(ticket)
@@ -224,7 +224,7 @@ def do_work(intf):
     elif intf._export:
         ticket=mcc.ejectvol(intf.media_type, intf.volumeList)
     elif intf.max_work  >= 0:
-        ticket=mcc.max_work(intf.max_work)
+        ticket=mcc.set_max_work(intf.max_work)
     elif intf.get_work:
         ticket=mcc.GetWork()
         pprint.pprint(ticket)
