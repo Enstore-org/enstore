@@ -42,6 +42,9 @@ import delete_at_exit
 import runon
 import enroute
 import charset
+import volume_family
+import volume_clerk_client
+import file_clerk_client
 
 #############################################################################
 # verbose: Roughly, five verbose levels are used.
@@ -62,6 +65,8 @@ data_access_layer_requested = 0
 
 #Initial seed for generate_unique_id().
 _counter = 0
+
+client = {} #Should not be here.
 
 ############################################################################
 
@@ -192,65 +197,6 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         sys.stderr.write("cannot log error message %s\n"%(errmsg,))
         sys.stderr.write("internal error %s %s"%(exc,msg))
 
-############################################################################
-
-def handle_retries(request_list, request_dictionary, error_dictionary,
-                   max_retries):
-    #request_dictionary must have 'retry' as an element.
-    #error_dictionary must have 'status':(e_errors.XXX, "explanation").
-
-    infile = request_dictionary.get('infile', '')
-    outfile = request_dictionary.get('outfile', '')
-    file_size = request_dictionary.get('file_size', 0)
-    retry = request_dictionary.get('retry', 0)
-
-    status = error_dictionary.get('status', (e_errors.OK, None))
-
-    try:
-        status = status[0]
-    except (KeyError, ValueError, TypeError):
-        pass
-
-    #If there is no error, then don't do anything
-    if status == e_errors.OK:
-        return len(request_list)
-
-    #If the error is not retriable, remove it from the request queue.
-    if not e_errors.is_retriable(status[0]):
-        # print error to stdout in data_access_layer format
-        print_data_access_layer_format(infile, outfile, file_size,
-                                       error_dictionary)
-        try:
-            #Try to delete the request.  In the event that the connection
-            # didn't let us determine which request failed, don't worry.
-            del request_list[request_list.index(request_dictionary)]
-        except KeyError:
-            pass
-
-        return len(request_list)  #one less since we just removed one
-
-    #If the transfer has failed to many times, remove it from the queue.
-    if retry >= max_retries:
-        # print error to stdout in data_access_layer format
-        print_data_access_layer_format(infile, outfile, file_size,
-                                       error_dictionary)
-        try:
-            #Try to delete the request.  In the event that the connection
-            # didn't let us determine which request failed, don't worry.
-            del request_list[request_list.index(request_dictionary)]
-        except KeyError:
-            pass
-
-        return len(request_list) #one less since we just removed one
-
-    #Keep retrying this file.
-    try:
-        request_dictionary['retry'] = retry + 1
-    except KeyError:
-        pass
-
-    return len(request_list)
-    
 #######################################################################
 
 # get the configuration client and udp client and logger client
@@ -301,11 +247,12 @@ def clients(config_host,config_port):
     uinfo['machine'] = os.uname()
     uinfo['fullname'] = "" # will be filled in later for each transfer
 
+    global client #should not do this
     client = {}
     client['csc']=csc
     client['u']=u
     client['uinfo']=uinfo
-
+    
     return client
 
 ##############################################################################
@@ -595,17 +542,17 @@ def verify_request_consistancy(requests_per_vol):
         for request in request_list:
 
             #Consistancy check for valid pnfs tag values.
-            for key in request['pnfs'].keys():
-                #check for values that contain letters, digits and _.
-                if not charset.is_in_charset(str(request['pnfs'][key])):
-                    msg="Pnfs tag, %s, contains invalid characters." % (key,)
-                    request['status'] = (e_errors.USERERROR, msg)
-
-                    print_data_access_layer_format(request['infile'],
-                                                   request['outfile'],
-                                                   request['file_size'],
-                                                   request)
-                    quit() #Harsh, but necessary.
+            #for key in request['pnfs'].keys():
+            #    #check for values that contain letters, digits and _.
+            #    if not charset.is_in_charset(str(request['pnfs'][key])):
+            #        msg="Pnfs tag, %s, contains invalid characters." % (key,)
+            #        request['status'] = (e_errors.USERERROR, msg)
+            #
+            #        print_data_access_layer_format(request['infile'],
+            #                                       request['outfile'],
+            #                                       request['file_size'],
+            #                                       request)
+            #        quit() #Harsh, but necessary.
 
             #Verify that the file family width is in fact a non-
             # negitive integer.
@@ -628,8 +575,6 @@ def verify_request_consistancy(requests_per_vol):
             
             #Consistancy check with respect to wrapper and driver.  If
             # they don't match everything gets confused and breaks.
-            ### This might be better if instead of just checking the wrapper,
-            ### it checked the entire volume family???
             if request['vc']['wrapper'] != \
                request['pnfs']['file_family_wrapper']:
                 msg = "Volume clerk and pnfs returned conflicting wrappers." \
@@ -813,13 +758,17 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
     # confused by duplicate requests.
     timedout=0
     while 1:  ###not (timedout or reply_read):
-
+        
         #Attempt to get the control socket connected with the mover.
         try:
             control_socket, mover_address, ticket = open_control_socket(
                 listen_socket, mover_timeout, verbose)
-        except e_errors.NET_ERROR, detail:
-            return None, None, {'status':(e_errors.NET_ERROR, detail)}
+        except (socket.error, e_errors.NET_ERROR), detail:
+            exc, msg, tb = sys.exc_info()
+            ticket = {'status':(exc, msg)}
+
+            #Since an error occured, just return it.
+            return None, None, ticket
 
         if verbose > 4:
             print "MOVER HANDSHAKE"
@@ -850,8 +799,8 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
             continue
 
         # ok, we've been called back with a matched id - how's the status?
-        if not handle_retries(work_tickets, work_tickets[i], ticket,max_retry):
-            continue
+        if ticket['status'] != (e_errors.OK, None):
+            return None, None, ticket
 
         mover_addr = ticket['mover']['callback_addr']
         
@@ -862,14 +811,12 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
             if not data_path_socket:
                 raise socket.error,(errno.ENOTCONN,os.strerror(errno.ENOTCONN))
 
-        except (socket.error, e_errors.NET_ERROR), details:
+        except (socket.error, e_errors.NET_ERROR), detail:
             exc, msg, tb = sys.exc_info()
             ticket['status'] = (exc, msg)
 
-            if handle_retries(work_tickets, work_tickets[i], ticket,max_retry):
-                continue
-            else:
-                return None, None, {'status':(e_errors.NET_ERROR, detail)}
+            #Since an error occured, just return it.
+            return None, None, ticket
 
         #If we got here then the status is OK.
         ticket['status'] = (e_errors.OK, None)
@@ -877,6 +824,25 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         work_tickets[i] = ticket
         
         return control_socket, data_path_socket, ticket
+    
+############################################################################
+
+def submit_one_request(ticket, verbose):
+    ##start of resubmit block
+    Trace.trace(7,"write_to_hsm q'ing: %s"%(ticket,))
+
+    if ticket['retry']:
+        if verbose > 1: print "RETRY_CNT=", ticket['retry']
+
+    #Send work ticket to LM
+    responce_ticket = client['u'].send(ticket, ticket['lm']['address'])
+
+    if responce_ticket['status'][0] != e_errors.OK :
+        Trace.log(e_errors.NET_ERROR,
+                  "submit_write_request: Write submit failed for %s"
+                  " - retrying" % ticket['infile'])
+    
+    return responce_ticket
     
 ############################################################################
 
@@ -892,15 +858,10 @@ def recieve_final_dialog(control_socket, work_ticket, max_retry):
         exc, msg, tb = sys.exc_info()
         done_ticket = {'status':(exc, msg)}
         
-        try:
-            control_socket.close()
-        except:
-            pass
-
-        if handle_retries(work_ticket, [work_ticket], done_ticket, max_retry):
-            return done_ticket
-        else:
-            quit()
+        #try:
+        #    control_socket.close()
+        #except socket.error:
+        #    pass
 
     return done_ticket
 
@@ -976,6 +937,73 @@ def verify_file_size(ticket):
         ticket['status'] = (e_errors.UNKNOWN, "Unable to verify file size.")
 
     return file_size #return used in read.
+
+############################################################################
+
+def handle_retries(request_list, request_dictionary, error_dictionary,
+                   max_retries):
+    #request_dictionary must have 'retry' as an element.
+    #error_dictionary must have 'status':(e_errors.XXX, "explanation").
+
+    try:
+        infile = request_dictionary.get('infile', '')
+    except AttributeError, detail:
+        print "AttributeError", detail, type(request_dictionary)
+
+    infile = request_dictionary.get('infile', '')
+    outfile = request_dictionary.get('outfile', '')
+    file_size = request_dictionary.get('file_size', 0)
+    retry = request_dictionary.get('retry', 0)
+    
+    status = error_dictionary.get('status', (e_errors.OK, None))
+
+    try:
+        status = status[0]
+    except (KeyError, ValueError, TypeError):
+        pass
+
+    #If there is no error, then don't do anything
+    if status == e_errors.OK:
+        result_dict = {'status':(e_errors.OK, None), 'retry':retry,
+                       'queue_size':len(request_list)}
+        return result_dict
+
+    #If the transfer has failed to many times, remove it from the queue.
+    # Since TOO_MANY_RETRIES is non-retriable, set this here.
+    if retry >= max_retries:
+        status = (e_errors.TOO_MANY_RETRIES, status)
+        
+    #If the error is not retriable, remove it from the request queue.
+    if not e_errors.is_retriable(status[0]):
+        # print error to stdout in data_access_layer format
+        print_data_access_layer_format(infile, outfile, file_size,
+                                       error_dictionary)
+        try:
+            #Try to delete the request.  In the event that the connection
+            # didn't let us determine which request failed, don't worry.
+            del request_list[request_list.index(request_dictionary)]
+        except KeyError:
+            pass
+        
+        result_dict = {'status':status, 'retry':retry,
+                       'queue_size':len(request_list)} #one less than before
+        return result_dict
+
+    #Keep retrying this file.
+    try:
+        request_dictionary['retry'] = retry + 1
+    except KeyError:
+        pass
+
+    request_dictionary['unique_id'] = generate_unique_id()
+
+    #Since a retriable error occured, resubmit the ticket.
+    submit_one_request(request_dictionary, verbose=3)
+    
+    result_dict = {'status':(e_errors.RETRY, None),
+                   'retry':request_dictionary['retry'],
+                   'queue_size':len(request_list)}
+    return result_dict
 
 ############################################################################
 
@@ -1104,7 +1132,8 @@ def create_write_request(input_file, output_file,
                        file_size, library, file_family,
                        ff_wrapper, width, storage_group,
                        pinfo, p, client, file_clerk_address,
-                       volume_clerk_address, callback_addr, chk_crc, tinfo,
+                       volume_clerk_address, library_manager_address,
+                       callback_addr, chk_crc, tinfo,
                        pri=1, delpri=0, agetime=0, delayed_dismount=0):
 
     # if old ticket exists, that means we are retrying
@@ -1171,30 +1200,32 @@ def create_write_request(input_file, output_file,
                     "storage_group"      : storage_group,
                     "address"            : volume_clerk_address}
     file_clerk = {"address": file_clerk_address}
-
+    library_manager = {'address':library_manager_address}
 
     work_ticket = {}
-    work_ticket['work'] = "write_to_hsm"
+    
     work_ticket['callback_addr'] = callback_addr
-    work_ticket['fc'] = file_clerk
-    work_ticket['vc'] = volume_clerk
-    work_ticket['wrapper'] = wrapper
+    work_ticket['client_crc'] = chk_crc
     work_ticket['encp'] = encp
+    work_ticket['encp_daq'] = encp_daq
+    work_ticket['fc'] = file_clerk
+    work_ticket['file_size'] = file_size
+    work_ticket['infile'] = input_file
+    work_ticket['lm'] = library_manager
+    work_ticket['outfile'] = output_file
     work_ticket['retry'] = 0 #retry,
     work_ticket['times'] = times
     work_ticket['unique_id'] = generate_unique_id()
-    work_ticket['client_crc'] = chk_crc
-    work_ticket['encp_daq'] = encp_daq
-    work_ticket['infile'] = input_file
-    work_ticket['outfile'] = output_file
-    work_ticket['file_size'] = file_size
-
+    work_ticket['vc'] = volume_clerk
+    work_ticket['version'] = encp_client_version()
+    work_ticket['work'] = "write_to_hsm"
+    work_ticket['wrapper'] = wrapper
+    
     return work_ticket
 
 ############################################################################
 
-def submit_write_request(work_ticket, library_manager_address, client,
-                         max_retry, verbose):
+def submit_write_request(work_ticket, client, max_retry, verbose):
 
     if verbose > 1:
         print "Submitting %s write request.   time=%s" % \
@@ -1207,7 +1238,7 @@ def submit_write_request(work_ticket, library_manager_address, client,
         Trace.trace(7,"write_to_hsm q'ing: %s"%(work_ticket,))
 
         #Send work ticket to LM
-        ticket = client['u'].send(work_ticket, library_manager_address)
+        ticket = client['u'].send(work_ticket, work_ticket['lm']['address'])
 
         if verbose > 4:
             print "LIBRARY MANAGER"
@@ -1222,13 +1253,8 @@ def submit_write_request(work_ticket, library_manager_address, client,
                       "submit_write_request: Write submit failed for %s"
                       " - retrying" % work_ticket['infile'])
             
-
-    #If we get here, then we retried the maximum number of times.
-    print_data_access_layer_format(work_ticket['infile'],
-                                   work_ticket['outfile'],
-                                   work_ticket['file_size'],
-                                   ticket)
-    quit()
+    ticket['status'] = (e_errors.TOO_MANY_RETRIES, ticket['status'])
+    return ticket
 
 ############################################################################
 
@@ -1277,110 +1303,142 @@ def set_pnfs_settings(ticket, client, verbose):
 def write_hsm_file(listen_socket, work_ticket, client, tinfo, chk_crc,
                    max_retry, mover_timeout, verbose):
 
-    encp_crc = 0 #In case there is a problem, make sure this exists.
-    bufsize = 65536*4 #XXX CGW Investigate this
+    #Loop around in case the file transfer needs to be retried.
+    while work_ticket.get('retry', 0) < max_retry:
+        
+        encp_crc = 0 #In case there is a problem, make sure this exists.
+        bufsize = 65536*4 #XXX CGW Investigate this
 
-    if verbose > 1:
-        print "Waiting for mover to call back.   elapsed=%s" % \
-              (time.time() - tinfo['encp_start_time'],)
+        if verbose > 1:
+            print "Waiting for mover to call back.   elapsed=%s" % \
+                  (time.time() - tinfo['encp_start_time'],)
 
-    #Open the control and mover sockets.
-    control_socket, data_path_socket, ticket = mover_handshake(
-        listen_socket, [work_ticket], mover_timeout, max_retry, verbose)
+        #Open the control and mover sockets.
+        control_socket, data_path_socket, ticket = mover_handshake(
+            listen_socket, [work_ticket], mover_timeout, max_retry, verbose)
 
-    if not handle_retries([work_ticket], work_ticket, ticket, max_retry):
-        return ticket
+        #Handle any possible errors occured so far.
+        result_dict = handle_retries([work_ticket], work_ticket,
+                                     ticket, max_retry)
+        if result_dict['status'] == e_errors.RETRY:
+            continue
+        elif result_dict['status'] in e_errors.non_retriable_errors:
+            return ticket
 
-    if not control_socket or not data_path_socket:
-        ticket['status'] = (e_errors.NET_ERROR, "No socket")
-        return ticket #This file failed.
+        #This should be redundant error check.
+        if not control_socket or not data_path_socket:
+            ticket['status'] = (e_errors.NET_ERROR, "No socket")
+            return ticket #This file failed.
 
-    if verbose > 1:
-        t2 = time.time() - tinfo['encp_start_time']
-        print "Mover called back.  elapsed=", t2
-    if verbose > 4:
-        print "WORK TICKET:"
-        pprint.pprint(ticket)
+        if verbose > 1:
+            t2 = time.time() - tinfo['encp_start_time']
+            print "Mover called back.  elapsed=", t2
+        if verbose > 4:
+            print "WORK TICKET:"
+            pprint.pprint(ticket)
 
-    work_ticket = combine_dict(ticket, work_ticket)
-
-    try:
-        in_file = open(work_ticket['infile'], "r")
-    except IOError, detail:
-        work_ticket['status'] = (e_errors.IOERROR, detail)
-        return work_ticket
-
-    if verbose > 1:
-        print "Input file %s opened.   elapsed=%s" % \
-              (work_ticket['infile'], time.time() - tinfo['encp_start_time'])
-
-    lap_time = time.time() #---------------------------------------------Start
-
-    #Now that the control and data sockets are established, move the data.
-    try:
-        if chk_crc:
-            crc_flag = 1
-        else:
-            crc_flag = 0
-
-        encp_crc = EXfer.fd_xfer(in_file.fileno(), data_path_socket.fileno(), 
-                            work_ticket['file_size'], bufsize, crc_flag, 0)
-    except EXfer.error, msg:
-        Trace.log(e_errors.ERROR, "write_to_hsm EXfer error: %s" % (msg,))
+        work_ticket = combine_dict(ticket, work_ticket)
 
         try:
-            done_ticket = callback.read_tcp_obj(control_socket)
-        except ("TCP connection error", socket.error):
-            done_ticket = {'status':(msg.args[1], msg.args[0])}
-            #done_ticket = {'status':(e_errors.EPROTO,
-            #                         "Network problem or mover reset")}
+            in_file = open(work_ticket['infile'], "r")
+        except IOError, detail:
+            #Handle any possible errors occured so far
+            status_ticket = (e_errors.IOERROR, detail)
+            result_dict = handle_retries([work_ticket], work_ticket,
+                                         status_ticket, max_retry)
+            if result_dict['status'] == e_errors.RETRY:
+                continue
+            elif result_dict['status'] in e_errors.non_retriable_errors:
+                return combine_dict(result_dict, work_ticket)
 
-            handle_retries([work_ticket], work_ticket, done_ticket, max_retry)
-            return done_ticket
+        if verbose > 1:
+            print "Input file %s opened.   elapsed=%s" % \
+                  (work_ticket['infile'], time.time()-tinfo['encp_start_time'])
 
-    tstring = '%s_elapsed_time' % work_ticket['unique_id']
-    tinfo[tstring] = time.time() - lap_time #------------------------------End
+        lap_time = time.time() #------------------------------------------Start
 
-    if verbose > 1:
-        print "File %s transfered.  elapsed=%s" % \
-              (work_ticket['outfile'], time.time() - tinfo['encp_start_time'])
+        #Now that the control and data sockets are established, move the data.
+        try:
+            if chk_crc:
+                crc_flag = 1
+            else:
+                crc_flag = 0
 
-    # File has been sent - wait for final dialog with mover.
-    # We know the file has hit some sort of media.... 
-    # when this occurs. Create a file in pnfs namespace with
-    #information about transfer.
-    done_ticket = recieve_final_dialog(control_socket, work_ticket, max_retry)
+            encp_crc = EXfer.fd_xfer(in_file.fileno(),
+                                     data_path_socket.fileno(), 
+                                     work_ticket['file_size'],
+                                     bufsize, crc_flag, 0)
+        except EXfer.error, msg:
+            Trace.log(e_errors.ERROR, "write_to_hsm EXfer error: %s" % (msg,))
 
-    try:
-        control_socket.close()
-        data_path_socket.close()
-        in_file.close()
-    except (socket.error, OSError):
-        print "Error closeing something"
-        pass
+            try:
+                done_ticket = callback.read_tcp_obj(control_socket)
+            except ("TCP connection error", socket.error), detail:
+                done_ticket = {'status':(msg.args[1], msg.args[0])}
+                #done_ticket = {'status':(e_errors.EPROTO,
+                #                         "Network problem or mover reset")}
 
-    #Verify that everything is ok.
-    if not handle_retries([work_ticket], work_ticket, done_ticket,
-                          max_retry):
+                #Handle any possible errors occured so far
+                status_ticket = (e_errors.IOERROR, detail)
+            
+                result_dict = handle_retries([work_ticket], work_ticket,
+                                             status_ticket, max_retry)
+                if result_dict['status'] == e_errors.RETRY:
+                    continue
+                elif result_dict['status'] in e_errors.non_retriable_errors:
+                    return combine_dict(result_dict, work_ticket)
+
+        tstring = '%s_elapsed_time' % work_ticket['unique_id']
+        tinfo[tstring] = time.time() - lap_time #--------------------------End
+
+        if verbose > 1:
+            print "File %s transfered.  elapsed=%s" % \
+                  (work_ticket['outfile'],time.time()-tinfo['encp_start_time'])
+
+        # File has been sent - wait for final dialog with mover.
+        
+        done_ticket = recieve_final_dialog(control_socket, work_ticket,
+                                           max_retry)
+
+        try:
+            control_socket.close()
+            data_path_socket.close()
+            in_file.close()
+        except (socket.error, OSError):
+            print "Error closeing something"
+            pass
+
+        #Verify that everything is ok.
+        result_dict = handle_retries([work_ticket], work_ticket,
+                                     done_ticket, max_retry)
+        if result_dict['status'] == e_errors.RETRY:
+            continue
+        elif result_dict['status'] in e_errors.non_retriable_errors:
+            return combine_dict(result_dict, work_ticket)
+
+        #Combine the work_ticket and done_ticket into for simplicity.
+        done_ticket = combine_dict(done_ticket, work_ticket)
+
+        delete_at_exit.unregister(done_ticket['outfile']) #localname
+
+        #We know the file has hit some sort of media. When this occurs
+        # create a file in pnfs namespace with information about transfer.
+        #These four functions write errors/warnings to the log file and put an
+        # error status in the ticket.
+        check_crc(done_ticket, chk_crc, encp_crc) #Check the CRC.
+        set_outfile_permissions(done_ticket) #Writes errors to log file.
+        set_pnfs_settings(done_ticket, client, verbose) #Tell pnfs file stats.
+        verify_file_size(done_ticket) #make sure file size is same.
+
+        if verbose > 1:
+            print "File status after verification: %s   elapsed=%s" % \
+                  (done_ticket['status'], time.time()-tinfo['encp_start_time'])
+
         return done_ticket
 
-    #Combine the work_ticket and done_ticket into one ticket for simplicity.
-    done_ticket = combine_dict(done_ticket, work_ticket)
-
-    delete_at_exit.unregister(done_ticket['outfile']) #localname
-
-    #These four functions write errors/warnings to the log file and put an
-    # error status in the ticket.
-    check_crc(done_ticket, chk_crc, encp_crc) #Check the CRC.
-    set_outfile_permissions(done_ticket) #Writes errors to log file.
-    set_pnfs_settings(done_ticket, client, verbose) #Tell pnfs file stats.
-    verify_file_size(done_ticket) #make sure file size is same.
-
-    if verbose > 1:
-        print "File status after verification: %s   elapsed=%s" % \
-              (done_ticket['status'], time.time() - tinfo['encp_start_time'])
-    
-    return done_ticket
+    #If we get out of the while loop, then return error.
+    msg = "Failed to write file %s." % work_ticket['outfile']
+    done_ticket = {'status':(e_errors.TOO_MANY_RETRIES, msg)}
 
 ############################################################################
 
@@ -1523,8 +1581,8 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
                            file_size[i], library[i], rq_file_family,
                            ff_wrapper[i], width[i], storage_group[i],
                            pinfo[i], p, client, file_clerk_address,
-                           volume_clerk_address, callback_addr,
-                           chk_crc, tinfo, pri=1, delpri=0,
+                           volume_clerk_address, library_manager_address,
+                           callback_addr, chk_crc, tinfo, pri=1, delpri=0,
                            agetime=0, delayed_dismount=0)
 
         if verbose > 4:
@@ -1536,14 +1594,24 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
                   (library[i], time.time() - tinfo['encp_start_time'])
 
         #Send the request to write the file to the library manager.
-        submit_write_request(work_ticket, library_manager_address, client,
-                             max_retry, verbose)
+        done_ticket = submit_write_request(work_ticket, client,
+                                           max_retry, verbose)
 
+        if verbose > 4:
+            print "DONE SUBMITTING TICKET"
+            pprint.pprint(done_ticket)
         if verbose > 1:
-            print "File queued: %s %s family: %s bytes: %d   elapsed=%s" % \
-                  (inputlist[i], library[i], rq_file_family, file_size[i],
-                   time.time() - tinfo['encp_start_time'])
-        
+            print "File queued: %s library: %s family: %s bytes: %d elapsed=%s"\
+                  % (inputlist[i], library[i], rq_file_family, file_size[i],
+                     time.time() - tinfo['encp_start_time'])
+
+        #handle_retries() is not required here since submit_write_request()
+        # handles its own retrying when an error occurs.
+        if done_ticket['status'][0] != e_errors.OK:
+            exit_status = 1
+            print "exit_status", exit_status
+            continue
+
         #Send (write) the file to the mover.
         done_ticket = write_hsm_file(listen_socket, work_ticket, client,
                                      tinfo, chk_crc, max_retry,
@@ -1553,9 +1621,11 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
             print "DONE WRITTING TICKET"
             pprint.pprint(done_ticket)
 
-        if not handle_retries([work_ticket], work_ticket, done_ticket,
-                              max_retry):
+        #handle_retries() is not required here since write_hsm_file()
+        # handles its own retrying when an error occurs.
+        if done_ticket['status'] != e_errors.OK:
             exit_status = 1
+            continue
 
         bytes = bytes + done_ticket['file_size']
 
@@ -1604,62 +1674,65 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
 #######################################################################
 #######################################################################
 
-def get_file_clerk_info(file_clerk_address, bfid, client):
-    fc_reply = client['u'].send({'work': 'bfid_info', 'bfid': bfid},
-                                file_clerk_address)
+def get_file_clerk_info(bfid, client):
 
-    #file clerk reply also contains vol information
+    #Get the file clerk information.
+    fcc = file_clerk_client.FileClient(client['csc'], bfid)
+    fc_ticket = fcc.bfid_info()
+    
+    if fc_ticket['status'][0] != e_errors.OK:
+        print_data_access_layer_format('', '', 0, fc_ticket)
+        quit()
+        
+    #Get the volume clerk information.
+    vcc = volume_clerk_client.VolumeClerkClient(client['csc'])
+    vc_ticket = vcc.inquire_vol(fc_ticket['fc']['external_label'])
 
-    if fc_reply['status'][0]!=e_errors.OK:
-        print_data_access_layer_format('', '', 0, fc_reply)
+    if vc_ticket['status'][0] != e_errors.OK:
+        print_data_access_layer_format('', '', 0, vc_ticket)
         quit()
 
     Trace.trace(7,"read_from_hsm on volume=%s"%
-                (fc_reply['fc']['external_label'],))
+                (fc_ticket['fc']['external_label'],))
     
-    inhibit = fc_reply['vc']['system_inhibit'][0]
+    inhibit = vc_ticket['system_inhibit'][0]
 
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
         if inhibit==e_errors.NOACCESS:
             msg="Volume is marked NOACCESS"
         else:
             msg="Volume is marked NOTALLOWED"
-        #fc_reply['status'] = (inhibit, msg)
         raise inhibit, msg
-
-        #print_data_access_layer_format(inputlist[i], ofile, 0, fc_reply)
-        #continue
-    inhibit = fc_reply['vc']['user_inhibit'][0]
+        
+    inhibit = vc_ticket['user_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
         if inhibit==e_errors.NOACCESS:
             msg="Volume is marked NOACCESS"
         else:
             msg="Volume is marked NOTALLOWED"
         raise inhibit, msg
-        #fc_reply['status'] = (inhibit, msg)
-        #print_data_access_layer_format(inputlist[i], ofile, 0, fc_reply)
-        #continue
-    if fc_reply["fc"]["deleted"] == "yes":
-        #fc_reply['status'] = (e_errors.DELETED, "File has been deleted")
+        
+    if fc_ticket["fc"]["deleted"] == "yes":
+    #if fc_ticket["deleted"] == "yes":
         raise (e_errors.DELETED, "File has been deleted")
-        #print_data_access_layer_format(inputlist[i], ofile, 0, fc_reply)
-        #continue
 
     #Verify that the external labels named by the file clerk and volume
     # clerk are the same.
-    if fc_reply['vc']['external_label'] != fc_reply['fc']['external_label']:
+    if vc_ticket['external_label'] != fc_ticket['fc']['external_label']:
+    #if vc_ticket['external_label'] != fc_ticket['external_label']:
         msg = "External labels retrieved from file and volume clerks " \
               "are not the same.\n" \
               "From file clerk: %s\n" \
               "From volume clerk: %s\n" % \
-              (fc_reply['fc']['external_label'],
-               fc_reply['vc']['external_label'])
+              (fc_ticket['fc']['external_label'],
+               #(fc_ticket['external_label'],
+               vc_ticket['external_label'])
         raise (e_errors.BROKEN, msg)
         #print_data_access_layer_format(inputlist[i], outputlist[i], 0,
         #                               {'status':(e_errors.BROKEN, msg)})
         #quit()
 
-    return fc_reply
+    return fc_ticket, vc_ticket
     
     
 #######################################################################
@@ -1667,7 +1740,8 @@ def get_file_clerk_info(file_clerk_address, bfid, client):
 def create_read_requests(inputlist, outputlist, file_size,
                          file_clerk_address, volume_clerk_address,
                          client, tinfo, chk_crc, bfid, pinfo,
-                         pnfs, pri=1, delpri=0, agetime=0, delayed_dismount=0):
+                         pnfs, verbose, pri=1, delpri=0, agetime=0,
+                         delayed_dismount=0):
     nfiles = 0
     requests_per_vol = {}
     #Create the list of file requests that will be sent to the library manager.
@@ -1678,19 +1752,42 @@ def create_read_requests(inputlist, outputlist, file_size,
         #Get the information from the file clerk.
         try:
             fc_reply = {}
-            fc_reply = get_file_clerk_info(file_clerk_address, bfid[i], client)
-        except (e_errors.NOACCESS, e_errors.NOTALLOWED,
-                e_errors.DELETED):
+            vc_reply = {}
+            fc_reply, vc_reply = get_file_clerk_info(bfid[i], client)
+
+            if fc_reply['status'][0] != e_errors.OK:
+                raise fc_reply['status']
+            if vc_reply['status'][0] != e_errors.OK:
+                raise vc_reply['status']
+
+        #This should list errors specifically, I just don't know what they
+        # should be...
+        except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED):
             exc, msg, tb = sys.exc_info()
-            fc_reply['status'] = (exc, msg)
             print_data_access_layer_format(inputlist[i], outputlist[i], 0,
-                                           {'status':fc_reply['status']})
+                                           {'status':(exc, msg)})
             continue
 
+        if verbose > 4:
+            print "FILE CLERK:"
+            pprint.pprint(fc_reply)
+            
+        if verbose > 4:
+            print "VOLUME CLERK:"
+            pprint.pprint(vc_reply)
+        
+
         #Get information about the library manager.
-        library = fc_reply['vc']['library'] + ".library_manager"
-        lm_ticket = client['csc'].get(library)
-        if lm_ticket['status'][0] != e_errors.OK:
+        try:
+            library = vc_reply['library'] + ".library_manager"
+            lm_ticket = client['csc'].get(library)
+
+            if lm_ticket['status'][0] != e_errors.OK:
+                raise lm_ticket['status']
+            
+        except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED):
+            #exc, msg, tb = sys.exc_info()
+            #fc_reply['status'] = (exc, msg)
             print_data_access_layer_format(inputlist[i],
                                            outputlist[i], 0, lm_ticket)
             continue
@@ -1722,10 +1819,15 @@ def create_read_requests(inputlist, outputlist, file_size,
         times = {}
         times['t0'] = tinfo['encp_start_time']
 
-        request = {}
         label = fc_reply['fc']['external_label']
-        fc_reply['vc']['address'] = volume_clerk_address
+        #label = fc_reply['external_label']
+        vf = fc_reply['vc']['volume_family']
+        vc_reply['address'] = volume_clerk_address
+        vc_reply['storage_group']=volume_family.extract_storage_group(vf)
+        vc_reply['file_family'] = volume_family.extract_file_family(vf)
+        vc_reply['wrapper'] = volume_family.extract_wrapper(vf)
         fc_reply['fc']['address'] = file_clerk_address
+        #fc_reply['fc']['address'] = file_clerk_address
         lm_ticket['address'] = library_manager_address
 
         pnfs.get_file_family()
@@ -1734,12 +1836,14 @@ def create_read_requests(inputlist, outputlist, file_size,
         pnfs.get_library()
         pnfs.get_storage_group()
         
+        request = {}
         request['bfid'] = bfid[i]
         request['callback_addr'] = client['callback_addr']
         request['client_crc'] = chk_crc
         request['encp'] = encp_el
         request['encp_daq'] = encp_daq
         request['fc'] = fc_reply['fc']
+        #request['fc'] = fc_reply
         request['file_size'] = file_size[i]
         request['infile'] = inputlist[i]
         request['lm'] = lm_ticket
@@ -1752,7 +1856,8 @@ def create_read_requests(inputlist, outputlist, file_size,
         request['retry'] = 0
         request['times'] = times
         request['unique_id'] = generate_unique_id()
-        request['vc'] = fc_reply['vc']
+        request['vc'] = vc_reply
+        request['version'] = encp_client_version()
         request['volume'] = label
         request['work'] = 'read_from_hsm'
         request['wrapper'] = {}
@@ -1878,6 +1983,14 @@ def read_hsm_files(listen_socket, submitted, requests,
         if request.get('retry', 0):
                 if verbose > 2: print "RETRY COUNT:", request['retry']
 
+        result_dict = handle_retries(requests, request, request, max_retry)
+        if result_dict['status'] == e_errors.RETRY:
+            continue
+        elif result_dict['status'] in e_errors.non_retriable_errors:
+            files_left = result_dict['queue_size']
+            continue
+
+        #This is a redundant check.
         if not control_socket or not data_path_socket:
             mover_timeout_retries = mover_timeout_retries + 1
             if mover_timeout_retries > max_retry:
@@ -1888,14 +2001,6 @@ def read_hsm_files(listen_socket, submitted, requests,
         else:
             mover_timeout_retries = 0 #reset this
 
-        retry = request.get('retry', 0)
-        left = handle_retries(requests, request, request, max_retry)
-        if left < files_left:
-            files_left = left
-            continue
-        elif request['retry'] > retry:
-            continue
-        
         if verbose > 1:
             t2 = time.time() - tinfo['encp_start_time']
             print "Mover called back.  elapsed=", t2
@@ -1904,18 +2009,18 @@ def read_hsm_files(listen_socket, submitted, requests,
             pprint.pprint(request)
 
         try:
-            localname = request.get('outfile', "")
-            j = requests.index(request)
+            #localname = request.get('outfile', "")
+            j = requests.index(request) ###This should be changed.
         except (KeyError, ValueError), detail:
             continue
 
         #Try to open the local output file for write.
         try:
-            if localname == '/dev/null':
-                out_fd = os.open(localname, os.O_RDWR)
+            if request['outfile'] == "/dev/null":
+                out_fd = os.open("/dev/null", os.O_RDWR)
                 out_fd_closed = 0
             else:
-                out_fd = os.open(localname, os.O_CREAT|os.O_RDWR, 0)
+                out_fd = os.open(request['outfile'], os.O_CREAT|os.O_RDWR, 0)
                 out_fd_closed = 0
         except OSError, detail:
             #USERERROR is on the list of non-retriable errors.  Because of
@@ -1923,15 +2028,17 @@ def read_hsm_files(listen_socket, submitted, requests,
             # from the list.  Thus avoiding issues with the continue and
             # range(submitted).
             done_ticket = {'status':(e_errors.USERERROR, detail)}
-            files_left = handle_retries(requests, requests[j],
+            result_dict = handle_retries(requests, requests[j],
                                         done_ticket, max_retry)
+            if result_dict['status'] in e_errors.non_retriable_errors:
+                files_left = result_dict['queue_size']
             control_socket.close()
             data_path_socket.close()
             continue
 
         if verbose > 1:
             t2 = time.time() - tinfo['encp_start_time']
-            print "Output file", localname, "opened.  elapsed=", t2
+            print "Output file", request['outfile'], "opened.  elapsed=", t2
 
         lap_start = time.time() #----------------------------------------Start
 
@@ -1955,9 +2062,9 @@ def read_hsm_files(listen_socket, submitted, requests,
 
             #Unlink the file since it didn't tranfer in tact.
             try:
-                if localname!="/dev/null":
-                    os.unlink(localname)
-                    delete_at_exit.unregister(localname)
+                if request['outfile'] != "/dev/null":
+                    os.unlink(request['outfile'])
+                    delete_at_exit.unregister(request['outfile'])
             except:
                 pass
 
@@ -1975,8 +2082,12 @@ def read_hsm_files(listen_socket, submitted, requests,
                 #done_ticket = {'status':(e_errors.EPROTO,
                 #                         "Network problem or mover reset")}
                 
-            files_left = handle_retries(requests, requests[j],
+            result_dict = handle_retries(requests, requests[j],
                                         done_ticket, max_retry)
+
+            if result_dict['status'] in e_errors.non_retriable_errors:
+                files_left = result_dict['queue_size']
+            
             try:
                 control_socket.close()
                 data_path_socket.close()
@@ -2017,14 +2128,13 @@ def read_hsm_files(listen_socket, submitted, requests,
             pass
 
         #Verfy that the final responce from the mover is that everything is ok.
-        current_retry = requests[j]['retry']
-        left = handle_retries(requests, requests[j], done_ticket, max_retry)
-        if left < files_left:
-            files_left = left
+        result_dict = handle_retries(requests, requests[j],
+                                     done_ticket, max_retry)
+        if result_dict['status'] == e_errors.RETRY:
             continue
-        if current_retry != requests[j]['retry']:
+        elif result_dict['status'] in e_errors.non_retriable_errors:
+            files_left = result_dict['queue_size']
             continue
-
 
         #Combine the request and done_ticket into one ticket for simplicity.
         done_ticket = combine_dict(done_ticket, requests[j])
@@ -2152,7 +2262,7 @@ def read_from_hsm(input_files, output, client, verbose=0, chk_crc=1, pri=1,
                                             file_clerk_address,
                                             volume_clerk_address, client,
                                             tinfo, chk_crc, bfid,
-                                            pinfo, p, pri=1,
+                                            pinfo, p, verbose, pri=1,
                                             delpri=0, agetime=0,
                                             delayed_dismount=0,)
 
@@ -2435,10 +2545,7 @@ def main():
 
     try:
         if e.data_access_layer or done_ticket['status'][0] != e_errors.OK:
-            print_data_access_layer_format(done_ticket['infile'],
-                                           done_ticket['outfile'],
-                                           done_ticket['file_size'],
-                                           done_ticket)
+            print_data_access_layer_format(e.input, e.output, 0, done_ticket)
     except ValueError:
         pass
 
