@@ -1084,7 +1084,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                     complete_crc=ticket['fc']['complete_crc']
                     if complete_crc != None:
                         if user_file_crc != complete_crc:
-                            Trace.log(e.errors.ERROR,'Mover CRC mismatch: file clerk has %s, we have %s'%(
+                            Trace.log(e_errors.ERROR,'Mover CRC mismatch: file clerk has %s, we have %s'%(
                                 user_file_crc,complete_crc))
      
 
