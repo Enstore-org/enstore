@@ -64,7 +64,8 @@ EOF
 
 for i in `cat $gangfile`; do
   echo "<tr><td align=center><font color=\"$color\">$i</font></td>" >>$output
-  enrsh $i Nodeinfo >> $output
+  # I know the next line uses current nodes $ENSTORE_DIR.  All are same, doesn't matter.
+  enrsh $i $ENSTORE_DIR/sbin/Nodeinfo >> $output
   echo "</tr>">>$output
 done
 
