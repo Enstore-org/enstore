@@ -332,7 +332,7 @@ static int	nblock;				/* number to read */
 static char	*estatus_str;			/* expected status string */
 ftt_t_argt	argt[] = {
  	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
- 	{"-nblocks",	FTT_T_ARGV_STRING,	NULL,		&nblock},
+ 	{"-nblocks",	FTT_T_ARGV_INT,		NULL,		&nblock},
  	{"-filename",	FTT_T_ARGV_STRING,	NULL,		&out_filename},
 	{"-chars",	FTT_T_ARGV_CONSTANT,	(char *)TRUE,	&do_chars},
 	{"-offsets",	FTT_T_ARGV_CONSTANT,	(char *)TRUE,	&do_offsets},

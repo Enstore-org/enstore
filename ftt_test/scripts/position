@@ -14,7 +14,7 @@ FTT_TAPE=${FTT_TAPE:?"No device specified"}
 #===============================================================================
  
 ftt_test << EOD
-ftt_open
+ftt_open -readonly
 ftt_rewind
 ftt_test_status -FTT_ABOT
 #===============================================================================

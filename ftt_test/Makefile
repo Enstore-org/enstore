@@ -11,24 +11,28 @@ OBJ= ftt_t_cmdline.o ftt_t_cmdloop.o ftt_t_cmdproc.o ftt_t_parse.o \
  ftt_t_error.o ftt_t_block.o ftt_t_name.o ftt_t_label.o
 
 # CFLAGS=-I. -I../ftt_lib -g -xansi -fullwarn 
-CFLAGS=-I. -I../ftt_lib -g $(WARN)
+CFLAGS=-I. -I../ftt_lib -g $(WARN) `cat ../ftt_lib/local/flags`
 
 
-all: ftt_test ftt_random
+all: ftt_test ftt_random ftt_copy
 
 clean:
-	rm $(OBJ) ftt_test ftt_random
+	rm $(OBJ) ftt_test ftt_random ftt_copy
 
 install: all
 	cp libftt_test.a $(FTT_DIR)/lib
 	-mv $(FTT_DIR)/test $(FTT_DIR)/test.bak
 	-mv $(FTT_DIR)/random $(FTT_DIR)/random.bak
+	-mv $(FTT_DIR)/copy $(FTT_DIR)/copy.bak
 	cp ftt_test $(FTT_DIR)/test
 	cp ftt_random $(FTT_DIR)/random
+	cp ftt_copy $(FTT_DIR)/copy
 	-mv $(FTT_DIR)/bin/ftt_test $(FTT_DIR)/bin/ftt_test.bak
 	-mv $(FTT_DIR)/bin/ftt_random $(FTT_DIR)/bin/ftt_random.bak
+	-mv $(FTT_DIR)/bin/ftt_copy $(FTT_DIR)/bin/ftt_copy.bak
 	cp ftt_test $(FTT_DIR)/bin
 	cp ftt_random $(FTT_DIR)/bin
+	cp ftt_copy $(FTT_DIR)/bin
 	cp scripts/ftt_* $(FTT_DIR)/bin
 
 libftt_test.a: $(OBJ)
@@ -40,6 +44,9 @@ ftt_test: ftt_test.c libftt_test.a ../ftt_lib/libftt.a
 
 ftt_random: ftt_random.c libftt_test.a ../ftt_lib/libftt.a 
 	$(CC) $(CFLAGS) -o ftt_random ftt_random.c  $(LIBS)
+
+ftt_copy: ftt_copy.c libftt_test.a ../ftt_lib/libftt.a 
+	$(CC) $(CFLAGS) -o ftt_copy ftt_copy.c  $(LIBS)
 
 ftt_t_cmdline.o :       ftt_t_cmdline.c        			\
                         ftt_t_cmdline.h
