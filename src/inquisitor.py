@@ -143,8 +143,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         if not key == ALARM_S:
                             self.alarmc.u = udp_client.UDPClient()
                         # Check on server status but wait a long time
-                        self.alive_rcv_timeout = 5
-                        self.alive_retries = 2
+                        self.alive_rcv_timeout = 60
+                        self.alive_retries = 3
                         ret = self.alive_status(client, (t['host'], t['port']),
                                                 prefix, time, key)
                         if ret == TIMED_OUT:
