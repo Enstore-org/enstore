@@ -25,7 +25,7 @@ backup() # $1 is file to be backed up
     fi
 }
 
-for dd in 1 2 3;do
+for dd in 1 2 3 4;do
     if [ ! -d 2d$dd ];then mkdir 2d$dd; fi
     cd 2d$dd
     backup *.log
@@ -42,12 +42,12 @@ mt -f /dev/rmt/tps2d3 status
 mt -f /dev/rmt/tps2d4 status
 
 cd 2d1
-#../robot_fd_xfer.sh 1000 DECDLT DE01 CA2502 /raid/enstore/random/200MB.trand  /dev/rmt/tps2d1 rip10 >2d1.log 2>&1 &
+#../fd_xfer.py /raid/enstore/random/200MB.trand  /dev/rmt/tps2d1 1000 DECDLT DE01 CA2502 rip10 >2d1.log 2>&1 &
 cd ../2d2
-../robot_fd_xfer.sh 1000 DECDLT DE02 CA2504 /raid/enstore/random/300MB.trand /dev/rmt/tps2d2 rip10 >2d2.log 2>&1 &
+../fd_xfer.py /raid/enstore/random/300MB.trand /dev/rmt/tps2d2 None 1000 DECDLT DE02 CA2504 rip10 >2d2.log 2>&1 &
 cd ../2d3
-../robot_fd_xfer.sh  800 DECDLT DE14 CA2508 /raid/enstore/random/400MB.trand /dev/rmt/tps2d3 rip3 >2d3.log 2>&1 &
+../fd_xfer.py /raid/enstore/random/400MB.trand /dev/rmt/tps2d3 None  800 DECDLT DE14 CA2508 rip3 >2d3.log 2>&1 &
 cd ../2d4
-../robot_fd_xfer.sh  800 DECDLT DE13 CA2506 /raid/enstore/random/200MB.trand /dev/rmt/tps2d4 rip3 >2d4.log 2>&1 &
+../fd_xfer.py /raid/enstore/random/200MB.trand /dev/rmt/tps2d4 None  800 DECDLT DE13 CA2506 rip3 >2d4.log 2>&1 &
 
 

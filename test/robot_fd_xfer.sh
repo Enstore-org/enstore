@@ -53,28 +53,28 @@ exec </dev/null
 eod=None
 x=0
 while loops=`expr $loops - 1`;do
-    echo "`date`: start loop $x"
+    /bin/echo "`date`: start loop $x"
     if [ "${opt_no_robot-}" ];then
-        echo -n "`date`:     rewinding... "
+        /bin/echo -n "`date`:     rewinding... "
         mt -f $device rewind
     else
-        echo -n "`date`:     ejecting... "
+        /bin/echo -n "`date`:     ejecting... "
         mt -f $device offline
-        echo -n '\n`date`:     dismounting... '
+        /bin/echo -n "\n`date`:     dismounting... "
         rsh $dasnod ". /usr/local/etc/setups.sh;setup enstore;\
                    dasadmin dismount -d $emdriv; echo \$?"
-        echo -n '`date`:     mounting... '
+        /bin/echo -n "`date`:     mounting... "
         rsh $dasnod ". /usr/local/etc/setups.sh;setup enstore;\
                   dasadmin mount -t $emtype $emvolm $emdriv; echo \$?"
     fi
-    echo -n '`date`:     xferring... '
+    /bin/echo -n "`date`:     xferring... "
     # fd_xfer.py prints lines of info...
     eod=`$ENSTORE_DIR/test/fd_xfer.py $infile $device $eod`
     x=`expr $x + 1`
     if [ -f pause ];then
-        echo 'paused - waiting for "pause" file to be removed'
+        /bin/echo 'paused - waiting for "pause" file to be removed'
         while [ -f pause ];do sleep 1;done
-        echo 'resuming'
+        /bin/echo 'resuming'
     fi
 done
 
