@@ -125,6 +125,7 @@ BACKUP = "backup"                            #volume, file
 BFID = "bfid"                                #pnfs, file
 BFIDS = "bfids"                              #file
 CAPTION_TITLE = "caption-title"              #enstore_make_log_plot
+CAT = "cat"                                  #pnfs
 CHECK = "check"                              #volume
 CLEAN_DRIVE = "clean_drive"                  #mover
 CLEAR = "clear"                              #volume
@@ -279,7 +280,7 @@ TEST = "test"                                #option
 valid_option_list = [
     ADD, ALIVE, ALL,
     BACKUP, BFID, BFIDS,
-    CAPTION_TITLE, CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
+    CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR,
     DATABASE, DATABASEN,
     DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESCRIPTION, DESTROY,
