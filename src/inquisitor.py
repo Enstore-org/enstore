@@ -121,8 +121,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def alive_status(self, client, (host, port), time, key):
 	stat = client.alive(key, self.alive_rcv_timeout, self.alive_retries)
 	if not stat['status'] == ('TIMEDOUT', None):
-	    self.htmlfile.output_alive(host, stat['address'][1], "alive", 
-				       time, key)
+	    address = stat.get('address', ["", ""])
+	    self.htmlfile.output_alive(host, address[1], "alive", time, key)
 	    self.last_alive[key] = time
 	else:
             last_time = self.last_alive.get(key, -1)
@@ -177,77 +177,86 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			pid2 = self.fork()        # getting the second child
 			if not pid2:
 			    # we are the second child #######################
-			    Trace.init("INQ_CHILD")
-			    # we need to get new udp clients so we don't collide
-			    # with our parent.
-			    client.u = udp_client.UDPClient()
-			    if not key == CONFIG_S:
-				self.csc.u = udp_client.UDPClient()
-			    if not key == LOG_S:
-				self.logc.u = udp_client.UDPClient()
-			    if not key == ALARM_S:
-				self.alarmc.u = udp_client.UDPClient()
-			    # Check on server status but wait a long time
-			    self.alive_rcv_timeout = t.get("hung_rcv_timeout", 
-							   self.get_hung_to(key))
-			    self.alive_retries = t.get("hung_retries", 
-						       self.get_hung_retries(key))
-			    ret = self.alive_status(client, (t['host'], t['port']),
-						    time, key)
-			    if ret == TIMED_OUT:
-				# 3. if we raise an alarm we need to include the 
-				#     following info.
-				alarm_info = {'server' : key}
-				if t.has_key("norestart"):
-				    # do not restart, raise an alarm that the
-				    # server is dead.
-				    if not key == ALARM_S:
-					Trace.alarm(e_errors.ERROR,
-						    e_errors.SERVERDIED,
-						    alarm_info)
-				    else:
-					Trace.log(e_errors.ERROR,
-						  "%s died and will not be restarted"%(key,))
-				else:
-				    # we should try to restart the server.  try 3X
-				    i = 0
-				    self.alive_retries = 1
-				    pid = os.getpid()
-				    Trace.log(e_errors.INFO,
-					      "Attempting restart of %s (%s)"%(key, pid))
-				    # we need just the node name part of the host name
-				    node = string.split(host, ".", 1)
-				    alarm_info['node'] = node
-				    while i < 3:
-					Trace.trace(7, "Server restart: try %s"%(i,))
-					os.system('enstore Erestart %s "--just %s"'%(node[0], key))
-					# check if alive
-					ret = self.alive_status(client,
-								(host, port),
-								time, key)
-					if ret == DID_IT:
-					    Trace.log(e_errors.INFO,
-						      "Restarted %s"%(key,))
-					    break
-					else:
-					    i = i + 1
-				    else:
-					# 4. we could not restart the server
+			    log_name = "INQ_CHILD"
+			    try:
+				Trace.init(log_name)
+				# we need to get new udp clients so we don't collide
+				# with our parent.
+				client.u = udp_client.UDPClient()
+				if not key == CONFIG_S:
+				    self.csc.u = udp_client.UDPClient()
+				if not key == LOG_S:
+				    self.logc.u = udp_client.UDPClient()
+				if not key == ALARM_S:
+				    self.alarmc.u = udp_client.UDPClient()
+				# Check on server status but wait a long time
+				self.alive_rcv_timeout = t.get("hung_rcv_timeout", 
+							       self.get_hung_to(key))
+				self.alive_retries = t.get("hung_retries", 
+							   self.get_hung_retries(key))
+				ret = self.alive_status(client, (t['host'], t['port']),
+							time, key)
+				if ret == TIMED_OUT:
+				    # 3. if we raise an alarm we need to include the 
+				    #     following info.
+				    alarm_info = {'server' : key}
+				    if t.has_key("norestart"):
+					# do not restart, raise an alarm that the
+					# server is dead.
 					if not key == ALARM_S:
-					    Trace.alarm(e_errors.ERROR, 
-							e_errors.CANTRESTART,
+					    Trace.alarm(e_errors.ERROR,
+							e_errors.SERVERDIED,
 							alarm_info)
 					else:
 					    Trace.log(e_errors.ERROR,
-                                                  "Can't restart %s"%(key,))
-			    del client.u
-			    if not key == CONFIG_S:
-				del self.csc.u
-			    if not key == LOG_S:
-				del self.logc.u
-			    if not key == ALARM_S:
-				del self.alarmc.u
-			    os._exit(0)   # second child
+						      "%s died and will not be restarted"%(key,))
+				    else:
+					# we should try to restart the server.  try 3X
+					i = 0
+					self.alive_retries = 1
+					pid = os.getpid()
+					Trace.log(e_errors.INFO,
+						  "Attempting restart of %s (%s)"%(key, pid))
+					# we need just the node name part of the host name
+					node = string.split(host, ".", 1)
+					alarm_info['node'] = node
+					while i < 3:
+					    Trace.trace(7, "Server restart: try %s"%(i,))
+					    os.system('enstore Erestart %s "--just %s"'%(node[0], key))
+					    # check if alive
+					    ret = self.alive_status(client,
+								    (host, port),
+								    time, key)
+					    if ret == DID_IT:
+						Trace.log(e_errors.INFO,
+							  "Restarted %s"%(key,))
+						break
+					    else:
+						i = i + 1
+					else:
+					    # 4. we could not restart the server
+					    if not key == ALARM_S:
+						Trace.alarm(e_errors.ERROR, 
+							    e_errors.CANTRESTART,
+							    alarm_info)
+					    else:
+						Trace.log(e_errors.ERROR,
+						      "Can't restart %s"%(key,))
+				del client.u
+				if not key == CONFIG_S:
+				    del self.csc.u
+				if not key == LOG_S:
+				    del self.logc.u
+				if not key == ALARM_S:
+				    del self.alarmc.u
+			        os._exit(0)   # second child
+			    except:
+				# we catch any exception from the child as we do not want it to
+				# escape from this area and start executing the main loop of the
+				# inquisitor code.  we will output an error and then exit.
+				e_errors.handle_error()
+				self.serve_forever_error(log_name)
+			        os._exit(1)   # second child
 			    # end of the second child ##################################
 			else:
 			    # add the second childs pid to the appropriate enstore file so the
@@ -641,16 +650,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information about the blocksizes
     def update_blocksizes(self, key, time):
-	try:
-	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
-	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
-            Trace.trace(12,"update_blocksizes - ERROR, getting config dict timed out")
-	    return
-        if t['status'] == (e_errors.OK, None):
-	    self.htmlfile.output_blocksizes(t)
-	elif t['status'][0] == 'KEYERROR':
-	    self.remove_key(key)
+	pass
 
     # we do not need to report these
     def update_database(self, key, time):
@@ -861,7 +861,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    else:
                 os.remove(afile+SUFFIX)
 	except OSError, msg:
-            format = "%s %s %s, inquisitor update system error %s %s"%(
+            format = "%s %s %s, inquisitor update system error %s%s"%(
                 enstore_functions.format_time(time.time()), sys.argv, msg, 
 		afile, SUFFIX)
 	    Trace.log(e_errors.ERROR, format)
