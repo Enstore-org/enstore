@@ -322,7 +322,6 @@ class FileClerk(FileClerkMethods,
     pass
 
 if __name__ == "__main__":
-    Trace.init("file clerk")
     import sys
     import getopt
     import string
@@ -335,6 +334,8 @@ if __name__ == "__main__":
         import SOCKS; socket = SOCKS
     except ImportError:
         import socket
+    Trace.init("file clerk")
+    Trace.trace(1,"file clerk called with args "+repr(sys.argv))
 
     # defaults
     (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
@@ -397,3 +398,4 @@ if __name__ == "__main__":
             logc.send(log_client.ERROR, 1, format)
             Trace.trace(0,format)
             continue
+    Trace.trace(1,"File Clerk finished (impossible)")
