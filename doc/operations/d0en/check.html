@@ -189,6 +189,17 @@ is updated every 10 minutes.
 
  </ul>
 <p>
+
+<li> You can see the inter-d0en ethernet rates by looking at the <a
+href="http://www-d0en.fnal.gov/enstore/quickcheck.eepro100"> Enstore
+Rate Test Page </a> (within the miscellaneous status page). The page
+is updated every 10 minutes.  The test is run on d0ensrv3. The test
+simply runs netperf to every node listed for 1 second, and measures
+the tcp rate.  If the both eepro100 NIC card is idle, then the rate
+should be 94 x 10^6 bits/S.  If the cards are busy (for example, if
+they are transferring data), then the rate will be lower.  Look for
+obvious low rates, values like 1 or 2.
+
 <li> You can see the state of the PCs by looking at the <a
 href="http://www-d0en.fnal.gov/enstore/enstore_node_uptimes.txt">Enstore
 Node Uptime Page </a> (within the miscellaneous status page). The page
