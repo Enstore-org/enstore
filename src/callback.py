@@ -55,6 +55,7 @@ def get_callback_port(start,end,use_multiple=0):
     else:
         interface_tab = [(ips[0], 1)]
 
+    print "interface_tab=",interface_tab
     # First acquire the hunt lock.  Once we have it, we have the exlusive right
     # to hunt for a port.  Hunt lock will (I hope) properly serlialze the
     # waiters so that they will be services in the order of arrival.
@@ -92,6 +93,7 @@ def get_callback_port(start,end,use_multiple=0):
             bw = bw-1
             port = next_port_to_try[which_interface]
             # XXX debugging stuff
+            print "trying", host, port
             if use_multiple:
                 # This was Trace.trace, make it a log msg for debugging
                 Trace.log(e_errors.INFO, "multiple interface: trying %s %s" % (host,port))
@@ -124,12 +126,12 @@ def hex8(x):
     
 
 # get an unused tcp port for control communication
-def get_callback():
-    return get_callback_port( 7600, 7640 )
+def get_callback(use_multiple=0):
+    return get_callback_port( 7600, 7640, use_multiple )
 
 # get an unused tcp port for data communication - called by mover
-def get_data_callback():
-    return get_callback_port( 7640, 7650, use_multiple=1 )
+def get_data_callback(use_multiple=1):
+    return get_callback_port( 7640, 7650, use_multiple )
 
 #send a message, with bytecount and rudimentary security
 def write_tcp_raw(sock,msg):
