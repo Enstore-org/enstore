@@ -536,12 +536,16 @@ class Request_Queue:
                     if next: rq = self.adm_queue.get_next()
                     else: rq = self.adm_queue.get()
                     self.adm_pri_t0 = now
-                    if rq: return rq
+                    if rq:
+                        self.admin_rq_returned = 1
+                        return rq
 
             # see if label points to write queue
             if label in self.ref.keys():
-                if next: record = self.write_queue.get_next(label)
-                else: record = self.write_queue.get(label, location)
+                if next and self.admin_rq_returned = 0:
+                    record = self.write_queue.get_next(label)
+                else:
+                    record = self.write_queue.get(label, location)
                 # see if label points to read queue
                 if not record:
                     if next: record = self.read_queue.get_next(label)
@@ -558,11 +562,13 @@ class Request_Queue:
                 if next: rq = self.adm_queue.get_next()
                 else: rq = self.adm_queue.get()
                 #rq = self.adm_queue.get()
-                if rq: return rq
+                if rq:
+                    self.admin_rq_returned = 1
+                    return rq
             
             # label is not specified, get the highest priority from
             # the tags queue
-            if next:
+            if next and self.admin_rq_returned = 0:
                 for r in self.tags.sorted_list:
                     Trace.trace(21, "TAG %s" % (r,))
                 rq = self.tags.get_next()
@@ -576,6 +582,7 @@ class Request_Queue:
                     label = rq.ticket['fc']['external_label']
                     if not location: record = self.read_queue.get(label)
             else: record = rq
+        self.admin_rq_returned = 0
         return record
 
     def get_queue(self):
