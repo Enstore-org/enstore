@@ -886,11 +886,6 @@ def outputfile_check(inputlist, outputlist, dcache):
     else:
         outputlist = [outputlist]
 
-    #Get the contents of the output directory.  They should all be the same.
-    # If we obtain seperatly for each file in the input list this could
-    # otherwise become a major performance hit for multi-file transfers. 
-    directory_listing = os.listdir(os.path.dirname(outputlist[0]))
-
     # Make sure we can open the files. If we can't, we bomb out to user
     for i in range(len(inputlist)):
 
@@ -912,12 +907,8 @@ def outputfile_check(inputlist, outputlist, dcache):
             #Test case when used by a user and the file does not exist (as is
             # should be).
             if not access_check(outputlist[i], os.F_OK) and not dcache:
-                #Check if the filesystem is corrupted.
-                if outputlist[i] in directory_listing:
-                    raise EncpError(getattr(errno, 'EFSCORRUPTED', 'EIO'),
-                                    "Filesystem is corrupt.", e_errors.OSERROR)
                 #Check for permissions.
-                elif access_check(os.path.dirname(outputlist[i]), os.W_OK):
+                if access_check(os.path.dirname(outputlist[i]), os.W_OK):
                     outputlist.append(outputlist[i])
                 else:
                     raise EncpError(errno.EACCES,outputlist[i],
@@ -929,9 +920,12 @@ def outputfile_check(inputlist, outputlist, dcache):
 
             #The file does not already exits and it is a dcache transfer.
             elif not access_check(outputlist[i], os.F_OK) and dcache:
-                #Check if the filesystem is corrupted.
-                if outputlist[i] in directory_listing:
-                    raise EncpError(getattr(errno, 'EFSCORRUPTED', 'EIO'),
+                #Check if the filesystem is corrupted.  This entails looking
+                # for directory entries without valid inodes.
+                directory_listing = os.listdir(os.path.dirname(outputlist[i]))
+                if os.path.basename(outputlist[i]) in directory_listing:
+                    raise EncpError(
+                        getattr(errno, 'EFSCORRUPTED', getattr(errno, "EIO")),
                                     "Filesystem is corrupt.", e_errors.OSERROR)
                 else:
                     raise EncpError(errno.ENOENT,outputlist[i],
@@ -3485,6 +3479,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, listen_socket,
                                      route_server, None, e)
+        
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
