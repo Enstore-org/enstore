@@ -98,7 +98,7 @@ def do_work(intf):
 	return
 
     sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
-    outage_d, offline_d, override_d = sfile.read()
+    outage_d, offline_d, seen_down_d = sfile.read()
 
     # mark things as up if indicated
     if intf.up:

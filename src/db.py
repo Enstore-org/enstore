@@ -119,8 +119,6 @@ def join(primary, curlist):
 	c = Jcursor(primary, curlist)
 	return c
 
-indexError = "indexError"
-
 # Index
 #	Index is a special database
 #	Its (key, value) is unique but the keys may have duplicated
@@ -132,49 +130,34 @@ class Index:
 	def __init__(self, db, dbHome, dbName, field):
 		self.missing = []
 		self.extra = []
-		# primary_db could be None
 		self.primary_db = db	# primary db
 		self.dbHome = dbHome	# DBHOME for all
 		self.dbName = dbName	# Name of the primary db
 		self.name = field	# name of the indexed colume
 		self.idxFile = self.dbName+"."+field+".index"	# name of index
-		# primary_db determines how the Index is opened
-		# do not test primary_db directly!
-		# never say 'if self.primary_db: ...' since it is going
-		# to be evaluated as the 'length' of db, which is going
-		# to iterate through entire database ...
-
-		if type(self.primary_db) != type(None):
-			dbEnvSet = {'create':1,'init_mpool':1, 'init_lock':1,
-				'init_txn':1}
-		else:	# do not create if it does not exist
-			dbEnvSet = {'create':0,'init_mpool':1, 'init_lock':0,
-				'init_txn':0}
+		dbEnvSet = {'create':1,'init_mpool':1, 'init_lock':1,
+			'init_txn':1}
 		dbEnv = libtpshelve.env(self.dbHome, dbEnvSet)
 		# check to see if the index file exists?
 		if os.path.isfile("%s/%s"%(self.dbHome, self.idxFile)):
 			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1, dupsort = 1)
 			Trace.log(e_errors.INFO, "Index %s opened"%(self.idxFile))
 		else:	# build index file here
-			if type(self.primary_db) != type(None):
-				Trace.log(e_errors.INFO, "Building index %s ..."%(self.idxFile))
-				self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1, dupsort = 1)
-				count = 0
-				t = self.primary_db.txn()
-				c = self.primary_db.cursor(t)
-				key, val = c.first()
-				while val != None:
-					self.db[(val[field], t)] = key
-					key, val = c.next()
-					count = count + 1
-					if count / 100 * 100 == count:
-						Trace.log(e_errors.INFO, "%d entries have been inserted"%(count))
-				Trace.log(e_errors.INFO, "%d entries in total"%(count))
-				c.close()
-				t.commit()
-			else:
-				Trace.log(e_errors.ERROR, "Index file %s does not exist"%(self.idxFile))
-				raise indexError, "Index file %s does not exist"%(self.idxFile)
+			Trace.log(e_errors.INFO, "Building index %s ..."%(self.idxFile))
+			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1, dupsort = 1)
+			count = 0
+			t = self.primary_db.txn()
+			c = self.primary_db.cursor(t)
+			key, val = c.first()
+			while val != None:
+				self.db[(val[field], t)] = key
+				key, val = c.next()
+				count = count + 1
+				if count / 100 * 100 == count:
+					Trace.log(e_errors.INFO, "%d entries have been inserted"%(count))
+			Trace.log(e_errors.INFO, "%d entries in total"%(count))
+			c.close()
+			t.commit()
 
 	# insert an index entry
 	def insert(self, key, value, txn = None):
@@ -203,17 +186,6 @@ class Index:
 	def cursor(self, txn = None):
 		return self.db.cursor(txn)
 
-	# __getitem__(): actually, a list is returned
-	def __getitem__(self, key):
-		res = []
-		c = self.db.cursor(None)
-		k, v = c.set(key)
-		while k:
-			res.append(v)
-			k, v = c.nextDup()
-		c.close()
-		return res
-
 	# close -- close Index db
 	def close(self):
 		self.db.close()
@@ -221,12 +193,6 @@ class Index:
 
 	# check the consistency of index
 	def check(self):
-		# meaningless if there is no primary db
-		# don't test primary_db directly, explained above
-		if type(self.primary_db) == type(None):
-			Trace.log(e_errors.INFO, "Index.check(): no primary db to check against")
-			return(0)
-
 		status = 0
 		c = self.db.cursor()
 		pc = self.primary_db.cursor()
@@ -253,11 +219,6 @@ class Index:
 
 	# fix the index according to previous check
 	def fix(self):
-		# meaningless if there is no primary db
-		if type(self.primary_db) == type(None):
-			Trace.log(e_errors.INFO, "Index.fix(): no primary db to check against")
-			return
-
 		t = self.txn()
 		for (k, v) in self.missing:
 			self.insert(k, v, t)
