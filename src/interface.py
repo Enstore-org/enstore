@@ -311,6 +311,8 @@ class Interface:
 	        self.criteria['user_inhibit']=string.split(value,',')
             elif opt == "-s":
 	        self.criteria['system_inhibit']=string.split(value,',')
+            elif opt == "--mail_node":
+	        self.mail_node=value
             elif opt == "--help" :
 	        self.print_help()
                 sys.exit(0)
