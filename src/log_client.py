@@ -141,7 +141,7 @@ if __name__ == "__main__" :
         ticket = logc.alive()
 
     elif test:
-        ticket = logc.send(ERROR, "This is a test message %s %d", 'TEST', 23456)
+        ticket = logc.send(ERROR, "This is a test message %s %d", 'TEST', 3456)
         #ticket = logc.send(INFO, "this is an INFO message")
 
     if ticket['status'] != 'ok' :

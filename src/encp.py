@@ -31,6 +31,9 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     t1 = time.time()
     if list:
         print "Checking",unixfile
+    dir,file = os.path.split(unixfile)
+    if dir == '' :
+        dir = os.getcwd()
     in_file = open(unixfile, "r")
     statinfo = os.stat(unixfile)
     fsize = statinfo[stat.ST_SIZE]
@@ -85,6 +88,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
     uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
     uinfo['machine'] = os.uname()
+    uinfo['fullname'] = (uinfo['machine'][1],dir+"/"+file)
     #uinfo['node'] = socket.gethostbyaddr(socket.gethostname())
 
     tinfo["localinfo"] = time.time() - t1
@@ -266,7 +270,12 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
                   "at",done_ticket["MB_per_S"],"MB/S", "   cum=",time.time()-t0
             #print done_formatted
 
-        logticket = logc.send(log_client.INFO, "this is an INFO message")
+        format = "%s -> %s : %d bytes copied to %s in  %f seconds "+\
+                 "at %f MB/S    cum= %f seconds"
+        logticket = logc.send(log_client.INFO, format, uinfo["fullname"],
+                              p.pnfsFilename, p.file_size,
+                              done_ticket["external_label"], tinfo["total"],
+                              done_ticket["MB_per_S"], time.time()-t0)
 
     else :
         jraise(errno.errorcode[errno.EPROTO],"encp.write_to_hsm: "\

@@ -61,7 +61,10 @@ class UDPClient:
             if badsock != 0 :
                 print "udp_client send, pre-sendto error:", \
                       errno.errorcode[badsock]
-            self.socket.sendto (message, address)
+	    try:
+		self.socket.sendto (message, address)
+	    except:
+		print message,address
             badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             if badsock != 0 :
                 print "udp_client send, post-sendto error:", \
