@@ -356,7 +356,7 @@ class MoverClient:
 	
 	#get status information and write it to a file
         if 0:
-	 WSstatus,WSdata = self.writeAll(driver_object, mvr_config['device'], outParam=['cleaning_bit',], inParam={'work':'afterUnload'})
+	 WSstatus,WSdata = self.writeAll(driver_object.statisticsOpen, driver_object.statisticsClose, mvr_config['device'], outParam=['cleaning_bit',], inParam={'work':'afterUnload'})
          Trace.log(e_errors.INFO,"Writing statistics, status = "+str(WSstatus))
 	 if WSstatus == 0:
 	    if WSdata['cleaning_bit'] == 1:
@@ -378,7 +378,7 @@ class MoverClient:
 	self.fc = ticket['fc']
 	return forked_read_from_hsm( self, ticket )
 	
-    def writeAll(self, driverObject, device, outParam=None, inParam={}):
+    def writeAll(self, statisticsOpen, statisticsClose, device, outParam=None, inParam={}):
         path = mvr_config['statistics_path']
         if outParam is None:
 	    outParam = []
@@ -391,7 +391,8 @@ class MoverClient:
 	    Trace.log(e_errors.INFO, "IOError: %s"%xx)
 	    return status, data
 
-	ss = driverObject.statisticsOpen
+	ss = statisticsOpen
+	fd.write('action  mount\n')
         for skey in ss.keys():
 	    s1 = string.replace(repr(skey),"'","")
 	    s2 = string.replace(repr(ss[skey]),"'","")
@@ -404,7 +405,8 @@ class MoverClient:
             fd.write(buf)
 	fd.write('\n')
 
-	ss = driverObject.statisticsClose
+	ss = statisticsClose
+	fd.write('action  dismount\n')
         for skey in ss.keys():
 	    for item in outParam:
 	        if item == skey:
