@@ -291,6 +291,11 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
         jraise(errno.errorcode[errno.EACCES],"encp.read_from_hsm: "\
                +"system disabled"+running)
     tinfo["pnfscheck"] = time.time() - t1
+    try:
+	(parked_node,parked_name) = p.lastparked
+	print "Last parked on ",parked_node,parked_name
+    except:
+	pass
     if list:
         print "  dt:",tinfo["pnfscheck"], "   cum=",time.time()-t0
 

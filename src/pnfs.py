@@ -564,7 +564,7 @@ if __name__ == "__main__" :
 
     elif test :
 
-        base = "/pnfs/enstore/test1"
+        base = "/pnfs/enstore/test2"
         count = 0
         for pf in base+"/"+repr(time.time()), "/impossible/path/test" :
             count = count+1;
