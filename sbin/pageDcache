@@ -93,39 +93,39 @@ rm_tmp_files
 gang=`gang`
 case $gang in
   stken) case $dcacheToTest in
-	      cms) strip_dir="/pnfs/eagle"
-	           w=$strip_dir/dcache-tests/$N.dcache_page_cms_$$
-		   wp=$strip_dir/dcache-tests/$N.dcache_page_p_cms_$$
-		   wa=$strip_dir/dcache-tests/$N.dcache_page_a_cms_$$
-		   wpc=$strip_dir/dcache-tests/$N.dcache_page_pc_cms_$$
-		   wac=$strip_dir/dcache-tests/$N.dcache_page_ac_cms_$$
-		   wg=dcache-tests/$N.dcache_page_g_$$
-		   ws=/pnfs/fnal.gov/usr/eagle/dcache-tests/$N.dcache_page_s_$$
-		   dcache=cmsdca
-		   dcache_saag="dcache_cms"
-		   get_ports
-		   get_ticket
-		   case $testToDo in
-			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
-			      ;;
-			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
-			         ;;
-			srm) `pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
-			     ;;
-			kftp) pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
-			      # now test kftp with certificates
-			      pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wpc $wac cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
-			      pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
-			      ;;
-		   esac
-		   ;;
-	      cmstest) strip_dir="/pnfs/cms"
+##JonOFF##      cms) strip_dir="/pnfs/eagle"
+##JonOFF##           w=$strip_dir/dcache-tests/$N.dcache_page_cms_$$
+##JonOFF##	   wp=$strip_dir/dcache-tests/$N.dcache_page_p_cms_$$
+##JonOFF##	   wa=$strip_dir/dcache-tests/$N.dcache_page_a_cms_$$
+##JonOFF##	   wpc=$strip_dir/dcache-tests/$N.dcache_page_pc_cms_$$
+##JonOFF##	   wac=$strip_dir/dcache-tests/$N.dcache_page_ac_cms_$$
+##JonOFF##	   wg=dcache-tests/$N.dcache_page_g_$$
+##JonOFF##	   ws=/pnfs/fnal.gov/usr/eagle/dcache-tests/$N.dcache_page_s_$$
+##JonOFF##	   dcache=cmsdca
+##JonOFF##	   dcache_saag="dcache_cms"
+##JonOFF##	   get_ports
+##JonOFF##	   get_ticket
+##JonOFF##	   case $testToDo in
+##JonOFF##		dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+##JonOFF##		      ;;
+##JonOFF##		gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
+##JonOFF##		         ;;
+##JonOFF##		srm) `pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
+##JonOFF##		     ;;
+##JonOFF##		kftp) pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
+##JonOFF##		      # now test kftp with certificates
+##JonOFF##		      pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wpc $wac cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
+##JonOFF##		      pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
+##JonOFF##		      ;;
+##JonOFF##	   esac
+##JonOFF##	   ;;
+	      cms|cmstest) strip_dir="/pnfs/cms"
 	           w=$strip_dir/WAX/5/pageDcache/$N.dcache_page_cmstest_$$
 		   wp=$strip_dir/WAX/5/pageDcache/$N.dcache_page_p_cmstest_$$
 		   wa=$strip_dir/WAX/5/pageDcache/$N.dcache_page_a_cmstest_$$
 		   wg=WAX/5/pageDcache/$N.dcache_page_g_$$
 		   ws=/pageDcache/$N.dcache_page_s_$$
-		   dcache=cmsdcdr1
+		   dcache=cmsdca
 		   dcache_saag="dcache_cmstest"
 		   get_ports
 		   get_ticket
