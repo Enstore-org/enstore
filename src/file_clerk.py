@@ -747,10 +747,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, 'checking if files of volume %s are deleted'%(vol))
         bfids = self.get_all_bfids(vol)
         for bfid in bfids:
-            print 'bfid = ', bfid
             record = self.dict[bfid]
-            print 'record =', `record`
-            if record['deleted'] == 'yes':
+            if record['deleted'] == 'no':
                 return 1
         return 0
 
@@ -770,7 +768,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # catch any failure
         try:
             result = self.__has_undeleted_file(vol)
-            ticket["status"] = (errors.OK, result)
+            ticket["status"] = (e_errors.OK, result)
         except:
             ticket["status"] = (e_errors.ERROR, "inquire failed")
         # and return to the caller
