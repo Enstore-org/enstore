@@ -52,7 +52,7 @@ class CronPlotPage(enstore_html.EnPlotPage):
         self.url = url
         enstore_html.EnPlotPage.__init__(self, title, gif, description)
 	self.source_server = "Enstore"
-	self.help_file = cronHelp.html
+	self.help_file = "cronHelp.html"
 
     def find_label(self, text):
         l = len(self.url)
