@@ -329,6 +329,8 @@ class Interface:
                 self.host=value
             elif opt == "--html":
                 self.html = 1
+            elif opt == "--html-dir":
+                self.html_dir = value
             elif opt == "--html-file":
                 self.html_file = value
             elif opt == "--html-gen-host":
