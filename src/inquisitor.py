@@ -746,7 +746,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 os.remove(afile+SUFFIX)
 	except OSError, msg:
             format = "%s %s %s, inquisitor update system error %s %s"%(
-                timeofday.tod(), sys.argv, msg, afile, suffix)
+                timeofday.tod(), sys.argv, msg, afile, SUFFIX)
 	    Trace.log(e_errors.ERROR, format)
 
     def handle_timeout(self):

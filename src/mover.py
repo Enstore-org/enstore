@@ -934,6 +934,7 @@ def forked_read_from_hsm( self, ticket ):
         #XXX need to check returns of open, write, and close
         if write_eov:
             eod_cookie = self.vol_info['eod_cookie']
+            external_label = self.vol_info['external_label']
             driver_object=self.hsm_driver.open( mvr_config['device'], 'w' )
             if debug_paranoia: print "writing EOV"
             ll = driver_object.format_eov1_header( external_label, eod_cookie)

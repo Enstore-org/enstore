@@ -1269,7 +1269,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller({"status"       : status,
                                   "start_backup" : 'no' })
 
-
     def stop_backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"stop_backup")
@@ -1280,7 +1279,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except:
             exc,msg,tb=sys.exc_info()
             status = str(exc), str(msg)
-            Trace.log(e_errors.ERROR,"stop_backup %s"%status
+            Trace.log(e_errors.ERROR,"stop_backup %s"%status)
             self.reply_to_caller({"status"       : status,
                                   "stop_backup"  : 'no' })
 
