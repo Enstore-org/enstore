@@ -142,6 +142,13 @@ ip_d = {}
 icmp_d = {}
 snmp_d = {}
 
+system0 = {}
+tcp0 = {}
+udp0 = {}
+ip0 = {}
+icmp0 = {}
+snmp0 = {}
+node0 = {}
 
 
 #########################################################################
@@ -721,6 +728,14 @@ def setNodeTab(tabName, head, htmlName, list):
 
 if __name__=="__main__":
 
+    global miblist
+    global system_d 
+    global tcp_d 
+    global udp_d 
+    global ip_d 
+    global icmp_d
+    global snmp_d  
+
     mib = ".1.3.6.1.2.1"   #.iso.org.dod.internet.mgmt.mib-2
     
     flownum = ".1.3.6.1.4.1.9.5.1.4.1.1."
@@ -731,8 +746,6 @@ if __name__=="__main__":
     for i in 1, 2, 3, 4, 5, 6, 7, 10, 11, 16, 17, 31, 47:
         miblist[i] = "%s/%d"%(mibdir, i)
                 
-#    mibflow = {}
-    global  mibflow    
     mibflow["duplex"] = ["%s/%s"%(mibdir,"duplex"), "%s%s"%(flownum, "10")]
 
     k = 12
@@ -764,10 +777,6 @@ if __name__=="__main__":
    
 #### setup the lists that will be the keys to update the node dictionary
  
-#    node_d = node_init.node_d
-#    nodes = node_d.keys()
-#    nodeValue = node_d.values()
-
     cableVal = []
     for dic in nodeValue:
         cableVal.append(dic['cable'])
