@@ -455,8 +455,8 @@ def write_to_hsm(input, output, output_file_family='',
 			   repr(statinfo[stat.ST_SIZE]))
 		    pass
 		try:
-                    if chk_crc != 0: crc_flag = 1
-		    else:            crc_flag = 0
+                    if chk_crc : crc_flag = 1
+		    else:        crc_flag = 0
 		    mycrc = EXfer.fd_xfer( in_file.fileno(),
 					   data_path_socket.fileno(), 
 					   fsize, bufsize, crc_flag )
@@ -578,12 +578,17 @@ def write_to_hsm(input, output, output_file_family='',
 		continue
 
 	    # Check the CRC
-            if chk_crc != 0:
-                if done_ticket["fc"]["complete_crc"] != mycrc :
+            if chk_crc:
+                mover_crc = done_ticket["fc"]["complete_crc"]
+                if mover_crc is None:
+                    sys.stderr.write(
+                        "warning: mover did not return CRC; skipping CRC check\n")
+                    
+                elif mover_crc != mycrc :
 		    print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.write_to_hsm: CRC's mismatch: "\
-                           +repr(done_ticket["fc"]["complete_crc"])+\
+                           +repr(mover_crc)+\
 			   " "+repr(mycrc))
 
 	    tinfo1["final_dialog"] = time.time()-t1 #----------Lap End
@@ -1468,8 +1473,13 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    pass
 
         # verify that the crc's match
-        if chk_crc != 0 :
-            if done_ticket["fc"]["complete_crc"] != mycrc :
+        if chk_crc :
+            mover_crc = done_ticket["fc"]["complete_crc"]
+            if mover_crc is None:
+                sys.stderr.write(
+                    "warning: mover did not return CRC; skipping CRC check\n")
+                
+            elif mover_crc != mycrc :
 		error = 1
 		# print error to stdout in data_access_layer format
 		done_ticket['status'] = (e_errors.READ_COMPCRC,'crc mismatch')
@@ -1480,7 +1490,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
                 print_error(errno.errorcode[errno.EPROTO],\
                        " encp.read_from_hsm: CRC's mismatch: "\
-                       +repr(done_ticket["fc"]["complete_crc"])+" "+repr(mycrc))
+                       +repr(mover_crc)+" "+repr(mycrc))
 
 		# no retry for this case
 		bytes = bytes+requests[j]['file_size']
