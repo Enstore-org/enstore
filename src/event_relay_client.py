@@ -32,6 +32,8 @@ def get_event_relay_host(csc):
 
 def set_max_recv_buffersize(sock):
 
+    TWO_MB = 2097152
+    
     try:
         max_buffer_size = os.fpathconf(sock.fileno(),
                                        os.pathconf_names['PC_SOCK_MAXBUF'])
@@ -45,6 +47,11 @@ def set_max_recv_buffersize(sock):
         #The system knows about the symbol 'PC_SOCK_MAXBUF', but the
         # required functionality is not implimented.
         max_buffer_size = -1
+
+    if max_buffer_size > TWO_MB:
+        #The maximum socket buffer size of a socket on SGI could be 1GB.
+        # This is way to large... Bump it down to 2MB.
+        max_buffer_size = TWO_MB
 
     if max_buffer_size > 0:
         #This implimentaion knew about PC_SOCK_MAXBUF if we get here.
@@ -62,8 +69,11 @@ def set_max_recv_buffersize(sock):
     #       1048576 = 1MB
     #This information came from:
     # http://www.psc.edu/networking/perf_tune.html
-    current_size = 2097152  #2MB
+    current_size = TWO_MB  #2MB
 
+    #Start at a large number (2MB) and divide by two to find a number to
+    # set the socket buffer size to.  This algorithm came from "UNIX
+    # Network Programming" by Stevens et. all. 3rd edition page 209. 
     while current_size > 4096:
         try:
             #Keep looping starting at a large number.
