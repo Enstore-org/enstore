@@ -1080,7 +1080,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                   "start_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
         except:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             status = str(exc), str(msg)
             Trace.log(e_errors.ERROR,"start_backup %s"%(status,))
             self.reply_to_caller({"status"       : status,
@@ -1095,7 +1095,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                   "stop_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
         except:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             status = str(exc), str(msg)
             Trace.log(e_errors.ERROR,"stop_backup %s"%(status,))
             self.reply_to_caller({"status"       : status,
@@ -1109,7 +1109,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                   "backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
         except:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             status = str(exc), str(msg)
             Trace.log(e_errors.ERROR,"backup %s"%(status,))
             self.reply_to_caller({"status"       : status,
