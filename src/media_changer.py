@@ -19,6 +19,7 @@ from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
+from ETape import ET_Rewind
 import string
 
 list = 0
@@ -58,6 +59,19 @@ class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
     # unload volume from the drive
     def unload(self, external_label, drive) :
         print 'I am unload function and my type is IBM3494'
+        return {"status" : "ok"}
+
+# FTT tape drives with no robot 
+class FTT_MediaLoaderMethods(MediaLoaderMethods) :
+
+    # load volume into the drive
+    def load(self, external_label, drive) :
+        ET_Rewind(drive)
+        return {"status" : "ok"}
+
+    # unload volume from the drive
+    def unload(self, external_label, drive) :
+        ET_Rewind(drive)
         return {"status" : "ok"}
 
 # STK robot class
@@ -117,6 +131,10 @@ class STK_MediaLoader(STK_MediaLoaderMethods, GenericServer, UDPServer) :
 
 # Raw Disk media loaded server
 class RDD_MediaLoader(MediaLoaderMethods, GenericServer, UDPServer) :
+    pass
+
+# Raw Disk media loaded server
+class RDD_MediaLoader(FTT_LoaderMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
