@@ -1410,6 +1410,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ##We don't ever want to let ftt handle the filemarks for us, because its
                 ##default behavior is to write 2 filemarks and backspace over both
                 ##of them.
+                Trace.trace(10, "complete CRC %s"%(self.buffer.complete_crc,))
                 self.eof_labels = self.wrapper.eof_labels(self.buffer.complete_crc)
                 if self.eof_labels:
                     bytes_written = driver.write(self.eof_labels, 0, len(self.eof_labels))
@@ -2092,7 +2093,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(10, "ticket %s"%(self.current_work_ticket))
                     wrapper_dict = self.wrapper.create_wrapper_dict(self.current_work_ticket)
                     vol1_label = self.wrapper.vol_labels(volume_label, self.current_work_ticket)
-                    self.tape_driver.write(vol1_label, 0, 80)
+                    self.tape_driver.write(vol1_label, 0, len(vol1_label))
                     self.tape_driver.writefm()
 	            # WAYNE FOO
                     ##if self.config['product_id'] == 'T9940B':
