@@ -59,7 +59,7 @@ ETape ETape.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
 
 EXfer EXfer.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
 
-FTT FTT.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
+FTT FTT.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt -lc
 
 IPC IPC.c
 
@@ -68,3 +68,6 @@ Devcodes Devcodes.c
 Trace Trace.c trace.a -lc
 
 ECRC ECRC.c
+
+
+STK STKmodule.c -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
