@@ -31,6 +31,9 @@ def default_port():
 	      sys.exc_info()[0],sys.exc_info()[1]
 	return("7500")
 
+def default_file():
+    return "/pnfs/enstore/.(config)(flags)/enstore.conf"
+
 class Interface:
 
     def __init__(self, host=default_host(), port=default_port()):
