@@ -1586,21 +1586,21 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         ejected = self.tape_driver.eject()
         if ejected == -1:
-            broken = "Cannot eject tape"
+            if self.can_force_eject:
+                # try to unload tape if robot is STK. It can do this
+                Trace.log(e_errors.INFO,"Eject failed. For STK robot will try to unload anyway")
+            else:
+                
+                broken = "Cannot eject tape"
 
-            if self.current_volume:
-                try:
-                    self.vcc.set_system_noaccess(self.current_volume)
-                except:
-                    exc, msg, tb = sys.exc_info()
-                    broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)                
-            # for all tape libraries except STK error out
-            if not self.can_force_eject:
+                if self.current_volume:
+                    try:
+                        self.vcc.set_system_noaccess(self.current_volume)
+                    except:
+                        exc, msg, tb = sys.exc_info()
+                        broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)                
                 self.broken(broken)
                 return
-            else:
-                Trace.log(e_errors.ERROR,"%s, for STK robot will try to unload anyway" %
-                          (broken,))
                 
         self.tape_driver.close()
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
