@@ -21,6 +21,23 @@ def layer_file(p, n):
 	d, f = os.path.split(p)
 	return os.path.join(d, '.(use)(%d)(%s)'%(n, f))
 
+def layer2crc(s):
+	crc = None
+	level = 0
+
+	token = string.split(s, ';')
+	for i in token:
+		if i[:3] == ':c=':
+			cc = string.split(i, ':')
+			if len(cc) < 3:
+				return None
+			l1 = int(string.split(cc[1], '=')[1])
+			c1 = long(cc[2], 16)
+			if level == 0 or l1 < level:
+				crc = c1
+				level = l1
+	return crc
+
 def file_info(path):
 	if not os.access(path, os.R_OK):
 		return None
@@ -31,6 +48,13 @@ def file_info(path):
 		return None
 
 	if len(bfid) < 10:
+		# poke layer 2
+		l2 = open(layer_file(path, 2)).readlines()
+		if len(l2) < 2:
+			return None
+		crc = layer2crc(string.strip(l2[1]))
+		if crc:
+			return {'file_info':{}, 'volume_info':{}, 'l2crc':crc}
 		return None
 
 	fi = fcc.bfid_info(bfid)
