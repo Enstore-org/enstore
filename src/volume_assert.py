@@ -23,8 +23,6 @@ import option
 import e_errors
 #import callback
 import Trace
-import host_config
-#import udp_server
 import hostaddr
 import encp
 import generic_client
@@ -111,22 +109,13 @@ def get_vcc_list():
 
     return csc_list, vcc_list
 
-def create_assert_list(vol_list, intf):
+def create_assert_list(vol_list):
 
     #The list of volume clerks to check.
     csc_list, vcc_list = get_vcc_list()
 
     #Determine the calback address.
-    callback_addr, listen_socket = encp.get_callback_addr(intf)
-    #Determine the routing callback address.
-    config = host_config.get_config()
-    if config and config.get('interface', None):
-        route_selection = 1
-        routing_callback_addr, udp_server = \
-                               encp.get_routing_callback_addr(intf)
-    else:
-        route_selection = 0
-        routing_callback_addr, udp_server = None, None
+    callback_addr, listen_socket = encp.get_callback_addr()  #intf)
 
     #For each volume in the list, determine which system it belongs in by
     # asking each volume clerk until one responds positively.  When one does
@@ -156,8 +145,6 @@ def create_assert_list(vol_list, intf):
             ticket = {}
             ticket['unique_id'] = encp.generate_unique_id()
             ticket['callback_addr'] = callback_addr
-            ticket['routing_callback_addr'] = routing_callback_addr
-	    ticket['route_selection'] = route_selection
             ticket['vc'] = vc
             ticket['vc']['address'] = vcc_list[i].server_address  #vcc instance
             #Easier to do this than modify the mover.
@@ -192,7 +179,7 @@ def create_assert_list(vol_list, intf):
         else:
             sys.stderr.write(e_msg)
 
-    return assert_list, listen_socket, udp_server
+    return assert_list, listen_socket
 
 def submit_assert_requests(assert_list):
     unique_id_list = []
@@ -222,8 +209,7 @@ def submit_assert_requests(assert_list):
 
 #Unique_id_list is a list of just the unique ids.  Assert_list is a list of
 # the complete tickets.
-def handle_assert_requests(unique_id_list, assert_list, listen_socket,
-                           udp_server, intf):
+def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
 
     error_id_list = []
     completed_id_list = []
@@ -231,19 +217,6 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
     while len(error_id_list) + len(completed_id_list) < len(assert_list):
         
         try:
-            #Obtain if necessary the routing socket.
-            if udp_server:
-	        #There is no need to do this on a non-multihomed machine.
-                route_ticket, listen_socket = encp.open_routing_socket(
-                    udp_server, unique_id_list, intf)
-
-                #If everything is okay, open the control socket.
-                if not e_errors.is_ok(route_ticket):
-                    raise encp.EncpError(None, "Routing socket error.",
-                                         route_ticket.get('status',
-                                                          (e_errors.UNKNOWN,
-                                                           None)),
-                                          route_ticket)
             #Obtain the control socket.
             socket, addr, callback_ticket = \
                     encp.open_control_socket(listen_socket, intf.mover_timeout)
@@ -282,6 +255,12 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
                              str(callback_ticket['status']))
             #Do not retry from error.
             error_id_list.append(callback_ticket['unique_id'])
+            continue
+
+        #Handle erroneous callbacks.
+        if callback_ticket['unique_id'] not in unique_id_list:
+            socket.close()
+            sys.stderr.write("Received unique id %s that is not expected.\n")
             continue
 
         try:
@@ -395,14 +374,14 @@ def main(intf):
         sys.exit(1)
 
     #Create the list of assert work requests.
-    assert_list, listen_socket, udp_server = create_assert_list(vol_list, intf)
+    assert_list, listen_socket = create_assert_list(vol_list)
 
     #Submit the work requests to the library manager.
     unique_id_list = submit_assert_requests(assert_list)
 
     #Wait for mover to call back with the volume assert status.
     exit_status = handle_assert_requests(unique_id_list, assert_list,
-                                         listen_socket, udp_server, intf)
+                                         listen_socket, intf)
 
     sys.exit(exit_status)
     
