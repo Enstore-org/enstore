@@ -118,6 +118,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 t = self.dict.db.txn()
                 self.dict.db[(external_label,t)] = v
                 t.commit()
+                Trace.log(e_errors.INFO, 'volume %s is set to "full" by is_volume_full()'%(external_label))
             else: ret = e_errors.NOSPACE
         return ret
 
@@ -527,6 +528,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.dict[vol] = record
         self.sgdb.inc_sg_counter(library, storage_group)
         ticket['status'] = (e_errors.OK, None)
+        Trace.log(e_errors.INFO, "volume %s is assigned to storage group %s"%(vol, storage_group))
         self.reply_to_caller(ticket)
         return
 
@@ -783,6 +785,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
+        Trace.log(e_errors.INFO, 'removing volume %s from database. %s'%(external_label, `record`))
         del self.dict[external_label]
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -1548,9 +1551,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
         
         # update the library field with the new library
+	old_library = record ["library"]
         record ["library"] = new_library
         self.dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
+        Trace.log(e_errors.INFO, 'volume %s is assigned from library %s to library %s'%(old_library, new_library))
         self.reply_to_caller(record)
         return
 
