@@ -22,6 +22,7 @@ import random
 import fcntl, FCNTL
 import math
 import exceptions
+import re
 
 # enstore modules
 import setpath 
@@ -785,13 +786,13 @@ def outputfile_check(inputlist, output, dcache):
             #Make sure the output file system can handle a file as big as
             # the input file.  Also, make sure that the maximum size that
             # the wrapper and library use are greater than the filesize.
-            # These function will raise a USERERROR on an error.
+            # These function will raise an EncpError on an error.
             if "/pnfs/" == inputlist[i][:6]: #READS
                 filesystem_check(outputlist[i], inputlist[i])
             else: #WRITES
                 librarysize_check(outputlist[i], inputlist[i])
                 wrappersize_check(outputlist[i], inputlist[i])
-                filesystem_check(outputlist[i], inputlist[i])
+                #filesystem_check(outputlist[i], inputlist[i])
 
             # we cannot allow 2 output files to be the same
             # this will cause the 2nd to just overwrite the 1st
@@ -886,6 +887,8 @@ def get_clerks(bfid=None):
 ############################################################################
 
 def get_pinfo(p):
+    p.pstatinfo()
+            
     # get some debugging info for the ticket
     pinf = {}
     for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',
@@ -1856,7 +1859,7 @@ def create_write_requests(callback_addr, e, tinfo):
     except (OSError, IOError), detail:
         print_data_access_layer_format('', '', 0,
                                        {'status':(errno.errorcode[detail.errno]
-                                                  ,detail.strerror)})
+                                                  ,str(detail))})
         quit()
 
 
@@ -1900,9 +1903,19 @@ def create_write_requests(callback_addr, e, tinfo):
                 uinfo['uname'] = 'unknown'
         uinfo['machine'] = os.uname()
 
-        p=pnfs.Pnfs(outputlist[i])
-        p.pstatinfo()
-        pinfo = get_pinfo(p)
+        try:
+            p = pnfs.Pnfs(outputlist[i])
+            pinfo = get_pinfo(p)
+        except (OSError, IOError), detail:
+            print_data_access_layer_format(
+                inputlist[i], outputlist[i], file_size[i],
+                {'status':(errno.errorcode(detail.errno), str(detail))})
+            quit()
+        except (IndexError,), detail:
+            print_data_access_layer_format(
+                inputlist[i], outputlist[i], file_size[i],
+                {'status':(e_errors.OSERROR, "Unable to obtain bfid.")})
+            quit()
 
         # create the wrapper subticket - copy all the user info 
         # into for starters
@@ -1917,7 +1930,7 @@ def create_write_requests(callback_addr, e, tinfo):
             wrapper[key] = uinfo[key]
 
         wrapper["fullname"] = inputlist[i]
-        wrapper["type"] = t.get_file_family_wrapper(), #ff_wrapper
+        wrapper["type"] = t.get_file_family_wrapper() #ff_wrapper
         #file permissions from PNFS are junk, replace them
         #with the real mode
         wrapper['mode']=os.stat(inputlist[i])[stat.ST_MODE]
@@ -2279,10 +2292,19 @@ def write_to_hsm(e, tinfo):
 # same_cookie(c1, c2) -- to see if c1 and c2 are the same
 
 def same_cookie(c1, c2):
-    try: # just to be paranoid
-        return string.split(c1, '_')[-1] == string.split(c2, '_')[-1]
-    except (ValueError, AttributeError, TypeError, IndexError):
-        return 0
+    lc_re = re.compile("[0-9]{4}_[0-9]{9,9}_[0-9]{7,7}")
+    match1=lc_re.search(c1)
+    match2=lc_re.search(c2)
+    if match1 and match2:
+        #The location cookie resembles that of null and tape cookies.
+        #  Only the last section of the cookie is important.
+        try: # just to be paranoid
+            return string.split(c1, '_')[-1] == string.split(c2, '_')[-1]
+        except (ValueError, AttributeError, TypeError, IndexError):
+            return 0
+    else:
+        #The location cookie is a disk cookie.
+        return c1 == c2
 
 
 #Args:
@@ -2322,27 +2344,50 @@ def verify_read_request_consistancy(requests_per_vol):
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
 
-            #A serious bug was found in the file clerk.  It could give
-            # two different files the same bfid.  This is a check to make
-            # sure that the bfid points to the correct file.
+            #If no layer 4 is present, then report the error, raise an alarm,
+            # but continue with the transfer.
             p = pnfs.Pnfs(request['wrapper']['pnfsFilename'])
             p.get_xreference()
-            if p.volume == pnfs.UNKNOWN or p.location_cookie == pnfs.UNKNOWN \
-               or p.size == pnfs.UNKNOWN:
+            if (p.volume == pnfs.UNKNOWN or
+                p.location_cookie == pnfs.UNKNOWN or
+                p.size == pnfs.UNKNOWN or
+                p.origff == pnfs.UNKNOWN  or
+                p.origname == pnfs.UNKNOWN or
+                #Mapfile no longer used.
+                p.pnfsid_file == pnfs.UNKNOWN or
+                #Volume map file id no longer used.
+                p.bfid == pnfs.UNKNOWN
+                #Origdrive not always recored.
+                ):
                 rest = {'infile':request['infile'],
                         'bfid':request['bfid'],
                         'pnfs_volume':p.volume,
                         'pnfs_location_cookie':p.location_cookie,
                         'pnfs_size':p.size,
+                        'pnfs_origff':p.origff,
+                        'pnfs_origname':p.origname,
+                        'pnfs_id':p.pnfsid_file,
+                        'pnfs_bfid':p.bfid,
+                        'pnfs_origdrive':p.origdrive,
                         'status':"Missing data in pnfs layer 4."}
                 sys.stderr.write(rest['status'] + "  Continuing.\n")
                 Trace.alarm(e_errors.ERROR, e_errors.UNKNOWN, rest)
-            
-            elif request['fc']['external_label'] != p.volume or \
-               not same_cookie(request['fc']['location_cookie'],
-                               p.location_cookie) or \
-               long(request['fc']['size']) != long(p.size):
 
+            #If there is a layer 4, but the data does not match that in
+            # the file and volume clerk databases, then raise alarm and exit.
+            elif (request['fc']['external_label'] != p.volume or
+                  not same_cookie(request['fc']['location_cookie'],
+                                  p.location_cookie) or
+                  long(request['fc']['size']) != long(p.size) or
+                  volume_family.extract_file_family(
+                                request['vc']['volume_family']) != p.origff or
+                  request['fc']['pnfs_name0'] != p.origname or
+                  #Mapfile no longer used.
+                  request['fc']['pnfsid'] != p.pnfsid_file or
+                  #Volume map file id no longer used.
+                  request['fc']['bfid'] != p.bfid
+                  #Origdrive not always recored.
+                  ):
                 rest = {'infile':request['infile'],
                         'outfile':request['outfile'],
                         'bfid':request['bfid'],
@@ -2360,6 +2405,9 @@ def verify_read_request_consistancy(requests_per_vol):
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
 
+            #Test to verify that all the brands are the same.  If not exit.
+            # If so, then the system will function.  If this was not true,
+            # then a lot of file clerk key errors could occur.
             if request['fc']['bfid'][:4] != bfid_brand[:4]:
                 print request['fc']['bfid'], bfid_brand
                 msg = "All bfids must have the same brand."
@@ -2458,11 +2506,19 @@ def create_read_requests(callback_addr, tinfo, e):
 
         try:
             p = pnfs.Pnfs(inputlist[i])
-            p.pstatinfo()
             bfid = p.get_bit_file_id()
             pinfo = get_pinfo(p)
         except (OSError, IOError), detail:
-            continue
+            print_data_access_layer_format(
+                inputlist[i], outputlist[i], file_size[i],
+                {'status':(errno.errorcode(detail.errno), str(detail))})
+            quit()
+        except (IndexError,), detail:
+            print_data_access_layer_format(
+                inputlist[i], outputlist[i], file_size[i],
+                {'status':(e_errors.OSERROR, "Unable to obtain bfid.")})
+            quit()
+        
 
         #only do this the first time.
         if not vcc or not fcc:
