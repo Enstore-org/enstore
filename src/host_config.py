@@ -254,9 +254,11 @@ def is_route_in_table(dest):
         if route['Destination'] == ip:
             return 1
         #Test to see if the subnet route already exists.
-        rt = string.join(route['Destination'].split(".")[:3], ".")
+        existing_rt = route['Destination'].split("/")[0] #hack for OSF1 
+        rt = string.join(existing_rt.split(".")[:3], ".")
+        rt = string.split(rt, "/")[0]
         sn = string.join(ip.split(".")[:-1], ".")
-        if rt == route['Destination'] and rt == sn:
+        if rt == existing_rt and rt == sn:
             return 1
     return 0
 
