@@ -17,6 +17,7 @@ import generic_server
 import interface
 import Trace
 import e_errors
+import generic_cs
 
 class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
@@ -73,6 +74,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         # ok, we read entire file - now set it to real dictionary
         self.configdict=copy.deepcopy(xconfigdict)
         self.serverlist = {}
+	conflict = 0
         for key in self.configdict.keys():
 	    if not self.configdict[key].has_key('status'):
 		self.configdict[key]['status'] = (e_errors.OK, None)
@@ -81,9 +83,36 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 		    self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
 		    if not self.configdict[key].has_key('port'):
 			self.configdict[key]['port'] = -1
-		    self.serverlist[key]= (self.configdict[key]['host'],self.configdict[key]['hostip'],self.configdict[key]['port'])
+		    # check if server is already configured
+		    for configured_key in self.serverlist.keys():
+			if (self.serverlist[configured_key][1] == \
+			   self.configdict[key]['hostip']) and \
+			   (self.serverlist[configured_key][2] == \
+			    self.configdict[key]['port']):
+			    if self.running:
+				logger = 1
+			    else:
+				logger = generic_cs.NO_LOGGER
+			    msg = "Configuration Conflict detected for "\
+				  "hostip "+\
+				  repr(self.configdict[key]['hostip'])+ \
+				  "and port "+ \
+				  repr(self.configdict[key]['port'])
+			    generic_cs.enprint(msg, logger, 1, "CONFS", 1)
+
+
+			    conflict = 1
+			    break
+		    if not conflict:
+			self.serverlist[key]= (self.configdict[key]['host'],self.configdict[key]['hostip'],self.configdict[key]['port'])
 		    break
 		
+        Trace.trace(6,"}load_config ok")
+	if conflict:
+	    Trace.trace(6,"}load_config. Configuration conflict detected."\
+			"Check configuration file")
+	    return(e_errors.CONFLICT, "Configuration conflict detected. "\
+		   "Check configuration file")
         Trace.trace(6,"}load_config ok")
         return (e_errors.OK, None)
 
@@ -241,7 +270,6 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 		out_ticket = {"status" : self.load_config(configfile,verbose)}
 	    except KeyError:
 		out_ticket = {"status" : (e_errors.KEYERROR, "Configuration Server: no such name")}
-
 	    self.reply_to_caller(out_ticket)
 	    Trace.trace(6,"}load"+repr(out_ticket))
 	    return
@@ -304,6 +332,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
         Trace.trace(3,"{ConfigurationServer address="+repr(host)+" "+\
                     repr(port)+" configfile="+repr(configfile)+" verbose="+\
                     repr(verbose))
+	self.running = 0
         if verbose:
             print "Instantiating Configuration Server at ", server_address,\
                   " using config file ",config_file
@@ -319,6 +348,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
         #check that it is valid - or else load a "good" one
         self.config_exists()
+	self.running = 1
 
         # always nice to let the user see what she has
 	self.verbose = verbose
@@ -354,6 +384,7 @@ if __name__ == "__main__":
     import sys
     import timeofday
     import traceback
+
 
     # get the interface
     intf = ConfigurationServerInterface()
