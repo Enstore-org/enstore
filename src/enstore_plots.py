@@ -84,7 +84,7 @@ class MphDataFile(EnPlot):
 	ndata = {}
 	gnuinfo = []
 	for [dev, time, strt] in data:
-	    if strt == enstore_status.MMOUNT:
+	    if strt == enstore_files.MMOUNT:
 	        # this was the record of the mount having been done
 	        adate = time[0:13]
 	        date_only[time[0:10]] = 0
@@ -155,7 +155,7 @@ class MlatDataFile(EnPlot):
 	last_mount_req = ""
 	# write out the data points
 	for [dev, time, strt] in data:
-	    if strt == enstore_status.MMOUNT:
+	    if strt == enstore_files.MMOUNT:
 	        # this was the record of the mount having been done
 	        if not last_mount_req == "":
 	            # we have recorded a mount req 

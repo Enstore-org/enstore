@@ -32,6 +32,15 @@ EDEV = 6
 EURATE = 7
 EDICTS = 8
 
+# message is either a mount request or an actual mount
+MREQUEST = 0
+MMOUNT = 1
+
+# different MOUNT line pieces from log file
+MDEV = 4
+MSTART = 5
+MDICTS = 6
+
 default_dir = "./"
 
 def inq_file_name():
@@ -273,10 +282,10 @@ class EnMountDataFile(EnDataFile):
 
 	# parse out the file directory , a remnant from the grep in the time 
 	# field
-	strip_file_dir(etime)
+	enstore_status.strip_file_dir(etime)
 
         # pull out any dictionaries from the rest of the message
-        msg_dicts = get_dict(erest)
+        msg_dicts = enstore_status.get_dict(erest)
 
 	return [etime, enode, euser, estatus, dev, start, msg_dicts]
 
@@ -294,13 +303,13 @@ class EnEncpDataFile(EnDataFile):
 
     # parse the encp line
     def parse_line(self, line):
-	einfo = parse_encp_line(line)
+	einfo = enstore_status.parse_encp_line(line)
         if not len(einfo):
             # nothing was returned skip this line
             return []
         # the time info may contain the file directory which we must
         # strip off
-        strip_file_dir(einfo[ETIME])
+        enstore_status.strip_file_dir(einfo[ETIME])
         return [einfo[ETIME], einfo[EBYTES], einfo[EDICTS]]
 
     # pull out the plottable data from each line

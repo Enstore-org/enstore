@@ -55,15 +55,6 @@ NO_INFO = "------"
 NO_WORK = "No work at movers"
 NO_PENDING = "No pending work"
 
-# different MOUNT line pieces from log file
-MDEV = 4
-MSTART = 5
-MDICTS = 6
-
-# message is either a mount request or an actual mount
-MREQUEST = 0
-MMOUNT = 1
-
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
 def format_time(theTime, sep=" "):
