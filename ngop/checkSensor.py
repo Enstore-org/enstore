@@ -84,7 +84,6 @@ if __name__=="__main__":
 	
     if sys.argv[1]=="temp":
         cmd="%s/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $2}'|awk -F'C' '{print $2}'"%(os.environ['IPMI_DIR'],)
-	print cmd
         ret=check(cmd)
         if len(ret)!=2:
             print -1
