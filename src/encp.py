@@ -1010,15 +1010,23 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
 	    print "calling Config. Server to get LM info for", \
 		  current_library
 	lmticket = client['csc'].get(current_library+".library_manager")
+	if lmticket["status"][0] != e_errors.OK:
+	    pprint.pprint(lmticket)
+	    Trace.trace(0,"submit_read_requests. lmget failed"+ \
+			repr(lmticket["status"]))
+	    print_d0sam_format(rq_list[j]["infile"], 
+			       rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
+			       rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
+			       lmticket)
+	    print_error(errno.errorcode[errno.EPROTO],\
+			" submit_read_requests. lmget failed "+\
+			repr(lmticket["status"]))
+	    continue
+
 	Trace.trace(8,"submit_read_requests "+ current_library+\
 		    ".library_manager at host="+\
 		    repr(lmticket["hostip"])+\
 		    " port="+repr(lmticket["port"]))
-	if lmticket["status"][0] != e_errors.OK:
-	    pprint.pprint(lmticket)
-	    Trace.trace(0,"submit_read_requests "+ \
-			repr(lmticket["status"]))
-
 	# send to library manager and tell user
 	ticket = client['u'].send(rq_list[j]["work_ticket"], 
 				  (lmticket['hostip'], lmticket['port']))
@@ -1029,7 +1037,7 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
 	    print_d0sam_format(rq_list[j]["infile"], 
 			       rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
 			       rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
-			       ticket)
+			       lmticket)
 	    print_error(errno.errorcode[errno.EPROTO],\
 			" encp.read_from_hsm: from"\
 			+"u.send to LM at "+lmticket['hostip']+"/"\
