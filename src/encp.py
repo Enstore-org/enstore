@@ -245,7 +245,6 @@ def write_to_hsm(input, output,
         # allow some retries if mover fails
         retry = maxretry
         while retry:  # note that real rates are not correct in retries
-
             if verbose:
                 print "Sending ticket to",\
 		      library[i]+".library_manager",\
@@ -276,6 +275,7 @@ def write_to_hsm(input, output,
 		unique_id[i] = "%s-%f-%d" \
 			       % (thishost, time.time(), pid)
 		work_ticket["unique_id"] = unique_id[i]
+		work_ticket["retry"] = retry
             # if no ticket, then this is a not a retry
             except NameError:
                 volume_clerk = {"library"            : library[i],\
@@ -291,10 +291,10 @@ def write_to_hsm(input, output,
                                "vc"                 : volume_clerk,
                                "wrapper"            : wrapper,
                                "encp"               : encp,
+			       "retry"              : retry,
                                "times"              : times,
                                "unique_id"          : unique_id[i]
                                }
-
             # send the work ticket to the library manager
             tinfo1["tot_to_send_ticket"+repr(i)] = t1 - t0
             system_enabled(p) # make sure system still enabled before submitting
