@@ -84,7 +84,7 @@ class LogMethods(dispatching_worker.DispatchingWorker) :
 """
 class Logger(LogMethods,\
              generic_server.GenericServer,\
-             udp_client.UDPServer) :
+             SocketServer.UDPServer) :
 
     def serve_forever(self, logfile_dir_path) :   # overrides UDPServer method
         tm = time.localtime(time.time())          # get the local time
