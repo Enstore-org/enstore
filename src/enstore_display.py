@@ -158,16 +158,20 @@ class Mover:
 
     def draw(self):
         x, y = self.x, self.y
-        self.outline =  self.display.create_rectangle(x, y, x+self.width, y+self.height, fill='black')
         label_offset = XY(60, 40)
+        img_offset  =  XY(90, 2)
+        state_offset = XY(90, 8)
+        timer_offset = XY(100, 22)
+        
+
+        self.outline =  self.display.create_rectangle(x, y, x+self.width, y+self.height, fill='black')
         self.label = self.display.create_text(x+label_offset.x,  y+label_offset.y,  text=self.name)
         img = find_image(self.state+'.gif')
-        img_offset = XY(90,2)
         if img:
             self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y, anchor=NW, image=img)
         else:
-            self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
-        self.timer_display = self.display.create_text(x+100, y+22, text='00:00:00',fill='white')
+            self.state_display = self.display.create_text(x+state_offset.x, y+state_offset.y, text=self.state, fill='light blue')
+        self.timer_display = self.display.create_text(x+timer_offset.x, y+timer_offset.y, text='00:00:00',fill='white')
         if self.percent_done != None:
             bar_width = 38
             self.progress_bar_bg = self.display.create_rectangle(x+5,y+17,x+6+bar_width,y+26,fill='magenta')
@@ -216,22 +220,15 @@ class Mover:
         self.volume.loaded = load_state
         self.volume.draw()
 
-    def unload_tape(self, volume):
-        if not self.volume:
-            print "Mover does not have this tape : ", volume
-            del volume
+    def unload_tape(self, volume_name):
+        if not (self.volume and self.volume.name == volume_name):
+            print "Mover ",self.name,"  does not have this tape : ", volume_name
             return
-        if volume != self.volume.name:
-            print "Mover does not have this tape : ", volume
-            self.volume = None
-            #del self.volume #XXX will this undraw it?
-            #return
-        
+            
         self.volume.loaded = 0
         self.volume.ejected = 1
         x, y = self.volume_position(ejected=1)
         self.volume.moveto(x, y)
-        return
 
     def volume_position(self, ejected=0):
         if layout==CIRCULAR:
@@ -646,7 +643,7 @@ class Display(Canvas):
             return
 
         if words[0]=='client':
-            client_name = words[1]
+            client_name = strip_domain(words[1])
             ##XXX we are working around a bug in the library manager.
             # Remove this code once library manager sends correct message
             if client_name[0] == '(':
