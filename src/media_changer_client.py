@@ -67,7 +67,7 @@ class MediaChangerClient(generic_client.GenericClient):
 	    rt['status'] =  v['status']
         return rt
 
-    def unloadvol(self, vol_ticket, mover, drive, vcc):
+    def unloadvol(self, vol_ticket, mover, drive, vcc=None):
         ticket = {'work'           : 'unloadvol',
                   'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
