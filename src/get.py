@@ -388,6 +388,11 @@ def main(e):
     #Create all of the request dictionaries.
     requests_per_vol = encp.create_read_requests(callback_addr, routing_addr,
                                                  tinfo, e)
+
+    #If this is the case, don't worry about anything.
+    if (len(requests_per_vol) == 0):
+        encp.quit()
+    
     #Set the max attempts that can be made on a transfer.
     check_lib = requests_per_vol.keys()
     encp.max_attempts(requests_per_vol[check_lib[0]][0]['vc']['library'], e)
@@ -435,13 +440,13 @@ def main(e):
                 udp_socket, [request['unique_id']], e)
 
             if not e_errors.is_ok(rticket):
-                sys.stderr.write("Unable to handle routing: %s\n",
+                sys.stderr.write("Unable to handle routing: %s\n" %
                                  (rticket['status'],))
                 encp.quit(1)
 
             Trace.message(4, "Opened routing socket.")
         except (encp.EncpError,), detail:
-            sys.stderr.write("Unable to handle routing: %s\n",
+            sys.stderr.write("Unable to handle routing: %s\n" %
                              (str(detail),))
             encp.quit(1)
 
@@ -452,8 +457,9 @@ def main(e):
                             encp.open_control_socket(use_listen_socket, 15*60)
 
             if not e_errors.is_ok(ticket['status']):
-                sys.stderr.write("Unable to open control socket with mover: %s\n",
-                                 (ticket['status'],))
+                sys.stderr.write(
+                    "Unable to open control socket with mover: %s\n" %
+                    (ticket['status'],))
                 encp.quit(1)
         except (encp.EncpError,), detail:
             sys.stderr.write("Unable to open control socket with mover: %s\n"
