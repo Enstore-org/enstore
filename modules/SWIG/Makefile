@@ -63,7 +63,5 @@ clean:
 	mv runon_wrap.c ..
 
 ../drivestat_wrap.c: drivestat.i
-	if [ "$(DRIVESTAT_CLIENT_DIR)_" != _ -a "$(FTT_DIR)_" != _ ] ; then \
-	swig -I$(DRIVESTAT_CLIENT_DIR)/src/inc -I${FTT_DIR}/include -python drivestat.i ; \
-	mv drivestat_wrap.c .. ; \
-	fi
+	swig -I$(DRIVESTAT_CLIENT_DIR)/src/inc -I${FTT_DIR}/include -python drivestat.i
+	mv drivestat_wrap.c ..
