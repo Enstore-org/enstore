@@ -27,7 +27,7 @@ class InquisitorPlots:
 	self.plotfile.install()
 
     # make the mount plots (mounts per hour and mount latency
-    def mount_plot(self, prefix):
+    def mount_plot(self):
 	# get the config file so we can not plot null mover data
 	config = enstore_functions.get_config_dict()
 	if config:
@@ -42,7 +42,8 @@ class InquisitorPlots:
         # always add /dev/null to the end of the list of files to search thru 
         # so that grep always has > 1 file and will always print the name of 
         # the file at the beginning of the line.
-        mountfile = enstore_files.EnMountDataFile("%s* /dev/null"%(prefix,), ofn, 
+        mountfile = enstore_files.EnMountDataFile(enstore_constants.LOG_PREFIX+\
+                                                  "* /dev/null", ofn, 
                                         "-e %s -e %s"%(Trace.MSG_MC_LOAD_REQ,
                                                        Trace.MSG_MC_LOAD_DONE),
                                                    self.logfile_dir, "", config)
@@ -89,13 +90,15 @@ class InquisitorPlots:
 
     # make the total transfers per unit of time and the bytes moved per day
     # plot
-    def encp_plot(self, prefix):
+    def encp_plot(self):
 	ofn = self.output_dir+"/bytes_moved.txt"
 
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
 	# the file at the beginning of the line. do not count any null moves.
-	encpfile = enstore_files.EnEncpDataFile("%s* /dev/null"%(prefix,), ofn,
+	encpfile = enstore_files.EnEncpDataFile(enstore_constants.LOG_PREFIX+\
+						"* /dev/null",
+						ofn,
 						"-e %s"%(Trace.MSG_ENCP_XFER,),
 						self.logfile_dir,
 				  "| grep -v %s"%(enstore_constants.NULL_DRIVER,))
@@ -129,7 +132,6 @@ class InquisitorPlots:
 
     #  make all the plots
     def plot(self):
-	ld = {}
 	# find out where the log files are located
 	if self.logfile_dir is None:
 	    ld = self.config_d.get("log_server")
@@ -138,16 +140,10 @@ class InquisitorPlots:
 	if self.output_dir is None:
 	    self.output_dir = self.logfile_dir
 
-	# get the list of alternate log files.  we may need to grep these instead of the
-	# normal ones
-	if not ld:
-	    ld = self.config_d.get("log_server")
-	alt_logs = ld.get("msg_type_logs", {})
-
 	Trace.trace(1, "Creating inq transfer plots")
-	self.encp_plot(alt_logs.get(Trace.MSG_ENCP_XFER, enstore_constants.LOG_PREFIX))
+	self.encp_plot()
 	Trace.trace(1, "Creating inq mount plots")
-	self.mount_plot(alt_logs.get(Trace.MSG_MC_LOAD_REQ, enstore_constants.LOG_PREFIX))
+	self.mount_plot()
 	# update the inquisitor plots web page
 	Trace.trace(1, "Creating the inq plot web page")
 	self.make_plot_html_page()
