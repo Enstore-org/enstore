@@ -971,11 +971,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO, "rewind/retry")
                     r= self.tape_driver.close()
                     time.sleep(1)
-                    r=self.tape_driver.open(self.device, self.mode, retry_count=1)
-                    Trace.log(e_errors.INFO, "rewind/retry: open=%s" % (r,))
-                    r=self.tape_driver.rewind()
-                    Trace.log(e_errors.INFO, "rewind/retry: rewind=%s" % (r,))
-                    self.tape_driver.close()
+                    ### XXX Yuk!! This is a total hack
+                    p=os.popen("mt -f %s rewind 2>&1" % (self.device),'r')
+                    r=p.read()
+                    s=p.close()
+                    ### r=self.tape_driver.rewind()
+                    Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
+
                 except:
                     exc, detail, tb = sys.exc_info()
                     Trace.log(e_errors.ERROR, "rewind/retry: %s %s" % ( exc, detail))
