@@ -3,6 +3,8 @@ import socket
 import os
 
 import event_relay_messages
+import enstore_functions
+import enstore_constants
 
 """
 This class supports messages from the event relay process.  Methods are 
@@ -10,7 +12,6 @@ provided to read the message.
 """
 
 DEFAULT_PORT = 55510
-
 
 class EventRelayClient:
 
@@ -30,10 +31,17 @@ class EventRelayClient:
         self.unsubscribe_msg = None
 
         # get the address of the event relay process
-        if not event_relay_host:
-            event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST","")
+	if not event_relay_host:
+	    # try to get from the config host.  do not go thru the config server, get the
+	    # config file
+	    event_relay_host = enstore_functions.get_from_config_file(enstore_constants.EVENT_RELAY,
+								      "host", "")
+	    if event_relay_host == "":
+		event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST","")
         if not event_relay_port:
-            event_relay_port = DEFAULT_PORT
+	    # try to get it from the config file
+	    event_relay_port = enstore_functions.get_from_config_file(enstore_constants.EVENT_RELAY,
+								      "port", DEFAULT_PORT)
         self.event_relay_addr = (event_relay_host, event_relay_port)
 
 

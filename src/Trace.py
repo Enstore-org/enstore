@@ -47,9 +47,12 @@ alarm_levels = {}
 message_levels = {}
 
 # stuff added by efb for new event_relay_client
-erc = event_relay_client.EventRelayClient()
+erc = None
 
 def notify(msg):
+    global erc
+    if not erc:
+	erc = event_relay_client.EventRelayClient()
     if type(msg) == types.StringType:
 	# we must convert the message into a message instance
 	msg = event_relay_messages.decode(msg)
