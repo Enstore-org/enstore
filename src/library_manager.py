@@ -551,6 +551,22 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	timer_task.TimerTask.__init__( self, 10 )
 	self.set_udp_client()
 
+    # get lock from a lock file
+    def get_lock(self):
+        try:
+            lock_file = open(os.path.join(self.db_dir, 'lm_lock'), 'r')
+            lock_state = lock_file.read()
+            lock_file.close()
+        except IOError:
+            lock_state = None
+        return lock_state
+        
+    # set lock in a lock file
+    def set_lock(self, lock):
+        lock_file = open(os.path.join(self.db_dir, 'lm_lock'), 'w')
+        lock_file.write(lock)
+        lock_file.close()
+        
     # open all dbs that keep LM data
     def open_db(self):
         import string
@@ -558,8 +574,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if self.keys.has_key('database'):
 	    self.db_dir = self.keys['database']
 	else:
-	    # if not - use default 
-	    self.db_dir = os.environ['ENSTORE_LM_DB']
+            Trace.log(e_errors.ERROR,"LM database is not defined in config file for %s"%(self.name,))
+            print "LM database is not defined in config file for",self.name
+            sys.exit(1)
         # if directory does not exist, create it
         try:	
             if os.path.exists(self.db_dir) == 0:
@@ -594,9 +611,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					     "mover")
 	self.del_dismount_list.restore()
 
-        self.lock_file = open(os.path.join(self.db_dir, 'lm_lock'), 'w')
-        self.lm_lock = self.lock_file.read()
-        if not self.lm_lock: self.lm_lock = 'unlocked'
+        self.lm_lock = self.get_lock()
+        if not self.lm_lock:
+            self.lm_lock = 'unlocked'
+            self.set_lock(self.lm_lock)
         Trace.log(e_errors.INFO,"Library manager started in state:%s"%(self.lm_lock,))
 	
     def set_udp_client(self):
@@ -1483,8 +1501,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if ticket.has_key('state'):
             if (ticket['state'] == 'locked' or
                 ticket['state'] == 'unlocked'):
-                self.lm_lock = ticket['state']                      
-                self.lock_file.write(ticket['state'])
+                self.lm_lock = ticket['state']
+                self.set_lock(ticket['state'])
                 ticket["status"] = (e_errors.OK, None)
                 Trace.log(e_errors.INFO,"Library manager state is changed to:%s"%(self.lm_lock,))
             else:
