@@ -56,7 +56,6 @@ class Pnfs:
         self.get_file_family_wrapper()
         self.get_file_family_width()
         self.get_xreference()
-        self.get_lastparked()
         self.get_id()
         if all:
             self.get_pnfs_info()
@@ -426,12 +425,6 @@ class Pnfs:
         if size:
             self.set_file_size(size)
 
-    # store place where we last parked the file
-    def set_lastparked(self,value):
-        if self.valid != VALID or self.exists != EXISTS:
-            return
-        self.writelayer(2,value)
-        self.get_lastparked()
 
     # store new info and transaction log
     def set_info(self,value):
@@ -469,18 +462,6 @@ class Pnfs:
             self.bit_file_id = self.readlayer(1)[0]
         except:
             self.log_err("get_bit_file_id")
-
-
-    # get the last parked layer
-    def get_lastparked(self):
-        self.lastparked = UNKNOWN
-        if self.valid != VALID or self.exists != EXISTS:
-            return
-        try:
-            self.lastparked = self.readlayer(2)[0]
-        except:
-            self.log_err("get_lastparked")
-
 
     # get the information layer
     def get_info(self):
