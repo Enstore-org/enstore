@@ -432,6 +432,14 @@ fi
 
 # check that we don't have too many processes running
 NPROC=`$PS axu|wc -l | $SED -e 's/ //g'`
+if [ `$ECHO $node | $EGREP dca` -eq 1 ]; then
+    maxproc=300  # disk cache
+elif [ `$ECHO $node | $EGREP mvr` -eq 1 ]; then
+    maxproc=100  #movers
+else 
+    maxproc=200  #servers
+fi
+
 if [ $NPROC -ge 200 ]; then
    msg="$NPROC processes running. Way too many"
    logit "$msg"
