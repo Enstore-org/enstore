@@ -992,7 +992,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             control_socket.connect(ticket['callback_addr'])
             try:
                 callback.write_tcp_obj(control_socket, ticket)
-            except Exceptions.exception, detail:
+            except exceptions.Exception, detail:
                 Trace.log(e_errors.ERROR,"error in connect_client_done: %s" % (detail,))
             # we expect a prompt call-back here
             
