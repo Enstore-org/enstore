@@ -61,19 +61,17 @@ EOT`
 set $timex_res
 etime=$2
 #===============================================================================
-# convert min:sec to seconds, if the command took more than 60 sec
+# convert hr:min:sec to seconds. note that we don't handle the case where
+# it took more than a day!
 #===============================================================================
-if [ `echo $etime | grep ':'` ];
-  then
-    echo "elapsed time $etime"
-    min=`echo $etime | cut -d':' -f1`
-    sec=`echo $etime | cut -d':' -f2`
-    let sec=min*60+sec
-  else
-    min=0
-    sec=$etime
-fi
-
+sec=0
+while [ `echo $etime | grep ':'` ]
+do
+   val=`echo $etime | cut -d':' -f1`
+   let sec=sec*60+val*60
+   etime=`echo $etime | cut -d':' -f2-`
+done
+let sec=sec+etime
 let rate=nblocks*blocksize/1024/sec
 
 echo "$nblocks blocks with a blocksize of $blocksize bytes were transferred in $sec seconds"
