@@ -1,0 +1,80 @@
+#!/bin/ksh
+#===============================================================================
+# This will do a rate test
+#===============================================================================
+usage="ftt_rate [-s blocksize] [-n nblocks] [devfile]
+                [devfile] = name of device to use. FTT_TAPE is default"
+
+blocksize=32768
+nblocks=1000
+while getopts n:s: i               # list valid options
+do
+   case $i in
+   s)  blocksize=$OPTARG
+       ;;
+   n)  nblocks=$OPTARG
+       ;;
+   \?) echo "Usage: $usage"
+       exit 2
+       ;;
+   esac
+done
+shift `expr $OPTIND - 1`
+
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+
+export FTT_TAPE blocksize nblocks
+
+#===============================================================================
+# Rewind the tape first, so ftt_write_tblock will work
+#===============================================================================
+echo "rewinding $FTT_TAPE"
+ftt_test << EOD1
+ftt_open
+ftt_rewind
+ftt_close
+quit
+EOD1
+echo "done rewinding $FTT_TAPE"
+
+#===============================================================================
+# Let's time the command. Store value in timex_res
+#===============================================================================
+timex_res=`timex -opkm /bin/sh << EOT 2>&1 | grep real 
+ftt_test << EOD
+ftt_open
+ftt_rewind
+ftt_write_tblock -nblock $nblocks -bsize $blocksize
+ftt_close
+quit
+EOD
+EOT`
+#===============================================================================
+# Get the time field from timex_res
+#===============================================================================
+set $timex_res
+etime=$2
+#===============================================================================
+# convert min:sec to seconds, if the command took more than 60 sec
+#===============================================================================
+if [ `echo $etime | grep ':'` ];
+  then
+    echo "elapsed time $etime"
+    min=`echo $etime | cut -d':' -f1`
+    sec=`echo $etime | cut -d':' -f2`
+    let sec=min*60+sec
+  else
+    min=0
+    sec=$etime
+fi
+
+let rate=nblocks*blocksize/1024/sec
+
+echo "$nblocks blocks with a blocksize of $blocksize bytes were transferred in $sec seconds"
+echo "for a rate of $rate kbytes/sec"
