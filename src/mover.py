@@ -317,8 +317,8 @@ def bind_volume( self, external_label ):
 
 	self.vol_info['read_errors_this_mover'] = 0
 	logc.send(log_client.INFO,2,'Requesting media changer load '+str(tmp_vol_info)+' '+str(self.config['mc_device']))
-	rsp = mcc.loadvol( tmp_vol_info,
-			   self.config['mc_device'] )
+	try: rsp = mcc.loadvol( tmp_vol_info, self.config['mc_device'] )
+	except: rsp = { 'status':('ETIMEDOUT',None) }
 	logc.send(log_client.INFO,2,'Media changer load status'+str(rsp['status']))
 	if rsp['status'][0] != 'ok':
 	    # it is possible, under normal conditions, for the system to be
@@ -328,8 +328,10 @@ def bind_volume( self, external_label ):
 	    #   more work for library manager arrives and is given to a
 	    #     new mover before the old volume was given back to the library
 	    # SHULD I RETRY????????
-	    if rsp['status'][0] == 'media_in_another_device': time.sleep (10)
-	    return 'TAPEBUSY' # generic, not read or write specific
+	    if rsp['status'][0] == 'media_in_another_device':
+		time.sleep (10)
+		return 'TAPEBUSY' # generic, not read or write specific
+	    else: return 'BADMOUNT'
 	try:
             logc.send(log_client.INFO,2,'Requesting software mount '+str(external_label)+' '+str(mvr_config['device']))
 	    self.hsm_driver.sw_mount( mvr_config['device'],
