@@ -252,7 +252,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ret)
 
 
-class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
+class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorker,
+			  generic_server.GenericServer):
 
     def __init__(self, csc, configfile=enstore_constants.DEFAULT_CONF_FILE):
 	self.running = 0
