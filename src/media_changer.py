@@ -472,14 +472,14 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    vol_veto_list = []
 	    first_found = 0
 	    libraryManagers = inTicket['moverConfig']['library']
-        	if type(libraryManagers) == types.StringType:
-                    library = string.split(libraryManagers,".")[0]
-        	elif type(libraryManagers) == types.ListType:
-                    library = string.split(libraryManagers[0],".")[0]
-        	else:
-                    Trace.log(e_errors.ERROR, 'mc:aml2 library_manager field found in ticket.')
-        	    status = 1
-                    return "ERROR", status, "no library_manager field found in ticket"
+            if type(libraryManagers) == types.StringType:
+                library = string.split(libraryManagers,".")[0]
+            elif type(libraryManagers) == types.ListType:
+                library = string.split(libraryManagers[0],".")[0]
+            else:
+                Trace.log(e_errors.ERROR, 'mc:aml2 library_manager field found in ticket.')
+                status = 1
+                return "ERROR", status, "no library_manager field found in ticket"
 	    cleaningVolume = vcc.next_write_volume(library,
 	                      min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
 			      vol_veto_list, first_found)  # get which volume to use
