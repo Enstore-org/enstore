@@ -28,6 +28,7 @@
 <li><a href="#pub_request">1.3.3.3 Publisher Requests</a>
 <li><a href="#mover">1.3.4 Mover</a>
 <li><a href="#config_server">1.3.5 Configuration Server</a>
+<li><a href="#config_server_cmds">1.3.5.1 Command Line Control of the Configuration Server</a>
 <li><a href="#log_server">1.3.6 Log Server</a>
 <li><a href="#media_changer">1.3.7 Media Changer</a>
 <li><a href="#inquisitor">1.3.8 Inquisitor</a>
@@ -1591,11 +1592,123 @@ channel unilaterally, assume he has aborted.
 </h3>
 The Configuration Server maintains the crucial information about
 system configuration, such as the location and parameters of each server.
-The first thing that each server does when it starts up is to
-ask the Configuration Server for information (e.g. the location
-of any other server with which to communicate).  New configurations can be
+Upon startup, each server asks the Configuration Server for the information 
+pertaining to itself (e.g. the location of any other server with which to 
+communicate).  New configurations can be
 loaded into the Configuration Server without disturbing the current running
-system.
+system. Configurations are stored in a file called the Enstore configuration
+file in Python dictionary format.  An example of this file is given below:<br>
+<p>
+<pre>
+configdict['blocksizes'] = { 'diskfile'  : 512, \
+                             'redwood'   : 131072, \
+                             'floppy'    : 512, \
+                             'cassette'  : 512, \
+                             'cartridge' : 512, \
+                             'exabyte'   : 131072, \
+                             '8MM'       : 131072, \
+                             'DECDLT'    : 131072 }
+
+configdict['file_clerk']   = { 'host':'rip6', 'port':7501, 'logname':'FILSRV' }
+configdict['volume_clerk'] = { 'host':'rip6', 'port':7502, 'logname':'VOLSRV' }
+configdict['admin_clerk']  = { 'host':'rip6', 'port':7503, 'logname':'ADMSRV' }
+configdict['logserver']    = { 'host':'rip6', 'port':7504, \
+                               'log_file_path':'/rip6a/enstore/log' }
+configdict['database']     = { 'db_dir':'/rip6a/enstore/db' }
+configdict['backup']       = { 'host':'rip6', 'dir':'/rip6a/enstore/db_backup'}
+
+configdict['inquisitor']   = { 'host':'rip6', 'port':7505, 'logname':'INQSRV', \
+                               'timeout':10, 'alive_rcv_timeout': 5, \
+                               'alive_retries':1, \
+                               'ascii_file':'/rip6a/enstore/inquisitor/', \
+                               'html_file':'/fnal/ups/prd/www_pages/enstore/', \
+                               'default_server_timeout': 15, \
+                               'timeouts' : { 'ait.library_manager': 15} }
+
+configdict['rip6.library_manager']  = { 'host':'rip5', 'port':7506, \
+                                        'logname':'RP6LBM' }
+configdict['dlt.library_manager']   = { 'host':'rip5', 'port':7509, \
+                                        'logname':'DLTLBM' }
+configdict['rip6.media_changer']    = { 'host':'rip6',  'port':7512, \
+                                        'logname':'R6MC  ', \
+                                        'type':'RDD_MediaLoader'  }
+configdict['de13.media_changer']    = { 'host':'rip10', 'port':7517, \
+                                        'logname':'DE13MC', \
+                                        'type':'EMASS_MediaLoader' }
+configdict['rip6.mover']    = { 'host':'rip6', 'port':7525, 'logname':'R6MOV ', \
+                                'library':'rip6.library_manager', \
+                                'device':'/rip6a/rip6/rip6.fake', \
+                                'driver':'RawDiskDriver', \
+                                'mc_device':'-1', \
+                                'media_changer':'rip6.media_changer' }
+configdict['DE13DLT.mover'] = { 'host':'rip1', 'port':7526, 'logname':'DE13MV', \
+                                'library':'dlt.library_manager', \
+                                'device':'/dev/rmt/tps2d1n', \
+                                'driver':'FTTDriver', \
+                                'mc_device':'DE13', \
+                                'media_changer':'de13.media_changer' }
+</pre>
+<p>
+The keys/values used in the above example are typical of a running system.
+The <i>blocksizes</i> dictionary element specifies the size of a block on the
+different devices known to the system. The <i>database</i> dictionary element
+specifies where the Enstore database files are located.  The <i>backup</i>
+dictionary element specifies the node and directory of where the database backups
+will go.
+<p>
+Please see the individual server sections for more in depth descriptions of
+all the server keywords.
+<h4><a name="config_server_cmds">
+1.3.5.1 Command Line Control of the Configuration Server
+</h4>
+Configuration Server functionality may be controlled through a command line 
+interface using
+<B>ecmd</B>.  A summary of the supported commands is given below.  In addition
+to the following commands, the Configuration Server command line interface 
+supports the
+general commands supported by all other servers; <i>alive</i>,
+<i>config_host</i>, <i>config_port</i>, <i>help</i>, <i>server_verbose</i>,
+<i>verbose</i>, <i>alive_rcv_timeout</i> <i>alive_retries</i>.
+<P>
+<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>FUNCTION</B></TD>
+<TD NOSAVE><B>COMMAND</B></TD>
+<TD NOSAVE><B>OUTPUT</B></TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>load the specified Enstore config file into the configuration server</TD>
+<TD NOSAVE>ecmd config --config_file=/path/to/config_file --load</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>output the currently loaded Enstore configuration file</TD>
+<TD NOSAVE>ecmd config --dict</TD>
+<TD NOSAVE>(same as the sample in the previous section)</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>output the keys in the currently loaded Enstore configuration file</TD>
+<TD NOSAVE>ecmd config --get_keys</TD>
+<TD NOSAVE><pre>
+['DE13DLT.mover',
+ 'admin_clerk',
+ 'backup',
+ 'blocksizes',
+ 'database',
+ 'de13.media_changer',
+ 'dlt.library_manager',
+ 'file_clerk',
+ 'inquisitor',
+ 'logserver',
+ 'rip6.library_manager',
+ 'rip6.media_changer',
+ 'rip6.mover',
+ 'volume_clerk']
+</pre>
+</TD>
+</TR>
+</TABLE>
+<P>
 <h3><a name="log_server">
 1.3.6 Log Server
 </h3>
@@ -1725,23 +1838,13 @@ Inquisitor functionality may be controlled through a command line interface usin
 to the following commands, the Inquisitor command line interface supports the
 general commands supported by all other servers; <i>alive</i>,
 <i>config_host</i>, <i>config_port</i>, <i>help</i>, <i>server_verbose</i>,
-<i>verbose</i>.
+<i>verbose</i>, <i>alive_rcv_timeout</i> <i>alive_retries</i>.
 <P>
 <TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
 <TD NOSAVE><B>FUNCTION</B></TD>
 <TD NOSAVE><B>COMMAND</B></TD>
 <TD NOSAVE><B>OUTPUT</B></TD>
-</TR>
-<TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>reset the time to wait for an response to an alive request</TD>
-<TD NOSAVE>ecmd inq --alive_rcv_timeout=6</TD>
-<TD NOSAVE>&nbsp;</TD>
-</TR>
-<TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>reset the number of retries when doing an alive request</TD>
-<TD NOSAVE>ecmd inq --alive_retries=4</TD>
-<TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the maximum size of the ascii status file</TD>
@@ -2309,62 +2412,54 @@ communications flow before the Mover contacts the Library Manager.
 <p>
 <ul>
 <li>
-The user (through <em>encp</em>) contacts PNFS asking for a bit file ID (bfid)
+The user (through <em>encp</em>) contacts <em>pnfs</em> asking for a bit file ID (bfid)
 for the named file.
 <li>
-PNFS returns the bfid to <em>encp</em>.
+<em>pnfs</em> returns the bfid to <em>encp</em>.
 <li>
 <em>Encp</em> asks the Configuration Server with which File Clerk should it be
 communicating.
 <li>
 The Configuration Server returns the location of the appropriate File Clerk.
 <li>
-<em>encp</em> asks the File Clerk the information about the file with given bit file ID.
+<em>Encp</em> sends the read request to the File Clerk.
 <li>
-The File Clerk asks the Volume Clerk information for the given Volume Label
+The file Clerk asks the Volume Clerk with which Library manger should it be
+communicating.
 <li>
-The Volume Clerk returns the information to the File Clerk
-
+The Volume Clerk returns the location of the appropriate Library Manager.
 <li>
-The File Clerk returns file information containing the Volume Label and the Library Manager name
+The File Clerk asks the Library Manager to read the file.
 <li>
-<em>encp</em> asks the Configuration Server the location of the Library Manager
-dealing with this File Family
+The Library Manager tells the File Clerk that the request has been placed in
+it's queue.
 <li>
-The Configuration Server returns the location of the Library manager
+The File Clerk informs <em>encp</em> that the read request has been queued.
 <li>
-<em>encp</em> sends the read request to the Library Manager
+The Mover asks the Configuration Server with which Library Manager should it
+be communicating.
 <li>
-The Library Manager asks the Volume Clerk if the volume for the
-requested file has a read access.
+The Configuration Server returns the location of the appropriate Library
+Manager.
 <li>
-The Volume Clerk confirms access permission
+The Mover asks the Library Manager if there is any work for it to do.
 <li>
-The Library Manager puts read request into internal request queue and
-tells the encp that the request has been accepted
-<li>
-The Library Manager finds next potentially available mover in its list
-of movers and sends summon message to it initiating mover dialog with
-this Library manager
-<li>
-The Mover "wakes up" receiving summon message from the Library Manager
-and asks the Library Manager if there is any work for it to do.
-<li>
-The Library Manager moves the file internally from request queue to
-work queue. 
-<li>
-The Library Manager tells the Mover which file to read and which volume to
-mount. 
-<li>
-The Mover tells <em>encp</em> from which host and port to read the data.
+The Library Manager tells the Mover which volume to mount.
 <li>
 The Mover asks the Media Changer to mount a particular volume.
 <li>
 The Media Changer responds once the volume is mounted.
 <li>
-The Mover sends the data to <em>encp</em>.
+The Mover tells the Library Manager that the volume is mounted.
 <li>
-The Mover tells encp when all the data has been transferred and sends the crc information.
+The Library Manager tells the Mover which file to read.
+<li>
+The Mover tells <em>encp</em> from which host and port to read the data.
+<li>
+The Mover send the data to <em>encp</em>.
+<li>
+The Mover tells <em>encp</em> when all the data has been transferred and sends
+the crc information.
 <li>
 The read has completed.
 <li>
@@ -2384,53 +2479,54 @@ communications flow before the Mover contacts the Library Manager.
 <p>
 <img src=write.gif>
 <p>
-<a href="write_1.ps">(also available in Postscript)</a>
+<a href="write.ps">(also available in Postscript)</a>
 <p>
 <ul>
 <li>
-The user (through <em>encp</em>) contacts PNFS with a request to create a file.
+The user (through <em>encp</em>) contacts <em>pnfs</em>with a request to create a file.
 <li>
-PNFS returns the file family and volume library information to <em>encp</em>.
+<em>pnfs</em>returns the file family and volume library information to <em>encp</em>.
 <li>
-<em>encp</em> asks the Configuration Server with which Library Manager should
+<em>Encp</em> asks the Configuration Server with which Library Manager should
 it be communicating.
 <li>
 The Configuration Server returns the location of the appropriate Library
 Manager.
 <li>
-<em>encp</em> sends the write request to the Library Manager, including file
+<em>Encp</em> sends the write request to the Library Manager, including file
 family and number of bytes.
 <li>
-The Library Manager puts write request into internal request queueand tells
-the <em>encp</em> that the request has been accepted.
+The Library Manager tells the <em>encp</em> that the request has been placed in
+it's queue.
 <li>
-The Library Manager finds next potentially available mover in its list
-of movers and sends summon message to it initiating mover dialog with
-this Library manager
+The Mover asks the Configuration Server with which Library Manager should it
+be communicating.
 <li>
-The Mover "wakes up" receiving summon message from the Library Manager
-and asks the Library Manager if there is any work for it to do.
+The Configuration Server returns the location of the appropriate Library
+Manager.
+<li>
+The Mover asks the Library Manager if there is any work for it to do.
 <li>
 The Library Manager asks the Volume Clerk for a volume for the file with the
-specified size and file family. 
+specified size and file family.
 <li>
-The Volume Clerk returns the volume to the Library Manager. 
+The Volume Clerk returns the volume to the Library Manager.
 <li>
-The Library Manager moves the file internally from request queue to
-work queue. 
+The Library Manager moves the file internally from one queue to another.
 <li>
-The Library Manager tells the Mover which file to write and which volume to
-mount. 
+The Library Manager tells the Mover which volume to mount.
 <li>
 The Mover asks the Media Changer to mount a particular volume.
 <li>
 The Media Changer responds once the volume is mounted.
 <li>
+The Mover tells the Library Manager that the volume is mounted.
+<li>
 The Mover tells <em>encp</em> to which host and port to write the data.
 <li>
-The Mover tells the Volume Clerk that he is appending to this volume. 
+The Mover tells the Volume Clerk that he is appending to this volume.
 <li>
-The Volume Clerk acknowledges this. 
+The Volume Clerk acknowledges this.
 <li>
 <em>Encp</em> sends the data to the Mover.
 <li>
@@ -2441,12 +2537,12 @@ The Volume Clerk acknowledges this.
 <li>
 The Mover tells the File Clerk which file has been created.
 <li>
-The File Clerk responds with the bit file id.
+The File Clerk responds with the bit file ID.
 <li>
 The Mover tells <em>encp</em> that the file has been written and sends the bit
 file ID and the crc.
 <li>
-<em>Encp</em> tells PNFS that the file has been created, and the bfid should
+<em>Encp</em> tells <em>pnfs</em>that the file has been created, and the bfid should
 be stored.
 <li>
 The write has completed.
