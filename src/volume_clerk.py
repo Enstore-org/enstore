@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python 
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -504,6 +503,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.log(e_errors.ERROR, msg)
             ticket['status'] = (e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
+            return
 
         # deal with quota
 
@@ -952,7 +952,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if quotas['libraries'].has_key(library):
             vol_count = self.sgdb.get_sg_counter(library, storage_group)
             quota = quotas['libraries'][library].get(storage_group, 0)
-            Trace.trace(21, "storage group %s, vol counter %s, quota %s" % (storage_group, vol_count, quota)) 
+            Trace.log(e_errors.INFO, "storage group %s, vol counter %s, quota %s" % (storage_group, vol_count, quota)) 
             if quota == 0 or (vol_count >= quota):
                 return 0
             else: return 1
