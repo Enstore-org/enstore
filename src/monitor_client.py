@@ -669,11 +669,8 @@ def get_host_list(csc, config_host, config_port, hostip=None):
 def do_real_work(summary, config_host, config_port, html_gen_host,
                  hostip=None, port=0):
 
-    print "config_host %s config_port %s"%(config_host, config_port)
-    print "hostip %s port %s"%(hostip, port)
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     config = csc.get(enstore_constants.MONITOR_SERVER)
-    print "CONFIG",config
 
     if not e_errors.is_ok(config['status']):   #[0] != 'ok':
 
