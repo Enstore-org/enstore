@@ -644,6 +644,8 @@ class Interface:
 
     #Goes through the compiled option dictionary pulling out long options
     # to format in the getopt.getopt() format.
+    #The BC comment lines indicate backwards compatibility.  Some people
+    # can't let go of VAX conventions.
     def getopt_long_options(self):
         temp = []
         for opt in self.options.keys():
@@ -666,6 +668,12 @@ class Interface:
         self.split_on_equals(self.argv)
         argv = self.argv[1:]
 
+        #For backward compatibility, convert options with underscores to
+        # dashes.  This must be done before the getopt since the getopt breaks
+        # with dashes.  It should be noted that the use of underscores is
+        # a VAX thing, and that dashes is the UNIX way of things.
+        self.convert_underscores(argv)
+            
         #If the first thing is not an option (switch) place it with the
         # non-processeced arguments and remove it from the list of args.
         # This is done, because getopt.getopt() breaks if the first thing
@@ -794,6 +802,16 @@ class Interface:
                 list = string.split(argv[i], "=")
                 argv[i:i + 1] = list
 
+    def convert_underscores(self, argv):
+        for i in range(0, len(argv)):
+            if argv[i].find("_") >= 0: #returns -1 on failure
+                opt_with_dashes = argv[i].replace("_", "-")
+                if self.is_long_option(opt_with_dashes):
+                    #sys.stderr.write("Option %s depreciated, " \
+                    #                 "use %s instead.\n" %
+                    #                 (argv[i], opt_with_dashes))
+                    argv[i] = opt_with_dashes
+
     #Take the passed in short option and return its long option equivalent.
     def short_to_long(self, short_opt):
         if not self.is_short_option(short_opt):
@@ -861,7 +879,6 @@ class Interface:
     def is_long_option(self, opt):
         opt_check = self.trim_long_option(opt)
         try:
-
             return opt_check in self.options.keys()
         except TypeError:
             return 0
@@ -942,7 +959,7 @@ class Interface:
                 return opt_dict.get(DEFAULT_VALUE, DEFAULT)
             else:
                 return value
-        #Return the DEFAULT_VALUE for an option that must take a value.
+          #Return the DEFAULT_VALUE for an option that must take a value.
         # Usually this will be set to the value passed in, unless
         # FORCE_SET_DEFAULT forces the setting of both values.
         else: #REQUIRED
@@ -1024,7 +1041,7 @@ class Interface:
         if self.is_short_option(opt):
             long_opt = self.short_to_long(opt)
         else:
-            long_opt = opt
+               long_opt = opt
 
         extras = self.options[self.trim_option(long_opt)].get(
             EXTRA_VALUES, [])
