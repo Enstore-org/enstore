@@ -23,39 +23,42 @@ else:
 
 dbInfo = csc.get('database')
 dbHome = dbInfo['db_dir']
-try:  # backward compatible
-    jouHome = dbInfo['jou_dir']
-except:
-    jouHome = dbHome
+jouHome = dbInfo['jou_dir']
+
 print "dbHome", dbHome
 print "jouHome", jouHome
+
 dict = db.DbTable("volume", dbHome, jouHome, [])
-dict.cursor("open")
-key,value=dict.cursor("first")
-while key:
-    update = 0
-    print "KEY",key
-    print "VALUE",value
-    old_system_inhibit = value["system_inhibit"]
-    if type(old_system_inhibit) != types.TupleType:
-        if (old_system_inhibit == "readonly" or
-            old_system_inhibit == "full"):
-            new_system_inhibit = ["none",old_system_inhibit]
+
+#for k in dict.keys():
+#    rec =  dict[k]
+#    ff = rec['file_family']
+#    if ff != 'none':
+#        rec['volume_family'] = 'EnsV1.'+ ff
+#    else:
+#        rec['volume_family'] = 'null.'+ ff
+#    print k, rec['volume_family']
+#    dict[k] =  rec
+
+for k in dict.keys():
+    rec = dict[k]
+    fields = string.split(rec['volume_family'],'.')
+    size = len(fields)
+    if size == 3:
+        if fields[2] not in ('cpio_odc','null','none'):
+            print 'ERROR', k, size, fields
+    elif size > 3:
+        vf = string.join((fields[0],fields[1],fields[2]),'.')
+        rec['volume_family'] = vf
+        #dict[k] =  rec
+        print 'FUNNY:', k, size, fields, vf
+    elif size == 1:
+        print 'ONE:',k, size, fields
+    elif size == 2:
+        if fields[1] == 'none':
+            vf = string.join((fields[0],fields[1],'none'),'.')
+            rec['volume_family'] = vf
+            #dict[k] =  rec
+            print 'TWONONE:', k, size, fields, vf
         else:
-            new_system_inhibit = [old_system_inhibit,"none"]
-        value["system_inhibit"] = new_system_inhibit
-        update = 1
-    old_user_inhibit = value["user_inhibit"]
-    if type(old_user_inhibit) != types.TupleType:
-        if (old_user_inhibit == "readonly" or
-            old_user_inhibit == "full"):
-            new_user_inhibit = ["none",old_user_inhibit]
-        else:
-            new_user_inhibit = [old_user_inhibit,"none"]
-        value["user_inhibit"] = new_user_inhibit
-        update = 1
-    if update:
-        print "UPDATING",key
-        dict.cursor("update",value)
-    key,value=dict.cursor("next")
-dict.cursor("close")
+            print 'TWO:',k, size, fields
