@@ -416,6 +416,12 @@ class HTMLEncpStatusFile(EnStatusFile):
                 elif encp_line.status == e_errors.sevdict[e_errors.ERROR]:
                     formatted_lines.append(["%s %s"%(day, encp_line.time), 
                                             node, user, encp_line.text])
+            else:
+                enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
+                                      "update_encp - invalid encp line found - %s %s %s"%(encp_line.time,
+                                                                                          encp_line.node,
+                                                                                          encp_line.text,))
+                
 
     # output the encp info
     def write(self, day1, lines1, day2, lines2):
