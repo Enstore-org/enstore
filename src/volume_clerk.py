@@ -2363,7 +2363,7 @@ class VolumeClerk(VolumeClerkMethods):
         # get common pool low water mark
 	# default to be 10
         res = self.csc.get('common_blank_low')
-        if res['status'][0] == e_error.OK:
+        if res['status'][0] == e_errors.OK:
             self.common_blank_low = res
         else:
             self.common_blank_low = {'warning':100, 'alarm':10}
