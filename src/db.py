@@ -575,7 +575,7 @@ class DbTable:
   # backup is a method of DbTable
   def backup(self):
      cwd=os.getcwd()
-     os.chdir(self.dbHome)
+     # os.chdir(self.dbHome)
 
      # Do not backup database files any more. Those would be done in
      # system's database backup.
