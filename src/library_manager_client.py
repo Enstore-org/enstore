@@ -4,6 +4,7 @@
 # system imports
 import time
 import errno
+import sys
 
 #enstore imports
 import configuration_client
@@ -145,7 +146,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             self.name = self.args[0]
 
 if __name__ == "__main__" :
-    import sys
     Trace.init("libm cli")
     Trace.trace(1,"lmc called with args "+repr(sys.argv))
 
