@@ -30,6 +30,7 @@ ecmd vol    external_label [--config_list --list --help']
 ecmd addvol  [--config_list --vols  --vol=  --list --help'] library file_family
              media_type  volume_name, volume_byte_capacity remaining_capacity
 ecmd delvol  [--config_list --vols  --vol=  --list --help'] volume_name
+ecmd clrvol  [--config_list --vols  --vol=  --list --help'] volume_name
 
 ecmd pnfs    [--test --status --file= --list --help]
 
@@ -102,6 +103,10 @@ case $cmd in
     ;;
   delvol)
     python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --delvol $@
+    stat=$?
+    ;;
+  clrvol)
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --clrvol $@
     stat=$?
     ;;
   vols)

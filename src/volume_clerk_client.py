@@ -92,6 +92,12 @@ class VolumeClerkClient :
                   'external_label' : external_label }
         return self.send(ticket)
 
+    # clear any inhibits on the volume
+    def clr_system_inhibit(self,external_label):
+        ticket= { 'work'           : 'clr_system_inhibit',
+                  'external_label' : external_label }
+        return self.send(ticket)
+
     # we are using the volume
     def set_hung(self, external_label) :
         ticket= { 'work'           : 'set_hung',
@@ -160,11 +166,13 @@ if __name__ == "__main__" :
     list = 0
     addvol = 0
     delvol = 0
+    clrvol = 0
     alive = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list",
-               "vols","vol=","addvol","delvol","list","alive","help"]
+               "vols","vol=","addvol","delvol","list",
+               "clr_system_inhibit","alive","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -181,6 +189,8 @@ if __name__ == "__main__" :
             addvol = 1
         elif opt == "--delvol" :
             delvol = 1
+        elif opt == "--clr_system_inhibit" :
+            clrvol = 1
         elif opt == "--alive" :
             alive = 1
         elif opt == "--list" :
@@ -229,6 +239,13 @@ if __name__ == "__main__" :
             print "   delvol arguments: volume_name"
             sys.exit(1)
         ticket = vcc.delvol(args[0])              # name of this volume
+
+    elif clrvol:
+        # bomb out if we don't have correct number of clr_inhibit arguments
+        if len(args) < 1 :
+            print "   clr_inhibit arguments: volume_name"
+            sys.exit(1)
+        ticket = vcc.clr_system_inhibit(args[0])  # name of this volume
 
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']

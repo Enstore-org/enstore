@@ -449,6 +449,44 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # flag the database that we are now writing the system
+    def clr_system_inhibit(self, ticket) :
+     try:
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # get the current entry for the volume
+        try:
+            record = copy.deepcopy(dict[external_label])
+        except KeyError:
+            ticket["status"] = "Volume Clerk: volume "+external_label\
+                               +" no such volume"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # update the fields that have changed
+        record ["system_inhibit"] = "none"
+        dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
+        record["status"] = "ok"
+        self.reply_to_caller(record)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
+
+
+    # flag the database that we are now writing the system
     def set_writing(self, ticket) :
      try:
         # everything is based on external label - make sure we have this
