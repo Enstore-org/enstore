@@ -94,11 +94,10 @@ def next_work_any_volume(csc) :
                 continue
             # width not exceeded, ask volume clerk for a new volume.
             vc = VolumeClerkClient(csc)
-            v = vc.next_write_volume (w["library"],
-                                      w["size_bytes"],
-                                      w["file_family"],
-                                      vol_veto_list)
-
+	    first_found = 0
+            v = vc.next_write_volume (w["library"], w["size_bytes"],\
+                                      w["file_family"], vol_veto_list,\
+				      first_found)
             # If the volume clerk has no volumes and our veto list was empty,
             # then we have run out of space for this file family == error
             if (len(vol_veto_list) == 0 and v["status"] != "ok") :

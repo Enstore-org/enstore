@@ -33,28 +33,28 @@ configdict['RDD.media_changer'] = { 'status'     : 'ok', \
                                     'acls_uname' : 'acsss' }
 
 configdict['fd0.mover'] = { 'status'         : 'ok', \
-                            'device'         : './file.fake', \
+                            'device'         : './file0.fake', \
                             'library'        : 'activelibrary.library_manager', \
                             'driver'         : 'RawDiskDriver', \
                             'library_device' : '1', \
                             'media_changer'  : 'RDD.media_changer' }
 
 configdict['fd1.mover'] = { 'status'         : 'ok', \
-                            'device'         : './file.fake', \
+                            'device'         : './file1.fake', \
                             'library'        : 'activelibrary.library_manager', \
                             'driver'         : 'RawDiskDriver', \
                             'library_device' : '1', \
                             'media_changer'  : 'RDD.media_changer' }
 
 configdict['stk0.mover'] = { 'status'        : 'ok', \
-                            'device'         : './redwood.fake', \
+                            'device'         : './redwood0.fake', \
                             'library'        : 'red50library.library_manager', \
                             'driver'         : 'RawDiskDriver', \
                             'library_device' : '0,0,9,1', \
                             'media_changer'  : 'STK.media_changer' }
 
 configdict['stk1.mover'] = { 'status'        : 'ok', \
-                            'device'         : './redwood.fake', \
+                            'device'         : './redwood1.fake', \
                             'library'        : 'red50library.library_manager', \
                             'driver'         : 'RawDiskDriver', \
                             'library_device' : '0,0,9,1', \

@@ -20,18 +20,23 @@ class VolumeClerkMethods(DispatchingWorker) :
         # do not pass ticket, for example to the database!
         record={}
 
+        # everything is based on external label - make sure we have this
         try:
-            external_label = ticket["external_label"]
+            key="external_label"
+            external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" is missing"
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            return ticket
+            return
 
         # can't have 2 with same label
         if dict.has_key(external_label) :
-            ticket["status"] = "Volume Clerk: volume already exists"
+            ticket["status"] = "Volume Clerk: volume "+external_label\
+                               +" already exists"
+            pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            return ticket
+            return
 
         # mandatory keys
         for key in  ['external_label','media_type', 'file_family', 'library',\
@@ -40,10 +45,11 @@ class VolumeClerkMethods(DispatchingWorker) :
                 record[key] = ticket[key]
             except KeyError:
                 ticket["status"] = "Volume Clerk: "+key+" is missing"
+                pprint.pprint(ticket)
                 self.reply_to_caller(ticket)
-                return ticket
+                return
 
-        # optional keys - use default values if not there
+        # optional keys - use default values if not specified
         try:
             record['last_access'] = ticket['last_access']
         except KeyError:
@@ -97,8 +103,9 @@ class VolumeClerkMethods(DispatchingWorker) :
             except :
                 ticket['status'] = "Volume Clerk: "\
                                    +"unknown media type = unknown blocksize"
+                pprint.pprint(ticket)
                 self.reply_to_caller(ticket)
-                return ticket
+                return
             record['blocksize'] = msize
 
         # write the ticket out to the database
@@ -107,30 +114,62 @@ class VolumeClerkMethods(DispatchingWorker) :
         self.reply_to_caller(ticket)
 
 
+    # delete a volume from the database
     def delvol(self, ticket):
+
+        # everything is based on external label - make sure we have this
+        key="external_label"
         try:
-            del dict[ticket["external_label"]]
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # delete if from the database
+        try:
+            del dict[external_label]
             ticket["status"] = "ok"
         except KeyError:
-            ticket["status"] = "Volume Clerk: no such volume"
+            ticket["status"] = "Volume Clerk: volume "+external_label\
+                               +" no such volume"
+            pprint.pprint(ticket)
+
         self.reply_to_caller(ticket)
 
 
-    # Use volumes that satisfy criteria
+    # Get the next volume that satisfy criteria
     def next_write_volume (self, ticket) :
-        exec ("vol_veto_list = " + ticket["vol_veto_list"])
-
-        min_remaining_bytes = ticket["min_remaining_bytes"]
-        library = ticket["library"]
-        file_family = ticket["file_family"]
-
+        # make sure we have this vol_veto_list
+        key="vol_veto_list"
         try:
-            first_found = ticket["first_found"]
+            vol_veto = ticket[key]
         except KeyError:
-            first_found = 0
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+        exec ("vol_veto_list = " + vol_veto)
 
-        vol = {}
+        # get the criteria for the volume from the user's ticket
+        try:
+            key = "min_remaining_bytes"
+            min_remaining_bytes = ticket[key]
+            key = "library"
+            library = ticket[key]
+            key = "file_family"
+            file_family = ticket[key]
+            key = "first_found"
+            first_found = ticket[key]
+        except KeyError:
+            ticket["status"] = "Volume Clerk: "+key+" is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
         # go through the volumes and find one we can use for this request
+        vol = {}
         for k in dict.keys() :
             v = dict[k]
             if v["library"] != library :
@@ -156,8 +195,8 @@ class VolumeClerkMethods(DispatchingWorker) :
             if first_found:
                 v["status"] = "ok"
                 self.reply_to_caller(v)
-                return v
-            # is this an "earlier" volume that one we already found?
+                return
+            # if not, is this an "earlier" volume that one we already found?
             if len(vol) == 0 :
                 vol = v
             elif v['declared'] < vol['declared'] :
@@ -167,114 +206,206 @@ class VolumeClerkMethods(DispatchingWorker) :
         if len(vol) != 0:
             vol["status"] = "ok"
             self.reply_to_caller(vol)
-            return vol
+            return
 
         # nothing was available
         ticket["status"] = "Volume Clerk: no new volumes available"
+        pprint.pprint(ticket)
         self.reply_to_caller(ticket)
-        return ticket
+        return
 
 
     # update the database entry for this volume
     def set_remaining_bytes(self, ticket) :
+
+        # everything is based on external label - make sure we have this
         try:
-            # get the current entry for the volume
-            key = ticket["external_label"]
-            record = dict[key]
-
-            # update the fields that have changed
-            record["remaining_bytes"] = ticket["remaining_bytes"]
-            record["eod_cookie"] = ticket["eod_cookie"]
-            record["error_inhibit"] = "none"
-            record["last_access"] = time.time()
-            if record["first_access"] == -1 :
-                record["first_access"] = record["last_access"]
-            record['sum_wr_err'] = record['sum_wr_err'] + ticket['wr_err']
-            record['sum_rd_err'] = record['sum_rd_err'] + ticket['rd_err']
-            record['sum_wr_mnt'] = record['sum_wr_mnt'] + ticket['wr_mnt']
-            record['sum_rd_mnt'] = record['sum_rd_mnt'] + ticket['rd_mnt']
-
-            # record our changes
-            dict[key] = record
-            record["status"] = "ok"
-
+            key="external_label"
+            external_label = ticket[key]
         except KeyError:
-            record["status"] = "Volume Clerk: no such volume"\
-                               +"- or badly formed ticket"
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # get the current entry for the volume
+        try:
+            record = dict[external_label]
+        except KeyError:
+            ticket["status"] = "Volume Clerk: volume "+external_label\
+                               +" no such volume"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # update the fields that have changed
+        try:
+            for key in ["remaining_bytes","eod_cookie"] :
+                record[key] = ticket[key]
+        except KeyError:
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        record["error_inhibit"] = "none"
+        record["last_access"] = time.time()
+        if record["first_access"] == -1 :
+            record["first_access"] = record["last_access"]
+
+        for key in ['wr_err','rd_err','wr_mnt','rd_mnt'] :
+            try:
+                record['sum_'+key] = record['sum_'+key] + ticket[key]
+            except KeyError:
+                ticket["status"] = "Volume Clerk: "+key+" key is missing"
+                pprint.pprint(ticket)
+                self.reply_to_caller(ticket)
+                return
+
+        # record our changes
+        dict[key] = record
+        record["status"] = "ok"
 
         self.reply_to_caller(record)
 
 
     # update the database entry for this volume
     def update_counts(self, ticket) :
+
+        # everything is based on external label - make sure we have this
         try:
-            # get the current entry for the volume
-            key = ticket["external_label"]
-            record = dict[key]
-
-            # update the error counts
-            record["last_access"] = time.time()
-            if record["first_access"] == -1 :
-                record["first_access"] = record["last_access"]
-            record['sum_wr_err'] = record['sum_wr_err'] + ticket['wr_err']
-            record['sum_rd_err'] = record['sum_rd_err'] + ticket['rd_err']
-            record['sum_wr_mnt'] = record['sum_wr_mnt'] + ticket['wr_mnt']
-            record['sum_rd_mnt'] = record['sum_rd_mnt'] + ticket['rd_mnt']
-
-            # record our changes
-            dict[key] = record
-            record["status"] = "ok"
-
+            key="external_label"
+            external_label = ticket[key]
         except KeyError:
-            record["status"] = "Volume Clerk: no such volume"\
-                               +"- or badly formed ticket"
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # get the current entry for the volume
+        try:
+            record = dict[external_label]
+        except KeyError:
+            ticket["status"] = "Volume Clerk: volume "+external_label\
+                               +" no such volume"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # update the fields that have changed
+        record["last_access"] = time.time()
+        if record["first_access"] == -1 :
+            record["first_access"] = record["last_access"]
+
+        for key in ['wr_err','rd_err','wr_mnt','rd_mnt'] :
+            try:
+                record['sum_'+key] = record['sum_'+key] + ticket[key]
+            except KeyError:
+                ticket["status"] = "Volume Clerk: "+key+" key is missing"
+                pprint.pprint(ticket)
+                self.reply_to_caller(ticket)
+                return
+
+        # record our changes
+        dict[external_label] = record
+        record["status"] = "ok"
 
         self.reply_to_caller(record)
 
-
+    # get the current database volume about a specific entry
     def inquire_vol(self, ticket) :
+        # everything is based on external label - make sure we have this
         try:
-            old = dict[ticket["external_label"]]
-            ticket = old
-            ticket["status"] = "ok"
+            key="external_label"
+            external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: no such volume"
-        self.reply_to_caller(ticket)
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # get the current entry for the volume
+        try:
+            record = dict[external_label]
+            record["status"] = "ok"
+            self.reply_to_caller(record)
+        except KeyError:
+            ticket["status"] = "Volume Clerk: volume "+external_label\
+                               +" no such volume"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
 
 
+    # flag the database that we are now writing the system
     def set_writing(self, ticket) :
+        # everything is based on external label - make sure we have this
         try:
-            key = ticket["external_label"]
-            record = dict[key]
-            record ["error_inhibit"] = "writing"
-            dict[key] = record # THIS WILL JOURNAL IT
-            record["status"] = "ok"
+            key="external_label"
+            external_label = ticket[key]
         except KeyError:
-            record["status"] = "Volume Clerk: no such volume"
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # get the current entry for the volume
+        try:
+            record = dict[external_label]
+        except KeyError:
+            ticket["status"] = "Volume Clerk: volume "+external_label\
+                               +" no such volume"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # update the fields that have changed
+        record ["error_inhibit"] = "writing"
+        dict[external_label] = record # THIS WILL JOURNAL IT
+
+        record["status"] = "ok"
         self.reply_to_caller(record)
 
+    # flag that the current volume is readonly
     def set_system_readonly(self, ticket) :
+        # everything is based on external label - make sure we have this
         try:
-            key = ticket["external_label"]
-            record = dict[key]
-            record ["error_inhibit"] = "readonly"
-            dict[key] = record # THIS WILL JOURNAL IT
-            record["status"] = "ok"
+            key="external_label"
+            external_label = ticket[key]
         except KeyError:
-            record["status"] = "Volume Clerk: no such volume"
+            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # get the current entry for the volume
+        try:
+            record = dict[external_label]
+        except KeyError:
+            ticket["status"] = "Volume Clerk: volume "+external_label\
+                               +" no such volume"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # update the fields that have changed
+        record ["error_inhibit"] = "readonly"
+        dict[external_label] = record # THIS WILL JOURNAL IT
+
+        record["status"] = "ok"
         self.reply_to_caller(record)
 
-    
-    # device is broken
+
+    # device is broken - what to do, what to do
     def set_hung(self,ticket) :
-	print "set_hung",pprint.pformat(ticket)
-	self.reply_to_caller({"status" : "ok"})
+        print "set_hung",pprint.pformat(ticket)
+        self.reply_to_caller({"status" : "ok"})
 
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket) :
             self.reply_to_caller({"status" : "ok",\
                                   "vols"  :repr(dict.keys()) })
+
 
 class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
     pass

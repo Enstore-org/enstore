@@ -60,8 +60,7 @@ class VolumeClerkClient :
                    'sum_wr_mnt'      : sum_wr_mnt,
                    'sum_rd_mnt'      : sum_rd_mnt,
                    'wrapper'         : wrapper,
-                   'blocksize'       : blocksize,
-                   }
+                   'blocksize'       : blocksize }
         return self.send(ticket)
 
 
@@ -125,12 +124,13 @@ class VolumeClerkClient :
 
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
-                           file_family, vol_veto_list) :
+                           file_family, vol_veto_list,first_found) :
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
                    'file_family'         : file_family,
-                   'vol_veto_list'       : `vol_veto_list` }
+                   'vol_veto_list'       : `vol_veto_list`,
+                   'first_found'         : first_found }
         return self.send(ticket)
 
     # check on alive status

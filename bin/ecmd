@@ -18,6 +18,10 @@ ecmd vcc     [--config_list --vols  --vol=  --list --alive --help ']
 ecmd lmc     [--config_list --printwork     --list --alive --help '] library
 ecmd mcc     [--config_list -list --alive --help ']  media_changer volume drive
 
+ecmd bfids   [--config_list --list --help']
+
+ecmd bfid    bfid [--config_list --list --help']
+
 ecmd vols    [--config_list --list --help']
 
 ecmd vol    external_label [--config_list --list --help']
@@ -68,8 +72,16 @@ case $cmd in
     stat=$?
     ;;
 
-  fcc|bfid)
+  fcc)
     python $ENSTORE_DIR/src/file_clerk_client.py      --config_host=$config_host --config_port=$config_port $@
+    stat=$?
+    ;;
+  bfids)
+    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$config_host --config_port=$config_port --bfids $@
+    stat=$?
+    ;;
+  bfid)
+    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$config_host --config_port=$config_port --bfid=$@
     stat=$?
     ;;
 

@@ -41,11 +41,23 @@ class FileClerkMethods(DispatchingWorker) :
     # call the volume server to find the library, and copy to the work
     # ticket the salient information
     def read_from_hsm(self, ticket) :
+        # everything is based on bfid - make sure we have this
+        try:
+            key="bfid"
+            bfid = ticket[key]
+        except KeyError:
+            ticket["status"] = "File Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # look up in our dictionary the request bit field id
         try :
-            # look up in our dictionary the request bit field id
-            finfo = dict[ticket["bfid"]]
+            finfo = dict[bfid]
         except KeyError :
-            self.reply_to_caller({"status" : "File Clerk: bfid not found" })
+            ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
             return
 
         # copy all file information we have to user's ticket
@@ -53,13 +65,23 @@ class FileClerkMethods(DispatchingWorker) :
             ticket[key] = finfo[key]
         ticket["file_clerk"] = finfo
 
-        # found the bit file id, now go and find the library
-        # become a client of the volume clerk server first
-        vc = VolumeClerkClient(self.csc)
+        # become a client of the volume clerk to get library information
+        vcc = VolumeClerkClient(self.csc)
+
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = "File Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
 
         # ask the volume clerk server which library has "external_label" in it
-        vticket = vc.inquire_vol(ticket["external_label"])
+        vticket = vcc.inquire_vol(external_label)
         if vticket["status"] != "ok" :
+            pprint.pprint(ticket)
             self.reply_to_caller(vticket)
             return
         library = vticket["library"]
@@ -67,11 +89,12 @@ class FileClerkMethods(DispatchingWorker) :
         # get the library manager
         vmticket = csc.get(library+".library_manager")
         if vmticket["status"] != "ok" :
+            pprint.pprint(ticket)
             self.reply_to_caller(vmticket)
             return
-        u = UDPClient()
 
         # send to library manager and tell user
+        u = UDPClient()
         ticket = u.send(ticket, (vmticket['host'], vmticket['port']))
         self.reply_to_caller(ticket)
 
@@ -84,27 +107,55 @@ class FileClerkMethods(DispatchingWorker) :
     # return all info about a certain bfid - this does everything that the
     # read_from_hsm method does, except send the ticket to the library manager
     def bfid_info(self, ticket) :
-        try :
-            # look up in our dictionary the request bit field id
-            finfo = dict[ticket["bfid"]]
-        except KeyError :
-            self.reply_to_caller({"status" : "File Clerk: bfid not found" })
+        # everything is based on bfid - make sure we have this
+        try:
+            key="bfid"
+            bfid = ticket[key]
+        except KeyError:
+            ticket["status"] = "File Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
             return
 
-        # ask the volume clerk server which library has "external_label" in it
-        vc = VolumeClerkClient(self.csc)
-        vticket = vc.inquire_vol(finfo["external_label"])
-        if vticket["status"] != "ok" :
-            self.reply_to_caller(vticket)
+        # look up in our dictionary the request bit field id
+        try :
+            finfo = dict[bfid]
+        except KeyError :
+            ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
             return
 
         # copy all file information we have to user's ticket
-        for key in vticket.keys() :
-            ticket[key] = vticket[key]
-        for key in finfo.keys() :
-            ticket[key] = finfo[key]
+        ticket["file_clerk"] = finfo
 
+        # become a client of the volume clerk to get library information
+        vcc = VolumeClerkClient(self.csc)
+
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = finfo[key]
+        except KeyError:
+            ticket["status"] = "File Clerk: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # ask the volume clerk server which library has "external_label" in it
+        vticket = vcc.inquire_vol(external_label)
+        if vticket["status"] != "ok" :
+            pprint.pprint(ticket)
+            self.reply_to_caller(vticket)
+            return
+        library = vticket["library"]
+
+        # copy all volume information we have to user's ticket
+        ticket["volume_clerk"] = vticket
+
+        ticket["status"] = "ok"
         self.reply_to_caller(ticket)
+
 
 
     # A bit file id is defined to be a 64-bit number whose most significant

@@ -289,7 +289,7 @@ class Mover :
 
         # only bfid is needed, but save other useful information for user too
         ticket["bfid"] = self.fticket["bfid"]
-        ticket["volume_manager"] = self.vticket
+        ticket["volume_clerk"] = self.vticket
         ticket["file_clerk"] = self.fticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',\
@@ -379,9 +379,9 @@ class Mover :
         # All is well - read has finished correctly
 
         # add some info to user's ticket
-        #ticket["bfid"] = self.fticket["bfid"]
-        ticket["volume_manager"] = self.vticket
-        #ticket["file_clerk"] = self.fticket
+        ticket["bfid"] = self.fticket["bfid"]
+        ticket["volume_clerk"] = self.vticket
+        ticket["file_clerk"] = self.fticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',\
                   'library', 'library_device', 'library_manager_host',\
