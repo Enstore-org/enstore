@@ -303,7 +303,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         pass
 
                 if not hfile == "NONE":
-                    self.mischtmlfile.write(hfile, cmds_to_do[hfile])
+                    self.mischtmlfile.write(hfile)
         self.mischtmlfile.close()
         self.move_file(1, self.mischtmlfile_orig)
 

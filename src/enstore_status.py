@@ -818,9 +818,10 @@ class HTMLMiscFile(EnHTMLFile, EnStatusFile):
             self.filedes.write(self.header)
 
     # format the file name and write it to the file
-    def write(self, filename, text):
+    def write(self, filename):
         if self.filedes:
-            self.filedes.write('<A HREF="%s">%s</A><BR><BR>'%(filename, text))
+            self.filedes.write('<A HREF="%s">%s</A><BR><BR>'%(filename,
+                                                              filename))
 
 class EnDataFile(EnFile):
 
