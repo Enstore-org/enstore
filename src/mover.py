@@ -823,7 +823,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.delay = 0
         self.fcc = None
         self.vcc = None
-        self.stat_file = None 
+        self.stat_file = None
+        self.media_transfer_time = 0.
         self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                            self.config['media_changer'])
         mc_keys = self.csc.get(self.mcc.media_changer)
@@ -1303,7 +1304,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         count = 0
         defer_write = 1
         failed = 0
+        self.media_transfer_time = 0.
         if self.header_labels:
+            t1 = time.time()
             try:
                 bytes_written = driver.write(self.header_labels, 0, len(self.header_labels))
             except:
@@ -1328,6 +1331,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                      (bytes_written, len(self.header_labels)), error_source=TAPE)
                 return
             self.tape_driver.writefm()
+            self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             if self.tr_failed:
@@ -1369,6 +1373,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
 
             bytes_written = 0
+            t1 = time.time()
             try:
                 bytes_written = self.buffer.block_write(nbytes, driver)
             except:
@@ -1389,6 +1394,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 failed = 1
                 break
+            self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             if bytes_written != nbytes:
                 self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
                                      (bytes_written, nbytes), error_source=TAPE)
@@ -1541,6 +1547,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             do_crc = 0
         driver = self.tape_driver
         failed = 0
+        self.media_transfer_time = 0.
+                              
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
@@ -1560,7 +1568,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             bytes_read = 0
             try:
+                t1 = time.time()
                 bytes_read = self.buffer.block_read(nbytes, driver)
+                self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             except "CRC_ERROR":
                 Trace.alarm(e_errors.ERROR, "CRC error reading tape")
                 self.transfer_failed(e_errors.CRC_ERROR, None)
@@ -2147,7 +2157,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        t = self.tape_driver.tape_transfer_time()
+        t = self.media_transfer_time
         if t == 0.:
             t = ticket['times']['transfer_time']
         ticket['times']['drive_transfer_time'] = t
@@ -2278,7 +2288,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        t = self.tape_driver.tape_transfer_time()
+        t = self.media_transfer_time
         if t == 0.:
             t = ticket['times']['transfer_time']
         ticket['times']['drive_transfer_time'] = t
@@ -3275,6 +3285,7 @@ class DiskMover(Mover):
         self.dismount_time = None
         self.delay = 0
         self.fcc = None
+        self.media_transfer_time = 0.
         
         self.client_hostname = None
         self.client_ip = None  #NB: a client may have multiple interfaces, this is
@@ -3359,6 +3370,7 @@ class DiskMover(Mover):
         count = 0
         defer_write = 1
         failed = 0
+        self.media_transfer_time = 0.
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             if self.tr_failed:
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
@@ -3399,6 +3411,7 @@ class DiskMover(Mover):
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
 
             bytes_written = 0
+            t1 = time.time()
             try:
                 bytes_written = self.buffer.block_write(nbytes, driver)
             except:
@@ -3406,6 +3419,7 @@ class DiskMover(Mover):
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 failed = 1
                 break
+            self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             if bytes_written != nbytes:
                 self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
                                      (bytes_written, nbytes), error_source=TAPE)
@@ -3520,6 +3534,8 @@ class DiskMover(Mover):
             do_crc = 0
         driver = self.tape_driver
         failed = 0
+        self.media_transfer_time = 0.
+
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
@@ -3539,7 +3555,9 @@ class DiskMover(Mover):
 
             bytes_read = 0
             try:
+                t1 = time.time()
                 bytes_read = self.buffer.block_read(nbytes, driver)
+                self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             except "CRC_ERROR":
                 Trace.alarm(e_errors.ERROR, "CRC error reading tape")
                 self.transfer_failed(e_errors.CRC_ERROR, None)
@@ -3913,7 +3931,7 @@ class DiskMover(Mover):
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        t = self.tape_driver.tape_transfer_time()
+        t = self.media_transfer_time
         if t == 0.:
             t = ticket['times']['transfer_time']
         ticket['times']['drive_transfer_time'] = t
@@ -4015,7 +4033,7 @@ class DiskMover(Mover):
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        t = self.tape_driver.tape_transfer_time()
+        t = self.media_transfer_time
         if t == 0.:
             t = ticket['times']['transfer_time']
         ticket['times']['drive_transfer_time'] = t
