@@ -21,10 +21,6 @@ class Inquisitor(generic_client.GenericClient):
 	self.verbose = verbose
 	self.server_name = "inquisitor"
         ticket = self.csc.get(self.server_name)
-	try:
-            self.print_id = ticket['logname']
-        except:
-            pass
         Trace.trace(10,'}__init')
 
     def send (self, ticket, rcv_timeout=0, tries=0):
@@ -204,7 +200,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 
 if __name__ == "__main__" :
     import sys
-    Trace.init("IQ client")
+    Trace.init("INQC")
     Trace.trace(1,"iqc called with args "+repr(sys.argv))
 
     # fill in interface
