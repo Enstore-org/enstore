@@ -13,11 +13,18 @@ import string
 import sys
 import time
 import stat
+import types
+import errno
+import threading
+import re
+
 import event_relay_client
 import event_relay_messages
 import Trace
 import mover_client
-import types
+import entv
+import configuration_client
+import e_errors
 
 #Set up paths to find our private copy of tcl/tk 8.3
 
@@ -53,7 +60,7 @@ except:
 # system search path.
 try:
     if LIB == None:
-        raise "Library path error"
+        raise OSError(errno.EIO, "LIB equals None.")
     
     sys.path.insert(0, LIB)
 except:
@@ -83,11 +90,6 @@ except:
 
 import Tkinter
 import tkFont
-import entv
-import threading
-import re
-import configuration_client
-import e_errors
 
 #A lock to allow only one thread at a time access the display class instance.
 display_lock = threading.Lock()
@@ -108,10 +110,10 @@ def HMS(s):
     s = s - (m*60)
     return "%02d:%02d:%02d" % (h, m, s)
 
-def my_atof(s):
-    if s[-1] == 'L':
-        s = s[:-1] #chop off any trailing "L"
-    return string.atof(s)
+#def my_atof(s):
+#    if s[-1] == 'L':
+#        s = s[:-1] #chop off any trailing "L"
+#    return string.atof(s)
 
 _font_cache = {}
 
@@ -196,8 +198,8 @@ def invert_color(hexcolor):
 color_dict = {
     #client colors
     'client_wait_color' :   rgbtohex(100, 100, 100),  # grey
-    #'client_active_color' : rgbtohex(0, 255, 0), # green
-    'client_color' : rgbtohex(0, 255, 0), # black
+    'client_active_color' : rgbtohex(0, 255, 0), # green
+    'client_outline_color' : rgbtohex(0, 0, 0), # black
     'client_font_color' : rgbtohex(0, 0, 0), # white
     #mover colors
     'mover_color':          rgbtohex(0, 0, 0), # black
@@ -702,7 +704,6 @@ class Mover:
                 anchor = Tkinter.NE, font = self.font)
 
     def draw(self):
-        x, y                    = self.x, self.y
 
         self.draw_mover()
 
@@ -910,13 +911,19 @@ class Mover:
         if mover_time and type(mover_time) == types.FloatType:
             #Newer mover code will include its current time.  This should
             # reduce bouncing rates from network delays, etc.
-            self.t1 = mover_time
+            self.t1 = float(mover_time)
         else:
-            self.t1 = time.time()
+            self.t1 = float(time.time())
+
+        #Get the values.
+        numerator = float(self.b1 - self.b0)
+        denominator = float(self.t1 - self.t0)
         try:
-            rate    = (self.b1-self.b0)/(self.t1-self.t0)
+            #rate    = (self.b1-self.b0)/(self.t1-self.t0)
+            rate = float(numerator) / float(denominator)
         except ZeroDivisionError:
-            rate = 0
+            rate = 0.0
+            
         self.b0 = self.b1
         self.t0 = self.t1
         return rate
@@ -990,7 +997,9 @@ class Mover:
             return self.position_linear(N)
         else:
             Trace.trace(1, "Unknown layout %s." % (layout,))
-            sys.exit(-1)
+            sys.exit(1)
+
+        return -1 #Otherwise pychecker complains.
 
     def resize(self):
 
@@ -1140,19 +1149,22 @@ class Client:
     def update_state(self):
 
         ### color
-        client_wait_color   = colors('client_wait_color')
-        client_active_color = colors('client_active_color')
 
-        self.color = colors('client_color')
         self.font_color = colors('client_font_color')
+        
         if self.waiting:
-            self.outline_color = client_wait_color 
+            self.color = colors('client_wait_color')
         else:
-            #self.color =  client_active_color
-            self.outline_color = self.display.get_client_color(self.name)
+            self.color = colors('client_active_color')
 
+        #If configured in the .entvrc file, else use black.
+        self.outline_color = self.display.get_client_color(self.name)
+
+        #If the object is already drawn; update it.
         if self.outline:
-            self.display.itemconfigure(self.outline, fill = self.color) 
+            self.display.itemconfigure(self.outline,
+                                       fill = self.color,
+                                       outline = self.outline_color) 
 
     #########################################################################
 
@@ -1167,8 +1179,8 @@ class Client:
         ## Step through possible positions in order 0, 1, -1, 2, -2, 3, -3, ...
         while self.display.client_positions.has_key(i):
             if i == 0:
-                i =1
-            elif i>0:
+                i = 1
+            elif i > 0:
                 i = -i
             else:
                 i = 1 - i
@@ -1352,28 +1364,34 @@ class MoverDisplay(Tkinter.Toplevel):
     """  The mover state display """
     ##** means "variable number of keyword arguments" (passed as a dictionary)
     def __init__(self, mover, **attributes):
-        Tkinter.Toplevel.__init__(self)
-
+        if not hasattr(self, "state_display"):
+            Tkinter.Toplevel.__init__(self)
+            self.configure(attributes)
+            #Font geometry.
+            self.font = get_font(12, 'arial')
+        
         #Tell it to set the remaining configuration values and to apply them.
         self.title(mover.name)
-        self.configure(attributes)
-
         self.mover = mover
         self.status = self.get_mover_status()
 
-        #Font geometry.
-        self.font = get_font(12, 'arial')
-        
-        self.state_display = Tkinter.Label(master=self,
-                                           justify=Tkinter.LEFT,
-                                           font = self.font,
-                                           width = 0,
-                                           text = self.status,
-                                           foreground = mover.state_color,
-                                           background = mover.mover_color,
-                                           anchor=Tkinter.NW)
-        self.state_display.pack(side=Tkinter.LEFT, expand=Tkinter.YES,
-                                fill=Tkinter.BOTH)
+        if not hasattr(self, "state_display"):
+            #If the state_display variable does not yet exist; create it.
+            self.state_display = Tkinter.Label(master=self,
+                                               justify=Tkinter.LEFT,
+                                               font = self.font,
+                                               #width = 0,
+                                               text = self.status,
+                                               foreground = mover.state_color,
+                                               background = mover.mover_color,
+                                               anchor=Tkinter.NW)
+            self.state_display.pack(side=Tkinter.LEFT, expand=Tkinter.YES,
+                                    fill=Tkinter.BOTH)
+        else:
+            #If it does exit, update the necessary info.
+            self.state_display.configure(text = self.status,
+                                         foreground = mover.state_color,
+                                         background = mover.mover_color)
 
         self.after(5000, self.update_status)
 
@@ -1499,9 +1517,12 @@ class Display(Tkinter.Canvas):
 
     def toggle_animation(self):
         #Toggle the animation flag variable.  (on or off)
-        self.animate = (not self.animate)
+        if self.animate:
+            self.animate = 0
+        else:
+            self.animate = 1
 
-        if self.animate:  #If turn on, schedule the next animation.
+        if self.animate:  #If turned on, schedule the next animation.
             self.after_animation_id = self.after(30, self.connection_animation)
 
     def clear_display(self):
@@ -1543,7 +1564,11 @@ class Display(Tkinter.Canvas):
         for mover in self.movers.values():
             for i in range(len(overlapping)):
                 if mover.state_display == overlapping[i]:
-                    mover_display = MoverDisplay(mover=mover)
+                    #If the window already exits; reuse it.
+                    if getattr(self, "mover_display", None):
+                        self.mover_display.__init__(mover=mover)
+                    else:
+                        self.mover_display = MoverDisplay(mover=mover)
 
         #Change the color of the connection.
         for connection in self.connections.values():
@@ -1658,19 +1683,19 @@ class Display(Tkinter.Canvas):
             self.after_reposition_id = None
         
     def reposition_movers(self, number_of_movers=None):
-        items = self.movers.items()
+        items = self.movers.values()
         if number_of_movers:
             N = number_of_movers
         else:
             N = len(items) #need this to determine positioning
         self.mover_label_width = None
-        for mover_name, mover in items:
+        for mover in items:
             mover.reposition(N)            
          
     def reposition_clients(self):
         del self.client_positions
         self.client_positions = {}
-        for client_name, client in self.clients.items():
+        for client in self.clients.values():
             client.reposition()
 
     def reposition_connections(self):
@@ -1776,7 +1801,8 @@ class Display(Tkinter.Canvas):
         if self.client_colors.get(client, None):
             return self.client_colors[client]
 
-        self.client_colors[client] = colors('client_active_color')
+        #self.client_colors[client] = colors('client_active_color')
+        self.client_colors[client] = colors('client_outline_color')
 
         return self.client_colors[client]
 
@@ -1953,8 +1979,10 @@ class Display(Tkinter.Canvas):
         #Get local handles for the objects that we will be using.
         mover = self.movers.get(command_list[1])
 
-        num_bytes = my_atof(command_list[2])
-        total_bytes = my_atof(command_list[3])
+        num_bytes = float(command_list[2])
+        total_bytes = float(command_list[3])
+        #num_bytes = my_atof(command_list[2])
+        #total_bytes = my_atof(command_list[3])
         if total_bytes==0:
             percent_done = 100
         else:
@@ -1984,7 +2012,7 @@ class Display(Tkinter.Canvas):
         #Skip media transfers from the network connection update.
         connection = self.connections.get(mover.name, None)
         if connection and command_list[4] == "network":
-            client = connection.client
+
             try:
                 now = float(command_list[6])
             except IndexError:
@@ -2005,19 +2033,29 @@ class Display(Tkinter.Canvas):
 
     def queue_command(self, command):
         display_lock.acquire()
-        self.command_queue.append(command)
+
+        #If the queue is kinda long, and the new command is only a transfer
+        # message; the message is discarded.
+        if len(self.command_queue) > (len(self.movers) * 3) and \
+           command.split()[0] == "transfer":
+            pass #Don't return, or the lock won't be released.
+        else:
+            #Under normal situations.
+            self.command_queue.append(command)
+
         display_lock.release()
-        #      connect MOVER_NAME CLIENT_NAME
-        #      disconnect MOVER_NAME CLIENT_NAME
-        #      loaded MOVER_NAME VOLUME_NAME
-        #      loading MOVER_NAME VOLUME_NAME
-        #      #moveto MOVER_NAME VOLUME_NAME
-        #      #remove MOVER_NAME VOLUME_NAME
-        #      state MOVER_NAME STATE_NAME [TIME_IN_STATE]
-        #      unload MOVER_NAME VOLUME_NAME
-        #      transfer MOVER_NAME BYTES_TRANSFERED BYTES_TO_TRANSFER \
-        #               (media | network) [BUFFER_SIZE] [CURRENT_TIME]
-        #      movers MOVER_NAME_1 MOVER_NAME_2 ...MOVER_NAME_N
+
+    #      connect MOVER_NAME CLIENT_NAME
+    #      disconnect MOVER_NAME CLIENT_NAME
+    #      loaded MOVER_NAME VOLUME_NAME
+    #      loading MOVER_NAME VOLUME_NAME
+    #      #moveto MOVER_NAME VOLUME_NAME
+    #      #remove MOVER_NAME VOLUME_NAME
+    #      state MOVER_NAME STATE_NAME [TIME_IN_STATE]
+    #      unload MOVER_NAME VOLUME_NAME
+    #      transfer MOVER_NAME BYTES_TRANSFERED BYTES_TO_TRANSFER \
+    #               (media | network) [BUFFER_SIZE] [CURRENT_TIME]
+    #      movers MOVER_NAME_1 MOVER_NAME_2 ...MOVER_NAME_N
     comm_dict = {'quit' : {'function':quit_command, 'length':1},
                  'reinit': {'function':reinitialize, 'length':1},
                  'title' : {'function':title_command, 'length':1},
@@ -2113,7 +2151,7 @@ class Display(Tkinter.Canvas):
     def update(self):
         try:
             if self.winfo_exists():
-                Tkinter.Tk.update(self.master)
+                self.master.update()
         except ValueError:
             Trace.trace(1, "Unexpected Tkinter error...ignore")
         except Tkinter.TclError:
