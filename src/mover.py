@@ -1908,7 +1908,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 failed = 1
                 break
             except:
-                exc, detail, tb = sys.exc_info()
+                exc, detail = sys.exc_info()[:2]
                 Trace.trace(33,"Exception %s %s"%(str(exc),str(detail)))
                 #Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
@@ -1937,9 +1937,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.buffer.header_size = header_size
                     self.bytes_to_read = self.bytes_to_read + header_size
             self.bytes_read = self.bytes_read + bytes_read
+            
             if self.bytes_read > self.bytes_to_read: #this is OK, we read a cpio trailer or something
                 self.bytes_read = self.bytes_to_read
-
             #If it is time to do so, send the notify message.
             if is_threshold_passed(self.bytes_read, bytes_notified,
                                    self.bytes_to_read):
@@ -1951,7 +1951,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
-
 
         Trace.log(e_errors.INFO, "read bytes %s/%s, blocks %s header %s" %(self.bytes_read, self.bytes_to_read, nblocks, header_size))
         
@@ -2505,7 +2504,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return 0
                 eod = 1
                 self.target_location = eod
-                self.vol_info['eod_cookie'] = self.loc_to_cookie(eod)
+                self.vol_info['eod_cookie'] = loc_to_cookie(eod)
                 if self.driver_type == 'FTTDriver' and self.rem_stats:
                     import ftt
                     stats = self.tape_driver.ftt.get_stats()
