@@ -314,8 +314,8 @@ EXto_HSM(  PyObject	*self
 	    }
 	    else
 	    {
-		if (   (to_Func_p[To_])( fp_a[To_], 1, shmaddr+(inc_size*ahead_idx)
-					,msgbuf_s.data)
+		if (   (to_Func_p[To_])(  shmaddr+(inc_size*ahead_idx), 1, msgbuf_s.data
+					, fp_a[To_] )
 		    != msgbuf_s.data)
 		    perror( "write" );
 	    }
