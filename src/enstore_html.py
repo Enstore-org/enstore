@@ -1394,9 +1394,10 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		new_key = "%s-%s"%(lm, enstore_constants.WORK)
 		self.extra_queue_pages[new_key] = (EnExtraLmQueuePages(self, lm),
 						   filename)
-		self.extra_queue_pages[new_key][0].body(\
-		                    self.make_lm_wam_queue_rows(the_work[qlen:], 
-								cols))
+                rows = []
+                for elem in the_work[qlen:]:
+                    rows.append(self.make_lm_wam_queue_rows(elem, cols))
+		self.extra_queue_pages[new_key][0].body(rows)
 	return rows
 
     def make_lm_pend_read_row(self, qelem, cols):
