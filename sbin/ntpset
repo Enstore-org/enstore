@@ -40,24 +40,28 @@ if [ ! -r $TIME_SYNC_COUNTER ]; then
   echo '0'>$TIME_SYNC_COUNTER
 fi
 COUNT=`cat $TIME_SYNC_COUNTER`
+RELAX=`expr $COUNT - $COUNT / 2 \* 2`
 
 if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
     x=`$XNTPDC -p`
     logit "NO TIME SYNC"
     logit "$x"
+    COUNT=`expr $COUNT + 1`
     if [ $ALARM -eq 1 ]; then
-      COUNT=`expr $COUNT + 1`
       if [ $COUNT -gt $BADCNT ]; then
         enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
       fi
     fi
-    touch $TIME_NOT_SYNCD
     if [ $CHKONLY -eq 0 ]; then
-      $XNTP stop >>$LOG 2>&1
-      # set the time, but use more than just fermilab to sync it
-      $NTPDATE -b -p 8 -u -v `$CAT /etc/ntp/step-tickers` ntp-1.cso.uiuc.edu ntp-1.mcs.anl.gov ntp.cmr.gov >>$LOG 2>&1
-      # start up ntp again - this just syncs to fermilab, according to policy.
-      $XNTP start >>$LOG 2>&1
+      if [ $RELAX -eq 0 ]; then
+        $XNTP stop >>$LOG 2>&1
+        # set the time, but use more than just fermilab to sync it
+        $NTPDATE -b -p 8 -u -v `$CAT /etc/ntp/step-tickers` ntp-1.cso.uiuc.edu ntp-1.mcs.anl.gov ntp.cmr.gov >>$LOG 2>&1
+        # start up ntp again - this just syncs to fermilab, according to policy.
+        $XNTP start >>$LOG 2>&1
+      else
+        $ECHO `$DATE` Clock not in sync, waiting till next time to set >>$LOG 2>&1
+      fi
     fi
     $ECHO `$DATE +"%Y-%m-%d:%H:%M:%S"` 1 >>$HIST
 else
