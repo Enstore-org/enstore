@@ -726,7 +726,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         record['non_del_files'] = record['non_del_files'] + ticket['wr_access']
 
 	bfid = ticket.get("bfid")
-	if bfid: record["bfids"].append(bfid)
+	if bfid: 
+	    if not record.has_key("bfids"):
+	    	record.bfids = []
+	    record["bfids"].append(bfid)
         # record our changes
         dict[external_label] = record  ## was deepcopy
         record["status"] = (e_errors.OK, None)
