@@ -47,10 +47,8 @@ class GenericClient(generic_cs.GenericCS):
             Trace.trace( 6, '%s exit ok'%self.print_id )
             sys.exit(0)
         else:
-	    self.enprint("BAD STATUS: "+repr(ticket['status']), \
-	                 generic_cs.PRETTY_PRINT)
-	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
-            Trace.trace(0, self.print_id+" BAD STATUS - "+\
+            self.enprint("BAD STATUS: "+repr(ticket), generic_cs.PRETTY_PRINT)
+            Trace.trace(2, self.print_id+" BAD STATUS - "+\
 	                repr(ticket['status']))
             sys.exit(1)
 	return None
