@@ -809,7 +809,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if status[0] == e_errors.OK:
                     Trace.log(e_errors.ERROR, "volume %s already labeled as %s" %
                               (volume_label, status[1]))
-                    self.transfer_failed(status[0], status[1])
+                    self.transfer_failed(e_errors.WRITE_VOL1_WRONG, status[1])
                     ##XXX set volume noaccess? Eject it?
                     self.state = ERROR
                     return 0
