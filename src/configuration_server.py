@@ -9,6 +9,7 @@ import types
 import os
 import traceback
 import pprint
+import socket
 
 # enstore imports
 import setpath
@@ -37,8 +38,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             Trace.log( e_errors.ERROR, msg[1] )
             return msg
         code = string.join(f.readlines(),'')
-        Trace.trace(9, "Configuration Server read_config: loading enstore configuration from %s"%
-                    (configfile,))
+
         configdict={};
         del configdict # Lint hack, otherwise lint can't see where configdict is defined.
         try:
@@ -106,77 +106,46 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket):
+        # everything is based on lookup - make sure we have this
         try:
-            # everything is based on lookup - make sure we have this
-            try:
-                key="lookup"
-                lookup = ticket[key]
-            except KeyError:
-                Trace.trace(6,"lookup "+repr(key)+" key is missing")
-                ticket["status"] = (e_errors.KEYERROR, "Configuration Server: "+key+" key is missing")
-                self.reply_to_caller(ticket)
-                return
-
-            # look up in our dictionary the lookup key
-            try:
-                out_ticket = self.configdict[lookup]
-            except KeyError:
-                Trace.trace(8,"lookup no such name"+repr(lookup))
-                out_ticket = {"status": (e_errors.KEYERROR,
-                                         "Configuration Server: no such name: "
-                                         +repr(lookup))}
-            self.reply_to_caller(out_ticket)
-            Trace.trace(6,"lookup "+repr(lookup)+"="+repr(out_ticket))
-            return
-
-        # even if there is an error - respond to caller so he can process it
-        except:
-            exc, msg, tb = sys.exc_info()
-            ticket["status"] = (str(exc), str(msg))
+            key="lookup"
+            lookup = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, "Configuration Server: "+key+" key is missing")
             self.reply_to_caller(ticket)
-            Trace.trace(6,"lookup %s %s"%(exc,msg))
             return
+
+        # look up in our dictionary the lookup key
+        try:
+            out_ticket = self.configdict[lookup]
+        except KeyError:
+            out_ticket = {"status": (e_errors.KEYERROR,
+                                     "Configuration Server: no such name: "
+                                     +repr(lookup))}
+        self.reply_to_caller(out_ticket)
+
 
     # return a list of the dictionary keys back to the user
     def get_keys(self, ticket):
-        try:
-            skeys = self.configdict.keys()
-            skeys.sort()
-            out_ticket = {"status" : (e_errors.OK, None), "get_keys" : (skeys)}
-            self.reply_to_caller(out_ticket)
-            return
 
-        # even if there is an error - respond to caller so he can process it
-        except:
-            exc, msg, tb = sys.exc_info()
-            ticket["status"] = str(exc), str(msg)
-            self.reply_to_caller(ticket)
-            Trace.trace(6,"get_keys %s %"%(exc,msg))
-            return
+        skeys = self.configdict.keys()
+        skeys.sort()
+        out_ticket = {"status" : (e_errors.OK, None), "get_keys" : (skeys)}
+        self.reply_to_caller(out_ticket)
 
 
     # return a dump of the dictionary back to the user
     def dump(self, ticket):
-        try:
-            ticket['status']=(e_errors.OK, None)
-            reply=ticket.copy()
-	    reply["dump"] = self.configdict
-            self.reply_to_caller(ticket)
-            addr = ticket['callback_addr']
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect(addr)
-            callback.write_tcp_obj(sock,reply)
-            sock.close()
-
-        # even if there is an error - respond to caller so he can process it
-        except:
-            exc,msg,tb=sys.exc_info()
-            ticket["status"] = str(exc),str(msg)
-            try:
-                self.reply_to_caller(ticket)
-            except:
-                pass
-            Trace.trace(6,"dump %s %s"%(exc,msg))
+        Trace.trace(15, 'DUMP')
+        ticket['status']=(e_errors.OK, None)
+        reply=ticket.copy()
+        reply["dump"] = self.configdict
+        self.reply_to_caller(ticket)
+        addr = ticket['callback_addr']
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(addr)
+        callback.write_tcp_obj(sock,reply)
+        sock.close()
 
 
     # reload the configuration dictionary, possibly from a new file
@@ -188,16 +157,14 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 	    except KeyError:
 		out_ticket = {"status" : (e_errors.KEYERROR, "Configuration Server: no such name")}
 	    self.reply_to_caller(out_ticket)
-	    Trace.trace(6,"load"+repr(out_ticket))
-	    return
+
 
 	# even if there is an error - respond to caller so he can process it
 	except:
             exc,msg,tb=sys.exc_info()
 	    ticket["status"] = str(exc),str(msg)
 	    self.reply_to_caller(ticket)
-	    Trace.trace(6,"load %s %s"%(exc,msg))
-	    return
+
 
     # get list of the Library manager movers
     def get_movers(self, ticket):
@@ -253,7 +220,6 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                 ret[library_name] = {'address':(item['host'],item['port']),
 				     'name': key}
         self.reply_to_caller(ret)
-        Trace.trace(6,"get_library_managers"+repr(ret))
 
     def reply_serverlist( self, ticket ):
         out_ticket = {"status" : (e_errors.OK, None), 
@@ -272,7 +238,6 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         ret = {"status" : (e_errors.OK, None)}
         ret['servers'] = self.get_dict_entry(ticket['keyValue'])
         self.reply_to_caller(ret)
-        Trace.trace(6,"get_dict_element"+repr(ret))
 
 
 class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
@@ -280,9 +245,6 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
     def __init__(self, csc, configfile=interface.default_file()):
 	self.running = 0
 	self.print_id = MY_NAME
-        Trace.trace(10,
-            "Instantiating Configuration Server at %s %s using config file %s"
-            %(csc[0], csc[1], configfile))
 
         # make a configuration dictionary
         cd =  ConfigurationDict()
@@ -295,8 +257,6 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
 	self.running = 1
 
-        # always nice to let the user see what she has
-        Trace.trace(10, repr(self.__dict__))
 
 class ConfigurationServerInterface(generic_server.GenericServerInterface):
 
@@ -307,7 +267,7 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
 
         # bomb out if we can't find the file
         statinfo = os.stat(self.config_file)
-        Trace.trace(10,'stat for '+repr(self.config_file)+' '+repr(statinfo))
+
 
     # define the command line options that are valid
     def options(self):
@@ -317,7 +277,7 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__":
     Trace.init(MY_NAME)
-    Trace.trace( 6, "called args="+repr(sys.argv) )
+
     import sys
 
     # get the interface
@@ -329,7 +289,7 @@ if __name__ == "__main__":
 
     while 1:
         try:
-            Trace.trace(6,"Configuration Server (re)starting")
+            Trace.log(e_errors.INFO,"Configuration Server (re)starting")
             cs.serve_forever()
 	except SystemExit, exit_code:
 	    sys.exit(exit_code)
@@ -337,4 +297,4 @@ if __name__ == "__main__":
 	    cs.serve_forever_error(MY_NAME)
             continue
 
-    Trace.trace(6,"Configuration Server finished (impossible)")
+    Trace.log(e_errors.INFO,"Configuration Server finished (impossible)")
