@@ -71,7 +71,11 @@ def create_clean_dirs(*dirs):
 def cleanup_dirs(*dirs):
     for dir in dirs:
         if string.find(dir, "/dev/stdout") == -1:
-            os.system("rm -rf " + dir) #remove the directory and its contents.
+            try:
+                checkBackedUpDatabases.remove_files(os.listdir(dir), dir)
+                os.rmdir(dir)
+            except OSError:
+                continue
 
 #############################################################################
 #############################################################################
