@@ -177,7 +177,7 @@ def do_work(intf):
     iqc = Inquisitor((intf.config_host, intf.config_port))
     Trace.init(iqc.get_name(MY_NAME))
 
-    ticket = icq.handle_generic_commands(MY_SERVER, intf)
+    ticket = iqc.handle_generic_commands(MY_SERVER, intf)
     if ticket:
         pass
 
