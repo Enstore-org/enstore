@@ -89,7 +89,11 @@ class DispatchingWorker:
         self.interval_func = func
         self.interval = interval
         self.rcv_timeout = min(interval, self.rcv_timeout)
-        
+
+    def reset_interval_timer(self):
+        self.last_interval = time.time()
+    
+                             
     def fork(self):
         """Fork off a child process"""
         pid = os.fork()
@@ -163,7 +167,7 @@ class DispatchingWorker:
             if fd not in self.read_fds:
                 self.read_fds.append(fd)
         self.callback[fd]=callback
-        print "callbacks", self.callback
+        ##print "callbacks", self.callback
         
     def remove_select_fd(self, fd):
         print "disable fd", fd
@@ -176,7 +180,7 @@ class DispatchingWorker:
             self.read_fds.remove(fd)
         if self.callback.has_key(fd):
             del self.callback[fd]
-        print "callbacks", self.callback
+        ##print "callbacks", self.callback
         
     def get_request(self):
         # returns  (string, socket address)
