@@ -499,7 +499,7 @@ class LibraryManagerMethods:
             self.checked_keys.append(check_key)
         active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
         if len(active_volumes) >= self.get_sg_limit(storage_group):
-            rq.ticket["reject_reason"] = ("LIMIT_REACHED",None)
+            rq.ticket["reject_reason"] = ("PURSUING",None)
             Trace.trace(12, "fair_share: active work limit exceeded for %s" % (storage_group,))
             if rq.adminpri > -1:
                 self.continue_scan = 1
@@ -757,7 +757,7 @@ class LibraryManagerMethods:
                 raise AssertionError
             rq = self.pending_work.get(next=1)
 
-        if not rq or (rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
+        if not rq or (rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == 'PURSUING'):
             # see if there is a temporary stored request
             Trace.trace(11,"next_work_any_volume: using exceeded mover limit request") 
             #rq = self.tmp_rq
@@ -981,7 +981,7 @@ class LibraryManagerMethods:
             storage_group = volume_family.extract_storage_group(vol_family)
             active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
             if len(active_volumes) > self.get_sg_limit(storage_group):
-                rq.ticket['reject_reason'] = ('LIMIT_REACHED',None)
+                rq.ticket['reject_reason'] = ('PURSUING',None)
                 Trace.trace(11, "next_work_this_volume: active work limit exceeded for %s" %
                             (storage_group,))
                 # temporarily store this request
@@ -1002,7 +1002,7 @@ class LibraryManagerMethods:
                 # or request for the same volume
                 if exc_limit_rq is not rq:
                     if (rq.ticket.has_key('reject_reason') and
-                        rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
+                        rq.ticket['reject_reason'][0] == 'PURSUING'):
                         rq = exc_limit_rq
                         # !!!!!!!!! should I check here if rq has a higher priority than exc_limit_rq??????????
                     elif rq.work == 'write_to_hsm':
@@ -1014,7 +1014,7 @@ class LibraryManagerMethods:
                         if rq.ticket['fc']['external_label'] == external_label:
                             rq = exc_limit_rq
                         #elif (rq.ticket.has_key('reject_reason') and
-                        #      rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
+                        #      rq.ticket['reject_reason'][0] == 'PURSUING'):
                         #    rq = exc_limit_rq
                         else:
                             if rq.ticket['encp']['adminpri'] <0:
