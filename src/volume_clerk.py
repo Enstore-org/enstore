@@ -2098,7 +2098,7 @@ class VolumeClerk(VolumeClerkMethods):
         db_port = dbInfo['db_port']
 
         Trace.log(e_errors.INFO,"opening volume database using edb.VolumeDB")
-        self.dict = edb.VolumeDB(host=db_host, port=db_port, jou=jouHome, dbHome=dbHome)
+        self.dict = edb.VolumeDB(host=db_host, port=db_port, jou=jouHome)
         self.sgdb = esgdb.SGDb(self.dict.db)
         # rebuild it if it was not loaded
         if len(self.sgdb) == 0:
