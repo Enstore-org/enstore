@@ -21,6 +21,7 @@ QUALIFIERS=d0en
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, d0ensrv2.fnal.gov)
 		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/sam.conf)
+		envSet(ACI_TIMEOUT_MOVE, 300)
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
