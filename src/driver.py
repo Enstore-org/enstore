@@ -223,13 +223,13 @@ class GenericDriver:
         try:
             label=self.read(80)
             if debug_paranoia:  print "label=",label,"len(label)=", len(label)
-            if len(label)<80:
-                typ,val=None, None
+            if len(label)!=80:
+                typ,val="INVALID","INVALID"
             else:
                 typ=label[:4]
                 val=string.split(label[4:])[0]
         except:
-            typ,val=None, None
+            typ,val = None,None
         if debug_paranoia:  print "check_header: return",typ,val
         return typ, val
         
