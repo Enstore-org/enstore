@@ -27,17 +27,18 @@ except ImportError:
 #import interface
 import option
 import enstore_constants
+import hostaddr
 
-ENABLED = "enabled"
-DISABLED = "disabled"
-VALID = "valid"
-INVALID =  "invalid"
+#ENABLED = "enabled"
+#DISABLED = "disabled"
+#VALID = "valid"
+#INVALID =  "invalid"
 UNKNOWN = "unknown"
-EXISTS = "file exists"
-DIREXISTS = "directory exists"
+#EXISTS = "file exists"
+#DIREXISTS = "directory exists"
 ERROR = -1
 
-do_log = 0 #If this is set, PNFS errors will be logged
+#do_log = 0 #If this is set, PNFS errors will be logged
 
 ##############################################################################
 
@@ -52,294 +53,105 @@ def print_results(result):
     else:
         print result
 
+# generate the full path name to the file
+def fullpath(filename):
+    if not filename:
+        return None, None, None, None
+
+    machine = hostaddr.gethostinfo()[0]
+
+    #Expand the path to the complete absolute path.
+    filename = os.path.expandvars(filename)
+    filename = os.path.expanduser(filename)
+    filename = os.path.abspath(filename)
+    filename = os.path.normpath(filename)
+
+    dirname, basename = os.path.split(filename)
+
+    return machine, filename, dirname, basename
+
 ##############################################################################
 
 class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # initialize - we will be needing all these things soon, get them now
-    def __init__(self, pnfsFilename="", pnfsDirectory="", pnfs_id="",
-                 get_details=1, get_pinfo=0, timeit=0, mount_point=""):
-        t1 = time.time()
+    def __init__(self, pnfsFilename="", mount_point=""):
+
+                 #get_details=1, get_pinfo=0, timeit=0, mount_point=""):
+
         self.print_id = "PNFS"
         self.mount_point = mount_point
 
-        #verify the filename (or directory).  If valid, place the directory
-        # inside self.dir and the file in self.file.  If a pnfs id was
-        # specified, this will set internal directory values to the current
-        # working directory.
-        #self.check_valid_pnfs_filename(pnfsFilename, pnfsDirectory)
-
-        #Some commands take a pnfs id instead of a filename.  Set the self.id
-        # variable and determine the pnfsFilename.
-        if pnfs_id:
-            self.id = pnfs_id
-            self.check_valid_pnfs_id(pnfs_id)
+        if mount_point:
+            self.dir = mount_point
         else:
-            self.check_valid_pnfs_filename(pnfsFilename, pnfsDirectory)
-            try:
-                self.get_id()
-            except IOError:
-                for file in os.listdir(self.dir):
-                    p = Pnfs(os.path.join(self.dir, file), get_details=1,
-                             mount_point=self.mount_point)
-                    p.get_parent()
-                    if p.id != None and p.id != p.parent:
-                        self.id = p.parent
-                        break
-                else:
-                    self.id = UNKNOWN
+            self.dir = os.getcwd() ###This needs to be addressed.
+
+        #Test if the filename passed in is really a pnfs id.
+        if self.is_pnfsid(pnfsFilename):
             
-        self.get_bit_file_id()
-        #self.get_const()
-
-        if get_details:
-            self.get_library()
-            self.get_file_family()
-            self.get_file_family_wrapper()
-            self.get_file_family_width()
-            self.get_storage_group()
             try:
-                self.get_xreference()
-            except IOError: #If id is a directory
-                pass
+                self.id = pnfsFilename
+                pnfsFilename = self.get_path(pnfsFilename)
+            except (OSError, IOError), detail:
+                self.id = ""
 
-        #if get_pinfo:
-        #    self.get_pnfs_info()
-        if timeit != 0:
-            Trace.log(e_errors.INFO, "pnfs__init__ dt: "+time.time()-t1)
+        if pnfsFilename:
+            (self.machine, self.filepath, self.directory, self.filename) = \
+                           fullpath(pnfsFilename)
+
+        try:
+            self.pnfsFilename = self.filepath
+        except AttributeError:
+            sys.stderr.write("self.filepath DNE after initialization\n")
+    ##########################################################################
+
+    def is_pnfsid(self, pnfsid):
+        #This is an attempt to deterime if a string is a pnfsid.
+        # 1) Is it a string?
+        # 2) Is it 24 characters long?
+        # 3) Does the string as a filepath not exist?
+        # 4) All characters are in the capital hex character set.
+        #Note: Does it need to be capital set of hex characters???
+        if type(pnfsid) == type("") and len(pnfsid) == 24 and \
+           not os.path.exists(pnfsid):
+            allowable_characters = string.upper(string.hexdigits)
+            for c in pnfsid:
+                if c not in allowable_characters:
+                    return 0
+            else: #success
+                return 1
+        return 0
 
     # list what is in the current object
     def dump(self):
         #Trace.trace(14, repr(self.__dict__))
         print repr(self.__dict__)
 
-    ##########################################################################
 
-    # simple test configuration
-    #def jon1(self):
-    #    if self.valid == VALID:
-    #        self.set_bit_file_id("1234567890987654321",123)
-    #    else:
-    #        raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
-    #              +self.pnfsfile+" is an invalid pnfs filename"
-    #
-    # simple test configuration
-    #def jon2(self):
-    #    if self.valid == VALID:
-    #        self.set_bit_file_id("1234567890987654321",45678)
-    #        self.set_library("activelibrary")
-    #        self.set_file_family("raw")
-    #        self.set_file_family_width(2)
-    #        self.pstatinfo()
-    #    else:
-    #        raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
-    #              +self.pnfsfile+" is an invalid pnfs filename"
-
-    ##########################################################################
-
-    # check for the existance of a wormhole file called disabled
-    # if this file exists, then the system is "off"
-    def check_pnfs_enabled(self):
-        if self.valid != VALID:
-            return INVALID
-        try:
-            os.stat(self.dir+'/.(config)(flags)/disabled')
-        except os.error, msg:
-            if msg.errno == errno.ENOENT:
-                return ENABLED
-            else:
-                raise os.error,msg
-        f = open(self.dir+'/.(config)(flags)/disabled','r')
-        why = f.readlines()
-        reason = string.replace(why[0],'\n','')
-        f.close()
-        return DISABLED+": "+reason
-
-
-    # check if file is really exists inside the pnfs file system.
-    def check_valid_pnfs_filename(self, pnfsFilename, pnfsDirectory):
-        self.pnfsFilename = pnfsFilename
-        try:
-            #This block of code, takes a filename and determines the absolute
-            # path to the file and splits the path from the file.
-            if self.pnfsFilename:
-                self.pnfsFilename = os.path.abspath(self.pnfsFilename)
-                if os.path.isfile(self.pnfsFilename):
-                    (self.dir, self.file) = os.path.split(self.pnfsFilename)
-                elif os.path.isdir(self.pnfsFilename): #is directory
-                    self.dir = self.pnfsFilename #os.path.abspath(directory)
-                    self.file = os.path.basename(self.pnfsFilename) #file
-                else: #File doesn't exist (yet).
-                    (self.dir, self.file) = os.path.split(self.pnfsFilename)
-            elif pnfsDirectory:
-                self.dir = os.path.abspath(pnfsDirectory)
-                self.file = ""
-            else: #self.pnfs_id: ??
-                self.dir = os.getcwd()
-                self.file = ""
-
-            #print "dir", self.dir
-            #print "file", self.file
-            #print "name", self.pnfsFilename
-
-            #If the directory is valid, then this will return a file with a
-            # lot of complex pnfs data.
-            #Note: Only the first character of self.file is given.  The output
-            # is the same either way.  This is in responce to "stale NFS
-            # handle" errors that occording to Patrick were caused by the
-            # string in self.file being to long.
-            if self.file:
-                try:
-                    fname = self.dir + '/.(const)(' + self.file[0] + ')'
-                    f = open(fname,'r')
-                    f.close()
-                except (OSError, IOError):
-                    exc, msg, tb = sys.exc_info()
-                    message = "Possible unrecoverable error detected.\n"
-                    sys.stderr.write(message)
-                    sys.stderr.write("%s %s\n" % (exc, msg))
-                    sys.stderr.write("Continuing.\n")
-
-            #If we set this then the path is valid.
-            self.valid = VALID
-
-            #Next determine if the file exists.  If not, then check the
-            # directory.
-            self.exists = UNKNOWN
-            self.pstatinfo()
-
-            self.get_cursor()
-            self.dir_id = string.replace(self.cursor[0], "\n", "")
-            self.dir_perm = string.replace(self.cursor[1], "\n", "")
-            self.mount_id = string.replace(self.cursor[2], "\n", "")
-
-            #something with devcodes???
-            self.rmajor = 0
-            self.rminor = 0
-        except:
-            exc, msg, tb = sys.exc_info()
-            sys.stderr.write("%s %s\n" % (exc, msg))
-            #traceback.print_tb(tb)
-            self.valid = INVALID
-
-    # check if file is really exists inside the pnfs file system.
-    def check_valid_pnfs_id(self, pnfsID):
-        id = self.id = pnfsID #Remember this for later.
-        path = ""
-
-        #Determine the mount point that should be used.
-        dirs = os.listdir("/pnfs/")
-        if self.mount_point: #A mount point was given by the user.
-            mount = "/"
-            for dir in string.split(self.mount_point, "/")[1:]:
-                mount = os.path.join(mount, dir)
-                if os.path.ismount(mount):
-                    mount_points = [mount]
-                    break
-            else:
-                mount_points = []
-        elif os.getcwd()[:6] == "/pnfs/": #Determine the mount point of cwd.
-            mount = "/"
-            for dir in string.split(os.getcwd(), "/")[1:]:
-                mount = os.path.join(mount, dir)
-                if os.path.ismount(mount):
-                    mount_points = [mount]
-                    break
-            else:
-                mount_points = []
-        else: #Scan all directories in /pnfs for mountpoints.
-            mount_points = []
-            for directory in dirs:
-                test_dir = os.path.join("/pnfs/" + directory)
-                if os.path.ismount(test_dir):
-                    mount_points.append(test_dir)
-                else:
-                    dirs = dirs + os.listdir(test_dir)
-
-        self.valid = VALID
-        self.exists = DIREXISTS
-        matched_id_list = []
-        matched_mp_list = []
-
-        #Determine which mount point is being refered to, if possible.
-        # This only determines if they really exist for the specified and
-        # cwd cases above.  For the last case it attempts to pick the
-        # correct mount point.
-        for directory in mount_points:
-            try:
-                fname = "%s/.(nameof)(%s)"%(directory, self.id)
-                try:
-                    f = open(fname, "r")
-                    nameof = f.readlines()[0][:-1]
-                    f.close()
-                except IOError:
-                    nameof=UNKNOWN
-
-                if nameof != UNKNOWN or nameof == "":
-                    matched_id_list.append(nameof)
-                    matched_mp_list.append(directory)
-            except IOError, detail:
-                pass
-
-        if len(matched_id_list) == 0:
-            #print "No references"
-            self.check_valid_pnfs_filename("", "")
-            self.valid = INVALID
-            return
-        elif len(matched_id_list) == 1:
-            #print "One reverence"
-            #Don't use check_valid_pnfs_filename() here.  This function tries
-            # to determine that the file really exists.  Since, the directory
-            # isn't known yet, (because that is what is being determined)
-            # this would always return unknown status.
-            self.file = matched_id_list[0]
-            self.dir = matched_mp_list[0]
+    #This function is used to test for various conditions on the file.
+    # The purpose of this function is to hide the hidden files associated
+    # with each real file.
+    def verify_existance(self, filepath=None):
+        if filepath:
+            fname = filepath
         else:
-            #print "Too many references"
-            self.check_valid_pnfs_filename("", "")
-            self.valid = INVALID
-            return
+            fname = self.filepath
 
-        self.get_parent()
-
-        #Create a new instance of Pnfs for the parent directory.  This makes
-        # the algorithm recursive.  Until it tries to instantiate a class
-        # for a directory that is returned UNKNOWN.  When that happens the
-        # recursion breaks and the code continues onward building the path
-        # string of the original file.
-        p = Pnfs(pnfs_id=self.parent, get_details=1,
-                 mount_point=matched_mp_list[0])
-
-        #Base case for when the recursion first stops recursing.
-        if self.file == "root":
-            self.dir = os.path.join("/", self.file)
-        #Case for all other recursion cases.
-        else:
-            self.dir = os.path.join(p.pnfsFilename, self.file)
-
-        #At some point it will be possible to remove the local pnfs directory
-        # with the remote pnfs directory.  Thus, for example
-        # /root/fs/usr/mist/zaa/100MB_002 becomes /pnfs/mist/zaa/100MB_002,
-        try:
-            #For each directory in self.dir, append it to the mount point to
-            # determine if it exists.  If it exists, then for future
-            # iterations use the known existing directory to append to for the
-            # remaining existence tests.
-            path = matched_mp_list[0]
-            for d in string.split(self.dir, "/"):
-                test_dir = os.path.join(path, d)
-                if os.path.exists(test_dir):
-                    path = test_dir
-        except:
-            pass
         
-        self.check_valid_pnfs_filename(path, "")
+        if not os.path.exists(fname):
+            raise OSError(errno.ENOENT,
+                          os.strerror(errno.ENOENT) + ": " + fname)
+
+        if not os.access(fname, os.R_OK):
+            raise OSError(errno.EACCES,
+                          os.strerror(errno.EACCES) + ": " + fname)
 
     ##########################################################################
 
     # create a new file or update its times
     def touch(self):
-        if self.valid != VALID:
-            return
+        #if self.valid != VALID:
+        #    return
         t = int(time.time())
         try:
             os.utime(self.pnfsFilename,(t,t))
@@ -352,13 +164,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                    self.pnfsFilename)
                 raise os.error,msg
         self.pstatinfo()
-        self.get_id()
+        #self.get_id()
 
     # update the access/mod time of a file
     # this function also seems to flush the nfs cache
     def utime(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            return
         try:
             t = int(time.time())
             os.utime(self.pnfsFilename,(t,t))
@@ -369,8 +179,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # delete a pnfs file including its metadata
     def rm(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            return
+        #if self.valid != VALID or self.exists != EXISTS:
+        #    return
         self.writelayer(1,"")
         self.writelayer(2,"")
         self.writelayer(3,"")
@@ -386,23 +196,29 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # write a new value to the specified file layer (1-7)
     # the file needs to exist before you call this
-    def writelayer(self,layer,value):
-        if self.valid != VALID or self.exists != EXISTS:
-            return
-        fname = "%s/.(use)(%s)(%s)"%(self.dir,layer,self.file)
+    def writelayer(self,layer,value, filepath=None):
+        if filepath:
+            (directory, file) = os.path.split(filepath)
+        else:
+            (directory, file) = os.path.split(self.filepath)
+            
+        fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
         f = open(fname,'w')
         if type(value)!=type(''):
             value=str(value)
         f.write(value)
         f.close()
-        #self.utime()
+        self.utime()
         self.pstatinfo()
 
     # read the value stored in the requested file layer
-    def readlayer(self,layer):
-        if self.valid != VALID or self.exists != EXISTS:
-            return INVALID
-        fname = "%s/.(use)(%s)(%s)"%(self.dir,layer,self.file)
+    def readlayer(self,layer, filepath=None):
+        if filepath:
+            (directory, file) = os.path.split(filepath)
+        else:
+            (directory, file) = os.path.split(self.filepath)
+            
+        fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
         f = open(fname,'r')
         l = f.readlines()
         f.close()
@@ -410,262 +226,275 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     ##########################################################################
 
-    # write a new value to the specified tag
-    # the file needs to exist before you call this
-    # remember, tags are a propery of the directory, not of a file
-    def writetag(self,tag,value):
-        if self.valid != VALID:
-            return
-        if type(value) != type(''):
-            value=str(value)
-        fname = "%s/.(tag)(%s)"%(self.dir,tag)
-        f = open(fname,'w')
-        f.write(value)
-        f.close()
-
-    # read the value stored in the requested tag
-    def readtag(self,tag):
-        if self.valid != VALID:
-            return INVALID
-        fname = "%s/.(tag)(%s)"%(self.dir,tag)
-        f = open(fname,'r')
-        t = f.readlines()
-        f.close()
-        return t
-
-    ##########################################################################
-
-    # get all the extra pnfs information
-    def get_pnfs_info(self):
-        self.get_const()
-        self.get_id()
-        self.get_nameof()
-        self.get_parent()
-        self.get_path()
-        self.get_cursor()
-        self.get_counters()
-
     # get the const info of the file, given the filename
-    def get_const(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.const = UNKNOWN
-            return
-        fname ="%s/.(const)(%s)"%(self.dir, self.file[0])
-        f=open(fname,'r')
-        self.const = f.readlines()
-        f.close()
+    def get_const(self, filepath=None):
 
+        if filepath:
+            (directory, file) = os.path.split(filepath)
+        else:
+            (directory, file) = os.path.split(self.filepath)
+
+        fname = os.path.join(directory, ".(const)(%s)"%(file,))
+        f=open(fname,'r')
+        const = f.readlines()
+        f.close()
+        
+        if not filepath:
+            self.const = const
+        return const
 
     # get the numeric pnfs id, given the filename
-    def get_id(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.id = UNKNOWN
-            return
-        fname = "%s/.(id)(%s)" % os.path.split(self.pnfsFilename)
-        f = open(fname,'r')
-        self.id = f.readlines()
-        f.close()
-        self.id = string.replace(self.id[0],'\n','')
+    def get_id(self, filepath=None):
 
-    def get_showid(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.showid = UNKNOWN
-            return
-        fname = "%s/.(showid)(%s)"%(self.dir, self.id)
+        if filepath:
+            (directory, file) = os.path.split(filepath)
+        else:
+            (directory, file) = os.path.split(self.filepath)
+            
+        fname =os.path.join(directory, ".(id)(%s)" % (file,))
         f = open(fname,'r')
-        self.showid = f.readlines()
+        id = f.readlines()
         f.close()
+        id = string.replace(id[0],'\n','')
+
+        if not filepath:
+            self.id = id
+        return id
+
+    def get_showid(self, id=None, directory=""):
+
+        if id:
+            fname = os.path.join(directory, ".(showid)(%s)"%(id,))
+        else:
+            fname = os.path.join(self.dir, ".(showid)(%s)"%(self.id,))
+
+        f = open(fname,'r')
+        showid = f.readlines()
+        f.close()
+
+        if not id:
+            self.showid = showid
+        return id
 
     # get the nameof information, given the id
-    def get_nameof(self):
-        if self.valid != VALID:
-            self.nameof = UNKNOWN
-            self.file = ""
-            return
-        fname = "%s/.(nameof)(%s)"%(self.dir, self.id)
+    def get_nameof(self, id=None, directory=""):
+
+        if id:
+            fname = os.path.join(directory, ".(nameof)(%s)"%(id,))
+        else:
+            fname = os.path.join(self.dir, ".(nameof)(%s)"%(self.id,))
+
         f = open(fname,'r')
-        self.nameof = f.readlines()
+        nameof = f.readlines()
         f.close()
-        self.file = self.nameof = string.replace(self.nameof[0],'\n','')
+        nameof = string.replace(nameof[0],'\n','')
+
+        if not id:
+            self.nameof = nameof
+        return nameof
 
     # get the parent information, given the id
-    def get_parent(self, id=None):
-        if self.valid != VALID:# or self.exists != DIREXISTS:
-            self.parent = UNKNOWN
-            return
-        fname = "%s/.(parent)(%s)"%(self.dir, self.id)
+    def get_parent(self, id=None, directory=""):
+
+        if id:
+            fname = os.path.join(directory, ".(parent)(%s)"%(id,))
+        else:
+            fname = os.path.join(self.dir, ".(parent)(%s)"%(self.id,))
+            
         f = open(fname,'r')
-        self.parent = f.readlines()
+        parent = f.readlines()
         f.close()
-        self.parent = string.replace(self.parent[0],'\n','')
+        parent = string.replace(parent[0],'\n','')
+
+        if not id:
+            self.parent = parent
+        return parent
 
     # get the total path of the id
-    def get_path(self):
-        if self.valid != VALID: #
-            self.path = UNKNOWN
-            self.pnfsFilename = ""
-            return
-        self.pnfsFilename = self.path = os.path.join(self.dir, self.file)
+    def get_path(self, id=None):
+        if id:
+            use_id = id
+        else:
+            use_id = self.id
+
+        #Obtain the root file path.  This is done by obtaining a directory
+        # component id, its name and parents id.  Then with the parents id
+        # the process is repeated.  It stops when the component is the /root
+        # directory (pnfs_id=000000000000000000001020).
+        filepath = self.get_nameof(use_id) # starting point.
+        name = ""  # compoent name of a directory.
+        while name != "root" and use_id != "000000000000000000001020":
+            use_id = self.get_parent(use_id) #get parent id
+            name = self.get_nameof(use_id) #get nameof parent id
+            filepath = os.path.join(name, filepath) #join filepath together
+        filepath = os.path.join("/", filepath)
+
+        ###Note: The filepath should be munged with the mountpoint.
+
+        if not id:
+            self.path = filepath
+
+        return filepath
         
     # get the cursor information
-    def get_cursor(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.cursor = UNKNOWN
-            return
-        fname = "%s/.(get)(cursor)"%(self.dir,)
+    def get_cursor(self, directory=None):
+
+        if directory:
+            fname = os.path.join(directory, ".(get)(cursor)")
+        else:
+            fname = os.path.join(self.dir, ".(get)(cursor)")
+            
         f = open(fname,'r')
-        self.cursor = f.readlines()
+        cursor = f.readlines()
         f.close()
 
+        if not directory:
+            self.cursor = cursor
+        return cursor
+
     # get the cursor information
-    def get_counters(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.counters = UNKNOWN
-            return
-        fname = "%s/.(get)(counters)"%(self.dir,)
+    def get_counters(self, directory=None):
+
+        if directory:
+            fname = os.path.join(directory, ".(get)(counters)")
+        else:
+            fname = os.path.join(self.dir, ".(get)(counters)")
+            
         f=open(fname,'r')
-        self.counters = f.readlines()
+        counters = f.readlines()
         f.close()
+
+        if not directory:
+            self.counters = counters
+        return counters
 
     # get the cursor information
     def get_countersN(self, dbnum):
-        fname = "%s/.(get)(counters)(%s)"%(self.dir, dbnum)
+        fname = os.path.join(self.dir, ".(get)(counters)(%s)"%(dbnum,))
         f=open(fname,'r')
         self.countersN = f.readlines()
         f.close()
+        return self.countersN
 
     # get the position information
-    def get_position(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.position = UNKNOWN
-            return
-        fname = "%s/.(get)(postion)"%(self.dir,)
+    def get_position(self, directory=None):
+
+        if directory:
+            fname = os.path.join(directory, ".(get)(postion)")
+        else:
+            fname = os.path.join(self.dir, ".(get)(postion)")
+
         f=open(fname,'r')
-        self.position = f.readlines()
+        position = f.readlines()
         f.close()
 
-    # get the position information
-    def get_database(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.database = UNKNOWN
-            return
-        fname = "%s/.(get)(database)"%(self.dir,)
-        f=open(fname,'r')
-        self.database = f.readlines()
-        f.close()
-        self.database = string.replace(self.database[0], "\n", "")
+        if not directory:
+            self.position = position
+        return position
 
-    # get the position information
+    # get the database information
+    def get_database(self, directory=None):
+
+        if directory:
+            fname = os.path.join(directory, ".(get)(database)")
+        else:
+            fname = os.path.join(self.dir, ".(get)(database)")
+
+        f=open(fname,'r')
+        database = f.readlines()
+        f.close()
+        database = string.replace(database[0], "\n", "")
+
+        if not directory:
+            self.database = database
+        return database
+
+    # get the database information
     def get_databaseN(self, dbnum):
-        fname = "%s/.(get)(database)(%s)"%(self.dir, dbnum)
+        fname = os.path.join(".(get)(database)(%s)"%(dbnum,))
         f=open(fname,'r')
         self.databaseN = f.readlines()
         f.close()
         self.databaseN = string.replace(self.databaseN[0], "\n", "")
+        return self.databaseN
 
     ##########################################################################
 
-    # get the stat of file, or if non-existant, its directory
-    def get_stat(self):
-        if self.valid != VALID:
-            self.pstat = (ERROR,INVALID)
-            self.exists = INVALID
-            return
-            # first the file itself
-        try:
-            self.pstat = os.stat(self.pnfsFilename)
-            self.exists = EXISTS
-        # if that fails, try the directory
-        except os.error, msg:
-            if msg.errno == errno.ENOENT:
-                try:
-                    self.pstat = os.stat(self.dir)
-                    self.exists = DIREXISTS
-                except:
-                    self.pstat = (ERROR,str(msg),"directory: %s"%(self.dir,))
-                    self.exists = INVALID
-            else:
-                self.pstat = (ERROR,str(msg),"file: %s"%(self.pnfsFilename,))
-                self.exists = INVALID
-                self.major,self.minor = (0,0)
+    def get_file_size(self, filepath=None):
 
+        if filepath:
+            file = filepath
+        else:
+            file = self.filepath
 
-    ##########################################################################
+        self.verify_existance()
+            
+        file_size = os.stat(file)[stat.ST_SIZE]
+            
+        filesize = self.readlayer(enstore_constants.XREF_LAYER, file)
+        filesize = long(filesize[2].strip())
 
-    def get_file_size(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            return
-
-	try:
-	    filesize = self.readlayer(enstore_constants.XREF_LAYER)
-	    filesize = long(filesize[2].strip())
-	except KeyboardInterrupt:
-	    exc, msg, tb = sys.exc_info()
-	    raise exc, msg, tb
-	except:
-	    filesize = self.file_size
-
-	self.file_size = filesize
+        #Error checking.  However first ignore large file cases.
+        if file_size == 1 and filesize > long(2L**31L) - 1:
+            if not filepath:
+                self.file_size = filesize
+            return filesize
+        elif file_size != filesize:
+            raise OSError(errno.EBADFD,
+                          os.strerror(errno.EBADFD) + ": filesize coruption")
+        else:
+            if not filepath:
+                self.file_size = filesize
+            return filesize
 	
 
-    def set_file_size(self,filesize):
-        if self.valid != VALID or self.exists != EXISTS:
-            return
+    def set_file_size(self, filesize, filepath=None):
+        #handle large files.
+        if filesize > (2**31L) - 1:
+            size = 1
+        else:
+            size = filesize
 
-	#As of 10/18/2001 pnfs (v3.1.7) only supports file sizes less than
-        # 2GB.  This is becuase pnfs supports NFS ver. 2.  When pnfs supports
-        # NFS ver. 3 this will not be a problem.  To get around this we will
-	# set the size to 1 and store the real size in pnfs layer 2.
-	if filesize > 2147483647: #2GB
-	    size = 1 
-	    self.writelayer(enstore_constants.FILESIZE_LAYER, filesize)
-	else:
-	    size = filesize
+        #Don't report the hidden file to the user if there is a problem,
+        # report the original file.
+        self.verify_existance()
+        
+        #Make sure that the layer size is accurate.
+        xref = self.get_xreference()
+        formated_size = str(filesize)
+        if formated_size[-1] == "L":
+            formated_size = formated_size[:-1]
+        xref[2] = formated_size  #get_xreferece() always returns a 10-tuple.
+        apply(self.set_xreference, xref) #Don't untuple xref.
 
-	try:
-	    #fname="%s/.(fset)(%s)(size)"%(self.dir,self.file)
-	    #os.remove(fname)
-	    #self.utime()
-	    #self.pstatinfo()
+        #Set the filesize that the filesystem knows about.
+        if filepath:
+            (directory, file) = os.path.split(filepath)
+        else:
+            (directory, file) = os.path.split(self.filepath)
+        fname = os.path.join(directory,
+                             ".(fset)(%s)(size)(%s)"%(file,size))
+        f = open(fname,'w')
+        f.close()
 
-	    fname = "%s/.(fset)(%s)(size)(%s)"%(self.dir,self.file,size)
-	    f = open(fname,'w')
-	    f.close()
-	    self.utime()
-	    self.pstatinfo()
-	    
-	    if self.file_size != size:
-		print "self.file_size", self.file_size, "size", size, self.file
-		raise os.error, e_errors.WRONG_PNFS_FILE_SIZE
-	except KeyboardInterrupt:
-	    exc, msg, tb = sys.exc_info()
-	    raise exc, msg, tb
-	except (os.error, IOError), msg:
-	    exc, msg, tb = sys.exc_info()
-	    if str(msg) == e_errors.WRONG_PNFS_FILE_SIZE:
-		msg = str(msg) + " " + self.file_size + " " + self.pnfsFilename
-	    else:
-		msg = str(msg) + " " + self.pnfsFilename
-	    Trace.log(e_errors.INFO, msg)
-
-	    raise exc, msg, tb
-
-
+        #Update the times.
+        self.utime()
+        self.pstatinfo()
 
     ##########################################################################
 
     # set a new mode for the existing file
     def chmod(self,mode):
-        if self.valid != VALID or self.exists != EXISTS:
-            return
+        #if self.valid != VALID or self.exists != EXISTS:
+        #    return
         os.chmod(self.pnfsFilename,mode)
         self.utime()
         self.pstatinfo()
 
     # change the ownership of the existing file
     def chown(self,uid,gid):
-        if self.valid != VALID or self.exists != EXISTS:
-            return
+        #if self.valid != VALID or self.exists != EXISTS:
+        #    return
         os.chown(self.pnfsFilename,uid,gid)
         self.utime()
         self.pstatinfo()
@@ -673,207 +502,104 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     ##########################################################################
 
     # store a new bit file id
-    def set_bit_file_id(self,value,size=0):
-        if self.valid != VALID:
-            return
-        if self.exists == DIREXISTS:
-            self.touch()
-        self.writelayer(1,value)
-        self.get_bit_file_id()
-        if size:
-            self.set_file_size(size)
+    def set_bit_file_id(self,value,filepath=None):
+        if filepath:
+            self.writelayer(enstore_constants.BFID_LAYER, value, filepath)
+        else:
+            self.writelayer(enstore_constants.BFID_LAYER, value)
+            self.get_bit_file_id()
 
-
-    # store new info and transaction log
-    def set_info(self,value):
-        return ##XXX disabled function
-        if self.valid != VALID or self.exists != EXISTS:
-            self.writelayer(3,value)
-            self.get_info()
+        return value
 
     # store the cross-referencing data
-    def set_xreference(self,volume,location_cookie,size,drive):
-        Trace.trace(11,'pnfs.set_xref %s %s %s %s'%(volume, location_cookie,
-                                                    size,drive))
-
-        self.volmap_filepath(volume=volume, cookie=location_cookie)
-        Trace.trace(11,'making volume_filepath=%s'%(self.volume_filepath,))
-        self.make_volmap_file()
+    def set_xreference(self, volume, location_cookie, size, file_family,
+                       pnfsFilename, volume_filepath, id, volume_fileP,
+                       bit_file_id, drive, filepath=None):
 
         value = (10*"%s\n")%(volume,
                              location_cookie,
                              size,
-                             self.file_family,
-                             self.pnfsFilename,
-                             self.volume_filepath,
-                             self.id,
-                             self.volume_fileP.id,
-                             self.bit_file_id,
+                             file_family,
+                             pnfsFilename,
+                             volume_filepath,
+                             id,
+                             volume_fileP,  #.id,
+                             bit_file_id,
                              drive)
-
+        
         Trace.trace(11,'value='+value)
-        self.writelayer(4,value)
-        self.get_xreference()
-        self.fill_volmap_file()
+        if filepath:
+            self.writelayer(enstore_constants.XREF_LAYER, value, filepath)
+        else:
+            self.writelayer(enstore_constants.XREF_LAYER, value)
+            self.get_xreference()
 
+        return value
+    
     # get the bit file id
-    def get_bit_file_id(self):
-        self.bit_file_id = UNKNOWN
-        if self.valid != VALID or self.exists != EXISTS:
-            return
-        try:
-            self.bit_file_id = self.readlayer(1)[0]
-        except:
-            self.log_err("get_bit_file_id")
+    def get_bit_file_id(self, filepath=None):
+        if filepath:
+            bit_file_id = self.readlayer(enstore_constants.BFID_LAYER,
+                                         filepath)[0]
+        else:
+            bit_file_id = self.readlayer(enstore_constants.BFID_LAYER,
+                                         self.filepath)[0]
+            self.bit_file_id = bit_file_id
 
-    # get the information layer
-    def get_info(self):
-        self.info = UNKNOWN
-        if self.valid != VALID or self.exists != EXISTS:
-            return
-        try:
-            self.info = self.readlayer(3)
-        except:
-            self.log_err("get_info")
-
-        return self.info
+        return bit_file_id
 
     # get the cross reference layer
-    def get_xreference(self):
-        (self.volume, self.location_cookie, self.size, self.origff,
-         self.origname, self.mapfile, self.pnfsid_file, self.pnfsid_map,
-         self.bfid, self.origdrive) = self.xref = [UNKNOWN]*10
+    def get_xreference(self, filepath=None):
 
-        if self.valid == VALID and self.exists == EXISTS:
+        #Get the xref layer information.
+        if filepath:
+            xinfo = self.readlayer(enstore_constants.XREF_LAYER, filepath)
+        else:
+            xinfo = self.readlayer(enstore_constants.XREF_LAYER)
+
+        #Strip off whitespace from each line.
+        xinfo = map(string.strip, xinfo[:10])
+        #Make sure there are 10 elements.  Early versions only contain 9.
+        # This prevents problems.
+        xinfo = xinfo + ([UNKNOWN] * (10 - len(xinfo)))
+
+        #If the class member value was used, store the values seperatly.
+        if not filepath:
             try:
-                xinfo = self.readlayer(4)
-                xinfo = map(string.strip, xinfo[:10])
-
-                xinfo = xinfo + ([UNKNOWN] * (10 - len(xinfo)))
-
-                try:
-                    self.volume = xinfo[0]
-                    self.location_cookie = xinfo[1]
-                    self.size = xinfo[2]
-                    self.origff = xinfo[3]
-                    self.origname = xinfo[4]
-                    self.mapfile = xinfo[5]
-                    self.pnfsid_file = xinfo[6]
-                    self.pnfsid_map = xinfo[7]
-                    self.bfid = xinfo[8]
-                    self.origdrive = xinfo[9]
-                except ValueError:
-                    pass
-
-                self.xref = xinfo
-
+                self.volume = xinfo[0]
+                self.location_cookie = xinfo[1]
+                self.size = xinfo[2]
+                self.origff = xinfo[3]
+                self.origname = xinfo[4]
+                self.mapfile = xinfo[5]
+                self.pnfsid_file = xinfo[6]
+                self.pnfsid_map = xinfo[7]
+                self.bfid = xinfo[8]
+                self.origdrive = xinfo[9]
             except ValueError:
-                self.log_err("get_xreference")
+                pass
+
+            self.xref = xinfo
+
+        return xinfo
 
     ##########################################################################
 
-    # store a new tape library tag
-    def set_library(self,value):
-        if self.valid != VALID :
-            return
-        self.writetag("library",value)
-        self.get_library()
-
-    # get the tape library
-    def get_library(self):
-        self.library = UNKNOWN
-        if self.valid != VALID:
-            return
+    # get the stat of file, or if non-existant, its directory
+    def get_stat(self):
         try:
-            self.library = self.readtag("library")[0]
-        except:
-            self.log_err("get_library")
-
-    ##########################################################################
-
-    # store a new file family tag
-    def set_file_family(self,value):
-        if self.valid != VALID:
-            return
-        self.writetag("file_family",value)
-        self.get_file_family()
-
-    # get the file family
-    def get_file_family(self):
-        self.file_family = UNKNOWN
-        if self.valid != VALID:
-            return
-        try:
-            self.file_family = self.readtag("file_family")[0]
-        except:
-            self.log_err("get_file_family")
-
-    ##########################################################################
-
-    # store a new file family wrapper tag
-    def set_file_family_wrapper(self,value):
-        if self.valid != VALID:
-            return
-        self.writetag("file_family_wrapper",value)
-        self.get_file_family_wrapper()
-
-    # get the file family
-    def get_file_family_wrapper(self):
-        self.file_family_wrapper = UNKNOWN
-        if self.valid != VALID:
-            return
-        try:
-            self.file_family_wrapper = self.readtag("file_family_wrapper")[0]
-        except:
-            self.log_err("get_file_family_wrapper")
-
-    ##########################################################################
-
-    # store a new file family width tag
-    # this is the number of open files (ie simultaneous tapes) at one time
-    def set_file_family_width(self,value):
-        if self.valid != VALID:
-            return
-        self.writetag("file_family_width",value)
-        self.get_file_family_width()
-
-    # get the file family width
-    def get_file_family_width(self):
-        self.file_family_width = ERROR
-        if self.valid != VALID:
-            return
-        try:
-            self.file_family_width = string.atoi(
-                self.readtag("file_family_width")[0])
-        except:
-            self.log_err("get_file_family_width")
-
-    ##########################################################################
-
-    # store a new storage group tag
-    # this is group of volumes assigned to one experiment or group of users
-    def set_storage_group(self,value):
-        if self.valid != VALID:
-            return
-        self.writetag("storage_group",value)
-        self.get_storage_group()
-
-    # get the storage group
-    def get_storage_group(self):
-        self.storage_group = UNKNOWN
-        if self.valid != VALID:
-            return
-        try:
-            self.storage_group = self.readtag("storage_group")[0]
-        except:
-            # do not record this exception
-            # for the backward compatibility
-            # storage grop is essential only for version higher
-            # enstore versions 
-            #self.log_err("get_storage_group")
-            return
-
-    ##########################################################################
+            # first the file itself
+            self.pstat = os.stat(self.filepath)
+        except OSError, msg:
+            # if that fails, try the directory
+            if msg.errno == errno.ENOENT:
+                try:
+                    self.pstat = os.stat(os.path.dirname(self.filepath))
+                except OSError, msg2:
+                    raise msg2
+            else:
+                self.major,self.minor = (0,0)
+                raise msg
 
     # update all the stat info on the file, or if non-existent, its directory
     def pstatinfo(self,update=1):
@@ -888,14 +614,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.major = code_dict["Major"]
         self.minor = code_dict["Minor"]
 
-        if os.access(self.dir,os.W_OK):
-            self.writable = ENABLED
-        else:
-            self.writable = DISABLED            
-
-
-
-    ##########################################################################
+    def log_err(self,func_name):
+         exc,msg,tb=sys.exc_info()
+         Trace.log(e_errors.INFO,"pnfs %s %s %s %s"%(
+                 func_name, self.filepath, exc,msg))
+         ##Note:  I had e_errors.ERROR, and lots of non-fatal errors
+         ##were showing up in the weblog
 
     # get the uid from the stat member
     def pstat_decode(self):
@@ -906,8 +630,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.mode = 0
         self.mode_octal = 0
         self.file_size = ERROR
-        if self.valid != VALID or self.pstat[0] == ERROR:
-            return
 
         try:
             self.uid = self.pstat[stat.ST_UID]
@@ -936,298 +658,23 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.log_err("pstat_decode mode")
             self.mode = 0
             self.mode_octal = 0
-        if self.exists == EXISTS:
+        if os.access(self.filepath, os.F_OK): #self.exists == EXISTS:
             try:
                 self.file_size = self.pstat[stat.ST_SIZE]
             except:
                 self.log_err("pstat_decode file_size")
 
-
 ##############################################################################
-
-    #This function determines the volmap directory if the cwd is inside
-    # /pnfs.  The directory, if determined, is placed inside
-    # self.volume_filepath and is also returned.  If the volmap directory
-    # is not found, then it is set to an empty string.  The optional
-    # arguments are appended to the path in the following pattern:
-    #  /pnfs/XXXX/volmap/off/volume/cookie
-    # If they are not specified, then code doesn't use them.
-    def volmap_filepath(self, origff="", volume="", cookie=""):
-        dir_elements = string.split(self.dir,"/")
-        directory = "/"
-
-        #Handle file family stuff.
-        if origff:
-            ff = origff
-        elif self.origff != UNKNOWN:
-            ff = self.origff
-        elif self.file_family != UNKNOWN:
-            ff = self.file_family
-        else:
-            ff = ""
-
-        #Handle volume stuff
-        if volume:
-            vol = volume
-        elif self.volume != UNKNOWN:
-            vol = self.volume
-        else:
-            vol = ""
-
-        # cookie  not set until xref layer is filled in, has to be specified
-        if cookie:
-            lc = cookie
-        elif self.location_cookie != UNKNOWN:
-            lc = self.location_cookie
-        else:
-            lc = ""
-
-        #March through each segment of the current directory (aka self.dir)
-        # testing for the following pattern:
-        # /pnfs/xxxxx/volmap/origfilefamily/volumename/
-        for d_e in dir_elements:
-            directory = os.path.join(directory, d_e)
-            try:
-                test_dir = os.path.join(directory, "volmap")
-
-                #If the volmap directory hasn't been found, keep trying.
-                #Don't include ff, vol and lc in the existence test,
-                # otherwise write operations will fail.
-                if not os.path.exists(test_dir):
-                    raise errno.ENOENT
-                self.volume_filepath = os.path.join(test_dir, ff, vol, lc)
-                return self.volume_filepath
-            except:
-                pass
-
-        #If we get here, then the directory wasn't found.
-        self.volume_filepath = UNKNOWN
-        return self.volume_filepath
-
-
-    # create a directory
-    def make_dir(self, dir_path, mod):
-        try:
-            if not os.path.exists(dir_path):
-                os.makedirs(dir_path, mod)
-            return e_errors.OK, None
-        except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
-        except:
-            #This prints out tracebacks to the log???
-            #exc, msg, tb = Trace.handle_error()
-            exc, msg, tb = sys.exc_info()
-            return e_errors.ERROR, (str(exc), str(msg))
-
-    # create a duplicate entry in pnfs that is ordered by file number on tape
-    def make_volmap_file(self):
-
-        if self.volume_filepath==UNKNOWN:
-            return
-
-        old_mask = os.umask(0) #swap out the old for the new.
-
-        try:
-            ret=self.make_dir(os.path.dirname(self.volume_filepath), 0777)
-        except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            os.umask(old_mask) #remember to set this back
-            raise exc, msg, tb
-        except:
-            exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.WARNING, "Unexpected exception handled.")
-            Trace.log(e_errors.ERROR,
-                      "Unable to make directory: %s:%s" % (exc, msg))
-            os.umask(old_mask) #remember to set this back
-            raise exc, msg, tb
-
-        os.umask(old_mask) #remember to set this back
-
-        if ret[0]!=e_errors.OK:
-            Trace.log(e_errors.ERROR, "Unable to make directory: %s" % ret[1])
-            return
-
-        # create the volume map file and set its size the same as main file
-        self.volume_fileP = Pnfs(self.volume_filepath, get_details=0)
-        self.volume_fileP.touch()
-        self.volume_fileP.set_file_size(self.file_size)
-
-
-    # file in the already existing volume map file
-    def fill_volmap_file(self):
-        if self.volume_filepath==UNKNOWN:
-            return
-        # now copy the appropriate layers to the volmap file
-        for layer in [1,4]: # bfid and xref
-            inlayer = self.readlayer(layer)
-            value = ""
-            for e in range(0,len(inlayer)):
-                value=value+inlayer[e]
-                self.volume_fileP.writelayer(layer,value)
-        # protect it against accidental deletion - and give ownership to root.root
-        Trace.trace(11,'changing write access')
-        #Disable write access for all but owner.
-
-        os.chmod(self.volume_filepath,0644)
-        Trace.trace(11,'changing to root.root ownership')
-        try:
-            os.chown(self.volume_filepath,0,0)   # make the owner root.root
-        except:
-            self.log_err("fill_volmap_file")
-
-    # retore the original entry based on info from the duplicate
-    def restore_from_volmap(self, restore_dir):
-        try:
-            # check if directory exists
-            (d,file) = os.path.split(self.origname)
-            if os.path.exists(d) == 0:  # directory does not exist
-                if restore_dir == "yes":
-                    status = self.make_dir(d, 0755)
-                else:
-                    status = "ENOENT", None
-                if status[0] != e_errors.OK:
-                    Trace.log(e_errors.INFO,
-                              "restore_from_volmap: directory %s does not exist"%(d,))
-                    return status
-            # create the original entry and set its size
-            orig = Pnfs(self.origname)
-            orig.touch()
-            orig.set_file_size(self.file_size)
-
-            # now copy the appropriate layers to the volmap file
-            for layer in [1,4]: # bfid and xref
-                inlayer = self.readlayer(layer)
-                value = ""
-                for e in range(0,len(inlayer)):
-                    value=value+inlayer[e]
-                    orig.writelayer(layer,value)
-            Trace.log(e_errors.INFO, 
-                      "file %s restored from volmap"%(self.origname,))
-            return e_errors.OK, None
-        except:
-            exc, val, tb = Trace.handle_error()
-            return e_errors.ERROR, (str(exc), str(val))
-
-    def log_err(self,func_name):
-        if not do_log:
-            return
-        exc,msg,tb=sys.exc_info()
-        Trace.log(e_errors.INFO,"pnfs %s %s %s %s"%(
-                func_name, self.file, exc,msg))
-        ##Note:  I had e_errors.ERROR, and lots of non-fatal errors
-        ##were showing up in the weblog
-
-##############################################################################
-
-    #Print out the current settings for all directory tags.
-    def ptags(self, intf):
-        if hasattr(intf, "directory"):
-            filename = os.path.join(os.path.abspath(intf.directory),
-                                    ".(tags)(all)")
-        else:
-            filename = os.path.join(os.getcwd(), ".(tags)(all)")
-
-        try:
-            file = open(filename, "r")
-            data = file.readlines()
-            rtn_val = file.close()
-        except IOError, detail:
-            print detail
-            return
-
-        #print the top portion of the output.  Note: the values placed into
-        # line have a newline at the end of them, this is why line[:-1] is
-        # used to remove it.
-        for line in data:
-            try:
-                tag = string.split(line[7:], ")")[0]
-                tag_info = self.readtag(tag)
-                print line[:-1], "=",  tag_info[0]
-            except IOError, detail:
-                print line[:-1], ":", detail
-
-        #Print the bottom portion of the output.
-        for line in data:
-            tag_file = os.path.join(intf.directory, line[:-1])
-            os.system("ls -l \"" + tag_file + "\"")
-
-    def ptag(self, intf):
-        tag = self.readtag(intf.named_tag)
-        print tag[0]
-
-    #Print or edit the library
-    def plibrary(self, intf):
-        if intf.library == 1:
-            print self.library
-        else:
-            self.set_library(intf.library)
-
-    #Print or edit the file family.
-    def pfile_family(self, intf):
-        if intf.file_family == 1:
-            print self.file_family
-        else:
-            self.set_file_family(intf.file_family)
-
-    #Print or edit the file family wrapper.
-    def pfile_family_wrapper(self, intf):
-        if intf.file_family_wrapper == 1:
-            print self.file_family_wrapper
-        else:
-            self.set_file_family_wrapper(intf.file_family_wrapper)
-
-    #Print or edit the file family width.
-    def pfile_family_width(self, intf):
-        if intf.file_family_width == 1:
-            print self.file_family_width
-        else:
-            self.set_file_family_width(intf.file_family_width)
-
-    #Print or edit the storage group.
-    def pstorage_group(self, intf):
-        if intf.storage_group == 1:
-            print self.storage_group
-        else:
-            self.set_storage_group(intf.storage_group)
-
-    #Returns the files on a specified volume.
-    #Volume is the volume that a listing of all files contained on it has
-    # been requested.
-    def pfiles(self, intf):
-        #make sure this data is available
-        #self.get_file_family() #stores file-family in self.file_family
-
-        #Determine he location of the specified volumes volmap file.
-        self.volmap_filepath(self.file_family,  intf.volume_tape)
-
-        #If this wasn't set, then it wasn't found.
-        #set by self.volmap_filepath()
-        if not self.volume_filepath or self.volume_filepath == UNKNOWN:
-            return
-
-        #Note: contains the file names, but since the names of the file are
-        # the file ids, then using the name works just fine.
-        for file in os.listdir(self.volume_filepath):
-            #create the full filename of the volmap file.
-            # Example filename (is based on location cookie):
-            # /pnfs/rip6/volmap/null0/null00//0000_000000000_0000001
-            filename = self.volume_filepath + "/" + file
-
-            #Using the location cookie, retrieve the full pnfs filename.
-            self.__init__(filename)            #re-init this instance
-            #get the pnfs filename and remove the newline.
-            filename = self.readlayer(enstore_constants.XREF_LAYER)[4][:-1]
-            os.system("ls -l " + filename)
 
     #Prints out the specified layer of the specified file.
     def player(self, intf):
-        data = self.readlayer(intf.named_layer)
-        if data == INVALID or data == UNKNOWN:
-            print data
-        else:
+        try:
+            self.verify_existance()
+            data = self.readlayer(intf.named_layer)
             for datum in data:
-                print datum,
+                print datum.strip()
+        except (OSError, IOError), detail:
+            print str(detail)
 
     #For legacy perpouses.
     pcat = player
@@ -1235,40 +682,43 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #Snag the cross reference of the file inside self.file.
     #***LAYER 4***
     def pxref(self, intf):
-        #First make sure the file does exist.
-        if not os.path.isfile(self.pnfsFilename):
-            print "Error: file " + self.file + " not found."
-            return
-
-        data = self.xref
         names = ["volume", "location_cookie", "size", "file_family",
                  "original_name", "map_file", "pnfsid_file", "pnfsid_map",
                  "bfid", "origdrive"]
-        
-        #With the data stored in lists, with corresponding values based on the
-        # index, then just pring them out.
-        for i in range(10):
-            print "%s: %s" % (names[i], data[i])
+        try:
+            self.verify_existance()
+            data = self.get_xreference()
+            #With the data stored in lists, with corresponding values
+            # based on the index, then just print them out.
+            for i in range(len(names)):
+                print "%s: %s" % (names[i], data[i])
+        except (OSError, IOError), detail:
+            print str(detail)
+
 
     #Prints out the bfid value for the specified file.
     #***LAYER 1***
     def pbfid(self, intf):
-        data = self.readlayer(enstore_constants.BFID_LAYER)
         try:
-            bfid = data[0]
+            self.verify_existance()
+            self.get_bit_file_id()
+            #data = self.readlayer(enstore_constants.BFID_LAYER)
+            print self.bit_file_id
         except IndexError:
-            bfid = UNKNOWN
-        print bfid
+            print UNKNOWN
+        except (IOError, OSError), detail:
+            print str(detail)
 
     #Print out the filesize of the file from this layer.  It should only
     # be here as long as pnfs does not support NFS ver 3 and the filesize
     # is longer than 2GB.
-    #***LAYER 2***
-    #Prints out the bfid value for the specified file.
-    #***LAYER 1***
+    #***LAYER 4***
     def pfilesize(self, intf):
-        self.get_file_size()
-        print self.file_size
+        try:
+            self.get_file_size()
+            print self.file_size
+        except (OSError, IOError), detail:
+            print str(detail)
 
     #If dupl is empty, then show the duplicate data for the file
     # (in self.file).  If dupl is there then set the duplicate for the file
@@ -1285,7 +735,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 
         #Display only the duplicates for the specified file.
         elif intf.file:
-            print "%s:" % (self.file),
+            print "%s:" % (self.filepath),
             for filename in self.readlayer(enstore_constants.DUPLICATE_LAYER):
                 print filename,
             print
@@ -1293,7 +743,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             #Display all the duplicates for every file specified.
             for file in os.listdir(os.getcwd()):
                 intf.file = file
-                self.__init__(intf.file)
+                self.__init__(intf.filepath)
                 self.pduplicate(intf)
 
     def penstore_state(self, intf):
@@ -1320,40 +770,45 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 ##############################################################################
 
     def pls(self, intf):
-        filename = "\".(use)(%s)(%s)\"" % (intf.named_layer, self.file)
+        (directory, file) = os.path.split(self.filepath)
+        filename = os.path.join(directory, "\".(use)(%s)(%s)\"" % \
+                                (intf.named_layer, file))
         os.system("ls -alsF " + filename)
         
-    def pvolume(self, intf):
-        self.volmap_filepath(self.file_family, intf.volumename)
-        print self.volume_filepath
+    #def pvolume(self, intf):
+    #    self.volmap_filepath(self.file_family, intf.volumename)
+    #    print self.volume_filepath
     
     def pecho(self, intf):
-        self.writelayer(intf.named_layer, intf.text)
+        try:
+            self.writelayer(intf.named_layer, intf.text)
+        except (OSError, IOError), detail:
+            print str(detail)
         
     def prm(self, intf):
-        self.writelayer(intf.named_layer, "")
+        try:
+            self.writelayer(intf.named_layer, "")
+        except (OSError, IOError), detail:
+            print str(detail)
 
     def pcp(self, intf):
-        f = open(intf.unixfile, 'r')
+        try:
+            f = open(intf.unixfile, 'r')
 
-        data = f.readlines()
-        file_data_as_string = ""
-        for line in data:
-            file_data_as_string = file_data_as_string + line
+            data = f.readlines()
+            file_data_as_string = ""
+            for line in data:
+                file_data_as_string = file_data_as_string + line
 
-        f.close()
+            f.close()
 
-        self.writelayer(intf.named_layer, file_data_as_string)
-        
+            self.writelayer(intf.named_layer, file_data_as_string)
+        except (OSError, IOError), detail:
+            print str(detail)
+
     def psize(self, intf):
         self.set_file_size(intf.filesize)
     
-    def ptagecho(self, intf):
-        self.writetag(intf.named_tag, intf.text)
-        
-    def ptagrm(self, intf):
-        print "Feature not yet implemented."
-
     def pio(self, intf):
         print "Feature not yet implemented."
 
@@ -1361,51 +816,88 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #os.system("touch" + fname)
     
     def pid(self, intf):
-        print self.id
+        try:
+            self.get_id()
+            print_results(self.id)
+        except (OSError, IOError), detail:
+            print str(detail)
         
     def pshowid(self, intf):
-        self.get_showid()
-        print_results(self.showid)
+        try:
+            self.get_showid()
+            print_results(self.showid)
+        except (OSError, IOError), detail:
+            print str(detail)
     
     def pconst(self, intf):
-        self.get_const()
-        print_results(self.const)
+        try:
+            self.get_const()
+            print_results(self.const)
+        except (OSError, IOError), detail:
+            print str(detail)
         
     def pnameof(self, intf):
-        self.get_nameof()
-        print_results(self.nameof)
+        try:
+            self.get_nameof()
+            print_results(self.nameof)
+        except (OSError, IOError), detail:
+            print str(detail)
         
     def ppath(self, intf):
-        self.get_path()
-        print_results(self.path)
+        try:
+            self.get_path()
+            print_results(self.path)
+        except (OSError, IOError), detail:
+            print str(detail)
         
     def pparent(self, intf):
-        self.get_parent()
-        print_results(self.parent)
+        try:
+            self.get_parent()
+            print_results(self.parent)
+        except (OSError, IOError), detail:
+            print str(detail)
     
     def pcounters(self, intf):
-        self.get_counters()
-        print_results(self.counters)
+        try:
+            self.get_counters()
+            print_results(self.counters)
+        except (OSError, IOError), detail:
+            print str(detail)
         
     def pcountersN(self, intf):
-        self.get_countersN(intf.dbnum)
-        print_results(self.countersN)
+        try:
+            self.get_countersN(intf.dbnum)
+            print_results(self.countersN)
+        except (OSError, IOError), detail:
+            print str(detail)
     
     def pcursor(self, intf):
-        self.get_cursor()
-        print_results(self.cursor)
+        try:
+            self.get_cursor()
+            print_results(self.cursor)
+        except (OSError, IOError), detail:
+            print str(detail)
             
     def pposition(self, intf):
-        self.get_position()
-        print_results(self.position)
+        try:
+            self.get_position()
+            print_results(self.position)
+        except (OSError, IOError), detail:
+            print str(detail)
         
     def pdatabase(self, intf):
-        self.get_database()
-        print_results(self.database)
+        try:
+            self.get_database()
+            print_results(self.database)
+        except (OSError, IOError), detail:
+            print str(detail)
             
     def pdatabaseN(self, intf):
-        self.get_databaseN(intf.dbnum)
-        print_results(self.databaseN)
+        try:
+            self.get_databaseN(intf.dbnum)
+            print_results(self.databaseN)
+        except (OSError, IOError), detail:
+            print str(detail)
 
 
     def pdown(self, intf):
@@ -1439,54 +931,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     def pdump(self, intf):
         self.dump()
-
-##############################################################################
-
-# this routine returns a list of (filenames,bit_file_ids) given a list of file
-# numbers on a specified tape
-
-def findfiles(mainpnfsdir,                  # directory above volmap directory
-                                            #  zB: /pnfs/enstore 
-              label,                        # tape label
-              filenumberlist):              # list of files wanted (count from 0)
-                                            #  zB: [1,2,3] or [8,45,31] or 19
-    # use a unix find command to determine the volume directory
-    command="find %s -mindepth 1 -maxdepth 2 -name %s -print" %(
-        os.path.join(mainpnfsdir,'volmap'),
-        label)
-    tape = os.popen(command,'r').readlines()
-    if len(tape) == 0:
-        return ("","")
-    voldir = string.strip(tape[0])
-
-    # get the list of files in the volume directory
-    #   note that files are they are lexically sortable
-    volfiles = os.listdir(voldir)
-    volfiles.sort()
-
-    # create a sorted list of file number requests
-    if type(filenumberlist) == type([]):
-        files = filenumberlist 
-    else:
-        files = [filenumberlist]
-    files.sort()
-    n = len(files)
-
-    # now just loop over each request and return the original filename
-    #  and the bfid to the user
-    last = ""
-    filenames = []
-    bfids = []
-    for i in range(0,n):
-        if i == last:
-            Trace.log(e_errors.INFO, "skipping duplicate request: %s"%(i,))
-            continue
-        else:
-            last = i
-        v = Pnfs(os.path.join(voldir,volfiles[files[i]]))
-        filenames.append(v.origname)
-        bfids.append(v.bit_file_id)
-    return (filenames,bfids)
 
 ##############################################################################
 
@@ -2020,6 +1464,256 @@ class PnfsInterface(option.Interface):
 
 ##############################################################################
 
+# This is a cleaner interface to access the tags in /pnfs
+
+class Tag:
+    def __init__(self, directory):
+        self.dir = directory
+    
+    # write a new value to the specified tag
+    # the file needs to exist before you call this
+    # remember, tags are a propery of the directory, not of a file
+    def writetag(self, tag, value, directory=None):
+        if type(value) != type(''):
+            value=str(value)
+        if directory:
+            fname = os.path.join(directory, ".(tag)(%s)"%(tag,))
+        else:
+            fname = os.path.join(self.dir, ".(tag)(%s)"%(tag,))
+        f = open(fname,'w')
+        f.write(value)
+        f.close()
+
+    # read the value stored in the requested tag
+    def readtag(self, tag, directory=None):
+        if directory:
+            fname = os.path.join(directory, ".(tag)(%s)" % (tag,))
+        else:
+            fname = os.path.join(self.dir, ".(tag)(%s)" % (tag,))
+        f = open(fname,'r')
+        t = f.readlines()
+        f.close()
+        return t
+
+    ##########################################################################
+
+    #Print out the current settings for all directory tags.
+    def ptags(self, intf):
+        if hasattr(intf, "directory"):
+            filename = os.path.join(os.path.abspath(intf.directory),
+                                    ".(tags)(all)")
+        else:
+            filename = os.path.join(os.getcwd(), ".(tags)(all)")
+
+        try:
+            file = open(filename, "r")
+            data = file.readlines()
+        except IOError, detail:
+            print detail
+            return
+
+        #print the top portion of the output.  Note: the values placed into
+        # line have a newline at the end of them, this is why line[:-1] is
+        # used to remove it.
+        for line in data:
+            try:
+                tag = string.split(line[7:], ")")[0]
+                tag_info = self.readtag(tag)
+                print line[:-1], "=",  tag_info[0]
+            except IOError, detail:
+                print line[:-1], ":", detail
+
+        #Print the bottom portion of the output.
+        for line in data:
+            tag_file = os.path.join(intf.directory, line[:-1])
+            os.system("ls -l \"" + tag_file + "\"")
+
+    def ptag(self, intf):
+        try:
+            if hasattr(intf, "directory") and intf.directory:
+                tag = self.readtag(intf.named_tag, intf.directory)
+            else:
+                tag = self.readtag(intf.named_tag)
+            print tag[0]
+        except (OSError, IOError), detail:
+            print str(detail)
+
+    def ptagecho(self, intf):
+        self.writetag(intf.named_tag, intf.text)
+        
+    def ptagrm(self, intf):
+        print "Feature not yet implemented."
+
+    ##########################################################################
+
+    #Print or edit the library
+    def plibrary(self, intf):
+        try:
+            if intf.library == 1:
+                print self.get_library()
+            else:
+                self.set_library(intf.library)
+        except (OSError, IOError), detail:
+            print str(detail)
+
+    #Print or edit the file family.
+    def pfile_family(self, intf):
+        try:
+            if intf.file_family == 1:
+                print self.get_file_family()
+            else:
+                self.set_file_family(intf.file_family)
+        except (OSError, IOError), detail:
+            print str(detail)
+
+    #Print or edit the file family wrapper.
+    def pfile_family_wrapper(self, intf):
+        try:
+            if intf.file_family_wrapper == 1:
+                print self.get_file_family_wrapper()
+            else:
+                self.set_file_family_wrapper(intf.file_family_wrapper)
+        except (OSError, IOError), detail:
+            print str(detail)
+
+    #Print or edit the file family width.
+    def pfile_family_width(self, intf):
+        try:
+            if intf.file_family_width == 1:
+                print self.get_file_family_width()
+            else:
+                self.set_file_family_width(intf.file_family_width)
+        except (OSError, IOError), detail:
+            print str(detail)
+
+    #Print or edit the storage group.
+    def pstorage_group(self, intf):
+        try:
+            if intf.storage_group == 1:
+                print self.get_storage_group()
+            else:
+                self.set_storage_group(intf.storage_group)
+        except (OSError, IOError), detail:
+            print str(detail)
+
+
+    ##########################################################################
+
+    # store a new tape library tag
+    def set_library(self,value, directory=None):
+        if directory:
+            self.writetag("library", value, directory)
+        else:
+            self.writetag("library", value)
+            self.get_library()
+            
+        return value
+
+    # get the tape library
+    def get_library(self, directory=None):
+        if directory:
+            library = self.readtag("library", directory)[0].strip()
+        else:
+            library = self.readtag("library")[0].strip()
+            self.library = library
+
+        return library
+    
+    ##########################################################################
+
+    # store a new file family tag
+    def set_file_family(self, value, directory=None):
+        if directory:
+            self.writetag("file_family", value, directory)
+        else:
+            self.writetag("file_family", value)
+            self.get_file_family()
+
+        return value
+
+    # get the file family
+    def get_file_family(self, directory=None):
+        if directory:
+            file_family = self.readtag("file_family", directory)[0].strip()
+        else:
+            file_family = self.readtag("file_family")[0].strip()
+            self.file_family = file_family
+
+        return file_family
+
+    ##########################################################################
+
+    # store a new file family wrapper tag
+    def set_file_family_wrapper(self, value, directory=None):
+        if directory:
+            self.writetag("file_family_wrapper", value, directory)
+        else:
+            self.writetag("file_family_wrapper", value)
+            self.get_file_family_wrapper()
+
+        return value
+
+    # get the file family
+    def get_file_family_wrapper(self, directory=None):
+        if directory:
+            file_family_wrapper = self.readtag("file_family_wrapper",
+                                               directory)[0].strip()
+        else:
+            file_family_wrapper = self.readtag(
+                "file_family_wrapper")[0].strip()
+            self.file_family_wrapper = file_family_wrapper
+
+        return file_family_wrapper
+
+    ##########################################################################
+
+    # store a new file family width tag
+    # this is the number of open files (ie simultaneous tapes) at one time
+    def set_file_family_width(self, value, directory=None):
+        if directory:
+            self.writetag("file_family_width", value, directory)
+        else:
+            self.writetag("file_family_width", value)
+            self.get_file_family_width()
+
+        return value
+
+    # get the file family width
+    def get_file_family_width(self, directory=None):
+        if directory:
+            file_family_width = self.readtag("file_family_width",
+                                                      directory)[0].strip()
+        else:
+            file_family_width = self.readtag("file_family_width")[0].strip()
+            self.file_family_width = file_family_width
+
+        return file_family_width
+
+    ##########################################################################
+
+    # store a new storage group tag
+    # this is group of volumes assigned to one experiment or group of users
+    def set_storage_group(self, value, directory=None):
+        if directory:
+            self.writetag("storage_group", value, directory)
+        else:
+            self.writetag("storage_group", value)
+            self.get_storage_group()
+
+        return value
+
+    # get the storage group
+    def get_storage_group(self, directory=None):
+        if directory:
+            storage_group = self.readtag("storage_group", directory)[0].strip()
+        else:
+            storage_group = self.readtag("storage_group")[0].strip()
+            self.storage_group = storage_group
+
+        return storage_group
+
+##############################################################################
+
 # This is a cleaner interface to access the file, as well as its
 # metadata, in /pnfs
 
@@ -2183,11 +1877,30 @@ class File:
 ##############################################################################
 def do_work(intf):
 
-    p=Pnfs(intf.file, intf.directory, intf.pnfs_id, 1, 1)
+    if intf.file:
+        p=Pnfs(intf.file)
+        t=None
+    elif intf.pnfs_id:
+        p=Pnfs(intf.pnfs_id)
+        t=None
+    elif intf.dbnum:
+        print "Not yet implemented."
+        sys.exit(1)
+        #p=Pnfs(intf.pnfs_id)
+        #t=None
+    else:
+        p=None
+        t=Tag(intf.directory)
+    
     for arg in intf.option_list:
         if string.replace(arg, "_", "-") in intf.options.keys():
             arg = string.replace(arg, "-", "_")
-            apply(getattr(p, "p" + arg), (intf,))
+            for instance in [t, p]:
+                if getattr(instance, "p"+arg, None):
+                    apply(getattr(instance, "p" + arg), (intf,))
+                    break
+            else:
+                print "p%s not found" % arg 
 
     return
 
