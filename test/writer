@@ -41,7 +41,8 @@ while /bin/true; do
         fb=`basename $f`
         output=$base/${fb}__`date +"%b%d%H%M%S"`$p
         if [ `$ENSTORE_DIR/test/aran.sh 0 20` -eq 0 ] ; then
-          cmd="encp $f $output"
+          cmd="encp --data_access_layer --test_mode --bytes=1073741824 $f $output"
+          #cmd="encp --data_access_layer $f $output"
         else
           priority=`$ENSTORE_DIR/test/aran.sh 1 10`
           delpri=`$ENSTORE_DIR/test/aran.sh 1 10`
@@ -61,7 +62,8 @@ while /bin/true; do
           else
             crc="--crc"
           fi
-          cmd="encp --pri $priority --delpri $delpri --agetime $agetime --delayed_dismount=$delayed_dismount $crc $f $output"
+          cmd="encp --data_access_layer --test_mode --bytes=1073741824 --priority $priority --delpri $delpri --age_time $agetime --delayed_dismount=$delayed_dismount $crc $f $output"
+          #cmd="encp --data_access_layer --priority $priority --delpri $delpri --age_time $agetime --delayed_dismount=$delayed_dismount $crc $f $output"
         fi
         echo `date` $cmd
         eval $cmd
