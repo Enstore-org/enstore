@@ -445,16 +445,15 @@ class AML2_MediaLoader(MediaLoaderMethods):
         import aml2
         Trace.log(e_errors.INFO, 'mc:aml2 ticket='+repr(inTicket))
         classTicket = { 'mcSelf' : self }
-	ticket = {}
         try:
-            ticket['drive'] = inTicket['moverConfig']['mc_device']
+            drive = inTicket['moverConfig']['mc_device']
         except KeyError:
             Trace.log(e_errors.ERROR, 'mc:aml2 no device field found in ticket.')
 	    status = 37
             return e_errors.DOESNOTEXIST, status, "no device field found in ticket"
 	
-	driveType = ticket['drive'][:2]  # ... need device type, not actual device
-        ticket['cleanTime'] = self.driveCleanTime[driveType][0]  # clean time in seconds	
+	driveType = drive[:2]  # ... need device type, not actual device
+        cleanTime = self.driveCleanTime[driveType][0]  # clean time in seconds	
         driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         min_remaining_bytes = 1
@@ -479,21 +478,23 @@ class AML2_MediaLoader(MediaLoaderMethods):
             status = 37
             return v["status"][0], 0, v["status"][1]
 
-        cleaningVolume = v['external_label']
-	ticket['volume'] = cleaningVolume
-	ticket['media_type'] = v['media_type']
-	
 	for i in range(driveCleanCycles):
-            Trace.log(e_errors.INFO, "AML2 Clean: %s"%repr(ticket))
-	    rt = aml2.cleanADrive(ticket, classTicket)
+            Trace.log(e_errors.INFO, "AML2 clean drive %s, vol. %s"%(drive,v['external_label']))
+            rt = self.load(v['external_label'], drive, v['media_type']) 
+            status = rt[1]
+            if status != 0:      # mount returned error
+                return status_table[status][0], status, status_table[status][1]
+            
+            time.sleep(cleanTime)  # wait cleanTime seconds
+            rt = self.unload(v['external_label'], drive, v['media_type'])
+            status = rt[1]
+            if status != 0:      # dismount returned error
+                return status_table[status][0], status, status_table[status][1]
             Trace.log(e_errors.INFO,"AML2 Clean returned %s"%repr(rt))
-	    if rt[1] != 0: break
-        if rt[1] != 0:
-	    return rt
  
-        retTicket = vcc.get_remaining_bytes(cleaningVolume)
+        retTicket = vcc.get_remaining_bytes(v['external_label'])
         remaining_bytes = retTicket['remaining_bytes']-1
-        vcc.set_remaining_bytes(cleaningVolume,remaining_bytes,'\0',0,0,0,0,None)
+        vcc.set_remaining_bytes(v['external_label'],remaining_bytes,'\0',0,0,0,0,None)
         return (e_errors.OK, 0, None)
 
     def doWaitingInserts(self):
