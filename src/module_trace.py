@@ -69,6 +69,9 @@ def mtrace(m):
 
 counter = 0
 
+def log_trace(t):
+	if not rm_table.has_key(t[-1]) or len(t) < len(rm_table[t[-1]]):
+			rm_table[t[-1]] = t
 def trace_path(history, module):
 	global counter
 	counter = counter + 1
@@ -85,9 +88,6 @@ def trace_path(history, module):
 			trace_path(a, i)
 		log_trace(a)
 
-def log_trace(t):
-	if not rm_table.has_key(t[-1]) or len(t) < len(rm_table[t[-1]]):
-			rm_table[t[-1]] = t
 			
 if __name__ == '__main__':
 	m = string.split(sys.argv[1], '.')[0]
