@@ -6,12 +6,16 @@ rm -f longstop
 rm -f readstop
 rm -f writestop
 
-if [ "${1:-}" = "-m" ] ; then 
+if [ "${1:-}" = "-m" ] ; then
     shift
     make datafiles
     rm data.in
     find $ENSTORE_DIR/test/data -type f -print > $ENSTORE_DIR/test/data.in
     make jobs
+fi
+
+if [ "${1:-}" = "-q" ] ; then
+    exit 0
 fi
 
 if [ -z "${1-}" ] ; then
