@@ -132,6 +132,7 @@ then
   cmd="ecmd mov --alive $mover";echo "$cmd";$cmd
   cmd="ecmd mov --alive --verbose=1 $mover";echo "$cmd";$cmd
   cmd="ecmd mov --alive --verbose=32 $mover";echo "$cmd";$cmd
+  cmd="ecmd mov --status $mover";echo "$cmd";$cmd
 fi
 
 if [ $dotest -eq 1 ]
