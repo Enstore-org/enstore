@@ -754,9 +754,10 @@ def clients():
         #Handle the non-fatal error.
         if not e_errors.is_ok(ticket['status']):
             Trace.alarm(e_errors.WARNING, ticket['status'][0], ticket)
-
-        Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
-                      (server, ticket['address']))
+            Trace.message(CONFIG_LEVEL, "Server %s not found." % (server,))
+        else:
+            Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
+                          (server, ticket.get('address', "Unknown")))
     
     
     # get a logger client
