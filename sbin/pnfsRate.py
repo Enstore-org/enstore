@@ -153,7 +153,8 @@ if __name__=="__main__":
                 print '<table bgcolor="#dfdff0" nosave >'
                 print '<tr>\n'
 
-        for db in range(mindb,maxdb):
+	if database>0:
+           for db in range(mindb,maxdb):
                 rates = pnfsRate(mountpoint,"%d"%db,sleeptime,once)
                 if genhtml:
                         if col == ncolumns:
