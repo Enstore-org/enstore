@@ -74,7 +74,7 @@ NOVALUE = -1
 QUESTION = "?"
 
 ER_UPDATE_INTERVAL = 15
-ENCP_UPDATE_INTERVAL = 60
+ENCP_UPDATE_INTERVAL = 150
 LOG_UPDATE_INTERVAL = 300
 DEFAULT_OVERRIDE_INTERVAL = 86400   # (1 day) how long something needs to be
                                     #  overridden to generate mail.
