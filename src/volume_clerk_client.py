@@ -27,7 +27,7 @@ import udp_client
 import Trace
 import e_errors
 import file_clerk_client
-
+import cPickle
 
 MY_NAME = "VOLUME_C_CLIENT"
 MY_SERVER = "volume_clerk"
@@ -498,7 +498,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 "clear=", "backup", "vols","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
                 "no-access=", "decr-file-count=","force",
-                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib=", "list=", "ls-active=", "recycle="]
+                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib=", "list=", "ls-active=", "recycle=", "export="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -597,6 +597,39 @@ def do_work(intf):
                                    capacity_str(ticket['remaining_bytes']),
                                    ticket['system_inhibit'],
                                    ticket['user_inhibit'])
+    elif intf.export: # volume export
+        # get volume info first
+        volume = {}
+        volume['vol_name'] = intf.export
+        volume['files'] = {}
+        ticket = vcc.inquire_vol(intf.export)
+        if ticket['status'][0] == e_errors.OK:
+            del ticket['status']
+            volume['vol'] = ticket
+            # get all bfids
+            fcc = file_clerk_client.FileClient(vcc.csc)
+            ticket = fcc.get_bfids(intf.export)
+            if ticket['status'][0] == e_errors.OK:
+                bfids = ticket['bfids']
+                status = (e_errors.OK, None)
+                for i in bfids:
+                    ticket = fcc.bfid_info(i)
+                    if ticket['status'][0] == e_errors.OK:
+                        status = ticket['status']
+                        del ticket['status']
+                        # deal with brain damaged backward compatibility
+                        del ticket['fc']
+                        del ticket['vc']
+                        volume['files'][i] = ticket
+                    else:
+                        break
+                # is the status still ok?
+                if status[0] == e_errors.OK:
+                    # dump it now
+                    f = open('vol.'+intf.export+'.obj', 'w')
+                    cPickle.dump(volume, f)
+                    f.close()
+                ticket={'status':status}
     elif intf.add:
         print intf.add, repr(intf.args)
         cookie = 'none'
