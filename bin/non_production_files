@@ -1,0 +1,35 @@
+#!/bin/sh
+
+
+cd
+basedir=`pwd`
+
+output=$basedir/repository-production
+rm -f $output
+
+dirs=/tmp/dirs
+rm -f $dirs
+
+rm -fr lz >/dev/null 2>&1
+mkdir lz  >/dev/null 2>&1
+cd lz
+
+export CVSROOT=cvsuser@hppc.fnal.gov:/cvs/hppc
+cvs co enstore >/dev/null 2>&1
+
+date >> $output
+echo "List of files in $CVSROOT without production tag" >> $output
+
+#find enstore -type f -exec /home/bakken/lz/enstore/tools/notready.py {} \; | egrep -v 'Checking files...|ok$|not in CVS, skipping$|is a directory, ignoring|in in /CVS/ directory. Can not possibly check it' >> $output
+
+find enstore -type d |grep -v CVS > $dirs
+cat $dirs | while read d; do
+ (cd $d; $basedir/enstore/tools/notready.py *| egrep -v 'Checking files...|ok$|not in CVS, skipping$|is a directory, ignoring|in in /CVS/ directory. Can not possib
+ly check it' >> $output )
+done
+
+date >> $output
+
+/usr/bin/Mail -s "Nonproduction files in cvs repository" enstore-auto@fnal.gov <$output
+
+
