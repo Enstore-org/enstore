@@ -487,7 +487,7 @@ case $node in
 esac
 
 # check that the keytabs are "correct"
-$KEYTAB_CHECK 
+$KEYTAB_CHECK -a
 
 
 # get open files - twice - get ps in between - only take connections that survive past this
