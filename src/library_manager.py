@@ -87,23 +87,24 @@ def find_mover(mover, mover_list):
 	    print "find_mover "+repr(mover)
     
 # update mover list
-def update_mover_list(mover):
+def update_mover_list(mover, state):
     Trace.trace(3,"{update_mover_list " + repr(mover))
     mv = find_mover(mover, movers)
     if mv == None:
 	return
     if not mv:
 	add_mover(mover['mover'], mover['address'])
-    else:
-	if mover.has_key('work'):
-	    # change mover state
-	    if list: print "changing mover state"
-	    mv['state'] = mover['work']
-	    mv['last_checked'] = time.time()
-    Trace.trace(3,"}update_mover_list ")
+	mv = find_mover(mover, movers)
+	
+    # change mover state
+    if list: print "changing mover state"
+    mv['state'] = state
+    mv['last_checked'] = time.time()
+    Trace.trace(3,"}update_mover_list " + repr(mv))
     if list: 
 	print "MOVER_LIST"
-	pprint.pprint(movers)
+	for i in movers:
+	    print(repr(i))
 
 # remove mover from list
 def remove_mover(mover, mover_list):
@@ -231,7 +232,6 @@ def next_work_this_volume(v):
     # look in pending work queue for reading or writing work
     w=pending_work.get_init()
     while w:
-
         # writing to this volume?
         if (w["work"]                == "write_to_hsm"   and
             w["vc"]["file_family"]   == v["file_family"] and
@@ -246,7 +246,7 @@ def next_work_this_volume(v):
 
         # reading from this volume?
         elif (w["work"]           == "read_from_hsm" and
-              w["fc"]["external_label"] == v["external_label"] ):
+              w["fc"]["external_label"] == v['vc']["external_label"] ):
             # ok passed criteria, return read work ticket
 	    Trace.trace(3,"}next_work_this_volume " + repr(w))
             return w
@@ -415,6 +415,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	requests from another encp clients TO did not work even if
 	movers being summoned did not respond
 	"""
+	if debug:
+	    print "read_from_hsm", ticket
 	Trace.trace(3,"{read_from_hsm " + repr(ticket))
 	self.handle_timeout()
 	if movers:
@@ -438,6 +440,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         pending_work.insert_job(ticket)
 
+	if debug :
+	    print "MOVERS ",mover_cnt
+	    pprint.pprint(movers)
+	
 	# find the next idle mover
 	mv = idle_mover_next(self)
 	if mv != None:
@@ -452,11 +458,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	
 	Trace.trace(3,"{idle_mover " + repr(mticket))
 	if list: print "IDLE MOVER"
-	update_mover_list(mticket)
-	if list: print "update_mover_list done"
+	update_mover_list(mticket, mticket['work'])
 	# remove the mover from the list of movers being summoned
 	mv = find_mover(mticket, self.summon_queue)
-	if list: print "find_mover done"
 	if ((mv != None) and mv):
 	    mv['tr_error'] = 'ok'
 	    mv['summon_try_cnt'] = 0
@@ -551,13 +555,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    print "LM:have_bound_volume"
 	    pprint.pprint(mticket)
 	# update mover list. If mover is in the list - update its state
-	update_mover_list(mticket)
+	if mticket['state'] == 'idle':
+	    state = 'idle_mover'  # to make names consistent
+	else:
+	    state = mticket['state']
+	update_mover_list(mticket, state)
 	# remove the mover from the list of movers being summoned
 	mv = find_mover(mticket, self.summon_queue)
 	if ((mv != None) and mv):
 	    mv['tr_error'] = 'ok'
 	    mv['summon_try_cnt'] = 0
-	    print "have bound vol mover ", mv
+	    if debug:
+		print "have bound vol mover ", mv
 	    self.summon_queue.remove(mv)
 
         # just did some work, delete it from queue
@@ -566,7 +575,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    if list: print "removing ", w, " from the queue"
             work_at_movers.remove(w)
 
+	# check if mover can accept another request
+	if state != 'idle_mover':
+	    if debug:
+		print "have_bound_volume ", state
+	    self.reply_to_caller({'work': 'nowork'})
+	    return
         # otherwise, see if this volume will do for any other work pending
+
         w = next_work_this_volume(mticket)
 	if list: print "next_work_this_volume ", w
         if w["status"][0] == e_errors.OK:
@@ -598,7 +614,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    mv = find_mover(mticket, movers)
 	    #if list: print "unbind volume before ", mv
 	    mv['state'] = 'idle_mover'
-	    #if list: print "unbind volume for ", mv
+	    if list: print "unbind volume for ", mv
             self.reply_to_caller({"work" : "unbind_volume"})
 	    Trace.trace(3,"}have_bound_volume: No work, sending unbind ")
 
@@ -626,7 +642,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w = get_work_at_movers(ticket["external_label"])
 
 	# update mover list. If mover is in the list - update its state
-	update_mover_list(ticket)
+	update_mover_list(ticket, 'idle_mover')
 
 	# remove the mover from the list of movers being summoned
 	mv = find_mover(ticket, self.summon_queue)
@@ -641,7 +657,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    pprint.pprint(self.suspect_volumes)
 	vol_found = 0
 	for item in self.suspect_volumes:
-	    if ticket['fc']['external_label'] == item['external_label']:
+	    if ticket['external_label'] == item['external_label']:
 		vol_found = 1
 		break
 	if not vol_found:
@@ -766,6 +782,8 @@ if __name__ == "__main__":
             config_list = 1
         elif opt == "--list":
             list = 1
+        elif opt == "--debug":
+            debug = 1
         elif opt == "--nosummon":
             summon = 0
         elif opt == "--help":
