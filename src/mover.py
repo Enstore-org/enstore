@@ -277,10 +277,12 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	Trace.log(e_errors.INFO,'UNBIND start %s'%ticket)
 	    
 	# do any driver level rewind, unload, eject operations on the device
+        clean_drive = 0
 	if self.mvr_config['do_eject'] == 'yes':
 	    Trace.log( e_errors.INFO, "Performing offline/eject of device %s"%str(self.mvr_config['device']))
 	    self.hsm_driver.offline(self.mvr_config['device'])
             self.store_statistics('dismount', self.hsm_driver)
+            if self.driveStatistics['dismount']['cleaning_bit'] == '1': clean_drive = 1
 	    Trace.log( e_errors.INFO, "Completed  offline/eject of device %s"%str(self.mvr_config['device']))
 	    pass
 	# now ask the media changer to unload the volume
@@ -295,16 +297,12 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
 	del self.vol_vcc[self.vol_info['external_label']]
 	self.vol_info['external_label'] = ''
-        print "CLEANING", self.driveStatistics['dismount']['cleaning_bit'] ## REMOVE
-        if self.driveStatistics['dismount']['cleaning_bit'] == '1':
+        if clean_drive:
             try:
                 rr = self.mcc.doCleaningCycle(self.mvr_config)
                 Trace.log(e_errors.INFO,"Media changer cleaningCycle return status =%s"%str(rr['status']))
-            except KeyError:
-                Trace.log(e_errors.ERROR,"ERROR: 'cleaning_bit' not defined")
-            except: ## REMOVE
-                e_errors.handle_error()  ## REMOVE
-        print "RETURN" ## REMOVE
+            except:
+                e_errors.handle_error()
         self.return_or_update_and_exit(self.vol_info['from_lm'], e_errors.OK )
 	pass
 
