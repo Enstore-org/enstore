@@ -876,7 +876,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.unique_id = ticket['unique_id']
         volume_label = fc['external_label']
         self.current_work_ticket = ticket
-        self.vol_info.update(self.vcc.inquire_vol(volume_label))
+        if volume_label:
+            self.vol_info.update(self.vcc.inquire_vol(volume_label))
+        else:
+            Trace.log(e_errors.ERROR, "setup_transfer: volume label=%s" % (volume_label,))
         if self.vol_info['status'][0] != 'ok':
             msg =  ({READ: e_errors.READ_NOTAPE, WRITE: e_errors.WRITE_NOTAPE}.get(
                 mode, e_errors.EPROTO), self.vol_info['status'][1])
@@ -1178,7 +1181,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO,"set remaining: %s %s %s" %(self.current_volume, remaining, eod))
         reply = self.vcc.set_remaining_bytes(self.current_volume, remaining, eod, bfid)
         self.vol_info.update(reply)
-        self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
+        if self.current_volume:
+            self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
+        else:
+            Trace.log(e_errors.ERROR, "update_after_writing: current_volume=%s" % (self.current_volume,))
         self.volume_status = (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                               self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
         return 1
@@ -1329,13 +1335,15 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if not self.vol_info.get('external_label'):
             if self.vcc:
-                try:
+                if self.current_volume:
                     v = self.vcc.inquire_vol(self.current_volume)
-                    if type(v) is type({}):
+                    if type(v) is type({}) and v.has_key('status') and v['status'][0]==e_errors.OK:
                         self.vol_info.update(v)
-                except:
-                    exc, detail, tb = sys.exc_info()
-                    Trace.log(e_errors.ERROR, "inquire volume for dismount: %s" % (detail,))
+                    else:
+                        Trace.log(e_errors.ERROR, "dismount_volume: inquire_vol(%s)->%s" %
+                                  (self.current_volume, v))
+                else:
+                    Trace.log(e_errors.ERROR, "dismount_volume: current_volume=%s" % (self.current_volume,))
         if not self.vol_info.get('external_label'):
             if self.current_volume:
                 self.vol_info['external_label'] = self.current_volume
