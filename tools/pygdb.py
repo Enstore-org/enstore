@@ -12,7 +12,7 @@ from getline import getline
 class PyGdb(Gdb):
     def __init__(self, args):
         Gdb.__init__(self,['python']+args)
-        self.gdb_command("b ceval.c:1535") #set_lineno
+        self.gdb_command("b ceval.c:1539") #set_lineno
         self.breakpoints = {}
         self.breakpoint_number = 0
         self.trace = 0
