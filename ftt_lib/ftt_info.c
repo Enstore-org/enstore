@@ -86,7 +86,7 @@ ftt_list_all(ftt_descriptor d) {
     ENTERING("ftt_list_all");
     PCKNULL("ftt_descriptor", d);
 
-    for( i = 0,j = 0; j < 65 && d->devinfo[i].device_name != 0; i++ ){
+    for( i = 0,j = 0; j <= MAXDEVSLOTS  && d->devinfo[i].device_name != 0; i++ ){
 	if (d->devinfo[i].first) {
 	    table[j++] = d->devinfo[i].device_name;
 	}

@@ -11,7 +11,7 @@ extern char ftt_eprint_buf[];
 #define MAX_TRANS_DENSITY 10	/* maximum density number we translate */
 
 /* device information structure */
-#define MAXDEVSLOTS 64
+#define MAXDEVSLOTS 80
 
 typedef struct {		
 	char *device_name;	/* pathname for device 		*/
