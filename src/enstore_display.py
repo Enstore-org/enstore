@@ -280,11 +280,13 @@ class Mover:
         if state != 'ACTIVE':
             self.show_progress(None)
         self.update_timer(time_in_state)
-        if self.state in ['ERROR', 'OFFLINE', 'IDLE']:
-            if self.connection:
-                self.connection.undraw()
-                print "deleting the connection because state is :  ", state
-            
+        if state in ['IDLE']:
+            if self.volume:
+                print "Alert!  mover has a volume and shouldn't"
+                self.volume.loaded = 0
+                self.volume.ejected = 1
+                x, y = self.volume_position(ejected=1)
+                self.volume.moveto(x, y)
         
     def update_timer(self, seconds):
         timer_offset = XY(120, 22)
@@ -858,6 +860,7 @@ class Display(Tkinter.Canvas):
                         print "bad numeric value", words[3]            
                 mover.update_state(what_state, time_in_state)
                 if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
+                    print "Need to disconnect because mover state changed to : ", what_state
                     if mover.connection: #no connection with mover object
                         mover.connection=None
                 return
