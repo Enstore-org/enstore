@@ -95,7 +95,7 @@ ENSTORE_CONFIG_HOST=$ENSTORE_CONFIG_HOST;export ENSTORE_CONFIG_HOST
 ENSTORE_CONFIG_PORT=$ENSTORE_CONFIG_PORT;export ENSTORE_CONFIG_PORT
 
 # get all the servers for this port and other important servers (file_clerk, volume_clerk, ...)
-nodeplus_servers=`conf.sh $local_host`
+nodeplus_servers=`conf.sh $local_host 3 2`
 
 # now just isolate the servers for this node
 node_servers=`echo "$nodeplus_servers" | grep :$local_host: | sed -e "s/:$local_host//"`
@@ -107,7 +107,7 @@ if [ ! "$node_servers" ];then
     else
         hh=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
     fi
-    nodeplus_servers=`conf.sh $hh`
+    nodeplus_servers=`conf.sh $hh 3 2`
     node_servers=`echo "$nodeplus_servers" | grep :$hh: | sed -e "s/:$hh//"`
 fi
 
