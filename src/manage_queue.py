@@ -160,7 +160,9 @@ class SortedList:
 
     # get a record from the list
     def get(self, pri=0):
-        if not self.sorted_list: return None    # list is empty
+        if not self.sorted_list:
+            self.start_index = self.current_index
+            return None    # list is empty
         self.update()
         Trace.trace(23,"SortedList.get: pri %s, u_f %s"%
                     (pri, self.update_flag))
