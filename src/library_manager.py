@@ -608,8 +608,8 @@ class LibraryManagerMethods:
                 if status[0] == e_errors.NOWORK:
                     rq = exc_limit_rq
                 elif status[0] != e_errors.OK:
-                    Trace.log(1,"next_work_this_volume: assertion error w=%s ticket=%q"%
-                              (rq, mticket))
+                    Trace.log(1,"next_work_this_volume: assertion error w=%s "%
+                              (rq.ticket,))
                     raise AssertionError
                 # check if it is the same request
                 # or request for the same volume
@@ -1080,10 +1080,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s %s to mover %s %s DEL_DISM %s"%
                       (w['work'],w['wrapper']['pnfsFilename'], mticket['mover'], mticket['address'], w['encp']['delayed_dismount']))
-            self.udpc.send_no_wait(w, mticket['address']) 
             self.pending_work.delete(rq)
+            w['times']['lm_dequeued'] = time.time()
             w['mover'] = mticket['mover']
             self.work_at_movers.append(w)
+            self.udpc.send_no_wait(w, mticket['address']) 
             # if new work volume is different from mounted
             # which may happen in case of high pri. work
             # update volumes_at_movers
