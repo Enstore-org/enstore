@@ -230,11 +230,16 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = OFFLINE
 
         self.current_location = 0L
+        self.current_volume = None #external label of current mounted volume
+	
+	self.last_location = 0L
+	self.last_volume = None
+	
         self.mode = None # READ or WRITE
         self.bytes_to_transfer = 0L
         self.bytes_read = 0L
         self.bytes_written = 0L
-        self.current_volume = None #external label of current mounted volume
+
         self.next_volume = None # external label of pending (MC) volume
         self.volume_family = None 
         self.volume_status = (['none', 'none'], ['none', 'none'])
@@ -535,7 +540,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return 0
 
         if verbose: pprint.pprint(ticket)
-        self.buffer.reset()
+        self.reset()
 
         self.current_work_ticket = ticket
         ##if not ticket.has_key('mover'): ## XXX cgw ask Sasha about this
@@ -621,7 +626,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if msg:
             self.send_client_done(self.current_work_ticket, msgstr)
         self.net_driver.close()
-        self.reset()
+
         self.update(reset_timer=1)
         
     def transfer_completed(self):
@@ -649,7 +654,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dismount_time = now + self.delay
 
         self.send_client_done(self.current_work_ticket, e_errors.OK)
-        self.reset()
 
         self.update(reset_timer=1)
 
@@ -756,6 +760,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if verbose: print "self.vol_info =", self.vol_info
 
         if self.current_volume != volume_label:
+	    self.last_volume = self.current_volume
+	    self.last_location = self.current_location
             if self.current_volume:
                 self.dismount_volume()
             self.mount_volume(volume_label)
@@ -928,6 +934,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 		 'files'        : self.files,
 		 'mode'         : mode_name(self.mode),
                  'current_volume': self.current_volume,
+		 'current_location': self.current_location,
+		 'last_volume' : self.last_volume,
+		 'last_location': self.last_location,
 		 'time_stamp'   : time.time(),
                  }
 
