@@ -986,6 +986,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def maybe_clean(self):
         needs_cleaning = 0
+        have_tape = 0
         if self.driver_type == 'FTTDriver':
             ##XXX
             import ftt
@@ -1009,7 +1010,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             Trace.log(e_errors.INFO, "initiating automatic cleaning")
             save_state = self.state
-            if save_state == HAVE_BOUND:
+            if have_tape:
                 self.dismount_volume()
                 save_state = IDLE
             self.state = CLEANING
