@@ -26,6 +26,8 @@ import types
 import pg
 import ejournal
 import os
+import Trace
+import e_errors
 
 default_database = 'enstoredb'
 
@@ -178,7 +180,7 @@ class DbTable:
 		self.checkpoint()
 
 	def stop_backup(self):
-		Trace.log(e_errors.INFO, "End backup for "+self.name)
+		Trace.log(e_errors.INFO, "End backup for "+self.table)
 		self.backup_flag = 1
 
         #### NEED MORE WORK LATER
@@ -191,7 +193,7 @@ class DbTable:
 
 class FileDB(DbTable):
 	def __init__(self, host='localhost', database=default_database):
-		DbTable.__init__(self, host, database, table='file', pkey='bfid')
+		DbTable.__init__(self, host, database, table='file', pkey='bfid', auto_journal = 1)
 		self.retrieve_query = "\
         		select \
                 		bfid, crc, deleted, drive, \
@@ -243,7 +245,7 @@ class FileDB(DbTable):
 
 class VolumeDB(DbTable):
 	def __init__(self, host='localhost', database=default_database):
-		DbTable.__init__(self, host, database, table='volume', pkey='label')
+		DbTable.__init__(self, host, database, table='volume', pkey='label', auto_journal = 1)
 		self.retrieve_query = "\
         		select \
 				label, block_size, capacity_bytes, \
