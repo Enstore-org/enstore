@@ -12,9 +12,10 @@ int EMASSerr(char *caller, char *location, int status)
  return(status);
 }
 
-static char EMASS_Doc[] =  "EMASS Robot mount and dismount";
-static char Mount_Doc[] =  "mount a tape";
-static char Dismount_Doc[] =  "dismount a tape";
+static char EMASS_Doc[] =  "EMASS Robot operations";
+static char Mount_Doc[] =  "mount <vol> <drive> <media type> ";
+static char Dismount_Doc[] =  "dismount <vol> <drive> <media type>";
+static char Home_Doc[] = "home <robot>";
 
 /*
 	Convert Acsii media type to ACI enum - page 1-8 DAS ref guide
@@ -173,6 +174,30 @@ static PyObject* dismount(PyObject *self, PyObject *args)
 }
 
 /*
+	home (robot)
+*/
+static PyObject* home(PyObject *self, PyObject *args)
+{
+  char *robot;
+  int stat;
+  char *rv;
+
+  /*
+        Get the arguements
+  */
+  if (!PyArg_ParseTuple(args, "s", &robot))            /* get args */
+        return (NULL);
+  rv="badhome";
+  stat = aci_robhome(robot);
+  if (!stat)
+     rv="badstart";
+     stat=aci_robstat(robot, "START");
+     if (!stat)
+         rv="ok";
+  return(Py_BuildValue("s", rv));
+}
+
+/*
    Module Methods table.
 
    There is one entry with four items for for each method in the module
@@ -186,6 +211,7 @@ static PyObject* dismount(PyObject *self, PyObject *args)
 static PyMethodDef EMASS_Methods[] = {
   { "mount", mount, 1, Mount_Doc},
   { "dismount", dismount, 1, Dismount_Doc},
+  { "home", home, 1, Home_Doc},
   {0,     0}        /* Sentinel */
 };
 
