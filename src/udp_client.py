@@ -72,13 +72,8 @@ def wait_rsp( sock, address, rcv_timeout ):
 
 class UDPClient:
 
-    def __init__(self, host=None, port=0, socket=0):
-        if not host:
-            self.host, self.port, self.socket = get_client()
-        else:
-            self.host = host
-            self.port = port
-            self.socket = socket
+    def __init__(self):
+        self.host, self.port, self.socket = get_client()
         self.txn_counter = 0L
         self.pid = None
         self.sendport = 7
@@ -178,37 +173,19 @@ class UDPClient:
 	return self.socket.sendto( message, address )
 
         
-class UDPClientInterface(interface.Interface):
-
-    def __init__(self):
-        self.msg = "All dogs have fleas"
-	self.sendhost="localhost"
-	self.sendport=9998
-        self.host, self.port, self.socket = get_client()
-        interface.Interface.__init__(self)
-
-        # parse the options
-        self.parse_options()
-
-    # define the command line options that are valid
-    def options(self):
-        return ["msg=","host=","port="] +\
-               self.help_options()
-
 if __name__ == "__main__" :
 
     status = 0
 
-    # fill in the interface
-    intf = UDPClientInterface()
-
     # get a UDP client
-    u = UDPClient(intf.host, intf.port, intf.socket)
+    u = UDPClient()
 
-    print "Sending message", intf.msg, "to", intf.sendhost, " with callback on ", intf.port
+    msg="TEST MESSAGE"
+    print "Sending message", msg, "to", u.host, " with callback on port ", u.port
 
-    back = u.send_no_wait(intf.msg, (intf.sendhost, intf.sendport))
-    del intf
+    back = u.send_no_wait(msg, (u.host, u.port))
+    print "sleeping for 5 sec"
+    time.sleep(5)
     del u
     print "sleeping for 5 sec"
     time.sleep(5)
