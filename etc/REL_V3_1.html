@@ -5,13 +5,6 @@ Encp changes:
 =============
 
 With the --threaded option, encp will multi-thread the actual data transfer.
-Also, with the --mmap-io switch memory mapped i/o may be used on supported 
-file systems.  The switch --direct-io may also be used on Linux and IRIX 
-nodes with supporting file systems (very tricky to make this work).  These
-options (along with others) can *possibly* help speed up some transfers.
-If memory mapped i/o or direct i/o is not supported by the file system,
-encp will automatically attempt to revert to more portable file system access
-routines.
 
 A bug fix was made to limit the number of "mover importer" error messages.
 This was caused by an obscure order of events with a symptom of 15 minutes
@@ -96,6 +89,17 @@ For the record, the Enstore developers consider automounting pnfs filesytems
 to be problematic.
 
 Encp now records completed transfer information to the Accounting server.
+
+With the --mmap-io switch memory mapped i/o may be used on supported 
+file systems.  The switch --direct-io may also be used on Linux and IRIX 
+nodes with supporting file systems (very tricky to make this work).  If memory
+mapped i/o or direct i/o is not supported by the file system, encp will
+automatically attempt to revert to more portable file system access routines.
+These options (along with others) can *possibly* help speed up some transfers.
+However, in the hands of unknowledgeable users they can create problems for
+themselves and their collaborators.  These options were originally
+developed for use by dcache and are not considered very usefull to the 
+general user.
 
 Various file and directory errors are handled better.  In the specific
 cases found, correct error messages are now given.  For example, it was
