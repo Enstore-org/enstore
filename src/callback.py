@@ -13,7 +13,6 @@ import Trace
 import e_errors
 import checksum
 import hostaddr
-import access
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -67,7 +66,7 @@ def get_callback_port(start,end,use_multiple=0,fixed_ip=None,verbose=0):
     # Because we use file locks instead of semaphores, the system will
     # properly clean up, even on kill -9s.
     #lockf = open ("/var/lock/hsm/lockfile", "w")
-    if not access.access(HUNT_PORT_LOCK_DIR,access.W_OK):
+    if not os.access(HUNT_PORT_LOCK_DIR,os.W_OK):
         os.mkdir(HUNT_PORT_LOCK_DIR)
     lockf = open (HUNT_PORT_LOCK, "w")
     Trace.trace(20,"get_callback_port - trying to get lock on node %s %s"%(host_name,ca))

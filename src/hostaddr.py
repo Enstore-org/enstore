@@ -13,9 +13,6 @@ import socket
 import string
 import time
 
-#enstore imports
-import access
-
 
 hostinfo=None
 
@@ -73,7 +70,7 @@ def get_interface_file_name(verbose=0):
     for trydir in trydirs:
         trypath=os.path.join(trydir, filename)
         if verbose: print "searching", trydir, "for", filename
-        if access.access(trypath, access.R_OK):
+        if os.access(trypath, os.R_OK):
             if verbose: print "found it"
             return trypath
     if verbose: print "not found"
