@@ -99,7 +99,7 @@ def _parse_osf(tok):
 def _parse_sunos(tok):
     return long(tok[4]), long(tok[6])
 
-def _parse_default(tok):
+def _parse_default():
     return 0, 0
 
 def stats(interfaces):

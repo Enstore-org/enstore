@@ -202,27 +202,6 @@ class LibraryManagerMethods:
         os._exit(0)
 
 
-    # find mover in the list
-    def find_mover(mover, mover_list):
-        for mv in mover_list:
-            if (mover['address'] == mv['address']):
-                break
-        else:
-            # mover is not in the list
-            return {}
-        return mv
-
-    # find mover by name in the list
-    def find_mover_by_name(mover, mover_list):
-        for mv in mover_list:
-            if (mover == mv['mover']):
-                break
-        else:
-            # mover is not in the list
-            return {}
-        return mv
-
-
     # remove all pending works
     def flush_pending_jobs(self, status, external_label=None, jobtype=None):
         Trace.trace(12,"flush_pending_jobs: %s"%(external_label,))
@@ -656,7 +635,7 @@ class LibraryManagerMethods:
                     continue
                 break
             elif rq.work == 'write_to_hsm':
-                rq, key = self.process_write_request(requestor) 
+                rq, key = self.process_write_request(rq, requestor) 
                 if self.continue_scan:
                     rq, status = self.check_write_request(external_label, rq)
                     if rq and status[0] == e_errors.OK: break
