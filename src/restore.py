@@ -85,9 +85,9 @@ def suffix(s):
 	else:
 		return s1[-1]
 
-# getHomes(intf) -- get dbHome, jouHome, bckHost and bckHome
+# getDbJouHomes(intf) -- get dbHome and jouHome
 
-def getHomes(intf):
+def getDbJouHomes(intf):
 	
 	# find dbHome and jouHome
 	try:
@@ -110,6 +110,12 @@ def getHomes(intf):
 	if intf.jouHome:
 		jouHome = intf.jouHome
 
+	return dbHome, jouHome
+
+# getBckHostHome(intf) -- get bckHost and bckHome
+
+def getBckHostHome(intf):
+
 	# find backup host and path
 	backup_config = configuration_client.ConfigurationClient(
 		(intf.config_host,
@@ -122,6 +128,15 @@ def getHomes(intf):
 		bckHost = local_host
 
 	bckHome = backup_config['dir']
+
+	return bckHost, bckHome
+
+# getHomes(intf) -- get dbHome, jouHome, bckHost and bckHome
+
+def getHomes(intf):
+	
+	dbHome, jouHome = getDbJouHomes(intf)
+	bckHost, bckHome = getBckHostHome(intf)
 
 	return dbHome, jouHome, bckHost, bckHome
 
@@ -245,18 +260,19 @@ def retriveBackup(dbHome, jouHome, bckHost, bckHome, when = -1):
 	# taking care of journal files
 
 	if len(backups) > 1:
-		print "chdir to", dbHome, "...",
-		os.chdir(jouHome)
-		print "ok"
-		for i in backups[1:]:
-			fileJou = os.path.join(bckHome, i, "file.tar.gz")
-			volJou = os.path.join(bckHome, i, "volume.tar.gz")
-			cmd = "enrsh -n "+bckHost+" '"+compress_op+fileJou+"| dd bs=20b' | tar xvBfb - 20"
-			print cmd
-			os.system(cmd)
-			cmd = "enrsh -n "+bckHost+" '"+compress_op+volJou+"| dd bs=20b' | tar xvBfb - 20"
-			print cmd
-			os.system(cmd)
+		if jouHome:
+			print "chdir to", jouHome, "...",
+			os.chdir(jouHome)
+			print "ok"
+			for i in backups[1:]:
+				fileJou = os.path.join(bckHome, i, "file.tar.gz")
+				volJou = os.path.join(bckHome, i, "volume.tar.gz")
+				cmd = "enrsh -n "+bckHost+" '"+compress_op+fileJou+"| dd bs=20b' | tar xvBfb - 20"
+				print cmd
+				os.system(cmd)
+				cmd = "enrsh -n "+bckHost+" '"+compress_op+volJou+"| dd bs=20b' | tar xvBfb - 20"
+				print cmd
+				os.system(cmd)
 
 	return bckFile
 	
