@@ -7,7 +7,7 @@ import sys,os
 import string
 import getopt
 import socket
-
+import pprint
 
 #XXX cgw hack
 sys.path.insert(0,"../src")
@@ -237,6 +237,26 @@ if __name__=="__main__":
             
             # create volume map and store cross reference data
             p.set_xreference(vol_name, loc_cookie, size)
+            
+            ticket["work"] = "set_pnfsid"
+            ticket["fc"].update({
+                "pnfsvid":p.volume_fileP.id,
+                "pnfs_name0": p.pnfsFilename,
+                "pnfs_mapname": p.volume_fileP.pnfsFilename,
+                "pnfsid": p.id, 
+                "bfid": done_ticket['fc']['bfid']
+                })
 
-
-
+            if verbose: print "setting pnfsid"
+            done_ticket = fcc.set_pnfsid(ticket)
+           
+            status = done_ticket["status"]
+            if status[0] != "ok":
+                print status
+                sys.exit(-1)
+            
+ 
+            
+            
+            
+            
