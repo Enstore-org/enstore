@@ -913,10 +913,16 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
         volume_info = __vcc.inquire_vol(volume, 5, 20)
         if e_errors.is_ok(volume_info):
             return __csc
-        else:
+        elif volume_info['status'][0] == e_errors.KEYERROR:
             Trace.log(e_errors.WARNING,
                       "Volume clerk (%s) knows nothing about %s.\n"
                       % (__vcc.server_address, volume))
+        else:
+            Trace.log(e_errors.WARNING,
+                      "Failure communicating with volume clerk (%s) about"
+                      " volume %s: %s"
+                      % (__vcc.server_address, volume,
+                         str(volume_info['status'])))
 
     #Check the default vcc for performance reasons.
     if __csc != None:
@@ -931,10 +937,17 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
             if e_errors.is_ok(volume_info):
                 __vcc = test_vcc
                 return __csc
-            else:
+            elif volume_info['status'][0] == e_errors.KEYERROR:
                 Trace.log(e_errors.WARNING,
                           "Volume clerk (%s) knows nothing about %s.\n"
                           % (test_vcc.server_address, volume))
+            else:
+                Trace.log(e_errors.WARNING,
+                          "Failure communicating with volume clerk (%s) about"
+                          " volume %s: %s"
+                          % (test_vcc.server_address, volume,
+                             str(volume_info['status'])))
+
             
     # get a configuration server
     config_host = enstore_functions2.default_host()
@@ -1381,10 +1394,16 @@ def __get_vcc(parameter = None):
         volume_info = __vcc.inquire_vol(volume, 5, 20)
         if e_errors.is_ok(volume_info):
             return __vcc, volume_info
-        else:
+        elif volume_info['status'][0] == e_errors.KEYERROR:
             Trace.log(e_errors.WARNING,
                       "Volume clerk (%s) knows nothing about %s.\n"
                       % (__vcc.server_address, volume))
+        else:
+            Trace.log(e_errors.WARNING,
+                      "Failure communicating with volume clerk (%s) about"
+                      " volume %s: %s"
+                      % (__vcc.server_address, volume,
+                         str(volume_info['status'])))
 
     #Next check the vcc associated with the cached csc.
     if __csc != None:
@@ -1399,11 +1418,16 @@ def __get_vcc(parameter = None):
             if e_errors.is_ok(volume_info):
                 __vcc = test_vcc
                 return __vcc, volume_info
-            else:
+            elif volume_info['status'][0] == e_errors.KEYERROR:
                 Trace.log(e_errors.WARNING,
                           "Volume clerk (%s) knows nothing about %s.\n"
                           % (test_vcc.server_address, volume))
-
+            else:
+                Trace.log(e_errors.WARNING,
+                          "Failure communicating with volume clerk (%s) about"
+                          " volume %s: %s"
+                          % (test_vcc.server_address, volume,
+                             str(volume_info['status'])))
 
     # get a configuration server
     config_host = enstore_functions2.default_host()
