@@ -166,6 +166,12 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 	self.file_name = "%s.new"%(file,)
 	self.refresh = refresh
 
+    def dont_monitor(self, key, host, port):
+	self.text[key] = {}
+	self.text[key][enstore_constants.STATUS] = ["not monitoring", self.format_host(host),
+						    repr(port), 
+						    enstore_functions.format_time(time.time())]
+
     def set_alive_error_status(self, key):
 	try:
 	    self.text[key][enstore_constants.STATUS][0] = "error"
