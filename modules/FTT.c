@@ -277,7 +277,8 @@ FTT_close(  PyObject *self
     {   /* write out partial block */
 	int sts;
 	sts = ftt_write( g_ftt_desc_tp,  g_buf_p, g_buf_bytes );
-	if (sts == -1) return (raise_ftt_exception("close - partial block write"));
+	if (sts != g_buf_bytes)
+	    return (raise_ftt_exception("close - partial block write did not complete"));
     }
     g_buf_bytes = 0;		/* always zero g_buf - next open will start
 				 over! */
@@ -406,7 +407,7 @@ FTT_write(  PyObject *self
 	    if (g_buf_bytes >= g_blocksize)
 	    {   int ii;
 		sts = ftt_write(  g_ftt_desc_tp, g_buf_p, g_blocksize );
-		if (sts == -1) return (raise_ftt_exception("write"));
+		if (sts != g_blocksize) return (raise_ftt_exception("write"));
 		/* shift the bytes down */
 		for (ii=0; ii<g_blocksize; ii++)
 		    g_buf_p[ii] = g_buf_p[g_blocksize+ii];
@@ -422,11 +423,11 @@ FTT_write(  PyObject *self
 		g_buf_p[g_buf_bytes++] = *(buf_p++);
 
 	    sts = ftt_write(  g_ftt_desc_tp, g_buf_p, g_blocksize );
-	    if (sts == -1) return (raise_ftt_exception("write"));
+	    if (sts != g_blocksize) return (raise_ftt_exception("write"));
 
 	    while (no_bytes >= g_blocksize)
 	    {   sts = ftt_write(  g_ftt_desc_tp, buf_p, g_blocksize );
-		if (sts == -1) return (raise_ftt_exception("write"));
+		if (sts != g_blocksize) return (raise_ftt_exception("write"));
 		buf_p += sts;
 		no_bytes -= sts;
 	    }
@@ -442,7 +443,7 @@ FTT_write(  PyObject *self
 	{
 	    sts = ftt_write(  g_ftt_desc_tp, &buf_p[bytes_written]
 			    , g_blocksize );
-	    if (sts == -1) return (raise_ftt_exception("write"));
+	    if (sts != g_blocksize) return (raise_ftt_exception("write"));
 	    no_bytes -= sts;
 	    bytes_written += sts;
 	}
@@ -452,7 +453,7 @@ FTT_write(  PyObject *self
     }
 
     return (Py_BuildValue(""));
-}
+}   /* FTT_write */
 
 
 
@@ -816,36 +817,37 @@ FTT_fd_xfer(  PyObject *self
 	    switch (msg_s.mtype)
 	    {
 	    case WrtSiz:
-		sts = 0;
-		do  /* I know a read (i.e from net) can return less than */
-		{   /* requested, but when would a write??? */
-		    msg_s.md.data -= sts;
-		    if (g_mode_c == 'w')
-		    {
-			if (msg_s.md.data != g_blocksize)
-			{   assert( msg_s.md.data < g_blocksize );
-			    sts = msg_s.md.data; /* use temporarily */
-			    while (sts--)
-				g_buf_p[sts] = msg_s.md.c_p[sts];
-			    g_buf_bytes = msg_s.md.data;
-			    /* NEXT MESSAGE SHOULD/BETTER BE CRC */
-			    sts = msg_s.md.data; /* set for do-while test */
-			}
-			else
-			{   sts = ftt_write( g_ftt_desc_tp, msg_s.md.c_p, msg_s.md.data );
-			    if (sts == -1) return (raise_ftt_exception("fd_xfer - write"));
-			}
-			if (no_bytes < sts)
-			{   *write_bytes_ip += no_bytes;
-			    no_bytes = 0;
-			}
-			else
-			{   *write_bytes_ip += sts;	/* count up */
-			    no_bytes -= sts; /* count down */
-			}
+		if (g_mode_c == 'w')
+		{   /* I know a read (i.e from net) can return less than */
+		    /* requested, but when would a write??? */
+		    if (msg_s.md.data != g_blocksize)
+		    {   assert( msg_s.md.data < g_blocksize );
+			sts = msg_s.md.data; /* use temporarily */
+			while (sts--)
+			    g_buf_p[sts] = msg_s.md.c_p[sts];
+			g_buf_bytes = msg_s.md.data;
+			/* NEXT MESSAGE SHOULD/BETTER BE CRC */
 		    }
 		    else
-		    {   /* writing to user */
+		    {   sts = ftt_write( g_ftt_desc_tp, msg_s.md.c_p, msg_s.md.data );
+			if (sts != msg_s.md.data) return (raise_ftt_exception("fd_xfer - write"));
+		    }
+		    *write_bytes_ip += sts;	/* count up */
+		    no_bytes -= sts; /* count down */
+		}
+		else
+		{   /* writing to user */
+		    /* recall cases:
+		       1) user's request can be filled from g_buf_p (no need for reader to read from tape)
+		       2) user's request can not filled from g_buf_p (reader needs to get *block* from tape)
+		          2a) have just what we need
+			  2b) have extra (save extra in g_buf_p)
+		    */
+		    sts = 0;
+		    do
+		    {   
+			msg_s.md.data -= sts;
+			msg_s.md.c_p  += sts;
 			sts = write( fd, msg_s.md.c_p
 				    , (no_bytes<msg_s.md.data)?no_bytes:msg_s.md.data );
 			if (sts == -1) return (raise_exception("fd_xfer - write",0));
@@ -858,8 +860,8 @@ FTT_fd_xfer(  PyObject *self
 			}
 			no_bytes -= sts; /* count down */
 			*write_bytes_ip += sts;	/* count up */
-		    }
-		} while ((sts!=msg_s.md.data) && (no_bytes > 0));
+		    } while ((sts!=msg_s.md.data) && (no_bytes > 0));
+		}
 
  re_semop:
 		sts = semop( g_semid, &sops_wr_wr2rd, 1 );
@@ -934,7 +936,7 @@ FTT_writefm(  PyObject *self
     if (g_buf_bytes && (g_mode_c=='w'))
     {   /* write out partial block */
 	sts = ftt_write( g_ftt_desc_tp,  g_buf_p, g_buf_bytes );
-	if (sts == -1) return (raise_ftt_exception("FTT_writefm - partial block write"));
+	if (sts != g_buf_bytes) return (raise_ftt_exception("FTT_writefm - partial block write"));
     }
     g_buf_bytes = 0;		/* always zero g_buf - next open will start
 				 over! */
