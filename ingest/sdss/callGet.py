@@ -63,49 +63,67 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
         sys.stderr.write("%s does not exist\n"%(outputDir,))
         sys.exit(70)
     
-    #args = (path, "--verbose", "4", "--list", fname, tapeLabel,
-    #        pnfsDir, outputDir)
+    
     while 1:
-        args = (path, "--list", fname, tapeLabel, pnfsDir, outputDir)
+        args = (path, "--verbose", "5", "--list", fname, tapeLabel,
+                pnfsDir, outputDir)
+        #args = (path, "--list", fname, tapeLabel, pnfsDir, outputDir)
 
         print string.join(args)
 
         #Fork off the "get" process and read in its output.
 
         missingFiles = []
-        capturestderr=1
-        pipeObj = popen2.Popen3(string.join(args), capturestderr, 0)
+        pipeObj = popen2.Popen4(string.join(args),  0)
         if pipeObj is None:
             print "could not fork off the process %s"%(args)
-            return
-        rc = pipeObj.wait() >> 8
-        #result = pipeObj.fromchild.readlines()  # result has returned string
-        while 1:
-            l = pipeObj.fromchild.readline()[:-1]
-            if l:
-                print l
+            return 1
+
+        rc = -1 #poll() returns -1 when the process is still alive.
+        line = 1 #Somethig true.
+        while rc == -1 and line:
+            line = pipeObj.fromchild.readline()[:-1]
+            if rc == -1:
+                rc = pipeObj.poll() # Don't get if we already have it.
+            #if rc != -1:
+            #    rc = rc >> 8
+            if line:
+                if len(line)> 1:
+                    line=line[:-1]
+                #This will put all of the standard out and err output from
+                # get to sdsscp's standard out.  There is probably a better
+                # way, but for now this will work.
+                print line
+                if line.find("error_output") != -1:
+                    items = line.split()
+                    try:
+                        missingFiles.append(items[1])
+                    except IndexError, detail:
+                        sys.stderr.write("%s\n" % (detail,))
             else:
                 break
+
+        rc = rc >> 8
         if rc == 0 or rc == 2:
             break
-        else:
-            print "stat",rc
-            while 1:
-                line = pipeObj.childerr.readline() # don't cut out \n there may be such lines
-                if line:
-                    sys.stderr.write(line)
-                    if len(line)> 1: line=line[:-1]
-                    if line.find("error_output") != -1:
-                        items = line.split()
-                        try:
-                            missingFiles.append(items[1])
-                        except IndexError, detail:
-                           sys.stderr.write("%s\n"%(detail,))
-                else:
-                    break
+        #else:
+        #    print "stat",rc
+        #    while 1:
+        #        line = pipeObj.childerr.readline() # don't cut out \n there may be such lines
+        #        if line:
+        #            sys.stderr.write(line)
+        #            if len(line) > 1: line=line[:-1]
+        #            if line.find("error_output") != -1:
+        #                items = line.split()
+        #                try:
+        #                    missingFiles.append(items[1])
+        #                except IndexError, detail:
+        #                   sys.stderr.write("%s\n"%(detail,))
+        #        else:
+        #            break
 
         del(pipeObj)
-        print "missing files",missingFiles
+        print "missing files", missingFiles
         if missingFiles:
             old_fname = fname
             fname = tempfile.mktemp()
