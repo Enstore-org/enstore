@@ -36,6 +36,7 @@ import volume_family
 import priority_selector
 import mover_constants
 import charset
+import discipline
 
 KB=1L<<10
 MB=1L<<20
@@ -358,6 +359,7 @@ class LibraryManagerMethods:
                 rc = w
                 break
         return rc
+
     # if returned ticket has no external label use the
     # following as an alternative to get_work_at_movers
     def get_work_at_movers_m(self, mover):
@@ -1101,6 +1103,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        self.max_suspect_movers,
                                        self.max_suspect_volumes)
         self.init_postponed_requests(self.keys.get('rq_wait_time',3600))
+        self.restrictor = discipline.Restrictor(self.csc)
         self.set_udp_client()
 
 
@@ -1153,6 +1156,32 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.udpc = udp_client.UDPClient()
         self.rcv_timeout = 10 # set receive timeout
 
+    def restrict_host_access(self, storage_group, host, max_permitted):
+        active = 0
+        Trace.trace(30, "restrict_host_access(%s,%s,%s)"%
+                    (storage_group, host, max_permitted))
+        for w in self.work_at_movers.list:
+            if (w['vc']['storage_group'] == storage_group and
+                w['wrapper']['machine'][1] == host):
+                active = active + 1
+        Trace.trace(30, "restrict_host_access(%s,%s)"%
+                    (active, max_permitted))
+        return active >= max_permitted
+
+    def restrict_version_access(self, storage_group, legal_version, ticket):
+        if storage_group == ticket['vc']['storage_group']:
+            if ticket.has_key('version'):
+                version=ticket['version'].split()[0]
+            else:
+                version = ''
+            if convert_version(legal_version) > convert_version(version):
+                ticket['status'] = (e_errors.VERSION_MISMATCH,
+                                    "encp version too old: %s. Must be not older than %s"%(version, legal_version,))
+                return 1
+        return 0
+                
+        
+        
     def write_to_hsm(self, ticket):
         if ticket.has_key('version'):
             version=ticket['version'].split()[0]
@@ -1202,6 +1231,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
             return
 
+
         # check file family width
         ff_width = ticket["vc"].get("file_family_width", 0)
         if ff_width <= 0:
@@ -1219,6 +1249,28 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                         "%s contains illegal character"%(item,))
                     self.reply_to_caller(ticket)
                     return
+
+        ## check if there are any additional restrictions
+        rc, fun, args, action = self.restrictor.match_found(ticket)
+        if rc and fun and action:
+            ticket["status"] = (e_errors.OK, None)
+            if fun == 'restrict_version_access':
+                #replace last argument with ticket
+                args.remove({})
+                args.append(ticket)
+            ret = apply(getattr(self,fun), args)
+            if ret and (action in ('locked', 'ignore', 'pause', 'nowrite', 'reject')):
+                format = "access restricted for %s : library=%s family=%s requester:%s "
+                Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
+                                                 ticket["vc"]["library"],
+                                                 ticket["vc"]["file_family"],
+                                                 ticket["wrapper"]["uname"]))
+                if action == 'locked':
+                    ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+                self.reply_to_caller(ticket)
+                Trace.notify("client %s %s %s %s" % (host, work, ff, action))
+                return
+                
 
         # check if work is in the at mover list before inserting it
 ##        for wt in self.work_at_movers.list:
@@ -1296,6 +1348,27 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.reply_to_caller(ticket)
             Trace.notify("client %s %s %s %s" % (host, work, vol, self.lm_lock))
             return
+        ## check if there are any additional restrictions
+        rc, fun, args, action = self.restrictor.match_found(ticket)
+        if rc and fun and action:
+            ticket["status"] = (e_errors.OK, None)
+            if fun == 'restrict_version_access':
+                #replace last argument with ticket
+                args.remove({})
+                args.append(ticket)
+            ret = apply(getattr(self,fun), args)
+            if ret and (action in ('locked', 'ignore', 'pause', 'noread', 'reject')):
+                format = "access restricted for %s : library=%s family=%s requester:%s"
+                Trace.log(e_errors.INFO, format%(ticket['wrapper']['pnfsFilename'],
+                                                 ticket["vc"]["library"],
+                                                 ticket["vc"]["volume_family"],
+                                                 ticket["wrapper"]["uname"]))
+                if action is 'locked':
+                    ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+                self.reply_to_caller(ticket)
+                Trace.notify("client %s %s %s %s" % (host, work, vol, action))
+                return
+
         # check if this volume is OK
         v = self.vcc.inquire_vol(ticket['fc']['external_label'])
         if (v['system_inhibit'][0] == e_errors.NOACCESS or

@@ -28,7 +28,6 @@ class Restrictor:
             self.exists = 1
             del(dict['status'])
         self.storage_groups = dict
-        print self.storage_groups
         return (e_errors.OK, None)
 
     def __init__(self, csc):
@@ -64,8 +63,10 @@ class Restrictor:
         match = 0, None, None, None
         sg = flat_ticket.get('storage_group', None)
         if not sg:
-            return 0, None. None. None
-        sg_dict = self.storage_groups[sg]
+            return 0, None, None, None
+        sg_dict = self.storage_groups.get(sg, None)
+        if not sg_dict:
+           return match 
         for key in sg_dict.keys():
             conf_keys = sg_dict[key]['keys'].keys()
             nkeys = len(conf_keys)
