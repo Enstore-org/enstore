@@ -89,7 +89,7 @@ echo "--------------------------------------------------------------------------
 
 elif [ $gang = "cdfen" ]; then
 
-# tapes in cdf silo are acs 0 & lsm 0.
+# tapes in cdf silo are acs 0 & lsm 0&1.
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes in the cdfen silo (acs 0, lsm 0) that are not fully declared to enstore"
@@ -103,7 +103,7 @@ done
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes not in any category"
-egrep -v "^$|^<|CLN|in transit" /diska/tape-inventory/STK-VOLUMES.html  |egrep -v "         0, 0,"
+egrep -v "^$|^<|CLN|in transit" /diska/tape-inventory/STK-VOLUMES.html  |egrep -v "         0, 0|         0, 1,"
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
