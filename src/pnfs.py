@@ -49,22 +49,8 @@ def print_results(result):
     else:
         print result
 
-# generate the full path name to the file
-def fullpath(filename):
-    if not filename:
-        return None, None, None, None
-
-    machine = hostaddr.gethostinfo()[0]
-
-    #Expand the path to the complete absolute path.
-    filename = os.path.expandvars(filename)
-    filename = os.path.expanduser(filename)
-    filename = os.path.abspath(filename)
-    filename = os.path.normpath(filename)
-
-    dirname, basename = os.path.split(filename)
-
-    return machine, filename, dirname, basename
+#Make this shortcut so there is less to type.
+fullpath = enstore_functions2.fullpath
 
 def is_pnfs_path(pathname, check_name_only = None):
 
