@@ -322,8 +322,9 @@ class Mover :
         fc = FileClerkClient(self.csc)
         self.fticket = fc.new_bit_file(file_cookie,ticket["external_label"],
                                        sanity_cookie,complete_crc)
-        # only bfid is needed, but save other useful information for user too
+        # bfid & crc needed, but save other useful information for user too
         ticket["bfid"] = self.fticket["bfid"]
+	ticket["complete_crc"] = complete_crc
         ticket["volume_clerk"] = self.vticket
         ticket["file_clerk"] = self.fticket
         minfo = {}
@@ -420,6 +421,7 @@ class Mover :
         # All is well - read has finished correctly
 
         # add some info to user's ticket
+	ticket["complete_crc"] = complete_crc
         ticket["volume_clerk"] = self.vticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',

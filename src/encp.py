@@ -7,6 +7,7 @@ import pwd
 import grp
 import pnfs
 import callback
+import binascii
 from configuration_client import configuration_client
 from udp_client import UDPClient, TRANSFER_MAX
 
@@ -171,12 +172,15 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               "   cum=",time.time()-t0
 
     t1 = time.time()
+    mycrc = 0
     if list:
         print "Sending data", "   cum=",time.time()-t0
     while 1:
         buf = in_file.read(min(fsize, 65536*4))
         l = len(buf)
         if len(buf) == 0 : break
+	if crc != 0 :
+	    mycrc = binascii.crc_hqx(buf,mycrc)
         badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
         if badsock != 0 :
@@ -215,6 +219,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         print "  dt:",tinfo["final_dialog"], "   cum=",time.time()-t0
 
     if done_ticket["status"] == "ok" :
+	if done_ticket["complete_crc"] != mycrc :
+	    print "CRC error",complete_crc, mycrc
         t1 = time.time()
         if list:
             print "Adding file to pnfs", "   cum=",time.time()-t0
