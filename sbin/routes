@@ -12,63 +12,14 @@ N=/dev/null
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 case $node in
-  stken*) NODES="stkensrv0: stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
-                 stkenmvr1a: stkenmvr1b: \
-                 stkenmvr2a: stkenmvr2b: \
-                 stkenmvr3a: stkenmvr3b: \
-                 stkenmvr4a: stkenmvr4b: \
-                 stkenmvr5a: stkenmvr5b: \
-                 stkenmvr6a: stkenmvr6b: \
-                 stkenmvr7a: \
-                 stkenmvr8a: \
-                 stkenmvr9a: \
-                 stkenmvr10a: \
-                 stkenmvr11a: \
-                 stkenout1: stkenout2: \
-                 stkendca3a: stkendca4a: stkendca5a: \
-                 rip9: rip10:"
+
+  stken*) NODES="`cat /usr/local/etc/farmlets/stken-alla /usr/local/etc/farmlets/stken-allb`"
           ;;
 
-   d0en*) NODES="d0ensrv0: d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5: \
-                 d0enmvr1a: d0enmvr1b: \
-                 d0enmvr2a: d0enmvr2b: \
-                 d0enmvr3a: d0enmvr3b: \
-		 d0enmvr4a:  \
-                 d0enmvr5a: d0enmvr5b: \
-                 d0enmvr6a: d0enmvr6b: \
-		 d0enmvr7a:  \
-                 d0enmvr8a: d0enmvr8b: \
-                 d0enmvr9a:  \
-                 d0enmvr10a: \
-                 d0enmvr11a: \
-                 d0enmvr12a: \
-                 d0enmvr13a: d0enmvr13b: \
-                 d0enmvr14a: \
-                 d0enmvr15a: d0enmvr15b: \
-                 d0enmvr16a: d0enmvr16b: \
-                 d0enmvr17a: \
-                 d0enmvr18a: \
-                 d0enmvr19a: \
-                 d0enmvr20a: \
-                 d0enmvr21a: \
-                 d0enmvr22a: \
-                 d0enmvr23a: \
-                 d0enmvr24a: \
-                 d0endca3a:"
+   d0en*) NODES="`cat /usr/local/etc/farmlets/d0en-alla /usr/local/etc/farmlets/d0en-allb`"
           ;;
 
-   cdfen*) NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4:  \
-		 cdfenmvr1a: \
-		 cdfenmvr2a: \
-                 cdfenmvr3a: \
-                 cdfenmvr4a: \
-                 cdfenmvr5a: \
-                 cdfenmvr6a: \
-                 cdfenmvr7a: \
-                 cdfenmvr8a: \
-                 cdfenmvr9a: \
-                 cdfenmvr10a: \
-                 cdfendca3: cdfendca4: cdfendca5: "
+  cdfen*) NODES="`cat /usr/local/etc/farmlets/cdfen-alla`"
           ;;
 
        *) NODES=UNKNOWN
@@ -198,6 +149,7 @@ add*)
     /sbin/route add -host rip3        eth0
     /sbin/route add -host rip4        eth0
     /sbin/route add -host rip5        eth0
+
     /sbin/route add -host rip6        eth0
     /sbin/route add -host rip7        eth0
     /sbin/route add -host rip8        eth0
@@ -451,7 +403,7 @@ EOF
       node=`echo $knode | cut -f1 -d:`
       CF=/tmp/routes_quickcheck_$node
       current=`CF_current`
-      production=`echo $knode|grep -c :`
+      production=1 # `echo $knode|grep -c :`
       if [ $production -ne 0 ]; then
          color=$blue
          P=YES
