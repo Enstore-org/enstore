@@ -34,10 +34,11 @@ host=`echo "$nodes" | grep -i $mover | grep mover| cut -f2 -d:`
 port=`echo "$nodes" | grep -i $mover | grep mover| cut -f3 -d:`
 mvr=`echo "$nodes" | grep -i $mover | grep mover| cut -f1 -d:| cut -f1 -d.`
 case $mvr in
-  *DLT*) rate=5.0 ;;
-  *MAM*) rate=2.8 ;;
-  *AIT*) rate=2.7 ;;
-      *) rate=100.;;
+  *DLT*) rate=5.0  ;;
+  *MAM*) rate=2.8  ;;
+  *AIT*) rate=2.7  ;;
+  *stk*) rate=11.0 ;;
+      *) rate=100. ;;
 esac
 
 #echo $host
