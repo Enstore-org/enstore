@@ -7,6 +7,7 @@ if [ -n "${1-}" ]; then opt=$1; else opt=""; fi
 doit() { echo "$cmd" 
          eval "$cmd"
        }
+
 case `uname -n` in
    rip6*)  
     cmd="killall python"; doit
@@ -25,7 +26,7 @@ case `uname -n` in
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 ait.library_manager   &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 mam.library_manager   &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 dlt.library_manager   &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red50.library_manager & "; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red50.library_manager &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red20.library_manager &"; doit
     ;;
    rip1*)  
@@ -34,36 +35,37 @@ case `uname -n` in
 
     cmd="killall db_checkpoint"; doit
     cmd="killall db_deadlock"; doit
-    cmd="python /home/bakken/enstore/src/volume_clerk.py         --config_host=samson.fnal.gov --config_port=7500 "; doit
-    cmd="python /home/bakken/enstore/src/file_clerk.py           --config_host=samson.fnal.gov --config_port=7500 "; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 sammam.library_manager "; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 samait.library_manager "; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 samdlt.library_manager "; doit
+    cmd="python /home/bakken/enstore/src/volume_clerk.py         --config_host=samson.fnal.gov --config_port=7500 &"; doit
+    cmd="python /home/bakken/enstore/src/file_clerk.py           --config_host=samson.fnal.gov --config_port=7500 &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 sammam.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 samait.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 samdlt.library_manager &"; doit
     cmd="db_checkpoint -h /raid/enstore/db -p 5 &"; doit
     cmd="db_deadlock   -h /raid/enstore/db -t 1 &"; doit
     ;;
    rip2*)  
     cmd="killall python"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DE13DLT.mover "; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DE15DLT.mover "; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DC11MAM.mover "; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DE13DLT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DE15DLT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DC11MAM.mover &"; doit
     ;;
    rip7*)  
     cmd="killall python"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 rip6.library_manager "; doit
-    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 rip6.media_changer "; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 rip6.mover "; doit
-    cmd="python /home/bakken/enstore/src/inquisitor.py           --config_host=rip6.fnal.gov --config_port=7500 "; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 rip6.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 rip6.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 rip6.mover &"; doit
+    cmd="python /home/bakken/enstore/src/inquisitor.py           --config_host=rip6.fnal.gov --config_port=7500 &"; doit
     ;;
    rip9*)  
     cmd="killall python"; doit
-    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 STK.media_changer "; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk1.mover "; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk2.mover "; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 STK.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk1.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk2.mover &"; doit
     ;;
    fntt*)  
-    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM05AIT.mover"; doit
-    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM07AIT.mover"; doit
+    cmd="zapit -s 15 python"; doit
+    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM05AIT.mover &"; doit
+    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM07AIT.mover &"; doit
     ;;
    *) 
     ;;
