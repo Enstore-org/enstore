@@ -470,11 +470,11 @@ class NullDriver( GenericDriver):
 	    if self.mode == 'r':		# relative to this driver = "from hsm"
 		__fd__ = os.open( '/dev/zero', mode_string_to_int(self.mode) )
 		crc = EXfer.fd_xfer( __fd__, fd, siz_bytes, 
-				     self.blocksize, None, 0, self.shm )
+				     self.blocksize, 1, 0, self.shm )
 	    else:
                 __fd__ = os.open( '/dev/null', mode_string_to_int(self.mode) )
 		crc = EXfer.fd_xfer( fd, __fd__, siz_bytes,
-				     self.blocksize, None, 0, self.shm )
+				     self.blocksize, 1, 0, self.shm )
 		self.remaining_bytes = self.remaining_bytes - siz_bytes
                 pass
             pass
