@@ -863,6 +863,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                         timedout=1
                         break
                     control_socket, address = listen_socket.accept()
+                    #XXX check hostaddr.allow(address)
                     ticket = callback.read_tcp_obj(control_socket)
                     if verbose > 3:
                         print "ENCP:write_to_hsm MV called back with"
