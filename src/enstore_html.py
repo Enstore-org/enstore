@@ -786,7 +786,7 @@ class EnLogPage(EnBaseHtmlDoc):
 		for day in [0,1,2,3,4,5,6]:
 		    if mweek[day] == 0:
 			# this is null entry represented by a blank entry on the calendar
-			tr.append(HTMLgen.TD(self.empty_data()))
+			tr.append(self.empty_data())
 		    else:
 			(size, log) = sizes[date].get(mweek[day], (-1, ""))
 			if size == -1:
