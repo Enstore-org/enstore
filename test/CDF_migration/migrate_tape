@@ -130,7 +130,7 @@ cat $dirs | while read dir; do
   fi
   file_list=`grep $dir $files`
   if [ $USE_A_DRIVE -eq 0 ]; then
-     ENSTORE_SPECIAL_LIB=CDF-9940B; export ENSTORE_SPECIAL_LIB
+     ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
   else
      unset ENSTORE_SPECIAL_LIB
   fi
@@ -200,7 +200,7 @@ cat $files | while read file; do
             mkdir -p $dlfile
      fi
      if [ $USE_A_DRIVE -eq 0 ]; then
-        ENSTORE_SPECIAL_LIB=CDF-9940B; export ENSTORE_SPECIAL_LIB
+        ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
      else
          unset ENSTORE_SPECIAL_LIB
      fi
