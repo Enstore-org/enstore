@@ -419,6 +419,7 @@ profile_function(  PyObject	*self
     {   if (!get_msg(args,msg))
 	    return (raise_exception("profile_function - parse error"));
 	depth = get_depth();
+	if (depth > 31) depth=31;
 	Ptrace_QPut( &tt, depth, msg );
 	have_time = have_mesg = have_dpth = 1;
     }
