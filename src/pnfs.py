@@ -609,9 +609,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # store the cross-referencing data
     def set_xreference(self, volume, location_cookie, size, file_family,
                        pnfsFilename, volume_filepath, id, volume_fileP,
-                       bit_file_id, drive, filepath=None):
+                       bit_file_id, drive, crc, filepath=None):
 
-        value = (10*"%s\n")%(volume,
+        value = (11*"%s\n")%(volume,
                              location_cookie,
                              size,
                              file_family,
@@ -620,7 +620,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                              id,
                              volume_fileP,  #.id,
                              bit_file_id,
-                             drive)
+                             drive,
+                             crc)
         
         Trace.trace(11,'value='+value)
         if filepath:
@@ -662,10 +663,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                            enstore_constants.XREF_LAYER))
 
         #Strip off whitespace from each line.
-        xinfo = map(string.strip, xinfo[:10])
+        xinfo = map(string.strip, xinfo[:11])
         #Make sure there are 10 elements.  Early versions only contain 9.
         # This prevents problems.
-        xinfo = xinfo + ([UNKNOWN] * (10 - len(xinfo)))
+        xinfo = xinfo + ([UNKNOWN] * (11 - len(xinfo)))
 
         #If the class member value was used, store the values seperatly.
         if not filepath:
@@ -680,6 +681,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 self.pnfsid_map = xinfo[7]
                 self.bfid = xinfo[8]
                 self.origdrive = xinfo[9]
+                self.crc = xinfo[10]
             except ValueError:
                 pass
 
@@ -821,7 +823,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def pxref(self):  #, intf):
         names = ["volume", "location_cookie", "size", "file_family",
                  "original_name", "map_file", "pnfsid_file", "pnfsid_map",
-                 "bfid", "origdrive"]
+                 "bfid", "origdrive", "crc"]
         try:
             self.verify_existance()
             data = self.get_xreference()
@@ -2542,7 +2544,7 @@ def do_work(intf):
                     try:
                         #Not all functions use/need intf passed in.
                         rtn = apply(getattr(instance, "p" + arg), ())
-                    except TypeError:
+                    except TypeError, msg:
                         rtn = apply(getattr(instance, "p" + arg), (intf,))
                     break
             else:

@@ -3272,14 +3272,21 @@ def set_pnfs_settings(ticket, intf_encp):
     layer4_start_time = time.time() # Start time of setting pnfs layer 4.
         
     #Store the cross reference data into layer 4.
+
+    #Format some tape drive output.
     mover_ticket = ticket.get('mover', {})
     drive = "%s:%s" % (mover_ticket.get('device', 'Unknown'),
                        mover_ticket.get('serial_num','Unknown'))
+    #For writes to null movers, make the crc zero.
+    if mover_ticket['driver'] == "NullDriver":
+        crc = 0
+    else:
+        crc = ticket['fc']['complete_crc']
+    #Write to the metadata layer 4 "file".
     try:
         #t.get_file_family()
         p.get_bit_file_id()
         p.get_id()
-
         p.set_xreference(ticket["fc"]["external_label"],
                          ticket["fc"]["location_cookie"],
                          ticket["fc"]["size"],
@@ -3289,7 +3296,8 @@ def set_pnfs_settings(ticket, intf_encp):
                          p.id,
                          "", #p.volume_fileP.id,
                          p.bit_file_id,
-                         drive)
+                         drive,
+                         crc)
     except KeyboardInterrupt:
         raise sys.exc_info()
     except:
@@ -4068,6 +4076,7 @@ def verify_read_request_consistancy(requests_per_vol):
                 db_pnfs_name0 = request['fc']['pnfs_name0']
                 db_pnfsid = request['fc']['pnfsid']
                 db_bfid = request['fc']['bfid']
+                db_crc = request['fc']['complete_crc']
             except (ValueError, AttributeError, TypeError,
                     IndexError, KeyError), msg:
                 raise EncpError(
@@ -4090,7 +4099,8 @@ def verify_read_request_consistancy(requests_per_vol):
                 p.pnfsid_file == pnfs.UNKNOWN or
                 #Volume map file id no longer used.
                 p.bfid == pnfs.UNKNOWN
-                #Origdrive not always recored.
+                #Origdrive has not always been recored.
+                #CRC has not always been recored.
                 ):
                 rest = {'infile':request['infile'],
                         'bfid':request['bfid'],
@@ -4116,9 +4126,9 @@ def verify_read_request_consistancy(requests_per_vol):
                   #Mapfile no longer used.
                   db_pnfsid != p.pnfsid_file or
                   #Volume map file id no longer used.
-                  db_bfid != p.bfid
-                  #Origdrive not always recored.
-                  ):
+                  db_bfid != p.bfid or
+                  #Origdrive has not always been recored.
+                  (p.crc != pnfs.UNKNOWN and long(db_crc) != long(p.crc))):
                 rest = {'infile':request['infile'],
                         'outfile':request['outfile'],
                         'bfid':request['bfid'],
@@ -4134,6 +4144,8 @@ def verify_read_request_consistancy(requests_per_vol):
                         'pnfs_pnfsid':p.pnfsid_file,
                         'db_bfid':db_bfid,
                         'pnfs_bfid':p.bfid,
+                        'db_crc':db_crc,
+                        'pnfs_crc':p.crc,
                         'status':"Probable database conflict with pnfs."}
                 Trace.alarm(e_errors.ERROR, e_errors.CONFLICT, rest)
                 raise EncpError(None,
