@@ -1,16 +1,19 @@
-#!/usr/hppc_home/www/cgi-bin/python
+#!/fnal/ups/prd/python/v1_5_2/Linux+2/bin/python
 ######################################################################
 # src/$RCSfile$   $Revision$
 #
 import cgi
 import string
 import os
+import posixpath
 import sys
 import tempfile
 import re
+import getpass
 
 ENSTORE_USER_NODES = "enstore_user_nodes.txt"
 FERMI_DOMAIN = "^131.225."
+TMP_DIR = "/tmp/enstore"
 
 def append_from_key(argv, value_text_key, form, alt_name=""):
     if not alt_name:
@@ -58,6 +61,21 @@ def find_libtppy(enstore_setups):
 	    libtppy_dir = string.replace(libtppy_dir, "\"", "")
 	    sys.path.append("%s/lib"%libtppy_dir)
 
+def set_trace_key():
+    # get who we are
+    us = getpass.getuser()
+    us_dir = "%s/%s"%(TMP_DIR, us)
+    # check if the directory /tmp/enstore/us exists.  if not create it.
+    if not posixpath.exists(TMP_DIR):
+	# the path did not exist, create it
+	os.mkdir(TMP_DIR)
+	os.mkdir(us_dir)
+    else:
+	if not posixpath.exists(us_dir):
+	    os.mkdir(us_dir)
+    # set an environment variable that will tell trace where to put the key
+    os.environ["TRACE_KEY"] = "%s/%s"%(us_dir, "trace.cgi")
+
 def find_enstore():
     enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore").readlines()
     enstore_dir = string.strip(enstore_info[0])
@@ -71,6 +89,11 @@ def find_enstore():
     # fix up the config host and port to give to the command
     config_host = string.strip(enstore_info[2])
     config_port = string.strip(enstore_info[1])
+
+    # we must create a pointer in the environment ot the trace key we are
+    # going to use.   first see if the directory exists and if not create it.
+    set_trace_key()
+
     return (config_host, config_port)
 
 def go():
@@ -84,8 +107,7 @@ def go():
     # first determine if a request from this node is allowed to happen
     # the node had better be listed in a file called enstore_user_nodes.txt
     # which is located in the current directory
-    try:
-        filestat = os.stat(ENSTORE_USER_NODES)
+    if posixpath.exists(ENSTORE_USER_NODES):
         # read in the file
         filedes = open(ENSTORE_USER_NODES)
         # for each line in the file, see if the remote node is in the line
@@ -103,7 +125,7 @@ def go():
         if not found_it:
             no_access(host)
             raise SystemExit
-    except OSError:
+    else:
         # the file did not exist, only allow addresses from *.fnal.gov
         if not in_domain(os.environ["REMOTE_ADDR"], FERMI_DOMAIN):
             no_access(os.environ["REMOTE_ADDR"])
