@@ -14,7 +14,7 @@ import glob
 # enstore imports
 import Trace
 import configuration_client	# to talk to configuration server
-import interface		# to get default host and port
+import option		        # to get default host and port
 import e_errors                 # error information
 import log_client               # for getting info into the log
 
@@ -195,8 +195,8 @@ if __name__=="__main__":
 
     try:
 	dbInfo = configuration_client.ConfigurationClient(
-			(interface.default_host(),
-			interface.default_port())).get('database')
+			(option.default_host(),
+			 option.default_port())).get('database')
         dbHome = dbInfo['db_dir']
 	jouHome = dbInfo['jou_dir']
 
@@ -211,8 +211,8 @@ if __name__=="__main__":
 	sys.exit(1)
 
     backup_config = configuration_client.ConfigurationClient(
-                        (interface.default_host(),
-                        interface.default_port())).get('backup')
+                        (option.default_host(),
+			 option.default_port())).get('backup')
 
     try:
         bckHome = backup_config['dir']
