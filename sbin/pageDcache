@@ -291,6 +291,8 @@ case $gang in
 	get_ticket
 	kftp_test
 	ftp_test $wa
+	# make sure the ball is ok
+	enstore sched --nooverride $dcache_saag
 	;;
     d0en)
 	dccp_test
@@ -311,9 +313,6 @@ echo cleanup: rm -f ${l}*
               rm -f ${l}*
 echo cleanup: rm -f $test_file $read_back $write_in_progress $read_in_progress
               rm -f $test_file $read_back $write_in_progress $read_in_progress
-
-# make sure the ball is ok
-enstore sched --nooverride $dcache_saag
 
 echo `date` Finished.
 exit 0
