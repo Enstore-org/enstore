@@ -85,6 +85,37 @@ def cleanup_dirs(*dirs):
             except OSError:
                 continue
 
+#Read in the information from the authorized tapes file.
+def get_authorized_tapes():
+    #Determine if the file is really there.
+    csc = configuration_client.ConfigurationClient()
+    inven = csc.get('inventory',timeout=15,retry=3)
+    try:
+        auth_file = inven.get('authorized_file', None)
+        if auth_file != None:
+            authorized_file = open(auth_file, "r")
+        else:
+            return {}
+    except (OSError, IOError, AttributeError), detail:
+        print "Authorized file:", detail
+        return {}
+
+    #Line by line determine if there is something there that we care about.
+    #We are primarily looking for lines containing three element tuples.
+    #  They are (storage group, requested # of tapes, authorized# of tapes).
+    values = {}
+    for line in authorized_file.readlines():
+        line = line.strip()
+        split = line.split()
+        if len(line) == 0 or line[0] == '#': #ignore comments
+            pass
+        if len(split) == 4: #Normal case of (sg, requested, authorized).
+            values[(split[0], split[1])] = (split[2], split[3])
+        elif line[:7] == "blanks=": #There should only be one of these.
+            values['blanks'] = line[7:]
+
+    return values
+
 #############################################################################
 #############################################################################
 #The next group of functions read databases into memory.  The first (read_db)
@@ -367,7 +398,7 @@ def print_volumes_defind_status(volume_list, output_file):
                          volume['volume_family']))
     vd_file.close()
     
-def print_volume_quotas_status(volume_quotas, output_file):
+def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
     csc = configuration_client.ConfigurationClient()
     quotas = csc.get('quotas',timeout=15,retry=3)
     order = quotas.get('order', {})
@@ -377,8 +408,9 @@ def print_volume_quotas_status(volume_quotas, output_file):
     vq_file.write("Date this listing was generated: %s\n" % \
                   time.asctime(time.localtime(time.time())))
     
-    vq_file.write("%-10s %-13s %-6s %-9s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
-          ("Library", "Storage Group", "Quota", "Allocated",
+    vq_file.write("%-10s %-13s %-11s %-12s %-6s %-9s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
+          ("Library", "Storage Group", "Req. Alloc.",
+           "Auth. Alloc.", "Quota", "Allocated",
            "Blank Vols", "Written Vols", "Deleted Vols", "Space Used",
            "Active Files", "Deleted Files", "Unknown Files"))
 
@@ -416,21 +448,25 @@ def print_volume_quotas_status(volume_quotas, output_file):
     for quotas in (top, middle, bottom):
         quotas.sort()
         for keys in quotas:
-            formated_tuple = volume_quotas[keys][0:7] + \
+            formated_tuple = volume_quotas[keys][0:2] + \
+                             authorized_tapes.get(volume_quotas[keys][:2],
+                                                  ("N/A", "N/A")) + \
+                             volume_quotas[keys][2:7] + \
                              format_storage_size(volume_quotas[keys][7]) + \
                              volume_quotas[keys][8:]
-            vq_file.write("%-10s %-13s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
+            vq_file.write("%-10s %-13s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
                           % formated_tuple)
         vq_file.write("\n") #insert newline between sections
     vq_file.close()
 
 
-def print_volume_quota_sums(volume_quotas, output_file):
+def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file):
     vq_file = open(output_file, "a")
-    vq_file.write(("-" * 125) + "\n\n")
+    vq_file.write(("-" * 140) + "\n\n")
     
     #Sum up each column for each library and print the results
     library_dict = {}
+    requested = authorized = 0
     quotas = volume_quotas.keys()
     for key in quotas:
         #Get the current (library, storage_group) out of the dict.
@@ -438,33 +474,43 @@ def print_volume_quota_sums(volume_quotas, output_file):
             active_f, deleted_f, unknown_f) = volume_quotas[key]
 
         #For each library total up the numbers
+        requested = int(authorized_tapes.get((l, sg), (0,) * 2)[0]) + \
+                    int(library_dict.get(l, (0,) * 13)[2])
+        authorized = int(authorized_tapes.get((l, sg), (0,) * 2)[0]) + \
+                     int(library_dict.get(l, (0,) * 13)[3])
         try:
-            quota = int(quota) + int(library_dict.get(l, (0,) * 11)[2])
+            quota = int(quota) + int(library_dict.get(l, (0,) * 13)[4])
         except:
-            quota = int(library_dict.get(l, (0,) * 11)[2])
-        allocated = allocated + library_dict.get(l, (0,) * 11)[3]
-        blank_v = blank_v + library_dict.get(l, (0,) * 11)[4]
-        written_v =  written_v + library_dict.get(l, (0,) * 11)[5]
-        deleted_v =  deleted_v + library_dict.get(l, (0,) * 11)[6]
-        used = used + library_dict.get(l, (0,) * 11)[7]
-        active_f = active_f + library_dict.get(l, (0,) * 11)[8]
-        deleted_f =  deleted_f + library_dict.get(l, (0,) * 11)[9]
-        unknown_f = unknown_f + library_dict.get(l, (0,) * 11)[10]
+            quota = int(library_dict.get(l, (0,) * 13)[4])
+        allocated = allocated + library_dict.get(l, (0,) * 13)[5]
+        blank_v = blank_v + library_dict.get(l, (0,) * 13)[6]
+        written_v =  written_v + library_dict.get(l, (0,) * 13)[7]
+        deleted_v =  deleted_v + library_dict.get(l, (0,) * 13)[8]
+        used = used + library_dict.get(l, (0,) * 13)[9]
+        active_f = active_f + library_dict.get(l, (0,) * 13)[10]
+        deleted_f =  deleted_f + library_dict.get(l, (0,) * 13)[11]
+        unknown_f = unknown_f + library_dict.get(l, (0,) * 13)[12]
 
-        library_dict[l] = (l, "", quota, allocated, blank_v, written_v,
-                           deleted_v, used, active_f, deleted_f, unknown_f)
+        library_dict[l] = (l, "", requested, authorized, quota, allocated,
+                           blank_v, written_v, deleted_v, used, active_f,
+                           deleted_f, unknown_f)
 
     #Since this info is appened to the same file as the volume quotas, make
     # it have the same format.
     keys = library_dict.keys()
     keys.sort()
     for key in keys:
-        formated_tuple = library_dict[key][0:7] + \
-                         format_storage_size(library_dict[key][7]) + \
-                         library_dict[key][8:]
-        vq_file.write("%-10s %-13s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
+        formated_tuple = library_dict[key][0:9] + \
+                         format_storage_size(library_dict[key][9]) + \
+                         library_dict[key][10:]
+        vq_file.write("%-10s %-13s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
                       % formated_tuple)
     vq_file.write("\n") #insert newline between sections
+
+    blanks = authorized_tapes.get('blanks', None)
+    if blanks != None:
+        vq_file.write("blanks=" + blanks + "\n")
+    
     vq_file.close()
 
 def print_total_bytes_on_tape(volume_sums, output_file):
@@ -745,6 +791,9 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
             if vol['external_label'] == volume:
                 volume_list = [vol]
 
+    #Process the tapes authorized file for the VOLUME_QUATAS page.
+    authorized_tapes = get_authorized_tapes()
+
     #Sort all of the data in data_file into the correct temporary files.
     count_metadata = sort_inventory(metadata_file, volume_list, tmp_dir)
 
@@ -801,8 +850,10 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
     print_last_access_status(volume_list, last_access_file)
     print_volume_size_stats(volume_sums, volume_list, volume_size_file)
     print_volumes_defind_status(volume_list, volumes_defind_file)
-    print_volume_quotas_status(volumes_allocated, volume_quotas_file)
-    print_volume_quota_sums(volumes_allocated, volume_quotas_file)
+    print_volume_quotas_status(volumes_allocated, authorized_tapes,
+                               volume_quotas_file)
+    print_volume_quota_sums(volumes_allocated, authorized_tapes,
+                            volume_quotas_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     return len(volume_list), count_metadata
