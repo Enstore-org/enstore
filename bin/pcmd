@@ -164,12 +164,10 @@ pshowid()   { u_n="Usage: pshowid id"
 
 pnameof()   { u_n="Usage: pnameof id"
               if [ -z "${1-}" ] ; then echo $u_n; return; fi
-              echo cat  "\"`p_pnfs`.(nameof)($1)\"" 1>&2
               eval cat  "\"`p_pnfs`.(nameof)($1)\"" ; }
 
 pparent()   { u_p="Usage: pnameof id"
               if [ -z "${1-}" ] ; then echo $u_p; return; fi
-              echo cat  "\"`p_pnfs`.(parent)($1)\"" 1>&2
               eval cat  "\"`p_pnfs`.(parent)($1)\"" ; }
 
 ppath()     { u_p="Usage: ppath id"
@@ -177,16 +175,8 @@ ppath()     { u_p="Usage: ppath id"
               filename=""
               id=$1
               while /bin/true;  do
-	        #echo id=$id
-		echo `pnameof $id` 1>/dev/null
-		f2=`pnameof $id 2>/dev/null`
+                filename=`pnameof $id 2>/dev/null`/$filename
                 if [ $? -ne 0 ] ; then break; fi
-		filename=$f2/$filename
-		#echo filename=$filename
-                #echo filename=`pnameof $id 2>/dev/null`/$filename
-                #filename=`pnameof $id 2>/dev/null`/$filename
-                if [ $? -ne 0 ] ; then break; fi
-                #echo id=`pparent $id`
                 id=`pparent $id`
               done
               filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
