@@ -47,6 +47,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def get_queue(self, node=None, lm=None):
         if not lm: lmname = "library_manager"
         else: lmname = lm
+        pending_read_cnt = 0
+        pending_write_cnt = 0
+        active_read_cnt = 0
+        active_write_cnt = 0
         keys = self.csc.get_keys()
         for key in keys['get_keys']:
             if string.find(key, lmname) != -1:
@@ -65,14 +69,28 @@ class LibraryManagerClient(generic_client.GenericClient) :
                        reject_reason = pw_list[i]['reject_reason']
                    if (host == node) or (not node):
                        print "%s %s %s %s %s P %d %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1])
+                       if pw_list[i]["work"] == "read_from_hsm":
+                          pending_read_cnt = pending_read_cnt + 1
+                       elif pw_list[i]["work"] == "write_to_hsm":
+                           pending_write_cnt = pending_write_cnt + 1
+                           
                for i in range(0, len(at_list)):
                    host = at_list[i]["wrapper"]["machine"][1]
                    user = at_list[i]["wrapper"]["uname"]
                    pnfsfn = at_list[i]["wrapper"]["pnfsFilename"]
                    fn = at_list[i]["wrapper"]["fullname"]
+                   vol = at_list[i]["vc"]["external_label"]
                    if (host == node) or (not node):
-                       print "%s %s %s %s %s M" % (host,self.name, user,pnfsfn,fn)
-               
+                       print "%s %s %s %s %s %s M" % (host,self.name, user,pnfsfn,fn, vol)
+                       if at_list[i]["work"] == "read_from_hsm":
+                          active_read_cnt = active_read_cnt + 1
+                       elif at_list[i]["work"] == "write_to_hsm":
+                           active_write_cnt = active_write_cnt + 1
+        print "Pending read requests: ", pending_read_cnt
+        print "Pending write requests: ", pending_write_cnt
+        print "Active read requests: ", active_read_cnt
+        print "Active write requests: ", active_write_cnt
+                           
         return {"status" :(e_errors.OK, None)}
 
     def getmoverlist(self):
@@ -278,8 +296,8 @@ def do_work(intf):
     elif (intf.start_draining or intf.stop_draining):
         if intf.start_draining:
             if intf.start_draining == 'lock': lock = 'locked'
-            elif intf.start_draining != 'ignore':
-                print "only 'lock' and 'ignore' are valid for start_draining option"
+            elif not (intf.start_draining in ('ignore', 'pause')):
+                print "only 'lock', 'ignore' and 'pause' are valid for start_draining option"
                 sys.exit(0)
             else: lock = intf.start_draining
         else: lock = 'unlocked'
