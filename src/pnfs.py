@@ -695,7 +695,9 @@ class Pnfs:
     def make_volmap_file(self):
         if self.volume_file==UNKNOWN:
             return
+        old_mask = os.umask(0)
         ret=self.make_dir(self.voldir, 0777)
+        os.umask(old_mask)
         if ret[0]!=e_errors.OK:
             return
         # create the volume map file and set its size the same as main file
