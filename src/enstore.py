@@ -65,11 +65,11 @@ def get_farmlet(default):
     else:
         return default
 
-def get_argv3():
+def get_argv3(default=" "):
     if len(sys.argv) > 3:
         return sys.argv[3]
     else:
-        return " "
+        return default
 
 def do_rgang_command(fdefault, command):
     farmlet = get_farmlet(fdefault)
@@ -345,15 +345,15 @@ class Enstore(EnstoreInterface):
         elif not self.user_mode and arg1 == "backup":
             rtn = call_function("python $ENSTORE_DIR/src/backup.py", sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
-            command="%s enstore-start %s%s"%(CMD1, get_argv3(), dbs.CMD2)
+            command="%s enstore-start %s%s"%(CMD1, get_argv3("enstore"), dbs.CMD2)
             rtn = do_rgang_command("enstore",command)
         elif not self.user_mode and arg1 == "Estop":
-            command="%s enstore-stop %s%s"%(CMD1, get_argv3(), dbs.CMD2)
+            command="%s enstore-stop %s%s"%(CMD1, get_argv3("enstore-down"), dbs.CMD2)
             rtn = do_rgang_command("enstore-down",command)
         elif not self.user_mode and arg1 == "Erestart":
-            command="%s enstore-stop %s%s"%(CMD1, get_argv3(), dbs.CMD2)
+            command="%s enstore-stop %s%s"%(CMD1, get_argv3("enstore-down"), dbs.CMD2)
             rtn1 = do_rgang_command("enstore-down",command)
-            command="%s enstore-start %s%s"%(CMD1, get_argv3(), dbs.CMD2)
+            command="%s enstore-start %s%s"%(CMD1, get_argv3("enstore"), dbs.CMD2)
             rtn2 = do_rgang_command("enstore",command)
             rtn = rtn1|rtn2
         elif not self.user_mode and arg1 == "aml2":
