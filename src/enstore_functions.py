@@ -95,7 +95,15 @@ def is_timedout(dict):
 
 # check if the status in the dictionary signals everything is ok
 def is_ok(dict):
-    status = dict.get('status', None)
+    if type(dict) == type({}):
+        #If the entire dictionary is passed in, use just the status part.
+        status = dict.get('status', None)
+    elif type(dict) == type(()) and len(dict) == 2:
+        #The status tuple was passed in directly, adjust accordingly.
+        status = dict
+    else:
+        status = None
+        
     if status is None or type(status) != type(()):
         return None
     if status[0] == e_errors.OK:
