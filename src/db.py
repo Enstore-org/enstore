@@ -49,7 +49,7 @@ class DbTable:
     dbEnvSet={'create':1,'init_mpool':1, 'init_lock':1, 'init_txn':1}
     dbEnv=libtpshelve.env(self.dbHome,dbEnvSet)
     self.db=libtpshelve.open(dbEnv,dbname,type='btree')
-    self.dbindex=libtpshelve.open(dbEnv,"index",type='btree')
+#junk     self.dbindex=libtpshelve.open(dbEnv,"index",type='btree')
 #junk     self.inx={}
 
 #junk     for name in indlst:
