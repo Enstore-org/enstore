@@ -110,8 +110,11 @@ def headers(ticket):
 
     # create the trailer as well
     trailer = create_header(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, "TRAILER!!!")
-    # Trailers must be rounded to 512 byte blocks
-    pad = (len(header) + len(trailer) + filesize) % 512
+    # Trailers must be rounded to 512 byte blocks.
+    # Note: a 2GB file (2147483647 bytes) on a intel linux system would
+    # fail since the max of a signed integer is 2147483647 and adding
+    # just a header of one would trip an overflow without converting to longs.
+    pad = (long(len(header)) + long(len(trailer)) + long(filesize)) % 512
     if pad:
         pad = int(512 - pad) #Note: python 1.5 doesn't allow string*long
         trailer = trailer + '\0'*pad
