@@ -133,15 +133,22 @@ echo
 cvs status $config
 echo
 
-if [ $loadit -ne 1 ]; then
-  abort "Not on stkensrv2 or d0ensrv2. Do not know how to load config file.  Try: enstore config --load --config_file=$ENSTORE_DIR/etc/$config" 0 0
+# check for situations where loading in the config file will not work.
+if [ `echo $config | cut -c1-4` = "auth" ]; then
+    # authority config files do not need to be loaded.
+    echo
+elif [ $loadit -ne 1 ]; then
+  abort "Not on stkensrv2, cdfensrv2 or d0ensrv2. Do not know how to load config file.  Try: enstore config --load --config_file=$ENSTORE_DIR/etc/$config" 0 0
 fi
 
-# ok, time to load new config file
-echo -n 'About to load new config file into server, is this what you want [Y/n] '
-read ans
-answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
-if [ "$answer" != "Y" ]; then
-   abort 'ok, done' 1 0
+# all is good, load the config file.
+if [ $loadit -eq 1 ]; then
+    # ok, time to load new config file
+    echo -n 'About to load new config file into server, is this what you want [Y/n] '
+    read ans
+    answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
+    if [ "$answer" != "Y" ]; then
+	abort 'ok, done' 1 0
+    fi
+    enstore config --load --config_file=$ENSTORE_DIR/etc/$config
 fi
-enstore config --load --config_file=$ENSTORE_DIR/etc/$config
