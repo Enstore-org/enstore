@@ -1,10 +1,10 @@
 #!/bin/sh
-#  Edit-Time-stamp: <98/03/16 10:09:40 bakken>
+#  Edit-Time-stamp: <98/06/18 15:28:49 bakken>
 
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
-pnfsNode=pcfarm4
+pnfsNode=pcfarm9
 if [ `uname -n | grep -c $pnfsNode` -ne 0 ] ; then
   echo "You can not run this on the pnfs server node $pnfsNode, only remote client nodes"
   exit 1
