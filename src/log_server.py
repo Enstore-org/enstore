@@ -85,6 +85,9 @@ class Logger(  dispatching_worker.DispatchingWorker
     def open_logfile(self, logfile_name) :
         # try to open log file for append
         try:
+            dirname, file = os.path.split(logfile_name)
+            if not os.path.exists(dirname):
+                os.mkdir(dirname)
             self.logfile = open(logfile_name, 'a')
         except :
 	    try:
