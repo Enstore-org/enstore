@@ -24,10 +24,38 @@ rip10=131.225.16.14
 rip11=131.225.164.17
 rip12=131.225.164.18
 fntt=131.225.164.13
-
 ripsgi=131.225.164.16
 
+
+aits="dm07 dm08 dm09 dm10 dm11 dm12 dm18 dm19"
+mams="dc03 dc04 dc05 dc06 dc15 dc16 dc17"
+dlts="de01 de02 de13 de14"
+
 drive=`echo $1 | tr '[A-Z]' '[a-z]'`
+
+multiple=0
+if [ $drive = "aits" ]; then
+   drive="$aits"
+   multiple=1
+elif [ $drive = "mams" ]; then
+   drive="$mams"
+   multiple=1
+elif [ $drive = "dlts" ]; then
+   drive="$dlts"
+   multiple=1
+elif [ $drive = "all" ]; then
+   drive="$aits $mams $dlts"
+   multiple=1
+fi
+if [ $multiple -eq 1 ]; then
+   for d in $drive; do
+       cmd="$0 $d $command"
+       echo $cmd
+       eval $cmd
+   done
+   exit 0
+fi
+
 case $drive in
 
   de01) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
@@ -77,7 +105,7 @@ while [ $count -le $tries ]; do
 done
 
 stat=`echo $x | awk '{print $NF}'`;
-echo $x
+echo "$x"
 exit $stat
 
 

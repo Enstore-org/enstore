@@ -277,6 +277,16 @@ case $1 in
 	              null-08
 	              null-09
 	              null-10
+	              null-11
+	              null-12
+	              null-13
+	              null-14
+	              null-15
+	              null-16
+	              null-17
+	              null-18
+	              null-19
+	              null-20
                       disk-01
                       disk-02
                       disk-03
@@ -344,6 +354,16 @@ case $1 in
                       null none  diskfile  null-08 214748364800 214748364800
                       null none  diskfile  null-09 214748364800 214748364800
                       null none  diskfile  null-10 214748364800 214748364800
+                      null none  diskfile  null-11 2147483648000 2147483648000
+                      null none  diskfile  null-12 2147483648000 2147483648000
+                      null none  diskfile  null-13 2147483648000 2147483648000
+                      null none  diskfile  null-14 2147483648000 2147483648000
+                      null none  diskfile  null-15 2147483648000 2147483648000
+                      null none  diskfile  null-16 2147483648000 2147483648000
+                      null none  diskfile  null-17 2147483648000 2147483648000
+                      null none  diskfile  null-18 2147483648000 2147483648000
+                      null none  diskfile  null-19 2147483648000 2147483648000
+                      null none  diskfile  null-20 2147483648000 214748364800
                       disk none  diskfile  disk-01      140000      140000
                       disk none  diskfile  disk-02      140000      140000
                       disk none  diskfile  disk-03     1400000     1400000
