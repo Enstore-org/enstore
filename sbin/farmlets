@@ -43,6 +43,7 @@ NENS=`echo "$ENS"|awk '/Number of files transferred:/ {print $NF}'`
 if [ -z "$ND0" -o -z "$NSTK" -o -z "$NCDF" -o -z "$NENS" ]; then 
     #enstore alarm --raise --severity "A" --root-error "farmlet kerberos trouble"
     #/usr/bin/Mail -s "$node farmlet kerberos trouble" bakken berman  </dev/null
+    x=1
 fi
 
 if [ $ND0  != 0 ]; then echo "$D0" ; fi
