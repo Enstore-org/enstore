@@ -16,6 +16,7 @@ import Trace
 import e_errors
 import multiple_interface
 import enroute
+import runon
 
 def find_config_file():
     config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
