@@ -7,7 +7,7 @@
 # $Date$
 
 WARN=  `if [ \`uname\` = Linux ];then echo "-Wall"; fi`
-CFLAGS=-D`uname` -g
+CFLAGS=-D`uname` -g `if [ \`uname\` = IRIX ];then echo "-n32"; fi`
 
 all:		traceShow lib trace_delta
 
