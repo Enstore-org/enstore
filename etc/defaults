@@ -71,6 +71,7 @@ elif [ `uname -n | grep -c hppc` -eq 1 ] ; then
     enstore_start_volumeclerk=1
     enstore_start_log=1
     enstore_start_admin=1
+    enstore_start_inquisitor=1
   fi
 fi
 
@@ -79,7 +80,6 @@ fi
 if [ -n "${ENSTORE_CONFIG_HOST-}" ] ; then enstore_config_host=$ENSTORE_CONFIG_HOST; fi
 if [ -n "${ENSTORE_CONFIG_PORT-}" ] ; then enstore_config_port=$ENSTORE_CONFIG_PORT; fi
 if [ -n "${ENSTORE_CONFIG_FILE-}" ] ; then enstore_config_file=$ENSTORE_CONFIG_FILE; fi
-
 if [ -n "${ENSTORE_LIBRARIES-}" ]      ; then enstore_libraries=$ENSTORE_LIBRARIES; fi
 if [ -n "${ENSTORE_MEDIA_CHANGERS-}" ] ; then enstore_media_changers=$ENSTORE_MEDIA_CHANGERS; fi
 if [ -n "${ENSTORE_MOVERS-}" ]         ; then enstore_movers=$ENSTORE_MOVERS; fi

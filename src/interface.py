@@ -147,6 +147,14 @@ class Interface:
                 self.logmsg = value
             elif opt == "--alive" :
                 self.alive = 1
+            elif opt == "--timeout" :
+                self.timeout = string.atoi(value)
+            elif opt == "--get_timeout" :
+                self.get_timeout = 1
+            elif opt == "--update" :
+                self.update = 1
+            elif opt == "--updatefile" :
+                self.updatefile = value
             elif opt == "--nocrc":
                 self.chk_crc = 0
             elif opt == "--pri" :

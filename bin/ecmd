@@ -35,6 +35,7 @@ ecmd clrvol  [--config_list --vols  --vol=  --verbose --help'] volume_name
 
 ecmd log    [--test --alive  --verbose --logit --help]
 
+ecmd inq    [--config_list --alive --update --timeout=timeout_secs --get_timeout --help]
 
 ecmd pnfs    [--test --status --file= --restore=file --verbose --help]
 
@@ -144,6 +145,12 @@ case $cmd in
 
   log)
     python $ENSTORE_DIR/src/log_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    stat=$?
+    ;;
+
+
+  inq)
+    python $ENSTORE_DIR/src/inquisitor_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
     stat=$?
     ;;
 

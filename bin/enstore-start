@@ -87,6 +87,7 @@ enstore_start_fileclerk=0
 enstore_start_volumeclerk=0
 enstore_start_log=0
 enstore_start_admin=0
+enstore_start_inquisitor=0
 ENSTORE_CONFIG_HOST=$enstore_config_host;export ENSTORE_CONFIG_HOST
 ENSTORE_CONFIG_PORT=$enstore_config_port;export ENSTORE_CONFIG_PORT
 
@@ -95,6 +96,7 @@ nodeplus_servers=`conf.sh $local_host`
 
 # now just isolate the servers for this node
 node_servers=`echo "$nodeplus_servers" | grep :$local_host: | sed -e "s/:$local_host//"`
+
 if [ ! "$node_servers" ];then
     #echo try alternate host specification
     if  hh=`expr "$local_host" : '\([^.]*\)\.'`;then
@@ -125,6 +127,8 @@ for server in $node_servers;do
         enstore_start_volumeclerk=1;;
     admin_clerk)
         enstore_start_admin=1;;
+    inquisitor)
+        enstore_start_inquisitor=1;;
     esac
 done
 
@@ -316,6 +320,36 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
             echo "   ...No ping test for $i Mover...(yet)"
         fi
     done
+fi
+
+###################################################################################################################################
+
+# inquisitor
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
+    if [ "${opt_ping-}" != 1 -a $enstore_start_inquisitor = 1 ];then
+      if   [ ! "${opt_nocheck-}" ]\
+        && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep inquisitor|sed -e 's/.*://'` $timeout >/dev/null
+        then
+        echo "Inquisitor already started"
+      else
+        echo "Starting Inquisitor"
+        cmd="python $ENSTORE_DIR/src/inquisitor.py --config_host=$enstore_config_host --config_port=$enstore_config_port"
+        if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|fil' >/dev/null; then
+            title="Enstore Inquisitor"
+            eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
+        else
+            eval "$cmd &"
+        fi
+        echo $! >> $enstore_db/`uname -n`-inquisitor_pids
+      fi
+    fi
+
+    echo "Checking Inquisitor"
+    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep inquisitor | cut -d: -f2` \
+                                     `echo "$nodeplus_servers" | grep inquisitor | cut -d: -f3` $timeout --tries $tries
+    if [ $? -ne 0 ] ; then
+        echo "   ...Inquisitor not reachable..."
+    fi
 fi
 
 ###################################################################################################################################

@@ -11,8 +11,12 @@ mymed=${check}disk.media_changer
 
 echo -n "config "; python $ENSTORE_DIR/src/configuration_client.py   --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list
 echo -n "log    "; python $ENSTORE_DIR/src/log_client.py             --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list
+echo -n "inquisitor   "; python $ENSTORE_DIR/src/inquisitor_client.py      --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list
 echo -n "volume "; python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list
 echo -n "file   "; python $ENSTORE_DIR/src/file_clerk_client.py      --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list
 echo -n "libman "; python $ENSTORE_DIR/src/library_manager_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list $mylib
 echo -n "medch  "; python $ENSTORE_DIR/src/media_changer_client.py   --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list $mymed 0 0
 echo -n "queue  "; python $ENSTORE_DIR/src/library_manager_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --getwork --list $mylib
+
+
+

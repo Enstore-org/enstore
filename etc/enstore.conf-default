@@ -15,6 +15,13 @@ configdict['admin_clerk'] = { 'host'   : 'pcfarm9', \
                                'logname' : 'ADMC', \
                                'status' : (e_errors.OK, None)}
 
+configdict['inquisitor']  = { 'host'    : 'hppc', \
+                              'port'    : 7597, \
+                              'logname' : 'INQC', \
+                              'timeout' : 10, \
+                              'file_dir': './', \
+                              'status'  : (e_errors.OK, None)}
+
 configdict['hppcdisk.library_manager'] = { 'host'    : 'hppc', \
                                            'port'    : 7514, \
                                            'logname' : 'HLIBM', \
