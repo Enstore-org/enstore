@@ -81,11 +81,19 @@ def empty_socket( sock ):
                 if rcount%rcountalert == 0:
                     Trace.trace(4,"empty_socket: r from select - count="+repr(rcount))
                 badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+                if badsock==errno.ECONNREFUSED:
+                    Trace.trace(3,"ECONNREFUSED...retrying (empty_socket r:)")
+                    badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
                 if badsock != 0:
                     Trace.trace(0,"empty pre recv, clearout error "+\
                                 repr(errno.errorcode[badsock]))
                 reply , server = sock.recvfrom(TRANSFER_MAX)
                 badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+                if badsock==errno.ECONNREFUSED:
+                    Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
+                    self.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
+                    reply , server = sock.recvfrom(TRANSFER_MAX)
+                    badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
                 if badsock != 0:
                     Trace.trace(0,"empty post recv, clearout error"+\
                                 repr(errno.errorcode[badsock]))
@@ -99,6 +107,9 @@ def empty_socket( sock ):
     return
 def send_socket( sock, message, address ):
     badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
+    if badsock==errno.ECONNREFUSED:
+        Trace.trace(3,"ECONNREFUSED...retrying (get_request r:)")
+        badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
     if badsock != 0:
 	Trace.trace( 0, "send_socket pre send"+repr(errno.errorcode[badsock]) )
 	generic_cs.enprint("udp_client send_socket, pre-sendto error: "+\
@@ -107,7 +118,19 @@ def send_socket( sock, message, address ):
     while sent == 0:
 	try:
 	    sock.sendto( message, address )
-	    sent = 1
+            badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+            if badsock==errno.ECONNREFUSED:
+                Trace.trace(0,"ECONNREFUSED: Redoing sendto. POSSIBLE ERROR send_socket")
+		self.enprint("ECONNREFUSED: Redoing sendto. POSSIBLE ERROR send_socket")
+                sock.sendto( message, address )
+                badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+            if badsock != 0:
+                Trace.trace( 0,"send_socket post send"+repr(errno.errorcode[badsock]) )
+                generic_cs.enprint("udp_client send_socket, post-sendto "+\
+                                   repr(address)+" error: "+ \
+                                   repr(errno.errorcode[badsock]))
+            else:
+                sent = 1
 	except socket.error:
 	    Trace.trace(  0
 			, 'send_socket: Nameserver not responding add='
@@ -118,12 +141,6 @@ def send_socket( sock, message, address ):
 		  message+"\n"+repr(address)+"\n"+\
 		  str(sys.exc_info()[0])+"\n"+str(sys.exc_info()[1]))
 	    time.sleep(3)		# arbitrary time - don't beat on NS
-    badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-    if badsock != 0:
-	Trace.trace( 0,"send_socket post send"+repr(errno.errorcode[badsock]) )
-	generic_cs.enprint("udp_client send_socket, post-sendto "+\
-	                   repr(address)+" error: "+ \
-	                   repr(errno.errorcode[badsock]))
     return
 
 def wait_rsp( sock, address, rcv_timeout ):
@@ -147,12 +164,20 @@ def wait_rsp( sock, address, rcv_timeout ):
     # matches the number we sent out
     elif r:
 	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
+        if badsock==errno.ECONNREFUSED:
+            Trace.trace(3,"ECONNREFUSED...retrying (wait_rsp r:)")
+            badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
 	if badsock != 0:
 	    Trace.trace( 0,"send pre recv"+repr(errno.errorcode[badsock]) )
 	    generic_cs.enprint("udp_client send, pre-recv error: "+\
 	                       repr(errno.errorcode[badsock]))
 	reply , server = sock.recvfrom( TRANSFER_MAX )
 	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
+        if badsock==errno.ECONNREFUSED:
+            Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR wait_rsp")
+            self.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR wait_rsp")
+            reply , server = sock.recvfrom( TRANSFER_MAX )
+            badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
 	if badsock != 0:
 	    Trace.trace( 0,"send post recv"+repr(errno.errorcode[badsock]))
 	    generic_cs.enprint("udp_client send, post-recv error: "+ \

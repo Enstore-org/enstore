@@ -167,6 +167,9 @@ def send_to_user_callback(ticket) :
 def write_tcp_buf(sock,buffer,errmsg=""):
     Trace.trace(16,"{write_tcp_buf")
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock==errno.ECONNREFUSED:
+        Trace.trace(3,"ECONNREFUSED...retrying (write_tcp_buf pre)")
+        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
         generic_cs.enprint(errmsg+" write_tcp_buff pre-send error: "+\
               repr(errno.errorcode[badsock]))
@@ -174,6 +177,11 @@ def write_tcp_buf(sock,buffer,errmsg=""):
                     repr(errno.errorcode[badsock]))
     sock.send(buffer)
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock==errno.ECONNREFUSED:
+        Trace.trace(0,"ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_buf")
+        self.enprint("ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_buf")
+        sock.send(buffer)
+        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
         generic_cs.enprint(errmsg+" write_tcp_buf post-send error: "+\
               repr(errno.errorcode[badsock]))
@@ -185,6 +193,9 @@ def write_tcp_buf(sock,buffer,errmsg=""):
 def write_tcp_socket(sock,buffer,errmsg=""):
     Trace.trace(16,"{write_tcp_socket")
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock==errno.ECONNREFUSED:
+        Trace.trace(3,"ECONNREFUSED...retrying (write_tcp_socket pre)")
+        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
         generic_cs.enprint(errmsg+" write_tcp_socket pre-send error: "+\
               repr(errno.errorcode[badsock]))
@@ -192,6 +203,11 @@ def write_tcp_socket(sock,buffer,errmsg=""):
                     repr(errno.errorcode[badsock]))
     sock.send(dict_to_a.dict_to_a(buffer))
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock==errno.ECONNREFUSED:
+        Trace.trace(0,"ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_socket")
+        self.enprint("ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_socket")
+        sock.send(dict_to_a.dict_to_a(buffer))
+        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
         generic_cs.enprint(errmsg+" write_tcp_socket post-send error: "+\
               repr(errno.errorcode[badsock]))
@@ -203,6 +219,9 @@ def write_tcp_socket(sock,buffer,errmsg=""):
 def read_tcp_buf(sock,errmsg="") :
     Trace.trace(16,"{read_tcp_buf")
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock==errno.ECONNREFUSED:
+        Trace.trace(3,"ECONNREFUSED...retrying (get_request r:)")
+        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
         generic_cs.enprint(errmsg+" read_tcp_buf pre-recv error: "+\
               repr(errno.errorcode[badsock]))
@@ -210,6 +229,11 @@ def read_tcp_buf(sock,errmsg="") :
                     repr(errno.errorcode[badsock]))
     buf = sock.recv(65536*4)
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock==errno.ECONNREFUSED:
+        Trace.trace(0,"ECONNREFUSED: Redoing recv. POSSIBLE ERROR write_tcp_buf")
+        self.enprint("ECONNREFUSED: Redoing recv. POSSIBLE ERROR write_tcp_buf")
+        buf = sock.recv(65536*4)
+        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
         generic_cs.enprint(errmsg+" read_tcp_buf post-recv error: "+\
               repr(errno.errorcode[badsock]))
@@ -223,6 +247,9 @@ def read_tcp_socket(sock,errmsg="") :
     workmsg = ""
     while 1:
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if badsock==errno.ECONNREFUSED:
+            Trace.trace(3,"ECONNREFUSED...retrying (get_request r:)")
+            badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
             generic_cs.enprint(errmsg+\
                                " read_tcp_socket pre-recv socketerror: "+\
@@ -231,6 +258,11 @@ def read_tcp_socket(sock,errmsg="") :
                         repr(errno.errorcode[badsock]))
         buf = sock.recv(65536*4)
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if badsock==errno.ECONNREFUSED:
+            Trace.trace(0,"ECONNREFUSED: Redoing recv. POSSIBLE ERROR write_tcp_socket")
+            self.enprint("ECONNREFUSED: Redoing recv. POSSIBLE ERROR write_tcp_socket")
+            buf = sock.recv(65536*4)
+            badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
             generic_cs.enprint(errmsg+" read_tcp_socket post-recv error: "+\
                   repr(errno.errorcode[badsock]))

@@ -150,6 +150,9 @@ class DispatchingWorker:
 	
 	if r:
 	    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+            if badsock==errno.ECONNREFUSED:
+                Trace.trace(3,"ECONNREFUSED...retrying (get_request r:)")
+                badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
 	    if badsock != 0 :
 		self.enprint("DispatchingWorked get_request, pre-recvfrom error: "+\
 		             errno.errorcode[badsock])
@@ -163,6 +166,11 @@ class DispatchingWorker:
 	    #self.enprint(req, generic_cs.PRETTY_PRINT)
 	    #self.enprint("P3")
 	    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+            if badsock==errno.ECONNREFUSED:
+                Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR get_request")
+		self.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR get_request")
+                req = self.socket.recvfrom(self.max_packet_size)
+                badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
 	    if badsock != 0 :
 		self.enprint("DispatchingWorker get_request, post-recvfrom error:"+\
 		             repr(errno.errorcode[badsock]))
@@ -299,6 +307,9 @@ class DispatchingWorker:
                     " id ="+repr(self.current_id))
         request_dict[self.current_id] = list
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+        if badsock==errno.ECONNREFUSED:
+            Trace.trace(3,"ECONNREFUSED...retrying (reply_with_list)")
+            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0:
             Trace.trace(0,"reply_with_list pre-send error "+\
                         repr(errno.errorcode[badsock]))
@@ -308,7 +319,20 @@ class DispatchingWorker:
         while sent == 0:
             try:
                 self.socket.sendto(repr(list), self.reply_address)
-                sent = 1
+                badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+                if badsock==errno.ECONNREFUSED:
+                    Trace.trace(3,"ECONNREFUSED: Redoing sendto. POSSIBLE ERROR reply_with_list")
+                    self.enprint("ECONNREFUSED: Redoing sendto. POSSIBLE ERROR reply_with_list")
+                    self.socket.sendto(repr(list), self.reply_address)
+                    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+                if badsock != 0:
+                    Trace.trace(0,"reply_with_list post-send error "+\
+                                repr(errno.errorcode[badsock]))
+                    self.enprint("dispatching_worker reply_with_list, post-sendto error: "+\
+                                 repr(errno.errorcode[badsock]))
+                    Trace.trace(19,"}reply_with_list number="+repr(self.client_number))
+                else:
+                    sent = 1
             except socket.error:
                 Trace.trace(0,"reply_with_list Nameserver not responding "+\
                             "add="+repr(address)+\
@@ -318,10 +342,3 @@ class DispatchingWorker:
                           repr(address)+"\n"+str(sys.exc_info()[0])+"\n"+\
 	                  str(sys.exc_info()[1]))
                 time.sleep(10)
-        badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0:
-            Trace.trace(0,"reply_with_list post-send error "+\
-                        repr(errno.errorcode[badsock]))
-            self.enprint("dispatching_worker reply_with_list, post-sendto error: "+\
-                         repr(errno.errorcode[badsock]))
-        Trace.trace(19,"}reply_with_list number="+repr(self.client_number))
