@@ -443,7 +443,11 @@ class LibraryManagerMethods:
         while rq:
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
-                Trace.trace(16,"process_read_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
+                if rq:
+                    Trace.trace(16,"process_read_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
+                else:
+                    Trace.trace(16,"process_read_request returned %s %s %s" % (rq, key,self.continue_scan))
+                    
                 if self.continue_scan:
                     if key:
                         rq = self.pending_work.get(key)
@@ -452,8 +456,11 @@ class LibraryManagerMethods:
                     continue
                 break
             elif rq.work == "write_to_hsm":
-                rq, key = self.process_write_request(rq) 
-                Trace.trace(16,"process_write_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
+                rq, key = self.process_write_request(rq)
+                if rq:
+                    Trace.trace(16,"process_write_request returned %s %s %s"%(rq.ticket, key,self.continue_scan))
+                else:
+                    Trace.trace(16,"process_read_request returned %s %s %s" % (rq, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
                         rq = self.pending_work.get(key)
