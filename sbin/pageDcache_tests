@@ -1,13 +1,26 @@
 #!/bin/sh 
 set -u  
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+# we are passed in the vars to do a set on
+set -$1; shift
 test_to_do=""
 if [ "${1:-q}" != "-q" ] ; then test_to_do=$1; shift; fi
 
 # bin/$RCSfile$  $Revision$
 
 # useful functions
+turn_off_xv() {
+    vars_set=`echo $-`
+    set +xv
+}
+
+reset_set_vars() {
+    if [ "${vars_set:-dd}" != "dd" ]; then
+	set -$vars_set
+    fi
+}
+
 raise_alarm() {
+    turn_off_xv
     msg=$1
     item_to_override=$2
     error_code=$3
@@ -16,6 +29,7 @@ raise_alarm() {
     (setup enstore;enstore sched --override $item_to_override --saagstatus red --time="$msg")
     # do not turn the ball red any more ...
     #enstore sched --override enstore    --saagstatus red --time="$msg"
+    reset_set_vars
     exit $error_code
 }
 
@@ -63,6 +77,7 @@ setup_product() {
 }
 
 setup_products() {
+    turn_off_xv
     source /usr/local/etc/setups.sh
     if [ $? -gt 0 ]; then
 	echo `date` ERROR: unable to source /usr/local/etc/setups.sh.
@@ -80,9 +95,23 @@ setup_products() {
     if [ -z "${DCAP_DIR:-}" ]; then
 	setup_product dcap
     fi
+    if [ -z "${KX509_DIR:-}" ]; then
+	setup_product kx509
+    fi
 
-# always setup python to make sure we get the correct version.
+    # always setup python to make sure we get the correct version.
     setup_product python
+
+    # setup for gridftp
+    export GLOBUS_LOCATION=/home/enstore/globus
+    set +u;. /home/enstore/globus/etc/globus-user-env.sh;set -u
+
+    # reset so we can see output if turned on.
+    reset_set_vars
+
+    export X509_USER_PROXY=$HOME/k5-ca-proxy.pem
+    kx509
+    kxlist -o $HOME/k5-ca-proxy.pem
 }
 
 not_enough_parameters() {
@@ -235,8 +264,37 @@ ftp.quit()
 }
 #######################################################################
 
-#gridftp_test() {
-#}
+gridftp_test() {
+    read_back=/tmp/dcache_page_read_back_gridftp_$$
+    rm -f $read_back
+
+    write_in_progress=/tmp/dcache_page_write_in_progress_gridftp_$$
+    read_in_progress=/tmp/dcache_page_read_in_progress_gridftp_$$
+
+# gftp write
+    transfer_setup $write_in_progress 7
+    do_transfer "globus-url-copy file://$test_file gsiftp://stkendca3a:2811/$w" $w $write_in_progress
+ 
+    if [ -r $write_in_progress ]; then
+	raise_alarm "$dcache dcache gridFtp write failed." $dcache_saag 6
+    fi
+
+# gftp readback
+
+    transfer_setup $read_in_progress 5
+    do_transfer "globus-url-copy gsiftp://stkendca3a:2811/$w file://$read_back" $read_back $read_in_progress
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "$dcache dcache gridFtp read failed" $dcache_saag 4
+    fi
+
+# gftp comparison
+
+    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "$dcache dcache gridFtp cmp failed" $dcache_saag 3
+    fi
+}
 
 #######################################################################
 
@@ -297,6 +355,14 @@ case $test_to_do in
 	  wa=$3
 	  ftp_test
 	  ;;
+    gridftp) # get the specific parameters first
+	     if [ $# -ne 1 ];
+	     then
+	         not_enough_parameters gridftp
+	     fi
+	     w=$1
+	     gridftp_test
+	     ;;
 esac
 
 #clean up of old junk

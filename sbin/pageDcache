@@ -31,12 +31,14 @@ rm_tmp_files() {
     rm -f $exit_code_kftp
     rm -f $output_ftp
     rm -f $exit_code_ftp
+    rm -f $output_gridftp
+    rm -f $exit_code_gridftp
 }
 
 echo_output() {
-    echo "=================== output from $1 ======================="
     if [ -e $1 ];
     then
+	echo "=================== output from $1 ======================="
 	cat $1
     fi
 }
@@ -76,6 +78,8 @@ output_kftp=/tmp/dcache_page_output_kftp_$$
 exit_code_kftp=/tmp/dcache_page_exit_code_kftp_$$
 output_ftp=/tmp/dcache_page_output_ftp_$$
 exit_code_ftp=/tmp/dcache_page_exit_code_ftp_$$
+output_gridftp=/tmp/dcache_page_output_gridftp_$$
+exit_code_gridftp=/tmp/dcache_page_exit_code_gridftp_$$
 rm_tmp_files
 
 # do the tests. spawn off the dccp test.  however the ftp test depends on the kftp
@@ -91,9 +95,9 @@ case $gang in
 		   dcache_saag="dcache_cms"
 		   get_ports
 		   get_ticket
-		   `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		   pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
-		   pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
+		   `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+		   pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp 2>&1; echo $? > $exit_code_kftp
+		   pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		   ;;
 	     lqcd) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
 		   wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
@@ -103,21 +107,23 @@ case $gang in
 		   dcache_saag="dcache_lqcd"
 		   get_ports
 		   get_ticket
-		   `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		   pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
-		   pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
+		   `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+		   pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp 2>&1; echo $? > $exit_code_kftp
+		   pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		   ;;
-	  fndca|*) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
-		   wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
-		   wa=/pnfs/eagle/dcache-tests/$N.dcache_page_a_$$
-		   strip_dir="/pnfs/eagle"
+	  fndca|*) strip_dir="/pnfs/eagle"
+	           w=$strip_dir/dcache-tests/$N.dcache_page_$$
+		   wp=$strip_dir/dcache-tests/$N.dcache_page_p_$$
+		   wa=$strip_dir/dcache-tests/$N.dcache_page_a_$$
+		   wg=/eagle/dcache-tests/$N.dcache_page_g_$$
 		   dcache=fndca
 		   dcache_saag="dcache_stk"
 		   get_ports
 		   get_ticket
-		   `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		   pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
-		   pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
+		   #`pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+		   `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
+		   #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp 2>&1; echo $? > $exit_code_kftp
+		   #pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		   ;;
 	 esac
 	 ;;
@@ -130,9 +136,9 @@ case $gang in
 		     dcache_saag="dcache_cdf"
 		     get_ports
 		     get_ticket
-		     `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		     pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
-		     pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
+		     `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+		     pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp 2>&1; echo $? > $exit_code_kftp
+		     pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		     ;;
 	 esac
 	 ;;
@@ -145,9 +151,9 @@ case $gang in
 		    dcache_saag="dcache_d0"
 		    get_ports
 		    get_ticket
-		    `pageDcache_tests dccp $test_file $dcache $dcache_saag $w > $output_dccp; echo $? > $exit_code_dccp`&
-		    pageDcache_tests kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp; echo $? > $exit_code_kftp
-		    pageDcache_tests ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp; echo $? > $exit_code_ftp
+		    `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+		    pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp 2>&1; echo $? > $exit_code_kftp
+		    pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		    ;;
 	 esac
          ;;
@@ -166,11 +172,13 @@ wait `jobs -p`
 echo_output $output_dccp
 echo_output $output_kftp
 echo_output $output_ftp
+echo_output $output_gridftp
 
 # and check their exit codes
 check_exit_code $exit_code_dccp
 check_exit_code $exit_code_kftp
 check_exit_code $exit_code_ftp
+check_exit_code $exit_code_gridftp
 
 # we are done, do any cleanup
 rm_tmp_files
