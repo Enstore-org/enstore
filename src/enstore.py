@@ -46,6 +46,7 @@ import enstore_start
 import enstore_stop
 import enstore_restart
 import backup
+import quota
 
 # define in 1 place all the hoary pieces of the command needed to access an
 # entire enstore system.
@@ -109,6 +110,8 @@ server_functions = {
                   inquisitor_client.do_work, option.ADMIN],
     "volume" : [volume_clerk_client.VolumeClerkClientInterface,
                 volume_clerk_client.do_work, option.USER],
+    "quota" : [quota.Interface,
+               quota.do_work, option.ADMIN],
     "info" : [info_client.InfoClientInterface,
               info_client.do_work, option.USER],
     "ratekeeper" : [ratekeeper_client.RatekeeperClientInterface,
