@@ -41,7 +41,7 @@ case $command in
         ;;
     plot)
         if [ $node = $plotnode ] ; then
-         rcp $getnode:$busy $busy
+         enrcp $getnode:$busy $busy
          plot9840=/fnal/ups/prd/www_pages/enstore/9840_Utilization
          plot9940=/fnal/ups/prd/www_pages/enstore/9940_Utilization
          pltcmd=/tmp/stkdu.gnu
@@ -50,10 +50,10 @@ case $command in
 set terminal postscript color solid
 set title \"STK 9840 Drive Utilization $now\"
 set xlabel \"Date\"
-set timefmt \"%Y-%m-%H:M:S\"
+set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
 set xrange [ : ]
-set ylabel \"Bytes\"
+set ylabel \"Number in Use\"
 set grid
 set yrange [0: ]
 set format x \"%m-%d\"
@@ -66,10 +66,10 @@ plot \"$busy\" using 1:2 t \"9840 in use\" w impulses" >$pltcmd
 set terminal postscript color solid
 set title \"STK 9940 Drive Utilization $now\"
 set xlabel \"Date\"
-set timefmt \"%Y-%m-%H:M:S\"
+set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
 set xrange [ : ]
-set ylabel \"Bytes\"
+set ylabel \"Number in use\"
 set grid
 set yrange [0: ]
 set format x \"%m-%d\"
