@@ -6308,6 +6308,9 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             # anywhere.  Use the correct name.
             if ifullname == None:
                 ifullname = os.path.join(e.input[0], filename)
+
+                #Get the pnfs interface class instance.
+                p = pnfs.Pnfs(ifullname)
                 
             #This is an attempt to deal with data that is incomplete
             # from a failed previous transfer.
