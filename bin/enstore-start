@@ -90,7 +90,6 @@ check_server()
 
 
 start_db_daemons(){
-
     enstore_db=`udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT 4 --work lookup --additional_ticket '"lookup":"database"' | cut -d: -f2 | cut -d, -f1 | cut -d\' -f2`
     out=$PID_DIR/db_checkpoint
 
@@ -99,6 +98,7 @@ start_db_daemons(){
 	cmd="db_checkpoint -h $enstore_db  -p 5 `output $out`"
 	eval "$cmd &"
         echo $! >> $PID_DIR/`uname -n`-db_daemons_pids	
+	date >> $out  # db_checkpoint doesn't usually write to this file. send something so we don't start twice on same node
     fi
 
 
@@ -108,6 +108,7 @@ start_db_daemons(){
         cmd="db_deadlock -h $enstore_db  -t 1 `output $out`"
         eval "$cmd &"
         echo $! >> $PID_DIR/`uname -n`-db_daemons_pids	
+	date >> $out  # db_deadlock doesn't usually write to this file. send something so we don't start twice on same node
      fi
 }
 
