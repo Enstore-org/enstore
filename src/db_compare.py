@@ -41,8 +41,8 @@ def db_compare(db1, dbHome1, db2, dbHome2):
 			if error == 0:
 				print	# new line
 			print 'D> disagree on key "'+key+'"'
-			print ' '+l1+'["+key+"] =', prep(val)
-			print ' '+l2+'["+key+"] =', prep(d2[key])
+			print ' '+l1+'["+key+"] =', repr(val)
+			print ' '+l2+'["+key+"] =', repr(d2[key])
 			error = error + 1
 		key, val = c.next()
 		count = count + 1
