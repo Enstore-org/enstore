@@ -362,7 +362,7 @@ class LibraryManagerMethods:
             Trace.trace(11,"send_regret %s" % (ticket,))
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             flags = fcntl.fcntl(control_socket.fileno(), FCNTL.F_GETFL)
-            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | os.O_NONBLOCK)
+            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | FCNTL.O_NONBLOCK)
             # the following insertion is for antispoofing
             host = ticket['wrapper']['machine'][1]
             if ticket.has_key('route_selection') and ticket['route_selection']:
@@ -1675,14 +1675,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     if external_label:
                         if not self.volumes_at_movers.is_vol_busy(
                             external_label):
-                            #Add some items to the dictionary.
-                            self.volume_assert_list[i]['mover'] = \
-                                                              mticket['mover']
-                            #Update the dequeued time.
-                            self.volume_assert_list[i]['times']['lm_dequeued'] = \
-                                time.time()
                             #Add the volume and mover to the list of currently
                             # busy volumes and movers.
+                            self.volume_assert_list[i]['mover'] = \
+                                                              mticket['mover']
                             self.work_at_movers.append(
                                 self.volume_assert_list[i])
                             self.volumes_at_movers.put(mticket)
@@ -1690,7 +1686,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             Trace.log(e_errors.INFO,
                                       "IDLE:sending %s to mover" %
                                       (self.volume_assert_list[i],))
-
                             #Tell the mover it has something to do.
                             self.reply_to_caller(self.volume_assert_list[i])
                             #Remove the job from the list of volumes to check.
@@ -2051,29 +2046,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             pass #XXX
         os._exit(0)
 
-    #Return sorted volume assert list of volumes.
-    def get_asserts(self, ticket):
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket) # reply now to avoid deadlocks
-        # this could tie things up for awhile - fork and let child
-        # send the work list (at time of fork) back to client
-        if self.fork() != 0:
-            return
-        try:
-            if not self.get_user_sockets(ticket):
-                return
-            rticket = {}
-            rticket["status"] = (e_errors.OK, None)
-            rticket['pending_asserts'] = self.volume_assert_list
-            callback.write_tcp_obj_new(self.data_socket,rticket)
-            self.data_socket.close()
-            callback.write_tcp_obj_new(self.control_socket,ticket)
-            self.control_socket.close()
-        except:
-            pass #XXX
-        os._exit(0)
-
-            
     # get list of suspected volumes 
     def get_suspect_volumes(self,ticket):
         ticket["status"] = (e_errors.OK, None)
