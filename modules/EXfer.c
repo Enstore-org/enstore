@@ -719,15 +719,14 @@ static void* thread_write(void *info)
   struct timeval end_wait;      /* Stop waiting for condition variable. */
   double wait_time = 0.0;       /* Time waiting for condition variable. */
   double corrected_time = 0.0;
-  int skipped_first_pass = 0;   /* Skips first buffer in timing rates. */
   long long fsync_threshold = 0;/* Number of bytes to wait between fsync()s. */
   long long last_fsync = bytes; /* Number of bytes done though last fsync(). */
   struct stat file_info;        /* Information about the file to write to. */
   int do_threshold = 0;         /* Holds boolean true when using fsync(). */
 
   /* Initialize these values in case of error there difference will be zero. */
-  memset(&start_time, 0, sizeof(struct timeval));
-  memset(&end_time, 0, sizeof(struct timeval));
+  gettimeofday(&start_time, NULL);
+  memcpy(&end_time, &start_time, sizeof(struct timeval));
 
   /* Determine if the file descriptor supports fsync(). */
   if(fstat(wr_fd, &file_info))
@@ -747,16 +746,6 @@ static void* thread_write(void *info)
 
   while(bytes > 0)
   {
-    /* Throw away the first buffer in time calcultions. */
-    if(!skipped_first_pass)
-    {
-      skipped_first_pass = 1; /* Set the boolean to true. */
-
-      /* Get the time that the thread started to work on reading. */
-      gettimeofday(&start_time, NULL);
-      memcpy(&end_time, &start_time, sizeof(struct timeval));
-    }
-
     /* Determine if the lock for the buffer_lock bin, bin, is ready. */
     if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
     {
