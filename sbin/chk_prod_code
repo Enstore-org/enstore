@@ -9,11 +9,21 @@ rm -f $out ${out}_1
 source $ENSTORE_DIR/sbin/gettkt
 rgang $gang " cd /home/enstore/enstore; cvs -qn update -r production" > $out 2>&1
 
+# get rid of known junk
 egrep -v " cvs -qn update -r production| This rsh session is using DES encryption for all data transmissions|M etc/enstore_system.html" $out > ${out}_1
 mods=`egrep -v " - - - - - - - - - - - - - " ${out}_1`
 
-if [ `echo $mods | sed -e 's/ //g'|wc -w` -ne 0 ]; then
-  /usr/bin/Mail -s "$gang not running latest production code.  Developer Primary check and fix and restart." $ENSTORE_MAIL <${out}_1
+# anything left is unknown or changed files
+changes=`echo "$mods" | sed -e 's/ //g'|wc -w`  # this is either 0 or 1, not a count
+if [ $changes -ne 0 ]; then
+   # dang listserver suppress identical messages. make the mail unique by adding date
+   msg="`date` - cvs production tag inconsistencies found in $gang"
+   echo "" >> ${out}_1
+   echo "" >> ${out}_1
+   echo "SUMMARY:$msg" >> ${out}_1
+   echo enstore alarm --raise --severity "A" --root-error "$msg"
+        enstore alarm --raise --severity "A" --root-error "$msg"
+   /usr/bin/Mail -s "$gang not running latest production code.  Developer Primary check and fix and restart." $ENSTORE_MAIL <${out}_1
 fi
 
 cat ${out}_1
