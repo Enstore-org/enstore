@@ -480,7 +480,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # put it into our bind queue and take it out of pending queue
             work_awaiting_bind.append(w)
             pending_work.delete_job(w)
-	    mticket["external_label"] = w["fc"]["external_label"]
+	    mticket['vc'] = {"external_label":w["fc"]["external_label"]}
 	    self.have_bound_volume(mticket)
 
         # alas
@@ -506,13 +506,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.summon_queue.remove(mv)
 
         # just did some work, delete it from queue
-        w = get_work_at_movers (mticket["external_label"])
+        w = get_work_at_movers (mticket['vc']["external_label"])
         if w:
             work_at_movers.remove(w)
 
         # if we have work awaiting the bind, pass that work and delete it
         # from the list and  return
-        w = get_awaiting_work(mticket["external_label"])
+        w = get_awaiting_work(mticket['vc']["external_label"])
         if w:
             format = "%s awaiting work on vol=%s mover=%s requestor:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
@@ -555,7 +555,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         elif  w["status"][0] == e_errors.NOWORK:
             format = "unbind vol %s mover=%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
-                                       mticket["external_label"],
+                                       mticket['vc']["external_label"],
                                        mticket["mover"])
             self.reply_to_caller({"work" : "unbind_volume"})
 
