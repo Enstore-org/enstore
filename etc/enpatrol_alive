@@ -15,7 +15,6 @@ then
 fi
 
 setup $ENSTORE_SETUP
-. $ENSTORE_DIR/myen
 
 # check if the server is alive
 alive=" --alive --alive_rcv_timeout=5 --alive_retries=2 ";export alive
