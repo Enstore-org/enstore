@@ -2,6 +2,8 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+if [ "${1:-}" = "-C" ] ; then copyit=1; shift; else copyit=0; fi
+
 # script to return a random file name(s) for tapes in the current inventory
 
 HTTP=http://www-d0en.fnal.gov
@@ -19,6 +21,7 @@ N=`wc V_D| awk '{print $1}'`
 
 done=$COUNT
 loops=0
+RC=0
 
 while [ $done -gt 0 ]; do
 
@@ -47,21 +50,34 @@ while [ $done -gt 0 ]; do
   if [ ! -r $F ]; then
     bfid=`echo $file | awk '{print $NF}'`
     info=`enstore file --bfid $bfid 2>/dev/null`
-    if [ $rc -ne 0 ]; then continue; fi
+    if [ $? -ne 0 ]; then continue; fi
     pnfsid=`echo $info | sed -e "s/.*pnfsid': '//" -e "s/'.*//"`
-    cd `dirname $F 2>/dev/null`
-    if [ $rc -ne 0 ]; then continue; fi
+    D=`dirname $F`
+    cd $D 2>/dev/null
+    if [ $? -ne 0 ]; then continue; fi
     FN=`cat ".(nameof)($pnfsid)" 2>/dev/null`
-    if [ $rc -ne 0 ]; then continue; fi
+    if [ $? -ne 0 ]; then continue; fi
     if [ ! -r $FN ]; then continue; fi
-    file="$F $R"
+    file="$FN $R"
+    F=$FN
   fi
+  rm ${tape}_
 
   # ok, just tell the user the name of the file and do another if needed
-  echo $file
-  rm ${tape}_
+  # or copy the file to /dev/null if user requested this
+  if [ $copyit -eq 0 ]; then
+    echo $file
+  else
+    cmd="encp --verbose=1 --crc $F /dev/null"
+    echo $cmd
+    eval $cmd
+    rc=$?
+    RC=`expr $RC + $rc`
+  fi
   done=`expr $done - 1`
 done
 
 rm V_D
 cd $here
+
+exit $RC

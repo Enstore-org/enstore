@@ -1,0 +1,1 @@
+37 * * * * $ENSTORE_SBIN/ecron -p copy_ran_file /home/bakken/enstore/sbin/copy_ran_file  > /dev/null 2> /dev/null
