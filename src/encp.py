@@ -614,6 +614,17 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     msg = sts[1:]
     if len(msg)==1:
         msg=msg[0]
+    paranoid_crc = ticket.get('ecrc', None)
+    encp_crc = ticket.get('exfer', {}).get('encp_crc', None)
+    mover_crc = ticket.get('fc', {}).get('complet_crc', None)
+    if paranoid_crc != None:
+        crc = paranoid_crc
+    elif encp_crc != None:
+        crc = encp_crc
+    elif mover_crc != None:
+        crc = mover_crc
+    else:
+        crc = ""
         
     if type(outputfile) == types.ListType and len(outputfile) == 1:
         outputfile = outputfile[0]
@@ -776,7 +787,12 @@ def get_routing_callback_addr(encp_intf, udps=None):
 	addr = udps.server_address
 	udps.__del__()  #Close file descriptors and such.
         udps.__init__(addr, receive_timeout=encp_intf.mover_timeout)
-        
+        #In the unlikely event that the port is taken by some other process
+        # between the two functions above, obtain a new port.  This can
+        # cause some timeout errors, but that is life.
+        if udps.server_socket == None:
+            udps.__init__(None, receive_timeout=encp_intf.mover_timeout)
+                          
     route_callback_addr = (udps.server_address[0], udps.server_address[1])
     
     Trace.message(CONFIG_LEVEL,
@@ -2022,6 +2038,9 @@ def check_crc(done_ticket, encp_intf, fd=None):
             except EXfer.error, msg:
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, str(msg))
                 return
+
+            #Put the ecrc value into the ticket.
+            done_ticket['ecrc'] = paranoid_crc
 
             #If we have a valid crc value returned, compare it.
             if paranoid_crc != mover_crc:
@@ -3385,6 +3404,9 @@ def write_to_hsm(e, tinfo):
     # we are done transferring - close out the listen socket
     close_descriptors(listen_socket)
 
+    #Print to screen the exit status.
+    Trace.message(TO_GO_LEVEL, "EXIT STATUS: %d" % exit_status)
+
     #Finishing up with a few of these things.
     calc_ticket = calculate_final_statistics(bytes, len(request_list),
                                              exit_status, tinfo)
@@ -4240,7 +4262,7 @@ def read_from_hsm(e, tinfo):
     
     # initialize
     bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
-    exit_status = 1 #Used to determine the final message text.
+    exit_status = 0 #Used to determine the final message text.
     number_of_files = 0 #Total number of files where a transfer was attempted.
 
     # get a port to talk on and listen for connections
@@ -4314,8 +4336,6 @@ def read_from_hsm(e, tinfo):
                 Trace.message(ERROR_LEVEL,
                               "TRANSFERS FAILED: %s" % len(requests_failed))
                 Trace.message(TICKET_LEVEL, pprint.pformat(requests_failed))
-            else:
-                exit_status = 0
             #Sum up the total amount of bytes transfered.
             bytes = bytes + brcvd
         else:
@@ -4331,6 +4351,9 @@ def read_from_hsm(e, tinfo):
 
     # we are done transferring - close out the listen socket
     close_descriptors(listen_socket)
+
+    #Print to screen the exit status.
+    Trace.message(TO_GO_LEVEL, "EXIT STATUS: %d" % exit_status)
 
     #Finishing up with a few of these things.
     calc_ticket = calculate_final_statistics(bytes, number_of_files,
