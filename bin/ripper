@@ -14,8 +14,8 @@ case `uname -n` in
     cmd="killall python"; doit
     cmd="killall db_checkpoint"; doit
     cmd="killall db_deadlock"; doit
-    traceMode 7
-    traceReset
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
     cmd="python /home/bakken/enstore/src/configuration_server.py --config_host=rip6.fnal.gov --config_port=7500 --config_file=/home/bakken/enstore/etc/rip.conf &"; doit
     cmd="python /home/bakken/enstore/src/log_server.py           --config_host=rip6.fnal.gov --config_port=7500 &"; doit
     cmd="python /home/bakken/enstore/src/alarm_server.py         --config_host=rip6.fnal.gov --config_port=7500 &"; doit
@@ -27,8 +27,8 @@ case `uname -n` in
 
    rip5*)
     cmd="killall python"; doit
-    traceMode 7
-    traceReset
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 ait.library_manager   &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 mam.library_manager   &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 dlt.library_manager   &"; doit
@@ -38,8 +38,8 @@ case `uname -n` in
 
    samson*)
     killall python
-    traceMode 7
-    traceReset
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/configuration_server.py --config_host=samson.fnal.gov --config_port=7500 --config_file=/fnal/ups/prd/enstore/x0_4/etc/sam.conf &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/log_server.py          --config_host=samson.fnal.gov --config_port=7500 &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/alarm_server.py        --config_host=samson.fnal.gov --config_port=7500 &"; doit
@@ -55,8 +55,8 @@ case `uname -n` in
 
    rip1*)
     cmd="killall python"; doit
-    traceMode 7
-    traceReset
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
     cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 grau.media_changer &"; doit
     cmd="killall db_checkpoint"; doit
     cmd="killall db_deadlock"; doit
@@ -71,8 +71,8 @@ case `uname -n` in
 
    rip2*)
     cmd="killall python"; doit
-    traceMode 7
-    traceReset
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
     cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DE13DLT.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DE15DLT.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DC11MAM.mover &"; doit
@@ -80,8 +80,8 @@ case `uname -n` in
 
    rip7*)
     cmd="killall python"; doit
-    traceMode 7
-    traceReset
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 rip6.library_manager &"; doit
     cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 rip6.media_changer &"; doit
     cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 rip6.mover &"; doit
@@ -90,8 +90,8 @@ case `uname -n` in
 
    rip9*)
     cmd="killall python"; doit
-    traceMode 7
-    traceReset
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
     cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 STK.media_changer &"; doit
     cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk1.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk2.mover &"; doit
@@ -99,8 +99,8 @@ case `uname -n` in
 
    fntt*)
     cmd="zapit -s 15 python"; doit
-    traceMode 7
-    traceReset
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
     cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM05AIT.mover &"; doit
     cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM07AIT.mover &"; doit
     ;;
