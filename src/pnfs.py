@@ -543,23 +543,44 @@ class pnfs :
 
 if __name__ == "__main__" :
 
-    # if the user specifies a filename - assume it is a pnfs filename and dump
-    # all the information about the pnfs file that we know about
-    try :
-        pf = sys.argv[1]
-        dump = 1
+    import getopt
 
-    # otherwise, just run the self consistency test
-    except :
-        dump = 0
+    # defaults
+    test = 0
+    status = 0
+    info = 0
+    file = ""
+    list = 0
 
-    if dump :
-        p=pnfs(pf,1)
-        p.dump()
+    # see what the user has specified. bomb out if wrong options specified
+    options = ["test","status","file=","list","nolist","help"]
+    optlist,args=getopt.getopt(sys.argv[1:],'',options)
+    for (opt,value) in optlist :
+        if opt == "--test" :
+            test = 1
+        elif opt == "--status" :
+            status = 1
+        elif opt == "--file" :
+            info = 1
+            file = value
+        elif opt == "--list" :
+            list = 1
+        elif opt == "--nolist" :
+            list = 0
+        elif opt == "--help" :
+            print "python",sys.argv[0], options
+            print "   do not forget the '--' in front of each option"
+            sys.exit(0)
 
-    else :
+    if info :
+        p=pnfs(file,1)
+        p.dump() # always list, otherwise why is the user asking?
 
-        list = 0
+    elif status :
+        print "not yet"
+
+    elif test :
+
         base = "/pnfs/user/test1"
         count = 0
         for pf in base+"/"+repr(time.time()), "/impossible/path/test" :

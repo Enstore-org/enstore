@@ -1,0 +1,10 @@
+#!/bin/sh
+
+python ../configuration_server.py --config_file /home/bakken/enstore/willow.conf &
+sleep 1
+python ../configuration_client.py
+if [ $? -ne 0 ] ; then
+    echo "...configuration error. can not continue..."
+    exit 1
+fi
+exit 0

@@ -2,10 +2,14 @@
 
 #set -x
 
-pnfs=/pnfs/enstore/test1
+rm -f $ENSTORE_DIR/testfiles.in
 
-rm -f files.in
-rm $pnfs/*
+dpnfs=/pnfs/enstore/test1-`whoami`
+if [ -d $dpnfs ] ; then 
+    rm $dpnfs/*
+else
+    mkdir $dpnfs
+fi
 
 if [ ! -d data ] ; then mkdir data ; fi
 cd data

@@ -1,4 +1,3 @@
-
 # Generic server class for the hsm
 
 import socket

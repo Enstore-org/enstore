@@ -20,7 +20,7 @@ def try_a_port(host, port) :
 # try to get a port from a range of possibilities
 def get_client() :
     host = 'localhost'
-    #host = socket.gethostname()
+    #(host,ha,hi) = socket.gethostbyaddr(socket.gethostname())
     while  1:
         for port in range (7600, 7700) : # range (7600, 7600) has 0 members...
             success, sockt = try_a_port (host, port)
@@ -51,7 +51,7 @@ class UDPClient:
 
         # send the udp message until we get a response that it was sent
         number = 0  # impossible number
-        while not number == self.number:
+        while number != self.number:
             self.socket.sendto (message, address)
 
             # check for a response

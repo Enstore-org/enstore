@@ -15,7 +15,6 @@ python envoltool.py addvol activelibrary  family_process floppy flop22 1400000 1
 python envoltool.py addvol shelf family_reserved floppy flop3 1400000 1400000
 python envoltool.py addvol shelf family_reserved floppy flop4 1400000 1400000
 
-#put some files in there...
 loadfiles
 
 

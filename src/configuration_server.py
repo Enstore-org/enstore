@@ -116,42 +116,45 @@ if __name__ == "__main__" :
     import socket
 
     # defaults
-    host = "localhost"
-    port = "7500"
-    configfile = "/pnfs/enstore/.(config)(flags)/enstore.conf"
+    config_host = "localhost"
+    config_port = "7500"
+    config_file = "/pnfs/enstore/.(config)(flags)/enstore.conf"
     list = 1
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["host=","port=","configfile=","list", "nolist","help"]
+    options = ["config_host=","config_port=","config_file="\
+               ,"list", "nolist","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
-        if opt == "--host" :
-            host = value
-        elif opt == "--port" :
-            port = value
+        if opt == "--config_host" :
+            config_host = value
+        elif opt == "--config_port" :
+            config_port = value
+        elif opt == "--config_file" :
+            config_file = value
         elif opt == "--list" :
             list = 1
         elif opt == "--nolist" :
             list = 0
         elif opt == "--help" :
-            print sys.argv[0], options
+            print "python", sys.argv[0], options
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
 
     # bomb out if can't translate host
-    ip = socket.gethostbyname(host)
+    ip = socket.gethostbyname(config_host)
 
     # bomb out if port isn't numeric
-    port = string.atoi(port)
+    config_port = string.atoi(config_port)
 
     # bomb out if we can't find the file
-    statinfo = os.stat(configfile)
+    statinfo = os.stat(config_file)
 
     # instantiate, or bomb our, and then start server
-    server_address = (host,port)
+    server_address = (config_host,config_port)
     if list:
         print "Instantiating Configuration Server at ", server_address\
-              , " using config file ",configfile
-    cs =  ConfigurationServer( server_address, configfile,list)
+              , " using config file ",config_file
+    cs =  ConfigurationServer( server_address, config_file, list)
 
     cs.serve_forever()

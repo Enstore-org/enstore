@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 """Journaled dictionary
 
 To summarize the interface (key is a string, data is an arbitrary

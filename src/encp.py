@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 import os
 import string
 from callback import *
@@ -210,39 +208,72 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
 ##############################################################################
 
 if __name__  ==  "__main__" :
+    import getopt
 
-    # register as a udp client
-    csc = configuration_client()
+    # defaults
+    config_host = "localhost"
+    #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    config_port = "7500"
+    config_list = 0
+    list = 0
+
+    # see what the user has specified. bomb out if wrong options specified
+    options = ["config_host=","config_port=","config_list", "list","help"]
+    optlist,args=getopt.getopt(sys.argv[1:],'',options)
+    for (opt,value) in optlist :
+        if opt == "--config_host" :
+            config_host = value
+        elif opt == "--config_port" :
+            config_port = value
+        elif opt == "--config_list" :
+            config_list = 1
+        elif opt == "--list" :
+            list = 1
+        elif opt == "--help" :
+            print "python", sys.argv[0], options, "inputfilename outputfilename"
+            print "   do not forget the '--' in front of each option"
+            sys.exit(0)
+
+    # bomb out if can't translate host
+    ip = socket.gethostbyname(config_host)
+
+    # bomb out if port isn't numeric
+    config_port = string.atoi(config_port)
+
+    # bomb out if we don't have an input and an output
+    if len(args) != 2 :
+        print "python",sys.argv[0], options, "inputfilename outputfilename"
+        print "   do not forget the '--' in front of each option"
+        sys.exit(0)
+
+    # get a configuration server
+    if config_list :
+        print "Connecting to configuration server at ",config_host,config_port
+    csc = configuration_client(config_host,config_port)
     u = UDPClient()
 
-    # usage:  encp input output [list-details]
-    try :
-        list = string.atoi(sys.argv[3])
-    except :
-        list = 1
-
     # all files on the hsm system have /pnfs/ as the 1st part of their name
-    p1 = string.find(sys.argv[1],"/pnfs/")
-    p2 = string.find(sys.argv[2],"/pnfs/")
+    p1 = string.find(args[0],"/pnfs/")
+    p2 = string.find(args[1],"/pnfs/")
 
     # have we been called "encp unixfile hsmfile" ?
     if p1==-1 and p2==0 :
-        write_to_hsm(sys.argv[1], sys.argv[2], u, csc, list)
+        write_to_hsm(args[0], args[1], u, csc, list)
         if list > 1 :
-            p=pnfs.pnfs(sys.argv[2],1)
+            p=pnfs.pnfs(args[1],1)
             p.dump()
 
     # have we been called "encp hsmfile unixfile" ?
     elif p1==0 and p2==-1 :
         if list > 1 :
-            p=pnfs.pnfs(sys.argv[1],1)
+            p=pnfs.pnfs(args[0],1)
             p.dump()
-        read_from_hsm(sys.argv[1], sys.argv[2], u, csc, list)
+        read_from_hsm(args[0], args[1], u, csc, list)
 
     # have we been called "encp unixfile unixfile" ?
     elif p1==-1 and p2==-1 :
         print "encp copies to/from hsm. It is not involved in copying "\
-              +sys.argv[1]," to ",sys.argv[2]
+              +args[0]," to ",args[1]
 
     # have we been called "encp unixfile unixfile" ?
     elif p1==0 and p2==0 :
@@ -251,5 +282,4 @@ if __name__  ==  "__main__" :
 
     else:
         print "ERROR: Can not process arguments "\
-              +sys.argv[1]," to ",sys.argv[2]
-
+              +args[0]," to ",args[1]

@@ -3,9 +3,9 @@
 start-config
 if [ $? -ne 0 ] ; then exit 1; fi
 
-python volume_clerk.py &
-python file_clerk.py &
-python library_manager.py activelibrary &
-python mover.py fd0.mover &
+python volume_clerk.py    --config_host localhost --config_port 7500 &
+python file_clerk.py      --config_host localhost --config_port 7500 &
+python library_manager.py --config_host localhost --config_port 7500 activelibrary &
+python mover.py fd0.mover --config_host localhost --config_port 7500 &
 sleep 1
 
