@@ -95,10 +95,13 @@ trace_(  int lvl
       , ... )
 {
     if (trc_cntl_sp->lvl_a[trc_tid] & (1<<lvl))
-    {   va_list	ap;
-	int	idx, have_time_flg=0;
-	if (trc_cntl_sp->mode & 1)
-	{   int	ii;
+    {   
+	int	have_time_flg=0;
+	switch (trc_cntl_sp->mode-1)
+	{
+	    va_list	ap;
+	    int		ii, idx;
+	case 0:
 	    semop( trc_sem_id, &trc_sem_get_s, 1 );
 	    idx = trc_cntl_sp->head_idx;
 	    if (++trc_cntl_sp->head_idx > trc_cntl_sp->last_idx)
@@ -119,40 +122,65 @@ trace_(  int lvl
 	    (trc_ent_sp+idx)->pid = trc_pid;
 	    (trc_ent_sp+idx)->tid = trc_tid;
 	    (trc_ent_sp+idx)->lvl = lvl;
-	}
-	if (trc_cntl_sp->mode & 2)
-	{   char 	buf[TRC_MAX_MSG+200]; /* abritrary amount of space for
+	    break;
+	case 2:
+	    semop( trc_sem_id, &trc_sem_get_s, 1 );
+	    idx = trc_cntl_sp->head_idx;
+	    if (++trc_cntl_sp->head_idx > trc_cntl_sp->last_idx)
+		trc_cntl_sp->head_idx = 0;
+	    if      (trc_cntl_sp->full_flg)
+		trc_cntl_sp->tail_idx = trc_cntl_sp->head_idx;
+	    else if (trc_cntl_sp->head_idx == trc_cntl_sp->tail_idx)
+		trc_cntl_sp->full_flg = 1;
+	    gettimeofday( &(trc_ent_sp+idx)->time, 0 ); /* to prevent out of order times */
+	    have_time_flg = 1;
+	    semop( trc_sem_id, &trc_sem_put_s, 1 );
+	
+	    strncpy( (trc_ent_sp+idx)->msg_a, msg, TRC_MAX_MSG );
+	    va_start( ap, msg );
+	    for (ii=0; ii<TRC_MAX_PARAMS; ii++)
+		(trc_ent_sp+idx)->params[ii] = va_arg(ap,int);
+	    va_end( ap );
+	    (trc_ent_sp+idx)->pid = trc_pid;
+	    (trc_ent_sp+idx)->tid = trc_tid;
+	    (trc_ent_sp+idx)->lvl = lvl;
+	case 1:
+	    if (trc_cntl_sp->tty_lvl & (1<<lvl))
+	    {   char 	buf[TRC_MAX_MSG+200]; /* abritrary amount of space for
 						 (potential) formatting of
 						 arguments */
-	    char 	traceLvlStr[33]="                                ";
-	    struct timeval	tt, *tp;
+		char 	traceLvlStr[33]="                                ";
+		struct timeval	tt, *tp;
 
-	    if (have_time_flg)
-	    {   tp = &(trc_ent_sp+idx)->time;
+		if (have_time_flg)
+		{   tp = &(trc_ent_sp+idx)->time;
+		}
+		else
+		{   tp = &tt;
+		    gettimeofday( tp, 0 );
+		}
+		if (trc_tid >= TRC_MAX_PIDS)
+		{   sprintf(  buf
+			    , "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s %s%s\n"
+			    , (int)tp->tv_sec, (int)tp->tv_usec
+			    , trc_pid
+			    , trc_cntl_sp->t_name_a[trc_tid-TRC_MAX_PIDS]
+			    , &traceLvlStr[31-lvl], msg );
+		}
+		else
+		{   sprintf(  buf
+			    , "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "d %s%s\n"
+			    , (int)tp->tv_sec, (int)tp->tv_usec
+			    , trc_pid
+			    , trc_tid
+			    , &traceLvlStr[31-lvl], msg );
+		}
+		va_start( ap, msg );
+		vprintf( buf, ap );
+		va_end( ap );
 	    }
-	    else
-	    {   tp = &tt;
-		gettimeofday( tp, 0 );
-	    }
-	    if (trc_tid >= TRC_MAX_PIDS)
-	    {   sprintf(  buf
-			, "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s %s%s\n"
-			, (int)tp->tv_sec, (int)tp->tv_usec
-			, trc_pid
-			, trc_cntl_sp->t_name_a[trc_tid-TRC_MAX_PIDS]
-			, &traceLvlStr[31-lvl], msg );
-	    }
-	    else
-	    {   sprintf(  buf
-			, "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "d %s%s\n"
-			, (int)tp->tv_sec, (int)tp->tv_usec
-			, trc_pid
-			, trc_tid
-			, &traceLvlStr[31-lvl], msg );
-	    }
-	    va_start( ap, msg );
-	    vprintf( buf, ap );
-	    va_end( ap );
+	default:
+	    break;
 	}
     }
 }
@@ -302,6 +330,7 @@ trace_init_trc( const char *key_file_spec )
 		trc_cntl_sp = shmat( shm_id, 0,0 );/* no adr hint, no flgs */
 
 		trc_cntl_sp->mode = 1;
+		trc_cntl_sp->tty_lvl  = 0x0000000f;
 		trc_cntl_sp->intl_lvl = 0x0000ffff;
 		for (ii=TRC_MAX_PIDS; ii--; )
 		    trc_cntl_sp->pid_a[ii] = -1;
