@@ -283,7 +283,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                                            record["external_label"],
                                            record["media_type"])
 
-        if ret != 'unmounted' and ret != '' and ret != 'E' and ret != 'U':
+        if ret != 'unmounted' and ret != 'no_mc' and ret != '' and ret != 'E' and ret != 'U':
             return e_errors.CONFLICT,"volume state must be unmounted or '' or 'E' or 'U'. state %s"%(ret)
 
         # delete the volume
@@ -1442,8 +1442,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         m_changer = self.csc.get_media_changer(lib)
         if not m_changer:
             Trace.log(e_errors.ERROR,
-                      " vc.get_media_changer_state: ERROR: no media changer found %s" % (volume,))
-            return 'unknown'
+                      " vc.get_media_changer_state: ERROR: no media changer found (lib = %s) %s" % (lib, volume))
+            return 'no_mc'
             
         import media_changer_client
         mcc = media_changer_client.MediaChangerClient(self.csc, m_changer )
