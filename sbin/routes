@@ -35,7 +35,7 @@ case $job in
 
 quickcheck*)
 
-KNODES="d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5: \
+KNODES="d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5 \
 d0enmvr4a: d0enmvr4b: d0enmvr5a: d0enmvr5b: d0enmvr6a: d0enmvr6b: \
 d0enmvr7a: d0enmvr7b: d0enmvr8a: d0enmvr8b: d0enmvr9a: d0enmvr9b: \
 d0enmvr10a: d0enmvr10b: d0enmvr11a: d0enmvr11b: d0enmvr12a: d0enmvr12b: \
