@@ -490,6 +490,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                            self.config['media_changer'])
         self.config['device'] = os.path.expandvars(self.config['device'])
         self.client_hostname = None
+        self.client_ip = None  #NB: a client may have multiple interfaces, this is
+                                         ##the IP of the interface we're using
         
         import net_driver
         self.net_driver = net_driver.NetDriver()
@@ -1056,6 +1058,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.bytes_to_write = self.bytes_to_transfer
         self.bytes_to_read = self.bytes_to_transfer
 
+        ##NB: encp v2_5 supplies this information for writes but not reads. Somebody fix this!
         try:
             client_hostname = ticket['wrapper']['machine'][1]
         except KeyError:
@@ -1210,7 +1213,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken = ""
         self._in_setup = 0
         Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
-        Trace.notify("disconnect %s %s" % (self.shortname, self.client_hostname))
+        Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
@@ -1281,7 +1284,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._in_setup = 0
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
             self.current_volume, self.current_location))
-        Trace.notify("disconnect %s %s" % (self.shortname, self.client_hostname))
+        Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         if self.mode == WRITE:
             self.vcc.update_counts(self.current_volume, wr_access=1)
         else:
@@ -1460,9 +1463,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, "accepting client connection")
                 client_socket, address = listen_socket.accept()
                 listen_socket.close()
-                if not self.client_hostname:
-                    self.client_hostname = address[0]
-                Trace.notify("connect %s %s" % (self.shortname, self.client_hostname))
+                self.client_ip = address[0]
+                Trace.notify("connect %s %s" % (self.shortname, self.client_ip))
                 self.net_driver.fdopen(client_socket)
                 return control_socket, client_socket
             else:
