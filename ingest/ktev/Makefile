@@ -18,7 +18,7 @@ ktev_main: libktev.a ktev_main.o
 #ktev_main: libktev.so ktev_main.o
 #	cc -o $@ ktev_main.o $(LIBS) -lc 
 
-ktev_main.o: ktev_main.c $(LIB_SRC)
+ktev_main.o: ktev_main.c
 	 $(CC) $(CFLAGS) $(INC) -c ktev_main.c
 
 libktev.so: libktev.a

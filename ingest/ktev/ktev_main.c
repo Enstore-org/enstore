@@ -84,7 +84,7 @@ main(int argc, char *argv[])
 	    strcat(ofn, "/");
 	    sprintf(ofn,"%s/f%d",odn,fn);
 	    printf("destination file %s\n",ofn);
-	    dst=open(ofn,O_RDWR | O_CREAT | O_BINARY );
+	    dst=open(ofn,O_RDWR | O_CREAT | O_BINARY,0666);
 	    if (dst < 0){
 		printf("destination file open error\n");
 		perror(strerror(errno));
