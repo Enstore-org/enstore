@@ -185,6 +185,7 @@ int ftt_numeric_tab[FTT_MAX_STAT] = {
     /*  FTT_CMP_READ		53 */ 1,
     /*  FTT_ERROR_CODE		54 */ 0,
     /*  FTT_CUR_PART		54 */ 0,
+    /*  FTT_LOAD_PART		54 */ 0,
 };
 
 void
@@ -735,6 +736,14 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_BLOC_LOC,ftt_itoa(pack(buf[4],buf[5],buf[6],buf[7])),0);
 	    set_stat(b,FTT_CUR_PART,ftt_itoa(buf[1]),0);
 	}
+    }
+    if (stat_ops & FTT_DO_MSP21 ) {
+	static unsigned char cdb_ms21[6] = {0x1a, DBD, 0x21, 0x00, 10, 0x00};
+        int loadpart;
+        
+	res = ftt_do_scsi_command(d,"Mode Sense, 0x21", cdb_ms21, 6, buf, 10, 10, 0);
+	loadpart = (buf[BD_SIZE+3] >> 1) & 0x3f;
+	set_stat(b,FTT_LOAD_PART,ftt_itoa(loadpart),0);
     }
     if (failures > 0) {
 	ftt_eprintf("ftt_get_stats, %d scsi requests failed\n", failures);

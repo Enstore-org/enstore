@@ -323,38 +323,68 @@ ftt_undump_partitions(ftt_partbuf p, FILE *pf) {
 int		
 ftt_load_partition(ftt_descriptor d, int partno) {
     int res = 0;
-    ftt_partbuf p;
-    static unsigned char buf[BD_SIZE+6];
-    static unsigned char cdb_modsense[6] = {0x1a, DBD, 0x21, 0x00, 10, 0x00};
-    static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00, 10, 0x00};
-    int len;
-    int max;
 
-    /* get maximum number of partitions.. */
-    p = ftt_alloc_parts();
-    ftt_get_partitions(d,p);
-    max = ftt_extract_maxparts(p);
-    ftt_free_parts(p);
+    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
+        static char buf2[10];
 
-    /* -1 means highest supported partition */
-    if ( partno < 0 || partno > max ) partno = max;
+        sprintf(buf2,"%d",partno);
 
-    res = ftt_do_scsi_command(d,"Mode Sense, 0x21", cdb_modsense, 6, buf, 10, 10, 0);
-    if (res < 0) return res;
+	ftt_close_dev(d);
+	switch(ftt_fork(d)){
+	case -1:
+		return -1;
 
-    buf[0] = 0;
-    buf[1] = 0;
+	case 0:  /* child */
+		fflush(stdout);	/* make async_pf stdout */
+		fflush(d->async_pf_parent);
+		close(1);
+		dup2(fileno(d->async_pf_parent),1);
+		if (ftt_debug) {
+		    execlp("ftt_suid", "ftt_suid", "-x",  "-M", buf2, d->basename, 0);
+		} else {
+		     execlp("ftt_suid", "ftt_suid", "-M", buf2, d->basename, 0);
+		}
+		break;
 
-    len = buf[BD_SIZE+1] + BD_SIZE + 2;
+	default: /* parent */
+		res = ftt_wait(d);
+	}
 
-    /* set load partition */
-    buf[BD_SIZE+3] = (partno << 1) & 0x7e;
+    } else {
 
-    /* reserved fields */
-    buf[BD_SIZE+2] = 0;
-    buf[BD_SIZE+4] = 0;
-    buf[BD_SIZE+5] = 0;
+	ftt_partbuf p;
+	static unsigned char buf[BD_SIZE+6];
+	static unsigned char cdb_modsense[6] = {0x1a, DBD, 0x21, 0x00, 10, 0x00};
+	static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00, 10, 0x00};
+	int len;
+	int max;
 
-    res = ftt_do_scsi_command(d,"Mode Select, 0x21", cdb_modsel, 6, buf, len, 10, 1);
+	/* get maximum number of partitions.. */
+	p = ftt_alloc_parts();
+	ftt_get_partitions(d,p);
+	max = ftt_extract_maxparts(p);
+	ftt_free_parts(p);
+
+	/* -1 means highest supported partition */
+	if ( partno < 0 || partno > max ) partno = max;
+
+	res = ftt_do_scsi_command(d,"Mode Sense, 0x21", cdb_modsense, 6, buf, 10, 10, 0);
+	if (res < 0) return res;
+
+	buf[0] = 0;
+	buf[1] = 0;
+
+	len = buf[BD_SIZE+1] + BD_SIZE + 2;
+
+	/* set load partition */
+	buf[BD_SIZE+3] = (partno << 1) & 0x7e;
+
+	/* reserved fields */
+	buf[BD_SIZE+2] = 0;
+	buf[BD_SIZE+4] = 0;
+	buf[BD_SIZE+5] = 0;
+
+	res = ftt_do_scsi_command(d,"Mode Select, 0x21", cdb_modsel, 6, buf, len, 10, 1);
+    }
     return res;
 }
