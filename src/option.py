@@ -344,7 +344,7 @@ class Interface:
     parameters = []
     
     alive_rcv_options = {
-        TIMEOUT:{HELP_STRING:"number of seconds to wait for alive responce",
+        TIMEOUT:{HELP_STRING:"number of seconds to wait for alive response",
                  VALUE_NAME:"alive_rcv_timeout",
                  VALUE_USAGE:REQUIRED,
                  VALUE_TYPE:INTEGER,
