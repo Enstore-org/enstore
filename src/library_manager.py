@@ -188,6 +188,7 @@ def flush_pending_jobs(self, status, external_label=None, jobtype=None):
 
 # return a list of busy volumes for a given file family
 def busy_vols_in_family (self, vc, family_name):
+    Trace.trace(11,"busy_vols_in_family VC:%s family: %s"%(repr(vc),family_name))
     vols = []
     # look in the list of work_at_movers
     for w in self.work_at_movers.list:
@@ -198,6 +199,7 @@ def busy_vols_in_family (self, vc, family_name):
     # now check if any volume in this family is still mounted
     work_movers = []
     for mv in movers:
+        Trace.trace(11,"busy_vols_in_family. Mover file_family: %s"%(mv["file_family"],))
 	if mv["file_family"] == family_name:
 	    vol_info = vc.inquire_vol(mv["external_label"])
             Trace.trace(11,"busy_vols_in_family vol %s"%(vol_info,))
@@ -215,6 +217,8 @@ def busy_vols_in_family (self, vc, family_name):
 		    # go into the volume veto list
 		    vols.append(mv["external_label"])
             # check if this mover can do the work
+            Trace.trace(11,"busy_vols_in_family.mover:%s,state:%s,at_mover:%s"%\
+                        (mv['mover'],mv['state'],repr(vol_info['at_mover'])))
 	    if (vol_info['at_mover'][0] == 'mounted' and
                 mv['mover'] == vol_info['at_mover'][1] and 
 		mv['state'] == 'idle_mover'):
@@ -346,6 +350,8 @@ def next_work_any_volume(self):
             vol_veto_list, work_movers = busy_vols_in_family(self, self.vcc, 
 							    w["vc"]["file_family"]+\
                                                              "."+w["vc"]["wrapper"])
+            Trace.trace(11,"next_work_any_volume vol veto list:%s, movers:%s"%\
+                        (repr(vol_veto_list), repr(work_movers)))
             # only so many volumes can be written to at one time
             if len(vol_veto_list) >= w["vc"]["file_family_width"]:
                 w["reject_reason"] = ("VOLS_IN_WORK","")
@@ -363,6 +369,7 @@ def next_work_any_volume(self):
 					      w["vc"]["wrapper"],
 					      mov["external_label"])
 	    
+                Trace.trace(11,"next_work_any_volume.CAN WRITE:%s"%(v_info['status'][0],))
 		if v_info['status'][0] == e_errors.OK:
 		    Trace.trace(11,"next_work_any_volume MV TO SUMMON %s"%(mov,))
 		    # summon this mover
@@ -1076,9 +1083,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w:
             Trace.trace(13,"removing %s  from the queue"%(w,))
 	    delayed_dismount = w['encp']['delayed_dismount']
+            # file family may be changed by VC during the volume
+            # assignment. Set file family to what vC has returned
+            vol_info = self.vcc.inquire_vol(mticket['vc']["external_label"])
+            w['vc']['file_family'] = vol_info['file_family']
 	    self.work_at_movers.remove(w)
 	    mv = find_mover(mticket, movers)
 	    if mv and  mv.has_key("work_ticket"):
+                # update mv["file_family"]
+                mv['file_family'] = w['vc']['file_family']
 		del(mv["work_ticket"])
 
 	else: delayed_dismount = 0
