@@ -6,6 +6,7 @@ import pprint
 import copy
 import errno
 import regsub
+import string
 
 # enstore imports
 import timeofday
@@ -19,11 +20,24 @@ import admin_clerk_client
 import library_manager_client
 import media_changer_client
 import dispatching_worker
+import interface
 import SocketServer
 import generic_server
 import udp_client
 import Trace
 import e_errors
+
+def default_timeout():
+    return 60
+
+def default_alive_rcv_timeout():
+    return 5
+
+def default_alive_retries():
+    return 2
+
+def default_file_dir():
+    return "./"
 
 class EnstoreSystemStatusFile:
 
@@ -80,7 +94,7 @@ class EnstoreSystemStatusFile:
 
     # output the name of the server
     def output_name(self, name):
-	self.file.write(self.unquote(name)+" : \n")
+	self.file.write(self.unquote(name))
 
     # remove all single quotes
     def unquote(self, string):
@@ -100,18 +114,6 @@ class EnstoreSystemStatusFile:
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
-    # update the enstore status file - to do this we must contact each of
-    # the following and get their status.  
-    #	file clerk
-    #   admin clerk
-    #   volume clerk
-    #   log server
-    #   configuration server
-    #   library manager(s)
-    #   media changer(s)
-    #   mover(s)
-    # then we write the status to the specified file
-
     # get the information from the configuration server
     def update_config(self):
         Trace.trace(12,"{update_config "+repr(self.essfile.file_name))
@@ -130,22 +132,28 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	t = self.csc.get_uncached(key)
 	# get a client and then check if the server is alive
 	lmc = library_manager_client.LibraryManagerClient(self.csc, 0, key, t['host'], t['port'])
-	ticket = self.csc.get(key)
 	try:
 	    stat = lmc.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_name(key)
-	    self.essfile.output_alive(ticket['host'], "      ", stat)
+	    self.essfile.output_alive(t['host'], " : ", stat)
 	    stat = lmc.getwork(list)
 	    self.essfile.output_lmqueues(stat)
 	    stat = lmc.getmoverlist()
 	    self.essfile.output_lmmoverlist(stat)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.essfile.output_etimedout((ticket['host'], ticket['port']), "library manager : ")
+	    self.essfile.output_etimedout((t['host'], t['port']), \
+                                          "library manager : ")
         Trace.trace(12,"}update_library_manager ")
 
     # get the information from the movers
     def update_mover(self, key):
+        Trace.trace(12,"{update_mover "+repr(self.essfile.file_name)+" "+repr(key))
+	# get info on this mover
+	t = self.csc.get_uncached(key)
 	self.essfile.output_name(key)
+	self.essfile.output_alive(t['host'], " : ", { 'work' : "NOT IMPL YET",\
+                                          'address' : (t['host'], t['port']), \
+                                          'status' : (e_errors.OK, None)})
 
     # get the information from the admin clerk
     def update_admin_clerk(self, key):
@@ -187,13 +195,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	t = self.csc.get_uncached(key)
 	# get a client and then check if the server is alive
 	mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, t['host'], t['port'])
-	ticket = self.csc.get(key)
 	try:
 	    stat = mcc.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_name(key)
-	    self.essfile.output_alive(ticket['host'], "      ", stat)
+	    self.essfile.output_alive(t['host'], " : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout((ticket['host'], ticket['port']), "media changer   : ")
+	    self.essfile.output_etimedout((t['host'], t['port']), "media changer   : ")
         Trace.trace(12,"}update_media_changer ")
 
     # get the information from the volume clerk server
@@ -282,16 +289,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         return
 
     # loop here forever doing what inquisitors do best (overrides UDP one)
-    def serve_forever(self, timeout, list, alive_to, alive_tries) :
-	Trace.trace(4,"{serve_forever "+repr(timeout))
-	self.rcv_timeout = timeout
+    def serve_forever(self, list) :
+	Trace.trace(4,"{serve_forever "+repr(self.rcv_timeout))
 
-	self.alive_rcv_timeout = alive_to
-	self.alive_retries = alive_tries
-
-	# get a file clerk client, volume clerk client, admin clerk client,
-	# library manager client(s), media changer client(s) and a connection
-	# to the mover(s).  these will be used to get the status
+	# get a file clerk client, volume clerk client, admin clerk client
+	# connections to library manager client(s), media changer client(s)
+	# and a connection to the movers will be gotten dynamically.
+	# these will be used to get the status
 	# information from the servers. we do not need to pass a host and port
 	# to the class instantiators because we are giving them a configuration
 	# client and they do not need to connect to the configuration server.
@@ -304,7 +308,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(4,"}serve_forever ")
 
     def handle_timeout(self):
+	Trace.trace(4,"{handle_timeout ")
 	self.do_update(0)
+	Trace.trace(4,"}handle_timeout ")
 	return
 
 
@@ -312,117 +318,108 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 class Inquisitor(InquisitorMethods,
                 generic_server.GenericServer,
                 SocketServer.UDPServer):
-    pass
+
+    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+                 port=interface.default_port(), timeout=-1, file_dir="", \
+                 alive_rcv_to=-1, alive_retries=-1):
+	# get the config server
+	Trace.trace(10, '{__init__')
+	configuration_client.set_csc(self, csc, host, port, list)
+	#   pretend that we are the test system
+	#   remember, in a system, there is only one bfs
+	#   get our port and host from the name server
+	#   exit if the host is not this machine
+	keys = self.csc.get("inquisitor")
+	SocketServer.UDPServer.__init__(self, (keys["hostip"], keys["port"]), \
+	                                InquisitorMethods)
+	# if no timeout was entered on the command line, get it from the 
+	# configuration file.
+	if timeout == -1:
+	    try:
+	        self.rcv_timeout = keys["timeout"]
+	    except:
+	        self.rcv_timeout = inquisitor.default_timeout()
+	else:
+	    self.rcv_timeout = timeout
+
+	# if no alive timeout was entered on the command line, get it from the 
+	# configuration file.
+	if alive_rcv_to == -1:
+	    try:
+	        self.alive_rcv_timeout = keys["alive_rcv_timeout"]
+	    except:
+	        self.alive_rcv_timeout = inquisitor.default_alive_rcv_timeout()
+	else:
+	    self.alive_rcv_timeout = alive_rcv_to
+
+	# if no alive retry # was entered on the command line, get it from the 
+	# configuration file.
+	if alive_retries == -1:
+	    try:
+	        self.alive_retries = keys["alive_retries"]
+	    except:
+	        self.alive_retries = inquisitior.default_alive_retries()
+	else:
+	    self.alive_retries = alive_retries
+
+	# get the directory where the files we create will go.  this should
+	# be in the configuration file.
+	if file_dir == "":
+	    try:
+	        file_dir = keys["file_dir"]
+	    except:
+	        file_dir = inquisitor.default_file_dir()
+
+	# get a logger
+	self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
+	                                    'logserver', 0)
+
+	# get a system status file
+	self.essfile = EnstoreSystemStatusFile(file_dir, list)
+
+	Trace.trace(10, '}__init__')
+
+class InquisitorInterface(interface.Interface):
+
+    def __init__(self):
+	Trace.trace(10,'{iqsi.__init__')
+	# fill in the defaults for possible options
+	self.config_list = 0
+	self.file_dir = ""
+	self.alive_rcv_timeout = -1
+	self.alive_retries = -1
+	self.timeout = -1
+	self.list = 0
+	interface.Interface.__init__(self)
+
+	# now parse the options
+	self.parse_options()
+	Trace.trace(10,'}iqsi.__init__')
+
+    # define the command line options that are valid
+    def options(self):
+	Trace.trace(16, "{}options")
+	return self.config_options()+self.list_options() +\
+	       ["config_list","file_dir=","timeout="] +\
+	       self.alive_rcv_options()+self.help_options()
 
 if __name__ == "__main__":
-    import sys
-    import getopt
-    import string
-    # Import SOCKS module if it exists, else standard socket module socket
-    # This is a python module that works just like the socket module, but uses
-    # the SOCKS protocol to make connections through a firewall machine.
-    # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-    # goto www.python.org and search for "import SOCKS"
-    try:
-        import SOCKS; socket = SOCKS
-    except ImportError:
-        import socket
     Trace.init("inquisitor")
     Trace.trace(1,"inquisitor called with args "+repr(sys.argv))
 
-    # defaults
-    (config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_host = ci[0]
-    config_port = "7500"
-    config_list = 0
-    file_dir = ""
-    timeout = 0
-    list = 0
+    # get interface
+    intf = InquisitorInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port="\
-               ,"config_list","file_dir=","timeout=","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist:
-        if opt == "--config_host":
-            config_host = value
-        elif opt == "--config_port":
-            config_port = value
-        elif opt == "--config_list":
-            config_list = 1
-        elif opt == "--file_dir":
-            file_dir = value
-        elif opt == "--rcv_timeout":
-            timeout = value
-        elif opt == "--alive_rcv_timeout":
-            alive_rcv_timeout = value
-        elif opt == "--alive_retry":
-            alive_retry = value
-        elif opt == "--list":
-            list = 1
-        elif opt == "--help":
-            print "python ",sys.argv[0], options
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
-
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    csc = configuration_client.ConfigurationClient(config_host,config_port,\
-                                                    config_list)
-
-    #   pretend that we are the test system
-    #   remember, in a system, there is only one bfs
-    #   get our port and host from the name server
-    #   exit if the host is not this machine
-    keys = csc.get("inquisitor")
-    iq = Inquisitor( (keys["hostip"], keys["port"]), InquisitorMethods)
-    iq.set_csc(csc)
-
-    # if no timeout was entered on the command line, get it from the 
-    # configuration file.
-    try:
-        timeout = keys["timeout"]
-    except:
-        timeout = 120
-
-    # if no alive timeout was entered on the command line, get it from the 
-    # configuration file.
-    try:
-        alive_rcv_timeout = keys["alive_rcv_timeout"]
-    except:
-        alive_rcv_timeout = 15
-
-    # if no alive retry # was entered on the command line, get it from the 
-    # configuration file.
-    try:
-        alive_retries = keys["alive_retries"]
-    except:
-        alive_retries = 4
-
-    # get the directory where the files we create will go.  this should
-    # be in the configuration file.
-    try:
-        file_dir = keys["file_dir"]
-    except:
-        file_dir = ""
-
-    # get a logger
-    logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
-    iq.set_logc(logc)
-    indlst=['external_label']
-
-    # get a system status file
-    iq.essfile = EnstoreSystemStatusFile(file_dir, list)
+    # get the inquisitor
+    inq = Inquisitor(0, intf.config_list, intf.config_host, intf.config_port, \
+                     intf.timeout, intf.file_dir, \
+                     intf.alive_rcv_timeout, intf.alive_retries)
 
     while 1:
         try:
             Trace.trace(1,'Inquisitor (re)starting')
-            logc.send(log_client.INFO, 1, "Inquisitor (re)starting")
-            iq.serve_forever(timeout, list, alive_rcv_timeout, alive_retries)
+            inq.logc.send(log_client.INFO, 1, "Inquisitor (re)starting")
+            inq.serve_forever(intf.list)
         except:
             traceback.print_exc()
             format = timeofday.tod()+" "+\
@@ -431,7 +428,7 @@ if __name__ == "__main__":
                      str(sys.exc_info()[1])+" "+\
                      "inquisitor serve_forever continuing"
             print format
-            logc.send(log_client.ERROR, 1, format)
+            inq.logc.send(log_client.ERROR, 1, format)
             Trace.trace(0,format)
             continue
     Trace.trace(1,"Inquisitor finished (impossible)")
