@@ -11,7 +11,7 @@ N=/dev/null
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 case $node in
   stken*) gang=stken
-          NODES="stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
+          NODES="stkensrv0 stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
                  stkenmvr1a: stkenmvr1b: stkenmvr2a: stkenmvr2b: stkenmvr3a: stkenmvr3b: \
                  stkenmvr4a: stkenmvr4b: stkenmvr5a: stkenmvr5b: stkenmvr6a: stkenmvr6b: \
 		 stkendca3a: stkendca4a: stkendca5a: \
@@ -59,6 +59,7 @@ add*)
     /sbin/route add -host d0ensrv4 eth0
     /sbin/route add -host d0ensrv5 eth0
 
+    /sbin/route add -host stkensrv0 eth0
     /sbin/route add -host stkensrv1 eth0
     /sbin/route add -host stkensrv2 eth0
     /sbin/route add -host stkensrv3 eth0
@@ -126,6 +127,7 @@ del*)
     /sbin/route del d0ensrv4
     /sbin/route del d0ensrv5
 
+    /sbin/route del stkensrv0
     /sbin/route del stkensrv1
     /sbin/route del stkensrv2
     /sbin/route del stkensrv3
