@@ -245,10 +245,14 @@ cat $files | while read file; do
            lfile_size=`stat $lfile|grep Size |awk '{print $2 }'`
            if [ $bfile_size -eq 0 -a $lfile_size -ne 0 ]; then
               echo `date` ERROR: 0 length file $bfile tape $tape
+	      echo `date` issuing rm $bfile
+	                          rm $bfile
               echo 1 >| $rc
-           fi
-           if [ $bfile_size -ne $lfile_size ]; then
+           elif [ $bfile_size -ne $lfile_size ]; then
               echo `date` ERROR: $bfile has size $bfile_size, $lfile has size $lfile_size
+	      echo rm $bfile
+	      echo `date` issuing rm $bfile
+	                          rm $bfile
               echo 1 >| $rc
            fi
         fi
