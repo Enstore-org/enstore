@@ -1048,6 +1048,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    update_mover_list(mticket, state)
             w['mover'] = mticket['mover']
             self.work_at_movers.append(w)
+            # find mover in the delayed dismount list
+            mvr = find_mover(mticket,self.del_dismount_list.list)
+            if mvr:
+                # there is summon request pending for this mover
+                # from the previous have_bound request
+                # cancel it
+                timer_task.msg_cancel_tr(summon_mover_d, 
+                                         self, mvr['mover'])                
+                self.del_dismount_list.remove(mvr)
             return
 
         # if the pending work queue is empty, then we're done
@@ -1072,7 +1081,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			# the previous ticket
 			timer_task.msg_cancel_tr(summon_mover_d, 
 						 self, mvr['mover'])
-		    # add timer func. for this tisket
+		    # add timer func. for this ticket
 		    mv["delay"] = delayed_dismount
 		    timer_task.msg_add(delayed_dismount*60, 
 				       summon_mover_d, self, mv, w)
