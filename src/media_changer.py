@@ -20,6 +20,7 @@ import generic_server
 import log_client
 import traceback
 import string
+import Trace
 
 list = 0
 # media loader template class
@@ -247,6 +248,7 @@ if __name__ == "__main__" :
 
     while 1:
         try:
+            Trace.init(args[0][0:5]+'.medc')
             logc.send(log_client.INFO, 1, "Media Changer"+args[0]+"(re) starting")
             mc.serve_forever()
         except:

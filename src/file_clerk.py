@@ -301,7 +301,7 @@ class FileClerk(FileClerkMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
-    Trace.init("file clerk"
+    Trace.init("file clerk")
     import sys
     import getopt
     import string

@@ -12,6 +12,7 @@ from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 from db import dBTable
 import pprint
+import Trace
 
 class VolumeClerkMethods(DispatchingWorker) :
 
@@ -652,6 +653,7 @@ class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
+    Trace.init("Vol Clerk")
     import sys
     import getopt
     import string
