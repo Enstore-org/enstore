@@ -182,7 +182,7 @@ FTT_close(  PyObject *self
     {   /* write out partial block */
 	int sts;
 	sts = ftt_write( g_ftt_desc_tp,  g_buf_p, g_buf_bytes );
-	if (sts == -1) return (raise_ftt_exception("partial block flush"));
+	if (sts == -1) return (raise_ftt_exception("close - partial block write"));
     }
     g_buf_bytes = 0;		/* always zero g_buf - next open will start
 				 over! */
@@ -688,7 +688,7 @@ FTT_writefm(  PyObject *self
     if (g_buf_bytes && (g_mode_c=='w'))
     {   /* write out partial block */
 	sts = ftt_write( g_ftt_desc_tp,  g_buf_p, g_buf_bytes );
-	if (sts == -1) return (raise_ftt_exception("partial block flush"));
+	if (sts == -1) return (raise_ftt_exception("FTT_writefm - partial block write"));
     }
     g_buf_bytes = 0;		/* always zero g_buf - next open will start
 				 over! */
@@ -773,6 +773,30 @@ FTT_rewind(  PyObject *self
 
 /*****************************************************************************
  */
+static char FTT_flush_doc[] = "invoke ftt_flush";
+
+static PyObject*
+FTT_flush(  PyObject *self
+	  , PyObject *args )
+{
+
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_flush device not opened"));
+
+    if (g_buf_bytes && (g_mode_c=='w'))
+    {   /* write out partial block */
+	int sts;
+	sts = ftt_write( g_ftt_desc_tp,  g_buf_p, g_buf_bytes );
+	if (sts == -1) return (raise_ftt_exception("FTT_flush - partial block write"));
+	g_buf_bytes = 0;
+    }
+
+    return (Py_BuildValue(""));	/* None */
+}
+
+
+
+/*****************************************************************************
+ */
 static char FTT_get_stats_doc[] = "invoke ftt_get_stats";
 
 static PyObject*
@@ -849,6 +873,7 @@ static PyMethodDef FTT_Methods[] = {
     { "skip_fm", FTT_skip_fm, 1, FTT_skip_fm_doc },
     { "locate", FTT_locate, 1, FTT_locate_doc },
     { "rewind", FTT_rewind, 1, FTT_rewind_doc },
+    { "flush", FTT_flush, 1, FTT_flush_doc },
     { "get_stats", FTT_get_stats, 1, FTT_get_stats_doc },
     { "status", FTT_status, 1, FTT_status_doc },
     { 0, 0 }        /* Sentinel */

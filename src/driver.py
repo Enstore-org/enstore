@@ -153,6 +153,9 @@ class GenericDriver:
     def close( self ):
 	return self.fo.close()
 
+    def flush( self ):
+	return self.fo.flush()
+
     #-----------------
     pass
 
@@ -282,6 +285,9 @@ class  FTTDriver(GenericDriver) :
 
     def close( self ):
 	return FTT.close()
+
+    def flush( self ):
+	return FTT.flush()
 
     pass
 

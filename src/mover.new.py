@@ -339,7 +339,7 @@ def forked_write_to_hsm( self, ticket ):
 	    Trace.trace( 11, 'done with rest' )
 	    wrapper.write_post_data( do, file_crc )
 	    Trace.trace( 11, 'done with post_data' )
-	    # could implement do.flush() to get 100% honest xfer time
+	    do.flush()
 	    ticket['times']['transfer_time'] = time.time() - t0
 	    t0 = time.time()
 	    do.writefm()
