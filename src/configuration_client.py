@@ -34,13 +34,9 @@ class ConfigurationClient(generic_client.GenericClient):
     def __init__(self, csc):
         self.clear()
 	self.print_id = MY_NAME
-	Trace.trace(8, "Connecting to configuration server at %s %s"\
-                    %(csc[0], csc[1]))
         self.config_address=csc
         self.u = udp_client.UDPClient()
-        Trace.trace(11,'add='+repr(self.config_address)+\
-                    ' udp='+repr(self.u))
-
+        
     # return the address of the configuration server
     def get_address(self):
 	return self.config_address
@@ -54,7 +50,7 @@ class ConfigurationClient(generic_client.GenericClient):
         request = {'work' : 'lookup', 'lookup' : key }
         while 1:
             try:
-                self.cache[key] = self.u.send(request, self.config_address,\
+                self.cache[key] = self.u.send(request, self.config_address,
                                               timeout, retry)
                 break
             except socket.error:
@@ -66,16 +62,16 @@ class ConfigurationClient(generic_client.GenericClient):
         exc, msg, tb = sys.exc_info()
         if msg.errno == errno.CONNREFUSED:
             delay = 3
-            Trace.trace(6,"%s retrying %s %s" % (id, exc, msg))
             time.sleep(delay)
         else:
-            Trace.trace(6, "%s %s %s" % (id, exc, msg))
             raise exc, msg
 
     # return cached (or get from server) value for requested item
     def get(self, key, timeout=0, retry=0):
-        # try the cache
-        return self.cache.get(key, self.get_uncached(key, timeout, retry))
+        ret = self.cache.get(key, None)
+        if ret is None:
+            ret = self.get_uncached(key, timeout, retry)
+        return ret
 
     # dump the configuration dictionary
     def dump(self, timeout=0, retry=0):
@@ -118,7 +114,6 @@ class ConfigurationClient(generic_client.GenericClient):
             x = self.u.send({'work':'alive'},self.config_address, rcv_timeout,
                           tries)
         except errno.errorcode[errno.ETIMEDOUT]:
-	    Trace.trace(14,"alive - ERROR, alive timed out")
 	    x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
 
@@ -202,7 +197,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                 "config_file=","summary","show","load"]
 
 def do_work(intf):
-    # now get a configuration client
+
     csc = ConfigurationClient((intf.config_host, intf.config_port))
 
     if intf.alive:
@@ -232,7 +227,6 @@ def do_work(intf):
 
 if __name__ == "__main__":
     Trace.init(MY_NAME)
-    Trace.trace(6,"config client called with args "+repr(sys.argv))
 
     # fill in interface
     intf = ConfigurationClientInterface()
