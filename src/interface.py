@@ -7,6 +7,7 @@ import getopt
 import sys
 
 # enstore imports
+import setpath
 import Trace
 import e_errors
 import hostaddr

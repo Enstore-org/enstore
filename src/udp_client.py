@@ -11,6 +11,7 @@ import errno
 import sys
 
 # enstore imports
+import setpath
 import e_errors
 import interface
 import Trace
