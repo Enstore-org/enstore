@@ -13,11 +13,7 @@ import string
 import socket
 import select
 import errno
-import fcntl
-if sys.version_info < (2, 2, 0):
-    import FCNTL #FCNTL is depricated in python 2.2 and later.
-    fcntl.F_GETFL = FCNTL.F_GETFL
-    fcntl.F_SETFL = FCNTL.F_SETFL
+import fcntl, FCNTL
 import re
 # enstore imports
 import setpath
@@ -425,8 +421,8 @@ class LibraryManagerMethods:
         try:
             Trace.trace(11,"send_regret %s" % (ticket,))
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            flags = fcntl.fcntl(control_socket.fileno(), fcntl.F_GETFL)
-            fcntl.fcntl(control_socket.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
+            flags = fcntl.fcntl(control_socket.fileno(), FCNTL.F_GETFL)
+            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | os.O_NONBLOCK)
             # the following insertion is for antispoofing
             host = ticket['wrapper']['machine'][1]
             if ticket.has_key('route_selection') and ticket['route_selection']:

@@ -40,11 +40,12 @@ import traceback
 import select
 import signal
 import random
-import fcntl
 if sys.version_info < (2, 2, 0):
-    import FCNTL #FCNTL is depricated in python 2.2 and later.
+    import fcntl, FCNTL
     fcntl.F_GETFL = FCNTL.F_GETFL
     fcntl.F_SETFL = FCNTL.F_SETFL
+else: #FCNTL is depricated in python 2.2 and later.
+    import fcntl
 import math
 import exceptions
 import re
@@ -1077,15 +1078,11 @@ def inputfile_check(input_files):
                 #We don't want to fail immediatly.  On reads it is ok for
                 # encp to check all three paths to the experiment's file:
                 # /pnfs/xyz, /pnfs/fs/usr/xyz and /pnfs/fnal.gov/xyz.
-
-                if not pnfs.is_pnfs_path(inputlist[i]): #Excludes writes first.
-                    raise EncpError(errno.ENOENT, inputlist[i],
-                                    e_errors.USERERROR)
-                elif access_check(get_enstore_pnfs_path(inputlist[i]),
-                                  os.F_OK):
+                if access_check(get_enstore_pnfs_path(inputlist[i]),
+                                    os.F_OK):
                     inputlist[i] = get_enstore_pnfs_path(inputlist[i])
                 elif access_check(get_enstore_fs_path(inputlist[i]),
-                                  os.F_OK):
+                                      os.F_OK):
                     inputlist[i] = get_enstore_fs_path(inputlist[i])
                 elif access_check(get_enstore_canonical_path(inputlist[i]),
                                   os.F_OK):
@@ -2193,25 +2190,25 @@ def check_crc(done_ticket, encp_intf, fd=None):
             done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
             return
 
-    #If the user wants a crc readback check of the new output file (reads
+    #If the user wants a paranoid crc check of the new output file (reads
     # only) calculate it and compare.
     if encp_intf.ecrc:
         #If passed a file descriptor, make sure it is to a regular file.
         if fd and (type(fd) == types.IntType) and \
            stat.S_ISREG(os.fstat(fd)[stat.ST_MODE]):
             try:
-                readback_crc = EXfer.ecrc(fd)
+                paranoid_crc = EXfer.ecrc(fd)
             except EXfer.error, msg:
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, str(msg))
                 return
 
             #Put the ecrc value into the ticket.
-            done_ticket['ecrc'] = readback_crc
+            done_ticket['ecrc'] = paranoid_crc
 
             #If we have a valid crc value returned, compare it.
-            if readback_crc != mover_crc:
-                msg = "CRC readback mismatch: %d != %d" % (mover_crc,
-                                                           readback_crc)
+            if paranoid_crc != mover_crc:
+                msg = "Paranoid CRC mismatch: %d != %d" % (mover_crc,
+                                                           paranoid_crc)
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
                 return
                 
@@ -2657,8 +2654,8 @@ def calculate_rate(done_ticket, tinfo):
     id = done_ticket['unique_id']
 
     #Make these variables easier to use.
-    transfer_time = tinfo.get('%s_transfer_time' % (id,), 0)
-    overall_time = tinfo.get('%s_overall_time' % (id,), 0)
+    elapsed_time = tinfo.get('%s_elapsed_time' % (id,), 0)
+    complete_time = tinfo.get('%s_elapsed_finished' % (id,), 0)
     drive_time = done_ticket['times'].get('drive_transfer_time', 0)
     #These are newer more accurate time measurements and may not always
     # be present.
@@ -2670,21 +2667,21 @@ def calculate_rate(done_ticket, tinfo):
         if read_time != None:
             network_time = read_time
         else:
-            network_time = transfer_time
+            network_time = elapsed_time
         if write_time != None:
             disk_time = write_time
         else:
-            disk_time = transfer_time
+            disk_time = elapsed_time
     else: #write "to"
         preposition = "to"
         if write_time != None:
             network_time = write_time
         else:
-            network_time = transfer_time
+            network_time = elapsed_time
         if read_time != None:
             disk_time = read_time
         else:
-            disk_time = transfer_time
+            disk_time = elapsed_time
 
     """
     #Note MWZ 9-19-2002: These lines are hacks.  They are evil.  Fix EXfer.c
@@ -2699,26 +2696,22 @@ def calculate_rate(done_ticket, tinfo):
     
     if e_errors.is_ok(done_ticket['status'][0]):
 
-        if transfer_time != 0:
-            tinfo['%s_transfer_rate'%(id,)] = MB_transfered / transfer_time
+        if complete_time != 0:
+            tinfo['overall_rate_%s'%(id,)] = MB_transfered / complete_time
         else:
-            tinfo['%s_transfer_rate'%(id,)] = 0.0
-        if overall_time != 0:
-            tinfo['%s_overall_rate'%(id,)] = MB_transfered / overall_time
-        else:
-            tinfo['%s_overall_rate'%(id,)] = 0.0
+            tinfo['overall_rate_%s'%(id,)] = 0.0
         if network_time != 0:
-            tinfo['%s_network_rate'%(id,)] = MB_transfered / network_time
+            tinfo['network_rate_%s'%(id,)] = MB_transfered / network_time
         else:
-            tinfo['%s_network_rate'%(id,)] = 0.0            
+            tinfo['network_rate_%s'%(id,)] = 0.0            
         if drive_time != 0:
-            tinfo['%s_drive_rate'%(id,)] = MB_transfered / drive_time
+            tinfo['drive_rate_%s'%(id,)] = MB_transfered / drive_time
         else:
-            tinfo['%s_drive_rate'%(id,)] = 0.0
+            tinfo['drive_rate_%s'%(id,)] = 0.0
         if disk_time != 0:
-            tinfo['%s_disk_rate'%(id,)] = MB_transfered / disk_time
+            tinfo['disk_rate_%s'%(id,)] = MB_transfered / disk_time
         else:
-            tinfo['%s_disk_rate'%(id,)] = 0.0
+            tinfo['disk_rate_%s'%(id,)] = 0.0
             
         sg = done_ticket.get('fc', {}).get('storage_group', "")
         if not sg:
@@ -2728,7 +2721,6 @@ def calculate_rate(done_ticket, tinfo):
         print_format = "Transfer %s -> %s:\n" \
                  "\t%d bytes copied %s %s at %.3g MB/S\n " \
                  "\t(%.3g MB/S network) (%.3g MB/S drive) (%.3g MB/S disk)\n" \
-                 "\t(%.3g MB/S overall) (%.3g MB/S transfer)\n" \
                  "\tdrive_id=%s drive_sn=%s drive_vendor=%s\n" \
                  "\tmover=%s media_changer=%s   elapsed=%.02f"
         
@@ -2746,12 +2738,10 @@ def calculate_rate(done_ticket, tinfo):
                         done_ticket['file_size'],
                         preposition,
                         done_ticket["fc"]["external_label"],
-                        tinfo["%s_transfer_rate"%(id,)],
-                        tinfo['%s_network_rate'%(id,)],
-                        tinfo["%s_drive_rate"%(id,)],
-                        tinfo["%s_disk_rate"%(id,)],
-                        tinfo["%s_overall_rate"%(id,)],
-                        tinfo["%s_transfer_rate"%(id,)],
+                        tinfo["overall_rate_%s"%(id,)],
+                        tinfo['network_rate_%s'%(id,)],
+                        tinfo["drive_rate_%s"%(id,)],
+                        tinfo["disk_rate_%s"%(id,)],
                         done_ticket["mover"]["product_id"],
                         done_ticket["mover"]["serial_num"],
                         done_ticket["mover"]["vendor_id"],
@@ -2766,12 +2756,10 @@ def calculate_rate(done_ticket, tinfo):
                       done_ticket['file_size'],
                       preposition,
                       done_ticket["fc"]["external_label"],
-                      tinfo["%s_transfer_rate"%(id,)],
-                      tinfo["%s_network_rate"%(id,)],
-                      tinfo['%s_drive_rate'%(id,)],
-                      tinfo["%s_disk_rate"%(id,)],
-                      #tinfo["%s_overall_rate"%(id,)],
-                      #tinfo["%s_transfer_rate"%(id,)],
+                      tinfo["overall_rate_%s"%(id,)],
+                      tinfo["network_rate_%s"%(id,)],
+                      tinfo['drive_rate_%s'%(id,)],
+                      tinfo["disk_rate_%s"%(id,)],
                       done_ticket["mover"]["name"],
                       done_ticket["mover"]["product_id"],
                       done_ticket["mover"]["serial_num"],
@@ -2779,6 +2767,7 @@ def calculate_rate(done_ticket, tinfo):
                       time.time() - tinfo["encp_start_time"],
                       done_ticket["mover"].get("media_changer",
                                                e_errors.UNKNOWN),
+                      #socket.gethostbyaddr(done_ticket["mover"]["hostip"])[0],
 		      done_ticket["mover"].get('data_ip',
 					       done_ticket["mover"]['host']),
                       done_ticket["mover"]["driver"],
@@ -2790,44 +2779,46 @@ def calculate_rate(done_ticket, tinfo):
 
         Trace.log(e_errors.INFO, log_format % log_values, Trace.MSG_ENCP_XFER )
 
-        # Use an 'r' or 'w' to signify read or write in the accounting db.
+	if network_time != 0:
+		net_rate = done_ticket['file_size']/network_time
+	else:
+		net_rate = 0
+
+	if drive_time != 0:
+		drive_rate = done_ticket['file_size']/drive_time
+	else:
+		drive_rate = 0
+
 	if done_ticket['work'] == "read_from_hsm":
 		rw = 'r'
 	else:
 		rw = 'w'
 
 	acc.log_encp_xfer(None,
-                          done_ticket['infile'],
-                          done_ticket['outfile'],
-                          done_ticket['file_size'],
-                          done_ticket["fc"]["external_label"],
-                          done_ticket['file_size']/overall_time,
-                          tinfo["%s_network_rate"%(id,)],
-                          tinfo['%s_drive_rate'%(id,)],
-                          #tinfo["%s_disk_rate"%(id,)],
-                          #tinfo["%s_overall_rate"%(id,)],
-                          #tinfo["%s_transfer_rate"%(id,)],
-                          done_ticket["mover"]["name"],
-                          done_ticket["mover"]["product_id"],
-                          done_ticket["mover"]["serial_num"],
-                          time.time() - tinfo["encp_start_time"],
-                          done_ticket["mover"].get("media_changer",
-                                                   e_errors.UNKNOWN),
-                          done_ticket["mover"].get('data_ip',
-                                               done_ticket["mover"]['host']),
-                          done_ticket["mover"]["driver"],
-                          sg,
-                          done_ticket["encp_ip"],
-                          done_ticket['unique_id'],
-                          rw)
+			done_ticket['infile'],
+			done_ticket['outfile'],
+			done_ticket['file_size'],
+			done_ticket["fc"]["external_label"],
+			done_ticket['file_size']/complete_time,
+			net_rate,
+			drive_rate,
+			done_ticket["mover"]["name"],
+			done_ticket["mover"]["product_id"],
+			done_ticket["mover"]["serial_num"],
+			time.time() - tinfo["encp_start_time"],
+			done_ticket["mover"].get("media_changer", e_errors.UNKNOWN),
+			done_ticket["mover"].get('data_ip', done_ticket["mover"]['host']),
+			done_ticket["mover"]["driver"],
+			sg,
+			done_ticket["encp_ip"],
+			done_ticket['unique_id'],
+			rw)
 			
 
 ############################################################################
 
 def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
-    #Determine the average of each time (overall, transfer, network,
-    # tape and disk) of all transfers done for the encp.  If only one file
-    # was transfered, then these rates should equal the files rates.
+    # Calculate an overall rate: all bytes, all time
 
     statistics = {}
     
@@ -2839,29 +2830,10 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     bytes_per_MB = 1024 * 1024
     MB_transfered = float(bytes) / float(bytes_per_MB)
 
-    #get all the overall rates from the dictionary.
-    overall_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "overall_rate") != -1:
-            count = count + 1
-            overall_rate = overall_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_overall'] = overall_rate / count
+    if tinfo['total']: #protect against division by zero.
+        statistics['MB_per_S_total'] = MB_transfered / tinfo['total']
     else:
-        statistics['MB_per_S_overall'] = 0.0
-
-    #get all the transfer rates from the dictionary.
-    transfer_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "transfer_rate") != -1:
-            count = count + 1
-            transfer_rate = transfer_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_transfer'] = transfer_rate / count
-    else:
-        statistics['MB_per_S_transfer'] = 0.0
+        statistics['MB_per_S_total'] = 0.0
 
     #get all the drive rates from the dictionary.
     drive_rate  = 0L
@@ -2869,56 +2841,39 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     for value in tinfo.keys():
         if string.find(value, "drive_rate") != -1:
             count = count + 1
-            drive_rate = drive_rate + tinfo[value]
+            drive_rate  = drive_rate  + tinfo[value]
     if count:
         statistics['MB_per_S_drive'] = drive_rate / count
     else:
         statistics['MB_per_S_drive'] = 0.0
 
-    #get all the network rates from the dictionary.
+    #get all the drive rates from the dictionary.
     network_rate  = 0L
     count = 0
     for value in tinfo.keys():
         if string.find(value, "network_rate") != -1:
             count = count + 1
-            network_rate = network_rate + tinfo[value]
+            network_rate  = network_rate  + tinfo[value]
     if count:
         statistics['MB_per_S_network'] = network_rate / count
     else:
         statistics['MB_per_S_network'] = 0.0
-        
-    #get all the disk rates from the dictionary.
-    disk_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "disk_rate") != -1:
-            count = count + 1
-            disk_rate = disk_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_disk'] = disk_rate / count
-    else:
-        statistics['MB_per_S_disk'] = 0.0
     
     msg = "%s transferring %s bytes in %s files in %s sec.\n" \
-          "\tOverall rate = %.3g MB/sec.  Transfer rate = %.3g MB/sec.\n" \
-          "\tNetwork rate = %.3g MB/sec.  Drive rate = %.3g MB/sec.\n" \
-          "\tDisk rate = %.3g MB/sec.  Exit status = %s."
+          "\tOverall rate = %.3g MB/sec.  Drive rate = %.3g MB/sec.\n" \
+          "\tNetwork rate = %.3g MB/sec.  Exit status = %s."
     
     if exit_status:
-        msg = msg % ("Error after", bytes, number_of_files, tinfo['total'],
-                     statistics["MB_per_S_overall"],
-                     statistics["MB_per_S_transfer"],
-                     statistics['MB_per_S_network'],
+        msg = msg % ("Error after", bytes, number_of_files,
+                     tinfo['total'], statistics["MB_per_S_total"],
                      statistics['MB_per_S_drive'],
-                     statistics["MB_per_S_disk"],
+                     statistics['MB_per_S_network'],
                      exit_status)
     else:
-        msg = msg % ("Completed", bytes, number_of_files, tinfo['total'],
-                     statistics["MB_per_S_overall"],
-                     statistics["MB_per_S_transfer"],
-                     statistics['MB_per_S_network'],
+        msg = msg % ("Completed", bytes, number_of_files,
+                     tinfo['total'], statistics["MB_per_S_total"],
                      statistics['MB_per_S_drive'],
-                     statistics["MB_per_S_disk"],
+                     statistics['MB_per_S_network'],
                      exit_status)
 
     done_ticket = {}
@@ -3317,8 +3272,6 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         control_socket, data_path_socket, ticket = mover_handshake(
             listen_socket, route_server, [work_ticket], e)
 
-        overall_start = time.time() #----------------------------Overall Start
-
         #Handle any possible errors occured so far.
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
                                      listen_socket, route_server, None, e)
@@ -3372,19 +3325,11 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
                        time.time()-tinfo['encp_start_time']))
 
 
-        #Stall starting the count until the first byte is ready for writing.
-        write_fd = select.select([], [data_path_socket], [], 15 * 60)[1]
+        #Stall starting the count until the first byte is ready for reading.
+        read_fd, write_fd, exc_fd = select.select([], [data_path_socket],
+                                                  [data_path_socket], 15 * 60)
 
-        #To achive more accurate rates on writes to enstore when a tape
-        # needs to be mounted, wait until the mover has sent a byte as
-        # a signal to encp that it is ready to read data from its socket.
-        # Otherwise, 64K bytes just sit in the movers recv queue and the clock
-        # ticks by making the write rate worse.  When the mover finally
-        # mounts and positions the tape, the damage to the rate is already
-        # done.
-        read_fd = select.select([data_path_socket], [], [], 15 * 60)[0]
-
-        if not write_fd or not read_fd:
+        if not write_fd:
             status_ticket = {'status':(e_errors.UNKNOWN,
                                        "No data written to mover.")}
             result_dict = handle_retries([work_ticket], work_ticket,
@@ -3407,14 +3352,13 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
                                     control_socket, work_ticket,
                                     tinfo, e)
 
-        tstring = '%s_transfer_time' % work_ticket['unique_id']
+        tstring = '%s_elapsed_time' % work_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_time #--------------------------End
 
         try:
             delete_at_exit.register_bfid(done_ticket['fc']['bfid'])
         except (IndexError, KeyError):
-            pass
-            #Trace.log(e_errors.WARNING, "unable to register bfid")
+            Trace.log(e_errors.WARNING, "unable to register bfid")
         
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
                       (work_ticket['outfile'],
@@ -3492,9 +3436,6 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
                                            done_ticket['file_size'],
                                            done_ticket)
 
-        tstring = '%s_overall_time' % done_ticket['unique_id']
-        tinfo[tstring] = time.time() - overall_start #-------------Overall End
-
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
         try:
@@ -3563,6 +3504,7 @@ def write_to_hsm(e, tinfo):
 
     # loop on all input files sequentially
     for i in range(0,len(request_list)):
+        lap_start = time.time() #------------------------------------Lap Start
 
         Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % str(len(request_list)-i))
 
@@ -3604,6 +3546,9 @@ def write_to_hsm(e, tinfo):
         # error occured.
         bytes = bytes + done_ticket['file_size']
         bytes = bytes - done_ticket.get('bytes_not_transfered', 0)
+
+        tstring = '%s_elapsed_finished' % done_ticket['unique_id']
+        tinfo[tstring] = time.time() - lap_start #-------------------------End
 
         #handle_retries() is not required here since write_hsm_file()
         # handles its own retrying when an error occurs.
@@ -4231,8 +4176,6 @@ def read_hsm_files(listen_socket, route_server, submitted,
         control_socket, data_path_socket, request_ticket = mover_handshake(
             listen_socket, route_server, request_list, e)
 
-        overall_start = time.time() #----------------------------Overall Start
-
         done_ticket = request_ticket #Make sure this exists by this point.
         result_dict = handle_retries(request_list, request_ticket,
                                      request_ticket, listen_socket,
@@ -4315,7 +4258,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
                                     tinfo, e)
 
         lap_end = time.time()  #-----------------------------------------End
-        tstring = "%s_transfer_time" % request_ticket['unique_id']
+        tstring = "%s_elapsed_time" % request_ticket['unique_id']
         tinfo[tstring] = lap_end - lap_start
 
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
@@ -4411,8 +4354,8 @@ def read_hsm_files(listen_socket, route_server, submitted,
         if files_left > 0:
             files_left = files_left - 1
 
-        tstring = "%s_overall_time" % done_ticket['unique_id']
-        tinfo[tstring] = time.time() - overall_start #-------------Overall End
+        tstring = "%s_elapsed_finished" % done_ticket['unique_id']
+        tinfo[tstring] = time.time() - lap_start #-------------------------End
 
         Trace.message(TRANSFER_LEVEL,
                       "File status after verification: %s   elapsed=%s" %
@@ -4907,54 +4850,34 @@ class EncpInterface(option.Interface):
             #self.args[0:2] = [local_file, remote_file[0][:-1]]
             self.args[0:2] = [local_file, remote_file]
 
-        #Determine whether the files are in /pnfs or not.
+        # get fullpaths to the files
         p = []
-        for i in range(0, self.arglen):
-            #Get fullpaths to the files.
+        for i in range(0,self.arglen):
             (machine, fullname, dir, basename) = fullpath(self.args[i])
-            self.args[i] = fullname  #os.path.join(dir,basename)
-            #If the file is a pnfs file, store a 1 in the list, if not store
-            # a zero.  All files on the hsm system have /pnfs/ as 1st part
-            # of their name.  Scan input files for /pnfs/ - all have to be the
-            # same.
-            p.append(pnfs.is_pnfs_path(dir))
-
-        #Initialize some important values.
-
-        #The p# variables are used as holders for testing if all input files
-        # are unixfiles or hsmfiles (aka pnfs files).
+            self.args[i] = os.path.join(dir,basename)
+            p.append(string.find(dir,"/pnfs"))
+        # all files on the hsm system have /pnfs/ as 1st part of their name
+        # scan input files for /pnfs - all have to be the same
         p1 = p[0]
-        p2 = p[self.arglen - 1]
-
-        #Also, build two new lists of input and output files.  The output
-        # list should always be 1 in length.  A simple, assignment is not
-        # performed because that only returns a reference to the original,
-        # it does not create a distinct copy.
+        p2 = p[self.arglen-1]
         self.input = [self.args[0]]
         self.output = [self.args[self.arglen-1]]
-
-        #Loop through all the input files.  Compare against the first input
-        # file for similarity in being a pnfs or unix file.  This check only
-        # makes sure that all input files are either unix or pnfs files.
-        # The check to prevent unix to unix or pnfs to pnfs copies is done
-        # later on in the code.
-        for i in range(1, len(self.args) - 1):
-            if p[i] != p1:
+        for i in range(1,len(self.args)-1):
+            if p[i]!=p1:
                 msg = "Not all input_files are %s files"
-                if p2:
+                if p1:
                     print_error(e_errors.USERERROR, msg % "/pnfs/...")
                 else:
                     print_error(e_errors.USERERROR, msg % "unix")
                 quit()
             else:
-                self.input.append(self.args[i]) #Do this way for a copy.
+                self.input.append(self.args[i])
 
-        #Assign the collection of types to these variables.
-        if p1 == 1:
+        if p1 == 0:
             self.intype="hsmfile"
         else:
             self.intype="unixfile"
-        if p2 == 1:
+        if p2 == 0:
             self.outtype="hsmfile"
         else:
             self.outtype="unixfile"
