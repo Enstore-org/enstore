@@ -38,7 +38,7 @@ TCP_HUNG        = 'TCP_HUNG'
 MOVER_CRASH     = 'MOVER_CRASH'
 BELOW_THRESHOLD = 'BELOW_THRESHOLD'
 ABOVE_THRESHOLD = 'ABOVE_THRESHOLD'
-POSITIONING_ERROR='POSITIONING_ERROR'
+
 #V2 additions:
 MOVER_STUCK = 'MOVER_STUCK'
 MOVER_BUSY = 'MOVER_BUSY'
@@ -49,6 +49,7 @@ RECYCLE='RECYCLE_VOLUME'
 QUOTAEXCEEDED='STORAGE_QUOTA_EXCEEDED'
 CRC_ERROR='CRC MISMATCH'                #CRC error if caught by mover.
 CRC_ENCP_ERROR='CRC ENCP MISMATCH'      #CRC error if caught by encp.
+CRC_ECRC_ERROR='CRC ECRC MISMATCH'      #CRC error if caught by encp --ecrc.
 NO_CRC_RETURNED = 'mover did not return CRC'  #Encp warning if no crc returned.
 NET_ERROR="NET_ERROR"                   #Blanket error for caught socket.error.
 RETRY="RETRY"                           #Internal encp error.
@@ -67,6 +68,7 @@ NOREAD="noread"
 NOWRITE="nowrite"
 OSERROR = "OS ERROR"                    #Blanket error for caught OSError.
 PNFS_ERROR = "PNFS ERROR"               #Encp to Pnfs specific error.
+POSITIONING_ERROR='POSITIONING_ERROR'
 
 #V3 additions:
 DEVICE_ERROR = "DEVICE ERROR"           #read()/write() call stuck in kernel.
@@ -74,6 +76,7 @@ DEVICE_ERROR = "DEVICE ERROR"           #read()/write() call stuck in kernel.
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
 #       THEM WILL IMPACT OTHER PARTS OF THE SYSTEM
+EMAIL      = -1  #Should this be -1???
 ALARM      = 0
 ERROR      = 1
 USER_ERROR = 2
@@ -87,7 +90,8 @@ sevdict = { ALARM      : 'A',
             USER_ERROR : 'U',
             WARNING    : 'W',
             INFO       : 'I',
-            MISC       : 'M'
+            MISC       : 'M',
+            EMAIL      : 'C'
             }
 
 # Alarm severities
@@ -171,7 +175,6 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          TOO_MANY_RESUBMITS, #attempts without trying
                          MALFORMED,
                          VERSION_MISMATCH, #ENCP to old
-                         #WRONG_PNFS_FILE_SIZE,  #Obsolete???
                          LOCKED,  # Library is locked for the access
                          NOREAD,  # Library is locked for the read access
                          NOWRITE, # Library is locked for the write access
@@ -183,9 +186,12 @@ raise_alarm_errors = ( CRC_ENCP_ERROR,  #Set by encp
                        #UNKNOWNMEDIA,
                        #NOVOLUME,
                        #QUOTAEXCEEDED,
-                       DEVICE_ERROR, #EXfer read/write call stuck in kernel
+                       #DEVICE_ERROR, #EXfer read/write call stuck in kernel
                        )
 
+email_alarm_errors = (CRC_ECRC_ERROR,  #Set by encp
+                      DEVICE_ERROR, #EXfer read/write call stuck in kernel
+                      )
 
 # CLIENT PORTION OF 'MESS_TYPE' MESSAGE
 ctypedict = {  "checkpoint"      : "CP",
@@ -357,6 +363,8 @@ def is_retriable(e):
         return 0
     elif error in raise_alarm_errors:
         return 0
+    elif error in email_alarm_errors:
+        return 0
     return 1
 
 #If the value is in non_retriable or raise alarm return 1.  False otherwise.
@@ -374,6 +382,8 @@ def is_non_retriable(e):
         return 1
     elif error in raise_alarm_errors:
         return 1
+    elif error in email_alarm_errors:
+        return 1
     return 0
 
 #If the value is alarmable, return 1 otherwise false.
@@ -388,6 +398,23 @@ def is_alarmable(e):
         error = e
         
     if error in raise_alarm_errors:
+        return 1
+    elif error in email_alarm_errors:
+        return 1
+    return 0
+
+#If the value is emailable, return 1 otherwise false.
+def is_emailable(e):
+    if type(e) == types.StringType:
+        error = e
+    elif type(e) == types.TupleType and len(e) == 2:
+        error = e[0]
+    elif type(e) == types.DictionaryType and e.get('status', None):
+        error = e['status'][0]
+    else:
+        error = e
+        
+    if error in email_alarm_errors:
         return 1
     return 0
 
