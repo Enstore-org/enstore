@@ -922,7 +922,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     %s\
                 order by declared ;"%(library, storage_group,
                     file_family, wrapper, vito_q)
-        Trace.trace(20, "start query: %s", q)
+        Trace.trace(20, "start query: %s"%(q))
         res = self.dict.db.query(q).dictresult()
         Trace.trace(20, "finish query: found %d exact_match=%d"%(len(res), exact_match))
         if len(res):
