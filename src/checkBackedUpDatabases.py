@@ -90,20 +90,24 @@ def configure():
         sys.exit(1)
         
     backup_dir = backup.get('dir','MISSING')
+    if backup_dir == 'MISSING':
+        print timeofday.tod(), "ERROR Backup directory not determined."
+        sys.exit(1)
     check_existance(backup_dir,0)
 
     check_dir = backup.get('extract_dir','MISSING')
-    os.system("rm -rf " + check_dir)
-    os.mkdir(check_dir, 0777)
-    #check_existance(check_dir,0)
-
+    if check_dir == 'MISSING':
+        print timeofday.tod(), "ERROR Extraction directory not determined."
+        sys.exit(1)
+    check_existance(check_dir,0)
     old_files = os.listdir(check_dir)
     remove_files(old_files,check_dir)
-
+    
     current_dir = os.getcwd() #Remember the original directory
 
     #Return the directory the backup file is in and the directory the backup
     # file will be ungzipped and untared to, respectively.
+    print "check_dir:", check_dir
     return backup_dir, check_dir, current_dir
 
 
@@ -119,6 +123,7 @@ def check_backup(backup_dir):
     current_backup_dir = bdirs[-1:][0]
 
     container = backup_dir+'/'+current_backup_dir+'/dbase.tar.gz'
+    print "container:", container
     con_stat=check_existance(container,1)
     mod_time=con_stat[stat.ST_MTIME]
     if mod_time+60*5 > time.time():
@@ -137,7 +142,6 @@ def extract_backup(check_dir, container):
     print container
     
     os.chdir(check_dir)
-    
     os.system("/bin/tar -xzf %s"%(container,))
     os.system("db_recover -h %s -v"%(check_dir,))
 
@@ -172,7 +176,6 @@ def check_files(check_dir):
 def clean_up(check_dir, current_dir):
 #    check_these = os.listdir(check_dir)
 #    remove_files(check_these,check_dir)
-    os.system("rm -rf " + check_dir)
     os.chdir(current_dir)
 
 
