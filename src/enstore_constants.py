@@ -27,6 +27,7 @@ ENSTORE_PLOTS = "enstore_plots"
 
 # used by the inquisitor plot command
 MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)
+D_MPD_FILE = "-%s%s"%(FILE_PREFIX, MPD)
 MPD_FILE = "%s%s"%(FILE_PREFIX, MPD)
 MPD_MONTH_FILE = "%s%s"%(FILE_PREFIX, MPD_MONTH)
 MLAT_FILE = "%s%s"%(FILE_PREFIX, MLAT)
