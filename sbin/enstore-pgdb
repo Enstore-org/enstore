@@ -20,7 +20,7 @@ case $host in
 		db=/diska/postgres_db
 		;;
 	stkensrv6|cdfensrv6|d0ensrv6)
-		db=/diskb/enstore-pgdb
+		db=/diska/enstore-pgdb
 		;;
 	*)
 		echo no enstore-pgdb for this node: $host
