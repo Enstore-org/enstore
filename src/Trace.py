@@ -164,7 +164,16 @@ def trace(severity, msg):
         log(severity, msg, doprint=0)
     if alarm_levels.has_key(severity):
         alarm(severity, msg)
-        
+
+def message(severity, msg):
+    msg = trunc(msg)
+    if print_levels.has_key(severity):
+        try:
+            print msg
+            sys.stdout.flush()
+        except:
+            pass
+
 def set_alarm_func(func):
     global alarm_func
     alarm_func=func
