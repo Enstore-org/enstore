@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2001, MetaSlash Inc.  All rights reserved.
+# Copyright (c) 2001-2004, MetaSlash Inc.  All rights reserved.
 
 """
 Python byte code operations.
@@ -35,6 +35,12 @@ def END_FINALLY(op):           return op == 88
 def UNPACK_SEQUENCE(op) :
     "Deal w/Python 1.5.2 (UNPACK_[LIST|TUPLE]) or 2.0 (UNPACK_SEQUENCE)"
     return op in (92, 93,)
+
+def IS_CONDITIONAL_JUMP(op):
+    return op in (111, 112)
+
+def IS_NOT(op):
+    return op == 12
 
 HAVE_ARGUMENT = 90
 EXTENDED_ARG = 143

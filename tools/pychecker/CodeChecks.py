@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2001-2002, MetaSlash Inc.  All rights reserved.
+# Copyright (c) 2001-2004, MetaSlash Inc.  All rights reserved.
 
 """
 Find warnings in byte code from Python source files.
@@ -211,6 +211,17 @@ def _isexception(object) :
             return 1
     return 0
 
+def _checkStringFind(code, loadValue):
+    if len(loadValue.data) == 2 and loadValue.data[1] == 'find':
+        try:
+            if types.StringType in code.typeMap.get(loadValue.data[0], []):
+                op = code.nextOpInfo()[0]
+                if OP.IS_CONDITIONAL_JUMP(op) or OP.IS_NOT(op):
+                    code.addWarning(msgs.BAD_STRING_FIND)
+        except TypeError:
+            # we don't care if loadValue.data[0] is not hashable
+            pass
+
 def _checkAbstract(refClass, code, name):
     name_list = refClass.isAbstract()
     if name_list:
@@ -288,7 +299,9 @@ def _handleFunctionCall(codeSource, code, argCount, indexOffset = 0,
         try :
             m = codeSource.classObject.methods[methodName]
             if m != None :
-                _checkFunctionArgs(code, m, 1, argCount, kwArgs, check_arg_count)
+                objRef = not m.isStaticMethod()
+                _checkFunctionArgs(code, m, objRef, argCount, kwArgs,
+                                   check_arg_count)
         except KeyError :
             sattr = codeSource.classObject.statics.get(methodName)
             if sattr is not None :
@@ -326,6 +339,9 @@ def _handleFunctionCall(codeSource, code, argCount, indexOffset = 0,
 
             if cfg().abstractClasses and refClass and method:
                 _checkAbstract(refClass, code, funcName)
+
+            if cfg().stringFind:
+                _checkStringFind(code, loadValue)
 
             if func != None :
                 if refClass and func.isClassMethod():
@@ -415,8 +431,9 @@ def _getGlobalName(name, func) :
     return name
 
 
-def _checkNoEffect(code):
-    if OP.POP_TOP(code.nextOpInfo()[0]) and cfg().noEffect:
+def _checkNoEffect(code, ignoreStmtWithNoEffect=0):
+    if (not ignoreStmtWithNoEffect and
+        OP.POP_TOP(code.nextOpInfo()[0]) and cfg().noEffect):
         code.addWarning(msgs.POSSIBLE_STMT_WITH_NO_EFFECT)
     
 def _makeConstant(code, index, factoryFunction) :
@@ -797,9 +814,9 @@ class Code :
                     return op
         raise RuntimeError('Could not find first opcode in function')
 
-    def pushStack(self, item) :
+    def pushStack(self, item, ignoreStmtWithNoEffect=0):
         self.stack.append(item)
-        _checkNoEffect(self)
+        _checkNoEffect(self, ignoreStmtWithNoEffect)
 
     def popStack(self) :
         if self.stack :
@@ -1084,7 +1101,8 @@ def _LOAD_FAST(oparg, operand, codeSource, code) :
 def _STORE_FAST(oparg, operand, codeSource, code) :
     if not code.updateCheckerArgs(operand) :
         _checkFutureKeywords(code, operand)
-        if code.stack and code.stack[-1].type == types.StringType:
+        if code.stack and code.stack[-1].type == types.StringType and \
+               not code.stack[-1].const:
             _checkVariableOperationOnItself(code, operand,
                                             msgs.SET_VAR_TO_ITSELF)
         code.setType(operand)
@@ -1187,8 +1205,14 @@ def _STORE_ATTR(oparg, operand, codeSource, code) :
     if code.stack :
         top = code.stack.pop()
         top_name = '%s.%s' % (top.getName(), operand)
+        try:
+            # FIXME: this is a hack to handle code like:
+            #        a.a = [x for x in range(2) if x > 1]
+            previous = code.stack[-1]
+        except IndexError:
+            previous = None
         if top.type in (types.StringType, Stack.TYPE_ATTRIBUTE) and \
-           code.stack[-1].type == Stack.TYPE_ATTRIBUTE:
+           previous and previous.type == Stack.TYPE_ATTRIBUTE:
             _checkVariableOperationOnItself(code, top_name,
                                             msgs.SET_VAR_TO_ITSELF)
         _checkExcessiveReferences(code, top, operand)
@@ -1272,6 +1296,9 @@ def _COMPARE_OP(oparg, operand, codeSource, code) :
     elif cfg().isLiteral:
         # X is Y   or   X is not Y   comparison
         second_arg = code.stack[-1].data[2]
+        # FIXME: how should booleans should e handled, need to think about it
+##        if second_arg.const or (second_arg.type == Stack.TYPE_GLOBAL and
+##                                second_arg.data in ['True', 'False']):
         if second_arg.const:
             data = second_arg.data
             if second_arg.type is types.DictType:
@@ -1302,9 +1329,37 @@ def _IMPORT_FROM(oparg, operand, codeSource, code) :
 def _IMPORT_STAR(oparg, operand, codeSource, code) :
     _handleImportFrom(code, '*', codeSource.module, codeSource.main)
 
+# Python 2.3 introduced some optimizations that create problems
+# this is a utility for ignoring these cases
+def _shouldIgnoreCodeOptimizations(code, bytecodes, offset, length=None):
+    if utils.pythonVersion() < utils.PYTHON_2_3:
+        return 0
+
+    if length is None:
+        length = offset - 1
+    try:
+        start = code.index - offset
+        return bytecodes == code.bytes[start:start+length]
+    except IndexError:
+        return 0
+
+# In Python 2.3, a, b = 1,2 generates this code:
+# ...
+# ROT_TWO
+# JUMP_FORWARD 2
+# DUP_TOP
+# POP_TOP
+#
+# which generates a Possible stmt w/no effect
+
+# ROT_TWO = 2; JUMP_FORWARD = 110; 2, 0 is the offset (2)
+_IGNORE_SEQ = '%c%c%c%c' % (2, 110, 2, 0)
+def _shouldIgnoreNoEffectWarning(code):
+    return _shouldIgnoreCodeOptimizations(code, _IGNORE_SEQ, 5)
+
 def _DUP_TOP(oparg, operand, codeSource, code) :
     if len(code.stack) > 0 :
-        code.pushStack(code.stack[-1])
+        code.pushStack(code.stack[-1], _shouldIgnoreNoEffectWarning(code))
 
 def _popn(code, n) :
     if len(code.stack) >= 2 :
@@ -1352,6 +1407,9 @@ def _BUILD_CLASS(oparg, operand, codeSource, code) :
     code.popStackItems(3)
     code.pushStack(newValue)
 
+def _LIST_APPEND(oparg, operand, codeSource, code):
+    code.popStackItems(2)
+
 def _modifyStackName(code, suffix):
     if code.stack:
         tos = code.stack[-1]
@@ -1386,6 +1444,9 @@ def _UNARY_NEGATIVE(oparg, operand, codeSource, code) :
         code.addWarning(msgs.STMT_WITH_NO_EFFECT % '--')
     _modifyStackName(code, '-neg')
 
+def _UNARY_NOT(oparg, operand, codeSource, code) :
+    _modifyStackName(code, '-not')
+
 def _UNARY_INVERT(oparg, operand, codeSource, code) :
     if OP.UNARY_INVERT(code.nextOpInfo()[0]) :
         code.addWarning(msgs.STMT_WITH_NO_EFFECT % '~~')
@@ -1408,12 +1469,17 @@ def _popModified(oparg, operand, codeSource, code):
     _popModifiedStack(code)
 _BINARY_LSHIFT = _BINARY_RSHIFT = _popModified
 
-def _checkModifyNoOp(code, op, msg=msgs.MODIFY_VAR_NOOP):
+def _checkModifyNoOp(code, op, msg=msgs.MODIFY_VAR_NOOP, modifyStack=1):
     stack = code.stack
     if len(stack) >= 2:
         name = stack[-1].getName()
-        if name == stack[-2].getName():
+        if name != Stack.TYPE_UNKNOWN and name == stack[-2].getName():
             code.addWarning(msg % (name, op, name))
+
+        if modifyStack:
+            code.popStack()
+            stack[-1].const = 0
+            _modifyStackName(code, op)
 
 def _BINARY_AND(oparg, operand, codeSource, code):
     _checkModifyNoOp(code, '&')
@@ -1485,7 +1551,7 @@ def _isint(stackItem, code) :
 
 def _BINARY_DIVIDE(oparg, operand, codeSource, code) :
     _checkNoEffect(code)
-    _checkModifyNoOp(code, '/', msgs.DIVIDE_VAR_BY_ITSELF)
+    _checkModifyNoOp(code, '/', msgs.DIVIDE_VAR_BY_ITSELF, 0)
     if cfg().intDivide and len(code.stack) >= 2 :
         if _isint(code.stack[-1], code) and _isint(code.stack[-2], code) :
             code.addWarning(msgs.INTEGER_DIVISION % tuple(code.stack[-2:]))
@@ -1563,6 +1629,7 @@ def _UNPACK_SEQUENCE(oparg, operand, codeSource, code) :
             if cfg().unpackNonSequence:
                 code.addWarning(msgs.UNPACK_NON_SEQUENCE %
                                 (top.data, _getTypeStr(topType)))
+        _modifyStackName(code, '-unpack')
 
 def _SLICE_1_ARG(oparg, operand, codeSource, code) :
     _popStackRef(code, operand)
@@ -1655,17 +1722,36 @@ def _is_unreachable(code, topOfStack, branch, if_false) :
         code.raiseValues.append((lastLineNum, None, i + oparg))
     return 1
 
+# In Python 2.3, while/if 1: gets optimized to
+# ...
+# JUMP_FORWARD 4
+# JUMP_IF_FALSE ?
+# POP_TOP
+#
+# which generates a Using a conditional statement with a constant value
+
+# JUMP_FORWARD = 110; 4, 0 is the offset (4)
+_IGNORE_BOGUS_JUMP = '%c%c%c' % (110, 4, 0)
+def _shouldIgnoreBogusJumps(code):
+    return _shouldIgnoreCodeOptimizations(code, _IGNORE_BOGUS_JUMP, 6, 3)
+
+def _checkConstantCondition(code, topOfStack, if_false):
+    # don't warn when doing (test and 'true' or 'false')
+    # still warn when doing (test and None or 'false')
+    if if_false or not OP.LOAD_CONST(code.nextOpInfo(1)[0]) or \
+       not topOfStack.data or topOfStack.type is types.NoneType:
+        if not _shouldIgnoreBogusJumps(code):
+            code.addWarning(msgs.CONSTANT_CONDITION % str(topOfStack))
+    
 def _jump_conditional(oparg, operand, codeSource, code, if_false) :
+    # FIXME: this doesn't work in 2.3+ since constant conditions
+    #        are optimized away by the compiler.
     if code.stack :
         topOfStack = code.stack[-1]
         if (topOfStack.const or topOfStack.type is types.NoneType) and \
            cfg().constantConditions and \
-           (topOfStack.data != 1 or cfg().constant1) :
-            # don't warn when doing (test and 'true' or 'false')
-            # still warn when doing (test and None or 'false')
-            if if_false or not OP.LOAD_CONST(code.nextOpInfo(1)[0]) or \
-               not topOfStack.data or topOfStack.type is types.NoneType:
-                code.addWarning(msgs.CONSTANT_CONDITION % str(topOfStack))
+           (topOfStack.data != 1 or cfg().constant1):
+            _checkConstantCondition(code, topOfStack, if_false)
 
         if _is_unreachable(code, topOfStack, code.label, if_false) :
             code.removeBranch(code.label)
@@ -1721,8 +1807,10 @@ DISPATCH[  2] = _ROT_TWO
 DISPATCH[  4] = _DUP_TOP
 DISPATCH[ 10] = _UNARY_POSITIVE
 DISPATCH[ 11] = _UNARY_NEGATIVE
+DISPATCH[ 12] = _UNARY_NOT
 DISPATCH[ 13] = _UNARY_CONVERT
 DISPATCH[ 15] = _UNARY_INVERT
+DISPATCH[ 18] = _LIST_APPEND
 DISPATCH[ 19] = _BINARY_POWER
 DISPATCH[ 20] = _BINARY_MULTIPLY
 DISPATCH[ 21] = _BINARY_DIVIDE
@@ -1736,6 +1824,11 @@ DISPATCH[ 27] = _BINARY_TRUE_DIVIDE
 DISPATCH[ 31] = _SLICE1
 DISPATCH[ 32] = _SLICE2
 DISPATCH[ 33] = _SLICE3
+DISPATCH[ 55] = _BINARY_ADD             # INPLACE
+DISPATCH[ 56] = _BINARY_SUBTRACT        # INPLACE
+DISPATCH[ 57] = _BINARY_MULTIPLY        # INPLACE
+DISPATCH[ 58] = _BINARY_DIVIDE          # INPLACE
+DISPATCH[ 59] = _BINARY_MODULO          # INPLACE
 DISPATCH[ 60] = _STORE_SUBSCR
 DISPATCH[ 61] = _DELETE_SUBSCR
 DISPATCH[ 62] = _BINARY_LSHIFT
@@ -1743,9 +1836,15 @@ DISPATCH[ 63] = _BINARY_RSHIFT
 DISPATCH[ 64] = _BINARY_AND
 DISPATCH[ 65] = _BINARY_XOR
 DISPATCH[ 66] = _BINARY_OR
+DISPATCH[ 67] = _BINARY_POWER           # INPLACE
 DISPATCH[ 68] = _GET_ITER
 DISPATCH[ 71] = _PRINT_ITEM
 DISPATCH[ 73] = _PRINT_ITEM_TO
+DISPATCH[ 75] = _BINARY_LSHIFT          # INPLACE
+DISPATCH[ 76] = _BINARY_RSHIFT          # INPLACE
+DISPATCH[ 77] = _BINARY_AND             # INPLACE
+DISPATCH[ 78] = _BINARY_XOR             # INPLACE
+DISPATCH[ 79] = _BINARY_OR              # INPLACE
 DISPATCH[ 83] = _RETURN_VALUE
 DISPATCH[ 84] = _IMPORT_STAR
 DISPATCH[ 85] = _EXEC_STMT

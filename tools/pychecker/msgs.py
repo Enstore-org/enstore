@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2001-2002, MetaSlash Inc.  All rights reserved.
+# Copyright (c) 2001-2004, MetaSlash Inc.  All rights reserved.
 
 """
 Warning Messages for PyChecker
@@ -130,3 +130,5 @@ USING_INSECURE_FUNC = "%s() is a security problem"
 USE_INSTEAD = ", consider using %s"
 
 USES_CONST_ATTR = "Passing a constant string to %s, consider direct reference"
+
+BAD_STRING_FIND = "string.find() returns an integer, consider checking >= 0 or < 0 for not found"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2001-2002, MetaSlash Inc.  All rights reserved.
+# Copyright (c) 2001-2004, MetaSlash Inc.  All rights reserved.
 
 """
 Configuration information for checker.
@@ -15,7 +15,7 @@ import time
 
 _RC_FILE = ".pycheckrc"
 CHECKER_VAR = '__pychecker__'
-_VERSION = '0.8.13'
+_VERSION = '0.8.14'
 
 _DEFAULT_BLACK_LIST = [ "Tkinter", "wxPython", "gtk", "GTK", "GDK", ]
 _DEFAULT_VARIABLE_IGNORE_LIST = [ '__version__', '__warningregistry__', 
@@ -31,6 +31,7 @@ _OPTIONS = (
  ('e', 0, 'errors', None, 'turn off all warnings which are not likely errors'),
  ( '', 0, 'complexity', None, 'turn off all warnings which are related to complexity'),
  ('F', 1, 'config', None, 'specify .pycheckrc file to use'),
+ ('',  0, 'quixote', None, 'support Quixote\'s PTL modules'),
      ]),
     ('Error Control', [
  ('i', 0, 'import', 'importUsed', 'unused imports'),
@@ -54,6 +55,7 @@ _OPTIONS = (
  ('2', 0, 'constCond', 'constantConditions', 'a constant is used in a conditional statement'),
  ('1', 0, 'constant1', 'constant1', '1 is used in a conditional statement (if 1: or while 1:)'),
  ( '', 0, 'stringiter', 'stringIteration', 'check if iterating over a string'),
+ ( '', 0, 'stringfind', 'stringFind', 'check improper use of string.find()'),
  ('A', 0, 'callattr', 'callingAttribute', 'Calling data members as functions'),
  ('y', 0, 'classattr', 'classAttrExists', 'class attribute does not exist'),
  ('S', 1, 'self', 'methodArgName', 'First argument to methods'),
@@ -201,6 +203,7 @@ class Config :
         self.quiet = 0
         self.onlyCheckInitForMembers = 0
         self.printParse = 0
+        self.quixote = 0
 
         self.noDocModule = 0
         self.noDocClass = 0
@@ -236,6 +239,7 @@ class Config :
         self.deprecated = 1
         self.modulo1 = 1
         self.isLiteral = 1
+        self.stringFind = 1
 
         self.unusedNames = _DEFAULT_UNUSED_LIST
         self.variablesToIgnore = _DEFAULT_VARIABLE_IGNORE_LIST
@@ -326,6 +330,11 @@ class Config :
                     continue
                 elif longArg == 'quiet' :
                     quiet = 1
+                    continue
+                elif longArg == 'quixote' :
+                    import quixote
+                    quixote.enable_ptl()
+                    self.quixote = 1
                     continue
                 elif longArg == 'config' :
                     otherConfigFiles.append(value)
