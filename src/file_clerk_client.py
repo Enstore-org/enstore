@@ -364,6 +364,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.set_crcs=None
 	self.all = 0
         self.list_active = None
+        self.add = None
         generic_client.GenericClientInterface.__init__(self)
 
 
@@ -372,6 +373,13 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                 self.file_options)
 
     file_options = {
+        option.ADD:{option.HELP_STRING:
+                    "add file record (dangerous! don't try this at home)",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.USER_LEVEL:option.ADMIN},
+                    
+
         option.BACKUP:{option.HELP_STRING:
                        "backup file journal -- part of database backup",
                        option.DEFAULT_VALUE:option.DEFAULT,
@@ -402,6 +410,11 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.USER_LEVEL:option.ADMIN},
+        option.MODIFY:{option.HELP_STRING:
+                    "modify file record (dangerous!)",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.USER_LEVEL:option.ADMIN},
         option.RECURSIVE:{option.HELP_STRING:"restore directory",
                           option.DEFAULT_NAME:"restore_dir",
                           option.DEFAULT_VALUE:option.DEFAULT,
