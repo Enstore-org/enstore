@@ -1413,7 +1413,7 @@ if __name__ == '__main__':
         sys.stderr.write("Third argument is not an output directory.\n")
         sys.exit(1)
 
-    #print encp.format_class_for_print(intf, "intf")
+    #print encp.format_class_for_print(intf_of_encp, "intf_of_encp")
     
     do_work(intf_of_encp)
 
