@@ -29,8 +29,10 @@ MMOUNT = 1
 
 # different MOUNT line pieces from log file
 MDEV = 4
-MSTART = 5
-MDICTS = 6
+MPID = 5
+MVOLUME = 6
+MSTART = 7
+MDICTS = 8
 
 default_dir = "./"
 
@@ -312,7 +314,7 @@ class EnDataFile(EnFile):
             cdcmd = " "
         else:
             cdcmd = "cd %s;"%(indir,)
-        os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
+        # NOTE os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
         tmp = enstore_functions.strip_file_dir(inFile)
         self.date = string.replace(tmp, enstore_constants.LOG_PREFIX, "")
 
@@ -370,8 +372,8 @@ class EnMountDataFile(EnDataFile):
 
     # parse the mount line
     def parse_line(self, line):
-        [etime, enode, etmp, euser, estatus, dev, type, erest] = \
-                                                   string.split(line, None, 7)
+        [etime, enode, epid, euser, estatus, mover, type, request, volume] = \
+                                                   string.split(line, None, 8)
         if type == string.rstrip(Trace.MSG_MC_LOAD_REQ) :
             # this is the request for the mount
             start = MREQUEST
@@ -383,9 +385,9 @@ class EnMountDataFile(EnDataFile):
         etime = enstore_functions.strip_file_dir(etime)
 
         # pull out any dictionaries from the rest of the message
-        msg_dicts = enstore_status.get_dict(erest)
-
-        return [etime, enode, euser, estatus, dev, start, msg_dicts]
+        #msg_dicts = enstore_status.get_dict(erest)
+	msg_dicts = {}        # this needs to be fixed NOTE: efb
+        return [etime, enode, euser, estatus, mover, epid, volume, start, msg_dicts]
 
     # pull out the plottable data from each line that is from one of the
     # specified movers
@@ -393,9 +395,10 @@ class EnMountDataFile(EnDataFile):
         for line in self.lines:
             minfo = self.parse_line(line)
             if not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs):
-                self.data.append([minfo[MDEV], string.replace(minfo[0],
-                                                             enstore_constants.LOG_PREFIX,
-                                                             ""), minfo[MSTART]])
+                self.data.append([minfo[MDEV], minfo[MPID], minfo[MVOLUME],
+                                  string.replace(minfo[0],
+                                                 enstore_constants.LOG_PREFIX,
+                                                 ""), minfo[MSTART]])
 
 class EnEncpDataFile(EnDataFile):
 

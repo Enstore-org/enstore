@@ -176,22 +176,46 @@ class MphDataFile(EnPlot):
 
     # make the mounts per hour plot file
     def plot(self, data):
+        # mount data (mount requests and the actual mounting) are not 
+	# necessarily time ordered when read from the files.  2 or more 
+	# mount requests may occur before any actual volume has been mounted.
+	# also, since log files are closed/opened on day boundaries with no
+	# respect as to whats going on in the system, a log file may begin
+	# with several mount satisfied messages which have no matching 
+	# requests in the file.  also the file may end with several requests
+	# that are not satisfied until the next day or the next log file.
+	# to make things simpler for us to plot, the data will be ordered 
+	# so that each mount request is immediately followed by the actual
+        # mount satisfied message.
 	# sum the data together based on hour boundaries. we will only plot 1
 	# day per plot though.
 	date_only = {}
 	ndata = {}
+	dict = {}
 	gnuinfo = []
 	self.psfiles = []
 	self.total_mounts = {}
-	for [dev, time, strt] in data:
-	    if strt == enstore_files.MMOUNT:
+	for [mover, pid, volume, mtime, work] in data:
+            aKey = "%s_%s_%s"%(volume, mover, pid)
+            if work == enstore_files.MREQUEST:
+                # this is the mount request
+                dict[aKey] = mtime
+            else:
 	        # this was the record of the mount having been done
-	        adate = time[0:13]
-	        date_only[time[0:10]] = 0
-	        try:
-	            ndata[adate] = ndata[adate] + 1
-	        except:
-	            ndata[adate] = 1
+                if not dict.has_key(aKey):
+                    # we have no record of the mount request so ignore this one
+                    continue
+                else:
+                    adate = mtime[0:13]
+                    if ndata.has_key(adate):
+                        ndata[adate] = ndata[adate] + 1
+                        date_only[mtime[0:10]] = 0
+                    else:
+                        ndata[adate] = 1
+                        date_only[mtime[0:10]] = 0
+                    # save the latency values too
+                    if self.latency.has_key(mtime):
+                        self.latency[adate].append = (dict[aKey], mtime)
 	# open the file for each day and write out the data points
 	days = date_only.keys()
 	days.sort()
@@ -248,7 +272,6 @@ class MpdDataFile(EnPlot):
 	EnPlot.__init__(self, dir, enstore_constants.MPD_FILE)
 
     def get_all_mounts(self, new_mounts_d):
-	today = time.strftime("%Y-%m-%d",time.localtime(time.time()))
 	mounts_l = []
 	total_mounts = 0
 	if self.openfile:
@@ -256,13 +279,10 @@ class MpdDataFile(EnPlot):
 	    for line in mounts_l:
 		[day, count] = string.split(string.strip(line))
 		if new_mounts_d.has_key(day):
-		    # if this is today replace the old count with the new value
-		    if day == today:
-			mounts_l.remove(line)
-			mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
-			total_mounts = total_mounts + new_mounts_d[day]
-		    else:
-			total_mounts = total_mounts + string.atoi(count)
+		    # replace the old count with the new value
+                    mounts_l.remove(line)
+                    mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
+                    total_mounts = total_mounts + new_mounts_d[day]
 		    del new_mounts_d[day]
 		else:
 		    total_mounts = total_mounts + string.atoi(count)
@@ -271,7 +291,7 @@ class MpdDataFile(EnPlot):
 	for day in new_mounts_d.keys():
 	    mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
 	    total_mounts = total_mounts + new_mounts_d[day]
-	return (mounts_l, total_mounts)
+	return (mounts_l.sort(), total_mounts)
 
     def open(self):
 	if os.path.isfile(self.ptsfile):
@@ -282,8 +302,7 @@ class MpdDataFile(EnPlot):
 	# the data passed to us is a dict of total mount counts for the days that
 	# were just plotted.  in effect this is new data that must be merged with
 	# the data currently in the total mount count file.  will read in current
-	# data and add any new stuff to it.  if the file contains data for today, 
-	# we will overwrite it with our new data which is presumed to be more 
+	# data and overrite any old data with the data that we have which is more
 	# recent.
 	(mounts_l, total_mounts) = self.get_all_mounts(new_mounts_d)
 	if self.openfile:
@@ -370,34 +389,14 @@ class MlatDataFile(EnPlot):
 	EnPlot.__init__(self, dir, enstore_constants.MLAT_FILE)
 
     # make the mount latency plot file
-    def plot(self, data):
-        # mount data (mount requests and the actual mounting) are not 
-	# necessarily time ordered when read from the files.  2 or more 
-	# mount requests may occur before any actual volume has been mounted.
-	# also, since log files are closed/opened on day boundaries with no
-	# respect as to whats going on in the system, a log file may begin
-	# with several mount satisfied messages which have no matching 
-	# requests in the file.  also the file may end with several requests
-	# that are not satisfied until the next day or the next log file.
-	# to make things simpler for us to plot, the data will be ordered 
-	# so that each mount request is immediately followed by the actual
-        # mount satisfied message.
-	data.sort()
+    def plot(self, data_d):
 	last_mount_req = ""
 	# write out the data points
-	for [dev, time, strt] in data:
-	    if strt == enstore_files.MMOUNT:
-	        # this was the record of the mount having been done
-	        if not last_mount_req == "":
-	            # we have recorded a mount req 
-	            ltnc = self.latency(last_mount_req, time)
-	            self.openfile.write(time+" "+repr(ltnc)+"\n")
+        mounts = data_d.keys()
+        for mount in mounts:
+            ltnc = self.latency(data_d[mount][0], data_d[mount][1])
+            self.openfile.write("%s %s\n"%(data_d[mount[1], ltnc]))
 
-	            # initialize so any trailing requests are not plotted
-	            last_mount_req == ""
-	    else:
-	        # this was the mount request
-	        last_mount_req = time
 	# we must create our gnu plot command file too
 	gnucmds = MlatGnuFile(self.gnufile)
 	gnucmds.open('w')

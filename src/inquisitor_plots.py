@@ -62,7 +62,7 @@ class InquisitorPlots:
 
             mlatfile = enstore_plots.MlatDataFile(self.output_dir)
             mlatfile.open()
-            mlatfile.plot(mountfile.data)
+            mlatfile.plot(mphfile.latency)
             mlatfile.close()
             mlatfile.install(self.html_dir)
             mlatfile.cleanup(self.keep, self.keep_dir)
@@ -133,7 +133,7 @@ class InquisitorPlots:
 	    self.output_dir = self.logfile_dir
 
 	Trace.trace(1, "Creating inq transfer plots")
-	self.encp_plot()
+	#self.encp_plot() NOTE 
 	Trace.trace(1, "Creating inq mount plots")
 	self.mount_plot()
 	# update the inquisitor plots web page
