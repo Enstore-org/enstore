@@ -26,7 +26,7 @@ import mover_client
 import event_relay_messages
 import event_relay_client
 #import udp_client
-import setpath
+#import setpath
 import Trace
 import generic_client
 import option
@@ -37,9 +37,6 @@ import delete_at_exit
 #3-5-2003: Update to previous comment.  Tkinter must be imported after
 # importing enstore_display.  I still don't know why this is.
 import Tkinter
-
-#Less hidden side effects to call this.  Also, pychecker perfers it.
-setpath.set_enstore_paths()
 
 #########################################################################
 # Globals
