@@ -740,16 +740,19 @@ def read_from_hsm(input, output,
 		# It is dicey to time out, as it is probably legitimate to 
 		# wait for hours....
 
-	    files_left, brcvd = read_hsm_files(listen_socket, submitted, 
-					       files_left, unique_id, 
-					       inputlist, outputlist, 
-					       file_size, pinfo, finfo, vinfo,
-					       tinfo, wrapper, chk_crc, d0sam,
-					       encp, maxretry, retry, verbose)
-	    bytes = bytes + brcvd
-	    if verbose: print "FILES_LEFT ", files_left
-	    if files_left > 0:
-	      retry_flag = 1
+	    if submitted != 0:
+		files_left, brcvd = read_hsm_files(listen_socket, submitted, 
+						   files_left, unique_id, 
+						   inputlist, outputlist, 
+						   file_size, pinfo, finfo,
+						   vinfo, tinfo, wrapper, 
+						   chk_crc, d0sam, encp, 
+						   maxretry, retry, verbose)
+		bytes = bytes + brcvd
+		if verbose: print "FILES_LEFT ", files_left
+		if files_left > 0:
+		    retry_flag = 1
+	    else: files_left = 0
 
     # we are done transferring - close out the listen socket
     listen_socket.close()
@@ -859,12 +862,15 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
                 print "ENCP:read_from_hsm FC read_from_hsm returned"
                 pprint.pprint(ticket)
             if ticket['status'][0] != "ok" :
-                jraise(errno.errorcode[errno.EPROTO],\
+		print_d0sam_format(inputlist[i], outputlist[i], file_size[i],
+			       ticket)
+                print_error(errno.errorcode[errno.EPROTO],\
                        " encp.read_from_hsm: from"\
-                       +"u.send to file_clerk at "+fticket['hostip']+"/"\
-                       +repr(fticket['port']) +", ticket[\"status\"]="\
+                       +"u.send to LM at "+lmticket['hostip']+"/"\
+                       +repr(lmticket['port']) +", ticket[\"status\"]="\
                        +repr(ticket["status"]))
-            submitted = submitted+1
+		continue
+	    submitted = submitted+1
 
             tinfo["send_ticket"+repr(i)] = time.time() - t2 #------Lap-End
             if verbose :
@@ -891,8 +897,7 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
     return submitted, Qd, unique_id
 
 
-##############################################################################
-
+#############################################################################
 # read hsm files in the loop after read requests have been submitted
 
 def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outputlist, file_size, pinfo, finfo, vinfo, tinfo, wrapper,
@@ -992,7 +997,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         l = 0
         mycrc = 0
         bufsize = 65536*4
-	tempname = outputlist[j]+'.'+repr(unique_id[j])
+	tempname = outputlist[j]+'.'+unique_id[j]
         f = open(tempname,"w")
         Trace.trace(8,"read_hsm_files: reading data to  file="+\
                     inputlist[j]+" socket="+repr(data_path_socket)+\
