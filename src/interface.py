@@ -217,254 +217,254 @@ class Interface:
 
             value=self.strip(value)
             Trace.trace(10, "opt = %s, value = %s"%(opt,value))
-            if opt == "--config-host" :
-                self.parse_config_host(value)
-            elif opt == "--config-port" :
-                self.parse_config_port(value)
-            elif opt == "--bfids" :
-                self.bfids = 1
-            elif opt == "--bfid" :
-                self.bfid = value
-            elif opt == "--list" :
-                self.list = value
-            elif opt == "--deleted" :
-                self.deleted = value
+            if opt == "--add":
+                self.add = value
+            elif opt == "--age-time":
+                self.age_time = int(value)
+            elif opt == "--alive":
+                self.alive = 1
+            elif opt == "--all":
+                self.all = 1
             elif opt == "--backup":
                 self.backup = 1
-            elif opt == "--config-file" :
-                self.config_file = value
-            elif opt == "--show" :
-                self.show = 1
-            elif opt == "--summary" :
-                self.summary = 1
-            elif opt == "--get-work" :
-                self.get_work = 1
-            elif opt == "--get-suspect-vols" :
-                self.get_susp_vols = 1
-            elif opt == "--delete-work" :
-                self.work_to_delete = value
-                self.delete_work = 1
-            elif opt == "--rm-suspect-vol" :
-                self.suspect_volume = value
-                self.rm_suspect_vol = 1
-            elif opt == "--rm-active-vol" :
-                self.active_volume = value
-                self.rm_active_vol = 1
-            elif opt == "--change-priority" :
-                self.change_priority = 1
-            elif opt == "--poll" :
-                self.poll = 1
-            elif opt == "--storage-groups" :
-                self.storage_groups = 1
-            elif opt == "--load" :
-                self.load = 1
-            elif opt == "--vols" :
-                self.vols = 1
-            elif opt == "--destroy" :
-                self.rmvol = value
-            elif opt == "--next" :
-                self.next = 1
-            elif opt == "--vol" :
-                self.vol = value
-            elif opt == "--check" :
-                self.check = value
-            elif opt == "--import" :
-                self._import = 1
-            elif opt == "--export" :
-                self._export = 1
-            elif opt == "--clean-drive" :
-                self.clean_drive = 1
-            elif opt == "--new-library" :
-                self.new_library = value
-            elif opt == "--modify":
-                self.modify = value
-            elif opt == "--read-only" :
-                self.read_only = value
-            elif opt == "--no-access" :
-                self.no_access = value
-            elif opt == "--add" :
-                self.add = value
-            elif opt == "--delete" :
-                self.delete = value
-            elif opt == "--restore" :
-                self.restore = value
-            elif opt == "--recursive" :
-                self.restore_dir = 1
-            elif opt == "--all" :
-                self.all = 1
-            elif opt == "--force" :
-                self.force = 1
-            elif opt == "--clear" :
-                self.clear = value
-            elif opt == "--decr-file-count" :
-                self.decr_file_count = value
-            elif opt == "--do-print":
-                self.do_print = parse_range(value)
-            elif opt == "--dont-print":
-                self.dont_print = parse_range(value)
-            elif opt == "--do-log":
-                self.do_log = parse_range(value)
-            elif opt == "--dont-log":
-                self.dont_log = parse_range(value)
-            elif opt == "--do-alarm":
-                self.do_alarm = parse_range(value)
-            elif opt == "--dont-alarm":
-                self.dont_alarm = parse_range(value)
-            elif opt == "--message" :
-                self.message = value
-            elif opt == "--alive" :
-                self.alive = 1
-            elif opt == "--timeout" :
-                self.alive_rcv_timeout = int(value)
-            elif opt == "--retries" :
-                self.alive_retries = int(value)
-            elif opt == "--interval" :
-                self.interval = int(value)
-            elif opt == "--inq-timeout" :
-                self.inq_timeout = int(value)
-            elif opt == "--get-inq-timeout" :
-                self.get_inq_timeout = 1
-            elif opt == "--reset-inq-timeout" :
-                self.reset_inq_timeout = 1
-            elif opt == "--get-interval" :
-                self.get_interval = value
-            elif opt == "--reset-interval" :
-                self.reset_interval = value
-            elif opt == "--update" :
-                self.update = value
-            elif opt == "--update-and-exit" :
-                self.update_and_exit = 1
-            elif opt == "--max-encp-lines" :
-                self.max_encp_lines = int(value)
-            elif opt == "--get-max-encp-lines" :
-                self.get_max_encp_lines = 1
-            elif opt == "--crc":
-                self.chk_crc = 1
-            elif opt == "--priority" :
-                self.priority = int(value)
-            elif opt == "--delpri" :
-                self.delpri = int(value)
-            elif opt == "--age-time" :
-                self.age_time = int(value)
-            elif opt == "--delayed-dismount" :
-                self.delayed_dismount = int(value)
-            elif opt == "--dump":
-                self.dump = 1
-            elif opt == "--verbose" :
-                if value == "":
-                    self.verbose = self.verbose | 1
-                else:
-                    self.verbose = self.verbose | int(value)
-            elif opt == "--status":
-                self.status = 1
-            elif opt == "--max-work":
-                self.max_work = int(value)
-            elif opt == "--mount" :
-                self.mount = 1
-            elif opt == "--dismount" :
-                self.dismount = 1
-            elif opt == "--refresh":
-                self.refresh = int(value)
-            elif opt == "--get-refresh":
-                self.get_refresh = 1
-            elif opt == "--get-logfile-name":
-                self.get_logfile_name = 1
-            elif opt == "--get-logfiles":
-                self.get_logfiles = value
-            elif opt == "--get-last-logfile-name":
-                self.get_last_logfile_name = 1
-            elif opt == "--data-access-layer":
-                self.data_access_layer = 1
-            elif opt == "--logfile-dir":
-                self.logfile_dir = value
-            elif opt == "--start-time":
-                self.start_time = value
-            elif opt == "--stop-time":
-                self.stop_time = value
-            elif opt == "--plot":
-                self.plot = 1
-            elif opt == "--get-queue":
-                self.get_queue=value
-            elif opt == "--host":
-                self.host=value
-            elif opt == "--ephemeral":
-                self.output_file_family="ephemeral"
-            elif opt == "--file-family":
-                self.output_file_family=value
-            elif opt == "--raise" :
-                self.alarm = 1
-            elif opt == "--resolve" :
-                self.resolve = value
-            elif opt == "--get-patrol-file" :
-                self.get_patrol_file = 1
-            elif opt == "--root-error" :
-                self.root_error = value
-            elif opt == "--severity" :
-                self.severity = value
-            elif opt == "--mc" :
-                self.mcs = string.split(value, ",")
-            elif opt == "--keep" :
-                self.keep = 1
-            elif opt == "--keep-dir" :
-                self.keep_dir = value
-            elif opt == "--output-dir" :
-                self.output_dir = value
-            elif opt == "--restore-all" :
-                self.restore_all = 1
-            elif opt == "--nocheck" :
-                self.nocheck = 1
+            elif opt == "--bfid":
+                self.bfid = value
+            elif opt == "--bfids":
+                self.bfids = 1
             elif opt == "--bytes":
                 if not self.test_mode:
                     sys.stderr.write("bytecount may only be specified in test mode\n")
                     sys.exit(-1)
                 if value[-1]=='L':
                     value=value[:-1]
-                self.bytes = int(value)
-            elif opt == "--get-crcs":
-                self.get_crcs=value
-            elif opt == "--set-crcs":
-                self.set_crcs=value
-            elif opt == "--start-draining":
-                self.start_draining = value
-            elif opt == "--stop-draining":
-                self.stop_draining = 1
-            elif opt == "--prefix":
-                self.prefix = value
-            elif opt == "--web-host":
-                self.web_host = value
+                self.bytes = long(value)
             elif opt == "--caption-title":
                 self.caption_title = value
-            elif opt == "--title":
-                self.title = value
-            elif opt == "--title-gif":
-                self.title_gif = value
-            elif opt == "--output":
-                self.output = value
+            elif opt == "--change-priority":
+                self.change_priority = 1
+            elif opt == "--check":
+                self.check = value
+            elif opt == "--clean-drive":
+                self.clean_drive = 1
+            elif opt == "--clear":
+                self.clear = value
+            elif opt == "--config-file":
+                self.config_file = value
+            elif opt == "--config-host":
+                self.parse_config_host(value)
+            elif opt == "--config-port":
+                self.parse_config_port(value)
+            elif opt == "--crc":
+                self.chk_crc = 1
+            elif opt == "--data-access-layer":
+                self.data_access_layer = 1
+            elif opt == "--decr-file-count":
+                self.decr_file_count = value
+            elif opt == "--delayed-dismount":
+                self.delayed_dismount = int(value)
+            elif opt == "--delete":
+                self.delete = value
+            elif opt == "--delete-work":
+                self.work_to_delete = value
+                self.delete_work = 1
+            elif opt == "--deleted":
+                self.deleted = value
+            elif opt == "--delpri":
+                self.delpri = int(value)
             elif opt == "--description":
                 self.description = value
+            elif opt == "--destroy":
+                self.rmvol = value
+            elif opt == "--dismount":
+                self.dismount = 1
+            elif opt == "--do-alarm":
+                self.do_alarm = parse_range(value)
+            elif opt == "--do-log":
+                self.do_log = parse_range(value)
+            elif opt == "--do-print":
+                self.do_print = parse_range(value)
+            elif opt == "--dont-alarm":
+                self.dont_alarm = parse_range(value)
+            elif opt == "--dont-log":
+                self.dont_log = parse_range(value)
+            elif opt == "--dont-print":
+                self.dont_print = parse_range(value)
+            elif opt == "--down":
+                self.down = value
+            elif opt == "--dump":
+                self.dump = 1
+            elif opt == "--ephemeral":
+                self.output_file_family="ephemeral"
+            elif opt == "--export":
+                self._export = 1
+            elif opt == "--file-family":
+                self.output_file_family=value
+            elif opt == "--force":
+                self.force = 1
+            elif opt == "--get-crcs":
+                self.get_crcs=value
+            elif opt == "--get-inq-timeout":
+                self.get_inq_timeout = 1
+            elif opt == "--get-interval":
+                self.get_interval = value
+            elif opt == "--get-last-logfile-name":
+                self.get_last_logfile_name = 1
+            elif opt == "--get-logfile-name":
+                self.get_logfile_name = 1
+            elif opt == "--get-logfiles":
+                self.get_logfiles = value
+            elif opt == "--get-max-encp-lines":
+                self.get_max_encp_lines = 1
+            elif opt == "--get-patrol-file":
+                self.get_patrol_file = 1
+            elif opt == "--get-queue":
+                self.get_queue=value
+            elif opt == "--get-refresh":
+                self.get_refresh = 1
+            elif opt == "--get-suspect-vols":
+                self.get_susp_vols = 1
+            elif opt == "--get-work":
+                self.get_work = 1
+            elif opt == "--help":
+                self.print_help()
+                sys.exit(0)
+            elif opt == "--host":
+                self.host=value
+            elif opt == "--html":
+                self.html = 1
             elif opt == "--html-file":
                 self.html_file = value
             elif opt == "--html-gen-host":
                 self.html_gen_host = value
-            elif opt == "--html":
-                self.html = 1
-            elif opt == "--up":
-                self.up = value
-            elif opt == "--down":
-                self.down = value
-            elif opt == "--outage":
-                self.outage = value
-            elif opt == "--nooutage":
-                self.nooutage = value
-            elif opt == "--time":
-                self.time = value
+            elif opt == "--import":
+                self._import = 1
             elif opt == "--input-dir":
                 self.input_dir = value
+            elif opt == "--inq-timeout":
+                self.inq_timeout = int(value)
+            elif opt == "--interval":
+                self.interval = int(value)
+            elif opt == "--keep":
+                self.keep = 1
+            elif opt == "--keep-dir":
+                self.keep_dir = value
+            elif opt == "--list":
+                self.list = value
+            elif opt == "--load":
+                self.load = 1
+            elif opt == "--logfile-dir":
+                self.logfile_dir = value
+            elif opt == "--max-encp-lines":
+                self.max_encp_lines = int(value)
+            elif opt == "--max-work":
+                self.max_work = int(value)
+            elif opt == "--mc":
+                self.mcs = string.split(value, ",")
+            elif opt == "--message":
+                self.message = value
+            elif opt == "--modify":
+                self.modify = value
+            elif opt == "--mount":
+                self.mount = 1
+            elif opt == "--new-library":
+                self.new_library = value
+            elif opt == "--next":
+                self.next = 1
+            elif opt == "--no-access":
+                self.no_access = value
+            elif opt == "--nocheck":
+                self.nocheck = 1
+            elif opt == "--nooutage":
+                self.nooutage = value
+            elif opt == "--outage":
+                self.outage = value
+            elif opt == "--output":
+                self.output = value
+            elif opt == "--output-dir":
+                self.output_dir = value
+            elif opt == "--plot":
+                self.plot = 1
+            elif opt == "--poll":
+                self.poll = 1
+            elif opt == "--prefix":
+                self.prefix = value
+            elif opt == "--priority":
+                self.priority = int(value)
+            elif opt == "--raise":
+                self.alarm = 1
+            elif opt == "--read-only":
+                self.read_only = value
+            elif opt == "--recursive":
+                self.restore_dir = 1
+            elif opt == "--refresh":
+                self.refresh = int(value)
+            elif opt == "--reset-inq-timeout":
+                self.reset_inq_timeout = 1
+            elif opt == "--reset-interval":
+                self.reset_interval = value
+            elif opt == "--resolve":
+                self.resolve = value
+            elif opt == "--restore":
+                self.restore = value
+            elif opt == "--restore-all":
+                self.restore_all = 1
+            elif opt == "--retries":
+                self.alive_retries = int(value)
+            elif opt == "--rm-active-vol":
+                self.active_volume = value
+                self.rm_active_vol = 1
+            elif opt == "--rm-suspect-vol":
+                self.suspect_volume = value
+                self.rm_suspect_vol = 1
+            elif opt == "--root-error":
+                self.root_error = value
+            elif opt == "--set-crcs":
+                self.set_crcs=value
+            elif opt == "--severity":
+                self.severity = value
+            elif opt == "--show":
+                self.show = 1
+            elif opt == "--start-draining":
+                self.start_draining = value
+            elif opt == "--start-time":
+                self.start_time = value
+            elif opt == "--status":
+                self.status = 1
+            elif opt == "--stop-draining":
+                self.stop_draining = 1
+            elif opt == "--stop-time":
+                self.stop_time = value
+            elif opt == "--storage-groups":
+                self.storage_groups = 1
+            elif opt == "--summary":
+                self.summary = 1
+            elif opt == "--time":
+                self.time = value
+            elif opt == "--timeout":
+                self.alive_rcv_timeout = int(value)
+            elif opt == "--title":
+                self.title = value
+            elif opt == "--title-gif":
+                self.title_gif = value
+            elif opt == "--up":
+                self.up = value
+            elif opt == "--update":
+                self.update = value
+            elif opt == "--update-and-exit":
+                self.update_and_exit = 1
             elif opt == "--url":
                 self.url = value
-            elif opt == "--help" :
-                self.print_help()
-                sys.exit(0)
-            elif opt == "--usage-line" :
+            elif opt == "--usage-line":
                 self.print_usage_line()
                 sys.exit(0)
+            elif opt == "--verbose":
+                if value == "":
+                    self.verbose = self.verbose | 1
+                else:
+                    self.verbose = self.verbose | int(value)
+            elif opt == "--vol":
+                self.vol = value
+            elif opt == "--vols":
+                self.vols = 1
+            elif opt == "--web-host":
+                self.web_host = value
