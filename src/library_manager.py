@@ -1079,6 +1079,8 @@ class LibraryManagerMethods:
                         host_from_ticket = hostaddr.address_to_name(callback[0])
                     else:
                         host_from_ticket = rq.ticket['wrapper']['machine'][1]
+                    if host_from_ticket == requestor['unique_id'].split('-')[0]:
+                        args[-1]=args[-1]+1
                     args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
@@ -1166,6 +1168,8 @@ class LibraryManagerMethods:
                         host_from_ticket = hostaddr.address_to_name(callback[0])
                     else:
                         host_from_ticket = rq.ticket['wrapper']['machine'][1]
+                    if host_from_ticket == requestor['unique_id'].split('-')[0]:
+                        args[-1]=args[-1]+1
                     args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
@@ -1176,9 +1180,10 @@ class LibraryManagerMethods:
                                                              rq.ticket["vc"]["volume_family"],
                                                              rq.ticket["wrapper"]["uname"]))
                         rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-                        rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
-                        if not rq:
+                        if last_work == 'WRITE':
                             rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0)
+                        if not rq:
+                            rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
                         continue
                     else: break
                 else: break
@@ -1233,6 +1238,8 @@ class LibraryManagerMethods:
             if rq.work == 'write_to_hsm':
                 while rq:
                     Trace.trace(14,"LABEL %s RQQQQQQQ %s" % (external_label, rq))
+                    # regular write request must have the same volume label
+                    rq.ticket['fc']['external_label'] = external_label
                     rq, status = self.check_write_request(external_label, rq, requestor)
                     Trace.trace(14,"RQ1 %s STAT %s" %(rq,status))
                     if rq: Trace.trace(14,"TICK %s" %(rq.ticket,))

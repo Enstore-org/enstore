@@ -196,6 +196,7 @@ class SortedList:
     ##    print msg
         
     def get_next(self):
+        Trace.trace(23, "sorted_list %s stop_rolling %s current_index %s"%(self.sorted_list,self.stop_rolling,self.current_index))
         if not self.sorted_list:
             self.start_index = self.current_index
             return None    # list is empty
@@ -260,7 +261,7 @@ class SortedList:
     def sprint(self):
         m = ''
         if len(self.sorted_list):
-            m = "LIST LENGTH %s\n"%(len(self.sorted_list),)
+            m = "LIST LENGTH %s rolling %s\n"%(len(self.sorted_list),self.stop_rolling)
             for rq in self.sorted_list:
                 m = '%s %s\n'%(m,rq)
         return m
@@ -324,11 +325,14 @@ class Queue:
     # what is current position of the tape (location_cookie)
     # for write requests it is file size
     def get(self,label='',location=''):
-        # label is either a volume label or file family
+         # label is either a volume label or file family
+        Trace.trace(23, 'Queue.get: Queue list %s'% (self.sprint(),))
         if not label: return None
         if not self.queue.has_key(label):
             Trace.trace(23,"Queue.get: label %s is not in the queue"%(label,))
             return None
+        self.queue[label]['by_priority'].stop_rolling = 0
+        self.queue[label]['opt'].stop_rolling = 0
         sublist = self.queue[label]['opt']
        
         if location:
@@ -380,11 +384,16 @@ class Queue:
             
     def get_next(self, label=''):
         # label is either a volume label or volume family
+        Trace.trace(23, 'Queue.get_next: label %s'% (label,))
+        Trace.trace(23, 'Queue.get_next: list %s'% (self.sprint(),))
+
         if not label: return None
+        Trace.trace(23, "Queue.get_next: keys %s"%(self.queue.keys(),))
         if not self.queue.has_key(label):
-            Trace.trace(23,"Queue.get: label %s is not in the queue"%(label,))
+            Trace.trace(23,"Queue.get_next: label %s is not in the queue"%(label,))
             return None
         sublist = self.queue[label]['opt']
+        Trace.trace(23,"Queue.get_next: sublist %s"%(sublist.sprint(),))
         return sublist.get_next()
         
 
@@ -411,7 +420,6 @@ class Queue:
         if not self.queue_type:
             m='%sUKNOWN QUEUE type\n'%(m,)
             return m
-        print self.queue_type," Queue"
         m='%s%s Queue\nby_val\n'%(m,self.queue_type)
         for key in self.queue.keys():
             m = '%s KEY %s\n%s'%(m, key, self.queue[key]['opt'].sprint())
@@ -547,7 +555,7 @@ class Atomic_Request_Queue:
     # flag next indicates whether to get a first highest request
     # or keep getting requsts for specified label
     def get(self, label='',location='', next=0):
-        Trace.trace(21,'label %s location %s next %s'%
+        Trace.trace(21,'atomic_get:label %s location %s next %s'%
                     (label, location, next))
         if label:
             # see if label points to write queue
@@ -555,6 +563,7 @@ class Atomic_Request_Queue:
                 if next:
                     Trace.trace(21, "GET_NEXT_0")
                     record = self.write_queue.get_next(label)
+                    Trace.trace(21, "write_queue.get_next returned %s"%(record,))
                 else:
                     Trace.trace(21, "GET_0")
                     record = self.write_queue.get(label, location)
