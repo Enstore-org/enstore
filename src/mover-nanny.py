@@ -31,6 +31,7 @@ class Logfile:
         self.outfile.close()
     def write(self, stuff):
         self.outfile.write(stuff)
+        self.outfile.flush()
     def flush(self):
         self.outfile.flush()
         
