@@ -75,7 +75,7 @@ def is_volume_busy(external_label) :
 # return ticket for given labelled volume in bind queue
 def get_awaiting_work(external_label) :
     for w in work_awaiting_bind :
-        if w["file_clerk"]["external_label"] == external_label :
+        if w["fc"]["external_label"] == external_label :
             return w
     return {}
 
@@ -83,7 +83,7 @@ def get_awaiting_work(external_label) :
 # return ticket if given labelled volume in mover queue
 def get_work_at_movers(external_label) :
     for w in work_at_movers :
-        if w["file_clerk"]["external_label"] == external_label :
+        if w["fc"]["external_label"] == external_label :
             return w
     return {}
 
@@ -98,7 +98,7 @@ def next_work_any_volume(csc) :
 
         # if we need to read and volume is busy, check later
         if w["work"] == "read_from_hsm" :
-            if is_volume_busy(w["file_clerk"]["external_label"])  :
+            if is_volume_busy(w["fc"]["external_label"])  :
                 continue
             # otherwise we have found a volume that has read work pending
             return w
@@ -115,7 +115,8 @@ def next_work_any_volume(csc) :
             vc = volume_clerk_client.VolumeClerkClient(csc)
             first_found = 0
             t1 = time.time()
-            v = vc.next_write_volume (w["library"], w["size_bytes"],\
+            v = vc.next_write_volume (w["library"], w["user_info"]\
+				      ["size_bytes"],\
                                       w["file_family"], vol_veto_list,\
                                       first_found)
             t2 = time.time()-t1
@@ -127,7 +128,7 @@ def next_work_any_volume(csc) :
                 w["status"] = v["status"]
                 return w
             # found a volume that has write work pending - return it
-            w["file_clerk"]["external_label"] = v["external_label"]
+            w["fc"]["external_label"] = v["external_label"]
             return w
 
         # alas, all I know about is reading and writing
@@ -152,14 +153,14 @@ def next_work_this_volume(v) :
             w["file_family"]    == v["file_family"]  and
             v["user_inhibit"]   == "none"            and
             v["system_inhibit"] == "none"            and
-            w["size_bytes"]    <= v["remaining_bytes"]) :
+            w["user_info"]["size_bytes"]    <= v["remaining_bytes"]) :
             w["external_label"] = v["external_label"]
             # ok passed criteria, return write work ticket
             return w
 
         # reading from this volume?
         elif (w["work"]           == "read_from_hsm" and
-              w["file_clerk"]["external_label"] == v["external_label"] ) :
+              w["fc"]["external_label"] == v["external_label"] ) :
             # ok passed criteria, return read work ticket
             return w
 
@@ -190,8 +191,8 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker) :
         logticket = self.logc.send(log_client.INFO, 2, format,
                                    ticket["pnfs_info"]["pnfsFilename"],
                                    repr(ticket["user_info"]["fullname"]),
-                                   ticket["file_clerk"]["external_label"],
-				   ticket["file_clerk"]["bfid"],
+                                   ticket["fc"]["external_label"],
+				   ticket["fc"]["bfid"],
                                    ticket["user_info"]["uname"])
         queue_pending_work(ticket)
 
@@ -210,12 +211,12 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker) :
             # reply now to avoid deadlocks
             format = "bind vol=%s work=%s mover=%s requestor:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
-                                       w["file_clerk"]["external_label"],
+                                       w["fc"]["external_label"],
                                        w["work"],
                                        mticket["mover"],
                                        w["user_info"]["uname"])
             self.reply_to_caller({"work"           : "bind_volume",
-                                  "external_label" : w["file_clerk"]\
+                                  "external_label" : w["fc"]\
 				  ["external_label"] })
             # put it into our bind queue and take it out of pending queue
             work_awaiting_bind.append(w)
@@ -243,7 +244,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker) :
             format = "%s awaiting work on vol=%s mover=%s requestor:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
                                        w["work"],
-                                       w["file_clerk"]["external_label"],
+                                       w["fc"]["external_label"],
                                        mticket["mover"],
                                        w["user_info"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks
@@ -258,7 +259,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker) :
             format = "%s next work on vol=%s mover=%s requestor:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
                                        w["work"],
-                                       w["file_clerk"]["external_label"],
+                                       w["fc"]["external_label"],
                                        mticket["mover"],
                                        w["user_info"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks

@@ -183,7 +183,7 @@ class Mover:
     def write_to_hsm(self, ticket):
         self.logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
         # double check that we are talking about the same volume
-        if ticket["file_clerk"]["external_label"] != self.external_label :
+        if ticket["fc"]["external_label"] != self.external_label :
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and tell him we are going to append to volume
@@ -193,9 +193,9 @@ class Mover:
             raise "volume clerk forgot about this volume"
 
         # setup values before transfer
-        nb = ticket["size_bytes"]
+        nb = ticket["user_info"]["size_bytes"]
         wr_size = 0
-        sanity_size = ticket["sanity_size"]
+        sanity_size = ticket["user_info"]["sanity_size"]
         media_error = 0
         media_full  = 0
         drive_error = 0
@@ -223,9 +223,9 @@ class Mover:
             self.logc.send(log_client.INFO,2,"WRAPPER.WRITE")
             (wr_size, complete_crc, sanity_cookie) = self.wrapper.write(
                 inode, pnfs["mode"], pnfs["uid"], pnfs["gid"], ticket["mtime"],
-                ticket["size_bytes"], pnfs["major"], pnfs["minor"],
-                pnfs["rmajor"], pnfs["rminor"], pnfs["pnfsFilename"],
-                sanity_size)
+                ticket["user_info"]["size_bytes"], pnfs["major"], 
+		pnfs["minor"], pnfs["rmajor"], pnfs["rminor"], 
+		pnfs["pnfsFilename"], sanity_size)
             file_cookie = self.driver.close_file_write()
         except:
             self.logc.send(log_client.ERROR,1,
@@ -249,9 +249,9 @@ class Mover:
             self.send_user_last({"status" : "Mover: Retry: media_error "+msg})
             return
 
-        if wr_size != ticket["size_bytes"]:
-            msg = "Expected "+repr(ticket["size_bytes"])+" bytes,"\
-                  " but only" +" stored"+repr(wr_size)
+        if wr_size != ticket["user_info"]["size_bytes"]:
+            msg = "Expected "+repr(ticket["user_info"]["size_bytes"])+\
+		  " bytes  but only" +" stored"+repr(wr_size)
             self.logc.send(log_client.ERROR,1,msg)
             # tell user we're done, but there has been an error
             self.send_user_last({"status" : "Mover: Retry: user_error "+msg})
@@ -266,34 +266,24 @@ class Mover:
         wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
 
         # Tell volume server & update database
-        self.vticket = vcc.set_remaining_bytes(ticket["file_clerk"]\
-					       ["external_label"],
+        self.vticket = vcc.set_remaining_bytes(ticket["fc"]["external_label"],
                                                remaining_bytes,
                                                eod_cookie,
                                                wr_err,rd_err,\
                                                wr_access,rd_access)
         # connect to file clerk and get new bit file id
         fc = file_clerk_client.FileClerkClient(self.csc)
-	"""
-        self.fticket = fc.new_bit_file(file_cookie,ticket["file_clerk"]\
-				       ["external_label"],
-                                       sanity_cookie,complete_crc)
-        """
 	ticket["work"] = "new_bit_file"
-	ticket["file_clerk"]["bof_space_cookie"] = file_cookie
-	ticket["file_clerk"]["sanity_cookie"] = sanity_cookie
-	ticket["file_clerk"]["complete_crc"] = complete_crc
+	ticket["fc"]["bof_space_cookie"] = file_cookie
+	ticket["fc"]["sanity_cookie"] = sanity_cookie
+	ticket["fc"]["complete_crc"] = complete_crc
 	ticket = fc.new_bit_file(ticket)
-
-        # bfid & crc needed, but save other useful information for user too
-        #ticket["bfid"] = self.fticket["bfid"]
-        #ticket["complete_crc"] = complete_crc
         ticket["volume_clerk"] = self.vticket
-        #ticket["file_clerk"] = self.fticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
                   'library', 'library_device', 'library_manager_host',
-                  'library_manager_port', 'media_changer', 'name' ]:
+                  'library_manager_port', 'media_changer', 'name', 
+		  'callback_addr' ]:
             exec("minfo["+repr(k)+"] = self."+k)
         ticket["mover"] = minfo
         dinfo = {}
@@ -315,7 +305,7 @@ class Mover:
     def read_from_hsm(self, ticket):
 
         # double check that we are talking about the same volume
-        if ticket["file_clerk"]["external_label"] != self.external_label :
+        if ticket["fc"]["external_label"] != self.external_label :
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and check on volume
@@ -333,7 +323,7 @@ class Mover:
         drive_error = 0
         user_recieve_error = 0
         bytes_sent = 0
-        sanity_cookie = ticket["file_clerk"]["sanity_cookie"]
+        sanity_cookie = ticket["fc"]["sanity_cookie"]
         complete_crc = 0
 
         # call the user and announce that your her mover
@@ -344,7 +334,7 @@ class Mover:
 
         # open the hsm file for reading and read it
         try:
-            self.driver.open_file_read(ticket["file_clerk"]["bof_space_cookie"])
+            self.driver.open_file_read(ticket["fc"]["bof_space_cookie"])
             (bytes_sent, complete_crc) = self.wrapper.read(sanity_cookie)
              #print "cpio.read  size:",wr_size,"crc:",complete_crc
 
@@ -360,22 +350,22 @@ class Mover:
 
         # get the error/mount counts and update database
         wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
-        vcc.update_counts(ticket["file_clerk"]["external_label"],
+        vcc.update_counts(ticket["fc"]["external_label"],
                           wr_err,rd_err,wr_access,rd_access)
 
         # if media error, mark volume readonly, unbind it & tell user to retry
         if media_error :
-            vcc.set_system_readonly(ticket["file_clerk"]["external_label"])
+            vcc.set_system_readonly(ticket["fc"]["external_label"])
             self.unilateral_unbind_next(ticket)
-            msg = "Volume "+repr(ticket["file_clerk"]["external_label"])
+            msg = "Volume "+repr(ticket["fc"]["external_label"])
             self.send_user_last({"status" : "Mover: Retry: media_error "+msg})
             return
 
         # drive errors are bad:  unbind volule it & tell user to retry
         elif drive_error :
-            vcc.set_hung(ticket["file_clerk"]["external_label"])
+            vcc.set_hung(ticket["fc"]["external_label"])
             self.unilateral_unbind_next(ticket)
-            msg = "Volume "+repr(ticket["file_clerk"]["external_label"])
+            msg = "Volume "+repr(ticket["fc"]["external_label"])
             self.send_user_last({"status" : "Mover: Retry: drive_error "+msg})
             #since we will kill ourselves, tell the library manager now....
             ticket = send_library_manager()
@@ -389,7 +379,8 @@ class Mover:
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
                   'library', 'library_device', 'library_manager_host',
-                  'library_manager_port', 'media_changer', 'name' ]:
+                  'library_manager_port', 'media_changer', 'name',
+		  'callback_addr']:
             exec("minfo["+repr(k)+"] = self."+k)
         ticket["mover"] = minfo
         dinfo = {}
@@ -475,10 +466,11 @@ class Mover:
 
     # data transfer takes place on tcp sockets, so get ports & call user
     def get_user_sockets(self, ticket):
-        mover_host, mover_port, listen_socket = callback.get_callback()
+        host, port, listen_socket = callback.get_callback()
+	self.callback_addr = (host,port)
         listen_socket.listen(4)
-        ticket["mover_callback_host"] = mover_host
-        ticket["mover_callback_port"] = mover_port
+	mover_ticket = {"callback_addr" : self.callback_addr}
+        ticket["mover"] = mover_ticket
 
         # call the user and tell him I'm your mover and here's your ticket
         self.control_socket = callback.user_callback_socket(ticket)
