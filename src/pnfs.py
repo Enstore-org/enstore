@@ -66,22 +66,24 @@ def fullpath(filename):
 
     return machine, filename, dirname, basename
 
-def is_pnfs_path(filename):
+def is_pnfs_path(filename, check_name_only = None):
 
     #Expand the filename to the absolute path.
     pathname = fullpath(filename)[1]
     
     #Determine if the target file or directory is in the pnfs namespace.
     if string.find(pathname,"/pnfs/") < 0:
-        return 0; #If we get here it is not a pnfs directory.
-
+        return 0 #If we get here it is not a pnfs directory.
+    elif check_name_only:
+        return 1 #Only check the file name, don't check for existance too.
+    
     #Determine the path for the cursor existance test.
     if os.path.isdir(pathname):
         fname = os.path.join(pathname, ".(get)(cursor)")
     else:
         fname = os.path.join(os.path.dirname(pathname), ".(get)(cursor)")
 
-    #If the curosr 'file' exists, then this is a real pnfs file system.
+    #If the cursor 'file' exists, then this is a real pnfs file system.
     if os.path.exists(fname):
         return 1
 
