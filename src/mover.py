@@ -624,6 +624,8 @@ def bind_volume( object, external_label ):
                 driver_object.skip_fm(-1)
 	    pass
 	driver_object.close()
+	# update again, after all is said and done
+	object.vol_info.update( tmp_vol_info )
 	pass
     elif external_label != object.vol_info['external_label']:
         object.vol_info['err_external_label'] = external_label
@@ -631,8 +633,6 @@ def bind_volume( object, external_label ):
                        (object.vol_info['external_label'],external_label) )
         return 'NOTAPE' # generic, not read or write specific
 
-    # update again, after all is said and done
-    object.vol_info.update( tmp_vol_info )
     return e_errors.OK  # bind_volume
 
 
