@@ -1,0 +1,18 @@
+1. If you are running enstore on a node that it has never been run on before,
+you need to create a hsm lock directory and lock file: client_node_install in
+the enstore bin area will do this for you.
+
+2. You also need pnfs to be available and mounted on the machine you are
+trying to run on.  This requires adding your node to the pnfs export list on
+the pnfs server node.  See bakken if you want to use add a node to pnfs
+exporting.
+
+To mount a minimal pnfs:
+    choose 1:
+        irix-options="hard,intr,rw,noac"
+        options="hard,intr,rw"
+    mount -o $options pcfarm4:/enstore  /pnfs/enstore
+
+3. If you've checked out enstore:
+        a. cd to the main enstore directory
+        b. setup -r `pwd` enstore

@@ -1,0 +1,80 @@
+The correct way to start the enstore servers is to use the command
+enstore-start, and the correct way to stop them is to use the command
+enstore-stop.  These commands work at the 90% level, so there may be some
+problems. Usually the error messages let you know what is wrong and alot of
+times it is pilot error.  A ps command is also generally useful.
+
+When starting up servers, yon specify which configuration server the server is
+going to use by specifying a configuration server host and port.  If you don't
+specify it, the server will use the standard defaults.  There can only 1
+volume clerk, file clerk and library manager server running per configuration
+server. There can be any number of movers.  If you have multiple configuration
+servers, you can have multiple other servers as well. It's also possible to
+have one server serving multiple configuration servers.
+
+--------------------------CONFIGURATION SERVER--------------------------------
+
+The 1st server that has to be started is the configuration server.  This is
+the server that tells everyone else the system configuration.  The first thing
+every other server does when it starts up is ask the configuration server for
+information.
+
+If you want to see what is in the configuration server's dictionary, try the
+command     econ --config_list --dict
+
+If you want to change the dictionary, try the command
+    econ --load --config_file file
+Don't do the on the default server, only your private test one!!!
+
+
+--------------------------VOLUME CLERK----------------------------------------
+
+The volume clerk keeps track of what volumes are available file family and how
+much room is left on each volume.
+
+You need to specify volumes when you start. This is done with the python
+envoltool module.  There are 6 arguments: library, file family, media type,
+name of this volume, capacity of this vol in bytes, and remaining capacity of
+this volume.
+
+The current way (I plan on changing this) to do this is
+python $ENSTORE_DIR/src/envoltool.py addvol activelibrary family_raw \
+                                     floppy flop1 1400000 1400000
+
+If you use the standard servers, this has been done already so don't add any
+volumes.  This should be viewed as an administrator's job.
+
+There isn't any nice way to dump the volume information right now.  But all
+the information can be seen simply by listing volume_clerk.jou in the enstore
+etc directory.  That's the journal database file for the volume clerk.
+
+
+--------------------------FILE CLERK------------------------------------------
+
+The file clerk keeps track of, and generates, bit file id's for the files that
+have been written to the volumes.
+
+There isn't any nice way to dump the file information right now.  But all the
+information can be seen simply by listing file_clerk.jou in the enstore etc
+directory.  That's the journal database file for the file clerk.
+
+
+--------------------------LIBRARY MANAGER-------------------------------------
+
+The library manager controls the work queue and is the main interface between
+the user's encp program and the rest of the system.
+
+There isn't any way to see what is going on in the library manager right now
+(that I know about).  It's clearly possible to write an interface to do this.
+This information is needed for the users.
+
+
+--------------------------MOVER-----------------------------------------------
+
+The mover is responsible for moving data between the user's filespace and its
+final media.  There is 1 mover server for each tape drive.
+
+There isn't any way to see what is going on in the movers right now (that I
+know about).  It's clearly possible to write an interface to do this.  This
+information is needed for the users.
+
