@@ -116,21 +116,35 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
     int res, i;
     int len;
 
-    /*  
-    ** note that we use async_pf_{parent,child} backwards here
-    ** because we are blowing data down to the child...
-    */
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
+        int pd[2], save;
+        FILE *topipe;
+
+        /*
+        ** Redirection here is kind of hairy, to avoid re-doing ftt_fork().
+        ** we redirect stdin *before* forking to be the read end of a new
+	** pipe, saving the original stdin in "save"...
+        */
+        pipe(pd);
+	fflush(stdin);	/* make pipe stdin */
+        save = dup(0);
+	close(0);
+	dup2(pd[0],0);
+
+        /*
+        ** now we make a file handle out of the write end of the pipe
+	** that we will ftt_dump_partitions() onto, and fork...
+        */
+        topipe = fdopen(pd[1],"w");
 	ftt_close_dev(d);
 	switch(ftt_fork(d)){
 	case -1:
 		return -1;
 
 	case 0:  /* child */
-		fflush(stdin);	/* make async_pf stdin */
-		fflush(d->async_pf_parent);
-		close(0);
-		dup2(fileno(d->async_pf_child),0);
+		/*
+		** since stdin is already redirected, we need do nothing...
+                */
 		if (ftt_debug) {
 		    execlp("ftt_suid", "ftt_suid", "-x",  "-u", d->basename, 0);
 		} else {
@@ -139,7 +153,17 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 		break;
 
 	default: /* parent */
-		ftt_dump_partitions(p,d->async_pf_parent);
+		/*
+                ** Here in the parent, we need to put stdin back...
+                */
+	        close(0);
+                dup2(save,0);
+                close(save);
+		/* close the read end of the pipe... */
+                close(pd[0]);
+		/* send the child the partition data */
+		ftt_dump_partitions(p,topipe);
+  		fclose(topipe);
 		res = ftt_wait(d);
 	}
 
@@ -267,10 +291,15 @@ ftt_undump_partitions(ftt_partbuf p, FILE *pf) {
     char buf[80];
     int i,junk;
 
-    fgets(buf,80,pf);
-    fgets(buf,80,pf);
+    buf[0] = 'x';
+    while (buf[0] != '=') {
+	fgets(buf,80,pf);
+	DEBUG2(stderr,"skipping line %s\n", buf);
+    }
     fscanf(pf, curfmt, &(p->n_parts));
+    DEBUG2(stderr,"got n_parts of %d\n", p->n_parts);
     fscanf(pf, maxfmt, &(p->max_parts));
+    DEBUG2(stderr,"got max_parts of %d\n", p->max_parts);
     for( i = 0 ; i <= p->n_parts; i++ ) {
 	fscanf(pf, parfmt, &junk, &(p->partsizes[i]));
     }
