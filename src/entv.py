@@ -8,6 +8,7 @@ import socket
 import select
 import string
 import time
+import popen2
 
 debug=1
 
@@ -40,7 +41,6 @@ def get_movers(config=None):
             mover = item[:-6]
             movers.append(mover)
         movers.sort()
-    print movers
     return movers
 
 s = None
@@ -73,37 +73,39 @@ def get_mover_status_parallel(movers, timeout=15):
     ret = {}
     start_time = time.time()
     end_time = start_time + timeout
-    pipe_dict = {} #Key is a pipe object, value is mover name
+    pipe_dict = {} #Key is a file descriptor, value is a Popen object
     waiting = [] #These are the movers we're still waiting for
 
     for mover in movers:
         cmd = "enstore mover --status %s.mover " % mover
         try:
-            print "Running command", cmd
-            p = os.popen(cmd,'r')
-            pipe_dict[p] = mover
+            p = popen2.Popen3(cmd)
+            p.mover = mover
+            pipe_dict[p.fromchild] = p
             waiting.append(mover)
         except:
-            print "Cannot run", cmd
             pass
 
     while waiting:
         time_remaining = end_time - time.time()
         if time_remaining<0:
             break
-        
+
         r, w, x = select.select(pipe_dict.keys(), [], [], time_remaining)
         for p in r:
             try:
-                mover = pipe_dict[p]
+                pipe = pipe_dict[p]
+                mover = pipe.mover
                 del pipe_dict[p]
                 data = p.read()
-                print "read reply on", p, data
                 p.close()
                 ret[mover] = dict_eval(data)
                 waiting.remove(mover)
             except:
                 pass
+    
+    for p in pipe_dict.values():
+        os.kill(p.pid, 9)
     return ret
             
 def main():
@@ -145,8 +147,6 @@ def main():
 
     
     #Get the state of each mover before continuing
-##    for mover in movers:
-##        status = get_mover_status(mover)
 
     mover_status = get_mover_status_parallel(movers, timeout=15)
     for mover, status in mover_status.items():
@@ -161,16 +161,19 @@ def main():
         if state in ['MOUNT_WAIT']:
             send("loading %s %s" %(mover, volume))
         if state in ['ACTIVE', 'SEEK']: #we are connected to a client
+            client = ''
             files = status['files']
-            if files[0][0]=='/':
+            if files[0] and files[0][0]=='/':
                 client = files[1]
             else:
                 client = files[0]
             colon = string.find(client, ':')
             if colon>=0:
                 client = client[:colon]
-            send("connect %s %s" % (mover, client))
+            if client:
+                send("connect %s %s" % (mover, client))
 
+    
     # Subscribe to the event notifier
     if debug:
         print "subscribe"
