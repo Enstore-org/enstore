@@ -589,8 +589,6 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
             print Qd
             print "  dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
 
-        t1 = time.time() #------------------------------------------------Start
-
         # We have placed our work in the system and now we have to wait for
         # resources. All we need to do is wait for the system to call us
         # back, and make sure that is it calling _us_ back, and not some
@@ -599,8 +597,10 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
 
         for waiting in range(0,submitted):
             if list:
-                print "Waiting for mover to call back", "   cum=",time.time()-t0
+                print "Waiting for mover to call back", \
+                      "   cum=",time.time()-t0
             t2 = time.time() #----------------------------------------Lap-Start
+            tMBstart = t2
 
             # listen for a mover - see if id corresponds to one of the tickets
             #   we submitted for the volume
@@ -663,7 +663,11 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
 
             tinfo["recvd_bytes"+repr(j)] = time.time()-t2 #-------------Lap-End
             if list:
-                print "  bytes:",l
+                if tinfo["recvd_bytes"+repr(j)]!=0:
+                    rdrate = 1.*fsize/1024./1024./tinfo["recvd_bytes"+repr(j)]
+                else:
+                    rdrate = 0.0
+                print "  bytes:",l, " Socket read Rate = ",rdrate," MB/s"
                 print "  dt:",tinfo["recvd_bytes"+repr(j)],\
                       "   cum=",time.time()-t0
             if list:
@@ -676,7 +680,7 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                           "encp read_to_hsm, mover final dialog")
             control_socket.close()
 
-            tinfo["final_dialog"+repr(j)] = time.time()-t1 #------------Lap-End
+            tinfo["final_dialog"+repr(j)] = time.time()-t2 #------------Lap-End
             if list:
                 print "  dt:",tinfo["final_dialog"+repr(j)],\
                 "   cum=",time.time()-t0
@@ -688,7 +692,7 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                     if done_ticket["complete_crc"] != mycrc :
                         print "CRC error",complete_crc, mycrc
 
-                t1 = time.time()
+                # update the last parked info if we have write access
                 if 0:
                     if list:
                         print "Updating pnfs last parked",\
@@ -697,34 +701,35 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                         p.set_lastparked(repr(uinfo['fullname']))
                     except:
                         print "Failed to update last parked info"
-                    tinfo["last_parked"] = time.time()-t1
                     if list:
                         print "  dt:",tinfo["last_parked"],\
                               "   cum=",time.time()-t0
 
-                tinfo["total"] = time.time()-t0
-                done_ticket["tinfo"] = tinfo
-                tf = time.time()
-                if tf!=t0:
-                    done_ticket["MB_per_S"] = 1.*fsize/1024./1024./(tf-t0)
+                # calculate some kind of rate - time from beginning to wait
+                # for mover to respond until now. This doesn't include the
+                # overheads before this, so it isn't a correct rate. I'm
+                # assuming that the overheads I've neglected are small so the
+                # quoted rate is close to the right one.  In any event, I
+                # calculate an overall rate at the end of all transfers
+                tnow = time.time()
+                if (tnow-tMBstart)!=0:
+                    tinfo['rate'+repr(j)] = 1.*fsize/1024./1024./(tnow-tMBstart)
                 else:
-                    done_ticket["MB_per_S"] = 0.0
-
-                if list:
-                    print outputlist[0], ":",fsize,"bytes",\
-                          "copied from", done_ticket["external_label"],\
-                          "in ",tinfo["total"],"seconds",\
-                          "at",done_ticket["MB_per_S"],"MB/S",\
-                          "   cum=",time.time()-t0
-                    #done_formatted  = pprint.pformat(done_ticket)
-                    #print done_formatted
-
-                format = "%s -> %s : %d bytes copied from %s in %f seconds at"+\
+                    tinfo['rate'+repr(j)] = 0.0
+                format = "%s -> %s : %d bytes copied from %s at"+\
                          " %s MB/S  requestor:%s     cum= %f"
-                logc.send(log_client.INFO, 2, format, inputlist[i],
-                          uinfo["fullname"], fsize,
-                          done_ticket["external_label"], tinfo["total"],
-                          done_ticket["MB_per_S"], uinfo["uname"],
+
+                if list or ninput>1:
+                    print format % \
+                          (inputlist[j], outputlist[j], fsize,\
+                           done_ticket["external_label"],\
+                           tinfo["rate"+repr(j)], uinfo["uname"],\
+                           time.time()-t0)
+
+                logc.send(log_client.INFO, 2, format,
+                          inputlist[j], outputlist[j], fsize,
+                          done_ticket["external_label"],
+                          tinfo["rate"+repr(j)], uinfo["uname"],
                           time.time()-t0)
 
             else :
@@ -733,7 +738,25 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                        +repr(address)+", failed to transfer: "\
                        +"done_ticket[\"status\"]="+done_ticket["status"])
 
+    # we are done transferring - close out the listen socket
     listen_socket.close()
+
+    # Calculate an overall rate: all bytes, all time
+    tf=tinfo["total"] = time.time()-t0
+    done_ticket["tinfo"] = tinfo
+    total_bytes = 0
+    for i in range(0,ninput):
+        total_bytes = total_bytes+file_size[i]
+    tf = time.time()
+    if tf!=t0:
+        done_ticket["MB_per_S"] = 1.*total_bytes/1024./1024./(tf-t0)
+    else:
+        done_ticket["MB_per_S"] = 0.0
+
+    if list:
+        print "Complete: ",total_bytes," bytes in ",ninput," files",\
+              " in",tf-t0,"S.  Overall rate = ",\
+              done_ticket["MB_per_S"]," MB/s"
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
