@@ -8,17 +8,17 @@ if [ "$?" = "1" ];
 then
 	# no product found
 	setup enstore
-	enstore alarm --raise --root_error "remedy_api product missing or not current" --severity E
+	enstore alarm --raise --root_error 'remedy_api product missing or not current' --severity E&
 else
-	# make sure we have enough inputs, either 4 or 8
+	# make sure we have enough inputs, either 4 or 10
 	if [ "$#" = "4" ];
 	then
 		$REMEDY_API_DIR/bin/create_entry $1 $2 $3 $4
-	elif [ "$#" = "8" ];
+	elif [ "$#" = "10" ];
 	then
-		$REMEDY_API_DIR/bin/create_entry $1 $2 $3 $4 $5 $6 $7 $8
+		$REMEDY_API_DIR/bin/create_entry "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
 	else
 		setup enstore
-		enstore alarm --raise --root_error "generate_ticket invalid parameters" --message "expected 4 or 8 parameters and found $#" --severity E
+		enstore alarm --raise --root_error "generate_ticket invalid parameters" --message "expected 4 or 10 parameters and found $#" --severity E&
 	fi
 fi
