@@ -2330,20 +2330,6 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
         elif not e_errors.is_retriable(result_dict['status'][0]):
             return combine_dict(result_dict, work_ticket)
 
-        #Set the UNIX file permissions.
-        #Writes errors to log file.
-        set_outfile_permissions(done_ticket)
-
-        ###What kind of check should be done here?
-        #This error should result in the file being left where it is, but it
-        # is still considered a failed transfer (aka. exit code = 1 and
-        # data access layer is still printed).
-        if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
-            print_data_access_layer_format(done_ticket['infile'],
-                                           done_ticket['outfile'],
-                                           done_ticket['file_size'],
-                                           done_ticket)
-
         #Update the last access and modification times respecively.
         update_times(done_ticket['infile'], done_ticket['outfile'])
             
@@ -2358,6 +2344,29 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
             continue
         elif not e_errors.is_retriable(result_dict['status'][0]):
             return combine_dict(result_dict, work_ticket)
+
+        #Set the UNIX file permissions.
+        #Writes errors to log file.
+        #The last peice of metadata that should be set is the filesize.  This
+        # is done last inside of set_pnfs_settings().  Unfortunatly, write
+        # permissions are needed to set the filesize.  If setting the
+        # permissions goes first and write permissions are not included
+        # in the values from the input file then the transer will fail.  Thus
+        # setting the outfile permissions is done after setting the filesize,
+        # however, if setting the permissions fails the file is left alone
+        # but it is still treated like a failed transfer.  Worst case senerio
+        # on a failure is that the file is left with full permissions.
+        set_outfile_permissions(done_ticket)
+
+        ###What kind of check should be done here?
+        #This error should result in the file being left where it is, but it
+        # is still considered a failed transfer (aka. exit code = 1 and
+        # data access layer is still printed).
+        if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
+            print_data_access_layer_format(done_ticket['infile'],
+                                           done_ticket['outfile'],
+                                           done_ticket['file_size'],
+                                           done_ticket)
 
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
@@ -3027,6 +3036,9 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
             failed_requests.append(request_ticket)
             continue
 
+        #Update the last access and modification times respecively.
+        update_times(done_ticket['infile'], done_ticket['outfile'])
+
         #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
         set_outfile_permissions(done_ticket) #Writes errors to log file.
@@ -3039,9 +3051,6 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
                                            done_ticket['outfile'],
                                            done_ticket['file_size'],
                                            done_ticket)
-
-        #Update the last access and modification times respecively.
-        update_times(done_ticket['infile'], done_ticket['outfile'])
 
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
