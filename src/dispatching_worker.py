@@ -11,6 +11,8 @@ import sys
 import socket
 import os
 import string
+import fcntl
+import FCNTL
 
 #enstore imports
 import cleanUDP
@@ -80,7 +82,9 @@ class DispatchingWorker:
         self.is_child = 0
 	self.socket = cleanUDP.cleanUDP (self.address_family,
                                     self.socket_type)
-
+        
+        # set this socket to be closed in case of an exec
+        fcntl.fcntl(self.socket.fileno(), FCNTL.FD_CLOEXEC)
         self.server_bind()
 
         # start up some threads for monitoring - experimental
