@@ -1259,9 +1259,9 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         else:
             tinfo['rate'+repr(j)] = 0.0
         if done_ticket["times"]["transfer_time"]!=0:
-            tinfo1['transrate'+repr(i)] = 1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
+            tinfo['transrate'+repr(j)] = 1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
         else:
-            tinfo1['rate'+repr(i)] = 0.0
+            tinfo['rate'+repr(i)] = 0.0
         format = "  %s -> %s : %d bytes copied to %s at %.3g MB/S (%.3g MB/S)     cumt= %f"
 
         if verbose:
