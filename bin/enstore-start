@@ -497,6 +497,21 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" != "" ];then
                 then
                 echo "$i Mover already started"
             else
+	        # on a reboot, an mt offline command is issued to each drive from rc.local
+                # a file /dev/rmt/tps*.offline is created before the offline and rm'd when it completes (successful or not)
+                # if the file still exists, there is clearly something wrong with the drive and the mover should not start
+                if [ `ls /dev/rmt/tps*.offline 2>/dev/null | wc | awk '{print $1}'` != "0" ]; then 
+		  echo "`date`  ERROR: Founding drive in reboot offline condition, sleeping 60"
+		  sleep 60
+                  if [ `ls /dev/rmt/tps*.offline 2>/dev/null | wc | awk '{print $1}'` != "0" ]; then 
+		    echo "`date`  ERROR: Founding drive in reboot offline condition, sleeping 120"
+		    sleep 120
+                    if [ `ls /dev/rmt/tps*.offline 2>/dev/null | wc | awk '{print $1}'` != "0" ]; then 
+  	 	      echo "`date`  ERROR: Founding drive in reboot offline condition, ABORTING"
+		      exit 1
+		    fi
+		  fi
+                fi  
                 echo "`date` Starting $i Mover"
                 out=$PID_DIR/mover_$i
                 rm -f $out
