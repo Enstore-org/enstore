@@ -452,6 +452,7 @@ def do_real_work():
 		continue
 
     # close the socket
+    erc.unsubscribe()
     erc.sock.close()
 
     # now, see what we have got
