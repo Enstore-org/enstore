@@ -2823,11 +2823,13 @@ def calculate_rate(done_ticket, tinfo):
                           done_ticket['outfile'],
                           done_ticket['file_size'],
                           done_ticket["fc"]["external_label"],
-                          tinfo["%s_network_rate"%(id,)],
-                          tinfo['%s_drive_rate'%(id,)],
-                          tinfo["%s_disk_rate"%(id,)],
-                          tinfo["%s_overall_rate"%(id,)],
-                          tinfo["%s_transfer_rate"%(id,)],
+                          #The accounting db expects the rates in bytes
+                          # per second; not MB per second.
+                          int(float(done_ticket['file_size']) / network_time),
+                          int(float(done_ticket['file_size']) / drive_time),
+                          int(float(done_ticket['file_size']) / disk_time),
+                          int(float(done_ticket['file_size']) / overall_time),
+                          int(float(done_ticket['file_size']) / transfer_time),
                           done_ticket["mover"]["name"],
                           done_ticket["mover"]["product_id"],
                           done_ticket["mover"]["serial_num"],
