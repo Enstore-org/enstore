@@ -1092,8 +1092,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                                   libman,
                                                                   self.keys)
         enstore_dir = os.environ.get('ENSTORE_DIR','')
-        priority_config_file = self.keys.get('pri_conf_file', os.path.join(enstore_dir, 'etc','pri_conf.py'))
-        self.pri_sel = priority_selector.PriSelector(self.csc)
+        self.pri_sel = priority_selector.PriSelector(self.csc, self.name)
 
         self.lm_lock = self.get_lock()
         if not self.lm_lock:
@@ -1133,7 +1132,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        self.max_suspect_movers,
                                        self.max_suspect_volumes)
         self.init_postponed_requests(self.keys.get('rq_wait_time',3600))
-        self.restrictor = discipline.Restrictor(self.csc)
+        self.restrictor = discipline.Restrictor(self.csc, self.name)
         self.set_udp_client()
 
 

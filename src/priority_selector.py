@@ -22,8 +22,13 @@ class PriSelector:
 
     def read_config(self):
         self.exists = 0
-        prioritydict=self.csc.get('priority',{})
-        if prioritydict['status'][0] == e_errors.OK:
+
+        dict=self.csc.get('priority',{})
+        if dict['status'][0] == e_errors.OK:
+             prioritydict=dict.get(self.library_manager, {})
+        else:
+            prioritydict = {}
+        if prioritydict:
             self.exists = 1
         self.prioritydict = prioritydict
         self.base_dict = prioritydict.get('basepri',{})
@@ -36,8 +41,9 @@ class PriSelector:
         self.admin_pri_keys.reverse()
         return (e_errors.OK, None)
 
-    def __init__(self, csc, max_reg_pri=MAX_REG_PRIORITY):
+    def __init__(self, csc, library_manager, max_reg_pri=MAX_REG_PRIORITY):
         self.max_reg_pri = max_reg_pri
+        self.library_manager = library_manager
         self.csc = csc
 
 
@@ -120,7 +126,7 @@ if __name__ == "__main__":
     def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
                 string.atoi(os.environ['ENSTORE_CONFIG_PORT']))
     csc = configuration_client.ConfigurationClient( def_addr )
-    ps = PriSelector(csc)
+    ps = PriSelector(csc, 'mam.library_manager')
     #ps.read_config()
     ticket={'unique_id': 'happy.fnal.gov-959786955.526691-14962', 'at_the_top': 2,
             'encp': {'delayed_dismount': 1, 'basepri': 1, 'adminpri': -1, 'curpri': 1,
