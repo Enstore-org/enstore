@@ -304,6 +304,27 @@ def check_event_relay(csc, intf, cmd):
 
 # lets start fixing thisngs at least from configuration server
 def check_config_server(intf, name='configuration_server', start_cmd=None):
+    host = socket.gethostname()
+    config_host = os.environ.get('ENSTORE_CONFIG_HOST')
+    if not config_host:
+        print "ENSTORE_CONFIG_HOST is not set. Exiting"
+        sys.exit(1)
+    
+    print host,config_host
+    host_ip = socket.gethostbyname(host)
+    config_host_ip = socket.gethostbyname(config_host)
+    
+    chip = config_host_ip.split('.')
+    hip = host_ip.split('.')
+    matched = 0
+    for i in range(0, len(chip)):
+        if hip[i] != chip[i]:
+            break
+    else:
+        matched = 1
+    if not matched:
+        return
+
     if intf.nocheck:
         rtn = {'status':("nocheck","nocheck")}
     else:
@@ -314,13 +335,11 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         if pipeObj:
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
-            print "RES",result,len(result)
             if len(result) > 1:
                 # running, don't start
                 rtn = {'status':(e_errors.OK,"running")}
             else:
                 rtn = {'status':("e_errors.SERVERDIED","not running")}
-        print "RTN",rtn
     
     if not e_errors.is_ok(rtn):
         print "Starting %s" % (name,)
