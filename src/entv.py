@@ -9,11 +9,11 @@ import socket
 import select
 import string
 import time
-import pprint
+#import pprint
 import threading
 import re
 import rexec
-import signal
+#import signal
 import errno
 
 #enstore imports
@@ -25,7 +25,7 @@ import e_errors
 import mover_client
 import event_relay_messages
 import event_relay_client
-import udp_client
+#import udp_client
 import setpath
 import Trace
 import generic_client
@@ -38,12 +38,15 @@ import delete_at_exit
 # importing enstore_display.  I still don't know why this is.
 import Tkinter
 
+#Less hidden side effects to call this.  Also, pychecker perfers it.
+setpath.set_enstore_paths()
+
 #########################################################################
 # Globals
 #########################################################################
 
 _rexec = rexec.RExec()
-def eval(stuff):
+def _eval(stuff):
     return _rexec.r_eval(stuff)
 
 TEN_MINUTES=600   #600seconds = 10minutes
@@ -87,7 +90,7 @@ def dict_eval(data):
     ## dictionary; any trailing junk will be ignored.
     last_brace = string.rindex(data, '}')
     try:
-        d = eval(data[:last_brace+1])
+        d = _eval(data[:last_brace+1])
     except (ValueError, KeyError, IndexError, TypeError):
         print "Error", data,
         d = {}
@@ -583,7 +586,7 @@ def handle_messages(display, intf):
                 continue
 
         #Process the command.
-        Trace.trace(1, command)
+        Trace.trace(2, command)
         display.queue_command(command)
 
         #If necessary, handle resubscribing.
@@ -682,7 +685,7 @@ class EntvClientInterface(generic_client.GenericClientInterface):
 
         #Setup trace levels.
         Trace.init("ENTV")
-        for x in xrange(0, self.verbose):
+        for x in xrange(0, self.verbose + 1):
             Trace.do_print(x)
     
     entv_options = {

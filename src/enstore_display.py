@@ -4,22 +4,22 @@
 
 import pprint
 import cmath
-import exceptions
+#import exceptions
 import math
 import os
-import select
+#import select
 import socket
 import string
 import sys
 import time
 import stat
 import types
-import errno
+#import errno
 import threading
 import re
 
-import event_relay_client
-import event_relay_messages
+#import event_relay_client
+#import event_relay_messages
 import Trace
 import mover_client
 #import entv  #Don't ever import this from enstore_display.
@@ -937,7 +937,7 @@ class Mover:
 
     def unload_tape(self):
         if not self.volume:
-            Trace.trace(1, "Mover %s has no volume." % (self.name,))
+            Trace.trace(2, "Mover %s has no volume." % (self.name,))
             return
 
         self.volume = None
@@ -999,11 +999,22 @@ class Mover:
         row = (k % num_rows)
 
         #vertical distance seperating the bottom of one mover with the top
-        # of the next.  Use MMPC instead of (MMPC - 1) for the
-        # (self.height * MMPC) term to offset the second collumn's
-        # "lowerness" on the screen.
-        space = ((self.display.height - (self.height * mmpc)) / (mmpc - 1.0))
-        space = (self.height - space) * (((mmpc - 1.0) - num_rows) / (mmpc - 1.0)) + space
+        #  of the next.  Use MMPC instead of (MMPC - 1) for the
+        #  (self.height * MMPC) term to offset the even collumns'
+        #  "lowerness" on the screen.
+        #Note: The following calculation was divided into even more lines
+        #  of code.  The error string:
+        #  '%s %s %s is always 1 or ZeroDivisionError'
+        #  means the following DIVIDE_VAR_BY_ITSELF.
+        #First find the total space between movers (vertically).
+        space_between = (self.display.height - (self.height * mmpc))
+        #Adjusted space between individulal movers in the display.
+        space_between = (space_between / (mmpc - 1.0))
+        #Now that the seperation space in pixels between two movers is known,
+        # it need to be adjusted for the odd-to-even column offset in the
+        # display.
+        space = (self.height - space_between) * (((mmpc - 1.0) - num_rows))
+        space = (space / (mmpc - 1.0)) + space_between
 
         #The following offsets the y values for a second column.
         y_offset = ((self.height + space) / 2.0) * (column % 2)
@@ -1692,6 +1703,8 @@ class Display(Tkinter.Canvas):
                     self.itemconfigure(connection.line, fill=connection.color)
                                                  
     def resize(self, event):
+        Trace.trace(1, "New dimensions: %s" % self.master.wm_geometry())
+
         try:
             #self.after_cancel(self.after_timer_id)
             #self.after_cancel(self.after_animation_id)
@@ -1906,7 +1919,7 @@ class Display(Tkinter.Canvas):
             if (client.n_connections > 0 or client.waiting == 1):
                 continue
             if now - client.last_activity_time > 5: # grace period
-                Trace.trace(1, "It's been longer than 5 seconds, %s " \
+                Trace.trace(2, "It's been longer than 5 seconds, %s " \
                             " client must be deleted" % (client_name,))
                 #client.undraw()
                 del self.clients[client_name]
@@ -2028,7 +2041,7 @@ class Display(Tkinter.Canvas):
 
         mover = self.movers.get(command_list[1])
         if mover.state in ['ERROR', 'IDLE', 'OFFLINE']:
-            Trace.trace(1,
+            Trace.trace(2,
                 "Cannot connect to mover that is %s." % (mover.state,))
             return
 
@@ -2065,7 +2078,7 @@ class Display(Tkinter.Canvas):
         mover.b0 = 0
                 
     def disconnect_command(self, command_list):
-        Trace.trace(1, "mover %s is disconnecting from %s" %
+        Trace.trace(2, "mover %s is disconnecting from %s" %
                     (command_list[1], command_list[2]))
         
         mover = self.movers.get(command_list[1])
@@ -2096,7 +2109,7 @@ class Display(Tkinter.Canvas):
         mover = self.movers.get(command_list[1])
         
         if mover.state in ['IDLE']:
-            Trace.trace(1, "An idle mover cannot have tape...ignore")
+            Trace.trace(2, "An idle mover cannot have tape...ignore")
             return
         load_state = command_list[0] #=='loaded'
         what_volume = command_list[2]
@@ -2119,7 +2132,7 @@ class Display(Tkinter.Canvas):
         #If the mover should not have a volume, remove it.
         if what_state in ['IDLE', 'Unknown']:
             msg="need to unload tape because mover state changed to: %s"
-            Trace.trace(1, msg % (what_state,))
+            Trace.trace(2, msg % (what_state,))
             mover.unload_tape()
 
         #If a transfer is not in progress, some things need to be undrawn.
@@ -2128,7 +2141,7 @@ class Display(Tkinter.Canvas):
             #If the connection line needs to be removed.
             msg="Need to disconnect because mover state changed to: %s"
             if self.connections.get(mover.name, None):
-                Trace.trace(1, msg % (what_state,))
+                Trace.trace(2, msg % (what_state,))
                 self.disconnect_command(["mover", mover.name, "Unknown"])
 
         #Undraw these objects that correlate only to the ACTIVE/DRAINING
@@ -2352,7 +2365,7 @@ class Display(Tkinter.Canvas):
             Trace.trace(1, "TclError...ignore")
 
 
-    def mainloop(self):
+    def mainloop(self, threshold = None):
         #self.after_timer_id = self.after(30, self.update_timers)
         #self.after_animation_id = self.after(30, self.connection_animation)
         self.after_smooth_animation_id = self.after(30, self.smooth_animation)
@@ -2360,7 +2373,12 @@ class Display(Tkinter.Canvas):
         #self.after_idle_id = self.after_idle(self.display_idle)
         self.after_reinitialize_id = self.after(3600000, self.reinitialize)
         self.after_reposition_id = None
-        self.master.mainloop()
+        if threshold == None:
+            self.master.mainloop()
+        else:
+            #Threshold is the number of "MainWindows" allowed.  Should be
+            # an integer.
+            self.master.mainloop(threshold)
         self.undraw()
         self.clear_display()
         self.stopped = 1
