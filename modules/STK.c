@@ -1,10 +1,9 @@
-#include "acssys.h"
-
-#include "acsapi.h"
-/* #include "cl_pub.h" */
 #include <Python.h>
-#include <mc.h>
+#include "acssys.h"
+#include "acsapi.h"
+
 /*
+        See media_changer.py
   	This is a python interface to the stk acsls system.
         It requires -
 		1) STK product to compile and link - See Setup
@@ -189,13 +188,32 @@ void  asc2STKdrv( char *drive,  DRIVEID *stkdrv)
 }
 
 /*
+        Convert the STK error code to a canonical code
+        stat - status returned by the dismount
+        drive_errs - a list of status codes which are drive errors
+	media_errs - a list of status codes which are media errors
+*/
+
+
+char* status_class(int stat, int* drive_errs, int* media_errs)
+{
+int *e;
+  if (stat == 0) return("ok");
+  for (e=drive_errs; *e; e++)
+        if (stat == *e) return("DRIVE");
+  for (e=media_errs; *e; e++)
+        if (stat == *e) return("TAPE");
+  return("BAD");
+}
+
+/*
 	STK errors impying drive problem or media problem
 */
 int drive_errs[]={STATUS_DRIVE_IN_USE, STATUS_DRIVE_NOT_IN_LIBRARY, STATUS_DRIVE_OFFLINE,
 	STATUS_DRIVE_RESERVED,STATUS_INVALID_DRIVE,STATUS_INVALID_DRIVE_TYPE,0};
 int media_errs[]={STATUS_MISPLACED_TAPE,STATUS_UNREADABLE_LABEL,STATUS_INVALID_VOLUME,
 	STATUS_VOLUME_IN_TRANSIT,STATUS_VOLUME_NOT_FOUND,STATUS_VOLUME_DELETED,
-	STATUS_VOLUME_ACCESS_DENIED,0};
+	STATUS_VOLUME_ACCESS_DENIED,STATUS_VOLUME_NOT_IN_LIBRARY,0};
 int *e;
 
 /*
@@ -223,6 +241,7 @@ static PyObject* mount(PyObject *self, PyObject *args)
   char *media_type;
   DRIVEID stkdrv;
   int stat;
+  char *sc;
   /*
         Get the arguements
   */
@@ -233,7 +252,8 @@ static PyObject* mount(PyObject *self, PyObject *args)
     stat = STATUS_VOLUME_NOT_IN_LIBRARY;
   else
     stat = STKmount(0, vol, stkdrv, 0, NO_LOCK_ID);
-  return(Py_BuildValue("iis",stat,status_class(stat, drive_errs, media_errs),cl_status(stat) ));
+  sc = status_class(stat, drive_errs, media_errs );
+  return(Py_BuildValue("sis", sc, stat, cl_status(stat)));
 }
 
 /*
@@ -246,6 +266,7 @@ static PyObject* dismount(PyObject *self, PyObject *args)
   char *media_type;
   DRIVEID stkdrv;
   int stat;
+  char *sc;
 
   if(!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type))                /* get args */ 
   	return (NULL);
@@ -254,7 +275,8 @@ static PyObject* dismount(PyObject *self, PyObject *args)
     stat = STATUS_VOLUME_NOT_IN_LIBRARY;
   else
     stat = STKdismount(0, vol, stkdrv, NO_LOCK_ID);				/* call stk rtns */
-  return(Py_BuildValue("iis",stat,status_class(stat,drive_errs, media_errs), cl_status(stat) ));	/* return results */
+  sc = status_class(stat, drive_errs, media_errs );
+  return(Py_BuildValue("sis", sc, stat, cl_status(stat)));
 }
 
 /*
