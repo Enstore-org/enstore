@@ -16,6 +16,8 @@ import pwd
 import string
 import base64
 import cPickle
+import cStringIO		# to make freeze happy
+import copy_reg			# to make freeze happy
 
 #enstore imports
 import generic_client
