@@ -235,10 +235,12 @@ def next_work_this_volume(v):
     w=pending_work.get_init()
     while w:
         # writing to this volume?
+        print "v",v
+        print "w",w
         if (w["work"]                == "write_to_hsm"   and
             w["vc"]["file_family"]   == v['vc']["file_family"] and
-            v["user_inhibit"]        == "none"           and
-            v["system_inhibit"]      == "none"           and
+            v["vc"]["user_inhibit"]        == "none"           and
+            v["vc"]["system_inhibit"]      == "none"           and
             w["wrapper"]["size_bytes"] <= v['vc']["remaining_bytes"]):
             w["fc"] = {} # clear old info or create new subticket
             w["fc"]["external_label"] = v['vc']["external_label"]
