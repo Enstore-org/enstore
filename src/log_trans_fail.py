@@ -33,7 +33,7 @@ def get_failures(log,grepv='GONE|NUL',grep=""):
         grepv_ = grepv
     
     # just force the directory.
-    failed = cmd('cd /diska/enstore-log; grep "transfer failed" %s /dev/null| egrep -v "%s" | egrep "%s"' %(log,grepv_,grep))
+    failed = cmd('cd /diska/enstore-log; grep "transfer failed" %s /dev/null|grep -v exception |egrep -v "%s" | egrep "%s"' %(log,grepv_,grep))
     return failed
 
 def parse_failures(failed):
