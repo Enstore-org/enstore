@@ -902,16 +902,16 @@ def readtape_from_hsm(e, tinfo):
         e_ticket['exit_status'] = 2
         return e_ticket
 
-    #Sort the requests in increasing order.
-    requests_per_vol[e.volume].sort(
-        lambda x, y: cmp(x['fc']['location_cookie'],
-                        y['fc']['location_cookie']))
-
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
         done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer."),
                        'exit_status' : 2}
         return done_ticket
+
+    #Sort the requests in increasing order.
+    requests_per_vol[e.volume].sort(
+        lambda x, y: cmp(x['fc']['location_cookie'],
+                        y['fc']['location_cookie']))
 
     #Set the max attempts that can be made on a transfer.
     #check_lib = requests_per_vol.keys()
@@ -933,19 +933,22 @@ def readtape_from_hsm(e, tinfo):
             encp.outputfile_check(request['infile'], request['outfile'], e)
         except (OSError, IOError, encp.EncpError), msg:
             if isinstance(msg, encp.EncpError):
-                request = msg.ticket
+                #request = msg.ticket
+                request['status'] = (msg.type, str(msg))
             if request.get('status', None) == None:
                 request['status'] = (msg.type, str(msg))
             elif isinstance(msg, OSError):
-                request = {'status' : (e_errors.OSERROR, str(msg))}
+                request['status'] = (e_errors.OSERROR, str(msg))
             else:
-                request = {'status' : (e_errors.IOERROR, str(msg))}
+                request['status'] = (e_errors.IOERROR, str(msg))
+
+            request['completion_status'] = FAILURE
 
             #Tell the calling process, this file failed.
             error_output(request)
             #Tell the calling process, of those files not attempted.
             untried_output(requests_per_vol[e.volume])
-            
+
             request['exit_status'] = 2
             return request
 
@@ -957,13 +960,16 @@ def readtape_from_hsm(e, tinfo):
             encp.create_zero_length_local_files(request)
         except (OSError, IOError, encp.EncpError), msg:
             if isinstance(msg, encp.EncpError):
-                request = msg.ticket
+                #request = msg.ticket
+                request['status'] = (msg.type, str(msg))
             if request.get('status', None) == None:
                 request['status'] = (msg.type, str(msg))
             elif isinstance(msg, OSError):
-                request = {'status' : (e_errors.OSERROR, str(msg))}
+                request['status'] = (e_errors.OSERROR, str(msg))
             else:
-                request = {'status' : (e_errors.IOERROR, str(msg))}
+                request['status'] = (e_errors.IOERROR, str(msg))
+
+            request['completion_status'] = FAILURE
                 
             #Tell the calling process, this file failed.
             error_output(request)
