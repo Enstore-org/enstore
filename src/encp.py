@@ -723,7 +723,7 @@ def read_from_hsm(input, output,
         print "  dt:",tinfo["fc"], "   cumt=",time.time()-t0
 
     if verbose:
-        print "Sending ticket to file clerk", "   cumt=",time.time()-t0
+        print "Submitting read requests", "   cumt=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
 
     total_bytes = 0
