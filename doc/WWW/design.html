@@ -56,10 +56,10 @@
 <li><a href="#alarm_server">1.3.9 Alarm Server</a>
 <li><a href="#server_protocols">1.4 Server Protocols</a>
 <li><a href="#db">2 Databases in Enstore</a>
-<li><a href="#backup_recovery">2.1 Backup and Recovery Procedures</a>
-<li><a href="#backup">2.1.1 Backup </a>
+<li><a href="#current_db">2.1 Current Underlying Database Implemented in Enstore</a>
+<li><a href="#backup_recovery">2.2 Backup and Recovery Procedures</a>
+<li><a href="#backup">2.2.1 Backup </a>
 <li><a href="#recovery">2.2.2 Recovery</a>
-<li><a href="#current_db">2.2 Current Underlying Database Implemented in Enstore</a>
 <li><a href="#admin_tools">2.3 Administrative Tools</a>
 <li><a href="#protocol">3 Communication Protocols</a>
 <li><a href="#read_protocol">3.1 Read Protocol</a>
@@ -2759,6 +2759,9 @@ The database used in Enstore must provide the following:
 <li>
 Support journaling of the database to record all changes and support full
      database recovery.
+<li> 
+Support transaction control to ensure the integrity of the information
+in database.
 <li>
 Support database check-pointing in order to enable full database recovery.
 <li>
@@ -2768,86 +2771,11 @@ Support recovery of corrupted databases using the journal or log files.
 <li>
 Support "python dictionary" interface.
 </ul>
-
-<h3><a name="backup_recovery">
-2.1 Backup and Recovery Procedures
-</h3>
-<h3><a name="backup">
-2.1.1 Backup
-</h3>
-The backup procedure is a cron job that is performed routinely. It copies
-the database files, log files and journal files to a designated
-directory on a remote host. Two environment variables should be set
-up for this purpose: ENSTORE_BCKP_HST (default="localhost") and
-ENSTORE_DB_BACKUP (default="tmp/backup"). The backup procedure will
-perform the following actions:
-<p>
-<table>
-<tr>
-<td valign=top>Libtp database
-<td valign=top><ul>
-<li>defines what log files are involved in active transactions<br>
-<li>creates the tar file of database files and all log files <br>
-<li>deletes all log files that are not involved in active transactions
-</ul>
-<tr>
-<td valign=top>Volume journal files
-<td valign=top><ul>
-<li>does journal file checkpointing (hold database access,
-move current file to volume.jou.time_stamp, open empty
-journal file, release database access)
-<li>creates tar file of volume database file and journal files
-<li>deletes old journal files
-</ul>
-<tr>
-<td valign=top>File journal file
-<td valign=top><ul>
-<li>does journal file checkpointing
-<li>creates tar file of file database file and journal files
-<li>deletes old journal files
-</ul>
-<tr>
-<td valign=top>Archives creation
-<td valign=top><ul>
-<li>creates new directory on remote host under designated
-"root archival" director (name dbase.time_stamp)
-<li>moves all the tar files to this area
-</ul>
-<tr>
-<td valign=top>Archives cleanup
-<td valign=top><ul><li>deletes all the archival directories created more then
-N days ago (default is 10 days)</ul>
-</table>
-<h3><a name="recovery">
-2.2.2 Recovery
-</h3>
-Recovery should be a job initiated manually in case of database corruption.
-There are two ways to recover from a crash:
-<p>
-<table>
-<tr>
-<td valign=top>libtp utility
-<td valign=top><ul>
-<li>copy database tar file in designated directory, untar the file
-<li>copy the latest log file from $ENSTORE_DB,
-<li>run db_recover utility
-<li>delete all related files from $ENSTORE_DB
-<li>move the resulting database files and the latest log file to $ENSTORE_DB
-</ul>
-<tr>
-<td valign=top>recovery from the journal files (not implemented yet)
-<td valign=top><ul>
-<li>copy database (database files and journal files) tar file
-<li>in designated directory, untar the file
-<li>copy the latest jouurnal file from the $ENSTORE_DB,
-<li>run jou_recover utility
-<li>delete all related files from $ENSTORE_DB
-<li>move the resulting database files to $ENSTORE_DB
-</ul>
-</table>
+The directory that contains all database related files is called
+"database directory" and is defined in configuration.
 
 <h3><a name="current_db">
-2.2 Current Underlying Database Implemented in Enstore
+2.1 Current Underlying Database Implemented in Enstore
 </h3>
 
 The current Enstore implementation uses LIBTP (BSD DB v2.3) as the underlying
@@ -2929,6 +2857,89 @@ a new database is chosen, we are expecting that the database servers and
 clients will have to be redesigned to take advantage of the relational
 features.  Python interfaces will also have to be developed to allow the
 current framework to keep working.
+
+<h3><a name="backup_recovery">
+2.2 Backup and Recovery Procedures
+</h3>
+<h3><a name="backup">
+2.2.1 Backup
+</h3>
+Backup is a stand-alone procedure which can be performed manually at
+any time or routinely using a cron job.
+Currently the files that are backed up are database
+files which contain the persistent data, log files which record the
+transactions and journal files which are secondary transaction records
+implemented to further help the recovery of databse if there is a need.
+Enstore does live backup.
+It copies those files to a
+designated directory on a remote host.
+The remote host and directory are defined in configuration server.
+The backup procedure will perform the following actions:
+<p>
+<table>
+<tr>
+<td valign=top>Libtp database
+<td valign=top><ul>
+<li>determines what log files are involved in active transactions<br>
+<li>creates the tar file of database files and all log files <br>
+<li>deletes all log files that are not involved in active transactions
+</ul>
+<tr>
+<td valign=top>Volume journal files
+<td valign=top><ul>
+<li>does journal file checkpointing (hold database access,
+move current file to volume.jou.time_stamp, open empty
+journal file, release database access)
+<li>creates tar file of volume database file and journal files
+<li>deletes old journal files
+</ul>
+<tr>
+<td valign=top>File journal file
+<td valign=top><ul>
+<li>does journal file checkpointing
+<li>creates tar file of file database file and journal files
+<li>deletes old journal files
+</ul>
+<tr>
+<td valign=top>Archives creation
+<td valign=top><ul>
+<li>creates new directory on remote host under designated
+"root archival" director (name dbase.time_stamp)
+<li>moves all the tar files to this area
+</ul>
+<tr>
+<td valign=top>Archives cleanup
+<td valign=top><ul><li>deletes all the archival directories created more then
+N days ago (default is 10 days)</ul>
+</table>
+<h3><a name="recovery">
+2.2.2 Recovery
+</h3>
+Recovery should be a job initiated manually in case of database corruption.
+There are two ways to recover from a crash:
+<p>
+<table>
+<tr>
+<td valign=top>libtp utility
+<td valign=top><ul>
+<li>copy database tar file in designated directory, untar the file
+<li>copy the latest log file from database directory.
+<li>run db_recover utility
+<li>delete all related files in database directory.
+<li>move the resulting database files and the latest log file to
+database directory.
+</ul>
+<tr>
+<td valign=top>recovery from the journal files (not implemented yet)
+<td valign=top><ul>
+<li>copy database (database files and journal files) tar file
+<li>in designated directory, untar the file
+<li>copy the latest jouurnal file from the $ENSTORE_DB,
+<li>run jou_recover utility
+<li>delete all related files from database directory.
+<li>move the resulting database files to database directory.
+</ul>
+</table>
 
 <hr>
 <h2><a name="admin_tools">
