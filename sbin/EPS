@@ -1,0 +1,26 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+# a file to do a ps on different OS's and check for Enstore-like programs
+
+case `uname` in
+  Linux*)
+        x=`ps axuww   $@`
+        ;;
+  OSF1*)
+        x=`ps  axguww $@`
+        ;;
+  SunOS*)
+        x=`ps -ef     $@`
+        ;;
+  IRIX*)
+        x=`ps -ef     $@`
+        ;;
+      *)
+        x=`ps -ef     $@`
+        ;;
+esac
+
+echo "$x" | sort | egrep -v 'EPS| egrep | sort | ps |bash'| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_'
