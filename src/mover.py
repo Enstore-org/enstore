@@ -677,7 +677,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                             (self.buffer.nbytes(), self.buffer.min_bytes))
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
-
+                continue
+                
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
             bytes_written = 0
             try:
