@@ -6,10 +6,14 @@
 import sys
 import re
 import os
+import string
+import errno
 
 # enstore imports
+import e_errors
 import alarm_client
 import configuration_client
+import configuration_server
 import file_clerk_client
 import inquisitor_client
 import library_manager_client
@@ -27,8 +31,7 @@ CMD1 = "(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /us
 # the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
 CMD2 = "|tee /dev/console>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
 
-
-
+DEFAULT_EMASS_NODE = "rip10"
 
 server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                 alarm_client.do_work],
@@ -245,12 +248,13 @@ class EnstoreInterface(UserOptions):
     def print_help(self):
         cmd = "enstore"
         if not self.user_mode:
-            call_function("$ENSTORE_DIR/bin/pnfs", "")
+            call_function("pnfs", "")
             print "\n%s start   [--just server --ping]"%cmd
             print   "%s stop    [--just server --xterm server]"%cmd
             print   "%s restart [--just server --xterm server]"%cmd
             print   "%s ping    [timeout_seconds]"%cmd
             print   "%s qping   [timeout_seconds]"%cmd
+            print   "%s ps                 (list enstore related processes)"%cmd
             print "\n%s Estart   farmlet   (global Enstore start on all farmlet nodes)"%cmd
             print   "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%cmd
             print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%cmd
@@ -267,8 +271,64 @@ class EnstoreInterface(UserOptions):
 
 class Enstore(EnstoreInterface):
 
+    timeout = 2
+    retry = 2
+    mc_type = ("type", "AML2_MediaLoader")
+
     def __init__(self, mode):
         self.user_mode = mode
+
+    # try to get the configuration information from the config server
+    def get_config_from_server(self):
+        rtn = 0
+        port = os.environ.get('ENSTORE_CONFIG_PORT', 0)
+        port = string.atoi(port)
+        if port:
+            # we have a port
+            host = os.environ.get('ENSTORE_CONFIG_HOST', 0)
+            if host:
+                # we have a host
+                csc = configuration_client.ConfigurationClient((host, port))
+                try:
+                    t = csc.get_dict_entry(self.mc_type, self.timeout,
+                                           self.retry)
+                    servers = t.get("servers", "")
+                    if servers:
+                        # there may be more than one, we will use the first
+                        t = csc.get_uncached(servers[0], self.timeout,
+                                             self.retry)
+                        # if there is no specified host, use the default
+                        self.node = t.get("host", DEFAULT_EMASS_NODE)
+                    else:
+                        # there were no media changers of that type, use the
+                        # default node
+                        self.node = DEFAULT_EMASS_NODE
+                    rtn = 1
+                except errno.errorcode[errno.ETIMEDOUT]:
+                    pass
+        return rtn
+
+    # try to get the configuration information from the config file
+    def get_config_from_file(self):
+        rtn = 0
+        # first look to see if $ENSTORE_CONFIG_FILE points to the config file
+        cfile = os.environ.get("ENSTORE_CONFIG_FILE", "")
+        if cfile:
+            dict = configuration_server.ConfigurationDict()
+            if dict.read_config(cfile) == (e_errors.OK, None):
+                # get the list of media changers of the correct type
+                slist = dict.get_dict_entry(self.mc_type)
+                if slist:
+                    # only use the first one
+                    server_dict = dict.configdict[slist[0]]
+                    # if there is no specified host use the default
+                    self.node = server_dict.get("host", DEFAULT_EMASS_NODE)
+                    rtn = 1
+        return rtn
+
+    # get the node name where the aml2 robot media changer is running
+    def get_aml2_node(self):
+        pass
 
     # this is where all the work gets done
     def do_work(self):
@@ -280,21 +340,19 @@ class Enstore(EnstoreInterface):
         # check if help was asked for and no server passed in
         if not self.user_mode and \
            arg1 == "start" or arg1 == "enstore-start":
-            rtn = call_function("$ENSTORE_DIR/bin/enstore-start", sys.argv[2:])
+            rtn = call_function("enstore-start", sys.argv[2:])
         elif not self.user_mode and arg1 == "ping":
-            rtn = call_function("$ENSTORE_DIR/bin/enstore-ping", sys.argv[2:])
+            rtn = call_function("enstore-ping", sys.argv[2:])
         elif not self.user_mode and arg1 == "qping":
-            rtn = call_function("$ENSTORE_DIR/bin/quick-ping", sys.argv[2:])
+            rtn = call_function("quick-ping", sys.argv[2:])
         elif not self.user_mode and \
              arg1 == "stop" or arg1 == "enstore-stop":
-            rtn = call_function("$ENSTORE_DIR/bin/enstore-stop", sys.argv[2:])
+            rtn = call_function("enstore-stop", sys.argv[2:])
         elif not self.user_mode and arg1 == "restart":
-            rtn = call_function("$ENSTORE_DIR/bin/enstore-stop", sys.argv[2:])
-            rtn = call_function("$ENSTORE_DIR/bin/enstore-start --nocheck",
-                                sys.argv[2:])
+            rtn = call_function("enstore-stop", sys.argv[2:])
+            rtn = call_function("enstore-start --nocheck", sys.argv[2:])
         elif not self.user_mode and arg1 == "backup":
-            rtn = call_function("python $ENSTORE_DIR/src/backup.py",
-                                sys.argv[2:])
+            rtn = call_function("python backup.py", sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
             command="%s enstore-start %s%s"%(CMD1, get_argv3(), CMD2)
             rtn = do_rgang_command("enstore",command)
@@ -308,12 +366,24 @@ class Enstore(EnstoreInterface):
             rtn2 = do_rgang_command("enstore",command)
             rtn = rtn1|rtn2
         elif not self.user_mode and arg1 == "emass":
-            rtn = os.system('rsh rip10 "$ENSTORE_DIR/sbin/egrau"')
+            # find the node to rsh to.  this node is the one associated with
+            # the media changer of type "AML2_MediaLoader"
+            #   if the configuration server is running, get the information
+            #   from it.  if not, just read the config file pointed to by
+            #   $ENSTORE_CONFIG_FILE.  if neither of these works, assume node
+            #   in DEFAULT_EMASS_NODE.
+            if not self.get_config_from_server() and \
+               not self.get_config_from_file():
+                self.node = DEFAULT_EMASS_NODE
+            cmd = 'rsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;egrau\'"'%self.node
+            rtn = os.system(cmd)
         elif not self.user_mode and arg1 == "Esys":
             command=". /usr/local/etc/setups.sh; setup enstore; EPS"
             rtn = do_rgang_command("enstore",command)
+        elif arg1 == "ps":
+            rtn = call_function("EPS", sys.argv[2:])
         elif not self.user_mode and arg1 == "pnfs": 
-            rtn = call_function("$ENSTORE_DIR/bin/pnfs", sys.argv[2:])
+            rtn = call_function("pnfs", sys.argv[2:])
         else:
             if arg1 == "help" or arg1 == "--help" or arg1 == '': 
                 rtn = 0
