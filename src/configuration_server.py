@@ -37,21 +37,17 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         Trace.trace(9, "Configuration Server read_config: "
                      "loading enstore configuration from %s"%configfile)
         try:
-            exec(code) #would like to do this in a restricted namespace, but
-                       ##the dict uses modules like e_errors, which it does not import
+            exec(code)
+            ##I would like to do this in a restricted namespace, but
+            ##the dict uses modules like e_errors, which it does not import
         except:
             x = sys.exc_info()
             tb=x[2]
-
-            fmt =  traceback.format_exception(x[0],x[1],x[2])[-4:]
+            fmt =  traceback.format_exception(x[0],x[1],x[2])[2:]
             fmt[0] = string.replace(fmt[0], "<string>", configfile)
-
-            msg = (e_errors.ERROR, "Configuration Server: "+
-                   string.join(fmt, ""))
-            print msg[1]
-#            Trace.trace(msg[0],msg[1])
-#            print msg[1]
-
+            msg = "Configuration Server: "+string.join(fmt, "")
+            Trace.log(e_errors.ERROR,msg)
+            print msg
             os._exit(-1)
         # ok, we read entire file - now set it to real dictionary
         self.configdict=configdict
