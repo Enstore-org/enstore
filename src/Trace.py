@@ -17,6 +17,7 @@ import time
 import socket
 import types
 
+import enstore_constants
 import event_relay_messages
 import event_relay_client
 import e_errors
