@@ -32,7 +32,7 @@ cuTime = "5"        # CLEAN UP TIME. A DELAY THAT ALLOWS THE SYSTEM TO FINISH UP
                     # LESS, THE SYSTEM WILL GET MORE SLOW OR HUNG (-1) INDICATIONS THAN IT NORMALLY SHOULD
 defTstTime = "5"    # DEFAULT TIME FOR TEST TO RUN IF NO  OPTION GIVEN
 defNetPerfPath = "/opt/netperf/netperf"           # LOCATION OF NETWORK PERFORMANCE TEST
-defListPath = "/usr/local/etc/farmlets/rip.all"   # LOCATION OF FILE CONTAINING LIST OF NODES TO BE TESTED
+defListPath = "/usr/local/etc/farmlets/d0en"      # LOCATION OF FILE CONTAINING LIST OF NODES TO BE TESTED
 TRUE = 1
 FALSE = 0
 
@@ -314,7 +314,7 @@ def printHelp():
     sys.stdout.write("    TWO WAY TEST WILL TAKE 'NUM_NODES * TESTTIME' SECONDS TO COMPLETE.\n")
     sys.stdout.write("    *** NOTE *** '-o' and '-t' flags can't be set at the same time.\n")
     sys.stdout.write("-l: '-l pathname/filename' - Read the test list from this file.\n")
-    sys.stdout.write("    -l /usr/local/etc/farmlets/rip.all is the default\n")
+    sys.stdout.write("    -l /usr/local/etc/farmlets/d0en is the default\n")
     sys.stdout.write("    *** NOTE *** '-l' and '-m' flags can't be set at the same time.\n")
     sys.stdout.write("""-m: '-m "dev1 dev2"' - Create the test list from the following devices.\n""")
     sys.stdout.write("    NOTE: the list of devices to be tested must be in double quotes and can be\n    of any length.\n")
