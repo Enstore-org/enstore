@@ -33,7 +33,6 @@ class GenericServer:
     # this overrides the server_bind in TCPServer for the hsm system
     def server_bind(self):
         Trace.trace(10,'{server_bind')
-        self.request_queue_size = 20
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(self.server_address)
         Trace.trace(10,'}server_bind')
