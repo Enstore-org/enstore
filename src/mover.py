@@ -806,6 +806,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ## new tape, label it
                 ##  need to safeguard against relabeling here
                 status = self.tape_driver.verify_label(None)
+                Trace.trace(10, "verify label returns %s" % (status,))
                 if status[0] == e_errors.OK:
                     if status[1] == volume_label:
                         label_tape = 0
