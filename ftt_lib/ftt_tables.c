@@ -893,6 +893,10 @@ ftt_dev_entry devtable[] = {
     /* Default, passthru  */
        { "dev/sg%d",     -1,  0, -1,  1,  0,      0,    1, LINUX_MAX_BLKSIZE},
     /* Descriptive */
+       { "dev/nst%d", 	  1,  1, 0x90,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d", 	  1,  0, 0x15,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d", 	  0,  1, 0x8c,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d", 	  0,  0, 0x14,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
        { "dev/st%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
@@ -906,6 +910,7 @@ ftt_dev_entry devtable[] = {
        { "dev/sg%d",     -1,  0, -1,    1,  0,  0,      1, LINUX_MAX_BLKSIZE},
     /* Descriptive */
        { "dev/nst%d", 	  1,  1, 0x90,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d", 	  1,  0, 0x15,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
        { "dev/nst%d", 	  0,  1, 0x8c,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
        { "dev/nst%d", 	  0,  0, 0x14,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
        { "dev/st%d",      1,  0, 0x15,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
