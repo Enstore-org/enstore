@@ -154,11 +154,11 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               +"1st (pre-file-send) mover callback on socket "\
               +repr(address)+", failed to setup transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
+    data_path_socket = mover_callback_socket(ticket)
 
     # If the system has called us back with our own  unique id, call back
     # the mover on the mover's port and send the file on that port.
     t1 = time.time()
-    data_path_socket = mover_callback_socket(ticket)
     tinfo["tot_to_mover_callback"] = t1 - t0
     if list:
         print "  ",ticket["mover_callback_host"],\
@@ -173,18 +173,18 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         l = len(buf)
         if len(buf) == 0 : break
         data_path_socket.send(buf)
+    data_path_socket.close()
+    in_file.close()
     t2 = time.time()
     tinfo["sent_bytes"] = t2-t1
     tinfo["tot_to_sent_bytes"] = t2-t0
     if list:
-	if t1!=t2:
-	    sent_rate = 1.*fsize/1024./1024./(t2-t1)
-	else:
-	    sent_rate = 0.0
+        if t1!=t2:
+            sent_rate = 1.*fsize/1024./1024./(t2-t1)
+        else:
+            sent_rate = 0.0
         print "  bytes:",fsize,"dt:",tinfo["sent_bytes"]," = ",sent_rate,"MB/S"
 
-    data_path_socket.close()
-    in_file.close()
 
     # File has been sent - wait for final dialog with mover. We know the file
     # has hit some sort of media.... when this occurs. Create a file in pnfs
@@ -224,12 +224,13 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         if list:
             print "  dt:",t2
 
-        if list:
+        if list or 1:
             fticket=done_ticket["file_clerk"]
             print p.pnfsFilename, ":",p.file_size,"bytes",\
                   "copied to", done_ticket["external_label"], \
                   "in ",tinfo["total"],"seconds",\
                   "at",done_ticket["MB_per_S"],"MB/S"
+            #print done_formatted
 
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
@@ -245,13 +246,22 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     tinfo["abs_start"] = t0
 
     # first check the input pnfs file - this will also provide the bfid
+    t1 =  time.time()
+    if list:
+        print "Checking",pnfsfile
     p = pnfs.pnfs(pnfsfile)
     if p.exists != pnfs.exists :
         raise errorcode[ENOENT],"encp.read_from_hsm: "\
               +pnfsfile+" does not exist"
+    tinfo["pnfscheck"] = time.time() - t1
+    if list:
+        print "  dt:",tinfo["pnfscheck"]
 
     # Make sure we can open the unixfile. If we can't, we bomb out to user
     # Note that the unix file remains open
+    t1 = time.time()
+    if list:
+        print "Checking",outfile
     dir,file = os.path.split(outfile)
     if dir == '' :
         dir = '.'
@@ -261,6 +271,9 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         raise errorcode[EACCES],"encp.read_from__hsm: "\
               +outfile+", NO write access to directory"
     f = open(outfile,"w")
+    tinfo["filecheck"] = time.time() - t1
+    if list:
+        print "  dt:",tinfo["filecheck"]
 
     # make the pnfs dictionary that will be part of the ticket
     pinfo = {}
@@ -281,8 +294,14 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     #uinfo['node'] = socket.gethostbyaddr(socket.gethostname())
 
     # get a port to talk on and listen for connections
+    t1 = time.time()
+    if list:
+        print "Requesting callback ports"
     host, port, listen_socket = get_callback()
     listen_socket.listen(4)
+    tinfo["get_callback"] = time.time() - t1
+    if list:
+        print "  ",host,port,"dt:",tinfo["get_callback"]
 
     # generate the work ticket
     ticket = {"work"               : "read_from_hsm",
@@ -296,16 +315,25 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
               }
 
     # ask configuration server what port the file clerk is using
+    t1 = time.time()
+    if list:
+        print "Calling Config Server to find file clerk"
     fticket = csc.get("file_clerk")
+    tinfo["get_fileclerk"] = time.time() - t1
+    if list:
+        print "  ",fticket["host"],fticket["port"],"dt:",tinfo["get_fileclerk"]
 
     # send work ticket to file clerk who sends it to right library manger
+    t1 = time.time()
+    if list:
+        print "Sending ticket to file clerk"
     ticket = u.send(ticket, (fticket['host'], fticket['port']))
     if ticket['status'] != "ok" :
         raise errorcode[EPROTO],"encp.read_from_hsm: from u.send to "\
               +"file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
     if list :
-        print "Q'd:",p.pnfsFilename, ticket["bfid"], p.file_size\
+        print "  Q'd:",p.pnfsFilename, ticket["bfid"], p.file_size\
               ,ticket["external_label"],ticket["bof_space_cookie"]
 
     # We have placed our work in the system and now we have to wait for
@@ -313,6 +341,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # and make sure that is it calling _us_ back, and not some sort of old
     # call-back to this very same port. It is dicey to time out, as it
     # is probably legitimate to wait for hours....
+    if list:
+        print "Waiting for mover to call back"
     while 1 :
         control_socket, address = listen_socket.accept()
         new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
@@ -328,10 +358,20 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
               +"1st (pre-file-read) mover callback on socket "\
               +repr(address)+", failed to setup transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
+    data_path_socket = mover_callback_socket(ticket)
 
     # If the system has called us back with our own  unique id, call back
     # the mover on the mover's port and read the file on that port.
-    data_path_socket = mover_callback_socket(ticket)
+    t1 = time.time()
+    tinfo["tot_to_mover_callback"] = t1 - t0
+    if list:
+        print "  ",ticket["mover_callback_host"],\
+              ticket["mover_callback_port"], \
+              "cum_time:",tinfo["tot_to_mover_callback"]
+
+    t1 = time.time()
+    if list:
+        print "Receiving data"
     l = 0
     while 1:
         buf = data_path_socket.recv(65536*4)
@@ -340,19 +380,42 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         f.write(buf)
     data_path_socket.close()
     f.close()
+    fsize = l
+    t2 = time.time()
+    tinfo["recvd_bytes"] = t2-t1
+    if list:
+        print "  bytes:",l,"dt:",tinfo["recvd_bytes"]
 
     # File has been read - wait for final dialog with mover.
+    t1 = time.time()
+    if list:
+        print "Waiting for final mover dialog"
     done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
     control_socket.close()
-    done_formatted  = pprint.pformat(done_ticket)
+    tinfo["final_dialog"] = time.time()-t1
+    if list:
+        print "  dt:",tinfo["final_dialog"]
+
+    tinfo["total"] = time.time()-t0
+    done_ticket["tinfo"] = tinfo
+    tf = time.time()
+    if tf!=t0:
+        done_ticket["MB_per_S"] = 1.*fsize/1024./1024./(tf-t0)
+    else:
+        done_ticket["MB_per_S"] = 0.0
+
     if done_ticket["status"] != "ok" :
         raise errorcode[EPROTO],"encp.read_from_hsm: "\
               +"2nd (post-file-read) mover callback on socket "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
-    if list :
-        print outfile, p.file_size\
-              ,done_formatted
+    if list or 1:
+        done_formatted  = pprint.pformat(done_ticket)
+        print outfile, ":",fsize,"bytes",\
+                  "copied from", done_ticket["external_label"], \
+                  "in ",tinfo["total"],"seconds",\
+                  "at",done_ticket["MB_per_S"],"MB/S"
+        #print done_formatted
 
 
 ##############################################################################
