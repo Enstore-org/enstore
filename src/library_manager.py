@@ -233,8 +233,15 @@ def next_work_any_volume(csc, verbose):
                 return w
             # found a volume that has write work pending - return it
             w["fc"] = {} # clear old info or create new subticket
-            w["fc"]["external_label"] = v["external_label"]
-            w["fc"]["size"] = w["wrapper"]["size_bytes"]
+	    try:
+		w["fc"]["external_label"] = v["external_label"]
+		w["fc"]["size"] = w["wrapper"]["size_bytes"]
+	    except KeyError:
+		Trace.trace(3,"}next_work_any_volume:keyerror "+\
+			    str(sys.exc_info()[0])+\
+			    str(sys.exc_info()[1])+ repr(v))
+		raise "key error"+str(sys.exc_info()[0])+\
+		      str(sys.exc_info()[1])+ repr(v)
 	    Trace.trace(3,"}next_work_any_volume "+ repr(w))
             return w
 
