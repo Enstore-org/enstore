@@ -2291,48 +2291,12 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             encp_crc = EXfer.fd_xfer(data_path_socket.fileno(), out_fd,
                                   requests[j]['file_size'], e.bufsize,
                                   crc_flag, 0)
-
+            EXfer_ticket = {'status':(e_errors.OK, None)}
         except EXfer.error, msg:
-            #Regardless of the type of error, make sure it gets logged.
-            Trace.log(e_errors.WARNING,"read_from_hsm EXfer error: %s"%(msg,))
+            Trace.log(e_errors.WARNING,"write_to_hsm EXfer error: %s" % (msg,))
 
-            #Unlink the file since it didn't tranfer in tact.
-            try:
-                if request['outfile'] != "/dev/null":
-                    os.unlink(request['outfile'])
-                    delete_at_exit.unregister(request['outfile'])
-            except:
-                pass
-
-            #Set this now, so at least the local error will be displayed
-            # if the mover side is not available.
-            done_ticket = {'status':(msg.args[1], msg.args[0])}
-
-            try:
-                if msg.args[1] != errno.ENOSPC:
-                    done_ticket = callback.read_tcp_obj(control_socket)
-                else:
-                    done_ticket = (e_errors.USERERROR, msg.args[0])
-            except:
-                pass #use local error.
-                #done_ticket = {'status':(e_errors.EPROTO,
-                #                         "Network problem or mover reset")}
-                
-            result_dict = handle_retries(requests, requests[j],
-                                        done_ticket, control_socket, e)
-
-            if result_dict['status'][0] in e_errors.non_retriable_errors:
-                files_left = result_dict['queue_size']
-                failed_requests.append(request)
-            try:
-                control_socket.close()
-                data_path_socket.close()
-                os.close(out_fd)
-            except socket.error:
-                pass
-
-            continue
-
+            EXfer_ticket = {'status':(msg.args[1], msg.args[0])}
+            
         lap_end = time.time()
         tstring = "%s_elapsed_time" % requests[j]['unique_id']
         tinfo[tstring] = lap_end - lap_start #----------------------------End
@@ -2350,16 +2314,38 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         # be one... not only receiving one on error.
         done_ticket = receive_final_dialog(control_socket, requests[j])
 
-        #Verfy that the final responce from the mover is that everything is ok.
-        result_dict = handle_retries(requests, requests[j],
-                                     done_ticket, None, e)
         try:
             control_socket.close()
             data_path_socket.close()
             os.close(out_fd)
         except (OSError, socket.error):
-            print "Error closeing file descriptor."
+            sys.stderr.write("Error closeing file descriptor.")
             pass
+
+        #For simplicity combine everything together.
+        EXfer_ticket = combine_dict(EXfer_ticket, requests[j])
+
+        #Verify that everything is ok on the mover side of the transfer.
+        result_dict = handle_retries(requests, requests[j],
+                                     EXfer_ticket, None, e)
+        
+        if result_dict['status'][0] == e_errors.RETRY:
+            continue
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
+            #return EXfer_ticket
+            files_left = result_dict['queue_size']
+            failed_requests.append(request)
+            continue
+
+        #For simplicity combine everything together.
+        done_ticket = combine_dict(done_ticket, result_dict, requests[j])
+
+        #Verify that everything is ok on the mover side of the transfer.
+        result_dict = handle_retries(requests, requests[j],
+                                     done_ticket, None, e)
+
+        #Combine the request and done_ticket into one ticket for simplicity.
+        done_ticket = combine_dict(result_dict, done_ticket, requests[j])
 
         if result_dict['status'][0] == e_errors.RETRY:
             continue
@@ -2368,7 +2354,6 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             failed_requests.append(request)
             continue
 
-
         if e.verbose > 1:
             t2 = time.time() - tinfo['encp_start_time']
             print "File", requests[j]['infile'], "transfered.  elapsed=", t2
@@ -2376,10 +2361,6 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             print "FINAL DIALOG"
             pprint.pprint(done_ticket)
 
-
-        #Combine the request and done_ticket into one ticket for simplicity.
-        done_ticket = combine_dict(done_ticket, requests[j])
-        
         #These functions write errors/warnings to the log file and put an
         # error status in the ticket.
         check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
