@@ -108,7 +108,8 @@ class Inquisitor(generic_client.GenericClient):
         if mcs:
             # the user  specified a device to plot the data for.
             t['mcs'] = mcs
-	return self.send(t)
+	# wait a really long time as plotting takes awhile.
+	return self.send(t, 1000)
 
 
 class InquisitorClientInterface(generic_client.GenericClientInterface):
@@ -228,7 +229,6 @@ def do_work(intf):
 	ticket = iqc.plot(intf.logfile_dir, intf.start_time, intf.stop_time,
                           intf.media_changer, intf.keep, intf.keep_dir,
                           intf.output_dir)
-
     else:
 	intf.print_help()
         sys.exit(0)
