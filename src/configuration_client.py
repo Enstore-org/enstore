@@ -75,11 +75,11 @@ class ConfigurationClient(generic_client.GenericClient):
                    'callback_addr'  : (host,port)
                    }
 
-
         x=self.send(request, timeout, retry)
         control_socket, addr = listen_socket.accept()
-        self.config_dump = callback.read_tcp_obj(control_socket)
-                
+        d = callback.read_tcp_obj(control_socket)
+        return d
+        
     # get all keys in the configuration dictionary
     def get_keys(self, timeout=0, retry=0):
         request = {'work' : 'get_keys' }
@@ -144,7 +144,6 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         # fill in the defaults for the possible options
         self.do_parse = flag
         self.restricted_opts = opts
-        self.config_dump = {}
         self.config_file = ""
         self.show = 0
         self.load = 0
@@ -168,25 +167,25 @@ def do_work(intf):
 
     csc = ConfigurationClient((intf.config_host, intf.config_port))
     csc.csc = csc
-    stati = csc.handle_generic_commands(MY_SERVER, intf)
-    if stati:
+    result = csc.handle_generic_commands(MY_SERVER, intf)
+    if result:
         pass
     elif intf.show:
-        csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
-        stati = csc.config_dump
-
+        result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
+        pprint.pprint(result['dump'])
+        
     elif intf.load:
-        stati= csc.load(intf.config_file, intf.alive_rcv_timeout,
+        result= csc.load(intf.config_file, intf.alive_rcv_timeout,
 	                intf.alive_retries)
 
     elif intf.summary:
-        stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
+        result= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
 
     else:
 	intf.print_help()
         sys.exit(0)
 
-    csc.check_ticket(stati)
+    csc.check_ticket(result)
 
 if __name__ == "__main__":
     Trace.init(MY_NAME)
