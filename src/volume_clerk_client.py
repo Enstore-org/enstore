@@ -135,7 +135,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"] != "ok":
-            Trace(0,"vcc.get_vols: "\
+            Trace.trace(0,"vcc.get_vols: "\
                   +"1st (pre-work-read) volume clerk callback on socket "\
                   +repr(address)+" failed to setup transfer: "\
                   +ticket["status"])
@@ -165,7 +165,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   +"client get_vols, vc final dialog")
         control_socket.close()
         if done_ticket["status"] != "ok":
-            Trace(0,"vcc.get_vols "\
+            Trace.trace(0,"vcc.get_vols "\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +repr(address)+", failed to transfer: "\
                   +ticket["status"])
@@ -336,7 +336,7 @@ class VolumeClerkClientInterface(interface.Interface):
 
     # print delvol arguments
     def print_delvol_args(self):
-        Trace(20,'{}print_delvol_args')
+        Trace.trace(20,'{}print_delvol_args')
         print "   delvol arguments: volume_name"
 
     # print out our extended help

@@ -127,7 +127,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         dict[external_label] = record
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
-        Trace(10,'}addvol ok '+repr(external_label)+" "+repr(record))
+        Trace.trace(10,'}addvol ok '+repr(external_label)+" "+repr(record))
         return
 
      # even if there is an error - respond to caller so he can process it
@@ -159,7 +159,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             del dict[external_label]
             ticket["status"] = "ok"
-            Trace(10,'}delvol ok '+repr(external_label))
+            Trace.trace(10,'}delvol ok '+repr(external_label))
         except KeyError:
             ticket["status"] = "Volume Clerk: volume "+external_label\
                                +" no such volume"
@@ -688,7 +688,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
         if os.fork() != 0:
-            Trace(20,'}get_vols forked parent - returning')
+            Trace.trace(20,'}get_vols forked parent - returning')
             return
         Trace.init("get_vols")
         self.get_user_sockets(ticket)
