@@ -131,7 +131,7 @@ else
 	procName=$1
 fi
 
-procInfos=~/CRON/$procName
+procInfos=$HOME/CRON/$procName
 activeFlag=${procInfos}ACTIVE
 histogram=${procInfos}HISTOGRAM
 procOutput=${procInfos}-output
