@@ -28,6 +28,7 @@ def get_vol_filenames(output_dir):
         last_access_file = "/dev/stdout"
         volume_size_file = "/dev/stdout"
         volumes_defined_file = "/dev/stdout"
+        volumes_too_many_mounts_file = "/dev/stdout"
         volume_quotas_file = "/dev/stdout"
 	volume_quotas_format_file = "/dev/stdout"
         total_bytes_file = "/dev/stdout"
@@ -35,12 +36,13 @@ def get_vol_filenames(output_dir):
         last_access_file = output_dir + "LAST_ACCESS"
         volume_size_file = output_dir + "VOLUME_SIZE"
         volumes_defined_file = output_dir + "VOLUMES_DEFINED"
+        volumes_too_many_mounts_file = output_dir + "VOLUMES_TOO_MANY_MOUNTS"
         volume_quotas_file = output_dir + "VOLUME_QUOTAS"
 	volume_quotas_format_file = get_vq_format_file(output_dir)
         total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
     return last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
-		      total_bytes_file
+		      total_bytes_file, volumes_too_many_mounts_file
 
 #This is the "magic" class to use when filtering out elements that have the
 # same external label in a list.
@@ -887,7 +889,8 @@ def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
 
     last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
-		      total_bytes_file = get_vol_filenames(output_dir)
+		      total_bytes_file, volumes_too_many_mounts_file \
+                      = get_vol_filenames(output_dir)
 
     #Create files that hold statistical data.
     print_last_access_status(volume_list, last_access_file)
@@ -911,7 +914,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     # determine the output path
     last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
-		      total_bytes_file = get_vol_filenames(output_dir)
+		      total_bytes_file, volumes_too_many_mounts_file \
+                      = get_vol_filenames(output_dir)
 
     # open volume_summary_cache
     volume_summary_cache_file = os.path.join(cache_dir, 'volume_summary')
@@ -943,6 +947,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     la_file = open(last_access_file, "w")
     vs_file = open(volume_size_file, "w")
     vd_file = open(volumes_defined_file, "w")
+    tm_file = open(volumes_too_many_mounts_file, "w")
 
     vs_file.write("%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n" % ("Label",
         "Actual", "Deleted", "Non-deleted", "Capacity", "Remaining",
@@ -1161,6 +1166,16 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         mnts = "%6d"%(mounts)
         if mounts >= 1000:
             mnts = '<font color=#FF0000>'+mnts+'</font>'
+            tm_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6d %-40s\n" % \
+               (vv['external_label'],
+                formated_size[0], formated_size[1],
+                vv['system_inhibit'][0],
+                vv['system_inhibit'][1],
+                vv['user_inhibit'][0],
+                vv['user_inhibit'][1],
+                vv['library'],
+                mounts,
+                vv['volume_family']))
         if mounts >= 10000:
             mnts = '<blink>'+mnts+'</blink>'
         vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6s %-40s\n" % \
@@ -1187,6 +1202,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     vs_file.close()
     vd_file.write("</pre></html>\n")
     vd_file.close()
+    tm_file.close()
     # make a html copy
     os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
     vols.close()
