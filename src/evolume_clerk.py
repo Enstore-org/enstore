@@ -1448,6 +1448,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
+        # check the range of position
+        if position != 0 and position != 1:
+            msg="Volume Clerk: clr_system_inhibit(%s, %d), no such position %d"%(inhibit, position, position)
+            ticket["status"] = (e_errors.ERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
         if (inhibit == "system_inhibit" and position == 0):
             if record [inhibit][position] == e_errors.DELETED:
                 # if volume is deleted no data can be changed
@@ -1457,8 +1465,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # update the fields that have changed
                 record[inhibit][position] = "none"
                 # set time stamp
-                if not record.has_key('si_time'):
-                    record['si_time'] = [0, 0]
                 record['si_time'][position] = time.time()
                 self.dict[external_label] = record   # THIS WILL JOURNAL IT
                 record["status"] = (e_errors.OK, None)
@@ -1467,8 +1473,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record[inhibit][position] = "none"
             if inhibit == "system_inhibit":
                 # set time stamp
-                if not record.has_key('si_time'):
-                    record['si_time'] = [0, 0]
                 record['si_time'][position] = time.time()
             self.dict[external_label] = record   # THIS WILL JOURNAL IT
             record["status"] = (e_errors.OK, None)
@@ -1551,8 +1555,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         #         return record["status"]
         record["system_inhibit"][index] = flag
         # record time
-        if not record.has_key("si_time"):
-            record["si_time"] = [0,0]
         record["si_time"][index] = time.time()
         self.dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
