@@ -1114,15 +1114,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 save_location = self.tape_driver.tell()
                 Trace.trace(22,"save location %s" % (save_location,))
                 if have_tape != 1:
-                    Trace.alarm(e_errors.ERROR, "error positionong tape for selective CRC check")
+                    Trace.alarm(e_errors.ERROR, "error positioning tape for selective CRC check")
 
-                    self.transfer_failed(e_errors.WRITE_ERROR, "error positionong tape for selective CRC check", error_source=TAPE)
+                    self.transfer_failed(e_errors.WRITE_ERROR, "error positioning tape for selective CRC check", error_source=TAPE)
                     return
                 try:
                     self.tape_driver.seek(cookie_to_long(self.vol_info['eod_cookie']), 0) #XXX is eot_ok needed?
                 except:
                     exc, detail, tb = sys.exc_info()
-                    Trace.alarm(e_errors.ERROR, "error positionong tape for selective CRC check")
+                    Trace.alarm(e_errors.ERROR, "error positioning tape for selective CRC check")
                     self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
                     return
                 self.buffer.save_settings()
@@ -1149,11 +1149,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                         nbytes = self.buffer.blocksize
                     try:
                         b_read = self.buffer.block_read(nbytes, driver)
+
+                        # clean buffer
+                        Trace.trace(22,"write_tape: clean buffer")
+                        self.buffer._writing_block = self.buffer.pull()
+                        if self.buffer._writing_block:
+                            Trace.trace(22,"write_tape: freeing block")
+                            self.buffer._freespace(self.buffer._writing_block)
+                        
                     except "CRC_ERROR":
                         exc, detail, tb = sys.exc_info()
                         #Trace.handle_error(exc, detail, tb)
                         Trace.alarm(e_errors.ERROR, "selective CRC check error")
-                        self.transfer_failed(e_errors.CRC_ERROR, detail, error_source=TAPE)
+                        self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
                     except:
@@ -1182,9 +1190,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
                 if self.buffer.complete_crc != saved_complete_crc:
                     Trace.alarm(e_errors.ERROR, "selective CRC check error")
-                    self.transfer_failed(e_errors.CRC_ERROR, None)
+                    self.transfer_failed(e_errors.WIRTE_ERROR, "selective CRC check error")
                     return
-                Trace.log(e_errors.INFO, "selective CRC check after writing file cmpleted successfuly")
+                Trace.log(e_errors.INFO, "selective CRC check after writing file completed successfuly")
                 self.buffer.restore_settings()
                 # position to eod"
                 self.tape_driver.seek(save_location, 0) #XXX is eot_ok
@@ -2285,6 +2293,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 exc, msg, tb = sys.exc_info()
                 broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)
             self.broken(broken)
+            self.current_volume = None
             
     def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
         Trace.trace(10, "seeking to %s, after_function=%s"%(location,after_function))
