@@ -943,8 +943,8 @@ def do_work(intf):
                                    ticket['system_inhibit'],
                                    ticket['user_inhibit'])
     elif intf.set_comment: # set comment of vol
-        if len(sys.argv) != 4:
-            print "Error! usage: enstore %s --set-comment <comment> <vol>"%(sys.argv[0])
+        if len(intf.argv) != 4:
+            print "Error! usage: enstore %s --set-comment=<comment> <vol>"%(sys.argv[0])
             sys.exit(1)
         ticket = vcc.set_comment(intf.volume, intf.set_comment)
     elif intf.export: # volume export
