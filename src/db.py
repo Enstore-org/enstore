@@ -49,7 +49,7 @@ class DbTable:
     self.inx={}
     for name in indlst:
     	self.inx[name]=MyIndex(self.dbindex,name)
-    self.jou=journal.JournalDict({},dbname+".jou")
+    self.jou=journal.JournalDict({},self.dbHome+"/"+dbname+".jou")
     self.count=0
     self.name=dbname
     self.logc=logc
