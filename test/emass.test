@@ -4,13 +4,18 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # test/$RCSfile$  $Revision$
 
-emass DM05-CA2901-8MM < /dev/null &
-emass DM06-CA2902-8MM < /dev/null &
-emass DM07-CA2903-8MM < /dev/null &
-emass DM08-CA2904-8MM < /dev/null &
-emass DC12-CA2251-8MM < /dev/null  &
-emass DE13-CA2501-DECDLT < /dev/null &
-emass DE14-CA2502-DECDLT < /dev/null &
-emass DE15-CA2503-DECDLT < /dev/null &
-emass DE16-CA2504-DECDLT < /dev/null &
+if [ -n "${1-}" ]; then
+  opt="$1"
+else
+  opt=""
+fi
 
+emass $opt DM05-CA2901-8MM    < /dev/null &
+emass $opt DM06-CA2902-8MM    < /dev/null &
+emass $opt DM07-CA2903-8MM    < /dev/null &
+emass $opt DM08-CA2904-8MM    < /dev/null &
+emass $opt DC12-CA2251-8MM    < /dev/null &
+emass $opt DE13-CA2501-DECDLT < /dev/null &
+emass $opt DE14-CA2502-DECDLT < /dev/null &
+emass $opt DE15-CA2503-DECDLT < /dev/null &
+emass $opt DE16-CA2504-DECDLT < /dev/null &
