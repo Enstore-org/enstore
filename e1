@@ -19,7 +19,7 @@ fi
 if [ -z "${ENSTORE_DIR-}" ] ; then
   echo "Setting up enstore"
   place=`pwd`
-  cd ~bakken/enstore
+  cd ~bakken/enstore`uname`
   setup -r `pwd` enstore
   if [ $? -ne 0 ] ; then
     export ENSTORE_DIR=`pwd`

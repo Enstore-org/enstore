@@ -235,7 +235,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         if list:
             print "  dt:",t2
 
-        if list or 1:
+        if list:
             fticket=done_ticket["file_clerk"]
             print p.pnfsFilename, ":",p.file_size,"bytes",\
                   "copied to", done_ticket["external_label"], \
@@ -425,7 +425,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
               +"2nd (post-file-read) mover callback on socket "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
-    if list or 1:
+    if list:
         done_formatted  = pprint.pformat(done_ticket)
         print outfile, ":",fsize,"bytes",\
                   "copied from", done_ticket["external_label"], \

@@ -398,7 +398,11 @@ class pnfs :
     def get_mode(self) :
         if self.stat[0] != error :
             try :
-                self.mode = self.stat[stat.ST_MODE]
+                # always return mode as if it were a file, not directory, so
+                #  it can use used in enstore cpio creation  (we will be
+                #  creating a file in this directory)
+                # real mode is available in self.stat for people who need it
+                self.mode = (self.stat[stat.ST_MODE] % 0777) | 0100000
                 self.mode_octal = repr(oct(self.mode))
             except :
                 self.mode = 0

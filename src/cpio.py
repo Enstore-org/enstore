@@ -98,7 +98,11 @@ class cpio :
             fname = h[0]
             fsize = h[1]
             # set this dang mode to something that works on all machines!
-            jonmode = 0x81a4
+            if (mode & 0777000) != 0100000 :
+                jonmode = 0100664
+                print "Mode is invalid, setting to",jonmode, "so cpio valid"
+            else :
+                jonmode = mode
             # make all filenames relative - strip off leading slash
             if fname[0] == "/" :
                 fname = fname[1:]
