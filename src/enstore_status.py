@@ -269,6 +269,14 @@ class EnstoreStatus:
 	self.text[key] = str
         Trace.trace(12,"}output_etimedout")
 
+    # output timeout error when trying to get config dict from config server
+    def output_noconfigdict(self, tag, time, key):
+        Trace.trace(12,"{output_noconfigdict "+repr(tag))
+	ftime = self.format_time(time)
+	str = tag + "timed out while getting config dict at "+ftime+"\n"
+	self.text[key] = str
+        Trace.trace(12,"}output_noconfigdict")
+
     # output a line stating that we do not support this server
     def output_nofunc(self, key):
         Trace.trace(12,"}output_nofunc"+key)

@@ -47,18 +47,24 @@ def default_ascii_file():
 def default_html_file():
     return "./inquisitor.html"
 
-trailer = " : "
-suffix = ".new"
-did_it = 0
-timed_out = 1
-server_key = 'server'
-
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
+
+    trailer = " : "
+    suffix = ".new"
+    server_keyword = 'server'
+    did_it = 0
+    timed_out = 1
+    ac_prefix =   "admin clerk     : "
+    fc_prefix =   "file clerk      : "
+    logc_prefix = "log server      : "
+    in_prefix =   "inquisitor      : "
+    vc_prefix =   "volume clerk    : "
+    bl_prefix =   "blocksizes      : "
+    cfg_prefix =  "config server   : "
 
     # get the alive status of the server and output it
     def alive_status(self, client, (host, port), prefix, time, key):
-        Trace.trace(13,"{alive_status "+repr(host)+" "+repr(port))
-	ret = did_it
+        Trace.trace(14,"{alive_status "+repr(host)+" "+repr(port))
 	try:
 	    stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_alive(host, prefix, stat, time, key)
@@ -66,8 +72,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.essfile.output_etimedout((host, port), prefix, time, key)
 	    self.htmlfile.output_etimedout((host, port), prefix, time, key)
-	    ret = timed_out
-        Trace.trace(13,"}alive_status")
+            Trace.trace(14,"}alive_status - ERROR, alive timed out")
+	    return self.timed_out
+        Trace.trace(14,"}alive_status")
+	return self.did_it
+
+    # send alive to the server and handle any errors
+    def do_alive_check(self, key, time, client, prefix):
+        Trace.trace(13,"{do_alive_check "+prefix)
+	try:
+	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    self.essfile.output_noconfigdict(prefix, time, key)
+	    self.htmlfile.output_noconfigdict(prefix, time, key)
+            Trace.trace(13,"}do_alive_check - ERROR, getting config dict timed out ")
+	    return self.timed_out
+	ret = self.alive_status(client, (t['host'], t['port']),\
+	                        prefix, time, key)
+        Trace.trace(13,"}do_alive_check ")
 	return ret
 
     # get the library manager work queue and output it
@@ -80,6 +102,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout((host, port), "    ", key)
 	    self.htmlfile.output_etimedout((host, port), "    ", key)
+	    Trace.trace(13, "}work_queue - ERROR, timed out")
+	    return
         Trace.trace(13,"}work_queue ")
 
     # get the library manager mover list and output it
@@ -92,13 +116,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout((host, port), "    ", key)
 	    self.htmlfile.output_etimedout((host, port), "    ", key)
+	    Trace.trace(13, "}mover_list - ERROR, timed out")
+	    return
         Trace.trace(13,"}mover_list ")
 
     # get the information from the configuration server
     def update_config_server(self, key, time, list=0):
         Trace.trace(12,"{update_config_server "+repr(self.essfile.file_name))
 	self.alive_status(self.csc, self.csc.get_address(), \
-	                  "config server   : ", time, key)
+	                  self.cfg_prefix, time, key)
         Trace.trace(12,"}update_config_server")
 
     # get the information from the library manager(s)
@@ -107,7 +133,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                          repr(self.essfile.file_name)+" "+repr(key))
 	# get info on this library_manager
 	try:
-	    t = self.csc.get_uncached(key)
+	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
+	                              self.alive_retries)
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    self.essfile.output_noconfigdict(key+self.trailer, time, key)
+	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
+	    Trace.trace(12,"}update_library_manager - ERROR, getting config dict timed out")
+	    return
 	except:
 	    # this library manager does not exist in the config dict
 	    Trace.trace(12,"}update_library_manager - ERROR, not in config dict")
@@ -115,9 +147,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# get a client and then check if the server is alive
 	lmc = library_manager_client.LibraryManagerClient(self.csc, 0, key, \
                                                           t['host'], t['port'])
-	ret = self.alive_status(lmc, (t['host'], t['port']), key+trailer, \
+	ret = self.alive_status(lmc, (t['host'], t['port']), key+self.trailer,\
 	                        time, key)
-	if ret == did_it:
+	if ret == self.did_it:
 	    self.mover_list(lmc, (t['host'], t['port']), key, list)
 	    self.work_queue(lmc, (t['host'], t['port']), key, list)
         Trace.trace(12,"}update_library_manager ")
@@ -128,16 +160,22 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         repr(key))
 	# get info on this mover
 	try:
-	    t = self.csc.get_uncached(key)
+	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
+	                              self.alive_retries)
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    self.essfile.output_noconfigdict(key+self.trailer, time, key)
+	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
+            Trace.trace(12,"{update_mover - ERROR, getting config dict timed out")
+	    return
 	except:
 	    # this mover does not exist in the config dict
 	    Trace.trace(12,"{update_mover - ERROR, not in config dict")
 	    return
-	self.essfile.output_alive(t['host'], key+trailer, \
+	self.essfile.output_alive(t['host'], key+self.trailer, \
                                   { 'work' : "NOT IMPL YET",\
                                   'address' : (t['host'], t['port']), \
                                   'status' : (e_errors.OK, None)}, time, key)
-	self.htmlfile.output_alive(t['host'], key+trailer, \
+	self.htmlfile.output_alive(t['host'], key+self.trailer, \
                                   { 'work' : "NOT IMPL YET",\
                                   'address' : (t['host'], t['port']), \
                                   'status' : (e_errors.OK, None)}, time, key)
@@ -146,25 +184,19 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the admin clerk
     def update_admin_clerk(self, key, time, list=0):
         Trace.trace(12,"{update_admin_clerk "+repr(self.essfile.file_name))
-	t = self.csc.get(key)
-	self.alive_status(self.acc, (t['host'], t['port']),\
-	                  "admin clerk     : ", time, key)
+	self.do_alive_check(key, time, self.acc, self.ac_prefix)
         Trace.trace(12,"}update_admin_clerk ")
 
     # get the information from the file clerk
     def update_file_clerk(self, key, time, list=0):
         Trace.trace(12,"{update_file_clerk "+repr(self.essfile.file_name))
-	t = self.csc.get(key)
-	self.alive_status(self.fcc, (t['host'], t['port']),\
-	                  "file clerk      : ", time, key)
+	self.do_alive_check(key, time, self.fcc, self.fc_prefix)
         Trace.trace(12,"}update_file_clerk ")
 
     # get the information from the log server
     def update_logserver(self, key, time, list=0):
         Trace.trace(12,"{update_log_server "+repr(self.essfile.file_name))
-	t = self.csc.get(key)
-	self.alive_status(self.logc, (t['host'], t['port']),\
-	                  "log server      : ", time, key)
+	self.do_alive_check(key, time, self.logc, self.logc_prefix)
         Trace.trace(12,"}update_log_server ")
 
     # get the information from the media changer(s)
@@ -173,7 +205,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                " "+repr(key))
 	# get info on this media changer
 	try:
-	    t = self.csc.get_uncached(key)
+	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
+	                              self.alive_retries)
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    self.essfile.output_noconfigdict(key+self.trailer, time, key)
+	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
+            Trace.trace(12,"}update_media_changer - ERROR, getting config dict timed out")
+	    return
 	except:
 	    # this media changer did not exist in the config dict
 	    Trace.trace(12,"}update_media_changer - ERROR, not in config dict")
@@ -181,20 +219,29 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# get a client and then check if the server is alive
 	mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, \
 	                                              t['host'], t['port'])
-	self.alive_status(mcc, (t['host'], t['port']), key+trailer, time, key)
+	self.alive_status(mcc, (t['host'], t['port']), key+self.trailer, time,\
+	                   key)
         Trace.trace(12,"}update_media_changer")
 
     # get the information from the inquisitor
     def update_inquisitor(self, key, time, list=0):
         Trace.trace(12,"{update_inquisitor "+repr(self.essfile.file_name))
 	# get info on the inquisitor
-	t = self.csc.get_uncached(key)
+	try:
+	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
+	                              self.alive_retries)
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    self.essfile.output_noconfigdict(self.in_prefix, time, key)
+	    self.htmlfile.output_noconfigdict(self.in_prefix, time, key)
+            Trace.trace(12,"}update_inquisitor - ERROR, getting config dict timed out")
+	    return
+
 	# just output our info, if we are doing this, we are alive.
-	self.essfile.output_alive(t['host'], "inquisitor      : ",\
+	self.essfile.output_alive(t['host'], self.in_prefix, \
 	                          { 'work' : "alive",\
 	                            'address' : (t['host'], t['port']), \
                                     'status' : (e_errors.OK, None)}, time, key)
-	self.htmlfile.output_alive(t['host'], "inquisitor      : ",\
+	self.htmlfile.output_alive(t['host'], self.in_prefix, \
 	                          { 'work' : "alive",\
 	                            'address' : (t['host'], t['port']), \
                                     'status' : (e_errors.OK, None)}, time, key)
@@ -207,8 +254,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.set_default_server_timeout(t)
         Trace.trace(12,"}update_inquisitor ")
 
-    # get the default server timeout, either from the config dict or from the
-    # routine
+    # get the default server timeout, either from the inquisitor config dict
+    # or from the routine
     def set_default_server_timeout(self, inq_dict={}):
 	the_key = "default_server_timeout"
 	if inq_dict.has_key(the_key):
@@ -219,25 +266,28 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the volume clerk server
     def update_volume_clerk(self, key, time, list=0):
         Trace.trace(12,"{update_volume_clerk "+repr(self.essfile.file_name))
-	t = self.csc.get(key)
-	self.alive_status(self.vcc, (t['host'], t['port']), \
-                          "volume clerk    : ", time, key)
+	self.do_alive_check(key, time, self.vcc, self.vc_prefix)
         Trace.trace(12,"}update_volume_clerk ")
 
-    # get the information from the volume clerk server
+    # get the information about the blocksizes
     def update_blocksizes(self, key, time, list=0):
         Trace.trace(12,"{update_blocksizes "+repr(self.essfile.file_name))
-	t = self.csc.get(key)
-	prefix = "blocksizes      : "
-	self.essfile.output_blocksizes(t, prefix, key)
-	self.htmlfile.output_blocksizes(t, prefix, key)
+	try:
+	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    self.essfile.output_noconfigdict(self.bl_prefix, time, key)
+	    self.htmlfile.output_noconfigdict(self.bl_prefix, time, key)
+            Trace.trace(12,"}update_blocksizes - ERROR, getting config dict timed out")
+	    return
+	self.essfile.output_blocksizes(t, self.bl_prefix, key)
+	self.htmlfile.output_blocksizes(t, self.bl_prefix, key)
         Trace.trace(12,"}update_blocksizes")
 
     # get the keys from the inquisitor part of the config file ready for use
     def prepare_keys(self):
         Trace.trace(12,"{prepare_keys")
-	self.keys = self.timeouts.keys()
-	self.keys.sort()
+	self.server_keys = self.timeouts.keys()
+	self.server_keys.sort()
         Trace.trace(12,"}prepare_keys")
 
     # fix up the server list that we are keeping track of
@@ -259,15 +309,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.prepare_keys()
         Trace.trace(12,"}update_server_dict")
 
-    # fill in any default server timeouts
+    # fill in a default timeout for any servers that did not have one specified
     def fill_in_default_timeouts(self, ctime=time.time()):
         Trace.trace(12,"{fill_in_default_timeouts")
-	csc_keys = self.csc.get_keys()
-	for a_key in csc_keys['get_keys']:
-	    if not self.timeouts.has_key(a_key):
-	        self.timeouts[a_key] = self.default_server_timeout
-	        if not self.last_update.has_key(a_key):
-	            self.last_update[a_key] = ctime
+	try:
+	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, \
+	                                 self.alive_retries)
+	    for a_key in csc_keys['get_keys']:
+	        if not self.timeouts.has_key(a_key):
+	            self.timeouts[a_key] = self.default_server_timeout
+	            if not self.last_update.has_key(a_key):
+	                self.last_update[a_key] = ctime
+	except errno.errorcode[errno.ETIMEDOUT]:
+            Trace.trace(12,"}fill_in_default_timeouts - ERROR, getting config dict timed out")
+	    return
         Trace.trace(12,"}fill_in_default_timeouts")
 
     # flush the files we have been writing to
@@ -303,7 +358,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	# see which servers we need to get info from this time around
 	did_some_work = 0
-	for key in self.keys:
+	for key in self.server_keys:
 	    if self.last_update.has_key(key):
 	        delta = ctime - self.last_update[key]
 	    else:
@@ -312,6 +367,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        # configuration file and this is a new key, we have not checked
 	        # this server before, so do it now
 	        delta = self.timeouts[key]
+
+	    # see if we need to update the info on this server.  do not do it
+	    # if the timeout was set to -1.  this 'disables' getting info on
+	    # this server.  do it if either we were asked to get info on all 
+	    # the servers or it has been longer than timeout since we last
+	    # gathered info on this server.
 	    if do_all or (delta >= self.timeouts[key] and \
 	                  self.timeouts[key] != -1):
 	        # time to ping this server. some keys are of the form
@@ -319,18 +380,25 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        # function to call
 	        rkeyl = string.split(key, '.')
 	        inq_func = "update_"+rkeyl[len(rkeyl)-1]
+
+	        # make sure we support this type of server first
 	        if InquisitorMethods.__dict__.has_key(inq_func):
 	            if type(InquisitorMethods.__dict__[inq_func]) == \
 	               types.FunctionType:
 	                exec("self."+inq_func+"(key, ctime, list)")
 	                self.last_update[key] = ctime
 	                did_some_work = 1
+	            else:
+	                # it was not a function
+	                self.update_nofunc(key)
 	        else:
+	            # apparently we do not.
 	            self.update_nofunc(key)
 
-
 	# now that we are out of the above loop we can update the server dict
-	# if we were asked to
+	# if we were asked to. we did not want to do it while doing the update
+	# as we might change some timeouts or servers in the list we were
+	# processing
 	if self.doupdate_server_dict:
 	    self.update_server_dict()
 	    self.doupdate_server_dict = 0
@@ -341,20 +409,21 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	# now we must close the html file and move it to itself without the
 	# suffix tacked on the end. i.e. the file becomes for example inq.html
-	# not inq.html.new
+	# not inq.html.new. only mover the file if we actually did something
 	self.htmlfile.close()
-	try:
-	    os.system("mv "+self.htmlfile_orig+suffix+" "+self.htmlfile_orig)
-	except:
-	    traceback.print_exc()
-	    format = timeofday.tod()+" "+\
-	             str(sys.argv)+" "+\
-	             str(sys.exc_info()[0])+" "+\
-	             str(sys.exc_info()[1])+" "+\
-	             "inquisitor serve_forever continuing"
-	    print format
-	    self.logc.send(log_client.ERROR, 1, format)
-	    Trace.trace(0,format)
+	if did_some_work:
+	    try:
+	        os.system("mv "+self.htmlfile_orig+self.suffix+" "+\
+	                  self.htmlfile_orig)
+	    except:
+	        traceback.print_exc()
+	        format = timeofday.tod()+" "+\
+	                 str(sys.argv)+" "+\
+	                 str(sys.exc_info()[0])+" "+\
+	                 str(sys.exc_info()[1])+" "+\
+	                 "inquisitor serve_forever continuing"
+	        self.logc.send(log_client.ERROR, 1, format)
+	        Trace.trace(0,format)
         Trace.trace(11,"}do_update ")
 
     # loop here forever doing what inquisitors do best (overrides UDP one)
@@ -393,10 +462,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    list = 0
 	# if the ticket holds a server name then only update that one, else
 	# update everything we know about
-	if ticket.has_key(server_key):
-	    if self.timeouts.has_key(ticket[server_key]):
+	if ticket.has_key(self.server_keyword):
+	    if self.timeouts.has_key(ticket[self.server_keyword]):
 	        # mark as needing an update when call do_update
-	        self.last_update[ticket[server_key]] = 0
+	        self.last_update[ticket[self.server_keyword]] = 0
 	        do_all = 0
 	    else:
 	        # we have no knowledge of this server, maybe it was a typo
@@ -428,10 +497,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def set_timeout(self,ticket):
         Trace.trace(10,"{set_timeout "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
-	if ticket.has_key(server_key):
-	    if self.timeouts.has_key(ticket[server_key]):
-	        self.timeouts[ticket[server_key]] = ticket["timeout"]
-		self.reset[ticket[server_key]] = ticket["timeout"]
+	if ticket.has_key(self.server_keyword):
+	    if self.timeouts.has_key(ticket[self.server_keyword]):
+	        self.timeouts[ticket[self.server_keyword]] = ticket["timeout"]
+		self.reset[ticket[self.server_keyword]] = ticket["timeout"]
 	    else:
 	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
 	else:
@@ -443,13 +512,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def reset_timeout(self,ticket):
         Trace.trace(10,"{reset_timeout "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
-	if ticket.has_key(server_key):
-	    if self.reset.has_key(ticket[server_key]):
-		del self.reset[ticket[server_key]]
+	if ticket.has_key(self.server_keyword):
+	    if self.reset.has_key(ticket[self.server_keyword]):
+		del self.reset[ticket[self.server_keyword]]
 	    else:
 	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
 	else:
-	    t = self.csc.get("inquisitor")
+	    t = self.csc.get("inquisitor", self.alive_rcv_timeout, \
+	                     self.alive_retries)
             self.rcv_timeout = t["timeout"]
 	self.send_reply(ticket)
         Trace.trace(10,"}set_timeout")
@@ -473,15 +543,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the current timeout value
     def get_timeout(self, ticket):
         Trace.trace(10,"{get_timeout "+repr(ticket))
-	if ticket.has_key(server_key):
-	    if self.timeouts.has_key(ticket[server_key]):
-	        ret_ticket = { 'timeout' : self.timeouts[ticket[server_key]],\
-	                       server_key  : ticket[server_key], \
-	                       'status'  : (e_errors.OK, None) }
+	if ticket.has_key(self.server_keyword):
+	    if self.timeouts.has_key(ticket[self.server_keyword]):
+	        ret_ticket = { \
+	               'timeout' : self.timeouts[ticket[self.server_keyword]],\
+	               self.server_keyword  : ticket[self.server_keyword], \
+	               'status'  : (e_errors.OK, None) }
 	    else:        
 	        ret_ticket = { 'timeout' : -1,\
-	                       server_key  : ticket[server_key], \
-	                       'status'  : (e_errors.DOESNOTEXIST, None) }
+	                  self.server_keyword  : ticket[self.server_keyword], \
+	                  'status'  : (e_errors.DOESNOTEXIST, None) }
 	else:
 	    ret_ticket = { 'timeout' : self.rcv_timeout,\
 	                   'status'  : (e_errors.OK, None) }
@@ -504,13 +575,20 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                  html_file="", alive_rcv_to=-1, alive_retries=-1, \
 	         max_ascii_size=-1):
 	Trace.trace(10, '{__init__')
+	# set a timeout and retry that we will use the first time to get the
+	# inquisitor information from the config server.  we do not use the
+	# passed values because they might have been defaulted and we need to
+	# look them up in the config file which we have not gotten yet.
+	use_once_timeout = 5
+	use_once_retry = 1
+
 	# get the config server
 	configuration_client.set_csc(self, csc, host, port, list)
 	#   pretend that we are the test system
 	#   remember, in a system, there is only one bfs
 	#   get our port and host from the name server
 	#   exit if the host is not this machine
-	keys = self.csc.get("inquisitor")
+	keys = self.csc.get("inquisitor", use_once_timeout, use_once_retry)
 	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
 
@@ -527,24 +605,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                 self.rcv_timeout = default_timeout()
         else:
             self.rcv_timeout = timeout
-
-	# get the timeout for each of the servers from the configuration file.
-	self.last_update = {}
-	if keys.has_key('timeouts'):
-	    self.timeouts = keys['timeouts']
-	    # now we will create a dictionary, initiallizing it to the current
-	    # time. this array records the last time that the associated server
-	    # info was updated. everytime we get a particular servers' info we
-	    # will update this time. start out at 0 so we do an update right
-	    # away
-	    for key in self.timeouts.keys():
-	        self.last_update[key] = 0
-
-	# now we must look thru the whole config file and use the default
-	# server timeout for any servers that were not included in the
-	# 'timeouts' dict element
-	self.set_default_server_timeout(keys)
-	self.fill_in_default_timeouts(0)
 
 	# if no alive timeout was entered on the command line, get it from the 
 	# configuration file.
@@ -565,6 +625,24 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	        self.alive_retries = default_alive_retries()
 	else:
 	    self.alive_retries = alive_retries
+
+	# get the timeout for each of the servers from the configuration file.
+	self.last_update = {}
+	if keys.has_key('timeouts'):
+	    self.timeouts = keys['timeouts']
+	    # now we will create a dictionary, initiallizing it to the current
+	    # time. this array records the last time that the associated server
+	    # info was updated. everytime we get a particular servers' info we
+	    # will update this time. start out at 0 so we do an update right
+	    # away
+	    for key in self.timeouts.keys():
+	        self.last_update[key] = 0
+
+	# now we must look thru the whole config file and use the default
+	# server timeout for any servers that were not included in the
+	# 'timeouts' dict element
+	self.set_default_server_timeout(keys)
+	self.fill_in_default_timeouts(0)
 
 	# if no max file size was entered on the command line, get it from the 
 	# configuration file.
@@ -607,7 +685,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	    # add a suffix to it because we will write to this file and 
 	    # maintain another copy of the file (with the user entered name) to
 	    # be displayed
-	    self.htmlfile = enstore_status.EnstoreStatus(html_file+suffix,\
+	    self.htmlfile = enstore_status.EnstoreStatus(\
+	                                            html_file+self.suffix,\
 	                                            enstore_status.html_file,\
 	                                            html_file, -1, list)
 	    self.htmlfile_orig = html_file
