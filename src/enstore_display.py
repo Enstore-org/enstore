@@ -770,15 +770,8 @@ class Display(Tkinter.Canvas):
             self.stopped = 1
             return
 
-        if words[0]=='title':
-            title = command[6:]
-            title=string.replace(title, '\\n', '\n')
-            self.title_animation = Title(title, self)
-            return
-
-        # command needs (N) words
-        if words[0]=='movers':
-            self.create_movers(words[1:])
+        if words[0]=='encp_xfer':
+            print "just passing"
             return
 
         # command does not require a mover name, will only put clients in a queue
@@ -801,6 +794,18 @@ class Display(Tkinter.Canvas):
                 client.waiting = 1
                 client.draw()
             return
+
+        if words[0]=='title':
+            title = command[6:]
+            title=string.replace(title, '\\n', '\n')
+            self.title_animation = Title(title, self)
+            return
+
+    
+        # command needs (N) words
+        if words[0]=='movers':
+            self.create_movers(words[1:])
+            return
             
         #########################################################################
         #                                                                                                                                              #
@@ -814,6 +819,20 @@ class Display(Tkinter.Canvas):
         # command requires 2 words
         if words[0]=='delete':
             del self.movers[mover_name]
+            return
+
+
+        if words[0]=='disconnect': #Ignore the passed-in client name, disconnect from
+                               ## any currently connected client
+
+            if not mover.connection:
+                print "Mover is not connected"
+                return
+            mover.connection = None
+            mover.t0 = time.time()
+            mover.b0 = 0
+            mover.show_progress(None)
+            #print "refcount now=", sys.getrefcount(client)-1
             return
 
         # command requires 3 words
@@ -850,24 +869,6 @@ class Display(Tkinter.Canvas):
             connection.update_rate(0)
             connection.draw()
             mover.connection = connection
-            return
-        
-        if words[0]=='disconnect': #Ignore the passed-in client name, disconnect from
-                               ## any currently connected client
-
-            if not mover.connection:
-                print "Mover is not connected"
-                return
-
-            client = mover.connection.client
-            
-            mover.connection.client = None
-            mover.connection.mover = None
-            mover.connection = None
-            mover.t0 = time.time()
-            mover.b0 = 0
-            mover.show_progress(None)
-            #print "refcount now=", sys.getrefcount(client)-1
             return
 
         if words[0] in ['loading', 'loaded']:
@@ -924,6 +925,7 @@ class Display(Tkinter.Canvas):
 
             for r in readable:
                 command = r.recv(1024)
+                print command
                 if debug:
                     self.handle_command(command)
                 else:
