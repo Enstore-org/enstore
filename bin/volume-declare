@@ -85,6 +85,16 @@ case $1 in
                       CA2903
                       CA2904
                       CA2905
+                      CA2906
+                      CA2907
+                      CA2908
+                      CA2909
+                      CA2910
+                      CA2911
+                      CA2912
+                      CA2913
+                      CA2914
+                      CA2915
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
@@ -93,6 +103,16 @@ case $1 in
                       ait   none 8MM     CA2903 25501368320 25501368320
                       ait   none 8MM     CA2904 25501368320 25501368320
                       ait   none 8MM     CA2905 25501368320 25501368320
+                      ait   none 8MM     CA2906 25501368320 25501368320
+                      ait   none 8MM     CA2907 25501368320 25501368320
+                      ait   none 8MM     CA2908 25501368320 25501368320
+                      ait   none 8MM     CA2909 25501368320 25501368320
+                      ait   none 8MM     CA2910 25501368320 25501368320
+                      ait   none 8MM     CA2911 25501368320 25501368320
+                      ait   none 8MM     CA2912 25501368320 25501368320
+                      ait   none 8MM     CA2913 25501368320 25501368320
+                      ait   none 8MM     CA2914 25501368320 25501368320
+                      ait   none 8MM     CA2915 25501368320 25501368320
                      "
          ;;
   mam)   rm -fr /pnfs/grau/mammoth/*
