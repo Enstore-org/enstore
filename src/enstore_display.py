@@ -420,6 +420,7 @@ class Mover:
         if self.label:
             self.display.coords(self.label, x + self.label_offset.x,
                                 y + self.label_offset.y)
+            self.display.itemconfigure(self.label, fill = self.label_color)
         else:
             self.label = self.display.create_text(x+self.label_offset.x,
                                                   y+self.label_offset.y,
