@@ -1,4 +1,7 @@
-LIBS=-L. -L../lib -lftt_test -lftt `cat libs.$F`
+SHELL=/bin/sh
+OS="`funame -s`+`funame -r | cut -c1`"
+
+LIBS=-L. -L../lib -lftt_test -lftt `cat libs.$$OS`
 
 SRC= ftt_t_cmdline.c ftt_t_cmdloop.c ftt_t_cmdproc.c ftt_t_parse.c \
  ftt_t_stats.c ftt_t_rdwr.c ftt_t_open.c ftt_t_position.c ftt_t_misc.c \
@@ -9,7 +12,7 @@ OBJ= ftt_t_cmdline.o ftt_t_cmdloop.o ftt_t_cmdproc.o ftt_t_parse.o \
  ftt_t_error.o ftt_t_block.o ftt_t_name.o ftt_t_label.o
 
 # CFLAGS=-I. -I../ftt_lib -g -xansi -fullwarn 
-CFLAGS=-I. -I../ftt_lib -g -fullwarn 
+CFLAGS=-I. -I../ftt_lib -g 
 
 all: ftt_test
 
@@ -23,4 +26,4 @@ libftt_test.a: $(OBJ)
 	ar qv libftt_test.a $(OBJ)
 
 ftt_test: ftt_test.c libftt_test.a ../lib/libftt.a 
-	$(CC) $(CFLAGS) -o ftt_test ftt_test.c  $(LIBS)
+	OS=$(OS); $(CC) $(CFLAGS) -o ftt_test ftt_test.c  $(LIBS)

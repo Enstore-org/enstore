@@ -1,10 +1,11 @@
 
-#define DEBUG1 (ftt_debug>=1)&&fprintf
-#define DEBUG2 (ftt_debug>=2)&&fprintf
-#define DEBUG3 (ftt_debug>=3)&&fprintf
-#define DEBUGDUMP1 (ftt_debug>=1)&&ftt_debug_dump
-#define DEBUGDUMP2 (ftt_debug>=2)&&ftt_debug_dump
-#define DEBUGDUMP3 (ftt_debug>=3)&&ftt_debug_dump
+
+#define DEBUG1 if(ftt_debug>=1) (void)fprintf
+#define DEBUG2 if(ftt_debug>=2) (void)fprintf
+#define DEBUG3 if (ftt_debug>=3) (void)fprintf
+#define DEBUGDUMP1 if (ftt_debug>=1) (void)ftt_debug_dump
+#define DEBUGDUMP2 if (ftt_debug>=2) (void)ftt_debug_dump
+#define DEBUGDUMP3 if (ftt_debug>=3) (void)ftt_debug_dump
 
 #define ENTERING(name) 						\
     char *_name = name;						\

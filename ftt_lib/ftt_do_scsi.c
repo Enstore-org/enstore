@@ -2,7 +2,8 @@
 #include <string.h>
 #include <ftt_private.h>
 
-int ftt_set_transfer_length( char *cdb, int n ) {
+void 
+ftt_set_transfer_length( unsigned char *cdb, int n ) {
 	cdb[2]= n >> 16 & 0xff;
 	cdb[3]= n >> 8 & 0xff;
 	cdb[4]= n & 0xff;

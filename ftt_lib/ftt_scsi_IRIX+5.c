@@ -113,7 +113,7 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 		gotstatus = 0;
 	}
 	dp->ds_cmdlen=nCmd;
-	dp->ds_cmdbuf=pcCmd;
+	dp->ds_cmdbuf=(char *)pcCmd;
 	filldsreq(dp, (unsigned char *)pcRdWr, nRdWr, 
 		(writeflag?DSRQ_WRITE:DSRQ_READ)|DSRQ_SENSE);
 	dp->ds_time = delay * 1000;	/* allow delay seconds */

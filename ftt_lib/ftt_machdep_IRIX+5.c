@@ -2,6 +2,7 @@
 #include <sys/fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mtio.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <sys/utsname.h>
 #include <string.h>

@@ -36,7 +36,6 @@ ftt_findslot (char *basename,char *os, char *drivid, int *bus, int *id) {
 
 extern char *
 ftt_strip_to_basename(char *basename,char *os) {
-    char *pc;
     char buf[512];
     int bus,id;
     int i;
@@ -63,7 +62,7 @@ ftt_get_driveid(char *basename,char *os) {
     int bus, id;
     FILE *pf;
     char *res = 0;
-    int i, len;
+    int i;
 
     DEBUG2(stderr, "Entering ftt_get_driveid\n");
     i = ftt_findslot(basename, os, "",  &bus, &id);

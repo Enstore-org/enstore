@@ -4,6 +4,11 @@
 
 /* device information structure */
 
+#define FTT_EPRINT_BUF_SIZE 512
+extern char ftt_eprint_buf[];
+
+#define MAXDEVSLOTS 64
+
 typedef struct {		
 	char *device_name;	/* pathname for device 		*/
 	char density;		/* density code  		*/
@@ -16,7 +21,7 @@ typedef struct {
 } ftt_devinfo;
 
 typedef struct {
-	ftt_devinfo 	devinfo[32];		/* table of above */
+	ftt_devinfo 	devinfo[MAXDEVSLOTS];	/* table of above */
 	char 		*basename;		/* basename of device */
 	char            *prod_id;		/* SCSI ID prefix */
 	int 		**errortrans;		/* errno translation table */
@@ -27,7 +32,7 @@ typedef struct {
 	long 		current_block;		/* postion on tape */
 	long 		current_file;
 	int 		max_async;		/* async level */
-	int 		async_fd;		/* pipe fd for async ops */
+	FILE * 		async_pf;		/* pipe fd for async ops */
 	int 		async_pid;		/* proc id for async ops */
 	int 		last_operation;		/* operation num last done */
 	long		scsi_ops;		/* operation nums to passthru*/
@@ -50,6 +55,8 @@ typedef struct {
 /* data directions */
 #define FTT_DIR_READING 0
 #define FTT_DIR_WRITING 1
+
+extern char *ftt_label_type_names[];
 
 /* operation flags for last_operation, scsi_ops */
 #define FTT_OPN_READ		 1
@@ -102,19 +109,12 @@ typedef struct {
 } ftt_stat, *ftt_stat_buf;
 
 /* internally used routines */
-extern char *ftt_get_os();			/* get os release */
+extern char *ftt_get_os(void);			/* get os release */
 
 extern char *ftt_get_driveid(char *,char *);	/* find drive type given */
 						/* os release & basename */
 extern char *ftt_strip_to_basename(char *, char*);
 extern int ftt_translate_error(ftt_descriptor , int, char *, int , char *, int); 
-
-#define DEBUG1 (ftt_debug>=1)&&fprintf
-#define DEBUG2 (ftt_debug>=2)&&fprintf
-#define DEBUG3 (ftt_debug>=3)&&fprintf
-#define DEBUGDUMP1 (ftt_debug>=1)&&ftt_debug_dump
-#define DEBUGDUMP2 (ftt_debug>=2)&&ftt_debug_dump
-#define DEBUGDUMP3 (ftt_debug>=3)&&ftt_debug_dump
 
 typedef struct {
     char *os;
@@ -135,7 +135,7 @@ typedef struct {
 	char fixed;
         char rewind;
 	char first;
-    } devs[64];
+    } devs[MAXDEVSLOTS];
 } ftt_dev_entry;
 
 extern ftt_dev_entry devtable[];
@@ -166,3 +166,7 @@ extern int ftt_matches(char*, char*);
 extern int ftt_do_scsi_command(ftt_descriptor, char *,unsigned char *, 
 				int, unsigned char *, int, int, int);
 extern int ftt_set_hwdens_blocksize(ftt_descriptor, int, int); 
+extern int ftt_findslot(char*, char*, char*, int*, int*);
+extern void ftt_set_transfer_length(unsigned char *, int);
+extern int ftt_skip_fm_internal(ftt_descriptor, int);
+

@@ -64,9 +64,11 @@ extern char *		ftt_get_mode(ftt_descriptor, int *, int* mode, int *);
 extern void 		ftt_add_stats(ftt_stat_buf,ftt_stat_buf,ftt_stat_buf);
 extern int		ftt_chall(ftt_descriptor, int, int, int);
 extern int 		ftt_check(ftt_descriptor);
+extern int		ftt_clear_stats(ftt_descriptor);
 extern int		ftt_close(ftt_descriptor);
 extern int		ftt_close_dev(ftt_descriptor);
 extern int 		ftt_describe_dev(ftt_descriptor,char*,FILE*);
+extern int		ftt_debug_dump(unsigned char *, int);
 extern int 		ftt_dump_stats(ftt_stat_buf, FILE*);
 extern void		ftt_eprintf(char *, ...);
 extern int		ftt_erase(ftt_descriptor);
@@ -99,6 +101,7 @@ extern int		ftt_status(ftt_descriptor,int);
 extern void 		ftt_sub_stats(ftt_stat_buf,ftt_stat_buf,ftt_stat_buf);
 extern int		ftt_unload(ftt_descriptor);
 extern int 		ftt_update_stats(ftt_descriptor,ftt_stat_buf *);
+extern int		ftt_undump_stats(ftt_stat_buf, FILE *);
 extern int 		ftt_verify_vol_label(ftt_descriptor,int,char*,int,int);
 extern int 		ftt_wait(ftt_descriptor);
 extern int		ftt_write(ftt_descriptor, char*, int);
@@ -161,6 +164,7 @@ extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 #define FTT_UNKNOWN_HEADER 	4
 #define FTT_BLANK_HEADER	5
 #define FTT_DONTCHECK_HEADER	6
+#define FTT_MAX_HEADER		7
 
 /* readonly falues */
 

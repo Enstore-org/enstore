@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <ftt_private.h>
 
@@ -41,6 +42,7 @@ ftt_open(char *basename, int rdonly) {
     }
 
     res = ftt_open_logical(basename, os, drivid, rdonly);
+    free(basename);
     return res;
 }
 
@@ -65,7 +67,7 @@ ftt_descriptor
 ftt_open_logical(char *basename, char *os, char *drivid, int rdonly) {
     static char buf[512];
     static ftt_descriptor_buf d;
-    int n1, n2, n3;
+    int n1, n2;
     int i,j;
     ftt_descriptor pd;
 
@@ -132,11 +134,11 @@ ftt_open_logical(char *basename, char *os, char *drivid, int rdonly) {
 	ftt_errno = FTT_ENOMEM;
 	return 0;
     }
-    free(basename);
-    *pd = d;
+    memcpy(pd, &d, sizeof(d));
     return pd;
 }
 
+int
 ftt_close(ftt_descriptor d){
     int j;
 
@@ -144,8 +146,14 @@ ftt_close(ftt_descriptor d){
     CKNULL("ftt_descriptor", d);
 
     ftt_close_dev(d);
-    for(j = 0; 0 != d->devinfo[j].device_name ; j++ ){
+    for(j = 0; 0 != d->devinfo[j].device_name ; j++ ) {
 	free(d->devinfo[j].device_name);
+    }
+    if (d->basename) {
+	free(d->basename);
+    }
+    if (d->prod_id) {
+	free(d->prod_id);
     }
     free(d);
     return 1;
@@ -179,12 +187,13 @@ ftt_open_dev(ftt_descriptor d) {
 	    d->which_is_open = -1;
 	}
     }
-    DEBUG2(stderr,"Returing %d\n", d->file_descriptor);
+    DEBUG2(stderr,"Returing %ld\n", d->file_descriptor);
     return d->file_descriptor;
 }
 
 int
 ftt_close_dev(ftt_descriptor d) {
+    int res = 0;
 
     ENTERING("ftt_close_dev");
     CKNULL("ftt_descriptor", d);
@@ -192,8 +201,9 @@ ftt_close_dev(ftt_descriptor d) {
     if ( d->which_is_open >= 0 ){
 	ftt_write_fm_if_needed(d);
         DEBUG1(stderr,"Actually closing\n");
-	close(d->file_descriptor);
+	res = close(d->file_descriptor);
 	d->which_is_open = -1;
 	d->file_descriptor = -1;
     }
+    return res;
 }

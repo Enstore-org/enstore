@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <ftt_private.h>
 #include <ftt_mtio.h>
 #include <string.h>
@@ -23,9 +24,8 @@ static struct tapeop ioctlbuf;
 ** error translation if it fails.
 */
 static int 
-ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, char *cdb) {
+ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *cdb) {
     int res;
-    char *p;
 
     ENTERING("ftt_mtop");
     CKNULL("ftt_descriptor", d);
@@ -55,13 +55,13 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, char *cdb) {
     return res;
 }
 
-char ftt_cdb_skipfm[]	= {0x11, 0x01, 0x00, 0x00, 0x00, 0x00};
-char ftt_cdb_skipbl[]	= {0x11, 0x00, 0x00, 0x00, 0x00, 0x00};
-char ftt_cdb_rewind[]	= {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-char ftt_cdb_unload[]	= {0x1b, 0x00, 0x00, 0x00, 0x00, 0x00};
-char ftt_cdb_retension[]= {0x1b, 0x00, 0x00, 0x00, 0x03, 0x00};
-char ftt_cdb_erase[]	= {0x19, 0x00, 0x00, 0x00, 0x00, 0x00};
-char ftt_cdb_writefm[]	= {0x10, 0x00, 0x00, 0x00, 0x00, 0x00};
+unsigned char ftt_cdb_skipfm[]	= {0x11, 0x01, 0x00, 0x00, 0x00, 0x00};
+unsigned char ftt_cdb_skipbl[]	= {0x11, 0x00, 0x00, 0x00, 0x00, 0x00};
+unsigned char ftt_cdb_rewind[]	= {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+unsigned char ftt_cdb_unload[]	= {0x1b, 0x00, 0x00, 0x00, 0x00, 0x00};
+unsigned char ftt_cdb_retension[]= {0x1b, 0x00, 0x00, 0x00, 0x03, 0x00};
+unsigned char ftt_cdb_erase[]	= {0x19, 0x00, 0x00, 0x00, 0x00, 0x00};
+unsigned char ftt_cdb_writefm[]	= {0x10, 0x00, 0x00, 0x00, 0x00, 0x00};
 /*
 ** The remaining calls just invoke mtop with the right options
 */
@@ -198,6 +198,7 @@ ftt_writefm(ftt_descriptor d) {
 		"an ftt_writefm", ftt_cdb_writefm);
 }
 
+int
 ftt_skip_to_double_fm(ftt_descriptor d) {
     static char buf[65536];
     int res;
@@ -216,12 +217,16 @@ ftt_skip_to_double_fm(ftt_descriptor d) {
 int
 ftt_write_fm_if_needed(ftt_descriptor d) {
     int n = 0, res;
+    int savefile, saveblock;
 
     CKOK(d,"ftt_write_fm_if_needed",0,0);
     CKNULL("ftt_descriptor", d);
 
     if (FTT_OP_WRITE == d ->last_operation ||
 	    FTT_OP_WRITEFM == d ->last_operation ) {
+
+	savefile = d->current_file;
+	saveblock = d->current_block;
 	DEBUG3(stderr,"Writing first filemark...\n");
 	res = ftt_writefm(d);
 	if (res >= 0) {
@@ -237,6 +242,8 @@ ftt_write_fm_if_needed(ftt_descriptor d) {
 	    ftt_skip_fm_internal(d, n);
 	}
 	d->last_operation = FTT_OP_SKIPFM;
+	d->current_file = savefile;
+	d->current_block = saveblock;
     }
     return 0;
 }

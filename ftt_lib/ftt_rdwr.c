@@ -26,8 +26,8 @@ ftt_get_position(ftt_descriptor d, int *file, int *block) {
        return -1;
    }
 }
-char      ftt_cdb_read[]  = { 0x08, 0x00, 0x00, 0x00, 0x00, 0x00 },
-	  ftt_cdb_write[] = { 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00 };
+unsigned char	ftt_cdb_read[]  = { 0x08, 0x00, 0x00, 0x00, 0x00, 0x00 },
+	  	ftt_cdb_write[] = { 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 int
 ftt_read( ftt_descriptor d, char *buf, int length ) {
@@ -40,8 +40,13 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
     if ( 0 != (d->scsi_ops & FTT_OP_READ)){
 	DEBUG2(stderr, "SCSI pass-thru\n");
 	d->last_operation = FTT_OP_READ;
-	ftt_set_transfer_length(ftt_cdb_read,length);
-	res = ftt_do_scsi_command(d,"read",ftt_cdb_read, 6, buf, length, 5, 0);
+	if (d->current_blocksize == 0) {
+		ftt_set_transfer_length(ftt_cdb_read,length);
+	} else {
+		ftt_set_transfer_length(ftt_cdb_read,length/d->current_blocksize);
+	}
+	res = ftt_do_scsi_command(d,"read",ftt_cdb_read, 6, 
+				(unsigned char*)buf, length, 5, 0);
     } else {
 	DEBUG2(stderr,"System Call\n");
 	if (0 != (d->last_operation &(FTT_OP_WRITE|FTT_OP_WRITEFM)) &&
@@ -80,11 +85,16 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
     CKNULL("ftt_descriptor", d);
     CKNULL("data buffer pointer", buf);
 
-    if ( 0 != (d->scsi_ops & FTT_OP_WRITE)){
+    if ( 0 != (d->scsi_ops & FTT_OP_WRITE)) {
 	DEBUG2(stderr,"SCSI pass-thru\n");
 	d->last_operation = FTT_OP_WRITE;
-	ftt_set_transfer_length(ftt_cdb_read,length);
-	res = ftt_do_scsi_command(d,"write",ftt_cdb_write, 6, buf, length, 5,1);
+	if (d->current_blocksize == 0) {
+		ftt_set_transfer_length(ftt_cdb_write,length);
+	} else {
+		ftt_set_transfer_length(ftt_cdb_write,length/d->current_blocksize);
+	}
+	res = ftt_do_scsi_command(d,"write",ftt_cdb_write, 6, 
+				(unsigned char *)buf, length, 5,1);
     } else {
 	DEBUG2(stderr,"System Call\n");
 	if (0 != (d->last_operation &(FTT_OP_READ)) &&

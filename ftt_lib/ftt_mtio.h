@@ -59,7 +59,7 @@
 #include <sys/scsi.h>
 #include <sys/tape.h>
 #define tapeop stop
-#deifne TAPE_NOP   STFSR
+#define TAPE_NOP   STFSR
 #define TAPE_RETEN STRETEN
 #define TAPE_ERASE STERASE
 #define TAPE_REW STREW

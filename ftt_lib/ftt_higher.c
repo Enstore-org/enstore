@@ -34,27 +34,34 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 	return -1;
     }
     res = ftt_rewind(d);  			if (res < 0) return res;
-    res = ftt_read(d,buf,65536); 		/* errors to guess_label */
-    res = ftt_guess_label(buf,res,&pname, &len);if(res < 0) return res;
-    if (type == res && 0 == strncmp(vollabel,pname,len) && len ==
-    		strlen(vollabel)) {
+    if (type == FTT_DONTCHECK_HEADER) {
 	return 0;
-    }
-    if (len > 512) len = 511;
-    strncpy(label_buf,pname,len);
-    label_buf[len] = 0;
-    ftt_eprintf("ftt_verify_vol_label expected type %d, vollabel %s, but\n\
-	got type %d, vollabel %s.", type, vollabel, res, label_buf);
-    if (type == res) {
-        ftt_errno = FTT_EWRONGVOL;
     } else {
-        ftt_errno = FTT_EWRONGVOLTYP;
+	res = ftt_read(d,buf,65536); 		/* errors to guess_label */
+	res = ftt_guess_label(buf,res,&pname, &len);if(res < 0) return res;
+	if (type == res && 0 == strncmp(vollabel,pname,len) && len ==
+		    strlen(vollabel)) {
+	    return 0;
+	}
+	if (len > 512) len = 511;
+	strncpy(label_buf,pname,len);
+	label_buf[len] = 0;
+	ftt_eprintf("ftt_verify_vol_label expected type %s, vollabel %s, but\n\
+	    got type %d, vollabel %s.", ftt_label_type_names[type], vollabel,
+	    res, label_buf);
+	if (type == res) {
+	    ftt_errno = FTT_EWRONGVOL;
+	    res = -1;
+	} else {
+	    ftt_errno = FTT_EWRONGVOLTYP;
+	    res = -1;
+	}
     }
-    return -1;
+    return res;
 }
 
 int
-ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel){
+ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel) {
     int res;
     char buf[65536];
 
@@ -67,7 +74,8 @@ ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel){
 						if (res <  0) return res;
     res = ftt_write(d,buf,res);			if (res <  0) return res;
     ftt_close_dev(d);
-    ftt_skip_fm(d,1);
+    res = ftt_skip_fm(d,1);
+    return res;
 }
 
 int
@@ -99,6 +107,7 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
 	ftt_eprintf("ftt_describe_dev was given a device name not associated with the device.");
 	return -1;
     }
+    return 0;
 }
 
 #define LAST   1
@@ -163,6 +172,7 @@ ftt_update_stats(ftt_descriptor d, ftt_stat_buf *bp){
 	bp[LAST] = new_cur;
 	ftt_free_stat(tmp);
 	ftt_free_stat(delta);
+	return 0;
 }
 
 char *ftt_stat_names[] = {
@@ -232,6 +242,7 @@ ftt_dump_stats(ftt_stat_buf b, FILE *pf) {
 				ftt_stat_names[i], b->value[i]);
 		}
 	}
+	fprintf(pf, "\n");
 	return 0;
 }
 

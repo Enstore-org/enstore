@@ -1,3 +1,5 @@
+#include <string.h>
+#include <unistd.h>
 #include <stdio.h>
 #include "ftt_private.h"
 
@@ -12,13 +14,13 @@ ftt_get_basename(ftt_descriptor d) {
 
 char **
 ftt_list_all(ftt_descriptor d) {
-    static char *table[64];
+    static char *table[65];
     int i,j;
 
     ENTERING("ftt_list_all");
     PCKNULL("ftt_descriptor", d);
 
-    for( i = 0,j = 0; j < 64 && d->devinfo[i].device_name != 0; i++ ){
+    for( i = 0,j = 0; j < 65 && d->devinfo[i].device_name != 0; i++ ){
 	if (d->devinfo[i].first) {
 	    table[j++] = d->devinfo[i].device_name;
 	}
@@ -72,10 +74,10 @@ ftt_get_mode(ftt_descriptor d, int *density, int* mode, int *blocksize){
     ENTERING("ftt_get_mode");
     PCKNULL("ftt_descriptor", d);
 
-    density &&  (*density = d->devinfo[d->which_is_default].density);
-    mode &&     (*mode = d->devinfo[d->which_is_default].mode);
-    blocksize &&(*blocksize = d->devinfo[d->which_is_default].fixed ? 
-		    d->default_blocksize : 0);
+    if (density) *density = d->devinfo[d->which_is_default].density;
+    if (mode)    *mode = d->devinfo[d->which_is_default].mode;
+    if (blocksize) *blocksize = d->devinfo[d->which_is_default].fixed ? 
+		    d->default_blocksize : 0;
     return d->devinfo[d->which_is_default].device_name;
 }
 char *
@@ -112,10 +114,10 @@ ftt_get_mode_dev(ftt_descriptor d, char *devname, int *density,
     
     for( i = 0; d->devinfo[i].device_name != 0; i++ ){
 	if (0 == strcmp(d->devinfo[i].device_name, devname)) {
-	    density &&  (*density = d->devinfo[i].density);
-	    mode &&     (*mode = d->devinfo[i].mode);
-	    blocksize && (*blocksize =  d->devinfo[i].fixed);
-	    rewind &&   (*rewind = d->devinfo[i].rewind);
+	    if (density)   *density = d->devinfo[i].density;
+	    if (mode)      *mode = d->devinfo[i].mode;
+	    if (blocksize) *blocksize =  d->devinfo[i].fixed;
+	    if (rewind)    *rewind = d->devinfo[i].rewind;
 	    return 0;
 	}
     }

@@ -4,6 +4,17 @@
 
 #define splice(a,b,c,d) (((a)<<24)|((b)<<16)|((c)<<8)|(d))
 
+char *ftt_label_type_names[] = {
+    /* FTT_ANSI_HEADER         0 */ "FTT_ANSI_HEADER",
+    /* FTT_FMB_HEADER          1 */ "FTT_FMB_HEADER",
+    /* FTT_TAR_HEADER          2 */ "FTT_TAR_HEADER",
+    /* FTT_CPIO_HEADER         3 */ "FTT_CPIO_HEADER",
+    /* FTT_UNKNOWN_HEADER      4 */ "FTT_UNKNOWN_HEADER",
+    /* FTT_BLANK_HEADER        5 */ "FTT_BLANK_HEADER",
+    /* FTT_DONTCHECK_HEADER    6 */ "FTT_DONTCHECK_HEADER",
+    /* FTT_MAX_HEADER	       7 */ "FTT_MAX_HEADER", 
+};
+
 int
 ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
     char *p;
@@ -25,30 +36,30 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
     switch(splice(buf[0],buf[1],buf[2],buf[3])) {
 
     case splice('V','O','L','1'):
-	vol && (*vol = buf+4);
+	if (vol) *vol = buf+4;
 	p = buf+10;
 	while (' ' == *p) {
 	    p--;
 	}
-	vlen && (*vlen = (p - (buf + 4)) + 1);
+	if (vlen) *vlen = (p - (buf + 4)) + 1;
 	return FTT_ANSI_HEADER;
 
     case splice('0','7','0','7'):
-	vol && (*vol = buf + 0156);
-	vlen && (*vlen = strlen(*vol));
+	if (vol)  *vol = buf + 0156;
+	if (vlen) *vlen = strlen(*vol);
 	return FTT_CPIO_HEADER;
     }
 
     if (0 ==strcmp(buf+257, "ustar")) {
-	vol && (*vol = buf);
-	vlen && (*vlen = strlen(*vol));
+	if (vol) *vol = buf;
+	if (vlen) *vlen = strlen(*vol);
 	return FTT_TAR_HEADER;
     }
 
     p = strchr(buf,'\n');
     if (0 != p && (1024 == length || 2048 == length)) {
-	vol && (*vol = buf);
-	vlen && (*vlen = p - buf);
+	if (vol) *vol = buf;
+	if (vlen) *vlen = p - buf;
 	return FTT_FMB_HEADER;
     }
     return FTT_UNKNOWN_HEADER;
@@ -76,7 +87,12 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 	break;
     }
     ftt_errno = FTT_ENOTSUPPORTED;
-    ftt_eprintf("ftt_format_label called with an unsupported label type %d\n",
+    if ( type < FTT_MAX_HEADER ) {
+      ftt_eprintf("ftt_format_label called with an unsupported label type %s\n",
+		ftt_label_type_names[type]);
+    } else{
+      ftt_eprintf("ftt_format_label called with an unsupported label type %d\n",
 		type);
+    }
     return -1;
 }

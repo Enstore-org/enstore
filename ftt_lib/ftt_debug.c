@@ -1,6 +1,9 @@
-#include<stdio.h>
+#include <unistd.h>
+#include <ctype.h>
+#include <stdio.h>
 
-ftt_debug_dump(char *pc, int n){
+int
+ftt_debug_dump(unsigned char *pc, int n) {
 	int i, j;
 
 	if( 0 == pc ){
@@ -29,4 +32,5 @@ ftt_debug_dump(char *pc, int n){
 	}
 	putc('\n',stderr);
 	fflush(stderr);
+	return 0;
 }

@@ -42,11 +42,35 @@ ftt_status(ftt_descriptor d, int time_out) {
 ftt_set_hwdens_blocksize(ftt_descriptor d, int hwdens, int blocksize) {
     char *logical;
     static char cmd[512];
+    int res;
 
-    logical = strrchr(d->basename, '/');
-    if (logical != 0) {
-	logical++;
-	sprintf(cmd, "chdev -l %s -a blocksize=%d\n", logical, blocksize);
-	system(cmd);
+    DEBUG2(stderr,"Entering ftt_set_hwdens_blocksize\n");
+    if (0 == geteuid()) {
+	logical = strrchr(d->basename, '/');
+	DEBUG3(stderr,"Looking for last / in %s, found %s\n", d->basename, logical);
+	if (logical != 0) {
+	    logical++;
+	    sprintf(cmd, "chdev -l %s -a block_size=%d\n", logical, blocksize);
+	    DEBUG3(stderr,"Running \"%s\" to change blocksize\n", cmd);
+	    system(cmd);
+	}
+    } else {
+	switch(ftt_fork(d)){
+	static char s1[10], s2[10];
+
+	case -1:
+		return -1;
+
+	case 0:  /* child */
+		fflush(stdout);	/* make async_pf stdout */
+		close(1);
+		dup(fileno(d->async_pf));
+		sprintf(s1, "%d", hwdens);
+		sprintf(s2, "%d", blocksize);
+		execlp("ftt_suid", "ftt_suid", "-b", s1, s2, d->basename, 0);
+
+	default: /* parent */
+		res = ftt_wait(d);
+	}
     }
 }

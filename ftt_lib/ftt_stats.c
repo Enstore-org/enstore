@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <ftt_private.h>
 
 ftt_stat_buf
@@ -163,7 +164,7 @@ ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 ** you pass in the statbuf pointer, the log sense data buffer
 ** and the page code and statistic number for each.
 */
-static int
+static void
 decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
     static char printbuf[128];
     unsigned char *page;
@@ -201,51 +202,50 @@ ftt_get_stat_ops(char *name) {
 	    return ftt_stat_op_tab[i].stat_ops;
 	}
     }
+    return 0;
 }
 
 int
 ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
-    FILE *suidpipe;
-    static char suidcmd[512];
     int res;
-    int retcode;
     int i;
-    int page;
     unsigned char buf[512];
     int tape_size, remain_tape, error_count;
     int n_blocks, block_length;
     int stat_ops;
-    int len;
 
     CKOK(d,"ftt_get_stats",0,0);
     CKNULL("ftt_descriptor", d);
     CKNULL("statistics buffer pointer", b);
 
-    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != getuid()) {
-	sprintf(suidcmd, "ftt_suid %s", d->basename);
-	suidpipe = popen(suidcmd, "r");
-	fscanf(suidpipe, "%d\n", &res);
-	if (res < 0) {
-	    fscanf(suidpipe, "%d\n", &ftt_errno);
-	    len = fread( ftt_eprint_buf,1, 512, suidpipe);
-	    ftt_eprint_buf[len] = 0;
-	    return res;
-	} else {
-	    ftt_undump_stats(b,suidpipe);
+    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
+	switch(ftt_fork(d)){
+	case -1:
+		return -1;
+
+	case 0:  /* child */
+		fflush(stdout);	/* make async_pf stdout */
+		close(1);
+		dup(fileno(d->async_pf));
+		execlp("ftt_suid", "ftt_suid", "-s", d->basename, 0);
+
+	default: /* parent */
+		ftt_undump_stats(b,d->async_pf);
+		res = ftt_wait(d);
 	}
-	pclose(suidpipe);
     }
 
-    /* Things we know without asking */
+    /* Things we know without asking, and the suid program won't know */
     set_stat(b,FTT_USER_READ,itoa((long)d->readkb), 0);
     set_stat(b,FTT_USER_WRITE,itoa((long)d->writekb), 0);
     set_stat(b,FTT_N_READS,itoa((long)d->nreads), 0);
     set_stat(b,FTT_N_WRITES,itoa((long)d->nwrites), 0);
-    set_stat(b,FTT_CONTROLLER,d->controller, 0);
 
-    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != getuid()) {
+    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
 	return res;
     }
+
+    set_stat(b,FTT_CONTROLLER,d->controller, 0);
 
     if (d->current_valid==1) {
         /* we think we know where we are */
@@ -260,7 +260,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     stat_ops = ftt_get_stat_ops(d->prod_id);
 
     if (stat_ops & FTT_DO_TUR) {
-        static char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        static unsigned char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
 	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
@@ -272,7 +272,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_INQ) {
-	static char cdb_inquiry[]   = {0x12, 0x00, 0x00, 0x00,   56, 0x00};
+	static unsigned char cdb_inquiry[]   = {0x12, 0x00, 0x00, 0x00,   56, 0x00};
 
 	/* basic scsi inquiry */
 	res = ftt_do_scsi_command(d,"Inquiry", cdb_inquiry, 6, buf, 56, 10, 0);
@@ -280,9 +280,9 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    ftt_errno = FTT_EPARTIALSTAT;
 	    return res;
 	} else {
-	    set_stat(b,FTT_VENDOR_ID, buf+8, buf+16);
-	    set_stat(b,FTT_PRODUCT_ID, buf+16, buf+32);
-	    set_stat(b,FTT_FIRMWARE, buf+32, buf+36);
+	    set_stat(b,FTT_VENDOR_ID,  (char *)buf+8,  (char *)buf+16);
+	    set_stat(b,FTT_PRODUCT_ID, (char *)buf+16, (char *)buf+32);
+	    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
 	    if ( 0 != strcmp(d->prod_id, ftt_extract_stats(b,FTT_PRODUCT_ID))) {
 		char *tmp;
 
@@ -296,7 +296,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_SN) {
-        char cdb_inq_w_sn[]  = {0x12, 0x01, 0x80, 0x00,   14, 0x00};
+        static unsigned char cdb_inq_w_sn[]  = {0x12, 0x01, 0x80, 0x00,   14, 0x00};
 
 	/* scsi inquiry w/ serial number */
 	res = ftt_do_scsi_command(d,"Inquiry", cdb_inq_w_sn, 6, buf, 14, 10, 0);
@@ -304,11 +304,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    ftt_errno = FTT_EPARTIALSTAT;
 	    return res;
 	} else {
-	    set_stat(b,FTT_SERIAL_NUM, buf+4, buf+14);
+	    set_stat(b,FTT_SERIAL_NUM, (char *)buf+4, (char *)buf+14);
 	}
     }
     if (stat_ops & FTT_DO_MS) {
-	static char cdb_mode_sense[]= {0x1a, 0x00, 0x00, 0x00,   18, 0x00};
+	static unsigned char cdb_mode_sense[]= {0x1a, 0x00, 0x00, 0x00,   18, 0x00};
 
 	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 18, 10, 0);
 	if(res < 0){
@@ -337,7 +337,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_RS) {
-	static char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   30, 0x00};
+	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   30, 0x00};
 
 	/* request sense data */
 	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 30, 10, 0);
@@ -441,10 +441,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_LSRW) {
-	static char cdb_log_senser[]= {0x4d, 0x00, 0x43, 0x00, 0x00, 0x00, 
-					0x00, 0, 128, 0};
-	static char cdb_log_sensew[]= {0x4d, 0x00, 0x42, 0x00, 0x00, 0x00, 
-				       0x00, 0, 128, 0};
+	static unsigned char cdb_log_senser[]= {0x4d, 0x00, 0x43, 0x00, 0x00, 
+						0x00, 0x00, 0, 128, 0};
+	static unsigned char cdb_log_sensew[]= {0x4d, 0x00, 0x42, 0x00, 0x00, 
+						0x00, 0x00, 0, 128, 0};
 
 	/* log sense read data */
 	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_senser, 10, 
@@ -470,8 +470,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	set_stat(b,FTT_COUNT_ORIGIN,"Log Sense",0);
     }
     if (stat_ops & FTT_DO_LSC) {
-	static char cdb_log_sensec[]= {0x4d, 0x00, 0x72, 0x00, 0x00, 0x00, 
-					0x00, 0, 128, 0};
+	static unsigned char cdb_log_sensec[]= {0x4d, 0x00, 0x72, 0x00, 0x00, 
+						0x00, 0x00, 0, 128, 0};
 
 	/* log sense compression data */
 	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sensec, 10, 
@@ -485,8 +485,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_RP) {
-	static char cdb_read_position[]= {0x34, 0x00, 0x00, 0x00, 0x00, 0x00,
-					  0x00, 0x00, 0x00, 0x00};
+	static unsigned char cdb_read_position[]= {0x34, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00};
 
 	res = ftt_do_scsi_command(d,"Read Position", cdb_read_position, 10, 
 				  buf, 20, 10, 0);
@@ -508,42 +508,60 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     return 0;
 }
 
+int
 ftt_clear_stats(ftt_descriptor d) {
-    static char buf[256];
+    static unsigned char buf[256];
     int stat_ops, res;
+
+    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
+	switch(ftt_fork(d)){
+	case -1:
+		return -1;
+
+	case 0:  /* child */
+		fflush(stdout);	/* make async_pf stdout */
+		close(1);
+		dup(fileno(d->async_pf));
+		return execlp("ftt_suid", "ftt_suid", "-c", d->basename, 0);
+
+	default: /* parent */
+		return ftt_wait(d);
+	}
+    }
 
     stat_ops = ftt_get_stat_ops(d->prod_id);
     if (stat_ops & FTT_DO_TUR) {
-        static char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        static unsigned char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
 	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
     }
     if (stat_ops & FTT_DO_INQ) {
-	static char cdb_inquiry[]   = {0x12, 0x00, 0x00, 0x00,   56, 0x00};
+	static unsigned char cdb_inquiry[]   = {0x12, 0x00, 0x00, 0x00,   56, 0x00};
 
 	/* double check our id... */
 	res = ftt_do_scsi_command(d,"Inquiry", cdb_inquiry, 6, buf, 56, 10, 0);
 	buf[16] = 0;
-	if ( 0 != strcmp(d->prod_id,buf+8)) {
+	if ( 0 != strcmp((char *)d->prod_id,(char *)buf+8)) {
 	    char *tmp;
 
 	    /* update or product id and stat_ops if we were wrong */
 	    tmp = d->prod_id;
-	    d->prod_id = strdup(buf+8);
+	    d->prod_id = strdup((char *)buf+8);
 	    free(tmp);
 	    stat_ops = ftt_get_stat_ops(d->prod_id);
 	}
     }
     if (stat_ops & FTT_DO_EXBRS) {
-    	static char cdb_clear_rs[]  = { 0x03, 0x00, 0x00, 0x00, 30, 0x80 };
+    	static unsigned char cdb_clear_rs[]  = { 0x03, 0x00, 0x00, 0x00, 30, 0x80 };
 	res = ftt_do_scsi_command(d,"Clear Request Sense", cdb_clear_rs, 6, buf, 30, 10, 0);
     }
     if (stat_ops & FTT_DO_LSRW) {
-        static char cdb_clear_ls[] = { 0x4c, 0x02, 0x40, 0x00, 0x00, 0x00, 
+        static unsigned char cdb_clear_ls[] = { 0x4c, 0x02, 0x40, 0x00, 0x00, 0x00, 
 					0x00, 0x00, 0x00, 0x00};
 	res = ftt_do_scsi_command(d,"Clear Request Sense", cdb_clear_ls, 10, buf, 256, 10, 0);
     }
+    return res;
 }
 
 char *

@@ -21,7 +21,7 @@ ftt_echo "reading 20k of data"
 ftt_echo "look at output, make sense?"
 #***********************************
 ftt_rewind
-ftt_verify_block -nblock 10
+ftt_verify_tblock -nblock 10
 ftt_close_dev
 ftt_update_stats -part_display
 ftt_close

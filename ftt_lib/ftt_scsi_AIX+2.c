@@ -51,7 +51,7 @@ scsi_handle
 ftt_scsi_open(char *pc) { 
 	int n;
 	DEBUG2(stderr,"entering ftt_scsi_open(%s,..)\n",pc);
-	n = open(pc, O_RDWR, 0);
+	n = openx(pc, O_RDWR, 0,SC_DIAGNOSTIC);
 	return (scsi_handle)n;
 }
 
