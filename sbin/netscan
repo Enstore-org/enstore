@@ -16,6 +16,7 @@ ALLOW_BASE="
        LISTEN,inetd,:eklogin,TCP,x
        LISTEN,inetd,:netperf,TCP,x
        LISTEN,python,:,,/home/enstore/enstore/bin/encp
+       LISTEN,netserver,:,x
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
        UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
        UDP,xntpd,:ntp,UDP,x
@@ -27,7 +28,9 @@ ALLOW_BASE="
        TCP,kshd,:,TCP,kshd kshd -5c
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
        TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+       TCP,netserver,:netperf,x
 "
+
 ALLOW_SRV5="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
        LISTEN,conserver,:console,TCP,x
