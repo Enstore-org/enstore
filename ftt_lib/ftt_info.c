@@ -17,17 +17,13 @@ ftt_density_to_name(ftt_descriptor d, int density){
     char *res;
 
     ENTERING("ftt_density_to_name");
-    if (density > MAX_TRANS_DENSITY) {
-	res = 0;
+    if (density + 1 < MAX_TRANS_DENSITY ) {
+	res = d->densitytrans[density + 1];
     } else {
-	res = d->densitytrans[density];
+	res = 0;
     }
-    if (res == 0) {
-	ftt_errno = FTT_ENODEV;
-	ftt_eprintf(
-	   "ftt_density_to_name: density %d is not appropriate for device %s\n",
-	   density,
-	   d->basename );
+    if ( 0 == res ) {
+	res = "unknown";
     }
     return res;
 }
@@ -41,7 +37,7 @@ ftt_name_to_density(ftt_descriptor d, char *name){
 
     for (res = 0; d->densitytrans[res] != 0; res++) {
 	if( ftt_matches(name, d->densitytrans[res])) {
-	    return res;
+	    return res - 1;
 	}
     }
     ftt_errno = FTT_ENODEV;
@@ -105,9 +101,11 @@ ftt_chall(ftt_descriptor d, int uid, int gid, int mode){
     return 0;
 }
 
+static char *comptable[] = {"uncompressed", "compressed"};
 char *
-ftt_avail_mode(ftt_descriptor d, int density, int mode, int fixedblock){
+ftt_avail_mode(ftt_descriptor d, int density, int mode, int fixedblock) {
     int i;
+    char *dname;
 
     ENTERING("ftt_avail_mode");
     PCKNULL("ftt_descriptor", d);
@@ -120,8 +118,11 @@ ftt_avail_mode(ftt_descriptor d, int density, int mode, int fixedblock){
 	    return d->devinfo[i].device_name;
 	}
     }
-    ftt_eprintf("ftt_avail_mode: mode %d density %d %s is not avaliable on device %s", mode, density, 
-		fixedblock?"fixed block" : "variable block", d->basename);
+    dname = ftt_density_to_name(d, density);
+    ftt_eprintf("ftt_avail_mode: mode %s(%d) density %s(%d) %s is not avaliable on device %s", 
+	    comptable[mode], mode, 
+	    dname, density, 
+	    fixedblock?"fixed block" : "variable block", d->basename);
     ftt_errno = FTT_ENODEV;
     return 0;
 }
@@ -141,6 +142,7 @@ ftt_get_mode(ftt_descriptor d, int *density, int* mode, int *blocksize){
 char *
 ftt_set_mode(ftt_descriptor d, int density, int mode, int blocksize) {
     int i;
+    char *dname;
 
     ENTERING("ftt_set_mode");
     PCKNULL("ftt_descriptor", d);
@@ -164,8 +166,11 @@ ftt_set_mode(ftt_descriptor d, int density, int mode, int blocksize) {
 	    return d->devinfo[i].device_name;
 	}
     }
-    ftt_eprintf("ftt_set_mode: mode %d density %d blocksize %d is not avaliable on device %s", 
-		mode, density, blocksize, d->basename);
+    dname = ftt_density_to_name(d, density);
+    ftt_eprintf("ftt_set_mode: mode %s(%d) density %s(%d) blocksize %d is not avaliable on device %s", 
+	    comptable[mode], mode, 
+	    dname , density, 
+		blocksize, d->basename);
     ftt_errno = FTT_ENODEV;
     return 0;
 }
@@ -207,7 +212,7 @@ ftt_get_mode_dev(ftt_descriptor d, char *devname, int *density,
 }
 
 int 
-ftt_set_mode_dev(ftt_descriptor d, char *devname, int blocksize, int force) {
+ftt_set_mode_dev(ftt_descriptor d, char *devname, int force) {
     int i;
 
     ENTERING("ftt_set_mode_dev");
@@ -217,7 +222,7 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int blocksize, int force) {
     for( i = 0; d->devinfo[i].device_name != 0; i++ ){
 	if (0 == strcmp(d->devinfo[i].device_name, devname)) {
 	    d->which_is_default = i;
-	    d->default_blocksize = blocksize;
+	    d->default_blocksize = -1;
 	    return 0;
 	}
     }
@@ -242,8 +247,8 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int blocksize, int force) {
 	/* and we know/set nothing ... */
 	d->devinfo[i].mode = -1;
 	d->devinfo[i].density = -1;
-	d->devinfo[i].fixed = blocksize != 0;
-	d->default_blocksize = blocksize;
+	d->devinfo[i].fixed = -1;
+	d->default_blocksize = -1;
 
 	/* make sure sentinel null is in table */
 	d->devinfo[i+1].device_name = 0;

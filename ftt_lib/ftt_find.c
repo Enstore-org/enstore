@@ -53,7 +53,12 @@ ftt_strip_to_basename(const char *basename,char *os) {
     if (i < 0) {
 	return 0;
     }
-    sprintf(buf,devtable[i].baseconv_out, bus, id,string);
+    if (0 == strcmp(devtable[i].baseconv_out,"%3$s")) {
+	/* Solaris dies here, don't know why */
+	sprintf(buf, "%s", string);
+    } else {
+        sprintf(buf,devtable[i].baseconv_out, bus, id,string);
+    }
     return strdup(buf);
 }
 

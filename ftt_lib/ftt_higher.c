@@ -116,9 +116,9 @@ ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel) {
 }
 
 char *ftt_ascii_rewindflags[] = {
-	"rewind on close",
-	"retension on open",
-	"byte swap",
+	"rewind",
+	"retension",
+	"swab",
 	"read only",
 	0
 };
@@ -137,7 +137,7 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
     CKNULL("stdio file handle", pf);
 
     found = 0;
-    starter = dev;
+    starter = "\t";
     for (i = 0; d->devinfo[i].device_name !=0; i++) {
 	dname = d->densitytrans[d->devinfo[i].density+1];
 	if (dname == 0) {
@@ -147,20 +147,19 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
 	    if (d->devinfo[i].passthru) {
 	        fprintf(pf, "%s SCSI pass-thru ", starter);
 	    } 
-	    fprintf(pf, "%s %s mode(%d), %s, (Density Code 0x%x), %s",
+	    fprintf(pf, "%s %s mode(%d), %s, (0x%x), %s",
 		    starter,
 		    dname,
 		    d->devinfo[i].density, 
 		    d->devinfo[i].mode? "compressed":"uncompressed",
 		    d->devinfo[i].hwdens,
-		    d->devinfo[i].fixed? "fixed block":"variable block");
+		    d->devinfo[i].fixed? "fixed":"variable");
 	    for (j = 0; ftt_ascii_rewindflags[j] != 0; j++) {
 		if (d->devinfo[i].rewind & (1<<j)) {
 		    fprintf(pf, ", %s", ftt_ascii_rewindflags[j]);
 		}
 	    }
-	    fprintf(pf, "\n");
-	    starter = "and also";
+	    starter = " and\n\t";
 	    found = 1;
 	}
     }
@@ -169,6 +168,7 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
 	ftt_errno = FTT_ENOENT;
 	return -1;
     }
+    fprintf(pf, "\n");
     return 0;
 }
 
@@ -337,4 +337,115 @@ ftt_undump_stats(ftt_stat_buf b, FILE *pf) {
 	    }
 	}
 	return 0;
+}
+
+static char namebuf[512];
+
+void
+ftt_first_supported(int *pi) {
+	*pi = 0;
+	return;
+}
+
+ftt_descriptor
+ftt_next_supported(int *pi) {
+	ftt_descriptor res;
+	if(devtable[*pi].os == 0) {
+		return 0;
+	}
+	sprintf(namebuf, devtable[*pi].baseconv_out, 0, 0, "");
+	res = ftt_open_logical(namebuf,devtable[*pi].os,devtable[*pi].drivid,0);
+	(*pi)++;
+	return res;
+}
+
+ftt_list_supported(FILE *pf) {
+    ftt_descriptor d;
+    char **ppc;
+    char *last_os, *last_prod_id, *last_controller;
+    int i, dens, mode; 
+    int flags;
+
+    last_os = strdup("-");
+    last_prod_id = strdup("-"); 
+    last_controller = strdup("-"); 
+    for(ftt_first_supported(&i); d = ftt_next_supported(&i); ) {
+	for( dens = 20; dens > -1; dens-- ) {
+	    flags = 0;
+
+	    if (0 != ftt_avail_mode(d, dens, 0, 0)) {
+		flags |= 1;
+	    }
+	    if (0 != ftt_avail_mode(d, dens, 0, 1)) {
+		flags |= 2;
+	    }
+	    if (0 != ftt_avail_mode(d, dens, 1, 0)) {
+		flags |= 4;
+	    }
+	    if (0 != ftt_avail_mode(d, dens, 1, 1)) {
+		flags |= 8;
+	    }
+
+	    if (flags == 0) {
+		continue;
+	    }
+
+	    /* now print a line based on the flags */
+
+	    /* only print OS if different */
+	    if (0 != strcmp(last_os, d->os)) {
+		fprintf(pf, "\n");
+		fprintf(pf, "OS\tCNTRLR\tDEVICE\t\tCOMP\tBLOCK\tMODE\n");
+		fprintf(pf, "--\t------\t------\t\t----\t-----\t----\n");
+		fprintf(pf, "%s\t", d->os);
+	    } else {
+		fprintf(pf, "\t");
+	    }
+
+	    /* only print controller if different */
+	    if (0 != strcmp(last_controller, d->controller) || 0 != strcmp(last_os,d->os)) {
+	        fprintf(pf,"%s\t", d->controller);
+	    } else {
+		fprintf(pf, "\t");
+	    }
+
+	    /* only print prod_id if different */
+	    if (0 != strcmp(last_prod_id, d->prod_id) || 0 != strcmp(last_controller,d->controller) 
+			|| 0 != strcmp(last_os,d->os)) {
+		if( strlen(d->prod_id) > 7 ) {
+		    fprintf(pf, "%s\t", d->prod_id);
+		} else {
+		    fprintf(pf, "%s\t\t", d->prod_id);
+		}
+		free(last_os);
+		free(last_prod_id);
+		free(last_controller);
+		last_os = strdup(d->os);
+		last_prod_id = strdup(d->prod_id);
+		last_controller = strdup(d->controller);
+	    } else {
+		fprintf(pf, "\t\t");
+	    }
+
+
+	    if ( (flags & 12) && (flags & 3) ) { /* compression (8 | 4) and not compression (1|2) */
+		fprintf(pf, "y/n\t");
+	    } else if ( (flags & 12)) { /* compression (8 | 4) */
+		fprintf(pf, "y\t");
+	    } else {
+		fprintf(pf, "n\t");
+	    }
+
+	    if ( (flags & 10) && (flags & 5) ) { /* fixed block and variable */
+		fprintf(pf,"f/v\t");
+	    } else if ( flags & 10 ) {
+		fprintf(pf,"f\t");
+	    } else {
+		fprintf(pf,"v\t");
+	    }
+	    fprintf(pf, "%s mode\n", ftt_density_to_name(d, dens));
+
+	}
+	ftt_close(d);
+    }
 }

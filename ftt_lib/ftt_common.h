@@ -48,7 +48,7 @@ extern int		ftt_report(ftt_descriptor);
 extern int		ftt_retension(ftt_descriptor);
 extern int		ftt_rewind(ftt_descriptor);
 extern char * 		ftt_set_mode(ftt_descriptor, int density, int,  int );
-extern int 		ftt_set_mode_dev(ftt_descriptor, char *, int , int );
+extern int 		ftt_set_mode_dev(ftt_descriptor, char *, int );
 extern int		ftt_skip_fm(ftt_descriptor, int);
 extern int		ftt_skip_rec(ftt_descriptor, int);
 extern int 		ftt_skip_to_double_fm(ftt_descriptor d);

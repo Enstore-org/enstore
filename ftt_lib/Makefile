@@ -29,7 +29,7 @@ CFLAGS=-I. -Ilocal -g  $(WARN)
 
 LIB=libftt.a
 
-PROGS=ftt_suid asyncdemo
+PROGS=ftt_suid asyncdemo listdemo
 
 all: local $(LIB) $(PROGS)
 
@@ -77,6 +77,10 @@ ftt_suid: $(SUIDOBJ) $(LIB)
 
 asyncdemo: asyncdemo.c $(LIB)
 	$(CC) $(CFLAGS) -o $@ asyncdemo.c $(LIB) $(LIBS)
+
+listdemo: listdemo.c $(LIB)
+	$(CC) $(CFLAGS) -o $@ listdemo.c $(LIB) $(LIBS)
+
 
 # this is shotgunning, crude but effective :-)
 $(OBJ): $(HDR)

@@ -55,6 +55,7 @@ typedef struct {
 	int		nreads, nwrites;	/* operation counts */
 	scsi_handle     scsi_descriptor;	/* descriptor feild */
 	int 		last_pos;		/* have we moved data */
+	char *		os;			/* operating system */
 } ftt_descriptor_buf, *ftt_descriptor;
 
 /* data directions */
@@ -157,8 +158,9 @@ extern ftt_stat_entry ftt_stat_op_tab[];
 #define FTT_DO_DLTRS  0x00000200   /* DLT Request sense added bytes */
 #define FTT_DO_TUR    0x00000400   /* do a test unit ready */
 #define FTT_DO_RP     0x00000800   /* do a read position */
-#define FTT_DO_RP_SOMETIMES 0x00001000  /* do a read position,okay if fails*/
-#define FTT_DO_SCSI2_MS     0x00002000	/* do a SCSI-2 mode (compression,etc.) */
+#define FTT_DO_RP_SOMETIMES 	0x00001000 /* do a read position,okay if fails*/
+#define FTT_DO_MS_Px10     	0x00002000 /* do a ModeSense p.0x10 */
+#define FTT_DO_MS_Px20_EXB	0x00004000 /* do a ModeSense p.0x20(EXB) */
 
 extern int ftt_write_fm_if_needed(ftt_descriptor);
 extern int ftt_matches(char*, char*);

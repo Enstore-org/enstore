@@ -10,6 +10,7 @@ extern int errno;
 
 ftt_descriptor
 ftt_open(const char *name, int rdonly) {
+    static char alignname[512];
     char *basename;
     char *os, *drivid;
     ftt_descriptor res;
@@ -17,6 +18,7 @@ ftt_open(const char *name, int rdonly) {
     ENTERING("ftt_open");
     PCKNULL("base name", name);
 
+    strcpy(alignname, name);
     os=ftt_get_os();
     DEBUG2(stderr,"os is %s\n", os);
     if( 0 == os ){
@@ -25,7 +27,7 @@ ftt_open(const char *name, int rdonly) {
 	return 0;
     }
 
-    basename=ftt_strip_to_basename(name, os);
+    basename=ftt_strip_to_basename(alignname, os);
     DEBUG2(stderr,"basename is %s\n", basename);
     if ( basename == 0 ) {
 	ftt_eprintf("ftt_open: unable to determine drive basename.\n");
@@ -115,6 +117,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     d.densitytrans = devtable[i].densitytrans;
     d.basename = basename;
     d.prod_id = strdup(drivid);
+    d.os = devtable[i].os;
     d.last_pos = -1;
     if( 0 == d.prod_id ) {
 	ftt_eprintf("ftt_open_logical: out of memory allocating string for \"%s\" errno %d" , drivid, errno);
@@ -123,7 +126,11 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     }
 
     for( j = 0; devtable[i].devs[j].device_name != 0; j++ ) {
-        sprintf(buf, devtable[i].devs[j].device_name, n1, n2, string);
+	if (0 == strcmp(devtable[i].devs[j].device_name,"%3$s")) {
+            sprintf(buf, "%s", string);
+	} else {
+            sprintf(buf, devtable[i].devs[j].device_name, n1, n2, string);
+	}
 	d.devinfo[j].device_name = strdup(buf);
 	if( 0 == d.devinfo[j].device_name ) {
 	    ftt_eprintf("fft_open_logical: out of memory allocating string for \"%s\" errno %d" , buf, errno);
@@ -289,8 +296,9 @@ ftt_open_dev(ftt_descriptor d) {
 
 	}
 
-        if (d->default_blocksize != d->current_blocksize && 
-					!(d->flags&FTT_FLAG_BSIZE_AFTER)) {
+        if (-1 != d->default_blocksize &&
+		d->default_blocksize != d->current_blocksize && 
+		!(d->flags&FTT_FLAG_BSIZE_AFTER)) {
 	    res = ftt_set_blocksize(d, d->default_blocksize);
 	    if (res < 0) {
 	       return res;
@@ -315,8 +323,9 @@ ftt_open_dev(ftt_descriptor d) {
 			d->file_descriptor, "ftt_open_dev",1);
 	    d->which_is_open = -1;
 	}
-        if (d->default_blocksize != d->current_blocksize && 
-					(d->flags&FTT_FLAG_BSIZE_AFTER)) {
+        if (-1 != d->default_blocksize &&
+		d->default_blocksize != d->current_blocksize && 
+		(d->flags&FTT_FLAG_BSIZE_AFTER)) {
 	    res = ftt_set_blocksize(d, d->default_blocksize);
 	    if (res < 0) {
 	       return res;

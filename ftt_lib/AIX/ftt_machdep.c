@@ -146,13 +146,15 @@ ftt_set_compression(ftt_descriptor d, int compression) {
 
     DEBUG2(stderr, "Entering ftt_set_compression\n");
     if (0 == geteuid()) {
-	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_SCSI2_MS) {
+	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_MS_Px10) {
 	    DEBUG3(stderr, "Using SCSI Mode sense 0x10 page to set compression\n");
 	    ftt_open_scsi_dev(d);
 	    ftt_do_scsi_command(d, "Mode sense", mod_sen, 6, buf, 28, 5, 0);
 	    buf[0] = 0;
 	    /* we shouldn't be changing density here but it shouldn't hurt */
-	    buf[4] = d->devinfo[d->which_is_default].hwdens;
+	    /* yes it will! the setuid program doesn't know which density */
+	    /* the parent process set... */
+	    /* buf[4] = d->devinfo[d->which_is_default].hwdens; */
 	    buf[4 + 8 + 14] = compression;
 	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel, 6, buf, 28, 5, 1);
 	    ftt_close_scsi_dev(d);

@@ -318,7 +318,6 @@ static int	blocksize;		/* block size */
 static char	*estatus_str;		/* expected status string */
 ftt_t_argt	argt[] = {
  	{"<device_name>",FTT_T_ARGV_STRING,	NULL,		&devname},
- 	{"-blocksize",	FTT_T_ARGV_INT,		NULL,		&blocksize},
  	{"-force",	FTT_T_ARGV_CONSTANT,	(char *)TRUE,	&force},
  	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
  	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
@@ -331,7 +330,7 @@ status = ftt_t_parse (&argc, argv, argt);
 FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
 FTT_T_CHECK_ESTATUS (estatus_str, estatus);
 
-status = ftt_set_mode_dev(ftt_t_fd,devname,blocksize,force);
+status = ftt_set_mode_dev(ftt_t_fd,devname,force);
 FTT_T_CHECK_CALL(status,estatus);
 return 0;
 }
@@ -413,6 +412,7 @@ int blockno;                                            /* block number */
 ftt_stat_buf	statbuf;				/* status buffer */
 char		*statval_str;				/* stat value string */
 int		statval;				/* stat value */
+char		*hwdens_str;				/* hwdens value */
  
 /* get the status buffer
    --------------------- */
@@ -477,8 +477,9 @@ for (density = 0; density < 10; density++)              /* all densities */
 	 if (statval_str) statval = atoi(statval_str);
 	 if (statval != density)
 	    {
-	    fprintf (stderr,"Densities don't match: Expected %d Got: %d\n",
-		  density,statval);
+	    hwdens_str = ftt_extract_stats (statbuf, FTT_DENSITY);
+	    fprintf (stderr,"Densities don't match: Expected %d Got: %d(%s)\n",
+		  density,statval,hwdens_str);
 	    /* return 0; */
 	    }
 	 statval_str = ftt_extract_stats (statbuf,FTT_BLOCK_SIZE);

@@ -28,8 +28,7 @@ ftt_status(ftt_descriptor d, int time_out) {
     res = ftt_translate_error(d,FTT_OPN_STATUS,"ftt_status",
 				res,"an MTIOCGET ioctl()",1);
 
-    while ((0 <= res && !(buf.mt_dposn & MT_ONL) && time_out > 0) ||
-	   (0 > res && FTT_BUSY == ftt_errno && time_out > 0)) {
+    while ((0 <= res && !(buf.mt_dposn & MT_ONL) && time_out > 0)) {
 	sleep(1);
 	res = ioctl(d->file_descriptor,MTIOCGET,&buf);
 	res = ftt_translate_error(d,FTT_OPN_STATUS,"ftt_status",

@@ -139,7 +139,6 @@ extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 /* ftt_status return bitflags 
 */
 #define FTT_ABOT	0x01
-#define FTT_AFM		0x02
 #define FTT_AEOT	0x04
 #define FTT_AEW 	0x08
 #define FTT_PROT	0x10

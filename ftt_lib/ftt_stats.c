@@ -66,18 +66,23 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 	return;
     }
 
-    /* null terminate if pcEnd points somewhere, copy the string, 
+    /* null terminate at pcEnd, copy the string, 
     ** and then put the byte back where we scribbled the null
+    ** ... after eating blanks off the end
     */
-    if (pcEnd != 0) {
-	save = *pcEnd;
-	*pcEnd = 0;
+    if (pcEnd == 0) {
+	pcEnd = pcStart + strlen(pcStart) + 1;
     }
+    do {
+	pcEnd--;
+    } while(*pcEnd == ' ');
+    pcEnd++;
+    save = *pcEnd;
+    *pcEnd = 0;
+
     DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);
     b->value[n] = strdup(pcStart);
-    if (pcEnd != 0) {
-	*pcEnd = save;
-    }
+    *pcEnd = save;
 }
 
 int ftt_numeric_tab[FTT_MAX_STAT] = {
@@ -219,6 +224,9 @@ int
 ftt_get_stat_ops(char *name) {
     int i;
     DEBUG1(stderr, "entering get_stat_ops\n");
+    if (*name == 0) {
+	return 0; /* unknown device id */
+    }
     for (i = 0; ftt_stat_op_tab[i].name != 0; i++ ) {
 	if (ftt_matches(name, ftt_stat_op_tab[i].name)) {
             DEBUG2(stderr, "found stat_op == %x\n", i);
@@ -472,16 +480,29 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    }
 	}
     }
-    if (stat_ops & FTT_DO_SCSI2_MS) {
-	static unsigned char cdb_s2_mode_sense[]= 
+    if (stat_ops & FTT_DO_MS_Px10) {
+	static unsigned char cdb_mode_sense_p10[]= 
 			{ 0x1a, 0x08, 0x10, 0x00,   20, 0x00};
 
-	res = ftt_do_scsi_command(d,"mode sense",cdb_s2_mode_sense, 
+	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p10, 
 				  6, buf, 20, 10, 0);
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
 	} else {
 	    set_stat(b,FTT_TRANS_COMPRESS,     itoa((long)buf[18]), 0);
+	}
+    }
+    if (stat_ops & FTT_DO_MS_Px20_EXB) {
+	static unsigned char cdb_mode_sense_p20[]= 
+			{ 0x1a, 0x08, 0x20, 0x00, 0x0a, 0x00};
+
+	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p20, 
+				  6, buf, 20, 10, 0);
+	if(res < 0){
+	    ftt_errno = FTT_EPARTIALSTAT;
+	} else {
+	    set_stat(b,FTT_TRANS_DENSITY,     itoa(!bit(5,buf[7])), 0);
+	    set_stat(b,FTT_TRANS_COMPRESS,    itoa( bit(6,buf[7])), 0);
 	}
     }
     if (stat_ops & FTT_DO_LSRW) {

@@ -77,14 +77,24 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 int
 ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 
+#define BLEN 512
+    static char volbuf[BLEN];
     ENTERING("ftt_format_label");
     CKNULL("label buffer pointer", buf);
     
+    if (vlen >= BLEN) {
+	ftt_eprintf("volume label too long; maximum is %d", BLEN-1);
+	ftt_errno = FTT_EFAULT;
+	return -1;
+    }
+    memcpy( volbuf, vol, vlen );
+    volbuf[vlen] = 0;
+
     switch(type) {
     case FTT_ANSI_HEADER:
 	if (length >= 80) {
 	    sprintf(buf, "VOL1%-6.6s%-1.1s%-13.13s%-13.13s%-14.14s%-28.28s%-1.1s", 
-				vol, " ", " ", "ftt", " ", " " , "4");
+				volbuf, " ", " ", "ftt", " ", " " , "4");
 	    return 80;
 	 } else {
 	    ftt_errno = FTT_EBLKSIZE;
@@ -95,7 +105,7 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
     case FTT_FMB_HEADER:
 	if (length >= 2048) {
 	    sprintf(buf, "%s\n%s\n%s\n%s\n",
-			vol, "never", "cpio", "16k");
+			volbuf, "never", "cpio", "16k");
 	    return 2048;
 	 } else {
 	    ftt_errno = FTT_EBLKSIZE;
@@ -106,7 +116,7 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
     case FTT_CPIO_HEADER:
 	 if (length >= 512) {
 	     memset(buf, 0, (size_t)512); 
-	     sprintf(buf, "070701000086f6000081a4000006c5000011ad0000000130f68764000000000000001e0000000500000000000000000000000a00000000%s", vol);
+	     sprintf(buf, "070701000086f6000081a4000006c5000011ad0000000130f68764000000000000001e0000000500000000000000000000000a00000000%s", volbuf);
 	     sprintf(buf + strlen(buf) +1 , "0007070100000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000b00000000TRAILER!!!");
 	     return 512;
 	 } else {
@@ -118,7 +128,7 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
     case FTT_TAR_HEADER:
 	 if (length >= 10240) {
 	     memset(buf, 0, (size_t)10240); 
-	     sprintf(buf,     "%s", vol);
+	     sprintf(buf,     "%s", volbuf);
 	     sprintf(buf+0144,"000644 ");
 	     sprintf(buf+0154,"003305 ");
 	     sprintf(buf+0164,"00000000000 06075503544 014150");

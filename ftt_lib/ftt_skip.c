@@ -218,8 +218,15 @@ int
 ftt_erase(ftt_descriptor d) {
     int res;
 
+
     CKOK(d,"ftt_erase",0,1);
     CKNULL("ftt_descriptor", d);
+
+    /* currently erase hoses up on most platforms on most drives,
+       due to timeout problems, etc.  So for the first release
+       we're punting... */
+    ftt_eprintf("Sorry, erase is not functioning properly in this release.");
+    return FTT_ENOTSUPPORTED;
 
     d->current_block = 0;
     d->current_file = 0;
