@@ -1044,7 +1044,8 @@ def do_work(intf):
             # handle errors
             if ticket['status'][0] != e_errors.OK:
                 print "Error! failed to insert file record:", `f`
-                sys.exit(1)
+                # ignore the error, if serious, make it up later
+                # sys.exit(1)
 
         # insert the volume record
 
