@@ -351,8 +351,8 @@ class EnStatus:
                     self.get_eod_cookie(ticket, key)
 		    self.text[key][VOLUME] = ticket['tape']
 		    self.text[key][FILES] = []
-		    self.text[key][FILES].append(ticket['files'][0])
 		    self.text[key][FILES].append("%s -->"%(ticket['files'][1],))
+		    self.text[key][FILES].append(ticket['files'][0])
         else:
 	    self.text[key][STATE] = ticket["state"]
 
