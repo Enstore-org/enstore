@@ -78,12 +78,7 @@ class ConfigurationClient(generic_client.GenericClient):
     # return cached (or get from server) value for requested item
     def get(self, key, timeout=0, retry=0):
         # try the cache
-        try:
-            val = self.cache[key]
-        except:
-            val = self.get_uncached(key, timeout, retry)
-        return val
-
+        return self.cache.get(key, self.get_uncached(key, timeout, retry))
 
     # dump the configuration dictionary
     def list(self, timeout=0, retry=0):
