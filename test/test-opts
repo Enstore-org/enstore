@@ -27,105 +27,105 @@ if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
   echo "TESTING ALARM SERVER"
-  cmd="ecmd ac --help";echo "$cmd";$cmd
-  cmd="ecmd ac --alive";echo "$cmd";$cmd
-  cmd="ecmd ac --get_patrol_file";echo "$cmd";$cmd
-  cmd="ecmd ac --raise --root_error=\"TEST-OPTS\" --severity=2";echo "$cmd";$cmd
+  cmd="enstore alarm --help";echo "$cmd";$cmd
+  cmd="enstore alarm --alive";echo "$cmd";$cmd
+  cmd="enstore alarm --get_patrol_file";echo "$cmd";$cmd
+  cmd="enstore alarm --raise --root_error=\"TEST-OPTS\" --severity=2";echo "$cmd";$cmd
 fi
 
 if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
   echo "TESTING CONFIG"
-  cmd="ecmd cc --help";echo "$cmd";$cmd
-  cmd="ecmd cc --alive";echo "$cmd";$cmd
-  cmd="ecmd cc --summary";echo "$cmd";$cmd
-  cmd="ecmd cc --show";echo "$cmd";$cmd
-  cmd="ecmd cc --load --file=${ENSTORE_CONFIG_FILE}";echo "$cmd";$cmd
+  cmd="enstore config --help";echo "$cmd";$cmd
+  cmd="enstore config --alive";echo "$cmd";$cmd
+  cmd="enstore config --summary";echo "$cmd";$cmd
+  cmd="enstore config --show";echo "$cmd";$cmd
+  cmd="enstore config --load --file=${ENSTORE_CONFIG_FILE}";echo "$cmd";$cmd
 fi
 
 if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
   echo "TESTING FILE CLERK"
-  cmd="ecmd fcc --help";echo "$cmd";$cmd
-  cmd="ecmd fcc --alive";echo "$cmd";$cmd
-  cmd="ecmd fcc --bfids";echo "$cmd";$cmd
-  cmd="ecmd fcc --bfid=`a=\`ecmd fcc --bfids\`;echo $a|cut -f1 -d,|sed s/\'//g`";echo "$cmd";$cmd
-  cmd="ecmd fcc --list=`a=\`ecmd vcc --vols\`;echo $a|cut -f1 -d,|sed s/\'//g`";echo "$cmd";$cmd
+  cmd="enstore file --help";echo "$cmd";$cmd
+  cmd="enstore file --alive";echo "$cmd";$cmd
+  cmd="enstore file --bfids";echo "$cmd";$cmd
+  cmd="enstore file --bfid=`a=\`enstore fcc --bfids\`;echo $a|cut -f1 -d,|sed s/\'//g`";echo "$cmd";$cmd
+  cmd="enstore file --list=`a=\`enstore vcc --vols\`;echo $a|cut -f1 -d,|sed s/\'//g`";echo "$cmd";$cmd
 fi
 
 if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
   echo "TESTING INQUISITOR"
-  cmd="ecmd ic --help";echo "$cmd";$cmd
-  cmd="ecmd ic --alive";echo "$cmd";$cmd
-  cmd="ecmd ic --dump";echo "$cmd";$cmd
-  cmd="ecmd ic --get_inq_timeout";echo "$cmd";a=`$cmd`
+  cmd="enstore inq --help";echo "$cmd";$cmd
+  cmd="enstore inq --alive";echo "$cmd";$cmd
+  cmd="enstore inq --dump";echo "$cmd";$cmd
+  cmd="enstore inq --get_inq_timeout";echo "$cmd";a=`$cmd`
   let b=a+1
-  cmd="ecmd ic --inq_timeout=$b";echo "$cmd";$cmd
-  cmd="ecmd ic --get_inq_timeout";echo "$cmd";c=`$cmd`
+  cmd="enstore inq --inq_timeout=$b";echo "$cmd";$cmd
+  cmd="enstore inq  --get_inq_timeout";echo "$cmd";c=`$cmd`
   if [ $c != $b ]
   then 
     echo "ERROR: TIMEOUTS do not match ($b, $c)"
   fi
-  cmd="ecmd ic --reset_inq_timeout";echo "$cmd";c=`$cmd`
-  cmd="ecmd ic --get_interval=inquisitor";echo "$cmd";a=`$cmd`
+  cmd="enstore inq --reset_inq_timeout";echo "$cmd";c=`$cmd`
+  cmd="enstore inq --get_interval=inquisitor";echo "$cmd";a=`$cmd`
   let b=a+5
-  cmd="ecmd ic --interval=$b inquisitor";echo "$cmd";$cmd
-  cmd="ecmd ic --get_interval=inquisitor";echo "$cmd";c=`$cmd`
+  cmd="enstore inq --interval=$b inquisitor";echo "$cmd";$cmd
+  cmd="enstore inq --get_interval=inquisitor";echo "$cmd";c=`$cmd`
   if [ "$c" != "$b" ]
   then
     echo "ERROR: INTERVALS do not match ($b, $c)"
   fi
-  cmd="ecmd ic --interval=$a inquisitor";echo "$cmd";$cmd
-  cmd="ecmd ic --reset_interval=inquisitor";echo "$cmd";$cmd
-  cmd="ecmd ic --get_max_ascii_size";echo "$cmd";a=`$cmd`
+  cmd="enstore inq --interval=$a inquisitor";echo "$cmd";$cmd
+  cmd="enstore inq --reset_interval=inquisitor";echo "$cmd";$cmd
+  cmd="enstore inq --get_max_ascii_size";echo "$cmd";a=`$cmd`
   let b=a+20
-  cmd="ecmd ic --max_ascii_size=$b";echo "$cmd";$cmd
-  cmd="ecmd ic --get_max_ascii_size";echo "$cmd";c=`$cmd`
+  cmd="enstore inq --max_ascii_size=$b";echo "$cmd";$cmd
+  cmd="enstore inq --get_max_ascii_size";echo "$cmd";c=`$cmd`
   if [ "$c" != "$b" ]
   then
     echo "ERROR: MAX_ASCII_SIZE does not match ($b, $c)"
   fi
-  cmd="ecmd ic --max_ascii_size=$a";echo "$cmd";a=`$cmd`
-  cmd="ecmd ic --get_refresh";echo "$cmd";a=`$cmd`
+  cmd="enstore inq --max_ascii_size=$a";echo "$cmd";a=`$cmd`
+  cmd="enstore inq --get_refresh";echo "$cmd";a=`$cmd`
   let b=a+2
-  cmd="ecmd ic --refresh=$b";echo "$cmd";$cmd
-  cmd="ecmd ic --get_refresh";echo "$cmd";c=`$cmd`
+  cmd="enstore inq --refresh=$b";echo "$cmd";$cmd
+  cmd="enstore inq --get_refresh";echo "$cmd";c=`$cmd`
   if [ "$c" != "$b" ]
   then
     echo "ERROR: REFRESH does not match ($b, $c)"
   fi
-  cmd="ecmd ic --refresh=$a";echo "$cmd";$cmd
-  cmd="ecmd ic --timestamp";echo "$cmd";$cmd
-  cmd="ecmd ic --update=all";echo "$cmd";$cmd
-  cmd="ecmd ic --update=config_server";echo "$cmd";$cmd
-  cmd="ecmd ic --plot --keep --keep_dir=/tmp";echo "$cmd";$cmd
-  cmd="ecmd ic --plot";echo "$cmd";$cmd
+  cmd="enstore inq --refresh=$a";echo "$cmd";$cmd
+  cmd="enstore inq --timestamp";echo "$cmd";$cmd
+  cmd="enstore inq --update=all";echo "$cmd";$cmd
+  cmd="enstore inq --update=config_server";echo "$cmd";$cmd
+  cmd="enstore inq --plot --keep --keep_dir=/tmp";echo "$cmd";$cmd
+  cmd="enstore inq --plot";echo "$cmd";$cmd
 fi
 
 if [ "$libman" != "" ]
 then
   echo "======================================================================"
   echo "TESTING LIBRARY MANAGER"
-  cmd="ecmd lmc --help";echo "$cmd";$cmd
-  cmd="ecmd lmc --alive $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --get_work $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --get_mover_list $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --get_suspect_vols $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --get_delayed_dismount $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --load_movers $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --poll $libman";echo "$cmd";$cmd
+  cmd="enstore library --help";echo "$cmd";$cmd
+  cmd="enstore library --alive $libman";echo "$cmd";$cmd
+  cmd="enstore library --get_work $libman";echo "$cmd";$cmd
+  cmd="enstore library --get_mover_list $libman";echo "$cmd";$cmd
+  cmd="enstore library --get_suspect_vols $libman";echo "$cmd";$cmd
+  cmd="enstore library --get_delayed_dismount $libman";echo "$cmd";$cmd
+  cmd="enstore library --load_movers $libman";echo "$cmd";$cmd
+  cmd="enstore library --poll $libman";echo "$cmd";$cmd
   echo ""
   echo "ATTENTION: The next 2 commands will return a bad status, that is ok."
   echo ""
-  cmd="ecmd lmc --delete_work=12345 $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --priority=1 $libman 12345";echo "$cmd";$cmd
+  cmd="enstore library --delete_work=12345 $libman";echo "$cmd";$cmd
+  cmd="enstore library --priority=1 $libman 12345";echo "$cmd";$cmd
   if [ "$mover" != "" ]
   then
-    cmd="ecmd lmc --summon=$mover $libman";echo "$cmd";$cmd
+    cmd="enstore library --summon=$mover $libman";echo "$cmd";$cmd
   fi
 fi
 
@@ -133,58 +133,58 @@ if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
   echo "TESTING LOGGER"
-  cmd="ecmd lc --help";echo "$cmd";$cmd
-  cmd="ecmd lc --alive";echo "$cmd";$cmd
-  cmd="ecmd lc --get_logfile_name";echo "$cmd";$cmd
-  cmd="ecmd lc --get_last_logfile_name";echo "$cmd";$cmd
-  cmd="ecmd lc --message=\"This is a test-opts log message.\"";echo "$cmd";$cmd
+  cmd="enstore log --help";echo "$cmd";$cmd
+  cmd="enstore log --alive";echo "$cmd";$cmd
+  cmd="enstore log --get_logfile_name";echo "$cmd";$cmd
+  cmd="enstore log --get_last_logfile_name";echo "$cmd";$cmd
+  cmd="enstore log --message=\"This is a test-opts log message.\"";echo "$cmd";$cmd
 fi
 
 if [ "$medch" != "" ]
 then
   echo "======================================================================"
   echo "TESTING MEDIA CHANGER"
-  cmd="ecmd mcc --help";echo "$cmd";$cmd
-  cmd="ecmd mcc --alive $medch";echo "$cmd";$cmd
-  cmd="ecmd mcc --get_work $medch";echo "$cmd";$cmd
-  cmd="ecmd mcc --ejectvol $medch diskfile 1234";echo "$cmd";$cmd
-  cmd="ecmd mcc --insertvol $medch 1234";echo "$cmd";$cmd
-  cmd="ecmd mcc --view=1234 $medch";echo "$cmd";$cmd
+  cmd="enstore media --help";echo "$cmd";$cmd
+  cmd="enstore media --alive $medch";echo "$cmd";$cmd
+  cmd="enstore media --get_work $medch";echo "$cmd";$cmd
+  cmd="enstore media --ejectvol $medch diskfile 1234";echo "$cmd";$cmd
+  cmd="enstore media --insertvol $medch 1234";echo "$cmd";$cmd
+  cmd="enstore media --view=1234 $medch";echo "$cmd";$cmd
 fi
 
 if [ "$mover" != "" ]
 then
   echo "======================================================================"
   echo "TESTING MOVER"
-  cmd="ecmd mvc --help";echo "$cmd";$cmd
-  cmd="ecmd mvc --alive $mover";echo "$cmd";$cmd
-  cmd="ecmd mvc --status $mover";echo "$cmd";$cmd
-  cmd="ecmd mvc --local_mover=1 $mover";echo "$cmd";$cmd
-  cmd="ecmd mvc --local_mover=0 $mover";echo "$cmd";$cmd
+  cmd="enstore mover --help";echo "$cmd";$cmd
+  cmd="enstore mover --alive $mover";echo "$cmd";$cmd
+  cmd="enstore mover --status $mover";echo "$cmd";$cmd
+  cmd="enstore mover --local_mover=1 $mover";echo "$cmd";$cmd
+  cmd="enstore mover --local_mover=0 $mover";echo "$cmd";$cmd
 fi
 
 if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
   echo "TESTING VOLUME CLERK"
-  cmd="ecmd vcc --help";echo "$cmd";$cmd
-  cmd="ecmd vcc --alive";echo "$cmd";$cmd
-  cmd="ecmd vcc --vols";echo "$cmd";$cmd
-  vol=`ecmd vcc --vols|cut -f1 -d,|sed s/\'//g`
-  cmd="ecmd vcc --vol=$vol";echo "$cmd";$cmd
-  cmd="ecmd vcc --update=$vol";echo "$cmd";$cmd
+  cmd="enstore volume --help";echo "$cmd";$cmd
+  cmd="enstore volume --alive";echo "$cmd";$cmd
+  cmd="enstore volume --vols";echo "$cmd";$cmd
+  vol=`enstore volume --vols|cut -f1 -d,|sed s/\'//g`
+  cmd="enstore volume --vol=$vol";echo "$cmd";$cmd
+  cmd="enstore volume --update=$vol";echo "$cmd";$cmd
   if [ "$libman" != "" ]
   then
     lib=`echo $libman|cut -f1 -d.`
-    cmd="ecmd vcc --add=testvol $lib none diskfile 2000 2000";echo "$cmd";$cmd
-    cmd="ecmd vcc --check=testvol";echo "$cmd";$cmd
-    cmd="ecmd vcc --clear=testvol";echo "$cmd";$cmd
-    cmd="ecmd vcc --decr_file_count=1 testvol";echo "$cmd";$cmd
-    cmd="ecmd vcc --new_library=testlib testvol";echo "$cmd";$cmd
-    cmd="ecmd vcc --read_only=testvol";echo "$cmd";$cmd
-    cmd="ecmd vcc --no_access=testvol";echo "$cmd";$cmd
-    cmd="ecmd vcc --delete=testvol";echo "$cmd";$cmd
-    cmd="ecmd vcc --restore=testvol --all";echo "$cmd";$cmd
+    cmd="enstore volume --add=testvol $lib none diskfile 2000 2000";echo "$cmd";$cmd
+    cmd="enstore volume --check=testvol";echo "$cmd";$cmd
+    cmd="enstore volume --clear=testvol";echo "$cmd";$cmd
+    cmd="enstore volume --decr_file_count=1 testvol";echo "$cmd";$cmd
+    cmd="enstore volume --new_library=testlib testvol";echo "$cmd";$cmd
+    cmd="enstore volume --read_only=testvol";echo "$cmd";$cmd
+    cmd="enstore volume --no_access=testvol";echo "$cmd";$cmd
+    cmd="enstore volume --delete=testvol";echo "$cmd";$cmd
+    cmd="enstore volume --restore=testvol --all";echo "$cmd";$cmd
   fi
   
 fi
