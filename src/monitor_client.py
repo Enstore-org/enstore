@@ -69,7 +69,7 @@ class MonitorServerClient(generic_client.GenericClient):
         
         #If socket.MSG_DONTWAIT isn't there add it, because it should be.
         if not hasattr(socket, "MSG_DONTWAIT"): #Python 1.5 test
-            socket.MSG_DONTWAIT = None
+            socket.MSG_DONTWAIT = 0
             host_type = os.uname()[0]
             if host_type == 'Linux':
                 socket.MSG_DONTWAIT = 64
