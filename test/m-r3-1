@@ -1,0 +1,10 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+
+# rsh rip1 "/usr/local/bin/traceMode 1"
+
+$ENSTORE_DIR/test/roll -noread /pnfs/grau/mammoth/jon1 /home/bakken/enstore/test/rip3a-1.in 20 -1
+$ENSTORE_DIR/test/roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/rip3b-1.in 21 -1
