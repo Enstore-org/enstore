@@ -283,6 +283,23 @@ class DispatchingWorker:
         # check for any zombie children and get rid of them
         collect_children()
 
+    def enable_call_trace(self, ticket):
+        import Ptrace
+        sys.setprofile(Ptrace.profile)
+        ticket['address'] = self.server_address
+        ticket['status'] = (e_errors.OK, None)
+        ticket['pid'] = os.getpid()
+        self.reply_to_caller(ticket)
+
+
+    def disable_call_trace(self, ticket):
+        sys.setprofile(None)
+        ticket['address'] = self.server_address
+        ticket['status'] = (e_errors.OK, None)
+        ticket['pid'] = os.getpid()
+        self.reply_to_caller(ticket)
+
+
     def handle_error(self, request, client_address):
 	mode = Trace.mode()
 	Trace.mode( mode&~1 ) # freeze circular que
