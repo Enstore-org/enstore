@@ -1,5 +1,5 @@
 ###############################################################################
-# src/$RCSfile$   $ $
+# src/$RCSfile$   $Revision$
 #
 # system imports
 import os
@@ -44,60 +44,34 @@ tapedata commonly is of zero length
 """
 class Wrapper :
 
+    recordLength = 80
+
     def sw_mount( self, driver, info ):
 	return
 
-    def read_pre_data( self, driver, info ):
-        fileNumber = int(string.split(info,"_")[2])
-        if fileNumber == 1:
-            self.read_volume_header(driver, info)
-	self.read_ds1_header(driver, info)
-	self.read_ds2_header(driver, info)
-	self.read_ds3_header(driver, info)
-	self.read_ds4_header(driver, info)
+    def read_pre_data( self, driver, ticket ):
+        if type(ticket) == types.DictType:
+            fileInfo = ticket['hsm_driver']['cur_loc_cookie']
+            fileNumber = int(string.split(fileInfo,"_")[2])
+	elif type(ticket) == types.IntType:
+	    fileNumber = ticket
+	else:
+	    raise IOError, "bad file number input " + repr(ticket)	    
+        if fileNumber == 0:
+            header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
 	return
 
 
     def read_post_data( self, driver, info ):
-	self.read_ds1_header(driver, info)
-	self.read_ds2_header(driver, info)
-	self.read_ds3_header(driver, info)
-	self.read_ds4_header(driver, info)
+	header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
+	header = driver.read(self.recordLength)
 	return
-	
-    def read_volume_header ( self, driver, info ):
-        header = driver.read(80)
-	vol_label = header[0:4]
-	vol_serial = header[4:10]
-        return
-	
-    def read_ds1_header ( self, driver, info ):
-        header = driver.read(80)
-	label = header[0:4]
-	if label == "HDR1":  # can be HDR1, EOV1 or EOF1
-	    data_set_ID = header[4:21]
-        return
-	
-    def read_ds2_header ( self, driver, info ):
-        header = driver.read(80)
-	label = header[0:4]
-	if label == "HDR2":
-	    block_length = header[5:10]
-        return
-	
-    def read_ds3_header ( self, driver, info ): # VMS
-        header = driver.read(80)
-	label = header[0:4]
-	if label == "HDR3":
-	    block_length = header[4:8]
-        return
-	
-    def read_ds4_header ( self, driver, info ): # VMS
-        header = driver.read(80)
-	label = header[0:4]
-	if label == "HDR4":
-	    file_id = header[5:67]
-        return
 	
 
 ###############################################################################
@@ -146,11 +120,11 @@ if __name__ == "__main__" :
     optlist,args=getopt.getopt(sys.argv[1:], '', options)
     (opt,val) = optlist[0]
     if not optlist:
-	print "usage: ansix327" + " <"+repr(options)+"> infile outfile"
+	print "usage: run1" + " <"+repr(options)+"> infile outfile infilenumber"
 	sys.exit(1)
 
     if not (opt == "--extract"):
-	print "usage: ansix327" + " <"+repr(options)+"> infile outfile"
+	print "usage: run1" + " <"+repr(options)+"> infile outfile infilenumber"
 	sys.exit(1)
 
     fin = DiskDriver()
@@ -161,7 +135,7 @@ if __name__ == "__main__" :
     wrapper = Wrapper()
 	
     if opt == "--extract":
-	wrapper.read_pre_data(fin, "0000_0000000_0001")
+	wrapper.read_pre_data(fin, int(args[2]))
 	wrapper.file_size = -1
 	while wrapper.file_size < 0 :
 	    wrapper.file_size = int(raw_input('Input file size in bytes:'))
