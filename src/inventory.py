@@ -1108,7 +1108,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         # check if the volume is declared right
         if vk[:3] != 'CLN':
             actual_size = total_size+vv['remaining_bytes']
-            if actual_size <= 0:
+            if total_size <= 0:
                 remark = '*'
             else:
                 remark = ''
