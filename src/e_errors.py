@@ -329,11 +329,9 @@ def is_ok(e):
     else:
         error = e
         
-    if error in non_retriable_errors:
-        return 0
-    elif error in raise_alarm_errors:
-        return 0
-    return 1
+    if error == OK:
+        return 1
+    return 0
 
 #Return true if the value is in error but not in non_retriable or raise_alarm
 # status.  Return false otherwise.
