@@ -3,18 +3,6 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-case $node in
-  stken*) gang=stken
-          robot="PowderHorn 9310"
-          ;;
-   d0en*) gang=d0en
-          robot=UNKNOWN
-          ;;
-       *) gang=UNKNOWN
-          robot=UNKNOWN
-          ;;
-esac
-
 
 busy=/home/enstore/STK_DRIVE_UTILIZATION
 
@@ -25,6 +13,7 @@ plotnode=stkensrv2
 now=`date +"%Y-%m-%d:%H:%M:%S"`
 
 case $command in
+
     get)
         if [ $node = $getnode ] ; then
          dinfo=/tmp/dinfo
@@ -35,16 +24,20 @@ case $command in
          a9840=`grep " 9840"  $dinfo | grep -c "online"`
          a9940=`grep "T9940"  $dinfo | grep -c "online"`
          echo "$now $n9840 $a9840 $n9940 $a9940">>$busy
+
         else
          echo \"$0 $command\" can only be run on $getnode because that is the only one that can talk to fntt
         fi
         ;;
+
+
     plot)
         if [ $node = $plotnode ] ; then
          enrcp $getnode:$busy $busy
          plot9840=/fnal/ups/prd/www_pages/enstore/9840_Utilization
          plot9940=/fnal/ups/prd/www_pages/enstore/9940_Utilization
          pltcmd=/tmp/stkdu.gnu
+
          rm -f $pltcmd
          echo "set output \"$plot9840.ps\"
 set terminal postscript color solid
@@ -60,8 +53,9 @@ set format x \"%m-%d\"
 set nokey
 plot \"$busy\" using 1:2 t \"9840 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
-         rm -f $pltcmd
          convert -rotate 90 $plot9840.ps $plot9840.jpg
+
+         rm -f $pltcmd
          echo "set output \"$plot9940.ps\"
 set terminal postscript color solid
 set title \"STK 9940 Drive Utilization $now\"
@@ -77,6 +71,7 @@ set nokey
 plot \"$busy\" using 1:4 t \"9940 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plot9940.ps $plot9940.jpg
+
         else
          echo \"$0 $command\" can only be run on $plotnode because that is the only one that has a web server
         fi
