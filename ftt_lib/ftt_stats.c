@@ -508,6 +508,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		tmp = d->prod_id;
 		d->prod_id = strdup(ftt_extract_stats(b,FTT_PRODUCT_ID));
 		free(tmp);
+	    }
 /***********************************************************************
 *         different drives has different length of a Product Revision Number
 *         for STK T9940A/B it takes bytes 32-39
@@ -517,7 +518,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
                  } else {
                     set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
                    }
-	    }
+
 	    /*
 	     * look up based on ANSI version *and* product id, so
 	     * we can have generic SCSI-2 cases, etc.
