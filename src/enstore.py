@@ -37,15 +37,17 @@ import volume_clerk_client
 import enstore_up_down
 import enstore_saag
 import enstore_saag_network
-import dbs
+#import dbs
 import ratekeeper_client
 import pnfs
 import enstore_start
 import enstore_stop
 import enstore_restart
+import estart
+import estop
 import backup
 
-CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
+#CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
 #CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDc)
 
 DEFAULT_AML2_NODE = "rip10"
@@ -94,8 +96,8 @@ server_functions = {
                   inquisitor_client.do_work, option.ADMIN],
     "volume" : [volume_clerk_client.VolumeClerkClientInterface,
                 volume_clerk_client.do_work, option.USER],
-    "database" : [dbs.Interface,
-                  dbs.do_work, option.ADMIN],
+    #"database" : [dbs.Interface,
+    #              dbs.do_work, option.ADMIN],
     "ratekeeper" : [ratekeeper_client.RatekeeperClientInterface,
                     ratekeeper_client.do_work, option.ADMIN],
     "start" : [enstore_start.EnstoreStartInterface,
@@ -104,6 +106,10 @@ server_functions = {
               enstore_stop.do_work, option.ADMIN],
     "restart" : [enstore_restart.EnstoreRestartInterface,
                  enstore_restart.do_work, option.ADMIN],
+    "Estart" : [estart.EstartInterface,
+               estart.do_work, option.ADMIN],
+    "Estop" : [estop.EstopInterface,
+              estop.do_work, option.ADMIN],
     "backup" : [backup.BackupInterface,
                 backup.do_work, option.ADMIN],
     }
@@ -156,15 +162,15 @@ local_scripts = {
 VERIFY = "verify"
 PROMPT = "prompt"
 remote_scripts = {
-    "Estart":["Estart  [farmlet]  (Enstore start on all/specified farmlet nodes)",
-              ("enstore",
-               ("%s enstore-start " % (CMD1,), get_argv3("enstore"), dbs.CMD2),
-               VERIFY)],
-    "Estop":["Estop   [farmlet]  (Enstore stop on all/specified farmlet nodes)",
-             ("enstore-down",
-              ("%s enstore-stop " % (CMD1,),
-               get_argv3("enstore-down"), dbs.CMD2),
-              PROMPT, VERIFY), ],
+#    "Estart":["Estart  [farmlet]  (Enstore start on all/specified farmlet nodes)",
+#              ("enstore",
+#               ("%s enstore-start " % (CMD1,), get_argv3("enstore"), dbs.CMD2),
+#               VERIFY)],
+#    "Estop":["Estop   [farmlet]  (Enstore stop on all/specified farmlet nodes)",
+#             ("enstore-down",
+#              ("%s enstore-stop " % (CMD1,),
+#               get_argv3("enstore-down"), dbs.CMD2),
+#              PROMPT, VERIFY), ],
     "EPS":["EPS  [farmlet]   (Enstore-associated ps on all/specified farmlet nodes)",
            ("enstore",
             ("source /usr/local/etc/setups.sh;setup enstore;", "EPS"))],
@@ -424,9 +430,9 @@ class Enstore:
         #   $ENSTORE_CONFIG_FILE.  if neither of these works, assume node
         #   in DEFAULT_AML2_NODE.
 	# this info is used if the command is an aml2 command
-        if not self.get_config_from_server() and \
-           not self.get_config_from_file():
-            self.node = DEFAULT_AML2_NODE
+        #if not self.get_config_from_server() and \
+        #   not self.get_config_from_file():
+        #    self.node = DEFAULT_AML2_NODE
 	    
 	rtn = 0
         if arg1 in local_scripts.keys():
