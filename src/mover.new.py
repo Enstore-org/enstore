@@ -62,6 +62,7 @@ import time				# .sleep
 import traceback			# print_exc == stack dump
 import ECRC				# for crc
 import posix				# waitpid
+import sys				# exit
 
 import e_errors
 # for status via exit status (initial method), set using exit_status=m_err.index(e_errors.WRITE_NOTAPE),
