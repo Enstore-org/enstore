@@ -153,6 +153,7 @@ int GetFile(char *volumeName, char fileName[FILENAME_LEN])
 
   strncpy(firstTwo, volumeName, 2);
   strncpy(firstFour, volumeName, 4);
+  printf("Volume %s\n",volumeName); 
 
   strcpy(path, PNFS_ROOT);
   strcat(path, "/");
@@ -162,6 +163,7 @@ int GetFile(char *volumeName, char fileName[FILENAME_LEN])
   strcat(path, "/");
   strcat(path, volumeName);
   strcat(path, "/");
+  printf("n_ent %d\n",n_ent);
   if (n_ent == -1) /* first time access */
   {
     /* check if dir exists */
@@ -195,7 +197,11 @@ int GetFile(char *volumeName, char fileName[FILENAME_LEN])
     strncat(fileName, namelist[n_ent]->d_name, FILENAME_LEN);
     free(namelist[n_ent]);
     n_ent--;
-    if (n_ent == -1) n_ent--;
+    if (n_ent == -1) { 
+	free(namelist);
+	free(path);
+	return 0;
+    }
     free(path);
     return 1;
   }
