@@ -652,9 +652,15 @@ def do_work(intf):
         print "     label           bfid       size        location_cookie delflag original_name\n"
         for key in vol.keys():
             record = vol[key]
+            deleted = 'unknown'
+            if record.has_key('deleted'):
+                if record['deleted'] == 'yes':
+                    deleted = 'deleted'
+                else:
+                    deleted = 'active'
             print "%10s %s %10i %22s %7s %s" % (intf.list,
                 record['bfid'], record['size'],
-                record['location_cookie'], record['deleted'],
+                record['location_cookie'], deleted,
                 record['pnfs_name0'])
     elif intf.list_active:
         fcc = file_clerk_client.FileClient(vcc.csc)
