@@ -452,7 +452,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
                       sts[1] == 24):         # requested volume in use
                     count = count - 1
                     time.sleep(20)
-                elif (sts[1] == e_errors.MC_NOTHOME): # tape not in home position
+                elif (sts[1] == e_errors.MC_VOLNOTHOME): # tape not in home position
                     count = count - 1
                     time.sleep(120)
                 else:
