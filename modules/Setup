@@ -68,9 +68,6 @@ IPC IPC.c
 
 Devcodes Devcodes.c
 
-# The STK module is not built unless STK_DIR is defined ; see Makefile
-STK STK.c -I. -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
-
 # The EMASS/aci_shadow modules are not built unless ACI_DIR is defined ; see Makefile
 aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
 derrno derrno_wrap.c -I$(ACI_DIR)/inc

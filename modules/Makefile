@@ -10,7 +10,7 @@ all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t
 # dll files on the platform and "make -f Makefile.pre.in boot" generates
 # an appropriate Makefile (in a subdirectory) .   We copy it to
 # ../Makefile.modules for the Modules: target
-# The STK and ACI/EMASS products are only made if they are setup
+# The ACI/EMASS products are only made if they are setup
 
 Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
@@ -18,7 +18,6 @@ Makefile.modules: Setup
 	cd mksetup/   ; \
 	cp ../Setup . ; \
 	if  [ "$(ACI_DIR)"x = x ];  then grep -v ACI Setup > x; mv x Setup; fi ;\
-	if  [ "$(STK_DIR)"x = x ];  then grep -v STK Setup > x; mv x Setup; fi ;\
 	if  [ "$(DRIVESTAT_CLIENT_DIR)"x = x ];  then grep -v DRIVESTAT_CLIENT Setup > x; mv x Setup; fi ;\
 	cp $(PYTHONLIB)/config/Makefile.pre.in . ; \
 	make -f Makefile.pre.in boot                    ; \
