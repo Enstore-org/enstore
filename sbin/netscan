@@ -187,7 +187,7 @@ ALLOW_DSRV4="$ALLOW_BASE
 # Extra for srv1
 ALLOW_SRV1="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
-       LISTEN,java,:24123,TCP,/home/enstore/dcache/run
+       LISTEN,java,:,TCP,/home/enstore/dcache/run
 "
 
 # Extra for dcache
