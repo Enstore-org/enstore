@@ -1598,10 +1598,6 @@ class InquisitorInterface(generic_server.GenericServerInterface):
         self.refresh = NOVALUE
         generic_server.GenericServerInterface.__init__(self)
 
-    def valid_dictionaries(self):
-        return generic_server.GenericServerInterface.valid_dictionaries(self)+\
-               (self.inquisitor_options, self.alive_rcv_options)
-
     inquisitor_options = {
         option.HTML_FILE:{option.HELP_STRING:"specifies the html file",
                           option.VALUE_TYPE:option.STRING,
@@ -1629,12 +1625,9 @@ class InquisitorInterface(generic_server.GenericServerInterface):
                         },
         }
     
-"""
-    # define the command line options that are valid
-    def options(self):
-        return generic_server.GenericServerInterface.options(self)+[
-            "html-file=","update-interval=", "max-encp-lines=", "refresh="] + self.alive_rcv_options()
-"""
+    def valid_dictionaries(self):
+        return generic_server.GenericServerInterface.valid_dictionaries(self)+\
+               (self.inquisitor_options, self.alive_rcv_options)
 
 
 if __name__ == "__main__":
