@@ -10,3 +10,5 @@ export PYTHONPATH
 encp()   { python $ENSTORE_DIR/src/encp.py $@ ; }
 pnfs()   { python $ENSTORE_DIR/src/pnfs.py $@ ; }
 econ()   { python $ENSTORE_DIR/src/configuration_client.py $@ ; }
+
+rddt()   { python $ENSTORE_DIR/src/driver.py $@ ; }

@@ -1,8 +1,8 @@
 
-
 PATH=`dropit /enstore/`; export PATH;
 
-PYTHONPATH=`dropit -p"$PYTHONPATH" /enstore/`; export PYTHONPATH
+PYTHONPATH=`dropit -p"$PYTHONPATH" /enstore/`;
+export PYTHONPATH
 
 
 if [ "${PYTHONPATH:-1}" = "1" ]; then
@@ -11,3 +11,6 @@ fi
 
 unset encp
 unset pnfs
+unset econ
+
+unset rddt
