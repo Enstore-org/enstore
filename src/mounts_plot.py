@@ -137,7 +137,7 @@ if __name__ == '__main__':
 		outf.write("%d %d\n"%(count, mtsh[i]))
 		set_xtics = set_xtics + '"%s" %d,'%(i, count)
 	outf.close()
-	set_xtics[-1] = ')'
+	set_xtics = set_xtics[:-1]+')'
 	set_xtics = set_xtics+'\n'
 
 	outf = open(tmp_gnuplot_cmd, "w")
