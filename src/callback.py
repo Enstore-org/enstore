@@ -63,7 +63,6 @@ def get_callback_port(start,end,use_multiple=0,fixed_ip=None):
     else:
         interface_tab = [(ips[0], 1)]
 
-    print "interface_tab=",interface_tab
     # First acquire the hunt lock.  Once we have it, we have the exlusive right
     # to hunt for a port.  Hunt lock will (I hope) properly serlialze the
     # waiters so that they will be services in the order of arrival.
