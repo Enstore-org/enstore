@@ -118,7 +118,6 @@ COMMON:
                 envSet(GADFLY_GRAMMAR,`${UPS_PROD_DIR}/ups/what_is gadfly`)
                 addAlias(pylint, 'python ${GADFLY_GRAMMAR}/kjpylint.py %s')
                 # ftt is Fermi tape tools
-                ###setupRequired("ftt v2_6")
                 setupRequired("ftt v2_7")
 
 		# drivestat_client is the Fermi product that will allow us to monitor drive usage
@@ -129,12 +128,7 @@ COMMON:
 
                 # aci is the EMASS tape library and admin tool product
                 # the media changer is the only server that interfaces to it
-                ###setupOptional("aci v1_3_0_c7")
                 setupOptional("aci v3_0_2")
-
-                # stk is the STK tape library
-                # the media changer is the only server that interfaces to it
-                setupOptional("stk v1_0")
 
                 # the setup of python is tricky
                 # if user has python declared via ups, set that up and use it
@@ -151,7 +145,6 @@ COMMON:
                 #      the highest is used because of the reverse sort
 	        #      go through a file since otherwise multiple lines will give us trouble
                 execute("rm -f /tmp/choosepy; /bin/ls -d $PYTHON_DIR/lib/python*| sort -r>/tmp/choosepy; head -n1 /tmp/choosepy; rm -f /tmp/choosepy", NO_UPS_ENV, ver)
-                ###execute("/bin/ls -d $PYTHON_DIR/lib/python*| sort -r", NO_UPS_ENV, ver)
                 execute("basename $ver", NO_UPS_ENV, PVER)
                 envSet(PYTHONINC, $PYTHON_DIR/include/$PVER)
                 envSet(PYTHONLIB, $PYTHON_DIR/lib/$PVER)
@@ -164,9 +157,7 @@ COMMON:
                 # if no swig from ups available, we need it from the user's path
                 exeAccess("swig")
 
-                # set the libtp and libtppy products up after python
-                # setupRequired("libtppy v1_2_4")
-                # setupRequired("libtp v2_7_4") # libtp is set up by libtppy
+                # set the libtp and libtppy variables up after python - products are part of python
                 envSet(LIBTP_INCLUDE, `${UPS_PROD_DIR}/ups/what_is libtp_include`)
                 envSet(LIBTP_LIB, `${UPS_PROD_DIR}/ups/what_is libtp_lib`)
 
@@ -175,23 +166,25 @@ COMMON:
                 # dropits.   dropit does not support > 1 substring to drop on a line
                 envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src")
                 envAppend(PYTHONPATH,"${UPS_PROD_DIR}/modules")
-                # libtppy modules are now in src and modules
-                # envAppend(PYTHONPATH,"$LIBTPPY_DIR/lib")
 
                 # now setup the product with the python support for HTML
                 # setupRequired("HTMLgen") # old style
                 envAppend(PYTHONPATH,`${UPS_PROD_DIR}/ups/what_is HTMLgen`)
+
                 # get the output right away, no buffering
                 envSet(PYTHONUNBUFFERED, "x")
 
                 # all systems use port 7500 for the well-know port to the configuration port
                 envSet(ENSTORE_CONFIG_PORT, 7500)
 
-                # special treatment for libds.a on IRIX64
                 execute("uname", UPS_ENV, ENSTORE_OSV)
+
+                # special treatment for libds.a on IRIX64
                 execute("sh -c 'if [ ${ENSTORE_OSV} = IRIX64 ]; then echo -L/usr/lib32 -lds ; fi'", UPS_ENV, LIBDS)
+
 		# special treatment for libsocket and libnsl on SunOS
                 execute("sh -c 'if [ ${ENSTORE_OSV} = SunOS ]; then echo -lsocket -lnsl ; fi'", UPS_ENV, LIBSOCKETNSL)
+
                 envUnset(ENSTORE_OSV)
 
                 # create some links to put commands into your path
