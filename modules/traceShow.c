@@ -163,7 +163,7 @@ int
 traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,int incPMC,int proc )
 {
 	int	head, tmp;
-	long	time, time_sav;
+	double  time, time_sav;
         char    str_buf[160+TRC_MAX_MSG], *c_p;
         char    traceLvlStr[33] = "                                ";
         int     line_count=0, c2=0;
@@ -178,16 +178,12 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,
 
     if (incHDR)
     {   /***/
-	printf( "           timeStamp " );
-	if (incCPU) printf( "CPU " );
-	if (incPMC) printf( "               PMC0                 PMC1  " );
+	printf( "         timeStamp " );
 	printf( " PID     TIDorName " );
 	if (incLVL) printf( "lvl " );
 	printf( "                        message                 \n" );
 	/*-*/
-	printf( "---------------------" );
-	if (incCPU) printf( "----" );
-	if (incPMC) printf( "------------------------------------------" );
+	printf( "-------------------" );
 	printf( "-----------------" );
 	if (incLVL) printf( "----" );
 	printf( "------------------------------------------------\n" );
@@ -200,23 +196,23 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,
 
     tmp = head - 1;
     if (tmp == -1) tmp = trc_cntl_sp->last_idx; /* recall, "last" is an entry */
-    time_sav = (trc_ent_sp+tmp)->time.tv_usec;
-	
-
+    time_sav = (double)((trc_ent_sp+tmp)->time.tv_sec)
+	+ (double)((trc_ent_sp+tmp)->time.tv_usec)/1000000;	
     do
     {   
 	head--;	/* head points to a free slot, head-- is where the info is */
 	if (head == -1) head = trc_cntl_sp->last_idx;
 
+	time = (double)((trc_ent_sp+head)->time.tv_sec)
+	    + (double)((trc_ent_sp+head)->time.tv_usec)/1000000;
 	if (delta_t)
-	{   time = abs( (trc_ent_sp+head)->time.tv_usec - time_sav );
-	    time_sav = (trc_ent_sp+head)->time.tv_usec;
+	{   time = time_sav - time;
+	    time_sav = (double)((trc_ent_sp+head)->time.tv_sec)
+		+ (double)((trc_ent_sp+head)->time.tv_usec)/1000000;
 	}
-	else
-	    time = (trc_ent_sp+head)->time.tv_usec;
 
 	c_p = str_buf;
-	c_p += sprintf( c_p, "%20lu ", time );
+	c_p += sprintf( c_p, "%18.6lf ", time );
 	c_p += sprintf( c_p, "%5d ", (trc_ent_sp+head)->pid );
 
 	if ((trc_ent_sp+head)->tid >= TRC_MAX_PIDS)
