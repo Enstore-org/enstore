@@ -1414,7 +1414,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 
     greenball = HTMLgen.Image("greenball.gif", width=17, height=17, border=0)
     redball = HTMLgen.Image("redball.gif", width=17, height=17, border=0)
-    star = HTMLgen.Image("star.gif", width=17, height=17, border=0)
+    question = HTMLgen.Image("star.gif", width=17, height=17, border=0)
     yellowball = HTMLgen.Image("yelball.gif", width=17, height=17, border=0)
     checkmark = HTMLgen.Image("checkmark.gif", width=17, height=17, border=0)
 
@@ -1432,7 +1432,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	elif val == enstore_constants.UP:
 	    td = HTMLgen.TD(self.greenball, align=direction)
 	elif val == enstore_constants.SEEN_DOWN:
-	    td = HTMLgen.TD(self.star, align=direction)
+	    td = HTMLgen.TD(self.question, align=direction)
 	else:
 	    td = HTMLgen.TD(self.redball, align=direction)
 	return td
@@ -1595,7 +1595,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	entable.append(tr)
 	tr = HTMLgen.TR()
 	for (ball, txt) in [(self.greenball, "All systems are operational"),
-			    (self.star, "Situation under investigation")]:
+			    (self.question, "Situation under investigation")]:
 	    tr.append(HTMLgen.TD(ball))
 	    tr.append(HTMLgen.TD(HTMLgen.Font(txt, size="-1")))
 	entable.append(tr)
