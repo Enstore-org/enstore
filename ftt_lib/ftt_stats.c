@@ -276,7 +276,7 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, double divide
 	    } else {
 		sprintf(printbuf, "%.0f", value / divide);
             }
-          if ( (buf[0] != 0x32) || ((buf[0] == 0x32) && (param == 0 || param == 1))
+          if ( (buf[0] != 0x32) || ((buf[0] == 0x32) && (param == 0 || param == 1)))
           {
 	    set_stat(b,stat,printbuf,0);
 	    DEBUG3(stderr," stat %d - value %s = %g \n",stat,printbuf,value / divide);
@@ -763,7 +763,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
             int slot;
             int ubytesw, cbytesw, j;
             int ubytesr, cbytesr;
-            long umbytesw, cmbytesw, total, block;
+            long umbytesw, cmbytesw, total, blocks;
             long umbytesr, cmbytesr;
 
 	    do_page = buf2[4+i];
@@ -797,7 +797,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 			case 0x2e:
 			    /* stk Tape Alert page */
-			    if (0 == strncmp(d->prod_id,"9840",4)) ||
+			    if (0 == strncmp(d->prod_id,"9840",4) ||
                                 0 == strncmp(d->prod_id,"T9940A",6)) {
 			    (void)decrypt_ls(b,buf,0x15,FTT_CLEANING_BIT,1.0);
                             }
@@ -805,7 +805,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 			case 0x30:
 			    /* stk 9840 vendor unique */
-			    if (0 == strncmp(d->prod_id,"9840",4)) ||
+			    if (0 == strncmp(d->prod_id,"9840",4) ||
                                 0 == strncmp(d->prod_id,"T9940A",6)) {
 			    (void)decrypt_ls(b,buf,0x17,FTT_REMAIN_TAPE,0.25);
 			    (void)decrypt_ls(b,buf,0x0f,FTT_UNC_READ,1.0);
