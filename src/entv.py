@@ -55,7 +55,8 @@ def get_movers(config=None):
     if not config:
         config = get_config()
     for item, value in config.items():
-        if endswith(item, '.mover') and string.find(item, 'null')<0:
+        #if endswith(item, '.mover') and string.find(item, 'null')<0:
+        if endswith(item, '.mover'):
             mover = item[:-6]
             movers.append(mover)
         movers.sort()
