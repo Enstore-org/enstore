@@ -98,7 +98,7 @@ class infoClient(generic_client.GenericClient):
 	def find_same_file(self, bfid):
 		return self.send({"work": "find_same_file", "bfid": bfid})
 
-	def inquire_vol(self, external_label, timeout=20, retry=5):
+	def inquire_vol(self, external_label, timeout=60, retry=10):
 		ticket= { 'work': 'inquire_vol',
 			'external_label' : external_label }
 		return self.send(ticket,timeout,retry)

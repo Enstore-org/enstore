@@ -479,7 +479,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         return ticket
 
     # what is the current status of a specified volume?
-    def inquire_vol(self, external_label, timeout=20, retry=5):
+    def inquire_vol(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'inquire_vol',
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
