@@ -94,6 +94,9 @@ if [ $DELETE_LOCAL_FILE -eq 1 ]; then
    exit 0
 fi
 
+
+ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
+
 #################################################################################################
 
 if [ $MAKE_LOCAL_COPY -eq 1 -o $READ_TO_DEV_NULL -eq 1 ]; then
@@ -133,7 +136,8 @@ cat $dirs | while read dir; do
   if [ $USE_A_DRIVE -eq 0 ]; then
      ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
   else
-     unset ENSTORE_SPECIAL_LIB
+     #unset ENSTORE_SPECIAL_LIB
+     ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
   fi
   echo `date` encp --delayed-dismount=$delay $options $file_list $disk_copy
               encp --delayed-dismount=$delay $options $file_list $disk_copy &pid=$!
@@ -203,7 +207,8 @@ cat $files | while read file; do
      if [ $USE_A_DRIVE -eq 0 ]; then
         ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
      else
-         unset ENSTORE_SPECIAL_LIB
+         #unset ENSTORE_SPECIAL_LIB
+         ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
      fi
      echo `date` encp --delayed-dismount=$delay $options $file $lfile
                  encp --delayed-dismount=$delay $options $file $lfile
