@@ -802,14 +802,23 @@ class EnMiscPage(EnBaseHtmlDoc):
 	self.description = "%s%sMiscellaneous Enstore information specified by the user (in the configuration file) for inclusion here. This page is created by the Inquisitor and periodically updated."%(NBSP, NBSP)
 
     # create the body of the page, the incoming data is a list of strings
-    def body(self, data_list):
+    def body(self, (data_list, html_dir)):
 	table = self.table_top()
+	tr = HTMLgen.TR(self.make_th("Miscellaneous Command Output File"))
+	tr.append(self.make_th("Creation Date"))
+	file_table = HTMLgen.TableLite(tr, border=1, cellspacing=5, cellpadding=CELLP,
+				       align="LEFT", bgcolor=AQUA)
 	if data_list:
 	    # now the data
 	    data_list.sort()
 	    for item in data_list:
-		table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Href(item, item), 
-								size="+2"))))
+		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Href(item, item), 
+							size="+2")))
+		# get the modification date of the file too
+		tr.append(HTMLgen.TD(enstore_status.format_time(os.stat("%s/%s"%(html_dir,
+								     item))[stat.ST_MTIME])))
+		file_table.append(tr)
+	table.append(HTMLgen.TR(HTMLgen.TD(file_table)))
 	# output on the same page a list of the files indicating misc jobs are active
 	# this may aid in diagnosing problems with hung misc jobs.
 	table.append(empty_row())
@@ -826,7 +835,7 @@ class EnMiscPage(EnBaseHtmlDoc):
 	for dir in dirs:
 	    file = "%s/%s"%(home, dir)
 	    tr = HTMLgen.TR(HTMLgen.TD(file))
-	    # get the creation date of the directory too
+	    # get the modification date of the directory too
 	    tr.append(HTMLgen.TD(enstore_status.format_time(os.stat(file)[stat.ST_MTIME])))
 	    dirs_table.append(tr)
 	table.append(HTMLgen.TR(HTMLgen.TD(dirs_table)))

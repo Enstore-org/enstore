@@ -385,7 +385,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
                 if not hfile == "NONE":
 		    data.append(hfile)
-	    self.mischtmlfile.write(data)
+	    self.mischtmlfile.write((data, self.html_dir))
         self.mischtmlfile.close()
         self.move_file(1, self.mischtmlfile_orig)
 
