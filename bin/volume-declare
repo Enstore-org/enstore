@@ -195,11 +195,11 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      samman   none 8MM     CA2270 20113227776 20113227776
-                      samman   none 8MM     CA2271 20113227776 20113227776
-                      samman   none 8MM     CA2272 20113227776 20113227776
-                      samman   none 8MM     CA2273 20113227776 20113227776
-                      samman   none 8MM     CA2274 20113227776 20113227776
+                      sammam   none 8MM     CA2270 20113227776 20113227776
+                      sammam   none 8MM     CA2271 20113227776 20113227776
+                      sammam   none 8MM     CA2272 20113227776 20113227776
+                      sammam   none 8MM     CA2273 20113227776 20113227776
+                      sammam   none 8MM     CA2274 20113227776 20113227776
                      "
          ;;
   dlt)   rm -fr    /pnfs/grau/dlt/*
