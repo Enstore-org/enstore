@@ -2,6 +2,8 @@
 
 NETWORKFILE = "active_monitor.html"
 
+TCP_EXCEPTION = "TCP connection closed"
+
 FILE_PREFIX = "enplot_"
 BPD = "bpd"
 XFER = "xfer"
@@ -38,6 +40,8 @@ ROOT_ERROR = "root_error"
 ALIVE_INTERVAL = "alive_interval"
 DEFAULT_ALIVE_INTERVAL = "default_alive_interval"
 CONFIG_SERVER_ALIVE_INTERVAL = 30 # there is none in config file
+NOT_MONITORING = "not monitoring"
+FILE_LIST_NAME = "enstore_files.html"
 
 # server names used in enstore_up_down
 LOGS = "Logger"
