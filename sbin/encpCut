@@ -4,47 +4,12 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # sbin/$RCSfile$  $Revision$
 
-# script to cut the encp (client) product from the enstore sources
+# script to cut the encp (client) and enstore (server) products from the enstore cvs sources
 
 # based on copCut which is based almost entirely on Ron R's dscCut
 
-product=encp
 productCut=`basename $0`
-
 echo "$productCut starting at `date`"
-
-##############################################################################
-
-USAGE="
-
-   $productCut -options
-
--r version   next release version
--i directory install directory (without version number and product) for the new revision (i.e. /p/Linux)
--c chain     to set chain to be <new|old|test|development|current|none>
--s steps     to control which steps get executed,  zB 1,2,4-13
--x           to set -xv
--?           to list this
-
-Steps to the cutting process:
-  1.  cvs directory check
-  2.  cd modules - make clean all
-  3.  cd src - make clean encp
-  4.  cd volume_import - make clean enstore_tape
-  5.  cvs tag
-  6.  install into product area
-  7.  ups undeclare
-  8.  ups declare
-  9.  upd delproduct
-  10. upd addproduct
-"
-
-##############################################################################
-
-STEPSDEFINED=10
-
-echo "$USAGE"
-
 thepwd=`pwd`
 
 ##############################################################################
@@ -73,10 +38,60 @@ starting() { if [ $try != "list" ] ; then
                 /bin/echo -n "starting at `date`"
              fi; }
 
-copyit()   { cp $1 $2;
+copyit()   { dname=`dirname $2`
+             if [ ! -d $dname ]; then
+               mkdir -p $dname
+               check_status $? "mkdir -p $dname"
+             fi
+             cp $1 $2;
              check_status $? "cp $1 $2"; }
 
 ##############################################################################
+
+USAGE="
+
+   $productCut -options
+
+-r version   next release version
+-i directory install directory (without version number and product) for the new revision (i.e. /p/Linux)
+-c chain     to set chain to be <new|old|test|development|current|none>
+-s steps     to control which steps get executed,  zB 1,2,4-13
+-x           to set -xv
+-?           to list this
+
+Steps to the cutting process:
+  1.  cvs directory check
+  2.  bump encp version number in encp.py
+  3.  cd modules - make clean all
+  4.  cd src - make clean encp
+  5.  cd volume_import - make clean enstore_tape
+  6.  compileall python source
+  7.  cvs tag
+  8.  install into product area
+  9.  ups undeclare
+ 10.  ups declare
+ 11.  upd delproduct
+ 12.  upd addproduct
+"
+
+STEPSDEFINED=12
+
+echo "$USAGE"
+
+##############################################################################
+
+product=`echo $productCut | sed -e 's/Cut//'`
+
+if [ $product = "encp" ]; then
+  productmate=enstore
+elif [ $product = "enstore" ]; then
+  productmate=encp
+else
+  check_status 1 "Do not know anything about $productCut"
+fi
+
+##############################################################################
+
 # we need ups and upd to be setup
 
 if [ -z "${UPS_DIR-}" ] ; then
@@ -97,7 +112,6 @@ if [ -z "${ENSTORE_DIR-}" ] ; then
   check_status 1 "You need enstore to be setup before using $productCut"
 fi
 cd $ENSTORE_DIR
-#FLAVOR=`echo $SETUP_ENSTORE | cut -d" " -f4` # potentially troublesome - not very robust if the setup_enstore line changes
 FLAVOR=`echo $SETUP_ENSTORE | sed -e 's/.*-f //' -e 's/ .*//'`
 if [ -d CVS ] ; then
    Cvs_Module=`expr "\`cat CVS/Repository\`" : ".*/\([^/]*\)"`
@@ -167,7 +181,7 @@ echo "options have been processed... checking"
 
 if [ -z "${REV-}" ] ; then
    Step="next revision"
-   last=`cvs status -v Makefile | grep \(revision: | grep $product | head -1  | sed -e 's/^[ ]*//'`
+   last=`cvs status -v Makefile | grep \(revision: | egrep "$product|$productmate" | head -1  | sed -e 's/^[ ]*//'`
    check_status $? "cvs status -v Makefile"
    if [ -z "${last-}" ] ; then
      echo "revision info not available via cvs - defaulting to v0_0 as last known revision"
@@ -179,6 +193,7 @@ if [ -z "${REV-}" ] ; then
    check_status $? "determining next rev from $last"
    echo "Revision not specified - Defaulting to revison $REV"
 fi
+TAG=${REV}_${product}_`uname`
 
 ##############################################################################
 # we need a place to install the cut product
@@ -191,15 +206,22 @@ if [ -z "${INSTALLDIR-}" ] ; then
       pcfarm9*)  INSTALLDIR=/products/$product;;
       hppc*)     INSTALLDIR=/usr/products/IRIX+6/$product;;
       ripsgi*)   INSTALLDIR=/usr/products/$product;;
-      rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2/
+      rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2
                  setrev=0;;
-      *)         INSTALLDIR=/p/`uname`/$product;;
+      *)         check_status 1 "Don't know where to install ups product $product on `uname -n`";;
    esac
    echo "Install directory not specified - Defaulting to install directory of $INSTALLDIR"
 fi
 if [ $setrev -eq 1 ]; then
   INSTALLDIR=${INSTALLDIR}/${REV}
 fi
+if [ -d $INSTALLDIR ]; then
+    check_status 1 "$INSTALLDIR already exists"
+fi
+mkdir -p $INSTALLDIR
+check_status $? "protections bad??  mkdir -p $INSTALLDIR"
+rm -fr $INSTALLDIR
+check_status $? "protections bad??  rm -fr $INSTALLDIR"
 
 ##############################################################################
 # we need to know what steps we are supposed to perform during the cut
@@ -265,7 +287,22 @@ for try in list doit; do
            fi
            ;;
 
-        2) echo "Step $Step:  cd modules and make clean all   `starting`"
+        2) echo "Step $Step:  bump encp version number to $REV in encp.py   `starting`"
+           if [ "$try" = "doit" ] ; then
+              encpnew=`mktemp /tmp/$productCut.XXXXXXX`
+              check_status $? "encpnew mktemp /tmp/$productCut.XXXXXXX"
+              sed -e "s#return \".*  CVS \$Revision$REV  CVS \$Revision$ENSTORE_DIR/src/encp.py > $encpnew
+              check_status $? "sed bump version to $REV"
+              diff $ENSTORE_DIR/src/encp.py $encpnew
+              cp $encpnew $ENSTORE_DIR/src/encp.py
+              check_status $? "mv $encpnew $$ENSTORE_DIR/src/encp.py"
+              rm $encpnew
+              cd $ENSTORE_DIR/src
+              cvs commit -m "bumping version to $REV because of $productCut" encp.py
+              check_status $? "cvs commit of encp.py"
+           fi
+           ;;
+        3) echo "Step $Step:  cd modules and make clean all   `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/modules
               make clean all
@@ -273,7 +310,7 @@ for try in list doit; do
            fi
            ;;
 
-        3) echo "Step $Step:  cd src and make clean encp    `starting`"
+        4) echo "Step $Step:  cd src and make clean encp    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/src
               make clean encp
@@ -281,7 +318,7 @@ for try in list doit; do
            fi
            ;;
 
-        4) echo "Step $Step:  cd volume_import and make clean enstore_tape    `starting`"
+        5) echo "Step $Step:  cd volume_import and make clean enstore_tape    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/volume_import
               make clean enstore_tape
@@ -289,16 +326,34 @@ for try in list doit; do
            fi
            ;;
 
-        5) tag=${REV}_${product}_`uname`
-           echo "Step $Step:  cvs tag $tag    `starting`"
+        6) echo "Step $Step:  compileall python source   `starting`"
            if [ "$try" = "doit" ] ; then
-              cd $ENSTORE_DIR
-              cvs tag $tag
-              check_status $? "cvs tag $tag"
+             find $ENSTORE_DIR -name "*\.pyc" | xargs -r rm
+             check_status $? "rm of old pyc files"
+             compileall_output=`mktemp /tmp/$productCut.XXXXXXX`
+             check_status $? "compileall mktemp /tmp/$productCut.XXXXXXX"
+             python -c '
+import os,compileall
+compileall.compile_dir(os.environ["ENSTORE_DIR"])
+' 2>&1 | tee $compileall_output
+             check_status $? "compileall python source"
+             if [ `grep -c "SyntaxError" $compileall_output` -ne 0 ]; then
+               check_status 1 "compile error - see $compileall_output"
+             else
+               rm -f $compileall_output
+             fi
            fi
            ;;
 
-        6) echo "Step $Step:  install $product into $INSTALLDIR    `starting`"
+        7) echo "Step $Step:  cvs tag $TAG    `starting`"
+           if [ "$try" = "doit" ] ; then
+              cd $ENSTORE_DIR
+              cvs tag $TAG
+              check_status $? "cvs tag $TAG"
+           fi
+           ;;
+
+        8) echo "Step $Step:  install $product into $INSTALLDIR    `starting`"
            if [ "$try" = "doit" ] ; then
               # check if directory doesn't exist
               if [ ! -d $INSTALLDIR ] ; then
@@ -307,24 +362,53 @@ for try in list doit; do
                  check_status $? "mkdir -p $INSTALLDIR"
               fi
 
-              copyit $ENSTORE_DIR/src/ENCPBIN/encp            $INSTALLDIR
-              copyit $ENSTORE_DIR/src/ENCPBIN/enstore         $INSTALLDIR
-              copyit $ENSTORE_DIR/volume_import/enstore_tape  $INSTALLDIR
-              copyit $ENSTORE_DIR/bin/pnfs                    $INSTALLDIR
-              copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR
-              copyit $ENSTORE_DIR/sbin/EPS                    $INSTALLDIR
-              copyit $ENSTORE_DIR/ups/encp.table              $INSTALLDIR
-              copyit $ENSTORE_DIR/ups/pcfarm.table            $INSTALLDIR
-              copyit $ENSTORE_DIR/ups/rip.table               $INSTALLDIR
-              copyit $ENSTORE_DIR/ups/sam.table               $INSTALLDIR
+              if [ $product = "encp" ]; then
 
-              cd $INSTALLDIR
-              ln -s sam.table enstore_variables.table
-              check_status $? "ln -s sam.table enstore_variables.table"
+                copyit $ENSTORE_DIR/src/ENCPBIN/encp            $INSTALLDIR/encp
+                copyit $ENSTORE_DIR/src/ENCPBIN/enstore         $INSTALLDIR/enstore
+                copyit $ENSTORE_DIR/volume_import/enstore_tape  $INSTALLDIR/enstore_tape
+                copyit $ENSTORE_DIR/bin/pnfs                    $INSTALLDIR/pnfs
+                copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR/pnfs_commn
+                copyit $ENSTORE_DIR/sbin/EPS                    $INSTALLDIR/EPS
+                copyit $ENSTORE_DIR/ups/encp.table              $INSTALLDIR/encp.table
+                copyit $ENSTORE_DIR/ups/rip.table               $INSTALLDIR/rip.table
+                copyit $ENSTORE_DIR/ups/sam.table               $INSTALLDIR/sam.table
+                cd $INSTALLDIR
+                ln -s sam.table enstore_variables.table
+                check_status $? "ln -s sam.table enstore_variables.table"
+
+              elif [ $product = "enstore" ]; then
+
+                copylist=`mktemp /tmp/$productCut.XXXXXXX`
+                check_status $? "copylist mktemp /tmp/$productCut.XXXXXXX"
+                find $ENSTORE_DIR/ -type f| egrep -v "/CVS|/templates|\.o$|\~$|\.#|.cvsignore|/test/[0-9]+|/test/data|core|enstore_variables.table">$copylist
+                check_status $? "find files > $copylist"
+                if [ -z "${cvs_nq_update-}"]; then
+                  cvs_nq_update=`cvs -nq update 2>&1`
+                  check_status $? "cvs -nq update"
+                fi
+                cat $copylist | while read from; do
+                    to=`echo $from | sed -e "s#^$ENSTORE_DIR/##"`
+                    if [ "$to" = "$from" ]; then
+                       check_status 1 "can't get to from from $to $from"
+                    fi
+                    if x="`echo \"$cvs_nq_update\"|grep \"^? $to\"`"; then
+                        echo "Skipping $to because it is not in the repository"
+                    else
+                      copyit $from $INSTALLDIR/$to
+                    fi
+                done
+                rm $copylist
+                cd $INSTALLDIR/ups
+                check_status $? "cd $INSTALLDIR/ups"
+                ln -s sam.table enstore_variables.table
+                check_status $? "ln -s sam.table enstore_variables.table"
+              fi
+
            fi
            ;;
 
-        7) echo "Step $Step:  ups undeclare -f $FLAVOR $product $REV    `starting`"
+        9) echo "Step $Step:  ups undeclare -f $FLAVOR $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
               a=`$UPS_DIR/bin/ups undeclare  -f $FLAVOR $product $REV 2>&1`
               stat=$?
@@ -334,14 +418,14 @@ for try in list doit; do
            fi
            ;;
 
-        8) echo "Step $Step:  ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV    `starting`"
+       10) echo "Step $Step:  ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
                  $UPS_DIR/bin/ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV
                  check_status $? "ups declare"
            fi
            ;;
 
-        9) echo "Step $Step:  upd delproduct -H $FLAVOR -f $FLAVOR  $product $REV   `starting`"
+       11) echo "Step $Step:  upd delproduct -H $FLAVOR -f $FLAVOR  $product $REV   `starting`"
            if [ "$try" = "doit" ] ; then
               a=`$UPD_DIR/bin/upd delproduct  -H $FLAVOR -f $FLAVOR $product $REV 2>&1`
               stat=$?
@@ -351,7 +435,7 @@ for try in list doit; do
            fi
            ;;
 
-        10) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV   `starting`"
+        12) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV   `starting`"
            if [ "$try" = "doit" ] ; then
               $UPD_DIR/bin/upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV
               check_status $? "upd addproduct"
