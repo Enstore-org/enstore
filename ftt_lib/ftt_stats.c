@@ -47,7 +47,6 @@ itoa(long n) {
 	return buf;
 }
 
-
 /* set_stat
 **
 ** handy routine to fill in the n-th slot in the stat buffer
@@ -489,10 +488,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		}
 		if (d->data_direction ==  FTT_DIR_READING) {
 		    set_stat(b,FTT_READ_COUNT,itoa(data_count),0);
-		    set_stat(b,FTT_WRITE_COUNT,"0",0);
 		} else {
 		    set_stat(b,FTT_WRITE_COUNT,itoa(data_count),0);
-		    set_stat(b,FTT_READ_COUNT,"0",0);
 		}
 		set_stat(b,FTT_COUNT_ORIGIN,"Exabyte_Extended_Sense",0);
 	    }
