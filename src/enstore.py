@@ -389,6 +389,5 @@ class Enstore(EnstoreInterface):
                     rtn = 1
                 else:
                     # call the passed in server to do it's stuff
-                    server_functions[self.matched_server][1](self.server_intf)
-                    rtn = 0
+                    rtn = server_functions[self.matched_server][1](self.server_intf)
         sys.exit(rtn)
