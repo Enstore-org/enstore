@@ -14,6 +14,8 @@ elif host[:3] == "stk":
 	cluster = "stken"
 elif host[:3] == "d0e":
 	cluster = "d0en"
+elif host[:3] == "cdf":
+	cluster = "cdfen"
 else:
 	cluster = "unknown"
 
@@ -26,6 +28,10 @@ if cluster == "d0en":
 elif cluster == "stken":
 	special.append('VOLUME_QUOTAS_UPDATE')
 	special.append('AMLJ-VOLUMES.html')
+	special.append('STK-VOLUMES.html')
+elif cluster == "cdfen":
+	special.append('NOACCESS')
+	special.append('VOLUME_QUOTAS_UPDATE')
 	special.append('STK-VOLUMES.html')
 
 catalog = {}
