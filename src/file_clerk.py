@@ -343,7 +343,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             ticket['status'] = self.__erase_volume(vol)
         except:
-            msg = 'erase failed due to: '+`sys.exc_type`+' '+`sys.exc_value`
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = 'erase failed due to: '+ exc_type+' '+exc_value
             ticket["status"] = (e_errors.ERROR, msg)
         # and return to the caller
         self.reply_to_caller(ticket)
@@ -873,7 +874,15 @@ if __name__ == "__main__":
     db_port = dbInfo['db_port']
 
     Trace.log(e_errors.INFO,"opening file database using edb.FileDB")
-    fc.dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome)
+    try:
+        fc.dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome)
+    except:
+        exc_type, exc_value = sys.exc_info()[:2]
+        msg = exc_type+' '+exc_value+' IS POSTMASTER RUNNING?'
+        Trace.log(e_errors.ERROR,msg)
+        Trace.alarm(e_errors.ERROR,msg, {})
+        Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
+        sys.exit(1) 
     
     while 1:
         try:
