@@ -47,7 +47,7 @@ case $drive in
   de14) cmd="rsh $rip12  'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
   dc15) cmd="rsh $rip12  'mt -f /dev/rmt/tps5d4n $command 2>&1; echo \$?'" ;;
   dc16) cmd="rsh $rip12  'mt -f /dev/rmt/tps4d6n $command 2>&1; echo \$?'" ;;
- #dc17) cmd="rsh $rip12  'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
+  dc17) cmd="rsh $rip12  'mt -f /dev/rmt/tps3d5n $command 2>&1; echo \$?'" ;;
   dm18) cmd="rsh $rip11  'mt -f /dev/rmt/tps4d1n $command 2>&1; echo \$?'" ;;
   dm19) cmd="rsh $rip11  'mt -f /dev/rmt/tps4d2n $command 2>&1; echo \$?'" ;;
 
