@@ -2569,9 +2569,12 @@ def check_crc(done_ticket, encp_intf, fd=None):
                 #Get the hex strings of the two CRCs.
                 hex_dcache_string = "0x" + result.group().split(":")[1]
                 hex_encp_string = hex(fixed_encp_crc)
+                #Convert to integers for safety.  (padding of zero's)
+                hex_dcache_crc = hex(int(hex_dcache_string, 16))
+                hex_encp_crc = hex(int(hex_encp_string, 16))
                 #Convert hex values to upper case for comparison.
-                hex_dcache_string = string.lower(hex_dcache_string)
-                hex_encp_string = string.lower(hex_encp_string)
+                hex_dcache_string = string.lower(hex_dcache_crc)
+                hex_encp_string = string.lower(hex_encp_crc)
                 #Test to make sure they are the same.
                 if hex_dcache_string != hex_encp_string:
                     msg = "CRC dcache mismatch: %s != %s" % (hex_dcache_string,
