@@ -650,8 +650,8 @@ check_owner /local/ups/kt
 check_owner /local/ups/kt/enstorekt
 
 # verify ownership of log files
-check_owner ~enstore/`hostname`.startup
-check_owner /`hostname`.monitor_server.output
+check_owner ~enstore/`hostname`.startup		enstore
+check_owner /`hostname`.monitor_server.output	root
 
 
 if [ $IPMI -eq 1 ]; then
