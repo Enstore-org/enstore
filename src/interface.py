@@ -302,8 +302,8 @@ class Interface:
                 self.get_cache = 1
             elif opt == "--get-crcs":
                 self.get_crcs=value
-            elif opt == "--get-update_interval":
-                self.get_inq_timeout = 1
+            elif opt == "--get-update-interval":
+                self.get_update_interval = 1
             elif opt == "--get-last-logfile-name":
                 self.get_last_logfile_name = 1
             elif opt == "--get-logfile-name":
@@ -341,7 +341,7 @@ class Interface:
                 self._import = 1
             elif opt == "--input-dir":
                 self.input_dir = value
-            elif opt == "--update_interval":
+            elif opt == "--update-interval":
                 self.update_interval = int(value)
             elif opt == "--interval":
                 self.interval = int(value)
@@ -456,7 +456,7 @@ class Interface:
             elif opt == "--up":
                 self.up = value
             elif opt == "--update":
-                self.update = value
+                self.update = 1
             elif opt == "--update-and-exit":
                 self.update_and_exit = 1
             elif opt == "--url":
