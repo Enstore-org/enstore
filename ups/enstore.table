@@ -59,6 +59,14 @@ QUALIFIERS=sirius
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
+QUALIFIERS=efb
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, ripsgi.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/berman.conf)
+		execute("touch /tmp/enstore/berman/ripsgidisk.fake.", NO_UPS_ENV)
+                exeActionRequired(COMMON_SETUP)
+
+FLAVOR=ANY
 QUALIFIERS=""
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST,`${UPS_PROD_DIR}/ups/chooseConfig`)
