@@ -990,6 +990,129 @@ FTT_rewind(  PyObject *self
 
 /*****************************************************************************
  */
+static char FTT_dump_stats_doc[] = "invoke ftt_dump_stats";
+
+static PyObject*
+FTT_dump_stats(  PyObject *self
+	      , PyObject *args )
+{
+	int		sts;	/* general status */
+	PyObject	*rr;
+	FILE            *fptr;
+	PyObject        *pyt_fptr = 0;
+	
+
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_dump_stats device not opened"));
+
+    sts = PyArg_ParseTuple(args, "O", &pyt_fptr );
+    if (!sts) return (NULL);
+    
+    if (!PyFile_Check(pyt_fptr)) {
+        PyErr_SetString(PyExc_TypeError, "Need A File!");
+	return NULL;
+    }
+    
+    fptr = PyFile_AsFile(pyt_fptr);
+
+#   define GG g_stbuf_tp
+    sts = ftt_get_stats( g_ftt_desc_tp, GG );
+    if (sts == -1) return raise_ftt_exception( "FTT_dump_stats" );
+    rr = Py_BuildValue("i", ftt_dump_stats(GG,fptr));
+    return (rr);
+}
+
+
+/*****************************************************************************
+ */
+static char FTT_get_statsAll_doc[] = "invoke ftt_get_statsAll";
+
+static PyObject*
+FTT_get_statsAll(  PyObject *self
+	      , PyObject *args )
+{
+	int		sts, i;	/* general status */
+	PyObject	*rr;
+	char            *bvFormat;
+	
+
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_get_statsAll device not opened"));
+
+#   define GG g_stbuf_tp
+    sts = ftt_get_stats( g_ftt_desc_tp, GG );
+    if (sts == -1) return raise_ftt_exception( "FTT_get_statsAll" );
+
+    bvFormat = malloc(4*56+6);
+    bvFormat = strncpy(bvFormat,"{s:i",5);
+    for (i=0;i<56;i++) {
+        bvFormat = strncat(bvFormat,",s:s",4);
+    }
+    bvFormat = strncat(bvFormat,"}",1);
+    rr = Py_BuildValue( bvFormat
+             , "xferred_bytes", g_xferred_bytes
+             , "remain_tape",     ftt_extract_stats(GG,FTT_REMAIN_TAPE)
+             , "n_reads",         ftt_extract_stats(GG,FTT_N_READS)
+             , "read_errors",     ftt_extract_stats(GG,FTT_READ_ERRORS)
+             , "file_number",     ftt_extract_stats(GG,FTT_FILE_NUMBER)
+             , "block_number",    ftt_extract_stats(GG,FTT_BLOCK_NUMBER)
+             , "bloc_loc",        ftt_extract_stats(GG,FTT_BLOC_LOC)
+             , "serial_num",      ftt_extract_stats(GG,FTT_SERIAL_NUM)
+             , "cleaning_bit",    ftt_extract_stats(GG,FTT_CLEANING_BIT)
+             , "fmk",             ftt_extract_stats(GG,FTT_FMK)
+             , "vendor_id",       ftt_extract_stats(GG,FTT_VENDOR_ID)
+             , "product_id",      ftt_extract_stats(GG,FTT_PRODUCT_ID)
+             , "firmware_rev",    ftt_extract_stats(GG,FTT_FIRMWARE)
+             , "read_count",      ftt_extract_stats(GG,FTT_READ_COUNT)
+             , "write_count",     ftt_extract_stats(GG,FTT_WRITE_COUNT)
+             , "write_errors",    ftt_extract_stats(GG,FTT_WRITE_ERRORS)
+             , "read_comp",       ftt_extract_stats(GG,FTT_READ_COMP)
+             , "write_comp",      ftt_extract_stats(GG,FTT_WRITE_COMP)
+             , "bot",             ftt_extract_stats(GG,FTT_BOT)
+             , "ready",           ftt_extract_stats(GG,FTT_READY)
+             , "write_prot",      ftt_extract_stats(GG,FTT_WRITE_PROT)
+             , "eom",             ftt_extract_stats(GG,FTT_EOM)
+             , "peot",            ftt_extract_stats(GG,FTT_PEOT)
+             , "media_type",      ftt_extract_stats(GG,FTT_MEDIA_TYPE)
+             , "block_size",      ftt_extract_stats(GG,FTT_BLOCK_SIZE)
+             , "block_total",     ftt_extract_stats(GG,FTT_BLOCK_TOTAL)
+             , "trans_density",   ftt_extract_stats(GG,FTT_TRANS_DENSITY)
+             , "trans_compress",  ftt_extract_stats(GG,FTT_TRANS_COMPRESS)
+             , "user_read",       ftt_extract_stats(GG,FTT_USER_READ)
+             , "user_write",      ftt_extract_stats(GG,FTT_USER_WRITE)
+             , "controller",      ftt_extract_stats(GG,FTT_CONTROLLER)
+             , "density",         ftt_extract_stats(GG,FTT_DENSITY)
+             , "invalid_length",  ftt_extract_stats(GG,FTT_ILI)
+             , "scsi_asc",        ftt_extract_stats(GG,FTT_SCSI_ASC)
+             , "scsi_ascq",       ftt_extract_stats(GG,FTT_SCSI_ASCQ)
+             , "power_failed",    ftt_extract_stats(GG,FTT_PF)
+             , "cleaned_bit",     ftt_extract_stats(GG,FTT_CLEANED_BIT)
+             , "track_retry",     ftt_extract_stats(GG,FTT_TRACK_RETRY)
+             , "underrun",        ftt_extract_stats(GG,FTT_UNDERRUN)
+             , "motion_hours",    ftt_extract_stats(GG,FTT_MOTION_HOURS)
+             , "power_hours",     ftt_extract_stats(GG,FTT_POWER_HOURS)
+             , "tur_status",      ftt_extract_stats(GG,FTT_TUR_STATUS)
+             , "count_origin",    ftt_extract_stats(GG,FTT_COUNT_ORIGIN)
+             , "n_writes",        ftt_extract_stats(GG,FTT_N_WRITES)
+             , "tape_not_present",ftt_extract_stats(GG,FTT_TNP)
+             , "sense_key",       ftt_extract_stats(GG,FTT_SENSE_KEY)
+             , "trans_sense_key", ftt_extract_stats(GG,FTT_TRANS_SENSE_KEY)
+             , "retries",         ftt_extract_stats(GG,FTT_RETRIES)
+             , "fail_retries",    ftt_extract_stats(GG,FTT_FAIL_RETRIES)
+             , "resets",          ftt_extract_stats(GG,FTT_RESETS)
+             , "hard_errors",     ftt_extract_stats(GG,FTT_HARD_ERRORS)
+             , "unc_write",       ftt_extract_stats(GG,FTT_UNC_WRITE)
+             , "unc_read",        ftt_extract_stats(GG,FTT_UNC_READ)
+             , "cmp_write",       ftt_extract_stats(GG,FTT_CMP_WRITE)
+             , "cmp_read",        ftt_extract_stats(GG,FTT_CMP_READ)
+             , "error_code",      ftt_extract_stats(GG,FTT_ERROR_CODE)
+             , "max_stat",        ftt_extract_stats(GG,FTT_MAX_STAT)
+	      );
+    free(bvFormat);
+    return (rr);
+}
+
+
+/*****************************************************************************
+ */
 static char FTT_get_stats_doc[] = "invoke ftt_get_stats";
 
 static PyObject*
@@ -1116,6 +1239,8 @@ static PyMethodDef FTT_Methods[] = {
     { "skip_rec", FTT_skip_rec, 1, FTT_skip_rec_doc },
     { "locate", FTT_locate, 1, FTT_locate_doc },
     { "rewind", FTT_rewind, 1, FTT_rewind_doc },
+    { "dump_stats", FTT_dump_stats, 1, FTT_dump_stats_doc },
+    { "get_statsAll", FTT_get_statsAll, 1, FTT_get_statsAll_doc },
     { "get_stats", FTT_get_stats, 1, FTT_get_stats_doc },
     { "status", FTT_status, 1, FTT_status_doc },
     { "format_label", FTT_format_label, 1, FTT_format_label_doc },
