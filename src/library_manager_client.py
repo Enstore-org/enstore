@@ -1,7 +1,11 @@
 import sys
 import pprint
+import time
 from configuration_client import *
 from udp_client import UDPClient
+from dict_to_a import *
+from callback import *
+from errno import *
 
 class LibraryManagerClient :
     def __init__(self, configuration_client, library_name) :
@@ -30,6 +34,70 @@ class LibraryManagerClient :
         return self.send({"work" : "printwork"} )
 
 
+    def getwork(self,list) :
+        # get a port to talk on and listen for connections
+        host, port, listen_socket = get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"               : "getwork",
+                  "user_callback_port" : port,
+                  "user_callback_host" : host,
+                  "unique_id"          : time()
+                  }
+        # send the work ticket to the library manager
+        ticket = self.send(ticket)
+        if ticket['status'] != "ok" :
+            raise errorcode[EPROTO],"lmc.getwork: sending ticket"+repr(ticket)
+        if list :
+            print "Q'd: getwork"
+
+        # We have placed our work in the system and now we have to wait for
+        # resources. All we  need to do is wait for the system to call us back,
+        # and make sure that is it calling _us_ back, and not some sort of old
+        # call-back to this very same port. It is dicey to time out, as it
+        # is probably legitimate to wait for hours....
+
+        while 1 :
+            control_socket, address = listen_socket.accept()
+            new_ticket = a_to_dict(control_socket.recv(10000))
+            if ticket["unique_id"] == new_ticket["unique_id"] :
+                listen_socket.close()
+                break
+            else:
+                print ("lmc.getwork: imposter called us back, trying again")
+                control_socket.close()
+        ticket = new_ticket
+        if ticket["status"] != "ok" :
+            raise errorcode[EPROTO],"lmc.getwork: "\
+                  +"1st (pre-work-read) library manager callback on socket at "\
+                  +repr(address)+", failed to setup transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+
+        # If the system has called us back with our own  unique id, call back
+        # the libray manager on the library manager's port and read the
+        # work queues on that port.
+        data_path_socket = library_manager_callback_socket(ticket)
+        l = 0
+        while 1:
+            buf = data_path_socket.recv(65536*4)
+            l = l + len(buf)
+            if len(buf) == 0 : break
+            print buf
+        data_path_socket.close()
+
+        # Work has been read - wait for final dialog with library manager.
+        done_ticket = a_to_dict(control_socket.recv(10000))
+        control_socket.close()
+        if done_ticket["status"] != "ok" :
+            raise errorcode[EPROTO],"lmc.getwork: "\
+                  +"2nd (post-work-read) library manger callback on socket at "\
+                  +repr(address)+", failed to transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+        if list :
+            print "done"
+
+	return done_ticket
+
+
 if __name__ == "__main__" :
     import getopt
     import socket
@@ -40,11 +108,11 @@ if __name__ == "__main__" :
     config_port = "7500"
     config_list = 0
     list = 0
-    printwork = 0
+    getwork = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port="\
-               ,"config_list","printwork","list","help"]
+               ,"config_list","getwork","list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -53,8 +121,8 @@ if __name__ == "__main__" :
             config_port = value
         elif opt == "--config_list" :
             config_list = 1
-        elif opt == "--printwork" :
-            printwork = 1
+        elif opt == "--getwork" :
+            getwork = 1
         elif opt == "--list" :
             list = 1
         elif opt == "--help" :
@@ -80,8 +148,8 @@ if __name__ == "__main__" :
 
     lmc = LibraryManagerClient(csc,args[0])
 
-    if  printwork:
-        ticket = lmc.printwork()
+    if  getwork:
+        ticket = lmc.getwork(list)
 
     if ticket["status"] != "ok"  :
         print "BAD status returned"

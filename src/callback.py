@@ -46,6 +46,13 @@ def mover_callback_socket(ticket) :
     sock.connect(ticket['mover_callback_host'], ticket['mover_callback_port'])
     return sock
 
+# return a library manager socket
+def library_manager_callback_socket(ticket) :
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(ticket['library_manager_callback_host'], \
+		 ticket['library_manager_callback_port'])
+    return sock
+
 # send ticket/message on user socket and return user socket
 def user_callback_socket(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
