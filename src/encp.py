@@ -1113,9 +1113,13 @@ def filesystem_check(target_filesystem, inputfile):
             raise EncpError(getattr(msg,"errno",None), msg2, e_errors.OSERROR)
 
     filesystem_max = 2L**(bits - 1) - 1
-    
+
+    #Normally, encp would find this an error, but "Get" may not.  Raise
+    # an exception and let the caller decide.
+    if size == None:
+        raise EncpError(None, "Filesize is not known.", e_errors.OSERROR)
     #Compare the max sizes.
-    if size > filesystem_max:
+    elif size > filesystem_max:
         raise EncpError(errno.EFBIG,
                         "Filesize (%s) larger than filesystem allows (%s)." \
                         % (size, filesystem_max),
@@ -1375,7 +1379,17 @@ def outputfile_check(inputlist, outputlist, e):
             # the wrapper and library use are greater than the filesize.
             # These function will raise an EncpError on an error.
             if e.intype == "hsmfile": #READS
-                filesystem_check(outputlist[i], inputlist[i])
+                try:
+                    filesystem_check(outputlist[i], inputlist[i])
+                except EncpError, msg:
+                    #If the volume is being read in, the filesize may not
+                    # be known yet.  Don't fail these but continue to fail
+                    # such errors if they are of this type for normal reads.
+                    if msg.errno == None and msg.type == e_errors.OSERROR \
+                       and e.volume:
+                        pass  #Get ingest.
+                    else:
+                        raise msg
             else: #WRITES
                 librarysize_check(outputlist[i], inputlist[i])
                 wrappersize_check(outputlist[i], inputlist[i])
