@@ -211,6 +211,14 @@ class DbTable:
 
 		return
 
+	def reconnect(self):
+		# close existing connection
+		try:
+			self.close()
+		except:
+			pass
+		self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
+
 	def close(self):	# don't know what to do
 		self.db.close()
 		pass
