@@ -15,6 +15,7 @@ import Trace
 import e_errors
 import checksum
 import hostaddr
+import host_config
 import socket_ext
 
 def hex8(x):
@@ -26,12 +27,7 @@ def hex8(x):
     return '0'*(8-l)+s
 
 # get an unused tcp port for control communication
-def get_callback(use_multiple=0,fixed_ip=None,verbose=0):
-    if use_multiple:
-        msg = "Multiple interface not currently supported"
-        Trace.log(e_errors.ERROR, msg)
-        print msg
-
+def get_callback(fixed_ip=None,verbose=0):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if fixed_ip:
         s.bind((fixed_ip, 0))
@@ -41,8 +37,14 @@ def get_callback(use_multiple=0,fixed_ip=None,verbose=0):
             if status:
                 Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
     else:
-        hostname, junk, ips = hostaddr.gethostinfo()
-        s.bind((ips[0], 0))
+        config = host_config.get_config()
+        ip = None
+        if config:
+            ip = config.get('hostip')
+        if not ip:
+            hostname, junk, ips = hostaddr.gethostinfo()
+            ip = ips[0]
+        s.bind((ip, 0))
     host, port = s.getsockname()
     return host, port, s
                 
