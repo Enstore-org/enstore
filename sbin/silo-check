@@ -2,204 +2,250 @@
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+node=`hostname -s`
 gang=`gang`
 
 date
 
-OLDIFS="$IFS"
-IFS="${IFS},"
-
+# obtain list of valid libraries
+enstore conf --show | sed -n "s/.*'\([a-zA-Z0-9][-a-zA-Z0-9]*\)\.library_manager'.*/\1/ p" | sort -u >/tmp/valid-library
 
 if [ $gang = "stken" ]; then
 
-# tapes in public silo are acs 0 & lsm 0.
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the stken silo (acs 0, lsm 0) that are not fully declared to enstore"
-egrep -v "^$|^<|CLN" /diska/tape-inventory/STK-VOLUMES.html  |grep "         0, 0,"| while read tape place acs lsm panel drive type; do
-  x=`grep $tape /diska/tape-inventory/VOLUMES_DEFINED|grep -iv deleted|wc -l`
-  if [ $x -eq  0 ]; then
-      echo Tape $tape is in public silo, but not defined to enstore: $tape $place $acs $lsm $panel $drive $type
-  fi
-done
+# stken silos are acs 0 & lsm 0&1
 
-# tapes in mezzanine silo are acs 1 & lsm 0&1.
-if [ "`whoami`" != "enstore" ]; then
-  # root copies file if we are enstore (kerberos protections)
- /home/enstore/enstore/sbin/enrcp d0ensrv2:/diska/tape-inventory/VOLUMES_DEFINED /tmp/d0-VOLUMES_DEFINED
-fi
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the d0en mezsilo (acs 1, lsm 0 and 1) that are not fully declared to enstore"
-egrep -v "^$|^<|CLN" /diska/tape-inventory/STK-VOLUMES.html  |grep "         1, [01],"| while read tape place acs lsm panel drive type; do
-  x=`grep $tape /tmp/d0-VOLUMES_DEFINED |grep -iv deleted|wc -l`
-  if [ $x -eq  0 ]; then
-      echo Tape $tape is in Mezzanine silo, but not defined to enstore: $tape $place $acs $lsm $panel $drive $type
-  fi
-done
+# for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
+#   vol   home		acs, lsm, panel, row, col	type
+#   vol   in drive	acs, lsm, panel, drive		type
+#   vol   in transit	acs, lsm, panel, row, col	type
+#   vol   in transit	acs, lsm, panel, drive		type
+# where type is one of STK1R, STK1U, STK2P, STK2W
+#
+# for "display" (ACSLS 7), each line in the silo inventory has ten fields:
+#   Vol_id  Acs  Lsm  Panel  Row  Column  Pool   Status    Media     Type
+# where
+#   Status is one of dismount, eject, enter, mount, home, in_drive, move, missing, absent, ejected
+#   Media is one of STK1R, STK1U, STK2P, STK2W
+#   Type is one of data, clean
+#
+# each line in the tower inventory is in this format:
+# volser xxnnnn media DECDLT attrib {Empty|Ejected|Mounted|Occupied}
+#
+# all lines of enstore inventory have nine fields, in this format:
+#   vol   avail   system_inhibit   user_inhibit   library   mounts   volume_family
+# where each inhibit takes two fields (including parentheses)
+#
+# there should be no deleted volumes in VOLUMES_DEFINED
 
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes not in any category"
-egrep -v "^$|^<|CLN|in transit" /diska/tape-inventory/STK-VOLUMES.html  |egrep -v "         0, 0,|         1, [01],"
-
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in Enstore, but not in silo"
-egrep -v "^$|^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read line; do
-  vol=`echo $line| awk '{print $1}'`
-  lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
-  if [ `echo $lib | egrep -ic 'null|disk'` -ne 0 ]; then continue; fi
-  if [ `echo $line | grep -c transit` -ne 0 ]; then continue; fi
-  if [ `echo $vol | grep -c ^IA` -ne 0 ]; then continue; fi
-  n=`grep $vol /diska/tape-inventory/STK-VOLUMES.html /tmp/d0-VOLUMES_DEFINED| wc | awk '{print $1}'`
-  if [ $n -eq 0 ]; then
-    echo 'Not in any silo' $line
-  elif [ $n -gt 1 ]; then
-    echo 'In more than 1 silo' $line
-  fi
-done
+egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
+  awk 'NF==10 || /         0, [01],/ {print $1}' |\
+  sort >/tmp/silo-volumes
+egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|DECDLT) attrib (Occupied|Empty)" /diska/tape-inventory/AML2-VOLUMES.html |\
+  awk '{print $2}' |\
+  sort >/tmp/tower-volumes
+awk 'NF==9 && $7!~/null|disk|shelf/ {print $1}' /diska/tape-inventory/VOLUMES_DEFINED |\
+  sort >/tmp/vols-defined
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in NOACCESS or NOT_ALLOWED state"
-egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED | egrep -v 'migrated' | egrep -v ^IA
+echo "Tapes in the Public and CMS silos (acs 0, lsm 0 and 1) that are not fully declared to enstore"
+comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
+fgrep -f /tmp/silo-not-enstore /diska/tape-inventory/STK-VOLUMES.html
 
+# tapes in the tower, but not in enstore
+# stken has only DLTs in the ADIC
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in invalid library"
-egrep -v "^$|^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read line; do
-  vol=`echo $line| awk '{print $1}'`
-  lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
-  vf=`echo $line|awk '{print $NF}'`
-  sg=`echo $vf | cut -f1 -d.`
-  if [ $sg = 'test' ]; then continue;fi
-  if [ $lib = '9940' -o $lib = '9940B' -o $lib = 'eagle' -o $lib = 'cdf' -o $lib = 'CMS-9940B' -o $lib = 'test' -o $lib = 'CD-9940B' ];then continue; fi
-  if [ $lib = 'blank-d0-9940' -o $lib = 'blank-9940' -o $lib = 'blank-9840' ];then continue; fi
-  if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
-  if [ `echo $lib | egrep -ic '9940b'` -ne 0 ]; then 
-      if [ `echo $lib | egrep -ic 'cdf|d0|blank|public'` -ne 0 ]; then continue; fi
-  fi
-  echo $line
-done
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-
-
-elif [ $gang = "cdfen" ]; then
-
-# tapes in cdf silo are acs 0 & lsm 0&1.
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the cdfen silo (acs 0, lsm 0 and 1) that are not fully declared to enstore"
-egrep -v "^$|^<|CLN" /diska/tape-inventory/STK-VOLUMES.html  |grep "         0, [01],"| while read tape place acs lsm panel drive type; do
-  x=`grep $tape /diska/tape-inventory/VOLUMES_DEFINED|grep -iv deleted|wc -l`
-  if [ $x -eq  0 ]; then
-      echo Tape $tape is in cdf silo, but not defined to enstore: $tape $place $acs $lsm $panel $drive $type
-  fi
-done
+echo "Tapes in the SDSS tower that are not fully declared to enstore"
+comm -23 /tmp/tower-volumes /tmp/vols-defined >/tmp/tower-not-enstore
+fgrep -f /tmp/tower-not-enstore /diska/tape-inventory/AML2-VOLUMES.html
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes not in any category"
-egrep -v "^$|^<|CLN|in transit" /diska/tape-inventory/STK-VOLUMES.html  |grep -v "         0, [01],"
+#egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |grep -v "        0, [01],"
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in Enstore, but not in silo"
-egrep -v "^$|^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read line; do
-  vol=`echo $line| awk '{print $1}'`
-  lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
-  if [ `echo $lib | egrep -ic 'null|disk'` -ne 0 ]; then continue; fi
-  if [ `echo $lib | egrep -ic '9940b'` -ne 0 ]; then 
-      if [ `echo $lib | egrep -ic 'cdf|d0|blank|public'` -ne 0 ]; then continue; fi
-  fi
-  if [ `echo $line | grep -c transit` -ne 0 ]; then continue; fi
-  if [ `echo $vol | grep -c ^IA` -ne 0 ]; then continue; fi
-  n=`grep $vol /diska/tape-inventory/STK-VOLUMES.html| wc | awk '{print $1}'`
-  if [ $n -eq 0 ]; then
-    echo 'Not in any silo' $line
-  elif [ $n -gt 1 ]; then
-    echo 'In more than 1 silo' $line
-  fi
+echo "Tapes declared to enstore that are not in the Public or CMS silos or the SDSS tower"
+sort -mu /tmp/silo-volumes /tmp/tower-volumes >/tmp/robot-volumes
+comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
+fgrep -f /tmp/enstore-not-robot /diska/tape-inventory/VOLUMES_DEFINED
+
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes that are in both a Public or CMS silo and the SDSS tower"
+sort -m /tmp/silo-volumes /tmp/tower-volumes | uniq -d | while read vol; do
+  grep $vol /diska/tape-inventory/VOLUMES_DEFINED /diska/tape-inventory/STK-VOLUMES.html /diska/tape-inventory/AML2-VOLUMES.html
 done
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in NO_ACCESS or NOT_ALLOWED state"
-egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED | egrep -v 'migrated'
+echo "Tapes in NOACCESS or NOTALLOWED state"
+awk 'NF==9 && $3!~/none/ && $4!~/migrated/' /diska/tape-inventory/VOLUMES_DEFINED
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes in invalid library"
-egrep -v "^$|^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read line; do
-  vol=`echo $line| awk '{print $1}'`
-  lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
-  vf=`echo $line|awk '{print $NF}'`
-  sg=`echo $vf | cut -f1 -d.`
-  if [ $sg = 'test' ]; then continue;fi
-  if [ $lib = 'cdf' -o $lib = 'CDF-9940B' -o $lib = 'test'  -o $lib = 'CDF-Migration' -o $lib = 'A-Loan' ];then continue; fi
-  if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
-  echo $line
-done
+libs=`tr '\n' ' ' </tmp/valid-library`
+echo "Valid libraries are: $libs"
+awk -v Libs="$libs" 'BEGIN {$0=Libs; for (i=1; i<=NF; i++) libs[$i]=i}
+		     NF==9 && $9!~/^test\.[[:print:]]*\.[[:print:]]*/ &&
+		     $7!~/null|disk|shelf/ && !($7 in libs)' /diska/tape-inventory/VOLUMES_DEFINED
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 
 
 elif [ $gang = "d0en" ]; then
 
-# tapes in quadrotowers, but not in enstore.
+# d0en silos are acs 1 & lsm 0&1
+
+# for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
+#   vol   home		acs, lsm, panel, row, col	type
+#   vol   in drive	acs, lsm, panel, drive		type
+#   vol   in transit	acs, lsm, panel, row, col	type
+#   vol   in transit	acs, lsm, panel, drive		type
+# where type is one of STK2P or STK2W
+#
+# for "display" (ACSLS 7), each line in the silo inventory has ten fields:
+#   Vol_id  Acs  Lsm  Panel  Row  Column  Pool   Status    Media     Type
+# where
+#   Status is one of dismount, eject, enter, mount, home, in_drive, move, missing, absent, ejected
+#   Media is one of STK2P, STK2W
+#   Type is one of data, clean
+#
+# each line in the tower inventory is in this format:
+# volser xxxnnn[L1] media 3480 attrib {Empty|Ejected|Mounted|Occupied}
+#
+# all lines of enstore inventory have nine fields, in this format:
+#   vol   avail   system_inhibit   user_inhibit   library   mounts   volume_family
+# where each inhibit takes two fields (including parentheses)
+#
+# there should be no deleted volumes in VOLUMES_DEFINED
+
+egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
+  awk 'NF==10 || /         1, [01],/ {print $1}' |\
+  sort >/tmp/silo-volumes
+egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|3480) attrib (Occupied|Empty)" /diska/tape-inventory/AML2-VOLUMES.html |\
+  awk '{print $2}' |\
+  sort >/tmp/tower-volumes
+awk 'NF==9 && $7!~/null|disk|shelf/ {print $1}' /diska/tape-inventory/VOLUMES_DEFINED |\
+  sort >/tmp/vols-defined
+
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes that are not fully declared to enstore"
-egrep -v "^<|next volser|Empty$" /diska/tape-inventory/AML2-VOLUMES.html | egrep -v 'volser 0[0-9][0-9][0-9][0-9][0-9] media 8MM attrib Occupied'| while read dum1 tape dum2 media dum3 attrib; do
-  x=`grep $tape /diska/tape-inventory/VOLUMES_DEFINED|grep -iv deleted|wc -l`
-  if [ $x -eq  0 ]; then
-      echo Tape $tape is in tower, but not defined to enstore: $tape $media  $attrib
-  fi
-done
+echo "Tapes in the D0 silos (acs 1, lsm 0 and 1) that are not fully declared to enstore"
+comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
+fgrep -f /tmp/silo-not-enstore /diska/tape-inventory/STK-VOLUMES.html
 
+# tapes in the tower, but not in enstore
+# d0en has only LTOs in the ADIC
+echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in Enstore, but not in the towers"
-egrep -v "^$|^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read line; do
-  vol=`echo $line| awk '{print $1}'`
-  lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
-  if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
-  if [ `echo $lib | egrep -ic 'D0-9940B'` -ne 0 ]; then 
-      if [ `echo $lib | egrep -ic 'cdf|d0|blank|public'` -ne 0 ]; then continue; fi
-  fi
-  if [ `echo $lib | grep -ic mezsilo` -ne 0 ]; then continue; fi
-  n=`grep $vol /diska/tape-inventory/AML2-VOLUMES.html | wc | awk '{print $1}'`
-  if [ $n -eq 0 ]; then
-    echo 'Not in tower' $line
-  fi
+echo "Tapes in the D0 tower that are not fully declared to enstore"
+comm -23 /tmp/tower-volumes /tmp/vols-defined >/tmp/tower-not-enstore
+fgrep -f /tmp/tower-not-enstore /diska/tape-inventory/AML2-VOLUMES.html
+
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes not in any category"
+#egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |grep -v "        1, [01],"
+
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes declared to enstore that are not in the D0 silos or the D0 tower"
+sort -mu /tmp/silo-volumes /tmp/tower-volumes >/tmp/robot-volumes
+comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
+fgrep -f /tmp/enstore-not-robot /diska/tape-inventory/VOLUMES_DEFINED
+
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes that are in both a D0 silo and the D0 tower"
+sort -m /tmp/silo-volumes /tmp/tower-volumes | uniq -d | while read vol; do
+  grep $vol /diska/tape-inventory/VOLUMES_DEFINED /diska/tape-inventory/STK-VOLUMES.html /diska/tape-inventory/AML2-VOLUMES.html
 done
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in NOACCESS or NOT_ALLOWED state"
-egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED | egrep -v "migrated" | egrep -v ^IA
+echo "Tapes in NOACCESS or NOTALLOWED state"
+awk 'NF==9 && $3!~/none/ && $4!~/migrated/' /diska/tape-inventory/VOLUMES_DEFINED
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes in invalid library"
-egrep -v "^$|^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read line; do
-  vol=`echo $line| awk '{print $1}'`
-  lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
-  vf=`echo $line|awk '{print $NF}'`
-  sg=`echo $vf | cut -f1 -d.`
-  if [ $sg = 'test' ]; then continue;fi
-  if [ $lib = 'sammam' -o $lib = 'samm2' -o $lib = 'samlto' -o $lib = 'mezsilo' -o $lib = 'D0-9940B' ];then continue; fi
-  if [ $lib = 'test' -o $lib = 'testm2' -o $lib = 'testlto' ];then continue; fi
-  if [ $lib = 'blank-d0-9940' -o $lib = 'blank-9940' -o $lib = 'blank-9840' ];then continue; fi
-  if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
-  echo $line
-done
+libs=`tr '\n' ' ' </tmp/valid-library`
+echo "Valid libraries are: $libs"
+awk -v Libs="$libs" 'BEGIN {$0=Libs; for (i=1; i<=NF; i++) libs[$i]=i}
+		     NF==9 && $9!~/^test\.[[:print:]]*\.[[:print:]]*/ &&
+		     $7!~/null|disk|shelf/ && !($7 in libs)' /diska/tape-inventory/VOLUMES_DEFINED
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+
+
+elif [ $gang = "cdfen" ]; then
+
+# cdfen silos are acs 0 & lsm 0&1
+
+# for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
+#   vol   home		acs, lsm, panel, row, col	type
+#   vol   in drive	acs, lsm, panel, drive		type
+#   vol   in transit	acs, lsm, panel, row, col	type
+#   vol   in transit	acs, lsm, panel, drive		type
+# where type is one of STK2P or STK2W
+#
+# for "display" (ACSLS 7), each line in the silo inventory has ten fields:
+#   Vol_id  Acs  Lsm  Panel  Row  Column  Pool   Status    Media     Type
+# where
+#   Status is one of dismount, eject, enter, mount, home, in_drive, move, missing, absent, ejected
+#   Media is one of STK2P, STK2W
+#   Type is one of data, clean
+#
+# all lines of enstore inventory have nine fields, in this format:
+#   vol   avail   system_inhibit   user_inhibit   library   mounts   volume_family
+# where each inhibit takes two fields (including parentheses)
+#
+# there should be no deleted volumes in VOLUMES_DEFINED
+
+egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
+  awk 'NF==10 || /         0, [01],/ {print $1}' |\
+  sort >/tmp/silo-volumes
+awk 'NF==9 && $7!~/null|disk|shelf/ {print $1}' /diska/tape-inventory/VOLUMES_DEFINED |\
+  sort >/tmp/vols-defined
+
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes in the CDF silos (acs 0, lsm 0 and 1) that are not fully declared to enstore"
+comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
+fgrep -f /tmp/silo-not-enstore /diska/tape-inventory/STK-VOLUMES.html
+
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes not in any category"
+egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |grep -v "        0, [01],"
+
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes declared to enstore that are not in the CDF silos"
+comm -23 /tmp/vols-defined /tmp/silo-volumes >/tmp/enstore-not-silo
+fgrep -f /tmp/enstore-not-silo /diska/tape-inventory/VOLUMES_DEFINED
+
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes in NOACCESS or NOTALLOWED state"
+awk 'NF==9 && $3!~/none/ && $4!~/migrated/' /diska/tape-inventory/VOLUMES_DEFINED
+
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes in invalid library"
+libs=`tr '\n' ' ' </tmp/valid-library`
+echo "Valid libraries are: $libs"
+awk -v Libs="$libs" 'BEGIN {$0=Libs; for (i=1; i<=NF; i++) libs[$i]=i}
+		     NF==9 && $9!~/^test\.[[:print:]]*\.[[:print:]]*/ &&
+		     $7!~/null|disk|shelf/ && !($7 in libs)' /diska/tape-inventory/VOLUMES_DEFINED
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 
 fi
 
-IFS="$OLDIFS"
+
 date
