@@ -87,7 +87,7 @@ def hex_string_to_signed_int32(s):
 
 
 
-class Cpio :
+class Wrapper :
 
     def sw_mount( self, driver, info ):
 	return
@@ -278,7 +278,7 @@ def encrc( buffer ):
         data_offset =data_offset + (4-(data_offset%4))%4
         # We have switched to 32 bit crcs.  This means that string.atoi now
         # causes an overflow when the crc value has the sign bit set.  The most
-        # obvious solution of going to atol doesn't work.
+        # obvious solution of going to atol doesn't work. 
         crc = hex_string_to_signed_int32(buffer[data_offset:data_offset+8])
         return crc
 
@@ -348,7 +348,7 @@ if __name__ == "__main__" :
               "Invalid input file: can only handle regular files"
 
     fast_write = 0 # needed for testing
-    wrapper = Cpio(fin,fout,ECRC.ECRC,fast_write)
+    wrapper = Wrapper(fin,fout,ECRC.ECRC,fast_write)
 
     dev_dict = Devcodes.MajMin(fin._file_.name)
     major = dev_dict["Major"]
@@ -387,7 +387,7 @@ if __name__ == "__main__" :
     fin  = diskdriver_open(sys.argv[2],"r")
     fout = diskdriver_open(sys.argv[1]+".copy","w")
 
-    wrapper = Cpio(fin,fout,ECRC.ECRC)
+    wrapper = Wrapper(fin,fout,ECRC.ECRC)
     (read_size, read_crc) = wrapper.read(sanity_cookie)
     generic_cs.enprint("cpio.read returned: size: "+repr(read_size)+" crc: "+\
 	               repr(read_crc))
