@@ -33,7 +33,9 @@ cursor_open=0
 #junk 	return str
 
 class DbTable:
-  def __init__(self,dbname,indlst=[], auto_journal=1):
+  def __init__(self,dbname,indlst=None, auto_journal=1):
+    if indlst is None:
+        indlst = []
     self.auto_journal = auto_journal
     try:
 	self.dbHome=configuration_client.ConfigurationClient(\

@@ -86,7 +86,9 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY,
               root_error=e_errors.DEFAULT_ROOT_ERROR,
               pid=alarm.DEFAULT_PID, uid=alarm.DEFAULT_UID,
-              source=alarm.DEFAULT_SOURCE, alarm_info={}):
+              source=alarm.DEFAULT_SOURCE, alarm_info=None):
+        if alarm_info is None:
+            alarm_info = {}
         # find out where the alarm came from
         try:
             host = socket.gethostbyaddr(self.reply_address[0])[0]

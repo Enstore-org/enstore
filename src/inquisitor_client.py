@@ -92,8 +92,10 @@ class Inquisitor(generic_client.GenericClient):
 	# tell the inquisitor to return the timeout between gathering stats
 	return self.send(t)
 
-    def plot (self, logfile_dir="", start_time="", stop_time="", mcs=[],
+    def plot (self, logfile_dir="", start_time="", stop_time="", mcs=None,
               keep=0, pts_dir="", out_dir=""):
+        if mcs is None:
+            mcs = []
 	# tell the inquisitor to plot bytes per unit of time
 	t = {"work"        : "plot" }
 	if logfile_dir:

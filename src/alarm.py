@@ -98,9 +98,11 @@ class GenericAlarm:
 class Alarm(GenericAlarm):
 
     def __init__(self, host, severity, root_error, pid, uid, source,
-                 alarm_info={}):
+                 alarm_info=None):
         GenericAlarm.__init__(self)
-        
+
+        if alarm_info is None:
+            alarm_info = {}
         self.host = host
         # do not let the severity (which is actually a number), point outside
         # of the dictionary

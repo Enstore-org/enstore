@@ -77,8 +77,10 @@ class AlarmClient(generic_client.GenericClient):
         
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
               root_error=e_errors.DEFAULT_ROOT_ERROR,
-              alarm_info={}):
+              alarm_info=None):
         if 0: print self    # lint fix
+        if alarm_info is None:
+            alarm_info = {}
         Trace.alarm(severity, root_error, alarm_info )
 
     def resolve(self, id):
