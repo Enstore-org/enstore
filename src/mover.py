@@ -73,6 +73,8 @@ class Buffer:
         self.buf_bytes = 0L
         self.min_bytes = min_bytes
         self.max_bytes = max_bytes
+    def nbytes(self):
+        return self.buf_bytes
     def full(self):
         return self.buf_bytes >= self.max_bytes
     def empty(self):
@@ -89,7 +91,6 @@ class Buffer:
         self.buf_bytes = 0
     def nonzero(self):
         return self.buf_bytes > 0
-
     def __repr__(self):
         return "Buffer %s  %s  %s" % (self.min_bytes, self.buf_bytes, self.max_bytes)
     
@@ -277,14 +278,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
         while self.bytes_written<self.bytes_to_transfer: #keep pumping data to tape
             nbytes = min(self.bytes_to_transfer - self.bytes_written, self.blocksize)
             if verbose: print "write tape", nbytes
-            if nbytes > self.buffer_bytes:
-                if verbose: print "only have", self.buffer_bytes
+            if nbytes > self.buffer.nbytes():
+                if verbose: print "only have", self.buffer.nbytes()
                 self.remove_select_fd(fd)
                 #not enough data in buffer to keep tape streaming
                 return
             data = self.buffer.pull()
             nbytes = len(data)
-            self.buffer_bytes = self.buffer_bytes - nbytes
             status = os.write(fd, data)
             if status != nbytes:
                 self.transfer_aborted(e_errors.WRITE_ERROR)
@@ -301,7 +301,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
     def read_tape(self, fd):
         if verbose:  print "read tape"
-        while self.bytes_read < self.bytes_to_transfer and self.buffer_bytes < self.max_buffer:
+        while self.bytes_read < self.bytes_to_transfer and not self.buffer.full():
             ##keep reading as long as the device has data for us 
             nbytes = min(self.bytes_to_transfer - self.bytes_read, self.blocksize)
            
@@ -309,28 +309,26 @@ class Mover(  dispatching_worker.DispatchingWorker,
             if len(data) != nbytes:
                 self.transfer_aborted(e_errors.READ_ERROR)
                 return
-            self.buffer.append(data)
-            self.buffer_bytes = self.buffer_bytes + nbytes
+            self.buffer.push(data)
             self.bytes_read = self.bytes_read + nbytes
             r,w,x = select.select([fd],[],[],0)
             if not r:
                 break # avoid blocking, tape not ready for reading
             
-        if self.buffer_bytes > self.min_buffer or self.bytes_read==self.bytes_to_transfer:
+        if  self.bytes_read==self.bytes_to_transfer or not self.buffer.empty():
             if verbose: print "enabling write cli"
             self.add_select_fd(self.client_socket, WRITE, self.write_client)
 
     def write_client(self, sock):
         if verbose: print "write client"
-        if self.buffer_bytes <= self.min_buffer and self.bytes_read != self.bytes_to_transfer:
+        if self.buffer.empty() and self.bytes_read != self.bytes_to_transfer:
             self.remove_select_fd(cli) #turn off select fd, read_tape will turn it back on
             return
         while self.bytes_written<self.bytes_to_transfer: #keep pumping data out to the client
             nbytes = min(self.bytes_to_transfer - self.bytes_written, self.blocksize)
-            data = self.buffer.pop(0)
+            data = self.buffer.pull()
             nbytes = len(data)
-            self.buffer_bytes = self.buffer_bytes - len(data)
-            status = sock.send(data, 0x40) #XXX Linux MSG_NOWAIT
+            status = sock.send(data) #XXX Linux MSG_NOWAIT
             if status != nbytes:
                 # XXX network write error, what to do?
                 pass
@@ -396,7 +394,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             return 0
 
         pprint.pprint(ticket)
-        self.buffer.clear()
+        self.buffer.reset()
 
         self.current_work_ticket = ticket
         if not ticket.has_key('mover'):
@@ -515,7 +513,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         
     def reset(self):
         self.current_work_ticket = None
-        self.buf.reset()
+        self.buffer.reset()
         self.bytes_read = 0L
         self.bytes_written = 0L
 
