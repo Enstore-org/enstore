@@ -28,6 +28,18 @@
 # define PRINTF dummy = 0 && printf
 #endif
 
+
+/* POSIXly correct systems don't define union semun in their system headers */
+#ifdef _SEM_SEMUN_UNDEFINED
+union semun
+{
+    int val;	               /* value for SETVAL */
+    struct semid_ds *buf;      /* buffer for IPC_STAT & IPC_SET */
+    unsigned short int *array; /* array for GETALL & SETALL */
+    struct seminfo *__buf;     /* buffer for IPC_INFO */
+};
+#endif
+
 enum e_mtype
 {   WrtSiz = 1			/* mtype must be non-zero */
   , SanCrc
@@ -141,14 +153,16 @@ do_read(  int 		rd_fd
     sops_rd_wr2rd.sem_flg = 0;  /* default - block behavior */
 
     /* (nice the reading to make sure writing has higher priority???) */
+    /* XXX is this the correct thing to do?  */
     nice( 10 );
-
     while (no_bytes)
     {
 	int	sts;
+	int bytes_to_read;
 	/* gain access to *blk* of shared mem */
  semop_try:
 	sts = semop( g_semid, &sops_rd_wr2rd, 1 );
+	
 	if ((sts==-1) && (errno==EINTR))
 	{   PRINTF(  "(pid=%d) interrupted system call; assume ctl-Z OR debugger attach???\n"
 		   , getpid() );
@@ -161,8 +175,13 @@ do_read(  int 		rd_fd
 	   but this should not cause reader to overwrite data previously
 	   given to the writer. I could loop till I read a complete
 	   blocksize - this would allow reader to further ahead of writer. */
-	sts = read(  rd_fd, g_shmaddr_p+shm_off
-		   , (no_bytes<blk_size)?no_bytes:blk_size );
+	bytes_to_read = (no_bytes<blk_size)?no_bytes:blk_size;
+	errno=0;
+	sts = read(  rd_fd, g_shmaddr_p+shm_off, bytes_to_read);
+	if (sts!= bytes_to_read){
+	    PRINTF("DEBUG: asked for %d, got %d\n",bytes_to_read, sts);
+	    PRINTF("errno=%d\n",errno);
+	}
 	if (sts == -1) { send_writer( Err, errno, 0 ); return (1); }
 	if (sts == 0) { send_writer( Eof, errno, 0 ); return (1); }
 
@@ -267,7 +286,6 @@ EXfd_xfer(  PyObject	*self
     sts = PyArg_ParseTuple(  args, "iiiiO|OO", &fr_fd, &to_fd, &no_bytes
 			   , &blk_size, &crc_obj_tp, &crc_tp, &shm_obj_tp );
     if (!sts) return (NULL);
-
     if      (crc_tp == Py_None)   crc_i = 0;
     else if (PyInt_Check(crc_tp)) crc_i = PyInt_AsLong( crc_tp );
     else return(raise_exception("fd_xfer - invalid crc param"));
@@ -387,7 +405,6 @@ EXfd_xfer(  PyObject	*self
 		waitpid( g_pid, &sts, 0 );
 		return (raise_exception("fd_xfer - writer msgrcv"));
 	    }
-
 	    switch (msg_s.mtype)
 	    {
 	    case WrtSiz:
