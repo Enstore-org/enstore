@@ -108,7 +108,6 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
         self.dump = 0
         self.severity = e_errors.DEFAULT_SEVERITY
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
-        self.get_patrol_file = 0
         generic_client.GenericClientInterface.__init__(self)
         interface.Interface.__init__(self)
 
@@ -118,7 +117,7 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
             return self.restricted_opts
         else:
             return self.client_options() + [
-                "raise", "severity=", "root-error=", "get-patrol-file",
+                "raise", "severity=", "root-error=",
                 "resolve=", "dump"]
 
 def do_work(intf):
@@ -139,10 +138,6 @@ def do_work(intf):
     elif intf.alarm:
         alc.alarm(intf.severity, intf.root_error)
         ticket = {}
-
-    elif intf.get_patrol_file:
-        ticket = alc.get_patrol_file()
-        print(ticket.get('patrol_file', ""))
 
     else:
         intf.print_help()
