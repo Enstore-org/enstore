@@ -59,6 +59,12 @@ class FileClient(generic_client.GenericClient, \
         Trace.trace(12,"}set_pnfsid"+repr(r))
         return r
 
+    def set_delete(self, ticket):
+        Trace.trace(12,"{set_delete")
+        r = self.send(ticket)
+        Trace.trace(12,"}set_delete"+repr(r))
+        return r
+
     def get_bfids(self):
         Trace.trace(16,"{get_bfids")
         host, port, listen_socket = callback.get_callback()
@@ -135,6 +141,14 @@ class FileClient(generic_client.GenericClient, \
         Trace.trace(10,"}bfid_info"+repr(r))
         return r
 
+    def set_deleted(self,deleted):
+        Trace.trace(10,"{set_delete")
+        r = self.send({"work"   : "set_deleted",
+                       "bfid"   : self.bfid,
+                       "deleted": deleted} )
+        Trace.trace(10,"}set_delete"+repr(r))
+        return r
+
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
@@ -143,6 +157,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.bfids = 0
         self.bfid = 0
         self.backup = 0
+        self.deleted = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         generic_client.GenericClientInterface.__init__(self)
@@ -151,8 +166,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16,"{}options")
-        return self.client_options()+["bfids","bfid=","backup"]
-
+        return self.client_options()+["bfids","bfid=","deleted=","backup"]
 
 
 if __name__ == "__main__" :
@@ -180,6 +194,10 @@ if __name__ == "__main__" :
         ticket = fcc.start_backup()
         db.do_backup("file")
         ticket = fcc.stop_backup()
+	msg_id = generic_cs.CLIENT
+
+    elif intf.deleted and intf.bfid:
+        ticket = fcc.set_deleted(intf.deleted)
 	msg_id = generic_cs.CLIENT
 
     elif intf.bfids:

@@ -151,6 +151,68 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(0,"}set_pnfsid "+repr(ticket["status"]))
          return
 
+    # change the delete state element in the dictionary
+    def set_deleted(self, ticket):
+     Trace.trace(12,'{set_deleted '+repr(ticket))
+     try:
+
+        # everything is based on bfid - make sure we have this
+        try:
+            key="bfid"
+            bfid = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "File Clerk: "+key+" key is missing")
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"set_deleted "+repr(ticket["status"]))
+            return
+
+        # also need new value of the delete element- make sure we have this
+        try:
+            key2="deleted"
+            deleted = ticket[key2]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"set_deleted "+repr(ticket["status"]))
+            return
+
+        # look up in our dictionary the request bit field id
+        try:
+            record = copy.deepcopy(dict[bfid])
+            ###########################################################################TEMPORARY##########
+            if not record.has_key("location_cookie"):
+                self.enprint("Old fashioned ticket: upgrade.")
+                record["location_cookie"], record["size"] = eval(record["bof_space_cookie"])
+            #######################################################################END#TEMPORARY##########
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "File Clerk: bfid "+repr(bfid)+" not found")
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"set_deleted "+repr(ticket["status"]))
+            return
+
+        # mod the delete state
+        record["deleted"] = deleted
+
+        # record our changes
+        dict[bfid] = copy.deepcopy(record)
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        Trace.trace(12,'}set_deleted '+repr(ticket))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"}set_deleted "+repr(ticket["status"]))
+         return
+
     def get_user_sockets(self, ticket):
         Trace.trace(16,"{get_user_sockets "+repr(ticket))
         file_clerk_host, file_clerk_port, listen_socket =\

@@ -148,6 +148,11 @@ class Interface:
         	self.bfids = 1
             elif opt == "--bfid" :
                 self.bfid = value
+            elif opt == "--deleted" :
+                if string.find(string.lower(value),'y') !=-1:
+                    self.deleted = "yes"
+                else:
+                    self.deleted = "no"
 	    elif opt == "--backup":
 	        self.backup = 1
             elif opt == "--config_file" :
