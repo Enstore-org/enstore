@@ -81,11 +81,14 @@ class GenericDriver:
             offset2 = 0
         else:
             offset2 = offset        
-        s="%12s"%offset2
+        s="%s"%offset2
         if s[-1]=='L':
             s=s[:-1]
+        len_s=len(s)
+        if len_s>12:
+            Trace.alarm(e_errors.ALARM,"int2loc size is too big")
+            raise raise InvalidLocationError
         s='0'*(12-len(s))+s
-        print 'int2loc returning',s
         return s
 
 
