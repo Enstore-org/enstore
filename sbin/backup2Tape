@@ -105,6 +105,7 @@ doit "$ENSTORE_DIR/volume_import/enstore_tape \
               $PNFS_TAR $ENSTORE_TAR $ENSTORELOG_TAR $AML2_TAR"
 
 doit "rm -f $PNFS_TAR $ENSTORE_TAR $ENSTORELOG_TAR $AML2_TAR"
+doit "rm -f $VAULT/*.tar" # junk accumulates and takes up valuable space!
 
 if [ $kind = "FULL" ]; then
   doit "rm -f $FULL_BACKUP_FLAG" # indicate we've done the full backup on selected day (not twice per day) 
