@@ -93,7 +93,8 @@ class InquisitorPlots:
 						"* /dev/null",
 						ofn,
 						"-e %s"%(Trace.MSG_ENCP_XFER,),
-						self.logfile_dir)
+						self.logfile_dir,
+				  "| grep -v %s"%(enstore_constants.NULL_DRIVER,))
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	encpfile.open('r')
