@@ -54,7 +54,7 @@ ftt_findslot (char *basename, char *os, char *drivid,
     char *lastpart;
     int res;
 
-    DEBUG2(stderr,"Entering ftt_findslot %s %s %s\n", basename, os, drivid );
+    DEBUG4(stderr,"Entering: ftt_findslot %s %s %s\n", basename, os, drivid );
 
     /* tables now only deal with the last directory and file 
     ** component of the pathname 
@@ -62,19 +62,19 @@ ftt_findslot (char *basename, char *os, char *drivid,
 
     lastpart = ftt_find_last_part(basename);
 
-    DEBUG2(stderr,"looking at '%s' part of name\n", lastpart);
+    DEBUG3(stderr,"looking at '%s' part of name\n", lastpart);
 
     for( i = 0; devtable[i].os !=0 ; i++ ) {
 	if (ftt_matches(os, devtable[i].os) && 
 		ftt_matches(drivid, devtable[i].drivid)) {
-	   DEBUG3(stderr,"trying format \"%s\" against %s\n", 
+	   DEBUG4(stderr,"trying format \"%s\" against %s\n", 
 		devtable[i].baseconv_in, lastpart);
 
 
            res = sscanf(lastpart,devtable[i].baseconv_in,p1,p2,p3);
 
 	   if (devtable[i].nconv == res ) {
-		     DEBUG3(stderr, "format Matches!\n");
+		     DEBUG3(stderr, "format Matches (\"%s\" against %s)!\n",devtable[i].baseconv_in, lastpart);
 		     return i;
 	   }
 	   DEBUG3(stderr, "format missed... got %d, not %d\n",
@@ -93,7 +93,7 @@ ftt_strip_to_basename(const char *basename,char *os) {
     int i;
     char *lastpart;
 
-    DEBUG2(stderr, "Entering ftt_strip_to_basename\n");
+    DEBUG4(stderr, "Entering: ftt_strip_to_basename\n");
     memset(buf,0, 512);
     memset(buf2,0, 512);
     memset(s1.s,0, 512);
@@ -191,7 +191,7 @@ ftt_get_driveid(char *basename,char *os) {
     char *res = 0;
     int i;
 
-    DEBUG2(stderr, "Entering ftt_get_driveid\n");
+    DEBUG4(stderr, "Entering: ftt_get_driveid\n");
     i = ftt_findslot(basename, os, "",  &s1, &s2, &s3);
     if (i < 0) {
 	return 0;
@@ -213,7 +213,7 @@ ftt_get_driveid(char *basename,char *os) {
 	} else {
 	    sprintf(cmdbuf, devtable[i].drividcmd, s1.n, s2.n, s3.n);
 	}
-	DEBUG3(stderr,"Running \"%s\" to get drivid (lenght %d < 512 ) \n", cmdbuf,strlen(cmdbuf));
+	DEBUG4(stderr,"Running \"%s\" to get drivid (lenght %d < 512 ) \n", cmdbuf,strlen(cmdbuf));
 	pf = popen(cmdbuf, "r");
 	if (pf) {
 	    res = fgets(output, 512,pf);

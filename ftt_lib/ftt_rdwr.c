@@ -49,7 +49,7 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
     CKNULL("data buffer pointer", buf);
     
     if ( 0 != (d->scsi_ops & FTT_OP_READ)) {
-	DEBUG2(stderr, "SCSI pass-thru\n");
+	DEBUG4(stderr, "SCSI pass-thru\n");
 	d->last_operation = FTT_OP_READ;
 	if (d->default_blocksize == 0) {
 		ftt_set_transfer_length(ftt_cdb_read,length);
@@ -62,7 +62,7 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
     
 	} else {
 	
-		DEBUG2(stderr,"System Call\n");
+		DEBUG4(stderr,"System Call\n");
 		if (0 != (d->last_operation &(FTT_OP_WRITE|FTT_OP_WRITEFM)) &&
 			0 != (d->flags& FTT_FLAG_REOPEN_R_W)) {
 			ftt_close_dev(d);
@@ -118,6 +118,7 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 	d->current_block++;
     } else {
 	d->nharderrors++;
+	DEBUG0(stderr,"HARD error - reading record - error %d \n",res);
     }
     d->nreads++;
     d->data_direction = FTT_DIR_READING;
@@ -133,7 +134,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
     CKNULL("data buffer pointer", buf);
 
     if ( 0 != (d->scsi_ops & FTT_OP_WRITE)) {
-	DEBUG2(stderr,"SCSI pass-thru\n");
+	DEBUG4(stderr,"SCSI pass-thru\n");
 	d->last_operation = FTT_OP_WRITE;
 	if (d->default_blocksize == 0) {
 		ftt_set_transfer_length(ftt_cdb_write,length);
@@ -144,7 +145,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 				(unsigned char *)buf, length, 60,1);
 	res = ftt_describe_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write SCSI command", 0);
     } else {
-		DEBUG2(stderr,"System Call\n");
+		DEBUG4(stderr,"System Call\n");
 		if (0 != (d->last_operation &(FTT_OP_READ)) &&
 			0 != (d->flags& FTT_FLAG_REOPEN_R_W)) {
 			ftt_close_dev(d);
@@ -178,6 +179,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	d->writelo &= (1<<10) - 1;
 	d->current_block++;
     } else {
+	DEBUG0(stderr,"HARD error - writing record - error %d \n",res);
 	d->nharderrors++;
     }
     d->nwrites++;

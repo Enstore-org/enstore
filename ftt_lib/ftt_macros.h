@@ -1,4 +1,9 @@
 
+#ifdef DEBUG0_ON
+#define DEBUG0 if(ftt_debug>=0) (void)fprintf
+#else
+#define DEBUG0 if(ftt_debug>=1) (void)fprintf
+#endif
 
 #define DEBUG1 if(ftt_debug>=1) (void)fprintf
 #define DEBUG2 if(ftt_debug>=2) (void)fprintf
@@ -12,7 +17,7 @@
 #define ENTERING(name) 						\
     char *_name = name;						\
 								\
-    DEBUG3(stderr, "Entering %s\n", _name);	 		\
+    DEBUG4(stderr, "Entering %s\n", _name);	 		\
     ftt_eprintf("Ok\n"); 					\
     ftt_errno = FTT_SUCCESS;					\
 
@@ -48,7 +53,7 @@
 #define CKOK(d,name,writes,recovers) 					\
     char *_name = name;							\
 									\
-    DEBUG1(stderr, "Entering %s\n", _name);	 			\
+    DEBUG4(stderr, "Entering %s\n", _name);	 			\
     if ( d && d->which_is_open == -3 )  {				\
 	ftt_errno = FTT_EFAULT;						\
 	ftt_eprintf("%s: called with closed ftt descriptor",_name);	\

@@ -11,7 +11,9 @@ static char rcsid[] = "@(#) $Id$";
 #include <ctype.h>
 #include <stdio.h>
 #include <ftt_private.h>
+#include <sys/mtio.h>
 
+int ftt_open_io_dev(ftt_descriptor d);
 int ftt_scsi_set_compression(ftt_descriptor d, int compression);
 
 int
@@ -71,14 +73,36 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 
 int 
 ftt_set_compression(ftt_descriptor d, int compression) {
-    return ftt_scsi_set_compression(d, compression);
+  return 0;
+  /*    return ftt_scsi_set_compression(d, compression); */
 }
 
 int
 ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 
-    /* ignore blocksize, 'cause we opened the right device node */
-    return 0;
+    static struct mtop buf;
+    int res = 0;
+
+    DEBUG4(stderr,"Entering ftt_set_hwdens_blocksize %d\n", blocksize);
+
+    if (0 > (res = ftt_open_io_dev(d))) { 
+        return res;
+    }
+    buf.mt_op = MTGRSZ;
+    res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
+
+    if ( res == 0 && (int)buf.mt_count != blocksize ) { 
+      DEBUG2(stderr,"Blocksize on device %d >> set to %d\n",(int) buf.mt_count,blocksize);
+      
+      buf.mt_op = MTSRSZ;
+      buf.mt_count = blocksize;
+      res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
+      res = ftt_translate_error(d,FTT_OPN_STATUS,
+			      "an MTIOCTOP/MTSRSZ ioctl()", res,
+                                "an ftt_open_dev",1);
+    }
+
+    return res;
 }
 
 int

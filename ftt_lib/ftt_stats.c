@@ -234,7 +234,7 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
     int length;
     double value;
 
-    DEBUG1(stderr,"entering decrypt_ls for parameter %d stat %d\n", param, stat);
+    DEBUG3(stderr,"entering decrypt_ls for parameter %d stat %d\n", param, stat);
     page = buf + 4;
     length = pack(0,0,buf[2],buf[3]);
     while( page < (buf + length) ) {
@@ -244,10 +244,11 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
 	for(i = 0; i < thislength ; i++) {
 	    value = value * 256 + page[4+i];
 	}
-	DEBUG2(stderr, "parameter %d, length %d value %f\n", thisparam, thislength, value);
+	DEBUG3(stderr, "parameter %d, length %d value %f\n", thisparam, thislength, value);
 	if ( thisparam == param ) {
 	    sprintf(printbuf, "%.0f", value / divide);
 	    set_stat(b,stat,printbuf,0);
+	    DEBUG3(stderr," stat %d - value %s = %.0f \n",stat,printbuf,value / divide);
 	}
 	page += 4 + thislength;
     }
@@ -256,7 +257,7 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
 int
 ftt_get_stat_ops(char *name) {
     int i;
-    DEBUG1(stderr, "entering get_stat_ops\n");
+    DEBUG4(stderr, "Entering: get_stat_ops\n");
     if (*name == 0) {
 	return 0; /* unknown device id */
     }
@@ -572,8 +573,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_MS_Px10) {
+
 	static unsigned char cdb_mode_sense_p10[]= 
 			{ 0x1a, 0x08, 0x10, 0x00,   20, 0x00};
+
 
 	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p10, 
 				  6, buf, 20, 10, 0);
@@ -582,6 +585,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	} else {
 	    set_stat(b,FTT_TRANS_COMPRESS,     ftt_itoa((long)buf[18]), 0);
 	}
+	
     }
     if (stat_ops & FTT_DO_MS_Px20_EXB) {
 	static unsigned char cdb_mode_sense_p20[]= 

@@ -135,6 +135,7 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 	  }
 	}
     if (res < 0) {
+                DEBUG0(stderr,"HARD error doing ftt_mtop operation %d n %d to do %s - error \n", opn, n, what,res);
 		d->nharderrors++;
     }
     d->last_operation = (1 << opn);

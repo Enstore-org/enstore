@@ -66,12 +66,12 @@ ftt_open(const char *name, int rdonly) {
 */
 int
 ftt_matches( const char *s1, const char *s2 ) {
-    DEBUG3(stderr, "Matching '%s' against '%s'\n", s1, s2);
+    DEBUG4(stderr, "Matching '%s' against '%s'\n", s1, s2);
     while( 0 != *s1 && 0 != *s2 && tolower(*s1) == tolower(*s2)){
         s1++;
         s2++;
     }
-    DEBUG3(stderr, "Returning %d\n", *s1 == 0 || *s2 == 0);
+    DEBUG4(stderr, "Returning %d\n", *s1 == 0 || *s2 == 0);
     return *s1 == 0 || *s2 == 0;
 }
 
@@ -444,13 +444,13 @@ ftt_open_dev(ftt_descriptor d) {
 	if ( 0 > ftt_open_io_dev(d) ) return -1;
 
     if ( d->flags&FTT_FLAG_MODE_AFTER ) {
-		if ( 0 > ftt_open_set_mode (d,status_res) ) return -1;
-	}
-	if ( d->flags&FTT_FLAG_BSIZE_AFTER ) {
-		if ( 0 > ftt_open_set_blocksize(d) ) return -1;
-	}
+      if ( 0 > ftt_open_set_mode (d,status_res) ) return -1;
+    }
+    if ( d->flags&FTT_FLAG_BSIZE_AFTER ) {
+      if ( 0 > ftt_open_set_blocksize(d) ) return -1;
+    }
 	    
-    DEBUG2(stderr,"Returing %d\n", d->file_descriptor);
+    DEBUG4(stderr,"Returning %d\n", d->file_descriptor);
     return d->file_descriptor;
 }
 

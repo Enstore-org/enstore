@@ -244,11 +244,11 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 
     ENTERING("ftt_set_compression");
     CKNULL("ftt_descriptor", d);
-    DEBUG2(stderr, "Entering ftt_set_compression\n");
+    DEBUG4(stderr, "Entering: ftt_set_compression\n");
 
     if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
 	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_MS_Px0f) {
-	    DEBUG3(stderr, "Using SCSI Mode sense 0x0f page to set compression\n");
+	    DEBUG2(stderr, "Using SCSI Mode sense 0x0f page to set compression\n");
 	    res = ftt_open_scsi_dev(d);        
 	    if(res < 0) return res;
 	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen0f, 6, buf, 28, 5, 0);
@@ -264,7 +264,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    if(res < 0) return res;
 	}
 	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_MS_Px10) {
-	    DEBUG3(stderr, "Using SCSI Mode sense 0x10 page to set compression\n");
+	    DEBUG2(stderr, "Using SCSI Mode sense 0x10 page to set compression\n");
 	    res = ftt_open_scsi_dev(d);        
 	    if(res < 0) return res;
 	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen10, 6, buf, 28, 5, 0);
@@ -274,7 +274,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    /* yes it will! the setuid program doesn't know which density */
 	    /* the parent process set... */
 	    /* buf[4] = d->devinfo[d->which_is_default].hwdens; */
-	    buf[4 + 8 + 14] = compression;
+ 	    buf[4 + 8 + 14] = compression;
 	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, 28, 5, 1);
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
