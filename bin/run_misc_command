@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
@@ -16,7 +16,7 @@ else
 	# filename
 	cmtext=`echo $command|sed -e 's/[^A-Za-z0-9]//g'`
 	# setup some variables
-	theDirectory=~/MISC
+	theDirectory=$HOME/MISC
 	activeFlag=$theDirectory/$cmtext
 	# make sure we are not already running
 	mkdir $activeFlag 1>/dev/null 2>/dev/null
