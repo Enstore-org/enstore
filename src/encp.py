@@ -439,8 +439,8 @@ def write_to_hsm(input, output,
 			#                               file_size[i], done_ticket)
 			# exit here
 			jraise(errno.errorcode[errno.EPROTO],
-			       " encp.write_to_hsm: network problem "+\
-			       err_msg)
+			       " encp.write_to_hsm: network problem or mover crash "+\
+			       str(err_msg))
 			pass
 
 		    control_socket.close()
