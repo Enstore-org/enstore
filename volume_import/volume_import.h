@@ -62,7 +62,7 @@ int skip_eof_marks(int);
 int skip_records(int); 
 int close_tape(void);
 int read_tape_label(char *, int*, int*);
-int cpio_start(char *);
+int cpio_start(char *, char *);
 int cpio_next_block(char *, int);
 int join_path(char *, char *, char *);
 int strip_path(char *, char *, char *);
@@ -81,6 +81,7 @@ extern char *progname;
 extern int file_number;
 extern int blocksize;
 extern int verbose;
+extern int no_check;
 
 extern unsigned int checksum, early_checksum;
 extern unsigned int early_checksum_size;
