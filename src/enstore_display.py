@@ -774,6 +774,8 @@ class Mover:
             pass
 
     def undraw_progress(self):
+        self.percent_done = None
+        self.alt_percent_done = None
         
         try:
             self.display.delete(self.progress_alt_bar)
