@@ -586,7 +586,7 @@ def sort_inventory(data_file, volume_list, tmp_dir):
         print "%d lines read in at %.1f keys/S in %s." % \
               (count_metadata, count_metadata/delta, parse_time(delta))
 
-        break #usefull for debugging
+#        break #usefull for debugging
 
     return count_metadata
 
@@ -714,7 +714,9 @@ if __name__ == "__main__":
         inventory_tmp_dir = inventory_tmp_dir + "/"
     if inventory_extract_dir[-1] != "/":
         inventory_extract_dir = inventory_extract_dir + "/"
-
+    if inventory_rcp_dir != "" and inventory_rcp_dir[-1] != "/":
+        inventory_rcp_dir = inventory_rcp_dir + "/"
+        
 #    print "backup_dir", backup_dir
 #    print "current_dir", current_dir
 #    print "inventory_dir", inventory_dir
@@ -726,6 +728,7 @@ if __name__ == "__main__":
     #Look through the arguments list for valid arguments.
     if "-stdout" in sys.argv:
         output_dir = "/dev/stdout/"
+        inventory_rcp_dir = "" #Makes no sense to move files that don't exist.
     elif "-o" in sys.argv:
         output_dir = sys.argv[sys.argv.index("-o") + 1] + "/"
     else:
@@ -758,14 +761,16 @@ if __name__ == "__main__":
 
     #Inventory is the main function that does work.
     counts = inventory(volume_file, file_file, output_dir, inventory_tmp_dir)
-
-    if inventory_rcp_dir:
-        os.system("rcp %s %s" % (inventory_extract_dir + "*",
-                                 inventory_rcp_dir))
-
+    
     #Cleanup those directories that we don't care about its contents.
     cleanup_dirs(inventory_tmp_dir, inventory_extract_dir)
     checkBackedUpDatabases.clean_up(current_dir) #Simple "cleanup".
+
+    #Move all of the output files over to the web server node.
+    if inventory_rcp_dir:
+        if string.find(output_dir, "/dev/stdout") == -1:
+            print "rcp %s %s" % (output_dir + "*", inventory_rcp_dir)
+            os.system("rcp %s %s" % (output_dir + "*", inventory_rcp_dir))
 
     #Print stats regarding the data generated.
     delta_t = time.time() - t0
