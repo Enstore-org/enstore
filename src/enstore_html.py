@@ -168,13 +168,10 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	return HTMLgen.TR(td)
 
     def script_title(self, table):
-	# output the script title at the top of the page surrounded by empty
-	# rows
-	table.append(empty_row())
-	table.append(empty_row())
+	# output the script title at the top of the page
         if self.script_title_gif :
-            table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Center(HTMLgen.Image(self.script_title_gif)))))
-	table.append(empty_row())
+            table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Image(self.script_title_gif), 
+					       align="RIGHT")))
 	table.append(empty_row())
 
     def table_top_b(self, table, td):
@@ -957,7 +954,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Alarms"
 	self.script_title_gif = "en_act_alarms.gif"
-	self.description = "List of the currently raised alarms.  This page is created by the Alarm Server."
+	self.description = "List of the currently raised alarms.  This page is created by the Alarm Server. %s may also be displayed."%(str(HTMLgen.Bold(HTMLgen.Href('enstore_alarm_search.html', 'Previous alarms'))),)
 
     def alarm_table(self, alarms):
 	tr = HTMLgen.TR()
