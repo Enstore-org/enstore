@@ -220,7 +220,23 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
     # Do the forking and call the function
     def DoWork(self, function, ticket):
+        if not ticket.has_key("function"):
+	   Trace.log(e_errors.ERROR, "MISSING FUNCTION KEY")
+	   return
+		
         if ticket['function'] in ("mount", "dismount"):
+            if not ticket.has_key("vol_ticket"):
+	       Trace.log(e_errors.ERROR, "MISSING VOL_TICKET %s"%(ticket['function'],))
+	       print "MISSING VOL_TICKET", ticket      ### XXX What is going on?
+	       return
+            if not ticket['vol_ticket'].has_key("external_label"):
+	       Trace.log(e_errors.ERROR, "MISSING EXTERNAL LABEL %s"%(ticket['function'],))
+	       print "MISSING EXTERNAL_LABEL", ticket  ### XXX What is going on?
+	       return
+	    if not ticket.has_key("drive_id"):
+	       Trace.log(e_errors.ERROR, "MISSING DRIVE_ID %s"%(ticket['function'],))
+	       print "MISSING DRIVE_ID", ticket        ### XXX What is going on?
+	       return
             Trace.log(e_errors.INFO, 'REQUESTED %s %s %s'%
                       (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
             # if drive is doing a clean cycle, drop request
@@ -310,11 +326,13 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         # ... if this is a mount, dismount first
         if ticket['function'] == "mount":
             Trace.log(e_errors.INFO, 'mcDoWork> child prepare dismount for %s'%(msg,))
+	    self.logdetail = 0 # don't print a failure  (no tape mounted) message that is really a success
             sts=self.prepare(
                 ticket['vol_ticket']['external_label'],
                 ticket['drive_id'],
                 ticket['vol_ticket']['media_type'])
-            Trace.log(e_errors.INFO,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts))
+	    self.logdetail = 1 # back on
+            Trace.log(e_errors.INFO,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts[2]))
         if ticket['function'] in ('insert','eject','homeAndRestart','cleanCycle','getVolState'):
             Trace.log(e_errors.INFO, 'mcDoWork> child doing %s'%(msg,))
             sts = function(ticket)
@@ -373,6 +391,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, max_work=7, csc=None):
         MediaLoaderMethods.__init__(self, medch, max_work, csc)
 
+	self.logdetail = 1
+	
         # robot choices are 'R1', 'R2' or 'Both'
         if self.mc_config.has_key('RobotArm'):   # error if robot not in config
             self.robotArm = string.strip(self.mc_config['RobotArm'])
@@ -413,7 +433,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
             try:
                 sts=apply(function,args)
                 if sts[1] != 0:
-                   Trace.log(e_errors.ERROR, 'function %s error %s'%(repr(function),sts[2])) 
+		   if self.logdetail:
+		      Trace.log(e_errors.ERROR, 'function %s %s error %s'%(repr(function),args,sts[2])) 
                 if sts[1] == 1 and rpcErrors < 2:  # RPC failure
                     time.sleep(10)
                     rpcErrors = rpcErrors + 1
@@ -643,7 +664,8 @@ class STK_MediaLoader(MediaLoaderMethods):
             try:
                 sts=apply(function,args)
                 if sts[1] != 0:
-                   Trace.log(e_errors.ERROR, 'function %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),sts[1],sts[2],count)) 
+		   if self.logdetail:
+                      Trace.log(e_errors.ERROR, 'function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
                 if (sts[1] == 54 or          #IPC error
                     sts[1] == 68 or          #IPC error (usually)
                     sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
