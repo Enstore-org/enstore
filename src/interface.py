@@ -306,16 +306,6 @@ class Interface:
                 self.stop_time = value
             elif opt == "--plot":
                 self.plot = 1
-            elif opt == "--faccess":
-  	        self.criteria['first_access']=self.check(value)
-            elif opt == "--laccess":
-	        self.criteria['last_access']=self.check(value)
-            elif opt == "--declared":
-	        self.criteria['declared']=self.check(value)
-            elif opt == "--capacity":
-	        self.criteria['capacity']=self.check(value)
-            elif opt == "--rem_bytes":
-	        self.criteria['rem_bytes']=self.check(value)
             elif opt == "--dbname":
 	        self.dbname=value
             elif opt == "--queue":
@@ -324,20 +314,6 @@ class Interface:
 	        self.output_file_family="ephemeral"
             elif opt == "--file_family":
 	        self.output_file_family=value
-            elif opt == "-v":
-	        self.criteria['external_label']=string.split(value,',')
-            elif opt == "-l":
-	        self.criteria['library']=string.split(value,',')
-            elif opt == "-f":
-	        self.criteria['file_family']=string.split(value,',')
-            elif opt == "-m":
-	        self.criteria['media_type']=string.split(value,',') 
-            elif opt == "-w":
-	        self.criteria['wrapper']=string.split(value,',')
-            elif opt == "-u":
-	        self.criteria['user_inhibit']=string.split(value,',')
-            elif opt == "-s":
-	        self.criteria['system_inhibit']=string.split(value,',')
             elif opt == "--mail_node":
 	        self.mail_node=value
             elif opt == "--help" :
