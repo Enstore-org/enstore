@@ -337,38 +337,32 @@ class DispatchingWorker:
 
 
     def do_print(self, ticket):
-        for level in ticket['levels']:
-            Trace.do_print(level)
+        Trace.do_print(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
 
     def dont_print(self, ticket):
-        for level in ticket['levels']:
-            Trace.dont_print(level)
+        Trace.dont_print(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
 
     def do_log(self, ticket):
-        for level in ticket['levels']:
-            Trace.do_log(level)
+        Trace.do_log(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
         
     def dont_log(self, ticket):
-        for level in ticket['levels']:
-            Trace.dont_log(level)
+        Trace.dont_log(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
 
     def do_alarm(self, ticket):
-        for level in ticket['levels']:
-            Trace.do_alarm(level)
+        Trace.do_alarm(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
         
     def dont_alarm(self, ticket):
-        for level in ticket['levels']:
-            Trace.dont_alarm(level)
+        Trace.dont_alarm(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
         
