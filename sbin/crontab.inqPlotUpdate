@@ -1,1 +1,1 @@
-00 4 * * * sh -c 'DIR=/usr/hppc_home/berman/cron;OUT=$DIR/inqPlotUpdate.out;rm -f $OUT;. /usr/local/etc/setups.sh 1>>$OUT 2>&1;setup gnuplot,enstore 1>>$OUT 2>&1;cd $DIR 1>>$OUT 2>&1;ecmd inq --plot 1>>$OUT 2>&1;'
+00 1 * * * sh -c 'DIR=/usr/hppc_home/berman/cron;OUT=$DIR/inqPlotUpdate.out;rm -f $OUT;. /usr/local/etc/setups.sh 1>>$OUT 2>&1;setup gnuplot,enstore 1>>$OUT 2>&1;cd $DIR 1>>$OUT 2>&1;ecmd inq --plot 1>>$OUT 2>&1;'
