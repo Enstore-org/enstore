@@ -866,6 +866,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	lines = self.extract_lines(ofn, ticket)
+	self.enprint("Lines found to plot = "+repr(len(lines)), 
+	             generic_cs.SERVER, self.verbose)
 	# now pull out the info we are going to plot from the lines
 	data = []
 	for line in lines:
@@ -882,10 +884,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                     LOG_PREFIX, ""), einfo[enstore_status.EBYTES]])
 	pts_file = lfd+"/bpt.pts"
 	bpd_file = lfd+"/bytes.pts"
-	self.make_xfer_plot_file(pts_file, data)
-	self.gnuplot(lfd, lfd+"/bpt.gnuplot", pts_file, self.html_dir)
-	self.make_bytes_per_day_plot_file(bpd_file, data)
-	self.gnuplot(lfd, lfd+"/bytes.gnuplot", bpd_file, self.html_dir)
+	if not len(data) == 0:
+	    self.make_xfer_plot_file(pts_file, data)
+	    self.gnuplot(lfd, lfd+"/bpt.gnuplot", pts_file, self.html_dir)
+	    self.make_bytes_per_day_plot_file(bpd_file, data)
+	    self.gnuplot(lfd, lfd+"/bytes.gnuplot", bpd_file, self.html_dir)
 	ret_ticket = { 'plot_bpt' : len(lines), \
 	               'status'   : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
