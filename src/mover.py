@@ -42,6 +42,7 @@ import udp_client
 import socket_ext
 import hostaddr
 import string_driver
+import drivestat
 import disk_driver
 
 import Trace
@@ -630,6 +631,46 @@ class Mover(dispatching_worker.DispatchingWorker,
 		      "error setting %s as known down in outage file : %s"%(self.name,
 						 enstore_functions.get_status(ticket)))
 
+    # get the initial statistics
+    def init_stat(self, drive, drive_name):
+        self.stats_on = 0
+        if not self.stat_file: return
+        if not self.driver_type == 'FTTDriver':
+            return
+        import ftt
+        fd = ftt.open(drive, ftt.RDWR)
+        if fd:
+            ds = drivestat.ds_alloc()
+            if ds:
+                stats = fd.get_stats()
+                drivestat.ds_translate_ftt_drive_id(ds, stats.b)
+                drivestat.ds_set_character_field(ds, drive_name, drivestat.LOGICAL_DRIVE_NAME)
+                drivestat.ds_set_character_field(ds, self.current_volume, drivestat.TAPE_VOLSER)
+                drivestat.ds_set_character_field(ds, self.config['host'],drivestat.HOST)
+                st = drivestat.ds_translate_ftt_stats(ds, stats.b, drivestat.INIT)
+                if st != -1:
+                    try:
+                        drivestat.ds_print(ds,self.stat_file)  
+                    except:
+                        Trace.handle_error()
+                        pass
+                    self.stats_on = 1
+                    self.drive_stats = ds
+
+    # update statistics
+    def update_stat(self):
+        if self.driver_type != 'FTTDriver': return
+        if self.stats_on:
+            stats = self.tape_driver.ftt.get_stats()
+            drivestat.ds_set_character_field(self.drive_stats, self.current_volume, drivestat.TAPE_VOLSER)
+            st = drivestat.ds_translate_ftt_stats(self.drive_stats, stats.b, drivestat.RECENT)
+            st = drivestat.ds_compute_delta(self.drive_stats)
+            if st != -1:
+                try:
+                    drivestat.ds_print(self.drive_stats, self.stat_file)
+                except:
+                    pass
+
     def start(self):
         name = self.name
         self.t0 = time.time()
@@ -637,8 +678,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
 
-        logname = self.config.get('logname', name)
-        Trace.init(logname)
+        self.logname = self.config.get('logname', name)
+        Trace.init(self.logname)
         Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
         self.config['device'] = os.path.expandvars(self.config['device'])
@@ -708,6 +749,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.delay = 0
         self.fcc = None
         self.vcc = None
+        self.stat_file = None 
         self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                            self.config['media_changer'])
         mc_keys = self.csc.get(self.mcc.media_changer)
@@ -773,6 +815,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             import null_driver
             self.tape_driver = null_driver.NullDriver()
         elif self.driver_type == 'FTTDriver':
+            self.stat_file = self.config.get('statistics_path', None)
+	    if self.stat_file:
+                os.putenv('DS_SERVER_HOST', 'fncdug1.fnal.gov')
+                os.putenv('DS_SERVER_PORT', '5001')
             self.compression = self.config.get('compression', None)
             if self.compression > 1: self.compression = None
             self.device = self.config['device']
@@ -808,6 +854,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 time.sleep(2)
                                 sys.exit(-1)
                         have_tape=0
+                self.init_stat(self.device, self.logname)
                 self.tape_driver.close()
                 if not have_tape:
                     Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
@@ -2372,6 +2419,15 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dismount_volume(self, after_function=None):
         broken = ""
         self.dismount_time = None
+        self.update_stat()
+        if self.stats_on:
+		ret=drivestat.ds_send_stats(self.drive_stats,
+                                            10,
+                                            drivestat.RECENT|drivestat.BUMP_MOUNTS|drivestat.SUM_OF_DELTAS);
+		ret=drivestat.ds_send_stats(self.drive_stats,
+                                            10, drivestat.ABSOLUTE);
+		drivestat.ds_free(self.drive_stats)
+
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
             ### Do not eject if specified
@@ -2556,6 +2612,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         if status and status[0] == e_errors.OK:
             Trace.notify("loaded %s %s" % (self.shortname, volume_label))        
+            self.init_stat(self.device, self.logname)
             Trace.log(e_errors.INFO, "mounted %s"%(volume_label,),
                   msg_type=Trace.MSG_MC_LOAD_DONE)
 
@@ -3305,7 +3362,6 @@ class DiskMover(Mover):
         self.setup_transfer(ticket, mode=READ)
 
     def no_work(self, ticket):
-        Trace.log(e_errors.INFO,"NO WORK")
         if self.state is HAVE_BOUND:
             self.dismount_volume()
         
