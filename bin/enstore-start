@@ -88,6 +88,28 @@ check_server()
     fi
 }
 
+
+start_db_daemons(){
+
+    enstore_db=`udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT 4 --work lookup --additional_ticket '"lookup":"database"' | cut -d: -f2 | cut -d, -f1 | cut -d\' -f2`
+    out=$PID_DIR/db_checkpoint
+
+    if [ ! -e $out ] ; then
+        echo "Starting database checkpoint daemon  on `hostname`"
+	cmd="db_checkpoint -h $enstore_db  -p 5 `output $out`"
+	eval "$cmd &"
+        echo $! >> $PID_DIR/`uname -n`-db_check_pids	
+    fi
+
+
+    out=$PID_DIR/db_deadlock
+    if [ ! -e $out ] ; then
+            echo "Starting database deadlock daemon  on `hostname`"
+            cmd="db_deadlock -h $enstore_db  -t 1 `output $out`"
+	    eval "$cmd &"
+    fi
+}
+
 ###################################################################################################################################
 
 # the configuration server needs to be the 1st thing started
@@ -222,6 +244,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
         then
         echo "Volume Clerk already started"
       else
+        start_db_daemons
         echo "Starting Volume Clerk"
         out=$PID_DIR/volume_clerk
         rm -f $out
@@ -257,6 +280,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
         then
         echo "File Clerk already started"
       else
+        start_db_daemons
         echo "Starting File Clerk"
         out=$PID_DIR/file_clerk
         rm -f $out
@@ -425,50 +449,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
 
 fi
 
-###################################################################################################################################
-# dbase
-#start database administrator
 
-enstore_db=`udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT 4 --work lookup --additional_ticket '"lookup":"database"' | cut -d: -f2 | cut -d, -f1 | cut -d\' -f2`
-
-if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
-    if [ "${opt_ping-}" != 1 -a $enstore_start_admin -eq 1 ];then
-        if [ -r $enstore_db/file -a -r $enstore_db/volume ] ;  then
-            if    [ ! "${opt_nocheck-}" ]\
-             && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep admin_cle|sed -e 's/.*://'` $timeout>/dev/null
-                then
-                echo "DB Admin Server already started"
-            else
-                echo "Starting database checkpoint daemon  on `hostname`"
-		out=$PID_DIR/db_checkpoint
-		rm -f $out
-                cmd="db_checkpoint -h $enstore_db  -p 5 `output $out`"
-		eval "$cmd &"
-                echo $! >> $PID_DIR/`uname -n`-db_check_pids
-
-                echo "Starting database deadlock daemon  on `hostname`"
-		out=$PID_DIR/db_deadlock
-		rm -f $out
-                cmd="db_deadlock -h $enstore_db  -t 1 `output $out`"
-		eval "$cmd &"
-                echo $! >> $PID_DIR/`uname -n`-db_dlck_pids
-
-##                echo "Starting DB Admin Server"
-##		out=$PID_DIR/admin_server
-##		rm -f $out
-##               cmd="python $ENSTORE_DIR/src/admin_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT `output $out`"
-##		eval "$cmd &"
-##                echo $! >> $PID_DIR/`uname -n`-admin_pids
-##            fi
-        else
-            echo "ERROR: file and volume database are not present - can't start db tools"
-            exit 1
-        fi
-    fi
-
-##    check_server admin_clerk $PID_DIR/`uname -n`-admin_pids
-
-fi
 
 ###################################################################################################################################
 
