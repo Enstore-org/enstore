@@ -1556,6 +1556,17 @@ def open_local_file(filename, mode):
                                  "Unable to open local file.")}
         return done_ticket
 
+    sysname = os.uname()[0]
+    if sysname == "Linix":
+        #On linix this is generally ignored.  XFS on linux seems to use it,
+        # since the rates on the terabyte filesystems are improved with its
+        # use.
+        flags = flags | 16384     #O_DIRECT
+    #Setting this on IRIX using a filesystem that doesn't support O_DIRECT 
+    # will result in EINVAL error.  (ie. XFS would work, but NFS would fail.)
+    #elif sysname == "IRIX64":
+    #	flags = flags | 32768     #O_DIRECT
+
     #Try to open the local file for read/write.
     try:
         #if filename == "/dev/null":
