@@ -49,7 +49,7 @@ data_access_layer_format = "INFILE=%s\n"+\
 
 def write_to_hsm(input_files, output, output_file_family='',
                  config_host=None, config_port=None,
-                 ilist=0, chk_crc=0,
+                 ilist=0, chk_crc=0, use_IPC=0,
                  pri=1, delpri=0, agetime=0, delayed_dismount=0,
                  t0=0, bytecount=None):
     if t0==0:
@@ -464,11 +464,13 @@ def write_to_hsm(input_files, output, output_file_family='',
                            (fsize,statinfo[stat.ST_SIZE]))
 		    pass
 		try:
-                    if chk_crc : crc_flag = 1
-		    else:        crc_flag = 0
+                    if chk_crc: crc_flag = 1
+		    else:       crc_flag = 0
+		    if use_IPC: ipc_flag = 1
+		    else:       ipc_flag = "no"
 		    mycrc = EXfer.fd_xfer( in_file.fileno(),
 					   data_path_socket.fileno(), 
-					   fsize, bufsize, crc_flag )
+					   fsize, bufsize, crc_flag, 0, ipc_flag )
 		except (EXfer.error), err_msg:
                     # this error used to be a 0
 		    Trace.trace(6,"write_to_hsm EXfer error:"+\
@@ -747,7 +749,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 #######################################################################
 def read_from_hsm(input_files, output,
                   config_host, config_port,
-                  ilist=0, chk_crc=0,
+                  ilist=0, chk_crc=0, use_IPC=0,
                   pri=1, delpri=0, agetime=0, delayed_dismount=None,
                   t0=0):
     if t0==0:
@@ -988,8 +990,8 @@ def read_from_hsm(input_files, output,
 	if submitted != 0:
 	    files_left, brcvd, error = read_hsm_files(listen_socket, submitted,
 						      files_left, request_list,
-						      tinfo, 
-						      chk_crc, data_access_layer, 
+						      tinfo, chk_crc, use_IPC,
+						      data_access_layer, 
 						      maxretry, verbose)
 	    bytes = bytes + brcvd
 	    if verbose: print "FILES_LEFT ", files_left
@@ -1194,7 +1196,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 # read hsm files in the loop after read requests have been submitted
 
 def read_hsm_files(listen_socket, submitted, ninput,requests,  
-		   tinfo, chk_crc, data_access_layer, maxretry, verbose):
+		   tinfo, chk_crc, use_IPC, data_access_layer, maxretry, verbose):
     for rq in requests: 
 	Trace.trace(7,"read_hsm_files:"+repr(rq['infile']))
     files_left = ninput
@@ -1309,8 +1311,12 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 try:
                     if chk_crc != 0: crc_flag = 1
                     else:            crc_flag = 0
-                    mycrc = EXfer.fd_xfer( data_path_socket.fileno(), _f_.fileno(),
-                                           requests[j]['file_size'], bufsize, crc_flag )
+		    if use_IPC: ipc_flag = 1
+		    else:       ipc_flag = "no"
+                    mycrc = EXfer.fd_xfer( data_path_socket.fileno(),
+					   _f_.fileno(),
+					   requests[j]['file_size'], bufsize,
+					   crc_flag, 0, ipc_flag )
                 except: 
                     exc, err_msg, tb = sys.exc_info()
 
@@ -1945,6 +1951,7 @@ class encp(interface.Interface):
         self.data_access_layer = 0 # no special listings
         self.verbose = 0           # no output yet
 	self.delayed_dismount = 0  # delayed dismount time is set to 0
+	self.use_IPC = 0
 	self.output_file_family = '' # initial set for use with --ephemeral or
 	                             # or --file_family
 
@@ -1961,7 +1968,7 @@ class encp(interface.Interface):
         the_options = self.config_options()+[
                       "verbose=","crc","priority=","delpri=","age_time=",
                       "delayed_dismount=", "file_family=", "ephemeral",
-                      "data_access_layer","bytes=", "test_mode"
+                      "data_access_layer","bytes=", "test_mode", "use_IPC"
                       ] + self.help_options()
 
         return the_options
@@ -2056,7 +2063,7 @@ if __name__  ==  "__main__" :
     if e.intype=="unixfile" and e.outtype=="hsmfile" :
         write_to_hsm(e.input,  e.output, e.output_file_family,
                      e.config_host, e.config_port,
-                     e.verbose, e.chk_crc,
+                     e.verbose, e.chk_crc, e.use_IPC,
                      e.priority, e.delpri, e.age_time,
                      e.delayed_dismount, t0, e.bytes)
 
@@ -2064,7 +2071,7 @@ if __name__  ==  "__main__" :
     elif e.intype=="hsmfile" and e.outtype=="unixfile" :
         read_from_hsm(e.input, e.output,
                       e.config_host, e.config_port,
-                      e.verbose, e.chk_crc,
+                      e.verbose, e.chk_crc, e.use_IPC,
                       e.priority, e.delpri, e.age_time,
                       e.delayed_dismount, t0)
 

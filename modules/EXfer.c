@@ -18,6 +18,7 @@
 #include <assert.h>             /* assert */
 #include <errno.h>
 #include <signal.h>		/* sigaction() and struct sigaction */
+/*#include <alloca.h>		 alloca() - IRIX/Linux - just cast to (char *)*/
 
 #include "IPC.h"		/* struct s_IPCshmgetObject, IPCshmget_Type */
 
@@ -119,6 +120,63 @@ raise_exception( char *msg )
  *
  *****************************************************************************/
 
+static int
+do_read_write(  int 		rd_fd
+	      , int 		wr_fd
+	      , int 		no_bytes
+	      , int 		blk_size 
+	      , int		crc_flag
+	      , unsigned long	*crc_p )
+{
+	char	*buffer;
+	char	*b_p;
+	int	sts;
+	int	bytes_to_xfer;
+
+    buffer = (char *)alloca( blk_size ); /* space off stack */
+	
+    while (no_bytes)
+    {   /* Do not worry about reading/writeing an exact block as this is
+	   one the user end. But attempt blk_size reads. */
+	bytes_to_xfer = (no_bytes<blk_size)?no_bytes:blk_size;
+
+	sts = read( rd_fd, buffer, bytes_to_xfer );
+	if (sts == -1)
+	{   /* return/break - read error */
+	    return (-1);
+	}
+	if (sts == 0)
+	{   /* return/break -  unexpected eof error */
+	    return (-2);
+	}
+
+	/* call write (which should return async) and then crc */
+	bytes_to_xfer = sts;
+	b_p = buffer;
+	do
+	{   sts = write( wr_fd, b_p, bytes_to_xfer );
+	    if (sts == -1)
+	    {   /* return a write error */
+		return (-3);
+	    }
+	    /* check sum what ever we wrote. Presumably, the system is
+	       delivering the data to the device (and the device is taking
+	       the data from system mem and we can xsum while this is
+	       happening. */
+	    switch (crc_flag)
+	    {
+	    case 0:	break;
+	    case 1:	*crc_p=adler32( *crc_p, b_p, sts ); break;
+	    default:	printf("fd_xfer: invalid crc flag"); *crc_p=0; break;
+	    }
+	    bytes_to_xfer -= sts;
+	    b_p           += sts;
+	    no_bytes      -= sts;
+	} while (bytes_to_xfer);	
+    }
+    return (0);
+}   /* do_read_write */
+
 static char		*g_shmaddr_p;
 static int		 g_shmsize;
 static struct sigaction	 g_oldSigAct_sa[32];
@@ -134,24 +192,47 @@ send_writer(  enum e_mtype	mtype
 {
 	int		sts;
 	struct s_msg	msg_s;
+	struct msqid_ds msgctl_s;
+	int		flg;
+	int		tries=0;
+
+    /*  see if there are enough bytes free in the msgq to send the message
+        without waiting. */
+    msgctl( g_msgqid, IPC_STAT, &msgctl_s );
+    if ((msgctl_s.msg_cbytes+sizeof(struct s_msgdat)) < msgctl_s.msg_qbytes)
+    {   flg = IPC_NOWAIT; /* should have no problems */
+    }
+    else
+    {   flg = 0; /* will have to wait */
+    }
 
     msg_s.mtype = mtype;
     msg_s.md.data = d1; /* may not be used */
     msg_s.md.c_p = c1; /* may not be used */
  re_snd:
-    sts = msgsnd( g_msgqid,(struct msgbuf *)&msg_s,sizeof(struct s_msgdat),0 );
-    if ((sts==-1) && (errno==EINTR))
-    {   PRINTF(  "EXfer (pid=%d) - redoing reader snd after interruption\n"
-	       , getpid() );
-	goto re_snd;
-    }
+    sts = msgsnd(g_msgqid,(struct msgbuf *)&msg_s,sizeof(struct s_msgdat),flg);
     if (sts == -1)
-    {   perror( "EXfer: fatal reader (send_writer) error" );
-	/* can not do much more, but lets try exitting */
-	exit( 1 );
+    {   switch (errno)
+	{
+	case EINTR:
+	    PRINTF(  "EXfer (pid=%d) - redoing reader snd after interruption\n"
+		   , getpid() );
+	    goto re_snd;
+	case EAGAIN:
+	    if (++tries < 2)
+	    {   sleep( 1 );	/* arbitrary time (probably stuck anyway) */
+		goto re_snd;
+	    }
+	    fprintf( stderr, "msgsnd error - system resourse exhausted\n" );
+	    /* drop through to exit */
+	default:
+	    perror( "EXfer: fatal reader (send_writer) error" );
+	    /* can not do much more, but lets try exitting */
+	    exit( 1 );
+	}
     }
     return;
-}
+}   /* send_writer */
 
 static int
 do_read(  int 		rd_fd
@@ -246,7 +327,7 @@ do_read(  int 		rd_fd
     send_writer( DatCrc, crc_i, 0 );
 
     return (0);
-}
+}   /* do_read */
 
 static void
 g_ipc_cleanup( void )
@@ -380,8 +461,22 @@ EXfd_xfer(  PyObject	*self
        CAN MONITOR TRANSFER PROGRESS VIA SPECIFIC LOACATION WITHIN THE
        SHM. */
     assert( blk_size < 0x400000 );
-    if ((shm_obj_tp==0) || (shm_obj_tp==Py_None) || PyInt_Check(shm_obj_tp))
-    {   shm_obj_tp = 0;		/* flag that we were not passed a shm... */
+    if (   (shm_obj_tp!=0)
+	&& PyString_Check(shm_obj_tp)
+	&& (   (strncmp(PyString_AsString(shm_obj_tp),"no",2)==0)
+	    || (strncmp(PyString_AsString(shm_obj_tp),"No",2)==0)))
+    {   /* do not use shared memory, msgq, sem, or forking */
+	sts = do_read_write( fr_fd, to_fd, no_bytes, blk_size, crc_flag, &crc_i );
+	if (sts == -1) return (raise_exception("fd_xfer read error"));
+	if (sts == -2) return (raise_exception("fd_xfer unexpected eof"));
+	if (sts == -3) return (raise_exception("fd_xfer write error"));
+	if (crc_flag) rr = PyLong_FromUnsignedLong( crc_i );
+	else          rr = Py_BuildValue( "" );
+	return (rr);
+    }
+    else if ((shm_obj_tp==0) || (shm_obj_tp==Py_None) || PyInt_Check(shm_obj_tp))
+    {
+	shm_obj_tp = 0;		/* flag that we were not passed a shm... */
 	rd_ahead_i = 0x400000 / blk_size; /* do integer arithmatic */
 	g_shmsize = blk_size * rd_ahead_i;
 	g_shmid = shmget(  IPC_PRIVATE, g_shmsize
@@ -464,6 +559,7 @@ EXfd_xfer(  PyObject	*self
 		sts = 0;
 		do
 		{   msg_s.md.data -= sts;
+		    msg_s.md.c_p  += sts;
 		    sts = write( to_fd, msg_s.md.c_p, msg_s.md.data );
 		    if (sts == -1)
 		    {   if (!shm_obj_tp) g_ipc_cleanup();
@@ -473,7 +569,6 @@ EXfd_xfer(  PyObject	*self
 		    }
 		    *write_bytes_ip += sts;
 		} while (sts != msg_s.md.data);
-
  re_semop:
 		sts = semop( g_semid, &sops_wr_wr2rd, 1 );
 		if ((sts==-1) && (errno==EINTR))
