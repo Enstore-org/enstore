@@ -1,18 +1,4 @@
 #
-# This server uses the following data structures:
-#
-#   NAME                KEY TYPE               DESCRIPTION
-#   self.last_alive{}   same as config dict    last time found alive
-#   self.last_update{}  same as config dict    last time updated
-#   self.intervals{}    same as config dict    intervals for updates
-#
-#   self.server_keys[]                         list of servers (and others) to
-#                                                 listen for
-#   self.has_thread{}   same as config dict    if exists, means we created a 
-#                                              thread to 
-#                                              restart that server. cleared
-#                                              once the server is alive again.
-#
 ##############################################################################
 # system import
 import sys
@@ -46,6 +32,9 @@ MY_NAME = "inquisitor"
 LOGHTMLFILE_NAME = "enstore_logs.html"
 TIMED_OUT_SP = "    "
 DEFAULT_REFRESH = "60"
+DEAD = "dead"
+ALIVE = "alive"
+NO_INFO_YET = "no info yet"
 
 USER = 0
 TIMEOUT=1
@@ -73,6 +62,32 @@ def get_file_list(dir, prefix):
 	    logfiles[file] = os.stat('%s/%s'%(dir,file))[stat.ST_SIZE]
     return logfiles
 
+class EventRelay:
+
+    def __init__(self, interval):
+	self.last_alive = enstore_constants.NEVER_ALIVE
+	self.interval = interval
+	self.sent_own_alive = 0
+	self.start = time.time()
+
+    def alive(self, now):
+	self.last_alive = now
+	self.sent_own_alive = 0
+
+    # should the event relay process be contacted.  in other words, has it been awhile
+    # since it talked to us.
+    def doPing(self):
+	now = time.time()
+	if self.last_alive == enstore_constants.NEVER_ALIVE and \
+	   now - self.start > self.interval:
+	    rtn = 1
+	elif now - self.last_alive > self.interval:
+	    rtn = 1
+	else:
+	    rtn = 0
+	return rtn
+
+
 class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 			dispatching_worker.DispatchingWorker):
     
@@ -81,6 +96,12 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     def get_hung_to(self, key):
 	return self.inquisitor.get("hung_rcv_timeout", {}).get(key, 
 					       monitored_server.HUNG_INTERVAL_DEFAULT)
+
+    def mark_event_relay(self, state):
+	self.serverfile.output_etimedout(self.erc.event_relay_host, 
+					 self.erc.event_relay_port, state,
+					 time.time(), enstore_constants.EVENT_RELAY, 
+					 self.event_relay.last_alive)
 
     def mark_server(self, state, server):
 	if server.no_thread():
@@ -91,7 +112,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # mark a server as not having sent a heartbeat yet.
     def mark_no_info(self, server):
-	self.mark_server("no info yet", server)
+	self.mark_server(NO_INFO_YET, server)
 
     # mark a server as having timed out, this happens if no alive message is
     # received from the event_relay for this server
@@ -101,7 +122,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     # mark a server as having possible hung, this happens if no alive message is
     # received from the event_relay for this server after server.hung_interval time
     def mark_hung(self, server):
-	self.mark_server("dead", server)
+	self.mark_server(DEAD, server)
 
     # called by the signal handling routines
     def s_update_exit(self, the_signal, frame):
@@ -132,10 +153,19 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 								    server.name))
 		    break
 		Trace.trace(7, "%s: Server restart: try %s"%(prefix, i))
-		os.system('enstore Erestart %s "--just %s"'%(node[0], server.name))
+		os.system('enstore Estop %s "--just %s"'%(node[0], server.name))
+		j = 0
+		while j < 15:
+		    time.sleep(1)
+		    j = j + 1
+
+		os.system('enstore Estart %s "--just %s"'%(node[0], server.name))
 		# check if now alive - to do this, wait the equivalent of hung_interval
 		# for this server and then see if an event relay message has arrived
-		time.sleep(server.hung_interval)
+		j = 0
+		while j < server.hung_interval:
+		    time.sleep(1)
+		    j = j + 1
 		if server.check_recent_alive() == monitored_server.NO_TIMEOUT:
 		    Trace.log(e_errors.INFO, "%s: Restarted %s"%(prefix, server.name))
 		    break
@@ -143,7 +173,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 		    i = i + 1
 	    else:
 		# we could not restart the server, do not try again
-		server.restart_failed = 1
+		server.cant_restart()
 		if not server.name == enstore_constants.ALARM_SERVER:
 		    Trace.alarm(e_errors.ERROR, e_errors.CANTRESTART, alarm_info)
 		else:
@@ -221,21 +251,21 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 		self.logfile.copy()
 		self.logfile.remove()
 
-    def add_new_mv_lm_mc(self, key, config_d):
+    def add_new_mv_lm_mc(self, key, config_d, event_relay_interval):
 	if enstore_functions.is_mover(key):
 	    self.server_d[key] = monitored_server.MonitoredMover(config_d[key], key)
-	    self.server_d[key].hung_interval = \
-			    self.inquisitor.get_hung_interval(self.server_d[key].name)
 	elif enstore_functions.is_media_changer(key):
 	    self.server_d[key] = monitored_server.MonitoredMediaChanger(config_d[key],
 									key)
-	    self.server_d[key].hung_interval = \
-			    self.inquisitor.get_hung_interval(self.server_d[key].name)
 	elif enstore_functions.is_library_manager(key):
 	    self.server_d[key] = monitored_server.MonitoredLibraryManager(config_d[key],
 									  key)
-	    self.server_d[key].hung_interval = \
-			    self.inquisitor.get_hung_interval(self.server_d[key].name)
+	else:
+	    # nothing to see here
+	    return
+	self.server_d[key].hung_interval = \
+				self.inquisitor.get_hung_interval(self.server_d[key].name)
+	event_relay_interval = max(event_relay_interval, self.server_d[key].hung_interval)
 
     def update_config_page(self, config):
         self.configfile.open()
@@ -254,13 +284,15 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    if new_server_config:
 		server.update_config(new_server_config)
 		server.hung_interval = self.inquisitor.get_hung_interval(server.name)
+		self.event_relay.interval = max(self.event_relay.interval,
+					       server.hung_interval)
 	    else:
 		# this server no longer exists in the config file, get rid of it
 		# from our internal dictionary and the output html file.
 		if not server.name == enstore_constants.CONFIG_SERVER:
 		    # set this so if there is a thread attempting to restart this
 		    # server, it will notice and abort the attempt.
-		    server.delete = 1
+		    server.delete_me()
 		    del(self.server_d[server.name])
 		    self.serverfile.remove_key(server.name)
 	# check the new config for any new servers we need to add. only handle movers,
@@ -407,6 +439,26 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.encpfile.close()
 	self.encpfile.install()
 
+    def ping_event_relay(self):
+	if self.event_relay.sent_own_alive == 2:
+	    # we have sent several alive messages to the event relay and have gotten
+	    # nothing back.  mark it as dead
+	    self.mark_event_relay(DEAD)
+
+	# whoops have not seen anything for awhile, try to send ourselves our own 
+	# alive, if this does not work, then the event relay process is not running
+	self.erc.send(self.event_relay_msg)
+	self.event_relay.sent_own_alive = self.event_relay.sent_own_alive + 1
+	# try resubscribing too.
+	self.erc.subscribe()
+
+    # if we have not heard anything from the event relay for awhile.  maybe it is down or
+    # maybe nothing else is running
+    def check_event_message(self):
+	now = time.time()
+	if self.event_relay.doPing():
+	    self.ping_event_relay()
+
     # examine each server we are monitoring to see if we have received an alive from
     # it recently (via the event relay)
     def check_last_alive(self):
@@ -422,12 +474,12 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     def server_is_alive(self, name):
 	now = time.time()
 	server = self.server_d.get(name, None)
-	if not type(server) == types.NoneType:
-	    self.serverfile.output_alive(server.host, server.port, "alive", 
+	if server:
+	    self.serverfile.output_alive(server.host, server.port, ALIVE, 
 					 now, name)
 	    self.new_server_status = 1
-	    server.last_alive = now
-	    server.restart_failed = 0
+	    server.is_alive()
+	return server
 
     # this is the routine that is called when a message arrives from the event
     # relay.  this is what this routine does:
@@ -439,15 +491,20 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     #                                       lib_man for it's state, suspect
     #                                       volume list and queue list.
     def process_event_message(self, fd):
+	# the event relay is alive
+	now = time.time()
+	self.serverfile.output_alive(self.erc.event_relay_host, self.erc.event_relay_port,
+				     ALIVE, now, enstore_constants.EVENT_RELAY)
+	self.event_relay.alive(now)
 	msg = self.erc.read(fd)
 	if msg.type == event_relay_messages.ALIVE:
-	    self.server_is_alive(msg.server)
+	    server = self.server_is_alive(msg.server)
 	    # if server is a mover, we need to get some extra status
 	    if enstore_functions.is_mover(msg.server):
-		self.update_mover(self.server_d[msg.server])
+		self.update_mover(server)
 	    # if server is a library_manager, we need to get some extra status
 	    if enstore_functions.is_library_manager(msg.server):
-		self.update_library_manager(self.server_d[msg.server])
+		self.update_library_manager(server)
 	elif msg.type == event_relay_messages.NEWCONFIGFILE:
 	    # a new config file was loaded into the config server, get it
 	    self.make_config_html_file()
@@ -467,6 +524,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.make_encp_html_file()
 	# see if there are any servers in cardiac arrest (no heartbeat)
 	self.check_last_alive()
+	# check if we have received an event realy message recently
+	self.check_event_message()
 	self.make_server_status_html_file()
 
     # our client said to update the enstore system status information
@@ -557,7 +616,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
     def __init__(self, csc, html_file="", update_interval=-1, alive_rcv_to=-1, 
 		 alive_retries=-1, max_encp_lines=-1, refresh=-1):
-        generic_server.GenericServer.__init__(self, csc, MY_NAME, self.process_event_message)
+        generic_server.GenericServer.__init__(self, csc, MY_NAME, 
+					      self.process_event_message)
         Trace.init(self.log_name)
 	self.name = MY_NAME
 	self.startup_state = e_errors.OK
@@ -578,31 +638,33 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.inquisitor = monitored_server.MonitoredInquisitor(\
 				    config_d.get(enstore_constants.INQUISITOR, {}))
 	self.server_d = {enstore_constants.INQUISITOR : self.inquisitor}
+	event_relay_interval = 0
 	self.alarm_server = monitored_server.MonitoredAlarmServer(\
 				    config_d.get(enstore_constants.ALARM_SERVER, {}))
-	self.alarm_server.hung_interval = self.inquisitor.get_hung_interval(self.alarm_server.name)
 	self.server_d[enstore_constants.ALARM_SERVER] = self.alarm_server
 	self.log_server = monitored_server.MonitoredLogServer(\
 				    config_d.get(enstore_constants.LOG_SERVER, {}))
-	self.log_server.hung_interval = self.inquisitor.get_hung_interval(self.log_server.name)
 	self.server_d[enstore_constants.LOG_SERVER]  = self.log_server
 	self.file_clerk = monitored_server.MonitoredFileClerk(\
 				    config_d.get(enstore_constants.FILE_CLERK, {}))
-	self.file_clerk.hung_interval = self.inquisitor.get_hung_interval(self.file_clerk.name)
 	self.server_d[enstore_constants.FILE_CLERK]  = self.file_clerk
 	self.volume_clerk = monitored_server.MonitoredVolumeClerk(\
 				    config_d.get(enstore_constants.VOLUME_CLERK, {}))
-	self.volume_clerk.hung_interval = self.inquisitor.get_hung_interval(self.volume_clerk.name)
 	self.server_d[enstore_constants.VOLUME_CLERK]  = self.volume_clerk
 	self.config_server = monitored_server.MonitoredConfigServer(\
 				    config_d.get(enstore_constants.CONFIG_SERVER, {}))
-	self.config_server.hung_interval = self.inquisitor.get_hung_interval(self.config_server.name)
 	self.server_d[enstore_constants.CONFIG_SERVER]  = self.config_server
+
+	for server_key in self.server_d.keys():
+	    server = self.server_d[server_key]
+	    server.hung_interval = self.inquisitor.get_hung_interval(server.name)
+	    event_relay_interval = max(event_relay_interval, server.hung_interval)
+
 	self.lib_man_d = {}
 	self.mover_d = {}
 	self.media_changer_d = {}
 	for key in config_d.keys():
-	    self.add_new_mv_lm_mc(key, config_d)
+	    self.add_new_mv_lm_mc(key, config_d, event_relay_interval)
 
 	dispatching_worker.DispatchingWorker.__init__(self, 
 						      (self.inquisitor.hostip,
@@ -680,13 +742,22 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# set an interval timer to periodically update the web pages
 	self.add_interval_func(self.periodic_tasks, self.update_interval)
 
+	self.event_relay_msg = event_relay_messages.EventRelayAliveMsg(self.inquisitor.host,
+								       self.inquisitor.port)
+	self.event_relay_msg.encode(self.inquisitor.name)
+
 	# setup the communications with the event relay task
 	self.erc.start([event_relay_messages.ALIVE,
 			event_relay_messages.NEWCONFIGFILE])
 
+	# keep track of when we receive event relay messages.  maybe we can tell if
+	# the event relay process goes down.
+	self.event_relay = EventRelay(event_relay_interval)
+
 	# setup the initial system page
 	for server in self.server_d.keys():
 	    self.mark_no_info(self.server_d[server])
+	self.mark_event_relay(NO_INFO_YET)
 
 	# update the config page    
 	self.update_config_page(config_d)

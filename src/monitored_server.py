@@ -33,31 +33,40 @@ class MonitoredServer:
 	self.name = name
 	# set this to now because we will check this before any of the servers 
 	# heartbeats have been forwarded to us
-	self.last_alive = time.time()       # last time the server was found alive
+	self.last_alive = enstore_constants.NEVER_ALIVE  # last time server was alive
 	self.restart_thread = None          # thread id if trying to restart server
 	self.config = config                # config file dictionary for this server
 	self.hung_interval = hung_interval  # wait this long if server appears hung
+	self.start_time = time.time()
 	if not self.config.has_key(enstore_constants.ALIVE_INTERVAL):
 	    self.alive_interval = DEFAULT_ALIVE_INTERVAL
 	else:
 	    self.alive_interval = self.config[enstore_constants.ALIVE_INTERVAL]
 	self.twice_alive_interval = self.alive_interval + self.alive_interval
 
-    def __getattr__(self, name):
-	return self.__dict__[CONFIG].get(name, None)
-
-    def __setattr__(self, name, value):
-	if self.__dict__.has_key(CONFIG) and self.__dict__[CONFIG].has_key(name):
-	    self.__dict__[CONFIG][name] = value
+    def __getattr__(self, attr):
+	if attr[:2]=='__':
+	    raise AttributeError, attr
 	else:
-	    self.__dict__[name] = value
+	    return self.__dict__[CONFIG].get(attr, None)
+
+    def __setattr__(self, attr, value):
+	if self.__dict__.has_key(CONFIG) and self.__dict__[CONFIG].has_key(attr):
+	    self.__dict__[CONFIG][attr] = value
+	else:
+	    self.__dict__[attr] = value
 
     def check_recent_alive(self):
 	if self.alive_interval == NO_HEARTBEAT:
 	    # fake that everything is ok as we are not checking this server anyway
 	    rtn = NO_TIMEOUT
 	else:
-	    past_interval = time.time() - self.last_alive
+	    now = time.time()
+	    if self.last_alive == enstore_constants.NEVER_ALIVE:
+		past_interval = now - self.start_time
+	    else:
+		past_interval = now - self.last_alive
+
 	    if past_interval > self.hung_interval:
 		rtn = HUNG
 	    elif past_interval > self.twice_alive_interval:
@@ -65,6 +74,16 @@ class MonitoredServer:
 	    else:
 		rtn = NO_TIMEOUT
 	return rtn
+
+    def is_alive(self):
+	self.last_alive = time.time()
+	self.restart_failed = 0
+
+    def cant_restart(self):
+	self.restart_failed = 1
+
+    def delete_me(self):
+	self.delete = 1
 
     def no_thread(self):
 	return not (self.restart_thread and self.restart_thread.isAlive())
@@ -84,7 +103,7 @@ class MonitoredServer:
 
     def __repr__(self):
 	import pprint
-	print self.name+" : ",
+	print "%s : "%(self.name,),
 	pprint.pprint(self.__dict__)
 	print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
