@@ -23,8 +23,8 @@ file=/tmp/now
 echo "$now" > $file
 
 # write a simple small file to make sure everything is working
-echo encp --crc --verbose=1 --data_access_layer $file $outdir/$now
-     encp --crc --verbose=1 --data_access_layer $file $outdir/$now
+echo encp --crc --verbose=5 --data_access_layer $file $outdir/$now
+     encp --crc --verbose=5 --data_access_layer $file $outdir/$now
 RC=$?
 
 #set -xv

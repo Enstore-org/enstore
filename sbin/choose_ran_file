@@ -68,7 +68,7 @@ while [ $done -gt 0 ]; do
   if [ $copyit -eq 0 ]; then
     echo $file
   else
-    cmd="encp --verbose=1 --crc $F /dev/null"
+    cmd="encp --verbose=5 --crc $F /dev/null"
     echo $cmd
     eval $cmd
     rc=$?
