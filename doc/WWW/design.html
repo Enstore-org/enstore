@@ -1898,8 +1898,14 @@ should be able to continue servicing requests.
 It is possible to query the Library Manager and get information about its
 internal queues thereby knowing where work is.
 Some of these commands are general to all servers and are described in the other section. Here we will consider only Library Manager specific commands. They are:
-<b>getwork</b> - get lists of all work requests currently in the Library Manager
-queues. The first list is a list of pending work requests, and the second is a list works at Movers. Below is an output of <b>getwork</b> command.
+<ul>
+<li><b>getwork</b> - get lists of all work requests currently in the Library Manager
+queues. The first list is a list of pending work requests, and the second is a list works at Movers.
+<li><b>getmoverlist</b> - get list of the Movers currently known to this Library Manager and their status
+<li><b>get_suspect_vols</b> - get list of suspected volumes. A description and a purpose of this list has been already discussed above. This list contains volumes requests for which had failed but are retryable.
+</ul>
+     Below are example outputs of these commands.<br>
+<b>getwork</b>
 <pre>
 [enter command] ecmd lmc --getwork sphinxdisk.library_manager
 [{'callback_addr': ('131.225.81.23', 7600),
@@ -2115,7 +2121,7 @@ admin_clerk_client.py',
               'uname': 'moibenko'}}]
 
 </pre>
-<b>getmoverlist</b> - get list of the Movers currently known to this Library Manager and their status. Below is an output of <b>getmoverlist</b> command.
+<b>getmoverlist</b>
 <pre>
 [enter command] ecmd lmc --getmoverlist sphinxdisk.library_manager
 [{'address': ('131.225.81.23', 7508),
@@ -2125,7 +2131,7 @@ admin_clerk_client.py',
   'summon_try_cnt': 0,
   'tr_error': 'ok'}]
 </pre>
-<b>get_suspect_vols</b> - get list of suspected volumes. A description and a purpose of this list has been already discussed above. This list contains volumes requests for which had failed but are retryable. Below is an output of <b>get_suspect_vols</b> command.
+<b>get_suspect_vols</b> 
 <pre>
 [enter command] ecmd lmc --get_suspect_vols sphinxdisk.library_manager
 [{'external_label': 'flop1', 'movers': ['sphinxdisk.mover']}]
