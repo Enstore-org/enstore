@@ -127,7 +127,7 @@ def check_mover(drive, test_tape, media, f_size=250):
     FTT.rewind()
     FTT.close()
 
-    write_t_r = block_size*f_size/1024./1024./(t2-t1)
+    write_t_r = block_size*1.*f_size*1./1024./1024./(t2-t1)
         
     # read file
     FTT.open(drive, 'r')
@@ -145,7 +145,7 @@ def check_mover(drive, test_tape, media, f_size=250):
     t2 = time.time()
     #print block_size*f_size/1024./1024.,"Mbytes read in",t2-t1,"secs"
     print "READ TIME",t2-t1,"secs"
-    read_t_r = block_size*f_size/1024./1024./(t2-t1)
+    read_t_r = block_size*1.*f_size*1./1024./1024./(t2-t1)
     FTT.rewind()
 
     # unload tape
