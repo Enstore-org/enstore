@@ -38,6 +38,7 @@ def _open2(pathname,mode=0666): #see "man open(2)"
         delete_at_exit.unregister(tmpname)
         return fd
     else:
+        delete_at_exit.unregister(pathname)
         return -1
             
 open = _open2
