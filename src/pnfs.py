@@ -18,6 +18,7 @@ import fcntl
 import regsub
 
 # enstore imports
+import Trace
 import lockfile
 import generic_cs
 try:
@@ -41,7 +42,7 @@ class Pnfs:
     # initialize - we will be needing all these things soon, get them now
     def __init__(self,pnfsFilename,all=0,timeit=0):
         t1 = time.time()
-	self.print_id = "PNFS"
+        self.print_id = "PNFS"
         self.pnfsFilename = pnfsFilename
         (dir,file) = os.path.split(pnfsFilename)
         if dir == '':
@@ -68,7 +69,7 @@ class Pnfs:
     # list what is in the current object
     def dump(self, verbose):
         generic_cs.enprint(self.__dict__, \
-	                 generic_cs.PRETTY_PRINT|generic_cs.PNFS, verbose)
+                         generic_cs.PRETTY_PRINT|generic_cs.PNFS, verbose)
 
     ##########################################################################
 
@@ -135,7 +136,7 @@ class Pnfs:
                     f.close()
                 else:
                     generic_cs.enprint("problem with pnfsFilename = "+ \
-	                               self.pnfsFilename)
+                                       self.pnfsFilename)
                     raise sys.exc_info()[0],sys.exc_info()[1]
             self.pstatinfo()
             self.get_id()
@@ -149,7 +150,7 @@ class Pnfs:
                 os.utime(self.pnfsFilename,(t,t))
             except os.error:
                 generic_cs.enprint("can not utime: "+str(sys.exc_info()[0])+\
-	                           " "+str(sys.exc_info()[1]))
+                                   " "+str(sys.exc_info()[1]))
             self.pstatinfo()
 
 
@@ -416,7 +417,9 @@ class Pnfs:
 
     # store the cross-referencing data
     def set_xreference(self,volume,location_cookie,size):
+        Trace.trace(11,'{pnfs.set_xref'+" "+repr(volume)+" "+repr(location_cookie)+" "+repr(size))
         self.volmap_filename(volume,location_cookie)
+        Trace.trace(11,'making volume_file='+repr(self.volume_file))
         self.make_volmap_file()
         value=volume+'\012' + \
                repr(location_cookie)+'\012'+ \
@@ -426,9 +429,11 @@ class Pnfs:
                self.volume_file+'\012' + \
                self.id+'\012' + \
                self.volume_fileP.id+'\012'
+        Trace.trace(11,'value='+repr(value))
         self.writelayer(4,value)
         self.get_xreference()
         self.fill_volmap_file()
+        Trace.trace(11,'}pnfs.set_xreference')
 
     # get the bit file id
     def get_bit_file_id(self):
@@ -637,17 +642,30 @@ class Pnfs:
             else:
                 cookie = kookie
 
-            dir_elements = string.split(self.dir,'/')
-            self.voldir = '/'+dir_elements[1]+'/'+dir_elements[2]+'/volmap/'+ \
-                          ff+'/'+volume
+            #dir_elements = string.split(self.dir,'/')
+            #self.voldir = '/'+dir_elements[1]+'/'+dir_elements[2]+'/volmap/'+ ff+'/'+volume
+            # we need to find the mount point and create the volume file there
+            mountpoints = os.popen('df | grep /pnfs| awk "{print \$6}" ','r').readlines()
+            mpchoose = ""
+            for mplf in mountpoints:
+                mp = regsub.sub("\012","",mplf)
+                if string.find(self.dir,mp) == 0:
+                    if len(mp)>len(mpchoose):
+                        mpchoose = mp
+            self.voldir = '/'+mpchoose+'/volmap/'+ ff+'/'+volume
             # make the filename lexically sortable.  since this could be a byte offset,
             #     allow for 100 GB offsets
             self.volume_file = self.voldir+'/'+cookie
+
+            self.voldir      = regsub.sub("//","/",self.voldir)
+            self.volume_file = regsub.sub("//","/",self.volume_file)
+
         else:
             self.volume_file = UNKNOWN
 
     # create a duplicate entry in pnfs that is ordered by file number on tape
     def make_volmap_file(self):
+        Trace.trace(11,'{make_volmap_file')
         if self.volume_file!=UNKNOWN:
             if posixpath.exists(self.voldir) == 0:
                 dir = ""
@@ -658,16 +676,19 @@ class Pnfs:
                     if posixpath.exists(dir) == 0:
                         # try to make the directory - just bomb out if we fail
                         #   since we probably require user intervention to fix
+                        Trace.trace(11,'dir='+repr(dir)+" voldir="+repr(self.voldir))
                         os.mkdir(dir)
 
             # create the volume map file and set its size the same as main file
             self.volume_fileP = Pnfs(self.volume_file)
             self.volume_fileP.touch()
             self.volume_fileP.set_file_size(self.file_size)
+            Trace.trace(11,'}make_volmap_file')
 
 
     # file in the already existing volume map file
     def fill_volmap_file(self):
+        Trace.trace(11,'{pnfs.fill_volmap_file')
         if self.volume_file!=UNKNOWN:
             # now copy the appropriate layers to the volmap file
             for layer in [1,4]: # bfid and xref
@@ -678,8 +699,11 @@ class Pnfs:
                     self.volume_fileP.writelayer(layer,value)
 
             # protect it against accidental deletion - and give ownership to root.root
+            Trace.trace(11,'changing write access')
             os.chmod(self.volume_file,0644)  # disable write access except for owner
+            Trace.trace(11,'changing to roor.root ownership')
             os.chown(self.volume_file,0,0)   # make the owner root.root
+            Trace.trace(11,'}pnfs.fill_volmap_file')
 
     # retore the original entry based on info from the duplicate
     def restore_from_volmap(self):
@@ -790,15 +814,15 @@ if __name__ == "__main__":
         count = 0
         for pf in base+"/"+repr(time.time()), "/impossible/path/test":
             count = count+1;
-	    generic_cs.enprint("\nSelf test from "+__name__+" using file "+\
-	                       repr(count)+": "+repr(pf), generic_cs.PNFS, \
-	                       intf.verbose)
+            generic_cs.enprint("\nSelf test from "+__name__+" using file "+\
+                               repr(count)+": "+repr(pf), generic_cs.PNFS, \
+                               intf.verbose)
 
             p = Pnfs(pf)
 
             e = p.check_pnfs_enabled()
-	    generic_cs.enprint("enabled: "+repr(e), generic_cs.PNFS, \
-	                       intf.verbose)
+            generic_cs.enprint("enabled: "+repr(e), generic_cs.PNFS, \
+                               intf.verbose)
 
             if p.valid == VALID:
                 if count==2:
@@ -816,87 +840,87 @@ if __name__ == "__main__":
 
                 nv = "crunch"
                 nvn = 222222
-	        generic_cs.enprint("\nChanging to new values", \
-	                           generic_cs.PNFS, intf.verbose)
+                generic_cs.enprint("\nChanging to new values", \
+                                   generic_cs.PNFS, intf.verbose)
 
                 p.set_library(nv)
                 if p.library == nv:
-	            generic_cs.enprint(" library changed", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" library changed", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't change library tag: still is "\
                           +p.library)
 
                 p.set_file_family(nv)
                 if p.file_family == nv:
-	            generic_cs.enprint(" file_family changed", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" file_family changed", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't change file_family tag: still is "\
                           +p.file_family)
 
                 p.set_file_family_width(nvn)
                 if p.file_family_width == nvn:
-	            generic_cs.enprint(" file_family_width changed", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" file_family_width changed", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't change file_family_width tag: "\
                           +"still is "+repr(p.file_family_width))
 
                 p.set_bit_file_id(nv,nvn)
                 if p.bit_file_id == nv:
-	            generic_cs.enprint(" bit_file_id changed", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" bit_file_id changed", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't change bit_file_id layer: still is "\
                           +repr(p.bit_file_id))
 
                 if p.file_size == nvn:
-	            generic_cs.enprint(" file_size changed", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" file_size changed", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't change file_size: still is "\
                           +repr(p.file_size))
 
                 p.dump(intf.verbose)
-	        generic_cs.enprint("\nRestoring original values", \
-	                               generic_cs.PNFS, intf.verbose)
+                generic_cs.enprint("\nRestoring original values", \
+                                       generic_cs.PNFS, intf.verbose)
 
                 p.set_library(l)
                 if p.library == l:
-	            generic_cs.enprint(" library restored", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" library restored", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't restore library tag: still is "\
                           +p.library)
 
                 p.set_file_family(f)
                 if p.file_family == f:
-	            generic_cs.enprint(" file_family restored", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" file_family restored", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't restore file_family tag: still is "\
                           +p.file_family)
 
                 p.set_file_family_width(w)
                 if p.file_family_width == w:
-	            generic_cs.enprint(" file_family_width restored", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" file_family_width restored", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't restore file_family_width tag: "\
                           +"still is "+repr(p.file_family_width))
 
                 p.set_bit_file_id(i,s)
                 if p.bit_file_id == i:
-	            generic_cs.enprint(" bit_file_id restored", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" bit_file_id restored", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't restore bit_file_id layer: "\
                           +"still is "+repr(p.bit_file_id))
 
                 if p.file_size == s:
-	            generic_cs.enprint(" file size restored", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(" file size restored", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint(" ERROR: didn't restore file_size: still is "\
                           +repr(p.file_size))
@@ -904,11 +928,11 @@ if __name__ == "__main__":
                 p.dump(intf.verbose)
                 p.rm()
                 if p.exists != EXISTS:
-	            generic_cs.enprint(p.pnfsFilename+ "deleted", \
-	                               generic_cs.PNFS, intf.verbose)
+                    generic_cs.enprint(p.pnfsFilename+ "deleted", \
+                                       generic_cs.PNFS, intf.verbose)
                 else:
                     generic_cs.enprint("ERROR: could not delete "+\
-	                               p.pnfsFilename)
+                                       p.pnfsFilename)
 
             else:
                 if count==2:
@@ -917,5 +941,5 @@ if __name__ == "__main__":
                     generic_cs.enprint("ERROR: File "+repr(count)\
                           +" is valid - but invvalid flag is set")
                     generic_cs.enprint(p.pnfsFilename+\
-	                               "file is not a valid pnfs file")
+                                       "file is not a valid pnfs file")
 
