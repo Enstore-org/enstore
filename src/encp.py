@@ -4569,7 +4569,26 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 # correctly, etc.
 def verify_write_request_consistancy(request_list):
 
+    outputfile_dict = {}
+
     for request in request_list:
+
+        #This block of code makes sure the the user is not moving
+        # two files with the same basename in different directories
+        # into the same destination directory.
+        result = outputfile_dict.get(request['outfile'], None)
+        if result: 
+            #If the file is already in the list, give error.
+            raise EncpError(None,
+                            'Duplicate file entry: %s' % (result,),
+                            e_errors.USERERROR,
+                            {'infile' : request['infile'],
+                             'outfile' : request['outfile']})
+        else:
+            #Put into one place all of the output names.  This is to check
+            # that two file to not have the same output name.
+            outputfile_dict[request['outfile']] = request['infile']
+
 
         #Consistancy check for valid pnfs tag values.  These values are
         # placed inside the 'vc' sub-ticket.
@@ -5589,6 +5608,7 @@ def verify_read_request_consistancy(requests_per_vol):
 
     bfid_brand = None
     sum_size = 0L
+    outputfile_dict = {}
     
     vols = requests_per_vol.keys()
     vols.sort()
@@ -5611,6 +5631,22 @@ def verify_read_request_consistancy(requests_per_vol):
             #quit() #Harsh, but necessary.
             
         for request in request_list:
+
+            #This block of code makes sure the the user is not moving
+            # two files with the same basename in different directories
+            # into the same destination directory.
+            result = outputfile_dict.get(request['outfile'], None)
+            if result: 
+                #If the file is already in the list, give error.
+                raise EncpError(None,
+                                'Duplicate file entry: %s' % (result,),
+                                e_errors.USERERROR,
+                                {'infile' : request['infile'],
+                                 'outfile' : request['outfile']})
+            else:
+                #Put into one place all of the output names.  This is to check
+                # that two file to not have the same output name.
+                outputfile_dict[request['outfile']] = request['infile']
 
             try:
                 #Verify that file clerk and volume clerk returned the same
