@@ -4,8 +4,8 @@ set -u
 tape=$1
 files=/tmp/scan.$tape
 command=/tmp/command.$tape
-finalscan=/tmp/finalscan.$tape
-rm -f $files $command $finalscan
+finalscan=/data1/status/finalscan.$tape
+rm -f $files $command $finalscan 2>/dev/null
 enstore fil --ls-active $tape >$files
 
 echo "encp --delayed=3 " >$command
@@ -18,7 +18,7 @@ done
 echo "/dev/null" >>$command
 
 cmd=`cat $command`
-rm -f $command $files
+rm -f $command $files 2>/dev/null
 echo `date` $cmd
 eval $cmd >$finalscan 2>&1
 rc=$?
