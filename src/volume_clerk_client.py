@@ -260,13 +260,13 @@ class VolumeClerkClient(generic_client.GenericClient,
         return self.send(ticket,timeout,retry)
 
     # remove a volume entry in volume database
-    def rmvolent(self, external_label, timeout=60, retry=1):
+    def rmvolent(self, external_label, timeout=300, retry=1):
         ticket= { 'work'           : 'rmvolent',
                   'external_label' : external_label}
         return self.send(ticket,timeout,retry)
 
     # delete a volume from the stockpile
-    def restore(self, external_label, restore=0, timeout=60, retry=1):
+    def restore(self, external_label, restore=0, timeout=300, retry=1):
         if restore: restore_vm = "yes"
         else: restore_vm = "no"
         ticket= { 'work'           : 'restorevol',
@@ -360,11 +360,11 @@ class VolumeClerkClient(generic_client.GenericClient,
         return ticket
 
     # rebuild sg scounts
-    def rebuild_sg_count(self, timeout=60, retry=1):
+    def rebuild_sg_count(self, timeout=300, retry=1):
         return(self.send({'work':'rebuild_sg_count'},timeout,retry))
 
     # set sg count
-    def set_sg_count(self, lib, sg, count=0, timeout=60, retry=1):
+    def set_sg_count(self, lib, sg, count=0, timeout=60, retry=5):
         ticket = {'work':'set_sg_count',
                   'library': lib,
                   'storage_group': sg,
@@ -474,7 +474,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         return ticket
 
     # what is the current status of a specified volume?
-    def inquire_vol(self, external_label,timeout=60, retry=1):
+    def inquire_vol(self, external_label,timeout=60, retry=10):
         ticket= { 'work'           : 'inquire_vol',
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
@@ -548,14 +548,14 @@ class VolumeClerkClient(generic_client.GenericClient,
         return self.send(ticket,timeout,retry)
 
     # decrement the file count on a tape
-    def decr_file_count(self,external_label, count=1, timeout=60, retry=1):
+    def decr_file_count(self,external_label, count=1, timeout=300, retry=1):
         ticket= { 'work'           : 'decr_file_count',
                   'external_label' : external_label,
                   'count'          : count }
         return self.send(ticket,timeout,retry)
 
     # we are using the volume
-    def set_hung(self, external_label, timeout=60, retry=1):
+    def set_hung(self, external_label, timeout=300, retry=1):
         ticket= { 'work'           : 'set_hung',
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
@@ -577,7 +577,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         return self.send(ticket,timeout,retry)
 
     # update the counts in the database
-    def update_counts(self, external_label, wr_err=0, rd_err=0,wr_access=0,rd_access=0,mounts=0, timeout=60, retry=1):
+    def update_counts(self, external_label, wr_err=0, rd_err=0,wr_access=0,rd_access=0,mounts=0, timeout=300, retry=1):
         ticket= { 'work'            : 'update_counts',
                   'external_label'  : external_label,
                   'wr_err'          : wr_err,
@@ -601,7 +601,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
-                           volume_family, vol_veto_list,first_found, mover={}, exact_match=0, timeout=120, retry=1):
+                           volume_family, vol_veto_list,first_found, mover={}, exact_match=0, timeout=300, retry=1):
         if not mover:
              mover_type = 'Mover'
         else:
@@ -621,7 +621,7 @@ class VolumeClerkClient(generic_client.GenericClient,
 
     # check if specific volume can be used for write
     def can_write_volume (self, library, min_remaining_bytes,
-                           volume_family, external_label, timeout=60, retry=1):
+                           volume_family, external_label, timeout=300, retry=1):
         ticket = { 'work'                : 'can_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
@@ -631,19 +631,19 @@ class VolumeClerkClient(generic_client.GenericClient,
         return self.send(ticket,timeout,retry)
 
     # clear the pause flag for the LM and all LMs that relate to the Media Changer
-    def clear_lm_pause(self, library_manager, timeout=60, retry=1):
+    def clear_lm_pause(self, library_manager, timeout=60, retry=10):
         ticket = { 'work'    :'clear_lm_pause',
                    'library' : library_manager
                    }
         return  self.send(ticket,timeout,retry)
 
-    def rename_volume(self, old, new, timeout=60, retry=1):
+    def rename_volume(self, old, new, timeout=300, retry=1):
         ticket = {'work': 'rename_volume',
                   'old' : old,
                   'new' : new }
         return self.send(ticket,timeout,retry)
         
-    def delete_volume(self, vol, timeout=60, retry=1):
+    def delete_volume(self, vol, timeout=60, retry=10):
         ticket = {'work': 'delete_volume',
                   'external_label': vol}
         return self.send(ticket,timeout,retry)
@@ -658,7 +658,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label': vol}
         return self.send(ticket,timeout,retry)
 
-    def recycle_volume(self, vol, timeout=60, retry=1):
+    def recycle_volume(self, vol, timeout=300, retry=1):
         ticket = {'work': 'recycle_volume',
                   'external_label': vol}
         return self.send(ticket,timeout,retry)
