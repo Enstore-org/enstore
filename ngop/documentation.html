@@ -14,6 +14,7 @@
 <br>
 <br>
 <br>
+<br>
 <p><b><font color="#000066"><font size=+2>Overview</font></font></b>
 <p><font color="#000066">The Big A Switch page shows the Enstore MIB (
 Management Information Bases) information as a shortcut table. The MIB
@@ -82,8 +83,165 @@ and the complete set of physical addresses for which an interface will
 absorb traffic.</font></li>
 </ul>
 
-<p><br><b><font color="#000066"><font size=+2>Extending the Big A Switch
-Agent:</font></font></b>
+<p><br><b><font size=+2>The Thresholds for the Monitored Objects:</font></b>
+<br><b><font size=+2></font></b>&nbsp;
+<table BORDER COLS=5 WIDTH="100%" NOSAVE >
+<tr>
+<td>
+<center>Node Color</center>
+</td>
+
+<td>
+<center>Arrow Color</center>
+</td>
+
+<td>
+<center>State of Node</center>
+</td>
+
+<td>
+<center>SevLevel of Node</center>
+</td>
+
+<td>
+<center>Description(Threshold)</center>
+</td>
+</tr>
+
+<tr>
+<td>
+<center><font color="#990000">Red</font></center>
+</td>
+
+<td>
+<center>-</center>
+</td>
+
+<td>
+<center>&nbsp;<font color="#990000">0 (Bad)</font></center>
+</td>
+
+<td>
+<center>-</center>
+</td>
+
+<td>
+<center><font color="#990000">Node is down (Too bad) or value reaches the
+red threshold.</font></center>
+</td>
+</tr>
+
+<tr>
+<td>
+<center><font color="#009900">Green</font></center>
+</td>
+
+<td>
+<center><font color="#990000">Red</font></center>
+</td>
+
+<td>
+<center><font color="#009900">1 (Good)</font></center>
+</td>
+
+<td>
+<center><font color="#990000">6</font></center>
+</td>
+
+<td>&nbsp;</td>
+</tr>
+
+<tr>
+<td>
+<center><font color="#009900">Green</font></center>
+</td>
+
+<td>
+<center><font color="#3333FF">Blue</font></center>
+</td>
+
+<td>
+<center><font color="#009900">1 (Good)</font></center>
+</td>
+
+<td>
+<center><font color="#3333FF">5</font></center>
+</td>
+
+<td>
+<center><font color="#3333FF">There is an error in the node</font></center>
+</td>
+</tr>
+
+<tr>
+<td>
+<center><font color="#009900">Green</font></center>
+</td>
+
+<td>
+<center><font color="#FF9900">Orange</font></center>
+</td>
+
+<td>
+<center><font color="#009900">1 (Good)</font></center>
+</td>
+
+<td>
+<center><font color="#FF9900">4</font></center>
+</td>
+
+<td>
+<center><font color="#FF9900">Node value reaches the orange threshold.</font></center>
+</td>
+</tr>
+
+<tr>
+<td>
+<center><font color="#009900">Green</font></center>
+</td>
+
+<td>
+<center><font color="#FFFF00">Yellow</font></center>
+</td>
+
+<td>
+<center><font color="#009900">1 (Good)</font></center>
+</td>
+
+<td>
+<center><font color="#FFFF00">1</font></center>
+</td>
+
+<td>
+<center><font color="#FFFF00">Node value reaches the yellow threshold.</font></center>
+</td>
+</tr>
+
+<tr>
+<td>
+<center><font color="#009900">Green</font></center>
+</td>
+
+<td>
+<center>-</center>
+</td>
+
+<td>
+<center><font color="#009900">1 (Good)</font></center>
+</td>
+
+<td>
+<center><font color="#009900">0</font></center>
+</td>
+
+<td>
+<center><font color="#009900">Node works good.</font></center>
+</td>
+</tr>
+</table>
+
+<br>&nbsp;
+<p><b><font color="#000066"><font size=+2>Extending the Big A Switch Agent:</font></font></b>
 <ul>
 <li>
 <font color="#000066">If you want to add a new node in Big A Switch to
@@ -103,7 +261,8 @@ do the following:</font></li>
 ,</font>
 <br><font color="#000066">2. define a list that lists the variables,</font>
 <br><font color="#000066">3. call the functions <i>get_mib_info() </i>and
-<i>setTable()</i> to get the MIB information,</font>
+<i>setTable()</i>
+to get the MIB information,</font>
 <br><font color="#000066">4.save the initiation of the group dictionary
 as the offset,</font>
 <br><font color="#000066">5.add the group name in the list named <i>meNames</i>,
