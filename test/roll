@@ -2,9 +2,9 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
-rm longstop
-rm readstop
-rm writestop
+rm -f longstop
+rm -f readstop
+rm -f writestop
 
 make datafiles
 rm data.in
