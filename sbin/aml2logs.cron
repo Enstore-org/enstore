@@ -1,1 +1,0 @@
-10,25,40,55 * * * * $ENSTORE_SBIN/ecron -p aml2logs aml2logs > /dev/null 2> /dev/null
