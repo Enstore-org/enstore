@@ -115,8 +115,7 @@ class cleanUDP :
                           badsocktext, self.this_sendto_address,
                           self.previous_sendto_address)
 
-                Trace.trace( 6, etext )
-                # Trace.log(e_errors.INFO, repr(etext))
+                Trace.log(e_errors.ERROR, etext )
 
 if __name__ == "__main__" :
         sout = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
