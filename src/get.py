@@ -44,9 +44,11 @@ def get_client_version():
 encp.EncpInterface.parameters = ["<volume> <source file> <destination file>"]
 #encp.encp_client_version = get_client_version
 encp.EncpInterface.encp_options[option.LIST] = {
-    option.HELP_STRING: "Is a get option only.  Do not use otherwise.",
+    option.HELP_STRING: "Takes in a filename of a file containing a list "
+                        "of locations and filenames.",
     option.VALUE_USAGE:option.REQUIRED,
     option.VALUE_TYPE:option.STRING,
+    option.VALUE_LABEL:"name_of_list_file",
     option.USER_LEVEL:option.ADMIN,}
 
 def error_output(request):
@@ -1211,19 +1213,34 @@ def main(e):
             # tape has only 6 files and the seventh file was requested.)
             elif done_ticket['status'] == (e_errors.READ_ERROR,
                                            e_errors.READ_EOD):
-                #Tell the user what happend.
-                Trace.message(1, "File %s read failed: %s" %
-                              (request['infile'], done_ticket['status']))
-                Trace.log(e_errors.ERROR, "File %s read failed: %s" %
-                              (request['infile'], done_ticket['status']))
+                
+                if e.list:
+                    #Tell the user what happend.
+                    message = "File %s read failed: %s" % \
+                              (request['infile'], done_ticket['status'])
+                    Trace.message(1, message)
+                    Trace.log(e_errors.ERROR, message)
+    
+                    #Set completion status to failure.
+                    request['completion_status'] = FAILURE
+                    request['status'] = done_ticket['status']
+
+                    #Tell the calling process, this file failed.
+                    error_output(request)
+                else:
+                    #Tell the user what happend.
+                    message = "Reached EOD at location %s." % \
+                              (request['fc']['location_cookie'],)
+                    Trace.message(1, message)
+                    Trace.log(e_errors.INFO, message)
+                    
+                    #If --list was not used this is a success.
+                    request['completion_status'] = SUCCESS
+                    request['status'] = (e_errors.OK, None)
 
                 #We are done with this mover.
                 end_session(udp_socket, control_socket)
-                #Set completion status to failure.
-                request['completion_status'] = FAILURE
 
-                #Tell the calling process, this file failed.
-                error_output(done_ticket)
                 #Tell the calling process, of those files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
@@ -1242,9 +1259,10 @@ def main(e):
                 end_session(udp_socket, control_socket)
                 #Set completion status to failure.
                 request['completion_status'] = FAILURE
+                request['status'] = done_ticket['status']
 
                 #Tell the calling process, this file failed.
-                error_output(done_ticket)
+                error_output(request)
                 #Tell the calling process, of those files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
