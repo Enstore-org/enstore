@@ -1,0 +1,506 @@
+#!/usr/bin/env python
+
+'''
+Readonly access to file and volume database
+'''
+
+# system import
+import os
+import sys
+import string
+import pprint
+
+# enstore import
+import dispatching_worker
+import generic_server
+import Trace
+import e_errors
+import enstore_constants
+import monitored_server
+import event_relay_messages
+import time
+import hostaddr
+import callback
+import socket
+import select
+import edb
+import esgdb
+
+MY_NAME = "info_server"
+
+default_host = 'stkensrv0.fnal.gov'
+
+# err_msg(fucntion, ticket, exc, value) -- format error message from
+# exceptions
+
+def err_msg(function, ticket, exc, value, tb=None):
+	return function+' '+`ticket`+' '+str(exc)+' '+str(value)+' '+str(tb)
+
+class Interface(generic_server.GenericServerInterface):
+	def __init__(self):
+		generic_server.GenericServerInterface.__init__(self)
+
+	def valid_dictionary(self):
+		return (self.help_options)
+
+class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
+	def __init__(self, csc):
+		self.debug = 0
+		generic_server.GenericServer.__init__(self, csc, MY_NAME)
+		Trace.init(self.log_name)
+		self.keys = self.csc.get(MY_NAME)
+
+		self.alive_interval = monitored_server.get_alive_interval(self.csc,
+                                                                  MY_NAME,
+                                                                  self.keys)
+
+		att = self.csc.get(MY_NAME)
+		self.hostip = att['hostip']
+		dispatching_worker.DispatchingWorker.__init__(self,
+			(att['hostip'], att['port']))
+
+		self.file = edb.FileDB(host=default_host, auto_journal=0)
+		self.db = self.file.db
+		self.volume = edb.VolumeDB(host=default_host, auto_journal=0, rdb=self.db)
+		self.sgdb = esgdb.SGDb(self.db)
+
+		# setup the communications with the event relay task
+		# self.resubscribe_rate = 300
+		# self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
+
+		# start our heartbeat to the event relay process
+		# self.erc.start_heartbeat(enstore_constants.ACCOUNTING_SERVER, 
+                #                 self.alive_interval)
+		return
+
+	# The following are local methods
+
+	# close the database connection
+	def close(self):
+		self.db.close()
+		return
+
+	# turn on/off the debugging
+	def debugging(self, ticket):
+		self.debug = ticket.get('level', 0)
+		print 'debug =', self.debug
+
+	# These need confirmation
+	def quit(self, ticket):
+		self.db.close()
+		dispatching_worker.DispatchingWorker.quit(self, ticket)
+		# can't go this far
+		# self.reply_to_caller({'status':(e_errors.OK, None)})
+		# sys.exit(0)
+
+	# return all info about a certain bfid - this does everything that the
+	# read_from_hsm method does, except send the ticket to the library manager
+	def bfid_info(self, ticket):
+		try:
+			bfid = ticket["bfid"]
+		except KeyError, detail:
+			msg = "File Clerk: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		# look up in our dictionary the request bit field id
+		finfo = self.file[bfid] 
+		if not finfo:
+			ticket["status"] = (e_errors.KEYERROR,
+				"Info Clerk: bfid %s not found"%(bfid,))
+			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			self.reply_to_caller(ticket)
+			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
+			return
+
+		#Copy all file information we have to user's ticket.  Copy the info
+		# one key at a time to avoid cyclic dictionary references.
+		for key in finfo.keys():
+			ticket[key] = finfo[key]
+
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+		Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
+		return
+
+	# get the current database volume about a specific entry #### DONE
+	def inquire_vol(self, ticket):
+		try:
+			external_label = ticket["external_label"]
+		except KeyError, detail:
+			msg="Volume Clerk: key %s is missing" % (detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		# guarded against external_label == None
+		if external_label:
+			# get the current entry for the volume
+			record = self.volume[external_label]
+			if not record:
+				msg="Info Clerk: no such volume %s" % (external_label,)
+				ticket["status"] = (e_errors.KEYERROR, msg)
+				Trace.log(e_errors.ERROR, msg)
+				self.reply_to_caller(ticket)
+				return
+			record["status"] = (e_errors.OK, None)
+			self.reply_to_caller(record)
+			return
+		else:
+			msg = "Info Clerk::inquire_vol(): external_label == None"
+			ticket["status"] = (e_errors.ERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+	# get a port for the data transfer
+	# tell the user I'm your info clerk and here's your ticket
+	def get_user_sockets(self, ticket):
+		try:
+			addr = ticket['callback_addr']
+			if not hostaddr.allow(addr):
+				return 0
+			info_clerk_host, info_clerk_port, listen_socket = callback.get_callback()
+			listen_socket.listen(4)
+			ticket["info_clerk_callback_addr"] = (info_clerk_host, info_clerk_port)
+			self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			self.control_socket.connect(addr)
+			callback.write_tcp_obj(self.control_socket, ticket)
+
+			r,w,x = select.select([listen_socket], [], [], 15)
+			if not r:
+				listen_socket.close()
+				return 0
+			data_socket, address = listen_socket.accept()
+			if not hostaddr.allow(address):
+				data_socket.close()
+				listen_socket.close()
+				return 0
+			self.data_socket = data_socket
+			listen_socket.close()
+		# catch any error and keep going. server needs to be robust
+		except:
+			exc, msg = sys.exc_info()[:2]
+			Trace.handle_error(exc,msg)
+		return 1
+
+
+	# return all the volumes in our dictionary.  Not so useful!
+	def get_vols(self,ticket):
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+
+		# log it
+		Trace.log(e_errors.INFO, "start listing all volumes")
+
+		if not self.get_user_sockets(ticket):
+			return
+		callback.write_tcp_obj(self.data_socket, ticket)
+
+		msg = {}
+		q = "select * from volume "
+		if ticket.has_key('in_state'):
+			state = ticket['in_state']
+		else:
+			state = None
+		if ticket.has_key('not'):
+			cond = ticket['not']
+		else:
+			cond = None
+		if ticket.has_key('key'):
+			key = ticket['key']
+		else:
+			key = None
+
+		if key and state:
+			if key == 'volume_family':
+				sg, ff, wp = string.split(state, '.')
+				if cond == None:
+					q = q + "where storage_group = '%s' and file_family = '%s' and wrapper = '%s'"%(sg, ff, wp)
+				else:
+					q = q + "where not (storage_group = '%s' and file_family = '%s' and wrapper = '%s')"%(sg, ff, wp)
+
+			else:
+				if key in ['blocksize', 'capacity_bytes',
+					'non_del_files', 'remaining_bytes', 'sum_mounts',
+					'sum_rd_access', 'sum_rd_err', 'sum_wr_access',
+					'sum_wr_err']:
+					val = "%d"%(state)
+				elif key in ['eod_cookie', 'external_label', 'library',
+					'media_type', 'volume_family', 'wrapper',
+					'storage_group', 'file_family', 'wrapper']:
+					val = "'%s'"%(state)
+				elif key in ['first_access', 'last_access', 'declared',
+					'si_time_0', 'si_time_1', 'system_inhibit_0',
+					'system_inhibit_1', 'user_inhibit_0',
+					'user_inhibit_1']:
+					val = "'%s'"%(edb.time2timestamp(state))
+				else:
+					val = state
+
+				if key == 'external_label':
+					key = 'label'
+
+				if cond == None:
+					q = q + "where %s = %s"%(key, val)
+				else:
+					q = q + "where %s %s %s"%(key, cond, val)
+		elif state:
+			if state in ['full', 'read_only', 'migrated']:
+				q = q + "where system_inhibit_1 = '%s'"%(state)
+			else:
+				q = q + "where system_inhibit_0 = '%s'"%(state)
+		else:
+			msg['header'] = 'FULL'
+
+		q = q + ' order by label;'
+
+		res = self.db.query(q).dictresult()
+		msg['volumes'] = []
+		for v2 in res:
+			vol2 = {'volume': v2['label']}
+			for k in ["capacity_bytes","remaining_bytes", "library",
+				"non_del_files"]:
+				vol2[k] = v2[k]
+			vol2['volume_family'] = v2['storage_group']+'.'+v2['file_family']+'.'+v2['wrapper']
+			vol2['system_inhibit'] = (v2['system_inhibit_0'], v2['system_inhibit_1'])
+			vol2['user_inhibit'] = (v2['user_inhibit_0'], v2['user_inhibit_1'])
+			vol2['si_time'] = (edb.timestamp2time(v2['si_time_0']),
+				edb.timestamp2time(v2['si_time_1']))
+			if len(v2['comment']):
+				vol2['comment'] = v2['comment']
+			msg['volumes'].append(vol2)
+
+		callback.write_tcp_obj_new(self.data_socket, msg)
+		self.data_socket.close()
+		callback.write_tcp_obj(self.control_socket, ticket)
+		self.control_socket.close()
+
+		Trace.log(e_errors.INFO, "stop listing all volumes")
+		return
+
+	def get_sg_count(self, ticket):
+		try:
+			lib = ticket['library']
+			sg = ticket['storage_group']
+		except KeyError, detail:
+			msg= "Info Clerk: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		ticket['count'] = self.sgdb.get_sg_counter(lib, sg)
+		if ticket['count'] == -1:
+			ticket['status'] = (e_errors.ERROR, "failed to get %s.%s"%(lib,sg))
+		else:
+			ticket['status'] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+
+	def list_sg_count(self, ticket):
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+
+		sgcnt = self.sgdb.list_sg_count()
+
+		try:
+			if not self.get_user_sockets(ticket):
+				return
+			ticket["status"] = (e_errors.OK, None)
+			callback.write_tcp_obj(self.data_socket, ticket)
+			callback.write_tcp_obj_new(self.data_socket, sgcnt)
+			self.data_socket.close()
+			callback.write_tcp_obj(self.control_socket, ticket)
+			self.control_socket.close()
+		except:
+			exc, msg = sys.exc_info()[:2]
+			Trace.handle_error(exc,msg)
+		return
+
+	def __get_vol_list(self):
+		q = "select label from volume order by label;"
+		res2 = self.db.query(q).getresult()
+		res = []
+		for i in res2:
+			res.append(i[0])
+		return res
+
+	# return a list of all the volumes
+	def get_vol_list(self,ticket):
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+
+		try:
+			if not self.get_user_sockets(ticket):
+				return
+			ticket["status"] = (e_errors.OK, None)
+			callback.write_tcp_obj(self.data_socket, ticket)
+			vols = self.__get_vol_list()
+			callback.write_tcp_obj_new(self.data_socket, vols)
+			self.data_socket.close()
+			callback.write_tcp_obj(self.control_socket, ticket)
+			self.control_socket.close()
+		except:
+			exc, msg = sys.exc_info()[:2]
+			Trace.handle_error(exc,msg)
+		return
+
+	# get_bfids(self, ticket) -- get bfids of a certain volume
+	#		This is almost the same as tape_list() yet it does not
+	#		retrieve any information from primary file database
+
+	def get_bfids(self, ticket):
+		try:
+			external_label = ticket["external_label"]
+			ticket["status"] = (e_errors.OK, None)
+			self.reply_to_caller(ticket)
+		except KeyError, detail:
+			msg = "Info Clerk: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		# get a user callback
+		if not self.get_user_sockets(ticket):
+			return
+		callback.write_tcp_obj(self.data_socket,ticket)
+
+		bfids = self.get_all_bfids(external_label)
+		callback.write_tcp_obj_new(self.data_socket, bfids)
+		self.data_socket.close()
+		callback.write_tcp_obj(self.control_socket,ticket)
+		self.control_socket.close()
+		return
+
+	# get_all_bfids(external_label) -- get all bfids of a particular volume
+
+	def get_all_bfids(self, external_label):
+		q = "select bfid from file, volume\
+			 where volume.label = '%s' and \
+				   file.volume = volume.id;"%(external_label)
+		res = self.db.query(q).getresult()
+		bfids = []
+		for i in res:
+			bfids.append(i[0])
+		return bfids
+
+	def tape_list(self,ticket):
+		try:
+			external_label = ticket["external_label"]
+			ticket["status"] = (e_errors.OK, None)
+			self.reply_to_caller(ticket)
+		except KeyError, detail:
+			msg = "Info Clerk: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			####XXX client hangs waiting for TCP reply
+			return
+
+		# get a user callback
+		if not self.get_user_sockets(ticket):
+			return
+		callback.write_tcp_obj(self.data_socket,ticket)
+
+		# log the activity
+		Trace.log(e_errors.INFO, "start listing "+external_label)
+		
+		q = "select bfid, crc, deleted, drive, volume.label, \
+					location_cookie, pnfs_path, pnfs_id, \
+					sanity_size, sanity_crc, size \
+			 from file, volume \
+			 where \
+				 file.volume = volume.id and volume.label = '%s';"%(
+			 external_label)
+
+		res = self.db.query(q).dictresult()
+
+		vol = {}
+
+		for ff in res:
+			value = self.file.export_format(ff)
+			if not value.has_key('pnfs_name0'):
+				value['pnfs_name0'] = "unknown"
+			vol[value['bfid']] = value
+
+		# finishing up
+
+		callback.write_tcp_obj_new(self.data_socket, vol)
+		self.data_socket.close()
+		callback.write_tcp_obj(self.control_socket,ticket)
+		self.control_socket.close()
+		Trace.log(e_errors.INFO, "finish listing "+external_label)
+		return
+
+	# list_active(self, ticket) -- list the active files on a volume
+	#	 only the /pnfs path is listed
+	#	 the purpose is to generate a list for deletion before the
+	#	 deletion of a volume
+
+	def list_active(self,ticket):
+		try:
+			external_label = ticket["external_label"]
+			ticket["status"] = (e_errors.OK, None)
+			self.reply_to_caller(ticket)
+		except KeyError, detail:
+			msg = "Info Clerk: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			####XXX client hangs waiting for TCP reply
+			return
+
+		# get a user callback
+		if not self.get_user_sockets(ticket):
+			return
+		callback.write_tcp_obj(self.data_socket,ticket)
+
+		q = "select bfid, crc, deleted, drive, volume.label, \
+					location_cookie, pnfs_path, pnfs_id, \
+					sanity_size, sanity_crc, size \
+			 from file, volume \
+			 where \
+				 file.volume = volume.id and volume.label = '%s';"%(
+			 external_label)
+
+		res = self.db.query(q).dictresult()
+
+		alist = []
+
+		for ff in res:
+			value = self.file.export_format(ff)
+			if not value.has_key('deleted') or value['deleted'] != "yes":
+				if value.has_key('pnfs_name0'):
+					alist.append(value['pnfs_name0'])
+
+		# finishing up
+
+		callback.write_tcp_obj_new(self.data_socket, alist)
+		self.data_socket.close()
+		callback.write_tcp_obj(self.control_socket,ticket)
+		self.control_socket.close()
+		return
+
+
+if __name__ == '__main__':
+	Trace.init(string.upper(MY_NAME))
+	intf = Interface()
+	csc = (intf.config_host, intf.config_port)
+	infoServer = Server(csc)
+	infoServer.handle_generic_commands(intf)
+
+	while 1:
+		try:
+			Trace.log(e_errors.INFO, "Info Server (re)starting")
+			infoServer.serve_forever()
+		except SystemExit, exit_code:
+			infoServer.db.close()
+			sys.exit(exit_code)
+		except:
+			infoServer.serve_forever_error(infoServer.log_name)
+			continue
+	
