@@ -277,15 +277,7 @@ def encrc( buffer ):
         data_offset =data_offset + (4-(data_offset%4))%4
         # We have switched to 32 bit crcs.  This means that string.atoi now
         # causes an overflow when the crc value has the sign bit set.  The most
-        # obvious solution of going to atol doesn't work.  The problem is that
-        # python converts the number to a python-long, which can more than 32 bits
-        # wide.  This effectively means we are using unsigned multi-precision numbers.
-        # Unfortunately, the crc routines calculate their value to a 32 bit unsigned
-        # number --> this causes the atol value and the crc calculated value to be
-        # thought to be different when in fact they are the same.  I had 2 choices -
-        # either use long casts everywhere the crc is calculated or force this crc
-        # to be a 32 bit number.  The exec line causes the crc to be a 32 bit number,
-        # exactly as it was stored.
+        # obvious solution of going to atol doesn't work. 
         crc=hex_string_to_signed_int(buffer[data_offset:data_offset+8]))
         return crc
 
