@@ -855,7 +855,7 @@ def get_csc(parameter=None):
     
     elif type(parameter) == types.DictType: #If passed a ticket with bfid.
         bfid = parameter.get('fc', {}).get("bfid", "")
-        volume = parameter.get('external_label', "")
+        volume = parameter.get('volume', "")
 
     elif is_bfid(parameter):  #If passed a bfid.
         bfid = parameter
@@ -6232,7 +6232,6 @@ def main(intf):
 
 
 def do_work(intf):
-    delete_at_exit.setup_signal_handling()
 
     try:
         main(intf)
@@ -6247,6 +6246,7 @@ def do_work(intf):
         
         
 if __name__ == '__main__':
+    delete_at_exit.setup_signal_handling()
 
     intf = EncpInterface(sys.argv, 0) # zero means admin
 
