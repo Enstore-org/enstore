@@ -24,10 +24,6 @@ import pdb
 
 #UDP_fixed_route = 0
 
-#Hack so mylint doesn't complain.
-#def get_default_interface_ip():
-#    pass
-
 ##############################################################################
 # The following three functions read in the enstore.conf file.
 ##############################################################################
@@ -108,12 +104,12 @@ def get_config():
 def get_default_interface_ip():
     config = get_config()
     if not config:
-        return socket.gethostbyname(socket.gethostname())
+        return socket.gethostbyname(socket.getfqdn(socket.gethostname()))
     hostip = config.get('hostip', None)
     if hostip:
         return hostip
     else:
-        return socket.gethostbyname(socket.gethostname())
+        return socket.gethostbyname(socket.getfqdn(socket.gethostname()))
 
 ##############################################################################
 # The following two functions parse the config dictionary.
@@ -178,12 +174,23 @@ def get_netstat_r():
         netstat_cmd = netstat_cmd + " -rne"
     else:
         netstat_cmd = netstat_cmd + " -rn"
-    p = os.popen(netstat_cmd, "r")
 
+    #Should any of the following three functions generate an exception
+    # it is the calling functions job (save get_routes() and
+    # update_cached_routes) to catch it.  It should be noted that modules
+    # should not call this function directly, but call get_routes() and/or
+    # update_cached_routes().
+
+    # fork and exec the netstat command
+    p = os.popen(netstat_cmd, "r")
+    # obtain the info from the netstat command
     data = p.readlines()
+    # release the child netstat command
     status = p.close()
 
     if status:
+        return None
+    if not data:
         return None
 
     #regular expresion to 
