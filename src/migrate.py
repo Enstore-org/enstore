@@ -769,7 +769,7 @@ if __name__ == '__main__':
 			final_scan_volume(i)
 	else:	# assuming all are files
 		files = []
-		for i in sys.argv[2:]:
+		for i in sys.argv[1:]:
 			try:
 				f = pnfs.File(i)
 				files.append(f.bfid)
