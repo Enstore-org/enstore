@@ -53,6 +53,7 @@ Implementation issues:
 
 import file_clerk_client
 import volume_clerk_client
+import configuration_client
 import pnfs
 import option
 import os
@@ -78,9 +79,8 @@ f_prefix = '/pnfs/fs/usr'
 f_p = string.split(f_prefix, '/')
 f_n = len(f_p)
 
-fcc = None
-vcc = None
 db = None
+csc = None
 
 # job queue for coping files
 copy_queue = Queue.Queue(1024)
@@ -88,7 +88,7 @@ scan_queue = Queue.Queue(1024)
 
 # migration log file
 LOG_DIR = SPOOL_DIR
-LOG_FILE = "MigrationLog@"+time.strftime("%Y-%m-%d.%H:%M:%S", time.localtime(time.time()))
+LOG_FILE = "MigrationLog+"+`os.getpid()`+"@"+time.strftime("%Y-%m-%d.%H:%M:%S", time.localtime(time.time()))
 log_f = None
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
@@ -105,14 +105,14 @@ def timestamp2time(s):
 def time2timestamp(t):
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 
-# initialize vcc, fcc, ... etc.
+# initialize csc, db, ... etc.
 def init():
-	global fcc, vcc, db, log_f
+	global db, csc, log_f
 	intf = option.Interface()
-	vcc = volume_clerk_client.VolumeClerkClient((intf.config_host,
+	csc = configuration_client.ConfigurationClient((intf.config_host,
 		intf.config_port))
-	fcc = file_clerk_client.FileClient(vcc.csc)
-	db_info = vcc.csc.get('database')
+
+	db_info = csc.get('database')
 	db = pg.DB(host=db_info['db_host'] , port=db_info['db_port'],
 		dbname=db_info['dbname'])
 	log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
@@ -154,6 +154,18 @@ def is_checked(bfid):
 		return None
 	else:
 		return res[0]['checked']
+
+# is_closed(bfid) -- has the file already been closed?
+#	we check the destination file
+def is_closed(bfid):
+	q = "select * from migration where dst_bfid = '%s';"%(bfid)
+	if debug:
+		log(q)
+	res = db.query(q).dictresult()
+	if not len(res):
+		return None
+	else:
+		return res[0]['closed']
 
 # open_log(*args) -- log message without final line-feed
 def open_log(*args):
@@ -219,7 +231,7 @@ def log_swapped(bfid1, bfid2):
 		error_log("LOG_SWAPPED", str(exc_type), str(exc_value))
 	return
 
-# log_checked(bfid1, bfid2) -- log a successful swap
+# log_checked(bfid1, bfid2) -- log a successful readback 
 def log_checked(bfid1, bfid2):
 	q = "update migration set checked = '%s' where \
 		src_bfid = '%s' and dst_bfid = '%s';"%(
@@ -231,6 +243,20 @@ def log_checked(bfid1, bfid2):
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
 		error_log("LOG_CHECKED", str(exc_type), str(exc_value))
+	return
+
+# log_closed(bfid1, bfid2) -- log a successful readback after closing
+def log_closed(bfid1, bfid2):
+	q = "update migration set closed = '%s' where \
+		src_bfid = '%s' and dst_bfid = '%s';"%(
+			time2timestamp(time.time()), bfid1, bfid2)
+	if debug:
+		log(q)
+	try:
+		db.query(q)
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("LOG_CLOSED", str(exc_type), str(exc_value))
 	return
 
 
@@ -328,6 +354,14 @@ def copy_files(files):
 def migration_file_family(ff):
 	return ff+'-MIGRATION'
 
+# normal_file_family(ff) -- making up a normal file family from a
+#				migration file family
+def normal_file_family(ff):
+	if len(ff) > 10 and ff[-10:] == '-MIGRATION':
+		return ff[:-10]
+	else:
+		return ff
+
 # compare_metadata(p, f) -- compare metadata in pnfs (p) and filedb (f)
 def compare_metadata(p, f):
 	if debug:
@@ -360,6 +394,8 @@ def compare_metadata(p, f):
 # * return None if succeeds, otherwise, return error message
 # * to avoid deeply nested "if ... else", it takes early error return
 def swap_metadata(bfid1, src, bfid2, dst):
+	# get its own file clerk client
+	fcc = file_clerk_client.FileClient(csc)
 	# get all metadata
 	p1 = pnfs.File(src)
 	f1 = fcc.bfid_info(bfid1)
@@ -405,34 +441,6 @@ def swap_metadata(bfid1, src, bfid2, dst):
 		return "swap_metadata(): %s %s has inconsistent metadata"%(bfid2, src)
 
 	return None
-
-# restore(bfids) -- restore pnfs entries using file records
-def restore(bfid):
-	if type(bfids) != type([]):
-		bfids = [bfids]
-	for bfid in bfids:
-		MY_TASK = "RESTORE"
-		f = fcc.bfid_info(bfid)
-		if f['deleted'] != 'yes':
-			error_log(MY_TASK, "%s is not deleted"%(bfid))
-			continue
-		v = vcc.inquire_vol(f['external_label'])
-		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
-		p = pnfs.File(src)
-
-		p.volume = f['external_label']
-		p.location_cookie = f['location_cookie']
-		p.bfid = bfid
-		p.drive = f['drive']
-		p.complete_crc = f['complete_crc']
-		p.file_family = volume_family.extract_file_family(v['volume_family'])
-		# undelete the file
-		res = fcc.set_deleted('no', bfid=bfid)
-		if res['status'][0] == e_errors.OK:
-			ok_log(MY_TASK, "undelete %s"%(bfid))
-		else:
-			error_log(MY_TASK, "failed to undelete %d"%(bfid))
-		p.update()
 
 # migrating() -- second half of migration, driven by copy_queue
 def migrating():
@@ -520,6 +528,8 @@ def migrating():
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
 def final_scan():
+	# get its own file clerk client
+	fcc = file_clerk_client.FileClient(csc)
 	MY_TASK = "FINAL_SCAN"
 	job = scan_queue.get(True)
 	while job:
@@ -549,6 +559,58 @@ def final_scan():
 
 		job = scan_queue.get(True)
 
+# final_scan_volume(vol) -- final scan on a volume when it is closed to
+#				write
+def final_scan_volume(vol):
+	# get its own fcc
+	fcc = file_clerk_client.FileClient(csc)
+	vcc = volume_clerk_client.VolumeClerkClient(csc)
+	MY_TASK = "FINAL_SCAN_VOLUME"
+	q = "select bfid, pnfs_path, deleted, src_bfid  \
+		from file, volume, migration \
+		where file.volume = volume.id and \
+			volume.label = '%s' and \
+			deleted = 'n' and dst_bfid = bfid;"%(vol)
+	query_res = db.query(q).get_result()
+	log(MY_TASK, "closing volume", vol)
+	# switch the file family back
+	v = vcc.inquire_vol(vol)
+	if v['status'][0] != e_errors.OK:
+		error_log(MY_TASK, "failed to find volume", vol)
+		return
+	sg, ff, wp = string.split(v[volume_family], '.')
+	ff = normal_file_family(ff)
+	vf = string.join((sg, ff, wp), '.')
+	res = vcc.modify({'external_label':vol, 'volume_family':vf})
+	if res['status'][0] == e_errors.OK:
+		ok_log(MY_TASK, "restore volume_family of", vol, "to", vol)
+	else:
+		error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
+		return 
+	for r in query_res:
+		bfid, pnfs_path, deleted, src_bfid = r
+		ct = is_closed(bfid)
+		if not ct:
+			res = run_encp([pnfs_path, '/dev/null'])
+			if res == 0:
+				log_closed(src_bfid, bfid)
+				ok_log(MY_TASK, "closing", bfid, pnfs_path)
+			else:
+				error_log(MY_TASK, "closing", bfid, pnfs_path, "failed")
+			# mark the original deleted
+			q = "select deleted from file where bfid = '%s';"%(src_bfid)
+			res = db.query(q).get_result()
+			if len(res):
+				if res[0][0] != 'y':
+					fcc.set_deleted('yes', bfid=src_bfid)
+		else:
+			ok_log(MY_TASK, "checking", bfid, pnfs_path, "already done at", ct)
+			# make sure the original is marked deleted
+			q = "select deleted from file where bfid = '%s';"%(src_bfid)
+			res = db.query(q).get_result()
+			if not len(res) or res[0][0] != 'y':
+				error_log(MY_TASK, "%s was not marked deleted"%(src_bfid))
+
 # migrate(file_list): -- migrate a list of files
 def migrate(files):
 	# start a thread to copy files out to disk
@@ -565,6 +627,8 @@ def migrate(files):
 def migrate_volume(vol):
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
+	# get its own vcc
+	vcc = volume_clerk_client.VolumeClerkClient(csc)
 	# check if vol is set to "readonly". If not, set it.
 	v = vcc.inquire_vol(vol)
 	if v['status'][0] != e_errors.OK:
@@ -595,6 +659,50 @@ def migrate_volume(vol):
 			error_log(MY_TASK, "failed to set %s migrated"%(vol))
 	return res
 
+# restore(bfids) -- restore pnfs entries using file records
+def restore(bfids):
+	# get its own file clerk client and volume clerk client
+	fcc = file_clerk_client.FileClient(csc)
+	vcc = volume_clerk_client.VolumeClerkClient(csc)
+	if type(bfids) != type([]):
+		bfids = [bfids]
+	for bfid in bfids:
+		MY_TASK = "RESTORE"
+		f = fcc.bfid_info(bfid)
+		if f['deleted'] != 'yes':
+			error_log(MY_TASK, "%s is not deleted"%(bfid))
+			continue
+		v = vcc.inquire_vol(f['external_label'])
+		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
+		p = pnfs.File(src)
+
+		p.volume = f['external_label']
+		p.location_cookie = f['location_cookie']
+		p.bfid = bfid
+		p.drive = f['drive']
+		p.complete_crc = f['complete_crc']
+		p.file_family = volume_family.extract_file_family(v['volume_family'])
+		# undelete the file
+		res = fcc.set_deleted('no', bfid=bfid)
+		if res['status'][0] == e_errors.OK:
+			ok_log(MY_TASK, "undelete %s"%(bfid))
+		else:
+			error_log(MY_TASK, "failed to undelete %d"%(bfid))
+		p.update()
+
+# restore_volume(vol) -- restore all deleted files on vol
+def restore_volume(vol):
+	MY_TASK = "RESTORE_VOLUME"
+	log(MY_TASK, "restoring", vol, "...")
+	q = "select bfid from file, volume where \
+		file.volume = volume.id and label = '%s' and \
+		deleted = 'y';"%(vol)
+	res = db.query(q).get_result()
+	bfids = []
+	for i in res:
+		bfids.append(i[0])
+	restore(bfids)
+
 # nulify_pnfs() -- nulify the pnfs entry so that when the entry is
 #			removed, its layer4 won't be put in trashcan
 #			hence won't be picked up by delfile
@@ -610,6 +718,9 @@ def usage():
 	print "       %s --bfids <bfid list>"%(sys.argv[0])
 	print "       %s --vol <volume list>"%(sys.argv[0])	
 	print "       %s --infile <file>"%(sys.argv[0])
+	print "       %s --restore <bfid list>"%(sys.argv[0])
+	print "       %s --restore-vol <volume list>"%(sys.argv[0])
+	print "       %s --scan-vol <volume list>"%(sys.argv[0])
 
 if __name__ == '__main__':
 	init()
@@ -624,7 +735,15 @@ if __name__ == '__main__':
 		files = []
 		for i in sys.argv[2:]:
 			files.append(i)
-		migrate(files)
+		migrate(sys.argv[2:])
+	elif sys.argv[1] == "--restore":
+		restore(sys.argv[2:])
+	elif sys.argv[1] == "--restore-vol":
+		for i in sys.argv[2:]:
+			restore_volume(i)
+	elif sys.argv[1] == "--scan-vol":
+		for i in sys.argv[2:]:
+			final_scan_volume(i)
 	else:	# assuming all are files
 		files = []
 		for i in sys.argv[2:]:
