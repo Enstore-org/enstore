@@ -917,7 +917,6 @@ class MoverServer(  dispatching_worker.DispatchingWorker
         global mvr_config, udpc
         generic_server.GenericServer.__init__(self, csc_address, name)
         Trace.init( self.log_name )
-        Trace.on( self.log_name, 0, 31 )
 
         # get my (localhost) configuration from the configuration server
         mvr_config = self.csc.get( name )
