@@ -953,10 +953,10 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     vd_file.write("Date this listing was generated: %s\n" % \
         (time.ctime(time.time())))
 
-    vd_format = "%-10s %-10s %-25s %-20s %-12s %-40s %s\n"
+    vd_format = "%-10s %-10s %-25s %-20s %-12s %8s %-40s\n\n"
     vd_file.write(vd_format % \
         ("label", "avail.", "system_inhibit", "user_inhibit",
-         "library", "volume_family", "mounts"))
+         "library", "mounts",  "volume_family"))
 
     #Process the tapes authorized file for the VOLUME_QUATAS page.
     authorized_tapes = get_authorized_tapes()
@@ -1159,10 +1159,10 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
         # handle mounts -- need more work
         if mounts < 1000:
-             mnts = `mounts`
+             mnts = "%8d"%(mounts)
         else:
              mnts = '<font color=#FF0000>'+`mounts`+'</font>'
-        vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %-40s %s\n" % \
+        vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %8s %-40s\n" % \
                (vv['external_label'],
                 formated_size[0], formated_size[1],
                 vv['system_inhibit'][0],
@@ -1170,8 +1170,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                 vv['user_inhibit'][0],
                 vv['user_inhibit'][1],
                 vv['library'],
-                vv['volume_family'],
-                mnts))
+                mnts,
+                vv['volume_family']))
 
         n_vols = n_vols + 1
         print 'done'
