@@ -87,6 +87,16 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                 self.patrol_file.write(self.alarms[key])
             else:
                 self.patrol_file.close()
+        else:
+            # there are no alarms raised.  if the patrol file exists, we
+            # need to delete it
+            try:
+                self.patrol_file.open()
+                self.patrol_file.close()
+                self.patrol_file.remove()
+            except IOError:
+                # file does not exist
+                pass
 
     def get_log_path(self):
         log = self.csc.get("logserver")

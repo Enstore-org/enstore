@@ -853,3 +853,14 @@ class EnPatrolFile(EnFile):
     def write(self, alarm):
         if not self.filedes == 0:
             self.filedes.write(repr(alarm))
+
+    # rm the file
+    def remove(self):
+        try:
+            if not self.real_file_name == "":
+                filedes = open(self.real_file_name)
+                filedes.close()
+                os.system("rm "+self.real_file_name)
+        except IOError:
+            # file does not exist
+            pass
