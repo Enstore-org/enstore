@@ -1,5 +1,6 @@
 #!/bin/sh
 set -u  # force better programming and ability to use check for not set
+
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # this is cheap argument processing. Must be in this order when checking.
@@ -105,7 +106,7 @@ ACTIVE=/root/CRON/netscanACTIVE
 
 # function to log messages, optionally print the ps state
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
-	  if [ "${2:-}"x = "psx" ]; then
+	  if [ "${2:-}"x = psx ]; then
 	     $ECHO "${PSfirst:-}" >>$LOG 2>&1
 	  fi
 	  $ECHO "$1"
@@ -114,11 +115,11 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
 # function to parse file mode from terse output of stat(1)
 getfilemode() { if [ $# -eq 15 ]; then
 		   case "$4" in
-		   81ed) # 0x8000 => regular file  
-		   	 # 0x01ed == 0755 (octal)
-		   	 $ECHO 0755
-		   	 ;;
-		      *) ;;			   
+		   81ed) # 0x8000 => regular file
+			 # 0x01ed == 0755 (octal)
+			 $ECHO 0755
+			 ;;
+		      *) ;;
 		   esac
 		else
 		   # probably an older stat, w/o -t option
@@ -146,13 +147,13 @@ right_file() { if [ ! -r $1 -o ! -r $2 ]; then
 		  if [ $# -eq 3 ]; then
 		     case "$3" in
 		      755) fstat=`stat -t $2 2> /dev/null`
-		           fmode=`getfilemode $fstat`	  
-		           if [ $fmode -ne $3 ]; then
-		              chmod $3 $2
-		           fi
-		           ;;
-		        *) chmod $3 $2 # just force this
-		     	   ;;
+			   fmode=`getfilemode $fstat`
+			   if [ $fmode -ne $3 ]; then
+			      chmod $3 $2
+			   fi
+			   ;;
+			*) chmod $3 $2 # just force this
+			   ;;
 		     esac
 		  fi
 	       fi
@@ -172,29 +173,37 @@ filecheck() { thefile=${2:-/var/spool/cron/root}
 	    }
 
 # function to check for allowed services and complain if not allowed
-allow() { tt=$1
-	  for i in $ALLOW; do
-	    t=`$ECHO $i | $CUT -f1 -d,`
-	    if [ -z ${t-} ]; then echo $i; fi
-	    if [ $t != $tt ]; then continue; fi
-	    a=`$ECHO $i | $CUT -f2 -d,`
-	    b=`$ECHO $i | $CUT -f3 -d,`
-	    c=`$ECHO $i | $CUT -f4 -d,`
-	    p=`$ECHO $i | $CUT -f5 -d,`
-	    if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"` -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
-	      if [ $p != "x" ]; then
-		 psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
+#
+#   This function uses the rules in $ALLOW, which must be defined with no embedded
+#   spaces (substitute # for a space). Each rule is terminated by a newline (\n).
+#   The loop is limited to rules that meet the first 4 of the 5 requirements in
+#   each rule. There may be more than one such rule. If there is at least one, and
+#   they all fail, that is a "type 1" error; if there are none, that is a "type 2"
+#   error.
+#
+allow() { tt=${1:-UNKNOWN}
+	  psline=""
+	  for i in `$ECHO -e -n $ALLOW | $AWK -F, -v TT=$tt -v CMD=$command -v REST="$rest" '$1 ~ TT && $2 == CMD && REST ~ $3 && REST ~ $4 {print "a=" $2 ";b=" $3 ";c=" $4 ";p=" $5}'`; do
+#	  $ECHO -e -n $ALLOW | while IFS=',' read t a b c p; do
+#	    t=`$ECHO $i | $CUT -f1 -d,`
+#	    if [ -z "${t-}" ]; then $ECHO $t,$a,$b,$c,$p; fi
+#	    if [ -z "${t-}" ]; then $ECHO $i; fi
+#	    if [ $t != $tt ]; then continue; fi
+#	    a=`$ECHO $i | $CUT -f2 -d,`
+#	    b=`$ECHO $i | $CUT -f3 -d,`
+#	    c=`$ECHO $i | $CUT -f4 -d,`
+#	    p=`$ECHO $i | $CUT -f5 -d,`
+	    eval $i
+#	    if [ $command = $a -a `$ECHO $rest | $EGREP -c $b` -ne 0 -a `$ECHO $rest | $EGREP -c $c` -ne 0 ]; then
+	      if [ $p != x ]; then
+		 if [ -z "$psline" ]; then
+		    psline=`$ECHO "$PSfirst" | $AWK -v PID=$pid '$2 ~ PID {print}'`
+		 fi
 		 if [ `$ECHO $psline | $EGREP -c '\[.*\]'` -ne 0 ]; then
 		    logit "Swapped out $node $tt $command $pid $rest -> $psline"
 		    return 0
-		 elif [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
-		    msg1="UNAUTHORIZED NETWORK SERVICE, type 1! $node $tt $command $pid $rest"
-		    logit "$msg1"
-		    logit "$psline" "ps"
-		    if [ $ALARM -eq 1 ]; then
-		      enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
-		    fi
-		    return 2
+		 elif [ `$ECHO $psline | $SED 's/  */#/g' | $EGREP -c "$p"` -eq 0 ]; then
+		    continue
 		 fi
 	      else
 		p=""
@@ -203,16 +212,21 @@ allow() { tt=$1
 		logit "Allowing $node $c $tt $a $b $p, ok"
 	      fi
 	      return 0
-	    fi
+#	    fi
 	  done
-	  msg1="UNAUTHORIZED NETWORK SERVICE, type 2! $node $tt $command $pid $rest"
-	  psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
+	  if [ -n "$psline" ]; then
+	     type=1
+	  else
+	     psline=`$ECHO "$PSfirst" | $AWK -v PID=$pid '$2 ~ PID {print}'`
+	     type=2
+	  fi
+	  msg1="UNAUTHORIZED NETWORK SERVICE, type ${type}! $node $tt $command $pid $rest"
 	  logit "$msg1"
 	  logit "$psline" "ps"
 	  if [ $ALARM -eq 1 ]; then
 	    enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
 	  fi
-	  return 1
+	  return $type
 	 }
 
 if [ -r "/etc/inetd.conf" ]; then
@@ -224,119 +238,116 @@ else
 fi
 # We allow these everywhere
 ALLOW_BASE="
-       LISTEN,$INETD,:ftp,TCP,x
-       LISTEN,$INETD,:telnet,TCP,x
-       LISTEN,$INETD,:kshell,TCP,x
-       LISTEN,$INETD,:klogin,TCP,x
-       LISTEN,$INETD,:eklogin,TCP,x
-       LISTEN,$INETD,:netperf,TCP,x
-       LISTEN,python,:,TCP,$ENSTORE/(bin|src)|/home/petravic/Zope|ftpcp.py
-       LISTEN,dccp,:,TCP,x
-       LISTEN,netserver,:,TCP,x
-       LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh
-       LISTEN,sh,inet,TCP,MSG_TYPE|enstore
-       LISTEN,mv,inet,TCP,MSG_TYPE|enstore
-       LISTEN,grep,inet,TCP,MSG_TYPE|enstore
-       LISTEN,sort,inet,TCP,MSG_TYPE|enstore
-       LISTEN,ALARM_CLIENT,inet,TCP,x
-       UDP,python,:7499,UDP,$ENSTORE/src/monitor_server.py
-       UDP,python,:,UDP,$ENSTORE/(bin/encp|src/(monitor_server|volume_assert|mover).py|ngop/cronjobAgent.py)|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py
-       UDP,xntpd,:ntp,UDP,x
-       UDP,tee,:UDP,tee /dev/tty
-       TCP,xemacs,:x11,TCP,x
-       TCP,rsh,:kshell,TCP,x
-       TCP,rsh,:,TCP,/usr/krb5/bin/rsh
-       TCP,kshd,:kshell,TCP,x
-       TCP,kshd,:,TCP,kshd kshd -5c
-       TCP,klogind,:eklogin,TCP,x
-       TCP,telnetd,telnet,TCP,telnetd -Pa valid
-       TCP,python,:,TCP,$ENSTORE/(bin/encp|src/monitor_server|mover).py
-       TCP,netserver,TCP,:netperf,x
+	LISTEN,$INETD,:ftp,TCP,x\n
+	LISTEN,$INETD,:telnet,TCP,x\n
+	LISTEN,$INETD,:kshell,TCP,x\n
+	LISTEN,$INETD,:klogin,TCP,x\n
+	LISTEN,$INETD,:eklogin,TCP,x\n
+	LISTEN,$INETD,:netperf,TCP,x\n
+	LISTEN,python,:,TCP,$ENSTORE/(bin|src)|/home/petravic/Zope|ftpcp.py\n
+	LISTEN,dccp,:,TCP,x\n
+	LISTEN,netserver,:,TCP,x\n
+	LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh\n
+	LISTEN,sh,inet,TCP,MSG_TYPE|enstore\n
+	LISTEN,mv,inet,TCP,MSG_TYPE|enstore\n
+	LISTEN,grep,inet,TCP,MSG_TYPE|enstore\n
+	LISTEN,sort,inet,TCP,MSG_TYPE|enstore\n
+	LISTEN,ALARM_CLIENT,inet,TCP,x\n
+	UDP,python,:7499,UDP,$ENSTORE/src/monitor_server.py\n
+	UDP,python,:,UDP,$ENSTORE/(bin/encp|src/(monitor_server|volume_assert|mover).py|ngop/cronjobAgent.py)|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py\n
+	UDP,xntpd,:ntp,UDP,x\n
+	UDP,tee,:,UDP,tee#/dev/tty\n
+	TCP,xemacs,:x11,TCP,x\n
+	TCP,rsh,:kshell,TCP,x\n
+	TCP,rsh,:,TCP,/usr/krb5/bin/rsh\n
+	TCP,kshd,:kshell,TCP,x\n
+	TCP,kshd,:,TCP,kshd#kshd#-5c\n
+	TCP,klogind,:eklogin,TCP,x\n
+	TCP,telnetd,:telnet,TCP,telnetd#-Pa#valid\n
+	TCP,python,:,TCP,$ENSTORE/(bin/encp|src/monitor_server|mover).py\n
+	TCP,netserver,TCP,:netperf,x\n
 "
-#      LISTEN,autorpm,:,TCP,perl /usr/sbin/autorpm
+#	LISTEN,autorpm,:,TCP,perl#/usr/sbin/autorpm\n
 
 # Extra for srv5
 ALLOW_SRV5="$ALLOW_BASE
-       LISTEN,portmap,:sunrpc,TCP,x
-       LISTEN,conserver,:console,TCP,x
-       LISTEN,conserver,:,TCP,conserver -d
-       LISTEN,X,:x11,TCP,x
-       UDP,portmap,:sunrpc,UDP,x
-       TCP,console,:console,TCP,x
+	LISTEN,portmap,:sunrpc,TCP,x\n
+	LISTEN,conserver,:console,TCP,x\n
+	LISTEN,conserver,:,TCP,conserver#-d\n
+	LISTEN,X,:x11,TCP,x\n
+	UDP,portmap,:sunrpc,UDP,x\n
+	TCP,console,:console,TCP,x\n
 "
 
 # Extra for srv3
 ALLOW_SRV3="$ALLOW_SRV5
-       LISTEN,rpc.mount,:,TCP,rpc.mountd
-       LISTEN,rpc.nfsd,:2049,TCP,x
-       LISTEN,rpc.nfsd,:nfs,TCP,x
-       UDP,rpc.mount,:mount,UDP,x
-       UDP,rpc.nfsd,:nfs,UDP,x
+	LISTEN,rpc.mount,:,TCP,rpc.mountd\n
+	LISTEN,rpc.nfsd,:(nfs|2049),TCP,x\n
+	UDP,rpc.mount,:mount,UDP,x\n
+	UDP,rpc.nfsd,:(nfs|2049),UDP,x\n
 "
 
 # Extra for srv2
 ALLOW_SRV2="$ALLOW_BASE
-       LISTEN,sendmail,:smtp,TCP,x
-       LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
-       LISTEN,mv,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,mv
-       LISTEN,sh,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sh
-       LISTEN,grep,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,grep
-       LISTEN,sort,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sort
-       LISTEN,python,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,$ENSTORE/src/inquisitor.py
+	LISTEN,sendmail,:smtp,TCP,x\n
+	LISTEN,httpd,:http,TCP,/local/ups/prd/apache/\n
+	LISTEN,mv,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,mv\n
+	LISTEN,sh,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sh\n
+	LISTEN,grep,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,grep\n
+	LISTEN,sort,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sort\n
+	LISTEN,python,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,$ENSTORE/src/inquisitor.py\n
 "
 
 # Extra for srv1
 ALLOW_SRV1="$ALLOW_BASE
-       LISTEN,portmap,:sunrpc,TCP,x
-       LISTEN,java,:,TCP,/home/enstore/dcache/run|[java]
+	LISTEN,portmap,:sunrpc,TCP,x\n
+	LISTEN,java,:,TCP,/home/enstore/dcache/run|[java]\n
 "
 
 # Extra for srv0
 ALLOW_SRV0="$ALLOW_BASE
-       LISTEN,postmaste,:5432,TCP,x
-       LISTEN,postmaste,:8076,TCP,x
-       LISTEN,postmaste,:postgres,TCP,x
+	LISTEN,postmaste,:(postgres|5432|8076),TCP,x\n
 "
 
 # Extra for d0ensrv2
 ALLOW_DSRV2="$ALLOW_SRV2
-       LISTEN,mirror,d0ensrv2p.fnal.gov:,TCP,mirror logs:adic2.fnal.gov
+	LISTEN,mirror,d0ensrv2p.fnal.gov:,TCP,mirror#logs:adic2.fnal.gov\n
 "
 
 # Extra for d0ensrv3
 ALLOW_DSRV3="$ALLOW_SRV3
-       LISTEN,perl,d0ensrv3p.fnal.gov:,TCP,mirror everything:adic2.fnal.gov
+	LISTEN,perl,d0ensrv3p.fnal.gov:,TCP,mirror#everything:adic2.fnal.gov\n
 "
 
 # Extra for d0ensrv4 - portmapper is needed for adic calls
 ALLOW_DSRV4="$ALLOW_BASE
-       LISTEN,portmap,:sunrpc,TCP,x
-       LISTEN,dasadmin,:663,TCP,x
-       LISTEN,dasadmin,:,TCP,dasadmin
-       LISTEN,rsh,:,TCP,fntt -l acsss echo
+	LISTEN,portmap,:sunrpc,TCP,x\n
+	LISTEN,dasadmin,:663,TCP,x\n
+	LISTEN,dasadmin,:,TCP,dasadmin\n
+	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
 "
 
 # Extra for stkensrv2
 ALLOW_SSRV2="$ALLOW_SRV2
-       LISTEN,portmap,:sunrpc,TCP,x
-       LISTEN,rpc.mount,:,TCP,rpc.mountd
+	LISTEN,portmap,:sunrpc,TCP,x\n
+	LISTEN,rpc.mount,:,TCP,rpc.mountd\n
 "
 
 # Extra for stkensrv4
 ALLOW_SSRV4="$ALLOW_BASE
-       LISTEN,rsh,:,TCP,fntt -l acsss echo
+	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
 "
 
-# Extra for cdfensrv4
+##Extra#for#cdfensrv4
 ALLOW_CSRV4="$ALLOW_BASE
-       LISTEN,rsh,:,TCP,fntt2 -l acsss echo
+	LISTEN,rsh,:,TCP,fntt2#-l#acsss#echo\n
 "
 
 # Extra for dcache
 # Allowing swapped out java's is not good, but I don't know what else to do right now.
 ALLOW_DCA="$ALLOW_BASE
-       LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
-       LISTEN,java,:,TCP,/home/enstore/dcache/run/diskCache|[java]|dmg.cells.services.Domain
+	LISTEN,httpd,:http,TCP,/local/ups/prd/apache/\n
+	LISTEN,java,:,TCP,/home/enstore/dcache/run/diskCache|[java]|dmg.cells.services.Domain\n
 "
 
 # Extra for movers
@@ -596,8 +607,9 @@ elif [ $QUIET -ne 1 ]; then
   logit "file/volume clerk not running, no db_deadlock or db_checkpoint check, ok"
 fi
 
-# web servers need to be running on certain nodes
+# check for web servers
 case $node in
+# web servers should be running on these nodes
   rip7|d0ensrv2|stkensrv2|cdfensrv2|d0endca3a|stkendca3a)
     if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP apache|$EGREP -c 'httpd'` -eq 0 ]; then
        msg="httpd Web server not running"
@@ -612,6 +624,10 @@ case $node in
        right_file $i /local/ups/prd/httpd/cgi-bin/enstore/`basename $i` 755
     done
     ;;
+# web servers may be running on these nodes, but don't need to be
+  stkendca[678]|d0enout[12]|cachen[12]a)
+    ;;
+# web servers should not be running on any other nodes
   *)
     if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP apache|$EGREP -c 'httpd'` -ne 0 ]; then
        msg="httpd Web server running on illegal node"
@@ -643,14 +659,14 @@ PSfirst=`$PS afxuwwww`
 #N2=`$LSOF -i TCP -i UDP`
 $LSOF -i TCP -i UDP > $netscan_n2
 #N=`$ECHO "$N1 $N2"|$SORT|$UNIQ -d`
-N=`$SORT $netscan_n1 $netscan_n2 | $UNIQ -d`
+#N=`$SORT $netscan_n1 $netscan_n2 | $UNIQ -d`
 
 
 # scan open files and check if allowed
-$ECHO "$N" | while read command pid rest; do
+$SORT $netscan_n1 $netscan_n2 | $UNIQ -d | while read command pid rest; do
     if [ $pid = "PID" ] ; then continue; fi
     if [ `$ECHO $rest | $EGREP -c "LISTEN"` -ne 0 ]; then
-      allow LISTEN
+       allow LISTEN
     elif [ `$ECHO $rest | $EGREP -c "UDP"` -ne 0 ]; then
       if [ $QUIET -ne 1 ]; then
 	 logit "Ignoring open UDP connections $command $pid $rest ..."
