@@ -32,6 +32,9 @@ ALARM = "alarm"
 
 SEVERITY = "severity"
 ROOT_ERROR = "root_error"
+PID = "pid"
+UID = "uid"
+SOURCE = "source"
 
 class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
@@ -51,12 +54,30 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             del ticket[ROOT_ERROR]
         else:
             root_error = e_errors.DEFAULT_ROOT_ERROR
+        if ticket.has_key(PID):
+            pid = ticket[PID]
+            # remove this entry from the dictionary
+            del ticket[PID]
+        else:
+            pid = alarm.DEFAULT_PID
+        if ticket.has_key(UID):
+            uid = ticket[UID]
+            # remove this entry from the dictionary
+            del ticket[UID]
+        else:
+            uid = alarm.DEFAULT_UID
+        if ticket.has_key(SOURCE):
+            source = ticket[SOURCE]
+            # remove this entry from the dictionary
+            del ticket[SOURCE]
+        else:
+            source = alarm.DEFAULT_SOURCE
         # remove this entry from the dictionary, so it won't be included
         # as part of alarm_info
         if ticket.has_key("work"):
             del ticket["work"]
 
-        theAlarm = self.alarm(severity, root_error, ticket)
+        theAlarm = self.alarm(severity, root_error, pid, uid, source, ticket)
 
         # send the reply to the client
         ret_ticket = { 'status' : (e_errors.OK, None),
@@ -64,22 +85,41 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         self.send_reply(ret_ticket)
 
     # raise the alarm
-    def alarm(self, severity=e_errors.DEFAULT_SEVERITY,\
-              root_error=e_errors.DEFAULT_ROOT_ERROR, alarm_info={}):
+    def alarm(self, severity=e_errors.DEFAULT_SEVERITY,
+              root_error=e_errors.DEFAULT_ROOT_ERROR,
+              pid=alarm.DEFAULT_PID, uid=alarm.DEFAULT_UID,
+              source=alarm.DEFAULT_SOURCE, alarm_info={}):
         # find out where the alarm came from
         try:
             host = socket.gethostbyaddr(self.reply_address[0])[0]
         except:
             host = str(sys.exc_info()[1])
-        # get a new alarm
-        theAlarm = alarm.Alarm(host, severity, root_error, alarm_info)
-        # save it in memory for us now
-        self.alarms[theAlarm.get_id()] = theAlarm
-        # write it to the persistent file
-        self.write_alarm_file(theAlarm)
-        # write it out to the patrol file
-        self.write_patrol_file()
+        # we should only get a new alarm if this is not the same alarm as
+        # one we already have
+        theAlarm = self.find_alarm(host, severity, root_error, source,
+                                   alarm_info)
+        if not theAlarm:
+            # get a new alarm
+            theAlarm = alarm.Alarm(host, severity, root_error, pid, uid,
+                                   source, alarm_info)
+            # save it in memory for us now
+            self.alarms[theAlarm.get_id()] = theAlarm
+            # write it to the persistent file
+            self.write_alarm_file(theAlarm)
+            # write it out to the patrol file
+            self.write_patrol_file()
         return theAlarm
+
+    def find_alarm(self, host, severity, root_error, source, alarm_info):
+        # find the alarm that matches the above information
+        ids = self.alarms.keys()
+        for id in ids:
+            if self.alarms[id].compare(host, severity, root_error, source, \
+                                       alarm_info) == alarm.MATCH:
+                break
+        else:
+            return
+        return self.alarms[id]
 
     def resolve(self, id):
         # an alarm is being resolved, we must do the following -
@@ -91,6 +131,8 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             del self.alarms[id]
             self.write_alarm_file()
             self.write_patrol_file()
+            #Trace.log(e_errors.INFO,
+            #          "Alarm with id = "+repr(id)+" has been resolved")
             return (e_errors.OK, None)
         else:
             # don't know anything about this alarm
@@ -105,46 +147,6 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         ticket['status'] = status
         self.send_reply(ticket)
         
-    def ens_status(self, ticket):
-        # we have been sent some status.  we must examine it for an error
-        # condition and possibly save it for future reference.  following
-        # are the things that we look for -
-        #      server has crashed
-        #      server crashes more than 'n' times per 't' time
-        #      an lm's known movers fall below a threshold
-        #      an lm's suspect vols rises above a threshold
-        #      the number of drives falls below a threshold
-        if ticket.has_key(SUS_VOLS):
-            self.check_sus_vols(ticket)
-
-        # send the reply to the client
-        ret_ticket = { 'status'   : (e_errors.OK, None) }
-        self.send_reply(ret_ticket)
-
-    def check_sus_vols(self, ticket):
-        # only go through the effort if there are suspect volumes
-        if not ticket[SUS_VOLS] == []:
-            # do not record this alarm more than once
-            akey = ticket[SERVER]+SUS_VOLS
-            if not self.info_alarms.has_key(akey):
-                lm = self.csc.get(ticket[SERVER])
-                # find out what the suspect volume threshold is, it is either
-                # in the library managers config dict or use the one for the
-                # alarm server
-                cthresh = lm.get("sus_vol_thresh", self.sus_vol_thresh)
-                if len(ticket[SUS_VOLS]) >= cthresh:
-                    ainfo = self.make_alarm_info()
-                    ainfo.update({SUS_VOLS : ticket[SUS_VOLS],\
-                                  LM : ticket[SERVER] })
-                    self.alarm(e_errors.WARNING, e_errors.TOOMANYSUSPVOLS,
-                               ainfo)
-                    self.info_alarms[akey] = 1
-
-    def make_alarm_info(self):
-        return {"source" : "ALRMS-INQ",
-                "uid" : self.uid,
-                "pid" : self.pid }
-    
     def write_alarm_file(self, alarm=None):
         if alarm:
             self.alarm_file.open()
@@ -198,9 +200,6 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                                                       DEFAULT_PATROL_FILE_NAME)
         self.write_patrol_file()
 
-    def handle_alarms(self):
-        pass
-               
     # return the name of the patrol file
     def get_patrol_filename(self, ticket):
         ticket['patrol_file'] = self.patrol_file.real_file_name
@@ -239,10 +238,6 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
         # get the patrol file name and location and write any current alarms
         # out to it.
         self.get_patrol_file()
-
-        # look through all the alarms and see if we need to do anything with
-        # them
-        self.handle_alarms()
 
 class AlarmServerInterface(interface.Interface):
 

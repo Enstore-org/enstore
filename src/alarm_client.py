@@ -52,9 +52,9 @@ class AlarmClient(generic_client.GenericClient):
         if 0: print time  # lint fix
         ticket = {}
         ticket['work'] = "post_alarm"
-        ticket['uid'] = self.uid
-        ticket['pid'] = pid
-        ticket['source'] = name
+        ticket[alarm_server.UID] = self.uid
+        ticket[alarm_server.PID] = pid
+        ticket[alarm_server.SOURCE] = name
         if args[0] == e_errors.ALARM:
             # we were called from Trace.alarm and args will be a dict
             ticket.update(args[2])
@@ -73,7 +73,6 @@ class AlarmClient(generic_client.GenericClient):
               root_error=e_errors.DEFAULT_ROOT_ERROR,
               alarm_info={}):
         Trace.alarm(severity, root_error, alarm_info )
-#        apply( Trace.alarm, (severity,root_error), alarm_info )
 
     def resolve(self, id, rcv_timeout=0, tries=0):
         # this alarm has been resolved.  we need to tell the alarm server
@@ -81,13 +80,6 @@ class AlarmClient(generic_client.GenericClient):
                   alarm_server.ALARM   : id}
         return self.u.send(ticket, self.server_address, rcv_timeout, tries)
 
-    def ens_status(self, info, server="ALARMC", rcv_timeout=0, tries=0):
-        # send the 'info' to the alarm server
-        ticket = { "work" : "ens_status", "server" : server }
-        ticket.update(info)
-        s = self.u.send(ticket, self.server_address, rcv_timeout, tries )
-	return s
-        
     def get_patrol_file(self, rcv_timeout=0, tries=0):
         ticket = {'work' : 'get_patrol_filename'}
         return self.u.send(ticket, self.server_address, rcv_timeout, tries)

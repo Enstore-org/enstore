@@ -49,7 +49,7 @@ sevdict = { ALARM      : 'A',
             }
 
 # Alarm severities
-DEFAULT_SEVERITY = WARNING
+DEFAULT_SEVERITY = sevdict[WARNING]
 DEFAULT_ROOT_ERROR = UNKNOWN
 
 if 0: print ERROR,USER_ERROR,WARNING,INFO,MISC, \
