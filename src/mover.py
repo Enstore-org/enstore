@@ -804,7 +804,7 @@ def forked_read_from_hsm( self, ticket ):
 	send_user_done( self, ticket, e_errors.OK )
 	return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
 	pass
-    return None # forked_read_from_hsm
+    return {} # forked_read_from_hsm
 
 
 def return_or_update_and_exit( self, origin_addr, status ):
@@ -1167,7 +1167,7 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	method = MoverClient.__dict__[client_function]
 	next_req_to_lm = method( self.client_obj_inst, rsp_ticket )
 	# note: order of check is important to avoid KeyError exception
-	if  len(self.summoned_while_busy) and next_req_to_lm=={}:
+	if  len(self.summoned_while_busy) and not next_req_to_lm:
 	    # now check if next_req_to_lm=={} means we just started an xfer and
 	    # are waiting for completion.
 	    if self.client_obj_inst.state == 'idle':
