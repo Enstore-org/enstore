@@ -46,7 +46,7 @@ add*)
 
     e=`/sbin/ifconfig eth1`
     eth1=eth1
-    if [ `echo $e | grep -c UP` -eq 0 -o $type == "server" ]; then
+    if [ `echo $e | grep -c UP` -eq 0 -o $type = "server" ]; then
       eth1=eth0
     fi
 
