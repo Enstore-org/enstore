@@ -280,9 +280,15 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	    wam_q = lm.get(enstore_constants.WORK, None)
 	    if not wam_q is enstore_constants.NO_WORK:
 		for wam_elem in wam_q:
-		    self.filelist.append([wam_elem[enstore_constants.NODE], 
-					  wam_elem[enstore_constants.FILE], name, 
-					  wam_elem[enstore_constants.DEVICE]])		
+		    if wam_elem[enstore_constants.WORK] == enstore_constants.READ:
+			self.filelist.append([wam_elem[enstore_constants.NODE], 
+					      wam_elem[enstore_constants.FILE], name, 
+					      wam_elem[enstore_constants.DEVICE]])
+		    else:
+			ff = wam_elem.get(enstore_constants.FILE_FAMILY, None)
+			self.filelist.append([wam_elem[enstore_constants.NODE], 
+					      wam_elem[enstore_constants.FILE], name, 
+					      ff])
 	    pend_q = lm.get(enstore_constants.PENDING, None)
 	    if pend_q:
 		pread_q = pend_q[enstore_constants.READ]
