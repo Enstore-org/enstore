@@ -184,10 +184,17 @@ if __name__=="__main__":
             file = vol['files'][file_num]
             n = string.atoi(file_num)+1 # skip over VOL1 header
             loc_cookie = "0000_000000000_%07d" % n
-            sanity_cookie = (string.atoi(file['early_checksum_size']),
-                             string.atol(file['early_checksum']))
+            if (file['early_checksum_size'] == 'None'
+                or file['early_checksum'] == 'None'):
+                sanity_cookie = None, None
+            else:
+                sanity_cookie = (string.atoi(file['early_checksum_size']),
+                                 string.atol(file['early_checksum']))
             size = string.atoi(file['size'])
-            complete_crc = string.atol(file['checksum'])
+            if file['checksum'] == 'None':
+                complete_crc = None
+            else:
+                complete_crc = string.atol(file['checksum'])
             ticket = {
                 "work":"new_bit_file",
                 "fc": {"external_label": vol_name,
