@@ -18,9 +18,9 @@ OK_VAL = 0
 # on the node.
 FULL95 = {"cachen1a" : ["/diska"],
           "cachen2a" : ["/diska"],
-          "stkendca3a" : ["/diska"],
-          "stkendca4a" : ["/diska"],
-          "stkendca5a" : ["/diska"],
+          "stkendca3a" : ["/diska", "/diskb"],
+          "stkendca4a" : ["/diska", "/diskb"],
+          "stkendca5a" : ["/diska", "/diskb"],
           "cdfendca3" : ["/diska"],
           "cdfendca4" : ["/diska"],
           "cdfendca5" : ["/diska"],
