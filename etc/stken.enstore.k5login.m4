@@ -50,14 +50,17 @@ genser@FNAL.GOV
 george@FNAL.GOV
 huangch@FNAL.GOV
 ivm@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `lisa@FNAL.GOV', `dnl')
 moibenko@FNAL.GOV
 neilsen@FNAL.GOV
 oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
 ron@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `stiehr@FNAL.GOV', `dnl')
 timur@FNAL.GOV
 tlevshin@FNAL.GOV
 tvrdik@FNAL.GOV
