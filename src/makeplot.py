@@ -60,7 +60,9 @@ def get_rate_info():
     ratekeeper_name = ratekeep.get('name','MISSING')
     ratekeeper_host = ratekeep.get('host','MISSING')
     rate_nodes = ratekeep.get('nodes','MISSING')
-    gif_filename = ratekeep.get('gif','MISSING')
+    ps_filename = ratekeep.get('ps','MISSING')
+    jpg_filename = ratekeep.get('jpg','MISSING')
+    jpg_stamp_filename = ratekeep.get('stamp','MISSING')
     
     if dir == 'MISSING':
         print "Unable to determine the log directory."
@@ -75,8 +77,15 @@ def get_rate_info():
             ratekeeper_name = enstore_functions.strip_node(ratekeeper_host)
     if rate_nodes == 'MISSING':
         rate_nodes = ''
-    if gif_filename == 'MISSING':
-        print "Unable to determine the gif output filename."
+        
+    if ps_filename == 'MISSING':
+        print "Unable to determine the ps output filename."
+        sys.exit(1)
+    if jpg_filename == 'MISSING':
+        print "Unable to determine the jpg output filename."
+        sys.exit(1)
+    if jpg_stamp_filename == 'MISSING':
+        print "Unable to determine the jpg stamp output filename."
         sys.exit(1)
 
     if dir[-1] != "/":
@@ -84,7 +93,9 @@ def get_rate_info():
     if tmp_dir[-1] != "/":
         tmp_dir = tmp_dir + "/"
 
-    return dir, tmp_dir, ratekeeper_name, rate_nodes, gif_filename
+    return dir, tmp_dir, ratekeeper_name, rate_nodes, ps_filename, \
+           jpg_filename, jpg_stamp_filename
+
 
 ###########################################################################
 ###########################################################################
@@ -171,7 +182,7 @@ def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename):
     plot_file.write("set timefmt \"%s\"\n" % ("%m-%d-%Y %H:%M:%S"))
     plot_file.write("set format x \"%s\"\n" % ("%m-%d-%Y\\n%H:%M:%S"))
     plot_file.write("set grid ytics\n")
-    plot_file.write("set terminal pbm small color\n")
+    plot_file.write("set terminal postscript color solid\n")
     plot_file.write("set size 1.4,1.2\n")
     plot_file.write("set output \"%s\"\n" % graphic_filename)
     plot_file.write("plot \"%s\" using 1:3 title \"read\" with lines," \
@@ -187,7 +198,8 @@ if __name__ == "__main__":
         print_usage()
         sys.exit(1)
     
-    log_dir, tmp_dir, sys_name, rate_nodes, gif_filename = get_rate_info()
+    log_dir, tmp_dir, sys_name, rate_nodes, ps_filename, jpg_filename, \
+             jpg_stamp_filename = get_rate_info()
 
     #Check the command line arguments.
     #-t stands for Time smoothing, which is the number of points that get
@@ -208,10 +220,16 @@ if __name__ == "__main__":
             for short_name in rate_nodes.keys():
                 if sys_name[:len(short_name)] == short_name:
                     sys_name = rate_nodes[short_name][1]
+                    ps_filename = string.replace(ps_filename, '*', sys_name)
+                    jpg_filename = string.replace(jpg_filename, '*', sys_name)
+                    jpg_stamp__filename = string.replace(jpg_stamp_filename,
+                                                         '*', sys_name)
                     break
 
-    #If they put an * in the filename, replace it with the system name.
-    gif_filename = string.replace(gif_filename, '*', sys_name)
+    #If the *s haven't been replaced yet, then replace it with nothing.
+    ps_filename = string.replace(ps_filename, '*', "")
+    jpg_filename = string.replace(jpg_filename, '*', "")
+    jpg_stamp_filename = string.replace(jpg_stamp_filename, '*', "")
 
     rate_log_files = filter_out_files(sys_name, log_dir, time_in_days)
 
@@ -224,7 +242,6 @@ if __name__ == "__main__":
     scaled_filename = tempfile.mktemp(".plot")
     smooth_filename = tempfile.mktemp(".plot")
     plot_filename = tempfile.mktemp(".plot")
-    graphic_filename = tempfile.mktemp(".ppm")
 
     #Open these files for writing.
     scaled_file = open(scaled_filename, "w")
@@ -238,15 +255,16 @@ if __name__ == "__main__":
     smooth_file.close()   #Start reading from beginning of file.
     smooth_file = open(smooth_filename, "r")
     #Write the gnuplot command file.
-    write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename)
+    write_plot_file(sys_name, smooth_filename, plot_file, ps_filename)
     smooth_file.close()
     plot_file.close()     #Close this file so gnuplot can read it.
 
     os.system("gnuplot < %s" % plot_filename)
 
-    os.system("ppmtogif %s > %s\n" % (graphic_filename, gif_filename))
+    os.system("convert -rotate 90  %s %s\n" % (ps_filename,jpg_filename))
+    os.system("convert -rotate 90 -geometry 120x120 -modulate -20 %s %s\n" %
+              (ps_filename, jpg_stamp_filename))
     
     os.remove(scaled_filename)
     os.remove(smooth_filename)
     os.remove(plot_filename)
-    os.remove(graphic_filename)
