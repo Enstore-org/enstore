@@ -687,6 +687,14 @@ def main(e):
     # routing purposes.
     routing_addr, udp_socket = encp.get_routing_callback_addr(e)
 
+    #If the sockets do not exist, do not continue.
+    if listen_socket == None:
+        sys.stderr.write("Failed to obtain control socket.\n")
+        quit(2)
+    if udp_socket.server_socket == None:
+        sys.stderr.write("Failed to obtain udp socket.\n")
+        quit(2)
+
     #Create all of the request dictionaries.
     Trace.message(4, "Creating read requests.")
     try:
@@ -709,7 +717,7 @@ def main(e):
         elif e_errors.is_non_retriable(msg.type):
             quit(2)
         else:
-            quit(1) #Is this a mistake?
+            quit(2) #Is this a mistake?
             
     #Sort the requests in increasing order.
     requests_per_vol[e.volume].sort(
