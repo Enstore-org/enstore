@@ -80,8 +80,8 @@ class UDPClient:
                 try:
                     if not value.thread.isAlive():
                         del self.tsd[key]
-                    except:
-                        pass # another thread could have done the cleanup...
+                except:
+                    pass # another thread could have done the cleanup...
             tsd = self.reinit()
         return tsd
     
