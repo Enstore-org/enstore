@@ -14,7 +14,7 @@ import enstore_functions
 import checkBackedUpDatabases
 import configuration_client
 import volume_clerk
-import shelve
+import cPickle
 
 #Grab the start time.
 t0 = time.time()
@@ -903,8 +903,12 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
     # open volume_summary_cache
     volume_summary_cache_file = os.path.join(cache_dir, 'volume_summary')
-    vol_sum = shelve.open(volume_summary_cache_file)
-    
+
+    if os.access(volume_summary_cache_file, os.F_OK):
+        sum_f = open(volume_summary_cache_file)
+        vol_sum = cPickle.load(sum_f)
+        sum_f.close()
+
     vols = db.DbTable('volume', os.path.split(volume_file)[0], '/tmp', [], 0)
     files = db.DbTable('file', os.path.split(metadata_file)[0], '/tmp', ['external_label'], 0)
 
@@ -1138,7 +1142,10 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         vk, vv = vc.next()
 
     vc.close()
-    vol_sum.close()
+    # dump vol_sum
+    sum_f = open(volume_summary_cache_file, 'w')
+    cPickle.dump(vol_sum, sum_f)
+    sum_f.close()
     la_file.close()
     vs_file.close()
     vd_file.close()
