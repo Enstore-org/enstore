@@ -1,0 +1,9 @@
+FILE = TABLE
+PRODUCT=encp
+
+FLAVOR = ANY
+QUALIFIERS = ""
+    ACTION=SETUP
+	setupEnv()
+	proddir()
+	pathPrepend(PATH, ${UPS_PROD_DIR})
