@@ -852,6 +852,7 @@ class LibraryManagerMethods:
 
     def check_write_request(self, external_label, rq, requestor):
         vol_veto_list, wr_en = self.busy_volumes(rq.ticket['vc']['volume_family'])
+        Trace.trace(11, "check_write_request: vet_list %s wr_en %s"%(vol_veto_list, wr_en))
         label = rq.ticket['fc'].get('external_label', external_label)
         if label != external_label:
             # this is a case with admin pri
