@@ -1035,7 +1035,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
                         self.vcc.set_system_noaccess(volume_label)
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
-                        self.error(status[1], status[0])
+                        self.dismount_volume(after_function=self.idle)
                         return 0
 
                 self.tape_driver.rewind()
