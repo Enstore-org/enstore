@@ -28,7 +28,7 @@ class Tdb(threading.Thread) :
             except :
                 import traceback
                 traceback.print_exc(file=self.outFile)
-
+                self.help()
             
     def once(self) :
         self.outFile.write("\ntdb>>")
