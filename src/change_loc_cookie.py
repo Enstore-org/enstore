@@ -27,7 +27,7 @@ else:
 fcc = file_clerk_client.FileClient(csc)
 # get file list for the specified tape
 if len(sys.argv) != 2:
-    print "Usage: %s volume_label"%sys.argv[0]
+    print "Usage: %s volume_label"%(sys.argv[0],)
     sys.exit(1)
 
 ticket = fcc.tape_list(sys.argv[1])
