@@ -196,6 +196,14 @@ class EncpError(Exception):
         #Is this duplicated from calling Exception.__init__(self)?
         #self.args = [self.errno, self.message, self.type]
 
+        #Do this after calling self._string().  Otherwise, self.strerror
+        # will not be defined yet.
+        if type(self.ticket) == types.DictType:
+            if not self.ticket.has_key('status'):
+                self.ticket['status'] = (self.type, self.strerror)
+            elif e_errors.is_ok(self.ticket):
+                self.ticket['status'] = (self.type, self.strerror)
+
     def __str__(self):
         self._string()
         return self.strerror
@@ -1178,7 +1186,7 @@ def __get_fcc(parameter = None):
         __fcc = file_clerk_client.FileClient(
             csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
         if bfid:
-            file_info = fcc.bfid_info(bfid, 5, 3)
+            file_info = __fcc.bfid_info(bfid, 5, 3)
             if e_errors.is_ok(file_info):
                 return __fcc, file_info
         else:
@@ -1198,7 +1206,7 @@ def __get_fcc(parameter = None):
 
             if fcc_test.server_address != None:
 		#If the fcc has been initialized correctly; use it.
-                file_info = fcc.bfid_info(bfid, 5, 3)
+                file_info = fcc_test.bfid_info(bfid, 5, 3)
                 if e_errors.is_ok(file_info):
                     __csc = csc_test
                     __fcc = fcc
@@ -5727,8 +5735,10 @@ def verify_read_request_consistancy(requests_per_vol):
                 rest['db_bfid'] = pnfs.UNKNOWN
             try:
                 db_crc = request['fc']['complete_crc']
+                #Some files do not have a crc recored.
                 try:
-                    db_crc = long(db_crc)
+                    if db_crc != None:
+                        db_crc = long(db_crc)
                 except TypeError:
                     rest['db_crc_type'] = "db_crc contains wrong type %s." \
                                           % type(db_crc)
@@ -5785,8 +5795,9 @@ def verify_read_request_consistancy(requests_per_vol):
                 rest['pnfs_bfid'] = pnfs_bfid
                 rest['bfid'] = "db_bfid differs from pnfs_bfid"
             #Origdrive has not always been recored.
-            if (pnfs_crc != pnfs.UNKNOWN) and (db_crc != pnfs_crc):
-                #If present in layer 4 compare the CRC too.
+            if (pnfs_crc != pnfs.UNKNOWN) and (db_crc != None) \
+                   and (db_crc != pnfs_crc):
+                #If present in layer 4 and file db compare the CRC too.
                 rest['db_crc'] = db_crc
                 rest['pnfs_crc'] = pnfs_crc
                 rest['crc'] = "db_crc differs from pnfs_crc"
