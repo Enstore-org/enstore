@@ -6,6 +6,8 @@
  
 ftt_open
 ftt_unload
+ftt_close_dev
+ftt_status -timeout 1
 ftt_rewind -status FTT_ENOTAPE
 ftt_close
 quit

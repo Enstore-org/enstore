@@ -79,7 +79,7 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 	    buf.mt_op = MTSETDENSITY;
 	    buf.mt_count = hwdens;
 	    res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
-#if 1
+#if 0
 	    res = ftt_translate_error(d,FTT_OPN_STATUS,
 				    "an MTIOCTOP/MTSETDENSITY ioctl()", res,
 				"an ftt_open_dev",1);
