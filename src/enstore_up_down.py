@@ -611,7 +611,7 @@ def do_real_work():
 	if summary_d[log.format_name] == enstore_constants.UP and \
 	   summary_d[alarm.format_name] == enstore_constants.UP:
 	    # the following line will set the alarm function
-	    alc = alarm_client.AlarmClient(cs.csc)
+	    alc = alarm_client.AlarmClient((cs.config_host, cs.config_port))
 	    Trace.init("Enstore_Up_Down")
 	    Trace.alarm(e_errors.INFO, e_errors.ENSTOREBALLRED, {'Reason':repr(reason)}) 
     else:
