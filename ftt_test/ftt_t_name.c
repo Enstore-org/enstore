@@ -561,3 +561,33 @@ if (outfile != stderr) fclose(outfile);
 return 0;
 }
 
+
+
+/* ============================================================================
+ 
+ROUTINE: ftt_t_name_to_density
+ 
+        call ftt_name_to_density
+==============================================================================*/
+int     ftt_t_name_to_density (int argc, char **argv)
+{
+FILE            *outfile = stderr;	/* file to output to */
+static char     *dens;                  /* output file name */
+int		status;
+ftt_t_argt      argt[] = {
+ 	{"<density_string>",FTT_T_ARGV_STRING,	NULL,		&dens},
+        {NULL,          FTT_T_ARGV_END,         NULL,           NULL}};
+ 
+/* parse command line
+   ------------------ */
+ 
+dens = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);      /* check parse status */
+
+status = ftt_name_to_density (ftt_t_fd,dens);
+printf("Resulting density %d\n", status);
+FTT_T_CHECK_CALL (status,0);
+return 0;
+}
+

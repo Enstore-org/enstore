@@ -234,8 +234,12 @@ ftt_get_driveid(char *basename,char *os) {
 		ftt_dump_stats(b,stdout);
             }
             pc = ftt_extract_stats(b,FTT_PRODUCT_ID);
-            res = strcpy(output,  pc);
-            strcat(output, "\n");
+	    if (pc) {
+		res = strcpy(output,  pc);
+		strcat(output, "\n");
+	    } else {
+                strcpy( output , "\n");
+            }
             ftt_free_stat(b);
             ftt_close(tmp);
         }
