@@ -43,6 +43,33 @@ def format_time(theTime):
     Trace.trace(12,"}format_time ")
     return ntime
 
+# parse the encp line
+def parse_encp_line(line):
+    Trace.trace(12,"{parse_encp_line "+repr(line))
+    [etime, enode, etmp, euser, estatus, etmp2, erest] = \
+                                                   string.split(line, None, 6)
+    if estatus == log_client.sevdict[log_client.INFO]:
+        [erest2, erest3] = string.splitfields(erest, ":", 1)
+        # erest2 has the file name info which we do not need, get the 
+        # total data transfer rate from the end of erest3
+        [erest2, tt] = string.splitfields(erest3, "(", 1)
+        [tt, etmp] = string.splitfields(tt, ")",1)
+        # what's left in erest2 is what we want, but make it clearer
+        # that the rate in this line is the user rate
+	erate = string.splitfields(erest2, " ")
+    else:
+        # there was an error or warning
+        try:
+            [str1, str2, erest2] = string.splitfields(erest, ":", 2)
+	    Trace.trace(12,"}parse_encp_line ")
+	    return [etime, enode, euser, estatus, str1, str2, erest2]
+        except:
+            # the leftover text was formatted funny, just output it
+	    Trace.trace(12,"}parse_encp_line ")
+	    return [etime, enode, euser, estatus, erest]
+    Trace.trace(12,"}parse_encp_line ")
+    return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7]]
+
 class EnStatus:
 
     # output the encp info
@@ -340,29 +367,22 @@ class EnStatus:
 	spacing = ""
 	# break up each line into it's component parts, format it and save it
 	for line in lines:
-	    [etime, enode, etmp, euser, estatus, etmp2, erest] = \
-	                          string.split(line, None, 6)
-	    str = str+spacing+etime+" on "+enode+" by "+euser
+	    einfo = parse_encp_line(line)
+	    str = str+spacing+einfo[0]+" on "+einfo[1]+" by "+einfo[2]
 	    spacing = "                  "
-	    if estatus == log_client.sevdict[log_client.INFO]:
-	        [erest2, erest3] = string.splitfields(erest, ":", 1)
-	        # erest2 has the file name info which we do not need, get the 
-	        # total data transfer rate from the end of erest3
-	        [erest2, tt] = string.splitfields(erest3, "(", 1)
-	        [tt, etmp] = string.splitfields(tt, ")",1)
-	        str = str+" (Data Transfer Rate : "+tt+")"
+	    if einfo[3] == log_client.sevdict[log_client.INFO]:
+	        str = str+" (Data Transfer Rate : "+einfo[4]+")"
 	        # what's left in erest2 is what we want, but make it clearer
 	        # that the rate in this line is the user rate
-	        str = str+prefix+string.replace(erest2, " at ", \
-	                                        " at a user rate of ")+"\n"
+	        str = str+prefix+einfo[5]+" bytes copied to "+einfo[6]+ \
+	              " at a user rate of "+einfo[7]+"\n"
 	    else:
 	        # there was an error or warning
-	        try:
-	            [str1, str2, erest2] = string.splitfields(erest, ":", 2)
-	            str = str+prefix+str1+" : "+str2+prefix+erest2
-	        except:
+	        if len(einfo) == 7:
+	            str = str+prefix+einfo[4]+" : "+einfo[5]+prefix+einfo[6]
+	        else:
 	            # the leftover text was formatted funny, just output it
-	            str = str+prefix+erest
+	            str = str+prefix+einfo[4]
 	Trace.trace(13,"}format_encp ")
 	return str
 
