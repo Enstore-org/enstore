@@ -342,11 +342,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
             library = record['library']
             sg = volume_family.extract_storage_group(record['volume_family'])
-            if self.quota_enabled(library, sg):
-                vol_count = self.sgdb.get_sg_counter(library, sg) - 1
-                Trace.trace(21, "delvol: volume_counter %s" % (vol_count))
-                if vol_count >= 0: self.sgdb.inc_sg_counter(library, sg, increment=-1)
-                if vol_count == 0: self.sgdb.delete_sg_counter(library, sg)
+            self.sgdb.inc_sg_counter(library, sg, increment=-1)
 
         return status
 
@@ -516,9 +512,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         library = record['library']
         q_dict = self.quota_enabled(library, storage_group)
         if q_dict:
-            if self.check_quota(q_dict, library, storage_group):
-                self.sgdb.inc_sg_counter(library, storage_group)
-            else:
+            if not self.check_quota(q_dict, library, storage_group):
                 msg="%s Quota exceeded when reassiging blank volume to it. Contact enstore admin."%(storage_group)
                 Trace.log(e_errors.ERROR,msg)
                 ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
@@ -528,6 +522,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record['volume_family'] = string.join((storage_group, ff, wp), '.')
 
         self.dict[vol] = record
+        self.sgdb.inc_sg_counter(library, storage_group)
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
@@ -621,16 +616,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # check if quota is enabled
                 q_dict = self.quota_enabled(library, sg)
                 if q_dict:
-                    if self.check_quota(q_dict, library, sg):
-                        inc_counter = 1
-                    else:
+                    if not self.check_quota(q_dict, library, sg):
                         msg="Volume Clerk: %s quota exceeded while adding %s. Contact enstore admin."%(sg, external_label)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.log(e_errors.ERROR,msg)
                         self.reply_to_caller(ticket)
                         return
+                inc_counter = 1
         else:
-            msg= "Volume Clerk: key %s is missing" % (detail,)
+            msg= "Volume Clerk: key %s or %s is missing" % ('library', 'storage_group')
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -1061,7 +1055,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         
             Trace.trace(20, "find matching volume returned %s" % (vol,))
 
-        inc_count = 0
+        inc_counter = 0
         if not vol or len(vol) == 0:
             # nothing was available - see if we can assign a blank from a
             # common pool
@@ -1075,9 +1069,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             if vol and len(vol) != 0:
                 # check if quota is enabled
                 q_dict = self.quota_enabled(library, sg)
+                inc_counter = 1
                 if q_dict:
                     if self.check_quota(q_dict, library, sg):
-                        inc_counter = 1
                         # this should not happen, do it but let someone know that
                         # more volumes need to be assigned to the storage group.
                         Trace.alarm(e_errors.ERROR,
@@ -1089,7 +1083,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                             ic.override(enstore_constants.ENSTORE, enstore_constants.RED)
                             # release ic
                             del ic
-
                     else:
                         msg="Volume Clerk: %s quota exceeded while drawing from common pool. Contact enstore admin."%(sg)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
@@ -1110,8 +1103,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 msg = 'blank'
             Trace.log(e_errors.INFO, "Assigning %s volume %s from storage group %s to library %s, volume family %s"
                       % (msg, label, pool, library, vol_fam))
-            if inc_count: self.sgdb.inc_sg_counter(library, sg)
-
+            if inc_counter: self.sgdb.inc_sg_counter(library, sg)
             self.dict[label] = vol  
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
@@ -2062,7 +2054,16 @@ class VolumeClerk(VolumeClerkMethods):
         self.sgdb = sgdb.SGDb(dbHome)
         # rebuild it if it was not loaded
         if len(self.sgdb.dict) == 0:
-            self.sgdb.__rebuild_sg_count()
+            c = self.dict.newCursor()
+            k, v = c.first()
+            while k:
+                try:
+                    sg = string.split(v['volume_family'], '.')[0]
+                    self.sgdb.inc_sg_counter(v['library'], sg)
+                except:
+                    pass
+                k, v = c.next()
+            c.close()
         self.noaccess_cnt = 0
         self.max_noaccess_cnt = self.keys.get('max_noaccess_cnt', 2)
         self.noaccess_to = self.keys.get('noaccess_to', 300.)
