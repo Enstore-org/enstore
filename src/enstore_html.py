@@ -52,7 +52,9 @@ DEFAULT_FILE_LIST_ROWS = 300
 DEFAULT_THRESHOLDS = [DEFAULT_LM_ROWS, DEFAULT_FULL_LM_ROWS, DEFAULT_LM_ROWS]
 DEFAULT_ALL_ROWS = 0
 
-NO_INFO_STATES = [enstore_constants.TIMED_OUT, enstore_constants.DEAD]
+NO_INFO_STATES = [enstore_constants.TIMED_OUT, enstore_constants.DEAD, enstore_constants.NO_SUSPECT_VOLS,
+                  enstore_constants.NO_WORK_QUEUE, enstore_constants.NO_ACTIVE_VOLS,
+                  enstore_constants.NO_STATE]
 
 LM_COLS = 5
 
