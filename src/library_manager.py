@@ -408,6 +408,7 @@ def summon_mover(self, mover, ticket):
 # summon mover timer function
 def summon_mover_d(self, mover, ticket):
     mvr = find_mover(mover,self.del_dismount_list.list)
+    Trace.trace(16,"summon_mover_d %s" % repr(mvr))
     if mvr:
 	if mvr.has_key("del_dism"):
 	    del mvr["del_dism"]
@@ -1011,12 +1012,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			Trace.trace(13,"have_bound_volume delayed dismount %s"%w)
 			return
 	    except:
+                e_errors.handle_error()
 		# no delayed dismount: flag dismount
 		dismount_vol = 1 
 
 	    if dismount_vol:
 		# unbind volume
-		timer_task.msg_cancel_tr(summon_mover, self, mv['mover'])
+		timer_task.msg_cancel_tr(summon_mover_d, self, mv['mover'])
 		Trace.trace(12, "del_dismount_list %s"%repr(self.del_dismount_list.list))
 		if mv in self.del_dismount_list.list:
 		    Trace.log(e_errors.INFO, "have_bound removed delayed_dismount entry %s"%repr(mv))
