@@ -422,24 +422,6 @@ class Mover(EnstoreServer):
 	    EnstoreServer.is_alive(self)
 	    self.in_bad_state = 0
 
-"""
-class UpDownInterface(generic_client.GenericClientInterface):
- 
-    def __init__(self, flag=1, opts=[]):
-        self.do_parse = flag
-        self.restricted_opts = opts
-	self.summary = do_output
-	self.no_mail = 0
-	self.html = 0
-	generic_client.GenericClientInterface.__init__(self)
-
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.help_options() + ["summary", "html", "no-mail"]
-"""
 class UpDownInterface(generic_client.GenericClientInterface):
  
     def __init__(self, args=sys.argv, user_mode=1):
@@ -670,22 +652,29 @@ def do_real_work():
     if summary_d[enstore_constants.ENSTORE] == enstore_constants.DOWN:
 	stat = "DOWN"
 	rtn = 1
-	# only raise an alarm if we got a message from the alarm server and the log_server
-	# because the alarm will be logged
-	if summary_d[log.format_name] == enstore_constants.UP and \
-	   summary_d[alarm.format_name] == enstore_constants.UP and \
-	   summary_d[cs.format_name] == enstore_constants.UP:
-            # determine remedy type based on config node
-            remedy_type = REMEDY_TYPE_D.get(cs.config_host[0:2], cs.config_host)
-	    # the following line will set the alarm function
-	    alc = alarm_client.AlarmClient((cs.config_host, cs.config_port))
-	    Trace.init("Enstore_Up_Down")
-	    Trace.alarm(e_errors.INFO, e_errors.ENSTOREBALLRED, {'Reason':repr(reason)}) 
-            print "%s - Ticket Generated %s, %s, %s"%(e_errors.ENSTOREBALLRED,
-                                                      {'Reason':repr(reason)}, "RedBall",
-                                                      remedy_type)
-	    Trace.alarm(e_errors.INFO, "%s - Ticket Generated"%(e_errors.ENSTOREBALLRED,),
-                        {'Reason':repr(reason)}, "RedBall", remedy_type) 
+        # see if this enstore is known to be down, if so, then do not send mail or
+        # generate a ticket
+        if not offline_d.has_key(enstore_constants.ENSTORE):
+            # only raise an alarm if we got a message from the alarm server and the log_server
+            # because the alarm will be logged
+            if summary_d[log.format_name] == enstore_constants.UP and \
+                   summary_d[alarm.format_name] == enstore_constants.UP and \
+                   summary_d[cs.format_name] == enstore_constants.UP:
+                # determine remedy type based on config node
+                remedy_type = REMEDY_TYPE_D.get(cs.config_host[0:2], cs.config_host)
+                # the following line will set the alarm function
+                alc = alarm_client.AlarmClient((cs.config_host, cs.config_port))
+                Trace.init("Enstore_Up_Down")
+                Trace.alarm(e_errors.INFO, e_errors.ENSTOREBALLRED, {'Reason':repr(reason)}) 
+                print "%s - Ticket Generated %s, %s, %s"%(e_errors.ENSTOREBALLRED,
+                                                          {'Reason':repr(reason)}, "RedBall",
+                                                          remedy_type)
+                Trace.alarm(e_errors.INFO, "%s - Ticket Generated"%(e_errors.ENSTOREBALLRED,),
+                            {'Reason':repr(reason)}, "RedBall", remedy_type)
+            else:
+                enprint("%s - LOG, ALARM, or CONFIG server not running, a ticket will NOT be generated!!!"%(e_errors.ENSTOREBALLRED,))
+        else:
+            enprint("%s - Enstore is marked down, a ticket will NOT be generated!!!"%(e_errors.ENSTOREBALLRED,))
     else:
 	stat = "UP"
 	rtn = 0
@@ -702,7 +691,10 @@ def do_real_work():
             os.system('cat "%s" >> "%s"' % (server.mail_file, summary_file))
             server.remove_mail()
     if (not no_mail) and need_to_send:
-	os.system("/usr/bin/Mail -s \"%s\" $ENSTORE_MAIL < %s"%(subject, summary_file))
+        if not offline_d.has_key(enstore_constants.ENSTORE):
+            os.system("/usr/bin/Mail -s \"%s\" $ENSTORE_MAIL < %s"%(subject, summary_file))
+        else:
+            enprint("Enstore is marked down, no mail will be sent")
     os.system("rm %s"%(summary_file,))
     
     # rewrite the seen down file as we keep track of how many times something has 
