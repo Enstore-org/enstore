@@ -739,7 +739,7 @@ def inventory(output_dir, cache_dir):
 
     rc_file.write("Date this listing was generated: %s\n\n"%(
         time.ctime(time.time())))
-    rc_file.write("These volumes are full and have only deleted files.")
+    rc_file.write("These volumes are full and have only deleted files.\n")
     rc_file.write("They MAY be recycled.\n\n")
 
     de_format = "%6d\t%12s\t%12d\t%12d\t%12s\t%12s\t%s\n"
