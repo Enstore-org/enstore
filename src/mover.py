@@ -1032,9 +1032,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if status[0] == e_errors.OK:  #There is a label present!
                         msg = "volume %s already labeled %s" % (volume_label,status[1])
                         Trace.log(e_errors.ERROR, msg)
-                        self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
                         self.vcc.set_system_noaccess(volume_label)
+                        self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
                         self.error(status[1], status[0])
                         return 0
 
