@@ -681,7 +681,7 @@ def check_server(csc, server_name):
 # get the configuration client and udp client and logger client
 # return some information about who we are so it can be used in the ticket
 
-def clients(config_host,config_port):
+def clients():
 
     # get a configuration server client
     csc = get_csc()
@@ -1407,18 +1407,21 @@ def open_data_socket(mover_addr, interface_ip):
     
     Trace.message(INFO_LEVEL, "Connecting data socket.")
 
-    data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        #Create the socket.
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error, msg:
+        raise socket.error, msg
+
+    #Put the socket into non-blocking mode.
     flags = fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_GETFL)
     fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL,
                 flags | os.O_NONBLOCK)
 
     try:
         data_path_socket.bind((interface_ip, 0))
-        #Trace.log(e_errors.INFO, "bind %s" % (interface_ip,))
     except socket.error, msg:
         raise socket.error, msg
-        #Trace.log(e_errors.ERROR, "bind: %s %s" % (interface_ip, msg))
-        
 
     try:
         data_path_socket.connect(mover_addr)
@@ -2070,13 +2073,31 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     socket_status = (e_errors.OK, None)
     socket_dict = {'status':socket_status}
     if control_socket:
-        #Determine if the control socket has some errror to report.
-        read_fd, write_fd, exc_fd = select.select([control_socket],
-                                                  [], [], 15)
-        #check control socket for error.
-        if read_fd:
-            socket_dict = receive_final_dialog(control_socket)
-            socket_status = socket_dict.get('status', (e_errors.OK , None))
+        socket_error = control_socket.getsockopt(socket.SOL_SOCKET,
+                                                 socket.SO_ERROR)
+        if socket_error:
+            socket_status = (e_errors.NET_ERROR, os.strerror(socket_error))
+            socket_dict = {'status':socket_status}
+            request_dictionary = combine_dict(socket_dict, request_dictionary)
+        else:
+            #Determine if the control socket has some errror to report.
+            read_fd, write_fd, exc_fd = select.select([control_socket],
+                                                      [], [], 15)
+            #check control socket for error.
+            if read_fd:
+                socket_dict = receive_final_dialog(control_socket)
+                socket_status = socket_dict.get('status', (e_errors.OK , None))
+                request_dictionary = combine_dict(socket_dict,
+                                                  request_dictionary)
+
+    #Just to be paranoid check the listening socket.  Check the current
+    # socket status to avoid wiping out an error.
+    if e_errors.is_ok(socket_dict) and listen_socket:
+        socket_error = listen_socket.getsockopt(socket.SOL_SOCKET,
+                                                socket.SO_ERROR)
+        if socket_error:
+            socket_status = (e_errors.NET_ERROR, os.strerror(socket_error))
+            socket_dict = {'status':socket_status}
             request_dictionary = combine_dict(socket_dict, request_dictionary)
 
     #The volume clerk set the volume NOACCESS.
@@ -2556,14 +2577,9 @@ def verify_write_file_consistancy(request_list, e):
 #None
 #Verifies that various information in the tickets are correct, valid, spelled
 # correctly, etc.
-def verify_write_request_consistancy(request_list, e):
+def verify_write_request_consistancy(request_list):
 
     for request in request_list:
-
-        #Verify that everything with the files (existance, permissions,
-        # etc) is good to go.
-        #inputfile_check(request['infile'])
-        #outputfile_check(request['infile'], request['outfile'], e.put_cache)
 
         #Consistancy check for valid pnfs tag values.  These values are
         # placed inside the 'vc' sub-ticket.
@@ -2581,17 +2597,6 @@ def verify_write_request_consistancy(request_list, e):
                     IndexError, KeyError), msg:
                     msg = "Error checking tag %s: %s" % (key, str(msg))
                     raise EncpError(None, str(msg), e_errors.USERERROR)
-                    #request['status'] = (e_errors.USERERROR, msg)
-                    #print_data_access_layer_format(request['infile'],
-                    #                               request['outfile'],
-                    #                               request['file_size'],
-                    #                               request)
-                    #quit() #Harsh, but necessary.
-            #except EncpError, msg:
-            #    print_data_access_layer_format(
-            #        request['infile'],request['outfile'],request['file_size'],
-            #        {'status':(msg.type, msg.strerror)})
-            #    quit() #Harsh, but necessary.
 
         #Verify that the file family width is in fact a non-
         # negitive integer.
@@ -2604,16 +2609,6 @@ def verify_write_request_consistancy(request_list, e):
             msg="Pnfs tag, %s, requires a non-negitive integer value."\
                  % ("file_family_width",)
             raise EncpError(None, str(msg), e_errors.USERERROR)
-            #request['status'] = (e_errors.USERERROR, msg)
-            #print_data_access_layer_format(request['infile'],
-            #                               request['outfile'],
-            #                               request['file_size'],
-            #                               request)
-            #quit() #Harsh, but necessary.
-
-        #Where does this really belong???
-        #if not e.put_cache: #Skip this for dcache transfers.
-        #    create_zero_length_files(request['outfile'])
 
 ############################################################################
 
@@ -2937,7 +2932,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Be parinoid.  Check this the ticket again.
         try:
-            verify_write_request_consistancy([ticket], e)
+            verify_write_request_consistancy([ticket])
         except EncpError, msg:
             msg.ticket['status'] = (msg.type, msg.strerror)
             return msg.ticket
@@ -3141,7 +3136,7 @@ def write_to_hsm(e, tinfo):
     #This will halt the program if everything isn't consistant.
     try:
         verify_write_file_consistancy(request_list, e)
-        verify_write_request_consistancy(request_list, e)
+        verify_write_request_consistancy(request_list)
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
         print_data_access_layer_format("", "", 0, msg.ticket)
@@ -3301,7 +3296,7 @@ def verify_read_file_consistancy(requests_per_vol, e):
 # None
 #Verifies that various information in the tickets are correct, valid, spelled
 # correctly, etc.
-def verify_read_request_consistancy(requests_per_vol, e):
+def verify_read_request_consistancy(requests_per_vol):
 
     bfid_brand = None
     sum_size = 0L
@@ -3846,8 +3841,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         #Be parinoid.  Check this the ticket again.
         try:
             verify_read_request_consistancy(
-               {request_ticket.get("external_label","label"):[request_ticket]},
-               e)
+              {request_ticket.get("external_label","label"):[request_ticket]},)
         except EncpError, msg:
             msg.ticket['status'] = (msg.type, msg.strerror)
             result_dict = handle_retries(request_list, msg.ticket,
@@ -4089,7 +4083,7 @@ def read_from_hsm(e, tinfo):
     #This will halt the program if everything isn't consistant.
     try:
         verify_read_file_consistancy(requests_per_vol, e)
-        verify_read_request_consistancy(requests_per_vol, e)
+        verify_read_request_consistancy(requests_per_vol)
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
         print_data_access_layer_format("", "", 0, msg.ticket)
@@ -4407,13 +4401,13 @@ def main():
 
     #If verbosity is turned on get the group name(s).
     try:
-        user_group = grp.getgrgid(os.geteuid())[0]
+        user_group = grp.getgrgid(os.getegid())[0]
     except (OSError, KeyError):
-        user_group = os.geteuid()
+        user_group = os.getegid()
     try:
-        real_group = grp.getgrgid(os.getuid())[0]
+        real_group = grp.getgrgid(os.getgid())[0]
     except (OSError, KeyError):
-        real_group = os.getuid()
+        real_group = os.getgid()
 
     #If verbosity is turned on and the transfer is a write to enstore,
     # output the tag information.
@@ -4466,7 +4460,7 @@ def main():
 
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.
-    client = clients(e.config_host, e.config_port)
+    client = clients()
     #Report on the success of getting the csc and logc.
     Trace.message(CONFIG_LEVEL, format_class_for_print(client['csc'], 'csc'))
     Trace.message(CONFIG_LEVEL, format_class_for_print(client['logc'], 'logc'))
