@@ -58,11 +58,11 @@ while [ $done -gt 0 ]; do
   echo `date` wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null 1>&2
   wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null
   rc=$?; if [ $rc -ne 0 ]; then echo "wget $tape FAILED "l exit $rc;else echo `date` got it 1>&2 ; fi
-  if [ `egrep -c 'NOACCESS|NOTALLOWED' $tape` -ne 0 ]; then rm -f $tape; continue; fi
+  if [ `egrep -c 'NOACCESS|NOTALLOWED' $tape` -ne 0 ]; then echo `date` REJECTED NOACCESS/NOTALLOED 1>&2; rm -f $tape; continue; fi
   grep /pnfs $tape | grep -v deleted > ${tape}_
   rm -f $tape
   NF=`wc ${tape}_| awk '{print $1}'`
-  if [ $NF -le 0 ]; then rm  ${tape}_; continue; fi
+  if [ $NF -le 0 ]; then echo `date` REJECTED NO FILES 1>&2; rm  ${tape}_; continue; fi
 
   # choose a random file on the random volume
   ran=`python -c "import whrandom;print whrandom.randint(1,"$NF")"`
@@ -74,14 +74,14 @@ while [ $done -gt 0 ]; do
   if [ ! -r $F ]; then
     bfid=`echo $file | awk '{print $NF}'`
     info=`enstore file --bfid $bfid 2>/dev/null`
-    if [ $? -ne 0 ]; then rm  ${tape}_; continue; fi
+    if [ $? -ne 0 ]; then echo `date` REJECTED CAN NOT FIND BFID 1>&2; rm  ${tape}_; continue; fi
     pnfsid=`echo $info | sed -e "s/.*pnfsid': '//" -e "s/'.*//"`
     D=`dirname $F`
     cd $D 2>/dev/null
-    if [ $? -ne 0 ]; then rm  ${tape}_; continue; fi
+    if [ $? -ne 0 ]; then echo `date` REJECTED CAN NOT FIND DIRECTORY 1>&2; rm  ${tape}_; continue; fi
     FN=`cat ".(nameof)($pnfsid)" 2>/dev/null`
-    if [ $? -ne 0 ]; then rm  ${tape}_; continue; fi
-    if [ ! -r $FN ]; then rm  ${tape}_; continue; fi
+    if [ $? -ne 0 ]; then echo `date` REJECTED CAN NOT FIND FILENAME 1>&2; rm  ${tape}_; continue; fi
+    if [ ! -r $FN ]; then echo `date` REJECTED CAN NOT READ  FILE 1>&2; rm  ${tape}_; continue; fi
     file="$FN $R"
     F=$FN
   fi
