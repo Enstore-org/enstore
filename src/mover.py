@@ -233,6 +233,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             self.dismount_volume()
             self.dismount_time = None
             self.state = IDLE
+            self.mode = None
             
         ticket = self.format_lm_ticket()
         
@@ -526,7 +527,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             return
         
         ticket = self.format_lm_ticket(state=ERROR, error_info=(e_errors.MOVER_BUSY, ticket))
-        self.udpc.send_no_wait(ticket, lm_addr)
+        self.udpc.send_no_wait(ticket, lm_address)
 
     def prepare_volume(self, volume_label, iomode, location=None):
         if iomode is READ and location is None:
@@ -625,8 +626,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
             data_ip=self.config.get("data_ip",None)
             host, port, listen_socket = callback.get_data_callback(fixed_ip=data_ip)
             listen_socket.listen(4)
-            if not ticket.has_key('mover'):
-                ticket['mover']={}
             ticket['mover']['callback_addr'] = (host,port) #client expects this
             # ticket must have 'callback_addr' set for the following to work
             control_socket = callback.user_callback_socket( ticket)
