@@ -80,6 +80,8 @@ typedef struct {
 #define FTT_OPN_OPEN            15
 #define FTT_OPN_RSKIPREC	16
 #define FTT_OPN_RSKIPFM		17
+#define FTT_OPN_SETDENSITY	18
+#define FTT_OPN_SETCOMPRESSION	19
 
 /* operation masks */
 #define FTT_OP_READ 		(1 <<  FTT_OPN_READ )
@@ -99,19 +101,21 @@ typedef struct {
 #define FTT_OP_OPEN            	(1 <<  FTT_OPN_OPEN )
 #define FTT_OP_RSKIPREC		(1 <<  FTT_OPN_RSKIPREC)
 #define FTT_OP_RSKIPFM		(1 <<  FTT_OPN_RSKIPFM)
+#define FTT_OP_SETDENSITY	(1 <<  FTT_OPN_SETDENSITY)
+#define FTT_OP_SETCOMPRESSION	(1 <<  FTT_OPN_SETCOMPRESSION)
 
 /* flags values (system/device dependant) */
-#define FTT_FLAG_FSF_AT_EOF	0x00000001	/* fsf to get past eof  */
-#define FTT_FLAG_REOPEN_AT_EOF	0x00000002	/* reopen    "          */
-#define FTT_FLAG_HOLD_SIGNALS	0x00000004	/* sighold reads/writes */
-#define FTT_FLAG_REOPEN_R_W	0x00000008	/* reopen on r/w switch */
-#define FTT_FLAG_SUID_SCSI	0x00000010	/* must be root to do scsi */
-#define FTT_FLAG_CHK_BOT_AT_FMK	0x00000020	/* check for reset/rewinds */
-#define FTT_FLAG_BSIZE_AFTER	0x00000040	/* set blocksize after open */
-#define FTT_FLAG_VERIFY_EOFS	0x00000080	/* check whether EOF is EOT */
-#define FTT_FLAG_SUID_DRIVEID	0x00000100	/* need root to get driveid */
-#define FTT_FLAG_MODE_AFTER     0x00000200  /* set mode After dev is opened */
-#define FTT_FLAG_NO_DENSITY	0x00000400  /* dont actually set density */
+#define FTT_FLAG_FSF_AT_EOF	0x00000001 /* fsf to get past eof  */
+#define FTT_FLAG_REOPEN_AT_EOF	0x00000002 /* reopen    "          */
+#define FTT_FLAG_HOLD_SIGNALS	0x00000004 /* sighold reads/writes */
+#define FTT_FLAG_REOPEN_R_W	0x00000008 /* reopen on r/w switch */
+#define FTT_FLAG_SUID_SCSI	0x00000010 /* must be root to do scsi */
+#define FTT_FLAG_CHK_BOT_AT_FMK	0x00000020 /* check for reset/rewinds */
+#define FTT_FLAG_BSIZE_AFTER	0x00000040 /* set blocksize after open */
+#define FTT_FLAG_VERIFY_EOFS	0x00000080 /* check whether EOF is EOT */
+#define FTT_FLAG_SUID_DRIVEID	0x00000100 /* need root to get driveid */
+#define FTT_FLAG_MODE_AFTER     0x00000200 /* set mode After dev is opened */
+#define FTT_FLAG_NO_DENSITY	0x00000400 /* dont actually set density */
 
 typedef struct {
 	char *value[FTT_MAX_STAT];
@@ -156,7 +160,7 @@ extern ftt_stat_entry ftt_stat_op_tab[];
 #define FTT_DO_RS     0x00000008   /* do basic request sense */
 #define FTT_DO_EXBRS  0x00000010   /* do Exabyte vendor specifics */
 #define FTT_DO_LS     0x00000020   /* do log sense for read/write stats */
-
+#define FTT_DO_VSRS   0x00000040   /* to request sense for vendor specific stuff */
 #define FTT_DO_05RS   0x00000100   /* EXABYTE 8x05 Request sense added bytes */
 #define FTT_DO_DLTRS  0x00000200   /* DLT Request sense added bytes */
 #define FTT_DO_TUR    0x00000400   /* do a test unit ready */

@@ -101,7 +101,7 @@ ftt_scsi_check(scsi_handle n,char *pcOp, int stat, int len) {
 	"ftt_scsi_command: %s command returned  a %d, \n\
 request sense data: \n\
 %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n";
-    static unsigned char acSensebuf[19];
+    static unsigned char acSensebuf[18];
 
     static unsigned char acReqSense[]={ 0x03, 0x00, 0x00, 0x00, 
 				     sizeof(acSensebuf), 0x00 };

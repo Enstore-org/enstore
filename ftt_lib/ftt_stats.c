@@ -70,11 +70,12 @@ ftt_itoa(long n) {
 	sprintf(buf,"%ld", n);
 	return buf;
 }
+
 static char *
 ftt_dtoa(double n) {
 	static char buf[128];
 
-	sprintf(buf,"%0.f", n);
+	sprintf(buf,"%.0f", n);
 	return buf;
 }
 
@@ -115,6 +116,7 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 		}
 		DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);
 		b->value[n] = strdup(pcStart);
+		/* why is this "if" here??? I forget now... mengel*/
 		if ( save != 'n' ) *pcEnd = save;
 	}
     if (do_freeme) {
@@ -228,7 +230,7 @@ ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 ** bit  -- return the nth bit of a byte
 */
 #define pack(a,b,c,d) \
-     (((unsigned long)(a)<<24) + ((long)(b)<<16) + ((long)(c)<<8) + (long)(d))
+     (((unsigned long)(a)<<24) + ((unsigned long)(b)<<16) + ((unsigned long)(c)<<8) + (unsigned long)(d))
 
 #define bit(n,byte) (unsigned long)(((byte)>>(n))&1)
 
@@ -382,10 +384,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     */
 
     if (stat_ops & FTT_DO_RS) {
-	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   32, 0x00};
+	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   18, 0x00};
 
 	/* request sense data */
-	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 32, 10, 0);
+	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 18, 10, 0);
 	if(res < 0){
 	    failures++;
 	} else {
@@ -472,11 +474,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     }
 
     /* 
-    ** Get other request sense available data now that we know for sure
+    ** Get other vendor specific request sense available data now that we know for sure
     ** what kind of drive this is from the inquiry data.
     */
 
-    if (stat_ops & FTT_DO_RS) {
+    if (stat_ops & FTT_DO_VSRS) {
 	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   32, 0x00};
 
 	/* request sense data */

@@ -20,7 +20,7 @@ static char rcsid[] = "@(#)$Id$";
  */
 #include <stdio.h>
 #include <fcntl.h>
-#include <sg.h>
+#include <scsi/sg.h>
 #include <string.h>
 #include "ftt_private.h"
 
@@ -115,7 +115,11 @@ ftt_scsi_command(
         DEBUG2(stderr,"sending scsi frame:\n");
         DEBUGDUMP2(pcCmd,nCmd);
 
-	if (gotstatus && pcCmd[0] == 0x03) {
+	/* the system only gets 19 bytes of RS data on Linux, so if
+	 * the requester wanted *more* than that, we have to re-ask
+	 * anyhow.. 
+	 */
+	if (gotstatus && pcCmd[0] == 0x03 && nRdWr < 19) {
 		/* we already have log sense data, so fake it */
 		memcpy(  pcRdWr, sg_hd->sense_buffer, nRdWr );
 		gotstatus = 0;
@@ -174,12 +178,14 @@ ftt_scsi_command(
 		}
 	}
 
-	gotstatus = 1;
-	/* res = ftt_scsi_check(n,pcOp,scsistat,nRdWr); */
 
 	if (pcRdWr != 0 && nRdWr != 0){
 		DEBUG4(stderr,"Read/Write buffer:\n");
 		DEBUGDUMP4(pcRdWr,res);
 	}
+
+	gotstatus = 1;
+	res = ftt_scsi_check(n,pcOp,scsistat,res);
+
 	return res;
 }

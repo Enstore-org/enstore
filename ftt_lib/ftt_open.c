@@ -326,7 +326,11 @@ ftt_open_set_mode (ftt_descriptor d,int status_res) {
 	}
 
 	if (!d->density_is_set) {
-	    res = ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
+	    if (d->scsi_ops && FTT_OP_SETCOMPRESSION ) {
+	        res = ftt_scsi_set_compression(d,d->devinfo[d->which_is_default].mode);
+	    } else {
+	        res = ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
+	    }
 	    if (res < 0) {
 			return res;
 	    }
