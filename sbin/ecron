@@ -184,6 +184,10 @@ shift
 
 eval $procName $*  >$procOutput 2>&1
 problem=$?
+# adjust the exit code so that it does not disappear off of the cron job plot
+if [ $problem -gt 5 -o $problem -lt -5 ] ; then
+   problem=7
+fi
 if [ $problem -ne 0 ] ; then
    echo "" >$procMail
    echo "  The Enstore ecron Scheduler found a problem running task !!! $procName $* !!! " >>$procMail
