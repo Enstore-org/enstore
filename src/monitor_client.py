@@ -25,7 +25,7 @@ import Trace
 import e_errors
 import configuration_client
 import enstore_constants
-import enstore_functions
+import enstore_functions2
 import log_client
 
 MY_NAME = "MNTR_CLI"
@@ -392,9 +392,9 @@ class MonitorServerClient(generic_client.GenericClient):
             'work' : 'recieve_measurement',
             'refresh' : self.refresh,
             'measurement': (
-            enstore_functions.format_time(time.time()),
-            enstore_functions.strip_node(client_addr),
-            enstore_functions.strip_node(server_addr),
+            enstore_functions2.format_time(time.time()),
+            enstore_functions2.strip_node(client_addr),
+            enstore_functions2.strip_node(server_addr),
             "%.4g" % (read_measurement['rate'],),
             "%.4g" % (write_measurement['rate'],)
             )}
@@ -632,14 +632,14 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
         config['html_gen_host'] = html_gen_host
 
     summary_d = {enstore_constants.TIME:
-                 enstore_functions.format_time(time.time())}
-    summary_d[enstore_constants.BASENODE] = enstore_functions.strip_node(
+                 enstore_functions2.format_time(time.time())}
+    summary_d[enstore_constants.BASENODE] = enstore_functions2.strip_node(
         os.uname()[1])
     summary_d[enstore_constants.NETWORK] = enstore_constants.UP  # assumption
     summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
     
     for host, ip in host_list:
-        hostname = enstore_functions.strip_node(host)
+        hostname = enstore_functions2.strip_node(host)
         if vetos.is_vetoed_item(ip):
             if not summary:
                 print "Skipping %s" % (vetos.veto_info(ip),)

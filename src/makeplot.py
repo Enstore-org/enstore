@@ -7,7 +7,7 @@ import tempfile
 import time
 
 import configuration_client
-import enstore_functions
+import enstore_functions2
 
 
 #Conversion from "bytes per 15 seconds" to "terabytes per day"
@@ -70,9 +70,9 @@ def get_rate_info():
     if ratekeeper_name == 'MISSING' or ratekeeper_name == "":
         if ratekeeper_host == 'MISSING' or ratekeeper_name == "":
             ratekeeper_name = os.environ.get("ENSTORE_CONFIG_HOST")
-            ratekeeper_name = enstore_functions.strip_node(ratekeeper_name)
+            ratekeeper_name = enstore_functions2.strip_node(ratekeeper_name)
         else:
-            ratekeeper_name = enstore_functions.strip_node(ratekeeper_host)
+            ratekeeper_name = enstore_functions2.strip_node(ratekeeper_host)
     if rate_nodes == 'MISSING':
         rate_nodes = ''
         

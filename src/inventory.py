@@ -10,7 +10,6 @@ import pprint
 
 #user imports
 import db
-import enstore_functions
 import checkBackedUpDatabases
 import configuration_client
 import enstore_constants

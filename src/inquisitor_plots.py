@@ -184,18 +184,18 @@ class InquisitorPlots:
     def get_bpd_files(self):
 	nodes_l = string.split(self.pts_nodes, ",")
 	files_l = []
-	this_node = enstore_functions.strip_node(os.uname()[1])
+	this_node = enstore_functions2.strip_node(os.uname()[1])
 	pts_file_only = "%s%s"%(enstore_constants.BPD_FILE, enstore_plots.PTS)
 	pts_file = "%s/%s"%(self.pts_dir, pts_file_only)
 	for node in nodes_l:
-	    node = enstore_functions.strip_node(node)
+	    node = enstore_functions2.strip_node(node)
 	    # make sure node is up before rcping
-	    if enstore_functions.ping(node) == enstore_constants.ALIVE:
+	    if enstore_functions2.ping(node) == enstore_constants.ALIVE:
 		new_file = "/tmp/%s.%s"%(pts_file_only, node)
 		if node == this_node:
 		    rtn = os.system("cp %s %s"%(pts_file, new_file))
 		else:
-		    rtn = enstore_functions.get_remote_file(node, pts_file, new_file)
+		    rtn = enstore_functions2.get_remote_file(node, pts_file, new_file)
 		if rtn == 0:
 		    # the copy was a success
 		    files_l.append((new_file, node))

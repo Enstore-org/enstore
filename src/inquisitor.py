@@ -28,6 +28,8 @@ import Trace
 import e_errors
 import enstore_files
 import enstore_functions
+import enstore_functions2
+import enstore_erc_functions
 import enstore_constants
 import www_server
 import volume_family
@@ -427,23 +429,23 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					   "make new log file")
 
     def add_new_server(self, key, config_d):
-        if enstore_functions.is_mover(key):     
+        if enstore_functions2.is_mover(key):     
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
                 self.server_d[key] = monitored_server.MonitoredMover(cdict, key,
 								     self.csc)
-        elif enstore_functions.is_media_changer(key):
+        elif enstore_functions2.is_media_changer(key):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
                 self.server_d[key] = monitored_server.MonitoredMediaChanger(cdict,
                                                                             key)
-        elif enstore_functions.is_library_manager(key):
+        elif enstore_functions2.is_library_manager(key):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
                 self.server_d[key] = monitored_server.MonitoredLibraryManager(cdict,
 									      key, 
 									      self.csc)
-        elif enstore_functions.is_generic_server(key):
+        elif enstore_functions2.is_generic_server(key):
 	    # this is a generic server - make sure we are now monitoring this server
             cdict = config_d[key]
 	    if self.ok_to_monitor(cdict) and self.servers_by_name.has_key(key):
@@ -539,7 +541,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.update_variables_from_config(self.config_d)
 
     def handle_lmc_error(self, lib_man, time, state):
-        status = enstore_functions.get_status(state)
+        status = enstore_functions2.get_status(state)
         self.serverfile.output_error(lib_man.host, status, time, lib_man.name)
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				   "lm client - ERROR: %s"%(status,))
@@ -587,7 +589,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if queue:
             for elem in queue:
                 if elem['work'] == "write_to_hsm" and \
-                   enstore_functions.strip_node(elem['wrapper']['machine'][1]) == node:
+                   enstore_functions2.strip_node(elem['wrapper']['machine'][1]) == node:
                     ff = elem['vc']['file_family']
                     if ff_dict.has_key(ff):
                         if ff_dict[ff][FF_W] > elem['vc']['file_family_width']:
@@ -639,8 +641,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 									     ff, node)
 	    Trace.alarm(e_errors.ERROR, txt)
 	    enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, txt)
-	    enstore_functions.send_mail(MY_NAME, 
-	      enstore_functions.format_mail("Write data using the full file_family width to enstore from %s"%(node,),
+	    enstore_functions2.send_mail(MY_NAME, 
+	      enstore_functions2.format_mail("Write data using the full file_family width to enstore from %s"%(node,),
 			  "Why are there %s elems in the pend queue and only %s elems in the wam queue?"%(pend_num, 
 													  wam_num),
 					    txt), "Write Queue Stall")
@@ -911,7 +913,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
 	# if the new information is for a mover and the mover status is not
 	# bad, then we are done.
-	if enstore_functions.is_mover(server.name):
+	if enstore_functions2.is_mover(server.name):
 	    if server.server_status not in MOVER_ERROR_STATES:
 		# there is no problem
 		return
@@ -925,7 +927,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		else:
 		    # we do not have information on this lm yet.
 		    return
-	elif enstore_functions.is_library_manager(server.name):
+	elif enstore_functions2.is_library_manager(server.name):
 	    lm = server
 	    Trace.trace(enstore_constants.INQWORKDBG, 
 			"CBW: lm %s"%(lm.name))
@@ -951,7 +953,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	if lm.wam_queue:
 	    for qelem in lm.wam_queue:
 		# remove any '.fnal.gov' from the node name
-		node = enstore_functions.strip_node(qelem['wrapper']['machine'][1])	    
+		node = enstore_functions2.strip_node(qelem['wrapper']['machine'][1])	    
 		vc = qelem['vc']
 		mover = self.get_server(qelem[enstore_constants.MOVER])
 		if mover.server_status in MOVER_ERROR_STATES and \
@@ -1049,7 +1051,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         self.event_relay.alive(now)
         self.sent_event_relay_alarm = 0  
-	msg = enstore_functions.read_erc(self.erc, fd)
+	msg = enstore_erc_functions.read_erc(self.erc, fd)
         if msg:
             # ignore messages that originated with us
             if msg.type == event_relay_messages.ALIVE and \
@@ -1061,11 +1063,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 if self.server_d.has_key(msg.server):
                     server = self.server_is_alive(msg.server)
                     # if server is a mover, we need to get some extra status
-                    if enstore_functions.is_mover(msg.server):
+                    if enstore_functions2.is_mover(msg.server):
                         self.update_mover(server)
 			self.check_for_bad_writes(server)
                     # if server is a library_manager, we need to get some extra status
-                    if enstore_functions.is_library_manager(msg.server):
+                    if enstore_functions2.is_library_manager(msg.server):
                         self.update_library_manager(server)
 			self.check_for_bad_writes(server)
             elif msg.type == event_relay_messages.NEWCONFIGFILE:
@@ -1166,7 +1168,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    msg = "The saag page element %s has been overridden to %s for %.0d seconds"%(element,
 									           elist[0], 
 										   now - elist[1])
-		    enstore_functions.send_mail(MY_NAME, msg, subject)
+		    enstore_functions2.send_mail(MY_NAME, msg, subject)
 		    self.override_mail_sent[element] = now
 
     # our client said to update the enstore system status information

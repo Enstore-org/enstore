@@ -6,7 +6,7 @@ import sys
 
 import event_relay_client
 import event_relay_messages
-import enstore_functions
+import enstore_erc_functions
 import generic_client
 import option
 
@@ -40,7 +40,7 @@ def do_real_work(intf):
 		    erc.sock.close()
 		    return
 		else:
-		    msg = enstore_functions.read_erc(erc)
+		    msg = enstore_erc_functions.read_erc(erc)
 		    if msg:
 			print time.ctime(now), msg.type, msg.extra_info
 	    if now - start > TEN_MINUTES:
