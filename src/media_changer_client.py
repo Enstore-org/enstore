@@ -49,14 +49,13 @@ class MediaChangerClient(generic_client.GenericClient):
         vticket = self.csc.get(self.media_changer)
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
-    def loadvol(self, vol_ticket, mover, drive):
+    def loadvol(self, vol_ticket, mover, drive, vcc):
         ticket = {'work'           : 'loadvol',
                   'vol_ticket'     : vol_ticket,
                   'drive_id'       : drive
                   }
 	rt = self.send(ticket)
 	if rt['status'][0] == e_errors.OK:
-	    vcc = volume_clerk_client.VolumeClerkClient(self.csc)
 	    v = vcc.set_at_mover(vol_ticket['external_label'], 'mounted',mover)
 	    if v['status'][0] != e_errors.OK:
 		format = "cannot change to 'mounted' vol=%s mover=%s state=%s"
@@ -70,14 +69,13 @@ class MediaChangerClient(generic_client.GenericClient):
 
         return rt
 
-    def unloadvol(self, vol_ticket, mover, drive):
+    def unloadvol(self, vol_ticket, mover, drive, vcc):
         ticket = {'work'           : 'unloadvol',
                   'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
                   }
 	rt = self.send(ticket)
 	if rt['status'][0] == e_errors.OK:
-	    vcc = volume_clerk_client.VolumeClerkClient(self.csc)
 	    v = vcc.set_at_mover(vol_ticket['external_label'], 'unmounted', 
 				mover)
 	    if v['status'][0] != e_errors.OK:
