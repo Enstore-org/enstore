@@ -222,8 +222,7 @@ def fatal_enstore( self, error_info ):
     rsp = udpc.send( ticket, self.lm_origin_addr )
     # Enstore design issue... it has not yet been decided what to do; so for
     # now I just...   #XXX
-    sys.exit(-1)
-#    while 1: time.sleep( 100 )	 # this does exactly what you think it does!
+    while 1: time.sleep( 100 )	 # the Inquisitor will restart us
     return
 
 # MUST SEPARATE SYSTEM AND USER FUNCTIONS - I.E. ERROR MIGHT BE USERGONE
