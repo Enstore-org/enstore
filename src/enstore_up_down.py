@@ -312,6 +312,14 @@ class LibraryManager(EnstoreServer):
 	    EnstoreServer.is_alive(self)
 
     def get_enstore_state(self, state):
+	# THIS IS A BLOODY HACK THAT SHOULD BE REMOVED ASAP
+	if self.name == "samm2.library_manager":
+	    if self.mover_status()[0] == LOW_CAPACITY:
+		return state | enstore_constants.WARNING
+	    else:
+		return EnstoreServer.get_enstore_state(self, state)
+	# END OF BLOODY HACK
+
 	if self.mover_status()[0] == LOW_CAPACITY:
 	    return state | enstore_constants.DOWN
 	else:
