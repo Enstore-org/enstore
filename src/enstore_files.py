@@ -181,7 +181,9 @@ class HTMLEncpStatusFile(EnStatusFile):
 				  einfo[EBYTES], einfo[EDEV], einfo[EXRATE], 
 				  einfo[EURATE]])
 		elif len(einfo) and einfo[ESTATUS] == e_errors.sevdict[e_errors.ERROR]:
-		    eline.append([einfo[ETIME], einfo[ENODE], einfo[EUSER], einfo[ETEXT]])
+		    # remove the MSG_TYPE=XXXXX from the output text
+		    txt = string.split(einfo[ETEXT], Trace.MSG_TYPE)
+		    eline.append([einfo[ETIME], einfo[ENODE], einfo[EUSER], txt[0]])
 	    else:
 		doc = enstore_html.EnEncpStatusPage(self.refresh)
 		doc.body(eline)
