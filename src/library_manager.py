@@ -209,8 +209,6 @@ class AtMovers:
                 break
         return rc
 
-    def mover_type(self, ticket):
-        return ticket.get("mover_type", "Mover")
     
 ##############################################################
        
@@ -285,6 +283,9 @@ class LibraryManagerMethods:
         ## storage group limit reached
         self.postponed_requests = PostponedRequests(self.postponed_requests_time)
        
+    def mover_type(self, ticket):
+        return ticket.get("mover_type", "Mover")
+
     def __init__(self, name, csc, sg_limits, min_file_size, max_suspect_movers, max_suspect_volumes):
         self.name = name
         self.min_file_size = min_file_size
