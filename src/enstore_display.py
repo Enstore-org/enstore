@@ -22,7 +22,7 @@ import re
 import Trace
 import mover_client
 import configuration_client
-import enstore_constants
+#import enstore_constants
 
 #Set up paths to find our private copy of tcl/tk 8.3
 
@@ -800,6 +800,8 @@ class Mover:
             pass
 
     def undraw_buffer(self):
+        self.buffer_size = None #Clear this before next connection.
+
         try:        
             self.display.delete(self.buffer_bar_bg)
             self.buffer_bar_bg = None
@@ -2535,6 +2537,8 @@ class Display(Tkinter.Canvas):
         self.create_movers(self.mover_names)
 
     def newconfig_command(self, command_list):
+        __pychecker__ = "no-argsused"  #Supress pychecker warning.
+        
         self.reinitialize()
 
     #########################################################################
