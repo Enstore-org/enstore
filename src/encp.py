@@ -1629,15 +1629,8 @@ def submit_one_request(ticket):
 
     #Send work ticket to LM
     #Get the library manager info information.
-    if ticket['work'] == "read_from_hsm":
-        # allow library manager selection based on the environment variable
-        lm = os.environ.get('ENSTORE_SPECIAL_LIB')
-        if lm == None:
-            lm = ticket['vc']['library']
-    else:
-        lm = ticket['vc']['library']
     lmc = library_manager_client.LibraryManagerClient(
-        csc, lm + ".library_manager")
+        csc, ticket['vc']['library'] + ".library_manager")
     if ticket['infile'][:5] == "/pnfs":
         responce_ticket = lmc.read_from_hsm(ticket)
     else:
@@ -3674,6 +3667,11 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             route_selection = 1
         else:
             route_selection = 0
+
+        # allow library manager selection based on the environment variable
+        lm = os.environ.get('ENSTORE_SPECIAL_LIB')
+        if lm != None:
+            vc_reply['library'] = lm
 
         request = {}
         request['bfid'] = bfid
