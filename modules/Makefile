@@ -1,3 +1,8 @@
+#############################################################
+#
+#  $Id$
+#
+
 all:	 Trace Makefile.modules Modules 
 
 # The target Makefile.modules generates a file Makefile.modules
@@ -21,6 +26,7 @@ Makefile.modules: Setup
 
 Modules:
 	@echo "MAKING MODULES ================================"
+	cd SWIG ; make 
 	make -f Makefile.modules
 
 Trace:	
@@ -65,3 +71,4 @@ clean:
 	-rm -f  ../sbin/traceMode
 	-rm -f  ../sbin/traceOn
 	-rm -f  ../sbin/traceOff
+	cd SWIG; make clean
