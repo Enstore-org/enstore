@@ -34,7 +34,7 @@ dedicated for data movement.
 potential for an extreme performance degradation if the default window is
 set too large.  A value of about 32K works well at most locations at Fermilab.
 
-<h3>encp.conf -- Detailed Control</h3>
+<h3>enstore.conf -- Detailed Control</h3>
 
 Administrators can create an enstore.conf file to allow for multiple network
 interface cards dedicated to Enstore, and to allow for a different IP address
@@ -75,7 +75,7 @@ hostip=131.225.42.42
 
 <h4>Interface lines</h4>
 
-This feature of encp.conf is used when data transfers over more than one
+This feature of enstore.conf is used when data transfers over more than one
 network interface are necessary. An enstore.conf file would typically contain
 at least two of these lines, since a single interface can be controlled more
 conventionally with static routes. Currently the interface lines are only
