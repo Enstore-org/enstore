@@ -103,6 +103,9 @@ F=/tmp/\${thisnode}.special.tgz
 rm -fr \$F
 tar -czf \$F \\
   /var/adm/krb5/* \\
+  /etc/fstab \\
+  /etc/rc.d/rc.local \\
+  /etc/rc.d/rc.sysinit \\
   /etc/hosts.* \\
   /etc/HOSTNAME \\
   /etc/ntp.conf \\
