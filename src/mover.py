@@ -915,6 +915,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	    else:
 		rr = self.client_obj_inst.hsm_driver.rd_bytes_get()
 		ww = self.client_obj_inst.hsm_driver.wr_bytes_get()
+		bs = self.client_obj_inst.hsm_driver.blocksize
 		p_rr = self.client_obj_inst.prev_r_bytes
 		p_ww = self.client_obj_inst.prev_w_bytes
 		if rr == p_rr and ww == p_ww:
@@ -922,12 +923,12 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 			try:    os.system( '/usr/local/bin/traceMode 0' )
 			except: pass
 			if self.client_obj_inst.mode == 'w':
-			    msg = 'writing mover '
-			    if rr > ww+100000: msg = msg + 'tape stall'
+			    msg = 'writing mover (rr=%d ww=%d) '%(rr,dd)
+			    if rr >= ww+bs: msg = msg + 'tape stall'
 			    else:              msg = msg + 'network stall'
 			else:
-			    msg = 'reading mover '
-			    if rr > ww+100000: msg = msg + 'network stall'
+			    msg = 'reading mover (rr=%d ww=%d) '%(rr,dd)
+			    if rr >= ww+bs: msg = msg + 'network stall'
 			    else:              msg = msg + 'tape stall'
 			    pass
 			logc.send( log_client.ERROR,1,msg+' - should abort' )
