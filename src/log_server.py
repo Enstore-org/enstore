@@ -51,11 +51,11 @@ import Trace
 class Logger(  dispatching_worker.DispatchingWorker
 	     , generic_server.GenericServer):
 
-    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+    def __init__(self, csc=0, clist=0, host=interface.default_host(), \
                  port=interface.default_port(), test=0, list=0):
         Trace.trace(10, '{__init__')
         # get the config server
-        configuration_client.set_csc(self, csc, host, port, list)
+        configuration_client.set_csc(self, csc, host, port, clist)
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
