@@ -302,10 +302,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.config['do_eject'][0] in ('n','N'):
                 self.do_eject = 0
 
-        self.default_dismount_delay = self.config.get('dismount_delay', 60)
-        if self.default_dismount_delay < 0:
-            self.default_dismount_delay = 31536000 #1 year
 
+        
         self.mc_device = self.config.get('mc_device', 'UNDEFINED')
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
@@ -386,6 +384,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
+
+
+        self.default_dismount_delay = self.config.get('dismount_delay', 60)
+        if self.default_dismount_delay < 0:
+            self.default_dismount_delay = 31536000 #1 year
+            
+            
+        self.mount_delay = self.config.get('dismount_delay',
+                                           self.tape_driver.mount_delay)
+        
+        if type(self.mount_delay) != type(0):
+            self.mount_delay = int(self.mount_delay)
+        if self.mount_delay < 0:
+            self.mount_delay = 0
+            
 	dispatching_worker.DispatchingWorker.__init__( self, self.address)
         self.libraries = []
         lib_list = self.config['library']
@@ -1072,6 +1085,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.timer('mount_time')
         
         mcc_reply = self.mcc.loadvol(self.vol_info, self.name, self.mc_device)
+
+        if self.mount_delay:
+            Trace.trace(25, "waiting %s seconds after mount"%self.mount_delay)
+            time.sleep(self.mount_delay)
 
         status = mcc_reply.get('status')
         Trace.trace(10, 'mc replies %s' % (status,))
