@@ -2,16 +2,19 @@ import sys
 import time
 import timeofday
 import traceback
-from configuration_client import configuration_client
-from volume_clerk_client import VolumeClerkClient
-from file_clerk_client import FileClerkClient
-from udp_client import UDPClient
+
+#enstore modules
+import configuration_client
+import volume_clerk_client
+import file_clerk_client
+import udp_client
 import callback
 import log_client
-from driver import RawDiskDriver, FTTDriver
-from media_changer_client import MediaLoaderClient
+import media_changer_client
 import cpio
 import binascii
+from driver import RawDiskDriver, FTTDriver
+
 
 class Mover :
 
@@ -24,8 +27,8 @@ class Mover :
             (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
         self.config_host = config_host
         self.config_port = config_port
-        self.csc = configuration_client(self.config_host,self.config_port)
-        self.u = UDPClient()
+        self.csc = configuration_client.configuration_client(self.config_host,self.config_port)
+        self.u = udp_client.UDPClient()
         self.sleeptime = 1.0
         self.chkremote = 2.*60./self.sleeptime
         self.local = self.chkremote-1
@@ -123,7 +126,7 @@ class Mover :
     def bind_volume(self, ticket) :
 
         # become a volume clerk client first
-        vcc = VolumeClerkClient(self.csc)
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
 
         # find out what volume clerk knows about this volume
         self.external_label = ticket["external_label"]
@@ -145,7 +148,7 @@ class Mover :
         self.driver.set_blocksize(blocksize)
 
         # need a media changer to control (mount/load...) the volume
-        self.mlc = MediaLoaderClient(self.csc, self.media_changer)
+        self.mlc = media_changer_client.MediaLoaderClient(self.csc, self.media_changer)
 
         lmticket = self.mlc.loadvol(self.external_label, self.library_device)
         if lmticket["status"] != "ok" :
@@ -174,7 +177,7 @@ class Mover :
         self.driver.unload()
 
         # we will be needing a media loader to help unmount/unload...
-        self.mlc = MediaLoaderClient(self.csc, self.media_changer)
+        self.mlc = media_changer_client.MediaLoaderClient(self.csc, self.media_changer)
 
         # now ask the media changer to unload the volume
         ticket = self.mlc.unloadvol(self.external_label, self.library_device)
@@ -214,7 +217,7 @@ class Mover :
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and tell him we are going to append to volume
-        vcc = VolumeClerkClient(self.csc)
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         self.vticket = vcc.set_writing(self.external_label)
         if ticket["status"] != "ok" :
             raise "volume clerk forgot about this volume"
@@ -258,7 +261,7 @@ class Mover :
         # we've read the file from user, shut down data transfer socket
         print "socket.close",media_error
         self.data_socket.close()
-        vcc = VolumeClerkClient(self.csc)
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         
         # check for errors and inform volume clerk
         if media_error :
@@ -293,7 +296,7 @@ class Mover :
                                                wr_err,rd_err,\
                                                wr_access,rd_access)
         # connect to file clerk and get new bit file id
-        fc = FileClerkClient(self.csc)
+        fc = file_clerk_client.FileClerkClient(self.csc)
         self.fticket = fc.new_bit_file(file_cookie,ticket["external_label"],
                                        sanity_cookie,complete_crc)
         # bfid & crc needed, but save other useful information for user too
@@ -330,7 +333,7 @@ class Mover :
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and check on volume
-        vcc = VolumeClerkClient(self.csc)
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         self.vticket = vcc.inquire_vol(self.external_label)
         if self.vticket["status"] != "ok" :
             raise "volume clerk forgot about this volume"
@@ -447,15 +450,7 @@ class Mover :
 if __name__ == "__main__" :
     import getopt
     import string
-    # Import SOCKS module if it exists, else standard socket module socket
-    # This is a python module that works just like the socket module, but uses
-    # the SOCKS protocol to make connections through a firewall machine.
-    # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-    # goto www.python.org and search for "import SOCKS"
-    try:
-        import SOCKS; socket = SOCKS
-    except ImportError:
-        import socket
+    import socket
 
     # defaults
     #config_host = "localhost"
