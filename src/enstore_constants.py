@@ -10,6 +10,7 @@ MPH = "mph"
 MPD = "mpd_total"
 MPD_MONTH = "mpd_month"
 UTIL = "Utilization"
+SG = "sg"
 LOG = ".log"
 LOG_PREFIX = "LOG-"
 
@@ -24,6 +25,7 @@ BPD_FILE_W = "%s_w"%(BPD_FILE,)
 XFER_FILE = "%s%s"%(FILE_PREFIX, XFER)
 XFERLOG_FILE = "%s%s"%(XFER_FILE, LOG)
 UTIL_FILE = "_%s"%(UTIL,)
+SG_FILE = "%s%s"%(FILE_PREFIX, SG)
 # ratekeeper generated plot data files
 NULL_RATES = "null_rates"
 REAL_RATES = "real_rates"
@@ -116,6 +118,7 @@ TOTALONXFERS = "total_ong_xfers"
 READONXFERS = "read_ong_xfers"
 WRITEONXFERS = "write_ong_xfers"
 PENDING = "pending"
+WAM = "work at movers"
 WORK = "work"
 MOVERS = "movers"
 ID = "id"
