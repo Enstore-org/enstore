@@ -465,6 +465,8 @@ class Interface:
                 self.vol = value
             elif opt == "--vols":
                 self.vols = 1
+            elif opt == "--VOL1OK":
+                self.vol1ok = 1
             elif opt == "--web-host":
                 self.web_host = value
 

@@ -474,6 +474,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.no_access = ""
         self.decr_file_count = 0
         self.rmvol = 0
+        self.vol1ok = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -485,7 +486,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 "clear=", "backup", "vols","next","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
                 "no-access=", "decr-file-count=","force",
-                "restore=", "all","destroy=", "modify="]
+                "restore=", "all","destroy=", "modify=","VOL1OK"]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -584,6 +585,9 @@ def do_work(intf):
                                    ticket['user_inhibit'])
     elif intf.add:
         print repr(intf.args)
+        cookie = 'none'
+        if intf.vol1ok:
+            cookie = '0000_000000000_0000001'
         library, storage_group, file_family, wrapper, media_type, capacity = intf.args[:6]
         capacity = my_atol(capacity)
         # if wrapper is empty create a default one
@@ -598,7 +602,8 @@ def do_work(intf):
                          media_type,     
                          intf.add,                  # name of this volume
                          capacity,
-                         wrapper=wrapper)           # rem cap'y of volume
+                         wrapper=wrapper,
+                         eod_cookie=cookie)           # rem cap'y of volume
     elif intf.modify:
         d={}
         for s in intf.args:
