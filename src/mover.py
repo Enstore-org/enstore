@@ -1989,8 +1989,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 #End of tape
                                 Trace.log(e_errors.INFO, "hit EOT while reading tape. Current Location %s Previous location %s"%
                                           (self.current_location, prev_loc))
-                                #self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
-                                #failed = 1
+                                self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_NODATA, error_source=TAPE)
+                                failed = 1
                                 break
                     elif detail == 'FTT_EBLANK':
                         Trace.log(e_errors.INFO, "perhaps EOT.Current Location %s Previous location %s"%

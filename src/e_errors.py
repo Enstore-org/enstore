@@ -135,6 +135,7 @@ READ_BADLOCATE  = 'READ_BADLOCATE'
 READ_ERROR      = 'READ_ERROR'
 READ_EOT        = 'READ_EOT'
 READ_EOD        = 'READ_EOD'
+READ_NODATA     = 'READ_NODATA'
 
 ## Volume label errors
 # read error trying to check VOL1 header, reading/writing hsm
