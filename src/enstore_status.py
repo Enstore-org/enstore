@@ -227,6 +227,13 @@ class EnStatus:
 	self.text[key][enstore_constants.PENDING] = {enstore_constants.READ : [],
 						     enstore_constants.WRITE: []}
 	# first the read queue, preserve the order sent from the lm
+	for mover in work['admin_queue']:
+	    dict = self.get_pend_dict(mover, key, writekey, readkey)
+	    if dict[enstore_constants.WORK] == enstore_constants.WRITE:
+		self.text[key][enstore_constants.PENDING][enstore_constants.WRITE].append(dict)
+	    else:
+		self.text[key][enstore_constants.PENDING][enstore_constants.READ].append(dict)
+	    
 	for mover in work['read_queue']:
 	    dict = self.get_pend_dict(mover, key, writekey, readkey)
 	    self.text[key][enstore_constants.PENDING][enstore_constants.READ].append(dict)
