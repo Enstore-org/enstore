@@ -71,6 +71,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 (old_vm_dir,file) = os.path.split(old_vol_map_name)
 	 new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
 	 # rename map files
+	 Trace.log(e_errors.INFO, "trying volume map directory renamed %s->%s"%\
+		   (old_vm_dir, new_vm_dir))
 	 os.rename(old_vm_dir, new_vm_dir)
 	 Trace.log(e_errors.INFO, "volume map directory renamed %s->%s"%\
 		   (old_vm_dir, new_vm_dir))
