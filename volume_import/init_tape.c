@@ -16,6 +16,7 @@ void Usage()
     exit(-1);
 }
 
+int clear_db_volume();
     
 int
 main(int argc, char **argv)
@@ -79,21 +80,25 @@ main(int argc, char **argv)
     verify_tape_db(1);
     verify_db_volume(1);
 
-    if (open_tape(2))
+    if (open_tape(2) 
+	||rewind_tape()
+	||write_vol1_header()
+	||write_eof(2)
+	||write_eot1_header(1)
+	||close_tape()){
+	clear_db_volume();
 	exit(-2);
-    if (rewind_tape())
-	exit(-2);
-    if (write_vol1_header())
-	exit(-2);
-    if (write_eof(2))
-	exit(-2);
-    if (write_eot1_header(1))
-	exit(-2);
-    if (close_tape())
-	exit(-2);
-
-    /* all is well, add it to the db */
-    
+    }
+    /* all is well */
     return 0;
 }
+
+int clear_db_volume(){
+    char cmd[MAX_PATH_LEN + 8];
+    sprintf(cmd, "/bin/rm -rf %s/volumes/%s", tape_db, volume_label);
+    return system(cmd); /* XXX I was lazy when I wrote this, there must be a nicer way */
+}
+
+
+
 

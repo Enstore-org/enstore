@@ -168,16 +168,25 @@ main(int argc, char **argv)
 	verify_file(pnfs_dir, filename);
 	append_to_file_list(pnfs_dir, filename);
     }
-
+    
+    if (open_tape(2)) /* || rewind_tape()) */
+	exit(-2);
+    
     for (nfiles=0,node=file_list; node; ++nfiles,node=node->next) {
-	printf("adding file %s to volume %s, pnfs_dir = %s\n",
-	       node->filename, volume_label, node->pnfs_dir);
+	verbage("adding file %s to volume %s, pnfs_dir = %s\n",
+		   node->filename, volume_label, node->pnfs_dir);
 	if (do_add_file(node->pnfs_dir, node->filename)){
+	    break;  /* XXX clean up this whole batch of additions ? */
+	}
+	if (write_eof(1)){
 	    break;
 	}
     }
-    printf("handled %d file%c\n", nfiles, nfiles==1?' ':'s');
-	       
+    verbage("handled %d file%c\n", nfiles, nfiles==1?' ':'s');
+    
+    if (close_tape())
+	exit(-2);
+    
     return 0;
 }
 

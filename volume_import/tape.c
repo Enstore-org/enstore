@@ -5,16 +5,14 @@
 #include "volume_import.h"
 
 int open_tape(mode){
-    int fd;
-    
-    if (verbose) printf("%s: opening %s\n", progname, tape_device);
+    verbage("%s: opening %s\n", progname, tape_device);
 
     if (!tape_device){
 	fprintf(stderr,"%s: tape_device not specified\n", progname);
 	return -1;
     }
     tape_fd = open(tape_device, mode);
-    if (fd<0){
+    if (tape_fd<0){
 	fprintf(stderr, "%s: ", progname);
 	perror(tape_device);
 	return -1;
@@ -23,7 +21,7 @@ int open_tape(mode){
 }
 
 int close_tape(){
-    if (verbose) printf("%s: closing %s\n", progname, tape_device);
+    verbage("%s: closing %s\n", progname, tape_device);
 
     if (close(tape_fd)){
 	fprintf(stderr,"%s: close_tape", progname);
@@ -48,6 +46,8 @@ check_tape_ioctl(int op, int count, char *msg){
 
     if (check_tape_fd(msg))
 	return -1;
+
+    verbage("tape ioctl %d %d (%s)\n", op, count, msg);
     
     mtop.mt_op = op;
     mtop.mt_count = count;
@@ -60,19 +60,19 @@ check_tape_ioctl(int op, int count, char *msg){
 
 int 
 rewind_tape(){
-    if (verbose) printf("%s: rewinding %s\n", progname, tape_device);
+    verbage("%s: rewinding %s\n", progname, tape_device);
     return check_tape_ioctl(MTREW, 0, "rewind");
 }
 
 int 
 set_variable_blocksize(){
-    if (verbose) printf("%s: setting variable blocksize on %s\n", progname,
+    verbage("%s: setting variable blocksize on %s\n", progname,
 			tape_device);
     return check_tape_ioctl(MTSETBLK, 0, "set block size");
 }
 
 int write_eof(int n){
-    if (verbose) printf("%s: writing %d eof markers on %s\n", progname,
+    verbage("%s: writing %d eof markers on %s\n", progname,
 			n, tape_device);
     return check_tape_ioctl(MTWEOF, n, "write eof");
 }
@@ -83,8 +83,8 @@ write_tape(char *data, int count){
     int nwritten;
     int tot=0;
 
-    if (verbose) printf("%s: writing %d bytes to %s...", 
-			progname, count, tape_device);
+    verbage("%s: writing %d bytes to %s...", 
+	      progname, count, tape_device);
 
     check_tape_fd("write");
 
@@ -94,6 +94,7 @@ write_tape(char *data, int count){
 	    fprintf(stderr,"%s: short write %d!=%d\n", progname, 
 		    nwritten, nbytes);
 	    if (nwritten<=0){
+		tot=nwritten; /*return*/
 		fprintf(stderr, "%s: write_tape", progname);
 		perror(tape_device);
 		break;
@@ -103,7 +104,7 @@ write_tape(char *data, int count){
 	tot+=nwritten;
 	count-=nwritten;
     }
-    if (verbose) printf(" wrote %d bytes\n", tot);
+    verbage(" wrote %d bytes\n", tot);
     return tot;
 }
 
@@ -113,8 +114,8 @@ read_tape(char *data, int count){
     int nread;
     int tot=0;
 
-    if (verbose) printf("%s: reading %d bytes from %s...", 
-			progname, count, tape_device);
+    verbage("%s: reading %d bytes from %s...", 
+	      progname, count, tape_device);
     
     check_tape_fd("read");
 
@@ -133,7 +134,7 @@ read_tape(char *data, int count){
 	tot+=nread;
 	count-=nread;
     }
-    if (verbose) printf(" read %d bytes\n", tot);
+    verbage(" read %d bytes\n", tot);
     return tot;
 }
 
@@ -151,6 +152,8 @@ write_vol1_header()
 	buf[i]=' ';
     buf[79]='0';
     buf[80]=0;
+
+    verbage("writing VOL1 header %s\n", buf);
 
     if (write_tape(buf,80) != 80){
 	fprintf(stderr, "%s: can't write tape label\n", progname);
@@ -175,6 +178,8 @@ write_eot1_header(int fileno)
     buf[79]='0';
     buf[80]=0;
 
+    verbage("writing EOT header %s\n", buf);
+    
     if (write_tape(buf,80) != 80){
 	fprintf(stderr, "%s: can't write tape label\n", progname);
 	return -1;

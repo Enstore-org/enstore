@@ -16,13 +16,11 @@ prototypes and necessary headers for the volume import package
 #define GB 1024U*1024U*1024U
 
 #define MAX_PATH_LEN 4096  /* get this (portably) from system headers */
-
 #define MAX_LABEL_LEN 70   /* maximum length of  volume label */
 
 #define EARLY_CHECKSUM_SIZE 65536
-
 #define DEFAULT_PERM 0775  /* default permissions for newly created dirs and files*/
-
+#define verbage if (verbose)printf
 #define min(a,b)((a)<(b)?(a):(b))
 
 int do_add_file(char *pnfs_dir, char *filename);
@@ -45,6 +43,9 @@ int write_eot1_header(int);
 int set_variable_blocksize();
 int write_eof(int);
 int close_tape();
+
+int cpio_start(char *);
+int cpio_next_block(char *, int);
 
 /* Global vars */
 

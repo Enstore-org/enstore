@@ -23,13 +23,7 @@ do_add_file(char *pnfs_dir, char *filename)
     struct stat sbuf;
     FILE *fp;
     char *read_buffer;
-    int bytes_read;
     int nbytes;
-    int total_bytes = 0;
-    unsigned int checksum = 0;
-    int early_checksum_done = 0;
-    int early_checksum_size;
-    unsigned int early_checksum = 0;
 
     read_buffer = (char*)malloc(blocksize);
     if (read_buffer == (char*)0){
@@ -73,7 +67,7 @@ do_add_file(char *pnfs_dir, char *filename)
     /* We already verified all the files when building up the file list, but there's 
      * always the possibility that a file was removed or otherwise changed between 
      * then and now */
-
+    
     if (stat(filename,&sbuf)){
 	fprintf(stderr, "%s: ", progname);
 	perror(filename);
@@ -84,52 +78,32 @@ do_add_file(char *pnfs_dir, char *filename)
 
     /* Once we start writing into the database we need to make sure that if any 
      * error occurred, we completely undo the partial addition */
-    
-    if (write_db_i(path,"size", size)) 
-	goto cleanup;
-    if (write_db_s(path,"source", filename))
-	goto cleanup;
-    if (write_db_s(path,"pnfs_dir", pnfs_dir))
-	goto cleanup;
-    early_checksum_size = min(size, EARLY_CHECKSUM_SIZE);
-    if (write_db_i(path,"early_checksum_size", early_checksum_size)){
-	goto cleanup;
-    }
-    
-    if (! (fp=fopen(filename,"r")))
-	goto cleanup;
 
-    while (total_bytes<size){
-	nbytes = min(size-total_bytes, blocksize);
-	bytes_read = fread(read_buffer, 1, nbytes, fp);
-	if (bytes_read < nbytes){
-	    fprintf(stderr, "%s: %s: short read\n", progname, filename);
-	    goto cleanup;
+    if (write_db_i(path,"size", size) 
+	||write_db_s(path,"source", filename)
+	||write_db_s(path,"pnfs_dir", pnfs_dir)
+	||write_db_i(path,"early_checksum_size", early_checksum_size=min(size, EARLY_CHECKSUM_SIZE))
+	||cpio_start(filename))
+	goto cleanup;
+    
+    /* terminate when nbytes=0, i.e. we've handled the last block */
+    while ( (nbytes=cpio_next_block(read_buffer, blocksize)) ){
+	if (nbytes<0){
+	    break;
 	}
-	if (!early_checksum_done){
-	    if (total_bytes+nbytes >= early_checksum_size){
-		/* finish early checksum */
-		early_checksum = adler32(early_checksum, read_buffer,
-					  early_checksum_size - total_bytes);
-		if (write_db_i(path,"early_checksum_size", 
-			       early_checksum_size))
-		    goto cleanup;
-		if (write_db_i(path,"early_checksum", early_checksum))
-		    goto cleanup;
-		
-		early_checksum_done = 1;
-	    } else {
-		early_checksum = adler32(early_checksum, read_buffer, nbytes);
+	else {
+	    if (write_tape(read_buffer, nbytes) != nbytes){
+		nbytes=-1;
+		break;
 	    }
 	}
-	checksum = adler32(checksum, read_buffer, nbytes);
-	total_bytes += bytes_read;
     }
     
-    write_db_i(path, "checksum", checksum);
-
-    /* TODO:  the actual write to tape !*/
-
+    if (nbytes<0
+	||write_db_i(path,"early_checksum", early_checksum)
+	||write_db_i(path,"checksum", checksum))
+	goto cleanup;
+    
     return 0;
     
  cleanup:

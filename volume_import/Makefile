@@ -3,7 +3,7 @@
 PROGS=add_to_tape init_tape
 
 ADD_OBJS=add_to_tape.o do_add_file.o verify.o dbfuncs.o tape.o \
-	ECRC.o global_data.o
+	cpio.o ECRC.o global_data.o	
 
 INIT_OBJS=init_tape.o verify.o tape.o global_data.o
 
@@ -38,6 +38,9 @@ tape.o: tape.c $(HDRS)
 
 ECRC.o: ECRC.c $(HDRS)
 	gcc -c -g -Wall ECRC.c
+
+cpio.o: cpio.c $(HDRS)
+	gcc -c -g -Wall cpio.c
 
 clean:
 	rm -f *.o $(PROGS)

@@ -148,10 +148,9 @@ verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 
     sprintf(path,"%s/volumes/%s", tape_db, volume_label);
     status = stat(path, &sbuf);
-    if (status){ /* it doesn't exist */
+    if (status){ /* it doesn't exist, make it */
 	if (new) 
-	    return 1;
-	
+	    return chkdir(path, 1);
 	fprintf(stderr,"%s: directory %s does not exist.\n%s",
 		progname, path,
 		"Has this volume been initialized?\n");

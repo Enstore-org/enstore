@@ -128,11 +128,16 @@ cpio_read_file(char *read_buffer, int nbytes){
     checksum = adler32(checksum, read_buffer, nbytes);
     total_bytes += bytes_read;
     file_bytes_left -= bytes_read;
+
+    if (verbose)
+	printf("handled %d bytes, %d bytes left\nchecksums: %d, %d\n", total_bytes, 
+	       file_bytes_left, early_checksum, checksum);
+
     return 0;
 }
 
 	
-
+/* returns number of bytes read, 0 on last block, -1 on error */
 int 
 cpio_next_block(char *cpio_buffer, int cpio_buffer_len){
     

@@ -4,15 +4,12 @@
 
 #include "volume_import.h"
 
-
-extern char *progname;
-
 static int 
 write_db_fmt(char *db_path, char *fmt, char *key, int value)
 {
     FILE *fp;
     char path[MAX_PATH_LEN];
-
+    
     sprintf(path, "%s/%s", db_path, key);
     if (!(fp=fopen(path,"w"))){
 	fprintf(stderr,"%s: cannot open ",progname);
@@ -27,6 +24,7 @@ write_db_fmt(char *db_path, char *fmt, char *key, int value)
 int
 write_db_s(char *db_path, char *key, char *value)
 {
+    verbage("adding %s=%s to database\n", key, value);
     return write_db_fmt(db_path, "%s\n", key, (int)(value ? value:""));
 }
 
@@ -34,11 +32,15 @@ write_db_s(char *db_path, char *key, char *value)
 int
 write_db_i(char *db_path, char *key, int value)
 {
+    verbage("adding %s=%d to database\n", key, value);
     return write_db_fmt(db_path,"%d\n", key, value);
 }
 
 int
 write_db_ul(char *db_path, char *key, unsigned long int value)
 {
+    verbage("adding %s=%u to database\n", key, value);
     return write_db_fmt(db_path, "%ul\n", key, value);
 }
+
+
