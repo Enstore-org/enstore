@@ -1181,11 +1181,17 @@ def outputfile_check(inputlist, outputlist, dcache):
             #Test case when used by a user and the file does not exist (as is
             # should be).
             if not access_check(outputlist[i], os.F_OK) and not dcache:
-                #Check for write permissions to the directory.
-                if access_check(os.path.dirname(outputlist[i]), os.W_OK):
-                    outputlist.append(outputlist[i])
+                #Check for existance and write permissions to the directory.
+                if access_check(os.path.dirname(outputlist[i]), os.F_OK):
+                    if access_check(os.path.dirname(outputlist[i]), os.W_OK):
+                        outputlist.append(outputlist[i])
+                    else:
+                        raise EncpError(errno.EACCES,
+                                        os.path.dirname(outputlist[i]),
+                                        e_errors.USERERROR)
                 else:
-                    raise EncpError(errno.EACCES,outputlist[i],
+                    raise EncpError(errno.ENOENT,
+                                    os.path.dirname(outputlist[i]),
                                     e_errors.USERERROR)
                 
             #File exists when run by a normal user.
@@ -1202,7 +1208,7 @@ def outputfile_check(inputlist, outputlist, dcache):
                         getattr(errno, 'EFSCORRUPTED', getattr(errno, "EIO")),
                                     "Filesystem is corrupt.", e_errors.OSERROR)
                 else:
-                    raise EncpError(errno.ENOENT,outputlist[i],
+                    raise EncpError(errno.ENOENT, outputlist[i],
                                     e_errors.USERERROR)
 
             #The file exits, as it should, for a dache transfer.
@@ -3141,6 +3147,10 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         #Fundamentally this belongs in veriry_read_request_consistancy(),
         # but information needed about the input file requires this check.
         inputfile_check(ifullname)
+        
+        #Fundamentally this belongs in veriry_write_request_consistancy(),
+        # but information needed about the output file requires this check.
+        outputfile_check(ifullname, ofullname, e.put_cache)
 
         # get fully qualified name
         #imachine, ifullname, idir, ibasename = fullpath(e.input[i])
@@ -3152,10 +3162,6 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         #elif len(e.input) == 1 and os.path.isdir(ofullname):
         #    ofullname = os.path.join(ofullname, ibasename)
         #    omachine, ofullname, odir, obasename = fullpath(ofullname)
-
-        #Fundamentally this belongs in veriry_write_request_consistancy(), but
-        # information needed about the input file requires this check.
-        inputfile_check(ifullname)
 
         file_size = get_file_size(ifullname)
 
