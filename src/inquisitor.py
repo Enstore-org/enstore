@@ -8,17 +8,14 @@
 # system import
 import sys
 import time
-import copy
 import errno
 import string
-import regsub
 import types
 import os
 
 # enstore imports
 import timeofday
 import traceback
-import callback
 import log_client
 import configuration_client
 import volume_clerk_client
@@ -30,8 +27,6 @@ import mover_client
 import dispatching_worker
 import interface
 import generic_server
-import generic_cs
-import udp_client
 import Trace
 import e_errors
 import enstore_status
@@ -51,40 +46,34 @@ def default_alive_retries():
 
 default_dir = "./"
 
+def ascii_file_name():
+    return "inquisitor.txt"
+
+def inq_file_name():
+    return "inquisitor.html"
+
 def default_ascii_file():
     return default_dir+ascii_file_name()
-
-def default_status_html_file():
-    return default_dir+status_html_file_name()
 
 def default_inq_file():
     return default_dir+inq_file_name()
 
-def default_encp_html_file():
-    return default_dir+encp_html_file_name()
-
 def encp_html_file_name():
     return "encp_"+inq_file_name()
 
-def ascii_file_name():
-    return "inquisitor.txt"
+def default_encp_html_file():
+    return default_dir+encp_html_file_name()
 
 def status_html_file_name():
     return "status_"+inq_file_name()
 
-def inq_file_name():
-    return "inquisitor.html"
+def default_status_html_file():
+    return default_dir+status_html_file_name()
 
 TRUE = 1
 FALSE = 0
 LOGFILE_DIR = "logfile_dir"
 ENCP = "ENCP"
-
-DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
-                "09", "10", "11", "12", "13", "14", "15", "16", \
-                "17", "18", "19", "20", "21", "22", "23"]
-
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
@@ -222,11 +211,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    Trace.trace(12,"}update_library_manager - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
-	    # first get rid of any old stuff if we have it
-	    try:
-	        del lmc.u
-            except:
-                pass
 	    # get a client and then check if the server is alive
 	    lmc = library_manager_client.LibraryManagerClient(self.csc, 0,
 	                                                      key, \
@@ -238,6 +222,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        self.suspect_vols(lmc, (t['host'], t['port']), key, time)
 	        self.mover_list(lmc, (t['host'], t['port']), key, time)
 	        self.work_queue(lmc, (t['host'], t['port']), key, time)
+	    # get rid of this in preparation for the next time through
+	    del lmc.u
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
         Trace.trace(12,"}update_library_manager ")
@@ -256,17 +242,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(12,"}update_mover - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
-	    # get a client and then check if the server is alive
-	    try:
-	        del movc.u
-            except:
-                pass
 	    movc = mover_client.MoverClient(self.csc, 0, key, t['hostip'], \
 	                                    t['port'])
 	    ret = self.alive_status(movc, (t['host'], t['port']),\
 	                            key+self.trailer, time, key)
 	    if ret == self.did_it:
 	        self.mover_status(movc, (t['host'], t['port']), key, time)
+	    # get rid of this in preparation for the next time through
+	    del movc.u
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
         Trace.trace(12,"}update_mover")
@@ -303,15 +286,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(12,"}update_media_changer - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
-	    try:
-	        del mcc.u
-            except:
-                pass
 	    # get a client and then check if the server is alive
 	    mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, \
 	                                              t['hostip'], t['port'])
 	    self.alive_status(mcc, (t['host'], t['port']), key+self.trailer, \
 	                      time, key)
+	    # get rid of this in preparation for the next time through
+	    del mcc.u
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
         Trace.trace(12,"}update_media_changer")
@@ -525,7 +506,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(12,"}update_nofunc ")
 
     # update the enstore system status information
-    def do_update(self, ticket, do_all=FALSE):
+    def do_update(self, do_all=FALSE):
         Trace.trace(11,"{do_update ")
 
 	# check the ascii file and see if it has gotten too big and needs to be
@@ -644,7 +625,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def handle_timeout(self):
 	Trace.trace(4,"{handle_timeout ")
-	self.do_update(0, 0)
+	self.do_update(0)
 	Trace.trace(4,"}handle_timeout ")
 
     # our client said to update the enstore system status information
@@ -665,7 +646,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        return
 	else:
 	    do_all = TRUE
-	self.do_update(ticket, do_all)
+	self.do_update(do_all)
         ticket["status"] = (e_errors.OK, None)
 	self.send_reply(ticket)
         Trace.trace(10,"}update")

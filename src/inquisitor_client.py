@@ -1,18 +1,13 @@
 # system imports
 #
-import time
-import string
 
 # enstore imports
 import configuration_client
 import generic_client
 import generic_cs
-import backup_client
 import udp_client
-import callback
 import interface
 import Trace
-import e_errors
 
 class Inquisitor(generic_client.GenericClient):
 
@@ -42,7 +37,7 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(12,"}send"+repr(s))
         return s
 
-    def update (self, server="", verbose=0):
+    def update (self, server=""):
 	Trace.trace(16,"{update")
 	t = {"work"       : "update" }
 	# see if we have a server or not
@@ -231,7 +226,7 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.CLIENT
 
     elif intf.update:
-        ticket = iqc.update(intf.server, intf.verbose)
+        ticket = iqc.update(intf.server)
 	msg_id = generic_cs.CLIENT
 
     elif intf.timeout:
