@@ -1725,19 +1725,19 @@ def submit_write_request(work_ticket, client, encp_intf):
         
         Trace.message(5, "LIBRARY MANAGER\n%s\n." % pprint.pformat(ticket))
 
-        #if encp_intf.verbose > 4:
-        #    print "LIBRARY MANAGER"
-        #    pprint.pprint(ticket)
+        if encp_intf.verbose > 4:
+            print "LIBRARY MANAGER"
+            pprint.pprint(ticket)
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
                                      None, encp_intf)
         if result_dict['status'][0] == e_errors.RETRY or \
-           not e_errors.is_retriable(result_dict['status'][0]):
+           e_errors.is_retriable(result_dict['status'][0]):
             continue
         else:
-            ticket['status'] = (e_errors.OK, ticket['status'])
+            ticket['status'] = result_dict['status']
             return ticket
-            
+        
     ticket['status'] = (e_errors.TOO_MANY_RETRIES, ticket['status'])
     return ticket
 
