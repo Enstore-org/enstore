@@ -2,12 +2,9 @@
 
 """
 	The purpose of this module is to provide a clean datagram
-	interface for Enstore. Data grams are send, and no errors
-	are returned if the peer if not present. 
-
-	Notice that the python socket is a primitive type, like
-	file descriptors, and so is not available for inheritance.
-	therefore we have to pedantically code all the "methods".
+	interface for Enstore. By "clean" i mean that we try to
+        provide a uniforaminterfaec on all platforms by masking specific
+	errors.
 
 	Specific errors that are masked:
 
@@ -17,17 +14,26 @@
 	the last several messge. N.B. the ECONNREFUSED message is cleared
 	after it is returned to the user.
 
+
+	Notice that the python socket is a primitive type, like
+	file descriptors, and so is not available for inheritance.
+	therefore we have to pedantically code all the "methods".
+
+
 """
 import socket
 import Trace
+import errno
 
 class cleanUDP :
 
 	retry_max = 10
+	previous_sendto_address="N/A"
+	this_sendto_address="N/A"
 
 	def __init__(self, protocol, kind) :
 		if kind != socket.SOCK_DGRAM :
-			throw ("mis-use of class cleanUDP")
+			raise "mis-use of class cleanUDP"
 		self.socket = socket.socket(protocol, kind)
 		return
 	
@@ -57,15 +63,12 @@ class cleanUDP :
 		return self.socket.recv(bufsize)
 
 	# Mitigate case 1 -- ECONNREFUSED from previous sendto
-	def recvfrom(self, bufsize) : 
+	def recvfrom(self, bufsize) :
 		for n in range(0, self.retry_max - 1) :
 			try:
 				return self.socket.recvfrom(bufsize)
 			except socket.error:
-				pass
-			etext = "CleanUDP recvfom retry %d: %s  %d" % (
-				n, address, errno.errorcode[badsock])
-			Trace.trace(0, etext)
+				self.logerror("sendto", n)
 		return self.socket.recvfrom(bufsize)
 
 
@@ -74,15 +77,14 @@ class cleanUDP :
 
 	# Mitigate case 1 -- ECONNREFUSED from previous sendto
 	def sendto(self, string, address) : 
+		self.previous_sendto_address = self.this_sendto_address
+		self.this_sendto_address = address
+
 		for n in range(0, self.retry_max - 1) :
 			try:
 				return self.socket.sendto(string, address)
 			except socket.error:
-				pass
-			etext = "Clean UDP sento try %d failed: %s  d" % (
-				n, address)
-			print etext, socket.error, type(socket.error)
-			#Trace.trace(0, etext)
+				self.logerror("sendto", n)
 		return self.socket.sendto(string, address)
 		
 	def setblocking(self, flag) :
@@ -93,12 +95,30 @@ class cleanUDP :
 		return self.socket.shutdown(how)
 
 
+	def logerror(self, sendto_or_recvfrom, try_number) :
+		badsockerrno = self.socket.getsockopt(
+				socket.SOL_SOCKET,socket.SO_ERROR)
+		badsocktext = repr(errno.errorcode[badsockerrno])
+		etext = "cleanUDP %s try %d %s failed on %s last %s" % (
+			  sendto_or_recvfrom, try_number,
+			  badsocktext, self.this_sendto_address,
+			  self.previous_sendto_address)
+
+		Trace.trace(0, etext)
+		print (etext)
+		# self.enprint(etext)
+
 if __name__ == "__main__" :
-	s = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
-	s.bind(('localhost',303030))
-	# on linux, should see one retry from the followng.
-	s.sendto("all dogs have fleas", ('localhost', 303031))	
-	s.sendto("all dogs have fleas", ('localhost', 303031))	
+	sout = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+	sout.bind(('localhost',303030))
+	# on linux, should see one retry from the following.
+	sout.sendto("all dogs have fleas", ('localhost', 303031))	
+	sout.sendto("all dogs have fleas", ('localhost', 303031))
+	sin = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+	sin.bind(('localhost',303031))
+	sout.sendto("recv seem to work", ('localhost', 303031))
+	print sin.recvfrom(1000)
+
 
 
 
