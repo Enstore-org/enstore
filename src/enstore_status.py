@@ -213,7 +213,8 @@ class EnStatus:
 	    fc = mover.get('fc', "")
 	    # 'external_label' not found in pending work
 	    if fc:
-		dict[DEVICE] = fc['external_label']
+                if fc.has_key('external_label'):
+                    dict[DEVICE] = fc['external_label']
 	    self.text[key][worktype].append(dict)
 
     # output the blocksize info
