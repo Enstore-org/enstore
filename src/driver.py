@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ##############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -147,11 +148,14 @@ class GenericDriver:
 	# Linux is a unix where 'a' always write to end-of-file (appends).
 	# ref. Python Library Reference (Release 1.5.2) p. 15.
 	# Seek operations to locations before eof are only applicable to
-	# reads.  Thus it would be a big hassel to allow writes in the
+	# reads.  Thus it would be a big hassle to allow writes in the
 	# middle of a tape.
 	if loc_cookie==None or loc_cookie=='None' or loc_cookie=='none':
-	      loc = 0
-	else: loc = string.atoi( loc_cookie )
+            loc = 0
+	elif type(loc_cookie)==type(""):
+            loc = string.atoi( loc_cookie )
+        elif type(loc_cookie)==type(0):
+            loc=loc_cookie
 	if self.mode == 'a': self.fo.truncate( loc )
 	self.fo.seek( loc )
 	return None
@@ -384,6 +388,13 @@ class  DelayDriver(RawDiskDriver) :
     pass
 
 
+
+class safeDict:
+    def __setitem__(self,key,val):
+        self.__dict__[key]=val
+    def __getitem__(self,key):
+       return self.__dict__.get(key)
+
 if __name__ == "__main__" :
     import sys				# exit
     import getopt			# getopt
@@ -391,49 +402,52 @@ if __name__ == "__main__" :
     import stat				# stat.ST_SIZE
     import ECRC				# ECRC.ECRC (to do crc)
 
-    Usage = "Usage: python driver.py [--in=file] [--disk_out=file] [--tape_out=dev]"
+    Usage = "Usage: %s [--in=file] [--disk_out=file] [--tape_out=dev]" % sys.argv[0]
 
     #--------------------
     # default, get, and process args
-    opt_disk_out = ''; opt_tape_out = ''; opt_in = ''
+    opt = safeDict()
     optlist,args = getopt.getopt( sys.argv[1:], '',
 				  ['in=','disk_out=','tape_out='] )
-    for opt,val in optlist:
-	exec( 'opt_'+opt[2:]+'="'+val+'"' )
-	pass
+    for option,val in optlist:
+        optname = option[2:]
+        opt[optname]=val
+
     #--------------------
 
-    if opt_disk_out=='' and opt_tape_out=='' or args != []:
+    if (not opt['disk_out']) and (not opt['tape_out']) or args != []:
 	print Usage; sys.exit( 1 )
-	pass
-
+        sys.exit(-1)
+                
     cleanup_in = 'no'
-    if opt_in == '':
+    if not opt['in']:
 	cleanup_in = 'yes'
-	opt_in = 'driver.test.in'
-	fo = open( opt_in, 'w' ); fo.write( '12345' ); fo.close()
+	opt['in'] = 'driver.test.in'
+	fo = open( opt['in'], 'w' ); fo.write( '12345' ); fo.close()
 	pass
-    statinfo = os.stat( opt_in )
+    statinfo = os.stat( opt['in'] )
     fsize = statinfo[stat.ST_SIZE]
     print 'size of in file is', fsize
 
     # write buf1 and buf2, read back buf1
     # write buf3, read back buf2 and buf3
-    buf0 = 'hello'
-    buf1 = 'hi'*2048
-    buf2 = 'end'
+    buf_str = {0:'hello',
+               1:'hi'*2048,
+               2:'end'}
 
-    for driver,dev in ((DelayDriver,opt_disk_out),
-		       (RawDiskDriver,opt_disk_out),
-		       (FTTDriver,opt_tape_out)):
+    buf_loc={}
+    
+    for driver,dev in ((DelayDriver,opt['disk_out']),
+		       (RawDiskDriver,opt['disk_out']),
+		       (FTTDriver,opt['tape_out'])):
 	if dev == '': continue
 
 	# simulate new volume
-	eod_cookie = eval('None')
+	eod_cookie = None
 
 	print "\n driver is",driver,'dev is',dev
 
-	print ' instanceating driver object'
+	print ' instantiating driver object'
 	hsm_driver = driver()
 
 	if driver == FTTDriver:
@@ -452,18 +466,18 @@ if __name__ == "__main__" :
 		print '     seek to eod_cookie',eod_cookie
 		do.seek( eod_cookie )
 
-		exec( "buf%d_loc=%s"%(buf,repr(do.tell())) )
-		print '     buf',buf,'loc is',eval("buf%d_loc"%buf)
+                buf_loc[buf]=do.tell()
+		print '     buf',buf,'loc is',buf_loc[buf]
 		
-		print "     stats - %s"%str(do.get_stats())
+		print "     stats - %s"%do.get_stats()
 		print '     write buf', buf, "pos b4 write is",do.tell()
-		do.write( eval('buf%d'%buf) )
+		do.write( buf_str[buf])
 
-		fo = open( opt_in, 'r' )
+		fo = open( opt['in'], 'r' )
 		crc = do.fd_xfer( fo.fileno(), fsize, ECRC.ECRC )
 		fo.close()
 		print '     the crc is',crc
-		print "     stats - %s"%str(do.get_stats())
+		print "     stats - %s"%do.get_stats()
 	    
 		do.writefm()
 
@@ -476,23 +490,23 @@ if __name__ == "__main__" :
 		print '  read invoking open method'
 		do = hsm_driver.open( dev, "r" )# do = "driver object"
 
-		print '     seek to buf',buf,'location',eval("buf%d_loc"%buf)
-		do.seek( eval("buf%d_loc"%buf) )
+		print '     seek to buf',buf,'location',buf_loc[buf]
+		do.seek( buf_loc[buf])
 	    
-		print "     stats - %s"%str(do.get_stats())
+		print "     stats - %s"%do.get_stats()
 		print '     read buf', buf, "pos b4 read is",do.tell()
-		xx = do.read( len(eval('buf%d'%buf)) )
+		xx = do.read( len(buf_str[buf]))
 
 		print '     pos after read is',do.tell()
-		print "     stats - %s"%str(do.get_stats())
+		print "     stats - %s"%do.get_stats()
 
-		if xx != eval('buf%d'%buf):
+                if xx != buf_str[buf]:
 		    print '      XX  error reading buf',buf,'xx is',xx
 		    sys.exit( 1 )
 		    pass
 
-		statinfo = os.stat( opt_in )
-		fo = open( opt_in+str(buf), 'w' )
+		statinfo = os.stat( opt['in'] )
+		fo = open( opt['in']+str(buf), 'w' )
 		crc = do.fd_xfer( fo.fileno(), fsize, ECRC.ECRC )
 		fo.close()
 		print '     the crc is',crc
@@ -503,5 +517,8 @@ if __name__ == "__main__" :
 	    pass
 	pass
 
-    if cleanup_in == 'yes': os.unlink( opt_in )
+    if cleanup_in == 'yes': os.unlink( opt['in'] )
     sys.exit( 0 )
+
+
+    
