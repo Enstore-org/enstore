@@ -663,6 +663,7 @@ def headers(dummy):
     
     return "", ""
 
+min_header_size = 0
 # return the size of the headers
 def header_size(hdr):
     return 0
@@ -673,6 +674,7 @@ def create_wrapper_dict(ticket):
     # the wrapper section already contains some of the information that we need
 
     # we need these as strings
+    wrapper_d = {}
     wrapper_d[UID] = "%s"%(ticket['wrapper'][UID],)
     wrapper_d[GID] = "%s"%(ticket['wrapper'][GID],)
     wrapper_d[MODE] = "%s"%(ticket['wrapper'][MODE],)
