@@ -138,7 +138,7 @@ class RDD_MediaLoader(MediaLoaderMethods, GenericServer, UDPServer) :
     pass
 
 # Raw Disk media loaded server
-class RDD_MediaLoader(FTT_LoaderMethods, GenericServer, UDPServer) :
+class FTT_MediaLoader(FTT_MediaLoaderMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
