@@ -369,6 +369,7 @@ TAGS = "tags"                                #pnfs
 THREADED = "threaded"                        #encp
 TIME = "time"                                #inquisitor
 TIMEOUT = "timeout"
+TIMESTAMP = "timestamp"                      #configuration
 TITLE = "title"                              #enstore_make_log_plot
 TITLE_GIF = "title_gif"                      #plotter
 TOTAL_BYTES = "total_bytes"                  #plotter
@@ -457,7 +458,7 @@ valid_option_list = [
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
-    TEST, THREADED, TIME, TIMEOUT, TITLE, TITLE_GIF,
+    TEST, THREADED, TIME, TIMEOUT, TIMESTAMP, TITLE, TITLE_GIF,
     TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
     UNMARK_BAD, UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL, USAGE,
     VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
