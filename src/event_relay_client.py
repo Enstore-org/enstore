@@ -109,10 +109,12 @@ class EventRelayClient:
 
             # get the address of the event relay process.
             import configuration_client
-            self.csc = configuration_client.ConfigurationClient()
-            self.event_relay_host = get_event_relay_host(self.csc)
             if not self.event_relay_host:
-                self.event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST","")
+                self.csc = configuration_client.ConfigurationClient()
+                self.event_relay_host = get_event_relay_host(self.csc)
+                if not self.event_relay_host:
+                    self.event_relay_host = os.environ.get(
+                                                     "ENSTORE_CONFIG_HOST","")
             if not self.event_relay_port:
                 # try to get it from the config file
                 self.event_relay_port = DEFAULT_PORT
