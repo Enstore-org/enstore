@@ -731,7 +731,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.data_socket = data_socket
         listen_socket.close()
         Trace.trace(16,'}get_user_sockets ='+repr((volume_clerk_host,\
-                                                   volume_clerk_port))
+                                                   volume_clerk_port)))
 
     def start_backup(self,ticket):
         Trace.trace(5,'{start_backup '+repr(ticket))
