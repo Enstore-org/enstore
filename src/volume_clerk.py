@@ -1322,7 +1322,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
 
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
         self.dict = db.DbTable("volume", dbHome, jouHome, [])
-        Trace.log(e_errors.INFO,"volume database is open")
+        Trace.log(e_errors.INFO,"hurrah, volume database is open")
         
 class VolumeClerkInterface(generic_server.GenericServerInterface):
         pass
