@@ -65,7 +65,7 @@ def do_rgang(fdefault, path1, path2):
 # mode.
 class GenericUserOptions:
     
-    g_server_options = ["help", "timeout=", "retries=", "config_port=", "config_host="]
+    g_server_options = ["help", "timeout=", "retries="]
 
     def get_options(self):
         return self.g_server_options
