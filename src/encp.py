@@ -1198,7 +1198,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 					 ticket)
 	  print_error('EPROTO',
 		      " encp.read_from_hsm: from"
-		      "u.send to LM at "+lmticket['hostip']+"/"+
+		      " u.send to LM at "+lmticket['hostip']+"/"+
 		      repr(lmticket['port']) +", ticket[\"status\"]="+
 		      repr(ticket["status"]),fatal=0)
 	  continue
