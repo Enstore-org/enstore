@@ -4199,6 +4199,7 @@ def main():
                "FF Wrapper: %s  FF Width: %s" % \
                (library, storage_group,
                 file_family, file_family_wrapper, file_family_width)
+    cwd_line = "Current working directory: %s" % os.getcwd()
 
     #Print this information to make debugging easier.
     Trace.message(DONE_LEVEL, start_line)
@@ -4207,6 +4208,7 @@ def main():
     Trace.message(DONE_LEVEL, version_line)
     if e.outtype == "hsmfile":
         Trace.message(DONE_LEVEL, tag_line)
+    Trace.message(DONE_LEVEL, cwd_line)
 
     #Print out the information from the command line.
     Trace.message(CONFIG_LEVEL, format_class_for_print(e, "e"))
@@ -4221,11 +4223,11 @@ def main():
     # convenient, but maybe not correct place, to hack in log message
     # that shows how encp was called.
     if e.outtype == "hsmfile":  #write
-        Trace.log(e_errors.INFO, "%s  %s  %s  %s" %
-                  (version_line, id_line, tag_line, command_line))
+        Trace.log(e_errors.INFO, "%s  %s  %s  %s  %s" %
+                  (version_line, id_line, tag_line, command_line, cwd_line))
     else:                       #read
-        Trace.log(e_errors.INFO, "%s  %s  %s" %
-                  (version_line, id_line, command_line))
+        Trace.log(e_errors.INFO, "%s  %s  %s  %s" %
+                  (version_line, id_line, command_line, cwd_line))
 
     if e.data_access_layer:
         global data_access_layer_requested
