@@ -1197,7 +1197,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.log(e_errors.INFO, "storage group %s, vol counter %s, quota %s" % (storage_group, vol_count, quota)) 
             if quota == 0 or (vol_count >= quota):
                 return 0
-            else: return 1
+            else:
+                # advanced alarm
+                # if the head room is less than 3 volumes or the count
+                # exceeds 95%
+                dq = qouta - vol_count
+                if dq < 3 or dq < (quota * 0.05):
+                   msg = "(%s, %s) is approaching its quota limit (%d/%d)"%(library, storage_group, vol_count, qouta)
+                   Trace.alarm(e_errors.INFO, msg)
+                return 1
         else:
             Trace.log(e_errors.ERROR, "no library %s defined in the quota configuration" % (library))
             return 0
