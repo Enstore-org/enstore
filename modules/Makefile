@@ -52,7 +52,7 @@ YOURLIBS=$(OLIB)/libftt.a
 # can get installed.
 PYMODULES=
 
-all:	EXfer ETape Devcodes
+all:	EXfer ETape Devcodes Trace
 
 ETape:
 	MODULE=ETape; \
@@ -65,6 +65,15 @@ EXfer:
 	YOURLIBS="$(FTT_DIR)/lib/libftt.a `cat $(FTT_DIR)/lib/libs` "; \
 	OBS=EXfer.o ; \
 	$(MAKEIT)
+
+Trace:	trace.a
+	MODULE=Trace; \
+	YOURLIBS="$(ENSTORE_DIR)/modules/trace.a "; \
+	OBS=Trace.o ; \
+	$(MAKEIT)
+
+trace.a:
+	make -f trace.mk trace.a
 
 Devcodes:
 	MODULE=Devcodes; \
