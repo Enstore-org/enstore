@@ -843,6 +843,7 @@ if __name__  ==  "__main__" :
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
     csc = configuration_client.configuration_client(config_host,config_port)
+    csc.connect()
     u = udp_client.UDPClient()
 
     # get a logger

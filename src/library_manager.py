@@ -399,6 +399,7 @@ if __name__ == "__main__" :
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
     csc = configuration_client(config_host,config_port)
+    csc.connect()
 
     keys = csc.get(args[0])
 
@@ -408,7 +409,7 @@ if __name__ == "__main__" :
     lm.set_csc(csc)
 
     # get a logger
-    logc = log_client.LoggerClient(csc,keys["logname"],  'logserver', 0)
+    logc = log_client.LoggerClient(csc, keys["logname"],  'logserver', 0)
     lm.set_logc(logc)
 
     while 1:

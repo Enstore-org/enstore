@@ -694,6 +694,7 @@ if __name__ == "__main__" :
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
     csc = configuration_client(config_host,config_port)
+    csc.connect()
 
     keys = csc.get("volume_clerk")
     vc =  VolumeClerk((keys['host'], keys['port']), VolumeClerkMethods)

@@ -168,10 +168,11 @@ if __name__=="__main__":
    if config_list :
         print "Connecting to configuration server at ",config_host,config_port
    csc = configuration_client(config_host,config_port)  
+   csc.connect()
    keys = csc.get("admin_clerk")
    ac =  AdminClerk((keys['host'], keys['port']), AdminClerkMethods)
    ac.set_csc(csc)
-   logc = log_client.LoggerClient(csc,"", 'logserver', 0)
+   logc = log_client.LoggerClient(csc, "", 'logserver', 0)
    ac.set_logc(logc)
    indlst=['media_type','file_family','library']
    dictV = dBTable("volume",logc,indlst) 

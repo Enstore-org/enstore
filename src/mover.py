@@ -68,6 +68,7 @@ class Mover:
         self.config_host = config_host
         self.config_port = config_port
         self.csc = configuration_client.configuration_client(self.config_host,self.config_port)
+        self.csc.connect()
         self.u = udp_client.UDPClient()
         self.sleeptime = 1.0
         self.chkremote = 2.*60./self.sleeptime
@@ -133,7 +134,8 @@ class Mover:
         self.driver.set_blocksize(blocksize)
 
         # need a media changer to control (mount/load...) the volume
-        self.mlc = media_changer_client.MediaLoaderClient(self.csc, self.media_changer)
+        self.mlc = media_changer_client.MediaLoaderClient(self.csc)
+        self.mlc.set_mc(self.media_changer)
 
         lmticket = self.mlc.loadvol(self.external_label, self.library_device)
         if lmticket["status"] != "ok":
@@ -162,7 +164,8 @@ class Mover:
         self.driver.unload()
 
         # we will be needing a media loader to help unmount/unload...
-        self.mlc = media_changer_client.MediaLoaderClient(self.csc, self.media_changer)
+        self.mlc = media_changer_client.MediaLoaderClient(self.csc)
+        self.mlc.set_mc(self.media_changer)
 
         # now ask the media changer to unload the volume
         ticket = self.mlc.unloadvol(self.external_label, self.library_device)
@@ -556,7 +559,8 @@ if __name__ == "__main__":
                      str(sys.exc_info()[0])+" "+\
                      str(sys.exc_info()[1])+" "+\
                      "mover move_forever continuing"
-            csc = configuration_client.configuration_client(self.config_host,self.config_port)
-            logc = log_client.LoggerClient(self.csc, 'MOVER', 'logserver', 0)
+            csc = configuration_client.configuration_client(config_host,config_port)
+            csc.connect()
+            logc = log_client.LoggerClient(csc, 'MOVER', 'logserver', 0)
             logc.send(log_client.ERROR, 1, format)
             continue
