@@ -79,7 +79,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
                    user = at_list[i]["wrapper"]["uname"]
                    pnfsfn = at_list[i]["wrapper"]["pnfsFilename"]
                    fn = at_list[i]["wrapper"]["fullname"]
-                   vol = at_list[i]["vc"]["external_label"]
+                   if at_list[i]["vc"].has_key("external_label"):
+                       vol = at_list[i]["vc"]["external_label"]
+                   else:
+                       vol = at_list[i]["fc"]["external_label"]
                    if (host == node) or (not node):
                        print "%s %s %s %s %s M %s" % (host,self.name, user,pnfsfn,fn, vol)
                        if at_list[i]["work"] == "read_from_hsm":
