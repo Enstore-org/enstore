@@ -171,9 +171,12 @@ if __name__ == '__main__':
 	while k:
 		count = count + 1
 		volume, size, deleted, crc, pnfs_path = getinfo(v)
-		ff = get_file_family(volume)
 		if deleted == 'A':
-			out.write('%-20s %-10s %-12s %14s %14s %s\n'%(k, volume, ff, size, crc, pnfs_path))
+			try:
+				ff = get_file_family(volume)
+				out.write('%-20s %-10s %-12s %14s %14s %s\n'%(k, volume, ff, size, crc, pnfs_path))
+			except:
+				print "None existing volume %s\n"%(volume)
 		try:
 			k,v = c.next()
 		except KeyError:
