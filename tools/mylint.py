@@ -32,7 +32,6 @@ def fixindent(line):
     return line
 
 import kjpylint
-(pyg, context) = kjpylint.setup()
 
 #collect errors in a list rather than printing them
 error_list=[]
@@ -40,7 +39,6 @@ error_list=[]
 def complain(error):
     error_list.append(error)
 
-context.complain=complain
 
 ignore_patterns = [".*defined before [0-9]+ not used$",
                    "Warning: set of global .* in local context",
@@ -55,6 +53,8 @@ if args and args[0]=='-v':
     args=args[1:]
 
 for filename in sys.argv[1:]:
+    (pyg, context) = kjpylint.setup()
+    context.complain=complain
     exit_status = 0
     error_list=[]
     parse_errors=[]
