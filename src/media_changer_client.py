@@ -43,6 +43,7 @@ class MediaChangerClient(generic_client.GenericClient):
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
     def loadvol(self, vol_ticket, mover, drive, vcc):
+        # issue the loadvol work ticket
 	ticket = {'work'           : 'loadvol',
                   'vol_ticket'     : vol_ticket,
                   'drive_id'       : drive
@@ -59,6 +60,7 @@ class MediaChangerClient(generic_client.GenericClient):
         return rt
 
     def unloadvol(self, vol_ticket, mover, drive, vcc=None):
+        # issue the unloadvol work ticket
         ticket = {'work'           : 'unloadvol',
                   'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
