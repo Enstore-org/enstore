@@ -325,7 +325,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
 
         host_list = []
         for ip in ip_list:
-            host_list.append(socket.gethostbyaddr(ip)[0], ip)
+            host_list.append((socket.gethostbyaddr(ip)[0], ip))
         host_list.sort()
         
         vetos = Vetos(config.get('veto_nodes', {}))
