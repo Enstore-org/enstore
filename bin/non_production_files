@@ -28,7 +28,7 @@ echo "BASEDIR $basedir" >> /tmp/non_pro
 echo `ls` >> /tmp/non_pro
 echo "path $PATH" >> /tmp/non_pro
 
-find * -type d | egrep -v "CVS|ingest" > $dirs
+/usr/bin/find * -type d | egrep -v "CVS|ingest" > $dirs
 cat $dirs | while read d; do
  (cd $d; $basedir/tools/notready.py *| egrep -v 'Checking files...|ok$|not in CVS, skipping$|is a directory, ignoring|in in /CVS/ directory. Can not possibly check it' >> $output )
 done
