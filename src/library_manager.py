@@ -168,6 +168,12 @@ class AtMovers:
        
 
 class LibraryManagerMethods:
+    
+    def init_suspect_volumes(self):
+        # make it method for the capability to reinitialze
+        # suspect_volumes outside of this class
+        self.suspect_volumes = lm_list.LMList()
+       
     def __init__(self, name, csc, sg_limits, min_file_size, max_suspect_movers, max_suspect_volumes):
         self.name = name
         self.min_file_size = min_file_size
@@ -185,7 +191,7 @@ class LibraryManagerMethods:
             self.sg_limits['limits'] = sg_limits
         self.work_at_movers = lm_list.LMList()      ## remove this when work on volumes_at_movers is finished
         self.volumes_at_movers = AtMovers() # to keep information about what volumes are mounted at which movers
-        self.suspect_volumes = lm_list.LMList()
+        self.init_suspect_volumes()
         self.pending_work = manage_queue.Request_Queue()
         
 
@@ -1647,15 +1653,22 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # remove volume from suspect volume list
     def remove_suspect_volume(self, ticket):
-        found = 0
-        for vol in self.suspect_volumes.list:
-            if ticket['volume'] ==  vol['external_label']:
-                ticket['status'] = (e_errors.OK, None)
-                found = 1
-                break
+        if ticket['volume'] == 'all': # magic word
+            self.init_suspect_volumes()
+            ticket['status'] = (e_errors.OK, None)
+            Trace.log(e_errors.INFO, "suspect volume list cleaned")
         else:
-            ticket['status'] = (e_errors.NOVOLUME, "No such volume %s"%(ticket['volume']))
-        if found: self.suspect_volumes.remove(vol)
+            found = 0
+            for vol in self.suspect_volumes.list:
+                if ticket['volume'] ==  vol['external_label']:
+                    ticket['status'] = (e_errors.OK, None)
+                    found = 1
+                    break
+            else:
+                ticket['status'] = (e_errors.NOVOLUME, "No such volume %s"%(ticket['volume']))
+            if found:
+                self.suspect_volumes.remove(vol)
+                Trace.log(e_errors.INFO, "%s removed from suspect volume list"%(vol,))
         self.reply_to_caller(ticket)
             
         
