@@ -880,6 +880,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.trace(30, "label,v = %s, %s" % (label, v))
             if not label:
                 break
+            if label in vol_veto_list:
+                continue
             if v["user_inhibit"] != ["none",  "none"]:
                 Trace.trace(30, "user inhibit = %s" % (v['user_inhibit'],))
                 continue
@@ -902,14 +904,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     Trace.trace(30, "almost full")
                     continue
                 
-            vetoed = 0
-            for veto in vol_veto_list:
-                if label == veto:
-                    Trace.trace(30, "vetoed")
-                    vetoed = 1
-                    break
-            if vetoed:
-                continue
+            # vetoed = 0
+            # for veto in vol_veto_list:
+            #    if label == veto:
+            #        Trace.trace(30, "vetoed")
+            #        vetoed = 1
+            #        break
+            # if vetoed:
+            #    continue
 
             # supposed to return first volume found?
             # do not return blank volume at this point yet
