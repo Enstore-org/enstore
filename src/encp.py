@@ -878,9 +878,11 @@ def recieve_final_dialog(control_socket, work_ticket, max_retry):
 ############################################################################
 
 def check_crc(done_ticket, chk_crc, my_crc):
+    
+    
     # Check the CRC
     if chk_crc:
-        mover_crc = done_ticket["fc"]["complete_crc"]
+        mover_crc = done_ticket['fc'].get('complete_crc', None)
         if mover_crc is None:
             msg =   "warning: mover did not return CRC; skipping CRC check"
             Trace.alarm(e_errors.WARNING, msg, {
