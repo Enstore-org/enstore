@@ -37,7 +37,7 @@ import library_manager_client
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but DO NOT CHANGE THE SYNTAX
-    version_string = "v1_10  CVS $Revision$ "
+    version_string = "v1_9  CVS $Revision$ "
     file = globals().get('__file__', "")
     if file: version_string = version_string + file
     return version_string
@@ -168,9 +168,12 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                        status)
         if msg:
             errmsg=errmsg+" "+msg
-        Trace.log(msg_type, msg)
+        Trace.log(msg_type, errmsg)
     except:
-        pass
+        exc,msg,tb=sys.exc_info()
+        sys.stderr.write("cannot log error message %s\n"%errmsg)
+        sys.stderr.write("internal error %s %s"%(exc,msg))
+        
 
 
 client={}
@@ -1806,18 +1809,30 @@ def read_from_hsm(input_files, output,
         Trace.trace(7,"read_from_hsm on volume=%s"%
                     (binfo['fc']['external_label'],))
         inhibit = binfo['vc']['system_inhibit'][0]
+        if len(outputlist)==len(inputlist):
+            ofile=outputlist[i]
+        else:
+            ofile=outputlist[0]
         if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-            binfo['status'] = (inhibit, None)
-            print_data_access_layer_format('', '', 0, binfo)
+            if inhibit==e_errors.NOACCESS:
+                msg="Volume is marked NOACCESS"
+            else:
+                msg="Volume is marked NOTALLOWED"
+            binfo['status'] = (inhibit, msg)
+            print_data_access_layer_format(inputlist[i], ofile, 0, binfo)
             continue
         inhibit = binfo['vc']['user_inhibit'][0]
         if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-            binfo['status'] = (inhibit, None)
-            print_data_access_layer_format('', '', 0, binfo)
+            if inhibit==e_errors.NOACCESS:
+                msg="Volume is marked NOACCESS"
+            else:
+                msg="Volume is marked NOTALLOWED"
+            binfo['status'] = (inhibit, msg)
+            print_data_access_layer_format(inputlist[i], ofile, 0, binfo)
             continue
         if binfo["fc"]["deleted"] == "yes":
-            binfo['status'] = (e_errors.DELETED, None)
-            print_data_access_layer_format('', '', 0, binfo)
+            binfo['status'] = (e_errors.DELETED, "File has been deleted")
+            print_data_access_layer_format(inputlist[i], ofile, 0, binfo)
             continue
 
 
@@ -2008,7 +2023,8 @@ class encp(interface.Interface):
         # normal parsing of options
         interface.Interface.parse_options(self)
 
-        clients(self.config_host, self.config_port)
+        if not client: 
+            clients(self.config_host, self.config_port)
 
         # bomb out if we don't have an input and an output
         self.arglen = len(self.args)
