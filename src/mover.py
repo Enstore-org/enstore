@@ -648,7 +648,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
-
+        Trace.notify("transfer %s %s %s" % (self.shortname, self.bytes_written, self.bytes_to_write))
         Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
 
         if self.bytes_written == self.bytes_to_write:
@@ -727,7 +727,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
-            
+        Trace.notify("transfer %s %s %s" % (self.shortname, -self.bytes_read, self.bytes_to_read))            
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" % (self.bytes_read, self.bytes_to_read))
                 
     def write_client(self):
@@ -1166,7 +1166,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, "accepting client connection")
                 client_socket, address = listen_socket.accept()
                 listen_socket.close()
-                #client_hostname got set in setup_transfer.  Use this instead of doing DNS lookup
+                if not self.client_hostname:
+                    try:
+                        tmp = socket.gethostbyaddr(address)
+                        self.client_hostname = tmp[0]
+                    except:
+                        Trace.log(e_errors.ERROR, "error performing reverse DNS lookup for %s" % (address,))
+                        
                 Trace.notify("connect %s %s" % (self.shortname, self.client_hostname))
                 self.net_driver.fdopen(client_socket)
                 return control_socket, client_socket
