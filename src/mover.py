@@ -382,6 +382,7 @@ def forked_write_to_hsm( self, ticket ):
 						     eod_cookie,
 						     wr_err,rd_err, # added to total
 						     wr_access,rd_access) )
+	self.vol_info.update( ticket['vc'] )
 	rsp = fcc.new_bit_file( {'work':"new_bit_file",
 				 'fc'  :{'location_cookie':location_cookie,
 					 'size':file_bytes,
@@ -625,9 +626,12 @@ def unilateral_unbind_next( self, error_info ):
     return next_req_to_lm
 
 
+def tt(x): print 'sdfkjsdkjflsd',x
+import timer_task
 # Gather everything together and add to the mess
 class MoverServer(  dispatching_worker.DispatchingWorker
-	     	  , generic_server.GenericServer ):
+	     	  , generic_server.GenericServer
+		  , timer_task.TimerTask ):
     def __init__( self, server_address, verbose=0 ):
 	self.client_obj_inst = MoverClient( mvr_config )
 	self.verbose = verbose
@@ -639,7 +643,26 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	    do_next_req_to_lm( self, next_req_to_lm, address )
 	    pass
 	dispatching_worker.DispatchingWorker.__init__( self, server_address)
+	print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
+	#timer_task.TimerTask.__init__( self, self.rcv_timeout )
+	timer_task.TimerTask.__init__( self, 5 )
+	#timer_task.msg_add( 5, tt,1 )
+	#timer_task.msg_add( 65, self.hello1 )
+	#timer_task.msg_add( 25, self.hello1 )
+	#timer_task.msg_add( 15, self.hello2 )
+	#timer_task.msg_add( 15, self.hello3, {} )
 	return None
+
+    def hello1( self ): print time.time(),'ronDBG - hello from self.hello1';timer_task.msg_add( 15, self.hello2 )
+    def hello2( self ): print time.time(),'ronDBG - hello from self.hello2'
+    def hello3( self, ticket ):
+	print time.time(),'ronDBG - hello from self.hello3'
+	timer_task.msg_add( 15, self.hello3, {} )
+	if 'work' in ticket.keys():
+	    out_ticket = {'status':(e_errors.OK,None)}
+	    self.reply_to_caller( out_ticket )
+	    pass
+	return
 
     def set_timeout( self, ticket ):
 	out_ticket = {'status':(e_errors.OK,None),'old timeout':self.rcv_timeout}
@@ -889,11 +912,8 @@ else:
 
 
 mvr_srvr =  MoverServer( (mvr_config['hostip'],mvr_config['port']) )
-mvr_srvr.rcv_timeout = 15
-try:
-    mvr_srvr.client_obj_inst.print_id = mvr_config['logname']
-except:
-    pass
+mvr_srvr.client_obj_inst.print_id = mvr_config['logname']
+mvr_srvr.logc = logc			# for enprint
 
 Trace.init( mvr_config['logname'] )
 Trace.on( mvr_config['logname'], 0, 31 )
