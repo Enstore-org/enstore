@@ -122,11 +122,18 @@ class EnStatus:
         Trace.trace(12,"}output_alive")
 
     # output the timeout error
-    def output_etimedout(self, address, tag, time, key):
+    def output_etimedout(self, address, tag, time, key, last_time=0):
         Trace.trace(12,"{output_etimedout "+repr(tag)+" "+repr(address))
 	ftime = format_time(time)
 	str = tag + "timed out on "+self.unquote(repr(address))+" at "+\
 	       ftime+"\n"
+	if not last_time == 0:
+	    i = len(tag)
+	    if not last_time == -1:
+	        ltime = format_time(last_time)
+	    else:
+		ltime = "----"
+	    str = str+i*" "+"last alive at "+ltime+"\n"
 	self.text[key] = str
         Trace.trace(12,"}output_etimedout")
 

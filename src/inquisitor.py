@@ -109,9 +109,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_alive(host, prefix, stat, time, key)
 	    self.htmlfile.output_alive(host, prefix, stat, time, key)
+	    self.last_alive[client] = time
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.essfile.output_etimedout((host, port), prefix, time, key)
-	    self.htmlfile.output_etimedout((host, port), prefix, time, key)
+	    if self.last_alive.has_key(client):
+	        last_time = self.last_alive[client]
+	    else:
+	        last_time = -1
+	    self.essfile.output_etimedout((host, port), prefix, time, key, \
+	                                  last_time)
+	    self.htmlfile.output_etimedout((host, port), prefix, time, key, \
+	                                   last_time)
             Trace.trace(14,"}alive_status - ERROR, alive timed out")
 	    return self.timed_out
         Trace.trace(14,"}alive_status")
@@ -139,57 +146,57 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	return ret
 
     # get the library manager suspect volume list and output it
-    def suspect_vols(self, lm, (host, port), key):
+    def suspect_vols(self, lm, (host, port), key, time):
         Trace.trace(13,"{suspect_vols "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.get_suspect_volumes()
 	    self.essfile.output_suspect_vols(stat, key, self.verbose)
 	    self.htmlfile.output_suspect_vols(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout((host, port), "    ", key)
-	    self.htmlfile.output_etimedout((host, port), "    ", key)
+	    self.essfile.output_etimedout((host, port), "    ", time, key)
+	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}suspect_vols - ERROR, timed out")
 	    return
         Trace.trace(13,"}suspect_vols")
 
     # get the library manager work queue and output it
-    def work_queue(self, lm, (host, port), key):
+    def work_queue(self, lm, (host, port), key, time):
         Trace.trace(13,"{work_queue "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.getwork(self.verbose)
 	    self.essfile.output_lmqueues(stat, key, self.verbose)
 	    self.htmlfile.output_lmqueues(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout((host, port), "    ", key)
-	    self.htmlfile.output_etimedout((host, port), "    ", key)
+	    self.essfile.output_etimedout((host, port), "    ", time, key)
+	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}work_queue - ERROR, timed out")
 	    return
         Trace.trace(13,"}work_queue ")
 
     # get the library manager mover list and output it
-    def mover_list(self, lm, (host, port), key):
+    def mover_list(self, lm, (host, port), key, time):
         Trace.trace(13,"{mover_list "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.getmoverlist()
 	    self.essfile.output_lmmoverlist(stat, key, self.verbose)
 	    self.htmlfile.output_lmmoverlist(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout((host, port), "    ", key)
-	    self.htmlfile.output_etimedout((host, port), "    ", key)
+	    self.essfile.output_etimedout((host, port), "    ", time, key)
+	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}mover_list - ERROR, timed out")
 	    return
         Trace.trace(13,"}mover_list ")
 
     # get the movers' status
-    def mover_status(self, movc, (host, port), key):
+    def mover_status(self, movc, (host, port), key, time):
         Trace.trace(13,"{mover_status "+repr(host)+" "+repr(port))
 	try:
 	    stat = movc.status(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_moverstatus(stat, key, self.verbose)
 	    self.htmlfile.output_moverstatus(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout((host, port), "    ", key)
-	    self.htmlfile.output_etimedout((host, port), "    ", key)
+	    self.essfile.output_etimedout((host, port), "    ", time, key)
+	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}mover_list - ERROR, timed out")
 	    return
         Trace.trace(13,"}mover_status")
@@ -216,6 +223,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    Trace.trace(12,"}update_library_manager - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
+	    # first get rid of any old stuff if we have it
+	    try:
+	        del lmc.u
+            except:
+                pass
 	    # get a client and then check if the server is alive
 	    lmc = library_manager_client.LibraryManagerClient(self.csc, 0,
 	                                                      key, \
@@ -224,9 +236,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    ret = self.alive_status(lmc, (t['host'], t['port']), \
 	                            key+self.trailer, time, key)
 	    if ret == self.did_it:
-	        self.suspect_vols(lmc, (t['host'], t['port']), key)
-	        self.mover_list(lmc, (t['host'], t['port']), key)
-	        self.work_queue(lmc, (t['host'], t['port']), key)
+	        self.suspect_vols(lmc, (t['host'], t['port']), key, time)
+	        self.mover_list(lmc, (t['host'], t['port']), key, time)
+	        self.work_queue(lmc, (t['host'], t['port']), key, time)
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
         Trace.trace(12,"}update_library_manager ")
@@ -246,12 +258,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
         if t['status'] == (e_errors.OK, None):
 	    # get a client and then check if the server is alive
+	    try:
+	        del movc.u
+            except:
+                pass
 	    movc = mover_client.MoverClient(self.csc, 0, key, t['hostip'], \
 	                                    t['port'])
 	    ret = self.alive_status(movc, (t['host'], t['port']),\
 	                            key+self.trailer, time, key)
 	    if ret == self.did_it:
-	        self.mover_status(movc, (t['host'], t['port']), key)
+	        self.mover_status(movc, (t['host'], t['port']), key, time)
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
         Trace.trace(12,"}update_mover")
@@ -288,6 +304,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(12,"}update_media_changer - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
+	    try:
+	        del mcc.u
+            except:
+                pass
 	    # get a client and then check if the server is alive
 	    mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, \
 	                                              t['hostip'], t['port'])
@@ -677,6 +697,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(10,"{dump "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
 	self.enprint("last_update - "+repr(self.last_update))
+	self.enprint("last_alive - "+repr(self.last_alive))
 	self.enprint("timeouts    - "+repr(self.timeouts))
 	self.enprint("server_keys - "+repr(self.server_keys))
 	self.enprint("reset       - "+repr(self.reset))
@@ -1103,6 +1124,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
 	# get the timeout for each of the servers from the configuration file.
 	self.last_update = {}
+	self.last_alive = {}
 	if keys.has_key('timeouts'):
 	    self.timeouts = keys['timeouts']
 	    # now we will create a dictionary, initiallizing it to the current
