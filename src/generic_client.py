@@ -18,19 +18,19 @@ import interface
 class GenericClientInterface(interface.Interface):
 
     def __init__(self):
-	self.dump = 0
-	self.alive = 0
+        self.dump = 0
+        self.alive = 0
         self.do_print = []
         self.dont_print = []
         self.do_log = []
         self.dont_log = []
         self.do_alarm = []
         self.dont_alarm = []
-	interface.Interface.__init__(self)
+        interface.Interface.__init__(self)
 
     def client_options(self):
-	return (self.config_options() + 
-	       self.alive_options()  + 
+        return (self.config_options() + 
+               self.alive_options()  + 
                self.trace_options() + 
                self.help_options() )
     
@@ -83,14 +83,18 @@ class GenericClient:
         except KeyError, detail:
             sys.stderr.write("Unknown server %s (no %s defined in config on %s)\n" %
                              ( MY_SERVER, detail, 
-			       os.environ.get('ENSTORE_CONFIG_HOST','')))
+                               os.environ.get('ENSTORE_CONFIG_HOST','')))
             os._exit(1)
 
     def send(self, ticket, rcv_timeout=0, tries=0):
         try:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
-        except errno.errorcode[errno.ETIMEDOUT]:
-            x = {'status' : (e_errors.TIMEDOUT, None)}
+        except:
+            exc, msg, tb = sys.exc_info()
+            if exc == errorcode[errno.ETIMEDOUT]:
+                x = {'status' : (e_errors.TIMEDOUT, msg)}
+            else:
+                x = {'status' : (str(exc), str(msg))}
         return x
         
     # return the name used for this client/server #XXX what is this nonsense? cgw
@@ -99,16 +103,16 @@ class GenericClient:
 
     # check on alive status
     def alive(self, server, rcv_timeout=0, tries=0):
-	t = self.csc.get(server, rcv_timeout, tries)
-	if t['status'] == (e_errors.TIMEDOUT, None):
-	    Trace.trace(14,"alive - ERROR, config server get timed out")
-	    return {'status' : (e_errors.TIMEDOUT, None)}
-	try:
+        t = self.csc.get(server, rcv_timeout, tries)
+        if t['status'] == (e_errors.TIMEDOUT, None):
+            Trace.trace(14,"alive - ERROR, config server get timed out")
+            return {'status' : (e_errors.TIMEDOUT, None)}
+        try:
             x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
                             rcv_timeout, tries)
-	except errno.errorcode[errno.ETIMEDOUT]:
-	    Trace.trace(14,"alive - ERROR, alive timed out")
-	    x = {'status' : (e_errors.TIMEDOUT, None)}
+        except errno.errorcode[errno.ETIMEDOUT]:
+            Trace.trace(14,"alive - ERROR, alive timed out")
+            x = {'status' : (e_errors.TIMEDOUT, None)}
         except KeyError, detail:
             sys.stderr.write("Unknown server %s (no key %s)\n" % (server, detail))
             os._exit(1)
@@ -119,12 +123,12 @@ class GenericClient:
         try:
             t = self.csc.get(server)
         except errno.errorcode[errno.ETIMEDOUT]:
-	    return {'status' : (e_errors.TIMEDOUT, None)}
-	try:
+            return {'status' : (e_errors.TIMEDOUT, None)}
+        try:
             x = self.u.send({'work': work,
                              'levels':levels}, (t['hostip'], t['port']))
-	except errno.errorcode[errno.ETIMEDOUT]:
-	    x = {'status' : (e_errors.TIMEDOUT, None)}
+        except errno.errorcode[errno.ETIMEDOUT]:
+            x = {'status' : (e_errors.TIMEDOUT, None)}
         except KeyError, detail:
             print "Unknown server", server
             sys.exit(-1)
@@ -152,7 +156,7 @@ class GenericClient:
             
     # examine the final ticket to check for any errors
     def check_ticket(self, ticket):
-	if not 'status' in ticket.keys(): return None
+        if not 'status' in ticket.keys(): return None
         if ticket['status'][0] == e_errors.OK:
             Trace.trace(14, repr(ticket))
             Trace.trace(14, 'exit ok' )
@@ -163,7 +167,7 @@ class GenericClient:
             
             Trace.trace(14, " BAD STATUS - "+repr(ticket['status']))
             sys.exit(1)
-	return None
+        return None
 
     # tell the server to spill its guts
     def dump(self, rcv_timeout=0, tries=0):
