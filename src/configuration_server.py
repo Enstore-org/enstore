@@ -1,7 +1,11 @@
 #!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import sys
 import string
@@ -11,8 +15,7 @@ import traceback
 import socket
 
 # enstore imports
-import setpath
-
+#import setpath
 import dispatching_worker
 import generic_server
 import event_relay_client
@@ -24,7 +27,7 @@ import e_errors
 import hostaddr
 import callback
 
-MY_NAME = "CONFIG_SERVER"
+MY_NAME = enstore_constants.CONFIGURATION_SERVER   #"CONFIG_SERVER"
 
 class ConfigurationDict:
 
