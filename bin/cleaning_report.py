@@ -26,11 +26,13 @@ for line in os.popen('enstore vol --vols','r').readlines():
 vols = remaining.keys()
 vols.sort()
 
-used_up = filter(lambda vol, remaining=remaining: not remaining[vol],
-                 vols)
-
-good = filter(lambda vol, remaining=remaining: remaining[vol],
-              vols)
+used_up = []
+good = []
+for vol in vols:
+    if not remaining[vol]:
+        used_up.append(vol)
+    else:
+        good.append(vol)
 
 print "The following drives were cleaned yesterday:"
 if cleaned:
