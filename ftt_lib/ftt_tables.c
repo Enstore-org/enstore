@@ -844,7 +844,7 @@ static char Win32find_dev[] = "";
 #ifdef NICE_WORLD
 #define LINUX_MAX_BLKSIZE 65536
 #else
-#define LINUX_MAX_BLKSIZE 65536
+#define LINUX_MAX_BLKSIZE 32768
 #endif
 
 
