@@ -421,7 +421,7 @@ Enstore uses <em>pnfs</em> for three different kinds of access and information:
     Tags are
     associated with a directory and not any specific file.
     Examples of configuration information that is specified with tags include the file family name, file
-    family width, and Library Manager.
+    family width, and Library Manager. There is also optional file family wrapper tag, specifying a type of file wrappers for given file family. If this tag is not set the default wrapper type 'cpio_custom' will be used. This is a wrapper initially used in the Enstore project.
      <p>
 <li>User File information
     <br>
@@ -742,9 +742,14 @@ pnfsid_map="00020000000000000050AEA0"</pre></TD>
 <TD NOSAVE>pcmd tags directory</TD>
 <TD NOSAVE><pre>
 $ pcmd tags .
-.(tag)(library)  =  ait
-.(tag)(file_family)  =  jon-ait-3
-.(tag)(file_family_width)  =  2</pre></TD>
+.(tag)(library)  =  rip6
+.(tag)(file_family)  =  jon-rip6
+.(tag)(file_family_width)  =  1
+.(tag)(file_family_wrapper)  =  cpio_custom
+-rw-rw-r--   1 bakken   g023            4 Nov 16 21:24 /pnfs/rip6/.(tag)(library)
+-rw-rw-r--   1 bakken   g023            8 Nov 16 21:24 /pnfs/rip6/.(tag)(file_family)
+-rw-rw-r--   1 bakken   g023            1 Nov 16 21:24 /pnfs/rip6/.(tag)(file_family_width)
+-rw-rw-r--   1 bakken   g023           11 Jan 27 18:45 /pnfs/rip6/.(tag)(file_family_wrapper)
 </TR>
 
 <TR VALIGN=LEFT NOSAVE>
@@ -759,7 +764,7 @@ xxx</pre></TD>
 </TR>
 
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>sets/lists library tag to value <br>(must have correct cwd)</TD>
+<TD NOSAVE>sets/lists file family tag to value <br>(must have correct cwd)</TD>
 <TD NOSAVE>pcmd file_family [value]</TD>
 <TD NOSAVE><pre>
 $ pcmd file_family
@@ -770,8 +775,9 @@ xxx
 </pre></TD>
 </TR>
 
+
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>sets/lists library tag to value <br>(must have correct cwd)</TD>
+<TD NOSAVE>sets/lists file family width tag to value <br>(must have correct cwd)</TD>
 <TD NOSAVE>pcmd file_family_width [value]</TD>
 <TD NOSAVE><pre>
 $ pcmd file_family_width    
@@ -779,6 +785,18 @@ $ pcmd file_family_width
 $ pcmd file_family_width 10
 $ pcmd file_family_width
 10
+</pre></TD>
+</TR>
+
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>sets/lists file family wrapper tag to value <br>(must have correct cwd)</TD>
+<TD NOSAVE>pcmd file_family_wrapper [value]</TD>
+<TD NOSAVE><pre>
+$ pcmd file_family_wrapper
+cpio_custom
+$ pcmd file_family_wrapper cpio_odc
+$ pcmd file_family_wrapper
+cpio_odc
 </pre></TD>
 </TR>
 
@@ -1963,6 +1981,10 @@ volume, updated by Volume Clerk.
 this volume; updated by Volume Clerk when data are written on the volume, an
 error occurred while data were being written or the file size exceeded the
 remaining number of bytes on the volume.
+<tr>
+<td valign=top>at_mover
+<td valign=top>tuple. First element is state string ("unmounted","mounting", "mounted", "unmounting"). Second is a mover name
+<td valign=top>Reflects state of volume. Used to keep track of volume mount state to avoid illegitimate mount requests. Transitions are as follows: "unmounted"->"mounting"->"mounted"->"unmounting"->"unmounted". All other transition and associated requests will be rejected
 </table></center>
 <p>
 The Volume Clerk does the following operations:
@@ -2176,8 +2198,10 @@ associated with the destination directory, identifies
     a write request and contact the appropriate Library Manager
     directly.
     The Library Manager queues the work, and acknowledges the request.
-    When a write request is completed the Library Manager will dismount the
-     corresponding volume. The Library Manager does not know that there is another
+    When a write request is completed the Library Manager will send
+    "unbind volume" message to the mover and it will dismount the corresponding
+     volume.
+    The Library Manager does not know that there is another
      request for the same volume coming a little bit later. However the User
      knows. To inform the Library Manager that there may be another request for
      the same volume, the user supplies a "delayed_dismount" flag in a current
@@ -2241,7 +2265,7 @@ List.
 </h3>
 <p>
 The Enstore system keeps unassigned read and write requests in a queue of
-unallocated (pending) work in the Library Manager. Once a request for the next work comes from the Mover ("idle" or "have bound volume: idle"), the Library Manager puts the request in a "work at mover" queue and responds to the Mover with the appropriate ticket. The reason for this is to track the
+unallocated (pending) work in the Library Manager. Once a request for the next work comes from the Mover ("idle" or "have bound volume: idle"), the Library Manager tries to change "at_mover" volume state to "mounting", and, if succeeds, puts the request in a "work at mover" queue and responds to the Mover with the appropriate ticket. The reason for this is to track the
 volumes for scheduling : the Library Manager must not submit to a Mover a
 request for a volume which is already in use by another Mover. It is the Mover, and not the Library Manager which completes the requests.
 The two Library Manager request queues are:
@@ -4176,6 +4200,10 @@ this Library Manager
 The Mover "wakes up" receiving the summon message from the Library Manager
 and asks the Library Manager if there is any work for it to do.
 <li>
+The Library Manager asks the Volume Clerk to mark the volume as "mounting".
+<li>
+The Volume Clerk confirms change of the state
+<li>
 The Library Manager moves the file internally from the request queue to the
 work queue. 
 <li>
@@ -4187,6 +4215,10 @@ The Mover tells <em>encp</em> from which host and port to read the data.
 The Mover asks the Media Changer to mount a particular volume.
 <li>
 The Media Changer responds once the volume is mounted.
+<li>
+The Mover (as the Media Changer Client) asks the Volume Clerk to mark the volume as "mounted".
+<li>
+The Volume Clerk confirms change of the state
 <li>
 The Mover sends the data to <em>encp</em>.
 <li>
@@ -4242,6 +4274,10 @@ specified size and file family.
 <li>
 The Volume Clerk returns the volume to the Library Manager. 
 <li>
+The Library Manager asks the Volume Clerk to mark the volume as "mounting".
+<li>
+The Volume Clerk confirms change of the state
+<li>
 The Library Manager moves the file internally from request queue to
 work queue. 
 <li>
@@ -4251,6 +4287,10 @@ mount.
 The Mover asks the Media Changer to mount a particular volume.
 <li>
 The Media Changer responds once the volume is mounted.
+<li>
+The Mover (as the Media Changer Client) asks the Volume Clerk to mark the volume as "mounted".
+<li>
+The Volume Clerk confirms change of the state
 <li>
 The Mover tells <em>encp</em> to which host and port to write the data.
 <li>
@@ -4278,9 +4318,19 @@ The write has completed.
 <li>
 The Mover tells the Library Manager that he still has the volume mounted.
 <li>
+The Library Manager asks the Volume Clerk to mark the volume as "unmounting".
+<li>
+The Volume Clerk confirms change of the state
+<li>
 The Library Manager tells the Mover that there is no work to be done.
 <li>
 The Mover tells the Media Changer to dismount the volume.
+<li>
+The Media Changer responds once the volume is unmounted.
+<li>
+The Mover (as the Media Changer Client) asks the Volume Clerk to mark the volume as "unmounted".
+<li>
+The Volume Clerk confirms change of the state
 </ul>
 
 <hr>
