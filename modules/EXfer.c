@@ -362,7 +362,7 @@ static void* thread_read(void *info)
   int bytes_to_transfer;        /* Bytes to transfer in a single loop. */
   int sts;                      /* Return value from various C system calls. */
   int bin = 0;                  /* The current bin (bucket) to use. */
-  unsigned long crc_ul = 0;     /* Calculated checksum. */
+  unsigned int crc_ui = 0;      /* Calculated checksum. */
   fd_set fds;                   /* For use with select(2). */
   int p_rtn;                    /* Pthread return value. */
 
@@ -440,10 +440,10 @@ static void* thread_read(void *info)
     case 0:  
       break;
     case 1:  
-      crc_ul = adler32(crc_ul, (buffer+bin*block_size), sts);
+      crc_ui = adler32(crc_ui, (buffer+bin*block_size), sts);
       break;
     default:  
-      crc_ul = 0; 
+      crc_ui = 0; 
       break;
     }
 
@@ -467,7 +467,7 @@ static void* thread_read(void *info)
 
 #ifdef DEBUG
     pthread_mutex_lock(&print_lock);
-    print_status(stderr, 'r', bytes, crc_ul);
+    print_status(stderr, 'r', bytes, crc_ui);
     pthread_mutex_unlock(&print_lock);
 #endif
 
@@ -485,7 +485,7 @@ static void* thread_read(void *info)
   }
 
   set_done_flag(&read_done);
-  return pack_return_values(crc_ul, 0, 0, bytes, "", 0, 0);
+  return pack_return_values(crc_ui, 0, 0, bytes, "", 0, 0);
 }
 
 
@@ -502,7 +502,7 @@ static void* thread_write(void *info)
   int bytes_transfered;         /* Bytes left to transfer in a sub loop. */
   int sts = 0;                  /* Return value from various C system calls. */
   int bin = 0;                  /* The current bin (bucket) to use. */
-  unsigned long crc_ul = 0;     /* Calculated checksum. */
+  unsigned long crc_ui = 0;     /* Calculated checksum. */
   fd_set fds;                   /* For use with select(2). */
   int p_rtn;                    /* Pthread return value. */
 #ifdef DEBUG
@@ -581,13 +581,13 @@ static void* thread_write(void *info)
       case 0:  
 	break;
       case 1:  
-	crc_ul = adler32(crc_ul,
+	crc_ui = adler32(crc_ui,
 			 (buffer + (bin * block_size) + bytes_transfered),sts);
 	/*to cause intentional crc errors, use the following line instead*/
-	/*crc_ul=adler32(crc_ul, (buffer), sts);*/
+	/*crc_ui=adler32(crc_ui, (buffer), sts);*/
 	break;
       default:  
-	crc_ul=0; 
+	crc_ui=0; 
 	break;
       }
       
@@ -595,7 +595,7 @@ static void* thread_write(void *info)
       /* Print w if entire bin is transfered, W if bin partially transfered. */
       debug_print = (sts < bytes_to_transfer) ? 'W' : 'w';
       pthread_mutex_lock(&print_lock);
-      print_status(stderr, debug_print, bytes - bytes_transfered, crc_ul);
+      print_status(stderr, debug_print, bytes - bytes_transfered, crc_ui);
       pthread_mutex_unlock(&print_lock);
 #endif /*DEBUG*/
 
@@ -635,16 +635,16 @@ static void* thread_write(void *info)
   }
 
   set_done_flag(&write_done);
-  return pack_return_values(crc_ul, 0, 0, bytes, "", 0, 0);
+  return pack_return_values(crc_ui, 0, 0, bytes, "", 0, 0);
 }
 
 #ifdef DEBUG
 static void print_status(FILE* fp, char name, long long bytes,
-			 unsigned long crc_ul)
+			 unsigned long crc_ui)
 {
   int i;
 
-  fprintf(stderr, "%cbytes: %15lld crc: %10lu | ", name, bytes, crc_ul);
+  fprintf(stderr, "%cbytes: %15lld crc: %10lu | ", name, bytes, crc_ui);
 
   for(i = 0; i < ARRAY_SIZE; i++)
   {
