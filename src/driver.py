@@ -180,7 +180,9 @@ class  RawDiskDriver(GenericDriver) :
     # write a block of data to already open file: user has to handle exceptions
     def write_block(self, data):
         if len(data) > self.remaining_bytes :
-            raise errno.errorcode[errno.ENOSPC], NoSpace
+            format="NoSpace Len "+repr(len(data))+ \
+                     "Remain "+repr(self.remaining_bytes)
+            raise errno.errorcode[errno.ENOSPC], format
         self.remaining_bytes = (self.remaining_bytes-len(data))
         self.df.write(data)
         self.df.flush()
