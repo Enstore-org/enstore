@@ -181,6 +181,7 @@ color_dict = {
     'state_error_color':    rgbtohex(0, 0, 0), # black
     'state_offline_color':  rgbtohex(0, 0, 0), # black
     'timer_color':          rgbtohex(255, 255, 255), # white
+    'timer_longtime_color': rgbtohex(255, 0, 0), # red
     #volume colors
     'tape_stable_color':    rgbtohex(0, 165, 255), # (royal?) blue
     'label_stable_color':   rgbtohex(255, 255, 255), # white (tape)
@@ -429,13 +430,23 @@ class Mover:
                     anchor=Tkinter.CENTER)
 
     def draw_timer(self):
+        
+        #### color
+        if (self.timer_seconds > 3600) and \
+           (self.state in ["ACTIVE", "SEEK", "SETUP", "loaded",
+                           "MOUNT_WAIT", "DISMOUNT_WAIT"]):
+            timer_color = self.timer_longtime_color
+        else: #state is "Unknown", "IDLE", "OFFLINE", "ERROR"
+            timer_color = self.timer_color
+        
         if self.timer_display:
             self.display.itemconfigure(self.timer_display,
-                                       text=self.timer_string)
+                                       text=self.timer_string,
+                                       fill = timer_color)
         else:
             self.timer_display = self.display.create_text(
                 self.x + self.timer_offset.x, self.y + self.timer_offset.y,
-                text = self.timer_string, fill = self.timer_color,
+                text = self.timer_string, fill = timer_color,
                 font = self.font, anchor = Tkinter.SE)
 
     def draw_volume(self):
@@ -790,6 +801,7 @@ class Mover:
         self.progress_bg_color   = colors('progress_bg_color')
         #self.state_color         = colors('state_color') 
         self.timer_color         = colors('timer_color')
+        self.timer_longtime_color = colors('timer_longtime_color')
         self.volume_font_color = colors('label_stable_color')
         self.volume_bg_color = colors('tape_stable_color')
         self.mover_color = {'ERROR': mover_error_color,
