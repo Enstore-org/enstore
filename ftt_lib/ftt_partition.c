@@ -80,6 +80,7 @@ ftt_part_util_get(ftt_descriptor d) {
 int ftt_part_util_set(ftt_descriptor d,  ftt_partbuf p ) {
     int res, i;
     int len;
+    int timeout;
     static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00,BD_SIZE+136, 0x00};
 
     wp_buf[0] = 0;
@@ -111,7 +112,13 @@ int ftt_part_util_set(ftt_descriptor d,  ftt_partbuf p ) {
 	wp_buf[BD_SIZE+8 + 2*i + 0] = 0;
 	wp_buf[BD_SIZE+8 + 2*i + 1] = 0;
     }
-    res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, wp_buf, len, 3600, 1);
+
+    timeout = 1800;
+    if ( 0 == strncmp(ftt_unalias(d->prod_id),"SDX-", 4) ) {
+        timeout *= 10;
+    }
+
+    res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, wp_buf, len, timeout, 1);
     return res;
 }
 
@@ -421,7 +428,7 @@ ftt_set_mount_partition(ftt_descriptor d, int partno) {
 
 
 int
-ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table *pb) {
+ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table pb) {
 
    int   res;
    int   i;

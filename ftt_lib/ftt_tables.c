@@ -1295,7 +1295,8 @@ ftt_dev_entry devtable[] = {
     /*   string          den mod hwd   pas fxd rewind            1st */
     /*   ======          === === ===   === === ======            === */
     /* Default, passthru  */
-       { "rmt/%dhbn", 	  2,  1, 0x27,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dhbn", 	  2,  0, 0x27,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dcbn", 	  2,  1, 0x27,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
        { "rmt/%dhbn", 	  2,  1, 0x27,  1,  0,                 0, 0, SUN_MAX_BLKSIZE},
     /* Usable */
        { "rmt/%dhbn", 	  2,  0, 0x27,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
