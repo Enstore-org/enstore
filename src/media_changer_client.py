@@ -92,7 +92,6 @@ class MediaChangerClient(generic_client.GenericClient):
 
 class MediaChangerClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
-        self.config_file = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.media_changer = ""
@@ -107,7 +106,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["config_file=","maxwork=","view=","getwork"]
+               ["maxwork=","view=","getwork"]
 
     #  define our specific help
     def parameters(self):

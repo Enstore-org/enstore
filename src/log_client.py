@@ -121,7 +121,6 @@ class LoggerClient(generic_client.GenericClient):
 class LoggerClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
-        self.config_file = ""
         self.test = 0
         self.logit = ""
         self.alive_rcv_timeout = 0
@@ -133,7 +132,7 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["config_file=", "test", "logit="] +\
+               ["test", "logit="] +\
 	       ["get_logfile_name", "get_last_logfile_name"]
 
 
