@@ -9,8 +9,8 @@ SHELL = /bin/sh
 .IGNORE:
 .SUFFIXES: .ps .html
 
-WWW  = ./www
-WWW_NEW = ./www_new
+WWW  = ./www/
+WWW_NEW = ./www_new/
 BIN  = ../bin/
 SRC  = ../src/
 SRCWWW = $(WWW)
@@ -28,7 +28,7 @@ PS_FILES = $(WWW)/enstore.ps $(WWW)/read.ps $(WWW)/test-stand.ps \
 	$(WWW)/write.ps $(WWW)enstoreSimple.ps
 
 GIF_FILES = $(WWW)/bookshelf.gif $(WWW)/read.gif $(WWW)/write.gif \
-	$(WWW)/enstore.gif $(WWW)/test-stand.gif $(WWW)enstoreSimple.gif
+	$(WWW)/enstore.gif $(WWW)/test-stand.gif $(WWW)/enstoreSimple.gif
 
 LOG_FILES = $(WWW)/redwoodfiber.log $(WWW)/redwoodlocal.log
 
