@@ -7,10 +7,8 @@ The Design of Enstore
 <font size=7><b><i>
 Enstore Data Storage System
 </i></b></font>
-<p>
-<font color=#ff0000><blink>need section numbers and sub numbers to reflect the structure of this document</blink></font>
 <h2>
-1. Introduction
+1 Introduction
 </h2>
 The Enstore system provides a generic interface for end users to efficiently
 use mass storage systems as easily as if they were native file systems.
@@ -26,15 +24,33 @@ It is <em>flexible</em> because it is based on a true client-server
 model that allows hot swapping components and dynamic configuration, and,
 it is platform independent and runs on heterogeneous environments.
 This document will address the architecture behind it.
-<p>
-The Enstore system supports multiple distributed tape robots, which may
-handle multiple media types, and multiple distributed mover nodes.
-The system is written in <em>python</em>, a scripting language with
-advanced object-oriented features.
-<p>
-<font color=#ff0000><blink>Something is missing before jumping into
-software components</blink></font>
+
+<h2>
+2 Objectives
+</h2>
+
+<em>Enstore</em> is designed to accomplish the followings:
 <br>
+<font color=#ff8800><blink>Blah! Blah! Blah! ...</blink></font>
+<br>
+<font color=#0000ff>
+(Say something about the presumed requirements as the goal of design)
+</font>
+
+<h2>
+3 Overview of Enstore Architecture
+</h2>
+
+The Enstore system supports multiple distributed tape robots,
+each of which may handle multiple media types,
+and multiple distributed mover nodes.
+Currently, the system is written in <em>python</em>, a scripting
+language that has advanced object-oriented features.
+It provides a sound environment for quick turn-around prototyping and
+a seamless integration/migration path for portion or whole system to
+fully compiled languages, such as C and C++, shall there is a demand
+for even better performance.
+<p>
 The Enstore system has four major kinds of software components:
 <ul>
 <li><em>Namespace</em>, implemented by the <em>pnfs</em> package from
@@ -52,19 +68,9 @@ The Enstore system has four major kinds of software components:
 <li><em>encp</em>, a program used to copy files to and from tape libraries
 <li><em>administration tools</em>.
 </ul>
-<p>
-<font color=#0000ff>(should mention "client-server", "hot-swapping/dynamic-configuration", "fault tolerance nature" and "error recovery")</font>
-<br>
-<font color=#0000ff>(should separate software architecture from system architecture)</font>
-<br>
-<font color=#0000ff>(should mention platform independence)</font>
-<br>
-<font color=#0000ff>(say something about the "transparent view from users")</font>
-<p>
-<font color=#ff0000><blink>need to rephrase the following paragraph</blink></font>
-<br>
-The Enstore system can be described in the block diagram below.
-Components are connected via IP.
+These software components, as well as hardware components, can be
+described in the following system context diagram.
+Hardware components are connected via IP.
 Great care has been taken to ensure that the system will function well
 under extreme load conditions.
 By design, there is no preset limit on the number of concurrent user
@@ -112,8 +118,10 @@ an equivalent request with a new unique i.d..
 The system can instruct <em>encp</em> to re-try if it needs to back out
 of an operation.
 <p>
+The details of each software component are described in the following
+sections.
 <h2>
-Namespace
+3.1 Namespace
 </h2>
 The <em>pnfs</em> package implements an <em>nfs</em> daemon and mount
 daemon.
@@ -122,36 +130,35 @@ collection of database entries <em>look like</em> a file system,
 and provide control information for the system.
 <p>
 <p>
-<font color=#ff4400><blink>
-Not quite sure about what it means in the following paragraph...
-</blink></font><br>
 To inspect files, users mount the <em>pnfs</em> file system on their own
 computers, and interact with it using the native operating system
 utilities.  For example, users can <em>ls</em>, <em>stat</em>,
-<em>mv</em>, <em>rm</em> or <em>touch</em> existing "regular files",
+<em>mv</em>, <em>rm</em> or <em>touch</em> existing "files",
 but are given errors on attempts to read
-or write files in the name space.
+or write the content of the files.
 Users can <em>mkdir</em> and <em>rmdir</em>, and <em>ln</em> files.
 <p>
 Normal UNIX permissions and carefully administered export points
 are used to prevent unauthorized access to the name space.
 <p>
 <h2>
-ENCP
+3.2 ENCP
 </h2>
 Reading and writing files means interacting with tapes.
 This is done with an enstore-provided utility, <em>encp</em>.
 
-<em>encp</em> interacts with <em>pnfs</em> --
-<em>encp</em> accesses the pnfs system in a special way.
+<em>encp</em> interacts with <em>pnfs</em>.
 There are three kinds of accesses:
-<dl>
-<dt>Interact with Administration --
-<dd>An administrator can create special files in <em>pnfs</em> name space.
+<ol>
+<li>Interact with Administration
+    <br>
+    An administrator can create special files in <em>pnfs</em> name space.
     For example, one type of file signifies that the system needs to be
     drained. Existence of the file causes <em>encp</em> to stall.
-<dt>Configuration Information --
-<dd>When files are created on tape media quite a bit of information
+    <p>
+<li>Configuration Information
+    <br>
+    When files are created on tape media quite a bit of information
     needs to be provided.
     These files are created in a specific part of the name space.
     <em>Enstore</em> looks up towards the root of the name space,
@@ -167,10 +174,11 @@ There are three kinds of accesses:
 	pnfs_gid = 0100
 	pnfs_file_mode = 0644
 </pre>
-
     More  about some of this information later.
-<dt>File information --
-<dd>The rest of the system identifies a file by a 64-bit numeric
+    <p>
+<li>File information
+    <br>
+    The rest of the system identifies a file by a 64-bit numeric
     identifier, dubbed a "bit file id".
     <em>pnfs</em> binds a bit file i.d. to names of regular files in
     the <em>pnfs</em> name space.
@@ -178,29 +186,36 @@ There are three kinds of accesses:
     when fetching data from tape.
     After a file is written to tape, <em>encp</em> parks the bfid into
     the <em>pnfs</em> name space.
-<dt>Throttling in <em>encp</em> --
-<dd>It is important not to swamp any system.
-    In <em>Enstore</em>, a first level of throttling is implemented in
-    <em>encp</em>.
-    Control communications in <em>Enstore</em> uses a simple reliable
-    request-response protocol using <em>UDP</em>, but data transfers
-    are implemented using two TCP ports.
-    A fixed number, currently 30, of pre-allocated TCP ports are
-    arbitrated among all instances of <em>encp</em> on a given machine.
-    Consequently, the system will survive the worst sort of abuse,
-    for example, a student forking off 200 copy requests,
-    since at most 15 will be active in the system at any time.
-</dl>
+</ol>
 
-<h2>Enstore servers</h2>
+<h3>
+3.2.1 Throttling in <em>encp</em>
+</h3>
+
+It is important not to swamp any system.
+In <em>Enstore</em>, a first level of throttling is implemented in
+<em>encp</em>.
+Control communications in <em>Enstore</em> uses a simple reliable
+request-response protocol using <em>UDP</em>, but data transfers
+are implemented using two TCP ports.
+A fixed number, currently 30, of pre-allocated TCP ports are
+arbitrated among all instances of <em>encp</em> on a given machine.
+Consequently, the system will survive the worst sort of abuse,
+for example, a student forking off 200 copy requests,
+since at most 15 will be active in the system at any time.
+
+<h2>
+3.3 Enstore servers
+</h2>
 
 Enstore servers are software entities which handle tape, and in a
 future release, disk caches.
 The high level  concepts are as follows:
-<ol>
-<li><em>Physical library:</em> represents a real, tangible collection of tapes
-along with <blink>stuff</blink> to manipulate, read and write and organize
-them.
+<dl>
+<dt><em>Physical library</em>
+<dd>Physical Library represents a real, tangible collection of tapes
+along with software drivers/utilities to manipulate, read and write
+and organize them.
 
 A physical library can be thought of as consisting of
 <ul>
@@ -229,14 +244,14 @@ of drives may be less than the number of virtual libraries.
 <em>Volumes</em> -- Are uniquely identified by an external label,
 which is known to the media changer.
 <p>
-<li><em>Quota Family</em>:
-A quota family is a set of pairs of media names and maximum number of volumes.
+<dt><em>Quota Family</em>
+<dd>A quota family is a set of pairs of media names and maximum number of volumes.
 All files are created with respect to a quota family.
 Creation of a file is not allowed if the maximum number of volumes
 in that family would be exceeded.
 <p>
-<li><em>File family</em>:
-A file family is specified by a name and an integer "width".
+<dt><em>File family</em>:
+<dd>A file family is specified by a name and an integer "width".
 A file family is associated with every file creation.
 Within a given library, the <em>Enstore</em> system keeps no more
 than <em>"width"</em> volumes, loaded on no more than <em>"width"</em>
@@ -250,22 +265,20 @@ Clever use of file families will allow volumes to be faulted out to
 "shelf", and also to decrease access times for subsequent reads.
 This can also effect transfer rates into the library by groups of users
 (that are writing files associated with a specific file family).
-<p>
+</dl>
 Twists to all of this are the special libraries -- shelf and
-manual mount libraries.
-<p>
-Shelf libraries bounce requests for tapes -- The net effect is that
+manually mounted libraries.
+Shelf libraries bounce requests for tapes. The net effect is that
 users are informed that this data is currently unavailable, and if
 they really want the data, arrangements should be made to have the
 tapes placed in a library which is accessible. (n.b. Enstore keeps a
 log file, which would allow an administrator to identify the tapes)
+Manually Mounted library are tapes in a drawer (or whatever) and an
+operator.
 <p>
-Manual Mount library are tapes in a drawer (or whatever) and an operator.
-</ol>
-<p>
-<h2>
-Volume Clerk
-</h2>
+<h3>
+3.3.1 Volume Clerk
+</h3>
 The volume clerk has a single table database.
 There is one record for each volume known to the system.
 The record is looked up by a key.
@@ -362,9 +375,9 @@ The volume clerk does short, atomic operations. Operations are:
 <td>(set error_inhibit to "none")missing
 </table>
 
-<h2>
-File Clerk
-</h2>
+<h3>
+3.3.2 File Clerk
+</h3>
 The file clerk tracks files in the system. There is one record for each file
 in the system.
 The records are keyed.
@@ -408,31 +421,34 @@ The file clerk does short, atomic operations. Operations are:
 <td valign=top>Make a new bit file record.
 </table>
 
-<h2>
-Library Manager
-</h2>
+<h3>
+3.3.3 Library Manager
+</h3>
 The library manager is a server which queues up and dispatches work for
 a virtual library. There is one library manager for each virtual library
 It has three types of clients
-<ul>
+<ol>
 <li><em>Users</em> -- seeking to have their files read or written files.
 <li><em>Movers</em> -- seeking to actually read or write files.
 <li><em>Publishers</em> -- seeking HTML describing the library's current work.
-</ul>
-
-User requests: 
-<ul>
-<li><em>Writes into the system</em> -- <em>pnfs</em> is used to identify
+</ol>
+<h3>
+3.3.3.1 Users' Requests:
+</h3>
+<dl>
+<dt>Writes into the system
+<dd><em>pnfs</em> is used to identify
     the library for a write request, so the <em>encp</em> program composes
     a write request and contacts the appropriate library manager
     directly.
     The library manager queues the work, and acknowledges the request.
 
-<li><em>Read from the system</em> -- <em>pnfs</em> holds only the bit
+<dt>Read from the system
+<dd><em>pnfs</em> holds only the bit
     file i.d., so <em>encp</em> contacts the bit file clerk, and that
     software ultimately contacts the appropriate volume manager, which
     queues up the work.
-</ul>
+</dl>
 The work is conceptually prioritized.
 Larger priority numbers means higher priority.
 Currently, write is of priority 10, read priority 1.
@@ -440,10 +456,10 @@ The priority is conceptually more flexible than that.
 However, the system will exhaust all work for a volume,
 given that it has been mounted, regardless of priority.
 <p>
-Mover Requests:
-<p> 
-Movers seek to take data from tape and send it over a socket to users.
-<blink>what about writes</blink>
+<h3>
+3.3.3.2 Movers' Requests:
+</h3>
+Movers seek to transport data between tape and users over a socket.
 Movers contact library managers seeking work. If the library manager
 has work, the mover is requested to mount a volume, and report
 back. When reporting back, the mover may be told to contact a waiting
@@ -506,10 +522,14 @@ happen is that the library manager will be unable to schedule work for
 that volume. If the physical library has more than one drive, the system
 should be able to continue servicing requests.
 <p>
-Publisher Requests -- Publishers are not yet implemented.
-<h2>
-Mover
-</h2>
+<h3>
+3.3.3.3 Publisher Requests
+</h3>
+Publishers are not yet implemented.
+
+<h3>
+3.3.4 Mover
+</h3>
 A mover task is bound to a drive, and seeks to use that drive to service
 read and write requests.  It executes a protocol with a library manager,
 as described in the tables in the library manager section (above).
@@ -579,8 +599,9 @@ either media or drive.  If drive, mark the tape as hung, and kill ourselves.
 If media, mark the media as no access.  If the user drops the control tcp
 channel unilaterally, assume he has aborted.
 <p>
+<font color=#ff0000><blink>Missing configuration server, log servers, and media changer</blink></font>
 <h2>
-More Detailed Block Diagram
+4 More Detailed Block Diagram
 </h2>
 <p>
 <font color=#ff0000><blink>Will be replaced by real picture</blink></font>
@@ -642,7 +663,324 @@ The configuration is dynamic in the sense that each mover reads a new
 configuration when it dismounts a tape.
 </ul>
 <h2>
-Concluding Remarks
+5 Communication Protocols
+</h2>
+<font color=#ff8800>Protocol and the figures go here</font>
+<h2>
+6 Error Control
+</h2>
+
+Error control in Enstore is simple, because much of the system state
+is stored in the <em>encp</em> client. The <em>encp</em> client can be given a
+"retry-able error" and will resend data for a write into the system, or the
+system can re-start a read from the system from scratch. This re-try
+is given a very high priority when it is received by the library
+manager -- put on the head of the unassigned work queue.
+
+The Enstore system keeps unassigned read and write requests in a queue of
+unallocated work in the library manager. Once a read or write requests'
+turn comes, the library manager puts the request in a "work awaiting
+mount" or "work at mover" queue. The reason for this is to track the
+volumes for scheduling : the library manager must not command a different mover
+to mount a tape for another mover. It is the mover, and not the library
+manager which completes requests.
+
+The three library manager queues are: 
+<ul>
+<li>Unscheduled work
+<li>work awaiting a volume mount
+<li>work at a mover.
+</ul>
+<p>
+It is important to keep these queues consistent. Tape and reading
+errors are handled in the mover, and can be handled by detailed design in 
+the mover.
+<p>
+Many interesting errors are related to when the tape cannot be written
+or read, or when it is suspected that tape is jammed, etc.
+<p>
+We need experience with the actual hardware. In the interim we make the 
+following assumptions:
+<ul>
+<li>
+If we have trouble during a load or unload operation, we assume that
+the tape is physically jammed. Until a human looks at the problem, we
+will permit no future operations on the drive or the volume.
+<li>
+If we have errors on writing a volume, we will not write on that
+volume anymore.
+<li>
+If a tape drive has errors on "consecutive" tapes, we should "stop
+using the tape drive". The number of errors allowed should be picked
+up through the mover configuration, since we may have "more
+temperamental" and "less temperamental" drives, we may want to
+configure this parameter for each mover individually. 
+<li>
+If tape reads or spaces give error, we should track the errors. If
+the recent history of the tape shows many errors, we should mark the
+tape "no access" and bring it to the attention of an administrator.
+Therefore, the Volume Clerk needs to track the "recent history" of
+errors, and have a per-volume figure of merit which will mark the tape
+for no access, given many recent errors.
+<li>
+Library manager:
+<br>
+Two Features should be added to the tickets to support re-tries. 
+<ul>
+<li>Tickets should be marked as retries or not by <em>encp</em>. Retries go 
+to the head of the queue.
+<li>Tickets should be marked with an "avoid this mover" field for read
+retries, so the same tape drive can be avoided.
+</ul>
+<em>encp</em> should generate these fields appropriately, and the queuing logic
+in the library manager ought to implement the logic associated with these
+fields.
+<p>
+The Enstore system should check the read/write state of a tape read very
+early when the request is queued, to give an error if the access
+is not allowed. However, an error may change the state of a tape while
+its corresponding work is in the library manager queue. Therefore, a
+late check is required. The system already performs a "late check"
+for writes, since a volume must be selected for every file. The system
+needs a "late check" for reads. Failing a late check means contacting
+<em>encp</em> to give it the bad news. The contact should be done in the mover,
+not in the library manager, just before the mover goes off to mount the volume
+for read, since the mover is better able to tolerate a very slow or
+non-existent <em>encp</em>. It is good to contact 
+<em>encp</em> before a mount, too, since people <em><b>will</b></em> ^C <em>encp</em>'s and
+it is best to discover this <em><b>before</b></em> incurring the expense of a mount.
+<li>
+"Freeze the tape in the drive" means:
+<ul>
+<li>Not unloading the tape from the drive
+<li>Freezing the tape
+<li>Off-lining the Drive
+</ul>
+<li>
+"Freezing the tape" means:
+<ul>
+<li>mark the tape as "system noaccess"
+<li>log that this happened and let an administrator look at the
+problem in the morning.
+<li><em>encp</em> shall not re-try.
+</ul>
+<li>
+"Off-lining the drive" means:
+<ul>
+<li>Preserving as much state as possible.
+<li>Writing a complete description in an error log.
+<li>Leaving the problem until business hours unless the capacity of
+the system falls below a threshold.
+</ul>
+</ul>
+
+<table>
+<th>Tape Write Errors
+<tr>
+<td valign=top><b>WRITE_NOTAPE</b>
+<td valign=top>"no such tape" error in library mount failure on write.
+    If this happens, the volume data base is inconsistent with reality.
+    Mover shall freeze the tape.
+    <em>encp</em> shall retry.
+<tr>
+<td valign=top><b>WRITE_TAPEBUSY</b>
+<td valign=top>"The media changer says that the tape is in another drive"
+    Enstore has a bug, or some other system has mounted the tape or
+    library micro put the tape somewhere else.
+    Mover shall freeze the tape.
+    <em>encp</em> shall retry.
+<tr>
+<td valign=top><b>WRITE_BADMOUNT</b>
+<td valign=top>Other mount failure on write, or load operation failed.
+    Must assume jammed tape.
+    Mover shall freeze the tape in the drive.
+    <em>encp</em> shall re-try
+<tr>
+<td valign=top><b>WRITE_BADSPACE</b>
+<td valign=top>"EOD cookie does not produce EOD"
+    Wrong tape, software bug or drive space error.
+    Mover shall freeze the tape in the drive.
+    <em>encp</em> shall retry.
+<tr>
+<td valign=top><b>WRITE_ERROR</b>
+<td valign=top>"Error when writing data block or file mark"
+    Run of the mill write error.
+    If the drive has had many recent errors, mover shall
+    "offline the drive"
+    The volume shall be marked read-only.
+    <em>encp</em> shall re-try.
+<tr>
+<td valign=top><b>WRITE_EOT</b>
+<td valign=top>"Hit EOT while writing data block or file mark"
+    Hit EOT. Mover shall mark volume full.
+    <em>encp</em> shall retry. 
+<tr>
+<td valign=top><b>WRITE_UNLOAD</b>
+<td valign=top>"error when unloading tape from drive"
+    Must assume that the tape is physically jammed.
+    Mover shall freeze the tape in the drive.
+    <em>encp</em> shall retry.
+    No <em>encp</em> is associated with the tape at this time.
+<tr>
+<td valign=top><b>WRITE_UNMOUNT</b>
+<td valign=top>"Media changer gives error when unmounting tape"
+    Should not happen. Maybe the tape is hanging in the drive. Does no harm.
+    Mover shall freeze the tape in the drive.
+    No <em>encp</em> is associated with the tape at this time.
+<tr>
+<td valign=top><b>WRITE_NOBLANKS</b>
+<td valign=top>The volume clerk has no blank volumes to give.
+    The requests shall return an error. 
+    (do not "wait forever" -- DAQ should switch to an alternate library)
+    An administrator shall be paged.
+<tr>
+<th>Tape Read Errors
+<tr>
+<td valign=top><b>READ_NOTAPE</b>
+<td valign=top>"No such tape in library" mount failure on read.
+    If this happens, the volume data base is inconsistent with reality.
+    Mover shall freeze the tape.
+<tr>
+<td valign=top><b>READ_TAPE_BUSY</b>
+<td valign=top>"The media changer says that the tape is in another drive"
+    Enstore has a bug, or some other system has mounted the tape or
+    the library micro put the tape somewhere else.
+    Mover shall freeze the tape.
+    <font color=#ff0000><blink>What is a "library micro"?</blink></font>
+<tr>
+<td valign=top><b>READ_BADMOUNT</b>
+<td valign=top>Other Mount failure on read, or load operation failed.
+    We have to assume that the tape is jammed in the drive.
+    Mover shall freeze the tape in the drive.
+<tr>
+<td valign=top><b>READ_BADLOCATE</b>
+<td valign=top>Failed space or initial CRC's don't match on initial read.
+    We have attempted to space to a file on the tape. Either the file location
+    cookie is somehow corrupted, we have the wrong tape in the drive or
+    the tape drive cannot space properly. 
+    Mover shall freeze the tape in the drive.
+    <em>encp</em> shall not retry
+<tr>
+<td valign=top><b>READ_ERROR</b>
+<td valign=top>Error when reading data block.
+    Run of the mill read error.
+    Mover shall consider the recent error history of the drive and the volume.
+    If the drive has had many recent errors, mover shall offline the drive.
+    <em>encp</em> shall re-try.
+    If the volume has had many recent errors, mover shall freeze the tape.
+    <em>encp</em> shall not retry.
+    If the volume has had few recent errors,
+    mover shall fail the transfer,
+    <em>encp</em> shall re-try, and annotate that this mover shall be avoided.
+<tr>
+<td valign=top><b>READ_COMP_CRC</b>
+<td valign=top>Failure of complete CRC.
+    This needs investigating, as it should not happen. The drive and the tape
+    are suspicious. Corrupt file location cookie, drive space error, wrong tape
+    in the drive, etc.
+    Mover shall freeze the tape in the drive.
+    <em>encp</em> shall not retry.
+<tr>
+<td valign=top><b>READ_EOT</b>
+<td valign=top>Hit EOT when reading.
+    Should not happen. Corrupt file location cookie, drive space error, or
+    wrong tape in the drive. Should have hit an EOF.
+    Mover shall freeze the tape in the drive.
+    <em>encp</em> shall not retry.
+<tr>
+<td valign=top><b>READ_EOD</b>
+<td valign=top>Hit EOD when reading.
+    Should not happen. Corrupt file location cookie, drive space error, or
+    wrong tape in the drive. Should have hit an EOF.
+    Mover shall freeze the tape in the drive.
+    <em>encp</em> shall not retry.
+<tr>
+<td valign=top><b>READ_UNLOAD</b>
+<td valign=top>Error when unloading tape.
+    Must assume that the tape is physically jammed.
+    Mover shall freeze the tape in the drive.
+    No <em>encp</em> is associated with the tape at this time.
+<tr>
+<td valign=top><b>READ_UNMOUNT</b>
+<td valign=top>Error from media changer when unloading tape.
+    Should not happen. Maybe the tape is hanging in the drive. Does no harm.
+    Mover shall freeze the tape in the drive.
+    No <em>encp</em> is associated with the tape at this time
+<tr>
+<th>Other Errors
+<tr>
+<td valign=top><b>ENCP_GONE</b>
+<td valign=top><em>encp</em> has gone away while request is queued.
+    The mover contacts <em>encp</em> to ping it before a mount, and if 
+    <em>encp</em> is not there, the mover does not go on to contact the media 
+    changer, but instead returns a UNILATERAL_UNBIND to the library manager.
+<tr>
+<td valign=top><b>TCP_HUNG</b>
+<td valign=top>DESY reports that 
+<ul>
+<li>sometimes machines can crash....
+<li><em>encp</em> processes can be killed in a way that...
+<li><em>encp</em> client's disks many fill up ...
+<li>etc...
+</ul>
+which are all seen as the data TCP link is seen to
+just hang. 
+<p>
+DESY's treatment is "harsh" -- They compute an anticipated transfer
+time for every socket operation and abort the transfer if the
+actual transfer takes more than several times the expected value.
+Right now, Enstore does not consider this to be an error and just
+waits. However, we are vulnerable to disaster. It is possible to see
+circumstances where we might tie all the movers up if, say, one clients
+system's disk fills up.
+<tr>
+<td valign=top><b>LM_CRASH</b>
+<td valign=top>If a library manager crashes, and loses its queue of pending work,
+    the <em>encp</em>'s will never be called back, and will wait
+    forever.
+    This is a problem. A basis for the solution is for a waiting 
+    <em>encp</em> to ping its library manager,
+    every 30 mins to see if its request has gotten lost.
+    It would also be good if a --timeout switch was available to
+    <em>encp</em>,
+    since the users may wish to get an error rather than suffer a long
+    delay.
+<tr>
+<td valign=top><b>MOVER_CRASH</b>
+<td valign=top>
+Case 1) If a mover is connected to an <em>encp</em>, then <em>encp</em> will
+notice its sockets being torn down prematurely. <em>encp</em> shall retry. This
+is not good enough.
+<p>
+For reads, the volume is tied up because the library manager has the volume as
+being "at a mover". The retry will be hung in the library manager queue
+because the library manager is unaware of the mover crash.
+<p>
+For writes, 1 is effectively deducted from the file family width,
+since the library manager is unaware of the mover crash.
+<p>
+This is all a bug, the minimal effect of a mover crash should be:
+<ul>
+<li>
+Since the status of the volume is unknown, the status should be akin
+to "freeze drive and volume". However, subsequent reads will not produce an
+error, but will be queued until the mover is restarted.
+<li>
+Allow writes to continue on a different volume of the same file 
+family, without affecting the "width".
+</ul>
+<p>
+Case 2) Mover has a volume, but is not associated with an <em>encp</em> and 
+crashes.
+Same problems as case 1) but <em>encp</em> will notice.
+The total amount of time spent in this possibility is small compared to
+the time corresponding to case 1 and case 3.
+<p>
+Case 3) Mover is idle.
+This is O.K. The system degrades as specified.
+</table>
+<h2>
+7 Concluding Remarks
 </h2>
 <p>
 <font color=#ff0000><blink>Not done yet below this line</blink></font>
