@@ -328,6 +328,7 @@ ftt_scsi_locate( ftt_descriptor d, int blockno, int partno) {
     static unsigned char 
         locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
      
+    locate_cmd[1] = 0x02;
     locate_cmd[3] = (blockno >> 24) & 0xff;
     locate_cmd[4] = (blockno >> 16) & 0xff;
     locate_cmd[5] = (blockno >> 8)  & 0xff; 
