@@ -7,8 +7,20 @@ import enstore_plots
 import enstore_html
 import enstore_files
 import generic_client
+import option
 
 TMP = ".tmp"
+
+CRON = "cron"
+QUOTA = "quota"
+
+
+# in order to add support for another plot page add the following -
+#
+#    - a class that inherits from PlotPage
+#    - a elif clause in do_work
+#
+
 
 ENGLISH_TITLES = { 
 		   "ADICDrvBusy" : "(e)Get ADIC Drive Info",
@@ -103,13 +115,23 @@ def do_the_walk(input_dir, url):
     pss.sort()
     return (jpgs, stamps, pss)
 
-class CronPlotPage(enstore_html.EnPlotPage):
+
+class PlotPage(enstore_html.EnPlotPage):
 
     def __init__(self, title, gif, description, url):
         self.url = url
         enstore_html.EnPlotPage.__init__(self, title, gif, description)
 	self.source_server = "Enstore"
+	self.help_file = ""
+        self.english_titles = {}
+
+
+class CronPlotPage(PlotPage):
+
+    def __init__(self, title, gif, description, url):
+        PlotPage.__init__(self, title, gif, description, url)
 	self.help_file = "cronHelp.html"
+        self.english_titles = ENGLISH_TITLES
 
     def find_label(self, text):
         l = len(self.url)
@@ -118,14 +140,29 @@ class CronPlotPage(enstore_html.EnPlotPage):
 	# translate this text to more understandable english
         # currently it has this format - node/cronjob. make this node/text.
         nodeNName = string.split(text_lcl, "/")
-        text = ENGLISH_TITLES.get(nodeNName[1], nodeNName[1])
+        text = self.english_titles.get(nodeNName[1], nodeNName[1])
 	return "%s<BR>%s<BR>"%(text_lcl, text)
+
+
+class QuotaPlotPage(PlotPage):
+
+    def __init__(self, title, gif, description, url):
+        PlotPage.__init__(self, title, gif, description, url)
+        self.english_titles = {}
+
+    def find_label(self, text):
+        l = len(self.url)
+        # get rid of the .jpg ending and the url at the beginning and _stamp
+	text_lcl = text[l:-10]
+        # get rid of the // and then use this
+        text_lcl = string.replace(text_lcl, "/", "")
+	return text_lcl
+
 
 class PlotPageInterface(generic_client.GenericClientInterface):
 
-    def __init__(self, flag=1, args=sys.argv, user_mode=1):
+    def __init__(self, args=sys.argv, user_mode=1):
 	# fill in the defaults for the possible options
-        self.do_parse = flag
 	self.description = "Graphical representation of the exit status of Enstore cron jobs."
 	self.title = "Enstore Cron Processes Output"
 	self.title_gif = "en_cron_pics.gif"
@@ -133,28 +170,82 @@ class PlotPageInterface(generic_client.GenericClientInterface):
 	self.input_dir = "%s/CRONS"%(self.dir,)
 	self.html_file = "%s/cron_pics.html"%(self.dir,)
         self.url = "CRONS/"
+        self.plot = ""
 	generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
-    def options(self):
-	return self.help_options() +\
-	       ["input_dir=", "description=", "title=",
-		"html_file=", "title_gif=", "url="]
+    plot_options = {
+       option.INPUT_DIR:{option.HELP_STRING:"directory containing plot image files",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_LABEL:"directory",
+                         option.USER_LEVEL:option.ADMIN,
+                         },
+       option.DESCRIPTION:{option.HELP_STRING:"description for html page",
+                           option.VALUE_TYPE:option.STRING,
+                           option.VALUE_USAGE:option.REQUIRED,
+                           option.VALUE_LABEL:"text",
+                           option.USER_LEVEL:option.ADMIN,
+                           },
+       option.TITLE:{option.HELP_STRING:"title for html page",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"text",
+                     option.USER_LEVEL:option.ADMIN,
+                     },
+       option.HTML_FILE:{option.HELP_STRING:"html file to create",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_LABEL:"filename",
+                         option.USER_LEVEL:option.ADMIN,
+                         },
+       option.TITLE_GIF:{option.HELP_STRING:"gif image containing title of html page",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_LABEL:"gif_file",
+                         option.USER_LEVEL:option.ADMIN,
+                         },
+       option.URL:{option.HELP_STRING:"url to use for plot images",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_LABEL:"url",
+                         option.USER_LEVEL:option.ADMIN,
+                         },
+       option.PLOT:{option.HELP_STRING:"type of html plot page to create",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.VALUE_LABEL:"type",
+                    option.USER_LEVEL:option.ADMIN,
+                    }
+       }
+
+
+    def valid_dictionaries(self):
+	return (self.help_options, self.plot_options)
+
 
 def do_work(intf):
     # this is where the work is really done
     # get the list of stamps and jpg files
-    (jpgs, stamps, pss) = do_the_walk(intf.input_dir, intf.url)
-    html_page = CronPlotPage(intf.title, intf.title_gif, intf.description,
-                             intf.url)
-    html_page.body(jpgs, stamps, pss)
-    # open the temporary html file and output the html text to it
-    tmp_html_file = "%s%s"%(intf.html_file, TMP)
-    html_file = enstore_files.EnFile(tmp_html_file)
-    html_file.open()
-    html_file.write(html_page)
-    html_file.close()
-    os.rename(tmp_html_file, intf.html_file)
+    if intf.plot == CRON:
+        html_page = CronPlotPage(intf.title, intf.title_gif, intf.description,
+                                 intf.url)
+    elif intf.plot == QUOTA:
+        html_page = QuotaPlotPage(intf.title, intf.title_gif, intf.description,
+                                  intf.url)
+    else:
+        html_page = None
+
+    if html_page:
+        (jpgs, stamps, pss) = do_the_walk(intf.input_dir, intf.url)
+        html_page.body(jpgs, stamps, pss)
+        # open the temporary html file and output the html text to it
+        tmp_html_file = "%s%s"%(intf.html_file, TMP)
+        html_file = enstore_files.EnFile(tmp_html_file)
+        html_file.open()
+        html_file.write(html_page)
+        html_file.close()
+        os.rename(tmp_html_file, intf.html_file)
 
 if __name__ == "__main__" :
 

@@ -197,6 +197,7 @@ ID = "id"                                    #pnfs
 IGNORE_STORAGE_GROUP = "ignore-storage-group"   #volume
 IMPORT = "import"                            #volume
 INFO = "info"                                #pnfs
+INPUT_DIR = "input_dir"                      #plotter
 IO = "io"                                    #pnfs
 JOUHOME = "jouHome"                          #restore
 JUST = "just"                                #start, stop
@@ -239,6 +240,7 @@ RECURSIVE = "recursive"                      #file
 REFRESH = "refresh"                          #inquisitor(c&s)
 PARENT = "parent"                            #pnfs
 PATH = "path"                                #pnfs
+PLOT = "plot"                                #plotter
 PNFS_STATE = "pnfs-state"                    #pnfs
 POSITION = "position"                        #pnfs
 PREFIX = "prefix"                            #enstore_make_log_plot
@@ -286,6 +288,7 @@ TAGS = "tags"                                #pnfs
 TIME = "time"                                #inquisitor
 TIMEOUT = "timeout"
 TITLE = "title"                              #enstore_make_log_plot
+TITLE_GIF = "title_gif"                      #plotter
 TOTAL_BYTES = "total_bytes"                  #plotter
 TOUCH = "touch"                              #volume
 TRIM_OBSOLETE = "trim-obsolete"              #volume
@@ -293,6 +296,7 @@ UP = "up"                                    #pnfs, inquisitor, mover
 UPDATE = "update"                            #inquisitor
 UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
 UPDATE_INTERVAL = "update-interval"          #inquisitor(c&s)
+URL = "url"                                  #plotter
 USAGE = "usage"
 VERBOSE = "verbose"                          #monitor, ensync, assert
 VOL = "vol"                                  #volume
@@ -330,7 +334,7 @@ valid_option_list = [
     GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
-    ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, IO,
+    ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, INPUT_DIR, IO,
     JOUHOME, JUST,
     KEEP, KEEP_DIR,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
@@ -339,7 +343,7 @@ valid_option_list = [
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NOT_ALLOWED, NO_MAIL, NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
-    PARENT, PATH, PNFS_STATE, POSITION, PREFIX, PRIORITY, PTS_DIR, PTS_NODES,
+    PARENT, PATH, PLOT, PNFS_STATE, POSITION, PREFIX, PRIORITY, PTS_DIR, PTS_NODES,
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RETRIES,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
@@ -348,8 +352,8 @@ valid_option_list = [
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
-    TEST, TIME, TIMEOUT, TITLE, TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
-    UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
+    TEST, TIME, TIMEOUT, TITLE, TITLE_GIF, TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
+    UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL, USAGE,
     VERBOSE, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST,
     XREF,
