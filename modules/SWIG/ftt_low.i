@@ -124,7 +124,7 @@ extern char *ftt_ascii_rewindflags[];
 ** -- messages[] in ftt_error.c
 ** -- any affected error tranlation tables in ftt_tables.c
 */
-extern char *ftt_ascii_error[]; /* maps error numbers to their names */
+
 
 #define FTT_SUCCESS		 0
 #define FTT_EPARTIALSTAT	 1
@@ -286,7 +286,6 @@ void		ftt_first_supported(int *OUTPUT);
 ftt_descriptor	ftt_next_supported(int *OUTPUT);
 
 int      ftt_inquire(ftt_descriptor d);
-int      ftt_format_ait(ftt_descriptor d,int onoff);
 int      ftt_modesense(ftt_descriptor d);
 int      ftt_logsense(ftt_descriptor d);
 
@@ -309,6 +308,8 @@ int		ftt_get_partitions(ftt_descriptor,ftt_partbuf);
 int		ftt_write_partitions(ftt_descriptor,ftt_partbuf);
 int		ftt_skip_part(ftt_descriptor,int);
 
+
+extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 
 
 
