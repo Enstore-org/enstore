@@ -4388,7 +4388,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #bfids_dict = fcc.get_bfids(e.input[0])
             bfids_dict = fcc.get_bfids(e.volume)
             bfids_list = bfids_dict['bfids']
-        except EncpError, msg:
+        except (ValueError, KeyError, TypeError, AttributeError), msg:
             print_data_access_layer_format(
                 e.input, e.output, 0,
                 {'status':(msg.type, msg.strerror)})
