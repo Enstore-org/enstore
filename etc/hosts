@@ -157,6 +157,8 @@
 131.225.215.7		cdfenmvr23a.fnal.gov	cdfenmvr23a
 131.225.215.22		cdfenload.fnal.gov	cdfenload
 
+131.225.206.146		cmspnfs1.fnal.gov	cmspnfs1
+
 # Assigned addresses currently not in use
 #131.225.164.14		d0enmvr1b.fnal.gov	d0enmvr1b
 #131.225.164.15		d0enmvr2b.fnal.gov	d0enmvr2b
@@ -187,7 +189,6 @@
 #131.225.13.78		stkenmvr14b.fnal.gov	stkenmvr14b
 #131.225.13.39		stkenout1.fnal.gov	stkenout1
 #131.225.13.40		stkenout2.fnal.gov	stkenout2
-#131.225.215.44		cdfenmvr27a.fnal.gov	cdfenmvr27a
 #131.225.215.19		cdfendca3.fnal.gov	cdfendca3
 #131.225.215.20		cdfendca4.fnal.gov	cdfendca4
 #131.225.215.21		cdfendca5.fnal.gov	cdfendca5
