@@ -3024,6 +3024,13 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
                 {'status':(detail.type, detail.strerror)})
             quit()
 
+        # If this is not the last transfer in the list, force the delayed
+        # dismount to be 'long.'  The last transfer should continue to use
+        # the default setting.
+        if i < (len(e.input) - 1):
+            #In minutes.
+            encp_el['delayed_dismount'] = max(3, encp_el['delayed_dismount'])
+
         #only do this the first time.
         if not vcc or not fcc:
             vcc, fcc = get_clerks()
