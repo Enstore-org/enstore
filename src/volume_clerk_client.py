@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -16,6 +17,7 @@ def eval(stuff):
     return _rexec.r_eval(stuff)
 
 # enstore imports
+import setpath
 import callback
 import hostaddr
 import interface
@@ -142,22 +144,19 @@ class VolumeClerkClient(generic_client.GenericClient,
                 print "No '.' allowed in %s"%(item,)
                 break
         else:
-            x = self.send(ticket)
-            return x
+            return self.send(ticket)
         return {'status':(e_errors.NOTALLOWED, "No '.' allowed in %s"%(item,))}
 
     def modify(self,ticket):
         ticket['work']='modifyvol'
-        x=self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # delete a volume from the stockpile
     def delete(self, external_label,force=0):
         ticket= { 'work'           : 'delvol',
                   'external_label' : external_label,
                   'force'          : force }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # delete a volume from the stockpile
     def restore(self, external_label, restore=0):
@@ -166,9 +165,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         ticket= { 'work'           : 'restorevol',
                   'external_label' : external_label,
                   "restore"         : restore_vm}
-        x = self.send(ticket)
-        return x
-
+        return self.send(ticket)
 
     # get a list of all volumes
     def get_vols(self, key=None,state=None, not_cond=None, print_list=1):
@@ -293,51 +290,44 @@ class VolumeClerkClient(generic_client.GenericClient,
     def inquire_vol(self, external_label):
         ticket= { 'work'           : 'inquire_vol',
                   'external_label' : external_label }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # move a volume to a new library
     def new_library(self, external_label,new_library):
         ticket= { 'work'           : 'new_library',
                   'external_label' : external_label,
                   'new_library'    : new_library}
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # we are using the volume
     def set_writing(self, external_label):
         ticket= { 'work'           : 'set_writing',
                   'external_label' : external_label }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # we are using the volume
     def set_system_readonly(self, external_label):
         ticket= { 'work'           : 'set_system_readonly',
                   'external_label' : external_label }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # mark volume as not allowed 
     def set_system_notallowed(self, external_label):
         ticket= { 'work'           : 'set_system_notallowed',
                   'external_label' : external_label }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # mark volume as noaccess
     def set_system_noaccess(self, external_label):
         ticket= { 'work'           : 'set_system_noaccess',
                   'external_label' : external_label }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # set system inhibit to none
     def set_system_none(self, external_label):
         ticket= { 'work'           : 'set_system_none',
                   'external_label' : external_label }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # clear any inhibits on the volume
     def clr_system_inhibit(self,external_label,what=None, pos=0):
@@ -345,30 +335,26 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label,
                   'inhibit'        : what,
                   'position'       : pos}
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # decrement the file count on a tape
     def decr_file_count(self,external_label, count=1):
         ticket= { 'work'           : 'decr_file_count',
                   'external_label' : external_label,
                   'count'          : count }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # we are using the volume
     def set_hung(self, external_label):
         ticket= { 'work'           : 'set_hung',
                   'external_label' : external_label }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # this many bytes left - read the database
     def get_remaining_bytes(self, external_label):
         ticket= { 'work'            : 'get_remaining_bytes',
                   'external_label'  : external_label }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # this many bytes left - update database
     def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,bfid=None):
@@ -378,9 +364,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'remaining_bytes' : remaining_bytes,
                   'eod_cookie'      : eod_cookie,
                   'bfid'            : bfid }
-        x = self.send(ticket)
-        return x
-
+        return self.send(ticket)
 
     # update the counts in the database
     def update_counts(self, external_label, wr_err=0, rd_err=0,wr_access=0,rd_access=0):
@@ -390,8 +374,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'rd_err'          : rd_err,
                   'wr_access'       : wr_access,
                   'rd_access'       : rd_access }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # Check if volume is available
     def is_vol_available(self, work, external_label, family=None, size=0):
@@ -401,8 +384,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'file_size'           : size,
                    'external_label'      : external_label
                    }
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
         
         
     # which volume can we use for this library, bytes and file family and ...
@@ -416,8 +398,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'first_found'         : first_found,
                    'use_exact_match'     : exact_match}
 
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # check if specific volume can be used for write
     def can_write_volume (self, library, min_remaining_bytes,
@@ -428,16 +409,20 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'volume_family'         : volume_family,
                    'external_label'       : external_label }
 
-        x = self.send(ticket)
-        return x
+        return self.send(ticket)
 
     # clear the pause flag for the LM and all LMs that relate to the Media Changer
     def clear_lm_pause(self, library_manager):
         ticket = { 'work'    :'clear_lm_pause',
                    'library' : library_manager
                    }
-        x = self.send(ticket)
-        return x
+        return  self.send(ticket)
+
+    def add_bfid(self, bfid, volume):
+        ticket = {'work': 'add_bfid',
+                  'bfid': bfid,
+                  'external_label': volume}
+        return self.send(ticket)
         
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
@@ -502,11 +487,13 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     def print_add_args(self):
         print "   add arguments: volume_name library storage_group file_family wrapper"\
               +" media_type volume_byte_capacity"
-
+        
     def print_clear_args(self):
         print "usage: --clear volume_name"
         print "       --clear volume_name {system_inhibit|user_inhibit} position(1 or 2)"
-        
+
+    def print_bfid_args(args):
+        print "   usage: --bfid bfid volume"
         
     # print out our extended help
     def print_help(self):

@@ -992,6 +992,26 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(record)
         return
 
+
+    def add_bfid(self, ticket):
+        try:
+            external_label = ticket["external_label"]
+            bfid = ticket['bfid']
+        except KeyError, detail:
+            msg= "Volume Clerk: key %s is missing"%(detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        status = (e_errors.OK, None)
+        try:
+            self.bfid_db.add_bfid(external_label, bfid)
+        except (bfid_db.BfidDbError, IOError), detail:
+            status =  (e_errors.KEYERROR, str(detail))
+        self.reply_to_caller({'status':status})
+        return
+        
     # decrement the file count on the volume
     def decr_file_count(self, ticket):
         try:
