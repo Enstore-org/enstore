@@ -79,12 +79,10 @@ allow() { tt=$1
               if [ $p != "x" ]; then
                  psline=`ps -wwwwfp $pid|egrep -v PPID`
                  if [ `echo $psline | egrep -c "$p"` -eq 0 ]; then
-                    echo $psline
-                    echo $p
                     msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
                     msg2=`ps -wwwwfp $pid|grep -v PPID`
-                    echo DEBUG $msg1
-                    echo DEBUG $msg2
+                    echo $msg1
+                    echo $msg2
                     enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
                     return 2
                  fi
@@ -97,8 +95,8 @@ allow() { tt=$1
           done
           msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
           msg2=`ps -wwwwfp $pid|grep -v PPID`
-          echo DEBUG $msg1
-          echo DEBUG $msg2
+          echo $msg1
+          echo $msg2
           enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
           return 1
          }
