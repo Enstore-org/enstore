@@ -7,7 +7,6 @@
 # structures -
 #             import the appropriate file
 #             server_functions
-#             server_options (if this new client can be run by a normal user)
 
 
 # system imports
@@ -260,82 +259,6 @@ class EnstoreInterface:
 	else:
 	    # not really an error but we only got a help.
 	    self.error = 2
-
-    # return a list of the allowed options given the command key (server)
-    def get_options(self, skey):
-        opts = self.server_options.get(skey, [])
-        print opts
-        return opts
-
-    def get_valid_options(self, skey):
-        if self.user_mode:
-            opts = self.get_options(skey)
-        else:
-            intf = server_functions[skey][0](args=sys.argv[:],
-					     user_mode=self.user_mode)
-            if type(intf.options) == type({}):
-                opts = intf.options.keys()
-            elif not intf is None:
-                opts = intf.options()
-            else:
-                # this was not a valid server key
-                opts = []
-        return opts
-
-    # figure out if the passed key is a valid server key
-    def is_valid_server(self, skey):
-        if self.user_mode:
-            return self.server_options.has_key(skey)
-        else:
-            return 1
-
-    def print_valid_options(self, server):
-        opts = self.get_valid_options(server)
-        print "\nERROR: Allowed options for %s are : "
-        for opt in opts:
-            print "\t%s"%(opt,)
-
-    def print_usage_line(self, server, intf):
-        if self.user_mode:
-            # only print the options we support
-            intf.print_usage_line(self.get_valid_options(server))
-        else:
-            intf.print_usage_line()
-
-    def get_usage_line(self, server, intf):
-        if self.user_mode:
-            # only print the options we support
-            return intf.get_usage_line(self.get_valid_options(server))
-        else:
-            return intf.get_usage_line()
-            
-    def print_help(self):
-        cmd = "enstore"
-        if not self.user_mode:
-            call_function("pnfsa", "")
-            print "\n%s start   [--just server --ping --asynch --nocheck]"%(cmd,)
-            print "%s stop    [--just server --xterm server]"%(cmd,)
-            print "%s restart [--just server --xterm server]"%(cmd,)
-            print "%s ping    [timeout-seconds]"%(cmd,)
-            print "%s qping   [timeout-seconds]"%(cmd,)
-            print "%s ps                 (list enstore related processes)"%(cmd,)
-            print "\n%s Estart   farmlet   (global Enstore start on all farmlet nodes)"%(cmd,)
-            print "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%(cmd,)
-            print "\n%s EPS      farmlet   (global Enstore-associated ps on all farmlet nodes)"%(cmd,)
-            print "\n%s aml2               (lists current mount state & queue list on aml2 robot)"%(cmd,)
-        else:
-            call_function("pnfs", "")
-        print "\n"
-
-        servers = self.get_valid_servers()
-        for server in servers:
-            # print the usage line for each server
-            print
-            print "%s %s "%(cmd, server),
-            intf = self.get_server_intf(server, 0)
-            if intf:
-                print self.get_usage_line(server, intf),
-            print " "
 
             
 class Enstore:
