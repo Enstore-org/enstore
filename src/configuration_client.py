@@ -12,6 +12,7 @@ import generic_client
 import interface
 import udp_client
 import Trace
+import callback
 import e_errors
 
 # Import SOCKS module if it exists, else standard socket module socket
@@ -83,15 +84,18 @@ class ConfigurationClient(generic_client.GenericClient):
 
     # dump the configuration dictionary
     def dump(self, timeout=0, retry=0):
-        request = {'work' : 'dump' }
-        while 1:
-            try:
-                self.config_dump = self.u.send(request, self.config_address,\
-	                                       timeout, retry )
-                break
-            except socket.error:
-	        self.output_socket_error("dump")
-
+        host, port, listen_socket = callback.get_callback()
+        request = {'work' : 'dump',
+                   'callback_addr'  : (host,port)
+                   }
+        try:
+            listen_socket.listen(1)
+            x=self.u.send(request, self.config_address, timeout, retry)
+            control_socket, addr = listen_socket.accept()
+            self.config_dump = callback.read_tcp_obj(control_socket)
+        except socket.error:
+            self.output_socket_error("dump")
+                
     # get all keys in the configuration dictionary
     def get_keys(self, timeout=0, retry=0):
         request = {'work' : 'get_keys' }
@@ -224,7 +228,6 @@ def do_work(intf):
     csc.check_ticket(stati)
 
 if __name__ == "__main__":
-    import sys
     Trace.init(MY_NAME)
     Trace.trace(6,"config client called with args "+repr(sys.argv))
 
