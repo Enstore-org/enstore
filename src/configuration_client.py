@@ -35,7 +35,7 @@ class ConfigurationClient(generic_client.GenericClient):
             while 1:
                 try:
                     ret = self.u.send(request, self.config_address, timeout, retry)
-                break
+                    break
             except socket.error:
                 self.output_socket_error("get")
         return ret
