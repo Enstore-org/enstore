@@ -95,13 +95,20 @@ setup_products() {
     if [ -z "${DCAP_DIR:-}" ]; then
 	setup_product dcap
     fi
+    if [ -z "${srmcp_DIR:-}" ]; then
+	export PATH=/usr/java/j2sdk1.4.1/bin/:$PATH
+	setup_product srmcp
+    fi
 
     # always setup python to make sure we get the correct version.
     setup_product python
 
-    # setup for gridftp
-    #export GLOBUS_LOCATION=/home/enstore/globus
-    #set +u;. /home/enstore/globus/etc/globus-user-env.sh;set -u
+    # setup for gridftp and srmcp
+    export GLOBUS_LOCATION=/home/enstore/globus
+    set +u;. /home/enstore/globus/etc/globus-user-env.sh;set -u
+
+    # setup for srmcp
+    export X509_USER_PROXY=/home/enstore/.globus/k5-ca-proxy.pem
 
     # reset so we can see output if turned on.
     reset_set_vars
@@ -132,7 +139,6 @@ dccp_test() {
     fi
 
 # dccp readback
-
     transfer_setup $read_in_progress 5
     do_transfer "dccp $w $read_back" $read_back $read_in_progress
 
@@ -141,7 +147,6 @@ dccp_test() {
     fi
 
 # file comparison
-
     cmp $test_file $read_back
     if [ $? -ne 0 ]; then
 	raise_alarm "$dcache dcache cmp failed" $dcache_saag 3
@@ -203,7 +208,6 @@ kftp_test() {
     fi
 
 # kftp active readback file comparison
-
     cmp $test_file $read_back
     if [ $? -ne 0 ]; then
 	raise_alarm "$dcache dcache kftp active cmp failed" $dcache_saag 3
@@ -249,7 +253,6 @@ ftp.quit()
     fi
 
 # ftp readback file comparison
-
     cmp $test_file $read_back
     if [ $? -ne 0 ]; then
 	raise_alarm "$dcache dcache ftp cmp failed" $dcache_saag 3
@@ -273,7 +276,6 @@ gridftp_test() {
     fi
 
 # gftp readback
-
     transfer_setup $read_in_progress 5
     do_transfer "globus-url-copy gsiftp://stkendca3a:2811/$w file://$read_back" $read_back $read_in_progress
 
@@ -282,7 +284,6 @@ gridftp_test() {
     fi
 
 # gftp comparison
-
     cmp $test_file $read_back
     if [ $? -ne 0 ]; then
 	raise_alarm "$dcache dcache gridFtp cmp failed" $dcache_saag 3
@@ -291,8 +292,38 @@ gridftp_test() {
 
 #######################################################################
 
-#srmcp_test() {
-#}
+srmcp_test() {
+    grid-proxy-init
+
+    read_back=/tmp/dcache_page_read_back_srm_$$
+    rm -f $read_back
+
+    write_in_progress=/tmp/dcache_page_write_in_progress_srm_$$
+    read_in_progress=/tmp/dcache_page_read_in_progress_srm_$$
+
+# srmcp write
+    transfer_setup $write_in_progress 7
+    do_transfer "srmcp file://localhost/$test_file srm://stkendca3a:8443/$w" $w $write_in_progress
+ 
+    if [ -r $write_in_progress ]; then
+	raise_alarm "$dcache dcache srmcp write failed." $dcache_saag 6
+    fi
+
+# srmcp readback
+    transfer_setup $read_in_progress 5
+    do_transfer "srmcp srm://stkendca3a:8443/$w file://localhost/$read_back" $read_back $read_in_progress
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "$dcache dcache srmcp read failed" $dcache_saag 4
+    fi
+
+# srmcp comparison
+
+    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "$dcache dcache srmcp cmp failed" $dcache_saag 3
+    fi
+}
 
 #######################################################################
 
@@ -356,6 +387,14 @@ case $test_to_do in
 	     w=$1
 	     gridftp_test
 	     ;;
+    srm) # get the specific parameters first
+	 if [ $# -ne 1 ];
+	 then
+	     not_enough_parameters srmcp
+	 fi
+	 w=$1
+	 srmcp_test
+	 ;;
 esac
 
 #clean up of old junk
