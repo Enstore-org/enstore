@@ -109,6 +109,10 @@ class NullDriver(driver.Driver):
         Trace.trace(25, "writefm")
         self.loc = self.loc + 1
 
+    def skipfm(self, n):
+        Trace.trace(25, "skipfm")
+        self.loc = self.loc + n
+        
     def eject(self):
         return
     
