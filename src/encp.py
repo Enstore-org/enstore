@@ -2894,7 +2894,7 @@ def get_clerks_info(vcc, fcc, bfid):
 
     if fc_ticket["deleted"] == "yes":
         raise EncpError(None,
-                        "volume %s is marked %s"%(fc_ticket['external_label'],
+                        "file %s is marked %s"%(fc_ticket['pnfs_name0'],
                                                   e_errors.DELETED),
                         e_errors.DELETED, vc_ticket)
 
@@ -3117,8 +3117,6 @@ def submit_read_requests(requests, tinfo, encp_intf):
             if result_dict['status'][0] == e_errors.RETRY:
                 continue
             elif not e_errors.is_retriable(result_dict['status'][0]):
-                print_data_access_layer_format(req['infile'], req['outfile'],
-                                               req['file_size'], req)
                 #del requests_to_submit[requests_to_submit.index(req)]
                 req['submitted'] = 0
                 break
@@ -3127,7 +3125,7 @@ def submit_read_requests(requests, tinfo, encp_intf):
             req['submitted'] = 1
             submitted = submitted+1
 
-    return submitted
+    return submitted, ticket
 
 #############################################################################
 
@@ -3368,7 +3366,7 @@ def read_from_hsm(e, tinfo):
     
     # initialize
     bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
-    exit_status = 0 #Used to determine the final message text.
+    exit_status = 1 #Used to determine the final message text.
     number_of_files = 0 #Total number of files where a transfer was attempted.
 
     # get a port to talk on and listen for connections
@@ -3404,7 +3402,7 @@ def read_from_hsm(e, tinfo):
         #The return value is the number of files successfully submitted.
         # This value may be different from len(request_list).  The value
         # of request_list is not changed by this function.
-        submitted = submit_read_requests(request_list, tinfo, e)
+        submitted, reply_ticket = submit_read_requests(request_list, tinfo, e)
 
         Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % submitted)
         Trace.message(TICKET_LEVEL, pprint.pformat(request_list))
@@ -3412,6 +3410,7 @@ def read_from_hsm(e, tinfo):
         Trace.message(TRANSFER_LEVEL, "Files queued.   elapsed=%s" %
                       (time.time() - tinfo['encp_start_time']))
 
+        #If at least one submission succeded, follow through with it.
         if submitted != 0:
             #Since request_list contains all of the entires, submitted must
             # also be passed so read_hsm_files knows how many elements of
@@ -3429,13 +3428,17 @@ def read_from_hsm(e, tinfo):
                 Trace.message(ERROR_LEVEL,
                               "TRANSFERS FAILED: %s" % len(requests_failed))
                 Trace.message(TICKET_LEVEL, pprint.pformat(requests_failed))
-
+            else:
+                exit_status = 0
             #Sum up the total amount of bytes transfered.
             bytes = bytes + brcvd
-
         else:
             #If all submits fail (i.e using an old encp), this avoids crashing.
-            data_access_layer_ticket = {}
+            if reply_ticket['status'][0] != e_errors.OK:
+                data_access_layer_ticket = reply_ticket
+            else:
+                data_access_layer_ticket = {}
+            exit_status = 1
 
     Trace.message(TRANSFER_LEVEL, "Files read for all volumes.   elapsed=%s" %
                   (time.time() - tinfo['encp_start_time'],))
