@@ -30,6 +30,11 @@ M2Status *s;
 	printf("         Boot Version: %s\n", s->boot_version);
 	printf("Configuration Version: %s\n", s->configuration);
 	printf("        Serial Number: %s\n", s->serial_number);
+	if (!strncmp(s->status, "\006-\007", 3))
+	{
+		*(s->status) = 'o';
+		*(s->status+2) = 'o';
+	}
 	printf("               Status: %s\n",
 		strncmp(s->status, "    ", 4)?s->status:s->status+4);
 }
@@ -174,6 +179,7 @@ unsigned char *buf;
 		}
 		buf += tp->len + 4;
 	}
+	printf("\n");
 }
 		
 /* show_log(buf, parameter_list) -- print parameters of generic log */
@@ -251,7 +257,7 @@ static unsigned char ftt_cdb_inquiry[] =
 
 /* REQUEST SENSE */
 static unsigned char ftt_cdb_request_sense[] =
-	{0x03, 0x00, 0x00, 0x00, 18, 0x00};
+	{0x03, 0x00, 0x00, 0x00, 0x20, 0x00};
 
 /* LOG SENSE */
 static unsigned char ftt_cdb_log_sense[] =
@@ -352,7 +358,7 @@ int len;
 			printf("%08x --", i);
 		}
 		printf(" %02x", (c = *(buf+i)));
-		ascii[i % 16] = (c >= 32) && (c < 126)?c:'.';
+		ascii[i % 16] = isprint(c)?c:'.';
 		if ((i % 16) == 15)
 			printf(" -- %s\n", ascii);
 	}
@@ -726,9 +732,10 @@ char **argv;
 
 	ftt_close(d);
 	exit(0);
+	try_scsi(d, ftt_cdb_request_sense, 6, 256);
+	try_scsi(d, ftt_cdb_read_buffer, 10, 256);
 	try_scsi(d, ftt_cdb_inquiry, 6, 256);
 	try_scsi(d, ftt_cdb_send_diagnostic, 6, 256);
-	try_scsi(d, ftt_cdb_request_sense, 10, 256);
 	try_scsi(d, ftt_cdb_log_sense, 10, 256);
 
 	ftt_close(d);
