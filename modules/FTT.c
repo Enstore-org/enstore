@@ -1336,6 +1336,62 @@ FTT_set_mode(  PyObject *self
 
 /*****************************************************************************
  */
+static char FTT_version_doc[] = "decifer version for $FTT_DIR at build";
+
+#define STRsup(x) #x
+#define STR(x) STRsup(x)
+
+static PyObject*
+FTT_version(  PyObject *self
+	     , PyObject *args )
+{
+	PyObject	*rr=0;
+	char		*ftt_path;
+	int		i;
+	char		*p_elem[2];
+
+    /* attempt to go back 2 path elements.
+       from there, try to match the [xv][0-9]+_[0-9]+ format */
+
+    ftt_path = malloc( strlen(STR(FTT_DIR)) );
+    strcpy( ftt_path, STR(FTT_DIR) );
+
+    i = strlen( ftt_path );
+    i--;
+    /* remove trailing '/' */
+    if (ftt_path[i] == '/')
+    {   ftt_path[i] = '\0';
+	i--;
+    }
+
+    /* get last to path elements */
+    while (i && (ftt_path[i]!='/')) i--;
+    p_elem[0] = &ftt_path[i+1];
+    ftt_path[i] = '\0';
+    while (i && (ftt_path[i]!='/')) i--;
+    p_elem[1] = &ftt_path[i+1];
+
+    /* check for [xv][0-9]+_[0-9]+ format */
+    if (   (p_elem[1][0] == 'v')
+	|| (p_elem[1][0] == 'x'))
+    {   char *c_p = p_elem[1];
+	while (*c_p)
+	{   if (*c_p++ == '_')
+	    {   rr = Py_BuildValue( "s", p_elem[1] );
+		break;
+	    }
+	}
+    }
+    if (! rr) rr = Py_BuildValue( "s", p_elem[0] );
+
+    free( ftt_path );
+    return (rr);
+}   /* FTT_version */
+
+
+
+/*****************************************************************************
+ */
 
 static void
 insint(  PyObject	*d
@@ -1372,6 +1428,7 @@ static PyMethodDef FTT_Methods[] = {
     { "unload", FTT_unload, 1, FTT_unload_doc },
     { "get_mode", FTT_get_mode, 1, FTT_get_mode_doc },
     { "set_mode", FTT_set_mode, 1, FTT_set_mode_doc },
+    { "version", FTT_version, 1, FTT_version_doc },
     { 0, 0 }        /* Sentinel */
 };
 

@@ -28,6 +28,7 @@ Makefile.modules: Setup
 Modules:
 	@echo "MAKING MODULES ================================"
 	cd SWIG && make 
+	@echo "in $$PWD"
 	make -f Makefile.modules
 
 Trace:	

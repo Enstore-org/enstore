@@ -60,7 +60,10 @@
 
 EXfer EXfer.c  -D`uname` adler32.a
 
-FTT FTT.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt -lc adler32.a
+# NOTE: "=" can not be on the same line with module definition
+FTT_DEF=FTT_DIR=
+
+FTT FTT.c -D$(FTT_DEF)$(FTT_DIR) -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt -lc adler32.a
 
 IPC IPC.c
 
