@@ -43,8 +43,11 @@ class VolumeClerkClient(generic_client.GenericClient,
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
         ticket = self.csc.get( MY_SERVER )
-	if servr_addr != None: self.servr_addr = servr_addr
-	else:                  self.servr_addr = (ticket['hostip'],ticket['port'])
+	if servr_addr != None:
+            self.servr_addr = servr_addr
+	else:
+            self.servr_addr = (ticket['hostip'],ticket['port'])
+
         Trace.trace(10,'__init__ u='+str(self.u))
 
     # send the request to the volume clerk server and then send answer to user
@@ -385,23 +388,19 @@ class VolumeClerkClient(generic_client.GenericClient,
         return x
 
     # this many bytes left - update database
-    def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,
-                            wr_err,rd_err,wr_access,rd_access, bfid):
+    def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,bfid=None):
+        # Note - bfid should be set if we added a new file
         ticket= { 'work'            : 'set_remaining_bytes',
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
                   'eod_cookie'      : eod_cookie,
-                  'wr_err'          : wr_err,
-                  'rd_err'          : rd_err,
-                  'wr_access'       : wr_access,
-                  'rd_access'       : rd_access,
 		  'bfid'            : bfid }
         x = self.send(ticket)
         return x
 
 
     # update the counts in the database
-    def update_counts(self, external_label, wr_err,rd_err,wr_access,rd_access):
+    def update_counts(self, external_label, wr_err=0, rd_err=0,wr_access=0,rd_access=0):
         ticket= { 'work'            : 'update_counts',
                   'external_label'  : external_label,
                   'wr_err'          : wr_err,

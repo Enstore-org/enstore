@@ -749,7 +749,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
-
+    ##This should really be renamed, it does more than set_remaining_bytes
     # update the database entry for this volume
     def set_remaining_bytes(self, ticket):
         # everything is based on external label - make sure we have this
@@ -789,33 +789,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         record["last_access"] = time.time()
         if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
+            
+        non_del_files = record['non_del_files']
 
-        for key in ['wr_err','rd_err','wr_access','rd_access']:
-            try:
-                record['sum_'+key] = record['sum_'+key] + ticket[key]
-
-            except KeyError:
-                msg="Volume Clerk: "+key+" key is missing"
-                ticket["status"] = (e_errors.KEYERROR, msg)
-                Trace.log(e_errors.ERROR, msg)
-                self.reply_to_caller(ticket)
-                return
-
-        #TEMPORARY TRY BLOCK - all new volumes should already have the non_del_files key
-        try:
-            non_del_files = record['non_del_files']
-        except KeyError:
-            record['non_del_files'] = record['sum_wr_access']-record['sum_wr_err']
-
-        # update the non-deleted file count if we wrote to the tape
-        # this key gets decremented when we delete files
-        if not ticket.get('wr_err',0):
-            record['non_del_files'] = record['non_del_files'] + \
-                                      ticket['wr_access']
-
-	bfid = ticket.get("bfid")
+        # update the non-deleted file count if we wrote a new file to the tape
+	bfid = ticket.get("bfid") #will be present when a new file is added
 	if bfid:
             self.bfid_db.add_bfid(external_label, bfid)
+            record['non_del_files'] = record['non_del_files'] + 1
+            
         # record our changes
         self.dict[external_label] = record  
         record["status"] = (e_errors.OK, None)
