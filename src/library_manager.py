@@ -1078,6 +1078,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			   w['vc']['at_mover'],
 			   mticket["mover"],
 			   w["wrapper"]["uname"]))
+            w['times']['lm_dequeued'] = time.time()
 	    self.pending_work.delete_job(w)
             if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
