@@ -60,7 +60,7 @@ def my_atof(s):
 _font_cache = {}
 
 def get_font(height_wanted, family='Arial'):
-    print "get_font"
+    height_wanted = int(height_wanted)
     f = _font_cache.get((height_wanted, family))
     if f:
         return f
@@ -75,15 +75,6 @@ def get_font(height_wanted, family='Arial'):
             size = size - 1 #Try a little bit smaller...
     _font_cache[(height_wanted, family)] = f
     return f
-
-def calc_font(ht_of_object, family):
-    print "calc_font"
-    ##XXXXXXXXXXXXXXXX  Not quite right yet....
-    size = ht_of_object-4
-    f = tkFont.Font(size=size, family=family)
-    return f
-
-
 
 def rgbtohex(r,g,b):
     r=hex(r)[2:]
@@ -209,15 +200,21 @@ class Mover:
         self.color      = None
         self.connection = None         
         self.display    = display
-        self.height     = 22
+        self.height     = 0
         self.index      = index
         self.name       = name
         self.N          =N
         self.width      = 170
         self.x, self.y  = 0, 0 # Not placed yet
         self.column = 0 #Movers may be laid out in multiple columns
+        if N >= 20:
+            self.height = 0.75 * (self.display.height - 40) / (N/2.0)
+        else:
+            self.height = 0.75 * (self.display.height - 40) / N
+        self.height = min(self.height, self.display.height/3)
+        
         self.x, self.y  = self.position(N)     
-        self.font = calc_font(12, 'Arial')
+        self.font = get_font(12, 'Arial')
         #These 3 pieces make up the progress gauge display
         self.progress_bar             = None
         self.progress_bar_bg          = None
@@ -457,8 +454,8 @@ class Mover:
         return scale_to_display(coord.real, coord.imag, self.display.width, self.display.height)
 
     def position_linear(self, N):
-        font = get_font(12, 'Arial')
-        len_text = font.measure(self.name)
+        self.font = get_font(self.height/3, 'Arial')
+        len_text = 50 #font.measure('XXXXX')
         #k = number of movers
         i=0
         k = self.index
@@ -466,16 +463,19 @@ class Mover:
         if N == 1:
             y = self.display.height / 2.
         elif N < 20:
-            y = (k*1.03)*(self.display.height  / (N))
+            space = (self.display.height - 40.0) / N
+            y = 20 + k * space
             x = self.display.width - ((self.display.width/3)+len_text)
         else:
-            if k < half:
+            space = (self.display.height - 40.0) / (N/2.0)
+            if k <= half:
                 x = self.display.width - ((self.display.width/1.5)+len_text)
-                y = (k*2)*((self.display.height-40)  / N)+ 2*half
+                y = 20 + k * space
             else:
                 self.column = 1
                 x = self.display.width -  ((self.display.width/3.5)+len_text)
-                y = (((k-half)*2)*(self.display.height-40))  / N 
+                y = 20 + (k-half-0.5)*space
+            print k, self.name, x, y, self.column
         self.display.mover_columns[self.column] = int(x)
         return int(x), int(y)
     
@@ -492,9 +492,13 @@ class Mover:
     def reposition(self, N, state=None):
 
         #This is the new configuration for mover size
-        self.height = (self.display.height/(N))
-        self.width = ((self.display.width)/4)
-        font = calc_font(self.height, 'Arial')
+        if N >= 20:
+            self.height = 0.75 * (self.display.height - 40) / (N/2.0)
+        else:
+            self.height = 0.75 * (self.display.height - 40) / N
+
+        self.width = (self.display.width/4.0)
+        font = get_font(self.height, 'Arial')
         len_text = font.measure(self.name)
         
         #These are the new offsets
@@ -561,7 +565,7 @@ class Volume:
         self.vol_width = 50
         self.vol_height = 11
         self.draw()
-        self.font  = calc_font(12, 'Arial')
+        self.font  = get_font(12, 'Arial')
     def __setattr__(self, attr, value):
 
         ### color
@@ -625,7 +629,7 @@ class Client:
         self.n_connections      = 0
         self.waiting            = 0
         i                       = 0
-        self.font = calc_font(12, 'Arial')
+        self.font = get_font(12, 'Arial')
 
         
         ## Step through possible positions in order 0, 1, -1, 2, -2, 3, -3, ...
@@ -830,7 +834,8 @@ class Display(Tkinter.Canvas):
         s.bind(myaddr)
         self.inputs = [s]
         host, port = s.getsockname()
-        print "addr=", host, port
+        self.addr =  host, port
+        print host, port
             
         self.bind('<Button-1>', self.action)
 
