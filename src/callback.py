@@ -4,6 +4,7 @@
 # system imports
 import time
 import errno
+import sys
 
 # enstore imports
 import lockfile
@@ -25,9 +26,10 @@ def try_a_port(host, port) :
     Trace.trace(16,'{try_a_port host='+repr(host)+" port="+repr(port))
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(host, port)
     except:
-        sock.close()
+	sock.close()
         Trace.trace(16,'}try_a_port FAILURE')
         return (0 , sock)
     Trace.trace(16,'}try_a_port sock='+repr(sock))
