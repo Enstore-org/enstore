@@ -74,15 +74,16 @@ def msg_cancel_tr( func, *args ):
             if string.find(key, str(args[1])) != -1:
                 found = 1
                 break
-    try:
-	a= key
-        if 0: print a #lint fix
-    except:
-	return None
-    try:
-	del timerTaskDict[key]
-    except:
-	pass
+    if found:
+	try:
+	    a= key
+	    if 0: print a #lint fix
+	except:
+	    return None
+	try:
+	    del timerTaskDict[key]
+	except:
+	    pass
     return None
 
     
