@@ -20,6 +20,7 @@ import time
 # enstore imports
 import generic_client
 import enstore_constants
+import enstore_functions2
 import option
 #import udp_client
 import Trace
@@ -43,7 +44,6 @@ class ConfigFlag:
     def __init__(self):
 	self.new_config_file = self.MSG_NO
         self.do_caching = self.DISABLE
-        self.erc = None
 
     def is_caching_enabled(self):
         return not self.do_caching
@@ -73,11 +73,9 @@ class ConfigFlag:
 class ConfigurationClient(generic_client.GenericClient):
 
     def __init__(self, address=None):
-        #self.is_config = 1 #needed by generic client to handle csc
         if address is None:
-            address = (os.environ.get("ENSTORE_CONFIG_HOST", 'localhost'),
-                       int(os.environ.get("ENSTORE_CONFIG_PORT", 7500)))
-        #self.print_id = MY_NAME
+            address = (enstore_functions2.default_host(),
+                       enstore_functions2.default_port())
 	flags = enstore_constants.NO_CSC | enstore_constants.NO_ALARM | \
 		enstore_constants.NO_LOG
 	generic_client.GenericClient.__init__(self, (), MY_NAME,
@@ -140,15 +138,26 @@ class ConfigurationClient(generic_client.GenericClient):
 
     def do_lookup(self, key, timeout, retry):
 	request = {'work' : 'lookup', 'lookup' : key }
-	#while 1:
-	#    try:
+
         ret = self.send(request, timeout, retry)
-	#	break
-	#    except socket.error:
-	#	self.output_socket_error("get")
-	self.saved_dict[key] = ret
-	Trace.trace(13, "Get %s config info from server"%(key,))
-	return ret
+
+        if e_errors.is_ok(ret):
+            try:
+                #New format.
+                self.saved_dict[key] = ret[key]
+                ret_val = ret[key]
+            except KeyError:
+                #Old format.
+                self.saved_dict[key] = ret
+                ret_val = ret
+            Trace.trace(13, "Get %s config info from server"%(key,))
+        else:
+            ret_val = ret
+
+        #Keep the hostaddr allow() information up-to-date on all lookups.
+        hostaddr.update_domains(ret.get('domains', {}))
+        
+	return ret_val
 
     # return value for requested item
     def get(self, key, timeout=0, retry=0):
@@ -206,15 +215,19 @@ class ConfigurationClient(generic_client.GenericClient):
         if not r:
             raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for configuration server callback"
         control_socket, address = listen_socket.accept()
+        hostaddr.update_domains(reply.get('domains', {})) #Hackish.
         if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            raise errno.errorcode[errno.EPROTO], \
+                  "address %s not allowed" % (address,)
+
         try:
             d = callback.read_tcp_obj(control_socket)
         except e_errors.TCP_EXCEPTION:
             d = {'status':(e_errors.TCP_EXCEPTION, e_errors.TCP_EXCEPTION)}
         listen_socket.close()
+        control_socket.close()
         return d
 
     # dump the configuration dictionary and save it too
