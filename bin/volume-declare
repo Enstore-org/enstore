@@ -13,13 +13,14 @@ fndaprdisk   none    diskfile  flop103    14000000    14000000
 fntt1disk    none    diskfile  flop201    14000000    14000000
 fntt1disk    none    diskfile  flop202    14000000    14000000
 fntt1disk    none    diskfile  flop203    14000000    14000000
-airedaledisk none    diskfile  flop301   140000000   140000000
-airedaledisk none    diskfile  flop302   140000000   140000000
-airedaledisk none    diskfile  flop303   140000000   140000000
+airedaledisk none    diskfile  flop301    14000000    14000000
+airedaledisk none    diskfile  flop302    14000000    14000000
+airedaledisk none    diskfile  flop303    14000000    14000000
 airedaledisk none    diskfile  flop304   140000000   140000000
 airedaledisk none    diskfile  flop305   140000000   140000000
 airedaledisk none    diskfile  flop306   140000000   140000000
 airedaledisk none    diskfile  flop307   140000000   140000000
+airedaledisk none    diskfile  flop308   140000000   140000000
 shelf        none    cartridge cart90     14000000    14000000
 shelf        none    cassette  cass91     14000000    14000000
 redwood50    none    redwood   000004  50000000000 50000000000

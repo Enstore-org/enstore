@@ -235,7 +235,13 @@ class cpio :
 		else:
 		    san_bytes = sanity_bytes
 		size = size + dat_bytes
-		# partial tape block will be in ETape buffer????
+
+                # need to subtract off these bytes from remaining count if disk driver
+                # ftt driver has method that just returns since the byte count is
+                #        updated in hardware at end transfer
+                self.write_driver.Xferred_bytes(size)
+                
+            # partial tape block will be in ETape buffer????
 	    except:
 		print "Error with EXfer - continuing";traceback.print_exc()
 

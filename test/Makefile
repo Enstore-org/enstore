@@ -64,9 +64,9 @@ datafiles:
 	echo -n "12" > data/d2
 	echo -n "123" > data/d3
 	echo -n "1234" > data/d4
-	dd if=/dev/zero of=data/null3.dat count=60
-	ecmd random-file --size=131072 --file=data/ran3.dat
-	ecmd random-file --size=262144 --file=data/ran4.dat
+	dd if=/dev/zero of=data/null30k.dat count=60
+	ecmd random-file --size=131072  --file=data/ran128k.dat
+	ecmd random-file --size=1048576 --file=data/ran1024k.dat
 
 jobs:
 	for d in 1 2 3 4 5 6 7 8 9 ; do \
