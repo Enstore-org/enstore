@@ -226,8 +226,6 @@ COMMON:
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstore_up_down ]; then ln -s $ENSTORE_DIR/src/enstore_up_down.py $ENSTORE_DIR/sbin/enstore_up_down; fi"',NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enmonitor ];       then ln -s $ENSTORE_DIR/src/monitor_client.py  $ENSTORE_DIR/sbin/enmonitor; fi"',      NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/pnfs ];             then ln -s $ENSTORE_DIR/src/pnfs.py            $ENSTORE_DIR/bin/pnfs; fi"',            NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/entv ];             then ln -s $ENSTORE_DIR/src/entv.py            $ENSTORE_DIR/bin/entv; fi"',            NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/volume_assert ];    then ln -s $ENSTORE_DIR/src/volume_assert.py   $ENSTORE_DIR/bin/volume_assert; fi"',   NO_UPS_ENV)
 
         ###The next 2 stanzas should be deleted shortly...
 

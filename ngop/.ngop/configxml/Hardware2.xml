@@ -1,0 +1,83 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+  <System ID="Hardware" Cluster="stkensrv0">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkensrv0"/>
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkensrv0"/>
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkensrv0"/>
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkensrv0"/>
+  </System>
+  <System ID="Hardware" Cluster="stkensrv1">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkensrv1"/>
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkensrv1"/>
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkensrv1"/>
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkensrv1"/>
+  </System>
+  <System ID="Hardware" Cluster="stkensrv2">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkensrv2"/>
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkensrv2"/>
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkensrv2"/>
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkensrv2"/>
+  </System>
+  <System ID="Hardware" Cluster="stkensrv3">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkensrv3"/>
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkensrv3"/>
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkensrv3"/>
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkensrv3"/>
+  </System>
+  <System ID="Hardware" Cluster="stkensrv4"> 
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkensrv4"/> 
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkensrv4"/> 
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkensrv4"/> 
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkensrv4"/> 
+  </System>
+  <System ID="Hardware" Cluster="stkenmvr1a"> 
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkenmvr1a"/> 
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkenmvr1a"/> 
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkenmvr1a"/> 
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkenmvr1a"/> 
+  </System>
+  <System ID="Hardware" Cluster="stkenmvr2a">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkenmvr2a"/> 
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkenmvr2a"/> 
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkenmvr2a"/> 
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkenmvr2a"/> 
+  </System>
+  <System ID="Hardware" Cluster="stkenmvr3a">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkenmvr3a"/> 
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkenmvr3a"/> 
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkenmvr3a"/> 
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkenmvr3a"/> 
+  </System>
+  <System ID="Hardware" Cluster="stkenmvr4a">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkenmvr4a"/> 
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkenmvr4a"/> 
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkenmvr4a"/> 
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkenmvr4a"/> 
+  </System>
+  <System ID="Hardware" Cluster="stkenmvr5a">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkenmvr5a"/> 
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkenmvr5a"/> 
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkenmvr5a"/> 
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkenmvr5a"/> 
+  </System>
+  <System ID="Hardware" Cluster="stkenmvr6a">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkenmvr6a"/> 
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkenmvr6a"/> 
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkenmvr6a"/> 
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkenmvr6a"/> 
+  </System>
+  <System ID="Hardware" Cluster="rip9">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="rip9"/>
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="rip9"/>
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="rip9"/>
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="rip9"/>
+  </System>
+  <System ID="Hardware" Cluster="rip10">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="rip10"/>
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="rip10"/>
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="rip10"/>
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="rip10"/>
+  </System>
+</NGOPConfig>
+

@@ -879,14 +879,10 @@ class LibraryManagerMethods:
                 if self.mover_type(requestor) == 'DiskMover':
                     ret = self.is_vol_available(rq.work,w['fc']['external_label'], requestor)
                 else:
-                    fsize = w['wrapper'].get('size_bytes', 0L)
-                    if w['method'] != "read_tape_start":
-                        # size has a meaning only for general rq
-                        fsize = fsize+self.min_file_size
                     ret = self.vcc.is_vol_available(rq.work,
                                                     w['fc']['external_label'],
                                                     w["vc"]["volume_family"],
-                                                    fsize)
+                                                    w["wrapper"]["size_bytes"]+self.min_file_size)
                 if ret['status'][0] != e_errors.OK:
                     if ret['status'][0] == e_errors.BROKEN:
                         # temporarily save last state:
@@ -960,13 +956,9 @@ class LibraryManagerMethods:
         if self.mover_type(requestor) == 'DiskMover':
             ret = self.is_vol_available(rq.work, external_label, requestor)
         else:
-            fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
-            if rq.ticket['method'] != "read_tape_start":
-                # size has a meaning only for general rq
-                fsize = fsize+self.min_file_size
             ret = self.vcc.is_vol_available(rq.work,  external_label,
                                             rq.ticket['vc']['volume_family'],
-                                            fsize)
+                                            rq.ticket["wrapper"]["size_bytes"]+self.min_file_size)
         # this work can be done on this volume
         if ret['status'][0] == e_errors.OK:
             rq.ticket['vc']['external_label'] = external_label
@@ -997,10 +989,9 @@ class LibraryManagerMethods:
         if self.mover_type(requestor) == 'DiskMover':
             ret = self.is_vol_available(rq.work,external_label, requestor)
         else:
-            fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
             ret = self.vcc.is_vol_available(rq.work,  external_label,
                                             rq.ticket['vc']['volume_family'],
-                                            fsize)
+                                            rq.ticket["wrapper"]["size_bytes"])
         Trace.trace(11,"check_read_request: ret %s" % (ret,))
         if ret['status'][0] != e_errors.OK:
             if ret['status'][0] == e_errors.BROKEN:
@@ -1037,7 +1028,7 @@ class LibraryManagerMethods:
         while rq:
             # skip over tape read requests they are processed only in the idle state
             method = rq.ticket.get("method", None)
-            if method and method == "read_tape_start":
+            if method and method == "start_read_tape":
                 rq = self.pending_work.get_admin_request(next=1) # get next request
                 continue
 
@@ -1120,7 +1111,7 @@ class LibraryManagerMethods:
         while rq:
             # skip over tape read requests they are processed only in the idle state
             method = rq.ticket.get("method", None)
-            if method and method == "read_tape_start":
+            if method and method == "start_read_tape":
                 rq = self.pending_work.get_admin_request(next=1) # get next request
                 continue
             rej_reason = None
