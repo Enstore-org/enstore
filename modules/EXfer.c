@@ -41,6 +41,7 @@ struct return_values
   long long size;      /*bytes transfered*/
   unsigned long crc_i; /*checksum*/
   int exit_status;     /*error status*/
+  int errno_val;           /*errno of any errors (zero otherwise) */
 };
 #endif
 
@@ -181,7 +182,7 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
       pthread_join(read_tid, (void**)read_val);
       exit_status = (*(struct return_values*)(*read_val)).exit_status;
       if(exit_status)
-	return exit_status; /*If an error occured, no sense continuing*/
+	break; /*If an error occured, no sense continuing*/
       else
 	read_done = -1;
     }
@@ -190,7 +191,7 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
       pthread_join(write_tid, (void**)write_val);
       exit_status = (*(struct return_values*)(*write_val)).exit_status;
       if(exit_status)
-	return exit_status; /*If an error occured, no sense continuing*/
+	break; /*If an error occured, no sense continuing*/
       else
 	write_done = -1;
     }
@@ -217,6 +218,16 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
   free(buffer);
   free(buffer_lock);
 
+  /* The errno in the variable gets overridden by thread code if an error
+     occurs. Set it back if necessary.*/
+  if((*(struct return_values*)(*write_val)).errno_val)
+  {
+    errno = (*(struct return_values*)(*write_val)).errno_val;
+  }
+  else if((*(struct return_values*)(*read_val)).errno_val)
+  {
+    errno = (*(struct return_values*)(*read_val)).errno_val;
+  }
   return exit_status;
 }
 
@@ -278,6 +289,7 @@ void* thread_read(void *info)
     if (sts == -1)
     { /* return/break - read error */
       pthread_mutex_lock(&done_mutex);
+      retval->errno_val = errno;
       retval->exit_status = (-1);
       read_done = 1;
       pthread_cond_signal(&done_cond);
@@ -287,6 +299,7 @@ void* thread_read(void *info)
     if (sts == 0)
     { /* return/break - unexpected eof error */
       pthread_mutex_lock(&done_mutex);
+      retval->errno_val = errno;
       retval->exit_status = (-2);
       read_done = 1;
       pthread_cond_signal(&done_cond);
@@ -329,6 +342,7 @@ void* thread_read(void *info)
   retval->exit_status = (0);
   retval->crc_i = crc_i;
   retval->size = bytes;
+  retval->errno_val = 0;
   read_done = 1;
   pthread_cond_signal(&done_cond);
   pthread_mutex_unlock(&done_mutex);
@@ -374,6 +388,7 @@ void* thread_write(void *info)
     if (sts == -1)
     { /* return a write error */
       pthread_mutex_lock(&done_mutex);
+      retval->errno_val = errno;
       retval->exit_status = (-3);
       write_done = 1;
       pthread_cond_signal(&done_cond);
@@ -421,6 +436,7 @@ void* thread_write(void *info)
   retval->exit_status = 0;
   retval->crc_i = crc_i;
   retval->size = bytes;
+  retval->errno_val = 0;
   write_done = 1;
   pthread_cond_signal(&done_cond);
   pthread_mutex_unlock(&done_mutex);
