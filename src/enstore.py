@@ -168,8 +168,7 @@ def no_argv3():
 def do_rgang_command(fdefault, command):
     farmlet = get_farmlet(fdefault)
     print 'rgang %s \"%s\"'%(farmlet, command)
-    #return os.system('rgang %s \"%s\"'%(farmlet, command))
-    return 0
+    return os.system('rgang %s \"%s\"'%(farmlet, command))
 
 
 
