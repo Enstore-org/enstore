@@ -182,7 +182,7 @@ def check(f):
 	# check A file. It should have no A-file
 	fa = a_path(f)
 	if os.access(fa, os.F_OK):
-		error(fb+' already exist')
+		error(fa+' already exist')
 		print 'ERROR'
 		return
 
