@@ -2040,6 +2040,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
                     self.tape_driver.write(vol1_label, 0, 80)
                     self.tape_driver.writefm()
+	            # WAYNE FOO
+	            Trace.trace(42, "WAYNE DEBUG: rewinding")
+                    self.tape_driver.rewind()
+	            Trace.trace(42, "WAYNE DEBUG: rewriting label")
+                    self.tape_driver.write(vol1_label, 0, 80)
+                    self.tape_driver.writefm()
+	            # END WAYNE FOO
                 except: 
                     exc, detail, tb = sys.exc_info()
                     #Trace.handle_error(exc, detail, tb)
