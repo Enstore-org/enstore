@@ -1589,20 +1589,15 @@ def status_to_request( client_obj_inst, exit_status ):
 	next_req_to_lm = freeze_tape_in_drive( client_obj_inst, m_err[exit_status] )
     elif m_err[exit_status] in (e_errors.READ_VOL1_READ_ERR,
                                 e_errors.WRITE_VOL1_READ_ERR):
-        # XXX jon says we have to add the volume to the suspect volume list.  Am I doing this correctly?
-        next_req_to_lm = offline_drive( client_obj_inst,m_err[exit_status])
+        # we don't know if it's a tape error or a drive error.  take the drive offline.
+        next_req_to_lm = freeze_tape_in_drive( client_obj_inst,m_err[exit_status])
         pass
     elif m_err[exit_status] in (e_errors.WRITE_VOL1_MISSING,
-                                e_errors.WRITE_VOL1_WRONG):
-        # grab another volume
+                                e_errors.WRITE_VOL1_WRONG,
+                                e_errors.READ_VOL1_MISSING,
+                                e_errors.READ_VOL1_WRONG):
         next_req_to_lm = freeze_tape( client_obj_inst,
                                       m_err[exit_status] )
-        pass
-    elif m_err[exit_status] in (e_errors.READ_VOL1_MISSING,
-                                e_errors.READ_VOL1_WRONG):
-        #fatal
-        next_req_to_lm = freeze_tape_in_drive( client_obj_inst,
-                                               m_err[exit_status] )
         pass
     else:
 	# new error
