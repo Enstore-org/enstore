@@ -178,13 +178,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
         if ticket['status'][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"lmc.%s sending ticket %s"%(work,ticket)
 
-        # We have placed our request in the system and now we have to wait.
-        # All we  need to do is wait for the system to call us back,
-        # and make sure that is it calling _us_ back, and not some sort of old
-        # call-back to this very same port. 
         while 1 :
             control_socket, address = listen_socket.accept()
-            new_ticket = callback.read_tcp_obj(control_socket)
+            new_ticket = callback.read_tcp_obj_new(control_socket)
             if ticket["unique_id"] == new_ticket["unique_id"] :
                 listen_socket.close()
                 break
@@ -204,11 +200,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
         
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         data_path_socket.connect(ticket['library_manager_callback_addr'])
-        worklist = callback.read_tcp_obj(data_path_socket)
+        worklist = callback.read_tcp_obj_new(data_path_socket)
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with library manager.
-        done_ticket = callback.read_tcp_obj(control_socket)
+        done_ticket = callback.read_tcp_obj_new(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"lmc."+work+": "\
