@@ -252,7 +252,9 @@ def do_work(intf):
 	print repr(ticket)
     elif intf.queue_list:
         if len(intf.args) >= 1:
-            host = intf.args[0]
+            if intf.args[0]: 
+                host = intf.args[0]
+            else: host = None
             if len(intf.args) == 2:
                 lm = intf.args[1]
             else: lm = None
