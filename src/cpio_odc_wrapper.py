@@ -121,7 +121,7 @@ def hdr_labels(dummy):
 def eof_labels(dummy):
     return ""
 
-def vol_labels(volume_label, ticket, own_id=""):
+def vol_labels(volume_label, ticket={}, own_id=""):
     vol1_label = 'VOL1'+ volume_label[0:6]
     return vol1_label+ (79-len(vol1_label))*' ' + '0'
 
