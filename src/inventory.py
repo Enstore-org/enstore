@@ -990,7 +990,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         else:
             vsum = {}
 
-        if vsum and vsum['last'] > vv['last_access']:
+        if vsum and vsum['last'] == vv['last_access']:
             # good, don't do anything
             active = vsum['active']
             deleted = vsum['deleted']
@@ -1056,7 +1056,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             print_footer(vv, fd_output)
             if fd_output != 1:
                 os.close(fd_output)
-            vsum = {'last':time.time(), 'active':active,
+            vsum = {'last':vv['last_access'], 'active':active,
                     'deleted':deleted, 'unknown':unknown,
                     'active_size':active_size,
                     'deleted_size':deleted_size,
