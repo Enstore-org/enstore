@@ -52,8 +52,8 @@ class CronPlotPage(enstore_html.EnPlotPage):
 
     def find_label(self, text):
         l = len(self.url)
-        # get rid of the .jpg ending and the url at the beginning
-        return text[l:-4]
+        # get rid of the .jpg ending and the url at the beginning and _stamp
+        return text[l:-10]
 
 class PlotPageInterface(generic_client.GenericClientInterface):
 
