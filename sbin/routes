@@ -8,9 +8,6 @@ job=${1:-"route"}
 netperf=/opt/netperf/netperf
 N=/dev/null
 
-#                 d0enmvr4a:  
-#                 d0enmvr7a:  
-
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
@@ -25,6 +22,9 @@ case $node in
                  stkenmvr7a: \
                  stkenmvr8a: \
                  stkenmvr9a: \
+                 stkenmvr10a: \
+                 stkenmvr11a: \
+                 stkenout1: stkenout2: \
                  stkendca3a: stkendca4a: stkendca5a: \
                  rip9: rip10:"
           ;;
@@ -33,14 +33,17 @@ case $node in
                  d0enmvr1a: d0enmvr1b: \
                  d0enmvr2a: d0enmvr2b: \
                  d0enmvr3a: d0enmvr3b: \
+		 d0enmvr4a:  \
                  d0enmvr5a: d0enmvr5b: \
                  d0enmvr6a: d0enmvr6b: \
+		 d0enmvr7a:  \
                  d0enmvr8a: d0enmvr8b: \
                  d0enmvr9a:  \
                  d0enmvr10a: \
                  d0enmvr11a: \
                  d0enmvr12a: \
                  d0enmvr13a: d0enmvr13b: \
+                 d0enmvr14a: \
                  d0enmvr15a: d0enmvr15b: \
                  d0enmvr16a: d0enmvr16b: \
                  d0enmvr17a: \
@@ -147,6 +150,12 @@ add*)
     /sbin/route add -host stkenmvr7a  eth0;   
     /sbin/route add -host stkenmvr8a  eth0;
     /sbin/route add -host stkenmvr9a  eth0;   
+    /sbin/route add -host stkenmvr10a  eth0;   
+    /sbin/route add -host stkenmvr11a  eth0;   
+
+
+    /sbin/route add -host stkenout1  eth0;   
+    /sbin/route add -host stkenout2  eth0;   
 
     /sbin/route add -host rip9        eth0
     /sbin/route add -host rip10       eth0
@@ -200,6 +209,7 @@ add*)
 
       case $gang in
          d0en)
+            /sbin/route add -host  d0ensrv0p eth1
             /sbin/route add -host  d0ensrv1p eth1
             /sbin/route add -host  d0ensrv2p eth1
             /sbin/route add -host  d0ensrv3p eth1
@@ -208,6 +218,7 @@ add*)
             /sbin/route add -host  adic2     eth1
             ;;
          stken)
+            /sbin/route add -host stkensrv0p eth1
             /sbin/route add -host stkensrv1p eth1
             /sbin/route add -host stkensrv2p eth1
             /sbin/route add -host stkensrv3p eth1
@@ -216,11 +227,12 @@ add*)
             /sbin/route add -host fntt       eth1
             ;;
          cdfen)
+            /sbin/route add -host cdfensrv0p eth1
             /sbin/route add -host cdfensrv1p eth1
             /sbin/route add -host cdfensrv2p eth1
             /sbin/route add -host cdfensrv3p eth1
             /sbin/route add -host cdfensrv4p eth1
-            /sbin/route add -host fnttcdf    eth1
+            /sbin/route add -host fntt2      eth1
             ;;
       esac
     fi
@@ -284,6 +296,12 @@ del*)
     /sbin/route del       stkenmvr7a      ;   
     /sbin/route del       stkenmvr8a      ;
     /sbin/route del       stkenmvr9a      ;   
+    /sbin/route del       stkenmvr10a     ;   
+    /sbin/route del       stkenmvr11a     ;   
+
+    /sbin/route del       stkenout1
+    /sbin/route del       stkenout2
+
 
     /sbin/route del       rip9            
     /sbin/route del       rip10           
@@ -337,6 +355,7 @@ del*)
 
       case $gang in
          d0en)
+            /sbin/route del        d0ensrv0p eth1
             /sbin/route del        d0ensrv1p eth1
             /sbin/route del        d0ensrv2p eth1
             /sbin/route del        d0ensrv3p eth1
@@ -345,6 +364,7 @@ del*)
             /sbin/route del        adic2     eth1
             ;;
          stken)
+            /sbin/route del       stkensrv0p eth1
             /sbin/route del       stkensrv1p eth1
             /sbin/route del       stkensrv2p eth1
             /sbin/route del       stkensrv3p eth1
@@ -353,11 +373,12 @@ del*)
             /sbin/route del       fntt       eth1
             ;;
          cdfen)
+            /sbin/route del       cdfensrv0p eth1
             /sbin/route del       cdfensrv1p eth1
             /sbin/route del       cdfensrv2p eth1
             /sbin/route del       cdfensrv3p eth1
             /sbin/route del       cdfensrv4p eth1
-            /sbin/route del       fnttcdf    eth1
+            /sbin/route del       fntt2      eth1
             ;;
       esac
     fi
