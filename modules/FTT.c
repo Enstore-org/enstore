@@ -820,12 +820,12 @@ FTT_status(  PyObject *self
     if (sts == -1) return raise_ftt_exception( "FTT_status" );
 
     rr = Py_BuildValue(  "{s:i,s:i,s:i,s:i,s:i,s:i}"
-		       , "ABOT",   sts&FTT_ABOT
-		       , "AEOT",   sts&FTT_AEOT
-		       , "AEW",    sts&FTT_AEW
-		       , "PROT",   sts&FTT_PROT
-		       , "ONLINE", sts&FTT_ONLINE
-		       , "BUSY",   sts&FTT_BUSY );
+		       , "ABOT",   (sts&FTT_ABOT)?1:0
+		       , "AEOT",   (sts&FTT_AEOT)?1:0
+		       , "AEW",    (sts&FTT_AEW)?1:0
+		       , "PROT",   (sts&FTT_PROT)?1:0
+		       , "ONLINE", (sts&FTT_ONLINE)?1:0
+		       , "BUSY",   (sts&FTT_BUSY)?1:0 );
     return (rr);
 }
 
