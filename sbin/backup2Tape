@@ -150,6 +150,8 @@ rm -f $ENSTORE_FILES
 #only backup the latest directory copy.
 ELAST=`ls -ltd  $ENSTORE/dbase.* | head -n1 | awk '{print $NF}'`
 find $ELAST -type f $find_options -print > $ENSTORE_FILES
+find $ENSTORE/JOURNALS -type f $find_options -print >> /tmp/journals
+cat /tmp/journals >> $ENSTORE_FILES
 
 lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
 list ""
@@ -164,6 +166,12 @@ cat $ENSTORE_FILES| while read file; do
 done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $ENSTORE_FILES
+# rm backup journals
+for i in `cat /tmp/journal`
+do
+  rm -f $i
+done
+rm -f /tmp/journals
 find $ENSTORE -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 
