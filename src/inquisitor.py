@@ -437,6 +437,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_alarm_server(self, key, time):
 	self.do_alive_check(key, time, self.alarmc, ALA_PREFIX)
 
+    # pull various info out of the config file
+    def update_random_info(self, conf_dict):
+        self.rcv_timeout = conf_dict.get('timeout', default_timeout())
+        self.alive_rcv_timeout = conf_dict.get('alive_rcv_timeout',
+                                               default_alive_rcv_timeout())
+        self.alive_retries = conf_dict.get('alive_retries',
+                                           default_alive_retries())
+        self.max_encp_lines = conf_dict.get('max_encp_lines',
+                                            default_max_encp_lines())
+        self.default_server_interval = conf_dict.get(DEFAULT_SERVER_INTERVAL,
+                                                     default_server_interval())
+
     # get the information from the inquisitor
     def update_inquisitor(self, key, time):
 	# get info on the inquisitor
@@ -469,14 +481,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # the inquisitor, do the commands, if there are any
         self.make_misc_html_file(t.get('update_commands', {}))
 
+        # update random info from the config file
+        self.update_random_info(t)
+
 	# we need to update the dict of servers that we are keeping track of.
 	# however we cannot do it now as we may be in the middle of a loop
 	# reading the keys of this dict.  so we just record the fact that this
 	# needs to get done and we will do it later
 	self.doupdate_server_dict = 1
 	self.new_intervals = t['intervals']
-        self.default_server_interval = t.get(DEFAULT_SERVER_INTERVAL,
-                                             default_server_interval())
 
 	# clear out the cache in the config client so we can get new info on
 	# any of the servers in case the info has changed.
