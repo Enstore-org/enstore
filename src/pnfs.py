@@ -86,7 +86,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         break
                 else:
                     self.id = UNKNOWN
-
             
         self.get_bit_file_id()
         #self.get_const()
@@ -180,23 +179,25 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             #print "dir", self.dir
             #print "file", self.file
             #print "name", self.pnfsFilename
-            
+
             #If the directory is valid, then this will return a file with a
             # lot of complex pnfs data.
             #Note: Only the first character of self.file is given.  The output
             # is the same either way.  This is in responce to "stale NFS
             # handle" errors that occording to Patrick were caused by the
             # string in self.file being to long.
-            try:
-                fname = self.dir + '/.(const)(' + self.file + ')'
-                f = open(fname,'r')
-                f.close()
-            except OSError:
-                exc, msg, tb = sys.exc_info()
-                sys.stderr.write("Possible unrecoverable error detected.")
-                sys.stderr.write("%s %s" % (exc, msg))
-                sys.stderr.write("Continuing.")
-                
+            if self.file:
+                try:
+                    fname = self.dir + '/.(const)(' + self.file[0] + ')'
+                    f = open(fname,'r')
+                    f.close()
+                except (OSError, IOError):
+                    exc, msg, tb = sys.exc_info()
+                    message = "Possible unrecoverable error detected.\n"
+                    sys.stderr.write(message)
+                    sys.stderr.write("%s %s\n" % (exc, msg))
+                    sys.stderr.write("Continuing.\n")
+
             #If we set this then the path is valid.
             self.valid = VALID
 
@@ -1905,6 +1906,7 @@ def do_work(intf):
     p=Pnfs(intf.file, intf.directory, intf.pnfs_id, 1, 1)
     for arg in intf.option_list:
         if string.replace(arg, "_", "-") in intf.options.keys():
+            arg = string.replace(arg, "-", "_")
             apply(getattr(p, "p" + arg), (intf,))
 
     return
