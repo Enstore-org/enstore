@@ -13,7 +13,7 @@ from udp_client import UDPClient
 from journal import JournalDict
 
 
-dict = JournalDict({}, "bit_file_server.jou")
+dict = JournalDict({}, "file_clerk.jou")
 
 class FileClerkMethods(DispatchingWorker) :
 
@@ -69,7 +69,7 @@ class FileClerkMethods(DispatchingWorker) :
 			bfid = bfid + 1
 		return `bfid`
 
-class FileClerkServer(FileClerkMethods, GenericServer, UDPServer) : pass
+class FileClerk(FileClerkMethods, GenericServer, UDPServer) : pass
 
 if __name__ == "__main__" :
 	#
@@ -80,7 +80,7 @@ if __name__ == "__main__" :
 	#
 	csc = configuration_server_client() 
 	ticket = csc.get("file_clerk")
-	cs = FileClerkServer( (ticket["host"], ticket["port"]), 
+	cs = FileClerk( (ticket["host"], ticket["port"]), 
 						FileClerkMethods)
 	cs.set_csc(csc)
 	cs.serve_forever()
