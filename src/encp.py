@@ -234,14 +234,14 @@ def generate_location_cookie(number):
     return "0000_000000000_%07d" % int(number)
 
 def convert_0_adler32_to_1_adler32(crc, filesize):
-    #Convert to ingeter types, and determine other values.
-    crc = int(crc)
+    #Convert to long ingeter types, and determine other values.
+    crc = long(crc)
     filesize = long(filesize)
     #Modulo the size with the largest 16 bit prime number.
     size = int(filesize % BASE)
     #Extract existing s1 and s2 from the 0 seeded adler32 crc.
-    s1 = int(crc & 0xffff)
-    s2 = int((crc >> 16) &  0xffff)
+    s1 = (crc & 0xffff)
+    s2 = ((crc >> 16) &  0xffff)
     #Modify to reflect the corrected crc.
     s1 = (s1 + 1) % BASE
     s2 = (size + s2) % BASE
@@ -2569,16 +2569,14 @@ def check_crc(done_ticket, encp_intf, fd=None):
                 #Get the hex strings of the two CRCs.
                 hex_dcache_string = "0x" + result.group().split(":")[1]
                 hex_encp_string = hex(fixed_encp_crc)
-                #Convert to integers for safety.  (padding of zero's)
-                hex_dcache_crc = hex(int(hex_dcache_string, 16))
-                hex_encp_crc = hex(int(hex_encp_string, 16))
-                #Convert hex values to upper case for comparison.
-                hex_dcache_string = string.lower(hex_dcache_crc)
-                hex_encp_string = string.lower(hex_encp_crc)
+                #Convert to long integers for safety.  (padding of zero's)
+                dcache_crc = long(hex_dcache_string, 16)
+                encp_crc = long(hex_encp_string, 16)
                 #Test to make sure they are the same.
-                if hex_dcache_string != hex_encp_string:
-                    msg = "CRC dcache mismatch: %s != %s" % (hex_dcache_string,
-                                                             hex_encp_string)
+                if dcache_crc != encp_crc:
+                    msg = "CRC dcache mismatch: %s (%s) != %s (%s)" % \
+                          (dcache_crc, hex(dcache_crc),
+                           encp_crc, hex(encp_crc))
                     done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
                     return
 
