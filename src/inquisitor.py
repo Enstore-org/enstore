@@ -60,8 +60,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.output_alive("library manager : ", stat, file)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.output_etimedout("library manager : ", file)
-	#stat = lmc.getwork(list)
-	#file.write(repr(stat))
+	stat = lmc.getwork(list)
+	file.write("      "+pprint.pformat(stat)+"\n")
         Trace.trace(12,"}update_library_manager ")
 
     # get the information from the movers
