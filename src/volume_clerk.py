@@ -1261,11 +1261,20 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             else:    
                 # update the fields that have changed
                 record[inhibit][position] = "none"
+                # set time stamp
+                if not record.has_key('si_time'):
+                    record['si_time'] = [0, 0]
+                record['si_time'][position] = time.time()
                 self.dict[external_label] = record   # THIS WILL JOURNAL IT
                 record["status"] = (e_errors.OK, None)
         else:
             # if it is not record["system_inhibit"][0] just set it to none
             record[inhibit][position] = "none"
+            if inhibit == "system_inhibit":
+                # set time stamp
+                if not record.has_key('si_time'):
+                    record['si_time'] = [0, 0]
+                record['si_time'][position] = time.time()
             self.dict[external_label] = record   # THIS WILL JOURNAL IT
             record["status"] = (e_errors.OK, None)
         if record["status"][0] == e_errors.OK:
