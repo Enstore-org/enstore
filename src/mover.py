@@ -1859,7 +1859,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.alarm(e_errors.ERROR, "selective CRC check error",
                                     {'outfile':self.current_work_ticket['outfile'],
                                      'infile':self.current_work_ticket['infile'],
-                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
                                      'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                         failed = 1
@@ -1870,7 +1869,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.alarm(e_errors.ERROR, "selective CRC check error",
                                     {'outfile':self.current_work_ticket['outfile'],
                                      'infile':self.current_work_ticket['infile'],
-                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
                                      'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                         failed = 1
