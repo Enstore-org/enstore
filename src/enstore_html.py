@@ -2407,7 +2407,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    self.background = None
 	    self.bgcolor = "YELLOW"
 	    rb_tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Image("bigredball.gif", 
-						     title="Enstore ball has turnded red"),
+						     title="Enstore ball has turned red"),
 				       align="CENTER"))
 	    rb_tr.append(HTMLgen.TD(HTMLgen.Image("enstore_is_red.gif"), align="LEFT"))
 	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(rb_tr, cellspacing=1, 
