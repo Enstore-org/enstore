@@ -94,8 +94,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.htmlfile.output_noconfigdict(prefix, time, key)
             Trace.trace(13,"}do_alive_check - ERROR, getting config dict timed out ")
 	    return self.timed_out
-	ret = self.alive_status(client, (t['host'], t['port']),\
-	                        prefix, time, key)
+
+        if t['status'] == (e_errors.OK, None):
+	    ret = self.alive_status(client, (t['host'], t['port']),\
+	                            prefix, time, key)
+	elif t['status'][0] == 'KEYERROR':
+	    self.remove_key(key)
         Trace.trace(13,"}do_alive_check ")
 	return ret
 
@@ -161,20 +165,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
 	    Trace.trace(12,"}update_library_manager - ERROR, getting config dict timed out")
 	    return
-	except:
-	    # this library manager does not exist in the config dict
-	    Trace.trace(12,"}update_library_manager - ERROR, not in config dict")
-	    return
-	# get a client and then check if the server is alive
-	lmc = library_manager_client.LibraryManagerClient(self.csc, 0, key, \
-                                                          t['hostip'], \
-	                                                  t['port'])
-	ret = self.alive_status(lmc, (t['host'], t['port']), \
-	                        key+self.trailer, time, key)
-	if ret == self.did_it:
-	    self.suspect_vols(lmc, (t['host'], t['port']), key, verbose)
-	    self.mover_list(lmc, (t['host'], t['port']), key, verbose)
-	    self.work_queue(lmc, (t['host'], t['port']), key, verbose)
+        if t['status'] == (e_errors.OK, None):
+	    # get a client and then check if the server is alive
+	    lmc = library_manager_client.LibraryManagerClient(self.csc, 0,
+	                                                      key, \
+                                                              t['hostip'], \
+	                                                      t['port'])
+	    ret = self.alive_status(lmc, (t['host'], t['port']), \
+	                            key+self.trailer, time, key)
+	    if ret == self.did_it:
+	        self.suspect_vols(lmc, (t['host'], t['port']), key, verbose)
+	        self.mover_list(lmc, (t['host'], t['port']), key, verbose)
+	        self.work_queue(lmc, (t['host'], t['port']), key, verbose)
+	elif t['status'][0] == 'KEYERROR':
+	    self.remove_key(key)
         Trace.trace(12,"}update_library_manager ")
 
     # get the information from the movers
@@ -188,18 +192,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.essfile.output_noconfigdict(key+self.trailer, time, key)
 	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
-            Trace.trace(12,"{update_mover - ERROR, getting config dict timed out")
+            Trace.trace(12,"}update_mover - ERROR, getting config dict timed out")
 	    return
-	except:
-	    # this mover does not exist in the config dict
-	    Trace.trace(12,"{update_mover - ERROR, not in config dict")
-	    return
-	# get a client and then check if the server is alive
-	movc = mover_client.MoverClient(self.csc, 0, key, t['hostip'], \
-	                                t['port'])
-	self.alive_status(movc, (t['host'], t['port']), key+self.trailer, \
-	                  time, key)
-        Trace.trace(12,"{update_mover")
+        if t['status'] == (e_errors.OK, None):
+	    # get a client and then check if the server is alive
+	    movc = mover_client.MoverClient(self.csc, 0, key, t['hostip'], \
+	                                    t['port'])
+	    self.alive_status(movc, (t['host'], t['port']), key+self.trailer, \
+	                      time, key)
+	elif t['status'][0] == 'KEYERROR':
+	    self.remove_key(key)
+        Trace.trace(12,"}update_mover")
 
     # get the information from the admin clerk
     def update_admin_clerk(self, key, time, verbose=0):
@@ -232,15 +235,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
             Trace.trace(12,"}update_media_changer - ERROR, getting config dict timed out")
 	    return
-	except:
-	    # this media changer did not exist in the config dict
-	    Trace.trace(12,"}update_media_changer - ERROR, not in config dict")
-	    return
-	# get a client and then check if the server is alive
-	mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, \
+        if t['status'] == (e_errors.OK, None):
+	    # get a client and then check if the server is alive
+	    mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, \
 	                                              t['hostip'], t['port'])
-	self.alive_status(mcc, (t['host'], t['port']), key+self.trailer, \
-	                  time, key)
+	    self.alive_status(mcc, (t['host'], t['port']), key+self.trailer, \
+	                      time, key)
+	elif t['status'][0] == 'KEYERROR':
+	    self.remove_key(key)
         Trace.trace(12,"}update_media_changer")
 
     # get the information from the inquisitor
@@ -299,8 +301,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.htmlfile.output_noconfigdict(self.bl_prefix, time, key)
             Trace.trace(12,"}update_blocksizes - ERROR, getting config dict timed out")
 	    return
-	self.essfile.output_blocksizes(t, self.bl_prefix, key)
-	self.htmlfile.output_blocksizes(t, self.bl_prefix, key)
+        if t['status'] == (e_errors.OK, None):
+	    self.essfile.output_blocksizes(t, self.bl_prefix, key)
+	    self.htmlfile.output_blocksizes(t, self.bl_prefix, key)
+	elif t['status'][0] == 'KEYERROR':
+	    self.remove_key(key)
         Trace.trace(12,"}update_blocksizes")
 
     # get the keys from the inquisitor part of the config file ready for use
@@ -309,6 +314,19 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.server_keys = self.timeouts.keys()
 	self.server_keys.sort()
         Trace.trace(12,"}prepare_keys")
+
+    # delete the key (server) from the main looping hash and from the text	   # output to the various files
+    def remove_key(self, key):
+	Trace.trace(12,"{remove_key")
+	i = 0
+	for item in self.server_keys:
+	    if item == key:
+	        del self.server_keys[i]
+	    else:
+	        i = i + 1
+	self.essfile.remove_key(key)
+	self.htmlfile.remove_key(key)
+	Trace.trace(12,"}remove_key")
 
     # fix up the server list that we are keeping track of
     def update_server_dict(self):
@@ -335,14 +353,22 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, \
 	                                 self.alive_retries)
-	    for a_key in csc_keys['get_keys']:
-	        if not self.timeouts.has_key(a_key):
-	            self.timeouts[a_key] = self.default_server_timeout
-	            if not self.last_update.has_key(a_key):
-	                self.last_update[a_key] = ctime
 	except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(12,"}fill_in_default_timeouts - ERROR, getting config dict timed out")
 	    return
+	for a_key in csc_keys['get_keys']:
+	    if not self.timeouts.has_key(a_key):
+	        self.timeouts[a_key] = self.default_server_timeout
+	        if not self.last_update.has_key(a_key):
+	            self.last_update[a_key] = ctime
+	# now get rid of any keys that are in timeouts and not in csc_keys
+	# make an exception for config_server
+	for a_key in self.timeouts.keys():
+	    if a_key not in csc_keys['get_keys']:
+	        if a_key != "config_server":
+	            del self.timeouts[a_key]
+	            self.essfile.remove_key(a_key)
+	            self.htmlfile.remove_key(a_key)
         Trace.trace(12,"}fill_in_default_timeouts")
 
     # flush the files we have been writing to
@@ -656,24 +682,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	else:
 	    self.alive_retries = alive_retries
 
-	# get the timeout for each of the servers from the configuration file.
-	self.last_update = {}
-	if keys.has_key('timeouts'):
-	    self.timeouts = keys['timeouts']
-	    # now we will create a dictionary, initiallizing it to the current
-	    # time. this array records the last time that the associated server
-	    # info was updated. everytime we get a particular servers' info we
-	    # will update this time. start out at 0 so we do an update right
-	    # away
-	    for key in self.timeouts.keys():
-	        self.last_update[key] = 0
-
-	# now we must look thru the whole config file and use the default
-	# server timeout for any servers that were not included in the
-	# 'timeouts' dict element
-	self.set_default_server_timeout(keys)
-	self.fill_in_default_timeouts(0)
-
 	# if no max file size was entered on the command line, get it from the 
 	# configuration file.
 	if max_ascii_size == -1:
@@ -720,6 +728,25 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	                                            enstore_status.html_file,\
 	                                            html_file, -1, verbose)
 	    self.htmlfile_orig = html_file
+
+	# get the timeout for each of the servers from the configuration file.
+	self.last_update = {}
+	if keys.has_key('timeouts'):
+	    self.timeouts = keys['timeouts']
+	    # now we will create a dictionary, initiallizing it to the current
+	    # time. this array records the last time that the associated server
+	    # info was updated. everytime we get a particular servers' info we
+	    # will update this time. start out at 0 so we do an update right
+	    # away
+	    for key in self.timeouts.keys():
+	        self.last_update[key] = 0
+
+	# now we must look thru the whole config file and use the default
+	# server timeout for any servers that were not included in the
+	# 'timeouts' dict element
+	self.set_default_server_timeout(keys)
+	self.fill_in_default_timeouts(0)
+
 	Trace.trace(10, '}__init__')
 
 class InquisitorInterface(interface.Interface):

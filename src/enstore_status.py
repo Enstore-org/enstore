@@ -77,6 +77,11 @@ class EnstoreStatus:
 	self.file.flush()
         Trace.trace(10,'}flush')
 
+    # remove something from the text hash that will be written to the files
+    def remove_key(self, key):
+	if self.text.has_key(key):
+	    del self.text[key]
+
     # remove all single quotes
     def unquote(self, string):
         Trace.trace(12,"{unquote "+repr(string))
