@@ -397,9 +397,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # check pnfs id
         pnfs_id = pf.get_pnfs_id()
         if pnfs_id != pf.pnfs_id:
-            del record['file_family']
             record['pnfsid'] = pnfs_id
-            self.dict[bfid] = record
+
+        # reset 'deleted' status
+        del record['file_family']
+        record['deleted'] = 'no'
+        self.dict[bfid] = record
 
         return e_errors.OK, None
 
