@@ -12,7 +12,7 @@ import generic_cs
 import interface
 import udp_client
 import Trace
-import e_errors
+#import e_errors
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -24,15 +24,6 @@ try:
     socket = SOCKS
 except ImportError:
     import socket
-
-def set_csc(self, csc=0, host=interface.default_host(),\
-            port=interface.default_port(), verbose=0):
-    Trace.trace(10,'{set_csc csc='+repr(csc))
-    if csc == 0:
-        self.csc = ConfigurationClient(host, port, verbose)
-    else:
-        self.csc = csc
-    Trace.trace(10,'}set_csc csc='+repr(self.csc))
 
 class ConfigurationClient(generic_client.GenericClient):
 
@@ -172,16 +163,25 @@ class ConfigurationClient(generic_client.GenericClient):
         Trace.trace(16,'}get_movers')
 	
 
+def set_csc(self, csc=0, host=interface.default_host(),\
+            port=interface.default_port(), verbose=0):
+    Trace.trace(10,'{set_csc csc='+repr(csc))
+    if csc == 0:
+        self.csc = ConfigurationClient(host, port, verbose)
+    else:
+        self.csc = csc
+    Trace.trace(10,'}set_csc csc='+repr(self.csc))
+
 class ConfigurationClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
         # fill in the defaults for the possible options
-	self.config_list = {}
-       	self.config_file = ""
+        self.config_list = {}
+        self.config_file = ""
         self.dict = 0
         self.load = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
-       	self.get_keys = 0
+        self.get_keys = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
