@@ -211,7 +211,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 	self.priority = -1
 	self.load_mover_list = 0
 	self.poll = 0
-        self.queue_list = 0
+        self.get_queue = None
         self.host = 0
         self.start_draining = 0
         self.stop_draining = 0
@@ -229,7 +229,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             return self.client_options()+\
                    ["get_work", "get_suspect_vols",
                     "get_delayed_dismount","delete_work=","priority=",
-                    "load_movers", "poll", "get_queue","host=",
+                    "load_movers", "poll", "get_queue=","host=",
                     "start_draining=", "stop_draining", "status", "active_volumes",
                     "storage_groups"]
 
@@ -241,21 +241,13 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def parse_options(self):
         interface.Interface.parse_options(self)
         # bomb out if we don't have a library
-        if (len(self.args) < 1) and (not  self.queue_list) :
+        if len(self.args) < 1:
 	    self.missing_parameter(self.parameters())
-            self.print_help(),
+            self.print_help()
             sys.exit(1)
         else:
-	    if self.delete_work:
-		if len(self.args) != 1:
-		    self.print_delete_work_args()
-		    sys.exit(1)
-	    elif not self.priority == -1:
-		if len(self.args) != 2:
-		    self.print_priority_args()
-		    sys.exit(1)
-            if not  self.queue_list: self.name = self.args[0]
-
+            self.name = self.args[0]
+            
     # print delete _work arguments
     def print_delete_work_args(self):
         print "   delete arguments: library"
@@ -266,6 +258,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 
 def do_work(intf):
     # get a library manager client
+    print "DO WORK: name=", intf.name
     lmc = LibraryManagerClient((intf.config_host, intf.config_port), intf.name)
     Trace.init(lmc.get_name(lmc.log_name))
 
@@ -299,19 +292,10 @@ def do_work(intf):
     elif intf.storage_groups:
         ticket = lmc.storage_groups()
 
-    elif intf.queue_list:
-        if len(intf.args) >= 1:
-            if intf.args[0]: 
-                host = intf.args[0]
-            else: host = None
-            if len(intf.args) == 2:
-                lm = intf.args[1]
-            else: lm = None
-        else:
-            host = None
-            lm = None
-	ticket = lmc.get_queue(host, lm)
+    elif intf.get_queue != None:
+	ticket = lmc.get_queue(intf.get_queue, intf.name)
 	print repr(ticket)
+        
     elif (intf.start_draining or intf.stop_draining):
         if intf.start_draining:
             if intf.start_draining == 'lock': lock = 'locked'
@@ -328,9 +312,6 @@ def do_work(intf):
     else:
 	intf.print_help()
         sys.exit(0)
-
-    del lmc.csc.u
-    del lmc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     lmc.check_ticket(ticket)
 

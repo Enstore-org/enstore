@@ -388,7 +388,7 @@ class Interface:
             elif opt == "--plot":
                 self.plot = 1
             elif opt == "--get_queue":
-	        self.queue_list=1
+	        self.get_queue=value
             elif opt == "--host":
 	        self.host=value
             elif opt == "--ephemeral":
