@@ -1,4 +1,4 @@
-static char rcsid[] = "#(@)$Id$";
+static char rcsid[] = "@(#)$Id$";
 /* 
 
 
@@ -26,7 +26,7 @@ Include files:-
    ========== */
 
 void ftt_t_block_fill 	(char *, int, int, int);
-int  ftt_t_block_dump	(FILE *, int, char *, int);
+int  ftt_t_block_dump	(FILE *, int, char *, int, int, int);
 int  ftt_t_block_undump	(FILE *, char *);
 int  ftt_t_block_verify	(char *, int, int, int);
 
@@ -319,6 +319,8 @@ ROUTINE: ftt_t_dump
 int	ftt_t_dump (int argc, char **argv)
 {
 char		rdata[FTT_T_MAXDSIZE];		/* read data */
+static int	do_chars;			/* print char dump too */
+static int	do_offsets;			/* print block offsets */
 int 		status;				/* status */
 int 		estatus = 0;			/* expected status */
 int		i=0;				/* counter */
@@ -330,8 +332,10 @@ static int	nblock;				/* number to read */
 static char	*estatus_str;			/* expected status string */
 ftt_t_argt	argt[] = {
  	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
- 	{"-nblocks",	FTT_T_ARGV_INT,		NULL,		&nblock},
+ 	{"-nblocks",	FTT_T_ARGV_STRING,	NULL,		&nblock},
  	{"-filename",	FTT_T_ARGV_STRING,	NULL,		&out_filename},
+	{"-chars",	FTT_T_ARGV_CONSTANT,	(char *)TRUE,	&do_chars},
+	{"-offsets",	FTT_T_ARGV_CONSTANT,	(char *)TRUE,	&do_offsets},
  	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
 
 /* parse command line
@@ -401,7 +405,8 @@ while (nblock)
    else
       {
       nfm = 0;
-      ftt_t_block_dump (outfile, i, rdata, thissize);	/* dump the test block*/
+      /* dump the test block*/
+      ftt_t_block_dump (outfile, i, rdata, thissize, do_offsets, do_chars );
       }
    }
 nfm = 0;

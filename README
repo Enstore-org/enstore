@@ -1,4 +1,4 @@
-This is the Fermi Tape Tools product ftt.
+This is the Fermi Tape Tools product (ftt).
 
 It provides several pieces:
 (1) a platform-insulating direct SCSI i/o library
@@ -12,3 +12,5 @@ Authors & Maintainers:
 	Marc Mengel <mengel@fnal.gov>
 	Margaret Votava <votava@fnal.gov>
 	Dorota Genser <dorota@fnal.gov>
+
+Support email should go to <ftt_support@fnal.gov>

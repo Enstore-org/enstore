@@ -1,4 +1,4 @@
-static char rcsid[] = "#(@)$Id$";
+static char rcsid[] = "@(#)$Id$";
 /*
  * ftt_scsi_sun.c
  */

@@ -1,5 +1,5 @@
 #!/bin/ksh
-# $Id$
+# @(#) $Id$
 #===============================================================================
 # This will read/write with a random delay to see if we can dredge up
 # any bugs.
@@ -17,9 +17,14 @@ ftt_test << EOD
 ftt_open
 ftt_rewind
 
+ftt_init_stats
 ftt_write_tblock -nblock 1000 -bsize 8096 -delta 8096 -delay 5
+ftt_update_stats -part_display
+ftt_echo "Divide FTT_WRITE_ERRORS by FTT_WRITE_COUNT for write error rate (start/stop)"
 ftt_rewind
+ftt_init_stats
 ftt_verify_tblock -nblock 1000 -delay 5
+ftt_update_stats -errors
 ftt_rewind
 ftt_close
 quit

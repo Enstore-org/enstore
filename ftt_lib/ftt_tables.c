@@ -1,4 +1,4 @@
-static char rcsid[] = "#(@)$Id$";
+static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
 #include <ftt_private.h>
 
@@ -871,12 +871,12 @@ ftt_dev_entry devtable[] = {
     /* Usable */
         { "dev/nrmt%dm",         1,  0,0x15, 0,  0,          FTT_RDNW, 1, EXB_MAX_BLKSIZE},
         { "dev/nrmt%dl",         0,  0,0x14, 0,  0,          FTT_RDNW, 1, EXB_MAX_BLKSIZE},
-        { "dev/nrmt%da",         0,  0,0x14, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%da",         1,  0,0x15, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
     /* Descriptive */
         { "dev/rmt%dm",          1,  0,0x15, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%dh",          1,  0,0x15, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%dl",          0,  0,0x14, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
-        { "dev/rmt%da",          0,  0,0x14, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%da",          1,  0,0x15, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%dh",          1,  0,0x00, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
 	{ 0 },
      }},
@@ -911,12 +911,12 @@ ftt_dev_entry devtable[] = {
     /* Usable */
         { "dev/nrmt%dm",         1,  0,0x15, 0,  0,          FTT_RDNW, 1, EXB_MAX_BLKSIZE},
         { "dev/nrmt%dl",         0,  0,0x14, 0,  0,          FTT_RDNW, 1, EXB_MAX_BLKSIZE},
-        { "dev/nrmt%da",         0,  0,0x14, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%da",         1,  0,0x15, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
     /* Descriptive */
         { "dev/rmt%dm",          1,  0,0x15, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%dh",          1,  0,0x15, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%dl",          0,  0,0x14, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
-        { "dev/rmt%da",          0,  0,0x14, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%da",          1,  0,0x15, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
 	{ 0 },
      }},
 #endif

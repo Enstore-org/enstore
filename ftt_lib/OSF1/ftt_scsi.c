@@ -1,4 +1,4 @@
-static char rcsid[] = "#(@)$Id$";
+static char rcsid[] = "@(#)$Id$";
 #include <stdio.h> 
 #include <strings.h>
 #include <ctype.h>
@@ -9,6 +9,7 @@ static char rcsid[] = "#(@)$Id$";
 #include <sys/ioctl.h>
 #include <sys/errno.h>
 #include <sys/uio.h>
+#include <sys/stat.h>
 
 #include <io/common/iotypes.h>
 #include <io/cam/cam.h>
@@ -35,38 +36,25 @@ static osf_scsi_block open_devs[FD_MAX];
 */
 static int
 lookup_drive(char *pc, int *bus, int *targ, int *lun, char *idstring) {
+
         static char linebuf[512];
+	struct stat sbuf;
 	int dnum, scratch;
 	FILE *pf;
 	int which_entry = 0;
+	int minor;
 	int res;
 
 	DEBUG2(stderr,"Converting drive %s\n", pc);
 
-	sscanf(pc, "/dev/%*[nr]mt%d", &dnum);
-	sprintf(linebuf, "uerf -R -r 300", pc);
-	pf = popen(linebuf,"r");
-
-	while( dnum >= 0 && !feof(pf) ) {
-	    fgets(linebuf, 512, pf);
-	    DEBUG3(stderr,"got line: %s", linebuf);
-	    res = sscanf(linebuf," tz%d at scsi%d %*[^g]get %d lun %d",
-				     &scratch, bus,         targ,  lun);
-	    DEBUG3(stderr,"sscanf returns %d, bus %d target %d lun %d\n", 
-			   res, *bus, *targ, *lun);
-	    if ( 4 == res ) {
-		fgets(linebuf,512,pf);
-		res = sscanf(linebuf, " _(%[^()])", idstring);
-		DEBUG3(stderr,"scanf returns %d id string %s", res, idstring);
-		dnum--;
-	    }
-	    if ( 0 == strncmp(linebuf, "**********", 10) && which_entry++ > 0) {
-		break;
-	    }
-	}
-	
-	pclose(pf);
-	return dnum == -1;
+	stat(pc,&sbuf);
+	/* minor = (int)minor(sbuf.st_rdev);		*/
+	/* DEBUG2(stderr,"Minor dev is %d\n", minor);	*/
+	*bus  = (sbuf.st_rdev >> 14 ) & 7;
+	*targ = (sbuf.st_rdev >> 10 ) & 15;
+	*lun  = (sbuf.st_rdev >>  6 ) & 15;
+	idstring[0] = 0;
+	return 1;
 }
 
 /*+ ftt_scsi_open

@@ -1,4 +1,4 @@
-static char rcsid[] = "#(@)$Id$";
+static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
 #include <unistd.h>
 #include <ftt_private.h>
@@ -75,7 +75,7 @@ ftt_check_table(FILE *pf) {
 		      d1->os, d1->basename, d1->prod_id, d1->controller);
         for(ftt_first_supported(&j); (d2 = ftt_next_supported(&j)) && j < i; ) {
 	    if (0 == strncmp(d1->os,d2->os,strlen(d1->os)) &&
-	      0 == strncmp(d1->prod_id,d2->prod_id,strlen(d1->prod_id)) &&
+	      0 == strncmp(d1->prod_id,d2->prod_id,strlen(d2->prod_id)) &&
 	      0 == strcmp(d1->basename,d2->basename)) {
 		fprintf(pf, 
 		     "entry for os '%s' basename '%s' prod_id '%s' controller '%s':\n\

@@ -1,5 +1,5 @@
 #!/bin/ksh
-# $Id$
+# @(#) $Id$
 # ============================================================================
 # test routine to run all of the reasonably fast ftt tests.
 # it requires no human intervention; however, at the end the

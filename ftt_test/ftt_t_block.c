@@ -1,4 +1,4 @@
-static char rcsid[] = "#(@)$Id$";
+static char rcsid[] = "@(#)$Id$";
 /* routines for playing with blocks 
 
 Authors:        Margaret Votava, Marc Mengel
@@ -104,22 +104,19 @@ ftt_t_block_dump
 
 	dumps a test data block
 ==============================================================================*/
-void ftt_t_block_dump(FILE *outfile,int bufferno,unsigned char *buff,int bsize)
+void ftt_t_block_dump(FILE *outfile,int bufferno,unsigned char *buff,int bsize,int do_offsets, int do_chars )
 {
 int		i;			/* counter */
 
 fprintf(outfile,"\n\nbuffer %d (%d bytes):\n",bufferno,bsize);
-for( i = 0 ; i < bsize ; i++ )
-   fprintf(outfile, "%02x%c", buff[i], (i&0xf)==0xf ?'\n':' ');
-if (bsize % 16) fprintf(outfile,"\n");
-
+ftt_dump(outfile, buff, bsize, do_offsets, do_chars );
 
 }
 
 /*==============================================================================
 ftt_t_block_undump
 
-	dumps a test data block
+	undumps a test data block
 ==============================================================================*/
 int ftt_t_block_undump(FILE *infile, unsigned char *buff)
 {
@@ -154,7 +151,14 @@ for (i = 0; i < bsize; i++)				/* copy data into buff*/
    {
    fscanf(infile,"%02x",&c);
    buff[i] = c;
+   if (15 == (i & 15)) 
+      {
+      /* eat rest of line */
+      while ( '\n' != (c = getc(infile)) && -1 != c ) ;
+      }
    }
+/* eat rest of line */
+while ( '\n' != (c = getc(infile)) && -1 != c ) ;
 return bsize;						/* return size */
 }
 

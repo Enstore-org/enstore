@@ -1,4 +1,4 @@
-static char rcsid[] = "#(@)$Id$";
+static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
 #include <sys/utsname.h>
 #include <string.h>

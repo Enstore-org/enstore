@@ -1,4 +1,4 @@
-static char rcsid[] = "#(@)$Id$";
+static char rcsid[] = "@(#)$Id$";
 /* Ftt main test routine
 
 
@@ -30,7 +30,7 @@ Include files:-
    ========== */
 
 void ftt_t_block_fill 	(char *, int, int, int);
-int  ftt_t_block_dump	(FILE *, int, char *, int);
+int  ftt_t_block_dump	(FILE *, int, char *, int, int, int);
 int  ftt_t_block_undump	(FILE *, char *);
 int  ftt_t_block_verify	(char *, int, int, int);
 
