@@ -1,4 +1,4 @@
-set path=($path ${ENSTORE_DIR} ${ENSTORE_DIR}/bin)
+set path=($path ${ENSTORE_DIR}/bin)
 rehash
 
 if ("${?PYTHONPATH}" == "0") then
