@@ -92,6 +92,7 @@ class FTTDriver(driver.Driver):
                 Trace.log(e_errors.ERROR, "ftt open dev: %s %s" %(detail, detail.value))
                 if detail.errno == ftt.EBUSY:
                     time.sleep(5)
+                    self.ftt.close_dev()  ## XXX Added by Bakken and Moibenko. Do we really need it?
                 elif detail.errno == ftt.EROFS:
                     ###XXX HACK!  Tape may have write-protect tab set.  But we really
                     ### ought to get readonly status of the tape from the volume database
