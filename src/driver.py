@@ -2,8 +2,8 @@
 
 # $Id$
 
-""" Abstract base class for driver classes"""
 
+""" Abstract base class for driver classes"""
 
 class Driver:
 
