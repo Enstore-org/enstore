@@ -43,7 +43,6 @@ def send_dbs_cmd(intf, farmlet, db):
     cmd = "%s %s %s%s"%(CMD1, cmd, string.join(db), CMD2)
     # we need just the node name part of the host name
     node = string.split(farmlet, ".", 1)
-    print cmd
     return os.system('/usr/local/bin/rgang %s \"%s\"'%(node[0], cmd))
 
 # compare the 2 input nodes to see if they are the same.  one may be of the 
