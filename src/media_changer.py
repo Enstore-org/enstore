@@ -194,7 +194,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         return self.DoWork( self.waitingCleanCycle, ticket)
 
     def getNretry(self):
-        numberOfRetries = 2
+        numberOfRetries = 3
         return numberOfRetries
 
     # Do the forking and call the function
@@ -300,11 +300,13 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 			    ticket['drive_id'],
 			    ticket['vol_ticket']['media_type'])
 		    if sts[1] == 1 and rpcErrors < 10:  # RPC failure
-		        time.sleep(5)
+		        time.sleep(10)
 			rpcErrors = rpcErrors + 1
-                        Trace.trace(e_errors.ERROR, 'mcDoWork >>> RPC error, count= :'+repr(rpcErrors)+' '+repr(count)+' '+repr(sts[2]))
+                        Trace.log(e_errors.ERROR, 'mcDoWork >>> RPC error, count= :'+repr(rpcErrors)+' '+repr(count)+' '+repr(sts[2]))
 		    else:
+                        Trace.log(e_errors.ERROR, 'mcDoWork >>> status returned%s, count= :%s'%(repr(sts[1]),repr(count)))
 			count = count - 1
+                        time.sleep(60)
                     #print "RET",sts
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
                 Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
