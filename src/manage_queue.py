@@ -428,8 +428,6 @@ class Atomic_Request_Queue:
         self.tags = SortedList(compare_priority, 1, aging_quantum)
         # volume or file family references for fast search
         self.ref = {}
-        # administration priority queue
-        self.adm_queue = SortedList(compare_priority, 1, aging_quantum)
         
         self.aging_quantum = aging_quantum
 
@@ -726,7 +724,7 @@ class Request_Queue:
         
     # find record in the queue
     def find(self,id,output_file_name=None):
-        record, status = self.admin_queue.find(id,output_file_name)
+        record = self.admin_queue.find(id,output_file_name)
         if not record:
             record = self.regular_queue.find(id,output_file_name)
         return record
