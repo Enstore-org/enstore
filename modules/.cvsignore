@@ -25,3 +25,4 @@ Makefile.modules
 aci_shadow.py
 tape_copy
 enroute2
+m2probe
