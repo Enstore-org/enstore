@@ -1029,11 +1029,12 @@ class EnPlotPage(EnBaseHtmlDoc):
 
     bpd = "%s%s"
 
-    def __init__(self):
+    def __init__(self, title="ENSTORE System Plots", gif="en_plots.gif",
+		 description="Enstore system plots. This page is created by the Inquisitor but not automatically refreshed."):
 	EnBaseHtmlDoc.__init__(self, refresh=0)
-	self.title = "ENSTORE System Plots"
-	self.script_title_gif = "en_plots.gif"
-	self.description = "Enstore system plots. This page is created by the Inquisitor but not automatically refreshed."
+	self.title = title
+	self.script_title_gif = gif
+	self.description = description
 
     def find_ps_file(self, jpg_file, pss):
 	# see if there is a corresponding ps file
