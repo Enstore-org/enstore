@@ -66,16 +66,13 @@ def getinfo(v):
 	pnfs_name0 = 'unknown'
 	location_cookie = 'unknown'
 	for i in range(len(fc)):
-		if fc[i] == "sS'size'" or \
-		   fc[i][1:] == "sS'size'":
+		if string.find(fc[i], "S'size'") != -1:
 			i = i + 2
 			size = fc[i][1:]
-		if fc[i] == "sS'external_label'" or \
-		   fc[i][1:] == "sS'external_label'":
+		if string.find(fc[i], "S'external_label'") != -1:
 			i = i + 2
 			volume = fc[i][2:-1]
-		if fc[i] == "sS'deleted'" or \
-		   fc[i][1:] == "sS'deleted'":
+		if string.find(fc[i], "S'deleted'") != -1:
 			i = i + 2
 			if fc[i] == "S'yes'":
 				deleted = 'D'
@@ -83,20 +80,16 @@ def getinfo(v):
 				deleted = 'A'
 			else:
 				deleted = 'U'
-		if fc[i] == "sS'pnfs_name0'" or \
-		   fc[i][1:] == "sS'pnfs_name0'":
+		if string.find(fc[i], "S'pnfs_name0'") != -1:
 			i = i + 2
 			pnfs_name0 = fc[i][2:-1]
-		if fc[i] == "sS'complete_crc'" or \
-		   fc[i][1:] == "sS'complete_crc'":
+		if string.find(fc[i], "S'complete_crc'") != -1:
 			i = i + 2
 			crc = fc[i][1:]
-		if fc[i] == "sS'pnfs_name0'" or \
-		   fc[i][1:] == "sS'pnfs_name0'":
+		if string.find(fc[i], "S'pnfs_name0'") != -1:
 			i = i + 2
 			pnfs_name0 = fc[i]
-		if fc[i] == "sS'location_cookie'" or \
-		   fc[i][1:] == "sS'location_cookie'":
+		if string.find(fc[i], "S'location_cookie'") != -1:
 			i = i + 2
 			location_cookie = fc[i][2:-1]
 	# fix for crc = None
