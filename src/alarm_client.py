@@ -66,6 +66,10 @@ class AlarmClient(generic_client.GenericClient):
         
     def alarm_func(self, time, pid, name, root_error, 
 		   severity, condition, remedy_type, args):
+        #Even though this implimentation of alarm_func() does not use the time
+        # parameter, others will.
+        __pychecker__ = "unusednames=time"
+        
         # prevent infinite recursion (i.e if some function call by this
         # function does a trace and the alarm bit is set
         if self.alarm_func_lock.test_and_set(): return None
