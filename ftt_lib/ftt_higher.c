@@ -537,6 +537,7 @@ int
 ftt_verify_blank(ftt_descriptor d) {
     int max;
     char *buffer;
+    int res;
     ENTERING("ftt_verify_blank");
     CKNULL("ftt_descriptor", d);
 
@@ -570,8 +571,11 @@ ftt_verify_blank(ftt_descriptor d) {
         fprintf(stderr, "unable to allocate buffer for copy, errno %d", errno);
         return 0;
     }
-
-    ftt_all_scsi(d);
+ 
+    d->scsi_ops |= FTT_OP_READ;
     ftt_rewind(d);
-    return ftt_read(d,buffer,max);
+    res = ftt_read(d,buffer,max);
+    d->scsi_ops &= ~FTT_OP_READ;
+    
+    return res;
 }

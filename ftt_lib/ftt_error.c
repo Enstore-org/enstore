@@ -186,8 +186,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 #   define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
 			|FTT_OP_READ)
 
-    if ((0 == res && FTT_OPN_READ == opn && 0 !=(d->flags&FTT_FLAG_VERIFY_EOFS))
-    		|| (-1 == res && ((1<<opn)&CHECKS) )) {
+    if (0 == res && FTT_OPN_READ == opn && 0 !=(d->flags&FTT_FLAG_VERIFY_EOFS)) {
 	/* 
 	** save errno and ftt_errno so we can restore them 
 	** after getting status 
@@ -227,6 +226,13 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 		ftt_errno = save1;
 	    }
 
+	}
+	
+        if (FTT_EBLANK == ftt_errno && atoi(ftt_extract_stats(&sbuf,FTT_BOT))) {
+	    ftt_errno == FTT_ELEADER;
+	}
+    }
+    if ( -1 == res && ((1<<opn)&CHECKS) ) {
 	    /*  if we didn't do a SCSI read ourselves, and we're at BOT,  */
 	    /*  but we do do some scsi operations,			  */
 	    /*  have verify_blank double check the report so we know it's */
@@ -242,11 +248,6 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 		     res = -1;
 		}
 	    }
-	}
-	
-        if (FTT_EBLANK == ftt_errno && atoi(ftt_extract_stats(&sbuf,FTT_BOT))) {
-	    ftt_errno == FTT_ELEADER;
-	}
     }
     if (FTT_EBLANK == ftt_errno && opn == FTT_OPN_WRITE || opn == FTT_OPN_WRITEFM ) {
 
