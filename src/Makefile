@@ -14,6 +14,10 @@ clean:
 	- rm -rf ENCPBIN
 	- rm -rf ENSTORE_USER_BIN_TEMP
 
+check:
+	$(ENSTORE_DIR)/tools/mylint.py ./*.py
+	$(ENSTORE_DIR)/tools/check_pct.py -w ./*.py
+
 encp:
 	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf ENCPBIN_TEMP
