@@ -65,17 +65,32 @@ def check_for_config_defaults():
     if used_default_config_port:
         log_using_default('CONFIG PORT', DEFAULT_PORT)
 
-def str_to_tuple(str):
+def str_to_tuple(s):
     # convert the string of the form "(val1, val2)" to a tuple of the form
     # (val1, val2) by doing the following -
     #              remove all surrounding whitespace
     #              remove the first char : the '(' char
     #              remove the last char  : the ')' char
     #              split into two based on ',' char
-    tmp = string.strip(str)
+    tmp = string.strip(s)
     tmp = tmp[1:-1]
     return tuple(string.split(tmp, ",", 1))
-    
+
+def dash_to_underscore(s):
+    ##accept - rather than _ in arguments - but only in the keywords, not
+    ## the values!
+    if s[:2] != '--':
+        return s
+    t = '--'
+    eq=0
+    for c in s[2:]:
+        if c=='=':
+            eq=1
+        if c=='-' and not eq:
+            c='_'
+        t=t+c
+    return t
+
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
         if host == 'localhost' :
@@ -175,7 +190,8 @@ class Interface:
 
     def parse_options(self):
         try:
-            optlist,self.args=getopt.getopt(sys.argv[1:],self.charopts(),
+            argv=map(dash_to_underscore, sys.argv[1:])
+            optlist,self.args=getopt.getopt(argv,self.charopts(),
                                             self.options())
         except:
             Trace.trace(9, "ERROR: "+str(sys.exc_info()[0])+" "+\
