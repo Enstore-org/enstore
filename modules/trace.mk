@@ -35,6 +35,9 @@ trace_test.o:	trace_test.c trace.h
 traceShow.o:	traceShow.c trace.h
 		cc -g $(WARN) -o traceShow.o -c traceShow.c
 
+clean:
+		rm -f *.o *.a traceShow trace_delta
+
 reset:
 		@key_file=trace.key;\
 		if [ `uname` = Linux ];then \
