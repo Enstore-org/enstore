@@ -191,15 +191,17 @@ extern int aci_scratch_info (char *,  enum aci_media , long *, long *);
 
 extern int d_errno;     /*  global object for error return from aci_ call */
 
-extern char *szRetDrive[15]; /*  global object for drive return from aci_mount-call  */
-                             /*  without Drive ---> generic mount                    */
 
+/************ I don't think we need any of these globals.........
+extern char *szRetDrive[15]; 
 extern  int   iMediaType;
 extern  char  szMediaType[];
 
 extern  char  szVolser[];
 extern  char  szSourceCoord[];
 extern  char  szTargetCoord[];
+*********************************************************/
+
 
 /*-------------------------------------------------------------------------*/
 /*  E n d                                                                  */
