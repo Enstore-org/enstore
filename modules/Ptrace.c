@@ -48,14 +48,10 @@ static PyObject *PtraceErrObject;
 
 static char *
 PyString_AsString_Safe(PyObject *s){
-    if (!s){
+    if (!s || !PyString_Check(s)){
 	return "NULL";
-    } else {
-	return PyString_AsString(s);
-    }
+    } else return PyString_AsString(s);
 }
-
-
 
 
 static PyObject *
@@ -288,6 +284,16 @@ code_args_as_string(PyFrameObject *frame,
     return nargs;
 }
 
+/* extract the module name from a frame object */
+static 
+char *get_mod_name(PyFrameObject *f)
+{
+    if (!f || !f->f_globals || !PyDict_Check(f->f_globals))
+	return "?";
+    else 
+	return PyString_AsString_Safe(
+	    PyDict_GetItemString(f->f_globals,"__name__")); 
+}
 
 
 /******************************************************************************
@@ -319,23 +325,28 @@ get_msg(  PyObject	*args
 	char            *from_source_file;
 	char            buf[201];
 	int             nargs;
+	char            *cp;
 
     sts = PyArg_ParseTuple( args, "OsO", &arg_frame, &arg_event, &arg_arg );
 
     if (!sts) return (sts);
 
+
+
     /* this next block had better work (i.e. the system should give me what
        I expect -- I will not do error checking */
     frame = (PyFrameObject*)arg_frame;
     code = frame->f_code;
+
+
     function_name = PyString_AsString_Safe(code->co_name);
-    module_name = PyString_AsString_Safe(
-	PyMapping_GetItemString(
-	    frame->f_globals,"__name__")
-	);
+    module_name = get_mod_name(frame); 
 
     
     source_file = PyString_AsString_Safe(frame->f_code->co_filename);
+    cp = strrchr(source_file,'/');
+    if (cp) source_file = cp+1;
+
     line_no = frame->f_lineno;
 
     if (frame->f_back){
@@ -345,7 +356,9 @@ get_msg(  PyObject	*args
 	from_source_file = "?";
 	from_line_no=0;
     }
-    
+    cp = strrchr(from_source_file,'/');
+    if (cp) from_source_file = cp+1;
+
 
     switch (arg_event[0])
     {
