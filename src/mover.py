@@ -665,8 +665,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if taperate > 0:
                         ratio = netrate/(taperate*1.0)
                         optimal_buf = self.bytes_to_transfer * (1-ratio)
-                        optimal_buf = min(optimal_buf, self.max_buffer)
+                        optimal_buf = min(optimal_buf, 0.5 * self.max_buffer)
                         optimal_buf = max(optimal_buf, self.min_buffer)
+                        optimal_buf = int(optimal_buf)
                         Trace.trace(12,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
                         if self.buffer.min_bytes != optimal_buf:
                             Trace.trace(12,"Changing buffer size from %s to %s"%
