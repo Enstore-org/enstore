@@ -246,7 +246,7 @@ class Cpio :
                 # need to subtract off these bytes from remaining count if disk driver
                 # ftt driver has method that just returns since the byte count is
                 #        updated in hardware at end transfer
-                self.write_driver.Xferred_bytes(size)
+                self.write_driver.xferred_bytes(size)
                 
             # partial tape block will be in ETape buffer????
 	    except:

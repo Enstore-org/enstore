@@ -83,7 +83,7 @@ def mover_callback_socket(ticket) :
     return sock
 
 # return a library manager tcp socket
-def library_manager_server_callback_socket(ticket) :
+def library_manager_callback_socket(ticket) :
     Trace.trace(16,'{library_manager_server_callback_socket host='+\
                 repr(ticket['library_manager_callback_host'])+" port="+\
                 repr(ticket['library_manager_callback_port']))

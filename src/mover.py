@@ -216,7 +216,7 @@ class Mover:
 	    # create the wrapper instance
             self.logc.send(log_client.INFO,2,"CPIO")
 	    fast_write = 1
-            self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx, fast_write )
+            self.wrapper = cpio.Cpio(self, self.driver, binascii.crc_hqx, fast_write )
 
 	    # now write the file
             self.logc.send(log_client.INFO,2,"WRAPPER.WRITE")
@@ -272,7 +272,7 @@ class Mover:
                                                wr_err,rd_err,\
                                                wr_access,rd_access)
         # connect to file clerk and get new bit file id
-        fc = file_clerk_client.FileClerkClient(self.csc)
+        fc = file_clerk_client.FileClient(self.csc)
 	ticket["work"] = "new_bit_file"
 	ticket["fc"]["bof_space_cookie"] = file_cookie
 	ticket["fc"]["sanity_cookie"] = sanity_cookie
@@ -330,7 +330,7 @@ class Mover:
         self.get_user_sockets(ticket)
 
         # create the wrapper instance
-        self.wrapper = cpio.cpio(self.driver,self,binascii.crc_hqx)
+        self.wrapper = cpio.Cpio(self.driver,self,binascii.crc_hqx)
 
         # open the hsm file for reading and read it
         try:

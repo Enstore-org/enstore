@@ -625,7 +625,7 @@ class Pnfs:
                         os.mkdir(dir)
 
             # create the volume map file and set its size the same as main file
-            volume_file=pnfs(self.volume_file)
+            volume_file=Pnfs(self.volume_file)
             volume_file.touch()
             volume_file.set_file_size(self.file_size)
 

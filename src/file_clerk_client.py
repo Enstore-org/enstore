@@ -88,7 +88,7 @@ class FileClient(generic_client.GenericClient, \
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
         # work queues on that port.
-        data_path_socket = callback.file_clerk_callback_socket(ticket)
+        data_path_socket = callback.file_server_callback_socket(ticket)
         ticket= callback.read_tcp_socket(data_path_socket, "file clerk"\
                   +"client get_bfids, fc final dialog")
         workmsg=""

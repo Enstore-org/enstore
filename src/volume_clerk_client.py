@@ -147,7 +147,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
         # work queues on that port.
-        data_path_socket = callback.volume_clerk_callback_socket(ticket)
+        data_path_socket = callback.volume_server_callback_socket(ticket)
         ticket= callback.read_tcp_socket(data_path_socket, "volume clerk"\
                   +"client get_vols, vc final dialog")
         while 1:

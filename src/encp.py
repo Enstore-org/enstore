@@ -94,6 +94,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     #       all file families are the same
     #       all widths are the same
     # be cautious and check to make sure this is indeed correct
+    pprint.pprint(library)
     for i in range(1,ninput):
         if library[i]!=library[0] or\
            file_family[i]!=file_family[0] or\
@@ -141,6 +142,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     Trace.trace(10,"write_to_hsm calling config server to find "+\
                 library[0]+".library_manager")
     vticket = csc.get(library[0]+".library_manager")
+    pprint.pprint(vticket)
     Trace.trace(10,"write_to_hsm."+ library[0]+".library_manager at host="+\
                 repr(vticket["hostip"])+" port="+repr(vticket["port"]))
 
@@ -872,7 +874,7 @@ def system_enabled(p):                 # p is a  pnfs object
     Trace.trace(10,"{system_enabled p="+repr(p))
 
     running = p.check_pnfs_enabled()
-    if running != pnfs.enabled :
+    if running != pnfs.ENABLED :
         jraise(errno.errorcode[errno.EACCES]," encp.system_enabeld: "\
                +"system disabled"+running)
     Trace.trace(10,"}system_enabled running="+running)
