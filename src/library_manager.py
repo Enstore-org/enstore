@@ -122,7 +122,7 @@ class AtMovers:
                     # further comparison of this number with file family width
                     # tells if write work can be given out
                     write_enabled = write_enabled + 1
-                if self.at_movers[rec[0]]['state'] == 'ERROR':
+                elif self.at_movers[rec[0]]['state'] == 'ERROR':
                     write_enabled = write_enabled + 1
         return vols, write_enabled
 
