@@ -46,10 +46,14 @@ def default_html_file():
 
 trailer = " : "
 suffix = ".new"
+did_it = 0
+timed_out = 1
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the alive status of the server and output it
     def alive_status(self, client, (host, port), prefix):
+        Trace.trace(13,"{alive_status "+repr(host)+" "+repr(port))
+	ret = did_it
 	try:
 	    stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_alive(host, prefix, stat)
@@ -57,6 +61,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout((host, port), prefix)
 	    self.htmlfile.output_etimedout((host, port), prefix)
+	    ret = timed_out
+        Trace.trace(13,"}alive_status")
+	return ret
 
     # get the library manager work queue and output it
     def work_queue(self, lm, (host, port), list):
@@ -94,9 +101,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# get a client and then check if the server is alive
 	lmc = library_manager_client.LibraryManagerClient(self.csc, 0, key, \
                                                           t['host'], t['port'])
-	self.alive_status(lmc, (t['host'], t['port']), key+trailer)
-	self.mover_list(lmc, (t['host'], t['port']), list)
-	self.work_queue(lmc, (t['host'], t['port']), list)
+	ret = self.alive_status(lmc, (t['host'], t['port']), key+trailer)
+	if ret == did_it:
+	    self.mover_list(lmc, (t['host'], t['port']), list)
+	    self.work_queue(lmc, (t['host'], t['port']), list)
         Trace.trace(12,"}update_library_manager ")
 
     # get the information from the movers
@@ -198,6 +206,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	# get local time and output it to the file
 	self.update_time()
+
+	# get the info from each of the servers.  inbetween looking at each
+	# server, handle anything else we got
 	self.update_config()
 	self.update_admin_clerk()
 	self.update_file_clerk()
@@ -208,8 +219,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# we want to get all the following information fresh, so only get the
 	# the information from the configuration server and not from the 
 	# configuration clients' cache.
-	ticket = self.csc.get_keys()
-	skeys = ticket['get_keys']
+	t = self.csc.get_keys()
+	skeys = t['get_keys']
 	for key in skeys:
 	    if string.find(key, ".mover") != -1:
 		self.update_mover(key, list)
@@ -223,8 +234,48 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# suffix tacked on the end. i.e. the file becomes for example inq.html
 	# not inq.html.new
 	self.htmlfile.doclose()
-	os.system("mv "+self.htmlfile_orig+suffix+" "+self.htmlfile_orig)
+	try:
+	    os.system("mv "+self.htmlfile_orig+suffix+" "+self.htmlfile_orig)
+	except:
+	    traceback.print_exc()
+	    format = timeofday.tod()+" "+\
+	             str(sys.argv)+" "+\
+	             str(sys.exc_info()[0])+" "+\
+	             str(sys.exc_info()[1])+" "+\
+	             "inquisitor serve_forever continuing"
+	    print format
+	    self.logc.send(log_client.ERROR, 1, format)
+	    Trace.trace(0,format)
+#	pprint.pprint(self.__dict__)
         Trace.trace(11,"}do_update ")
+
+    # loop here forever doing what inquisitors do best (overrides UDP one)
+    def serve_forever(self, list) :
+	Trace.trace(4,"{serve_forever "+repr(self.rcv_timeout))
+
+	# get a file clerk client, volume clerk client, admin clerk client
+	# connections to library manager client(s), media changer client(s)
+	# and a connection to the movers will be gotten dynamically.
+	# these will be used to get the status
+	# information from the servers. we do not need to pass a host and port
+	# to the class instantiators because we are giving them a configuration
+	# client and they do not need to connect to the configuration server.
+	self.fcc = file_clerk_client.FileClient(self.csc, list)
+	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc, list)
+	self.acc = admin_clerk_client.AdminClerkClient(self.csc, list)
+
+	# start things going
+	self.do_update(0,0)
+
+        while 1:
+            self.handle_request()
+	Trace.trace(4,"}serve_forever ")
+
+    def handle_timeout(self):
+	Trace.trace(4,"{handle_timeout ")
+	self.do_update(0, 0)
+	Trace.trace(4,"}handle_timeout ")
+	return
 
     # our client said to update the enstore system status information
     def update(self, ticket):
@@ -325,34 +376,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
            return
         Trace.trace(10,"}get_timeout")
         return
-
-    # loop here forever doing what inquisitors do best (overrides UDP one)
-    def serve_forever(self, list) :
-	Trace.trace(4,"{serve_forever "+repr(self.rcv_timeout))
-
-	# get a file clerk client, volume clerk client, admin clerk client
-	# connections to library manager client(s), media changer client(s)
-	# and a connection to the movers will be gotten dynamically.
-	# these will be used to get the status
-	# information from the servers. we do not need to pass a host and port
-	# to the class instantiators because we are giving them a configuration
-	# client and they do not need to connect to the configuration server.
-	self.fcc = file_clerk_client.FileClient(self.csc, list)
-	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc, list)
-	self.acc = admin_clerk_client.AdminClerkClient(self.csc, list)
-
-	# start things going
-	self.do_update(0,0)
-
-        while 1:
-            self.handle_request()
-	Trace.trace(4,"}serve_forever ")
-
-    def handle_timeout(self):
-	Trace.trace(4,"{handle_timeout ")
-	self.do_update(0, 0)
-	Trace.trace(4,"}handle_timeout ")
-	return
 
 
 
