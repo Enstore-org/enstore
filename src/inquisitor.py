@@ -334,7 +334,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			# init process and does not become a zombie when it 
 			# exits.
 			pid2 = self.fork()        # getting the second child
-			print "forking misc child"
 			if not pid2:
 			    # we are the second child #######################
 			    os.system("%s > %s/%s 2>&1"%(self.cmds_to_do[hfile],
