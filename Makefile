@@ -62,35 +62,55 @@ clean:
 
 
 #
-# - - - - - - - - - - - - - cut here - - - - - - - - - - - - - - - - - 
+# - - - - - - - - - - - - - cut here - - - - - - - - - - - - -
+#
 #---------------------------------------------------------------------------
 # Standard Product Distribution/Declaration Targets
 #---------------------------------------------------------------------------
 #
 
-tarfile: clean ups/declare.dat .manifest
+# distribution -- currently makes tarfiles
+# make an empty file .header
+# make an initial tarfile by creating containing .header
+# then go through $(LISTALL) output and add files to the tarfile a few dozen
+# 	at a time with "xargs tar..."
+# Finally echo the filename and do a table of contents
+#
+distribution: clean ups/declare.dat .manifest
 	@: > .header
-	@tar cf $(TARFILE) .header
-	@$(LISTALL) | xargs tar uf $(TARFILE)
-	@echo $(TARFILE):
-	@tar tvf $(TARFILE)
+	@tar cf $(DISTRIBUTIONFILE) .header
+	@$(LISTALL) | xargs tar uf $(DISTRIBUTIONFILE)
+	@echo $(DISTRIBUTIONFILE):
+	@tar tvf $(DISTRIBUTIONFILE)
 
 kits: addproduct
 
 unkits: delproduct
 
-addproduct: tarfile dproducts
+addproduct: distribution dproducts
 	$(ADDPRODUCT)
-	rm $(TARFILE)
+	rm $(DISTRIBUTIONFILE)
 
-local: clean ups/declare.dat .manifest
+# local --  Make a local copy of the product directly
+# we do this by running $(LISTALL) and having cpio make a direct copy
+# then we cd over there and do a check_manifest to make sure the copy 
+#      worked okay.
+#
+local: clean $(UPS_SUBDIR)/declare.dat .manifest
 	$(LISTALL) | cpio -dumpv $(LOCAL)
-	cd $(LOCAL); make check_manifest declare
+	cd $(LOCAL); make check_manifest
 
-undeclare: dproducts ups/Version 
+install: local
+
+undeclare: dproducts $(UPS_SUBDIR)/Version 
 	$(UPS_UNDECLARE)
 
-declare: dproducts ups/Version
+# declare -- declares or redeclares the product; first we check
+#        if its already declared and if so remove the existing declaration
+#	Finally we declare it, and do a ups list so you can see the
+#	declaration.
+#
+declare: dproducts $(UPS_SUBDIR)/Version
 	@($(UPS_EXIST) && $(UPS_UNDECLARE)) || true
 	@$(UPS_DECLARE)
 	@$(UPS_LIST)
@@ -110,6 +130,7 @@ build_n_test:
 	setup -b -f $(FLAVOR) $(PROD) $(VERS)||true	;\
 	make all test
 
+#
 #---------------------------------------------------------------------------
 # utility targets; check for variables, test file list generation
 #---------------------------------------------------------------------------
@@ -118,8 +139,8 @@ dproducts:
 	 else echo "DPRODUCTS must be set for this target."; false; fi
 
 proddir:
-	@if test "x$(FTT_DIR)" != "x"; then true; \
-	 else echo "FTT_DIR must be set for this target.";false;fi
+	@if test "x$$$(PRODUCT_DIR)" != "x"; then true; \
+	 else echo "$(PRODUCT_DIR) must be set for this target.";false;fi
 
 listall:
 	$(LISTALL)
@@ -128,14 +149,42 @@ listall:
 # Standard ups files...
 #---------------------------------------------------------------------------
 #
-ups/declare.dat: FORCE
+$(UPS_SUBDIR)/declare.dat: FORCE
 	$(UPS_LIST) > $@
 
-ups/Version:
+$(UPS_SUBDIR)/Version:
 	echo $(VERS) > ups/Version
 
-ups/upd_files.dat:
+$(UPS_SUBDIR)/upd_files.dat:
 	$(LISTALL) > $@
+
+#---------------------------------------------------------------------------
+# .manifest file support
+#---------------------------------------------------------------------------
+#
+MANIFEST = $(LISTALL) | 				\
+		grep -v .manifest |			\
+		xargs sum -r | 				\
+		sed -e 's/[ 	].*[ 	]/	/' | 	\
+		sort +1
+
+.manifest: FORCE
+	$(MANIFEST) > $@
+
+check_manifest:
+	$(MANIFEST) > /tmp/check$$$$ 	;\
+	diff /tmp/check$$$$ .manifest	;\
+	rm /tmp/check$$$$
+
+#---------------------------------------------------------------------------
+# Version change support
+#---------------------------------------------------------------------------
+setversion:
+	@echo "New version? \c"; read newvers; set -x;			\
+	perl -pi.bak -e "s/$(VERS)/$$newvers/go;" $(VERSIONFILES) ;	\
+	cvs commit -m "marked as $$newvers";				\
+	cvs tag -F $$newvers  .
+
 #
 #---------------------------------------------------------------------------
 # Standard Documentation Targets
@@ -144,10 +193,10 @@ ups/upd_files.dat:
 # you probably don't need this for local products, but third party
 # software tends to stuff unformatted man pages in $PREFIX/man...
 #
-ups/toman:
-	mkdir ups/toman
-	mkdir ups/toman/man
-	mkdir ups/toman/catman
+$(UPS_SUBDIR)/toman:
+	mkdir $(UPS_SUBDIR)/toman
+	mkdir $(UPS_SUBDIR)/toman/man
+	mkdir $(UPS_SUBDIR)/toman/catman
 	. /usr/local/etc/setups.sh                                      ;\
 	setup groff                                                     ;\
 	cd man                                                          ;\
@@ -157,8 +206,8 @@ ups/toman:
 		for f in *                                              ;\
 		do                                                       \
 			echo $$d/$$f                                    ;\
-			cp $$f ../../ups/toman/man                      ;\
-			nroff -man $$f > ../../ups/toman/catman/$$f     ;\
+			cp $$f ../../$(UPS_SUBDIR)/toman/man                      ;\
+			nroff -man $$f > ../../$(UPS_SUBDIR)/toman/catman/$$f     ;\
 		done)                                                   ;\
 	done
 
@@ -168,13 +217,13 @@ ups/toman:
 #
 html: html-man html-texi html-html
 
-html-man: ups/toman
+html-man: $(UPS_SUBDIR)/toman
 	. /usr/local/etc/setups.sh					;\
 	setup conv2html							;\
-	if [ -d ups/toman/catman ]; then				;\
-	    src=ups/toman/catman					;\
+	if [ -d $(UPS_SUBDIR)/toman/catman ]; then			;\
+	    src=$(UPS_SUBDIR)/toman/catman				;\
 	else								;\
-	    src=ups/toman						;\
+	    src=$(UPS_SUBDIR)/toman					;\
 	fi								;\
 	dest=$(DOCROOT)/man						;\
 	mkdir -p $$dest	|| true						;\
@@ -218,33 +267,13 @@ PRUNECVS =  '(' -name CVS -prune ')' -o ! -name .manifest ! -name .header
 LISTALL =  ( \
     test -z "$(ADDDIRS)" || find $(ADDDIRS) $(PRUNECVS) ! -type d -print; \
     test -z "$(ADDFILES)" || find . $(PRUNECVS) $(ADDFILES) ! -type d -print; \
+    test -z "$(ADDCMD)" || $(ADDCMD); \
     for d in $(ADDEMPTY) .manifest; do echo $$d; done )
-
-#---------------------------------------------------------------------------
-# .manifest file support
-#---------------------------------------------------------------------------
-#
-MANIFEST = $(LISTALL) | 				\
-		grep -v .manifest |			\
-		xargs sum -r | 				\
-		sed -e 's/[ 	].*[ 	]/	/' | 	\
-		sort +1
-
-.manifest: FORCE
-	$(MANIFEST) > $@
-
-check_manifest:
-	$(MANIFEST) > /tmp/check$$$$ 	;\
-	diff /tmp/check$$$$ .manifest	;\
-	rm /tmp/check$$$$
-
 
 #---------------------------------------------------------------------------
 # Ugly Definitions for ups
 #---------------------------------------------------------------------------
 #
-DIR    =`pwd | sed -e  's|/tmp_mnt||'`#	# Declare directory for ups -- here
-TARFILE="$(DIR)/../$(FLAVOR).tar"#	# tarfile name to use
 
 UPS_EXIST= \
 	PRODUCTS=$$DPRODUCTS \
@@ -261,6 +290,7 @@ UPS_DECLARE= \
 	PRODUCTS=$$DPRODUCTS \
 	$(UPS_DIR)/bin/ups_declare \
 		$(DEPEND) \
+		-U $(UPS_SUBDIR) \
 		-r $(DIR) \
 		-f $(FLAVOR) \
 		$(PROD) $(VERS)
@@ -277,7 +307,7 @@ ADDPRODUCT = \
 	. /usr/local/etc/setpath.sh ; \
 	. /usr/local/etc/setups.sh ; \
 	cmd addproduct \
-		-t $(TARFILE) \
+		-t $(DISTRIBUTIONFILE) \
 		-o $(OS) \
 		-c $(CUST)$(QUALS) \
 		-m $(CUST)$(QUALS) \
