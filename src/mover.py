@@ -246,7 +246,7 @@ class MoverClient:
 
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
 	self.crc_flag = 1
-	self.local_mover_enable =1
+	self.local_mover_enable = 0
 
         mvr_config['device'] = os.path.expandvars( mvr_config['device'] )
 
@@ -1079,7 +1079,8 @@ class MoverServer(  dispatching_worker.DispatchingWorker
     def local_mover( self, ticket ):
 	try: self.client_obj_inst.local_mover_enable = ticket['enable']
 	except: pass
-	out_ticket = {'status':(e_errors.OK,None)}
+	out_ticket = {'status':(e_errors.OK,None),
+                      'enabled':self.client_obj_inst.local_mover_enable}
 	self.reply_to_caller( out_ticket )
 	return
 
