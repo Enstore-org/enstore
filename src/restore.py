@@ -449,15 +449,15 @@ class Interface(option.Interface):
 
 	restore_options = {
 	    option.DBHOME:{option.HELP_STRING:"CHIH needs to fill this in",
-			   option.VALUE_TYPE:option.STRING
-			   option.VALUE_USAGE:option.REQUIRED
-			   option.VALUE_LABEL:"directory"
+			   option.VALUE_TYPE:option.STRING,
+			   option.VALUE_USAGE:option.REQUIRED,
+			   option.VALUE_LABEL:"directory",
 			   option.USER_LEVEL:option.ADMIN,
 			   },
 	    option.JOUHOME:{option.HELP_STRING:"CHIH needs to fill this in",
-			    option.VALUE_TYPE:option.STRING
-			    option.VALUE_USAGE:option.REQUIRED
-			    option.VALUE_LABEL:"directory"
+			    option.VALUE_TYPE:option.STRING,
+			    option.VALUE_USAGE:option.REQUIRED,
+			    option.VALUE_LABEL:"directory",
 			    option.USER_LEVEL:option.ADMIN,
 			    }
 	    }
