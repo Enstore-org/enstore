@@ -388,7 +388,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 copyit $ENSTORE_DIR/src/ENCPBIN/enstore         $INSTALLDIR/enstore
                 copyit $ENSTORE_DIR/volume_import/enstore_tape  $INSTALLDIR/enstore_tape
                 copyit $ENSTORE_DIR/bin/pnfs                    $INSTALLDIR/pnfs
-                copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR/pnfs_commn
+                copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR/pnfs_common
                 copyit $ENSTORE_DIR/sbin/EPS                    $INSTALLDIR/EPS
                 copyit $ENSTORE_DIR/ups/encp.table              $INSTALLDIR/encp.table
                 copyit $ENSTORE_DIR/ups/rip.table               $INSTALLDIR/rip.table
