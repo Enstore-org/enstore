@@ -1,12 +1,9 @@
 #!/bin/sh
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+set -u  # force better programming and ability to use check for not set
 
-#
 # This file attempts to clean all un-needed files in the directory it is
 # run. Right now, un-needed files are defined as :
-#
-#   1) Any file with extension .bak, .jou, .orig, .org, .old
-#   2) Emacs temporary files (*~, \#* \#*\#)
-#
 
 echo "Cleaning `pwd`..."
 rm -f *~ *.bak \#* \#*\#

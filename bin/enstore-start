@@ -1,5 +1,8 @@
 #!/bin/sh
 
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+set -u  # force better programming and ability to use check for not set
+
 # add getopts to check for host and port and file, yeah yeah
 
 config_host=localhost

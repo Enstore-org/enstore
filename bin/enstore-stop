@@ -1,4 +1,8 @@
 #!/bin/sh
+
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+set -u  # force better programming and ability to use check for not set
+
 #
 # TOO MANY TASSK TRY TO KILL THEM ALL.
 

@@ -1,5 +1,6 @@
 #!/bin/sh
-set -x
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+set -u  # force better programming and ability to use check for not set
 
 lockdir=/var/lock/hsm
 lockfile=/var/lock/hsm/lockfile
@@ -10,7 +11,7 @@ if [ ! -d $lockdir ] ; then  mkdir -p $lockdir ; fi
 touch $lockfile
 
 # Should investigate it the sticky bit could protect us from a malicios user
-# deleting this file. 
+# deleting this file.
 
 chmod +w $lockfile
 
