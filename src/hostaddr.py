@@ -56,6 +56,8 @@ def name_to_address(name):
     
 def get_interface_file_name():
     hostname, junk, junk = gethostinfo()
+    if '.' in hostname:
+        hostname=string.split(hostname,'.')[0]
     filename = "%s.interface.conf"%hostname
     trydirs = []
     for envvar in "ENSTORE_DIR", "ENCP_DIR":
