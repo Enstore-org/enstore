@@ -236,6 +236,8 @@ class MoverClient:
 	self.state = 'idle'
 	self.mode = ''			# will be either 'r' or 'w'
 	self.bytes_to_xfer = 0		# for status - needs to be initialized
+	self.tape = '' # like vol_info['external_label'], just for "status"
+	self.files = ('','')
 	self.pid = 0
 
 	self.vol_info = {'external_label':''}
@@ -412,7 +414,11 @@ def do_fork( self, ticket, mode ):
     self.state = 'busy'
     self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
     self.bytes_to_xfer = ticket['fc']['size']
+    # save some stuff for "status"
     self.mode = mode			# client mode, not driver mode
+    self.tape = ticket['fc']['external_label']
+    self.files = (ticket['wrapper']['fullname'],ticket['wrapper']['pnfsFilename'])
+
     self.pid = os.fork()
     if self.pid == 0:
 	# do in child only
@@ -767,6 +773,7 @@ def return_or_update_and_exit( self, origin_addr, status ):
 # data transfer takes place on tcp sockets, so get ports & call user
 # Info is added to ticket
 def get_usr_driver( self, ticket ):
+    Trace.trace( 10, "get_usr_driver ticket=%s"%ticket )
     self.hsm_driver.user_state_set( forked_state.index('encp check') )
     try:
 	if self.local_mover_enable and ticket['wrapper']['machine']==os.uname():
@@ -895,16 +902,18 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def status( self, ticket ):
-	out_ticket = {'status':(e_errors.OK,None)}
-	out_ticket['state']    = self.client_obj_inst.state
-	out_ticket['mode']     = self.client_obj_inst.mode
-	out_ticket['no_xfers'] = self.client_obj_inst.hsm_driver.no_xfers
-	out_ticket['rd_bytes'] = self.client_obj_inst.hsm_driver.rd_bytes_get()
-	out_ticket['wr_bytes'] = self.client_obj_inst.hsm_driver.wr_bytes_get()
-	out_ticket['forked_state'] = self.client_obj_inst.hsm_driver.user_state_get()
-	out_ticket['bytes_to_xfer'] = self.client_obj_inst.bytes_to_xfer
-	out_ticket['crc_func'] = str(self.client_obj_inst.crc_func)
-	self.reply_to_caller( out_ticket )
+	tick = { 'status'       : (e_errors.OK,None),
+		 'state'        : self.client_obj_inst.state,
+		 'mode'         : self.client_obj_inst.mode,
+		 'no_xfers'     : self.client_obj_inst.hsm_driver.no_xfers,
+		 'rd_bytes'     : self.client_obj_inst.hsm_driver.rd_bytes_get(),
+		 'wr_bytes'     : self.client_obj_inst.hsm_driver.wr_bytes_get(),
+		 'forked_state' : self.client_obj_inst.hsm_driver.user_state_get(),
+		 'bytes_to_xfer': self.client_obj_inst.bytes_to_xfer,
+		 'crc_func'     : str(self.client_obj_inst.crc_func),
+		 'tape'         : self.client_obj_inst.tape,
+		 'files'        : self.client_obj_inst.files }
+	self.reply_to_caller( tick )
 	return
 
     def quit(self,ticket):		# override dispatching_worker -
