@@ -207,8 +207,12 @@ def get_all_systems(csc, intf=None): #, system_name=None):
     if not config_servers:
         ip = socket.gethostbyname(config_host)
         addr_info = socket.gethostbyaddr(ip)
-        config_servers[addr_info[1][0]] = (ip,
-                                           enstore_functions2.default_port())
+        if addr_info[1] != []:
+            short_name = addr_info[1][0]
+        else:
+            short_name = addr_info[0].split(".")[0]
+        config_servers[short_name] = (ip,
+                                      enstore_functions2.default_port())
         
     return config_servers
 
