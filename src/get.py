@@ -190,14 +190,11 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
         if data_path_socket not in read_fd:
             work_ticket['status'] = (e_errors.TIMEDOUT, "No data received")
-        print "WORK_TICKET:"
-        pprint.pprint(work_ticket)
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
                                           work_ticket, None,
                                           None, None, e)
-        print "RESULT_DICT:"
-        pprint.pprint(result_dict)
+
         if not e_errors.is_ok(result_dict):
             #Don't loose the non-retirable error.
             if e_errors.is_non_retriable(result_dict):
@@ -207,7 +204,6 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
             #Log the error and return.
             Trace.log(e_errors.ERROR, str(result_dict['status']))
-            print "1111111111111111111111111111"
             return work_ticket
 
         Trace.message(5, "Reading data from tape.")
