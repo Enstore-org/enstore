@@ -75,6 +75,12 @@ class InquisitorPlots:
             mpdfile.close()
             mpdfile.install(self.html_dir)
 
+	    mmpdfile = enstore_plots.MpdMonthDataFile(self.output_dir)
+            mmpdfile.open()
+            mmpdfile.plot()
+            mmpdfile.close()
+            mmpdfile.install(self.html_dir)
+
     # make the total transfers per unit of time and the bytes moved per day
     # plot
     def encp_plot(self):

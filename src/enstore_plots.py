@@ -311,22 +311,31 @@ class MpdMonthDataFile(EnPlot):
 
     def get_30_mounts(self):
 	mpdfile = MpdDataFile(self.dir)
-	mpdfile.open('r')
+	mpdfile.open()
 	lines_l = mpdfile.openfile.readlines()
 	mpdfile.openfile.close()
 	mounts_l = []
 	for line in lines_l:
-	    sline= string.split(string.strip(line))
-	    mounts_l.append(sline)
+	    [day, count] = string.split(string.strip(line))
+	    mounts_l.append("%s %s\n"%(day, count))
 	else:
 	    mounts_l.sort()
 	return mounts_l[-30:]
+
+    def get_total_mounts(self, mounts_l):
+	total_mounts = 0
+	for mount in mounts_l:
+	    (day, count) = string.split(string.strip(mount))
+	    total_mounts = total_mounts + string.atoi(count)
+	return total_mounts
 
     # make the mounts per day plot file
     def plot(self):
 	# we must plot the last 30 days of  data in the total mounts file
 	mounts_l = self.get_30_mounts()
-	self.openfile.close()
+	total_mounts = self.get_total_mounts(mounts_l)
+	if self.openfile:
+	    self.openfile.close()
 	self.openfile = open(self.ptsfile, 'w')
 	for line in mounts_l:
 	    self.openfile.write(line)
@@ -335,7 +344,7 @@ class MpdMonthDataFile(EnPlot):
 	# now create the gnuplot command file
 	gnucmds = MpdGnuFile(self.gnufile)
 	gnucmds.open('w')
-	#gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts))
+	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts))
 	gnucmds.close()
 
 
