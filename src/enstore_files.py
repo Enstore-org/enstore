@@ -22,6 +22,12 @@ TMP = ".tmp"
 START_TIME = "start_time"
 STOP_TIME = "stop_time"
 
+NO_THRESHOLD = 0
+NO_THRESHOLDS = [NO_THRESHOLD, NO_THRESHOLD, NO_THRESHOLD]
+SERVER_PAGE = 0
+FULL_PAGE = 1
+LM_PAGE = 2
+
 # message is either a mount request or an actual mount
 MREQUEST = 0
 MMOUNT = 1
@@ -193,15 +199,15 @@ class HTMLFile(EnStatusFile, enstore_status.EnStatus):
 class HTMLExtraPages:
 
     def write(self, doc):
-	if doc.extra_lm_queue_pages:
-	    for extra_page_key in doc.extra_lm_queue_pages.keys():
-		filename = "%s"%(doc.extra_lm_queue_pages[extra_page_key][1],)
+	if doc.extra_queue_pages:
+	    for extra_page_key in doc.extra_queue_pages.keys():
+		filename = "%s"%(doc.extra_queue_pages[extra_page_key][1],)
 		extra_file = HTMLFile(filename,
-			      doc.extra_lm_queue_pages[extra_page_key][0].refresh,
-			      doc.extra_lm_queue_pages[extra_page_key][0].system_tag)
+			      doc.extra_queue_pages[extra_page_key][0].refresh,
+			      doc.extra_queue_pages[extra_page_key][0].system_tag)
 		extra_file.open()
 		try:
-		    extra_file.write(doc.extra_lm_queue_pages[extra_page_key][0])
+		    extra_file.write(str(doc.extra_queue_pages[extra_page_key][0]))
 		except IOError, detail:
 		    msg = "Error writing %s (%s)"%(filename, detail)
 		    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
@@ -240,15 +246,17 @@ class HTMLFileListFile(EnStatusFile):
 
 class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 
-    def __init__(self, file, refresh, system_tag=""):
+    def __init__(self, file, refresh, system_tag="", page_thresholds=NO_THRESHOLDS):
         EnStatusFile.__init__(self, file, system_tag)
         self.file_name = "%s.new"%(file,)
 	self.html_dir = enstore_functions.get_dir(file)
         self.refresh = refresh
+	self.page_thresholds = page_thresholds
 	self.mover_file = HTMLMoverStatusFile("%s/enstore_movers.html"%(self.html_dir,), 
 					      refresh, system_tag)
 	self.filelist_file = HTMLFileListFile("%s/enstore_files.html"%(self.html_dir,),
 					      refresh, system_tag)
+								  
 	self.filelist = []
 	self.docs_to_install = []
 
@@ -291,11 +299,11 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 					      None])
 			
     # write the status info to the files
-    def write(self, max_lm_rows={}):
+    def write(self):
         if self.openfile:
 	    self.docs_to_install = []
             doc = enstore_html.EnSysStatusPage(self.refresh, self.system_tag,
-                                               max_lm_rows)
+                                               self.page_thresholds)
             doc.body(self.text)
 	    self.do_write(str(doc))
 	    HTMLExtraPages.write(self, doc)
@@ -309,7 +317,8 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 		                 enstore_constants.NOT_MONITORING:
 		    doc = enstore_html.EnLmFullStatusPage(key, self.refresh, 
 							  self.system_tag, 
-							  max_lm_rows)
+							  self.page_thresholds.get(key, 
+									 NO_THRESHOLDS)[FULL_PAGE])
 		    doc.body(self.text[key])
 		    # save the file info for the filelist page
 		    self.get_file_list(self.text[key], key)
@@ -322,7 +331,9 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 		    self.docs_to_install.append(lm_q_file)
 		    HTMLExtraPages.write(self, doc)
 		    doc = enstore_html.EnLmStatusPage(key, self.refresh, 
-						      self.system_tag, max_lm_rows)
+						      self.system_tag, 
+						      self.page_thresholds.get(key, 
+								NO_THRESHOLDS)[LM_PAGE])
 		    doc.body(self.text[key])
 		    lm_file = HTMLLmStatusFile("%s/%s.html"%(self.html_dir, key), 
 					       self.refresh, self.system_tag)
@@ -340,12 +351,13 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	    self.docs_to_install.append(self.mover_file)
 	    # now make the file list page
 	    doc = enstore_html.EnFileListPage(self.refresh, self.system_tag, 
-					      max_lm_rows)
+					      self.page_thresholds[enstore_constants.FILE_LIST])
 	    doc.body(self.filelist)
 	    self.filelist_file.open()
 	    self.filelist_file.write(doc)
 	    self.filelist_file.close()
 	    self.docs_to_install.append(self.filelist_file)
+	    HTMLExtraPages.write(self, doc)
 
     def install(self):
 	EnStatusFile.install(self)
@@ -580,27 +592,6 @@ class HtmlAlarmFile(EnFile):
             doc.body(data, www_host)
 	    self.do_write(str(doc))
 
-class HTMLPatrolFile(EnFile):
-
-    # we need to save both the file name passed to us and the one we will
-    # write to.  we will create the temp one and then move it to the real
-    # one.
-    def __init__(self, name, system_tag=""):
-        EnFile.__init__(self, name+TMP, system_tag)
-        self.real_file_name = name
-
-    # we need to close the open file and move it to the real file name
-    def close(self):
-        EnFile.close(self)
-        os.rename(self.file_name, self.real_file_name)
-
-    # format the file name and write it to the file
-    def write(self, data):
-        if self.openfile:
-            doc = enstore_html.EnPatrolPage(system_tag=self.system_tag)
-            doc.body(data)
-	    self.do_write(str(doc))
-
 class EnAlarmFile(EnFile):
 
     # open the file, if no mode is passed in, try opening for append and
@@ -635,37 +626,6 @@ class EnAlarmFile(EnFile):
         if self.openfile:
             line = repr(alarm)+"\n"
 	    self.do_write(line)
-
-class EnPatrolFile(EnFile):
-
-    # we need to save both the file name passed to us and the one we will
-    # write to.  we will create the temp one and then move it to the real
-    # one.
-    def __init__(self, name):
-        EnFile.__init__(self, name+TMP)
-        self.real_file_name = name
-        self.lines = []
-
-    # we need to close the open file and move it to the real file name
-    def close(self):
-        EnFile.close(self)
-        os.rename(self.file_name, self.real_file_name)
-
-    # write out the alarm
-    def write(self, alarm):
-        if self.openfile:
-            # tell the alarm that this is going to patrol so the alarm
-            # can add the patrol expected header
-	    self.do_write(alarm.prepr())
-
-    # rm the file
-    def remove(self):
-        try:
-            if self.real_file_name and os.path.exists(self.real_file_name):
-                os.remove(self.real_file_name)
-        except IOError:
-            # file does not exist
-            pass
 
 class HtmlSaagFile(EnFile):
 

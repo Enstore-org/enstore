@@ -47,6 +47,8 @@ DEFAULT_ALIVE_INTERVAL = "default_alive_interval"
 CONFIG_SERVER_ALIVE_INTERVAL = 30 # there is none in config file
 NOT_MONITORING = "not monitoring"
 FILE_LIST_NAME = "enstore_files.html"
+PAGE_THRESHOLDS= "page_thresholds"
+FILE_LIST = "file_list"
 
 # server names used in enstore_up_down
 LOGS = "Logger"

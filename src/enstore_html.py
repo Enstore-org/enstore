@@ -46,6 +46,12 @@ PENDING = AT_MOVERS + 1
 POSTSCRIPT = "(postscript)"
 UNKNOWN = "???"
 
+DEFAULT_FULL_LM_ROWS = 60
+DEFAULT_LM_ROWS = 60
+DEFAULT_FILE_LIST_ROWS = 300
+DEFAULT_THRESHOLDS = [DEFAULT_LM_ROWS, DEFAULT_FULL_LM_ROWS, DEFAULT_LM_ROWS]
+DEFAULT_ALL_ROWS = 0
+
 LM_COLS = 5
 
 TAG = 'tag'
@@ -79,9 +85,6 @@ PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
 	     ]
 
 DEFAULT_LABEL = "UNKNOWN INQ PLOT"
-
-ALL_LM_ROWS = -1
-DEFAULT_LM_ROWS = 60
 
 def sort_keys(dict):
     keys = dict.keys()
@@ -164,6 +167,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.contents = []
 	self.help_file = help_file
 	self.system_tag = system_tag
+	self.html_dir = enstore_functions.get_html_dir()
 
     # generate the three button navigation table for the top of each of the
     # enstore web pages
@@ -261,9 +265,9 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     def big_title(self, txt, cols=1):
 	tr = HTMLgen.TR()
-	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.U(HTMLgen.Font(txt, 
-							 size="+4", 
-							 html_escape='OFF'))), 
+	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(txt, 
+						       size="+4", 
+						       html_escape='OFF')),
 			     colspan=cols))
 	return tr
 
@@ -338,6 +342,29 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.append(table)
 
 
+class EnExtraFileListPages(EnBaseHtmlDoc):
+
+    def __init__(self, status_page):
+	extra_text = "(More Active Files)"
+	EnBaseHtmlDoc.__init__(self, refresh=status_page.refresh, 
+			       help_file="fileHelp.html",
+			       system_tag="%s %s"%(status_page.system_tag, 
+						   extra_text))
+	self.title = "%s %s"%(status_page.title, extra_text)
+	self.source_server = THE_INQUISITOR
+	self.script_title_gif = status_page.script_title_gif
+	self.description = ""
+
+    # generate the body of the file
+    def body(self, row):
+	# create the outer table and its rows
+	table = self.table_top()
+	table.append(empty_row())
+	table.append(empty_row())
+	table.append(HTMLgen.TR(HTMLgen.TD(row, colspan=5)))
+	self.trailer(table)
+	self.append(table)
+
 class EnExtraLmFullQueuePages(EnBaseHtmlDoc):
 
     def __init__(self, status_page, lm):
@@ -360,6 +387,7 @@ class EnExtraLmFullQueuePages(EnBaseHtmlDoc):
 	table.append(empty_row())
 	table.append(HTMLgen.TR(HTMLgen.TD(self.server_heading(self.lm), 
 					   colspan=5)))
+	table.append(empty_row())
 	table.append(row)
 	self.trailer(table)
 	self.append(table)
@@ -379,20 +407,23 @@ class EnExtraLmQueuePages(EnBaseHtmlDoc):
 	self.lm = lm
 
     # generate the body of the file
-    def body(self, row):
+    def body(self, rows):
 	# create the outer table and its rows
-	table = self.table_top()
-	table.append(empty_row())
-	table.append(empty_row())
+	table = self.table_top(cols=LM_COLS)
+	table.cellpadding=3
+	table.append(empty_row(LM_COLS))
+	table.append(empty_row(LM_COLS))
 	table.append(HTMLgen.TR(HTMLgen.TD(self.server_heading(self.lm), 
-					   colspan=5)))
-	table.append(row)
-	self.trailer(table)
+					   colspan=LM_COLS)))
+	table.append(empty_row(LM_COLS))
+	for row in rows:
+	    table.append(row)
+	self.trailer(table, LM_COLS)
 	self.append(table)
 
 class EnMoverStatusPage(EnBaseHtmlDoc):
 
-    def __init__(self, refresh=60, system_tag="", max_rows={}):
+    def __init__(self, refresh=60, system_tag=""):
 	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
 			       help_file="moverStatusHelp.html",
 			       system_tag=system_tag)
@@ -560,7 +591,7 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
 
 class EnLmStatusPage(EnBaseHtmlDoc):
 
-    def __init__(self, lm, refresh=60, system_tag="", max_lm_rows={}):
+    def __init__(self, lm, refresh=60, system_tag="", max_lm_rows=DEFAULT_LM_ROWS):
 	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
 			       help_file="lmStatusHelp.html",
 			       system_tag=system_tag)
@@ -570,7 +601,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	self.description = ""
 	self.lm = lm
 	self.max_lm_rows = max_lm_rows
-	self.extra_lm_queue_pages = {}
+	self.extra_queue_pages = {}
 	self.align = NO
 
     def read_q_list(self, mover):
@@ -684,14 +715,67 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 			     html_escape='OFF'))
         return tr
 	
+    def append_vols(self, elem):
+	rows = []
+	rows.append(self.read_row(elem, 1))
+	if self.vols.has_key(elem[0]):
+	    # there are more queue elements for this volume
+	    r_list = self.vols[elem[0]]
+	    for n_elem in r_list:
+		rows.append(self.read_row(n_elem))
+	return rows
+
+    def read_header_row(self):
+	td = HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("reads", 
+							       "Reads%s"%(NBSP,)), 
+						  html_escape='OFF'), 
+				   SIZE="+3"), colspan=LM_COLS)
+	td.append(HTMLgen.Font(HTMLgen.Href(get_full_queue_name(self.lm), 
+					    "Full%sQueue%sElements"%(NBSP, NBSP)),
+			       SIZE="-1", html_escape='OFF'))
+	return HTMLgen.TR(td)
+
+    def write_header_row(self):
+	txt = HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("writes", 
+						     "Writes%s"%(NBSP,))), 
+			   SIZE="+3", html_escape='OFF')
+	return HTMLgen.TR(HTMLgen.TD(txt, colspan=LM_COLS))
+
     def get_in_vol_order(self, table):
+	started_extra_page = 0
+	num_done = 20
+	num_extra = 0
 	for elem in self.r_vols:
-	    table.append(self.read_row(elem, 1))
-	    if self.vols.has_key(elem[0]):
-		# there are more queue elements for this volume
-		r_list = self.vols[elem[0]]
-		for n_elem in r_list:
-		    table.append(self.read_row(n_elem))
+	    if num_done > self.max_lm_rows and not self.max_lm_rows == DEFAULT_ALL_ROWS:
+		# we have put the max number on the main page, now make an additional page
+		if not started_extra_page:
+		    started_extra_page = 1
+		    filename = "%s/%s-read.html"%(self.html_dir, self.lm)
+		    new_key = "%s-read"%(self.lm,)
+		    self.extra_queue_pages[new_key] = (EnExtraLmQueuePages(self,
+									   self.lm),
+						       filename)
+		    rhr = self.read_header_row()
+
+		rows = self.append_vols(elem)
+		if rhr:
+		    # add in the header row
+		    rows.insert(0, rhr)
+		    rhr = None
+		num_extra = num_extra + len(rows)
+		self.extra_queue_pages[new_key][0].body(rows)
+	    else:
+		rows = self.append_vols(elem)
+		num_done = num_done + len(rows)
+		for row in rows:
+		    table.append(row)
+	else:
+	    if started_extra_page:
+		table.append(empty_row(LM_COLS))
+		table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
+								'Extra Read Queue Rows (%s)'%(num_extra)),
+						   colspan=4)))
+
 
     def get_in_ff_order(self, table):
 	for elem in self.w_ff:
@@ -764,27 +848,15 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 		table.append(tr)
 		tr = HTMLgen.TR(empty_data())
         table.append(empty_row(LM_COLS)) 
-	# add the read queue elements
-	td = HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("reads", 
-							       "Reads%s"%(NBSP,)), 
-						  html_escape='OFF'), 
-				   SIZE="+3"), colspan=LM_COLS)
-	td.append(HTMLgen.Font(HTMLgen.Href(get_full_queue_name(self.lm), 
-					    "Full%sQueue%sElements"%(NBSP, NBSP)),
-			       SIZE="-1", html_escape='OFF'))
-	tr = HTMLgen.TR(td)
-	table.append(tr)
 	self.parse_queues()
+	# add the read queue elements
+	table.append(self.read_header_row())
         table.append(empty_row(LM_COLS))
 	self.get_in_vol_order(table)
 	# add the write queue elements
         table.append(empty_row(LM_COLS)) 
         table.append(empty_row(LM_COLS)) 
-	txt = HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("writes", 
-						     "Writes%s"%(NBSP,))), 
-			   SIZE="+3", html_escape='OFF')
-	tr = HTMLgen.TR(HTMLgen.TD(txt, colspan=LM_COLS))
-	table.append(tr)
+	table.append(self.write_header_row())
         table.append(empty_row(LM_COLS))
 	self.get_in_ff_order(table)
 	self.other_vol_info(table)
@@ -807,7 +879,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 
 class EnLmFullStatusPage(EnBaseHtmlDoc):
 
-    def __init__(self, lm, refresh=60, system_tag="", max_lm_rows={}):
+    def __init__(self, lm, refresh=60, system_tag="", max_lm_rows=DEFAULT_FULL_LM_ROWS):
 	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
 			       help_file="lmFullStatusHelp.html",
 			       system_tag=system_tag)
@@ -817,7 +889,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	self.description = ""
 	self.lm = lm
 	self.max_lm_rows = max_lm_rows
-	self.extra_lm_queue_pages = {}
+	self.extra_queue_pages = {}
 
     # create the suspect volume row - it is a separate table
     def suspect_volume_row(self):
@@ -973,28 +1045,26 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	return HTMLgen.TR(HTMLgen.TD(table, colspan=5))
 
     # put together the rows for either lm queue
-    def lm_queue_rows(self, qelems, queue, intro, max_queue_rows, default_queue_rows):
+    def lm_queue_rows(self, qelems, queue, intro):
 	qlen = len(qelems)
 	tr0 = None
-	# remove the following line when the values come from the config file
-	max_queue_rows = 60
-	if (not max_queue_rows == default_queue_rows) and (qlen > max_queue_rows):
+	if (not self.max_lm_rows == DEFAULT_ALL_ROWS) and (qlen > self.max_lm_rows):
 	    # we will need to cut short the number of queue elements that we 
 	    # output on the main status page, and add a link to point to the 
 	    # rest that will be on another page. however, there is only one 
 	    # other page at this time
-	    filename = "%s_%s.html"%(self.lm, queue)
+	    filename = "%s/%s-full_%s.html"%(self.html_dir, self.lm, queue)
 	    tr0 = HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
 					      'Extra Queue Rows (%s)'%(qlen - 
-							     max_queue_rows,)),
+							     self.max_lm_rows,)),
 					colspan=4))
-	    qlen = max_queue_rows
+	    qlen = self.max_lm_rows
 	    new_key = "%s-%s"%(self.lm, queue)
-	    self.extra_lm_queue_pages[new_key] = (EnExtraLmFullQueuePages(self,
-								      self.lm),
-						  filename)
-	    self.extra_lm_queue_pages[new_key][0].body(self.make_lm_queue_rows(qelems[qlen:], 
-									intro))
+	    self.extra_queue_pages[new_key] = (EnExtraLmFullQueuePages(self,
+								       self.lm),
+					       filename)
+	    self.extra_queue_pages[new_key][0].body(self.make_lm_queue_rows(qelems[qlen:], 
+									    intro))
 
 	tr1 = self.make_lm_queue_rows(qelems[:qlen], intro)
 	return (tr1, tr0)
@@ -1008,10 +1078,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	the_work = self.data_dict.get(enstore_constants.WORK,
 				      enstore_constants.NO_WORK)
 	if not the_work == enstore_constants.NO_WORK:
-	    rows = self.lm_queue_rows(the_work, enstore_constants.WORK, AT_MOVERS, 
-				      self.max_lm_rows.get(self.lm, 
-							   DEFAULT_LM_ROWS),
-				      DEFAULT_LM_ROWS)
+	    rows = self.lm_queue_rows(the_work, enstore_constants.WORK, AT_MOVERS)
 	else:
 	    rows = (HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_constants.NO_WORK,
 						      color=BRICKRED), 
@@ -1028,10 +1095,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	if the_work[enstore_constants.READ] or the_work[enstore_constants.WRITE]:
 	    qelems = self.data_dict[enstore_constants.PENDING]['read'] + \
 		     self.data_dict[enstore_constants.PENDING]['write']
-	    rows = self.lm_queue_rows(qelems, enstore_constants.PENDING, PENDING,
-				      self.max_lm_rows.get(self.lm,
-							   DEFAULT_LM_ROWS),
-				      DEFAULT_LM_ROWS)
+	    rows = self.lm_queue_rows(qelems, enstore_constants.PENDING, PENDING)
 	else:
 	    rows = (HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_constants.NO_PENDING,
 						      color=BRICKRED),
@@ -1076,7 +1140,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 
 class EnFileListPage(EnBaseHtmlDoc):
 
-    def __init__(self, refresh = 60, system_tag="", max_rows=-1):
+    def __init__(self, refresh = 60, system_tag="", max_rows=DEFAULT_FILE_LIST_ROWS):
 	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
 			       help_file="fileHelp.html",
 			       system_tag=system_tag)
@@ -1084,16 +1148,19 @@ class EnFileListPage(EnBaseHtmlDoc):
 	self.source_server = THE_INQUISITOR
 	self.script_title_gif = "afl.gif"
 	self.description = ""
+	self.extra_queue_pages = {}
 	self.max_rows = max_rows
 
-    def main_list(self, filelist, table):
+    def file_list_table(self, filelist, extra_row=None):
 	tr = HTMLgen.TR(HTMLgen.TH(HTMLgen.Font(HTMLgen.Bold("Node"), size="+3"),
 				   align="LEFT"))
 	tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.Bold("Currently Active User Files"),
 					  size="+3"), align="LEFT"))
-	filelist.sort()
 	file_table = HTMLgen.TableLite(tr, cellpadding=0, cellspacing=0, width="100%")
 	file_table.append(empty_row())
+	if extra_row:
+	    file_table.append(extra_row)
+	    file_table.append(empty_row())
 	for item in filelist:
 	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(item[0], size="+1", color=BRICKRED)))
 	    if item[3] is None:
@@ -1103,7 +1170,27 @@ class EnFileListPage(EnBaseHtmlDoc):
 		tr.append(HTMLgen.TD(HTMLgen.Href("%s.html#%s"%(item[2], item[3]),
 						  item[1])))
 	    file_table.append(tr)
-	table.append(HTMLgen.TR(HTMLgen.TD(file_table)))
+	return file_table
+
+    def main_list(self, filelist, table):
+	filelist.sort()
+	flen = len(filelist)
+	tr = None
+	if (not self.max_rows == DEFAULT_ALL_ROWS) and flen > self.max_rows:
+	    # we will need to cut short the number of files that we 
+	    # output on the main status page, and add a link to point to the 
+	    # rest that will be on another page. however, there is only one 
+	    # other page at this time
+	    filename = "%s/enstore_files-1.html"%(self.html_dir,)
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
+						    'More Files Here (%s)'%(flen - 
+									    self.max_rows,)),
+					       colspan=2))
+	    flen = self.max_rows
+	    new_key = "file_list"
+	    self.extra_queue_pages[new_key] = (EnExtraFileListPages(self), filename)
+	    self.extra_queue_pages[new_key][0].body(self.file_list_table(filelist[flen:]))
+	table.append(HTMLgen.TR(HTMLgen.TD(self.file_list_table(filelist[0:flen], tr))))
 	
     # generate the body of the file
     def body(self, filelist):
@@ -1125,7 +1212,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	self.script_title_gif = "ess.gif"
 	self.source_server = THE_INQUISITOR
 	self.description = ""
-	self.extra_lm_queue_pages = {}
+	self.extra_queue_pages = {}
 	self.max_lm_rows = max_lm_rows
 
     # output the list of shortcuts on the top of the page
@@ -1227,15 +1314,13 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	rows = []
 	if not the_work == enstore_constants.NO_WORK:
 	    qlen = len(the_work)
-	    # remove the following line when the values come from config file
-	    self.max_queue_rows = 60
-	    if self.max_queue_rows == ALL_LM_ROWS or \
-	       not qlen > self.max_queue_rows:
+	    max_lm_rows = self.max_lm_rows.get(lm, DEFAULT_THRESHOLDS)[0]
+	    if max_lm_rows == DEFAULT_ALL_ROWS or not qlen > max_lm_rows:
 		rows_on_page = qlen
 		extra_rows = 0
 	    else:
-		rows_on_page = self.max_queue_rows
-		extra_rows = qlen - self.max_queue_rows
+		rows_on_page = max_lm_rows
+		extra_rows = qlen - max_lm_rows
 		    
 	    for qelem in the_work[0:rows_on_page]:
 		rows.append(self.make_lm_wam_queue_rows(qelem, cols))
@@ -1245,15 +1330,16 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		# we output on the main status page, and add a link to point 
 		# to the rest that will be on another page. however, there is 
 		# only one other page at this time
-		filename = "%s_%s.html"%(lm, enstore_constants.WORK)
+		filename = "%s/%s_%s.html"%(self.html_dir, lm, 
+					    enstore_constants.WORK)
 		rows.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
 					'Extra Queue Rows (%s)'%(extra_rows,)),
 						  colspan=cols)))
-		qlen = self.max_queue_rows
+		qlen = max_lm_rows
 		new_key = "%s-%s"%(lm, enstore_constants.WORK)
-		self.extra_lm_queue_pages[new_key] = (EnExtraLmQueuePages(self, lm),
-						      filename)
-		self.extra_lm_queue_pages[new_key][0].body(\
+		self.extra_queue_pages[new_key] = (EnExtraLmQueuePages(self, lm),
+						   filename)
+		self.extra_queue_pages[new_key][0].body(\
 		                    self.make_lm_wam_queue_rows(qelem[qlen:], 
 								cols))
 	return rows
@@ -1283,19 +1369,17 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	rows = []
 	extra_read_rows = []
 	extra_write_rows = []
-	filename = "%s_%s.html"%(lm, enstore_constants.PENDING)
-	# remove the following line when the values come from the config file
-	self.max_queue_rows = 60
+	filename = "%s/%s_%s.html"%(self.html_dir, lm, enstore_constants.PENDING)
+	max_lm_rows = self.max_lm_rows.get(lm, DEFAULT_THRESHOLDS)[0]
 	# do the read queue first
 	if not the_work[enstore_constants.READ] == []:
 	    qlen = len(the_work[enstore_constants.READ])
-	    if self.max_queue_rows == ALL_LM_ROWS or\
-	       not qlen > self.max_queue_rows:
+	    if max_lm_rows == DEFAULT_ALL_ROWS or qlen <= max_lm_rows:
 		rows_on_page = qlen
 		extra_rows = 0
 	    else:
-		rows_on_page = self.max_queue_rows
-		extra_rows = qlen - self.max_queue_rows
+		rows_on_page = max_lm_rows
+		extra_rows = qlen - max_lm_rows
 		    
 	    for qelem in the_work[enstore_constants.READ][0:rows_on_page]:
 		rows.append(self.make_lm_pend_read_row(qelem, cols))
@@ -1306,13 +1390,12 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 								      cols))
 	if not the_work[enstore_constants.WRITE] == []:
 	    qlen = len(the_work[enstore_constants.WRITE])
-	    if self.max_queue_rows == ALL_LM_ROWS or \
-	       not qlen > self.max_queue_rows:
+	    if max_lm_rows == DEFAULT_ALL_ROWS or not qlen > max_lm_rows:
 		rows_on_page = qlen
 		extra_rows = 0
 	    else:
-		rows_on_page = self.max_queue_rows
-		extra_rows = qlen - self.max_queue_rows
+		rows_on_page = max_lm_rows
+		extra_rows = qlen - max_lm_rows
 		    
 	    for qelem in the_work[enstore_constants.WRITE][0:rows_on_page]:
 		rows.append(self.make_lm_pend_write_row(qelem, cols))
@@ -1331,9 +1414,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 				   'Extra Queue Rows (%s)'%(len(extra_rows),)),
 					      colspan=cols)))
 	    new_key = "%s-%s"%(lm, enstore_constants.PENDING)
-	    self.extra_lm_queue_pages[new_key] = (EnExtraLmQueuePages(self, lm),
+	    self.extra_queue_pages[new_key] = (EnExtraLmQueuePages(self, lm),
 						  filename)
-	    self.extra_lm_queue_pages[new_key][0].body(extra_rows)
+	    self.extra_queue_pages[new_key][0].body(extra_rows)
 
 	return rows
 

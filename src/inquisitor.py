@@ -62,6 +62,7 @@ NO_INFO_YET = "no info yet"
 
 USER = 0
 TIMEOUT=1
+NOVALUE = -1
 
 ENCP_UPDATE_INTERVAL = 60
 LOG_UPDATE_INTERVAL = 300
@@ -78,7 +79,8 @@ NUM_IN_Q = "num_in_q"
 defaults = {'update_interval': 20,
             'alive_rcv_timeout': 5,
             'alive_retries': 2,
-            'max_encp_lines': 50}
+            'max_encp_lines': 50,
+	    enstore_constants.PAGE_THRESHOLDS: {enstore_constants.FILE_LIST: 200}}
 
 # delete a key from a dictionary if it exists
 def delkey(key, dict):
@@ -379,7 +381,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
                 self.server_d[key] = monitored_server.MonitoredLibraryManager(cdict,
-                                                                              key,
+									      key, 
 									      self.csc)
         else:
             # nothing to see here
@@ -404,6 +406,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.dont_monitor(server.name, server.host, server.port)
         server.delete_me()
         del self.server_d[skey]
+
+    def get_value(self, aKey, aValue):
+	self.got_from_cmdline[aKey] = aValue
+        if aValue == NOVALUE:         # nothing was entered on the command line 
+            new_val = self.inquisitor.config.get(aKey, defaults.get(aKey))
+        else:
+            new_val = aValue
+        return new_val
 
     def update_variables_from_config(self, config):
         self.inquisitor.update_config(config.get(self.inquisitor.name, {}))
@@ -439,6 +449,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.alive_retries = self.get_value(key, self.got_from_cmdline[key])
         key = 'max_encp_lines'
         self.max_encp_lines = self.get_value(key, self.got_from_cmdline[key])
+
+	# update any page thresholds
+	# get the thresholds which determine when we need an extra web page or two
+	self.page_thresholds = self.get_value(enstore_constants.PAGE_THRESHOLDS, NOVALUE)
+	self.serverfile.page_thresholds = self.page_thresholds
 
     # update the file that contains the configuration file information
     def make_config_html_file(self):
@@ -1076,15 +1091,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
 				   "get_max_encp_lines work from user")
 
-    def get_value(self, aKey, aValue):
-        if aValue == -1:         # nothing was entered on the command line 
-            new_val = self.inquisitor.config.get(aKey, defaults.get(aKey))
-            self.got_from_cmdline[aKey] = aValue
-        else:
-            self.got_from_cmdline[aKey] = aValue
-            new_val = aValue
-        return new_val
-
     # subscribe to the event relay
     def subscribe(self, ticket):
         ticket["status"] = (e_errors.OK, None)
@@ -1219,8 +1225,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
-    def __init__(self, csc, html_file="", update_interval=-1, alive_rcv_to=-1, 
-                 alive_retries=-1, max_encp_lines=-1, refresh=-1):
+    def __init__(self, csc, html_file="", update_interval=NOVALUE, alive_rcv_to=NOVALUE, 
+                 alive_retries=NOVALUE, max_encp_lines=NOVALUE, refresh=NOVALUE):
 	global server_map
         generic_server.GenericServer.__init__(self, csc, MY_NAME, 
                                               self.process_event_message)
@@ -1270,6 +1276,9 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	server_map["media"] = self.www_server.get(www_server.MEDIA_TAG, 
 						  www_server.MEDIA_TAG_DEFAULT)
 
+	# get the thresholds which determine when we need an extra web page or two
+	self.page_thresholds = self.get_value(enstore_constants.PAGE_THRESHOLDS, NOVALUE)
+
         # get the directory where the files we create will go.  this should
         # be in the configuration file.
         if not html_file:
@@ -1289,7 +1298,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
         # if no html refresh was entered on the command line, get it from
         # the configuration file.
-        if refresh == -1:
+        if refresh == NOVALUE:
             refresh = self.inquisitor.refresh
             if not refresh:
                 refresh = DEFAULT_REFRESH
@@ -1299,7 +1308,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
         # these are the files to which we will write, they are html files
         self.serverfile = enstore_files.HTMLStatusFile(html_file, refresh, 
-                                                       self.system_tag)
+						       self.system_tag, 
+						       self.page_thresholds)
         self.encpfile = enstore_files.HTMLEncpStatusFile(encp_file, refresh,
                                                          self.system_tag)
         self.logfile = enstore_files.HTMLLogFile(self.logc.log_dir,
@@ -1411,11 +1421,11 @@ class InquisitorInterface(generic_server.GenericServerInterface):
     def __init__(self):
         # fill in the defaults for possible options
         self.html_file = ""
-        self.alive_rcv_timeout = -1
-        self.alive_retries = -1
-        self.update_interval = -1
-        self.max_encp_lines = -1
-        self.refresh = -1
+        self.alive_rcv_timeout = NOVALUE
+        self.alive_retries = NOVALUE
+        self.update_interval = NOVALUE
+        self.max_encp_lines = NOVALUE
+        self.refresh = NOVALUE
         generic_server.GenericServerInterface.__init__(self)
 
     # define the command line options that are valid
