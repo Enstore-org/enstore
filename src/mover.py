@@ -331,7 +331,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
             if action == 'mount': statistics = driver_object.statisticsOpen
             else: statistics = driver_object.statisticsClose
             self.driveStatistics[action] = statistics
-            print action, self.driveStatistics[action] # REMOVE
             Trace.trace(19,"%s statistics %s"%(action,repr(self.driveStatistics[action])) )
            
         except KeyError:
