@@ -94,7 +94,7 @@ case `uname -n` in
     (sleep 2;enstore mover --alive null12.mover;            if [ $? -ne 0 ]; then echo NULL12.MOVER DEAD;          else echo null12.mover alive;          fi) &
     (sleep 2;enstore mover --alive null13.mover;            if [ $? -ne 0 ]; then echo NULL13.MOVER DEAD;          else echo null13.mover alive;          fi) &
     (sleep 2;enstore mover --alive null14.mover;            if [ $? -ne 0 ]; then echo NULL14.MOVER DEAD;          else echo null14.mover alive;          fi) &
-    (sleep 2;emstore mover --alive DC03MAM.mover;           if [ $? -ne 0 ]; then echo DC03MAM.MOVER DEAD;         else echo dc03mam.mover alive;         fi) &
+    (sleep 2;enstore mover --alive DC03MAM.mover;           if [ $? -ne 0 ]; then echo DC03MAM.MOVER DEAD;         else echo dc03mam.mover alive;         fi) &
     (sleep 2;enstore mover --alive DC04MAM.mover;           if [ $? -ne 0 ]; then echo DC04MAM.MOVER DEAD;         else echo dc04mam.mover alive;         fi) &
     (sleep 2;enstore mover --alive DC05MAM.mover;           if [ $? -ne 0 ]; then echo DC05MAM.MOVER DEAD;         else echo dc05mam.mover alive;         fi) &
     (sleep 2;enstore mover --alive DC06MAM.mover;           if [ $? -ne 0 ]; then echo DC06MAM.MOVER DEAD;         else echo dc06mam.mover alive;         fi) &
