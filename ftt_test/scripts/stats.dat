@@ -11,30 +11,35 @@ ftt_get_stats
 ftt_dump_stats
 
 #***********************************
-ftt_echo "writing 200k of data" 
+ftt_echo "writing 2048k of data" 
 ftt_echo "look at output, make sense?" 
 #***********************************
 ftt_init_stats
-ftt_write_tblock -nblock 100 -bsize 2048
+ftt_write_tblock -nblock 1024 -bsize 2048
 ftt_close_dev
 ftt_update_stats -part_display
 
 #***********************************
-ftt_echo "reading 200k of data"
+ftt_echo "reading 2048k of data"
 ftt_echo "look at output, make sense?"
 #***********************************
 ftt_rewind
 ftt_init_stats
-ftt_verify_tblock -nblock 100
+ftt_verify_tblock -nblock 1024
 ftt_close_dev
 ftt_update_stats -part_display
 #***********************************
-ftt_echo "writing additional 200k of data"
+ftt_echo "writing additional 2048k of data"
 ftt_echo "look at output, make sense?"
 #***********************************
 ftt_writefm 
-ftt_write_tblock -nblock 100 -bsize 2048
+ftt_echo "Check FTT_REMAIN_TAPE before and after"
+ftt_get_stats
+ftt_extract_stat FTT_REMAIN_TAPE
+ftt_write_tblock -nblock 1024 -bsize 2048
 ftt_close_dev
+ftt_get_stats
+ftt_extract_stat FTT_REMAIN_TAPE
 ftt_update_stats -part_display
 ftt_close
 quit

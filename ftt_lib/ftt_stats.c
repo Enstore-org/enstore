@@ -70,6 +70,13 @@ ftt_itoa(long n) {
 	sprintf(buf,"%ld", n);
 	return buf;
 }
+static char *
+ftt_dtoa(double n) {
+	static char buf[128];
+
+	sprintf(buf,"%0.f", n);
+	return buf;
+}
 
 /* set_stat
 **
@@ -285,7 +292,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     int failures = 0;
     int i;
     unsigned char buf[512];
-    long int tape_size, remain_tape, error_count, data_count;
+    long int tape_size, error_count, data_count;
+    double remain_tape;
     int n_blocks, block_length;
     int stat_ops;
 #endif
@@ -452,14 +460,14 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		d->prod_id = strdup(ftt_extract_stats(b,FTT_PRODUCT_ID));
 		free(tmp);
 
-		/*
-		 * look up based on ANSI version *and* product id, so
-		 * we can have generic SCSI-2 cases, etc.
-		 */
 
-		sprintf(buf, "%d%s", buf[2] & 0x3, d->prod_id);
-		stat_ops = ftt_get_stat_ops(buf);
 	    }
+	    /*
+	     * look up based on ANSI version *and* product id, so
+	     * we can have generic SCSI-2 cases, etc.
+	     */
+	    sprintf(buf, "%d%s", buf[2] & 0x3, d->prod_id);
+	    stat_ops = ftt_get_stat_ops(buf);
 	}
     }
 
@@ -485,21 +493,19 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		set_stat(b,FTT_CLEANING_BIT,ftt_itoa((long)bit(3,buf[21])), 0);
 		set_stat(b,FTT_CLEANED_BIT, ftt_itoa((long)bit(4,buf[21])), 0);
 
-		remain_tape=pack(0,buf[23],buf[24],buf[25]);
+		remain_tape=(double)pack(0,buf[23],buf[24],buf[25]);
 		error_count = pack(0,buf[16],buf[17],buf[18]);
 
-		/* remain_tape *can* go negative(!!), so deal with it */
-
-		if (remain_tape & 0x00800000) {
-		    remain_tape = 0x01000000 - remain_tape;
-		    remain_tape = 0x01000000 - remain_tape ;
-		}
-
-		set_stat(b,FTT_REMAIN_TAPE,ftt_itoa((long)remain_tape),0);
 		if (d->prod_id[5] == '9') {
+		     
+                     DEBUG2(stderr, "remain_tape 8900 case... \n");
 		     /* 8900's count 16k blocks, not 1k blocks */
-		     remain_tape *= 16;
+		     remain_tape *= 16.0;
+		} else {
+                     DEBUG2(stderr, "remain_tape non-8900 case... \n");
+		     ;
 		}
+		set_stat(b,FTT_REMAIN_TAPE,ftt_dtoa(remain_tape),0);
 		if (d->data_direction ==  FTT_DIR_READING) {
 	            set_stat(b,FTT_READ_ERRORS,ftt_itoa((long)error_count),0);
 		} else {
@@ -513,7 +519,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    if (stat_ops & FTT_DO_DLTRS) {
 		set_stat(b,FTT_MOTION_HOURS,ftt_itoa((long)pack(0,0,buf[19],buf[20])),0);
 		set_stat(b,FTT_POWER_HOURS, ftt_itoa((long)pack(buf[21],buf[22],buf[23],buf[24])),0);
-		set_stat(b,FTT_REMAIN_TAPE, ftt_itoa((long)pack(buf[25],buf[26],buf[27],buf[28])*4),0); 
+		set_stat(b,FTT_REMAIN_TAPE, ftt_dtoa((double)pack(buf[25],buf[26],buf[27],buf[28])*4),0); 
 	    }
 	}
     }
