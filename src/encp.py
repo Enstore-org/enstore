@@ -630,9 +630,14 @@ def get_callback_addr(encp_intf, ip=None):
 
     return callback_addr, listen_socket
 
-def get_routing_callback_addr(encp_intf):
+def get_routing_callback_addr(encp_intf, udps=None):
     # get a port to talk on and listen for connections
-    udps = udp_server.UDPServer(None, receive_timeout=encp_intf.mover_timeout)
+    if udps == None:
+        udps = udp_server.UDPServer(None,
+                                    receive_timeout=encp_intf.mover_timeout)
+    else:
+        udps.__init__(None, receive_timeout=encp_intf.mover_timeout)
+        
     route_callback_addr = (udps.server_address[0], udps.server_address[1])
     
     Trace.message(CONFIG_LEVEL,
@@ -1335,7 +1340,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         #Attempt to get the routing socket before opening the others
         try:
             #There is no need to do this on a non-multihomed machine.
-            if config and config.get('interfaces', None):
+            if config and config.get('interface', None):
                 ticket, use_listen_socket = open_routing_socket(
 		    route_server, unique_id_list, encp_intf)
         except (EncpError,), detail:
@@ -1362,7 +1367,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 	    #If the routes were changed, then only wait 10 sec. before
 	    # initiating the retry.  If no routing was done, wait for the
 	    # mover to callback as originally done.
-	    if host_config.get_config():
+	    if config and config.get('interface', None):
 		for i in range(int(encp_intf.mover_timeout/15)):
 		    try:
 			control_socket, mover_address, ticket = \
@@ -1678,7 +1683,8 @@ def handle_retries(*args):
 #This internal version of handle retries should only be called from inside
 # of handle_retries().
 def internal_handle_retries(request_list, request_dictionary, error_dictionary,
-                            control_socket, encp_intf):
+                            listen_socket, route_server, control_socket,
+                            encp_intf):
     #Set the encp_intf to internal test values to two.  This means
     # there is only one check made on internal problems.
     remember_retries = encp_intf.max_retry
@@ -1687,7 +1693,8 @@ def internal_handle_retries(request_list, request_dictionary, error_dictionary,
     encp_intf.max_resubmit = 2
     
     internal_result_dict = handle_retries(request_list, request_dictionary,
-                                          error_dictionary, control_socket,
+                                          error_dictionary, listen_socket,
+                                          route_server, control_socket,
                                           encp_intf)
 
     #Set the max resend parameters to original values.
@@ -1697,7 +1704,7 @@ def internal_handle_retries(request_list, request_dictionary, error_dictionary,
     return internal_result_dict
 
 def handle_retries(request_list, request_dictionary, error_dictionary,
-                   control_socket, encp_intf):
+                   listen_socket, route_server, control_socket, encp_intf):
     #Extract for readability.
     max_retries = encp_intf.max_retry
     max_submits = encp_intf.max_resubmit
@@ -1756,7 +1763,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #Use the ticket status.
     else:
         status = dict_status
-
         
     #If there is no error, then don't do anything
     if status == (e_errors.OK, None):
@@ -1829,6 +1835,16 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         ###Is the work done here duplicated in the next commented code line???
         request_dictionary['resubmits'] = resubmits + 1
 
+        #Update the tickets callback fields.  The actual sockets
+        # are updated becuase they are passed in by reference.  There
+        # are some cases (most notably when internal_handle_retries()
+        # is used) that there isn't a socket passed in to change.
+        if request_list[0].get('route_selection', None) and route_server:
+            routing_addr, route_sever = get_routing_callback_addr(
+                encp_intf, route_server)
+        else:
+            routing_addr = None
+
         for req in request_list:
             try:
                 #Increase the resubmit count.
@@ -1843,6 +1859,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                     except KeyError:
                         pass
 
+                #Update the ticket before sending it to library manager.
+                if routing_addr:
+                    req['routing_callback_addr'] = routing_addr
+
                 #Since a retriable error occured, resubmit the ticket.
                 lm_responce = submit_one_request(req)
 
@@ -1856,6 +1876,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #Now it get checked.  But watch out for the recursion!!!
             internal_result_dict = internal_handle_retries([req], req,
                                                            lm_responce,
+                                                           None, None,
                                                            None, encp_intf)
             if internal_result_dict['status'][0] != e_errors.OK:
                 status = internal_result_dict['status']
@@ -1894,14 +1915,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                     del request_dictionary[item]
                 except KeyError:
                     pass
-                
+
             #Since a retriable error occured, resubmit the ticket.
             lm_responce = submit_one_request(request_dictionary)
 
         except KeyError:
             lm_responce = {'status':(e_errors.NET_ERROR,
                             "Unable to obtain responce from library manager.")}
-            sys.stderr.write("Error processing resubmition of %s.\n" %
+            sys.stderr.write("Error processing retry of %s.\n" %
                              (request_dictionary['unique_id']))
             sys.stderr.write(pprint.pformat(request_dictionary)+"\n")
             
@@ -1909,6 +1930,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         internal_result_dict = internal_handle_retries([request_dictionary],
                                                        request_dictionary,
                                                        lm_responce,
+                                                       None, None,
                                                        None, encp_intf)
 
         if internal_result_dict['status'][0] != e_errors.OK:
@@ -2368,7 +2390,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         file_clerk = {"address" : fcc.server_address}
 
         config = host_config.get_config()
-        if config and config.get('interfaces', None):
+        if config and config.get('interface', None):
             route_selection = 1
         else:
             route_selection = 0
@@ -2417,7 +2439,7 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
         Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
-                                     None, encp_intf)
+                                     None, None, None, encp_intf)
 	if result_dict['status'][0] == e_errors.OK:
 	    ticket['status'] = result_dict['status']
             return ticket
@@ -2451,7 +2473,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Handle any possible errors occured so far.
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
-                                     None, e)
+                                     listen_socket, route_server, None, e)
 
         if result_dict['status'][0] == e_errors.RETRY or \
            result_dict['status'][0] == e_errors.RESUBMITTING:
@@ -2477,7 +2499,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         done_ticket = open_local_file(work_ticket['infile'], "write")
 
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, None, e)
+                                     done_ticket, listen_socket, route_server,
+                                     None, e)
         
         if result_dict['status'][0] == e_errors.RETRY:
             close_descriptors(control_socket, data_path_socket)
@@ -2501,7 +2524,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
             status_ticket = {'status':(e_errors.UNKNOWN,
                                        "No data written to mover.")}
             result_dict = handle_retries([work_ticket], work_ticket,
-                                         status_ticket, control_socket, e)
+                                         status_ticket, listen_socket,
+                                         route_server, control_socket, e)
             
             close_descriptors(control_socket, data_path_socket, in_fd)
             
@@ -2536,7 +2560,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Verify that everything is ok on the mover side of the transfer.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, None, e)
+                                     done_ticket, listen_socket,
+                                     route_server, None, e)
 
         if result_dict['status'][0] == e_errors.RETRY:
             continue
@@ -2556,7 +2581,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, None, e)
+                                     done_ticket, listen_socket,
+                                     route_server, None, e)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif not e_errors.is_retriable(result_dict['status'][0]):
@@ -2571,7 +2597,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Verify that the pnfs info was set correctly.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, None, e)
+                                     done_ticket, listen_socket,
+                                     route_server, None, e)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif not e_errors.is_retriable(result_dict['status'][0]):
@@ -2640,7 +2667,7 @@ def write_to_hsm(e, tinfo):
     callback_addr, listen_socket = get_callback_addr(e)
     #Get an ip and port to listen for the mover address for routing purposes.
     routing_addr, udp_server = get_routing_callback_addr(e)
-    
+
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
     request_list = create_write_requests(callback_addr, routing_addr, e, tinfo)
@@ -3127,7 +3154,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
         #There is no need to deal with routing on non-multihomed machines.
         config = host_config.get_config()
-        if config and config.get('interfaces', None):
+        if config and config.get('interface', None):
             route_selection = 1
         else:
             route_selection = 0
@@ -3176,21 +3203,21 @@ def submit_read_requests(requests, tinfo, encp_intf):
                      (req['outfile'], time.time() - tinfo['encp_start_time']))
 
             Trace.trace(18, "submit_read_requests queueing:%s"%(req,))
-
+            
             ticket = submit_one_request(req)
-
+            
             Trace.message(TICKET_LEVEL, "LIBRARY MANAGER")
             Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
-
+            
             result_dict = handle_retries(requests_to_submit, req, ticket,
-                                         None, encp_intf)
+                                         None, None, None, encp_intf)
             if result_dict['status'][0] == e_errors.RETRY:
                 continue
             elif not e_errors.is_retriable(result_dict['status'][0]):
                 #del requests_to_submit[requests_to_submit.index(req)]
                 req['submitted'] = 0
                 break
-
+            
             #del requests_to_submit[requests_to_submit.index(req)]
             req['submitted'] = 1
             submitted = submitted+1
@@ -3237,7 +3264,8 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
         done_ticket = request_ticket #Make sure this exists by this point.
         result_dict = handle_retries(request_list, request_ticket,
-                                     request_ticket, None, e)
+                                     request_ticket, listen_socket,
+                                     route_server, None, e)
 
         if result_dict['status'][0]== e_errors.RETRY or \
            result_dict['status'][0]== e_errors.RESUBMITTING:
@@ -3261,7 +3289,8 @@ def read_hsm_files(listen_socket, route_server, submitted,
         done_ticket = open_local_file(request_ticket['outfile'], "read")
 
         result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, None, e)
+                                     done_ticket, listen_socket,
+                                     route_server, None, e)
         if not e_errors.is_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
@@ -3300,7 +3329,8 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
         #Verify that everything went ok with the transfer.
         result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, None, e)
+                                     done_ticket, listen_socket,
+                                     route_server, None, e)
         
         if result_dict['status'][0] == e_errors.RETRY:
             continue
@@ -3326,7 +3356,8 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
         #Verfy that the file transfered in tacted.
         result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, None, e)
+                                     done_ticket, listen_socket,
+                                     route_server, None, e)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif not e_errors.is_retriable(result_dict['status'][0]):
