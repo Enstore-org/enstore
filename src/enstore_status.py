@@ -2,10 +2,10 @@
 # system import
 import sys
 import time
-import regsub
 import string
 import os
 import stat
+import string
 
 # enstore imports
 import Trace
@@ -229,9 +229,9 @@ class EnStatus:
 	self.text[key] = self.text[key]+fq
 
     # remove all single quotes
-    def unquote(self, string):
+    def unquote(self, s):
         if 0: print self # quiet lint
-	return regsub.gsub("\'", "", string)
+	return string.replace(s,"'","")
 
     # format the status, just use the first element
     def format_status(self, status):
@@ -751,10 +751,10 @@ class EnDataFile(EnFile):
     def check_line(self, line, start_time, stop_time):
         if 0: print self # quiet lint
 	# split the line into the date/time and all the rest
-	[datetime, rest] = string.split(line, None, 1)
+	datetime, rest = string.split(line, None, 1)
         if 0: print rest # quiet lint
 	# remove the beginning LOG_PREFIX
-	l = regsub.gsub(LOG_PREFIX, "", datetime)
+	l = string.replace(datetime,LOG_PREFIX,"")
 	# now see if the date/time is between the start time and the end time
 	time_ok = TRUE
 	if start_time:
