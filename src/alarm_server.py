@@ -1,7 +1,6 @@
 #
 # system import
 import sys
-import socket
 import os
 import string
 
@@ -13,6 +12,7 @@ import generic_server
 import Trace
 import alarm
 import e_errors
+import hostaddr
 
 def default_alive_rcv_timeout():
     return 5
@@ -90,10 +90,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         if alarm_info is None:
             alarm_info = {}
         # find out where the alarm came from
-        try:
-            host = socket.gethostbyaddr(self.reply_address[0])[0]
-        except:
-            host = str(sys.exc_info()[1])
+        host = hostaddr.address_to_name(self.reply_address[0])
         # we should only get a new alarm if this is not the same alarm as
         # one we already have
         theAlarm = self.find_alarm(host, severity, root_error, source,
