@@ -11,6 +11,7 @@ import generic_client
 import volume_family
 import e_errors
 import string
+import time
 
 fcc = None
 vcc = None
@@ -42,6 +43,9 @@ def check(f):
             cf = pnfs.get_local_pnfs_path(f)
             if not os.access(cf, os.R_OK):
                 return ['no read permission'], []
+
+    age = time.time() - os.stat(cf)[8]
+
     try:
         pf = pnfs.File(cf)
     except:
@@ -57,9 +61,13 @@ def check(f):
     except:
         if len(bfid) < 8:
             msg.append('missing layer 1')
+            if age < 3600:
+                warn.append('younger than 1 hour (%d)'%(age))
             return msg, warn
         else:
             msg.append('missing layer 4')
+            if age < 3600:
+                warn.append('younger than 1 hour (%d)'%(age))
             fr = fcc.bfid_info(bfid)
             if fr['status'][0] != e_errors.OK:
                 msg.append('not in db')
