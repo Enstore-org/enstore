@@ -134,7 +134,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
             return self.restricted_opts
         else:
             return self.client_options()+[
-                "config_file=","summary","show","load"]
+                "config-file=","summary","show","load"]
 
     #  define our specific help
     def parameters(self):

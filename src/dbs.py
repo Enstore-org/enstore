@@ -160,7 +160,7 @@ def send_dbs_cmd(intf, farmlet, db):
     if intf.dump:
 	    cmd = "%s --dump "%(cmd,)
     if intf.restore_all:
-	    cmd = "%s --restore_all "%(cmd,)
+	    cmd = "%s --restore-all "%(cmd,)
 	    db = ""
     if intf.all:
             cmd = "%s --all "%(cmd,)
@@ -422,7 +422,7 @@ class Interface(interface.Interface):
 		        return self.restricted_opts
 		else:
 		        return self.config_options()+["dump", "status", "all", 
-						      "restore_all", "nocheck"]
+						      "restore-all", "nocheck"]
 
 	def charopts(self):
 		return ["cd"]
