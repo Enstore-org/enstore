@@ -14,6 +14,12 @@ import configuration_client	# to talk to configuration server
 import interface		# to get default host and port
 import generic_cs		# to get enprint
 
+dbHome=""    # quiet lint
+dir_bck=""   # quiet lint
+bckHome=""   # quiet lint
+hst_bck=""   # quiet lint
+hst_local="" # quiet lint
+
 def backup_dbase():
 
     dbFile=""
@@ -96,7 +102,8 @@ if __name__=="__main__":
     Trace.trace(1,"backup called with args "+repr(sys.argv))
 
     try:
-	import SOCKS; socket = SOCKS
+	import SOCKS
+        socket = SOCKS
     except ImportError:
 	import socket
     if len(sys.argv) > 1 :
@@ -113,8 +120,8 @@ if __name__=="__main__":
     try:
     	os.chdir(dbHome)
     except os.error:
-	generic_cs.enprint("Error: "+cmd+" "+str(sys.exc_info()[1][1]))
-        Trace.trace(0,"backup Error - "+repr(cmd)+str(sys.exc_info()[0])+\
+	generic_cs.enprint("Error: os.chdir "+dbHome+" "+str(sys.exc_info()[1][1]))
+        Trace.trace(0,"backup Error - os.chdir "+dbHome+" "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
 	sys.exit(1)
 
@@ -132,8 +139,8 @@ if __name__=="__main__":
 	    if sys.exc_info()[1][0] == errno.EEXIST :
 		pass
 	    else :
-		generic_cs.enprint("Error: "+str(sys.exc_info()[1][1]))
-                Trace.trace(0,"backup Error - "+repr(cmd)+\
+		generic_cs.enprint("Error: mkdir "+bckHome+str(sys.exc_info()[1][1]))
+                Trace.trace(0,"backup Error - mkdir "+bckHome+\
                             str(sys.exc_info()[0])+str(sys.exc_info()[1]))
 		sys.exit(1)
     dir_bck=bckHome+"/dbase."+repr(time.time())
