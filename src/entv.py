@@ -58,6 +58,11 @@ def _eval(stuff):
 TEN_MINUTES=600   #600seconds = 10minutes
 DEFAULT_BG_COLOR = '#add8e6'   #light blue
 
+#When entv reads from a command file use these as defaults.
+DEFAULT_SYSTEM_NAME = "Enstore"
+DEFAULT_GEOMETRY = "1200x1600+0+0"
+DEFAULT_ANIMATE = 1
+
 status_thread = None
 messages_thread = None
 
@@ -522,14 +527,15 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
                 if fullnames:
                     data[i] = data[i] + ".mover"
                 if with_system:
-                    data[i] = data[i] + "@" + "ENSTORE"
+                    data[i] = data[i] + "@" + DEFAULT_SYSTEM_NAME
             mf_fp.close()
             data.sort()
             return data  #Return from here on success.
         except (OSError, IOError), msg:
             print str(msg)
             sys.exit(1)
-
+    elif intf.messages_file:
+        return []
 
     if csc.new_config_obj.is_caching_enabled():
         #If necessary, cache the entire mover_list.
@@ -684,8 +690,8 @@ def request_mover_status(display, csc, intf):
         try:
             #If we added a route to the mover, we should remove it.
             # Most clients would prefer to leave such routes in place,
-            # but entv is not your normal client.  It talks to many movers
-            # that makes the routing table huge.
+            # but entv is not your normal client.  It talks to many
+            # movers that makes the routing table huge.
             host_config.unset_route(mov.server_address[0])
             pass
         except (socket.error, OSError):
@@ -719,10 +725,15 @@ def request_mover_status(display, csc, intf):
 #intf is an instance of the EntvInterface class.
 def handle_messages(display, csc, intf):
     global stop_now
+
+    #This is a time hack to get a clean output file.
+    timeout_time = time.time() + 120
     
     # we will get all of the info from the event relay.
-    if intf.commands_file:
-        commands_file = open(intf.commands_file, "r")
+    if intf.messages_file:
+        messages_file = open(intf.messages_file, "r")
+        
+        enstore_system = DEFAULT_SYSTEM_NAME
     else:
         enstore_system = None
         while enstore_system == None:
@@ -777,15 +788,20 @@ def handle_messages(display, csc, intf):
     while not display.stopped and not stop_now:
 
         # If commands are listed, use 'canned' version of entv.
-        if intf.commands_file:
+        if intf.messages_file:
             try:
-                command = string.join(commands_file.readline().split()[5:])
+                #Get the next line from the commands list file.
+                line = messages_file.readline()
+                #For each line strip off the timestamp information from
+                # the espion.py.
+                command = string.join(line.split()[5:])
                 if not command:
                     break  #Is this correct to break here?
             except (OSError, IOError, TypeError, ValueError,
                     KeyError, IndexError):
-                commands_file.seek(0, 0) #Position at beginning of file.
+                messages_file.seek(0, 0) #Position at beginning of file.
                 continue
+
             #Don't overwhelm the display thread.
             time.sleep(0.03)
             while len(display.command_queue) > 50:
@@ -814,17 +830,11 @@ def handle_messages(display, csc, intf):
 
             #for fd in readable:
             msg = enstore_erc_functions.read_erc(erc)
-            #Take the message from (either from file or event relay).
+
             if msg and not getattr(msg, "status", None):
-                if msg.type in ("quit", "title", "client"):
-                    command = "%s %s" % (msg.type, msg.extra_info)
-                else:
-                    #If the command contains a mover name, we need to
-                    # append the system name to it.
-                    words = string.split(msg.extra_info, " ")
-                    command = "%s %s %s" % (msg.type,
-                                            words[0] + "@" + enstore_system,
-                                            string.join(words[1:], " "))
+                #Take the message from event relay.
+                command = "%s %s" % (msg.type, msg.extra_info)
+            
             ##If read_erc is valid it is a EventRelayMessage instance. If
             # it gets here it is a dictionary with a status field error.
             elif getattr(msg, "status", None):
@@ -833,12 +843,65 @@ def handle_messages(display, csc, intf):
             elif msg == None:
                 continue
 
-        #Process the command.
-        Trace.trace(2, command)
-        display.queue_command(command)
+        #Those commands that use mover names need to have the system name
+        # appended to the name.
+        words = command.split(" ")
+        if words[0] in ("connect", "disconnect", "loaded", "loading", "state",
+                        "unload", "transfer"):
+            if len(words[1].split("@")) == 1:
+                #If the name already has the enstore_system appended to the
+                # end (from messages_file) then don't do this step.
+                command = "%s %s %s" % (words[0],
+                                        words[1] + "@" + enstore_system,
+                                        string.join(words[2:], " "))
 
+        ############# HACK ###############################################
+        #When writing the messages file, special attention needs to be
+        # given to make the "ending" clean.
+        if intf.generate_messages_file:
+            words = command.split(" ")
+            if words[0] in ("connect", "disconnect", "loaded", "loading",
+                            "state", "unload", "transfer"):
+                try:
+                    if time.time() > timeout_time \
+                           and display.movers[words[1]].state == "HAVE_BOUND":
+                        words2 = ["state", words[1], "DISMOUNT_WAIT"]
+                        display.queue_command(string.join(words2, " "))
+                        #Use a dummny name for the volume.  Obtaining the
+                        # real name can cause a race condition leading to
+                        # a traceback.  enstore_display.unload_command()
+                        # does not even look at the volume name anyway.
+                        words2 = ["unload", words[1], "dummy"]
+                        display.queue_command(string.join(words2, " "))
+                        words2 = ["state", words[1], "IDLE"]
+                        display.queue_command(string.join(words2, " "))
+                    elif words[0] == "state" \
+                       and words[2] in \
+                       ("MOUNT_WAIT", "DISMOUNT_WAIT", "HAVE_BOUND",
+                        "FINISH_WRITE") \
+                       and display.movers[words[1]].state == "IDLE":
+                        pass
+                    elif words[0] in ("loaded", "loading", "transfer") \
+                         and display.movers[words[1]].state == "IDLE":
+                        pass
+                    elif time.time() < timeout_time:
+                        display.queue_command(command)
+                    elif display.movers[words[1]].state != "IDLE":
+                        display.queue_command(command)
+                except KeyError:
+                    #A KeyError can occur if the main window has been closed
+                    # and the main thread has already cleared the
+                    # display.movers list.
+                    pass
+            else:
+                display.queue_command(command)
+        ##################################################################
+        else:
+            #For normal use put everything into the queue.
+            display.queue_command(command)
+            
         #If necessary, handle resubscribing.
-        if not intf.commands_file:
+        if not intf.messages_file:
             now = time.time()
             if now - start > TEN_MINUTES:
                 # resubscribe
@@ -846,7 +909,7 @@ def handle_messages(display, csc, intf):
                 start = now
 
     #End nicely.
-    if not intf.commands_file:
+    if not intf.messages_file:
         erc.unsubscribe()
         #erc.sock.close()
         #del erc
@@ -922,8 +985,9 @@ class EntvClientInterface(generic_client.GenericClientInterface):
     def parse_options(self):
         self.dont_show = ""
         self.verbose = 0
+        self.generate_messages_file = 0
         self.movers_file = ""
-        self.commands_file = ""
+        self.messages_file = ""
         self.profile = 0
         self.version = 0
         generic_client.GenericClientInterface.parse_options(self)
@@ -935,13 +999,15 @@ class EntvClientInterface(generic_client.GenericClientInterface):
         Trace.init("ENTV")
         for x in xrange(0, self.verbose + 1):
             Trace.do_print(x)
+        if self.generate_messages_file:
+            Trace.do_message(10)
     
     entv_options = {
-        option.COMMANDS_FILE:{option.HELP_STRING:
+        option.MESSAGES_FILE:{option.HELP_STRING:
                               "Use 'canned' version of entv.",
                               option.VALUE_USAGE:option.REQUIRED,
                               option.VALUE_TYPE:option.STRING,
-                              option.VALUE_LABEL:"commands_file",
+                              option.VALUE_LABEL:"messages_file",
                               option.USER_LEVEL:option.ADMIN,},
         option.DONT_SHOW:{option.HELP_STRING:"Don't display the movers that"
                           " belong to the specified library manager(s).",
@@ -949,6 +1015,11 @@ class EntvClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_LABEL:"LM short name,...",
                           option.USER_LEVEL:option.USER,},
+        option.GENERATE_MESSAGES_FILE:{option.HELP_STRING:
+                                     "Output to standard output the sequence"
+                                     " of messages that create the display.",
+                                     option.VALUE_USAGE:option.IGNORED,
+                                     option.USER_LEVEL:option.ADMIN,},
         option.MOVERS_FILE:{option.HELP_STRING:"Use 'canned' version of entv.",
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_TYPE:option.STRING,
@@ -977,24 +1048,28 @@ def main(intf):
     global status_thread, messages_thread
     global stop_now
 
-    # get a configuration server
-    default_config_host = enstore_functions2.default_host()
-    default_config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((default_config_host,
-                                                    default_config_port))
-    csc.dump_and_save()
-    #er_info = csc.dump_and_save().get(enstore_constants.EVENT_RELAY, {})
-    csc.new_config_obj.enable_caching() #(er_info['hostip'], er_info['port']))
+    if intf.movers_file or intf.messages_file:
+        csc = None
 
-    #cscs_info contains the known_config_servers section of the configuration
-    # with all unspecified systems removed.
-    cscs_info = get_all_systems(csc, intf)
-    if not cscs_info:
-        sys.stderr.write("Unable to find configuration server.\n")
-        sys.exit(1)
+        system_name = DEFAULT_SYSTEM_NAME
+    else:
+        # get a configuration server
+        default_config_host = enstore_functions2.default_host()
+        default_config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((default_config_host,
+                                                        default_config_port))
+        csc.dump_and_save()
+        csc.new_config_obj.enable_caching()
 
-    #Get the short name for the enstore system specified.
-    system_name = get_system_name(intf, cscs_info)
+        #cscs_info contains the known_config_servers section of the
+        # configuration with all unspecified systems removed.
+        cscs_info = get_all_systems(csc, intf)
+        if not cscs_info:
+            sys.stderr.write("Unable to find configuration server.\n")
+            sys.exit(1)
+
+        #Get the short name for the enstore system specified.
+        system_name = get_system_name(intf, cscs_info)
 
     #Get the main window.
     master = Tkinter.Tk()
@@ -1003,8 +1078,13 @@ def main(intf):
 
     while continue_working:
         #Get the entvrc file information
-        entvrc_dict = get_entvrc(csc, intf)
-        entvrc_dict['title'] = system_name #For simplicity put this here.
+        if intf.movers_file:
+            entvrc_dict = {}
+            #entvrc_dict['title'] = "Enstore"
+        else:
+            entvrc_dict = get_entvrc(csc, intf)
+            entvrc_dict['title'] = system_name #For simplicity put this here.
+
         #Set the size of the window.
         set_geometry(master, entvrc_dict)
         
@@ -1014,9 +1094,10 @@ def main(intf):
         #Inform the display the config server to use.  Don't do
         # this if running 'canned' entv.  Make sure this is run
         # before the movers_command is.
-        if intf.movers_file:
+        if intf.movers_file or intf.messages_file:
             mover_list = get_mover_list(intf, None, 0, 1)
 
+            cscs = [None]
         else:
             cscs = []
             mover_list = []
@@ -1034,16 +1115,11 @@ def main(intf):
                     pass
 
                 try:
-                    config = cscs[-1].dump_and_save()
+                    cscs[-1].dump_and_save()
 
-                    #Don't use the csc get() function to retrieve the
-                    # event_relay information; doing so will clobber
-                    # the dump-and-saved configuration.  Once, the
-                    # enable_caching() function is called the csc get()
-                    # function is okay to use.
-                    #er_info = config.get(enstore_constants.EVENT_RELAY)
-                    #er_addr = (er_info['hostip'], er_info['port'])
-                    cscs[-1].new_config_obj.enable_caching()  #er_addr)
+                    # Once, the enable_caching() function is called the
+                    # csc get() function is okay to use.
+                    cscs[-1].new_config_obj.enable_caching()
 
                     #Append the new movers to the end of the list.
                     mover_list = mover_list + get_mover_list(intf, cscs[-1],
@@ -1053,8 +1129,14 @@ def main(intf):
 
         #Inform the display the names of all the movers.
         movers_command = "movers" + " " + string.join(mover_list, " ")
-        Trace.trace(1, "movers list: %s" % movers_command)
         display.handle_command(movers_command)
+
+        #If we want a clean commands file, we need to set the inital movers
+        # state to idle.
+        if intf.generate_messages_file:
+            for mover in display.movers.keys():
+                idle_command = string.join(["state", mover, "IDLE"], " ")
+                display.handle_command(idle_command)
 
         Trace.trace(1, "starting threads")
         
@@ -1065,21 +1147,25 @@ def main(intf):
         #Start a thread for each event relay we should contact.
         status_threads = []
         messages_threads = []
+        
         for i in range(len(cscs)):
-            status_threads.append(threading.Thread(group=None,
-                                                   target=request_mover_status,
-                                                   name='',
-                                                   args=(display, cscs[i],
-                                                         intf),
-                                                   kwargs={}))
-            status_threads[-1].start()
+            if not intf.generate_messages_file and not intf.messages_file:
+                #If we are in normal running mode start the treads that
+                # will get the initial status of the movers.
+                status_threads.append(threading.Thread(group=None,
+                                                  target=request_mover_status,
+                                                       name='',
+                                                       args=(display,
+                                                             cscs[i], intf),
+                                                       kwargs={}))
+                status_threads[-1].start()
 
             messages_threads.append(threading.Thread(group=None,
-                                                    target=handle_messages,
-                                                    name='',
-                                                    args=(display, cscs[i],
-                                                          intf),
-                                                    kwargs={}))
+                                                     target=handle_messages,
+                                                     name='',
+                                                     args=(display,
+                                                           cscs[i], intf),
+                                                     kwargs={}))
             messages_threads[-1].start()
 
         #Loop until user says don't.
@@ -1120,7 +1206,8 @@ def main(intf):
             # new configuration changes.  It is possible that the
             # reinialization is happening because a NEWCONFIGFILE message
             # was received; among other reasons.
-            csc.dump_and_save()
+            if csc:
+                csc.dump_and_save()
 
     #Perform the following two deletes explicitly to avoid obnoxious
     # tkinter warning messages printed to the terminal when using

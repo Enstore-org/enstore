@@ -22,7 +22,8 @@ import re
 import Trace
 import mover_client
 import configuration_client
-#import enstore_constants
+import enstore_constants
+import e_errors
 
 #Set up paths to find our private copy of tcl/tk 8.3
 
@@ -388,7 +389,7 @@ class Mover:
             #64GB is the default listed in mover.py.
             self.max_buffer = long(minfo.get('max_buffer', 67108864))
             self.library = minfo.get('library', "Unknown")
-        except AttributeError:
+        except (AttributeError, KeyError):
             self.max_buffer = 67108864
             self.library = "Unknown"
             
@@ -817,6 +818,8 @@ class Mover:
             pass
 
     def undraw_volume(self):
+        self.volume = None
+        
         try:
             self.display.delete(self.volume_display)
             self.volume_display = None
@@ -1123,6 +1126,19 @@ class Mover:
         self.x, self.y = self.position(N)
 
         self.draw()
+
+    #########################################################################
+        
+    def get_status(self):
+        name = self.name.split("@")[0]
+        csc = self.display.csc_dict[self.name.split("@")[1]]
+        mov = mover_client.MoverClient(csc, name + ".mover",
+              flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,)
+        status = mov.status(rcv_timeout=3, tries=1)
+        if not e_errors.is_ok(status):
+            status = None
+
+        return status
 
 #########################################################################
 ##
@@ -1649,8 +1665,8 @@ class Display(Tkinter.Canvas):
     def __init__(self, entvrc_info, master = None, **attributes):
 
         self.master = master
-        geometry = entvrc_info.get('geometry', None)
-        title = entvrc_info.get('title', "")
+        geometry = entvrc_info.get('geometry', "1200x1600+0+0")
+        title = entvrc_info.get('title', "Enstore")
         animate = int(entvrc_info.get('animate', 1))#Python true for animation.
         self.library_colors = entvrc_info.get('library_colors', {})
         self.client_colors = entvrc_info.get('client_colors', {})
@@ -1658,6 +1674,8 @@ class Display(Tkinter.Canvas):
         self.csc_dict = {}
 
         self.unframed_geometry = geometry
+        #Set the geometry of the master window the canvas will be inside of.
+        self.master.geometry(geometry)
         Tkinter.Canvas.__init__(self, master=master)
 
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
@@ -1968,7 +1986,41 @@ class Display(Tkinter.Canvas):
         number = len(self.command_queue)
 
         while number > 0:
+            words = self.command_queue[0].split(" ")
+            if words and words[0] in ["state"]:
+            
+                try:
+                    mover = self.movers[words[1]]
+                except:
+                    mover = None
 
+                status = None
+                if mover and \
+                       (mover.volume == None or \
+                        self.connections.get(mover.name, None) == None):
+                    try:
+                        status = mover.get_status()
+                    except KeyError:
+                        pass
+
+                if status:
+
+                    if mover.volume == None and words[2] not in ["MOUNT_WAIT",
+                                                                 "DISMOUNT_WAIT"]:
+                        volume = status['current_volume']
+                        words2 = ['state', mover.name, "MOUNT_WAIT"]
+                        self.handle_command(string.join(words2, " "))
+                        if volume:
+                            words3 = ['loaded', mover.name, volume]
+                            self.handle_command(string.join(words3, " "))
+
+                    if self.connections.get(mover.name, None) == None and \
+                           words[2] in ["ACTIVE", "DRAINING", "SEEK",
+                                        "MOUNT_WAIT"]:
+                        client = status['client']
+                        words2 = ['connect', mover.name, client]
+                        self.handle_command(string.join(words2, " "))
+                        
             #Process the next item in the queue.
             self.handle_command(self.command_queue[0])
             del self.command_queue[0]
@@ -2479,6 +2531,7 @@ class Display(Tkinter.Canvas):
 
         #Get local handles for the objects that we will be using.
         mover = self.movers.get(command_list[1])
+
         num_bytes = float(command_list[2])
         total_bytes = float(command_list[3])
 
@@ -2551,13 +2604,7 @@ class Display(Tkinter.Canvas):
         command = string.strip(command) #get rid of extra blanks and newlines
         words = string.split(command)
 
-        #If the queue is kinda long, and the new command is only a transfer
-        # message; the message is discarded.
-        if len(self.command_queue) > max(20, (len(self.movers))) and \
-           command.split()[0] in ["transfer"]:
-            pass #Don't return, or the lock won't be released.
-            
-        elif words[0] in self.comm_dict.keys():
+        if words[0] in self.comm_dict.keys():
             #Under normal situations.
             self.command_queue.append(command)
 
@@ -2600,6 +2647,7 @@ class Display(Tkinter.Canvas):
 
         command = string.strip(command) #get rid of extra blanks and newlines
         words = string.split(command)
+
         if not words: #input was blank, nothing to do!
             return []
 
@@ -2644,6 +2692,11 @@ class Display(Tkinter.Canvas):
         #Words is a list of the split string command.
         words = self.get_valid_command(command)
 
+        #Every command gets processed though handle_command().  Thus,
+        # this will output all processed messages and those necessary
+        # to insert because of missed messges.
+        Trace.message(10, string.join((time.ctime(), command), " "))
+
         #Don't bother processing transfer messages if we are not keeping up.
         if words and words[0] in ["transfer"] and \
                len(self.command_queue) > max(20, (len(self.movers))):
@@ -2653,7 +2706,7 @@ class Display(Tkinter.Canvas):
             apply(self.comm_dict[words[0]]['function'], (self, words,))
             
     #########################################################################
-            
+    """        
     def display_idle(self):
         display_lock.acquire()
 
@@ -2668,7 +2721,7 @@ class Display(Tkinter.Canvas):
                 
         display_lock.release()
         self.after_idle_id = self.after_idle(self.display_idle)
-
+    """
     #overloaded
     def destroy(self):
         self.clear_display()

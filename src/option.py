@@ -169,7 +169,6 @@ CHECK = "check"                              #volume, encp
 CLEAN_DRIVE = "clean-drive"                  #mover
 CLEAR = "clear"                              #volume
 CLIENT_NAME="client-name"                    # log, alarm
-COMMANDS_FILE = "commands-file"              #entv
 CONDITION = "condition"                      #alarm_server
 CONFIG_FILE = "config-file"                  #configuration(c&s)
 CONST = "const"                              #pnfs
@@ -221,6 +220,7 @@ FORCE = "force"                              #volume
 FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups" #volume
 FORGET_IGNORED_STORAGE_GROUP = "forget-ignored-storage-group"   #volume
 FULL = "full"                                #volume
+GENERATE_MESSAGES_FILE = "generate-messages-file"  #entv
 GET_ASSERTS = "get-asserts"                  #library
 GET_BFID = "get-bfid"                        #encp
 GET_CACHE = "get-cache"                      #encp
@@ -251,6 +251,8 @@ INPUT_DIR = "input_dir"                      #plotter
 IO = "io"                                    #pnfs
 JOUHOME = "jouHome"                          #restore
 JUST = "just"                                #start, stop
+KEEP = "keep"                                #plotter
+KEEP_DIR = "keep-dir"                        #plotter
 KEEP_VOL = "keep-vol"                        #super-remove
 LABEL = "label"                              #plotter
 LABELS = "labels"                            #volume
@@ -260,20 +262,17 @@ LIST = "list"                                #volume, file, get
 LIST_SG_COUNT = "ls-sg-count"                #volume
 LOAD = "load"                                #configuration
 LOG = "log"                                  #medaia(s)
-KEEP = "keep"                                #plotter
-KEEP_DIR = "keep-dir"                        #plotter
 LOGFILE_DIR = "logfile-dir"                  #plotter
 LS = "ls"                                    #pnfs
 LS_ACTIVE = "ls-active"                      #volume, file
 MAKE_HTML = "make-html"                      #up_down
 MARK_BAD = "mark-bad"                        #file
-UNMARK_BAD = "unmark-bad"                    #file
-SHOW_BAD = "show-bad"                        #file
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
 MAX_RETRY = "max-retry"                      #encp
 MAX_RESUBMIT = "max-resubmit"                #encp
 MAX_WORK = "max-work"                        #media(c&s)
 MESSAGE = "message"                          #log, alarm
+MESSAGES_FILE = "messages-file"              #entv
 MIGRATED = "migrated"                        #volume
 MMAP_IO = "mmap-io"                          #encp
 MMAP_SIZE = "mmap-size"                      #encp
@@ -346,6 +345,7 @@ SEVERITY = "severity"                        #alarm
 SG = "sg"                                    #plotter
 SHORTCUT = "shortcut"                        #encp
 SHOW = "show"                                #configuration, inquisitor, media
+SHOW_BAD = "show-bad"                        #file
 SHOW_BY_LIBRARY = "show-by-library"          #quota
 SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOW_QUOTA = "show-quota"                    #volume
@@ -375,6 +375,7 @@ TITLE_GIF = "title_gif"                      #plotter
 TOTAL_BYTES = "total_bytes"                  #plotter
 TOUCH = "touch"                              #volume
 TRIM_OBSOLETE = "trim-obsolete"              #volume
+UNMARK_BAD = "unmark-bad"                    #file
 UP = "up"                                    #pnfs, inquisitor, mover
 UPDATE = "update"                            #inquisitor
 UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
@@ -407,7 +408,7 @@ valid_option_list = [
     BACKUP, BFID, BFIDS, BUFFER_SIZE,
     BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CLIENT_NAME,
-    COMMANDS_FILE, CONDITION, CONFIG_FILE, CONST,
+    CONDITION, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR, CREATE,
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
@@ -420,6 +421,7 @@ valid_option_list = [
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FIND_SAME_FILE, FORCE, FULL,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
+    GENERATE_MESSAGES_FILE,
     GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_LOGFILE_NAME,
     GET_LOGFILE_NAME, GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE,
     GET_REFRESH, GET_SUSPECT_VOLS, GET_UPDATE_INTERVAL, GET_WORK,
@@ -433,7 +435,7 @@ valid_option_list = [
     LS_ACTIVE, LIST_SG_COUNT,
     MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
-    MESSAGE, MMAP_IO, MMAP_SIZE, MODIFY, MOUNT, MOVER_TIMEOUT,
+    MESSAGE, MESSAGES_FILE, MMAP_IO, MMAP_SIZE, MODIFY, MOUNT, MOVER_TIMEOUT,
     MOVERS_FILE, MIGRATED,
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NO_CRC, NOT_ALLOWED, NO_MAIL,
     NO_PLOT_HTML,
