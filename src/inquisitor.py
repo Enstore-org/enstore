@@ -23,6 +23,7 @@ import types
 import os
 import stat
 import signal
+import threading
 
 # enstore imports
 import traceback
@@ -42,6 +43,8 @@ import enstore_constants
 import www_server
 import udp_client
 import safe_dict
+
+PLOTTHRNAME = "PLOT_THREAD"
 
 def default_timeout():
     return 5
@@ -895,18 +898,32 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     #  make all the plots
     def plot(self, ticket):
-	# find out where the log files are located
-	if ticket.has_key(LOGFILE_DIR):
-	    lfd = ticket[LOGFILE_DIR]
+	# make sure we do not have a thread doing this already
+	if self.plot_thread and self.plot_thread.isAlive():
+	    self.send_reply({ 'status'   : (e_errors.INPROGRESS, None) })
 	else:
-	    t = self.csc.get("log_server")
-	    lfd = t["log_file_path"]
+	    # find out where the log files are located
+	    if ticket.has_key(LOGFILE_DIR):
+		lfd = ticket[LOGFILE_DIR]
+	    else:
+		t = self.csc.get("log_server")
+		lfd = t["log_file_path"]
 
-        out_dir = ticket.get("out_dir", lfd)
+	    out_dir = ticket.get("out_dir", lfd)
 
-        keep = ticket.get("keep", 0)
-        pts_dir = ticket.get("keep_dir", "")
-        
+	    keep = ticket.get("keep", 0)
+	    pts_dir = ticket.get("keep_dir", "")
+
+	    # create a thread to deal with this.
+	    plot_args = (ticket, lfd, keep, pts_dir, out_dir)
+	    self.plot_thread = threading.Thread(group=None, 
+						target=self.plot_function,
+						name=PLOTTHRNAME, args=plot_args)
+	    self.plot_thread.setDaemon(1)	    
+	    self.plot_thread.start()
+
+    # plot thread
+    def plot_function(self, ticket, lfd, keep, pts_dir, out_dir):
 	self.encp_plot(ticket, lfd, keep, pts_dir, out_dir)
 	self.mount_plot(ticket, lfd, keep, pts_dir, out_dir)
 	ret_ticket = { 'status'   : (e_errors.OK, None) }
@@ -1088,7 +1105,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 						ofn,
 						"-e %s"%(Trace.MSG_ENCP_XFER,),
 						lfd)
-
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	encpfile.open('r')
@@ -1100,11 +1116,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         # only do the plotting if we have some data
         if encpfile.data:
-            bpdfile = enstore_plots.BpdDataFile(out_dir)
-            bpdfile.open()
-            bpdfile.plot(encpfile.data)
-            bpdfile.close()
-            bpdfile.install(self.html_dir)
+	    bpdfile = enstore_plots.BpdDataFile(out_dir)
+	    bpdfile.open()
+	    bpdfile.plot(encpfile.data)
+	    bpdfile.close()
+	    bpdfile.install(self.html_dir)
 
             xferfile = enstore_plots.XferDataFile(out_dir, bpdfile.ptsfile)
             xferfile.open()
@@ -1262,6 +1278,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# set up a signal handler to catch termination signals (SIGKILL) so we can
 	# update our status before dying
 	signal.signal(signal.SIGTERM, self.s_update_exit)
+
+	# set up the threads we will need
+	self.plot_thread = None
+
 
 class InquisitorInterface(generic_server.GenericServerInterface):
 
