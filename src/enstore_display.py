@@ -54,11 +54,31 @@ def strip_domain(hostname):
         parts = parts[:-2]
     return string.join(parts,'.')
 
+#######################################################################################
+#MOST OF THE FUNCTIONS WILL BE HANDLED BY THE MOVER.
+#IT'S FUNCTIONS INCLUDES:
+#     DRAW() - DRAWS MOST FEATURES ON THE MOVERS
+#     UPDATE_STATE() - AS THE STATE OF THE MOVERS CHANGE, DISPLAY FOR STATE WILL BE UPDATED
+#     UPDATE_TIMER() - TIMER ASSOCIATED W/STATE, WILL UPDATE FOR EACH STATE
+#     LOAD_TAPE() - TAPE GETS LOADED ONTO MOVER:
+#                                  GRAY INDICATES ROBOT RECOGNIZES TAPE AND LOADED IT
+#                                  ORANGE INDICATES WHEN CLIENT ACTUALLY RECOGNIZES TAPE     
+#     UNLOAD_TAPE() - WILL UNLOAD TAPE TO SIDE OF EACH MOVER, READY FOR ROBOT TO REMOVE F/SCREEN
+#     SHOW_PROGRESS() - INDICATES PROGRESS OF EACH DATA TRANSFER; IS IT ALMOST COMPLETE?
+#     TRANSFER_RATE() - RATE AT WHICH TRANSFER BEING SENT; CALCULATES A RATE
+#     UNDRAW() - UNDRAWS THE FEATURES FROMTHE MOVERS
+#     POSITION() - CALCULATES THE POSITION FOR EACH MOVER
+#     REPOSITION() - REPOSITION EACH FEATURE AFTER SCREEN HAS BEEN MOVED
+#     __DEL__() - CALLS UNDRAW() MODULE AND DELETES FEATURES
+#
+######################################################################################
+
 class Mover:
-    def __init__(self, name, display, index=0):
+    def __init__(self, name, display, index=0,N=0):
         self.name = name
         self.display = display
         self.index = index
+        self.N=N
         self.width = 125
         self.height = 30
         self.state = "Unknown"
@@ -122,9 +142,17 @@ class Mover:
         self.volume.draw(load_state)
 
     def unload_tape(self, volume):
-        if self.volume: #XXX
-            self.volume.moveto(self.volume.x + 150, self.volume.y)
-
+        if volume != self.volume.name: #XXXXXXXXXXXXXXXXXXXX
+            print "Mover does not have this tape : ", volume
+        else:
+            k=self.index
+            N=self.N
+            angle=math.pi/(N-1)
+            x, y = .75+.5*math.cos(math.pi/2 + angle*k),  .5*math.sin(math.pi/2 + angle*k)
+            self.x, self.y = scale_to_display(x, y, self.display.width, self.display.height)
+            self.volume.moveto(self.x, self.y)
+   
+            
     def show_progress(self, percent_done):
         x,y=self.x,self.y
         bar_width = 38
@@ -179,12 +207,24 @@ class Mover:
     
     def position(self, N):
         k = self.index
-        if N == 0:
-            angle = math.pi/2
+        if N == 1: ## special positioning for a single mover.
+            k = 1
+            angle = math.pi / 2
         else:
             angle = math.pi / (N-1)
         x, y = 0.75 + 0.8 * math.cos(math.pi/2 + angle*k), 0.85 * math.sin(math.pi/2 + angle*k)
         self.x, self.y = scale_to_display(x, y, self.display.width, self.display.height)
+
+     ## def robot_path(self, N):
+##        k = self.index
+##        if N == 1: ## special positioning for a single mover.
+##            k = 1
+##            angle = math.pi / 2
+##        else:
+##            angle = math.pi / (N-1)
+##        x, y = 0.75 + 0.5 * math.cos(math.pi/2 + angle*k), 0.5 * math.sin(math.pi/2 + angle*k)
+##        self.x, self.y = scale_to_display(x, y, self.display.width, self.display.height)
+
 
     def reposition(self, N):
         if self.volume:
@@ -202,6 +242,51 @@ class Mover:
         
     def __del__(self):
         self.undraw()
+
+
+
+######################################
+#
+#                           CLASS: VOLUME
+#
+######################################
+
+class Volume:
+    def __init__(self, name, display):
+        self.name = name
+        self.display = display
+        self.loaded = 0
+    
+    def draw(self,load_state):
+        self.loaded=load_state
+        x, y = self.x, self.y
+        if self.loaded:
+            tape_color = 'orange'
+            label_color= 'white'
+        else:
+            tape_color = 'grey'
+            label_color='black'
+        self.outline = self.display.create_rectangle(x, y, x+50, y+11, fill = tape_color)
+        self.label = self.display.create_text(x+25, y+6, text=self.name,fill = label_color)
+
+    def moveto(self, x, y):
+            self.display.move(self.outline, x, y)
+            self.display.move(self.label, x, y)
+            self.x, self.y = x, y
+
+    def undraw(self):
+        self.display.delete(self.outline)
+        self.display.delete(self.label)
+
+    def __del__(self):
+        self.undraw()
+
+
+######################################
+#
+#                           CLASS: CLIENT
+#
+######################################
     
 class Client:
 
@@ -254,6 +339,14 @@ class Client:
         
     def __del__(self):
         self.undraw()
+
+
+
+######################################
+#
+#                           CLASS: CONNECTION
+#
+######################################
         
 class Connection:
     """ a line connecting a mover and a client"""
@@ -304,13 +397,19 @@ class Connection:
         if new_offset != self.dashoffset:  #we need to redraw the line
             self.dashoffset = new_offset
             self.display.itemconfigure(self.line,dashoffset=new_offset)
-        
+
+
+
+######################################
+#
+#                           CLASS: ROBOT
+#
+######################################
 class Robot:
     def __init__(self,display):
         self.display = display
 
     def draw(self):
-        x1, y1 = self.x1, self.y1 #(when we need to change robot movement)
         self.robot_shoulder = self.display.create_line(self.display.width-80,self.display.height/2,
                                                                                self.display.width,self.display.height/2, fill='black', width = 15)
         self.robot_arm = self.display.create_line(self.display.width-80,self.display.height/2,
@@ -319,7 +418,6 @@ class Robot:
                                                                                self.display.width-65,self.display.height/2-60, fill='black', width = 15)
         self.bolt = self.display.create_oval(self.display.width-68,self.display.height/2-8,
                                                                                self.display.width-88,self.display.height/2+8, fill='grey')
-        #self.outline =  self.display.create_oval(x1, y1, x1+6, y1+6, fill='green')
 
     def robot_remove_tape(self,vol_name):
         pass
@@ -327,36 +425,12 @@ class Robot:
     def move_to():
         pass
     
-class Volume:
-    def __init__(self, name, display):
-        self.name = name
-        self.display = display
-        self.loaded = 0
 
-    def draw(self,load_state):
-        self.loaded=load_state
-        x, y = self.x, self.y
-        if self.loaded:
-            tape_color = 'orange'
-            label_color= 'white'
-        else:
-            tape_color = 'grey'
-            label_color='black'
-        self.outline = self.display.create_rectangle(x, y, x+50, y+11, fill = tape_color)
-        self.label = self.display.create_text(x+25, y+6, text=self.name,fill = label_color)
-
-    def moveto(self, x, y):
-        dx, dy = (x - self.x), (y - self.y)
-        self.display.move(self.outline,dx,dy)
-        self.display.move(self.label, dx, dy)
-        self.x, self.y = x, y
-
-    def undraw(self):
-        self.display.delete(self.outline)
-        self.display.delete(self.label)
-
-    def __del__(self):
-        self.undraw()
+######################################
+#
+#                           CLASS: TITLE
+#
+######################################
         
 class Title:
     def __init__(self, text, display):
@@ -391,6 +465,12 @@ class Title:
     def __del__(self):
         self.display.delete(self.tk_text)
         
+
+######################################
+#
+#                           CLASS: DISPLAY
+#
+######################################
     
 class Display(Canvas):
     """  The main state display """
@@ -421,16 +501,10 @@ class Display(Canvas):
         for k in range(N):
             mover_name = mover_names[k]
             ##These are coordinates on the unit circle
-            M = Mover(mover_name, self, index=k)
+            M = Mover(mover_name, self, index=k, N=N)
             self.movers[mover_name] = M
             M.position(N)
             M.draw()
-            
-    def create_robot_path(self):
-            x1, y1 = 0.35 + 0.2 * math.cos(math.pi/2 + angle*k), 0.2 * math.sin(math.pi/2 + angle*k)
-            R=Robot(self)
-            R.x1, R.y1 = scale_to_display(x1, y1, self.width, self.height)
-            self.outline =  self.create_oval(R.x1-20, R.y1-120, self.width, self.height-160)
 
     def reposition_movers(self):
         items = self.clients.items()
@@ -471,7 +545,6 @@ class Display(Canvas):
 
         if words[0]=='movers':
             self.create_movers(words[1:])
-            #self.robot_path(words[1:])
             return
 
         if words[0]=='client':
