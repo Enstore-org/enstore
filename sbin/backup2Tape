@@ -4,7 +4,12 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # bin/$RCSfile$  $Revision$
 
-# script to backup databases to a standalone tape drive
+# Fermi specific stuff
+filePath='/diska'
+tapeName='/dev/rmt/tps0d4n'
+nodeName='d0ensrv3'
+
+# script to backup databases to a standalone tape drive 
 
 # tapes have to be initialized with the commands:
 #  TAPE=/dev/rmt/tps0d4n;         export TAPE
@@ -32,14 +37,14 @@ doit() { echo "$1"
          echo ""
        }
 
-if [ `uname -n | grep -c d0ensrv3` -ne 0 ]; then
-  TAPE=/dev/rmt/tps0d4n;         export TAPE
-  TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
-  VAULT=/diska/BackupToTape
-  PNFS=/diska/pnfs-backup
-  ENSTORE=/diska/enstore-backup
-  ENSTORELOG=/diska/enstore-log-backup
-  AML2=/diska/aml2Shadow
+if [ `uname -n | grep -c ${nodeName}` -ne 0 ]; then
+  TAPE=${tapeName};         export TAPE
+  TAPE_DB=${filePath}/BackupTapeDB;   export TAPE_DB
+  VAULT=${filePath}/BackupToTape
+  PNFS=${filePath}/pnfs-backup
+  ENSTORE=${filePath}/enstore-backup
+  ENSTORELOG=${filePath}/enstore-log-backup
+  AML2=${filePath}/aml2Shadow
   TIMEONDISK=3 #days
 
 else
@@ -53,8 +58,6 @@ if [ "$LABEL" = "NOLABL" ]; then
       LABEL=`echo $LABEL|cut -c0-6` # the echo gets rid of spaces, etc
    fi
 fi
-
-ERRORS_TO="bakken@fnal.gov petravick@fnal.gov enstore-admin@fnal.gov"
 
 TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
 STATS=$VAULT/tape_stats
@@ -202,7 +205,7 @@ min_remaining_KB_before_warn=`expr 1024 \* 1024 / 4 `
 remaining_KB=`echo  "$stats" | grep FTT_REMAIN_TAPE  | cut -f3 -d' '`
 if [ $remaining_KB -le $min_remaining_KB_before_warn ]; then
    echo Running out of room on Backup tape $LABEL on `uname -n` tape drive $TAPE; echo ""
-   /usr/bin/Mail -s "Running out of room on backup tape $LABEL on `uname -n` tape drive $TAPE" $ERRORS_TO <<EOF
+   /usr/bin/Mail -s "Running out of room on backup tape $LABEL on `uname -n` tape drive $TAPE" $ENSTORE_MAIL <<EOF
 
 Running out of room on Backup tape $LABEL on `uname -n` tape drive $TAPE
 
@@ -212,9 +215,9 @@ Minimum space before warning = $min_remaining_KB_before_warn kilobytes
 Please replace tape $LABEL soon
 
 Insert a new tape into the drive and initialize it:
-  TAPE=/dev/rmt/tps0d4n;         export TAPE
+  TAPE=${tapeName};              export TAPE
   TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
-  TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
+  TAPE_DB=${filePath}/BackupTapeDB;   export TAPE_DB
   setup enstore
   $ENSTORE_DIR/volume_import/enstore_tape --init --erase --volume_label=<NEW_LABEL>
 
@@ -239,7 +242,7 @@ echo ""  >> $STATS
 cleaning_needed=`echo "$stats" | grep FTT_CLEANING_BIT | cut -f3 -d' '`
 if [ $cleaning_needed -ne 0 ]; then
    echo Dirty tape drive $TAPE on `uname -n`; echo ""
-   /usr/bin/Mail -s "Dirty tape drive $TAPE on `uname -n`" $ERRORS_TO <<EOF
+   /usr/bin/Mail -s "Dirty tape drive $TAPE on `uname -n`" $ENSTORE_MAIL <<EOF
 
 Dirty tape drive $TAPE on `uname -n`
 
