@@ -60,6 +60,14 @@ enstore/cd/d0enmvr50a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr51a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr52a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr53a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr54a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr55a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr56a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr57a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr58a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr59a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr60a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr61a.fnal.gov@FNAL.GOV
 enstore/cd/d0enout1a.fnal.gov@FNAL.GOV
 enstore/cd/d0enout2a.fnal.gov@FNAL.GOV
 aik@FNAL.GOV
@@ -83,7 +91,6 @@ podstvkv@FNAL.GOV
 ron@FNAL.GOV
 timur@FNAL.GOV
 tlevshin@FNAL.GOV
-tvrdik@FNAL.GOV
 vsergeev@FNAL.GOV
 wellner@FNAL.GOV
 zalokar@FNAL.GOV
