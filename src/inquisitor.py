@@ -20,7 +20,6 @@ import log_client
 import configuration_client
 import volume_clerk_client
 import file_clerk_client
-import admin_clerk_client
 import library_manager_client
 import media_changer_client
 import mover_client
@@ -253,12 +252,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
         Trace.trace(12,"}update_mover")
-
-    # get the information from the admin clerk
-    def update_admin_clerk(self, key, time):
-        Trace.trace(12,"{update_admin_clerk "+repr(self.asciifile.file_name))
-	self.do_alive_check(key, time, self.acc, self.ac_prefix)
-        Trace.trace(12,"}update_admin_clerk ")
 
     # get the information from the file clerk
     def update_file_clerk(self, key, time):
@@ -617,7 +610,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.fcc = file_clerk_client.FileClient(self.csc, self.verbose)
 	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
 	                                                 self.verbose)
-	self.acc = admin_clerk_client.AdminClerkClient(self.csc, self.verbose)
 
 	# get all the servers we are to keep tabs on
 	self.prepare_keys()
