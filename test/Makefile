@@ -55,20 +55,31 @@ olddbs:
 	@ echo "Tests are running. Do a	   killall -9 longtest	  to stop"
 	@ echo "   It takes a bit for them to die off"
 
+data:
+	if [ ! -d data ] ; then mkdir data ; fi
+	touch data/null0.dat
+	echo short > data/short1.dat
+	dd if=/dev/zero of=data/null1.dat count=10
+	dd if=/dev/zero of=data/null2.dat count=20
+	dd if=/dev/zero of=data/null3.dat count=60
+	ecmd random-file --size=1024   --file=data/ran1.dat
+	ecmd random-file --size=32768  --file=data/ran2.dat
+	ecmd random-file --size=131072 --file=data/ran3.dat
 
-readers:
+jobs:
 	for d in 1 2 3 4 5 6 7 8 9 ; do \
 		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
 		( cd $$d; rm -f *; \
-			cp $$ENSTORE_DIR/test/reader . ;); \
+			cp $$ENSTORE_DIR/test/longtest . ;\
+			cp $$ENSTORE_DIR/test/reader . ; \
+			cp $$ENSTORE_DIR/test/writer . ; ); \
 	done
 
 stop:
 	find . -name '*.pids' -exec $$ENSTORE_DIR/bin/pidkill {} \;
 
 clean:
-	- pidkill $$ENSTORE_DIR/test/longtest_pids
+	find . -name '*.pids' -exec $$ENSTORE_DIR/bin/pidkill {} \;
 	@ $$ENSTORE_DIR/bin/enstoreClean
 	for d in 1 2 3 4 5 6 7 8 9 data ; do rm -rf $$d ; done
 	rm -f files.in
-	rm -f longtest_pids
