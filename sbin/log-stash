@@ -47,7 +47,11 @@ find . -type f -name "LOG*" -exec gzip {} \; 2>/dev/null
 
 # now do it again, but this time for the aml2 robot logs
 if [ -z "${2-}" ] ; then
-  LOGS=/fnal/ups/prd/www_pages/enstore/aml2log
+  if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+    LOGS=/diska/aml2-log
+  else
+    LOGS=/fnal/ups/prd/www_pages/enstore/aml2log
+  fi
 else
   LOGS=$2
 fi
