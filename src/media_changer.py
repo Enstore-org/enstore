@@ -117,7 +117,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         pass
 	
     def getNretry(self) :
-        numberOfRetries = 2
+        numberOfRetries = 10
         return numberOfRetries
 
     # Do the forking and call the function which will be load or unload
@@ -162,14 +162,14 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, 'mcDoWork>>> '+ticket['function'])
                 #Trace.log(e_errors.INFO, "MOUNT "+repr(ticket))
                 count = self.getNretry()
-                sts=("",0)
+                sts=("",0,"")
 		while count > 0 and sts[0] != e_errors.OK:
 		    count = count - 1
-                    Trace.trace(10, 'mcDoWork >>> call fn '+repr(count))
 		    sts = function(
 			ticket['vol_ticket']['external_label'],
 			ticket['drive_id'],
 			ticket['vol_ticket']['media_type'])
+                    Trace.trace(10, 'mcDoWork >>> called fn '+repr(count)+' '+repr(sts[2]))
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
                 Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"			# so dispatching_worker calls WorkDone
