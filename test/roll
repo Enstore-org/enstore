@@ -26,13 +26,13 @@ else
 fi
 
 if [ $writem -eq 1 ] ; then
-   for d in 1 2 ; do
+   for d in 1 2 3; do
       (cd $d; echo starting writer in `pwd`; rm -f writer.output; ./writer /pnfs/enstore/$place ../data.in >writer.output 2>&1 &)
    done
 fi
 
 if [ $readem -eq 1 ] ; then
-   for d in 1 2 ; do
+   for d in 1 2 3; do
       (cd $d; echo starting reader in `pwd`; rm -f reader.output; ./reader /pnfs/enstore/$place  >reader.output 2>&1 &)
    done
 fi
