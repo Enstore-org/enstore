@@ -382,6 +382,7 @@ def bind_volume( self, external_label ):
     return e_errors.OK
 
 def do_fork( self, ticket, mode ):
+    global vcc, fcc
     # get vcc and fcc for this xfer
     fcc = file_clerk_client.FileClient( csc, 0,
 					ticket['fc']['address'][0],
@@ -402,7 +403,6 @@ def do_fork( self, ticket, mode ):
     return None
 
 def forked_write_to_hsm( self, ticket ):
-    global vcc, fcc
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
     if mvr_config['do_fork']: do_fork( self, ticket, 'w' )
