@@ -460,12 +460,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         except KeyError, msg:
             self.malformed_ticket(ticket, "[lm][address]")
             return
-        
-        ticket = self.format_lm_ticket(state=ERROR, error_info=(e_errors.MOVER_BUSY, ticket))
+        ticket = self.format_lm_ticket(state=ERROR, error_info=(e_errors.MOVER_BUSY, None),
+                                       returned_work=ticket)
         self.udpc.send_no_wait(ticket, lm_address)
 
         
-    #################################
     def read_client(self):
         Trace.trace(10, "read_client,  bytes_to_read=%s" % (self.bytes_to_read,))
 
@@ -566,8 +565,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.update_after_writing():
                 self.transfer_completed()
 
-                
-    ###################
 
     def read_tape(self):
         Trace.trace(10, "read_tape, bytes_to_read=%s" % (self.bytes_to_read,))
@@ -652,8 +649,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.bytes_written == self.bytes_to_write:
             self.transfer_completed()
 
-    ########################################################################
-    ########################################################################
         
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm( self, ticket ):
@@ -972,7 +967,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "connect_client:  %s %s %s"%(exc, msg, traceback.format_tb(tb)))
             return None, None 
     
-    def format_lm_ticket(self, state=None, error_info=None):
+    def format_lm_ticket(self, state=None, error_info=None, returned_work=None):
         status = e_errors.OK, None
         work = None
         if state is None:
@@ -999,7 +994,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             "address": self.address,
             "external_label":  self.current_volume,
             "current_location": loc_to_cookie(self.current_location),
-            "read_only" : 0, ###XXX todo: multiple drives on one scsi bus, write locking  
+            "read_only" : 0, ###XXX todo: multiple drives on one scsi bus, write locking
+            "returned_work": returned_work,
             "status": status, 
             "volume_family": self.volume_family,
             "volume_status": self.volume_status,
