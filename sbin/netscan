@@ -307,6 +307,8 @@ right_file /home/enstore/enstore/etc/hosts /etc/hosts
 right_file /home/enstore/enstore/etc/sudoers /etc/sudoers
 chmod 440 /etc/sudoers # just force this
 right_file /home/enstore/enstore/bin/enstore-boot /etc/rc.d/init.d/enstore-boot
+chmod 755 /etc/rc.d/rc.local # just force this
+chmod 755 /etc/rc.d/rc.sysinit # just force this
 chmod 755 /etc/rc.d/init.d/enstore-boot # just force this
 right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
 right_file /home/enstore/enstore/etc/enstore.bashrc /home/enstore/.bashrc
