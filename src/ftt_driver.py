@@ -26,6 +26,7 @@ class FTTDriver(driver.Driver):
         self._start_time = None
         self._total_time = 0
         self._rate = self._last_rate = 0
+        self._cleaning_bit = 0
         
     def open(self, device=None, mode=None, retry_count=10):
         """Open will return 1 if there's a volume, 0 if there is no volume
@@ -47,6 +48,7 @@ class FTTDriver(driver.Driver):
                           ## loss of location information XXX
             ###{0:ftt.RDONLY, 1:ftt.RDWR}[mode])
 
+                
         self.mode = mode
         self._last_rate = 0
         self._rate = 0
@@ -334,6 +336,15 @@ class FTTDriver(driver.Driver):
         """returns a tuple (overall rate, instantaneous rate)"""
         return self._rate, self._last_rate
     
+    def get_cleaning_bit(self):
+        clean = 0
+        stats = self.ftt and self.ftt.get_stats()
+        if stats:
+            try:
+                clean = int(stats[ftt.CLEANING_BIT])
+            except:
+                pass
+        return clean
     
         
 if __name__ == '__main__':

@@ -51,3 +51,6 @@ class Driver:
     def rates(self):
         raise NotImplementedError
     
+    def get_cleaning_bit(self):
+        return 0
+    

@@ -407,12 +407,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt_driver
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
-            self.maybe_clean()
             have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
+            
+
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
             self.config['serial_num'] = stats[ftt.SERIAL_NUM]
             self.config['vendor_id'] = stats[ftt.VENDOR_ID]
+
+            if self.maybe_clean():
+                have_tape = 0
+            
             if have_tape == 1:
                 status = self.tape_driver.verify_label(None)
                 if status[0]==e_errors.OK:
@@ -957,7 +962,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = OFFLINE
         else:
             self.state = HAVE_BOUND
-            self.maybe_clean()
+            if self.maybe_clean():
+                state = IDLE
         now = time.time()
         self.dismount_time = now + self.delay
         self.update(state=ERROR, reset_timer=1)
@@ -985,35 +991,20 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = OFFLINE
         else:
             self.state = HAVE_BOUND
-            self.maybe_clean()
+            if self.maybe_clean():
+                self.state = IDLE
         
     def maybe_clean(self):
-        needs_cleaning = 0
-        have_tape = 0
-        if self.driver_type == 'FTTDriver':
-            ##XXX
-            import ftt
-            Trace.trace(25, "maybe_clean: open device to get tape statistics")
-            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=1)
-            stats = self.tape_driver.ftt.get_stats()
-            try:
-                self.tape_driver.close()
-            except:
-                pass #XXX
-            cleaning_bit = stats and stats[ftt.CLEANING_BIT]
-            Trace.trace(25, "maybe_clean: got tape statistics, stats=%s, stats[CLEANING_BIT]=%s (%s)" % (
-                stats, cleaning_bit, type(cleaning_bit)))
-
-            if cleaning_bit and cleaning_bit != '0':
-                needs_cleaning = 1
-
+        needs_cleaning = self.tape_driver.get_cleaning_bit()
+        did_cleaning = 0
         if needs_cleaning:
             if not self.do_cleaning:
                 Trace.log(e_errors.INFO, "cleaning bit set but automatic cleaning disabled")
-                return
+                return 0
             Trace.log(e_errors.INFO, "initiating automatic cleaning")
+            did_cleaning = 1
             save_state = self.state
-            if have_tape:
+            if save_state == HAVE_BOUND:
                 self.dismount_volume()
                 save_state = IDLE
             self.state = CLEANING
@@ -1021,7 +1012,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = save_state
             Trace.log(e_errors.INFO, "cleaning complete")
         needs_cleaning = 0
-        
+        return did_cleaning
         
     def update_after_writing(self):
         previous_eod = cookie_to_long(self.vol_info['eod_cookie'])
