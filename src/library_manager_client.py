@@ -417,11 +417,12 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                                option.VALUE_LABEL:"volume",
                                option.USER_LEVEL:option.ADMIN},
         option.START_DRAINING:{option.HELP_STRING:
-                               "start draining library manager",
+                               "start draining library manager; valid library "
+                               "state values are: lock, ignore, pause, "
+                               "noread and nowrite",
                                option.VALUE_TYPE:option.STRING,
                                option.VALUE_USAGE:option.REQUIRED,
-                               option.VALUE_LABEL:
-                               "locked,ingore,pause,noread,nowrite",
+                               option.VALUE_LABEL:"library state",
                                option.USER_LEVEL:option.ADMIN},
         option.STOP_DRAINING:{option.HELP_STRING:
                               "stop draining library manager",
