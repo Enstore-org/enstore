@@ -5,7 +5,7 @@ Enstore Data Storage System
 <p>
 <font size=+3><b>Table of Contents</b></font>
 <ul>
-<li><a href="#overview">1 Overview of Enstore Architecture</a>
+<li><a href="#overview">1 Enstore Architecture</a>
 <li><a href="#pnfs">1.1 The DESY <em>Pnfs</em> Namespace</a>
 <li><a href="#pserver">1.1.1 <em>Pnfs</em> Tests</a>
 <li><a href="#pserver">1.1.2 <em>Pnfs</em> Server Installation</a>
@@ -37,6 +37,9 @@ Enstore Data Storage System
 <li><a href="#read_protocol">3.1 Read Protocol</a>
 <li><a href="#write_protocol">3.2 Write Protocol</a>
 <li><a href="#error">4 Error Control</a>
+<li><a href="#eass">4.1 Assumptions about Errors</a>
+<li><a href="#eover">4.2 Error Overview</a>
+<li><a href="#edet">4.3 Detailed Error Discussion</a>
 </ul>
 
 <p>
@@ -193,7 +196,7 @@ were put into <em>pnfs</em>. Approximately 20 <em>pnfs</em> databases were used 
 test, with each database corresponding to existing HPSS "experimental"
 separation. [That is, D0 had its own database, SDSS had its own, and so
 forth.] Name lookup was done on each database simultaneously from 3
-machines (IRIX, Linux, and AIT) for several days.  <em>Pnfs</em> performed
+machines (IRIX, Linux, and AIX) for several days.  <em>Pnfs</em> performed
 flawlessly and was able to provide names at a rate of 3-15 names/S. The
 database can be further optimized, but this performance is already adequate
 for Enstore.
@@ -334,15 +337,15 @@ file systems and run any tasks as it normally would.
 1.1.4 pcmd: Enstore related <em>pnfs</em> commands
 </h3>
 
-All non-I/O unix commands that operate on normal filesystems can also
+All non-I/O Unix commands that operate on normal file systems can also
 (typically) be used on the <em>pnfs</em> namespace. DESY has provided
 several examples on their web pages and tools in their <em>pnfs</em>
 package that allow users to view and control the special features of
 <em>pnfs</em>.  Enstore has tailored these tools into a single script,
 called pcmd, that allows users to control, manipulate and query pnfs files
-that enstore creates. The pcmd tool is distributed along with the encp
+that Enstore creates. The pcmd tool is distributed along with the encp
 client. It is almost entirely written in shell, and therefore, it is
-standalone and doesn't require any other products, including python.
+stand alone and doesn't require any other products, including python.
 <p>
 Commonly used commands are:
 <ul>
@@ -430,13 +433,13 @@ Commonly used commands are:
    <li>pcmd {tagcat|tagmore|tagless} tag  directory <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the tag in the directory
     	                        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;it is easier to use pcmd library|file_family|file_family_width  commands
 
-   <li>pcmd enstore_state          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists whether enstore is still accepting transfers
+   <li>pcmd enstore_state          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists whether Enstore is still accepting transfers
 	<pre>
 	$ pcmd enstore_state
 	Enstore enabled
 	</pre>
 	
-   <li>pcmd pnfs_state mount-point <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists whether pnfs mountpoint is up *** Not fully functional yet ***
+   <li>pcmd pnfs_state mount-point <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists whether pnfs mount point is up *** Not fully functional yet ***
 	<pre>
 	$ pcmd pnfs_state /pnfs/grau/ait
 	Pnfs up
@@ -449,7 +452,7 @@ Don't use these unless you know what you are doing:
 
    <li>pcmd rm file layer          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;deletes (clears) named layer of the file
 
-   <li>pcmd cp unixfile file layer <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;copies unix file to named layer of file
+   <li>pcmd cp unixfile file layer <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;copies Unix file to named layer of file
 
    <li>pcmd size file size         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets the size of the file
 
@@ -1958,330 +1961,1102 @@ The Mover tells the Media Changer to dismount the volume.
 4 Error Control
 </h2>
 
-This section represents our error control development plan -- error control
-was only partially implemented in the prototype. <p>
+<h3><a name="eass">
+4.1 Assumptions about Errors
+</h3>
+Enstore conforms to the (oral) statements made about Run II operating conditions:
+<UL>
+	<LI>No single error when reading a tape is fatal to upper level
+		software.
 
-Error control in Enstore is simple, because much of the system state
-is stored in the <em>encp</em> client. The <em>encp</em> client can be given a
-"retryable error" and will resend data for a write into the system, or the
-system can restart a read from the system from scratch. This retry
-is given a very high priority when it is received by the Library
-Manager -- put on the head of the unassigned work queue.
+	<LI>When writing, errors should be handled by retries
+		on different media.
 
-The Enstore system keeps unassigned read and write requests in a queue of
-unallocated work in the Library Manager. Once a read or write requests'
-turn comes, the Library Manager puts the request in a "work awaiting
-mount" or "work at mover" queue. The reason for this is to track the
-volumes for scheduling : the Library Manager must not command a Mover
-to mount a volume already in use by another Mover. It is the Mover, and not the
-Library Manager which completes requests.
+	<LI>Mover nodes may crash, with minimal disruption of the system.
 
-The three Library Manager queues are:
+	<LI>The system should generate alarms and receive immediate service
+	   when its throughput falls below predefined levels.
+
+	<LI>Routine error conditions should be cleared in normal
+	   business hours.
+
+	<LI>It shall be possible to redirect writes to another library
+	   in case of library failure.
+
+	<LI>The system shall be capable of being monitored by PATROL.
+
+</UL>
+</P>
+
+<h3><a name="eover">
+4.2 Error Overview
+</h3>
+
+<P> Enstore is a distributed system. For a transfer to succeed, many of the
+Enstore processes must be up and running.  Therefore, the servers are
+robust, and run on reliable computers. Nevertheless, it is good to consider
+the the intrinsic ability for the system to recover when a process or
+system running a process crashes.  This is summarized in the table below:
+
+
+<TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
+
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Process</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Where is State?</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Effect of Crash</B></FONT></FONT></TH>
+
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><em>Encp</em> </FONT> </TD>
+<TD> <P><FONT SIZE=2>In the user's <em>encp</em> transfer command </FONT> </TD>
+<TD> <P><FONT SIZE=2>Transfer is canceled/aborted </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Configuration Server </FONT> </TD>
+<TD> <P><FONT SIZE=2>Static configuration file </FONT> </TD>
+<TD> <P><FONT SIZE=2>Wait for restart of server </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>File Clerk </FONT> </TD>
+<TD> <P><FONT SIZE=2>Persistent database table </FONT> </TD>
+<TD> <P><FONT SIZE=2>Wait for restart of server </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Volume Clerk </FONT> </TD>
+<TD> <P><FONT SIZE=2>Persistent database table </FONT> </TD>
+<TD> <P><FONT SIZE=2>Wait for restart of server </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Library Manager </FONT> </TD>
+<TD> <P><FONT SIZE=2>In-memory lists of what work is queued, and what work
+is at what mover </FONT> </TD>
+<TD> <P><FONT SIZE=2>Recovery of state is not yet implemented. Recovery of state is possible through <em>encp</em> retries. </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Mover </FONT> </TD>
+<TD> <P><FONT SIZE=2>If busy, the current transfer + the current volume </FONT> </TD>
+<TD> <P><FONT SIZE=2><em>Encp</em> retries writes, exits with errors on read. </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2><em>pnfs</em> NFS Servers </FONT> </TD>
+<TD> <P><FONT SIZE=2>DBM database "file meta data" </FONT> </TD>
+<TD> <P><FONT SIZE=2>NFS retry mechanisms </FONT> </TD>
+
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Media Changer </FONT> </TD>
+<TD> <P><FONT SIZE=2>In memory lists of work given to library micro </FONT> </TD>
+<TD> <P><FONT SIZE=2>State refreshed by Enstore UDP retry protocol mechanism </FONT> </TD>
+
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Log Server </FONT> </TD>
+<TD> <P><FONT SIZE=2>None </FONT> </TD>
+<TD> <P><FONT SIZE=2>Logs are not written </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Inquisitor </FONT> </TD>
+<TD> <P><FONT SIZE=2>None </FONT> </TD>
+<TD> <P><FONT SIZE=2>Displays are not refreshed until restart </FONT> </TD>
+
+
+
+</TABLE>
+
+
+<h3><a name="edet">
+4.3 Detailed Error Discussion
+</h3>
+
+<P>Much of the system state is stored within the user's <em>encp</em> client.
+This allows the <em>encp</em> client to retry on a large number of different
+errors. This retry is given a very high priority when it is received
+by the Library Manager so the user doesn't have to wait again for
+their job. It is the Library Manager's responsibility to ensure the
+error is not just repeated; for example, on a volume read error, the
+volume should not go to the same drive on a retry. The Library
+Manager gets the retry, volume and drive information from the ticket.</P>
+
+<P>Many interesting errors are related to cases where the volume
+cannot be written or read, or when it is suspected that volume is
+jammed, etc. More experience is needed with the actual hardware
+before the correct error control behavior is established. In the
+interim, Enstore will make the following working assumptions: 
+</P>
+<UL>
+	<LI>If there is trouble during a load or unload operation, the
+	volume is assumed to be physically jammed. No operations on the
+	drive or the volume until an administrator looks at the problem. 
+	<LI>If several drives have fatal write errors on a volume, the
+	volume will be marked read only. 
+	<LI>If several drives have fatal read errors on a volume, the volume
+	will be marked no access. 
+	<LI><P>If a drive has several fatal errors on different volumes, the
+	drive will be marked offline.</P>
+</UL>
+<DL>
+	<DT><BR>
+	</DT>
+	<DT>The following table describes the error conditions that Enstore
+	handles. 
+	</DT>
+	<DT><BR>
+	</DT>
+	<DT><BR><BR>
+	</DT>
+</DL>
+<TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
+	<TR VALIGN=TOP>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Error Code</B></FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Description</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Administrator</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Mover</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Library Manager</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2><em>encp</em></FONT></FONT></P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Retry</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Volume </FONT></FONT>
+			</P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>State</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Drive </FONT></FONT>
+			</P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>State</FONT></FONT></TH>
+	</TR>
+	<TR>
+		<TH COLSPAN=9 VALIGN=TOP>
+			<P><BR><BR>
+			</P>
+			<P><BR>
+		</TH>
+	</TR>
+	<TR>
+		<TH COLSPAN=9 VALIGN=TOP>
+			<P><FONT COLOR="#ff3333"><FONT SIZE=2>Volume Write Errors</FONT></FONT></TH>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_NOTAPE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Request volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD> 
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_TAPEBUSY</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Requested volume is in another drive. Enstore bug,
+			or some other system has mounted volume or library micro put
+			volume elsewhere. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_DRIVEBUSY</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>A volume is already in drive. Enstore bug or
+			misconfiguration. Note: mover waits for automatic cleaning tape to
+			be ejected. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and configuration in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_BADMOUNT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mount failure or load operation failed. Must
+			assume jammed volume. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_BADSPACE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>EOD cookie does not produce EOD. Wrong volume,
+			Enstore bug or drive space error. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_ERROR</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error writing data block or file mark. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive in morning </FONT>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>If several errors occur with different volumes,
+			offline the drive.</FONT></P>
+			<P><FONT SIZE=2>If several errors occurs with different drives,
+			mark volume as read only </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><BR><BR>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Read Only</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_EOT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Hit EOT while writing data block or file mark. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as full and read only </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Read only </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_UNLOAD</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error unloading volume from drive. Must assume
+			jammed volume. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Not involved </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_UNMOUNT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error unmounting volume. Volume is hanging in the
+			drive. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Not involved </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_NOBLANKS</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No more blank volumes. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Administrator should be paged.</FONT></P>
+			<P><FONT SIZE=2>DAQ should switch to alternate library. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_MOVER_CRASH</B></FONT></TD>
+		<TD>
+			<P><FONT SIZE=2>If mover is connected to an <em>encp</em>, <em>encp</em> will notice
+			its sockets being torn down prematurely. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as no access, retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=9 VALIGN=TOP>
+			<P><BR><BR>
+			</P>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR>
+		<TH COLSPAN=9>
+			<P><FONT COLOR="#ff3333"><FONT SIZE=2><B>Volume Read Errors</B></FONT></FONT></TH>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_NOTAPE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Request volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
+
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_TAPE_BUSY</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Requested volume is in another drive. Enstore bug,
+			or some other system has mounted volume or library micro put
+			volume elsewhere. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_DRIVEBUSY</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>A volume is already in drive. Enstore bug or
+			misconfiguration. Note: mover waits for automatic cleaning tape to
+			be ejected. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and configuration in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_BADMOUNT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mount failure or load operation failed. Must
+			assume jammed volume. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_BADLOCATE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Failed space or initial CRC's don't match. Either
+			file location cookie is corrupted, wrong volume in the drive or
+			drive cannot space properly. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_ERROR</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error reading data block. Run of the mill read
+			error. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive in morning </FONT>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>If several errors occur with different volumes,
+			offline the drive.</FONT></P>
+			<P><FONT SIZE=2>If several errors occurs with different drives,
+			mark volume as read only </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes</FONT></P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><BR><BR>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_COMP_CRC</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>CRC mismatch Drive and the volume are suspicious.
+			Corrupt file location cookie, drive space error, wrong volume in
+			the drive, etc. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as no access</FONT></P>
+			<P><FONT SIZE=2>Offline drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_EOT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Hit EOT when reading. Corrupt file location
+			cookie, drive space error, or wrong volume in the drive. Should
+			have hit an EOF. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as no access</FONT></P>
+			<P><FONT SIZE=2>Offline drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_EOD</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Hit EOD when reading. Corrupt file location
+			cookie, drive space error, or wrong volume in the drive. Should
+			have hit an EOF. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as no access</FONT></P>
+			<P><FONT SIZE=2>Offline drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_UNLOAD</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error unloading volume from drive. Must assume
+			jammed volume. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Not involved </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_UNMOUNT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error when unmounting volume. Volume is hanging in
+			the drive. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Not involved </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_MOVER_CRASH</B></FONT></TD>
+		<TD>
+			<P><FONT SIZE=2>If a Mover is connected to an <em>encp</em>, <em>encp</em> will
+			notice its sockets being torn down prematurely. The volume is tied
+			up at a mover. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume and drive in the morning </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No Access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=9 VALIGN=TOP>
+			<P><BR><BR>
+			</P>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR>
+		<TH COLSPAN=9>
+			<P><FONT COLOR="#ff3333"><FONT SIZE=2><B>Other Errors</B></FONT></FONT></TH>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>ENCP_GONE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>User has gone away while request is queued. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Unilateral unbind </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>TCP_HUNG</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>It appears that the data TCP link is hung.</FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check with user in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Compute an anticipated transfer time for every
+			socket operation and abort the transfer if the actual transfer
+			takes more than three times the expected value. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>LM_CRASH</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Library Manager crashes, and loses its queue of
+			pending work. The <em>encp's</em> will never be called back, and will wait
+			forever. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Ping Library Manager, every N mins (30) to see if
+			its request has gotten lost. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>MOVER_CRASH</B></FONT></TD>
+		<TD>
+			<P><FONT SIZE=2>Mover is idle. The system degrades. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive in morning </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Remove from list when mover fails to respond to
+			summon </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+</TABLE>
+<P><BR><BR>
+</P>
+
 <ul>
-<li>Unscheduled work
-<li>work awaiting a volume mount
-<li>work at a Mover.
-</ul>
-<p>
-It is important to keep these queues consistent. Volume and reading
-errors are handled in the Mover, and can be handled by detailed design in
-the Mover.
-<p>
-Many interesting errors are related to when the volume cannot be written
-or read, or when it is suspected that volume is jammed, etc.
-<p>
-We need experience with the actual hardware. In the interim we make the
-following assumptions:
-<ul>
-<li>
-If we have trouble during a load or unload operation, we assume that
-the volume is physically jammed. Until a human looks at the problem, we
-will permit no future operations on the drive or the volume.
-<li>
-If several drives have fatal errors on writing a volume, we will not write on that
-volume anymore.
-<li>
-If a drive has errors on "consecutive" volumes, we should "stop
-using the drive". The number of errors allowed should be picked
-up through the Mover configuration, since we may have "more
-temperamental" and "less temperamental" drives, we may want to
-configure this parameter for each Mover individually.
-<li>
-If volume reads or spaces give error, we should track the errors. If
-the recent history of the volume shows many errors, we should mark the
-volume "no access" and bring it to the attention of an administrator.
-Therefore, the Volume Clerk needs to track the "recent history" of
-errors, and have a per-volume figure of merit which will mark the volume
-for no access, given many recent errors.
-<li>
-Library Manager:
-<br>
-Two Features should be added to the tickets to support retries.
-<ul>
-<li>Tickets should be marked as retries or not by <em>encp</em>. Retries go
-to the head of the queue.
-<li>Tickets should be marked with an "avoid this mover" field for read
-retries, so the same drive can be avoided.
-</ul>
-<em>encp</em> should generate these fields appropriately, and the queuing logic
-in the Library Manager ought to implement the logic associated with these
-fields.
-<p>
-</ul>
-The Enstore system should check the read/write state of a volume read very
-early when the request is queued, to give a prompt error if the access
-is not allowed. However, an error may change the state of a volume while
-its corresponding work is in the Library Manager queue. Therefore, a
-late check is required. The system already performs a "late check"
-for writes, since a volume must be selected for every file. The system
-needs a "late check" for reads. Failing a late check means contacting
-<em>encp</em> to give it the bad news. The contact should be done in the Mover,
-not in the Library Manager, just before the Mover goes off to mount the volume
-for read, since the Mover is better able to tolerate a very slow or
-non-existent <em>encp</em>. It is good to contact
-<em>encp</em> before a mount, too, since people will ^C <em>encp</em>'s and
-it is best to discover this before incurring the expense of a mount.
-<ul>
-<li>
-"Freeze the volume in the drive" means:
-<ul>
-<li>Not unloading the volume from the drive
-<li>Freezing the volume
-<li>Off-lining the Drive
-</ul>
-<li>
-"Freezing the volume" means:
-<ul>
-<li>mark the volume as "system noaccess"
-<li>log that this happened and let an administrator look at the
-problem in the morning.
-<li><em>Encp</em> shall not retry.
-</ul>
-<li>
-"Off-lining the drive" means:
-<ul>
-<li>Preserving as much state as possible.
-<li>Writing a complete description in an error log.
-<li>Leaving the problem until business hours unless the capacity of
-the system falls below a threshold.
-</ul>
+  <li> "Freeze the volume in the drive" means:
+       <ul>
+	 <li>Not unloading the volume from the drive
+	 <li>Freezing the volume
+	 <li>Offlining the drive
+       </ul>
+  <li> "Freezing the volume" means:
+       <ul>
+	 <li>mark the volume as "system noaccess"
+	 <li>log that this happened and let an administrator look at the
+	      problem in the morning.
+	 <li><em>Encp</em> shall not retry.
+       </ul>
+  <li> "Offlining the drive" means:
+       <ul>
+	 <li>Preserving as much state as possible.
+	 <li>Writing a complete description in an error log.
+	 <li>Leaving the problem until business hours unless the capacity of
+	      the system falls below a threshold.
+       </ul>
 </ul>
 
-<table>
-<th><font size=+1><b>Volume Write Errors</b></font>
-<tr>
-<td valign=top><b>WRITE_NOTAPE</b>
-<td valign=top>"no such tape" error in library mount failure on write.
-    If this happens, the volume data base is inconsistent with reality.
-    Mover shall freeze the volume.
-    <em>Encp</em> shall retry.
-<tr>
-<td valign=top><b>WRITE_TAPEBUSY</b>
-<td valign=top>"The Media Changer says that the volume is in another drive"
-    Enstore has a bug, or some other system has mounted the volume or
-    library micro put the volume somewhere else.
-    Mover shall freeze the volume.
-    <em>Encp</em> shall retry.
-<tr>
-<td valign=top><b>WRITE_DRIVEBUSY</b>
-<td valign=top>"The Media Changer says that some other volume is in the drive"
-    Need to investigate if this could ever be a clean volume otherwise a bug in
-    Enstore or a misconfiguration.     Mover shall offline the drive.
-    <em>Encp</em> shall retry.
-<tr>
-<td valign=top><b>WRITE_BADMOUNT</b>
-<td valign=top>Other mount failure on write, or load operation failed.
-    Must assume jammed volume.
-    Mover shall freeze the volume in the drive.
-    <em>Encp</em> shall retry
-<tr>
-<td valign=top><b>WRITE_BADSPACE</b>
-<td valign=top>"EOD cookie does not produce EOD"
-    Wrong volume, software bug or drive space error.
-    Mover shall freeze the volume in the drive.
-    <em>Encp</em> shall retry.
-<tr>
-<td valign=top><b>WRITE_ERROR</b>
-<td valign=top>"Error when writing data block or file mark"
-    Run of the mill write error.
-    If the drive has had many recent errors, Mover shall
-    "offline the drive"
-    The volume shall be marked read-only.
-    <em>Encp</em> shall retry.
-<tr>
-<td valign=top><b>WRITE_EOT</b>
-<td valign=top>"Hit EOT while writing data block or file mark"
-    Hit EOT. Mover shall mark volume full.
-    <em>Encp</em> shall retry.
-<tr>
-<td valign=top><b>WRITE_UNLOAD</b>
-<td valign=top>"error when unloading volume from drive"
-    Must assume that the volume is physically jammed.
-    Mover shall freeze the volume in the drive.
-    <em>Encp</em> shall retry.
-    No <em>encp</em> is associated with the volume at this time.
-<tr>
-<td valign=top><b>WRITE_UNMOUNT</b>
-<td valign=top>"Media Changer gives error when unmounting volume"
-    Should not happen. Maybe the volume is hanging in the drive. Does no harm.
-    Mover shall freeze the volume in the drive.
-    No <em>encp</em> is associated with the volume at this time.
-<tr>
-<td valign=top><b>WRITE_NOBLANKS</b>
-<td valign=top>The Volume Clerk has no blank volumes to give.
-    The requests shall return an error.
-    (do not "wait forever" -- DAQ should switch to an alternate library)
-    An administrator shall be paged.
-<tr>
-<th><font size=+1><b>Volume Read Errors</b></font>
-<tr>
-<td valign=top><b>READ_NOTAPE</b>
-<td valign=top>"No such volume in library" mount failure on read.
-    If this happens, the volume data base is inconsistent with reality.
-    Mover shall freeze the volume.
-<tr>
-<td valign=top><b>READ_TAPE_BUSY</b>
-<td valign=top>"The Media Changer says that the volume is in another drive"
-    Enstore has a bug, or some other system has mounted the volume or
-    the robotic software put the volume somewhere else.
-    Mover shall freeze the volume.
-<tr>
-<td valign=top><b>READ_DRIVEBUSY</b>
-<td valign=top>"The Media Changer says that some other volume is in the drive"
-    Need to investigate if this could ever be a clean volume otherwise a bug in
-    Enstore or a misconfiguration.     Mover shall offline the drive.
-    <em>Encp</em> shall retry.
-<tr>
-<td valign=top><b>READ_BADMOUNT</b>
-<td valign=top>Other Mount failure on read, or load operation failed.
-    We have to assume that the volume is jammed in the drive.
-    Mover shall freeze the volume in the drive.
-<tr>
-<td valign=top><b>READ_BADLOCATE</b>
-<td valign=top>Failed space or initial CRC's don't match on initial read.
-    We have attempted to space to a file on the volume. Either the file
-    location
-    cookie is somehow corrupted, we have the wrong volume in the drive or
-    the volume drive cannot space properly.
-    Mover shall freeze the volume in the drive.
-    <em>Encp</em> shall not retry
-<tr>
-<td valign=top><b>READ_ERROR</b>
-<td valign=top>Error when reading data block.
-    Run of the mill read error.
-    Mover shall consider the recent error history of the drive and the volume.
-    If the drive has had many recent errors, Mover shall offline the drive.
-    <em>Encp</em> shall retry.
-    If the volume has had many recent errors, Mover shall freeze the volume.
-    <em>Encp</em> shall not retry.
-    If the volume has had few recent errors,
-    Mover shall fail the transfer,
-    <em>encp</em> shall retry, and annotate that this Mover shall be avoided.
-<tr>
-<td valign=top><b>READ_COMP_CRC</b>
-<td valign=top>Failure of complete CRC.
-    This needs investigating, as it should not happen. The drive and the volume
-    are suspicious. Corrupt file location cookie, drive space error, wrong
-    volume in the drive, etc.
-    Mover shall freeze the volume in the drive.
-    <em>Encp</em> shall not retry.
-<tr>
-<td valign=top><b>READ_EOT</b>
-<td valign=top>Hit EOT when reading.
-    Should not happen. Corrupt file location cookie, drive space error, or
-    wrong volume in the drive. Should have hit an EOF.
-    Mover shall freeze the volume in the drive.
-    <em>Encp</em> shall not retry.
-<tr>
-<td valign=top><b>READ_EOD</b>
-<td valign=top>Hit EOD when reading.
-    Should not happen. Corrupt file location cookie, drive space error, or
-    wrong volume in the drive. Should have hit an EOF.
-    Mover shall freeze the volume in the drive.
-    <em>Encp</em> shall not retry.
-<tr>
-<td valign=top><b>READ_UNLOAD</b>
-<td valign=top>Error when unloading volume.
-    Must assume that the volume is physically jammed.
-    Mover shall freeze the volume in the drive.
-    No <em>encp</em> is associated with the volume at this time.
-<tr>
-<td valign=top><b>READ_UNMOUNT</b>
-<td valign=top>Error from Media Changer when unloading volume.
-    Should not happen. Maybe the volume is hanging in the drive. Does no harm.
-    Mover shall freeze the volume in the drive.
-    No <em>encp</em> is associated with the volume at this time
-<tr>
-<th><font size=+1><b>Other Errors</b></font>
-<tr>
-<td valign=top><b>ENCP_GONE</b>
-<td valign=top><em>Encp</em> has gone away while request is queued.
-    The Mover contacts <em>encp</em> to ping it before a mount, and if
-    <em>encp</em> is not there, the Mover does not go on to contact the Media
-    Changer, but instead returns a UNILATERAL_UNBIND to the Library Manager.
-<tr>
-<td valign=top><b>TCP_HUNG</b>
-<td valign=top>DESY reports that
-<ul>
-<li>sometimes machines can crash....
-<li><em>encp</em> processes can be killed in a way that...
-<li><em>encp</em> client's disks many fill up ...
-<li>etc...
-</ul>
-which are all seen as the data TCP link is seen to
-just hang.
-<p>
-DESY's treatment is "harsh" -- They compute an anticipated transfer
-time for every socket operation and abort the transfer if the
-actual transfer takes more than several times the expected value.
-Right now, Enstore does not consider this to be an error and just
-waits. However, we are vulnerable to disaster. It is possible to see
-circumstances where we might tie all the Movers up if, say, one clients
-system's disk fills up.
-<tr>
-<td valign=top><b>LM_CRASH</b>
-<td valign=top>If a Library Manager crashes, and loses its queue of pending work,
-    the <em>encp</em>'s will never be called back, and will wait
-    forever.
-    This is a problem. A basis for the solution is for a waiting
-    <em>encp</em> to ping its Library Manager,
-    every 30 mins to see if its request has gotten lost.
-    It would also be good if a --timeout switch was available to
-    <em>encp</em>,
-    since the users may wish to get an error rather than suffer a long
-    delay.
-<tr>
-<td valign=top><b>MOVER_CRASH</b>
-<td valign=top>
-Case 1) If a Mover is connected to an <em>encp</em>, then <em>encp</em> will
-notice its sockets being torn down prematurely. <em>encp</em> shall retry. This
-is not good enough.
-<p>
-For reads, the volume is tied up because the Library Manager has the volume as
-being "at a mover". The retry will be hung in the Library Manager queue
-because the Library Manager is unaware of the Mover crash.
-<p>
-For writes, 1 is effectively deducted from the file family width,
-since the Library Manager is unaware of the Mover crash.
-<p>
-This is all a bug, the minimal effect of a Mover crash should be:
-<ul>
-<li>
-Since the status of the volume is unknown, the status should be akin
-to "freeze drive and volume". However, subsequent reads will not produce an
-error, but will be queued until the Mover is restarted.
-<li>
-Allow writes to continue on a different volume of the same file
-family, without affecting the "width".
-</ul>
-<p>
-Case 2) Mover has a volume, but is not associated with an <em>encp</em> and
-crashes.
-Same problems as case 1) but <em>encp</em> will notice.
-The total amount of time spent in this possibility is small compared to
-the time corresponding to case 1 and case 3.
-<p>
-Case 3) Mover is idle.
-This is O.K. The system degrades as specified.
-</table>
 </body>
+</html>
