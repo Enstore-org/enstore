@@ -15,6 +15,7 @@ class GenericDriver:
         self.device = device
         self.remaining_bytes = remaining_bytes
            # When a volume is ceated, the system sets EOD cookie to "none"
+        print "init eod",eod_cookie
         if eod_cookie == "none" :
             self.eod = 0
         else:
@@ -56,17 +57,18 @@ class  FTTDriver(GenericDriver) :
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
         self.blocksize = 65536
+        ETape.ET_Rewind("", self.device)
         self.set_position()
 
     def load(self):
-        ETape.ET_Rewind("", self.device)
+        pass
 
     # This may be a mixin where the position is determined from the drive
     def set_position(self):
         self.position = 0;
 
     def open_file_read(self, file_location_cookie) :
-        loc = eval(file_location_cookie[0])
+        loc, size  = eval(file_location_cookie)
         move = loc - self.position
         if move < 0 :
            move = move-1
@@ -105,7 +107,6 @@ class  FTTDriver(GenericDriver) :
           self.wr_err = string.atoi(stats[2])
         else :
           self.wr_err = 0;
-        print repr(self.bod), repr(stats[3])
         return `(self.bod, stats[3])`
 
     def write_block(self, data):
