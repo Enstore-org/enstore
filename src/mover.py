@@ -22,6 +22,9 @@ import fcntl, FCNTL
 
 import setpath
 import generic_server
+import event_relay_client
+import monitored_server
+import enstore_constants
 import interface
 import dispatching_worker
 import volume_clerk_client
@@ -415,6 +418,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.init(logname)
         Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
+	# how often to send an alive heartbeat to the event relay
+	self.alive_interval = monitored_server.get_alive_interval(self.csc,
+								  name,
+								  self.config)
+
         self.address = (self.config['hostip'], self.config['port'])
 
         self.do_eject = 1
@@ -564,6 +572,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.add_interval_func(self.update, self.update_interval) #this sets the period for messages to LM.
         self.set_error_handler(self.handle_mover_error)
+	# start our heartbeat to the event relay process
+	self.erc.start_heartbeat(self.name, self.alive_interval)
         ##end of __init__
 
     def nowork(self, ticket):
