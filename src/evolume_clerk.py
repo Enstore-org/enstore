@@ -1354,6 +1354,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 ticket["status"] = (e_errors.KEYERROR, msg)
                 Trace.log(e_errors.ERROR, msg)
                 self.reply_to_caller(ticket)
+                return
             record["status"] = (e_errors.OK, None)
             self.reply_to_caller(record)
             return
