@@ -964,9 +964,10 @@ class BpdMonthDataFile(EnPlot):
 	total_w_bpd = 0.0
 	for bpd in bpd_l:
 	    fields = string.split(string.strip(bpd))
-	    total_bpd = total_bpd + float(fields[1])
-	    num_xfers = num_xfers + long(float(fields[1])/float(fields[6]))
-	    total_w_bpd = total_w_bpd + float(fields[3])
+            if len(fields) > 1:
+                total_bpd = total_bpd + float(fields[1])
+                num_xfers = num_xfers + long(float(fields[1])/float(fields[6]))
+                total_w_bpd = total_w_bpd + float(fields[3])
 	return total_bpd, num_xfers, total_w_bpd
 
     # make the bytes per day plot file
