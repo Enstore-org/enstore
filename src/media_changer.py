@@ -19,7 +19,6 @@ import sys
 import time				# sleep
 import popen2
 import string
-import socket
 
 # enstore imports
 import configuration_client
@@ -28,6 +27,7 @@ import generic_server
 import interface
 import Trace
 import e_errors
+import hostaddr
 
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
@@ -328,27 +328,10 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
     def getLocalHost(self):
         "get the hostname of the local machine"
         fnstatus = 'OK'
-	result = socket.gethostbyaddr(socket.gethostname())
-        Trace.log(e_errors.INFO, "Shelf gLH Rslt=%s" % result[0] )
-	localH = result[0]
-	index = string.find(localH,".")
-	if index > 0 :
-	    self.localHost = localH
-	elif len(result[1]) > 0 :
-	    for localH in result[1] :
-                Trace.trace(10, "Shelf gLH Rslt[1]=%s" % localH )
-	        index = string.find(localH,".")
-                if index > 0 :
-	            self.localHost = localH
-		    break
-            else :
-	        fnstatus = 'ERRNoLoHN'
-		return fnstatus
-	else :
-	    fnstatus = 'ERRNoLoHN'
-	    return fnstatus
+	result = hostaddr.gethostinfo()
+        self.localHost = result[0]
         return fnstatus
-	    
+        
     def checkRemoteConnection(self):
 	"check to see if remote host is there"
         fnstatus = 'OK'
