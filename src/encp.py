@@ -4466,6 +4466,19 @@ class EncpInterface(option.Interface):
                           option.DEFAULT_TYPE:option.INTEGER,
                           option.DEFAULT_VALUE:1,
                           option.USER_LEVEL:option.USER,},
+        option.EPHEMERAL:{option.HELP_STRING:
+                          "Use the ephemeral file family (writes only).",
+                          option.DEFAULT_TYPE:option.STRING,
+                          option.DEFAULT_VALUE:"ephemeral",
+                          option.DEFAULT_NAME:"output_file_family",
+                          option.USER_LEVEL:option.USER,},
+        option.FILE_FAMILY:{option.HELP_STRING:
+                            "Specify an alternative file family to override "
+                            "the pnfs file family tag (writes only).",
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_NAME:"output_file_family",
+                            option.USER_LEVEL:option.USER,},
         option.GET_BFID:{option.HELP_STRING:
                          "Specifies that dcache requested the file and that "
                          "the first 'filename' is really the file's bfid.",
