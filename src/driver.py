@@ -21,7 +21,7 @@ class GenericDriver:
         self.device = device
         self.remaining_bytes = remaining_bytes
 	# When a volume is ceated, the system sets EOD cookie to "none"
-	self.set_eod()
+	self.set_eod( eod_cookue )
         self.wr_err = 0
         self.rd_err = 0
         self.wr_access = 0
