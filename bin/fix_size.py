@@ -18,7 +18,7 @@ class FileList:
             self.file=sys.argv[1]
         else:
             # file contains list of pnfs files
-            self.file_list = open(s,'r')
+            self.file_list = open(sys.argv[1],'r')
 
     def get_file(self):
         if self.file:
