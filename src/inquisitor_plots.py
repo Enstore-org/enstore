@@ -51,7 +51,7 @@ class InquisitorPlots:
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	mountfile.open('r')
-	mountfile.timed_read(self.start_time, self.stop_time)
+	mountfile.timed_read(self.start_time, self.stop_time, prefix)
 	# now pull out the info we are going to plot from the lines
 	mountfile.parse_data(self.media_changer, prefix)
         mountfile.close()
@@ -103,7 +103,7 @@ class InquisitorPlots:
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	encpfile.open('r')
-	encpfile.timed_read(self.start_time, self.stop_time)
+	encpfile.timed_read(self.start_time, self.stop_time, prefix)
 	# now pull out the info we are going to plot from the lines
 	encpfile.parse_data(self.media_changer, prefix)
         encpfile.close()
@@ -141,7 +141,7 @@ class InquisitorPlots:
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	sgfile.open('r')
-	sgfile.timed_read(self.start_time, self.stop_time)
+	sgfile.timed_read(self.start_time, self.stop_time, prefix)
 	# now pull out the info we are going to plot from the lines
 	sgfile.parse_data(prefix)
         sgfile.close()
