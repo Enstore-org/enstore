@@ -459,8 +459,9 @@ class Mover:
             else:
                 self.state_display = self.display.create_text(
                     x+self.state_offset.x, y+self.state_offset.y,
-                    font = self.font, text=self.state, fill=self.state_color,
-                    anchor=Tkinter.CENTER)
+                    font = self.font,
+                    text=fit_string(self.font, self.state, self.state_width),
+                    fill=self.state_color, anchor=Tkinter.CENTER)
 
     def draw_timer(self):
         
@@ -1395,7 +1396,8 @@ class Display(Tkinter.Canvas):
         #title="", window_width=None, window_height=None,
         #geometry=None, x_position=None, y_position=None,
         #**attributes):
-        
+
+        self.master = master
         geometry = entvrc_info.get('geometry', None)
         title = entvrc_info.get('title', "")
         animate = int(entvrc_info.get('animate', 1))#Python true for animation.
@@ -1783,10 +1785,9 @@ class Display(Tkinter.Canvas):
             if e_errors.is_ok(rtn):
                 self.csc = csc
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             print "Error processing %s: %s" % (str(command_list),
                                                (str(exc), str(msg)))
 
@@ -1853,13 +1854,14 @@ class Display(Tkinter.Canvas):
         #Remove all references to the connection.
         try:
             del self.connections[mover.name]
-        except KeyError:
+        except (AttributeError, KeyError):
             pass
 
         #Remove the progress bar.
-        mover.draw_progress(None, None)
-        mover.draw_buffer(None)
-        mover.update_rate(None)
+        if mover == None:
+            mover.draw_progress(None, None)
+            mover.draw_buffer(None)
+            mover.update_rate(None)
                 
     def loaded_command(self, command_list):
 
@@ -1883,11 +1885,19 @@ class Display(Tkinter.Canvas):
             time_in_state = 0
         mover.update_state(what_state, time_in_state)
         mover.draw()
-        if what_state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown']:
+        if what_state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown', 'HAVE_BOUND'
+                          'FINISH_WRITE', 'CLEANING']:
             msg="Need to disconnect because mover state changed to: %s"
             if self.connections.get(mover.name, None):
                 Trace.trace(1, msg % (what_state,))
-                del self.connections[mover.name]
+                #del self.connections[mover.name]
+                self.disconnect_command(["mover", mover.name, "Unknown"])
+
+            #Perform some cleanup in case some UDP Mmessages were lost.
+            if what_state in ['IDLE', 'Unknown']:
+                msg="need to unload tape because mover state changed to: %s"
+                Trace.trace(1, msg % (what_state,))
+                mover.unload_tape()
                         
     def unload_command(self, command_list):
 
@@ -1936,11 +1946,10 @@ class Display(Tkinter.Canvas):
             buffer_percent = int(100 * (buffer_size/float(mover.max_buffer)))
             mover.draw_buffer(buffer_percent)
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             pass
-            #exc, msg, tb = sys.exc_info()
+            #exc, msg  = sys.exc_info()[:2]
             #print msg
 
         #Skip media transfers from the network connection update.
@@ -2074,8 +2083,8 @@ class Display(Tkinter.Canvas):
     #overloaded 
     def update(self):
         try:
-            if Tkinter.Tk.winfo_exists(self):
-                Tkinter.Tk.update(self)
+            if self.winfo_exists():
+                Tkinter.Tk.update(self.master)
         except ValueError:
             Trace.trace(1, "Unexpected Tkinter error...ignore")
         except Tkinter.TclError:
@@ -2089,7 +2098,7 @@ class Display(Tkinter.Canvas):
         self.after_idle_id = self.after(30, self.display_idle)
         self.after_reinitialize_id = self.after(3600000, self.reinitialize)
         self.after_reposition_id = None
-        Tkinter.Tk.mainloop(self)
+        self.master.mainloop()
         self.undraw()
         self.clear_display()
         self.stopped = 1
