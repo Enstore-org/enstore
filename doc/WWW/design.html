@@ -1905,6 +1905,22 @@ The Media Changer mounts and dismounts the media into and from the drive
 according to a request from the Mover.  One Media Changer can serve multiple
 drives and libraries.  When the drives are in the robot, the Media Changer
 is the interface to the robotic software.
+<p>
+The Media Changer issues multiple simultaneous commands by forking processes
+that do the work.  A media changer parameter, MAXWORK, limits the maximum number of
+simultaneous outstanding operations.   If the media changer receives 
+mount/dismount requests while there are  MAXWORK unfinished operations then
+the new oprations are ignored, the mover request will time out, and the
+mover will reissue the mount/dismount request.
+<p>
+The reason for the MAXWORK parameter is because when the EMASS robot has an operation for ten minutes
+it reports a timeout failure even though it eventually finishes the operation.  The MAXWORK parameter
+can be set to 0 when it is necessasry to perform work on a robot.
+<p>
+The reason mounts/dismounts requests are ignored when MAXWORK operations are outstanding
+is because it is desired to not keep uneccessary state.
+<p>
+
 <h3><a name="inquisitor">
 1.3.8 Inquisitor
 </h3>
@@ -2342,6 +2358,84 @@ association with the Enstore system. ***
 <hr>
 <h3><a name="server_protocols">
 1.4 Server Protocols
+<p>
+Communications between clients and servers is implemented in the python modules udp_client.py
+and dispatching_worker.py which contain the classes UDPclient and DispatchingWorker respectively.
+For example, a mover is a client of the media_changer; i.e., it sends mount and dismount requests
+to the media_changer and waits for replies.  The client and the server may run on the same or
+different machines and messages, that is requests and replies, are passed using the UDP network protocol.
+UDP is not a guaranteed reliable protocol but the enstore protocols, described later, implement reliability.
+
+<p>
+Generally, each server module has a corresponding client module that implements the client interface
+to the server.   For example, the media_changer has a media_change_client.py module that the mover imports 
+and the mover calls methods like mount and dismount in the media_change_client.
+So,  mover.py imports media_changer_client which encapsulates the media_changer interface and media_changer_client
+imports udp_client which encapsulates the UDP communications.   On the server side, media changer
+imports dispatching_worker which encapsulates server UDP implementation.
+
+<p>
+So far, we have mentioned modules that are imported with the python "import" command.  Within the
+modules, there are python "new" commands that instantiate the corresponding classes.
+
+<p>
+All clients are them selves client of the configuration_server server; so, each time they send
+a request to their server, they send a request to the configuration server to get the address
+of their server.   In this way the configuration server is the only which has a hard coded address
+and when each process is started it is given the IP address of its configuration server.
+<p>
+When a client is instantiated it determines a free UDP port on its machine on which it sends requests
+to its server.
+When the server reads requests it also gets the address (host, port) of the client which sent the request.
+It saves this address and uses it to reply.
+<p>
+Client requests are called tickets and they are python dictionaries.  The items in the dictionary
+are agreed upon between the client and the server.   For example the media changer ticket
+must contain a volume id and a drive id.
+<p>
+One item required in the ticket dictionary is "work".  The "work" item in the dictionary
+is used in dispatching_worker as a method name and a corresponding method in the server
+is called to perform the work that that the client requests.   For example, the media changer
+ticket must contain a "work" item with a value "load"  or "unload" and the media changer
+server has methods named load and unload.
+<p>
+When UDPClient sends the request it first prepends a client identification stamp and a time stamp (which
+serves as a unique identification) to the
+ticket and stringifies the result.  Then it calculates a CRC of the message and appends a stringified
+version of the CRC to the message.   Finally it sends the message to the server and waits for a response.
+<p>
+The response format is identification number, response message, and server time stamp.  If any response
+does not start with the original identification number or if the wait for the response times out then
+the request is sent again.
+<p>
+The server implementation of the protocol in DispatchingWorker does a select on a list of read
+file descriptors which includes the socket (host, port) as issued by the the configuration
+server.   The select is repeated if it times out.
+<p>
+When input is detected on the socket, the server reads the request; checks the check sum; unpacks
+and saves the client id, the id number, and the ticket; converts the ticket to a python dictionary; 
+and calls the method specified by the "work" item in the ticket.   If any of these things fail
+then the request is ignored presuming the client will resend the request.
+<p>
+The "work" is a text string but python is interpreted and allows runtime interpretation of method
+names.  In the media changer the load method is in the media_changer.py module which has imported
+and instantiated a DispatchingWorker class.   When the work method is finished it calls the DispatchingWorker
+method reply_to_caller with a status result ticket.
+<p>
+reply_to_caller builds a stringified reply with the clients unique id, the status ticket, and
+its own time stamp.  It sends the reply to the client; saves the clients address, the client message id,
+and the complete reply in case of errors; and waits for more requests.
+<p>
+We save the complete reply in case of errors because we may get a request resent to the server which
+the server has executed the request but whose response was not reliably returned.   Some requests,
+for example, mounting a tape are not redoable; so, we save the reply and simply resend the reply.
+When DispatchingWorker gets a request it first checks its request dictionary for a request that has the
+same client id and request id and if it finds a match it resends the reply.
+<p>
+If the request dictionary grows beyond a certain size (currently 1000 entries) then entries older
+than 10 minutes are deleted.
+</h3>
+
 </h3>
 <hr>
 <h2><a name="db">
