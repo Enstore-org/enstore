@@ -37,14 +37,14 @@ class MonitorServerClient(generic_client.GenericClient):
                   timeout,
                   block_size,
                   block_count,
-		  summary):
+                  summary):
         self.u = udp_client.UDPClient()
-	self.monitor_server_addr = monitor_server_addr
-	self.html_server_addr = html_server_addr
+        self.monitor_server_addr = monitor_server_addr
+        self.html_server_addr = html_server_addr
         self.timeout = timeout
         self.block_size = block_size
         self.block_count = block_count
-	self.summary = summary
+        self.summary = summary
         self.c_hostip, self.c_port, self.c_socket =\
                        callback.get_callback(verbose=0)
         self.c_socket.listen(4)
@@ -58,10 +58,10 @@ class MonitorServerClient(generic_client.GenericClient):
 
     # send measurement to the html server
     def _send_measurement (self, ticket):
-	try:
-	    x = self.u.send( ticket, self.html_server_addr, self.timeout, 10 )
-	except errno.errorcode[errno.ETIMEDOUT]:
-	    x = {'status' : (e_errors.TIMEDOUT, None)}
+        try:
+            x = self.u.send( ticket, self.html_server_addr, self.timeout, 10 )
+        except errno.errorcode[errno.ETIMEDOUT]:
+            x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
 
     # ping a server like ENCP would
@@ -114,8 +114,8 @@ class MonitorServerClient(generic_client.GenericClient):
         r,w,ex = select.select([self.c_socket], [], [self.c_socket],
                                self.timeout)
         if not r :
-	    if not self.summary:
-		print "passive open did not hear back from monitor server via TCP"
+            if not self.summary:
+                print "passive open did not hear back from monitor server via TCP"
                 raise  errno.errorcode[errno.ETIMEDOUT]
 
         #simulate the control socket between encp and the mover
@@ -186,8 +186,8 @@ class MonitorServerClient(generic_client.GenericClient):
             
             'measurement': (
             enstore_functions.format_time(time.time()),
-	    enstore_functions.strip_node(callback_addr),
-	    enstore_functions.strip_node(remote_addr),
+            enstore_functions.strip_node(callback_addr),
+            enstore_functions.strip_node(remote_addr),
 #            self.block_count,
 #            self.block_size,
 #            "%.4g" % (read_measurement['elapsed'],),
@@ -232,12 +232,12 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
     def __init__(self, flag=1, opts=[]):
         self.do_parse = flag
         self.restricted_opts = opts
-	self.summary = 0
-	self.html_gen_host = None
+        self.summary = 0
+        self.html_gen_host = None
         self.name = MY_SERVER
         self.alive_rcv_timeout = 10
         self.alive_retries = 3
-	generic_client.GenericClientInterface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
@@ -318,6 +318,12 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
         logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
         ip_list = get_all_ips(config_host, config_port, csc)
+
+        host_list = []
+        for ip in ip_list:
+            host_list.append(socket.gethostbyaddr(ip)[0], ip)
+        host_list.sort()
+        
         vetos = Vetos(config.get('veto_nodes', {}))
 
 
@@ -328,10 +334,9 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
         summary_d[enstore_constants.BASENODE] = enstore_functions.strip_node(os.uname()[1])
         summary_d[enstore_constants.NETWORK] = enstore_constants.UP  # assumption
 
-	msc = None
-        for ip in ip_list:
-            host = socket.gethostbyaddr(ip)
-            hostname = enstore_functions.strip_node(host[0])
+        msc = None
+        for host, ip in host_list:
+            hostname = enstore_functions.strip_node(host)
             if vetos.is_vetoed_item(ip):
                 if not summary:
                     print "Skipping %s" % (vetos.veto_info(ip),)
@@ -368,8 +373,8 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
             msc.update_summary(hostname, summary_d, summary, read_rate,
                                write_rate)
             
-	if msc:
-	    msc.flush_measurements()
+        if msc:
+            msc.flush_measurements()
 
         # add the name of the html file that will be created
         summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
