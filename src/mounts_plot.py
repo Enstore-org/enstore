@@ -144,7 +144,7 @@ if __name__ == '__main__':
 	outf.write("set grid\n")
 	outf.write("set ylabel 'Volumes'\n")
 	outf.write("set xlabel 'Mounts'\n")
-	outf.write("set xragne [0:%d]\n"%(count+1))
+	outf.write("set xrange [0:%d]\n"%(count+1))
 	outf.write(set_xtics)
 	outf.write("set terminal postscript color solid\n")
 	outf.write("set output '"+postscript_hist_out+"'\n")
