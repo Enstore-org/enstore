@@ -72,12 +72,10 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
             vopt = "--verbose %s"%(verbose,)
         else:
             vopt = " "
-        args = (path, vopt, "--list", fname, tapeLabel,
-                pnfsDir, outputDir)
-        #args = (path, "--list", fname, tapeLabel, pnfsDir, outputDir)
+        args = (path, vopt, "--bypass-filesystem-max-filesize-check",
+                "--list", fname, tapeLabel, pnfsDir, outputDir)
 
         print string.join(args)
-        #return 0
 
         #Fork off the "get" process and read in its output.
 
