@@ -43,16 +43,6 @@ class SG_FF:
         self.sg = {}
         self.vf = {}
 
-    def put(self, mover, volume, sg, vf):
-        if not self.sg.has_key(sg):
-            self.sg[sg] = []
-        if not self.vf.has_key(vf):
-            self.vf[vf] = []
-        if not ((mover, volume) in self.sg[sg]):
-            self.sg[sg].append((mover,volume))
-        if not ((mover, volume) in self.vf[vf]):
-            self.vf[vf].append((mover,volume))
-
     def delete(self, mover, volume, sg, vf):
         if self.sg.has_key(sg) and (mover, volume) in self.sg[sg]:
             self.sg[sg].remove((mover, volume))
@@ -63,6 +53,16 @@ class SG_FF:
             if len(self.vf[vf]) == 0:
                 del(self.vf[vf])
 
+    def put(self, mover, volume, sg, vf):
+        self.delete(mover, volume, sg, vf) # delete entry to update content
+        if not self.sg.has_key(sg):
+            self.sg[sg] = []
+        if not self.vf.has_key(vf):
+            self.vf[vf] = []
+        if not ((mover, volume) in self.sg[sg]):
+            self.sg[sg].append((mover,volume))
+        if not ((mover, volume) in self.vf[vf]):
+            self.vf[vf].append((mover,volume))
     def __repr__(self):
         return "<storage groups %s volume_families %s >" % (self.sg, self.vf)
         
@@ -399,7 +399,6 @@ class LibraryManagerMethods:
         # found a volume that has write work pending - return it
         rq.ticket["fc"]["external_label"] = v["external_label"]
         rq.ticket["fc"]["size"] = rq.ticket["wrapper"]["size_bytes"]
-        rq.ticket['vc']['at_mover'] = v['at_mover']
 
         # request has passed about all the criterias
         # check if it passes the fair share criteria
@@ -1165,6 +1164,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.work_at_movers.remove(w)
         if mticket['status'][0] == mover_constants.OFFLINE: # mover finished request and went offline
             return
+        if mticket['status'][0] == e_errors.MOVER_BUSY: # mover can not satisfy submitted request
+            if mticket.has_key('returned_work'):
+                # put this ticket back into the pending queue
+                rq, status = self.pending_work.put(mticket['returned_work'])
+            return
+        
         # update suspected volume list
 	vol = self.update_suspect_vol_list(mticket['external_label'], 
 				mticket['mover'])
@@ -1298,7 +1303,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                      'external_label' : mover['external_label'],
                                      'volume_family'  : mover['volume_family'],
                                      'operation'      : mover['operation'],
-                                     'volume_status'  : mover['volume_status']
+                                     'volume_status'  : mover['volume_status'],
+                                     'state'   : mover['state']
                                      })
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)

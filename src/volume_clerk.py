@@ -177,7 +177,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                  cur_rec['first_access'] = -1
                  cur_rec['declared'] = time.time()
                  cur_rec['system_inhibit'] = ["none", "none"]
-                 cur_rec['at_mover'] = ("unmounted", "none")
                  cur_rec['user_inhibit'] = ["none", "none"]
                  cur_rec['sum_wr_err'] = 0
                  cur_rec['sum_rd_err'] = 0
@@ -295,7 +294,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         if record['declared'] == -1:
             record["declared"] = time.time()
         record['system_inhibit'] = ticket.get('system_inhibit', ["none", "none"])
-        record['at_mover'] = ticket.get('at_mover',  ("unmounted", "none") )
         record['user_inhibit'] = ticket.get('user_inhibit', ["none", "none"])
         record['sum_wr_err'] = ticket.get('sum_wr_err', 0)
         record['sum_rd_err'] = ticket.get('sum_rd_err', 0)
@@ -372,7 +370,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
-        
     # delete a volume from the database
     def delvol(self, ticket):
         # everything is based on external label - make sure we have this
@@ -396,7 +393,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        if record['at_mover'][0] != 'unmounted' and record['at_mover'][0] != '' and record['at_mover'][0] != 'E':
+        # get the volume state as seen by media changer
+        ret = self.get_media_changer_state(record["library"],
+					    record["external_label"],
+                                            record["media_type"])
+        # the following code is robot type dependant!!!!!
+        if ret != 'unmounted' and ret != '' and ret != 'E':
            ticket["status"] = (e_errors.CONFLICT,"volume state must be unmounted or '' or 'E'")
            self.reply_to_caller(ticket)
            return
@@ -553,9 +555,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
             if v["system_inhibit"] != ["none", "none"]:
                 continue
-            at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
-            if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None:
-                continue
 
             # equal treatment for blank volume
             if exact_match:
@@ -699,11 +698,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # get the current entry for the volume
      try:
          v = self.dict[external_label]  
-         # for backward compatibility for at_mover field
-         try:
-             at_mover = v['at_mover']
-         except KeyError:
-             v['at_mover'] = ('unmounted', '')
 
          ticket["status"] = (e_errors.OK,'None')
          if (v["library"] == library and
@@ -711,8 +705,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              v["user_inhibit"][0] == "none" and
              v["user_inhibit"][1] == "none" and
              v["system_inhibit"][0] == "none" and
-             v["system_inhibit"][1] == "none" and
-             v['at_mover'][0] == "mounted"):
+             v["system_inhibit"][1] == "none"):
              ##
              ##ret_st = self.is_volume_full(v,min_remaining_bytes)
              ##if ret_st:
@@ -929,46 +922,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-    # update dB to reflect actual state of volume
-    def update_mc_state(self, ticket):
-        # everything is based on external label - make sure we have this
-        if 'external_label' not in ticket.keys():
-            msg= "Volume Clerk: external label is missing"
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR,msg)
-            self.reply_to_caller(ticket)
-            return
-        external_label = ticket['external_label']
-        # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError:
-            msg="Volume Clerk: volume "+external_label +" no such volume"
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # update the fields that have changed
-        ll = list(record['at_mover'])
-        ret = self.get_media_changer_state(record["library"],
-					    record["external_label"],
-                                            record["media_type"])
-        # when MC call fails return value will be ""
-        if not ret:
-            Trace.log(e_errors.ERROR, "call to media changer failed")
-        else:
-            ll[0] = ret
-        record['at_mover']=tuple(ll)
-        # if volume is unmounted system_inhibit cannot be writing
-        if (record['at_mover'][0] == 'unmounted' and
-            record['system_inhibit'][0] == 'writing'):
-            record['system_inhibit'][0] = "none"
-        self.dict[external_label] = record   # THIS WILL JOURNAL IT
-        record["status"] = (e_errors.OK, None)
-        self.reply_to_caller(record)
-        return
-
     # flag the database that we are now writing the system
     def clr_system_inhibit(self, ticket):
         # everything is based on external label - make sure we have this
@@ -1005,18 +958,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             else:    
                 # update the fields that have changed
                 record[inhibit][position] = "none"
-                ll = list(record['at_mover'])
-                ret = self.get_media_changer_state(record["library"],
-                                                    record["external_label"], 
-                                                    record["media_type"])
-
-                # when MC call fails return value will be ''
-                if not ret:
-                    Trace.log(e_errors.ERROR, "call to media changer failed")
-                else:
-                    ll[0] = ret
-                
-                record['at_mover']=tuple(ll)
                 self.dict[external_label] = record   # THIS WILL JOURNAL IT
                 record["status"] = (e_errors.OK, None)
         else:
@@ -1038,6 +979,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         import media_changer_client
         mcc = media_changer_client.MediaChangerClient(self.csc, m_changer )
         stat = mcc.viewvol(volume, m_type)["status"][3]
+        # the following code is robot type dependant!!!!!
         if stat == 'O':
             state = 'unmounted'
         elif stat == 'M':
@@ -1046,46 +988,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             state = stat
 
         return state
-
-
-    # for the backward compatibility D0_TEMP
-    # flag the database that we are now writing the system
-    def add_at_mover(self, ticket):
-        # everything is based on external label - make sure we have this
-        try:
-            key="external_label"
-            external_label = ticket[key]
-        except KeyError:
-            msg="Volume Clerk: "+key+" key is missing"
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.INFO, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-        except KeyError:
-            msg="Volume Clerk: volume "+external_label+" no such volume"
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # add fields XXX is this still necessary? -cgw
-        try:
-            at_mover = record['at_mover']
-        except KeyError:
-            record['at_mover'] = ('unmounted', 'none')
-        try:
-            non_del_files = record['non_del_files']
-        except KeyError:
-            record['non_del_files'] = record['sum_wr_access']
-
-        self.dict[external_label] = record   # THIS WILL JOURNAL IT
-        record["status"] = (e_errors.OK, None)
-        self.reply_to_caller(record)
-        return
 
     # move a volume to a new library
     def new_library(self, ticket):
@@ -1148,44 +1050,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	self.reply_to_caller({"status" : (e_errors.OK, None)})
 	return
 
-    # set at_mover flag
-    def set_at_mover(self, ticket):
-	external_label = ticket["external_label"]
-	record = self.dict[external_label]  
-	at_mover = record.get('at_mover',('unmounted','none'))
-	
-	# update the fields that have changed
-	if ticket['force']:
-	    wrong_state = 0
-	else:
-	    wrong_state = 1
-	    if (ticket['at_mover'][0] == 'mounted' and
-		record['at_mover'][0] != 'unmounted'):
-                pass
-	    elif (ticket['at_mover'][0] == 'unmounted' and
-		  record['at_mover'][0] != 'mounted'):
-                pass
-	    else:
-		wrong_state = 0
-
-	if wrong_state:
-	    record["status"] = (e_errors.CONFLICT, "volume "+
-				repr(external_label)+ " state "+
-				repr(record['at_mover'][0])+" req. state "+
-				repr(ticket['at_mover'][0]))
-	else:
-	    record ['at_mover'] = ticket['at_mover']
-
-            # Take care of the impossible "unmounted and writing" state
-            if (record['at_mover'][0] == "unmounted" and
-                record['system_inhibit'][0] == "writing"):
-                record['system_inhibit'][0] = "none"
-
-	    self.dict[external_label] = record   # THIS WILL JOURNAL IT
-	    record["status"] = (e_errors.OK, None)
-	self.reply_to_caller(record)
-	return
-
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket):
         ticket["status"] = (e_errors.OK, None)
@@ -1208,10 +1072,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 if ticket.has_key("in_state") and ticket["in_state"] != None:
                     if ticket.has_key("key") and ticket["key"] != None:
                         if value.has_key(ticket["key"]):
-                            if ticket["key"] == "at_mover":
-                                loc_val = value[ticket["key"]][0]
-                            else:
-                                loc_val = value[ticket["key"]]
+                            loc_val = value[ticket["key"]]
                             if mycmp(cond,loc_val,ticket["in_state"]):
                                 if msg:
                                     dict = {"volume":key}
@@ -1237,7 +1098,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                 msg["volumes"].append(dict)
                 else:
                     dict = {"volume"         : key}
-                    for k in ["remaining_bytes", "at_mover",   "system_inhibit",
+                    for k in ["remaining_bytes", "system_inhibit",
                               "user_inhibit", "library", "volume_family"]:
                         dict[k]=value[k]
                     if msg:

@@ -211,15 +211,13 @@ class VolumeClerkClient(generic_client.GenericClient,
                   +"ticket[\"status\"]="+ticket["status"]
 
         if volumes.has_key("header"):        # full info
-            print "%-10s  %-8s %-12s %-17s %17s %012s %-012s"%(
-                "label","avail.","mount state",
-                "system_inhibit","user_inhibit",
+            print "%-10s  %-8s %-17s %17s %012s %-012s"%(
+                "label","avail.", "system_inhibit","user_inhibit",
                 "library","    volume_family")
             for v in volumes["volumes"]:
                 print "%-10s"%(v['volume'],),
                 print capacity_str(v['remaining_bytes']),
-                print " %-12s (%-08s %08s) (%-08s %08s) %-012s %012s"%(
-                    v['at_mover'][0],
+                print " (%-08s %08s) (%-08s %08s) %-012s %012s"%(
                     v['system_inhibit'][0],v['system_inhibit'][1],
                     v['user_inhibit'][0],v['user_inhibit'][1],
                     v['library'],v['volume_family'])
@@ -346,26 +344,6 @@ class VolumeClerkClient(generic_client.GenericClient,
         x = self.send(ticket)
         return x
 
-    # mark volume as noaccess
-    def set_at_mover(self, external_label, flag, mover, force=None):
-	if force: f = 1
-	else: f = 0
-        ticket= { 'work'           : 'set_at_mover',
-                  'external_label' : external_label,
-		  'at_mover' : (flag, mover),
-		  'force'    : f}
-        x = self.send(ticket)
-
-        return x
-
-    # get the state of the media changer for the volume
-    def update_mc_state(self, external_label):
-        ticket= { 'work'           : 'update_mc_state',
-                  'external_label' : external_label
-                  }
-        x = self.send(ticket)
-        return x
-
     # clear any inhibits on the volume
     def clr_system_inhibit(self,external_label,what=None, pos=0):
         ticket= { 'work'           : 'clr_system_inhibit',
@@ -458,15 +436,6 @@ class VolumeClerkClient(generic_client.GenericClient,
         x = self.send(ticket)
         return x
 
-    # for the backward compatibility D0_TEMP
-    def add_at_mover (self, external_label):
-        ticket = { 'work'                : 'add_at_mover',
-                   'external_label'       : external_label }
-
-        x = self.send(ticket)
-        return x
-    # END D0_TEMP
-
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -475,7 +444,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.clear = ""
-        self.update = ""
         self.backup = 0
         self.vols = 0
         self.in_state = 0
@@ -493,7 +461,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.no_access = ""
         self.decr_file_count = 0
         self.rmvol = 0
-	self.atmover = 0 # for the backward compatibility D0_TEMP
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -503,8 +470,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         else:
             return self.client_options()+\
                    ["clear=", "backup", "vols","next","vol=","check=","add=",
-                    "update=", "delete=","new_library=","read_only=",
-                    "no_access=", "atmover","decr_file_count=","force",
+                    "delete=","new_library=","read_only=",
+                    "no_access=", "decr_file_count=","force",
                     "restore=", "all","destroy=", "modify="]
 
     # parse the options like normal but make sure we have necessary params
@@ -523,9 +490,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 self.print_new_library_args()
                 sys.exit(1)
 
-    def print_update_mc_state_args(self):
-        print "   update_mc_state arguments: volume_name"
-
     def print_new_library_args(self):
         print "   new_library arguments: volume_name"
 
@@ -542,7 +506,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     def print_help(self):
         interface.Interface.print_help(self)
         self.print_add_args()
-        self.print_update_mc_state_args()
         self.print_new_library_args()
         self.print_clear_args()
         
@@ -603,11 +566,10 @@ def do_work(intf):
     elif intf.check:
         ticket = vcc.inquire_vol(intf.check)
         ##pprint.pprint(ticket)
-        print "%-10s  %s %-12s  %s %s" % (ticket['external_label'],
-                                               capacity_str(ticket['remaining_bytes']),
-                                               ticket['at_mover'][0],
-                                               ticket['system_inhibit'],
-                                               ticket['user_inhibit'])
+        print "%-10s  %s %s %s" % (ticket['external_label'],
+                                   capacity_str(ticket['remaining_bytes']),
+                                   ticket['system_inhibit'],
+                                   ticket['user_inhibit'])
     elif intf.add:
         print repr(intf.args)
         library, file_family, storage_group, media_type, capacity, remaining = intf.args[:6]
@@ -664,9 +626,6 @@ def do_work(intf):
                     pos = ipos
                 
         ticket = vcc.clr_system_inhibit(intf.clear, what, pos)  # name of this volume
-    elif intf.update:
-        ticket = vcc.update_mc_state(intf.update)  # name of this volume
-        Trace.trace(12, repr(ticket))
     elif intf.decr_file_count:
         ticket = vcc.decr_file_count(intf.args[0],string.atoi(intf.decr_file_count))
         Trace.trace(12, repr(ticket))
@@ -674,11 +633,6 @@ def do_work(intf):
         ticket = vcc.set_system_readonly(intf.read_only)  # name of this volume
     elif intf.no_access:
         ticket = vcc.set_system_notallowed(intf.no_access)  # name of this volume
-    # D0_TEPM
-    elif intf.atmover:
-	ticket = vcc.add_at_mover (intf.args[0])
-	pprint.pprint(ticket)
-    # END D0_TEMP
     else:
 	intf.print_help()
         sys.exit(0)

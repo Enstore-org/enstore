@@ -78,8 +78,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
                        vol = at_list[i]["vc"]["external_label"]
                    else:
                        vol = at_list[i]["fc"]["external_label"]
-                   if at_list[i]["vc"].has_key("at_mover"):
-                       mover = at_list[i]["vc"]["at_mover"][1]
+                   if at_list[i].has_key("mover"):
+                       mover = at_list[i]["mover"]
                    else:
                        mover = ''
                    if (host == node) or (not node):
@@ -173,14 +173,15 @@ class LibraryManagerClient(generic_client.GenericClient) :
     # get active volume known to LM
     def get_active_volumes(self):
         ticket = self.send({"work":"get_active_volumes"})
-        print "%-10s  %-17s %-17s %-17s %17s"%(
+        print "%-10s  %-17s %-17s %-17s %17s %10s"%(
             "label","mover","volume family",
-            "system_inhibit","user_inhibit")
+            "system_inhibit","user_inhibit","status")
         for mover in ticket['movers']:
-            print "%-10s  %-17s %-17s (%-08s %08s) (%-08s %08s)" % (mover['external_label'], mover['mover'],
+            print "%-10s  %-17s %-17s (%-08s %08s) (%-08s %08s) %s" % (mover['external_label'], mover['mover'],
                                                       mover['volume_family'],
                                                       mover['volume_status'][0][0], mover['volume_status'][0][1],
-                                                      mover['volume_status'][1][0], mover['volume_status'][1][1])
+                                                      mover['volume_status'][1][0], mover['volume_status'][1][1],
+                                                      mover['state'])
         return ticket
             
     def storage_groups(self):
@@ -212,7 +213,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.start_draining = 0
         self.stop_draining = 0
         self.status = 0
-        self.active_volumes = 0
+        self.vols = 0
         self.storage_groups = 0
         
         generic_client.GenericClientInterface.__init__(self)
@@ -226,7 +227,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                    ["get_work", "get_suspect_vols",
                     "delete_work=","priority=",
                     "load_movers", "poll", "get_queue=","host=",
-                    "start_draining=", "stop_draining", "status", "active_volumes",
+                    "start_draining=", "stop_draining", "status", "vols",
                     "storage_groups"]
 
     # tell help that we need a library manager specified on the command line
@@ -280,7 +281,7 @@ def do_work(intf):
     elif intf.poll:
 	ticket = lmc.poll()
 	print repr(ticket)
-    elif intf.active_volumes:
+    elif intf.vols:
 	ticket = lmc.get_active_volumes()
     elif intf.storage_groups:
         ticket = lmc.storage_groups()

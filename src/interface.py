@@ -246,8 +246,6 @@ class Interface:
                 self.change_priority = 1
             elif opt == "--poll" :
                 self.poll = 1
-            elif opt == "--active_volumes" :
-                self.active_volumes = 1
             elif opt == "--storage_groups" :
                 self.storage_groups = 1
             elif opt == "--load_movers" :
@@ -258,10 +256,6 @@ class Interface:
                 self.vols = 1
             elif opt == "--destroy" :
                 self.rmvol = value
-	    # D0_TEMP
-            elif opt == "--atmover" :
-                self.atmover = 1
-	    # END D0_TEMP
             elif opt == "--next" :
                 self.next = 1
             elif opt == "--vol" :

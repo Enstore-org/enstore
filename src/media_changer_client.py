@@ -118,7 +118,6 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.get_work=0
         self.max_work=-1
         self.volume = 0
-	self.update = 0
 	self._import = 0
 	self._export = 0
         self.mount = 0
@@ -133,7 +132,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
             return self.restricted_opts
         else:
             return self.client_options()+\
-                   ["max_work=","update=","get_work","import",
+                   ["max_work=","get_work","import",
                     "export","mount","dismount"]
     #  define our specific help
     def parameters(self):
@@ -196,7 +195,6 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         interface.Interface.print_help(self)
         #print "        --max_work=N        Max simultaneous operations allowed (may be 0)"
         #print "        --get_work          List operations in progress"
-        #print "        --update volume"
         #print "        --import insertNewLib [IOarea]"
         #print "        --export media_type volume1 [volume2 ...]"
         
@@ -212,25 +210,13 @@ def do_work(intf):
     if ticket:
         pass
 
-    elif intf.update:
-        # get a volume clerk client
-        vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
-        v_ticket = vcc.inquire_vol(intf.update)
-	volume = v_ticket['external_label']
-	m_type = v_ticket['media_type']
-	ticket=mcc.viewvol(volume, m_type)
-	del vcc
     elif intf.mount:
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
-        vol_ticket = vcc.inquire_vol(intf.volume)
-        v = vcc.set_at_mover(intf.volume, 'mounting', intf.drive)
         vol_ticket = vcc.inquire_vol(intf.volume)
         ticket = mcc.loadvol(vol_ticket, intf.drive, intf.drive)
 	del vcc
     elif intf.dismount:
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
-        vol_ticket = vcc.inquire_vol(intf.volume)
-        v = vcc.set_at_mover(intf.volume, 'unmounting', intf.drive)
         vol_ticket = vcc.inquire_vol(intf.volume)
         ticket = mcc.unloadvol(vol_ticket, intf.drive, intf.drive)
     elif intf._import:
