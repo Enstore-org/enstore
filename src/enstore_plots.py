@@ -331,7 +331,7 @@ class BpdGnuFile(enstore_files.EnFile):
     def write(self, outfile, ptsfile, total, meansize, xfers):
 	self.filedes.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
-	                   "set title 'Total Bytes Transferred Per Day"+plot_time()+"'\n"+ \
+	                   "set title 'Total Bytes Transferred Per Day "+plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
 	                   "set timefmt \"%Y-%m-%d\"\n"+ \
 	                   "set xdata time\n"+ \
