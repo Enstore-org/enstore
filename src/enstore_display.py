@@ -969,8 +969,9 @@ class Mover:
                                 self.display.height)
 
     def position_linear(self, N):
+        #N = number of movers
 
-        #k = number of movers
+        #k = number of this movers
         k = self.index
 
         #total number of columns 
@@ -978,7 +979,7 @@ class Mover:
         #total number of rows in the largest column
         num_cols_f = float(num_cols)
         rows_per_column_f = float(N) / num_cols_f
-        num_rows = int(round(rows_per_column_f))
+        num_rows = int(math.ceil(rows_per_column_f))
         #this movers column and row
         column = (k / num_rows)
         row = (k % num_rows)
