@@ -11,11 +11,6 @@ import time
 import traceback
 import types
 
-# enstore imports
-import EXfer
-import Trace
-import checksum
-import e_errors
 
 """
 
@@ -80,9 +75,7 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
     # set this dang mode to something that works on all machines!
     if ((mode & 0777000) != 0100000) & (filename != "TRAILER!!!"):
 	jonmode = 0100664
-	Trace.log(e_errors.INFO,
-                  "Mode "+repr(mode)+ " is invalid, setting to "+\
-                  repr(jonmode)+" so cpio valid")
+
     else :
 	jonmode = mode
 
@@ -99,7 +92,7 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
     return header
 
 
-# create 2 headers (1 for data file and 1 for crc file) + 1 trailer
+# create  header + trailer
 def headers( inode, mode, uid, gid, nlink, mtime, filesize,
              major, minor, rmajor, rminor, filename):
 	head = create_header(inode, mode, uid, gid, nlink, mtime, filesize,
@@ -203,111 +196,3 @@ class Wrapper :
 
 
 ###############################################################################
-
-# shamelessly stolen from python's posixfile.py
-class DiskDriver:
-    states = ['open', 'closed']
-
-    # Internal routine
-    def __del__(self):
-        self._file_.close()
-
-    # Initialization routines
-    def open(self, name, mode='r', bufsize=-1):
-        import __builtin__
-        return self.fileopen(__builtin__.open(name, mode, bufsize))
-
-    # Initialization routines
-    def fileopen(self, file):
-        if type(file) != types.FileType:
-            raise TypeError, 'DiskDriver.fileopen() arg must be file object'
-        self._file_  = file
-        # Copy basic file methods
-        for method in file.__methods__:
-            setattr(self, method, getattr(file, method))
-        return self
-
-    #
-    # New methods
-    #
-
-    # this is the name of the function that the wrapper uses to read
-    def read(self,size):
-        return self._file_.read(size)
-
-    # this is the name fo the funciton that the wrapper uses to write
-    def write(self,buffer):
-        return self._file_.write(buffer)
-
-if __name__ == "__main__" :
-    import sys
-    import getopt
-    import Devcodes
-
-    options = ["create","extract"]
-    optlist,args=getopt.getopt(sys.argv[1:], '', options)
-    (opt,val) = optlist[0]
-    if not optlist:
-	print "usage: cpio_odc" + " <"+repr(options)+"> infile outfile"
-	sys.exit(1)
-
-    if not (opt == "--create" or opt == "--extract"):
-	print "usage: cpio_odc" + " <"+repr(options)+"> infile outfile"
-	sys.exit(1)
-
-    fin = DiskDriver()
-    fin.open(args[0],"r")
-    fout = DiskDriver()
-    fout.open(args[1],"w")
-
-    wrapper = Wrapper()
-	
-    if opt == "--create":
-	statb = os.fstat(fin.fileno())
-	if not stat.S_ISREG(statb[stat.ST_MODE]) :
-	    raise errno.errorcode[errno.EINVAL],\
-		  "Invalid input file: can only handle regular files"
-	fast_write = 0 # needed for testing
-	dev_dict = Devcodes.MajMin(fin._file_.name)
-	major = dev_dict["Major"]
-	minor = dev_dict["Minor"]
-	rmajor = 0
-	rminor = 0
-	sanity_bytes = 0
-
-	info = {'inode'       : statb[stat.ST_INO],
-		'mode'        : statb[stat.ST_MODE],
-		'uid'         : statb[stat.ST_UID],
-		'gid'         : statb[stat.ST_GID],
-		'mtime'       : statb[stat.ST_MTIME],
-		'size_bytes'  :  statb[stat.ST_SIZE],
-		'major'       : major,
-		'minor'       : minor,
-		'rmajor'      : rmajor,
-		'rminor'      : rminor,
-		'pnfsFilename': fin._file_.name,
-		'sanity_size' : sanity_bytes
-		}
-	wrapper.write_pre_data(fout, info)
-	buf = fin.read()
-	fout.write(buf)
-	wrapper.write_post_data(fout, 0)
-
-    elif opt == "--extract":
-	wrapper.read_pre_data(fin, None)
-	print "FILE SIZE", wrapper.file_size
-	if  wrapper.file_size > 0:
-	    buf = fin.read(wrapper.file_size)
-	    wrapper.read_post_data(fin,{'data_crc':0})
-	    fout.write(buf)
-
-    fin.close()
-    fout.close()
-
-
-
-
-
-
-
-
