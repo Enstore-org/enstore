@@ -23,6 +23,9 @@ class NullDriver(driver.Driver):
         
     def open(self, device=None, mode=None, retry_count=10):
         Trace.trace(25, "open")
+        if self.fd>0:
+            if mode != self.mode:
+                self.close()
         if mode==0:
             device = '/dev/zero'
         elif mode==1:
@@ -31,7 +34,8 @@ class NullDriver(driver.Driver):
             raise ValueError, ("illegal mode", mode)
         self.device = device
         self.mode = mode
-        self.fd = os.open(device, mode)
+        if self.fd < 0:
+            self.fd = os.open(device, mode)
         self._rate = self._last_rate = self._bytes_transferred = 0
         return 1
 
