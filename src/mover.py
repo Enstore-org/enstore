@@ -763,7 +763,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     # get the initial statistics
     def init_stat(self, drive_name):
         self.stats_on = 0
-        self.send_stats = self.config.get('send_stats',None)
+        self.send_stats = self.config.get('send_stats',1)
         if not self.stat_file: return
         if not self.driver_type == 'FTTDriver':
             return
