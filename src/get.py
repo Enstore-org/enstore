@@ -454,10 +454,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             work_ticket['status'] = (e_errors.NET_ERROR, str(msg))
 
         # Verify that everything went ok with the transfer.
-        external_label = work_ticket.get('fc', {}).get('external_label', None)
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          work_ticket, e,
-                                          external_label = external_label)
+                                          work_ticket, e)
 
         if not e_errors.is_ok(result_dict):
             #Log the error.
@@ -500,24 +498,27 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                     break
                 
         if data_path_socket not in read_fd:
-            work_ticket['status'] = (e_errors.TIMEDOUT, "No data received")
-        # Verify that everything went ok with the transfer.
-        result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          work_ticket, e)
+            status_ticket = {'status':(e_errors.UNKNOWN,
+                                       "No data read from mover.")}
+            external_label = work_ticket.get('fc', {}).get('external_label',
+                                                           None)
+            result_dict = encp.handle_retries([work_ticket], work_ticket,
+                                              status_ticket, e,
+                                              external_label = external_label)
 
-        if not e_errors.is_ok(result_dict):
-            #Log the error.
-            Trace.log(e_errors.ERROR,
+            if not e_errors.is_ok(result_dict):
+                #Log the error.
+                Trace.log(e_errors.ERROR,
                       "Waiting for data from open data socket failed: %s %s" %
                       (str(work_ticket['status']), str(result_dict['status'])))
-            
-            #Don't loose the non-retirable error.
-            if e_errors.is_non_retriable(result_dict):
-                work_ticket = encp.combine_dict(result_dict, work_ticket)
-            # Close these descriptors before they are forgotten about.
-            encp.close_descriptors(out_fd, data_path_socket)
 
-            return work_ticket
+                #Don't loose the non-retirable error.
+                if e_errors.is_non_retriable(result_dict):
+                    work_ticket = encp.combine_dict(result_dict, work_ticket)
+                # Close these descriptors before they are forgotten about.
+                encp.close_descriptors(out_fd, data_path_socket)
+
+                return work_ticket
 
         Trace.message(5, "Reading data from tape.")
         Trace.log(e_errors.INFO, "Reading data from tape.")
@@ -552,11 +553,9 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         Trace.message(10, pprint.pformat(done_ticket))
 
         # Verify that everything went ok with the transfer.
-        external_label = work_ticket.get('fc', {}).get('external_label', None)
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          done_ticket, e,
-                                          external_label = external_label)
-
+                                          done_ticket, e)
+        
         #DELETE THE FOUR FOLOWING Trace.log() CALLS WHEN DONE.
         #Trace.log(e_errors.ERROR, "WORK_TICKET: %s" % str(work_ticket))
         #Trace.log(e_errors.ERROR, "DONE_TICKET: %s" % str(done_ticket))
@@ -951,10 +950,10 @@ def readtape_from_hsm(e, tinfo):
                 ".library_manager"
 
     #Set the max attempts that can be made on a transfer.
-    try:
-        encp.max_attempts(check_lib, e)
-    except encp.EncpError, msg:
-        return {'status' : (msg.type, str(msg))}
+    #try:
+    #    encp.max_attempts(check_lib, e)
+    #except encp.EncpError, msg:
+    #    return {'status' : (msg.type, str(msg))}
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
