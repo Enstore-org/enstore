@@ -279,7 +279,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"host_name",
-                          option.FORCE_SET_DEFAULT:option.FORCE,
                           option.USER_LEVEL:option.USER},
         option.GET_SUSPECT_VOLS:{option.HELP_STRING:
                                  "print suspect volume list",
