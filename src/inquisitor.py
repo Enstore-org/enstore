@@ -39,6 +39,7 @@ import enstore_files
 import enstore_plots
 import enstore_functions
 import udp_client
+import safe_dict
 
 def default_timeout():
     return 5
@@ -389,7 +390,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager suspect volume list and output it
     def suspect_vols(self, lm, (host, port), key, time):
 	try:
-	    stat = lm.get_suspect_volumes()
+	    stat = safe_dict.SafeDict(lm.get_suspect_volumes())
 	    self.htmlfile.output_suspect_vols(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
@@ -399,7 +400,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager work queue and output it
     def work_queue(self, lm, (host, port), key, time):
 	try:
-	    stat = lm.getwork()
+	    stat = safe_dict.SafeDict(lm.getwork())
 	    self.htmlfile.output_lmqueues(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
@@ -409,7 +410,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager state and output it
     def lm_state(self, lm, (host, port), key, time):
 	try:
-	    stat = lm.get_lm_state()
+	    stat = safe_dict.SafeDict(lm.get_lm_state())
 	    self.htmlfile.output_lmstate(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
@@ -419,7 +420,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager mover list and output it
     def mover_list(self, lm, (host, port), key, time):
 	try:
-	    stat = lm.getmoverlist()
+	    stat = safe_dict.SafeDict(lm.getmoverlist())
 	    self.htmlfile.output_lmmoverlist(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
@@ -429,7 +430,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the movers' status
     def mover_status(self, movc, (host, port), key, time):
 	try:
-	    stat = movc.status(self.alive_rcv_timeout, self.alive_retries)
+	    stat = safe_dict.SafeDict(movc.status(self.alive_rcv_timeout, self.alive_retries))
 	    self.htmlfile.output_moverstatus(stat, key)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,

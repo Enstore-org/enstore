@@ -10,6 +10,7 @@ import stat
 
 import enstore_functions
 import enstore_constants
+import safe_dict
 
 YELLOW   = "#FFFFF0"
 AQUA     = "#DFF0FF"
@@ -297,7 +298,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # information
     def generic_server_rows(self, table):
 	for server in GENERIC_SERVERS:
-	    if self.data_dict.has_key(server):
+	    if self.data_dict[server]:
 		# output its information
 		table.append(self.alive_row(server, 
 			       self.data_dict[server][enstore_constants.STATUS]))
@@ -671,7 +672,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # generate the body of the file
     def body(self, data_dict):
 	# this is the data we will output
-	self.data_dict = data_dict
+	self.data_dict = safe_dict.SafeDict(data_dict)
 	# create the outer table and its rows
 	table = self.table_top()
 	table.append(HTMLgen.TR(HTMLgen.TD(self.shortcut_table())))
