@@ -5,6 +5,7 @@
 import time
 import select
 
+import Trace
 import driver
 import e_errors
 import ftt
@@ -23,7 +24,6 @@ class FTTDriver(driver.Driver):
         self._start_time = None
         self._rate = self._last_rate = 0
         self._fast_rate = 10*MB
-        self.verbose = 0
         
     def open(self, device=None, mode=None, retry_count=10):
         if mode not in (0,1):
@@ -43,22 +43,22 @@ class FTTDriver(driver.Driver):
         self._last_rate = 0
         self._rate = 0
         self._bytes_transferred = 0
-        if self.verbose: print "ftt_open returns", self.ftt
+        Trace.trace(25, "ftt_open returns %s" % (self.ftt,))
         for retry in xrange(retry_count):
             if retry:
-                if self.verbose: print "retrying open"
+                Trace.trace(25, "retrying open")
             try:
                 self.fd = self.ftt.open_dev()
                 break
             except ftt.FTTError, detail:
-                if self.verbose: print detail, detail.errno
+                Trace.log(e_errors.ERROR, "%s %s" %(detail, detail.errno))
                 if detail.errno == ftt.EBUSY:
                     time.sleep(5)
                 else:
                     break
         for retry in xrange(retry_count):
             if retry:
-                if self.verbose: print "retrying status"
+                Trace.trace(25, "retrying status")
             status = self.ftt.status(5)
             if status & ftt.ONLINE:
                 break
@@ -66,19 +66,20 @@ class FTTDriver(driver.Driver):
 #            ftt.raise_ftt()  #this is BADSWMOUNT
             
         self._rate = self._last_rate = self._bytes_transferred = 0
-        if self.verbose: print "ftt_open_dev returns", self.fd
+        Trace.trace(25, "ftt_open_dev returns %s" % (self.fd,))
         return self.fd
     
     def rewind(self):
         r = self.ftt.rewind()
-        if self.verbose: print "ftt_rewind returns", r
+        Trace.trace(25, "ftt_rewind returns %s" % (r,))
+        return r
 
     def tell(self):
         if not self.ftt:
-            if self.verbose: print "tell: no ftt descriptor"
+            Trace.log(e_errors.ERROR, "tell: no ftt descriptor")
             return None
         file, block = self.ftt.get_position()
-        if self.verbose: print "ftt_get_position returns", file, block
+        Trace.trace(25, "ftt_get_position returns %s %s" % (file, block))
         return file
     
     def seek(self, target, eot_ok=0):
@@ -96,7 +97,7 @@ class FTTDriver(driver.Driver):
         if block==0 and file == target:
             return 0
         else:
-            if self.verbose: print "seek: current = %s,%s target=%s" %(file, block, target)
+            Trace.trace(25,"seek: current = %s,%s target=%s" %(file, block, target))
         current = file
         if target>current:
             try:
@@ -109,7 +110,7 @@ class FTTDriver(driver.Driver):
             self.ftt.skip_fm(1)
 
         current = self.tell()
-        if self.verbose: print "seek2: current=", current, "target=", target
+        Trace.trace(25,"seek2: current=%s target=%s" % (current, target))
         if current != target:
             raise "XXX Positioning error", (current, target)
         
@@ -117,24 +118,22 @@ class FTTDriver(driver.Driver):
         return self.fd
 
     def flush(self):
-        if self.verbose: print "flushing", self.ftt
+        Trace.trace(25, "flushing %s" % (self.ftt))
         now=time.time()
-        if self.verbose:
-            print "transferred %s bytes in %s seconds"%(
-                self._bytes_transferred, now-self._start_time),
-            if now>self._start_time and self._bytes_transferred:
-                print "rate: %.3g MB/sec" % (self._bytes_transferred/(now-self._start_time)/MB)
-            else:
-                print
+        Trace.trace(25, "transferred %s bytes in %s seconds"%(
+            self._bytes_transferred, now-self._start_time))
+        if now>self._start_time and self._bytes_transferred:
+            Trace.trace(25,  "rate: %.3g MB/sec" % (self._bytes_transferred/(now-self._start_time)/MB))
+
         r = self.ftt.close_dev()
-        if self.verbose: print "ftt_close_dev returns",r
+        Trace.trace(25, "ftt_close_dev returns %s" % (r,))
         self.fd = -1
         return r
 
     def close(self):
-        if self.verbose: print "closing", self.ftt
+        Trace.trace(25, "closing %s" % (self.ftt,))
         r = self.ftt.close()
-        if self.verbose: print "ftt_close returns",r
+        Trace.trace(25, "ftt_close returns %s" % (r,))
         self.ftt = None
         self.fd = -1
         return r
@@ -180,7 +179,7 @@ class FTTDriver(driver.Driver):
     def writefm(self):
         r = self.ftt.writefm()
         if r==-1:
-            self.print_error()
+            ftt.raise_ftt()
         return r
 
     def eject(self):
@@ -195,7 +194,7 @@ class FTTDriver(driver.Driver):
         if blocksize is None:
             blocksize = mode[3]
         r = self.ftt.set_mode(density, compression, blocksize)
-        if self.verbose: print "ftt mode is", self.ftt.get_mode()
+        Trace.trace(25, "ftt mode is %s" %  (self.ftt.get_mode(),))
         self.fd = self.ftt.open_dev()
         return r
 
