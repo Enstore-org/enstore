@@ -4,6 +4,7 @@
 
 #system imports
 import sys,os
+import stat
 import string
 import getopt
 import socket
@@ -77,7 +78,6 @@ def mkdir_p(path): # python 1.5.2 has makedirs but we may not be running that ve
 config_host = os.environ.get("ENSTORE_CONFIG_HOST", "localhost")
 config_port = string.atoi(os.environ.get("ENSTORE_CONFIG_PORT", "7500"))
 
-
 if __name__=="__main__":
     longopts =  ["config-host=", "config-port=","verbose", "media-type="]
     verbose=0
@@ -110,6 +110,37 @@ if __name__=="__main__":
         sys.exit(-1)
         
     volume_dict = read_input_file(args[0])
+
+
+    #before we do anything else, make sure we can create the pnfs directories
+    gid=os.getegid()
+    uid=os.geteuid()
+    for vol_name in volume_dict.keys():
+        vol=volume_dict[vol_name]
+        for file_num in vol['files'].keys():
+            file = vol['files'][file_num]
+            pnfs_filename = file['destination']
+            if os.path.exists(pnfs_filename):
+                print "Error, %s already exists" % (pnfs_filename,)
+                sys.exit(-1)
+            pnfs_dir = os.path.dirname(pnfs_filename)
+            #figure out how much of pnfs_dir path already exists:
+            while not os.path.exists(pnfs_dir):
+                pnfs_dir = os.path.split(pnfs_dir)[0]
+            #make sure we have write access
+            stat_info = os.stat(pnfs_dir)
+            mode=stat_info[stat.ST_MODE]
+            access_ok=0
+            if stat_info[stat.ST_UID]==uid:
+                access_ok = mode&stat.S_IWUSR
+            elif stat_info[stat.ST_GID]==gid:
+                access_ok = mode&stat.S_IWGRP
+            else:
+                access_ok = mode&stat.S_IWOTH
+            if not access_ok:
+                print "Error, no write access to %s" % (pnfs_dir,)
+                sys.exit(-1)
+    #ok, we have sufficient permissions to create the pnfs entries
     
     if config_host=="localhost":
         config_host = socket.gethostname()
@@ -140,7 +171,7 @@ if __name__=="__main__":
         capacity_bytes=0
         remaining_bytes=0
         nfiles = string.atoi(vol["next_file"]) - 1
-        eod_cookie = "0000_000000000_%07d"%(nfiles+1) #+1 to skip VOL1 label
+        eod_cookie = "0000_000000000_%07d"%(nfiles+1,) #+1 to skip VOL1 label
         user_inhibit = "none"
         error_inhibit = "none"
         first_access = string.atof(vol["first_access"])
@@ -189,7 +220,7 @@ if __name__=="__main__":
         for file_num in vol['files'].keys():
             file = vol['files'][file_num]
             n = string.atoi(file_num) 
-            loc_cookie = "0000_000000000_%07d" % n
+            loc_cookie = "0000_000000000_%07d" % (n,)
             if (file['early_checksum_size'] == 'None'
                 or file['early_checksum'] == 'None'):
                 sanity_cookie = 0, None
