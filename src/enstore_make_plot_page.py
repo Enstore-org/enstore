@@ -36,12 +36,24 @@ def do_the_walk(input_dir, url):
         input_dir = "%s/"%(input_dir,)
     if url[-1] != "/":
         url = "%s/"%(url,)
+    url = intf.url
     os.path.walk(input_dir, find_jpg_files, (jpgs, stamps, pss, input_dir,
                                              url))
     jpgs.sort()
     stamps.sort()
     pss.sort()
     return (jpgs, stamps, pss)
+
+class CronPlotPage(enstore_html.EnPlotPage):
+
+    def __init__(self, title, gif, description, url):
+        self.url = url
+        enstore_html.EnPlotPage.__init__(self, title, gif, description)
+
+    def find_label(self, text):
+        l = len(self.url)
+        # get rid of the .jpg ending and the url at the beginning
+        return text[l:-4]
 
 class PlotPageInterface(generic_client.GenericClientInterface):
 
@@ -66,8 +78,8 @@ def do_work(intf):
     # this is where the work is really done
     # get the list of stamps and jpg files
     (jpgs, stamps, pss) = do_the_walk(intf.input_dir, intf.url)
-    html_page = enstore_html.EnPlotPage(intf.title, intf.title_gif, 
-					intf.description)
+    html_page = CronPlotPage(intf.title, intf.title_gif, intf.description,
+                             intf.url)
     html_page.body(jpgs, stamps, pss)
     # open the temporary html file and output the html text to it
     tmp_html_file = "%s%s"%(intf.html_file, TMP)
