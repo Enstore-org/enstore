@@ -1,6 +1,8 @@
 import time
 import lockfile
 import dict_to_a
+import errno
+
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
 # SOCKS protocol to make connections through a firewall machine.
