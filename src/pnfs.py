@@ -217,7 +217,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #Determine the mount point that should be used.
         dirs = os.listdir("/pnfs/")
         if self.mount_point: #A mount point was given by the user.
-            mount_points = [self.mount_point]
+            mount = "/"
+            for dir in string.split(self.mount_point, "/")[1:]:
+                mount = os.path.join(mount, dir)
+                print mount
+                if os.path.ismount(mount):
+                    mount_points = [mount]
+                    break
         elif os.getcwd()[:6] == "/pnfs/": #Determine the mount point of cwd.
             mount = "/"
             for dir in string.split(os.getcwd(), "/")[1:]:
