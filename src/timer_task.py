@@ -14,6 +14,11 @@ timerTaskDict = {}
 class TimerTask:
 
     def __init__( self, rcv_timeout ):
+	# To become more accurate, I should override handle_request so
+	# I can time how long it takes to handle the request.
+	# Be careful when commands take longer than rcv_timeout.
+	#self.orig_handle_request = self.handle_request
+	#self.process_request = self.timerTaskProcessRequest
 	self.orig_get_request = self.get_request
 	self.get_request = self.timerTaskGetRequest
 	self.timerTask_rcv_timeout = rcv_timeout
@@ -48,13 +53,13 @@ class TimerTask:
 
 
 def msg_add( time, func, *args ):
-    timerTaskDict[func] = {'time':time,
+    timerTaskDict[str(func)] = {'time':time,
 			   'func':func,
 			   'args':args}
     return None
 
 def msg_cancel( func ):
-    try: del timerTaskDict[func]
+    try: del timerTaskDict[str(func)]
     except: pass
     return None
 
