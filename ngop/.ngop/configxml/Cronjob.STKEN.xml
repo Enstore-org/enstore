@@ -1,0 +1,20 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+   <SystemView ID="Cronjob.STK">
+      <System ID="Cronjob" Cluster="stkensrv0"/>
+      <System ID="Cronjob" Cluster="stkensrv1"/>
+      <System ID="Cronjob" Cluster="stkensrv2"/>
+      <System ID="Cronjob" Cluster="stkensrv3"/>
+      <System ID="Cronjob" Cluster="stkensrv4"/>
+      <System ID="Cronjob" Cluster="stkenmvr1a"/>
+      <System ID="Cronjob" Cluster="stkenmvr2a"/>
+      <System ID="Cronjob" Cluster="stkenmvr3a"/>
+      <System ID="Cronjob" Cluster="stkenmvr4a"/>
+      <System ID="Cronjob" Cluster="stkenmvr5a"/>
+      <System ID="Cronjob" Cluster="stkenmvr6a"/>
+      <System ID="Cronjob" Cluster="rip9"/>
+      <System ID="Cronjob" Cluster="rip10"/>
+   </SystemView>
+</NGOPConfig>
+
