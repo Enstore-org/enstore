@@ -31,36 +31,64 @@ def get_event_relay_host(csc):
 
 class EventRelayClient:
 
+    SUCCESS = 1
+    ERROR = 0
+
+    def setup(self):
+        self.invalid = 0
+        self.error_msg = ""
+        self.sock = None
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+            self.sock.bind((self.hostname, 0))         # let the system pick a port
+            self.addr = self.sock.getsockname()
+            self.host = self.addr[0]
+            self.port = self.addr[1]
+            self.subscribe_time = 0
+            self.notify_msg = None
+            self.unsubscribe_msg = None
+
+            # get the address of the event relay process.
+            import configuration_client
+            self.csc = configuration_client.ConfigurationClient()
+            self.event_relay_host = get_event_relay_host(self.csc)
+            if not self.event_relay_host:
+                self.event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST","")
+            if not self.event_relay_port:
+                # try to get it from the config file
+                self.event_relay_port = DEFAULT_PORT
+            self.event_relay_addr = (self.event_relay_host, self.event_relay_port)
+            return self.SUCCESS
+        except socket.error, msg:
+            # this can happen rarely, it can mean too many open files
+            self.invalid = 1
+            self.error_msg = msg
+            if self.sock:
+                self.sock.close()
+            return self.ERROR
+        
+
     def __init__(self, server=None, function=None, event_relay_host=None, 
                  event_relay_port=None):
         # get a socket on which to talk to the event relay process
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        hostname = os.uname()[1]
-        self.sock.bind((hostname, 0))         # let the system pick a port
-        self.addr = self.sock.getsockname()
-        self.host = self.addr[0]
-        self.port = self.addr[1]
-        self.server = server                  # server we are part of
-        self.subscribe_time = 0
-        self.function = function              # callback on socket read
-        self.notify_msg = None
-        self.unsubscribe_msg = None
-
-        # get the address of the event relay process.
-	import configuration_client
-	self.csc = configuration_client.ConfigurationClient()
-	event_relay_host = get_event_relay_host(self.csc)
-	if not event_relay_host:
-	    event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST","")
-        if not event_relay_port:
-	    # try to get it from the config file
-	    event_relay_port = DEFAULT_PORT
-        self.event_relay_addr = (event_relay_host, event_relay_port)
-
+        # we do this setup in a subroutine, so if it doesn't work
+        # we can try again later.
+        self.hostname = os.uname()[1]
+        self.server = server
+        self.function = function
+        self.event_relay_host = event_relay_host
+        self.event_relay_port = event_relay_port
+        self.setup()
 
     # this method must be called if we want to have the event relay forward 
     # messages to us.
     def start(self, subscribe_msgs=None, resubscribe_rate=600):
+        if self.invalid:
+            # we could not bind to a socket, try again.
+            self.setup()
+            if self.invalid:
+                # nope, didn't work
+                return self.ERROR
         self.subscribe_msgs = subscribe_msgs
         self.resubscribe_rate = resubscribe_rate
 
@@ -75,25 +103,33 @@ class EventRelayClient:
 	    # resubscribe ourselves to the event relay every 10 minutes
 	    self.server.add_interval_func(self.subscribe, 
 					  self.resubscribe_rate)
+        return self.SUCCESS
 
     # send the message to the event relay
     def send(self, msg):
         try:
-            msg.send(self.sock, self.event_relay_addr)
+            if not self.invalid:
+                msg.send(self.sock, self.event_relay_addr)
+                return self.SUCCESS
+            else:
+                return self.ERROR
         except:
             # this has to be lightweight and foolproof
-            pass
+            return self.ERROR
 
     # read a message from the socket
     def read(self, fd=None):
-        if not fd:
-            fd = self.sock
-	# note: this may raise a socket.error exception which needs to be
-	# caught by the calling routine. (enstore_functions.read_erc does it)
-	msg = fd.recv(1024)
-        # now decode the message based on the message type, which is always 
-	# the first word in the text message
-        return event_relay_messages.decode(msg)
+        if not self.invalid:
+            if not fd:
+                fd = self.sock
+            # note: this may raise a socket.error exception which needs to be
+            # caught by the calling routine. (enstore_functions.read_erc does it)
+            msg = fd.recv(1024)
+            # now decode the message based on the message type, which is always 
+            # the first word in the text message
+            return event_relay_messages.decode(msg)
+        else:
+            return self.ERROR
         
     # subscribe ourselves to the event relay server
     def subscribe(self):
@@ -101,7 +137,7 @@ class EventRelayClient:
             self.notify_msg = event_relay_messages.EventRelayNotifyMsg(self.host,
                                                                      self.port)
             self.notify_msg.encode(self.subscribe_msgs)
-        self.send(self.notify_msg)
+        return self.send(self.notify_msg)
 
     # unsubscribe ourselves to the event relay server
     def unsubscribe(self):
@@ -109,7 +145,7 @@ class EventRelayClient:
             self.unsubscribe_msg = event_relay_messages.EventRelayUnsubscribeMsg(self.host,
 								    self.port)
             self.unsubscribe_msg.encode()
-        self.send(self.unsubscribe_msg)
+        return self.send(self.unsubscribe_msg)
 
     # send the heartbeat to the event realy
     def heartbeat(self):
@@ -117,17 +153,21 @@ class EventRelayClient:
 	if self.function is not None:
 	    opt_string = self.function()
         self.heartbeat_msg.encode(self.name, opt_string)
-        self.send(self.heartbeat_msg)
+        return self.send(self.heartbeat_msg)
 
     def start_heartbeat(self, name, heartbeat_interval, function=None):
-        # we will set up a heartbeat to be sent periodically to the event relay
-        # process
-        self.heartbeat_interval = heartbeat_interval
-	self.function = function
-	self.name = name
-        self.heartbeat_msg = event_relay_messages.EventRelayAliveMsg(self.host, 
-                                                                    self.port)
-	self.server.add_interval_func(self.heartbeat, self.heartbeat_interval)
+        # we will set up a heartbeat to be sent periodically to the event
+        # relay process
+        if not self.invalid:
+            self.heartbeat_interval = heartbeat_interval
+            self.function = function
+            self.name = name
+            self.heartbeat_msg = event_relay_messages.EventRelayAliveMsg(self.host, 
+                                                                        self.port)
+            self.server.add_interval_func(self.heartbeat, self.heartbeat_interval)
+            return self.SUCCESS
+        else:
+            return self.ERROR
 
     def send_one_heartbeat(self, name, function=None):
         # send one heartbeat to the event relay
@@ -135,57 +175,58 @@ class EventRelayClient:
 	self.name = name
         self.heartbeat_msg = event_relay_messages.EventRelayAliveMsg(self.host, 
                                                                     self.port)
-	self.heartbeat()
+	return self.heartbeat()
 
     def dump(self):
 	# send the dump request to the event relay
 	self.dump_msg = event_relay_messages.EventRelayDumpMsg(self.host, self.port)
 	self.dump_msg.encode()
-	self.send(self.dump_msg)
+	return self.send(self.dump_msg)
 
     def quit(self):
         # send the quit message to the event relay
         self.quit_msg = event_relay_messages.EventRelayQuitMsg(self.host, self.port)
 	self.quit_msg.encode()
-	self.send(self.quit_msg)
+	return self.send(self.quit_msg)
 
     def do_print(self):
 	# send the do_print request to the event relay
 	self.doprint_msg = event_relay_messages.EventRelayDoPrintMsg(self.host, self.port)
 	self.doprint_msg.encode()
-	self.send(self.doprint_msg)
+	return self.send(self.doprint_msg)
 
     def dont_print(self):
 	# send the dont_print request to the event relay
 	self.dontprint_msg = event_relay_messages.EventRelayDontPrintMsg(self.host, self.port)
 	self.dontprint_msg.encode()
-	self.send(self.dontprint_msg)
+	return self.send(self.dontprint_msg)
 
     def event_relay_heartbeat(self):
 	# send the heartbeat request to the event relay
 	self.heartbeat_msg = event_relay_messages.EventRelayHeartbeatMsg(self.host, self.port)
 	self.heartbeat_msg.encode()
-	self.send(self.heartbeat_msg)
+	return self.send(self.heartbeat_msg)
 
     def alive(self):
         # check if the event_relay is alive.  do this by subscribing
         # for alive messages and then asking the event relay to send
         # its own heartbeat.
-        self.start([event_relay_messages.ALIVE,])
-        self.event_relay_heartbeat()
-	# wait for events
-        readable, junk, junk = select.select([self.sock], [], [], 25)
-        if readable:
-            for fd in readable:
-                msg = enstore_erc_functions.read_erc(self)
-                if msg:
-                    # we got one, we are done
-                    self.unsubscribe()
-                    #self.sock.close()
-                    return 0
-        # we did not get a message, assume the event relay is not alive
-        return 1
-        
+        if self.start([event_relay_messages.ALIVE,]) == self.SUCCESS:
+            self.event_relay_heartbeat()
+            # wait for events
+            readable, junk, junk = select.select([self.sock], [], [], 25)
+            if readable:
+                for fd in readable:
+                    msg = enstore_erc_functions.read_erc(self)
+                    if msg:
+                        # we got one, we are done
+                        self.unsubscribe()
+                        #self.sock.close()
+                        return 0
+            # we did not get a message, assume the event relay is not alive
+            return 1
+        else:
+            return 1
 
 class EventRelayClientInterface:
 
