@@ -1056,7 +1056,7 @@ class Display(Tkinter.Canvas):
 ##        self.pack(side=Tkinter.LEFT)
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 
-        self.animate = 1 #Animate the connections.
+        self.animate = 0 #Initialize animations to off... get turned on later.
 
         #The toplevel widget the canvas created.
         toplevel = self.winfo_toplevel()
@@ -1068,10 +1068,11 @@ class Display(Tkinter.Canvas):
         #Options menu.
         self.option_menu = Tkinter.Menu(master=self.menubar, tearoff=0)
         self.option_menu.add_checkbutton(label="Animate",
-                                         #indicatoron=1, #Tkinter.YES,
-                                         #offvalue=0, onvalue=1,
-                                         #variable=self.animate)
+                                         indicatoron=Tkinter.YES,
                                          command=self.toggle_animation)
+        #Since this is a checkbutton, it must be set to on initially.
+        self.option_menu.invoke(0) #Use index 0.
+        #Added the menus to there respective parent widgets.
         self.menubar.add_cascade(label="options", menu=self.option_menu)
         toplevel.config(menu=self.menubar)
 
@@ -1159,17 +1160,23 @@ class Display(Tkinter.Canvas):
             self.after_cancel(self.after_animation_id)
             self.after_cancel(self.after_clients_id)
             self.after_cancel(self.after_idle_id)
+            if self.after_reposition_id:
+                self.after_cancel(self.after_reposition_id)
         except AttributeError:
             pass  #Will get here when resize is called during __init__.
         
-        #If the user changed the window size, update.
-        self.reposition_canvas()
+        #If the user changed the window size, schedule an update.  We don't
+        # want to do this every time the window changes sizes.  When a user
+        # changes the size using the mouse MANY window change events are
+        # generated.  This helps wait until the last is done.
+        self.after_reposition_id = self.after(100, self.reposition_canvas)
 
         try:
-            self.after_timer_id = self.after(30, self.update_timers)
-            self.after_animation_id = self.after(30, self.connection_animation)
-            self.after_clients_id = self.after(30, self.disconnect_clients)
-            self.after_idle_id = self.after(30, self.display_idle)
+            self.after_timer_id = self.after(1000, self.update_timers)
+            self.after_animation_id = self.after(1000,
+                                                 self.connection_animation)
+            self.after_clients_id = self.after(1000, self.disconnect_clients)
+            self.after_idle_id = self.after(1000, self.display_idle)
         except AttributeError:
             pass
 
@@ -1205,6 +1212,8 @@ class Display(Tkinter.Canvas):
                 self.reposition_movers()
             if self.connections:
                 self.reposition_connections()
+
+            self.after_reposition_id = None
         
     def reposition_movers(self, number_of_movers=None):
         items = self.movers.items()
@@ -1520,6 +1529,7 @@ class Display(Tkinter.Canvas):
         self.after_animation_id = self.after(30, self.connection_animation)
         self.after_clients_id = self.after(30, self.disconnect_clients)
         self.after_idle_id = self.after(30, self.display_idle)
+        self.after_reposition_id = None
         Tkinter.Tk.mainloop(self)
         self.undraw()
         self.stopped = 1
