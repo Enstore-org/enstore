@@ -209,18 +209,18 @@ trace_function(  PyObject	*self
 	int		push[TRC_MAX_PARAMS*2*100]; /* area for converted data */
 	struct timeval	tt;
 	int		have_time=0;
-	int		have_mesg=0;
 
+
+    if (!get_lvl_msg_push(args,&lvl,&msg,push))
+	return (raise_exception("trace - parse error -- max is 8 or possibly 7 args"));
 
     /* mode is most likely to be on and lvl (for fun1-) is most likely to
        be off, so check lvl first */
     if ((trc_lvl_ip[0]&(1<<lvl)) && (trc_cntl_sp->mode&1))
     {   /* circular queue put operation */
-	if (!get_lvl_msg_push(args,&lvl,&msg,push))
-	    return (raise_exception("trace - parse error -- max is 8 or possibly 7 args"));
 	Ptrace_QPut( &tt, lvl, msg, push[0], push[1], push[2]
 		    , push[3], push[4], push[5] );
-	have_time = have_mesg = 1;
+	have_time = 1;
     }
     if ((trc_lvl_ip[1]&(1<<lvl)) && (trc_cntl_sp->mode&2))
     {   if (!have_time) { gettimeofday( &tt, 0 ); have_time = 1; }
@@ -235,9 +235,6 @@ trace_function(  PyObject	*self
     if ((trc_lvl_ip[3]&(1<<lvl)) && (trc_cntl_sp->mode&8))
     {   char    traceLvlStr[33] = "                                ";
 	if (!have_time) { gettimeofday( &tt, 0 ); have_time = 1; }
-	if (!have_mesg)
-	    if (!get_lvl_msg_push(args,&lvl,&msg,push))
-		return (raise_exception("trace - parse error -- max is 8 or possibly 7 args"));
 	/* printing is slow, but we need to make it slower by checking ??? */
 	printf( "%5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s %s%s\n"
 	       , trc_pid
@@ -318,8 +315,6 @@ get_msg(  PyObject	*args
 	PyObject	*arg_str_o=0;
 	char		*arg_s="";
 
-	PyObject	*tt[2];
-
     sts = PyArg_ParseTuple( args, "OsO", arg_frame, &arg_event, &arg_arg );
     if (!sts) return (sts);
 
@@ -375,14 +370,11 @@ static PyObject *
 profile_function(  PyObject	*self
 		 , PyObject	*args )
 {							/* @-Public-@ */
-	int		 sts;
-	PyObject	*msg_o;
-
 	PyObject	*arg_frame;
 	char		 msg[20000];
-	int		 depth;
+	int		 depth=0;     /* initialize to quiet gcc */
 	struct timeval	 tt;
-	PyObject	*argsTuple;
+	PyObject	*argsTuple=0; /* initialize to quiet gcc */
 	int		 have_mesg=0; /* for all */
 	int		 have_time=0; /* for circQ, alarm and log */
 	int		 have_dpth=0; /* for circQ and print; has requiremnt */
@@ -635,7 +627,8 @@ initPtrace()
 
     PyDict_SetItemString(  PtraceModuleDict, "__builtins__"
 			 , PyEval_GetBuiltins() );
-    if (oo=PyDict_GetItemString(PtraceModuleDict,"__builtins__"))
+    /* extra paren's in next line to quiet gcc */
+    if ((oo=PyDict_GetItemString(PtraceModuleDict,"__builtins__")))
     {   oo = PyDict_GetItemString( oo, "str" );
 	PtraceStrFunc = oo;
     }

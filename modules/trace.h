@@ -11,6 +11,7 @@
 #include <sys/types.h>		/* pid_t - unistd alone does not work */
 #include <sys/time.h>		/* struct timeval, ref. gettimeofday(2) */
 #include <stdarg.h>		/* varargs */
+#include <sys/sem.h>		/* semop */
 
 				/* time, lvl, msg, ... */
 typedef void	(oper_func_t)( struct timeval*, int, const char*, va_list );
