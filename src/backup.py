@@ -183,11 +183,11 @@ def archive_clean(ago,hst_local,hst_bck,bckHome):
                         logthis(e_errors.INFO, "Command %s failed"%(cmd,))
 
 
-class backupInterface(option.Interface):
-	def __init__(self):
-		option.Interface.__init__(self)
+class BackupInterface(option.Interface):
+    def __init__(self, args=sys.argv, user_mode=1):
+        option.Interface.__init__(self, args=args, user_mode=user_mode)
 
-def do_work():
+def do_work(intf):
     Trace.init("BACKUP")
 
     try:
@@ -248,4 +248,6 @@ def do_work():
 
 
 if __name__=="__main__":
-    sys.exit(do_work())
+    intf = BackupInterface(user_mode=0)
+    
+    sys.exit(do_work(intf))
