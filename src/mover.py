@@ -3166,6 +3166,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.can_force_eject:
                 # try to unload tape if robot is STK. It can do this
                 Trace.log(e_errors.INFO,"Eject failed. For STK robot will try to unload anyway")
+                Trace.alarm(e_errors.ERROR, "Eject failed. Can be a problem with tape drive")
+                after_function = self.offline
             else:
                 
                 broken = "Cannot eject tape"
