@@ -44,8 +44,8 @@ case $gang in
 	 #dcache=orchard
          do_active=1
          do_passive=1
-         do_nonkerb_active=1
-         do_nonkerb_passive=1
+         do_nonkerb_active=0
+         do_nonkerb_passive=0
          do_kftp_write=1
          do_dccp=1
          do_double=1
@@ -63,6 +63,7 @@ read_back=/tmp/dcache_read_back
 
 rm -f $test_file
 cp /var/log/messages $test_file
+
 
 # get a file that is old.  As time moves on, choose a different
 # file.  But keep old choice for a reasonable amount of time.
@@ -86,6 +87,7 @@ ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
 # ${krbdir}/klist -fea
 
 
+wfile=$w3_$$_1
 # Active kerberized kftp read
 if [ $do_active = 1 ]; then
   echo "================================================================================================================================"
@@ -103,13 +105,11 @@ fi
 # Active kerberized kftp write
 if [ $do_active = 1 -a $do_kftp_write = 1 ]; then
   echo "================================================================================================================================"
-  echo "rm -f $w"
-        rm -f $w
-  echo "`date` Active write kftpcp -p $strong_port -v $test_file enstore@$dcache:$w3"
-                            kftpcp -p $strong_port -v $test_file enstore@$dcache:$w3
+  echo "`date` Active write kftpcp -p $strong_port -v $test_file enstore@$dcache:$wfile"
+                            kftpcp -p $strong_port -v $test_file enstore@$dcache:$wfile
   stat1a=$?
   if [ $stat1a -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Active write kftpcp -p $strong_port -v $test_file enstore@$dcache:$w3 STAT=$stat1a"
+     echo enstore alarm --raise --severity "A" --root-error "Active write kftpcp -p $strong_port -v $test_file enstore@$dcache:$wfile STAT=$stat1a"
   fi
   echo
 else
@@ -121,12 +121,12 @@ if [ $do_active = 1 -a $do_kftp_write = 1 -a $do_readback = 1 ]; then
   echo "================================================================================================================================"
   echo "rm -f $read_back"
         rm -f $read_back
-  echo "`date` Active readback kftpcp -p $strong_port -v enstore@$dcache:$w3 $read_back"
-                               kftpcp -p $strong_port -v enstore@$dcache:$w3 $read_back
+  echo "`date` Active readback kftpcp -p $strong_port -v enstore@$dcache:$wfile $read_back"
+                               kftpcp -p $strong_port -v enstore@$dcache:$wfile $read_back
 
   stat1b=$?
   if [ $stat1b -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Active readback kftpcp -p $strong_port -v $test_file enstore@$dcache:$w3 STAT=$stat1b"
+     echo enstore alarm --raise --severity "A" --root-error "Active readback kftpcp -p $strong_port -v $test_file enstore@$dcache:$wfile STAT=$stat1b"
      stat1c=0
   else
      cmp $test_file $read_back
@@ -159,16 +159,16 @@ fi
 #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$A
 if /bin/false; then
 
+wfile=$w3_$$_2
+
 # Passive kerberized kftp write
 if [ $do_passive = 1 -a $do_kftp_write = 1 ]; then
   echo "================================================================================================================================"
-  echo "rm -f $w"
-        rm -f $w
-  echo "`date` Passive write kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$w3"
-                             kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$w3
+  echo "`date` Passive write kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$wfile"
+                             kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$wfile
   stat2a=$?
   if [ $stat2a -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Passive write kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2a"
+     echo enstore alarm --raise --severity "A" --root-error "Passive write kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$wfile STAT=$stat2a"
   fi
   echo
 else
@@ -181,12 +181,12 @@ if [ $do_passive = 1 -a $do_kftp_write = 1 -a $do_readback = 1 ]; then
   echo "================================================================================================================================"
   echo "rm -f $read_back"
         rm -f $read_back
-  echo "`date` Passive readback kftpcp -p $strong_port -m p -v enstore@$dcache:$w3 $read_back"
-                                kftpcp -p $strong_port -m p -v enstore@$dcache:$w3 $read_back
+  echo "`date` Passive readback kftpcp -p $strong_port -m p -v enstore@$dcache:$wfile $read_back"
+                                kftpcp -p $strong_port -m p -v enstore@$dcache:$wfile $read_back
 
   stat2b=$?
   if [ $stat2b -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Passive readback kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2b"
+     echo enstore alarm --raise --severity "A" --root-error "Passive readback kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$wfile STAT=$stat2b"
      stat2c=0
   else
      cmp $test_file $read_back
@@ -298,13 +298,12 @@ if [ $do_dccp = 1 -a $do_double = 1 ]; then
 fi
 
 
+wfile=$w_$$_2
 # dccp write
 if [ $do_dccpwrite = 1 ]; then
   echo "================================================================================================================================"
-  echo "rm -f $w"
-        rm -f $w
-  echo "`date`dccp write  ~bakken/dccp -d 2 $test_file $w"
-                          ~bakken/dccp -d 2 $test_file $w
+  echo "`date`dccp write  ~bakken/dccp -d 2 $test_file $wfile"
+                          ~bakken/dccp -d 2 $test_file $wfile
   stat6=$?
   echo
 else
@@ -317,11 +316,11 @@ if [ $do_dccpwrite = 1 -a $do_readback = 1 ]; then
   echo "================================================================================================================================"
   echo "rm -f $read_back"
         rm -f $read_back
-  echo "`date` dccp readback ~bakken/dccp -d 2 $w $read_back"
-                             ~bakken/dccp -d 2 $w $read_back
+  echo "`date` dccp readback ~bakken/dccp -d 2 $wfile $read_back"
+                             ~bakken/dccp -d 2 $wfile $read_back
   stat7=$?
   if [ $stat7 -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "dccp readback ~bakken/dccp -d 2 $w $read_back"
+     echo enstore alarm --raise --severity "A" --root-error "dccp readback ~bakken/dccp -d 2 $wfile $read_back"
      stat7c=0
   else
      cmp $test_file $read_back
