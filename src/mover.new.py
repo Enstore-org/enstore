@@ -244,11 +244,12 @@ def bind_volume( self, ticket ):
 	    # SHULD I RETRY????????
 	    if rsp['status'][0] == "media_in_another_device": time.sleep (10)
 	    return 'TAPEBUSY' # generic, not read or write specific
-	sts = self.hsm_driver.sw_mount( mvr_config['device'],
-					tmp_vol_info['blocksize'],
-					tmp_vol_info['remaining_bytes'],
-					ticket['fc']['external_label'] )
-	if str(sts) != '0' and str(sts) != 'None': return 'BADMOUNT' # generic, not read or write specific
+	try:
+	    self.hsm_driver.sw_mount( mvr_config['device'],
+				      tmp_vol_info['blocksize'],
+				      tmp_vol_info['remaining_bytes'],
+				      ticket['fc']['external_label'] )
+	except: return 'BADMOUNT' # generic, not read or write specific
 	pass
     elif ticket['fc']['external_label'] != self.vol_info['external_label']:
 	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],ticket['fc']['external_label']) )
@@ -309,15 +310,14 @@ def forked_write_to_hsm( self, ticket ):
             do = self.hsm_driver.open( mvr_config['device'], 'a+' )
 	    t0 = time.time()
 	    do.seek( self.vol_info['eod_cookie'] )
-	    self.vol_info['eod_cookie'] = do.cur_loc_cookie# vol_info may be 'none'
 	    ticket['times']['seek_time'] = time.time() - t0
+	    self.vol_info['eod_cookie'] = do.cur_loc_cookie# vol_info may be 'none'
 
 	    fast_write = 1
 
 	    # create the wrapper instance (could be different for different
 	    # tapes) so it can save data between pre and post
-            wrapper = cpio.Cpio(  self.usr_driver, self.hsm_driver, ECRC.ECRC
-				, fast_write )
+            wrapper = cpio.Cpio()
 
             logc.send(log_client.INFO,2,"WRAPPER.WRITE")
 	    t0 = time.time()
@@ -341,14 +341,17 @@ def forked_write_to_hsm( self, ticket ):
 	    Trace.trace( 11, 'done with rest' )
 	    wrapper.write_post_data( do, file_crc )
 	    Trace.trace( 11, 'done with post_data' )
-
+	    # could implement do.flush() to get 100% honest xfer time
+	    ticket['times']['transfer_time'] = time.time() - t0
+	    t0 = time.time()
 	    do.writefm()
+	    ticket['times']['eof_time'] = time.time() - t0
 	    Trace.trace( 11, 'done with fm' )
+
             location_cookie = self.vol_info['eod_cookie']
 	    eod_cookie = do.tell()
-	    stats = self.hsm_driver.get_stats()
-	    do.close()
-	    ticket['times']['transfer_time'] = time.time() - t0
+	    stats = self.do.get_stats()
+	    do.close()			# b/c of fm above, this is purely sw.
 
         #except EWHATEVER_NET_ERROR:
         except:
@@ -451,7 +454,7 @@ def forked_read_from_hsm( self, ticket ):
 	    ticket['times']['seek_time'] = time.time() - t0
 
 	    # create the wrapper instance (could be different for different tapes)
-	    wrapper = cpio.Cpio( self.hsm_driver, self.usr_driver, ECRC.ECRC )
+	    wrapper = cpio.Cpio()
 
             logc.send(log_client.INFO,2,"WRAPPER.READ")
 	    t0 = time.time()
