@@ -11,7 +11,7 @@ doit() { echo "$cmd"
 stopit() { cmd="ezapit -s 15 python        >/dev/null 2>&1"; doit
            cmd="ezapit -s 15 db_checkpoint >/dev/null 2>&1"; doit
            cmd="ezapit -s 15 db_deadlock   >/dev/null 2>&1"; doit
-           if [ $opt = "stop" ]; then exit 0; fi
+           if [ "$opt" = "stop" ]; then exit 0; fi
          }
 
 starttrc() { cmd="traceMode 7"; doit
