@@ -285,9 +285,15 @@ def copy_files(files):
 			res = 0
 			ok_log(MY_TASK, "%s has already been copied at %s"%(bfid, ct))
 		else:
+			# make sure the tmp file is not there
+			if os.access(tmp, os.F_OK):
+				log(MY_TASK, "tmp file %s exists, remove it first"%(tmp))
+				os.remove(tmp)
 			res = run_encp(['--ecrc', src, tmp])
 			if res == 0:
 				ok_log(MY_TASK, "%s %s to %s"%(bfid, src, tmp))
+			else:
+				error_log(MY_TASK, "failed to copy %s %s to %s, error = %d"%(bfid, src, tmp, res))
 
 		if res == 0:
 			copy_queue.put((bfid, src, tmp, f['file_family'],
@@ -303,14 +309,21 @@ def migration_file_family(ff):
 
 # compare_metadata(p, f) -- compare metadata in pnfs (p) and filedb (f)
 def compare_metadata(p, f):
+	if debug:
+		p.show()
+		print `f`
 	if p.bfid != f['bfid'] or \
 		p.volume != f['external_label'] or \
 		p.location_cookie != f['location_cookie'] or \
 		long(p.size) != long(f['size']) or \
-		p.pnfs_id != f['pnfs_id'] or \
-		p.drive != f['drive'] or \
-		long(p.complete_crc) != f['complete_crc']:
+		p.pnfs_id != f['pnfsid']:
 		return "inconsistent"
+	# some of old pnfs records do not have crc and drive information
+	if p.complete_crc and long(p.complete_crc) != long(f['complete_crc']):
+		return "inconsistent (different crc)"
+	if p.drive and p.drive != "unknown:unknown" and \
+		p.drive != f['drive']:
+		return "inconsistent (different drive)"
 	return None
 
 # swap_metadata(bfid1, src, bfid2, dst) -- swap metadata for src and dst
@@ -318,10 +331,10 @@ def compare_metadata(p, f):
 # This got to be very paranoid.
 #
 # [1] check the meta data consistency
-# [2] f[bfid2][pnfs_id] = f[bfid1][pnfs_id] # use old pnfs_id
-# [3] pnfs_id = f[bfid1][pnfs_id]           # save it
+# [2] f[bfid2][pnfsid] = f[bfid1][pnfsid] # use old pnfsid
+# [3] pnfsid = f[bfid1][pnfsid]           # save it
 # [4] p[src] = p[dst]                     # copy pnfs layer 4
-# [5] p[src][pnfs_id] = pnfs_id
+# [5] p[src][pnfsid] = pnfsid
 #
 # * return None if succeeds, otherwise, return error message
 # * to avoid deeply nested "if ... else", it takes early error return
@@ -333,28 +346,34 @@ def swap_metadata(bfid1, src, bfid2, dst):
 	f2 = fcc.bfid_info(bfid2)
 
 	# check if the metadata are consistent
-	if compare_metadata(p1, f1):
-		return "%s %s has inconsistent metadata"%(bfid1, src)
+	res = compare_metadata(p1, f1)
+	if res:
+		return "metadata %s %s are %s"%(bfid1, src, res)
 
-	if compare_metadata(p2, f2):
-		return "%s %s has inconsistent metadata"%(bfid2, src)
+	res = compare_metadata(p2, f2)
+	if res:
+		return "metadata %s %s are %s"%(bfid2, src, res)
 
 	# cross check
-	if long(p1.size) != long(p2.size) or \
-		p1.complete_crc != p2.complete_crc:
+	if long(f1['size']) != long(f2['size']) or \
+		f1['complete_crc'] != f2['complete_crc']:
 		return "%s and %s have different size or crc"%(bfid1, bfid2)
 		
 
 	# swapping metadata
-	m1 = {'bfid': bfid2, 'pnfs_id':f1['pnfs_id'], 'pnfs_name0':f1['pnfs_name0']}
+	m1 = {'bfid': bfid2, 'pnfsid':f1['pnfsid'], 'pnfs_name0':f1['pnfs_name0']}
 	res = fcc.modify(m1)
+	# res = {'status': (e_errors.OK, None)}
 	if not res['status'][0] == e_errors.OK:
-		return "failed to change pnfs_id for %d"%(bfid2)
+		return "failed to change pnfsid for %s"%(bfid2)
 	p1.volume = p2.volume
 	p1.location_cookie = p2.location_cookie
 	p1.bfid = p2.bfid
 	p1.drive = p2.drive
+	p1.complete_crc = p2.complete_crc
+	p1.file_family = p2.file_family
 	p1.update()
+	# p1.show()
 
 	# check it again
 	p1 = pnfs.File(src)
@@ -364,11 +383,43 @@ def swap_metadata(bfid1, src, bfid2, dst):
 
 	return None
 
+# restore(bfids) -- restore pnfs entries using file records
+def restore(bfid):
+	if type(bfids) != type([]):
+		bfids = [bfids]
+	for bfid in bfids:
+		MY_TASK = "RESTORE"
+		f = fcc.bfid_info(bfid)
+		if f['deleted'] != 'yes':
+			error_log(MY_TASK, "%s is not deleted"%(bfid))
+			continue
+		v = vcc.inquire_vol(f['external_label'])
+		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
+		p = pnfs.File(src)
+
+		p.volume = f['external_label']
+		p.location_cookie = f['location_cookie']
+		p.bfid = bfid
+		p.drive = f['drive']
+		p.complete_crc = f['complete_crc']
+		p.file_family = volume_family.extract_file_family(v['volume_family'])
+		# undelete the file
+		res = fcc.set_deleted('no', bfid=bfid)
+		if res['status'][0] == e_errors.OK:
+			ok_log(MY_TASK, "undelete %s"%(bfid))
+		else:
+			error_log(MY_TASK, "failed to undelete %d"%(bfid))
+		p.update()
+
 # migrating() -- second half of migration, driven by copy_queue
 def migrating():
 	MY_TASK = "COPYING_TO_TAPE"
+	if debug:
+		print "migrating()"
 	job = copy_queue.get(True)
 	while job:
+		if debug:
+			print `job`
 		(bfid, src, tmp, ff, sg) = job
 		ff = migration_file_family(ff)
 		dst = migration_path(src)
@@ -417,13 +468,13 @@ def migrating():
 				ok_log(MY_TASK, "%s %s %s is copied to %s"%(bfid, src, tmp, dst))
 				log_copied(bfid, bfid2)
 
-		# remove tmp file
-		try:
-			os.remove(tmp)
-			ok_log(MY_TASK, "removing %s"%(tmp))
-		except:
-			error_log(MY_TASK, "failed to remove temporary file %s"%(tmp))
-			pass
+			# remove tmp file
+			try:
+				os.remove(tmp)
+				ok_log(MY_TASK, "removing %s"%(tmp))
+			except:
+				error_log(MY_TASK, "failed to remove temporary file %s"%(tmp))
+				pass
 
 		# is it swapped?
 		log("SWAPPING_METADATA", "swapping %s %s %s %s"%(bfid, src, bfid2, dst))
@@ -472,8 +523,6 @@ def final_scan():
 			f = fcc.bfid_info(bfid)
 			if f['status'] == e_errors.OK and f['deleted'] != 'yes':
 				error_log(MY_TASK, "%s was not marked deleted"%(bfid))
-			else:
-				error_log(MY_TASK, "can not find original file %s"%(bfid))
 
 		job = scan_queue.get(True)
 
@@ -489,7 +538,7 @@ def migrate(files):
 	ret = final_scan()
 	return ret
 
-# nigrate_volume(vol) -- migrate a volume
+# migrate_volume(vol) -- migrate a volume
 def migrate_volume(vol):
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
@@ -523,5 +572,12 @@ def migrate_volume(vol):
 			error_log(MY_TASK, "failed to set %s migrated"%(vol))
 	return res
 
+# nuke_pnfs() -- nuke the pnfs entry
+def nuke_pnfs(p):
+	p1 = pnfs.File(p)
+	for i in [1,2,4]:
+		f = open(p1.layer_file(i), 'w')
+		f.close()
+	
 if __name__ == '__main__':
 	init()
