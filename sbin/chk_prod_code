@@ -1,0 +1,21 @@
+#!/bin/sh
+set -u
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+gang=`gang`
+out=/tmp/chk_prod_code
+rm -f $out ${out}_1
+
+source $ENSTORE_DIR/sbin/gettkt
+rgang $gang " cd /home/enstore/enstore; cvs -qn update -r production" > $out 2>&1
+
+egrep -v " cvs -q update -r production| This rsh session is using DES encryption for all data transmissions|M etc/enstore_system.html" $out > ${out}_1
+mods=`egrep -v " - - - - - - - - - - - - - " ${out}_1`
+
+if [ `echo $mods | sed -e 's/ //g'|wc -w` -ne 0 ]; then
+  /usr/bin/Mail -s "$gang not running latest production code.  Developer Primary check and fix and restart." $ENSTORE_MAIL <${out}_1
+fi
+
+cat ${out}_1
+
+exit 0
