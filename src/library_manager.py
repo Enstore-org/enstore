@@ -220,13 +220,20 @@ def busy_vols_in_family (vc, family_name, verbose):
 
 
 # check if a particular volume with given label is busy
-def is_volume_busy(external_label):
+def is_volume_busy(self, external_label):
     Trace.trace(4,"{is_volume_busy " + repr(external_label))
     rc = 0
     for w in work_at_movers:
         if w["fc"]["external_label"] == external_label:
 	    rc = 1
 	    break
+    # check if volume is in the intemediate 'unmounting state'
+    vc = volume_clerk_client.VolumeClerkClient(self.csc)
+    vol_info = vc.inquire_vol(external_label)
+    if vol_info['at_mover'][0] == 'unmounting':
+	# volume is in unmounting state: can't give it out
+	rc = 1
+
     Trace.trace(4,"}is_volume_busy " + repr(rc))
     return rc
 
@@ -254,7 +261,7 @@ def next_work_any_volume(self, csc, verbose):
     while w:
         # if we need to read and volume is busy, check later
         if w["work"] == "read_from_hsm":
-            if is_volume_busy(w["fc"]["external_label"]) :
+            if is_volume_busy(self, w["fc"]["external_label"]) :
                 w=pending_work.get_next()
                 continue
             # otherwise we have found a volume that has read work pending
@@ -429,7 +436,7 @@ def next_work_this_volume(v,verbose):
 def summon_mover(self, mover, ticket):
     if not summon: return
     self.enprint("SUMMON "+repr(mover), generic_cs.DEBUG, self.verbose)
-    self.enprint(mover, generic_cs.DEBUG|generic_cs.PRETTY_PRINT, self.verbose)
+    self.enprint("SUMMON TICKET"+repr(ticket), generic_cs.DEBUG, self.verbose)
     Trace.trace(3,"{summon_mover " + repr(mover))
     # update mover info
     mover['last_checked'] = time.time()
@@ -441,8 +448,9 @@ def summon_mover(self, mover, ticket):
     if not mv:
 	# add it to the summon queue
 	self.summon_queue.append(mover)
-    #mover['work_ticket'] = {}
-    mover['work_ticket'] = ticket
+    mover['work_ticket'] = {}
+    mover['work_ticket'].update(ticket)
+
 	    
     summon_rq = {'work': 'summon',
 		 'address': self.server_address }
@@ -678,14 +686,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.summon_queue = []
 	    
         self.enprint("movers queue after processing TO\nmover count "+\
-	               repr(mover_cnt), generic_cs.DEBUG, self.verbose)
+	               repr(mover_cnt), generic_cs.SERVER, self.verbose)
         self.enprint(movers, 
-		     generic_cs.DEBUG|generic_cs.PRETTY_PRINT,
+		     generic_cs.SERVER|generic_cs.PRETTY_PRINT,
 	              self.verbose)
         self.enprint("summon queue after processing TO", \
-	              generic_cs.DEBUG, self.verbose)
+	              generic_cs.SERVER, self.verbose)
         self.enprint(self.summon_queue, \
-	             generic_cs.DEBUG|generic_cs.PRETTY_PRINT, 
+	             generic_cs.SERVER|generic_cs.PRETTY_PRINT, 
 		     self.verbose)
 	Trace.trace(3,"}handle_timeout")
     
@@ -790,7 +798,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	#             self.verbose)
 	Trace.trace(3,"{read_from_hsm " + repr(ticket))
 	self.handle_timeout()
-	self.enprint("MOVERS "+repr(movers), generic_cs.DEBUG, self.verbose)
+	#self.enprint("MOVERS "+repr(movers), generic_cs.DEBUG, self.verbose)
 	if movers:
 	    ticket["status"] = (e_errors.OK, None)
 	else:
@@ -813,12 +821,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         pending_work.insert_job(ticket)
 
 	# check if requested volume is busy
-	if  not is_volume_busy(ticket["fc"]["external_label"]):
+	if  not is_volume_busy(self, ticket["fc"]["external_label"]):
 	    self.enprint("VOLUME IS AVAILABLE", generic_cs.DEBUG, self.verbose)
 	    if not mv_found:
 		# find the next idle mover
 		mv = idle_mover_next(self, ticket["fc"]["external_label"])
-	    else: print "mover found"
+	    else: 
+		pass
+		# print "mover found"
 	    if mv:
 		# summon this mover
 		self.enprint("read_from_hsm will summon mover "+repr(mv), \
@@ -836,33 +846,40 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.enprint("IDLE MOVER "+repr(mticket), generic_cs.DEBUG, \
 	             self.verbose)
 
+	vc = volume_clerk_client.VolumeClerkClient(self.csc)
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, mticket, mticket['work'])
 
 	# check if there is a work for this mover in work_at_movers list
 	# it should not happen in a normal operations but it may when for 
-	# intance mover detects that encp is gone and return idle or
+	# instance mover detects that encp is gone and returns idle or
 	# mover crashes and then restarts
-	mv = find_mover(mticket, movers, self.verbose)
+	
+	# if mover has been removed from the summon list check it
+	if not mv:
+	    # print "LOOK FOR MOVER IN MOVER QUEUE" 
+	    mv = find_mover(mticket, movers, self.verbose)
 	if mv:
 	    try:
 		# try to remove work from work_at_movers list
+		# print "REMOVING",mv 
 		work_at_movers.remove(mv['work_ticket'])
 		format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
 		self.logc.send(e_errors.INFO, 2, format,
 			       repr(mv['work_ticket']),
 			       repr(mv))
 		# check if tape is stuck in in the mounting state
-		vc = volume_clerk_client.VolumeClerkClient(self.csc)
 		vol_info = vc.inquire_vol(mv['work_ticket']['fc']['external_label'])
 		if vol_info['at_mover'][0] == 'mounting':
 		    # force set volume to unmounted
+		    # print "FORCING", vol_info['at_mover']
 		    v = vc.set_at_mover(mv['work_ticket']['fc']['external_label'], 'unmounted', 
 					mticket["mover"], 1)
 		
-		    work_at_movers.remove(mv['work_ticket'])
+		    #work_at_movers.remove(mv['work_ticket'])
 		    del(mv["work_ticket"])
 	    except (KeyError, ValueError):
+		# print "NOT REMOVED",str(sys.exc_info()[0]), str(sys.exc_info()[1])
 		pass
 	    except:
 		traceback.print_exc()
@@ -880,7 +897,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # ok, we have some work - try to bind the volume
 	elif w["status"][0] == e_errors.OK:
-	    vc = volume_clerk_client.VolumeClerkClient(self.csc)
 	    # check if the volume for this work had failed on this mover
             self.enprint("SUSPECT_VOLS "+repr(self.suspect_volumes), \
 	                 generic_cs.DEBUG, self.verbose)
@@ -976,16 +992,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    Trace.trace(3,"}idle_mover: cannot change to 'mounting'"+repr(v['at_mover']))
 		    self.reply_to_caller({"work" : "nowork"})
 		    return
+		else:
+		   w['vc']['at_mover'] = v['at_mover'] 
 	    else:
 		self.reply_to_caller({"work" : "nowork"})
 		return
 		
 		
             # reply now to avoid deadlocks
-            format = "%s work on vol=%s mover=%s requester:%s"
+            format = "%s work on vol=%s state=%smover=%s requester:%s"
             self.logc.send(e_errors.INFO, 2, format,
 			   w["work"],
 			   w["fc"]["external_label"],
+			   repr(w['vc']['at_mover']),
 			   mticket["mover"],
 			   w["wrapper"]["uname"])
 	    pending_work.delete_job(w)
@@ -1492,7 +1511,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    return {"status" : (e_errors.KEYERROR, "Key 'unique_id' does not exist")}
 	try:
 	    w = pending_work.change_pri(id, pri)
-	    print "W",
 	    if w == None:
 		self.reply_to_caller({"status" : (e_errors.NOWORK, "No such work or attempt to set wrong priority")})
 		return
