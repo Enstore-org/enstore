@@ -258,8 +258,10 @@ def move_file(input_filename, output_filename):
 
     if in_fd: #If the rename failed and we did it the hard way.
 
-        #The file size, permissions, ownership and last access/modification
-        # time must all be reset.
+        #The file size, permissions, last access/modification time and
+        # ownership must all be reset.
+        #Note: Ownership must be last, otherwise the permissions to set
+        # the rest won't be there.
         
         try:
             new_p.set_file_size(file_info['size'])
@@ -276,20 +278,20 @@ def move_file(input_filename, output_filename):
             sys.exit(1)
 
         try:
-            os.chown(output_filename,
-                     p.pstat[stat.ST_UID], p.pstat[stat.ST_GID])
-        except OSError, msg:
-            print_error(e_errors.OSERROR,
-                        "File ownership update failed: %s" % str(msg))
-            sys.exit(1)
-
-        try:
             os.utime(output_filename,
                      (p.pstat[stat.ST_ATIME], p.pstat[stat.ST_MTIME]))
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File access and modification time update failed: %s" \
                         % str(msg))
+            sys.exit(1)
+            
+        try:
+            os.chown(output_filename,
+                     p.pstat[stat.ST_UID], p.pstat[stat.ST_GID])
+        except OSError, msg:
+            print_error(e_errors.OSERROR,
+                        "File ownership update failed: %s" % str(msg))
             sys.exit(1)
 
     #Update the file clerk information.  This must be last.  If any of the
