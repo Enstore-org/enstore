@@ -11,20 +11,13 @@ import e_errors
 import timeofday
 
 import configuration_client
-import log_client
 import alarm_client
-import inquisitor_client
-import file_clerk_client
-import volume_clerk_client
-import library_manager_client
-import media_changer_client
-import mover_client
 import generic_client
 import enstore_constants
 import enstore_functions
-import enstore_files
 import event_relay_client
 import event_relay_messages
+import Trace
 
 DEFAULT = "default"
 # default number of times in a row a server can be down before mail is sent
@@ -184,9 +177,16 @@ class EnstoreServer:
 	self.status = enstore_constants.DOWN
 	enprint("%s known down"%(self.format_name,))
 
-    def get_enstore_state(self, state):
+    def set_reason(self, reason):
+	if self.en_status & enstore_constants.DOWN:
+	    # this status means enstore is down, record a reason
+	    if self.reason_down:
+		reason.append(self.reason_down)
+
+    def get_enstore_state(self, state, reason):
 	if self.status == enstore_constants.DOWN:
 	    # en_status records the state of enstore when the server is done
+	    self.set_reason(reason)
 	    return state | self.en_status
 	elif self.status == enstore_constants.WARNING:
 	    return state | enstore_constants.WARNING
@@ -226,6 +226,7 @@ class LogServer(EnstoreServer):
 	EnstoreServer.__init__(self, "log_server", enstore_constants.LOGS,
 			       offline_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN, csc)
+	self.reason_down = "log_server down"
 
 class AlarmServer(EnstoreServer):
 
@@ -233,6 +234,7 @@ class AlarmServer(EnstoreServer):
 	EnstoreServer.__init__(self, "alarm_server", enstore_constants.ALARMS,
 			       offline_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN, csc)
+	self.reason_down = "alarm_server down"
 
 class ConfigServer(EnstoreServer):
 
@@ -241,6 +243,7 @@ class ConfigServer(EnstoreServer):
 			       enstore_constants.CONFIGS, offline_d,
 			       seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN)
+	self.reason_down = "config_server down"
 	self.config_port = string.atoi(os.environ.get('ENSTORE_CONFIG_PORT', 7500))
 	self.config_host = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
 	self.csc = configuration_client.ConfigurationClient((self.config_host, 
@@ -254,6 +257,7 @@ class FileClerk(EnstoreServer):
 	EnstoreServer.__init__(self, "file_clerk", enstore_constants.FILEC,
 			       offline_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN, csc)
+	self.reason_down = "file_clerk down"
 
 class Inquisitor(EnstoreServer):
 
@@ -261,6 +265,7 @@ class Inquisitor(EnstoreServer):
 	EnstoreServer.__init__(self, "inquisitor", enstore_constants.INQ,
 			       offline_d, seen_down_d, allowed_down_d,
 			       enstore_constants.WARNING, csc)
+	self.reason_down = None
 
 class VolumeClerk(EnstoreServer):
 
@@ -268,6 +273,7 @@ class VolumeClerk(EnstoreServer):
 	EnstoreServer.__init__(self, "volume_clerk", enstore_constants.VOLC,
 			       offline_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN, csc)
+	self.reason_down = "volume_clerk down"
 
 class LibraryManager(EnstoreServer):
 
@@ -277,6 +283,7 @@ class LibraryManager(EnstoreServer):
     def __init__(self, csc, name, offline_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, name, name, offline_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN, csc)
+	self.reason_down = "%s down"%(name,)
 	self.postfix = enstore_constants.LIBRARY_MANAGER
 	self.server_state = ""
 	self.in_bad_state = 0
@@ -311,25 +318,27 @@ class LibraryManager(EnstoreServer):
 	    self.in_bad_state = 0
 	    EnstoreServer.is_alive(self)
 
-    def get_enstore_state(self, state):
+    def get_enstore_state(self, state, reason):
 	# THIS IS A BLOODY HACK THAT SHOULD BE REMOVED ASAP
 	if self.name == "samm2.library_manager":
 	    if self.mover_status()[0] == LOW_CAPACITY:
 		return state | enstore_constants.WARNING
 	    else:
-		return EnstoreServer.get_enstore_state(self, state)
+		return EnstoreServer.get_enstore_state(self, state, reason)
 	# END OF BLOODY HACK
 
 	if self.mover_status()[0] == LOW_CAPACITY:
+	    reason.append("Insufficient Movers for %s"%(self.name,))
 	    return state | enstore_constants.DOWN
 	else:
-	    return EnstoreServer.get_enstore_state(self, state)
+	    return EnstoreServer.get_enstore_state(self, state, reason)
 
 class MediaChanger(EnstoreServer):
 
     def __init__(self, csc, name, offline_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, name, name, offline_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN, csc)
+	self.reason_down = "%s down"%(name,)
 	self.postfix = enstore_constants.MEDIA_CHANGER
 
 class Mover(EnstoreServer):
@@ -342,6 +351,7 @@ class Mover(EnstoreServer):
     def __init__(self, csc, name, offline_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, name, name, offline_d, seen_down_d, allowed_down_d,
 			       enstore_constants.WARNING, csc)
+	self.reason_down = None
 	self.postfix = enstore_constants.MOVER
 	self.server_state = ""
         self.check_result = 0
@@ -524,8 +534,9 @@ def do_real_work():
 
     # now figure out the state of enstore based on the state of the servers
     estate = enstore_constants.UP
+    reason = []
     for server in total_servers:
-	estate = server.get_enstore_state(estate)
+	estate = server.get_enstore_state(estate, reason)
 	summary_d[server.format_name] = server.status
     else:
 	summary_d[enstore_constants.ENSTORE] = enstore_state(estate)
@@ -533,6 +544,10 @@ def do_real_work():
     if summary_d[enstore_constants.ENSTORE] == enstore_constants.DOWN:
 	stat = "DOWN"
 	rtn = 1
+	# the following line will set the alarm function
+	alc = alarm_client.AlarmClient(cs.csc)
+	Trace.init("Enstore Up Down")
+	Trace.alarm(e_errors.INFO, e_errors.ENSTOREBALLRED, {'Reason':repr(reason)}) 
     else:
 	stat = "UP"
 	rtn = 0
