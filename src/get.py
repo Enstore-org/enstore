@@ -11,6 +11,7 @@ import select
 import socket
 import errno
 import copy
+import string
 
 import encp
 import pnfs
@@ -31,7 +32,8 @@ EOD = "EOD"  #Don't stop until EOD is reached.
 
 def print_usage():
     print "Usage:", os.path.basename(sys.argv[0]), \
-          "[--verbose <level>] <Volume> <Input Dir.> <Output Dir.>"
+          "[--verbose <level>] [--list <file>] " \
+          "<Volume> <Input Dir.> <Output Dir.>"
 
 def error_output(request):
     #Get the info.
@@ -214,6 +216,16 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
             return work_ticket
+        #For the case where we are reading (SDSS) tapes with two file marks
+        # after the VOL1 header, we don't want to handle any retries, just
+        # pass the error up a level.
+        if mover_done_ticket['status'] == (e_errors.READ_ERROR,
+                                           e_errors.READ_NODATA):
+            Trace.log(e_errors.INFO, str(mover_done_ticket['status']))
+            work_ticket = encp.combine_dict(mover_done_ticket, work_ticket)
+            # Close these descriptors before they are forgotten about.
+            encp.close_descriptors(out_fd, data_path_socket)
+            return work_ticket
 
         # Verify that everything went ok with the transfer.
         mover_result_dict = encp.handle_retries([work_ticket], work_ticket,
@@ -343,7 +355,7 @@ def next_request_update(work_ticket, file_number):
         work_ticket['wrapper']['pnfsFilename'] = work_ticket['outfile']
 
     #Update the unique id for the LM.
-    work_ticket['unique_id'] = encp.generate_unique_id()
+    #work_ticket['unique_id'] = encp.generate_unique_id()
 
     return work_ticket
 
@@ -378,6 +390,9 @@ def main(e):
         Trace.do_print(x)
     for x in xrange(1, e.verbose+1):
         Trace.do_message(x)
+
+    command_line = "Command line: %s" % (string.join(sys.argv),)
+    Trace.log(e_errors.INFO, command_line)
 
     exit_status = 0 #For rembering failures.
     files_transfered = 0
@@ -427,7 +442,7 @@ def main(e):
             [request], tinfo, e)
 
         if not e_errors.is_ok(reply_ticket):
-            sys.stderr.write("Unable to read volume %s: %s\n",
+            sys.stderr.write("Unable to read volume %s: %s\n" %
                              (e.volume, reply_ticket['status']))
             encp.quit(1)
 
@@ -562,6 +577,37 @@ def main(e):
                 request, index = get_next_request(requests_per_vol[e.volume],
                                                   file_number)
                 continue
+            elif done_ticket['status'] == (e_errors.READ_ERROR,
+                                           e_errors.READ_NODATA):
+                #This error is recieved from the mover.  It should (in theory)
+                # only occur on ingested SDSS 'gang' tapes.  These tapes
+                # are a problem because there are two filemarks after
+                # the VOL1 header (instead of just one).
+                
+                #When this error occurs, we need to update all uncompleted
+                # transfers.
+                for i in range(len(requests_per_vol[e.volume])):
+                    request = requests_per_vol[e.volume][i]
+
+                    #The required update involves adding one to the file
+                    # position part of the location cookie.
+                    if request.get('completion_status', None) != SUCCESS:
+                        lc = request['fc']['location_cookie']
+                        number = encp.extract_file_number(lc)
+                        number = number + 1
+                        lc = encp.generate_location_cookie(number)
+                        request['fc']['location_cookie'] = lc
+                        requests_per_vol[e.volume][i] = request
+
+                #What is the correct action on this 'error?'
+                #Go back to the LM (end_session & break) or mini-loop
+                # back to mover (continue)?
+
+                continue
+
+                #We are done with this mover.  Go to next LM.
+                #end_session(udp_socket, control_socket)
+                #break
             #The requested file does not exist on the tape.  (i.e. the
             # tape has only 6 files and the seventh file was requested.)
             elif done_ticket['status'] == (e_errors.READ_ERROR,
