@@ -623,7 +623,8 @@ def do_work(intf):
                                              1) #first_found
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
-        pprint.pprint(ticket)
+        if ticket['status'][0] == e_errors.OK:
+            pprint.pprint(ticket)
     elif intf.check:
         ticket = vcc.inquire_vol(intf.check)
         ##pprint.pprint(ticket)
