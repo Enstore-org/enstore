@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
@@ -9,7 +9,9 @@ if [ ! -r $1 ] ; then exit; fi
 echo Stopping `basename $1 | sed -e 's/_pids$//'`
 
 cat $1 | while read pid; do
-    if [ `ps -p $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
+    if [ `echo "$pid" | egrep -c "[^0-9]"` -ne 0 ]; then
+       if [ "$pid" != "-1" ]; then echo "bad pid \"$pid\" in pid file $1"; fi
+    elif [ `ps -p $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
       kill $pid
       cnt=0
       max=3
