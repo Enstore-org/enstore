@@ -670,18 +670,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			if next_mover:
 			    summon_mover(self,next_mover,mv["work_ticket"])
 			    break
-			else:
-			    # no movers left
-			    Trace.trace(15,"handle_timeout: no movers left")
-			    mv["work_ticket"]['status'] = (e_errors.NOMOVERS, 
-							   None)
-			    # to catch rare key error
-			    self.pending_work.delete_job(mv["work_ticket"])
-			    Trace.log(e_errors.ERROR, "NO Movers:%s "%mv)
-			    send_regret(self, mv["work_ticket"])
-			    # flush pending jobs
-			    flush_pending_jobs(self, (e_errors.NOMOVERS, None))
-			    return
 			    
 	
     def write_to_hsm(self, ticket):
