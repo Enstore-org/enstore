@@ -1968,8 +1968,14 @@ class File:
                         else:
 			    self.pnfs_vid = ''
 			self.bfid = file['bfid']
-			self.drive = file['drive']
-			self.path = file['pnfs_name0']
+			if file.has_key('drive'):
+			    self.drive = file['drive']
+			else:
+			    self.drive = ''
+			if file.has_key('pnfs_name0'):
+			    self.path = file['pnfs_name0']
+			else:
+			    self.path = 'unknown'
 			self.p_path = self.path
 		else:
 			self.path = os.path.abspath(file)
