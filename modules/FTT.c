@@ -1003,16 +1003,17 @@ FTT_get_stats(  PyObject *self
     sts = ftt_get_stats( g_ftt_desc_tp, GG );
     if (sts == -1) return raise_ftt_exception( "FTT_get_stats" );
 
-    rr = Py_BuildValue(  "{s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:i}"
+    rr = Py_BuildValue(  "{s:i,s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s}"
+		       , "xferred_bytes",g_xferred_bytes
 		       , "remain_tape",  ftt_extract_stats(GG,FTT_REMAIN_TAPE)
 		       , "n_reads",      ftt_extract_stats(GG,FTT_N_READS)
 		       , "read_errors",  ftt_extract_stats(GG,FTT_READ_ERRORS)
 		       , "file_number",  ftt_extract_stats(GG,FTT_FILE_NUMBER)
 		       , "block_number", ftt_extract_stats(GG,FTT_BLOCK_NUMBER)
 		       , "bloc_loc",     ftt_extract_stats(GG,FTT_BLOC_LOC)
-		       , "fmk",          ftt_extract_stats(GG,FTT_FMK)
 		       , "serial_num",   ftt_extract_stats(GG,FTT_SERIAL_NUM)
-		       , "xferred_bytes",g_xferred_bytes );
+		       , "cleaning_bit", ftt_extract_stats(GG,FTT_CLEANING_BIT)
+		       , "fmk",          ftt_extract_stats(GG,FTT_FMK) );
     return (rr);
 }
 
