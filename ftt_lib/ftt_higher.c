@@ -5,6 +5,8 @@ static char rcsid[] = "@(#)$Id$";
 #include "ftt_private.h"
 extern int errno;
 
+void ftt_to_upper( char *p ) ;
+
 int
 ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel, 
 			int timeout, int rdonly) {
@@ -60,7 +62,7 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 	res = ftt_read(d,buf,blocksize); 	/* errors to guess_label */
 	if ( (res = ftt_guess_label(buf,res,&pname, &len) ) < 0) return res;
 	if (type != res || (len != 0 && 
-		(0 != strncmp(vollabel,pname,len) || len != strlen(vollabel)))){
+		(0 != strncmp(vollabel,pname,len) || len != (int)strlen(vollabel)))){
 	  if (len > 512) len = 511;
 	  strncpy(label_buf,pname,len);
 	  label_buf[len] = 0;
@@ -373,9 +375,8 @@ ftt_next_supported(int *pi) {
 
 ftt_list_supported(FILE *pf) {
     ftt_descriptor d;
-    char **ppc;
     char *last_os, *last_prod_id, *last_controller;
-    int i, dens, mode; 
+    int i, dens; 
     int flags;
 
     last_os = strdup("-");

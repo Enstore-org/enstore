@@ -1,9 +1,25 @@
 static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
 #include <ftt_private.h>
-#include <ftt_mtio.h> 
 #include <string.h>
+#include <ftt_mtio.h> 
+
+#ifdef WIN32
+#include <malloc.h>
+#include <io.h>
+#include <process.h>
+#include <windows.h>
+#include <winioctl.h>
+
+int ftt_translate_error_WIN();
+
+#define geteuid() -1
+
+#endif
+
 extern int errno;
+
+int ftt_describe_error();
 
 /*
 ** ioctlbuf is the tapeop strcture
@@ -34,38 +50,80 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
     CKNULL("operation SCSI CDB", cdb);
     DEBUG1(stderr,"ftt_mtop operation %d n %d to do %s\n", opn, n, what);
 
-    if ( 0 != (d->scsi_ops & (1 << opn))) {
-	DEBUG2(stderr, "SCSI pass-thru\n");
-	if (opn == FTT_OPN_RSKIPREC || opn == FTT_OPN_RSKIPFM) {
-	     ftt_set_transfer_length(cdb,-n);
-	} else {
-	     ftt_set_transfer_length(cdb,n);
-	}
-	res = ftt_do_scsi_command(d,what,cdb, 6, 0, 0, 120, 0);
-	res = ftt_describe_error(d,opn,"a SCSI pass-through call", res, what, 0);
-    } else {
-	DEBUG2(stderr,"System Call\n");
 
-	if ( 0 > (res = ftt_open_dev(d))) {
-	    DEBUG3(stderr,"open returned %d\n", res);
-	    return res;
+    if ( 0 != (d->scsi_ops & (1 << opn))) {
+		DEBUG2(stderr, "SCSI pass-thru\n");
+		if (opn == FTT_OPN_RSKIPREC || opn == FTT_OPN_RSKIPFM) {
+			ftt_set_transfer_length(cdb,-n);
+		} else {
+			ftt_set_transfer_length(cdb,n);
+		}
+		res = ftt_do_scsi_command(d,what,cdb, 6, 0, 0, 120, 0);
+		res = ftt_describe_error(d,opn,"a SCSI pass-through call", res, what, 0);
+    
 	} else {
-	    ioctlbuf.tape_op = mtop;
-	    ioctlbuf.tape_count = n;
-	    res = ioctl(d->file_descriptor, FTT_TAPE_OP, &ioctlbuf);
-	    DEBUG3(stderr,"ioctl returned %d\n", res);
-	    res = ftt_translate_error(d, opn, "an mtio ioctl() call", res, what,0);
-	    /*
-	    ** we do an lseek to reset the file offset counter
-	    ** so the OS doesn't get hideously confused if it 
-	    ** overflows...  We may need this to be a behavior
-	    ** flag in the ftt_descriptor and device tables.
-	    */
-	    (void) lseek(d->file_descriptor, 0L, 0);
+	
+		DEBUG2(stderr,"System Call\n");
+
+		if ( 0 > (res = ftt_open_dev(d))) {
+			DEBUG3(stderr,"open returned %d\n", res);
+			return res;
+		} else {
+
+#ifndef WIN32
+
+			ioctlbuf.tape_op = mtop;
+			ioctlbuf.tape_count = n;
+			res = ioctl(d->file_descriptor, FTT_TAPE_OP, &ioctlbuf);
+			DEBUG3(stderr,"ioctl returned %d\n", res);
+			res = ftt_translate_error(d, opn, "an mtio ioctl() call", res, what,0);
+			/*
+			** we do an lseek to reset the file offset counter
+			** so the OS doesn't get hideously confused if it 
+			** overflows...  We may need this to be a behavior
+			** flag in the ftt_descriptor and device tables.
+			*/
+			(void) lseek(d->file_descriptor, 0L, 0);
+#else
+		{
+			DWORD LowOff,fres;
+			HANDLE fh = (HANDLE)d->file_descriptor;
+			int Count=0;
+
+			if (opn == FTT_OPN_RSKIPFM || opn == FTT_OPN_RSKIPREC ) { LowOff = (DWORD) -n;
+			} else LowOff = (DWORD)n;
+again:	
+			if ( opn == FTT_OPN_RSKIPFM || opn == FTT_OPN_SKIPFM ) {
+				fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,LowOff,0,0);
+			} else if ( opn == FTT_OPN_RSKIPREC || opn == FTT_OPN_SKIPREC ) {
+				fres = SetTapePosition(fh,TAPE_SPACE_RELATIVE_BLOCKS,0,LowOff,0,0);
+			} else if ( opn == FTT_OPN_WRITEFM ) {
+				fres = WriteTapemark(fh,TAPE_LONG_FILEMARKS,n,0); /* can be LONG or SHORT */
+			} else if ( opn == FTT_OPN_RETENSION ) {
+				fres = PrepareTape(fh,TAPE_TENSION,0);
+			} else if ( opn == FTT_OPN_UNLOAD  ) {
+				fres = PrepareTape(fh,TAPE_UNLOAD,0);
+			} else if ( opn == FTT_OPN_REWIND  ) {
+				fres = PrepareTape(fh,TAPE_REWIND,0);
+			} else if ( opn == FTT_OPN_ERASE   ) {
+				fres = EraseTape(fh,TAPE_ERASE_LONG,0); /* can be SHORT */
+			} else {
+				fres = (DWORD)-1;
+			}
+			printf("ftt-skip: %d error doing %s : %d time \n",(int)fres,what,Count);
+			if ( fres == ERROR_BUS_RESET && Count < 10 ) {
+				printf(" OK this is the WIN %s operation try it one more (%d)\n",what,Count);
+				Sleep(1000);
+				Count++;
+				goto again;
+			}
+			res = ftt_translate_error_WIN(d, opn, "win - tape functions ", fres, what,0);
+		}	
+#endif	
+	  }
 	}
-    }
     if (res < 0) {
-	 d->nharderrors++;
+		d->nharderrors++;
     }
     d->last_operation = (1 << opn);
     return res;
@@ -78,6 +136,7 @@ unsigned char ftt_cdb_unload[]	= {0x1b, 0x00, 0x00, 0x00, 0x00, 0x00};
 unsigned char ftt_cdb_retension[]= {0x1b, 0x00, 0x00, 0x00, 0x03, 0x00};
 unsigned char ftt_cdb_erase[]	= {0x19, 0x01, 0x00, 0x00, 0x00, 0x00};
 unsigned char ftt_cdb_writefm[]	= {0x10, 0x00, 0x00, 0x00, 0x00, 0x00};
+
 /*
 ** The remaining calls just invoke mtop with the right options
 */
@@ -119,11 +178,13 @@ ftt_skip_fm_internal(ftt_descriptor d, int n) {
 
     d->current_file += n;
     d->current_block = 0;
+
     if (n < 0) {
 	return ftt_mtop(d, -n,  FTT_TAPE_RSF,  FTT_OPN_RSKIPFM, "ftt_skip_fm", ftt_cdb_skipfm);
    } else {
 	return ftt_mtop(d, n,  FTT_TAPE_FSF,  FTT_OPN_SKIPFM, "ftt_skip_fm", ftt_cdb_skipfm);
    }
+
 }
 
 int
@@ -136,8 +197,8 @@ ftt_skip_rec(ftt_descriptor d, int n){
     d->current_block += n;
     if ( n < 0 ) {
         d->last_pos = -1;/* we skipped backwards, so this can't be valid */
-	res = ftt_write_fm_if_needed(d);	
-	if (res < 0){return res;}
+	    res = ftt_write_fm_if_needed(d);
+	    if (res < 0){return res;}
         return ftt_mtop(d, -n, FTT_TAPE_RSR, FTT_OPN_RSKIPREC, "ftt_skip_rec", 
 			ftt_cdb_skipbl);
     } else {

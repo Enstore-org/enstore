@@ -3,10 +3,10 @@ static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "ftt_private.h"
+#include <ftt_private.h>
 
 extern int errno;
-
+ 
 int 
 ftt_get_data_direction(ftt_descriptor d) {
     ENTERING("ftt_get_data_direction");
@@ -121,6 +121,7 @@ ftt_chall(ftt_descriptor d, int uid, int gid, int mode) {
 		continue;
 	    }
 	}
+#ifndef WIN32
 	res = chmod(pp[i],mode);
 	if (res < 0) {
             rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"chmod",1);
@@ -129,6 +130,7 @@ ftt_chall(ftt_descriptor d, int uid, int gid, int mode) {
 	if (res < 0) {
             rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"chown",1);
 	}
+#endif
     }
     return rres;
 }
@@ -254,7 +256,11 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int force) {
     for( i = 0; d->devinfo[i].device_name != 0; i++ ){
 	if (0 == strcmp(d->devinfo[i].device_name, devname)) {
 	    d->which_is_default = i;
-	    d->default_blocksize = -1;
+	    if ( d->devinfo[i].fixed == 0) {
+			d->default_blocksize = 0;
+		} else {
+			d->default_blocksize = -1;
+		}
 	    return 0;
 	}
     }
@@ -280,7 +286,7 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int force) {
 	d->devinfo[i].mode = -1;
 	d->devinfo[i].density = -1;
 	d->devinfo[i].fixed = -1;
-	d->default_blocksize = -1;
+	d->default_blocksize = -1; 
 
 	/* make sure sentinel null is in table */
 	d->devinfo[i+1].device_name = 0;

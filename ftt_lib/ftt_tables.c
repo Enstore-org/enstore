@@ -633,7 +633,6 @@ int ftt_trans_chall[MAX_TRANS_ERRNO] = {
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
 };
-
 int *ftt_trans_table_AIX[] = {
     /* none...but just to be safe0 */ ftt_trans_in,
     /* FTT_OPN_READ		 1 */ ftt_trans_in_AIX,
@@ -648,15 +647,15 @@ int *ftt_trans_table_AIX[] = {
     /* FTT_OPN_STATUS		10 */ ftt_trans_in,
     /* FTT_OPN_GET_STATUS	11 */ ftt_trans_in,
     /* FTT_OPN_ASYNC 		12 */ ftt_trans_in,
-    /* FTT_OPN_PASSTHRU         13 */ ftt_trans_out,
-    /* FTT_OPN_CHALL            14 */ ftt_trans_chall,
-    /* FTT_OPN_OPEN             15 */ ftt_trans_open,
+    /* FTT_OPN_PASSTHRU     13 */ ftt_trans_out,
+    /* FTT_OPN_CHALL        14 */ ftt_trans_chall,
+    /* FTT_OPN_OPEN         15 */ ftt_trans_open,
     /* FTT_OPN_RSKIPREC		16 */ ftt_trans_skiprec,
-    /* FTT_OPN_RSKIPFM		16 */ ftt_trans_skipr_AIX,
+    /* FTT_OPN_RSKIPFM		17 */ ftt_trans_skipr_AIX,
 };
 int *ftt_trans_table[] = {
     /* none...but just to be safe0 */ ftt_trans_in,
-    /* FTT_OPN_READ		 1 */ ftt_trans_in,
+    /* FTT_OPN_READ		     1 */ ftt_trans_in,
     /* FTT_OPN_WRITE		 2 */ ftt_trans_out,
     /* FTT_OPN_WRITEFM		 3 */ ftt_trans_out,
     /* FTT_OPN_SKIPREC		 4 */ ftt_trans_skiprec,
@@ -668,11 +667,11 @@ int *ftt_trans_table[] = {
     /* FTT_OPN_STATUS		10 */ ftt_trans_in,
     /* FTT_OPN_GET_STATUS	11 */ ftt_trans_in,
     /* FTT_OPN_ASYNC 		12 */ ftt_trans_in,
-    /* FTT_OPN_PASSTHRU         13 */ ftt_trans_out,
-    /* FTT_OPN_CHALL            14 */ ftt_trans_chall,
-    /* FTT_OPN_OPEN             15 */ ftt_trans_open,
+    /* FTT_OPN_PASSTHRU     13 */ ftt_trans_out,
+    /* FTT_OPN_CHALL        14 */ ftt_trans_chall,
+    /* FTT_OPN_OPEN         15 */ ftt_trans_open,
     /* FTT_OPN_RSKIPREC		16 */ ftt_trans_skiprec,
-    /* FTT_OPN_RSKIPFM		16 */ ftt_trans_skipr,
+    /* FTT_OPN_RSKIPFM		17 */ ftt_trans_skipr,
 };
 
 char *Generic_density_trans[MAX_TRANS_DENSITY] = {
@@ -770,6 +769,8 @@ static char SunOSfind_dev[] =
         ;; \n\
     esac \n";
 
+static char Win32find_dev[] = "";
+
 /*
 ** device id's
 */
@@ -807,6 +808,8 @@ static char SunOSfind_dev[] =
 #define EXB_MAX_BLKSIZE 245760
 #define IRIX_MAX_BLKSIZE 131072
 #define SUN_MAX_BLKSIZE 65534
+#define WIN_MAX_BLKSIZE 120000
+
 ftt_dev_entry devtable[] = {
     {"SunOS+5", "EXB-8900", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
        "rmt/%d", "rmt/%d", 1, SunOSfind_dev, {
@@ -1775,6 +1778,16 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
 	{ "rmt/tps%dd%dsv",          0,  0,   0, 0,  0, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
 	{ "rmt/tps%dd%dv",           0,  0,   0, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
 	{ 0,},
+    }},
+{"WINNT", "", "", FTT_FLAG_BSIZE_AFTER|FTT_FLAG_MODE_AFTER,
+	FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+	".\\tape%d",".\\tape%d", 1, Win32find_dev, {
+	 /* string		den mod hwd pas fxd rewind                   1st */
+	 /* ======		=== === === === === ======                   === */
+	{ ".\\tape%d",	 0,  0,	  0, 0,  0,                 0, 1, WIN_MAX_BLKSIZE},
+	{ ".\\tape%d",	 0,  1,	  0, 0,  0,                 0, 0, WIN_MAX_BLKSIZE},
+	{ ".\\tape%d",	-1,  0,	 -1, 1,  0,                 0, 0, WIN_MAX_BLKSIZE},
+    { 0,},
     }},
 #ifdef TABLE_TEST_TESTER
 /* 

@@ -1,10 +1,7 @@
 static char rcsid[] = "@(#)$Id$";
-#include <stdio.h>
 
-int
-ftt_debug_dump(unsigned char *pc, int n) {
-    return ftt_dump(stderr,pc,n,1,1);
-}
+#include <stdio.h>
+#include <ctype.h>
 
 int
 ftt_dump(FILE *pf, unsigned char *pc, int n, int do_offsets, int do_chars) {
@@ -51,3 +48,9 @@ ftt_dump(FILE *pf, unsigned char *pc, int n, int do_offsets, int do_chars) {
     fflush(pf);
     return 0;
 }
+
+int
+ftt_debug_dump(unsigned char *pc, int n) {
+    return ftt_dump(stderr,pc,n,1,1);
+}
+

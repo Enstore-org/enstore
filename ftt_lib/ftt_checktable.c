@@ -1,15 +1,19 @@
 static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
 #include <ftt_private.h>
+#include <string.h>
+
+void ftt_check_table();
 
 static int table_debug;
 main() {
    
     table_debug = 0;
     ftt_check_table(stdout);
+	return 0;
 }
 
-ftt_check_table(FILE *pf) {
+void ftt_check_table(FILE *pf) {
     ftt_descriptor d1, d2;
     ftt_dev_entry *dt;
     ftt_devinfo *pd;
@@ -24,7 +28,7 @@ ftt_check_table(FILE *pf) {
 	     "DEBUG: os '%s' basename '%s' prod_id '%s' controller '%s':\n",
 		      d1->os, d1->basename, d1->prod_id, d1->controller);
     }
-    if (i < (devtable_size / sizeof(ftt_dev_entry) - 1)) {
+    if (i < (int)(devtable_size / sizeof(ftt_dev_entry) - 1)) {
 	fprintf(pf, "Premature end of table scan, slot %d of %d/%d\n", 
 		i, devtable_size, sizeof(ftt_dev_entry));
     }

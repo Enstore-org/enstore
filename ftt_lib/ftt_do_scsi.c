@@ -3,6 +3,17 @@ static char rcsid[] = "@(#)$Id$";
 #include <string.h>
 #include <ftt_private.h>
 
+#ifdef WIN32
+#include <io.h>
+#include <process.h>
+#define geteuid() -1
+#endif
+
+int ftt_close_scsi_dev(ftt_descriptor d) ;
+int ftt_close_io_dev(ftt_descriptor d);
+int ftt_get_stat_ops(char *name) ;
+int ftt_describe_error();
+
 void 
 ftt_set_transfer_length( unsigned char *cdb, int n ) {
 	cdb[2]= n >> 16 & 0xff;
@@ -211,6 +222,8 @@ ftt_all_scsi(ftt_descriptor d) {
 	ftt_errno = FTT_EPERM;
 	return -1;
     }
+
+
     d->scsi_ops = 0xffffffff;
     return 0;
 }

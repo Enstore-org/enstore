@@ -3,7 +3,20 @@ static char rcsid[] = "@(#)$Id$";
 #include <stdlib.h>
 #include <stdio.h>
 #include <ftt_private.h>
+
+#ifdef WIN32
+#include <io.h>
+#include <process.h>
+#include <windows.h>
+#include <winioctl.h>
+
+#define geteuid() -1
+DWORD ftt_win_get_paramters();
+
+#endif
+
 extern int errno;
+
 
 ftt_stat_buf
 ftt_alloc_stat() {
@@ -37,9 +50,17 @@ ftt_free_stat(ftt_stat_buf b) {
     free(b);
     return 0;
 }
+#ifdef WIN32
+	static char *
+	ftt_itoa_Large(LARGE_INTEGER n) {
+		static char buf[128];
+		sprintf(buf,"%ld", n.LowPart);
+		return buf;
+	}
+#endif
 
 static char *
-itoa(long n) {
+ftt_itoa(long n) {
 	static char buf[128];
 
 	sprintf(buf,"%ld", n);
@@ -150,7 +171,7 @@ ftt_add_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 
     for( i = 0; i < FTT_MAX_STAT; i++) {
         if( ftt_numeric_tab[i] && b1->value[i] && b2->value[i] ) {
- 	    set_stat(res, i, itoa((long)atoi(b1->value[i]) + atoi(b2->value[i])),0);
+ 	    set_stat(res, i, ftt_itoa((long)atoi(b1->value[i]) + atoi(b2->value[i])),0);
         } else if ( b2->value[i] ) {
  	    set_stat(res, i, b2->value[i],0);
         } else if ( b1->value[i] ) {
@@ -170,11 +191,11 @@ ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 
     for( i = 0; i < FTT_MAX_STAT; i++) {
         if( ftt_numeric_tab[i] && b1->value[i] && b2->value[i] ) {
- 	    set_stat(res, i, itoa((long)atoi(b1->value[i]) - atoi(b2->value[i])),0);
+ 	    set_stat(res, i, ftt_itoa((long)atoi(b1->value[i]) - atoi(b2->value[i])),0);
         } else if ( b1->value[i] ) {
  	    set_stat(res, i, b1->value[i],0);
         } else if ( b2->value[i] && ftt_numeric_tab[i] ) {
- 	    set_stat(res, i, itoa(-(long)atoi(b2->value[i])),0);
+ 	    set_stat(res, i, ftt_itoa(-(long)atoi(b2->value[i])),0);
         } else if ( b2->value[i] ) {
  	    set_stat(res, i, b2->value[i],0);
 	}
@@ -243,12 +264,15 @@ ftt_get_stat_ops(char *name) {
 int
 ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     int res;
+
+#ifndef WIN32
     int failures = 0;
     int i;
     unsigned char buf[512];
     long int tape_size, remain_tape, error_count, data_count;
     int n_blocks, block_length;
     int stat_ops;
+#endif
 
     ENTERING("ftt_get_stats");
     CKNULL("ftt_descriptor", d);
@@ -256,6 +280,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 
     memset(b,0,sizeof(ftt_stat));
+
 
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
 	ftt_close_dev(d);
@@ -289,16 +314,18 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     }
 
     /* Things we know without asking, and the suid program won't know */
-    set_stat(b,FTT_FILE_NUMBER, itoa((long)d->current_file), 0);
-    set_stat(b,FTT_BLOCK_NUMBER, itoa((long)d->current_block), 0);
-    set_stat(b,FTT_USER_READ,itoa((long)d->readkb), 0);
-    set_stat(b,FTT_USER_WRITE,itoa((long)d->writekb), 0);
-    set_stat(b,FTT_N_READS,itoa((long)d->nreads), 0);
-    set_stat(b,FTT_N_WRITES,itoa((long)d->nwrites), 0);
-    set_stat(b,FTT_RETRIES,itoa((long)d->nretries), 0);
-    set_stat(b,FTT_FAIL_RETRIES,itoa((long)d->nfailretries), 0);
-    set_stat(b,FTT_RESETS,itoa((long)d->nresets), 0);
-    set_stat(b,FTT_HARD_ERRORS,itoa((long)d->nharderrors), 0);
+    set_stat(b,FTT_FILE_NUMBER, ftt_itoa((long)d->current_file), 0);
+    set_stat(b,FTT_BLOCK_NUMBER, ftt_itoa((long)d->current_block), 0);
+    set_stat(b,FTT_USER_READ,ftt_itoa((long)d->readkb), 0);
+    set_stat(b,FTT_USER_WRITE,ftt_itoa((long)d->writekb), 0);
+    set_stat(b,FTT_N_READS,ftt_itoa((long)d->nreads), 0);
+    set_stat(b,FTT_N_WRITES,ftt_itoa((long)d->nwrites), 0);
+    set_stat(b,FTT_RETRIES,ftt_itoa((long)d->nretries), 0);
+    set_stat(b,FTT_FAIL_RETRIES,ftt_itoa((long)d->nfailretries), 0);
+    set_stat(b,FTT_RESETS,ftt_itoa((long)d->nresets), 0);
+    set_stat(b,FTT_HARD_ERRORS,ftt_itoa((long)d->nharderrors), 0);
+
+#ifndef WIN32
 
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
 	return res;
@@ -341,13 +368,13 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		"ABORTED_COMMAND", "NOT_USED", "VOLUME_OVERFLOW",
 		"NOT_USED", "RESERVED",
 	    };
-	    set_stat(b,FTT_SENSE_KEY, itoa(buf[2]&0xf), 0);
+	    set_stat(b,FTT_SENSE_KEY, ftt_itoa((long)buf[2]&0xf), 0);
 	    set_stat(b,FTT_TRANS_SENSE_KEY, sense_key_trans[buf[2]&0xf], 0);
-	    set_stat(b,FTT_FMK, itoa(bit(7,buf[2])), 0);
-	    set_stat(b,FTT_EOM, itoa(bit(6,buf[2])),0);
-	    set_stat(b,FTT_ILI, itoa(bit(5,buf[2])),0);
-	    set_stat(b,FTT_SCSI_ASC,itoa((long)buf[12]),0);
-	    set_stat(b,FTT_SCSI_ASCQ,itoa((long)buf[13]),0);
+	    set_stat(b,FTT_FMK, ftt_itoa((long)bit(7,buf[2])), 0);
+	    set_stat(b,FTT_EOM, ftt_itoa((long)bit(6,buf[2])),0);
+	    set_stat(b,FTT_ILI, ftt_itoa((long)bit(5,buf[2])),0);
+	    set_stat(b,FTT_SCSI_ASC,ftt_itoa((long)buf[12]),0);
+	    set_stat(b,FTT_SCSI_ASCQ,ftt_itoa((long)buf[13]),0);
 
 	    /* ASC/ASCQ data parsing
 	    **
@@ -422,31 +449,31 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    failures++;
 	} else {
 	    if (stat_ops & FTT_DO_EXBRS) {
-		set_stat(b,FTT_BOT,         itoa(bit(0,buf[19])), 0);
-		set_stat(b,FTT_TNP,	    itoa(bit(1,buf[19])), 0);
-		set_stat(b,FTT_PF,          itoa(bit(7,buf[19])), 0);
-		set_stat(b,FTT_WRITE_PROT,  itoa(bit(5,buf[20])), 0);
-		set_stat(b,FTT_PEOT,        itoa(bit(2,buf[21])), 0);
-		set_stat(b,FTT_CLEANING_BIT,itoa(bit(3,buf[21])), 0);
-		set_stat(b,FTT_CLEANED_BIT, itoa(bit(4,buf[21])), 0);
+		set_stat(b,FTT_BOT,         ftt_itoa((long)bit(0,buf[19])), 0);
+		set_stat(b,FTT_TNP,	        ftt_itoa((long)bit(1,buf[19])), 0);
+		set_stat(b,FTT_PF,          ftt_itoa((long)bit(7,buf[19])), 0);
+		set_stat(b,FTT_WRITE_PROT,  ftt_itoa((long)bit(5,buf[20])), 0);
+		set_stat(b,FTT_PEOT,        ftt_itoa((long)bit(2,buf[21])), 0);
+		set_stat(b,FTT_CLEANING_BIT,ftt_itoa((long)bit(3,buf[21])), 0);
+		set_stat(b,FTT_CLEANED_BIT, ftt_itoa((long)bit(4,buf[21])), 0);
 
 		remain_tape=pack(0,buf[23],buf[24],buf[25]);
-		set_stat(b,FTT_REMAIN_TAPE,itoa((long)remain_tape),0);
+		set_stat(b,FTT_REMAIN_TAPE,ftt_itoa((long)remain_tape),0);
 		error_count = pack(0,buf[16],buf[17],buf[18]);
 		if (d->data_direction ==  FTT_DIR_READING) {
-	            set_stat(b,FTT_READ_ERRORS,itoa(error_count),0);
+	            set_stat(b,FTT_READ_ERRORS,ftt_itoa((long)error_count),0);
 		} else {
-	            set_stat(b,FTT_WRITE_ERRORS,itoa(error_count),0);
+	            set_stat(b,FTT_WRITE_ERRORS,ftt_itoa((long)error_count),0);
 		}
 	    }
 	    if (stat_ops & FTT_DO_05RS) {
-		set_stat(b,FTT_TRACK_RETRY, itoa((long)buf[26]), 0);
-		set_stat(b,FTT_UNDERRUN,    itoa((long)buf[11]), 0);
+		set_stat(b,FTT_TRACK_RETRY, ftt_itoa((long)buf[26]), 0);
+		set_stat(b,FTT_UNDERRUN,    ftt_itoa((long)buf[11]), 0);
 	    }
 	    if (stat_ops & FTT_DO_DLTRS) {
-		set_stat(b,FTT_MOTION_HOURS,itoa(pack(0,0,buf[19],buf[20])),0);
-		set_stat(b,FTT_POWER_HOURS, itoa(pack(buf[21],buf[22],buf[23],buf[24])),0);
-		set_stat(b,FTT_REMAIN_TAPE, itoa(pack(buf[25],buf[26],buf[27],buf[28])*4),0); 
+		set_stat(b,FTT_MOTION_HOURS,ftt_itoa((long)pack(0,0,buf[19],buf[20])),0);
+		set_stat(b,FTT_POWER_HOURS, ftt_itoa((long)pack(buf[21],buf[22],buf[23],buf[24])),0);
+		set_stat(b,FTT_REMAIN_TAPE, ftt_itoa((long)pack(buf[25],buf[26],buf[27],buf[28])*4),0); 
 	    }
 	}
     }
@@ -454,7 +481,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
         static unsigned char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
-	set_stat(b,FTT_TUR_STATUS,itoa((long)-res), 0);
+	set_stat(b,FTT_TUR_STATUS,ftt_itoa((long)-res), 0);
 	if (res < 0) {
 	    set_stat(b,FTT_READY,"0",0);
 	} else {
@@ -485,16 +512,16 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    failures++;
 	} else {
 
-	    set_stat(b,FTT_DENSITY,     itoa((long)buf[4]), 0);
-	    set_stat(b,FTT_WRITE_PROT,  itoa(bit(7,buf[2])),0);
-	    set_stat(b,FTT_MEDIA_TYPE,  itoa((long)buf[1]), 0);
+	    set_stat(b,FTT_DENSITY,     ftt_itoa((long)buf[4]), 0);
+	    set_stat(b,FTT_WRITE_PROT,  ftt_itoa((long)bit(7,buf[2])),0);
+	    set_stat(b,FTT_MEDIA_TYPE,  ftt_itoa((long)buf[1]), 0);
 
 	    n_blocks =     pack(0,buf[5],buf[6],buf[7]);
 	    block_length = pack(0,buf[9],buf[10],buf[11]);
 	    tape_size =    n_blocks;
 
-	    set_stat(b,FTT_BLOCK_SIZE,  itoa((long)block_length),0);
-	    set_stat(b,FTT_BLOCK_TOTAL, itoa((long)n_blocks),    0);
+	    set_stat(b,FTT_BLOCK_SIZE,  ftt_itoa((long)block_length),0);
+	    set_stat(b,FTT_BLOCK_TOTAL, ftt_itoa((long)n_blocks),    0);
 
 	    if (stat_ops & FTT_DO_EXBRS) {
 		/* 
@@ -513,17 +540,17 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			data_count = tape_size - remain_tape;
 		}
 		if (d->data_direction ==  FTT_DIR_READING) {
-		    set_stat(b,FTT_READ_COUNT,itoa(data_count),0);
+		    set_stat(b,FTT_READ_COUNT,ftt_itoa(data_count),0);
 		} else {
-		    set_stat(b,FTT_WRITE_COUNT,itoa(data_count),0);
+		    set_stat(b,FTT_WRITE_COUNT,ftt_itoa(data_count),0);
 		}
 		set_stat(b,FTT_COUNT_ORIGIN,"Exabyte_Extended_Sense",0);
 	    }
 
 	    for ( i = 0; d->devinfo[i].device_name !=0 ; i++ ) {
 		if( buf[4] == d->devinfo[i].hwdens ) {
-		    set_stat(b,FTT_TRANS_DENSITY, itoa((long)d->devinfo[i].density),0);
-		    set_stat(b,FTT_TRANS_COMPRESS, itoa((long)d->devinfo[i].mode),0);
+		    set_stat(b,FTT_TRANS_DENSITY, ftt_itoa((long)d->devinfo[i].density),0);
+		    set_stat(b,FTT_TRANS_COMPRESS, ftt_itoa((long)d->devinfo[i].mode),0);
 		    break;
 		}
 	    }
@@ -538,7 +565,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
 	} else {
-	    set_stat(b,FTT_TRANS_COMPRESS,     itoa((long)buf[18]), 0);
+	    set_stat(b,FTT_TRANS_COMPRESS,     ftt_itoa((long)buf[18]), 0);
 	}
     }
     if (stat_ops & FTT_DO_MS_Px20_EXB) {
@@ -550,8 +577,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
 	} else {
-	    set_stat(b,FTT_TRANS_DENSITY,     itoa(!bit(5,buf[7])), 0);
-	    set_stat(b,FTT_TRANS_COMPRESS,    itoa( bit(6,buf[7])), 0);
+	    set_stat(b,FTT_TRANS_DENSITY,     ftt_itoa(!bit(5,buf[7])), 0);
+	    set_stat(b,FTT_TRANS_COMPRESS,    ftt_itoa( bit(6,buf[7])), 0);
 	}
     }
     if (stat_ops & FTT_DO_LSRW) {
@@ -607,9 +634,9 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		ftt_errno = FTT_EPARTIALSTAT;
 	    }
 	} else {
-	    set_stat(b,FTT_BOT,     itoa(bit(7,buf[0])), 0);
-	    set_stat(b,FTT_PEOT,    itoa(bit(6,buf[0])), 0);
-	    set_stat(b,FTT_BLOC_LOC,itoa(pack(buf[4],buf[5],buf[6],buf[7])),0);
+	    set_stat(b,FTT_BOT,     ftt_itoa(bit(7,buf[0])), 0);
+	    set_stat(b,FTT_PEOT,    ftt_itoa(bit(6,buf[0])), 0);
+	    set_stat(b,FTT_BLOC_LOC,ftt_itoa(pack(buf[4],buf[5],buf[6],buf[7])),0);
 	}
     }
     if (failures > 0) {
@@ -619,6 +646,30 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     } else {
         return 0;
     }
+#else /* this is the WIN32 part */
+	{
+		DWORD fres;
+		HANDLE fh = (HANDLE)d->file_descriptor;
+		TAPE_GET_MEDIA_PARAMETERS gmp;
+		TAPE_GET_DRIVE_PARAMETERS gdp;
+		fres = ftt_win_get_paramters(d,&gmp,&gdp);
+		if ( fres == NO_ERROR ) {
+			if ( gdp.FeaturesLow & TAPE_DRIVE_TAPE_REMAINING ) {
+				set_stat(b,FTT_REMAIN_TAPE, ftt_itoa_Large(gmp.Remaining),0);
+			}
+			if (gdp.FeaturesLow & TAPE_DRIVE_COMPRESSION ) {
+				set_stat(b,FTT_TRANS_COMPRESS,ftt_itoa(gdp.Compression),0);
+			}
+
+		
+		}
+		else {
+			ftt_eprintf("ftt_get_stats, Getting Media & Drive Parameters Failed \n");
+			ftt_errno = FTT_EPARTIALSTAT;
+			return -1;
+		}
+	}
+#endif
 }
 
 int

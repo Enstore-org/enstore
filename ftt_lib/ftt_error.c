@@ -2,6 +2,16 @@ static char rcsid[] = "@(#)$Id$";
 #include <stdarg.h>
 #include <stdio.h>
 #include <ftt_private.h>
+#include <stdlib.h>
+
+#ifdef WIN32
+#include <windows.h>
+#include <winioctl.h>
+
+int ftt_describe_error_WIN();
+#endif
+
+int ftt_describe_error();
 
 /*
 ** ftt_eprintf call...
@@ -241,6 +251,178 @@ ftt_describe_error(ftt_descriptor d, int opn, char *op, int res, char *what, int
 
     return res;
 }
+
+#ifdef WIN32
+
+static int
+ftt_WIN_error (DWORD res) {
+	
+	switch (res) {
+		case NO_ERROR						: return FTT_SUCCESS;
+		case ERROR_BEGINNING_OF_MEDIA		: return FTT_ELEADER;
+		case ERROR_BUS_RESET				: return FTT_EUNRECOVERED;
+		case ERROR_END_OF_MEDIA				: return FTT_ENOSPC;
+		case ERROR_FILEMARK_DETECTED		: return FTT_ENOTSUPPORTED;
+		case ERROR_SETMARK_DETECTED			: return FTT_ENOTSUPPORTED;
+		case ERROR_NO_DATA_DETECTED			: return FTT_EBLANK;
+		case ERROR_PARTITION_FAILURE		: return FTT_ENOTSUPPORTED;
+		case ERROR_INVALID_BLOCK_LENGTH		: return FTT_EBLKSIZE;
+		case ERROR_DEVICE_NOT_PARTITIONED	: return FTT_ENOTSUPPORTED;
+		case ERROR_MEDIA_CHANGED			: return FTT_EUNRECOVERED;
+		case ERROR_NO_MEDIA_IN_DRIVE		: return FTT_ENOTAPE;
+		case ERROR_NOT_SUPPORTED			: return FTT_ENOTSUPPORTED;
+		case ERROR_UNABLE_TO_LOCK_MEDIA		: return FTT_ENOTSUPPORTED;
+		case ERROR_UNABLE_TO_UNLOAD_MEDIA	: return FTT_ENOTSUPPORTED;
+		case ERROR_WRITE_PROTECT			: return FTT_EROFS;
+	
+		case ERROR_INVALID_FUNCTION			: return FTT_ENOENT;
+		case ERROR_FILE_NOT_FOUND			: return FTT_ENOENT;
+		case ERROR_PATH_NOT_FOUND			: return FTT_ENOENT;
+		case ERROR_TOO_MANY_OPEN_FILES		: return FTT_ENFILE;
+		case ERROR_ACCESS_DENIED			: return FTT_EPERM;
+		case ERROR_INVALID_HANDLE			: return FTT_ENOENT;
+		case ERROR_NOT_ENOUGH_MEMORY		: return FTT_ENOMEM;
+		case ERROR_INVALID_BLOCK			: return FTT_ENOTSUPPORTED;
+		case ERROR_BAD_ENVIRONMENT			: return FTT_EFAULT;
+		case ERROR_BAD_FORMAT				: return FTT_EFAULT;
+		case ERROR_INVALID_ACCESS			: return FTT_ENOENT;
+		case ERROR_INVALID_DATA				: return FTT_ENOENT;
+		case ERROR_OUTOFMEMORY				: return FTT_ENOMEM;
+		case ERROR_INVALID_DRIVE			: return FTT_ENOENT;
+		case ERROR_CURRENT_DIRECTORY		: return FTT_EPERM;
+		case ERROR_NOT_SAME_DEVICE			: return FTT_ENOTSUPPORTED;
+		case ERROR_NO_MORE_FILES			: return FTT_ENOENT;
+		case ERROR_BAD_UNIT					: return FTT_ENOTSUPPORTED;
+		case ERROR_NOT_READY				: return FTT_EIO; /* ?????????*/
+		case ERROR_BAD_COMMAND				: return FTT_ENOENT;
+		case ERROR_BAD_LENGTH				: return FTT_ENOENT;
+		case ERROR_WRITE_FAULT				: return FTT_EIO;
+		case ERROR_READ_FAULT				: return FTT_EIO;
+		case ERROR_GEN_FAILURE				: return FTT_EFAULT;
+		case ERROR_HANDLE_EOF				: return FTT_EIO;
+		case ERROR_OPEN_FAILED				: return FTT_EFAULT;
+		case ERROR_BUSY_DRIVE				: return FTT_EBUSY;
+		case ERROR_BUSY						: return FTT_EBUSY;
+		case ERROR_IO_PENDING				: return FTT_EBUSY;
+
+		case ERROR_LOCK_VIOLATION			: return FTT_ENOTSUPPORTED;
+		case ERROR_BAD_NETPATH				: return FTT_ENOTSUPPORTED;
+		case ERROR_FILE_EXISTS				: return FTT_ENOTSUPPORTED;
+		case ERROR_CANNOT_MAKE				: return FTT_ENOTSUPPORTED;
+		case ERROR_FAIL_I24					: return FTT_ENOTSUPPORTED;
+		case ERROR_INVALID_PARAMETER		: return FTT_EBLKSIZE; /* this is what you get */
+		
+		case ERROR_DRIVE_LOCKED				: return FTT_EPERM;
+		case ERROR_BROKEN_PIPE				: return FTT_ENOTSUPPORTED;
+		case ERROR_IO_DEVICE				: return FTT_EIO;
+
+		case ERROR_EOM_OVERFLOW				: return FTT_EBLANK;
+		case ERROR_POSSIBLE_DEADLOCK		: return FTT_EBUSY;
+
+		case ERROR_SHARING_VIOLATION        : return FTT_EBUSY; /* the device is opened */
+		default								: return FTT_ENOTSUPPORTED;
+  }
+}
+
+ int
+	ftt_translate_error_WIN(ftt_descriptor d, int opn, char *op, DWORD fres, char *what, int recoverable) {
+    
+    static ftt_stat sbuf;
+    char *p;
+    int save1, save2 ;
+
+    DEBUG3(stderr,"Entering ftt_translate_error_WIN -- opn == %d, op = %s, res=%d, what=%s recoverable=%d\n",
+	opn,op, fres, what, recoverable);
+
+    if( 0 == d ) {
+		ftt_eprintf("%s called with NULL ftt_descriptor\n", op);
+		ftt_errno = FTT_EFAULT;
+		return -1;
+    }
+	/* - instead of table - is easier this way - */
+
+    ftt_errno = ftt_WIN_error(fres);
+
+
+#   define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
+			|FTT_OP_READ)
+
+    if ((NO_ERROR == fres && FTT_OPN_READ == opn && 0 !=(d->flags&FTT_FLAG_VERIFY_EOFS))
+    		      || (NO_ERROR != fres && ((1<<opn)&CHECKS) )) {
+		/* 
+		** save errno and ftt_errno so we can restore them 
+		** after getting status 
+		*/
+		save1 = ftt_errno;
+		save2 = errno;
+		
+		ftt_get_stats(d, &sbuf);
+		errno = save2;
+		
+		if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY))) {
+			if (8 == atoi(p)){
+				fres = (DWORD) -1;
+				save1 = ftt_errno = FTT_EBLANK;
+			} else {
+				ftt_errno = save1;
+			}
+		} else {
+			ftt_errno = save1;
+		}
+		if (0 != (p = ftt_extract_stats(&sbuf,FTT_BLOC_LOC))) {
+			DEBUG3(stderr, "Current loc %s, last loc %d\n", p, d->last_pos);
+			if (d->last_pos > 0 && atoi(p) == d->last_pos) {
+				ftt_errno = FTT_EBLANK;
+				fres = (DWORD)-1;
+			} else {
+				ftt_errno = save1;
+			}
+			d->last_pos = atoi(p);
+		} else if (0 != (p = ftt_extract_stats(&sbuf,FTT_REMAIN_TAPE))) {
+			DEBUG3(stderr, "Current remain %s, last remain %d\n", p, d->last_pos);
+			if (d->last_pos > 0 && atoi(p) == d->last_pos) {
+				ftt_errno = FTT_EBLANK;
+				fres = (DWORD)-1;
+			} else {
+				ftt_errno = save1;
+			}
+			d->last_pos = atoi(p);
+		} else {
+			ftt_errno = save1;
+		}
+    }
+	
+    return ftt_describe_error_WIN(d, opn, op, fres, what, recoverable);
+}
+
+int
+ftt_describe_error_WIN(ftt_descriptor d, int opn, char *op, DWORD res, char *what, int recoverable) 
+{
+	if (NO_ERROR == res) {
+		ftt_errno = FTT_SUCCESS;
+		return 0;
+    }
+    ftt_eprintf( "\
+%s: doing %s on %s returned %d,\n\
+	errno %d, => ftt error %s(%d), meaning \n\
+	%s\n%s",
+
+	what, op,  (d->which_is_open >= 0 ? 
+				d->devinfo[d->which_is_open].device_name :
+				d->basename),
+	res, errno, ftt_ascii_error[ftt_errno], ftt_errno,
+	messages[ftt_errno], recoverable ? "": messages[FTT_EUNRECOVERED] );
+
+    DEBUG2(stderr, "ftt_translate_error_WIN -- message is:\n%s", ftt_eprint_buf);
+
+    if (!recoverable) {
+		d->unrecovered_error = opn < FTT_OPN_WRITEFM ? 1 : 2;
+		d->current_valid = 0;
+    }
+
+    return -1;
+}
+#endif                    /* WIN-NT trunslate error functions */
 
 #ifdef TESTTABLES
 main(){

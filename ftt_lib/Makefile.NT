@@ -1,0 +1,145 @@
+#
+# @(#) $Id$
+#
+# File:           Makefile.NT
+#
+# Author(s):      Dorota I Genser  
+#        e-mail: "dorota@fnal.gov"
+#
+# Description:
+#              This is make file to build ftt library on Windoiws NT using nmake	
+#	
+####################################################################################  
+
+.SUFFIXES : .obj .h
+
+#---------------------------------------------- Used to build noDebug version
+!IF "$(NODEB)" != ""
+!MESSAGE Create not DEBUG versions
+DEB = /D "NDEBUG" /O2 
+DB  = 
+!ELSE
+DEB = /D "_DEBUG" /Od /Zi 
+DB = /DEBUG
+!ENDIF
+
+#---------------------------------------------- Working directories
+SRCDIR  =  .
+LIBDIR  =  ..\lib
+BINDIR  =  ..\bin
+INCDIR  =  ..\include
+WINDIR  =  WIN32
+#---------------------------------------------- name of the DAFT library
+
+FTT_LIB  = $(LIBDIR)\ftt.lib
+
+
+ALL : LIBRARY INC 
+
+INC ::  $(INCDIR) \
+	$(INCDIR)\ftt.h \
+	$(INCDIR)\ftt_common.h \
+	$(INCDIR)\ftt_voidtypes.h \
+	$(INCDIR)\ftt_defines.h \
+	$(INCDIR)\ftt_scsi.h
+
+
+#---------------------------------------------- Copy *.h files
+
+$(INCDIR)\*.h : $(SRCDIR)\$$(@B).h 
+
+{$(SRCDIR)}.h{$(INCDIR)}.h:
+	copy $(SRCDIR)\$(*F).h $(*R).h 
+
+	
+LIBRARY : $(FTT_LIB)
+
+
+H_DPD = \
+	$(SRCDIR)\ftt.h \
+	$(SRCDIR)\ftt_common.h \
+	$(SRCDIR)\ftt_defines.h \
+	$(SRCDIR)\ftt_types.h
+
+CC     = cl.exe /nologo 
+LINK   = link.exe 
+LIB32  = link.exe -lib  
+
+CC_PROJ= /W3 /GX  /I "./" /I $(WINDIR)  /D "WIN32"\
+ /D "_WINDOWS" /D "_MBCS" $(DEB) 
+
+
+EXE_FLAGS = $(FTT_LIB) \
+ kernel32.lib user32.lib gdi32.lib\
+ winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib\
+ uuid.lib odbc32.lib odbccp32.lib /subsystem:console /incremental:no /pdb:none\
+ /machine:I386  /nod:"libcmtd.lib" $(DB)
+
+
+CLEAN :  
+	    -@erase $(SRCDIR)\*.obj
+	    -@erase $(SRCDIR)\*.pdb
+
+CLOBBER :
+	    -@erase $(SRCDIR)\*.obj
+	    -@erase $(SRCDIR)\*.pdb
+	    -@erase $(FTT_LIB) 
+
+
+LIB_OBJS= \
+	"$(SRCDIR)\ftt_skip.obj" \
+	"$(SRCDIR)\ftt_open.obj" \
+	"$(SRCDIR)\ftt_label.obj" \
+	"$(SRCDIR)\ftt_info.obj" \
+	"$(SRCDIR)\ftt_scsi.obj" \
+	"$(SRCDIR)\ftt_debug.obj" \
+	"$(SRCDIR)\ftt_tables.obj" \
+	"$(SRCDIR)\ftt_error.obj" \
+	"$(SRCDIR)\ftt_machdep.obj" \
+	"$(SRCDIR)\ftt_do_scsi.obj" \
+	"$(SRCDIR)\ftt_find.obj" \
+	"$(SRCDIR)\ftt_global.obj" \
+	"$(SRCDIR)\ftt_stats.obj" \
+	"$(SRCDIR)\ftt_async.obj" \
+	"$(SRCDIR)\ftt_higher.obj" \
+	"$(SRCDIR)\ftt_rdwr.obj"
+
+$(FTT_LIB) : "$(LIBDIR)" $(LIB_OBJS)
+    $(LIB32)  @<<
+    /out:$(FTT_LIB) $(LIB_OBJS)
+<<
+
+$(LIB_OBJS) : \
+		$(SRCDIR)\ftt.h \
+		$(SRCDIR)\ftt_defines.h \
+		$(SRCDIR)\ftt_macros.h \
+		$(SRCDIR)\ftt_scsi.h \
+		$(SRCDIR)\ftt_types.h \
+		$(SRCDIR)\ftt_common.h 
+
+
+
+$(SRCDIR)\ftt_async.obj   : $(WINDIR)\ftt_async.c 
+	$(CC) /c $(CC_PROJ) /out:$(SRCDIR)\ftt_async.obj $(WINDIR)\ftt_async.c 
+ 
+$(SRCDIR)\ftt_machdep.obj : $(WINDIR)\ftt_machdep.c 
+
+$(SRCDIR)\ftt_scsi.obj	  : $(WINDIR)\ftt_scsi.c
+
+
+{$(WINDIR)}.c{$(SRCDIR)}.obj: 
+    	$(CC) /c $(CC_PROJ) $<  
+	
+
+.c.obj :
+	$(CC) /c $(CC_PROJ) $<  
+
+
+"$(INCDIR)" :
+	if not exist "$(INCDIR)/" mkdir "$(INCDIR)"
+
+"$(LIBDIR)" :
+    	if not exist "$(LIBDIR)/" mkdir "$(LIBDIR)"
+
+"$(BINDIR)" :
+    if not exist "$(BINDIR)/" mkdir "$(BINDIR)"

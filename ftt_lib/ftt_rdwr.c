@@ -3,6 +3,17 @@ static char rcsid[] = "@(#)$Id$";
 #include <stdlib.h>
 #include <ftt_private.h>
 
+#ifdef WIN32
+#include <io.h>
+#include <windows.h>
+#include <winioctl.h>
+
+int ftt_translate_error_WIN();
+
+#endif
+
+int	 ftt_describe_error();
+
 int
 ftt_get_position(ftt_descriptor d, int *file, int *block) {
 
@@ -47,23 +58,41 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 	res = ftt_do_scsi_command(d,"read",ftt_cdb_read, 6, 
 				(unsigned char*)buf, length, 60, 0);
 	res = ftt_describe_error(d, FTT_OPN_READ, "ftt_read", res, "a read SCSI command", 1);
-    } else {
-	DEBUG2(stderr,"System Call\n");
-	if (0 != (d->last_operation &(FTT_OP_WRITE|FTT_OP_WRITEFM)) &&
-		0 != (d->flags& FTT_FLAG_REOPEN_R_W)) {
-	    ftt_close_dev(d);
-	}
-	if ( 0 > ftt_open_dev(d)) {
+    
+	} else {
+	
+		DEBUG2(stderr,"System Call\n");
+		if (0 != (d->last_operation &(FTT_OP_WRITE|FTT_OP_WRITEFM)) &&
+			0 != (d->flags& FTT_FLAG_REOPEN_R_W)) {
+			ftt_close_dev(d);
+		}
+		if ( 0 > ftt_open_dev(d)) {
 	    return d->file_descriptor;
-	}
-	res = read(d->file_descriptor, buf, length);
-	d->last_operation = FTT_OP_READ;
-	res = ftt_translate_error(d, FTT_OPN_READ, "ftt_read", res, "a read system call",1);
-	if (res == FTT_EBLANK) {
-	    /* we read past end of tape, prevent further confusion on AIX */
-	    d->unrecovered_error = 1;
-	}
-    }
+		}
+		d->last_operation = FTT_OP_READ;
+
+#ifndef WIN32
+
+		res = read(d->file_descriptor, buf, length);
+		res = ftt_translate_error(d, FTT_OPN_READ, "ftt_read", res, "a read system call",1);
+		if (res == FTT_EBLANK) {
+			/* we read past end of tape, prevent further confusion on AIX */
+			d->unrecovered_error = 1;
+		}
+#else 
+		{ /* ---------------- this is the WIN-NT part -----------------*/
+			DWORD	nread;	
+			if ( ! ReadFile((HANDLE)d->file_descriptor,(LPVOID)buf,(DWORD)length,&nread,0) ) {
+				ftt_translate_error_WIN(d, FTT_OPN_READ, "ftt_read",
+					GetLastError(), "a ReadFile call",1);
+				nread = (DWORD)-1;
+			}
+			res = (int)nread;
+		}
+#endif
+	
+	
+		}
     if (0 == res) { /* end of file */
 	if( d->flags & FTT_FLAG_FSF_AT_EOF){
 	    ftt_skip_fm(d,1);
@@ -109,18 +138,34 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 				(unsigned char *)buf, length, 60,1);
 	res = ftt_describe_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write SCSI command", 0);
     } else {
-	DEBUG2(stderr,"System Call\n");
-	if (0 != (d->last_operation &(FTT_OP_READ)) &&
-		0 != (d->flags& FTT_FLAG_REOPEN_R_W)) {
-	    ftt_close_dev(d);
+		DEBUG2(stderr,"System Call\n");
+		if (0 != (d->last_operation &(FTT_OP_READ)) &&
+			0 != (d->flags& FTT_FLAG_REOPEN_R_W)) {
+			ftt_close_dev(d);
+		}
+		if ( 0 > ftt_open_dev(d)) {
+			return d->file_descriptor;
+		}
+		d->last_operation = FTT_OP_WRITE;
+
+#ifndef WIN32
+
+		res = write(d->file_descriptor, buf, length);
+		res = ftt_translate_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write() system call",0);
+#else
+		{ /* ---------------- this is the WIN-NT part -----------------*/
+			DWORD	nwrt;	
+
+			if ( !  WriteFile((HANDLE)d->file_descriptor,(LPVOID)buf,(DWORD)length,&nwrt,0 )) {
+				ftt_translate_error_WIN(d, FTT_OPN_READ, "ftt_write",
+					GetLastError(), "a WriteFile call",1);
+				nwrt = (DWORD)-1;
+			}
+			res = (int)nwrt;
+		}
+#endif
+	
 	}
-	if ( 0 > ftt_open_dev(d)) {
-	    return d->file_descriptor;
-	}
-	res = write(d->file_descriptor, buf, length);
-	d->last_operation = FTT_OP_WRITE;
-	res = ftt_translate_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write() system call",0);
-    }
     if (res > 0) {
 	d->writelo += res;
 	d->writekb += d->writelo >> 10;

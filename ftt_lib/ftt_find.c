@@ -1,9 +1,33 @@
 static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
-#include <sys/utsname.h>
 #include <string.h>
 #include <ctype.h>
 #include <ftt_private.h>
+
+#ifdef WIN32         /* this is Windows */
+
+#include <process.h>
+#include <windows.h>
+#define geteuid() -1 
+#define popen _popen
+#define pclose _pclose
+
+
+char * ftt_get_os() {
+	char ver[20],rel[20];
+	char *os = "WINNT";
+    OSVERSIONINFO buf;
+	buf.dwOSVersionInfoSize =sizeof(OSVERSIONINFO);
+    GetVersionEx(&buf);
+	if (buf.dwPlatformId != VER_PLATFORM_WIN32_NT ) os = "WIN32";
+	sprintf(rel,"%d",buf.dwMajorVersion);
+	sprintf(ver,"%d",buf.dwMinorVersion);
+    return ftt_make_os_name( "WINNT", rel,ver);
+}
+
+#else                /* this is UNIX */
+
+#include <sys/utsname.h>
 
 char *
 ftt_get_os() {
@@ -12,6 +36,7 @@ ftt_get_os() {
     uname(&buf);
     return ftt_make_os_name( buf.sysname, buf.release, buf.version);
 }
+#endif
 
 char *
 ftt_make_os_name(char *sys, char *release , char *version) {
@@ -63,11 +88,10 @@ ftt_strip_to_basename(const char *basename,char *os) {
     static char buf[512];
     static char buf2[512];
     static union { int n; char s[512];} s1, s2, s3;
-    int bus,id;
-    int i, res;
+ 
+    int i;
     int maxlinks=512;
     char *lastpart;
-    char *p;
 
     DEBUG2(stderr, "Entering ftt_strip_to_basename\n");
     memset(buf,0, 512);
@@ -75,6 +99,11 @@ ftt_strip_to_basename(const char *basename,char *os) {
     memset(s1.s,0, 512);
 
     strncpy(buf, basename, 512);
+
+#ifdef WIN32
+	strlwr( buf);
+#endif 
+
 #ifdef DO_SKIP_SYMLINKS
     while( 0 <  readlink(buf, buf2, 512) && maxlinks-- >0 ) {
 	if( buf2[0] == '/' ) {
@@ -121,10 +150,16 @@ ftt_strip_to_basename(const char *basename,char *os) {
 char *
 ftt_find_last_part( char *p ) {
     char *s, *s1 = 0, *s2 = 0;
+	char s_find = '/';
+
+	/* -------------------- for Windows NT ------------------------------- */
+#ifdef WIN32
+	s_find = '\\';
+#endif
 
     s = p;
     while( s && *s ) {
-	if( *s == '/' ) {
+	if( *s == s_find ) {
 	    s2 = s1;
 	    s1 = s;
 	}
@@ -148,7 +183,6 @@ ftt_get_driveid(char *basename,char *os) {
     static char cmdbuf[255];
     static char output[255];
     static union { int n; char s[512];} s1, s2, s3;
-    int bus, id;
     FILE *pf;
     char *res = 0;
     int i;
