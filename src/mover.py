@@ -506,6 +506,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                           0,0,0,0, #XXX
                                           bfid )
             if verbose: print "set remaining returns", reply
+            self.query_volume_clerk(self.current_volume)
             
         self.send_client_done(self.current_work_ticket, e_errors.OK)
         self.reset()
@@ -530,17 +531,22 @@ class Mover(  dispatching_worker.DispatchingWorker,
         ticket = self.format_lm_ticket(state=ERROR, error_info=(e_errors.MOVER_BUSY, ticket))
         self.udpc.send_no_wait(ticket, lm_address)
 
+
+    def query_volume_clerk(self, label):
+        if verbose: print "doing inquire_volume"
+        vol_info = self.vcc.inquire_vol(volume_label)
+        self.vol_status = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
+                           vol_info.get('user_inhibit',['Unknown', 'Unknown']))
+        self.vol_info = vol_info
+        return  vol_info['status'][0] == 'ok'
+    
     def prepare_volume(self, volume_label, iomode, location=None):
         if iomode is READ and location is None:
             return 0 #coding error
 
-
-        if verbose: print "doing inquire_volume"
-        vol_info = self.vcc.inquire_vol(volume_label)
-        if verbose: print "inquire_vol returns", vol_info
-        if vol_info['status'][0] != 'ok':
+        if not self.query_volume_clerk(volume_label):
             return 0 #NOTAPE
-
+        
         if iomode is WRITE:
             eod = vol_info['eod_cookie']
             if location is not None and location != eod:
