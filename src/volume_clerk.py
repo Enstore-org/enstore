@@ -127,6 +127,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             record["wrapper"] = "cpio_custom"
         try:
+            record['non_del_files'] = ticket['non_del_files']
+        except KeyError:
+            record["non_del_files"] = 0
+        try:
             record['blocksize'] = ticket['blocksize']
             if record['blocksize'] == -1:
                 x = ticket['force_key_error_to_get_except']
@@ -283,8 +287,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 totb = v["capacity_bytes"]/1.
                 if totb != 0:
                     waste = left/totb*100.
-	        self.enprint(label+" is now full, bytes remaining = "+\
-	                     repr(left)+" wasted = "+repr(waste)+"%")
+                self.logc.send(e_errors.INFO,8,
+                               "%s is now full, bytes remaining = %d, %.2f \%" %
+                               (external_label, v["remaining_bytes"],waste))
                 #dict[label] = copy.deepcopy(v)
                 dict.cursor("update",v)
                 continue
@@ -467,8 +472,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		 totb = v["capacity_bytes"]/1.
 		 if totb != 0:
 		     waste = left/totb*100.
-		 self.enprint(external_label+" is now full, bytes remaining = "+\
-			      repr(left)+" wasted = "+repr(waste)+"%")
+                 self.logc.send(e_errors.INFO,8,
+                                "%s is now full, bytes remaining = %d, %.2f \%" %
+                                (external_label, v["remaining_bytes"],waste))
 		 dict[external_label] = copy.deepcopy(v)
 		 ticket["status"] = (e_errors.WRITE_EOT, \
 				     "Volume Clerk: "+key+" is missing")
@@ -673,6 +679,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"update_counts "+repr(ticket["status"]))
                 return
+
+        #TEMPORARY TRY BLOCK - all new volumes should already have the non_del_files key
+	try:
+	    non_del_files = record['non_del_files']
+	except KeyError:
+	    record['non_del_files'] = record['sum_wr_access']
+
+        # update the non-deleted file count if we wrote to the tape
+        # this key gets decremented when we delete files
+        record['non_del_files'] = record['non_del_files'] + ticket['wr_access']
 
         # record our changes
         dict[external_label] = copy.deepcopy(record)
