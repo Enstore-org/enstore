@@ -310,21 +310,26 @@ pfile_family_width()
 
 
 penstore_state()  
-            {  disabled="`p_pnfs`/.(config)(flags)/disabled" 
-               if [ -r "$disabled" ] ; then
-	         why=`cat "$disabled"`
-		 echo "Enstore disabled: $why"
-                 exit 1
-               else
-	         echo "Enstore enabled"
-		 exit 0
-               fi; }
+            { disabled="`p_pnfs`.(config)(flags)/disabled" 
+              if [ -r "$disabled" ] ; then
+	        why=`cat "$disabled"`
+		echo "Enstore disabled: $why"
+                exit 1
+              else
+	        echo "Enstore enabled"
+		exit 0
+              fi; }
 
 ppnfs_state() 
-            { if [ -z "${1-}" ] ; then p_error "pnfs-state"; fi
+            { if [ -z "${1-}" ] ; then p_error "pnfs_state"; fi
               if [ -n "${2-}" ] ; then jtime=$2; else jtime=10; fi
+	      file="\"`p_pnfs`.(config)(flags)/.(id)(enstore.conf)\""
+	      state="down"; ec=1
               /bin/sh -c '( sleep '$jtime' ; kill $$ ) >/dev/null 2>&1 &
-                    read ans ; echo "$ans"' ;}
+	      state=`eval cat  $file`'
+	      if  [ "$state" != "down" ] ; then state="up"; ec=0; fi
+              echo "Pnfs $state" 
+	      exit $ec; }
 
         
 #debugging routine - space in arguments are being eaten by eval
