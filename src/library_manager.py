@@ -334,6 +334,33 @@ class LibraryManagerMethods:
         os._exit(0)
 
 
+    def busy_volumes(self, volume_family_name):
+        vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(volume_family_name)
+        vols = []
+        # look in the list of work_at_movers
+        for w in self.work_at_movers.list:
+            if w["vc"]["volume_family"] == volume_family_name:
+                if w["fc"]["external_label"] in vol_veto_list:
+                    continue       # already processed
+                else:
+                    vol_veto_list.append(w["fc"]["external_label"])
+                    permissions = w["vc"].get("system_inhibit", None)
+                    if permissions and permissions[1] == 'none':
+                        wr_en = wr_en + 1
+        return vol_veto_list, wr_en
+
+    # check if a particular volume with given label is busy
+    # for read requests
+    def is_vol_busy(self, external_label):
+        rc = self.volumes_at_movers.is_vol_busy(external_label)
+        if rc: return rc
+        rc = 0
+        for w in self.work_at_movers.list:
+            if w["fc"]["external_label"] == external_label:
+                rc = 1
+                break
+        return rc
+            
     # remove all pending works
     def flush_pending_jobs(self, status, external_label=None, jobtype=None):
         Trace.trace(12,"flush_pending_jobs: %s"%(external_label,))
@@ -439,7 +466,7 @@ class LibraryManagerMethods:
             self.continue_scan = 1
             #return rq, key_to_check
     
-        if self.volumes_at_movers.is_vol_busy(rq.ticket["fc"]["external_label"]):
+        if self.is_vol_busy(rq.ticket["fc"]["external_label"]):
             rq.ticket["reject_reason"] = ("VOL_BUSY",rq.ticket["fc"]["external_label"])
             self.continue_scan = 1
             return rq, key_to_check
@@ -515,7 +542,7 @@ class LibraryManagerMethods:
             #return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
         if not self.write_vf_list.has_key(vol_family):
-            vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(vol_family)
+            vol_veto_list, wr_en = self.busy_volumes(vol_family)
             Trace.trace(12,"process_write_request vol veto list:%s, width:%d"%\
                         (vol_veto_list, wr_en))
             self.write_vf_list[vol_family] = {'vol_veto_list':vol_veto_list, 'wr_en': wr_en}
@@ -719,7 +746,7 @@ class LibraryManagerMethods:
             Trace.trace(11,"schedule: Error detected %s" % (rq.ticket,))
 
     def check_write_request(self, external_label, rq, requestor):
-        vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(rq.ticket['vc']['volume_family'])
+        vol_veto_list, wr_en = self.busy_volumes(rq.ticket['vc']['volume_family'])
         label = rq.ticket['fc'].get('external_label', external_label)
         if label != external_label:
             # this is a case with admin pri
