@@ -708,6 +708,13 @@ def main(intf):
         display = enstore_display.Display(entvrc_dict, master = master,
                               background = entvrc_dict.get('background', None))
 
+        #Inform the display the config server to use.  Don't do this
+        # if running 'canned' entv.  Make sure this is run before the
+        # movers_command is.
+        if not intf.movers_file:
+            display.handle_command("csc %s %s" % (intf.csc.server_address[0],
+                                                  intf.csc.server_address[1]))
+
         Trace.trace(1, "updating movers list")
         
         #initalize the movers.
@@ -716,12 +723,6 @@ def main(intf):
         Trace.trace(1, "movers list: %s" % movers_command)
         #Inform the display the names of all the movers.
         display.handle_command(movers_command)
-
-        #Inform the display the config server to use.  Don't do this
-        # if running 'canned' entv.
-        if not intf.movers_file:
-            display.handle_command("csc %s %s" % (intf.csc.server_address[0],
-                                                  intf.csc.server_address[1]))
 
         Trace.trace(1, "starting threads")
         
