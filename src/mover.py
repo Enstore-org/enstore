@@ -385,6 +385,11 @@ class Mover(dispatching_worker.DispatchingWorker,
     def unlock_state(self):
         self._state_lock.release()
 
+
+    ## XXX These functions work by way of rsh, because there
+    ## is not a proper client/server interface to the 'enstore sched'
+    ## commands - they must be run on the node where the html
+    ## pages are stored - sigh - there should really be a sched_client
     def check_sched_down(self):
         inq = self.csc.get('inquisitor')
         host = inq.get('host')
@@ -407,7 +412,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             if roi and self.name in words:
                 return 1
         return 0
-
+    
+    ## XXX These functions work by way of rsh, because there
+    ## is not a proper client/server interface to the 'enstore sched'
+    ## commands - they must be run on the node where the html
+    ## pages are stored - sigh - there should really be a sched_client
     def set_sched_down(self):
         inq = self.csc.get('inquisitor')
         host = inq.get('host')
