@@ -2246,7 +2246,7 @@ class EnPlotPage(EnBaseHtmlDoc):
                                 enstore_functions2.format_time(stamp[1]), 
                                 NBSP*2)
             if self.outofdate and stamp[1] < self.yesterday:
-                trps.append(HTMLgen.TD(HTMLgen.Font(text, color=FUSCHIA), html_escape='OFF'))
+                trps.append(HTMLgen.TD(HTMLgen.Font(text, color=FUSCHIA, html_escape='OFF')))
             else:
                 trps.append(HTMLgen.TD(text, html_escape='OFF'))
 	    if ps:
