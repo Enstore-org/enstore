@@ -210,6 +210,12 @@ def swap(f):
 		error(fb+' not readable')
 		return
 
+	# check A file. It should have no A-file
+	fa = a_path(f)
+	if os.access(fa, os.F_OK):
+		error(fb+' already exist')
+		return
+
 	f_o = pnfs.File(lf)
 	if len(f_o.__dict__) < 11:
 		error(' missing layer 4')
@@ -382,7 +388,13 @@ if __name__ == '__main__':
 				sdoit = doit	# save doit flag
 				doit = 0	# force checking first
 				te_count = 0
-				print "checking", v2, "..."
+				print "checking", v2, "...",
+				vol = vcc.inquire_vol(v2)
+				if vol['staus'] != e_errors.OK:
+					print 'does not exist ... ERROR'
+					continue
+				if vol['system_inhibit'][1] == 'migrated':					print 'already migrated ... WARNING'					continue
+				print
 				for i in result['active_list']:
 					swap(i)
 					te_count = te_count + e_count
