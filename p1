@@ -1,0 +1,10 @@
+export PYTHON_DIR=/bakken/bakken/python
+export PATH=$PATH:/$PYTHON_DIR/bin
+
+export ENSTORE_DIR=/bakken/bakken/enstore
+
+. $ENSTORE_DIR/ups/setup.sh
+
+export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/willow.conf
+export ENSTORE_CONFIG_PORT=7510
+export ENSTORE_CONFIG_HOST=localhost
