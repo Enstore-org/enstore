@@ -79,7 +79,7 @@ echo 'nice -n 20 tar -l \
 users=""
 ls -1 /home | while read user; do if [ "$user" != "enstore" ]; then
    echo "--exclude=\"/home/$user/*\" \\">>$tar_script ;fi; done
-echo " $users  / -czf $M/files.tgz  2>$M/files.err" >>$tar_script
+echo "$users  -czf $M/files.tgz  / 2>$M/files.err" >>$tar_script
 echo
 echo "`date`: starting tar"
 cat $tar_script
