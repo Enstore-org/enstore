@@ -565,7 +565,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 ret_stat = (e_errors.UNKNOWN,None)
         if ret_stat[0] == e_errors.OK:
             # check the wrapper to fix bug in the prev. version of next_write_volume
-            if record['wrapper'] == 'none':
+            if not record.has_key('wrapper') or record['wrapper'] == 'none':
                 record['wrapper'] = volume_family.extract_wrapper(ticket['volume_family'])
                 self.dict[label] = record
         ticket['status'] = ret_stat
