@@ -953,7 +953,7 @@ FTT_locate(  PyObject *self
 
     if (!g_ftt_desc_tp) return (raise_exception("FTT_locate device not opened"));
 
-#   ifdef OLD_FTT
+#   ifdef NO_PARTITION_SUPPORT
     sts = ftt_scsi_locate( g_ftt_desc_tp, locate );
 #   else
     sts = ftt_scsi_locate( g_ftt_desc_tp, locate, part );
