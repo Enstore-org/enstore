@@ -628,6 +628,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 						 enstore_functions.get_status(ticket)))
 
     def start(self):
+        self.conn_cnt = 0
         name = self.name
         self.t0 = time.time()
         self.config = self.csc.get(name)
@@ -1568,7 +1569,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def setup_transfer(self, ticket, mode):
         self.lock_state()
-        save_state = self.state
+        self.save_state = self.state
 
         self.unique_id = ticket['unique_id']
         try:
@@ -1577,8 +1578,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.lm_address = None
         Trace.trace(10, "setup transfer")
         self.tr_failed = 0
+        self.setup_mode = mode
         ## pprint.pprint(ticket)
-        if save_state not in (IDLE, HAVE_BOUND):
+        if self.save_state not in (IDLE, HAVE_BOUND):
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
             self.unlock_state()
@@ -1596,11 +1598,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
 
         self.current_work_ticket = ticket
-        self.control_socket, self.client_socket = self.connect_client()
-        
-        Trace.trace(10, "client connect %s %s" % (self.control_socket, self.client_socket))
+        self.run_in_thread('client_connect_thread', self.connect_client)
+
+    def finish_transfer_setup(self):
+        Trace.trace(10, "client connect returned: %s %s" % (self.control_socket, self.client_socket))
+        ticket = self.current_work_ticket
         if not self.client_socket:
-            self.state = save_state
+            Trace.trace(20, "finish_transfer_setup: connection to client failed")
+            self.state = self.save_state
             ## Connecting to client failed
             if self.state is HAVE_BOUND:
                 self.dismount_time = time.time() + self.default_dismount_delay
@@ -1622,14 +1627,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             if "NULL" not in string.split(filename,'/'):
                 ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
                 self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
-                self.state = save_state
+                self.state = self.save_state
                 return 0
             wrapper_type = volume_family.extract_wrapper(self.vol_info['volume_family'])
             if ticket['work'] == 'write_to_hsm' and wrapper_type != "null":
                 ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for NULL mover')
                 self.send_client_done(ticket, e_errors.USERERROR,
                                       'only "null" wrapper is allowed for NULL mover')
-                self.state = save_state
+                self.state = self.save_state
                 return 0
 
         delay = 0
@@ -1653,10 +1658,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         #    read requetsts -- calculate CRC when reading memory
 
         self.reset(sanity_cookie, client_crc_on)
-        if ticket['encp'].has_key('delayed_dismount'):
-            if ((type(ticket['encp']['delayed_dismount']) is type(0)) or
-                (type(ticket['encp']['delayed_dismount']) is type(0.))):
-                delay = 60 * ticket['encp']['delayed_dismount']
+        # restore self.current_work_ticket after it gets cleaned in the reset()
+        self.current_work_ticket = ticket
+        if self.current_work_ticket['encp'].has_key('delayed_dismount'):
+            if ((type(self.current_work_ticket['encp']['delayed_dismount']) is type(0)) or
+                (type(self.current_work_ticket['encp']['delayed_dismount']) is type(0.))):
+                delay = 60 * self.current_work_ticket['encp']['delayed_dismount']
             else:
                 delay = self.default_dismount_delay
         if delay > 0:
@@ -1670,19 +1677,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=vc['address'])
-        self.unique_id = ticket['unique_id']
+        self.unique_id = self.current_work_ticket['unique_id']
         volume_label = fc['external_label']
-        self.current_work_ticket = ticket
         if volume_label:
             self.vol_info.update(self.vcc.inquire_vol(volume_label))
         else:
             Trace.log(e_errors.ERROR, "setup_transfer: volume label=%s" % (volume_label,))
         if self.vol_info['status'][0] != 'ok':
             msg =  ({READ: e_errors.READ_NOTAPE, WRITE: e_errors.WRITE_NOTAPE}.get(
-                mode, e_errors.EPROTO), self.vol_info['status'][1])
+                self.setup_mode, e_errors.EPROTO), self.vol_info['status'][1])
             Trace.log(e_errors.ERROR, "Volume clerk reply %s" % (msg,))
-            self.send_client_done(ticket, msg[0], msg[1])
-            self.state = save_state
+            self.send_client_done(self.current_work_ticket, msg[0], msg[1])
+            self.state = self.save_state
             return 0
         
         self.buffer.set_blocksize(self.vol_info['blocksize'])
@@ -1698,22 +1704,22 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not self.wrapper:
             msg = e_errors.EPROTO, "Illegal wrapper type %s" % (self.wrapper_type)
             Trace.log(e_errors.ERROR,  "%s" %(msg,))
-            self.send_client_done(ticket, msg[0], msg[1])
-            self.state = save_state
+            self.send_client_done(self.current_work_ticket, msg[0], msg[1])
+            self.state = self.save_state
             return 0
         
         self.buffer.set_wrapper(self.wrapper)
-        client_filename = ticket['wrapper'].get('fullname','?')
-        pnfs_filename = ticket['wrapper'].get('pnfsFilename', '?')
+        client_filename = self.current_work_ticket['wrapper'].get('fullname','?')
+        pnfs_filename = self.current_work_ticket['wrapper'].get('pnfsFilename', '?')
 
-        self.mode = mode
+        self.mode = self.setup_mode
         self.bytes_to_transfer = long(fc['size'])
         self.bytes_to_write = self.bytes_to_transfer
         self.bytes_to_read = self.bytes_to_transfer
 
         ##NB: encp v2_5 supplies this information for writes but not reads. Somebody fix this!
         try:
-            client_hostname = ticket['wrapper']['machine'][1]
+            client_hostname = self.current_work_ticket['wrapper']['machine'][1]
         except KeyError:
             client_hostname = ''
         self.client_hostname = client_hostname
@@ -1727,7 +1733,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif self.mode == WRITE:
             self.files = (client_filename, pnfs_filename)
             if self.wrapper:
-                self.header, self.trailer = self.wrapper.headers(ticket['wrapper'])
+                self.header, self.trailer = self.wrapper.headers(self.current_work_ticket['wrapper'])
             else:
                 self.header = ''
                 self.trailer = ''
@@ -1738,7 +1744,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
             self.target_location = None        
 
-        if volume_label == self.current_volume and save_state == HAVE_BOUND: #no mount needed
+        if volume_label == self.current_volume and self.save_state == HAVE_BOUND: #no mount needed
             self.timer('mount_time')
             self.position_media(verify_label=0)
         else:
@@ -2158,8 +2164,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         return
             
     def connect_client(self):
-        Trace.trace(10, "connecting to client")
-        # cgw - Should this thread out?
+        self.conn_cnt = self.conn_cnt + 1
+        if self.conn_cnt % 2:
+            self.control_socket, self.client_socket = None, None
+            self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+            return
+        # run this in a thread
         try:
             ticket = self.current_work_ticket
             data_ip=self.config.get("data_ip",None)
@@ -2186,9 +2196,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 		else:
 		    Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
 			      (ticket['callback_addr'], os.strerror(detail)))
-		    return None, None
+		    self.control_socket, self.client_socket = None, None
+                    self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                    return
 		    
-
 	    #Check if the socket is open for reading and/or writing.
 	    r, w, ex = select.select([control_socket], [control_socket], [], 60)
 
@@ -2198,13 +2209,16 @@ class Mover(dispatching_worker.DispatchingWorker,
 	    else:
                 Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
                           (ticket['callback_addr'], os.strerror(errno.ETIMEDOUT)))
-		return None, None
-
+                self.control_socket, self.client_socket = None, None
+                self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                return
 	    #...if it is zero then success, otherwise it failed.
             if rtn != 0:
                 Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
                           (ticket['callback_addr'], os.strerror(rtn)))
-		return None, None
+                self.control_socket, self.client_socket = None, None
+                self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                return
 
 	    # we have a connection
             fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags)
@@ -2214,7 +2228,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR,"error in connect_client: %s" % (detail,))
-                return None, None
+                self.control_socket, self.client_socket = None, None
+                self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                return
             # we expect a prompt call-back here
             Trace.trace(10, "select: listening for client callback")
             read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],60) # one minute timeout
@@ -2225,7 +2241,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if not hostaddr.allow(address):
                     client_socket.close()
                     listen_socket.close()
-                    return None, None
+		    self.control_socket, self.client_socket = None, None
+                    self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                    return
                 if data_ip:
                     interface=hostaddr.interface_name(data_ip)
                     if interface:
@@ -2237,15 +2255,20 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.client_ip = address[0]
                 Trace.notify("connect %s %s" % (self.shortname, self.client_ip))
                 self.net_driver.fdopen(client_socket)
-                return control_socket, client_socket
+                self.control_socket, self.client_socket = control_socket, client_socket
+                self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                return
             else:
                 Trace.log(e_errors.ERROR, "timeout on waiting for client connect")
-                return None, None
+                self.control_socket, self.client_socket = None, None
+                self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                return
         except:
             exc, msg, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "connect_client:  %s %s %s"%
                       (exc, msg, traceback.format_tb(tb)))
-            return None, None 
+            self.control_socket, self.client_socket = None, None
+            self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
     
     def format_lm_ticket(self, state=None, error_info=None, returned_work=None, error_source=None):
         status = e_errors.OK, None
@@ -2325,9 +2348,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return -1
         if after_function:
             args = args + (after_function,)
+        Trace.trace(20, "create thread: target %s name %s args %s" % (function, thread_name, args))
         thread = threading.Thread(group=None, target=function,
                                   name=thread_name, args=args, kwargs={})
         setattr(self, thread_name, thread)
+        Trace.trace(20, "starting thread %s"%(dir(thread,)))
         try:
             thread.start()
         except:
