@@ -4,6 +4,9 @@ if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
 
 # test/$RCSfile$  $Revision$
 
+. /usr/local/etc/setups.sh
+setup enstore
+
 aits="DM07-CA2901 DM08-CA2902 DM09-CA2903 DM10-CA2904 DM11-CA2905 DM12-CA2906"
 mammoths="DC03-CA2251 DC04-CA2252 DC05-CA2253 DC06-CA2254"
 dlts="DE01-CA2501 DE02-CA2502"
@@ -20,6 +23,10 @@ if [ "${1:-}" = "-d" ]; then dm=1; mo=0; on=0; of=1; co=0; shift; fi
 #mount drive hack
 if [ "${1:-}" = "-m" ]; then dm=1; mo=1; on=1; of=1; co=0; shift; fi
 
+# media changer hack.  if media_changer == dasadmin, then use dasadmin instead of enstore
+media_changer=aml2r1.media_changer
+if [ "${1:-}" = "-M" ]; then media_changer=${2:-MISSING}; shift; shift; fi
+
 #specify drive-tape, this can be an individual drive-tape or a set or aits/dlts/mammoths
 if [ -n "${1-}" ]; then
   if   [ "$1" = "aits" ];     then sets="$aits"
@@ -35,10 +42,16 @@ fi
 maxtries=300
 sleeptime=3
 
+
 checkdas()  { td=$1
               count=0
+	      if [ "$media_changer" = "dasadmin" ]; then
+		lookfor="dasadmin"
+	      else
+		lookfor="enstore med"
+              fi
               while [ $count -le $maxtries ]; do
-                if [ `ps axuww| grep dasadmin | grep $td | egrep -c 'mount|dismoumt'` -eq 0 ]; then
+                if [ `ps axuww| grep "$lookfor" | grep $td | egrep -c 'mount|dismoumt'` -eq 0 ]; then
                   return 0
                 fi
                 sleep $sleeptime
@@ -48,10 +61,15 @@ checkdas()  { td=$1
             }
 
 
-edismount() { drv=`echo $1 | tr '[a-z]' '[A-Z]'`
+edismount() { tap=`echo $1 | tr '[a-z]' '[A-Z]'`
+              drv=`echo $2 | tr '[a-z]' '[A-Z]'`
               checkdas $drv
               if [ $? -eq 0 ]; then
-                dasadmin dismount -d $drv </dev/null >/dev/null 2>&1 &
+		if [ "$media_changer" = "dasadmin" ]; then
+                   dasadmin dismount -d $drv </dev/null >/dev/null 2>&1 &
+	        else
+                   enstore med --dismount $media_changer $tap $drv </dev/null >/dev/null 2>&1 &
+                fi
                 if [ $co -eq 0 ]; then
                   checkdas $drv
                 fi
@@ -74,7 +92,11 @@ emount()    { tap=`echo $1 | tr '[a-z]' '[A-Z]'`
               fi
               checkdas $drv
               if [ $? -eq 0 ]; then
-                dasadmin mount -t $typ $tap $drv </dev/null >/dev/null 2>&1 &
+		if [ "$media_changer" = "dasadmin" ]; then
+                   dasadmin mount -t $typ $tap $drv </dev/null >/dev/null 2>&1 &
+	        else
+                   enstore med --mount $media_changer $tap $drv  </dev/null >/dev/null 2>&1 &
+                fi
                 if [ $co -eq 0 ]; then
                   checkdas $drv
                 fi
@@ -139,9 +161,10 @@ while true; do
   if [ $dm -eq 1 ]; then
     for aset in $sets; do
       drive=`echo $aset | cut -f1 -d-`
+      tape=`echo  $aset | cut -f2 -d-`
       eval ok=\${I$drive:-0}
       /bin/echo -n `date` dismount $drive $ok
-      edismount $drive
+      edismount $tape $drive
       stat=$?
       eval I$drive=\$stat
       echo " " $stat `date`
