@@ -452,14 +452,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, 'mc:aml2 no device field found in ticket.')
 	    status = 37
             return e_errors.DOESNOTEXIST, status, "no device field found in ticket"
-        try:
-            ticket['mc_device'] = inTicket['moverConfig']['mc_device']
-        except KeyError:
-            Trace.log(e_errors.ERROR, 'mc:aml2 no mc_device field found in ticket.')
-	    status = 37
-            return e_errors.DOESNOTEXIST, status, "no mc_device field found in ticket"
 	
-	driveType = ticket['mc_device'][:2]  # ... need device type, not actual device
+	driveType = ticket['drive'][:2]  # ... need device type, not actual device
         ticket['cleanTime'] = self.driveCleanTime[driveType][0]  # clean time in seconds	
         driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
