@@ -779,13 +779,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 os.rename(afile+SUFFIX, afile)
 	    else:
                 os.remove(afile+SUFFIX)
-	except:
-	    traceback.print_exc()
+	except OSError:
 	    format = timeofday.tod()+" "+\
 	             str(sys.argv)+" "+\
 	             str(sys.exc_info()[0])+" "+\
 	             str(sys.exc_info()[1])+" "+\
-	             "inquisitor update system error"
+	             "%s%s, inquisitor update system error"%(afile,SUFFIX)
 	    Trace.log(e_errors.ERROR, format)
 
     def handle_timeout(self):
