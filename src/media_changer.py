@@ -819,7 +819,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 	  nl=0
 	  for l in resp:
             if async_date.match(l):
-                 if self.DEBUG:
+               if self.DEBUG:
 	          print "ASYNC DELETED:", l
 	       jonflag=1
 	    elif string.find(l,'Place cartridges in CAP') != -1 or \
