@@ -1,2 +1,10 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile m2$  $Revision$
+
+/usr/local/bin/traceMode 1
+
 ./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/raid.in  22 30
 ./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/fnal.in  23 30
