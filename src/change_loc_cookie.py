@@ -70,5 +70,15 @@ for entry in entries:
           (entry['file'],f_entry['location_cookie'],new_cookie)
     f_entry['location_cookie'] = new_cookie
     dict[entry['bfid']] = f_entry
-sys.exit(0)
 
+vdict = db.DbTable("volume", dbHome, jouHome, [])
+v= vdict[sys.argv[1]]
+eod_cookie = v['eod_cookie']
+vel = string.split(eod_cookie,'_')
+vl = len(vel[1])
+vel[1] = '0'*vl
+new_eod_cookie = string.join(tuple(vel),'_')
+v['eod_cookie'] = new_eod_cookie
+vdict[sys.argv[1]] = v
+
+sys.exit(0)
