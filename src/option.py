@@ -784,12 +784,14 @@ class Interface:
             elif next != None and not self.is_option(next):
                 self.set_value(long_opt, next)
                 self.args.remove(next)
+                
+            #Use the default value if none is specified.
             else:
                 self.set_value(long_opt, None) #Uses 'default'
-                
+
         else: #INGORED
             self.set_value(long_opt, None) #Uses 'default'
-
+            
     #Do the same thing with the short options that is done with the long
     # options.  For all intensive purposes, this gets the long opt that
     # is the short option equivalet and uses the long opt.
@@ -896,16 +898,28 @@ class Interface:
     # command line.
     def next_argument(self, argument):
         #Get the next option after the option passed in.
-
         for arg in self.some_args:
-            if string.find(arg, argument) != -1:
+            #For comparision, change underscores to dashes, but only for
+            # those that are options.
+            if self.is_long_option(arg.replace("_", "-")):
+                #only do this for known options (aka switches).
+                compare_arg = arg.replace("_", "-")
+            else:
+                compare_arg = arg
+
+            #Look for the current argument in the list.  Since, it looks for
+            # things based on string.find() placing the "--" before the
+            # value of argument is ok to handle the substring problem that
+            # argument has the "--" and "-" removed.  
+            if string.find("--"+argument, compare_arg) != -1:
+                #Now that the current item in the argument list is found,
+                # make sure it isn't the last and return the next.
                 index = self.some_args.index(arg)
                 if index == len(self.some_args[1:]): #Nothing can follow.
                     return None
                 rtn = self.some_args[index + 1]
 
                 self.some_args = self.some_args[index + 1:]
-
                 return rtn
 
         return None
@@ -1092,18 +1106,13 @@ class Interface:
         self.set_extra_values(long_opt, value)
 
     def set_from_dictionary(self, opt_dict, long_opt, value):
-        if value or opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED, OPTIONAL):
-            #Get the name to set.
-            opt_name = self.get_value_name(opt_dict, long_opt)
-
-            #If on an option where an option value is not present, do the
-            # best to get the default.
-            if value == None and \
-               opt_dict.get(VALUE_USAGE, IGNORED) in (OPTIONAL,):
-                value = self.get_default_value(opt_dict, value)
-
-            #Get the value in the correct type to set.
+        #Set value for required situations.
+        if value and opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED,OPTIONAL):
             try:
+                #Get the name to set.
+                opt_name = self.get_value_name(opt_dict, long_opt)
+
+                #Get the value in the correct type to set.
                 opt_typed_value = self.get_value_type(opt_dict, value)
             except ValueError, detail:
                 msg = "option %s requires type %s" % \
@@ -1112,8 +1121,27 @@ class Interface:
                 self.print_usage(msg)
 
             setattr(self, opt_name, opt_typed_value)
+            
+        #Set value for non-existant optional value.
+        elif not value and opt_dict.get(VALUE_USAGE, IGNORED) in (OPTIONAL,):
+            try:
+                #Get the name to set.
+                opt_name = self.get_value_name(opt_dict, long_opt)
+                #Get the name to set.
+                value = self.get_default_value(opt_dict, value)
+                #Get the value in the correct type to set.
+                opt_typed_value = self.get_default_type(opt_dict, value)
+            except ValueError, detail:
+                msg = "option %s requires type %s" % \
+                      (long_opt,
+                       opt_dict.get(VALUE_TYPE, STRING))
+                self.print_usage(msg)
 
-        if not value or opt_dict.get(FORCE_SET_DEFAULT, None):
+            setattr(self, opt_name, opt_typed_value)
+
+        #There is no value or the default  should be forced set anyway.
+        elif not value and opt_dict.get(VALUE_USAGE, IGNORED) in (IGNORED,) \
+             or opt_dict.get(FORCE_SET_DEFAULT, None):
             #Get the name to set.
             opt_name = self.get_default_name(opt_dict, long_opt)
 
