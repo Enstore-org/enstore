@@ -274,6 +274,8 @@ def forked_write_to_hsm( self, ticket ):
 	sts = bind_volume( self, ticket )
 	ticket['times']['mount_time'] = time.time() - t0
 	if sts != e_errors.OK:
+	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
+	    self.net_driver.data_socket.close()
 	    # make write specific and ...
 	    sts = eval( "e_errors.WRITE_"+sts )
 	    send_user_done( self, ticket, sts )
@@ -282,6 +284,8 @@ def forked_write_to_hsm( self, ticket ):
 	    
 	sts = vcc.set_writing( self.vol_info['external_label'] )
 	if sts['status'][0] != "ok":
+	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
+	    self.net_driver.data_socket.close()
 	    send_user_done( self, ticket, e_errors.WRITE_NOTAPE )
 	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
@@ -289,7 +293,9 @@ def forked_write_to_hsm( self, ticket ):
         # setup values before transfer - incase of exception
         wr_size = 0
         media_error = 0
-        complete_crc = 0
+        user_file_crc = 0			# This is the crc of all the data in
+					# the file; this does not include any
+					# wrapper data.
 
         logc.send(log_client.INFO,2,"OPEN_FILE_WRITE")
         # open the hsm file for writing
@@ -312,7 +318,7 @@ def forked_write_to_hsm( self, ticket ):
 
             logc.send(log_client.INFO,2,"WRAPPER.WRITE")
 	    t0 = time.time()
-            (wr_size, complete_crc, sanity_cookie) = wrapper.write( ticket )
+            (wr_size, user_file_crc, sanity_cookie) = wrapper.write( ticket )
 	    ticket['times']['transfer_time'] = time.time() - t0
 
 	    # close hsm file
@@ -350,13 +356,13 @@ def forked_write_to_hsm( self, ticket ):
         ticket['vc'].update( vcc.set_remaining_bytes(self.vol_info['external_label'],
 						     remaining_bytes,
 						     eod_cookie,
-						     wr_err,rd_err,
+						     wr_err,rd_err, # added to total
 						     wr_access,rd_access) )
 	rsp = fcc.new_bit_file( {'work':"new_bit_file",
 				 'fc'  :{'bof_space_cookie':file_cookie,
 					 'sanity_cookie':sanity_cookie,
 					 'external_label':self.vol_info['external_label'],
-					 'complete_crc':complete_crc}} )
+					 'complete_crc':user_file_crc}} )
 	if rsp['status'][0] != e_errors.OK:
 	    print "XXXXXXXXXXXenstore software error"
 	    pass
@@ -395,6 +401,8 @@ def forked_read_from_hsm( self, ticket ):
 	sts = bind_volume( self, ticket )
 	ticket['times']['mount_time'] = time.time() - t0
 	if sts != e_errors.OK:
+	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
+	    self.net_driver.data_socket.close()
 	    # make read specific and ...
 	    sts = eval( "e_errors.READ_"+sts )
 	    send_user_done( self, ticket, sts )
@@ -408,7 +416,7 @@ def forked_read_from_hsm( self, ticket ):
         media_error = 0
         drive_errors = 0
         bytes_sent = 0			# reset below, BUT not used afterwards!!!!!!!!!!!!!
-        complete_crc = 0		# reset below, BUT not used afterwards!!!!!!!!!!!!!
+        user_file_crc = 0		# reset below, BUT not used afterwards!!!!!!!!!!!!!
 
         # open the hsm file for reading and read it
         try:
@@ -421,7 +429,7 @@ def forked_read_from_hsm( self, ticket ):
 
             logc.send(log_client.INFO,2,"WRAPPER.READ")
 	    t0 = time.time()
-            (bytes_sent, complete_crc) = wrapper.read( ticket['fc']['sanity_cookie'] )
+            (bytes_sent, user_file_crc) = wrapper.read( ticket['fc']['sanity_cookie'] )
 	    ticket['times']['transfer_time'] = time.time() - t0
 
 	    # close hsm file
@@ -450,7 +458,7 @@ def forked_read_from_hsm( self, ticket ):
         # drive errors are bad:  unbind volule it & tell user to retry
         elif drive_errors :
             vcc.set_hung( self.vol_info['external_label'] )
-            send_user_done( self, {"status" : "Mover: Retry: drive_errors "+msg}, e_errors.READ_ERROR )
+            send_user_done( self, ticket, e_errors.READ_ERROR )
 	    return_or_update_and_exit( self, origin_addr, e_errors.READ_ERROR )
 
         # All is well - read has finished correctly
