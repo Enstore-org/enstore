@@ -522,3 +522,40 @@ if (blockno != blockno_act)
  
 return 0;
 }
+/* ============================================================================
+ 
+ROUTINE:
+        ftt_t_locate
+ 
+        locate a specific block
+ 
+==============================================================================*/
+int     ftt_t_locate (int argc, char **argv)
+{
+int             status;                 /* status */
+static int      blockno;                /* block number */
+ftt_t_argt      argt[] = {
+        {"<blockno>",   FTT_T_ARGV_INT,         NULL,           &blockno},
+        {NULL,          FTT_T_ARGV_END,         NULL,           NULL}};
+static unsigned char locate_cmd[10] = 
+   {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+/* parse command line
+   ------------------ */
+ 
+blockno = -1;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);
+ 
+/* do the locate
+   ------------- */
+ 
+locate_cmd[3] = (blockno >> 16) & 0xff;
+locate_cmd[4] = (blockno >> 8)  & 0xff; 
+locate_cmd[5] = blockno & 0xff;
+status = ftt_do_scsi_command(ftt_t_fd,"Locate",locate_cmd,10,NULL,0,60,FALSE);
+res = ftt_describe_error(ftt_t_fd,0,"a SCSI pass-through call", status,"Locate", 0);
+FTT_T_CHECK_CALL(status,0);
+ 
+return 0;
+}
