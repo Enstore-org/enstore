@@ -289,31 +289,31 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket):
-     ticket["status"] = (e_errors.OK, None)
-     try:
-        self.reply_to_caller(ticket)
-     # even if there is an error - respond to caller so he can process it
-     except:
-        ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-        self.reply_to_caller(ticket)
-        Trace.trace(10,"get_bfids "+repr(ticket["status"]))
+        ticket["status"] = (e_errors.OK, None)
+        try:
+           self.reply_to_caller(ticket)
+        # even if there is an error - respond to caller so he can process it
+        except:
+           ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+           self.reply_to_caller(ticket)
+           Trace.trace(10,"get_bfids "+repr(ticket["status"]))
+           return
+        self.get_user_sockets(ticket)
+        ticket["status"] = (e_errors.OK, None)
+        callback.write_tcp_obj(self.data_socket,ticket)
+        dict.cursor("open")
+        key,value=dict.cursor("first")
+        while key:
+            callback.write_tcp_raw(self.data_socket,repr(key))
+            key,value=dict.cursor("next")
+        if 0: print value # quiet lint
+        callback.write_tcp_raw(self.data_socket,"")
+        dict.cursor("close")
+        callback.write_tcp_raw(self.data_socket,"")
+        self.data_socket.close()
+        callback.write_tcp_obj(self.control_socket,ticket)
+        self.control_socket.close()
         return
-     self.get_user_sockets(ticket)
-     ticket["status"] = (e_errors.OK, None)
-     callback.write_tcp_obj(self.data_socket,ticket)
-     dict.cursor("open")
-     key,value=dict.cursor("first")
-     while key:
-         callback.write_tcp_raw(self.data_socket,repr(key))
-         key,value=dict.cursor("next")
-     if 0: print value # quiet lint
-     callback.write_tcp_raw(self.data_socket,"")
-     dict.cursor("close")
-     callback.write_tcp_raw(self.data_socket,"")
-     self.data_socket.close()
-     callback.write_tcp_obj(self.control_socket,ticket)
-     self.control_socket.close()
-     return
 
 
     # return all info about a certain bfid - this does everything that the
