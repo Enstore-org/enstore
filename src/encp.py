@@ -4980,8 +4980,9 @@ class EncpInterface(option.Interface):
             #If the file is a pnfs file, store a 1 in the list, if not store
             # a zero.  All files on the hsm system have /pnfs/ as 1st part
             # of their name.  Scan input files for /pnfs/ - all have to be the
-            # same.
-            p.append(pnfs.is_pnfs_path(dir))
+            # same.  Pass check_name_only a python true value to skip file
+            # existance/permission tests at this time.
+            p.append(pnfs.is_pnfs_path(dir, check_name_only = 1))
 
         #Initialize some important values.
 
