@@ -25,7 +25,9 @@ rip11=131.225.164.17
 rip12=131.225.164.18
 fntt=131.225.164.13
 ripsgi=131.225.164.16
-
+d0enmvr1=131.225.164.24
+d0enmvr2=131.225.164.25
+d0enmvr3=131.225.164.26
 
 aits="dm07 dm08 dm09 dm10 dm11 dm12 dm18 dm19"
 mams="dc03 dc04 dc05 dc06 dc15 dc16 dc17"
@@ -75,15 +77,15 @@ case $drive in
 
 
 
-  de13) cmd="rsh $rip11  'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
-  de14) cmd="rsh $rip12  'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
+  de13) cmd="rsh $d0enmvr3 'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
+  de14) cmd="rsh $d0enmvr3 'mt -f /dev/rmt/tps3d3n $command 2>&1; echo \$?'" ;;
 
-  dc15) cmd="rsh $rip12  'mt -f /dev/rmt/tps5d4n $command 2>&1; echo \$?'" ;;
-  dc16) cmd="rsh $rip12  'mt -f /dev/rmt/tps4d6n $command 2>&1; echo \$?'" ;;
-  dc17) cmd="rsh $rip12  'mt -f /dev/rmt/tps3d5n $command 2>&1; echo \$?'" ;;
+  dc15) cmd="rsh $d0enmvr1 'mt -f /dev/rmt/tps5d4n $command 2>&1; echo \$?'" ;;
+  dc16) cmd="rsh $d0enmvr1 'mt -f /dev/rmt/tps4d6n $command 2>&1; echo \$?'" ;;
+  dc17) cmd="rsh $d0enmvr1 'mt -f /dev/rmt/tps3d5n $command 2>&1; echo \$?'" ;;
 
-  dm18) cmd="rsh $rip11  'mt -f /dev/rmt/tps4d1n $command 2>&1; echo \$?'" ;;
-  dm19) cmd="rsh $rip11  'mt -f /dev/rmt/tps4d2n $command 2>&1; echo \$?'" ;;
+  dm18) cmd="rsh $d0enmvr2 'mt -f /dev/rmt/tps4d1n $command 2>&1; echo \$?'" ;;
+  dm19) cmd="rsh $d0enmvr2 'mt -f /dev/rmt/tps4d2n $command 2>&1; echo \$?'" ;;
 
   stk1) cmd="rsh $rip9   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
   stk2) cmd="rsh $rip9   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
@@ -113,6 +115,3 @@ done
 stat=`echo $x | awk '{print $NF}'`;
 echo "$x"
 exit $stat
-
-
-
