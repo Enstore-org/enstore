@@ -11,7 +11,7 @@ QUALIFIERS = ""
         pathPrepend( PATH, "${UPS_PROD_DIR}/sbin" )
         pathPrepend( PATH, "${UPS_PROD_DIR}/bin" )
 
-        # dot, tgif, htmldoc, ghostview ximagetools and imagemagick are for generating documenation only
+        # dot, tgif, htmldoc, ghostview ximagetools and imagemagick are for generating documentation only
         # dot and graphviz are the same product with different names!
 	# I don't care which version I get so don't specify any
         setupOptional("dot")
