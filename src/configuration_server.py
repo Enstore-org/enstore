@@ -51,6 +51,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                 continue
             # ok, we have a complete line - execute it
             try:
+		#print line
                 exec ("x"+line)
             except:
                 f.close()
@@ -67,6 +68,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         self.configdict=copy.deepcopy(xconfigdict)
         self.serverlist = {}
         for key in self.configdict.keys():
+	      self.configdict[key]['status'] = (e_errors.OK, None)
               for insidekey in self.configdict[key].keys():
                   if insidekey == 'host':
                      self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
