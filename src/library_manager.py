@@ -493,7 +493,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     summon_queue_index = 0
     suspect_volumes = [] # list of suspected volumes
     max_suspect_movers = 2 # maximal number of movers in the suspect volume
-
+    max_suspect_volumes = 100 # maximal number of suspected volumes for alarm
+                              # generation
+    min_mv_num = 1 # minimal number of movers allowed
 
     def __init__(self, libman, csc):
         self.name_ext = "LM"
@@ -504,7 +506,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.keys = self.csc.get(libman)
-
+        if self.keys.has_key("movers_threshold"): self.min_mv_num = self.keys["movers_threshold"]
+        if self.keys.has_key("volumes_threshold"): self.max_suspect_volumes = self.keys["volumes_threshold"]
+        print "MV TH",self.min_mv_num 
 	# open DB and restore internal data
 	self.open_db()
 	# instantiate volume clerk client
@@ -603,6 +607,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			self.summon_queue.remove(mv)
 			# decrement mover counter
 			mover_cnt = mover_cnt - 1
+                        # send alarm if number of movers is below a threshold
+                        if mover_cnt < self.min_mv_num:
+                            Trace.alarm(e_errors.WARNING, e_errors.BELOW_THRESHOLD,
+                                        {"movers":"Number of movers is below threshold"}) 
+
 			# mover index must be not more than mover counter
 			# and cannot be negative
 			if (mover_index >= mover_cnt and 
@@ -817,6 +826,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    vol['movers'].append(mover)
 	if not vol_found:
 	    self.suspect_volumes.append(vol)
+            # send alarm if number of suspect volumes is above a threshold
+            if len(self.suspect_volumes) >= max_suspect_volumes:
+                Trace.alarm(e_errors.WARNING, e_errors.ABOVE_THRESHOLD,
+                            {"volumes":"Number of suspect volumes is above threshold"}) 
+            
 	Trace.trace(14, "SUSPECT VOLUME LIST AFTER %s" % self.suspect_volumes)
 	return vol
 
@@ -1003,14 +1017,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    return
 		else:
 		    # check if dismount delay had expired
-		    if not mvr.has_key("del_dism"):
-                        # no delayed dismount: flag dismount
-                        dismount_vol = 1
-		    else:
-			# do not dismount, rather send no work
-			self.reply_to_caller({'work': 'nowork'})
-			Trace.trace(16,"have_bound_volume delayed dismount %s"%w)
-			return
+                    if mvr_found:
+                        if not mvr.has_key("del_dism"):
+                            # no delayed dismount: flag dismount
+                            dismount_vol = 1
+                        else:
+                            # do not dismount, rather send no work
+                            self.reply_to_caller({'work': 'nowork'})
+                            Trace.trace(16,"have_bound_volume delayed dismount %s"%w)
+                            return
+                    else: dismount_vol = 1
 	    except:
                 e_errors.handle_error()
 		# no delayed dismount: flag dismount
