@@ -1613,11 +1613,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return 0
 
                 try:
+                    Trace.trace(10,"rewind")
                     self.tape_driver.rewind()
                     import ftt
                     time.sleep(3)
                     stats = self.tape_driver.ftt.get_stats()
-                    if stats[ftt.WRITE_PROT]:
+                    Trace.trace(10,"WRITE_PROT=%s"%(stats[ftt.WRITE_PROT],))
+                    write_prot = stats[ftt.WRITE_PROT]
+                    if type(write_prot) is type(''):
+                        write_prot = string.atoi(write_prot)
+                    if write_prot:
                         self.vcc.set_system_noaccess(volume_label)
                         Trace.alarm(e_errors.ERROR, "attempt to label write protected tape")
                         self.transfer_failed(e_errors.WRITE_ERROR,
