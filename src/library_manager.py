@@ -522,7 +522,8 @@ class LibraryManagerMethods:
                         return  None, (e_errors.NOWORK, None)
                     Trace.trace(11,"work can not be done at this volume %s"%(ret,))
                     #w['status'] = ret['status']
-                    if ret['status'][0] != e_errors.VOL_SET_TO_FULL:
+                    if not (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
+                            ret['status'][0] == 'full'):
                         w['status'] = ret['status']
                         self.pending_work.delete(rq)
                         self.send_regret(w)
