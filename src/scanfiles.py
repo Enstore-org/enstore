@@ -143,7 +143,7 @@ def check(f):
     # path
     try:
         if pf.path != fr['pnfs_name0'] and \
-           pf.path != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
+           pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
             warn.append('original_pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
     except:
         msg.append('no or corrupted pnfs_path')
@@ -151,7 +151,7 @@ def check(f):
     # path2
     try:
         if pf.path != pf.p_path and \
-           pf.path != pnfs.get_local_pnfs_path(pf.p_path):
+           pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(pf.p_path):
             warn.append('moved_path(%s, %s)'%(pf.path, pf.p_path))
     except:
         msg.append('no or corrupted l4_pnfs_path')
