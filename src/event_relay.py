@@ -8,6 +8,10 @@ import string
 import traceback
 
 import enstore_constants
+import Trace
+import log_client
+import interface
+import e_errors
 
 DEFAULT_PORT = enstore_constants.EVENT_RELAY_PORT
 heartbeat_interval = enstore_constants.EVENT_RELAY_HEARTBEAT
@@ -18,6 +22,8 @@ my_ip = socket.gethostbyaddr(socket.gethostname())[2][0]
 ALL = "all"
 NOTIFY = "notify"
 UNSUBSCRIBE = "unsubscribe"
+MAX_TIMEOUTS = 20
+LOG_NAME = "EVRLY"
 
 def get_message_filter_dict(msg_tok):
     filter_d = {}
@@ -44,11 +50,16 @@ class Relay:
 
     def __init__(self, my_port=DEFAULT_PORT):
         self.clients = {} # key is (host,port), value is time connected
+	self.timeouts = {} # key is (host,port), value is num times error in send
         self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         my_addr = ("", my_port)
         self.listen_socket.bind(my_addr)
         self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
+	### debugger messages
+	csc = (interface.default_host(), interface.default_port())
+	self.logc = log_client.LoggerClient(csc, LOG_NAME, 'log_server')
+	Trace.init(LOG_NAME)
             
     def mainloop(self):
         last_heartbeat = 0
@@ -76,8 +87,15 @@ class Relay:
                     # wants all message types
                     filter_d = get_message_filter_dict(tok)
                     self.clients[(ip, port)] = (now, filter_d)
+		    ### debugging log message
+		    msg = "Subscribe request for %s, (port: %s) for %s."%(ip, port,
+									  filter_d)
+		    Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
                 except:
-                    print "cannot handle request", msg
+		    msg = "cannot handle request %s"%(msg,)
+		    ### debugging log message
+		    Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+                    print msg
 		    traceback.print_exc()
 
             elif tok[0] == UNSUBSCRIBE:
@@ -85,8 +103,14 @@ class Relay:
                     ip = tok[1]
                     port = int(tok[2])
                     del self.clients[(ip, port)]
+		    ### debugging log message
+		    msg = "Unsubscribe request for %s, (port: %s)"%(ip, port)
+		    Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
                 except:
-                    print "cannot handle request", msg
+		    msg = "cannot handle request %s"%(msg,)
+		    ### debugging log message
+		    Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+                    print msg
             else:
                 self.send_message(msg, tok[0], now)
         
@@ -102,8 +126,17 @@ class Relay:
                     try:
                         self.send_socket.sendto(msg, addr)
                     except:
-                        print "send failed", addr
-			traceback.print_exc()
+			msg = "send failed"%(addr,)
+		        ### debugging log message
+			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+                        print msg
+			### traceback.print_exc()
+
+			### figure out if we should stop sending to this client
+			self.timeouts[addr] = self.timeouts.get(addr, 0) + 1
+			if self.timeouts[addr] > MAX_TIMEOUTS:
+			    del self.clients[addr]
+			    del self.timeouts[addr]
                 
 if __name__ == '__main__':
     R = Relay()
