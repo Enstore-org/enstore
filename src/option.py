@@ -858,15 +858,15 @@ class Interface:
             return opt
         
     def trim_long_option(self, opt):
-        if opt[:2] == "--" and (opt[2] in string.letters or
-                                opt[2] in string.digits):
+        if len(opt) >= 2 and opt[:2] == "--" and (opt[2] in string.letters or
+                                                  opt[2] in string.digits):
             return opt[2:]
         else:
             return opt
             
     def trim_short_option(self, opt):
-        if opt[0] == "-" and (opt[1] in string.letters or
-                              opt[1] in string.digits):
+        if len(opt) and opt[0] == "-" and (opt[1] in string.letters or
+                                           opt[1] in string.digits):
             return opt[1:]
         else:
             return opt
