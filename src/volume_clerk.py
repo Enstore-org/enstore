@@ -1549,10 +1549,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-        # this could tie things up for awhile - fork and let child
-        # send the work list (at time of fork) back to client
-        #if self.fork() != 0:
-        #    return
         try:
             if not self.get_user_sockets(ticket):
                 return
@@ -1616,6 +1612,39 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             c.close()
             self.data_socket.close()
 
+            callback.write_tcp_obj(self.control_socket, ticket)
+            self.control_socket.close()
+        except:
+            exc, msg, tb = sys.exc_info()
+            Trace.handle_error(exc,msg,tb)
+        return
+
+    def __get_vol_list(self):
+        if self.dict.cached:
+            return self.dict.keys()
+        else:
+            vols = []
+            c = self.dict.newCursor()
+            k, v = c.first()
+            while k:
+                vols.append(k)
+                k, v = c.next()
+            c.close()
+            return vols
+
+    # return a list of all the volumes
+    def get_vol_list(self,ticket):
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+        try:
+            if not self.get_user_sockets(ticket):
+                return
+            ticket["status"] = (e_errors.OK, None)
+            callback.write_tcp_obj(self.data_socket, ticket)
+            vols = self.__get_vol_list()
+            callback.write_tcp_obj_new(self.data_socket, vols)
+            self.data_socket.close()
             callback.write_tcp_obj(self.control_socket, ticket)
             self.control_socket.close()
         except:
@@ -1833,7 +1862,7 @@ class VolumeClerk(VolumeClerkMethods):
             jouHome = dbHome
 
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
-        self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
+        self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'], auto_cache = 1)
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
 
         self.sgdb = sg_db.SGDb(dbHome)
