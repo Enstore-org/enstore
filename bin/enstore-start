@@ -31,6 +31,8 @@ if [ "$opt_just_ere" = "" ];then opt_just_ere=".*";fi
 place=`pwd`
 cd $PID_DIR
 
+# we need both local_host and ENSTORE_CONFIG_HOST to be fully qualified or not qualified at all
+# can not be mixed for a meaningful comparison
 local_host=`hostname`
 enstore_start_config=0     # new default
 eful=0 lful=0
@@ -38,13 +40,13 @@ if expr "$ENSTORE_CONFIG_HOST" : '.*\.' >/dev/null;then eful=1; fi
 if expr "$local_host" : '.*\.' >/dev/null;         then lful=1; fi
 
 if   [ $eful = 1 -a $lful = 0 ];then
-    echo "Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup `date`"
+    echo "`date` Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup"
     local_host=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
-    echo "nslookup returned `date`"
+    echo "`date` ...nslookup returned"
 elif [ $eful = 0 -a $lful = 1 ];then
-    echo "Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup `date`"
+    echo "`date` Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup"
     ENSTORE_CONFIG_HOST=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
-    echo "nslookup returned `date`"
+    echo "`date` ...nslookup returned"
 fi
 
 if [ $local_host = $ENSTORE_CONFIG_HOST ];then
@@ -52,7 +54,7 @@ if [ $local_host = $ENSTORE_CONFIG_HOST ];then
 fi
 
 timeout=5
-tries=10
+tries=5
 
 # function to redirect input/output when there is not a controlling terminal
 output() { tty -s
@@ -85,27 +87,31 @@ check_server()
     elif [ -n "${2-}" -a `echo $local_host | grep -ic $xnode` -ne 0 ]; then 
        # put the pid (maybe more than once, doesn't matter) into pid file
        echo $alv | sed -e 's/.*pid.: //' -e 's/,.*//'  >> $2
-       echo $1 = $alv
     fi
+    echo $1 = $alv
 }
 
 
-start_db_daemons(){
-    enstore_db=`udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT 4 --work lookup --additional_ticket '"lookup":"database"' | cut -d: -f2 | cut -d, -f1 | cut -d\' -f2`
+start_db_daemons()
+{
     out=$PID_DIR/db_checkpoint
-
     if [ ! -r $out ] ; then
-        echo "Starting database checkpoint daemon  on `hostname`"
+        if [ -z "${enstore_db-}" ]; then
+          enstore_db=`udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT 4 --work lookup --additional_ticket '"lookup":"database"' | cut -d: -f2 | cut -d, -f1 | cut -d\' -f2`
+	fi
+        echo "`date` Starting database checkpoint daemon  on `hostname`"
 	cmd="db_checkpoint -h $enstore_db  -p 5 `output $out`"
 	eval "$cmd &"
         echo $! >> $PID_DIR/`uname -n`-db_daemons_pids	
 	date >> $out  # db_checkpoint doesn't usually write to this file. send something so we don't start twice on same node
     fi
 
-
     out=$PID_DIR/db_deadlock
     if [ ! -r $out ] ; then
-        echo "Starting database deadlock daemon  on `hostname`"
+        if [ -z "${enstore_db-}" ]; then
+          enstore_db=`udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT 4 --work lookup --additional_ticket '"lookup":"database"' | cut -d: -f2 | cut -d, -f1 | cut -d\' -f2`
+	fi
+        echo "`date` Starting database deadlock daemon  on `hostname`"
         cmd="db_deadlock -h $enstore_db  -t 1 `output $out`"
         eval "$cmd &"
         echo $! >> $PID_DIR/`uname -n`-db_daemons_pids	
@@ -123,7 +129,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" \) -a $enstore_st
         then
         echo "Configuration Server on $ENSTORE_CONFIG_HOST already started"
       else
-        echo "Starting Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT, using file $ENSTORE_CONFIG_FILE"
+        echo "`date` Starting Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT, using file $ENSTORE_CONFIG_FILE"
         out=$PID_DIR/configuration_server
         rm -f $out
         cmd="python $ENSTORE_DIR/src/configuration_server.py --config_file=$ENSTORE_CONFIG_FILE `output $out`"
@@ -137,7 +143,9 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" \) -a $enstore_st
       fi
     fi
 
+    echo "`date` Waiting for configuration server to start"
     check_server configuration $PID_DIR/`uname -n`-configuration_pids
+    echo "`date` ...configuration server returned"
 
 fi
 
@@ -155,13 +163,14 @@ enstore_start_inquisitor=0
 
 # get all the servers for this port and other important servers (file_clerk, volume_clerk, ...)
 #note that conf.sh will reset the above vars.
-nodeplus_servers=`conf.sh $local_host 5 5`
-
+echo "`date` Calling configuration server to get list of servers to start"
+nodeplus_servers=`conf.sh $local_host $timeout $tries`
 # check if Configuration Server is up
 if [ $? -ne 0 ] ; then
     echo "   ...Configuration Server not reachable..."
     exit 1
 fi
+echo "`date` ...configuration server returned"
 
 # now just isolate the servers for this node
 node_servers=`echo "$nodeplus_servers" | grep :$local_host: | sed -e "s/:$local_host//"`
@@ -173,12 +182,14 @@ if [ ! "$node_servers" ];then
     else
         hh=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
     fi
-    nodeplus_servers=`conf.sh $hh 5 5`
+    echo "`date` Calling configuration server to get list of servers to start (alternate host specification)"
+    nodeplus_servers=`conf.sh $hh $timeout $tries`
     # check if Configuration Server is up
     if [ $? -ne 0 ] ; then
 	echo "   ...Configuration Server not reachable..."
 	exit 1
     fi
+    echo "`date` ...configuration server returned"
 
     node_servers=`echo "$nodeplus_servers" | grep :$hh: | sed -e "s/:$hh//"`
 fi
@@ -228,7 +239,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" \) -a $enstore_sta
         then
         echo "Log Server already started"
       else
-        echo "Starting Log Server"
+        echo "`date` Starting Log Server"
         out=$PID_DIR/log_server
         rm -f $out
         cmd="python $ENSTORE_DIR/src/log_server.py `output $out`"
@@ -257,7 +268,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep alarm`" \) -a $enstore_s
         then
         echo "Alarm Server already started"
       else
-        echo "Starting Alarm Server"
+        echo "`date` Starting Alarm Server"
         out=$PID_DIR/alarm_server
         rm -f $out
         cmd="python $ENSTORE_DIR/src/alarm_server.py `output $out`"
@@ -286,7 +297,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" \) -a $enstore_sta
         then
         echo "Volume Clerk already started"
       else
-        echo "Starting Volume Clerk"
+        echo "`date` Starting Volume Clerk"
         out=$PID_DIR/volume_clerk
         rm -f $out
         cmd="python $ENSTORE_DIR/src/volume_clerk.py `output $out`"
@@ -318,7 +329,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" \) -a $enstore_sta
         then
         echo "File Clerk already started"
       else
-        echo "Starting File Clerk"
+        echo "`date` Starting File Clerk"
         out=$PID_DIR/file_clerk
         rm -f $out
         cmd="python $ENSTORE_DIR/src/file_clerk.py `output $out`"
@@ -354,7 +365,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
                 then
                 echo "Library Manager already started"
             else
-                echo "Starting $i Library Manager"
+                echo "`date` Starting $i Library Manager"
                 out=$PID_DIR/library_manager_$i
                 rm -f $out
                 cmd="python $ENSTORE_DIR/src/library_manager.py $i `output $out`"
@@ -388,7 +399,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
                 then
                 echo "Media Changer already started"
             else
-                echo "Starting $i Media Changer"
+                echo "`date` Starting $i Media Changer"
                 out=$PID_DIR/media_changer_$i
                 rm -f $out
                 cmd="python $ENSTORE_DIR/src/media_changer.py $i `output $out`"
@@ -423,7 +434,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
                 then
                 echo "$i Mover already started"
             else
-                echo "Starting $i Mover"
+                echo "`date` Starting $i Mover"
                 out=$PID_DIR/mover_$i
                 rm -f $out
                 cmd="python $ENSTORE_DIR/src/mover.py $i `output $out`"
@@ -454,7 +465,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" \) -a $enstore_sta
         then
         echo "Inquisitor already started"
       else
-        echo "Starting Inquisitor"
+        echo "`date` Starting Inquisitor"
         out=$PID_DIR/inquisitor
         rm -f $out
         cmd="python $ENSTORE_DIR/src/inquisitor.py `output $out`"
@@ -468,13 +479,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" \) -a $enstore_sta
       fi
 
     else
-      s_timeout=$timeout
-      s_tries=$tries
-      timeout=1
-      tries=1
       check_server inquisitor $PID_DIR/`uname -n`-inquisitor_pids &
-      timeout=$s_timeout
-      tries=$s_tries
     fi
 
 fi
