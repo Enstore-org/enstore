@@ -1570,6 +1570,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	else:
 	    words = ["",]
 	name = self.server_url(lm, "%s.html"%(lm,))
+        table_rows.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.NAME(lm))))
 	if words[0] in BAD_LM_STATES:
 	    table_rows.append(self.alive_row(lm, lm_d[enstore_constants.STATUS], 
 					     FUSCHIA, link=lm))
@@ -1650,6 +1651,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		if self.not_being_monitored(server):
 		    self.unmonitored_servers.append(self.mover_row(server))
 		else:
+                    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.NAME(server))))
 		    table.append(self.mover_row(server))
 
     def unmonitored_server_rows(self, table):
