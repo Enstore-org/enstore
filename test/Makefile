@@ -19,7 +19,7 @@ newdbs:
 	ecmd random-file --size=32768  --file=data/ran2.dat
 	ecmd random-file --size=131072 --file=data/ran3.dat
 
-	if [ -d $(dpnfs) ] ; then rm -f $(dpnfs)/* ; else mkdir $(dpnfs); fi
+	if [ ! -d $(dpnfs) ] ; then mkdir $(dpnfs); fi
 
 	rm -f $$ENSTORE_DIR/test/files.in
 	( cd data; \

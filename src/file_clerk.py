@@ -41,7 +41,6 @@ class FileClerkMethods(DispatchingWorker) :
     # call the volume server to find the library, and copy to the work
     # ticket the salient information
     def read_from_hsm(self, ticket) :
-
         try :
             # look up in our dictionary the request bit field id
             finfo = dict[ticket["bfid"]]
@@ -65,7 +64,7 @@ class FileClerkMethods(DispatchingWorker) :
         library = vticket["library"]
 
         # get the library manager
-        vmticket = csc.get(library)
+        vmticket = csc.get(library+".library_manager")
         if vmticket["status"] != "ok" :
             self.reply_to_caller(vmticket)
             return
