@@ -211,6 +211,63 @@ class AtMovers:
         
 ##############################################################
        
+class PostponedRequests:
+    # requests that have been refused because of Limit Reached go into this "list".
+    # Initally requests were already sorted by prioroty, so that only one request for a given
+    # volume or volume family may be in this list.
+    def __init__(self, keep_time):
+        self.rq_list = {}
+        self.sg_list = {}
+        self.keep_time = keep_time
+        self.start_time = time.time()
+
+    def init_rq_list(self):
+        self.rq_list = {}
+        
+    # check if Postponed request list has expired
+    def list_expired(self):
+        return (time.time() - self.start_time > self.keep_time)
+        
+    def put(self, rq):
+        sg = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
+        self.rq_list[sg] = rq
+        if not self.sg_list.has_key(sg):
+            self.sg_list[sg] = 0L
+
+    def get(self):
+        if self.rq_list:
+            # find the least counter
+            l = []
+            remove_these = []
+            for sg in self.sg_list.keys():
+                if self.rq_list.has_key(sg):
+                    l.append((self.sg_list[sg], sg))
+                else:
+                   remove_these.append(sg)
+            if len(l) > 1: l.sort()
+            Trace.trace(16, "sorted sg_list %s"%(l,))
+
+            for g in remove_these:
+                if self.sg_list.has_key(sg):
+                    del(self.sg_list[sg])
+            # get sg
+            sg = l[0][1]
+            #import pprint
+            #pprint.pprint(self.rq_list)
+            Trace.trace(16,"returning %s %s" % (self.rq_list[sg], sg)) 
+            return self.rq_list[sg], sg
+        return None, None
+
+    def update(self, sg, deficiency=0):
+        if self.rq_list.has_key(sg): del(self.rq_list[sg])
+        if self.sg_list.has_key(sg):
+            self.sg_list[sg] = self.sg_list[sg]+deficiency
+            if self.sg_list[sg] < 0:
+                self.sg_list[sg] = 0L
+            if deficiency >= 0:
+                self.sg_list[sg] = self.sg_list[sg]+1
+            Trace.trace(16, "postponed update %s %s %s"%(sg, deficiency, self.sg_list[sg]))
+        
 
 class LibraryManagerMethods:
     
@@ -218,6 +275,12 @@ class LibraryManagerMethods:
         # make it method for the capability to reinitialze
         # suspect_volumes outside of this class
         self.suspect_volumes = lm_list.LMList()
+
+    def init_postponed_requests(self, keep_time):
+        self.postponed_requests_time = keep_time
+        ## place to keep all requests that have been postponed due to
+        ## storage group limit reached
+        self.postponed_requests = PostponedRequests(self.postponed_requests_time)
        
     def __init__(self, name, csc, sg_limits, min_file_size, max_suspect_movers, max_suspect_volumes):
         self.name = name
@@ -305,7 +368,14 @@ class LibraryManagerMethods:
 
     def init_request_selection(self):
         self.write_vf_list = {}
-        self.tmp_rq = None   # need this to temporarily store selcted request
+        self.tmp_rq = None   # need this to temporarily store selected request
+        # initialize postponed requests list
+        if self.postponed_requests.list_expired():
+            Trace.trace(16, "postponed list expired")
+            self.postponed_requests = PostponedRequests(self.postponed_requests_time)
+        else: self.postponed_requests.init_rq_list()
+        self.postponed_rq = 0
+        
         self.checked_keys = [] # list of checked tag keys
         self.continue_scan = 0
         self.process_for_bound_vol = None # if not None volume is bound
@@ -333,6 +403,7 @@ class LibraryManagerMethods:
             # we have saturated system with requests from the same storage group
             # see if there are pending requests for different storage group
             tags = self.pending_work.get_tags()
+            Trace.trace(16,"tags: %s"%(tags,))
             if len(tags) > 1:
                 for key in tags:
                     if not key in self.checked_keys:
@@ -406,9 +477,10 @@ class LibraryManagerMethods:
         ##############################################
         rq_sg = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
         sg_limit = self.get_sg_limit(rq_sg)
+        self.postponed_requests.put(rq)
         if self.tmp_rq:
-            tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
-            tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
+            #tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
+            #tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
             if sg_limit != 0:     # replace tmp_rq if rq SG limit is not 0
                 # replace tmp_rq based on priority
                 if rq.pri > self.tmp_rq.pri:
@@ -420,6 +492,7 @@ class LibraryManagerMethods:
         self.continue_scan = 0
         rq = request
         key_to_check = self.fair_share(rq)
+        Trace.trace(16,"process_write_request: key %s"%(key_to_check,))
         if key_to_check:
             self.continue_scan = 1
             #return rq, key_to_check
@@ -500,12 +573,13 @@ class LibraryManagerMethods:
         # for some other reason(s) do not get selected
 
         # in any case if request SG limit is 0 and temporarily stored rq. SG limit is not,
-        # do not update temporarily store rq.
+        # do not update temporarily stored rq.
         rq_sg = volume_family.extract_storage_group(vol_family)
         sg_limit = self.get_sg_limit(rq_sg)
+        self.postponed_requests.put(rq)
         if self.tmp_rq:
-            tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
-            tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
+            #tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
+            #tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
             if sg_limit != 0:     # replace tmp_rq if rq SG limit is not 0
                 # replace tmp_rq based on priority
                 if rq.pri > self.tmp_rq.pri:
@@ -523,6 +597,7 @@ class LibraryManagerMethods:
         # look in pending work queue for reading or writing work
         rq=self.pending_work.get()
         while rq:
+            if rq.ticket.has_key('reject_reason'): del(rq.ticket['reject_reason'])
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
                 if rq:
@@ -558,18 +633,21 @@ class LibraryManagerMethods:
                 raise AssertionError
             rq = self.pending_work.get(next=1)
 
-        if not rq:
+        if not rq or (rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
             # see if there is a temporary stored request
             Trace.trace(11,"next_work_any_volume: using exceeded mover limit request") 
-            rq = self.tmp_rq
+            #rq = self.tmp_rq
+            rq, self.postponed_sg = self.postponed_requests.get()
+            Trace.trace(16,"next_work_any_volume: get from postponed %s"%(rq,)) 
+            self.postponed_rq = 1 # request comes from postponed requests list
         # check if this volume is ok to work with
         if rq:
-            if self.tmp_rq:
-                Trace.trace(16,"next_work_any_volume: rq.pri %s, tmp_rq.pri %s"%(rq.pri, self.tmp_rq.pri))
-                sg_limit = self.get_sg_limit(volume_family.extract_storage_group(rq.ticket["vc"]["volume_family"]))
-                if sg_limit == 0:
-                    if rq.pri < self.tmp_rq.pri:
-                        rq = self.tmp_rq
+            ##if self.tmp_rq:
+            ##    Trace.trace(16,"next_work_any_volume: rq.pri %s, tmp_rq.pri %s"%(rq.pri, self.tmp_rq.pri))
+            ##    sg_limit = self.get_sg_limit(volume_family.extract_storage_group(rq.ticket["vc"]["volume_family"]))
+            ##    if sg_limit == 0:
+            ##        if rq.pri < self.tmp_rq.pri:
+            ##            rq = self.tmp_rq
             w = rq.ticket
             Trace.trace(11,"check volume %s " % (w['fc']['external_label'],))
             if w["status"][0] == e_errors.OK:
@@ -996,7 +1074,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        min_file_size,
                                        self.max_suspect_movers,
                                        self.max_suspect_volumes)
+        self.init_postponed_requests(self.keys.get('rq_wait_time',3600))
         self.set_udp_client()
+
 
     # check startup flag
     def is_starting(self):
@@ -1055,9 +1135,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.legal_encp_version[0]:
             if self.legal_encp_version[1] > convert_version(version):
                 ticket['status'] = (e_errors.VERSION_MISMATCH,
-                                    "encp version too old: %s. Must be later than %s"%(version, self.legal_encp_version[0],))
+                                    "encp version too old: %s. Must be not older than %s"%(version, self.legal_encp_version[0],))
                 self.reply_to_caller(ticket)
                 return
+
         ########################
         # The following is a hack to not let sdss use encp
         # older than 2_14
@@ -1068,7 +1149,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                     "encp version too old: %s. Must be not older than %s"%(version, 'v2_14',))
                 self.reply_to_caller(ticket)
                 return
-        # end of hack
+            
+         # end of hack
         ##########################
             
         if ticket.has_key('mover'):
@@ -1156,7 +1238,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.legal_encp_version[0]:
             if self.legal_encp_version[1] > convert_version(version):
                 ticket['status'] = (e_errors.VERSION_MISMATCH,
-                                    "encp version too old: %s. Must be later than %s"%(version, self.legal_encp_version[0],))
+                                    "encp version too old: %s. Must be not older than %s"%(version, self.legal_encp_version[0],))
                 self.reply_to_caller(ticket)
                 return
         ########################
@@ -1345,6 +1427,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         Trace.trace(11,"MT %s" % (mticket,))
         self.volumes_at_movers.put(mticket)
+        Trace.trace(16,"IDLE:postponed%s %s"%(self.postponed_requests.sg_list,self.postponed_requests.rq_list))
+        if self.postponed_rq:
+            #v_count = len(self.volumes_at_movers.active_volumes_in_storage_group(self.postponed_sg))
+            self.postponed_requests.update(self.postponed_sg, 1)
 
     # mover is busy - update volumes_at_movers
     def mover_busy(self, mticket):
@@ -1386,6 +1472,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # if this mover is already in volumes_at_movers
         # it will not get updated
         self.volumes_at_movers.put(mticket)
+        transfer_deficiency = mticket.get('transfer_deficiency', 1)
+        sg = volume_family.extract_storage_group(mticket['volume_family'])
+        self.postponed_requests.update(sg, 1)
         if self.is_starting():
             # LM needs a certain startup delay before it
             # starts processing mover requests to update
@@ -1470,7 +1559,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.trace(11,"mover %s label %s vol_fam %s" % (mticket['mover'], mticket['external_label'],
                                                                   mticket['volume_family']))
         
-            self.volumes_at_movers.put(mticket)
+            #sg = volume_family.extract_storage_group(mticket['volume_family'])
+            #self.postponed_requests.update(sg, transfer_deficiency)
+            #self.volumes_at_movers.put(mticket)
 
         # if the pending work queue is empty, then we're done
         elif  (status[0] == e_errors.NOWORK or
@@ -1506,6 +1597,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def mover_error(self, mticket):
         Trace.trace(11,"MOVER ERROR RQ %s"%(mticket,))
         self.volumes_at_movers.put(mticket)
+        #if mticket.has_key(['volume_family']):
+        #    sg = volume_family.extract_storage_group(mticket['volume_family'])
+        #    self.postponed_requests.update(sg, -1)
         # get the work ticket for the volume
         if mticket['external_label']:
             w = self.get_work_at_movers(mticket['external_label'])
