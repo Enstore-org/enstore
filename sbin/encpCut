@@ -462,9 +462,9 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
              check_status $? "chmod 555 $INSTALLDIR"
 
              if [ $puntUPS -eq 1 ]; then
-	        rm -f ~/$product_$REV.tar
-		tar -cf ~/$product_$REV.tar $INSTALLDIR
-                check_status $? "tar -cf ~/$product_$REV.tar $INSTALLDIR"
+	        rm -f ~/${product}_$REV.tar
+		tar -cf ~/${product}_$REV.tar $INSTALLDIR
+                check_status $? "tar -cf ~/${product}_$REV.tar $INSTALLDIR"
              fi
            fi
            ;;
