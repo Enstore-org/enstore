@@ -804,6 +804,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        "reset cookie to '0000_000000000_0000001'",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_TYPE:option.INTEGER,
+                       option.DEFAULT_NAME:"vol1ok",
                        option.VALUE_USAGE:option.IGNORED,
                        option.USER_LEVEL:option.ADMIN},
         }
