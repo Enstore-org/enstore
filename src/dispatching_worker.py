@@ -225,7 +225,7 @@ class DispatchingWorker:
                     try:
                         bytecount = string.atoi(msg)
                     except:
-                        Trace.trace(20,'get_request_select: bad bytecount %s' % (msg,))
+                        Trace.trace(20,'get_request_select: bad bytecount %s %s' % (msg,len(msg)))
                         break
                     msg = ""
                     while len(msg)<bytecount:
