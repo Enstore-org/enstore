@@ -588,6 +588,7 @@ class Atomic_Request_Queue:
             else:
                 Trace.trace(21, "GET_1")
                 rq = self.tags.get()
+                Trace.trace(21,"tags_get returned %s"%(rq,))
             if rq:
                 if rq.work == 'write_to_hsm':
                     label = rq.ticket['vc']['volume_family']
