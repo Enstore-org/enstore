@@ -44,6 +44,7 @@ if [ $local_host = $enstore_config_host ];then
 fi
 
 timeout=1
+tries=10
 
 ###################################################################################################################################
 
@@ -89,7 +90,12 @@ enstore_start_log=0
 enstore_start_admin=0
 ENSTORE_CONFIG_HOST=$enstore_config_host;export ENSTORE_CONFIG_HOST
 ENSTORE_CONFIG_PORT=$enstore_config_port;export ENSTORE_CONFIG_PORT
-node_servers=`conf.sh $local_host`
+
+# get all the servers for this port and other important servers (file_clerk, volume_clerk, ...)
+nodeplus_servers=`conf.sh $local_host`
+
+# now just isolate the servers for this node
+node_servers=`echo "$nodeplus_servers" | grep :$local_host: | sed -e "s/:$local_host//"`
 if [ ! "$node_servers" ];then
     #echo try alternate host specification
     if  hh=`expr "$local_host" : '\([^.]*\)\.'`;then
@@ -97,8 +103,10 @@ if [ ! "$node_servers" ];then
     else
         hh=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
     fi
-    node_servers=`conf.sh $hh`
+    nodeplus_servers=`conf.sh $hh`
+    node_servers=`echo "$nodeplus_servers" | grep :$hh: | sed -e "s/:$hh//"`
 fi
+
 for server in $node_servers;do
     if t=`expr "$server" : '\(.*\)[: ]'`;then   #strip off port if it exists
         server=$t
@@ -145,7 +153,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
     fi
 
     echo "Checking Log Server"
-    ecmd log --alive --list
+    #ecmd log --alive --list
+    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep logserver | cut -d: -f2` \
+                                     `echo "$nodeplus_servers" | grep logserver | cut -d: -f3` $timeout --tries $tries
     if [ $? -ne 0 ] ; then
         echo "   ...Log Server not reachable..."
         exit 1
@@ -176,7 +186,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
     fi
 
     echo "Checking Volume Clerk"
-    ecmd vcc --alive --list
+    #ecmd vcc --alive --list
+    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep volume_clerk | cut -d: -f2` \
+                                     `echo "$nodeplus_servers" | grep volume_clerk | cut -d: -f3` $timeout --tries $tries
     if [ $? -ne 0 ] ; then
         echo "   ...Volume Clerk not reachable..."
         exit 1
@@ -207,7 +219,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
     fi
 
     echo "Checking  File Clerk"
-    ecmd fcc --alive --list
+    #ecmd fcc --alive --list
+    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep file_clerk | cut -d: -f2` \
+                                     `echo "$nodeplus_servers" | grep file_clerk | cut -d: -f3` $timeout --tries $tries
     if [ $? -ne 0 ] ; then
         echo "   ...File Clerk not reachable..."
     fi
@@ -336,7 +350,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
         fi
     fi
     echo "Checking DB Admin Server"
-    ecmd acc --alive
+    #ecmd acc --alive
+    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep admin_clerk | cut -d: -f2` \
+                                     `echo "$nodeplus_servers" | grep admin_clerk | cut -d: -f3` $timeout --tries $tries
     if [ $? -ne 0 ] ; then
         echo "   ...DB Admin  Server not reachable..."
         exit 1
