@@ -10,10 +10,11 @@ class Interface(interface.Interface):
 	def __init__(self):
 		self.status = 0
 		self.dump = 0
+		self.all = 0
 		interface.Interface.__init__(self)
 
 	def options(self):
-		return self.config_options()+["dump", "status"]
+		return self.config_options()+["dump", "status", "all"]
 
 	def charopts(self):
 		return ["cd"]
@@ -37,6 +38,9 @@ except:
 	dbHome = os.environ['ENSTORE_DIR']
 	jouHome = dbHome
 
+if not intf.all:
+	dbs = intf.args
+
 if intf.status:
 	for i in dbs:
 		d = restore.DbTable(i, dbHome, jouHome, [])
@@ -48,6 +52,6 @@ if intf.status:
 			print i+" is OK"
 
 if intf.dump:
-	for i in intf.args:
+	for i in dbs:
 		d = restore.DbTable(i, dbHome, jouHome, [])
 		d.dump()
