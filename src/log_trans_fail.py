@@ -99,7 +99,7 @@ if __name__ == "__main__":
         logfile = logname(now)
     elif choice == "week":
         logfile = ""
-        for day in range(0,7):
+        for day in range(6,-1,-1):
             logfile=logfile+" "+logname(now-day*86400)
     else:
         logfile = choice
