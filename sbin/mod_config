@@ -22,7 +22,7 @@ case $node in
 esac
 
 
-usage() { echo "USAGE: $0 config_file  <optional editor>  where config_file is stk or sam"; }
+usage() { echo "USAGE: $0 config_file  <optional editor>  where config_file is stk, cdf or sam"; }
 
 abort() { cd $place
           echo ${1-""}
