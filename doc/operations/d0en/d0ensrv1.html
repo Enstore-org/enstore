@@ -38,17 +38,16 @@ Technical Document.</a> Command details are covered there.
 file is on a raid level-1 (software mirroring) disk.
   <ul>
 
-     <li> A backup is made once an hour and copied to d0ensrv3
+     <li> A backup is made once an hour and copied to d0ensrv3.
 
      <li> Rsync is run once every 5 minutes and a complete copy of the
      directory tree is made to a 2nd (independent) raid disk on
      d0ensrv1.
 
   </ul>
-<li>
 
 <p>
-<li> The file clerk's database is journalled to
+<li> The file clerk's database is journaled to
 /diska/enstore-journal/file.jou. This is an ascii readable file and is
 the final authority in the cases of conflicting data (resulting from
 corruption).  This file is also on a mirrored disk and rsynced to
@@ -80,14 +79,13 @@ Enstore Technical Document.</a> Command details are covered there.
 file is on a raid level-1 (software mirroring) disk.
   <ul>
 
-     <li> A backup is made once an hour and copied to d0ensrv3
+     <li> A backup is made once an hour and copied to d0ensrv3.
 
      <li> Rsync is run once every 5 minutes and a complete copy of the
      directory tree is made to a 2nd (independent) raid disk on
      d0ensrv1.
 
   </ul>
-<li>
 
 <p>
 <li> The volume clerk's database is journalled to
@@ -106,11 +104,6 @@ another mirrored disk.
 
 </ul>
 
-<li>
-<p>
-<li>
-<p>
-<li>
 </ul>
 
 
@@ -144,13 +137,17 @@ flushing/checkpointing of data to the database files.
 
      <li> cd /diskb/enstore-database
 
-     <li> db_recover -h . -v
+     <li> db_recover -h . -v and then try to restart the enstore
+     servers.
 
      <li> If that fails (it almost never does), rm __db* *.index log.*
+     and then try to restart the enstore servers.
+
 
      <li> If that fails, it is time to go to the database backups!
+     Contact a developer for help.
 
-     <li> Then restart the enstore servers.
+     <li> Restart the enstore servers.
 
    </ul>
 
@@ -178,7 +175,7 @@ details are covered there.
 directory is on a raid level-1 (software mirroring) disk.
   <ul>
 
-     <li> A backup is made once an hour and copied to d0ensrv3
+     <li> A backup is made once an hour and copied to d0ensrv3.
 
      <li> Rsync is run once every 5 minutes and a complete copy of the
      directory tree is made to a 2nd (independent) raid disk on
