@@ -50,7 +50,7 @@ def pnfsRate(mountpoint,db,sleeptime,once):
                 for line in string.split(line):
                         if string.find(line,'\0') != 0:
                                 item,svalue = string.split(line,"=")
-                                value = string.atoi(svalue)
+                                value = string.atol(svalue)
                                 old = absolute.get(item,0)
                                 delta[item] = value-old
                                 absolute[item] = value
