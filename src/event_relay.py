@@ -6,8 +6,12 @@ import select
 import time
 import string
 
-DEFAULT_PORT = 55510
-MINTOKLEN = 3
+import enstore_constants
+
+DEFAULT_PORT = enstore_constants.EVENT_RELAY_PORT
+heartbeat_interval = enstore_constants.EVENT_RELAY_HEARTBEAT
+my_name = enstore_constants.EVENT_RELAY
+my_ip = socket.gethostbyaddr(socket.gethostname())[2][0]
 
 # event relay message types
 ALL = "all"
@@ -17,9 +21,9 @@ UNSUBSCRIBE = "unsubscribe"
 def get_message_filter_dict(msg_tok):
     filter_d = {}
     # first see if there is a message type list 
-    if len(msg_tok) > MINTOKLEN:
+    if len(msg_tok) > 3:
         # yes there is
-        for tok in msg_tok[MINTOKLEN:]:
+        for tok in msg_tok[3:]:
             if tok == ALL:
                 # client wants all messages
                 filter_d = None
@@ -36,21 +40,26 @@ def get_message_filter_dict(msg_tok):
 class Relay:
 
     client_timeout = 15*60 #clients recieve messages for this long
-    
-    def __init__(self, myport=DEFAULT_PORT):
+
+    def __init__(self, my_port=DEFAULT_PORT):
         self.clients = {} # key is (host,port), value is time connected
         self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        myaddr = ("", myport)
-        self.listen_socket.bind(myaddr)
-
+        my_addr = ("", my_port)
+        self.listen_socket.bind(my_addr)
+        self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
+            
     def mainloop(self):
+        last_heartbeat = 0
         while 1:
             readable, junk, junk = select.select([self.listen_socket], [], [], 15)
+            now = time.time()
+            if now - last_heartbeat > heartbeat_interval:
+                self.send_message(self.alive_msg, 'alive', now)
             if not readable:
                 continue
             msg = self.listen_socket.recv(1024)
-            now = time.time()
+
             if not msg:
                 continue
             tok = string.split(msg)
@@ -76,18 +85,22 @@ class Relay:
                 except:
                     print "cannot handle request", msg
             else:
-                for addr, (t0, filter_d) in self.clients.items():
-                    if now - t0 > self.client_timeout:
-                        del self.clients[addr]
-                    else:
-                        # client wants the message if there is no filter or if
-                        # the filter contains the message type in its dict.
-                        if (not filter_d) or filter_d.has_key(tok[0]):
-                            try:
-                                self.send_socket.sendto(msg, addr)
-                            except:
-                                print "send failed", addr
-                            
+                self.send_message(msg, tok[0], now)
+        
+    def send_message(self, msg, msg_type, now):
+        """Send the message to all clients who care about it"""
+        for addr, (t0, filter_d) in self.clients.items():
+            if now - t0 > self.client_timeout:
+                del self.clients[addr]
+            else:
+                # client wants the message if there is no filter or if
+                # the filter contains the message type in its dict.
+                if (not filter_d) or filter_d.has_key(msg_type):
+                    try:
+                        self.send_socket.sendto(msg, addr)
+                    except:
+                        print "send failed", addr
+
                 
 if __name__ == '__main__':
     R = Relay()
