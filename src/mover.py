@@ -500,13 +500,25 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.hsm_driver.offline(self.mvr_config['device'])
                 Trace.log(e_errors.INFO,'Completed  precautionary offline/eject of device %s'%
                           (self.mvr_config['device'],))
+                # before loading volume check if cleaning is needed
+                # and if yes clean the drive
+                self.hsm_driver.open(self.mvr_config['device'],"r")
+                statistics = self.hsm_driver.get_allStats(self.mvr_config['device'])
+                if debug_paranoia:
+                    Trace.log(e_errors.INFO,"MANDBG prebind statistics %s"%(statistics,))
+                cleaning_bit = statistics.get('cleaning_bit','')
+                if cleaning_bit == '1':
+                    rr = self.mcc.doCleaningCycle(self.mvr_config)
+                    Trace.log(e_errors.INFO,"Media changer cleaningCycle return status =%s"%(rr['status'],))
+                self.hsm_driver.close(skip=0)
                 pass
 
             self.vol_info['read_errors_this_mover'] = 0	
             tmp_mc = ", "+str({"media_changer":self.mvr_config['media_changer']})
             Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_REQ+"Requesting media changer load %s %s %s"%
                        (tmp_vol_info, tmp_mc, self.mvr_config['mc_device']))           
-            try: rsp = self.mcc.loadvol( tmp_vol_info, self.mvr_config['name'],
+            try:
+                rsp = self.mcc.loadvol( tmp_vol_info, self.mvr_config['name'],
                                     self.mvr_config['mc_device'], self.vcc )
             except errno.errorcode[errno.ETIMEDOUT]:
                 rsp = { 'status':('ETIMEDOUT',None) }
