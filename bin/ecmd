@@ -16,7 +16,7 @@ ecmd encp    [--config_list --list --help ] inputfilename outputfilename
 ecmd config  [--config_list --config_file=  --dict --load --list --alive --help ]
 ecmd fcc     [--config_list --bfids --bfid= --list --alive --help ]
 ecmd vcc     [--config_list --vols  --vol=  --list --alive --help ']
-ecmd lmc     [--config_list --printwork     --list --alive --help '] library
+ecmd lmc     [--config_list --getwork     --list --alive --help '] library
 ecmd mcc     [--config_list -list --alive --help ']  media_changer volume drive
 
 ecmd bfids   [--config_list --list --help']
