@@ -11,6 +11,7 @@
 #include "ds_api.h"
 
 DS_DESCRIPTOR *ds_open(DS_OPEN_PARMS *parms, int flag);
+DS_REPORT *ds_getnext(int list_sd);
 
 DS_DESCRIPTOR *ds_open_from_ftt_d(ftt_descriptor ftt_d){
 	DS_OPEN_PARMS *parms;
@@ -44,7 +45,54 @@ DS_STATS * ds_get_stats_buff(void) {
 	return stats_buff;
 }
 
+int ds_print_report(void) {
+   DS_REPORT *report;
+   int n;
+   int sd;
+   int i;
+  
+   sd = ds_prepare_list(NULL,NULL,NULL,NULL,NULL,NULL,NULL,&n); 
+   if ( sd < 0) {
+       printf("ERROR ds_prepare_list status = %d\n",sd);
+       return(-1);
+   }
+
+   for (i=0;i<n;i++) {
+    report = ds_getnext(sd);
+    if (report != NULL) {
+       printf("Drive Serial Number: %s\n",report->drive_serial_number);
+       printf("Vendor: %s\n",report->vendor);
+       printf("Product Type: %s\n",report->product_type);
+       printf("Tape Volser: %s\n",report->tape_volser);
+       printf("Operation: %s\n",report->operation);
+       printf("Power Hrs: %d\n",report->power_hrs);
+       printf("Motion Hrs: %d\n",report->motion_hrs);
+       printf("Cleaning Bit: %d\n",report->cleaning_bit);
+       printf("mb_user_read: %d\n",report->mb_user_read);
+       printf("mb_user_write: %d\n",report->mb_user_write);
+       printf("mb_dev_read: %d\n",report->mb_dev_read);
+       printf("mb_dev_write: %d\n",report->mb_dev_write);
+       printf("read errs: %d\n",report->read_errs);
+       printf("write errs: %d\n",report->write_errs);
+       printf("track retries: %d\n",report->track_retries);
+       printf("underrun: %d\n",report->underrun);
+    } else {
+       break;
+    }
+    ds_close_list(sd);
+   }
+}
+
+
 %}
+
+#define CLEAN 3 
+#define REPAIR 4 
+#define INSTALL 5 
+ 
+#define DELTA 1 
+#define SUM_OF_DELTAS 2 
+#define BUMP 4 
 
 /*************************************************************************
  *                                                                       *
@@ -57,10 +105,18 @@ DS_DESCRIPTOR *ds_open_from_ftt_d(ftt_descriptor ftt_d);
 /*************************************************************************
  *                                                                       *
  * ds_get_stats_buff()                                                   *
- *   Create a drivestat DS_STATS buffere                                 *
+ *   Create a drivestat DS_STATS buffer                                  *
  *                                                                       *
  *************************************************************************/
 DS_STATS * ds_get_stats_buff(void);
+
+/*************************************************************************
+ *                                                                       *
+ * ds_print_report()                                                     *
+ *   Print every record in the database                                  *
+ *                                                                       *
+ *************************************************************************/
+int ds_print_report(void);
 
 /****************************************************************************
  *                                                                          *
@@ -201,8 +257,23 @@ int ds_send_stats(DS_DESCRIPTOR *d, int timeout, int flag);
  *     CLEAN                                                            *
  *                                                                      *
  ************************************************************************/
+
+%typemap(python, in) char *host1 {
+    if ($source == Py_None)
+	 $target = (char *)0;
+    else
+	 $target = PyString_AsString($source);
+}
+
+%typemap(python, in) char *logical_drive_name1 {
+    if ($source == Py_None)
+	 $target = (char *)0;
+    else
+	 $target = PyString_AsString($source);
+}
+
 int ds_drive_maintenance(DS_DESCRIPTOR *d,int flag,
-			 char *host,char *logical_drive_name);
+			 char *host1,char *logical_drive_name1);
 
 /************************************************************************
  *                                                                      *
