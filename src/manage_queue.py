@@ -10,13 +10,13 @@ class Queue:
    def priority(self,ticket):
       if ticket["encp"]["adminpri"] >= 0:
 	  return ticket["encp"]["adminpri"]
-      p = ticket["encp"]["pri"]
+      p = ticket["encp"]["basepri"]
       deltas=0
       if ticket["encp"]["agetime"] > 0:
          # deltas is the number of delta time periods 
          deltas=int(time.time()-ticket["times"]["t0"])/60/ticket["encp"]["agetime"]
          p=p + ticket["encp"]["delpri"]*deltas
-      #print p,ticket["encp"]["pri"],deltas,ticket["encp"]["agetime"],ticket["encp"]["delpri"],time.time(),ticket["times"]["t0"]
+      #print p,ticket["encp"]["basepri"],deltas,ticket["encp"]["agetime"],ticket["encp"]["delpri"],time.time(),ticket["times"]["t0"]
       ticket["encp"]["curpri"]=p
       return p
    
@@ -38,7 +38,7 @@ class Queue:
    # Remove a ticket 
    def delete_job(self,ticket):
       for w in self.queue:
-         if w["encp"]["unique_id"] == ticket["encp"]["unique_id"]:
+         if w["unique_id"] == ticket["unique_id"]:
             self.queue.remove(w)
             return
 
@@ -74,8 +74,8 @@ if __name__ == "__main__":
   t1={}
   t1["encp"]={}
   t1["times"]={}
-  t1["encp"]["unique_id"]=1
-  t1["encp"]["pri"]=100
+  t1["unique_id"]=1
+  t1["encp"]["basepri"]=100
   t1["encp"]["adminpri"]=-1
   t1["encp"]["delpri"]=100
   t1["encp"]["agetime"]=1
@@ -85,8 +85,8 @@ if __name__ == "__main__":
   t2={}
   t2["encp"]={}
   t2["times"]={}
-  t2["encp"]["unique_id"]=2
-  t2["encp"]["pri"]=200
+  t2["unique_id"]=2
+  t2["encp"]["basepri"]=200
   t2["encp"]["adminpri"]=-1
   t2["encp"]["delpri"]=125
   t2["encp"]["agetime"]=2
@@ -96,8 +96,8 @@ if __name__ == "__main__":
   t3={}
   t3["encp"]={}
   t3["times"]={}
-  t3["encp"]["unique_id"]=3
-  t3["encp"]["pri"]=300
+  t3["unique_id"]=3
+  t3["encp"]["basepri"]=300
   t3["encp"]["adminpri"]=-1
   t3["encp"]["delpri"]=0
   t3["encp"]["agetime"]=0
