@@ -43,7 +43,7 @@ def numeric_list(nbr) :
 
 ########################################################################
 # table driven command printing -- print the command in ascii and 
-# the bytes in HEX at laest -- or provide an elaborate command specific
+# the bytes in HEX at least -- or provide an elaborate command specific
 # subroutine to format the command.
 ########################################################################
 
@@ -52,7 +52,6 @@ cmd_txt={} #forward declaration for the linter.
 
 # print_nothing()
 def print_nothing(hexlist) : 
-	hexlist = hexlist # this will quiet the linter.
 	return
 
 
