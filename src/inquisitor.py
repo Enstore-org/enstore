@@ -1318,7 +1318,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.fill_in_default_timeouts(0)
 	Trace.trace(10, '}__init__')
 
-class InquisitorInterface(interface.Interface):
+class InquisitorInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
 	Trace.trace(10,'{iqsi.__init__')
@@ -1328,11 +1328,10 @@ class InquisitorInterface(interface.Interface):
 	self.alive_rcv_timeout = -1
 	self.alive_retries = -1
 	self.timeout = -1
-	self.verbose = 0
 	self.max_ascii_size = -1
 	self.max_encp_lines = -1
 	self.refresh = -1
-	interface.Interface.__init__(self)
+	generic_server.GenericServerInterface.__init__(self)
 
 	# now parse the options
 	self.parse_options()
@@ -1341,10 +1340,10 @@ class InquisitorInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
 	Trace.trace(16, "{}options")
-	return self.config_options()+\
-	       ["verbose=", "ascii_file=","html_file=","timeout="] +\
-	       ["max_ascii_size=", "max_encp_lines=", "refresh="] +\
-	       self.alive_rcv_options()+self.help_options()
+	return generic_server.GenericServerInterface.options(self)+\
+	       ["ascii_file=","html_file=","timeout="] +\
+	       ["max_ascii_size=", "max_encp_lines=", "refresh="]+\
+	       self.alive_rcv_options()
 
 if __name__ == "__main__":
     Trace.init("inquisitor")

@@ -1204,15 +1204,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     
     #pass
 
-class LibraryManagerInterface(interface.Interface):
+class LibraryManagerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         Trace.trace(10,'{lmsi.__init__')
         # fill in the defaults for possible options
-	self.verbose = 0
 	self.summon = 1
 	self.debug = 0
-        interface.Interface.__init__(self)
+        generic_server.GenericServerInterface.__init__(self)
 
         # now parse the options
         self.parse_options()
@@ -1221,9 +1220,8 @@ class LibraryManagerInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16, "{}options")
-        return self.config_options()+\
-               ["verbose=","debug", "nosummon"] +\
-               self.help_options()
+        return generic_server.GenericServerInterface.options(self)+\
+               ["debug", "nosummon"]
 
     #  define our specific help
     def parameters(self):

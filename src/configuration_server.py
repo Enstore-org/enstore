@@ -350,13 +350,13 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 	self.verbose = verbose
 	self.enprint(self.__dict__, generic_cs.SERVER, verbose)
 
-class ConfigurationServerInterface(interface.Interface):
+class ConfigurationServerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         Trace.trace(10,'{csi.__init__')
         # fill in the defaults for possible options
 	self.config_file = ""
-        interface.Interface.__init__(self)
+        generic_server.GenericServerInterface.__init__(self)
 
         # now parse the options
         self.parse_options()
@@ -369,8 +369,8 @@ class ConfigurationServerInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16, "{}options")
-        return self.config_options()+["config_file=", "verbose="] +\
-               self.help_options()
+        return generic_server.GenericServerInterface.options(self)+\
+	       ["config_file=",]
 
 
 if __name__ == "__main__":

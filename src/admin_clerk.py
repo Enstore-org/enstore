@@ -168,22 +168,16 @@ class AdminClerk(AdminClerkMethods, generic_server.GenericServer) :
         Trace.trace(10, '}__init__')
 
 
-class AdminClerkInterface(interface.Interface):
+class AdminClerkInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         Trace.trace(10,'{acsi.__init__')
         # fill in the defaults for possible options
-        interface.Interface.__init__(self)
+        generic_server.GenericServerInterface.__init__(self)
 
         # now parse the options
         self.parse_options()
         Trace.trace(10,'}acsi.__init__')
-
-    # define the command line options that are valid
-    def options(self):
-        Trace.trace(16, "{}options")
-        return self.config_options()+["verbose="]+\
-               self.help_options()
 
 if __name__=="__main__":
     import string

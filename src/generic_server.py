@@ -24,6 +24,19 @@ import traceback
 import timeofday
 import log_client
 import e_errors
+import interface
+
+class GenericServerInterface(interface.Interface):
+
+    def __init__(self):
+	self.verbose = 0
+	interface.Interface.__init__(self)
+
+    def options(self):
+        Trace.trace(16, "{}options")
+	return self.config_options() + ["verbose="]+\
+	       self.help_options()
+
 
 class GenericServer(generic_cs.GenericCS):
 

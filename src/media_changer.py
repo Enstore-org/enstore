@@ -224,14 +224,13 @@ class RDD_MediaLoader(MediaLoaderMethods) :
                  port=interface.default_port()):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
 
-class MediaLoaderInterface(interface.Interface):
+class MediaLoaderInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         Trace.trace(10,'{mlsi.__init__')
         # fill in the defaults for possible options
-	self.verbose = 0
         self.maxwork=10
-        interface.Interface.__init__(self)
+        generic_server.GenericServerInterface.__init__(self)
 
         # now parse the options
         self.parse_options()
@@ -240,8 +239,8 @@ class MediaLoaderInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16, "{}options")
-        return self.config_options()+["verbose=","log=","maxwork="] +\
-               self.help_options()
+        return generic_server.GenericServerInterface.options(self)+\
+	       ["log=","maxwork="]
 
     #  define our specific help
     def parameters(self):
