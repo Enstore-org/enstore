@@ -556,7 +556,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # nothing was available - see if we can assign a blank one.
         Trace.trace(16,'next_write_vol no vols available, checking for blanks')
         vol = {}
-        lc1 = self.dict.inx['label'].cursor()
+        lc1 = self.dict.inx['library'].cursor()
         fc1 = self.dict.inx['file_family'].cursor()
         label, v = lc1.set(library)
 	label, v = fc1.set("none")
