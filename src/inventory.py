@@ -42,6 +42,14 @@ def format_storage_size(size_in_bytes):
 
     return volume_size, suffix[count]
 
+def create_clean_dirs(*dirs):
+    for dir in dirs:
+        #An empty output directory would be nice.
+        if string.find(dir, "/dev/stdout") == -1:
+            os.system("rm -rf " + dir) #clear/remove the directory
+            os.mkdir(dir, 0755)
+
+
 
 #############################################################################
 #############################################################################
@@ -180,20 +188,20 @@ def print_header(volume, fd):
               time.asctime(time.localtime(volume['last_access'])) + "\n"
         os.write(fd, out_string)
 
-    out_string = "GBytes free:\t  %d\n" % \
-                 int(volume['remaining_bytes'] / 1048576)
+    out_string = "Bytes free:\t  %6.2f%s\n" % \
+                 format_storage_size(volume['remaining_bytes'])
     os.write(fd, out_string)
 
-    out_string = "GBytes written:\t  %d\n" % \
-                 int((volume['capacity_bytes'] - volume['remaining_bytes']) \
-                     / 1048576)
+    out_string = "Bytes written:\t  %6.2f%s\n" % \
+                 format_storage_size(volume['capacity_bytes'] -
+                                     volume['remaining_bytes'])
     os.write(fd, out_string)
 
     out_string = "Inhibits:\t  %s+%s\n\n" % \
           (volume['system_inhibit'][0], volume['user_inhibit'][0])
     os.write(fd, out_string)
 
-    out_string = "%10s %15s %10s %22s %7s %s\n" % \
+    out_string = "%10s %15s %15s %22s %7s %s\n" % \
               ('label', 'bfid', 'size', 'location_cookie', 'delflag',
                'original_name')
     os.write(fd, out_string)
@@ -272,7 +280,7 @@ def print_volume_size_stats(volume_sums, volume_list, output_file):
         format_tuple = (key,) + format_storage_size(volume_sums[key]) + \
                         format_storage_size(volume['capacity_bytes'] -
                                             volume['remaining_bytes'])
-        usage_file.write("%10s %11.2f%s %6.2f%s\n" % format_tuple)
+        usage_file.write("%10s %11.2f%-2s %6.2f%s\n" % format_tuple)
 
 #Print the last access info to the output file LAST_ACCESS.
 def print_last_access_status(volume_list, output_file):
@@ -315,7 +323,7 @@ def print_volume_quotas_status(volume_quotas, output_file):
     vq_file.write("Date this listing was generated: %s\n" % \
                   time.asctime(time.localtime(time.time())))
     
-    vq_file.write("%-10s %-20s %-6s %-10s %-14s %-7s %s\n" %
+    vq_file.write("%-10s %-13s %-6s %-10s %-12s %-7s %s\n" %
           ("Library", "Storage Group", "Quota",
            "Blank Vols", "Written Vols", "Deleted", "Space Used"))
 
@@ -324,7 +332,7 @@ def print_volume_quotas_status(volume_quotas, output_file):
     for keys in quotas:
         formated_tuple = volume_quotas[keys][0:6] + \
                          format_storage_size(volume_quotas[keys][6])
-        vq_file.write("%-10s %-20s %-6d %-10d %-14d %-7d %8.2f%s\n"
+        vq_file.write("%-10s %-13s %-6d %-10d %-12d %-7d %6.2f%s\n"
                       % formated_tuple)
 
 
@@ -372,7 +380,7 @@ def create_fd_list(volume_list, output_dir):
 def process_out_string(short_list, fd):
     for vol in short_list:
         try:
-            out_string = "%10s %15s %10s %22s %7s %s\n" % \
+            out_string = "%10s %15s %15s %22s %7s %s\n" % \
                          (vol['external_label'],
                           vol['bfid'],
                           vol['size'],
@@ -383,7 +391,7 @@ def process_out_string(short_list, fd):
         #there is a possibility that the last two options (deleted and
         # pnfs_name0) are not present.  Print 'unknown' in their place.
         except KeyError:
-            out_string = "%10s %15s %10s %22s %7s %s\n" % \
+            out_string = "%10s %15s %15s %22s %7s %s\n" % \
                          (vol['external_label'],
                           vol['bfid'],
                           vol['size'],
@@ -540,7 +548,7 @@ def sort_inventory(data_file, volume_list, tmp_dir):
         print "Read through line %d rate is %.1f keys/S. Read time is %s." % \
               (count_metadata, count_metadata/delta, parse_time(delta))
 
-#        break #usefull for debugging
+        break #usefull for debugging
 
     return count_metadata
 
@@ -558,14 +566,6 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir):
     volume_list = read_db(os.path.split(volume_file))
     if volume_list == 1:
         print "Database " + volume_file + " read in unsuccessfully."
-
-    #An empty temporary directory would be nice, so delete it and anything
-    # in it and then reopen it.
-    os.system("rm -rf " + tmp_dir)
-    os.mkdir(tmp_dir, 0777)
-    if string.find(output_dir, "/dev/stdout") == -1:
-        os.system("rm -rf " + output_dir) #clear the output directory
-        os.mkdir(output_dir, 0777)
 
     #Sort all of the data in data_file into the correct temporary files.
     count_metadata = sort_inventory(metadata_file, volume_list, tmp_dir)
@@ -621,11 +621,14 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir):
     print_volume_quotas_status(volume_quotas, volume_quotas_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
+    #Remove both the extraction temporary directory (and contents) and the
+    # inventory temporary directory used for sorting the metadata
+    # (and contents).
     try:
-        os.system("rm -rf " + tmp_dir)
-        checkBackedUpDatabases.clean_up(extract_dir, current_dir)
+        os.system("rm -rf " + tmp_dir) # 'inventory_tmp_dir'
+        checkBackedUpDatabases.clean_up(current_dir, inventory_extract_dir)
     except OSError:
-        pass #We want the dir to go away, if it's already gone don't worry.
+        pass #We want the dirs to go away, if it's already gone don't worry.
 
     return len(volume_list), count_metadata
 
@@ -640,8 +643,29 @@ def inventory_dirs():
     
     inventory_dir = inven.get('inventory_dir','MISSING')
     inventory_tmp_dir = inven.get('inventory_tmp_dir','MISSING')
+    inventory_extract_dir = inven.get('inventory_extract_dir','MISSING')
+    inventory_rcp_dir = inven.get('inventory_rcp_dir','MISSING')
 
-    return inventory_dir, inventory_tmp_dir
+    if inventory_dir == "MISSING":
+        print "Error unable to find configdict entry inventory_dir."
+        sys.exit(1)
+    if inventory_tmp_dir == "MISSING":
+        print "Error unable to find configdict entry inventory_tmp_dir."
+        sys.exit(1)
+    if inventory_extract_dir == "MISSING":
+        print "Error unable to find configdict entry inventory_extract_dir."
+        sys.exit(1)
+    if inventory_rcp_dir == "MISSING":
+        print "Error unable to find configdict entry inventory_rcp_dir."
+        sys.exit(1)
+
+#    checkBackedUpDatabases.check_existance(inventory_dir, 0)
+#    checkBackedUpDatabases.check_existance(inventory_tmp_dir, 0)
+#    checkBackedUpDatabases.check_existance(inventory_extract_dir, 0)
+#    checkBackedUpDatabases.check_existance(inventory_tcp_dir, 0)
+    
+    return inventory_dir, inventory_tmp_dir, inventory_extract_dir, \
+           inventory_rcp_dir
 
 
 if __name__ == "__main__":
@@ -652,19 +676,21 @@ if __name__ == "__main__":
     if "--help" in sys.argv:
         inventory_usage()
         sys.exit(0)
-        
+
     #Retrieve the necessary directories from the enstore servers.
     (backup_dir, extract_dir, current_dir) = \
                  checkBackedUpDatabases.configure()
-    (inventory_dir, inventory_tmp_dir) = inventory_dirs()
+    (inventory_dir, inventory_tmp_dir,
+     inventory_extract_dir, inventory_rcp_dir) = inventory_dirs()
 
     #Make sure all of the directories end with a /
     if backup_dir[-1] != "/": backup_dir = backup_dir + "/"
-    if extract_dir[-1] != "/": extract_dir = extract_dir + "/"
     if current_dir[-1] != "/": current_dir = current_dir + "/"
     if inventory_dir[-1] != "/": inventory_dir = inventory_dir + "/"
     if inventory_tmp_dir[-1] != "/":
         inventory_tmp_dir = inventory_tmp_dir + "/"
+    if inventory_extract_dir[-1] != "/":
+        inventory_extract_dir = inventory_extract_dir + "/"
 
     #Look through the arguments list for valid arguments.
     if "-stdout" in sys.argv:
@@ -677,20 +703,28 @@ if __name__ == "__main__":
     if "-f" in sys.argv:
         file_file = sys.argv[sys.argv.index("-f") + 1]
     else:
-        file_file = extract_dir + "file"
+        file_file = inventory_extract_dir + "file"
         
     if "-v" in sys.argv:
         volume_file = sys.argv[sys.argv.index("-v") + 1]
     else:
-        volume_file = extract_dir + "volume"
+        volume_file = inventory_extract_dir + "volume"
+
+    #Remove the contents of existing direcories and create them if they do
+    # not exist.
+    create_clean_dirs(inventory_extract_dir, inventory_tmp_dir, output_dir)
 
     #If the backup needs to be extracted (the defualt) then do.
     if "-f" not in sys.argv and "-v" not in sys.argv:
         container = checkBackedUpDatabases.check_backup(backup_dir)
-        checkBackedUpDatabases.extract_backup(extract_dir, container)
+        checkBackedUpDatabases.extract_backup(inventory_extract_dir, container)
 
     #Inventory is the main function that does work.
     counts = inventory(volume_file, file_file, output_dir, inventory_tmp_dir)
+
+    if inventory_rcp_dir:
+        os.system("rcp %s %s" % (inventory_extract_dir + "*",
+                                 inventory_rcp_dir))
 
     #Print stats regarding the data generated.
     delta_t = time.time() - t0
