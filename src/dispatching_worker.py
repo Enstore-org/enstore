@@ -83,6 +83,19 @@ class DispatchingWorker:
                                     self.socket_type)
 
         self.server_bind()
+
+        # start up some threads for monitoring - experimental
+        # use telnet to get to it; use same node and port as UDP server 
+        try:
+            import tdb
+            t=tdb.TdbListener()
+            t.host=server_address[0]
+            t.port=server_address[1]
+            t.start()
+        except:
+            import traceback
+            traceback.print_exc()
+                                            
         Trace.trace(10,"}__init__")
 
     def server_bind(self):
