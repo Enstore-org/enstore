@@ -59,7 +59,7 @@ class FileClient(generic_client.GenericClient,
         # send the work ticket to the file clerk
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"fcc.get_bfids: sending ticket %s"%(ticket,)
+            return ticket
 
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
@@ -72,17 +72,19 @@ class FileClient(generic_client.GenericClient,
             raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
 
         ticket = callback.read_tcp_obj(control_socket)
-
+        listen_socket.close()
+        
         if ticket["status"][0] != e_errors.OK:
-            msg = "get_bfids: failed to setup transfer: status=%s"%(ticket['status'],)
-            Trace.trace(7,msg)
-            raise errno.errorcode[errno.EPROTO],msg
+            control_socket.close()
+            return ticket
         
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         data_path_socket.connect(ticket['file_clerk_callback_addr'])
         
         data_path_socket = callback.file_server_callback_socket(ticket)
         ticket= callback.read_tcp_obj(data_path_socket)
+
+        
         bfids=''
         while 1:
             msg=callback.read_tcp_raw(data_path_socket)
@@ -96,9 +98,7 @@ class FileClient(generic_client.GenericClient,
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            msg = "get_bfids: failed to transfer: status=%s"%(ticket['status'],)
-            Trace.trace(7,msg)
-            raise errno.errorcode[errno.EPROTO],msg
+            return done_ticket
 
         return ticket
 
@@ -107,8 +107,7 @@ class FileClient(generic_client.GenericClient,
         listen_socket.listen(4)
         ticket = {"work"          : "tape_list",
                   "callback_addr" : (host, port),
-                  "external_label": external_label,
-                  "unique_id"     : str(time.time()) }
+                  "external_label": external_label}
         # send the work ticket to the file clerk
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
@@ -116,15 +115,17 @@ class FileClient(generic_client.GenericClient,
 
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for configuration server callback"
-        control_socket, addr = listen_socket.accept()
-        if not hostaddr.allow(addr):
+            listen_socket.close()
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+        control_socket, address = listen_socket.accept()
+        if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
             raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
 
         ticket = callback.read_tcp_obj(control_socket)
-
+        listen_socket.close()
+        
         if ticket["status"][0] != e_errors.OK:
             return ticket
         
