@@ -271,7 +271,16 @@ cat $files | while read file; do
        echo mkdir -p $bdir
             mkdir -p $bdir
     fi
-    (cd $bdir; enstore pnfs --file-family $family; bn_lib=`enstore pnfs --library`; if [ "${bn_lib:-x}" != "CDF-9940B" ]; then touch ${status:-/data1/status}/HALT; touch ${status:-/data1/status}/$tape.stop; exit 1; fi )
+    (cd $bdir; 
+     enstore pnfs --file-family $family; 
+     bn_lib=`enstore pnfs --library`; 
+     if [ "${bn_lib:-x}" != "CDF-Migration" ]; then 
+       echo `date` LIBRARY WRONG. Read "${bn_lib:-x}" but needs to be "CDF-9940B" for $bdir $family   touching HALT to stop; 
+       echo `date` LIBRARY WRONG. Read "${bn_lib:-x}" but needs to be "CDF-9940B" for $bdir $family   touching HALT to stop  on `uname -n` for errors | /usr/bin/Mail -s "$tape +++++++++MIGRATION ERROR +++++++++++" enstore-admin@fnal.gov 
+       touch ${status:-/data1/status}/HALT; 
+       touch ${status:-/data1/status}/$tape.stop; 
+       exit 1; 
+     fi )
 ###    ENSTORE_SPECIAL_LIB=CDF-Migration
 ###    export ENSTORE_SPECIAL_LIB
     echo `date` $n encp --delayed-dismount=$delay $options $lfile $bfile
