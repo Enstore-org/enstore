@@ -1209,7 +1209,8 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	tr.append(HTMLgen.TD(HTMLgen.Input(value="Resolve All", 
 						 type="submit",
 						 name=RESOLVEALL)))
-	tr.append(HTMLgen.TD(HTMLgen.Input(value="Reset", type="reset")))
+	tr.append(HTMLgen.TD(HTMLgen.Input(value="Reset", type="reset",
+					   name="Reset")))
 	tr.append(HTMLgen.TD("Alarms may be cancelled by selecting the alarm(s), pressing the %s button and then reloading the page. All alarms may be cancelled by pressing the %s button."%(str(HTMLgen.Bold(RESOLVESELECTED)),str(HTMLgen.Bold(RESOLVEALL))), html_escape='OFF'))
 	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
 							    width="100%"))))
