@@ -235,13 +235,12 @@ class Mover :
                 fc = FileClerkClient(self.csc)
                 fticket = fc.new_bit_file(
                         file_cookie,
-                        ticket["external_label"], 0, 0, 0)
+                        ticket["external_label"], 0, 0)
 
                 # really only bfid is needed, but save other useful information for user too
                 ticket["bfid"] = fticket["bfid"]
                 ticket["bof_space_cookie"] = fticket["bof_space_cookie"]
                 ticket["complete_crc"] = fticket["complete_crc"]
-                ticket["beginning_crc"] = fticket["beginning_crc"]
                 ticket["sanity_cookie"] = fticket["sanity_cookie"]
                 ticket["device"] = self.device
                 ticket["driver_name"] = self.driver_name
@@ -369,7 +368,3 @@ if __name__ == "__main__" :
     while (1) :
         mv = Mover(config_host,config_port)
         mv.move_forever (args[0])
-
-
-
-

@@ -117,6 +117,7 @@ class VolumeClerkMethods(DispatchingWorker) :
     # Use volumes that satisfy criteria
     def next_write_volume (self, ticket) :
         exec ("vol_veto_list = " + ticket["vol_veto_list"])
+
         min_remaining_bytes = ticket["min_remaining_bytes"]
         library = ticket["library"]
         file_family = ticket["file_family"]

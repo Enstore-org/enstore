@@ -22,15 +22,13 @@ class FileClerkClient :
     def new_bit_file(self, bof_space_cookie \
                          , external_label \
                          , sanity_cookie \
-                         , complete_crc \
-                         , beginning_crc ) :
+                         , complete_crc ) :
 
         ticket = {"work"             : "new_bit_file", \
                   "bof_space_cookie" : bof_space_cookie, \
                   "external_label"   : external_label, \
                   "sanity_cookie"    : sanity_cookie, \
                   "complete_crc"     : complete_crc, \
-                  "beginning_crc"    : beginning_crc \
                   }
 
         return self.send(ticket)

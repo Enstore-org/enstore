@@ -18,8 +18,21 @@ class FileClerkMethods(DispatchingWorker) :
 
     # we need a new bit field id for each new file in the system
     def new_bit_file(self, ticket) :
+        # create empty record and control what goes into database
+        # do not pass ticket, for example to the database!
+        record = {}
+        record["external_label"]   = ticket["external_label"]
+        record["bof_space_cookie"] = ticket["bof_space_cookie"]
+        record["sanity_cookie"]    = ticket["sanity_cookie"]
+        record["complete_crc"]     = ticket["complete_crc"]
+
+        # get a new bit fit id
         bfid = self.unique_bit_file_id()
-        dict[bfid] = ticket
+        record["bfid"] = bfid
+
+        # record it to the database
+        dict[bfid] = record
+
         ticket["bfid"] = bfid
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
@@ -32,17 +45,13 @@ class FileClerkMethods(DispatchingWorker) :
         try :
             # look up in our dictionary the request bit field id
             finfo = dict[ticket["bfid"]]
-            # copy all file information we have to user's ticket
-            ticket["external_label"]   = finfo["external_label"]
-            ticket["bof_space_cookie"] = finfo["bof_space_cookie"]
-            ticket["external_label"]   = finfo["external_label"]
-            ticket["sanity_cookie"]    = finfo["sanity_cookie"]
-            ticket["complete_crc"]     = finfo["complete_crc"]
-            ticket["beginning_crc"]    = finfo["beginning_crc"]
-
         except KeyError :
             self.reply_to_caller({"status" : "bfid not found" })
             return
+
+        # copy all file information we have to user's ticket
+        for key in finfo.keys() :
+            ticket[key] = finfo[key]
 
         # found the bit file id, now go and find the library
         # become a client of the volume clerk server first
@@ -55,8 +64,7 @@ class FileClerkMethods(DispatchingWorker) :
             return
         library = vticket["library"]
 
-        # got the library, now send it to the apropos library manager
-        # we get the library manager from our configuration server, of course
+        # get the library manager
         vmticket = csc.get(library)
         if vmticket["status"] != "ok" :
             self.reply_to_caller(vmticket)
@@ -67,6 +75,7 @@ class FileClerkMethods(DispatchingWorker) :
         ticket = u.send(ticket, (vmticket['host'], vmticket['port']))
         self.reply_to_caller(ticket)
 
+
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket) :
             self.reply_to_caller({"status" : "ok",\
@@ -75,35 +84,28 @@ class FileClerkMethods(DispatchingWorker) :
     # return all info about a certain bfid - this does everything that the
     # read_from_hsm method does, except send the ticket to the library manager
     def bfid_info(self, ticket) :
-
         try :
             # look up in our dictionary the request bit field id
             finfo = dict[ticket["bfid"]]
-            # copy all file information we have to user's ticket
-            ticket["external_label"]   = finfo["external_label"]
-            ticket["bof_space_cookie"] = finfo["bof_space_cookie"]
-            ticket["external_label"]   = finfo["external_label"]
-            ticket["sanity_cookie"]    = finfo["sanity_cookie"]
-            ticket["complete_crc"]     = finfo["complete_crc"]
-            ticket["beginning_crc"]    = finfo["beginning_crc"]
-
         except KeyError :
             self.reply_to_caller({"status" : "bfid not found" })
             return
 
-        # found the bit file id, now go and find the library
-        # become a client of the volume clerk server first
-        vc = VolumeClerkClient(self.csc)
-
         # ask the volume clerk server which library has "external_label" in it
-        vticket = vc.inquire_vol(ticket["external_label"])
+        vc = VolumeClerkClient(self.csc)
+        vticket = vc.inquire_vol(finfo["external_label"])
         if vticket["status"] != "ok" :
             self.reply_to_caller(vticket)
             return
 
-        # ok, now merge the dictionaries and return to user
-        # make sure original ticket values override vticket values
-        self.reply_to_caller(merge_dicts(vticket,ticket))
+        # copy all file information we have to user's ticket
+        for key in vticket.keys() :
+            ticket[key] = vticket[key]
+        for key in finfo.keys() :
+            ticket[key] = finfo[key]
+
+        self.reply_to_caller(ticket)
+
 
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
