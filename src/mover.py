@@ -28,7 +28,6 @@ import monitored_server
 import inquisitor_client
 import enstore_functions
 import enstore_constants
-#import interface
 import option
 import dispatching_worker
 import volume_clerk_client
