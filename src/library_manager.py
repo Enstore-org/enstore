@@ -236,6 +236,7 @@ class LibraryManagerMethods:
         self.tmp_rq = None   # need this to temporarily store selcted request
         self.checked_keys = [] # list of checked tag keys
         self.continue_scan = 0
+        self.process_for_bound_vol = 0 # if not 0 volume is bound
 
     def fair_share(self, rq):
         # fair share
@@ -360,10 +361,10 @@ class LibraryManagerMethods:
         # REMOVE WHEN OLD SYSTEM IS GONE
         # backward compatibility
         # cut the wrapper info off volume family
-        sg_tmp = volume_family.extract_storage_group(rq.ticket["vc"]["volume_family"])
+        sg_tmp = volume_family.extract_storage_group(vol_family)
         if sg_tmp == 'unknown':
-            vf = string.join((sg_tmp, string.split(rq.ticket["vc"]["volume_family"],'.')[1]), '.')
-        else: vf = rq.ticket["vc"]["volume_family"]
+            vf = string.join((sg_tmp, string.split(vol_family,'.')[1]), '.')
+        else: vf = vol_family
         ##################################################
         v = self.vcc.next_write_volume (rq.ticket["vc"]["library"],
                                         rq.ticket["wrapper"]["size_bytes"],
@@ -375,10 +376,11 @@ class LibraryManagerMethods:
         Trace.trace(11,"process_write_request: next write volume returned %s" % (v,))
         if v["status"][0] != e_errors.OK:
             if v["status"][0] == e_errors.NOVOLUME:
-                # remove this request and send regret to the client
-                rq.ticket['status'] = v['status']
-                self.send_regret(rq.ticket)
-                self.pending_work.delete(rq)
+                if not self.process_for_bound_vol:
+                    # remove this request and send regret to the client
+                    rq.ticket['status'] = v['status']
+                    self.send_regret(rq.ticket)
+                    self.pending_work.delete(rq)
                 rq = None
                 
             else:
@@ -400,7 +402,7 @@ class LibraryManagerMethods:
 
         # in any case if request SG limit is 0 and temporarily stored rq. SG limit is not,
         # do not update temporarily store rq.
-        rq_sg = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
+        rq_sg = volume_family.extract_storage_group(vol_family)
         sg_limit = self.get_sg_limit(rq_sg)
         if self.tmp_rq:
             tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
@@ -417,9 +419,11 @@ class LibraryManagerMethods:
         return rq, key_to_check
 
     # is there any work for any volume?
-    def next_work_any_volume(self, requestor):
+    def next_work_any_volume(self, requestor, bound=0):
         Trace.trace(11, "next_work_any_volume")
         self.init_request_selection()
+        self.process_for_bound_vol = bound
+
         # look in pending work queue for reading or writing work
         rq=self.pending_work.get()
         while rq:
@@ -477,9 +481,9 @@ class LibraryManagerMethods:
 
 
     # what is next on our list of work?
-    def schedule(self, mover):
+    def schedule(self, mover, bound=0):
         while 1:
-            rq, status = self.next_work_any_volume(mover)
+            rq, status = self.next_work_any_volume(mover, bound)
             if (status[0] == e_errors.OK or 
                 status[0] == e_errors.NOWORK):
                 return rq, status
@@ -529,6 +533,7 @@ class LibraryManagerMethods:
         Trace.trace(11, "next_work_this_volume for %s" % (external_label,))
         status = None
         self.init_request_selection()
+        self.process_for_bound_vol = 1
         #self.pending_work.wprint()
         # first see if there are any HiPri requests
         rq =self.pending_work.get_admin_request()
@@ -565,6 +570,7 @@ class LibraryManagerMethods:
                 
         # no HIPri requests: look in pending work queue for reading or writing work
         self.init_request_selection()
+        self.process_for_bound_vol = 1
         # for tape positioning optimization check what was
         # a last work for this volume
         if last_work == 'READ':
@@ -596,7 +602,7 @@ class LibraryManagerMethods:
             if exc_limit_rq:
                 # if storage group limit for this volume has been exceeded
                 # try to get any work
-                rq, status = self.schedule(requestor)
+                rq, status = self.schedule(requestor, bound=1)
                 Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
                 # no work means: use what we have
                 if status[0] == e_errors.NOWORK:
