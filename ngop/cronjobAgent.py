@@ -178,12 +178,19 @@ class CJFunc(Worker):
             fl = string.replace(fl, "\n", "")
             checkprint(fl)
             for line in lines:
-                if string.find(string.splitfields(line)[0],'#') == 0:
+                sline = string.splitfields(line)
+                if string.find(sline[0],'#') == 0:
                     continue
-                if len(line) < 8:
+                if len(sline) < 8 or \
+                   '/home/enstore/enstore/sbin/ecron' not in sline:
                     # this is not an ecron line
                     continue
-                self.fName = string.splitfields(line)[7]
+                try:
+                    self.fName = sline[7]
+                except:
+                    now = time.time()
+                    print time.ctime(now), line
+                    continue
                 if string.find(fl, self.fName) >=0 :
                     allowed_freq = self.get_frequency(line)
                     file_mtime = os.stat(fl)[stat.ST_MTIME]
