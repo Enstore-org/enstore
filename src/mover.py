@@ -78,10 +78,10 @@ class Mover:
         self.external_label = ''
 
     #########################################################################
-    #
     # The next set of methods are ones that will be invoked via an eval of
     # the 'work' key of the ticket received.
     #
+
     # we don't have any work. setup to see if we can get some
     def nowork(self, ticket):
         time.sleep(self.sleeptime)
@@ -430,6 +430,12 @@ class Mover:
 
         # go around for more
         self.have_bound_volume_next()
+
+    #
+    # End of set of methods that will be invoked via an eval of
+    # the 'work' key of the ticket received.
+    #########################################################################
+
 
     # read a block from the network (from the user).  This method is call
     # from the wrapper object when writing to the HSM
