@@ -36,7 +36,7 @@ class OpSGDB:
         # get quotas
         self.quotas = configuration_client.ConfigurationClient((config_host, config_port)).get('quotas')
         # get all volumes know to the volume clerk
-        self.volumes = self.vcc.get_vols(print_list=0)['volumes'] 
+        self.volumes = self.vcc.get_vols(print_list=0)['volumes']
 
 
 
@@ -50,23 +50,26 @@ class OpSGDB:
             if not sgs.has_key((lib,sg)) and sg != 'none':
                 sgs[(lib,sg)] = {}
                 sgs[(lib,sg)]['blank'] = 0
+                sgs[(lib,sg)]['used'] = 0
                 sgs[(lib,sg)]['total'] = 0.
                 sgs[(lib,sg)]['quota'] = self.quotas['libraries'][lib].get(sg, '?')
             if sg != 'none':
                 if ff == 'none':  # blank volume
                     sgs[(lib,sg)]['blank'] = sgs[(lib,sg)]['blank']+1
+                if vol['non_del_files']:
+                    sgs[(lib,sg)]['used'] = sgs[(lib,sg)]['used']+1
                 sgs[(lib,sg)]['total'] = sgs[(lib,sg)]['total'] + vol['capacity_bytes']*1. - vol['remaining_bytes']*1.
         return sgs
 
     def print_sg_dict(self, sgs):
         keys=sgs.keys()
         keys.sort()
-        print "%-10s %-20s %-6s %-14s %-012s" % ('Library', 'Storage Group', 'Quota',
-                                                       'Blank Volumes', 'Space Used')
+        print "%-10s %-20s %-6s %-10s %-012s %-012s" % ('Library', 'Storage Group', 'Quota',
+                                                       'Blank Vols', 'Written Vols', 'Space Used')
         for key in keys:
-            msg = "(%s)"% (capacity_str(sgs[key]['total']),)
-                
-            print "%-10s %-20s %-6s %-14s %-012s %s" % (key[0], key[1], sgs[key]['quota'], sgs[key]['blank'], sgs[key]['total'], msg) 
+            print "%-10s %-20s %-6s %-10s %-14s %-012s" % (key[0], key[1], sgs[key]['quota'],
+                                                           sgs[key]['blank'], sgs[(key)]['used'],
+                                                           capacity_str(sgs[key]['total'])) 
 
     # create database entries
     def create_db(self):
