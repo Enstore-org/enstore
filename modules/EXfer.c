@@ -67,7 +67,7 @@ struct profile
 struct return_values
 {
   long long size;         /*bytes left to transfer*/
-  unsigned long crc_ul;   /*checksum*/
+  unsigned int crc_ui;    /*checksum*/
   int exit_status;        /*error status*/
   int errno_val;          /*errno of any errors (zero otherwise)*/
   char* msg;              /*additional error message*/
@@ -89,9 +89,9 @@ static PyObject * EXfd_xfer(PyObject *self, PyObject *args);
 static struct return_values do_read_write(int rd_fd, int wr_fd,
 					  long long bytes, int blk_size,
 					  struct timeval timeout,
-					  int crc_flag, unsigned long *crc_p);
-static struct return_values* pack_return_values(int crc_ul, int errno_val,
-						int exit_status,
+					  int crc_flag, unsigned int *crc_p);
+static struct return_values* pack_return_values(unsigned int crc_ui,
+						int errno_val, int exit_status,
 						long long bytes, char* msg,
 						char *filename, int line);
 #ifdef PROFILE
@@ -104,7 +104,7 @@ static void* thread_read(void *info);
 static void* thread_write(void *info);
 void set_done_flag(int* done);
 #ifdef DEBUG
-static void print_status(FILE*, char, long long, unsigned long);
+static void print_status(FILE*, char, long long, unsigned int);
 #endif /*DEBUG*/
 #endif /*THREADED*/
 
@@ -152,7 +152,8 @@ pthread_mutex_t print_lock; /*order debugging output*/
 **************************************************************************/
 
 /* Pack the arguments into a struct return_values. */
-static struct return_values* pack_return_values(int crc_ul, int errno_val,
+static struct return_values* pack_return_values(unsigned int crc_ui,
+						int errno_val,
 						int exit_status,
 						long long bytes,
 						char* message,
@@ -169,10 +170,10 @@ static struct return_values* pack_return_values(int crc_ul, int errno_val,
     exit(1);
   }
 
-  retval->crc_ul = crc_ul;             /* Checksum */
+  retval->crc_ui = crc_ui;             /* Checksum */
   retval->errno_val = errno_val;       /* Errno value if error occured. */
   retval->exit_status = exit_status;   /* Exit status of the thread. */
-  retval->size = bytes;                /* Number of bytes left to transfer. */
+  retval->size = bytes;                /* Bytes left to transfer. */
   retval->msg = message;               /* Additional error message. */
   retval->line = line;             
   retval->filename = filename;
@@ -202,8 +203,8 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
   /*setup local variables*/
   struct transfer reads;
   struct transfer writes;
-  struct return_values *read_val = NULL;  /*Incase of early thread error...*/
-  struct return_values *write_val = NULL; /*... set to NULL.*/
+  struct return_values *read_val = NULL;  /*Incase of early thread ... */
+  struct return_values *write_val = NULL; /*... error set to NULL.*/
   struct return_values *rtn_val = NULL;
 
   pthread_t read_tid, write_tid;
@@ -657,7 +658,7 @@ static void print_status(FILE* fp, char name, long long bytes,
 
 static struct return_values
 do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size, 
-	      struct timeval timeout, int crc_flag, unsigned long *crc_p)
+	      struct timeval timeout, int crc_flag, unsigned int *crc_p)
 {
   char	          *buffer;       /* Location to read/write from/to. */
   char	          *b_p;          /* Buffer pointer for parial writes. */
@@ -901,13 +902,13 @@ EXfd_xfer(PyObject *self, PyObject *args)
 {
     int		 fr_fd;
     int		 to_fd;
-    long long no_bytes;
+    long long    no_bytes;
     int		 blk_size;
     PyObject     *no_bytes_obj;
     PyObject	 *crc_obj_tp;
     PyObject	 *crc_tp=Py_None;/* optional, ref. FTT.fd_xfer */
-    int           crc_flag=0; /*0: no CRC 1: Adler32 CRC >1: RFU */
-    unsigned long crc_ul;
+    int          crc_flag=0; /*0: no CRC 1: Adler32 CRC >1: RFU */
+    unsigned int crc_ui;
     struct timeval timeout = {0, 0};
     int sts;
     PyObject	*rr;
@@ -917,11 +918,11 @@ EXfd_xfer(PyObject *self, PyObject *args)
 			   &blk_size, &crc_obj_tp, &timeout.tv_sec, &crc_tp);
     if (!sts) return (NULL);
     if (crc_tp == Py_None)
-	crc_ul = 0;
+	crc_ui = 0;
     else if (PyLong_Check(crc_tp))
-	crc_ul = PyLong_AsUnsignedLong(crc_tp);
+	crc_ui = PyLong_AsUnsignedLong(crc_tp);
     else if (PyInt_Check(crc_tp))
-	crc_ul = (unsigned)PyInt_AsLong(crc_tp);
+	crc_ui = (unsigned)PyInt_AsLong(crc_tp);
     else 
 	return(raise_exception("fd_xfer - invalid crc param"));
 
@@ -944,14 +945,14 @@ EXfd_xfer(PyObject *self, PyObject *args)
 
     errno = 0;
     transfer_sts = do_read_write(fr_fd, to_fd, no_bytes, blk_size, timeout,
-				 crc_flag, &crc_ul);
+				 crc_flag, &crc_ui);
     
     if (transfer_sts.exit_status != 0)
         return (raise_exception2(&transfer_sts));
 
     rr = Py_BuildValue("(i,O,O,i,s,s,i)",
 		       transfer_sts.exit_status, 
-		       PyLong_FromUnsignedLong(transfer_sts.crc_ul),
+		       PyLong_FromUnsignedLong(transfer_sts.crc_ui),
 		       PyLong_FromLongLong(transfer_sts.size),
 		       transfer_sts.errno_val, transfer_sts.msg,
 		       transfer_sts.filename, transfer_sts.line);
