@@ -418,8 +418,6 @@ class FTTDriver(driver.Driver):
             if self.fd is None:
                 return {0:e_errors.READ_BADSWMOUNT, 1:e_errors.WRITE_BADSWMOUNT}[mode], None
             try:
-                import pdb
-                pdb.set_trace()
                 nbytes=self.read(buf, 0, expected_length)
             except e_errors.READ_ERROR, detail:
                 nbytes = 0
