@@ -393,8 +393,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     # print add arguments
     def print_add_args(self):
-        print "   add arguments: library file_family media_type"\
-              +", volume_byte_capacity remaining_capacity"
+        print "   add arguments: volume_name library file_family media_type"\
+              +" volume_byte_capacity remaining_capacity"
 
     # print out our extended help
     def print_help(self):
