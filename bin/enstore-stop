@@ -7,8 +7,10 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # Make sure we are running as enstore on the production or test systems.
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+ensudo=""
 case $node in
-  stken*|d0en*|rip*)
+  stken*|d0en*|rip[0-9]*)
+     ensudo="sudo"
      if [ `whoami` = "root" ]; then
 	# if running as root, rerun as enstore
 	exec su enstore -c "/bin/sh $0 $*"
@@ -91,16 +93,16 @@ fi
 
 turnoff() { for pid in $1; do
 		rm -f $PID_DIR/mtpid; echo "-1">$PID_DIR/mtpid
-                if [ "$pid" = "$1" ] ; then echo "No $2 running"; sudo pidkill $PID_DIR/mtpid $2; break; fi
+                if [ "$pid" = "$1" ] ; then echo "No $2 running"; $ensudo pidkill $PID_DIR/mtpid $2; break; fi
 		#note the search and kill feature of pidkill only works for single instance servers (like file_clerk, not movers) because name won't match
-                sudo pidkill $pid $2
+                $ensudo pidkill $pid $2
             done; }
 
 turnoff_s() { for pid in $1; do
 		rm -f $PID_DIR/mtpid; echo "-1">$PID_DIR/mtpid
-                if [ "$pid" = "$1" ] ; then echo "No $2 running"; sudo pidkill_s $PID_DIR/mtpid $2; break; fi
+                if [ "$pid" = "$1" ] ; then echo "No $2 running"; $ensudo pidkill_s $PID_DIR/mtpid $2; break; fi
 		#note the search and kill feature of pidkill only works for single instance servers (like file_clerk, not movers) because name won't match
-                sudo pidkill_s $pid $2
+                $ensudo pidkill_s $pid $2
             done; }
 
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then

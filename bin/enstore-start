@@ -7,8 +7,10 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # Make sure we are running as enstore on the production or test systems.
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+ensudo=""
 case $node in
-  stken*|d0en*|rip*)
+  stken*|d0en*|rip[0-9]*)
+     ensudo="sudo"
      if [ `whoami` = "root" ]; then
 	# if running as root, rerun as enstore
 	exec su enstore -c "/bin/sh $0 $*"
@@ -515,7 +517,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" != "" ];then
                 echo "`date` Starting $i Mover"
                 out=$PID_DIR/mover_$i
                 rm -f $out
-                cmd="sudo python $ENSTORE_DIR/src/mover.py $i `output $out`"
+                cmd="$ensudo python $ENSTORE_DIR/src/mover.py $i `output $out`"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|mov' >/dev/null; then
                     title="Enstore Mover $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
