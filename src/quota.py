@@ -284,6 +284,15 @@ class Quota:
 		}
 
 		return q_dict
+
+	def get_authorized_tapes(self):
+		values = {}
+		q = "select library, storage_group, requested, authorized \
+			from quota;"
+		res = self.db.query(q).getresult()
+		for i in res:
+			values[(i[0], i[1])] = (i[2], i[3])
+		return values
 				
 class Interface(option.Interface):
 	def __init__(self, args=sys.argv, user_mode=0):
