@@ -19,7 +19,7 @@
 DEB = /D "NDEBUG" /O2 
 DB  = 
 !ELSE
-DEB = /D "_DEBUG" /Od /Zi 
+DEB = /D "_DEBUG" /Od /Z7 
 DB = /DEBUG
 !ENDIF
 
@@ -63,7 +63,7 @@ H_DPD = \
 
 CC     = cl.exe /nologo 
 LINK   = link.exe 
-LIB32  = link.exe -lib  
+LIB32  = link.exe -lib 
 
 CC_PROJ= /W3 /GX  /I "./" /I $(WINDIR)  /D "WIN32"\
  /D "_WINDOWS" /D "_MBCS" $(DEB) 
