@@ -22,7 +22,8 @@ ALIVE = 1
 DEAD = 0
 
 
-
+EXTRA_LINKS = "extra_links"
+ENSTORE_PLOTS = "enstore_plots"
 
 # used by the inquisitor plot command
 MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)

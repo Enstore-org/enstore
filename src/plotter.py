@@ -97,6 +97,13 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	    links_to_add.append(("%s/%s"%(BURN_RATE, 
 					  enstore_files.plot_html_file_name()),
 				 "Bytes Written per Storage Group Plots"))
+	# add any links that are specified in the config file
+	extra_links = self.csc.get(enstore_constants.EXTRA_LINKS)
+	if extra_links.has_key(enstore_constants.ENSTORE_PLOTS):
+	    plot_links_d = extra_links[enstore_constants.ENSTORE_PLOTS]
+	    links = plot_links_d.keys()
+	    for link in links:
+		links_to_add.append((link, plot_links_d[link]))
 	# the first plotfile needs to have a link to the second one on it, if 
 	# the second one exists
 	if not links_to_add:
@@ -106,6 +113,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	    # we made the plotfile2 page(s), add a link to it on the 1st page
 	    tmp_l = [plotfile1, self.html_dir] + links_to_add
 	    self.plotfile_l.append(tmp_l)
+
 
 class PlotterInterface(generic_client.GenericClientInterface):
 
