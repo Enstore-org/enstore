@@ -1109,7 +1109,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         if vk[:3] != 'CLN':
             actual_size = total_size+vv['remaining_bytes']
             if total_size <= 0:
-                remark = '*'
+                remark = 'never written'
             else:
                 remark = ''
             if vv['media_type'] == '9940':
