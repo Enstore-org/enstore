@@ -285,7 +285,7 @@ class cacheCursor:
         return self.keys[0], self.values[0]
 
     def next(self):
-        if self.position < self.length:
+        if self.position < (self.length - 1):
             self.position = self.position + 1
             k, v = self.keys[self.position], self.values[self.position]
             return k, v
