@@ -18,6 +18,11 @@ fi
 f2=`echo $file | sed -e 's%/pnfs%%'`
 f3=`echo $file | sed -e 's%/pnfs/eagle%%'`
 
+# Simulate the ecron histogram file - characterize the number of retries
+RETRY=/home/enstore/CRON/readDcacheTry-1HISTOGRAM
+#   done=`date +"%Y-%m-%d:%H:%M:%S"`
+#   echo "$done $code" >> $histogram
+
 # Use Eileen's enrsh method to get a ticket
 krbdir="/usr/krb5/bin"
 defaultDomain=".fnal.gov"
@@ -43,6 +48,9 @@ while [ $stat1 -ne 0 -a $try -le $maxtry ]; do
                                kftpcp -p 24127 -m p -v enstore@fndca:$f3 /dev/null
   stat1=$?
   echo "`date`: Kerberized door check finished. stat = $stat1"
+  if [ $stat1 -eq 0 ]; then
+    echo "`date +"%Y-%m-%d:%H:%M:%S"` `expr $try - 1`" >> $RETRY
+  fi
   try=`expr $try + 1`
 done
 
@@ -73,6 +81,9 @@ print ftp.retrbinary("RETR '$f3'",x)
 '
   stat2=$?
   echo "`date`: Non-kerberized door check finished. stat = $stat2"
+  if [ $stat2 -eq 0 ]; then
+    echo "`date +"%Y-%m-%d:%H:%M:%S"` `expr 10 + $try - 1`" >> $RETRY
+  fi
   try=`expr $try + 1`
 done
 

@@ -94,8 +94,7 @@ class LogPageInterface(generic_client.GenericClientInterface):
 	self.description = "List of existing Log files"
 	self.title = "Enstore User Logs"
 	self.html_file = LPFILE
-	generic_client.GenericClientInterface.__init__(self, args=args,
-                                                       user_mode=user_mode)
+	generic_client.GenericClientInterface.__init__(self)
 
     plot_options = {
         option.CAPTION_TITLE:{option.HELP_STRING:"title for page",
