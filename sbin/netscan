@@ -199,6 +199,10 @@ ALLOW_SRV2="$ALLOW_BASE
        LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
 "
 
+ALLOW_DSRV2="$ALLOW_SRV2
+       LISTEN,portmap,:sunrpc,TCP,x
+"
+
 # I doubt that these java ports are static across restarts, try for now.
 ALLOW_SRV1="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
@@ -217,13 +221,14 @@ ALLOW_MVR="$ALLOW_BASE
 
 
 case $node in
-     *srv1) ALLOW=$ALLOW_SRV1;;
-     *srv2) ALLOW=$ALLOW_SRV2;;
-     *srv3) ALLOW=$ALLOW_SRV3;;
-     *srv5|*srv7) ALLOW=$ALLOW_SRV5;;
-     *mvr*)  ALLOW=$ALLOW_MVR;;
-     *dca*)  ALLOW=$ALLOW_DCA;;
-         *)  ALLOW=$ALLOW_BASE;;
+       *srv1) ALLOW=$ALLOW_SRV1;;
+    d0ensrv2) ALLOW=$ALLOW_DSRV2;;
+       *srv2) ALLOW=$ALLOW_SRV2;;
+       *srv3) ALLOW=$ALLOW_SRV3;;
+ *srv5|*srv7) ALLOW=$ALLOW_SRV5;;
+       *mvr*)  ALLOW=$ALLOW_MVR;;
+       *dca*)  ALLOW=$ALLOW_DCA;;
+           *)  ALLOW=$ALLOW_BASE;;
 esac
 
 
