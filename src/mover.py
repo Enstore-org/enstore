@@ -3013,6 +3013,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         
         if status and status[0] == e_errors.OK:
+            self.vcc.update_counts(self.current_volume, mounts=1)
             Trace.notify("loaded %s %s" % (self.shortname, volume_label))        
             self.init_stat(self.device, self.logname)
             tm = time.localtime(time.time()) # get the local time

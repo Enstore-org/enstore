@@ -1320,10 +1320,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
 
-        for key in ['wr_err','rd_err','wr_access','rd_access']:
+        for key in ['wr_err','rd_err','wr_access','rd_access','mounts']:
             try:
                 record['sum_'+key] = record['sum_'+key] + ticket[key]
             except KeyError, detail:
+                if key == 'sum_mounts':
+                    # make a new dictionary entry for the old tape records
+                    record['sum_mounts'] = 0
                 msg= "Volume Clerk: key %s is missing" % (detail,)
                 ticket["status"] = (e_errors.KEYERROR, msg)
                 Trace.log(e_errors.ERROR, msg)

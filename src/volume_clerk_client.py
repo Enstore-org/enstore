@@ -499,13 +499,15 @@ class VolumeClerkClient(generic_client.GenericClient,
         return self.send(ticket)
 
     # update the counts in the database
-    def update_counts(self, external_label, wr_err=0, rd_err=0,wr_access=0,rd_access=0):
+    def update_counts(self, external_label, wr_err=0, rd_err=0,wr_access=0,rd_access=0,mounts=0):
         ticket= { 'work'            : 'update_counts',
                   'external_label'  : external_label,
                   'wr_err'          : wr_err,
                   'rd_err'          : rd_err,
                   'wr_access'       : wr_access,
-                  'rd_access'       : rd_access }
+                  'rd_access'       : rd_access,
+                  'mounts'          : mounts
+                  }
         return self.send(ticket)
 
     # Check if volume is available
