@@ -361,8 +361,6 @@ class Interface:
                 self.keep_dir = value
             elif opt == "--list":
                 self.list = value
-            elif opt == "--ls-active":
-                self.list_active = value
             elif opt == "--load":
                 self.load = 1
             elif opt == "--logfile-dir":
