@@ -1761,11 +1761,15 @@ def outputfile_check(inputlist, outputlist, e):
                         #The layers are empty.
                         outputlist.append(outputlist[i])
 
-                    #Try to write an empty string to layer 1.  This will most
-                    # likely fail becuase of a lack of permission access to
-                    # the file (EACCES), the database is read-only
-                    # (EPERM) or user root is modifying something outside
-                    # of the /pnfs/fs/usr/xyz/ filesystem (EPERM).
+                    #Try to write an empty string to layer 1.  If this fails,
+                    # it will most likely fail becuase of:
+                    # 1) a lack of permission access to the file (EACCES)
+                    # 2) the database is read-only (EPERM)
+                    # 3) the user writing (usually root) is not the
+                    #    owner of the file and the node is not in the trusted
+                    #    list for pnfs (EPERM)
+                    # 4) user root is modifying something outside of the
+                    #    /pnfs/fs/usr/xyz/ filesystem (EPERM).
                     p.writelayer(1, "")
 
                     #Get the outfile size.
