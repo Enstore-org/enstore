@@ -56,6 +56,7 @@ class Relay:
             now = time.time()
             if now - last_heartbeat > heartbeat_interval:
                 self.send_message(self.alive_msg, 'alive', now)
+		last_heartbeat = now
             if not readable:
                 continue
             msg = self.listen_socket.recv(1024)
