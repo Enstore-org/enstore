@@ -72,7 +72,7 @@ def check(f):
                 return msg, warn
             if fr.has_key('pnfs_name0'):
                 if pf.path != fr['pnfs_name0'] and \
-                   pf.path != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
+                   pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
                     msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
             else:
                 msg.append('unknown file')
