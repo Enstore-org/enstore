@@ -223,6 +223,8 @@ class Interface:
                 self.get_refresh = 1
             elif opt == "--get_logfile_name":
                 self.get_logfile_name = 1
+            elif opt == "--get_last_logfile_name":
+                self.get_last_logfile_name = 1
             elif opt == "--d0sam":
                 # if d0sam has been requested, just add 4096 to verbose option
                 self.verbose = self.verbose | 0x1000 

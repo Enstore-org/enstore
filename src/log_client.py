@@ -146,6 +146,15 @@ class LoggerClient(generic_client.GenericClient):
         Trace.trace(10,'}get_logfile_name'+repr(x))
         return x
 
+    # get the last log file name
+    def get_last_logfile_name(self, rcv_timeout=0, tries=0):
+        Trace.trace(10,'{get_last_logfile_name')
+        l = self.csc.get("logserver")
+        x = self.u.send({'work':'get_last_logfile_name'}, \
+	                (l['hostip'], l['port']), rcv_timeout, tries)
+        Trace.trace(10,'}get_last_logfile_name'+repr(x))
+        return x
+
     # reset the servers verbose flag
     def set_verbose(self, verbosity, rcv_timeout=0, tries=0):
         Trace.trace(10,'{set_verbose (client)')
@@ -174,7 +183,8 @@ class LoggerClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options() + self.verbose_options()+\
-               ["config_file=", "get_logfile_name", "test", "logit="] +\
+               ["config_file=", "test", "logit="] +\
+	       ["get_logfile_name", "get_last_logfile_name"] +\
                self.alive_options()+self.help_options()
 
 
@@ -210,9 +220,15 @@ if __name__ == "__main__" :
         ticket = logc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
 
+    elif intf.get_last_logfile_name:
+        ticket = logc.get_last_logfile_name(intf.alive_rcv_timeout,\
+	                                    intf.alive_retries)
+	generic_cs.enprint(ticket['last_logfile_name'])
+	msg_id = generic_cs.CLIENT
+
     elif intf.get_logfile_name:
         ticket = logc.get_logfile_name(intf.alive_rcv_timeout,\
-	                          intf.alive_retries)
+	                               intf.alive_retries)
 	generic_cs.enprint(ticket['logfile_name'])
 	msg_id = generic_cs.CLIENT
 

@@ -105,6 +105,12 @@ class Logger(  dispatching_worker.DispatchingWorker
         ticket["logfile_name"] = self.logfile_name
         self.send_reply(ticket)
 
+    # return the last log file name
+    def get_last_logfile_name(self, ticket):
+        ticket["status"] = (e_errors.OK, None)
+        ticket["last_logfile_name"] = self.last_logfile_name
+        self.send_reply(ticket)
+
     # log the message recieved from the log client
     def log_message(self, ticket) :
         tm = time.localtime(time.time()) # get the local time
@@ -137,6 +143,7 @@ class Logger(  dispatching_worker.DispatchingWorker
             fn = fn + ft
 
         self.logfile_name = self.logfile_dir_path + "/" + fn
+	self.last_logfile_name = ""
         # open log file
         self.open_logfile(self.logfile_name)
         while 1:
@@ -154,6 +161,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                 if day != current_day :
                     # day changed: close the current log file
                     self.logfile.close()
+	            self.last_logfile_name = self.logfile_name
                     current_day = day;
                     # and open the new one
                     fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
