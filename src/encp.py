@@ -775,10 +775,9 @@ def clients():
 
         ticket = check_server(csc, server)
 
-        #Handle the fatal error.
+        #Handle the non-fatal error.
         if not e_errors.is_ok(ticket['status']):
             Trace.alarm(e_errors.WARNING, ticket['status'][0], ticket)
-            quit()
 
         Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
                       (server, ticket['address']))
@@ -4945,7 +4944,10 @@ def main(intf):
 
     #If verbosity is turned on and the transfer is a write to enstore,
     # output the tag information.
-    t=pnfs.Tag(os.path.dirname(intf.output[0]))
+    if os.path.isdir(intf.output[0]):
+        t=pnfs.Tag(intf.output[0])
+    else:
+        t=pnfs.Tag(os.path.dirname(intf.output[0]))
     try:
         library = t.get_library()
     except (OSError, IOError, KeyError, TypeError):
