@@ -108,6 +108,10 @@ class VolumeClerkClient(generic_client.GenericClient,
         x = self.send(ticket)
         return x
 
+    def modify(self,ticket):
+        ticket['work']='modifyvol'
+        x=self.send(ticket)
+        return x
 
     # delete a volume from the stockpile
     def delete(self, external_label,force=0):
@@ -469,6 +473,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.vol = ""
         self.check = ""
         self.add = ""
+        self.modify = ""
         self.delete = ""
         self.restore = ""
         self.all = 0
@@ -490,7 +495,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                    ["clear=", "backup", "vols","next","vol=","check=","add=",
                     "update=", "delete=","new_library=","read_only=",
                     "no_access=", "atmover","decr_file_count=","force",
-                    "restore=", "all","destroy="]
+                    "restore=", "all","destroy=", "modify="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -508,24 +513,21 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 self.print_new_library_args()
                 sys.exit(1)
 
-    # print update_mc_state arguments
     def print_update_mc_state_args(self):
         print "   update_mc_state arguments: volume_name"
 
-    # print new library arguments
     def print_new_library_args(self):
         print "   new_library arguments: volume_name"
 
-    # print add arguments
     def print_add_args(self):
         print "   add arguments: volume_name library file_family media_type"\
               +" volume_byte_capacity remaining_capacity"
 
-    # print out clear arguments
     def print_clear_args(self):
         print "usage: --clear volume_name"
         print "       --clear volume_name {system_inhibit|user_inhibit} position(1 or 2)"
-
+        
+        
     # print out our extended help
     def print_help(self):
         interface.Interface.print_help(self)
@@ -533,7 +535,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.print_update_mc_state_args()
         self.print_new_library_args()
         self.print_clear_args()
-
+        
 def do_work(intf):
     # get a volume clerk client
     vcc = VolumeClerkClient((intf.config_host, intf.config_port))
@@ -586,13 +588,12 @@ def do_work(intf):
                                              1) #first_found
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
-	#print repr(ticket)
 	pprint.pprint(ticket)
     elif intf.check:
         ticket = vcc.inquire_vol(intf.check)
-        print repr(ticket)
-        print "%-10s  %5.2gGB %-12s  %s %s" % (ticket['external_label'],
-                                               ticket['remaining_bytes']*1./1024./1024./1024.,
+        ##pprint.pprint(ticket)
+        print "%-10s  %s %-12s  %s %s" % (ticket['external_label'],
+                                               capacity_str(ticket['remaining_bytes']),
                                                ticket['at_mover'][0],
                                                ticket['system_inhibit'],
                                                ticket['user_inhibit'])
@@ -611,6 +612,21 @@ def do_work(intf):
                          capacity,
                          remaining,
                          wrapper=wrapper)           # rem cap'y of volume
+    elif intf.modify:
+        print repr(intf.args)
+        d={}
+        for s in intf.args:
+            k,v=string.split(s,'=')
+            try:
+                v=eval(v) #numeric args
+            except:
+                pass #yuk...
+            d[k]=v
+        d['external_label']=intf.modify # name of this volume
+        print d
+        ticket = vcc.modify(d)
+
+        
     elif intf.new_library:
         ticket = vcc.new_library(intf.args[0],         # volume name
                                  intf.new_library)     # new library name
