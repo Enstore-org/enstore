@@ -107,7 +107,7 @@ def state_name(state):
     return _state_names[state]
 
 #modes
-READ, WRITE = range(2)
+READ, WRITE, ASSERT = range(3)
 
 #error sources
 TAPE, ROBOT, NETWORK = ['TAPE', 'ROBOT', 'NETWORK']
@@ -116,7 +116,7 @@ def mode_name(mode):
     if mode is None:
         return None
     else:
-        return ['READ','WRITE'][mode]
+        return ['READ','WRITE','ASSERT'][mode]
 
 KB=1L<<10
 MB=1L<<20
@@ -277,7 +277,7 @@ class Buffer:
     def __repr__(self):
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
-    def block_read(self, nbytes, driver, fill_buffer=1, id=None):
+    def block_read(self, nbytes, driver, fill_buffer=1):
 
 	# SEVA FOO
 	pad = (-nbytes % 512)
@@ -1733,6 +1733,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO,"READ FROM HSM")
         self.setup_transfer(ticket, mode=READ)
 
+    def volume_assert(self, ticket):
+        Trace.log(e_errors.INFO,"VOLUME ASSERT")
+        self.setup_transfer(ticket, mode=ASSERT)
+
     def setup_transfer(self, ticket, mode):
         self.lock_state()
         self.save_state = self.state
@@ -1746,7 +1750,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.tr_failed = 0
         self.setup_mode = mode
         ## pprint.pprint(ticket)
-        if self.save_state not in (IDLE, HAVE_BOUND):
+        if (self.save_state not in (IDLE, HAVE_BOUND) or
+            self.setup_mode == ASSERT and self.save_state != IDLE):
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
             self.unlock_state()
@@ -1768,6 +1773,64 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.current_work_ticket = ticket
         self.run_in_thread('client_connect_thread', self.connect_client)
+
+    def assert(self):
+        ticket = self.current_work_ticket
+        self.t0 = time.time()
+        self.mount_volume(ticket['vc']['external_label'])
+        #At this point the media changer claims the correct volume is loaded;
+        have_tape = 0
+        for retry_open in range(3):
+            Trace.trace(10, "position media")
+            have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
+            if have_tape == 1:
+                err = None
+                self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
+                break
+            else:
+                try:
+                    Trace.log(e_errors.INFO, "rewind/retry")
+                    r= self.tape_driver.close()
+                    time.sleep(1)
+                    ### XXX Yuk!! This is a total hack
+                    p=os.popen("mt -f %s rewind 2>&1" % (self.device),'r')
+                    r=p.read()
+                    s=p.close()
+                    ### r=self.tape_driver.rewind()
+                    err = r
+                    Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
+                    if s:
+                        self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
+                        self.dismount_volume(after_function=self.idle)
+                        return
+
+                except:
+                    exc, detail, tb = sys.exc_info()
+                    err = detail
+                    Trace.log(e_errors.ERROR, "rewind/retry: %s %s" % ( exc, detail))
+        else:
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
+            self.dismount_volume(after_function=self.idle)
+            return
+        eod = self.vol_info['eod_cookie']
+        if eod=='none':
+            eod = None
+            verify_label = 0
+        else:
+            verify_label = 1
+        volume_label = self.current_volume
+
+        if verify_label:
+            status = self.tape_driver.verify_label(volume_label, self.mode)
+            if status[0] != e_errors.OK:
+                self.transfer_failed(status[0], status[1], error_source=TAPE)
+                return 0
+        location = cookie_to_long(self.target_location)
+        self.run_in_thread('seek_thread', self.seek_to_location,
+                           args = (location, self.mode==WRITE),
+                           after_function=self.start_transfer)
+        
+        return 1
 
     def finish_transfer_setup(self):
         Trace.trace(10, "client connect returned: %s %s" % (self.control_socket, self.client_socket))
@@ -2458,6 +2521,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 	    # we have a connection
             fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags)
             Trace.trace(10, "connected")
+            # for ASSERT finish here
+            if self.setup_mode == ASSERT:
+               listen_socket.close()
+               self.run_in_thread('finish_transfer_setup_thread', self.assert)
+               return
+
             try:
                 callback.write_tcp_obj(control_socket, ticket)
             except:
