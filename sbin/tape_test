@@ -3,7 +3,8 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 . /usr/local/etc/setups.sh
 setup enstore
-${ENSTORE_DIR}/sbin/check_drive.py $1 $2 $3
+setup python # hack
+${ENSTORE_DIR}/sbin/check_drive.py $1
 #restart mover
-enstore restart --just $1 > /dev/null 2>&1
+#enstore restart --just $1 > /dev/null 2>&1
 exit 0

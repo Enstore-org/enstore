@@ -8,6 +8,8 @@ import configuration_client
 
 options = ['log_file=','date=']
 MIN_FSIZE=100. # Minimal file size in MBytes to filter log messages
+KB=1024
+MB=KB*KB
 
 def usage():
     print "Usage:",sys.argv[0], "[--log_file=logfile] [--date=`date '+%Y-%m-%d'`] [file_size(in MBytes)]"
@@ -15,7 +17,7 @@ def usage():
 
 
 class Rtester:
-    def __init__(self,configfile):
+    def __init__(self):
         # create configuration client
         port = os.environ.get('ENSTORE_CONFIG_PORT', 0)
         port = string.atoi(port)
@@ -31,20 +33,7 @@ class Rtester:
         else:
             print "Cannot find config port"
             sys.exit(-1)
-        # get rates info
-        self.rates = self.csc.get_uncached("rates")
-        if not self.rates:
-            print "rates information unavailabe: exit"
-            sys.exit(-1)
         
-
-    def min_rate(self,drive_type):
-        for key in self.rates.keys():
-            #print "MR",drive_type,key
-            if string.find(drive_type,key) != -1:
-                break
-        else: return 0.
-        return self.rates[key]['min_rate']
 
     def get_movers(self):
         lb_managers = self.csc.get_library_managers({}).keys()
@@ -55,42 +44,24 @@ class Rtester:
                 self.movers.append(mv['mover'])
                 
 
-    def find_drive_type(self, mover):
-        import udp_client
-        # get the mover
-        mv = self.csc.get_uncached(mover)
-        u = udp_client.UDPClient()
-        # communicate with mover
-        # set mover to the draining state
-        rc = u.send({"work" : "status"}, (mv['hostip'], mv['port']),
-                    300, 10)
-        #print "MOVER STATUS",rc
-        drive_type = None
-        if (rc.get('work_ticket',None) and  rc['work_ticket'].get('mover',None)):
-           drive_type = rc['work_ticket']['mover'].get('product_id',None)
-        return drive_type
-
-        
-        
-    def check_mover(self, mover, drive_type, avg_rate):
-        print "check_mover",mover,drive_type,avg_rate
-        # find what are test tape media and test script for a given drive type
-        for key in self.rates.keys():
-            if string.find(drive_type,key) != -1:
-                break
-        else:
-            print "Drive Type mismatch:%s"%(drive_type,)
-            return
+    def check_mover(self, mover, avg_rate):
+        print "check mover %s average rate %s" % (mover,avg_rate)
 
         # get the mover
         mv = self.csc.get_uncached(mover)
     
         if mv and mv.has_key('test_me'):
+            # get rate
+            if not mv.has_key('rate'): min_rate = 0.
+            else: min_rate = mv['rate']
+            print "MIN_RATE",min_rate/MB
+            if not mv.has_key('test_script'):
+                enstore_dir = os.environ['ENSTORE_DIR']
+                test_script=os.path.join(enstore_dir, 'sbin','tape_test')
+            else: test_script = mv['test_script']
+            
             # send command
-            cmdline="%s %s %s %s"%(self.rates[key]['test_script'],
-                                   mover,
-                                   self.rates[key]['test_tape'],
-                                   self.rates[key]['media'])
+            cmdline="%s %s "%(test_script, mover)
         
             cmd = 'rsh %s '%(mv['hostip'],)+'"sh -c \'%s'%(cmdline,)+'\'"'
             ret = os.popen(cmd).readlines()
@@ -99,17 +70,17 @@ class Rtester:
                     print "Transfer rates test completed"
                     print item
                     strs = string.split(item, " ")
-                    w_rate = string.atof(strs[9])
-                    r_rate = string.atof(strs[12])
-                    if w_rate >= self.min_rate(drive_type):
-                        print "Write Rate is OK"
+                    w_rate = string.atof(strs[9])*MB
+                    r_rate = string.atof(strs[12])*MB
+                    if w_rate >= min_rate:
+                        print "Write rate is OK"
                     else:
                         msg = "Write rate is SLOW"
                         if w_rate > avg_rate:
                             msg = msg+", but more than average"
                         print msg
-                    if r_rate >= self.min_rate(drive_type):
-                        print "Read Rate is OK"
+                    if r_rate >= min_rate:
+                        print "Read rate is OK"
                     else:
                         msg = "Read rate is SLOW"
                         if r_rate > avg_rate:
@@ -136,7 +107,7 @@ if __name__ == "__main__":
             elif optlist[0][0] == '--date':
                 date = optlist[0][1]
 
-    tst = Rtester(os.path.join(os.environ.get('ENSTORE_DIR', 0),'etc','rates.conf'))
+    tst = Rtester()
     tst.get_movers()
     #print "MVRS",tst.movers
     if not log_file:
@@ -160,7 +131,7 @@ if __name__ == "__main__":
         if (string.find(line," ENCP") != -1 and
             (string.find(line,"read_from_hsm") != -1 or
              string.find(line,"write_to_hsm") != -1)):
-            #print line
+            print line
             w = string.split(line, " ")
             # remove all empty entries
             words = []
@@ -178,7 +149,7 @@ if __name__ == "__main__":
                             'drive_sn':string.split(words[23],'=')[1],
                             'vendor':string.split(words[24],'=')[1],
                             }
-                    #print "STAT",stat
+                    print "STAT",stat
                     #print "SIZE",stat['size']/1024./1024.
                     if stat['size']/1024./1024. >= MIN_FSIZE:
                         # add to mover list entry
@@ -188,9 +159,11 @@ if __name__ == "__main__":
                         # calculate the average rate
                         avg = 0.
                         for i in range(0,len(movers[stat['mover']]['rates'])):
+                            print "RATE",movers[stat['mover']]['rates'][i]
                             avg = avg + movers[stat['mover']]['rates'][i]
                         avg = avg / (len(movers[stat['mover']]['rates'])*1.)
                         movers[stat['mover']]['average'] = avg
+                        print "AVG",avg
                 except IndexError:
                     print "WRONG MESSAGE FORMAT"
         line=f.readline()
@@ -201,12 +174,12 @@ if __name__ == "__main__":
     for key in movers.keys():
         #print "AVG,MIN",movers[key]['average'],tst.min_rate(movers[key]['stat']['drive_type'])
         if movers[key]['average'] < tst.min_rate(movers[key]['stat']['drive_type']):
-            print "SLOW"
+            print "SLOW", movers[key]['stat']['mover']
             ret = tst.check_mover(movers[key]['stat']['mover'],
                                   movers[key]['stat']['drive_type'],
                                   movers[key]['average'])
         else:
-            print "DRIVE RATE IS O'K",movers[key]['stat']['mover'],
+            print "DRIVE RATE IS OK",movers[key]['stat']['mover']
 
         checked_movers.append(movers[key]['stat']['mover'])
 
@@ -217,14 +190,10 @@ if __name__ == "__main__":
             not_checked_movers.append(mv)
 
     for mv in not_checked_movers:
-        drive_type = tst.find_drive_type(mv)
-        #print "DRIVE TYPE", drive_type
-        if drive_type:
-            try:
-                avg = movers[key]['average']
-            except NameError:
-                avg = 0.         # check unconditionally 
-            ret = tst.check_mover(mv,
-                                  drive_type,avg)
+        try:
+            avg = movers[key]['average']
+        except NameError:
+            avg = 0.         # check unconditionally
+        ret = tst.check_mover(mv, avg)
         
     sys.exit(0)
