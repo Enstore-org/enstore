@@ -673,7 +673,8 @@ def e_access(path, mode):
 ############################################################################
 
 def _get_csc_from_volume(volume): #Should only be called from get_csc().
-
+    global __csc
+    
     # get a configuration server
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
@@ -684,10 +685,49 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     if e_errors.is_ok(vcc.inquire_vol(volume)):
         return csc
     
-    print "Multi-systems reads not implimented yet for volume reads."
-    sys.exit(0)
-    return None #Make pychecker quiet.
+    #Check the last used non-default brand for performance reasons.
+    if __csc != None:
+        test_vcc = volume_clerk_client.VolumeClerkClient(__csc)
+        volume_info = vcc.inquire_vol(volume)
+        if e_errors.is_ok(volume_info):
+            return __csc
+        else:
+            Trace.log(e_errors.WARNING,
+                      "Volume clerk (%s) knows nothing about %s.\n"
+                      % (test_vcc.server_address, volume))
 
+    #Get the list of all config servers and remove the 'status' element.
+    config_servers = csc.get('known_config_servers', {})
+    if e_errors.is_ok(config_servers['status']):
+        del config_servers['status']
+    else:
+        return csc
+
+    #Loop through systems for the brand that matches the one we're looking for.
+    for server in config_servers.keys():
+        try:
+            #Get the next configuration client.
+            csc_test = configuration_client.ConfigurationClient(
+                config_servers[server])
+
+            #Get the next file clerk client and its brand.
+            vcc_test = volume_clerk_client.VolumeClerkClient(csc_test,
+                                                    rcv_timeout=5, rcv_tries=2)
+
+            if e_errors.is_ok(vcc_test.inquire_vol(volume)):
+                msg = "Using %s based on volume %s." % \
+                      (vcc_test.server_address, volume)
+                Trace.log(e_errors.INFO, msg)
+
+                __csc = csc_test  #Set global for performance reasons.
+                return __csc
+        except KeyboardInterrupt:
+            raise sys.exc_info()
+        except:
+            exc, msg = sys.exc_info()[:2]
+            Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
+
+    return csc
 #The string brand could be either a bfid or brand.  This is because a brand
 # can be of arbitrary length making it impossible to know how much of it is
 # the numerical part (which can change size as time grows) or the brand part.
@@ -712,13 +752,6 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
     elif brand[:len(fcc_brand)] == fcc_brand:
         return csc
 
-    #Get the list of all config servers and remove the 'status' element.
-    config_servers = csc.get('known_config_servers', {})
-    if e_errors.is_ok(config_servers['status']):
-        del config_servers['status']
-    else:
-        return csc
-
     #Check the last used non-default brand for performance reasons.
     if __csc != None:
         test_fcc = file_clerk_client.FileClient(__csc)
@@ -730,6 +763,13 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
         if brand[:len(test_brand)] == test_brand:
             return __csc
     
+    #Get the list of all config servers and remove the 'status' element.
+    config_servers = csc.get('known_config_servers', {})
+    if e_errors.is_ok(config_servers['status']):
+        del config_servers['status']
+    else:
+        return csc
+
     #Loop through systems for the brand that matches the one we're looking for.
     for server in config_servers.keys():
         try:
