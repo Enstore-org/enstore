@@ -1034,10 +1034,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         if status == e_errors.OK:
             if not rq:
-                format = "write rq. is already in the queue %s -> %s : library=%s family=%s requester:%s volume_family:%s"
+                format = "write rq. is already in the queue %s (%s) -> %s : library=%s family=%s requester:%s volume_family:%s"
             else:
-                format = "write Q'd %s -> %s : library=%s family=%s requester:%s volume_family:%s"
+                format = "write Q'd %s (%s) -> %s : library=%s family=%s requester:%s volume_family:%s"
             Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
+                                             ticket["unique_id"],
                                              ticket["wrapper"]["pnfsFilename"],
                                              ticket["vc"]["library"],
                                              ticket["vc"]["file_family"],
@@ -1108,11 +1109,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         if status == e_errors.OK:
             if not rq:
-                format = "read rq. is already in the queue %s -> %s : library=%s family=%s requester:%s"
+                format = "read rq. is already in the queue %s (%s) -> %s : library=%s family=%s requester:%s"
                 file1 = ticket['wrapper']['fullname']
                 file2 = ticket['wrapper']['pnfsFilename']
             else:
-                format = "read Q'd %s -> %s : library=%s family=%s requester:%s"
+                format = "read Q'd %s (%s) -> %s : library=%s family=%s requester:%s"
                 file1 = ticket['wrapper']['pnfsFilename']
                 file2 = ticket['wrapper']['fullname']
 
@@ -1123,7 +1124,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 ticket['vc']['volume_family'] = ticket['vc']['file_family']
             ##############################################
                 
-            Trace.log(e_errors.INFO, format%(file1, file2,
+            Trace.log(e_errors.INFO, format%(file1, ticket['unique_id'], file2,
                                              ticket["vc"]["library"],
                                              ticket["vc"]["volume_family"],
                                              ticket["wrapper"]["uname"]))
