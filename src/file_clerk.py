@@ -10,6 +10,7 @@ import time
 import string
 import socket
 import select
+import pprint
 
 # enstore imports
 import setpath
@@ -366,7 +367,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.INFO, 'added missing "deleted" key for bfid %s' % (bfid,))
             self.dict[bfid] = finfo
 
-        # copy all file information we have to user's ticket
+        #Copy all file information we have to user's ticket.  Copy the info
+        # one key at a time to avoid cyclic dictionary references.
+        for key in finfo.keys():
+            ticket[key] = finfo[key]
+
+        #####################################################################
+        #The folllowing is included for backward compatiblity with old encps.
+        #####################################################################
         ticket["fc"] = finfo
 
         # become a client of the volume clerk to get library information
@@ -396,8 +404,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # copy all volume information we have to user's ticket
         ticket["vc"] = vticket
+        #####################################################################
+        #The previous is included for backward compatiblity with old encps.
+        #####################################################################
 
         ticket["status"] = (e_errors.OK, None)
+        pprint.pprint(ticket)
         self.reply_to_caller(ticket)
         Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
         return
