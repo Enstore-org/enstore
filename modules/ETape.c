@@ -6,6 +6,7 @@
 
 /*
  An error reporter which produces an error string and raises an exception for python
+ all errors throw an ETape.error exception
 */
 static PyObject *ETErrObject;
 #ifdef HAVE_STDARG_PROTOTYPES
@@ -52,6 +53,15 @@ static char ETape_Doc[] =  "ETape is a module which interfaces to ENSTORE TAPE d
 */
 
 /* = = = = = = = = = = = = = = -  ET_OpenRead  = = = = = = = = = = = = = = - */
+/*
+   Returns an ETape desciptor - atually a python long used as a pointer to a ETape structure.
+   p1 - device name
+   p2 - loc - the file number we should position to
+   p3 - position - the number of FM to move to reach loc - may be negative
+   p4 - the block size - used to allocate a read buffer.  May be larger that actual 
+          block size but should not be smaller.
+
+ */
 
 static char ET_OpenRead_Doc[] = "Open a tape drive for reading";
 
@@ -114,7 +124,10 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
 /* = = = = = = = = = = = = = = -  ET_ReadBlock  = = = = = = = = = = = = = = - */
 
 static char ET_ReadBlock_Doc[] = "Read a block from tape";
-
+/*
+   Returns a python string containing the data - string length 0 implies eof
+   p1 - ETape descriptor returned by open read
+ */
 static PyObject* ET_ReadBlock(PyObject *self, PyObject *args)
 {
   ET_descriptor *ET_desc;
@@ -136,6 +149,10 @@ static PyObject* ET_ReadBlock(PyObject *self, PyObject *args)
 /* = = = = = = = = = = = = = = -  ET_CloseRead  = = = = = = = = = = = = = = - */
 
 static char ET_CloseRead_Doc[] = "Close an input tape";
+/*
+   Returns a python list (bytes remaining on tape, #of bytes read, #of tape erros (as defined by drive)
+   p1 - ETape descriptor returned by open read
+ */
 
 static PyObject* ET_CloseRead(PyObject *self, PyObject *args)
 {
@@ -181,6 +198,12 @@ static PyObject* ET_CloseRead(PyObject *self, PyObject *args)
 
 static char ET_OpenWrite_Doc[] = "Open a tape drive for writing";
 
+/*
+   Returns an ETape desciptor
+   p1 - device name
+   p2 - # of file marks to move before opening
+   p3 - block size - writes are accumualted in buffer.
+ */
 static PyObject* ET_OpenWrite(PyObject *self, PyObject *args)
 {
   char *fname;
@@ -220,6 +243,9 @@ static PyObject* ET_OpenWrite(PyObject *self, PyObject *args)
 }
 /* = = = = = = = = = = = = = = -  ET_WriteBlock  = = = = = = = = = = = = = = - */
 /*
+   Returns void
+   p1 - ETape desciptor returned by openread
+   p2 - the data to write  
    ET_WriteBlock does not really write a block.  It copies the
    the data passed in the agruement to a buffer and if the buffer is full
    it writes a block.  It accepts any size input 0 and lengths grater than a 
@@ -262,7 +288,10 @@ static PyObject * ET_WriteBlock(PyObject *self, PyObject *args)
 /* = = = = = = = = = = = = = = -  ET_CloseWrite  = = = = = = = = = = = = = = - */
 
 static char ET_CloseWrite_Doc[] = "Close an output tape";
-
+/*
+    Returns python list - bytes remianing on tape, number of bytes written, number of write errors
+    p1 - ETape desciptor
+ */
 static PyObject* ET_CloseWrite(PyObject *self, PyObject *args)
 {
   ET_descriptor *ET_desc;
