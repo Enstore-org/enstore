@@ -815,6 +815,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 	  nl=0
 	  for l in response:
 	    if string.find(l,'Place cartridges in CAP') != -1 or \
+	       string.find(l,'Library error, Transport failure') != -1 or \
 	       string.find(l,'Clean drive') != -1 or \
 	       string.find(l,'Cleaned') != -1:
 	       if self.DEBUG:
