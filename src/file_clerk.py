@@ -512,6 +512,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          self.reply_to_caller(ticket)
          return
 
+     # fork as it may take quite a while to get the list
+     if self.fork() != 0:
+         return
      # get a user callback
      self.get_user_sockets(ticket)
      callback.write_tcp_obj(self.data_socket,ticket)
