@@ -770,11 +770,11 @@ FTT_rewind(  PyObject *self
 
 /*****************************************************************************
  */
-static char FTT_get_stats_doc[] = "invoke ftt_stats";
+static char FTT_get_stats_doc[] = "invoke ftt_get_stats";
 
 static PyObject*
 FTT_get_stats(  PyObject *self
-	  , PyObject *args )
+	      , PyObject *args )
 {
 	int		sts;	/* general status */
 	PyObject	*rr;
@@ -783,7 +783,7 @@ FTT_get_stats(  PyObject *self
 
 #   define GG g_stbuf_tp
     sts = ftt_get_stats( g_ftt_desc_tp, GG );
-    if (sts == -1) return raise_ftt_exception( "FTT_stats" );
+    if (sts == -1) return raise_ftt_exception( "FTT_get_stats" );
 
     rr = Py_BuildValue(  "{s:s,s:s,s:s,s:s,s:s,s:s,s:i}"
 		       , "remain_tape",  ftt_extract_stats(GG,FTT_REMAIN_TAPE)
@@ -793,6 +793,39 @@ FTT_get_stats(  PyObject *self
 		       , "block_number", ftt_extract_stats(GG,FTT_BLOCK_NUMBER)
 		       , "bloc_loc",     ftt_extract_stats(GG,FTT_BLOC_LOC)
 		       , "xferred_bytes",g_xferred_bytes );
+    return (rr);
+}
+
+
+
+/*****************************************************************************
+ */
+static char FTT_status_doc[] = "invoke ftt_stats";
+
+static PyObject*
+FTT_status(  PyObject *self
+	   , PyObject *args )
+{
+	int		timeout;
+	int		sts;	/* general status */
+	PyObject	*rr;
+
+    sts = PyArg_ParseTuple(args, "i", &timeout );
+    if (!sts) return (NULL);
+
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_status device not opened"));
+
+#   define GG g_stbuf_tp
+    sts = ftt_status( g_ftt_desc_tp, timeout );
+    if (sts == -1) return raise_ftt_exception( "FTT_status" );
+
+    rr = Py_BuildValue(  "{s:i,s:i,s:i,s:i,s:i,s:i}"
+		       , "ABOT",   sts&FTT_ABOT
+		       , "AEOT",   sts&FTT_AEOT
+		       , "AEW",    sts&FTT_AEW
+		       , "PROT",   sts&FTT_PROT
+		       , "ONLINE", sts&FTT_ONLINE
+		       , "BUSY",   sts&FTT_BUSY );
     return (rr);
 }
 
@@ -814,6 +847,7 @@ static PyMethodDef FTT_Methods[] = {
     { "locate", FTT_locate, 1, FTT_locate_doc },
     { "rewind", FTT_rewind, 1, FTT_rewind_doc },
     { "get_stats", FTT_get_stats, 1, FTT_get_stats_doc },
+    { "status", FTT_status, 1, FTT_status_doc },
     { 0, 0 }        /* Sentinel */
 };
 
