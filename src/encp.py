@@ -115,7 +115,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
                           ,pprint.pformat(done_ticket))
         if list :
             print p.pnfsFilename, p.bit_file_id, p.file_size,\
-                  done_ticket["external_label"],done_ticket["mover"],\
+                  done_ticket["external_label"]                     ,\
                   done_ticket["bof_space_cookie"]
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
