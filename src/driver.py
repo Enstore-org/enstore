@@ -199,9 +199,16 @@ class  FTTDriver(GenericDriver) :
 	    try:
 		status = FTT.status( 3 )
 		if status['ONLINE']: break
+                #print "try ",x," status ",status, " ",device
 	    except FTT.error:
 		pass
+            # it appears that one needs to close the device and reopen it to get the status
+            # to change. This doesn't make any sense, but does work for ftt v2_3.
+            # if you don't close/reopen, the status never changes, but a check outside of enstore
+            # using the same python calls succeeds right away after enstore reports failure - bakken 3/3/99
+            FTT.close()
 	    time.sleep( 1 )
+            FTT.open( device, 'r' )
 	    x = x -1
 	    pass
 	if x == 0:
