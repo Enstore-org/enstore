@@ -1167,11 +1167,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.work_at_movers.remove(w)
         if mticket['state'] == mover_constants.OFFLINE: # mover finished request and went offline
             return
-        if mticket['state'] == e_errors.MOVER_BUSY: # mover can not satisfy submitted request
-            if mticket.has_key('returned_work') and mticket['returned_work']:
-                # put this ticket back into the pending queue
-                rq, status = self.pending_work.put(mticket['returned_work'])
-            return
+        if mticket.has_key('returned_work') and mticket['returned_work']:
+            # put this ticket back into the pending queue
+            rq, status = self.pending_work.put(mticket['returned_work'])
+            # return
         
         # update suspected volume list
 	vol = self.update_suspect_vol_list(mticket['external_label'], 
