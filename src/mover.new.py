@@ -146,6 +146,7 @@ class MoverClient:
 	self.config = config
 	self.state = 'idle'
 	self.mode = ''			# will be either 'r' or 'w'
+	self.bytes_to_xfer = 0		# for status - needs to be initialized
 	self.pid = 0
 	self.vol_info = {'external_label':''}
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
