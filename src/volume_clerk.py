@@ -198,8 +198,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
-        if self.fork() != 0:
-            return
+        #if self.fork() != 0:
+        #    return
         vols = []
         try:
             if not self.get_user_sockets(ticket):
@@ -208,13 +208,19 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             callback.write_tcp_obj(self.data_socket, ticket)
             if not ticket.has_key("external_label"):
                 # fill in the list of volumes to delete
-                self.dict.cursor("open")
-                key,value=self.dict.cursor("first")
+                # REMOVE ME LATER
+                # The following commented out old style cursor usage
+                #   should be removed when the new style cursor usage is
+                #   proven to be stable
+                # self.dict.cursor("open")
+                # key,value=self.dict.cursor("first")
+                c = self.dict.newCursor()
+                key,value = c.first()
                 while key:
                     if value["system_inhibit"][0] == e_errors.DELETED:
                         vols.append(key)
-                    key,value=self.dict.cursor("next")
-                self.dict.cursor("close")
+                    key,value = c.next()
+                c.close()
             else:
                 if self.dict.has_key(ticket["external_label"]):
                     record = self.dict[ticket["external_label"]]
@@ -231,8 +237,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             callback.write_tcp_obj(self.control_socket, ticket)
             self.control_socket.close()
         except:
+            c.close()
             e_errors.handle_error()
-        os._exit(0)
+        return
             
 
     # add: some sort of hook to keep old versions of the s/w out
@@ -1302,15 +1309,20 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
-        if self.fork() != 0:
-            return
+        #if self.fork() != 0:
+        #    return
         try:
             if not self.get_user_sockets(ticket):
                 return
             ticket["status"] = (e_errors.OK, None)
             callback.write_tcp_obj(self.data_socket, ticket)
-            self.dict.cursor("open")
-            key,value=self.dict.cursor("first")
+            # REMOVE ME LATER
+            # The following commented out old style cursor usage should
+            #   removed once the new style usage is proven stable
+            # self.dict.cursor("open")
+            # key,value=self.dict.cursor("first")
+            c = self.dict.newCursor()
+            key,value = c.first()
             msg={}
             while key:
                 if ticket.has_key("not"): cond = ticket["not"]
@@ -1353,9 +1365,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                         msg["volumes"]= []
                         msg["volumes"].append(dict)
 
-                key,value=self.dict.cursor("next")
+                key,value = c.next()
             callback.write_tcp_obj_new(self.data_socket, msg)
-            self.dict.cursor("close")
+            c.close()
             self.data_socket.close()
 
             callback.write_tcp_obj(self.control_socket, ticket)
@@ -1363,7 +1375,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except:
             exc, msg, tb = sys.exc_info()
             e_errors.handle_error(exc,msg,tb)
-        os._exit(0)
+        return
 
     # get a port for the data transfer
     # tell the user I'm your volume clerk and here's your ticket
