@@ -1882,6 +1882,7 @@ class EnConfigurationPage(EnBaseHtmlDoc):
 	for server in dkeys:
 	    server_dict = data_dict[server]
 	    server_keys = sort_keys(server_dict)
+            server_keys.remove('status')
 	    first_line = 1
 	    for server_key in server_keys:
 		if first_line:
@@ -1891,7 +1892,14 @@ class EnConfigurationPage(EnBaseHtmlDoc):
 		    first_line = 0
 		else:
 		    tr = HTMLgen.TR(empty_data())
-		tr.append(HTMLgen.TD(server_key))
+                link = "config_params.html#%s"%(server_key,)
+                href=HTMLgen.Href(link,"%s"%(server_key,))
+                href.target="new_page"
+                #href = '<A HREF="http:/rip7.fnaal.gov/enstore/config_params.html#%s" target="new_page">%s</A>'%(server_key, server_key)
+                #href=HTMLgen.Href(link)
+                #href.append('tagret=new_page')
+		tr.append(HTMLgen.TD(href))
+		#tr.append(HTMLgen.TD(href))
 		tr.append(HTMLgen.TD(server_dict[server_key]))
 		cfg_table.append(tr)
 		
