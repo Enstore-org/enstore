@@ -322,12 +322,6 @@ def unset_route(dest):
     if not interfaces:
         return
 
-    for interface in get_interfaces():
-	if interface_ip == config['interface'][interface]['ip']:
-	    break
-    else:
-        return
-
     #Attempt to remove the route.
     err=enroute.routeDel(dest)
 
