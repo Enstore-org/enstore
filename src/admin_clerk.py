@@ -154,6 +154,7 @@ class AdminClerk(AdminClerkMethods, generic_server.GenericServer) :
         #   get our port and host from the name server
         #   exit if the host is not this machine
         keys = self.csc.get("admin_clerk")
+        Trace.init(keys["logname"])
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']))
         # get a logger

@@ -789,6 +789,7 @@ class VolumeClerk(VolumeClerkMethods,\
         #   get our port and host from the name server
         #   exit if the host is not this machine
         keys = self.csc.get("volume_clerk")
+        Trace.init(keys["logname"])
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']))
         # get a logger

@@ -43,6 +43,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.mc_config = self.csc.get(medch)
+        Trace.init(self.mc_config["logname"])
         dispatching_worker.DispatchingWorker.__init__(self, \
 	                 (self.mc_config['hostip'], self.mc_config['port']))
         # get a logger
