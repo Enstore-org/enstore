@@ -74,7 +74,7 @@ egrep -v "^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read
   lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
   if [ $lib = '9940' -o $lib = 'eagle' -o $lib = 'cdf' -o $lib = 'test' ];then continue; fi
   if [ $lib = 'blank-d0-9940' -o $lib = 'blank-9940' -o $lib = 'blank-9840' ];then continue; fi
-  if [ `echo $lib | egrep -ic 'null|disk|shelf` -ne 0 ]; then continue; fi
+  if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
   echo $line
 done
 echo
@@ -128,7 +128,7 @@ egrep -v "^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read
   vol=`echo $line| awk '{print $1}'`
   lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
   if [ $lib = 'cdf' -o $lib = 'test' ];then continue; fi
-  if [ `echo $lib | egrep -ic 'null|disk|shelf` -ne 0 ]; then continue; fi
+  if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
   echo $line
 done
 echo
@@ -153,16 +153,14 @@ echo "Tapes in Enstore, but not in the towers"
 egrep -v "^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read line; do
   vol=`echo $line| awk '{print $1}'`
   lib=`echo $line| sed -e 's/.*)//'|awk '{print $1}'`
-  if [ `echo $lib | grep -ic null` -ne 0 ]; then continue; fi
-  if [ `echo $lib | grep -ic shelf` -ne 0 ]; then continue; fi
+  if [ `echo $lib | egrep -ic 'null|disk|shelf` -ne 0 ]; then continue; fi
   if [ `echo $lib | grep -ic mezsilo` -ne 0 ]; then continue; fi
-  if [ `echo $line | grep -c transit` -ne 0 ]; then continue; fi
-  if [ `echo $vol | grep -c ^IA` -ne 0 ]; then continue; fi
   n=`grep $vol /diska/tape-inventory/AML2-VOLUMES.html | wc | awk '{print $1}'`
   if [ $n -eq 0 ]; then
     echo 'Not in tower' $line
   elif [ $n -gt 1 ]; then
     echo 'In more than 1 tower' $line
+    grep $vol /diska/tape-inventory/AML2-VOLUMES.html
   fi
 done
 
