@@ -78,27 +78,27 @@ class GenericAlarm:
     # compare the passed in info to see if it the same as that of the alarm
     def compare(self, host, severity, root_error, source, alarm_info):
         if (self.host == host and 
-            self.severity == e_errors.sevdict[severity] and 
             self.root_error == root_error and
+            self.severity == severity and
             self.source == source):
-            # now that all that is done we can compare the dictionary to see
-            # if it is the same
-            if len(alarm_info) == len(self.alarm_info):
-                keys = self.alarm_info.keys()
-                for key in keys:
-                    if alarm_info.has_key(key):
-                        if not self.alarm_info[key] == alarm_info[key]:
-                            # we found something that does not match
-                            break
-                    else:
-                        # there is no corresponding key
-                        break
-                else:
-                    # all keys matched between the two dicts
-                    return MATCH
+	    # now that all that is done we can compare the dictionary to see
+	    # if it is the same
+	    if len(alarm_info) == len(self.alarm_info):
+		keys = self.alarm_info.keys()
+		for key in keys:
+		    if alarm_info.has_key(key):
+			if not self.alarm_info[key] == alarm_info[key]:
+			    # we found something that does not match
+			    break
+		    else:
+			# there is no corresponding key
+			break
+		else:
+		    # all keys matched between the two dicts
+		    return MATCH
 
-                return NO_MATCH
-            return NO_MATCH
+		return NO_MATCH
+	    return NO_MATCH
         return NO_MATCH
 
     # return the alarms unique id
@@ -114,13 +114,7 @@ class Alarm(GenericAlarm):
         if alarm_info is None:
             alarm_info = {}
         self.host = host
-        # do not let the severity (which is actually a number), point outside
-        # of the dictionary
-        if severity >= len(e_errors.sevdict):
-            severity = len(e_errors.sevdict)-1
-        elif severity < 0:
-            severity = 0
-        self.severity = e_errors.sevdict[severity]
+        self.severity = severity
         self.root_error = root_error
         self.pid = pid
         self.uid = uid

@@ -15,7 +15,7 @@ import base64                           # to send pickled dictionary as  string
 import cPickle                          # to preserve dictionaries and lists
 import cStringIO		# to make freeze happy
 import copy_reg			# to make freeze happy
-
+import types
 import string
 
 # message types.  a message type will be appended to every message so that
@@ -62,7 +62,19 @@ def log( severity, msg, msg_dict = MSG_DICT_DFLT, msg_type = MSG_TYPE_DFLT ):
     return None
 
 def alarm( severity, root_error, rest={} ):
-    rest['severity'] = severity
+    # make sure it is a valid severity
+    if type(severity) == types.StringType:
+	skeys = e_errors.sevdict.keys()
+	for skey in skeys:
+	    if severity == e_errors.sevdict[skey]:
+		rest['severity'] = severity
+		break
+	else:
+	    rest['severity'] = e_errors.sevdict[e_errors.MISC]
+    else:
+	# severity was an int
+	rest['severity'] = e_errors.sevdict.get(severity, 
+						e_errors.sevdict[e_errors.MISC])
     rest['root_error'] = root_error
     trace( e_errors.ALARM, "%s"%rest, rest )
     return None

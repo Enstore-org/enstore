@@ -369,7 +369,7 @@ class Interface:
             elif opt == "--root_error" :
                 self.root_error = value
             elif opt == "--severity" :
-                self.severity = int(value)
+                self.severity = value
             elif opt == "--mc" :
                 self.mcs = string.split(value, ",")
             elif opt == "--keep" :
