@@ -41,16 +41,15 @@ event_relay_host = os.environ.get('ENSTORE_CONFIG_HOST')
 event_relay_port = 55510
 event_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-debug=0
 
 def notify(msg):
     if not event_relay_host:
         return
     try:
         event_socket.sendto(msg, (event_relay_host, event_relay_port))
-    except:
-        if debug:
-            print "msg send failed", event_relay_host, event_relay_port
+    except: #this has to be lightweight and foolproof
+        ##print "msg send failed", event_relay_host, event_relay_port
+        pass
 
     
 def trunc(x):
