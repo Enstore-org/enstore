@@ -576,7 +576,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	for skey in keys:
 	    server = self.server_d[skey]
 	    print repr(server)
-	print self.event_relay
+	print repr(self.event_relay)
 	if self.plot_thread and self.plot_thread.isAlive():
 	    print "plot thread is alive"
 	print ""
