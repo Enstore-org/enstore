@@ -78,6 +78,13 @@ dc04node=$d0enmvr18a
 dc05node=$d0enmvr18a
 dc06node=$d0enmvr18a
 
+dm07node=$d0enmvr14a
+dm08node=$d0enmvr14a
+dm09node=$d0enmvr15a
+dm10node=$d0enmvr15a
+dm11node=$d0enmvr16a
+dm12node=$d0enmvr16a
+
 de13node=$d0enmvr4a
 de14node=$d0enmvr4a
 
@@ -142,6 +149,13 @@ dc03device=/dev/rmt/tps5d1n
 dc04device=/dev/rmt/tps4d2n
 dc05device=/dev/rmt/tps1d3n
 dc06device=/dev/rmt/tps0d4n
+
+dm07device=/dev/rmt/tps0d1n
+dm08device=/dev/rmt/tps0d2n
+dm09device=/dev/rmt/tps0d1n
+dm10device=/dev/rmt/tps0d2n
+dm11device=/dev/rmt/tps0d1n
+dm12device=/dev/rmt/tps0d2n
 
 de13device=/dev/rmt/tps2d4n #not connected right now
 de14device=/dev/rmt/tps3d3n #not connected right now
@@ -224,6 +238,7 @@ case $drive in
 
   de01|de02|\
   dc03|dc04|dc05|dc06|\
+  dm07|dm08|dm09|dm10|dm11|dm12|\
   de13|de14|\
   dc15|dc16|dc17|\
   dc20|dc21|dc22|dc23|dc24|dc25|dc26|dc27|dc28|dc29|\
