@@ -1,0 +1,35 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+   <SystemView ID="Hardware.D0">
+      <System ID="Hardware" Cluster="d0ensrv1"/>
+      <System ID="Hardware" Cluster="d0ensrv2"/>
+      <System ID="Hardware" Cluster="d0ensrv3"/>
+      <System ID="Hardware" Cluster="d0ensrv4"/>
+      <System ID="Hardware" Cluster="d0ensrv5"/>
+      <System ID="Hardware" Cluster="d0enmvr1a"/>
+      <System ID="Hardware" Cluster="d0enmvr2a"/>
+      <System ID="Hardware" Cluster="d0enmvr3a"/>
+      <System ID="Hardware" Cluster="d0enmvr4a"/>
+      <System ID="Hardware" Cluster="d0enmvr5a"/>
+      <System ID="Hardware" Cluster="d0enmvr6a"/>
+      <System ID="Hardware" Cluster="d0enmvr7a"/>
+      <System ID="Hardware" Cluster="d0enmvr8a"/>
+      <System ID="Hardware" Cluster="d0enmvr9a"/>
+      <System ID="Hardware" Cluster="d0enmvr10a"/>
+      <System ID="Hardware" Cluster="d0enmvr11a"/>
+      <System ID="Hardware" Cluster="d0enmvr12a"/>
+      <System ID="Hardware" Cluster="d0enmvr13a"/>
+      <System ID="Hardware" Cluster="d0enmvr14a"/>
+      <System ID="Hardware" Cluster="d0enmvr15a"/>
+      <System ID="Hardware" Cluster="d0enmvr16a"/>
+      <System ID="Hardware" Cluster="d0enmvr17a"/>
+      <System ID="Hardware" Cluster="d0enmvr18a"/> 
+      <System ID="Hardware" Cluster="d0enmvr19a"/> 
+      <System ID="Hardware" Cluster="d0enmvr20a"/> 
+      <System ID="Hardware" Cluster="d0enmvr21a"/> 
+      <System ID="Hardware" Cluster="d0enmvr22a"/> 
+      <System ID="Hardware" Cluster="d0ensrv0"/>
+   </SystemView>
+</NGOPConfig>
+

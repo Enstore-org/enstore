@@ -1,0 +1,13 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+  <System ID="BigASwitch" Cluster="D0EN">
+     <MonitoredElement ID="tcp"  Type="Network" Host="d0ensrv1"/>
+     <MonitoredElement ID="icmp" Type="Network" Host="d0ensrv1"/>
+     <MonitoredElement ID="snmp" Type="Network" Host="d0ensrv1"/>
+     <MonitoredElement ID="ip"   Type="Network" Host="d0ensrv1"/>
+     <MonitoredElement ID="udp"  Type="Network" Host="d0ensrv1"/>
+     <MonitoredElement ID="if"   Type="Network" Host="d0ensrv1"/>
+  </System>
+</NGOPConfig>
+
