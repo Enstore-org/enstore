@@ -310,6 +310,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.shortname = name
         self.unique_id = None #Unique id of last transfer, whether success or failure
         self.notify_transfer_threshold = 2*1024*1024
+        self._state_lock = threading.Lock()
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
             
@@ -323,6 +324,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             pass #don't want any errors here to stop us
         self.__dict__[attr] = val
 
+    def lock_state(self):
+        self._state_lock.acquire()
+
+    def unlock_state(self):
+        self._state_lock.release()
+        
     def start(self):
         name = self.name
         self.t0 = time.time()
@@ -488,29 +495,32 @@ class Mover(dispatching_worker.DispatchingWorker,
     def update(self, state=None, reset_timer=None, error_source=None):
         if state is None:
             state = self.state
+        
         Trace.trace(20,"update: %s" % (state_name(state)))
+        inhibit = 0
         
         if not hasattr(self,'_last_state'):
             self._last_state = None
 
         now = time.time()
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time-now < 5:
-            # Don't send this HAVE_BOUND!  We're just teasing the poor LM.
-            Trace.trace(20, "not sending HAVE_BOUND")
-            tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
-   
+            #Don't tease the library manager!
+            inhibit = 1
+        
         if state in (CLEANING, DRAINING, OFFLINE, ERROR, SEEK, MOUNT_WAIT, DISMOUNT_WAIT):
             if state == self._last_state:
                 return
         if reset_timer:
             self.reset_interval_timer()
-        ticket = self.format_lm_ticket(state=state, error_source=error_source)
-        for lib, addr in self.libraries:
-            if state is OFFLINE and self._last_state is OFFLINE:
-                continue
-            if state != self._last_state:
-                Trace.trace(10, "Send %s to %s" % (ticket, addr))
-            self.udpc.send_no_wait(ticket, addr)
+
+        if not inhibit:
+            ticket = self.format_lm_ticket(state=state, error_source=error_source)
+            for lib, addr in self.libraries:
+                if state is OFFLINE and self._last_state is OFFLINE:
+                    continue
+                if state != self._last_state:
+                    Trace.trace(10, "Send %s to %s" % (ticket, addr))
+                self.udpc.send_no_wait(ticket, addr)
 
         self._last_state = self.state
         self.check_dismount_timer()
@@ -524,11 +534,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.run_in_thread('delayed_update_thread', self._do_delayed_update)
         
     def check_dismount_timer(self):
+        self.lock_state()
         ## See if the delayed dismount timer has expired
         now = time.time()
         if self.state is HAVE_BOUND and self.dismount_time and now>self.dismount_time:
+            self.state = DISMOUNT_WAIT
+            self.unlock_state()
             Trace.trace(10,"Dismount time expired %s"% (self.current_volume,))
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
+        else:
+            self.unlock_state()
             
     def idle(self):
         self.state = IDLE
@@ -556,12 +571,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(21, "return_work_to_lm failed %"%(msg,))
             self.malformed_ticket(ticket, "[lm][address]")
             return
+
         ticket = self.format_lm_ticket(state=ERROR,
                                        error_info=(e_errors.MOVER_BUSY, state_name(self.state)),
                                        returned_work=ticket)
-        Trace.trace(21, "return_work_to_lm: sending to %s", (lm_address))
-        r=self.udpc.send_no_wait(ticket, lm_address)
-        Trace.trace(21, "return_work_to_lm: send returns %s" % (r,))
+        self.udpc.send_no_wait(ticket, lm_address)
 
         
     def read_client(self):
@@ -809,12 +823,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.setup_transfer(ticket, mode=READ)
 
     def setup_transfer(self, ticket, mode):
+        self.lock_state()
         Trace.trace(10, "setup transfer")
-        ##        pprint.pprint(ticket)
+        ## pprint.pprint(ticket)
         if self.state not in (IDLE, HAVE_BOUND):
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
+            self.unlock_state()
             return 0
+        #prevent a delayed dismount from kicking in right now
+        if self.dismount_time:
+            self.dismount_time = None
+        self.unlock_state()
+        
         ### cgw - abstract this to a check_valid_filename method of the driver ?
         if self.config['driver'] == "NullDriver": 
             filename = ticket['wrapper'].get("pnfsFilename",'')
@@ -915,7 +936,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.run_in_thread('media_thread', self.mount_volume, args=(volume_label,),
                                after_function=self.position_media)
-
+        
     def error(self, msg, err=e_errors.ERROR):
         self.last_error = (str(err), str(msg))
         Trace.log(e_errors.ERROR, str(msg)+ " state=ERROR")
@@ -938,7 +959,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.error("cannot open tape device for positioning")
             return
         self.state = SEEK  ##XXX start a timer here
-
         eod = self.vol_info['eod_cookie']
         if eod=='none':
             eod = None
@@ -1084,7 +1104,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.state = IDLE
         if self.state == HAVE_BOUND:
             self.update(reset_timer=1)
-
         self.delayed_update()
 
 
@@ -1238,7 +1257,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if error_info:
                 status = error_info
         elif state in (ERROR, OFFLINE):
-            work = "Mover_error"  ## XXX If I'm offline should I send mover_error? I don't think so....
+            work = "mover_error"  ## XXX If I'm offline should I send mover_error? I don't think so....
             if error_info is None:
                 status = self.last_error
             else:
@@ -1336,14 +1355,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 if save_state not in (DRAINING, OFFLINE):
                     self.idle()
-                    
         ###XXX aml-specific hack! Media changer should provide a layer of abstraction
         ### on top of media changer error returns, but it doesn't  :-(
         elif status[-1] == "the drive did not contain an unloaded volume":
             self.idle()
         else:
             self.error(status[-1], status[0])
-            
+        
     def mount_volume(self, volume_label, after_function=None):
         self.dismount_time = None
         self.state = MOUNT_WAIT
