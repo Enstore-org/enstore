@@ -206,6 +206,26 @@ ftt_init_stats(ftt_descriptor d){
 	return res;
 }
 
+ftt_statdb_buf *
+ftt_init_statdb(ftt_descriptor d) {
+    ftt_statdb_buf *res;
+    int ires;
+
+    ENTERING("ftt_init_statdb");
+    PCKNULL("ftt_descriptor",d);
+
+    res = ftt_alloc_statdbs();
+    ires = ftt_get_statdb (d, res[0]);
+    if (ires <0) {
+       ftt_free_statdbs (res);
+       ftt_errno = FTT_ENOMEM;
+       return 0;
+    }
+    return res;
+}
+    
+
+
 ftt_stat_buf *
 ftt_alloc_stats() {
     ftt_stat_buf *res;
@@ -221,6 +241,24 @@ ftt_alloc_stats() {
     return res;
 }
 
+ftt_statdb_buf *
+ftt_alloc_statdbs() {
+    ftt_statdb_buf *res;
+    int i;
+
+    res = malloc(sizeof(ftt_statdb_buf)*FTT_MAX_NUMDB);
+    if (0 == res) {
+	ftt_eprintf("ftt_init_statdbs unable to allocate memory errno %d", errno);       
+	ftt_errno = FTT_ENOMEM;
+        return 0;
+    }
+    for (i = 0; i < FTT_MAX_NUMDB; i++) {
+        res[i] = ftt_alloc_statdb();
+    }
+    return res;
+}
+
+
 void
 ftt_free_stats( ftt_stat_buf *res ) {
     ftt_free_stat(res[LAST]);
@@ -228,12 +266,22 @@ ftt_free_stats( ftt_stat_buf *res ) {
     free(res);
 }
 
+void
+ftt_free_statdbs(ftt_statdb_buf *res) {
+    int i;
+
+    for (i = 0; i < FTT_MAX_NUMDB; i++) {
+        ftt_free_statdb(res[i]);
+    }
+    free (res);
+}
+
 int
 ftt_update_stats(ftt_descriptor d, ftt_stat_buf *bp){
 	ftt_stat_buf delta, new_cur, tmp;
 	int res;
 
-        ENTERING("ftt_update_stats");
+        ENTERING("ftt_update_stats"); 
 	CKNULL("ftt_descriptor", d);
 	CKNULL("ftt_stat_buf pair pointer", bp);
 	CKNULL("first ftt_stat_buf", bp[0]);
@@ -265,6 +313,26 @@ ftt_update_stats(ftt_descriptor d, ftt_stat_buf *bp){
 	return 0;
 }
 
+int
+ftt_update_statdb(ftt_descriptor d, ftt_statdb_buf *bp) {
+        int i, j, res;
+    
+
+        ENTERING("ftt_update_statdbs");
+	CKNULL("ftt_descriptor", d);
+	CKNULL("ftt_statdb_buf pointer", bp);
+	CKNULL("ftt_statdb_buf pointer", bp[i]);
+
+       for (i = (FTT_MAX_NUMDB-1); i > 0; i--) {
+           for (j = 0; j < FTT_MAX_STATDB; j++) {
+               bp[i]->value[j] = bp[i-1]->value[j];
+           }
+       }
+       res = ftt_get_statdb (d,bp[0]);
+
+}        
+
+
 char *ftt_stat_names[] = {
  /* FTT_VENDOR_ID	 0 */ "FTT_VENDOR_ID",
  /* FTT_PRODUCT_ID	 1 */ "FTT_PRODUCT_ID",
@@ -274,7 +342,7 @@ char *ftt_stat_names[] = {
  /* FTT_READ_COUNT	 5 */ "FTT_READ_COUNT",
  /* FTT_WRITE_COUNT	 6 */ "FTT_WRITE_COUNT",
  /* FTT_READ_ERRORS	 7 */ "FTT_READ_ERRORS",
- /* FTT_WRITE_ERRORS	 8 */ "FTT_WRITE_ERRORS",
+ /* FTT_WRITE_ERRORS	 8 */ "FTT_WRITE_ERR'S",
  /* FTT_READ_COMP	 9 */ "FTT_READ_COMP",
  /* FTT_FILE_NUMBER	10 */ "FTT_FILE_NUMBER",
  /* FTT_BLOCK_NUMBER	11 */ "FTT_BLOCK_NUMBER",
@@ -302,7 +370,7 @@ char *ftt_stat_names[] = {
  /* FTT_WRITE_COMP	33 */ "FTT_WRITE_COMP",
  /* FTT_TRACK_RETRY	34 */ "FTT_TRACK_RETRY",
  /* FTT_UNDERRUN	35 */ "FTT_UNDERRUN",
- /* FTT_MOTION_HOURS	36 */ "FTT_MOTION_HOURS",
+ /* FTT_MOTION_HOURS	36 */ "FTT_MOTION_H-RS",
  /* FTT_POWER_HOURS	37 */ "FTT_POWER_HOURS",
  /* FTT_TUR_STATUS	38 */ "FTT_TUR_STATUS",
  /* FTT_BLOC_LOC	39 */ "FTT_BLOC_LOC",
@@ -312,8 +380,7 @@ char *ftt_stat_names[] = {
  /* FTT_TNP		43 */ "FTT_TNP",
  /* FTT_SENSE_KEY	44 */ "FTT_SENSE_KEY",
  /* FTT_TRANS_SENSE_KEY	45 */ "FTT_TRANS_SENSE_KEY",
- /* FTT_RETRIES		46 */ "FTT_RETRIES",
- /* FTT_FAIL_RETRIES	47 */ "FTT_FAIL_RETRIES",
+ /* FTT_RETRIES		46 */ "FTT_F_RETRIES",
  /* FTT_RESETS		48 */ "FTT_RESETS",
  /* FTT_HARD_ERRORS	49 */ "FTT_HARD_ERRORS",
  /* FTT_UNC_WRITE	50 */ "FTT_UNC_WRITE",
@@ -343,6 +410,126 @@ ftt_dump_stats(ftt_stat_buf b, FILE *pf) {
 	}
 	fprintf(pf, "- is -\n");
 	return 0;
+}
+
+int
+ftt_dump_statdb(ftt_statdb_buf b, FILE *pf) {
+	int i, k = 0;
+
+	ENTERING("ftt_dump_statdb");
+	CKNULL("statitics buffer pointer", b);
+	CKNULL("stdio file handle", pf);
+
+        for (i = 0; ftt_stat_names[i] != 0; i++) {
+            if (ftt_numeric_tab[i]) {
+               fprintf (pf, "%s\t%s\n",ftt_stat_names[i], b->value[k]);
+               k++;
+            }
+        }
+        fprintf (pf,"- is -\n");
+	return 0;
+}
+
+
+int
+ftt_dump_statdbs(ftt_statdb_buf *b, FILE *pf) {
+        int i, j, k;
+    
+ 	ENTERING("ftt_dump_statdbs"); 
+	CKNULL("statitics buffer pointer", b);
+	CKNULL("stdio file handle", pf);
+
+        for (k = 0; k <= 3; k++) {
+            fprintf (pf, "%s\t %s\n",ftt_stat_names[k], b[0]->value[k]);
+        }
+
+        for (i = 4; ftt_stat_names[i] != 0; i++) {
+            if (ftt_numeric_tab[i]) {
+               fprintf (pf, "%s\t",ftt_stat_names[i]);
+               for (j = 0; j < FTT_MAX_NUMDB; j++) {
+                   fprintf (pf, "%12s\t",b[j]->value[k]);
+               }
+               k++;
+            fprintf (pf, "\n");
+            }
+        }
+        fprintf (pf,"- is -\n");
+        return 0;
+}
+
+int 
+ftt_dump_rsdata(ftt_descriptor d, FILE *pf) {
+        int i;
+        unsigned char buf[248];
+        int lng;
+        int res;
+
+        ENTERING("ftt_dump_srdata");
+	CKNULL("ftt_descriptor", d);
+	CKNULL("stdio file handle", pf);
+
+        memset(buf,0,sizeof(buf));
+
+        static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00, 18, 0x00};
+        res = ftt_do_scsi_command(d, "Req Sense:", cdb_req_sense, 6, buf, 18, 10, 0);
+        if (res < 0) {
+        return -1;
+        }
+
+
+        fprintf(pf, "Request Sense Data\n");
+        fprintf(pf, "|_____|_____|_____|_____|_____|_____|_____|_____|\n");
+        fprintf(pf, "|  %x  |                   %02x                    |\n",buf[0]&0x80>>7, buf[0]&0x7f);
+        fprintf(pf, "|                         %02x                    |\n",buf[1]);
+        fprintf(pf, "|  %x  |  %x  |  %x  |  %x  |              %x        |\n",buf[2]&0x80>>7, buf[2]&0x40>>6, buf[2]&0x20>>5,
+								               buf[2]&0x10>>4, buf[2]&0xf);
+        for (i = 3; i <= 14; i++) {
+            fprintf(pf, "|                         %02x                    |\n",buf[i]);
+        }
+        fprintf(pf, "|  %x  |  %x  |     %x     |  %x  |        %x        |\n",buf[15]&0x80>>7, buf[15]&0x40>>6, buf[15]&0x30>>4,
+									       buf[15]&0x8,     buf[15]&0x7);
+        for (i = 16; i <= 18; i++) {
+           fprintf(pf, "|                         %02x                    |\n",buf[i]); 
+        }
+           lng = buf[7] + 7;
+        if ((d->prod_id[1] == 'E') || (d->prod_id[2] == 'm')) {
+           for (i = 19; i <= 21; i++) {
+               fprintf(pf, "|  %x  |  %x  |  %x  |  %x  |  %x  |  %x  |  %x  |  %x  |\n",buf[i]&0x80>>7, buf[i]&0x40>>6, buf[i]&0x20>>5,
+											 buf[i]&0x10>>4, buf[i]&0x8, buf[i]&0x4, 
+											 buf[i]&0x2, buf[i]&0x1);
+           }
+           for (i = 22; i <= lng; i++) {
+               fprintf(pf, "|                         %02x                    |\n",buf[i]);
+           }
+        }   
+        if (d->prod_id[0] == 'U') {
+           fprintf(pf, "|                         %02x                    |\n",buf[19]);
+           fprintf(pf, "|                         %02x                    |\n",buf[20]);
+           fprintf(pf, "|                       |  %x  |     |     |     |\n",buf[21]&0x8);
+           for (i = 22; i <= lng; i++) {
+               fprintf(pf, "|                         %02x                    |\n",buf[i]); 
+           }
+        }
+        if (d->prod_id[1] == '9') {
+           for (i = 19; i <= 23; i++) {
+               fprintf(pf, "|                         %02x                    |\n",buf[i]);
+           }
+           fprintf(pf, "|          %x            |  %x  |  %x  |  %x  |  %x  |\n",buf[24]&0xf>>4, buf[24]&0x8, buf[24]&0x4,
+										 buf[24]&0x2, buf[24]&0x1);
+           fprintf(pf, "|  %x  |    %x      |  %x  |  %x  |  %x  |  %x  |  %x  |\n",buf[25]&0x80>>7, buf[25]&0x60>>5, buf[25]&0x10>>4, 
+										buf[25]&0x8, buf[25]&0x4, buf[25]&0x2, buf[25]&0x1);
+        }
+        if (d->prod_id[0] == 'D') {
+           for (i = 19; i <= lng; i++) {
+               fprintf(pf, "|                         %02x                    |\n",buf[i]);
+           }
+        }
+
+          
+
+        fprintf (pf, "|_______________________________________________|\n");
+        
+        return 0;
 }
 
 int

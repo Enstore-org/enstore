@@ -72,10 +72,15 @@ int ftt_t_set_part_size(int, char **); 	int ftt_t_get_partitions(int, char**);
 int ftt_t_set_nparts(int, char **); 
 int ftt_t_set_maxparts(int, char **); 
 int ftt_t_dump_partitions(int, char **); int ftt_t_write_partitions(int, char**);
-int ftt_t_cur_part(int, char**); 	int ftt_t_skip_part(int, char**);
-int ftt_t_undump_partitions(int, char**);
-int ftt_t_set_mount_partition(int, char **);
-int ftt_t_name_to_density(int, char **);
+int ftt_t_cur_part(int, char**); 	 int ftt_t_skip_part(int, char**);
+int ftt_t_undump_partitions(int, char**);int ftt_t_name_to_density(int, char **); 
+int ftt_t_set_mount_partition(int, char **); 
+
+
+int ftt_t_dump_statdb(int, char **);	int ftt_t_init_statdb(int, char **); 
+int ftt_t_update_statdb (int, char **);	int ftt_t_get_statdb(int, char **);
+int ftt_t_dump_rsdata(int, char **);	int ftt_t_extract_statdb(int, char **); 
+int ftt_t_remain_stats(int, char **);   int ftt_t_dump_statdbs(int, char **);
 
 
 /*=============================================================================
@@ -120,7 +125,7 @@ ftt_t_cmd_table_t ftt_t_my_cmds[] = {
 	"ftt_get_partitions",	ftt_t_get_partitions,
 	"ftt_get_position",	ftt_t_get_position,
 	"ftt_get_stats",	ftt_t_get_stats,
-	"ftt_init_stats",	ftt_t_init_stats,
+        "ftt_init_stats",	ftt_t_init_stats,	
 	"ftt_inquire",		ftt_t_inquire,
 	"ftt_list_all",		ftt_t_list_all,
 	"ftt_list_supported",	ftt_t_list_supported,
@@ -162,6 +167,15 @@ ftt_t_cmd_table_t ftt_t_my_cmds[] = {
 	"ftt_write_tblock",	ftt_t_write_tblock,
 	"ftt_write_vol_label",	ftt_t_write_vol_label,
 	"ftt_writefm",		ftt_t_writefm,
+
+	"ftt_dump_statdb",	ftt_t_dump_statdb,
+        "ftt_init_statdb",	ftt_t_init_statdb,
+        "ftt_update_statdb",	ftt_t_update_statdb,
+        "ftt_get_statdb",	ftt_t_get_statdb,
+	"ftt_dump_rsdata",	ftt_t_dump_rsdata,
+	"ftt_extract_statdb",	ftt_t_extract_statdb,
+	"ftt_remain_stats",	ftt_t_remain_stats,
+   	"ftt_dump_statdbs",	ftt_t_dump_statdbs,
 	NULL,			0};
 
 /* Get command line arguments

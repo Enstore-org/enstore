@@ -74,6 +74,8 @@ extern int ftt_numeric_tab[];	/* table for ftt_{add,sub}_stats */
 #define FTT_CUR_PART		55
 #define FTT_MOUNT_PART		56
 #define FTT_MAX_STAT		57
+#define FTT_MAX_NUMDB		50
+#define FTT_MAX_STATDB		26
 
 extern int ftt_errno;
 extern int ftt_debug;

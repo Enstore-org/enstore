@@ -9,6 +9,18 @@
 ** See docs for what they do, arguments, etc.
 */
 
+extern ftt_statdb_buf	ftt_alloc_statdb(void);
+extern int		ftt_free_statdb(ftt_statdb_buf);
+extern void 		ftt_free_statdbs(ftt_statdb_buf *);
+extern ftt_statdb_buf	*ftt_alloc_statdbs(void);
+extern int		ftt_get_statdb(ftt_descriptor, ftt_statdb_buf);
+extern int 		ftt_dump_statdbs(ftt_statdb_buf *, FILE*);
+extern int 		ftt_dump_statdb(ftt_statdb_buf, FILE*);
+extern int 		ftt_dump_rsdata(ftt_descriptor, FILE*);
+extern ftt_statdb_buf *	ftt_init_statdb(ftt_descriptor);
+extern int 		ftt_update_statdb(ftt_descriptor,ftt_statdb_buf *);
+extern int		ftt_extract_statdb(ftt_statdb_buf *, FILE *, int);
+
 extern ftt_stat_buf	ftt_alloc_stat(void);
 extern ftt_stat_buf	*ftt_alloc_stats(void);
 extern int		ftt_all_scsi(ftt_descriptor);

@@ -8,7 +8,7 @@ ftt_dump(FILE *pf, unsigned char *pc, int n, int do_offsets, int do_chars) {
     int i, j;
 
     if( 0 == pc ){
-        fprintf(stderr,"(null)");
+        fprintf(stderr,"0");
         return 0;
     }
     for (i = 0; i < n-16; i += 16) {

@@ -123,6 +123,10 @@ typedef struct {
 typedef struct {
 	char *value[FTT_MAX_STAT];
 } ftt_stat, *ftt_stat_buf;
+ 
+typedef struct {
+        char *value[FTT_MAX_STATDB];
+} ftt_statdb, *ftt_statdb_buf;
 
 /* internally used routines */
 extern char *ftt_get_os(void);			/* get os release */

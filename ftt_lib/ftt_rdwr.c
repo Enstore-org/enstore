@@ -148,10 +148,23 @@ mywrite( int fd, char *buf, int len ) {
 int
 ftt_write( ftt_descriptor d, char *buf, int length ) {
     int res;
+    int status;
+    int fileno;
+    int blockno;
+    static ftt_stat_buf		statbuf = NULL;
+    char	*peot;
+    char 	*eom; 	
 
     CKOK(d,"ftt_write",1,0);
     CKNULL("ftt_descriptor", d);
     CKNULL("data buffer pointer", buf);
+
+
+   statbuf = ftt_alloc_stat();
+   if (!statbuf) {
+      fprintf (stderr,"Could not allocate stat buffer \n");
+      return 1;
+   }
 
     if ( 0 != (d->scsi_ops & FTT_OP_WRITE)) {
 	DEBUG4(stderr,"SCSI pass-thru\n");
@@ -163,6 +176,9 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	}
 	res = ftt_do_scsi_command(d,"write",ftt_cdb_write, 6, 
 				(unsigned char *)buf, length, 60,1);
+        if (res == -1) {
+        }
+
 	res = ftt_describe_error(d, FTT_OPN_WRITE, "ftt_write", res, res, "a write SCSI command", 0);
     } else {
 		DEBUG4(stderr,"System Call\n");
@@ -178,6 +194,18 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 #ifndef WIN32
 
 		res = write(d->file_descriptor, buf, length);
+                if (res == -1) {
+                   status = ftt_get_stats (d, statbuf);
+                   eom = ftt_extract_stats (statbuf,16);
+                   peot = ftt_extract_stats (statbuf,17);
+
+                   if (peot[0] == '1' || eom[0] == '1') {
+                      status = ftt_skip_fm (d, -1);
+                      status = ftt_skip_fm (d, 1);
+                      res = 0;
+                   }
+                }
+
 		res = ftt_translate_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write() system call",0);
 #else
 		{ /* ---------------- this is the WIN-NT part -----------------*/

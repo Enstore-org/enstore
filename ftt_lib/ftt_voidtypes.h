@@ -5,4 +5,4 @@
 
 typedef void *ftt_descriptor;
 typedef void *ftt_stat_buf;
-
+typedef void *ftt_statdb_buf;

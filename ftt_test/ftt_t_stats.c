@@ -22,6 +22,9 @@ Include files:-
 static ftt_stat_buf	statbuf = NULL;
 static ftt_stat_buf	*delstat = NULL;
 
+static ftt_statdb_buf	statdbbuf = NULL;
+static ftt_statdb_buf	*delstatdb = NULL;
+
 
 /* ============================================================================
 
@@ -68,6 +71,50 @@ FTT_T_CHECK_CALL (status,estatus);
 
 return 0;
 }
+
+/*=================================================================================
+
+Routine: ftt_t_get_statdb
+
+	call ftt_get_statdb
+==================================================================================*/
+int 	ftt_t_get_statdb (int argc, char **argv)
+{
+int 		status;
+int		estatus = 0;
+static char 	*estatus_str;
+ftt_t_argt	argt[] = {
+	{"-status",	FTT_T_ARGV_STRING,	NULL,	&estatus_str},
+	{NULL,		FTT_T_ARGV_END,		NULL,	NULL}};
+
+/* parse command line  
+   ------------------*/
+
+estatus_str = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt,argv[0]);
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+/* get the stats
+   -------------*/
+
+if (!statdbbuf) {
+   statdbbuf = ftt_alloc_statdb();
+   if (!statdbbuf) {
+      char *errstring;
+      errstring = ftt_get_error (&status);
+      fprintf (stderr,"Could not allocate ststdb buffer %s\n",errstring);
+      FTT_T_INC_NERROR();
+      return 1;
+   }
+}
+
+status = ftt_get_statdb (ftt_t_fd, statdbbuf);
+FTT_T_CHECK_CALL (status, estatus);
+
+return 0;
+}
+
 
 
 /* ============================================================================
@@ -121,6 +168,58 @@ fprintf (stderr,"%s is %s\n",match,stat_value);
 return 0;
 }
 
+/*============================================================================
+
+ROUTINE: ftt_t_extract_statdb
+	call ftt_extract_statdb
+==============================================================================*/
+int 	ftt_t_extract_statdb (int argc, char **argv)
+{
+int 		status;
+int		estatus = 0;
+int		i;
+char		*match = NULL;
+char		*stat_value;
+static char	*stat_name;
+FILE		*outfile = stderr;
+static char	*estatus_str;
+static char	*out_filename;
+ftt_t_argt	argt[] = {
+	{"<statistic>",	FTT_T_ARGV_STRING,	NULL,	&stat_name},
+        {"-filename",	FTT_T_ARGV_STRING,	NULL,	&out_filename},
+	{NULL,		FTT_T_ARGV_END,		NULL,	NULL}};
+
+stat_name = NULL; estatus_str = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+for (i = 0; ftt_stat_names[i] != 0; i++) {
+    if (!strcasecmp(stat_name,ftt_stat_names[i])) {
+       match = ftt_stat_names[i];
+       break;
+    }
+}
+if (!match) {
+   fprintf (stderr,"%s is not a valid statistic name.\n",stat_name);
+   return 1;
+}
+
+if (out_filename) {
+   outfile = fopen (out_filename,"w");
+   if (outfile == 0) {
+      perror ("Could not open file\n");
+      fprintf (stderr,"    filename = %s\n",out_filename);
+      return 1;
+   }
+}
+
+status = ftt_extract_statdb (delstatdb, outfile,i);
+FTT_T_CHECK_CALL (status, estatus);
+if (outfile  != stderr) fclose (outfile);
+return 0;
+}
+
 
 /* ============================================================================
 
@@ -161,6 +260,7 @@ if (out_filename)
       return 1;
       }
    }
+fprintf (outfile,"Out_file %s\n",out_filename);
 
 /* dump the stats
    -------------- */
@@ -186,6 +286,125 @@ FTT_T_CHECK_CALL (status,estatus);
 if (outfile != stderr) fclose (outfile);
 return 0;
 }
+
+/*============================================================================
+
+ROUTINE: 	ftt_t_dump_statdb
+	call ftt_dump_statdb
+=============================================================================*/
+int 	ftt_t_dump_statdb (int argc, char **argv)
+{
+int 		status;
+int		estatus = 0;
+FILE		*outfile = stderr;
+static char	*estatus_str;
+static char	*out_filename;
+ftt_t_argt	argt[] = {
+	{"-filename",	FTT_T_ARGV_STRING,	NULL,	&out_filename},
+	{"-status",	FTT_T_ARGV_STRING,	NULL,	&estatus_str},
+	{NULL,		FTT_T_ARGV_END,		NULL,	NULL}};
+
+estatus_str = NULL; out_filename = NULL;
+status = ftt_t_parse (&argc, argv,argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);      /* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+
+if (out_filename) {
+   outfile = fopen (out_filename,"w");
+   if (outfile == 0) {
+      perror ("couldnot open file\n");
+      fprintf (stderr,"     filename = %s\n",out_filename);
+      return -1;
+   }
+}
+status = ftt_dump_statdb (statdbbuf, outfile);
+FTT_T_CHECK_CALL (status,estatus);
+
+if (outfile != stderr) fclose (outfile);
+return 0; 
+
+
+}
+
+/*============================================================================
+
+ROUTINE:        ftt_t_dump_statdbs
+        call ftt_dump_statdbs
+=============================================================================*/
+int     ftt_t_dump_statdbs (int argc, char **argv)
+{
+int             status;
+int             estatus = 0;
+FILE            *outfile = stderr;
+static char     *estatus_str;
+static char     *out_filename;
+ftt_t_argt      argt[] = {
+        {"-filename",   FTT_T_ARGV_STRING,      NULL,   &out_filename},
+        {"-status",     FTT_T_ARGV_STRING,      NULL,   &estatus_str},
+        {NULL,          FTT_T_ARGV_END,         NULL,   NULL}};
+
+estatus_str = NULL; out_filename = NULL;
+status = ftt_t_parse (&argc, argv,argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);      /* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+
+if (out_filename) {
+   outfile = fopen (out_filename,"w");
+   if (outfile == 0) {
+      perror ("couldnot open file\n");
+      fprintf (stderr,"     filename = %s\n",out_filename);
+      return -1;
+   }
+}
+status = ftt_dump_statdbs (delstatdb, outfile);
+FTT_T_CHECK_CALL (status,estatus);
+
+if (outfile != stderr) fclose (outfile);
+return 0;
+
+
+}
+
+
+/*=============================================================================
+ROUTNE:		ftt_t_dump_rsdata
+	call ftt_dump_rsdata
+==============================================================================*/
+int	ftt_t_dump_rsdata (int argc, char **argv)
+{
+int             status;
+int             estatus = 0;
+FILE            *outfile = stderr;
+static char     *estatus_str;
+static char     *out_filename;
+ftt_t_argt      argt[] = {
+        {"-filename",   FTT_T_ARGV_STRING,      NULL,   &out_filename},
+        {"-status",     FTT_T_ARGV_STRING,      NULL,   &estatus_str},
+        {NULL,          FTT_T_ARGV_END,         NULL,   NULL}};
+
+estatus_str = NULL; out_filename = NULL;
+status = ftt_t_parse (&argc, argv,argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);      /* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+if (out_filename) {
+   outfile = fopen (out_filename,"w");
+   if (outfile == 0) {
+      perror ("couldnot open file\n");
+      fprintf (stderr,"     filename = %s\n",out_filename);
+      return -1;
+   }
+}
+status = ftt_dump_rsdata (ftt_t_fd, outfile);
+FTT_T_CHECK_CALL (status,estatus);
+
+if (outfile != stderr) fclose (outfile);
+return 0;
+
+}
+
 
 /* ============================================================================
 
@@ -251,6 +470,34 @@ FTT_T_CHECK_CALL_OPEN (status,estatus);
 
 return 0;
 }
+
+/*=============================================================================
+
+ROUTINE:	ftt_t_init_statdb
+	call ftt_init_statdb
+==============================================================================*/
+int	ftt_t_init_statdb (int argc, char **argv)
+{
+int		status;
+int		estatus = 0;
+static char	*estatus_str;
+ftt_t_argt      argt[] = {
+        {"-status",     FTT_T_ARGV_STRING,      NULL,           &estatus_str},
+        {NULL,          FTT_T_ARGV_END,         NULL,           NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);      /* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+delstatdb = ftt_init_statdb (ftt_t_fd);
+FTT_T_CHECK_CALL_OPEN (status,estatus);
+return 0;
+}
+
 
 /* ============================================================================
 
@@ -294,7 +541,7 @@ if (partial)				/* display only counters */
    int i;
    for (i = 0; ftt_stat_names[i] != 0; i++)
       {
-      if (ftt_numeric_tab[i])
+      if (ftt_numeric_tab[i] == 1)
          {
          stat_value = ftt_extract_stats (delstat[0],i); 
 	 if (stat_value == 0) 
@@ -335,4 +582,34 @@ else
    }
 
 return 0;
+}
+
+/*=================================================================================
+ROUTINE:	ftt_t_update_statdb
+	call ftt_update_statdb
+==================================================================================*/
+int	ftt_t_update_statdb (int argc, char **argv)
+{
+int 		status;			/* status */
+int		estatus = 0;		/* expected status */
+char		*stat_value;		/* status value */
+static char	*estatus_str;		/* expected status string */
+ftt_t_argt	argt[] = {
+ 	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = NULL; 
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+/* init the stats
+   -------------- */
+
+status = ftt_update_statdb (ftt_t_fd,delstatdb); 
+FTT_T_CHECK_CALL(status,estatus);
+
 }

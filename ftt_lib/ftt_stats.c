@@ -43,6 +43,22 @@ ftt_alloc_stat() {
     }
 }
 
+ftt_statdb_buf
+ftt_alloc_statdb() {
+    void *res;
+
+    ENTERING("ftt_alloc_statdb");
+    res = malloc(sizeof(ftt_statdb));
+    if (0 != res) {
+        memset(res,0,sizeof(ftt_statdb));
+        return res;
+    } else {
+	ftt_eprintf("ftt_alloc_stat: unable to allocate statistics buffer, errno %d\n", errno);
+	ftt_errno = FTT_ENOMEM;
+        return res;
+    }
+}
+
 int
 ftt_free_stat(ftt_stat_buf b) {
     int i;
@@ -59,6 +75,23 @@ ftt_free_stat(ftt_stat_buf b) {
     free(b);
     return 0;
 }
+
+int 
+ftt_free_statdb(ftt_statdb_buf b) {
+    int i;
+    ENTERING("ftt_free_statdb");
+    CKNULL("statistics DB buffer pointer", b);
+
+    for (i = 0; i <FTT_MAX_NUMDB; i++) {
+        if (b->value[i]) {
+           free(b->value[i]);
+           b->value[i] = 0;
+        }
+    }
+    free(b);
+    return 0;
+}
+
 #ifdef WIN32
 	static char *
 	ftt_itoa_Large(LARGE_INTEGER n) {
@@ -119,7 +152,7 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 		  save = *pcEnd;
 		  *pcEnd = 0;
 		}
-		DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);
+	DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);	
 		b->value[n] = strdup(pcStart);
 		/* why is this "if" here??? I forget now... mengel*/
 		if ( save != 'n' ) *pcEnd = save;
@@ -130,63 +163,63 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 }
 
 int ftt_numeric_tab[FTT_MAX_STAT] = {
-    /*  FTT_VENDOR_ID		0 */ 0,
-    /*  FTT_PRODUCT_ID		1 */ 0,
-    /*  FTT_FIRMWARE		2 */ 0,
-    /*  FTT_SERIAL_NUM		3 */ 0,
-    /*  FTT_CLEANING_BIT	5 */ 0,
-    /*  FTT_READ_COUNT		6 */ 1,
-    /*  FTT_WRITE_COUNT		7 */ 1,
-    /*  FTT_READ_ERRORS		8 */ 1,
-    /*  FTT_WRITE_ERRORS	9 */ 1,
-    /*  FTT_READ_COMP		11 */ 0,
-    /*  FTT_FILE_NUMBER		12 */ 0,
-    /*  FTT_BLOCK_NUMBER	13 */ 0,
-    /*  FTT_BOT			14 */ 0,
-    /*  FTT_READY		15 */ 0,
-    /*  FTT_WRITE_PROT		16 */ 0,
-    /*  FTT_FMK			17 */ 0,
-    /*  FTT_EOM			18 */ 0,
-    /*  FTT_PEOT		19 */ 0,
-    /*  FTT_MEDIA_TYPE		20 */ 0,
-    /*  FTT_BLOCK_SIZE		21 */ 0,
-    /*  FTT_BLOCK_TOTAL		22 */ 0,
-    /*  FTT_TRANS_DENSITY	23 */ 0,
-    /*  FTT_TRANS_COMPRESS	24 */ 0,
-    /*  FTT_REMAIN_TAPE		25 */ 0,
-    /*  FTT_USER_READ		26 */ 1,
-    /*  FTT_USER_WRITE		27 */ 1,
-    /*  FTT_CONTROLLER		28 */ 0,
-    /*  FTT_DENSITY		29 */ 0,
-    /*  FTT_ILI			30 */ 0,
-    /*  FTT_SCSI_ASC		31 */ 0,
-    /*  FTT_SCSI_ASCQ		32 */ 0,
-    /*  FTT_PF			33 */ 0,
-    /*  FTT_CLEANED_BIT	        34 */ 0,
-    /*  FTT_WRITE_COMP		35 */ 0,
-    /*  FTT_TRACK_RETRY		36 */ 0,
-    /*  FTT_UNDERRUN		37 */ 1,
-    /*  FTT_MOTION_HOURS	38 */ 1,
-    /*  FTT_POWER_HOURS		39 */ 1,
-    /*  FTT_TUR_STATUS		40 */ 0,
-    /*  FTT_BLOC_LOC		41 */ 1,
-    /*  FTT_COUNT_ORIGIN	42 */ 0,
-    /*  FTT_N_READS		43 */ 1,
-    /*  FTT_N_WRITES		44 */ 1,
-    /*  FTT_TNP			45 */ 0,
-    /*  FTT_SENSE_KEY		46 */ 0,
-    /*  FTT_TRANS_SENSE_KEY	47 */ 0,
-    /*  FTT_RETRIES		48 */ 1,
-    /*  FTT_FAIL_RETRIES	49 */ 1,
-    /*  FTT_RESETS		50 */ 1,
-    /*  FTT_HARD_ERRORS		51 */ 1,
-    /*  FTT_UNC_WRITE		50 */ 1,
-    /*  FTT_UNC_READ		51 */ 1,
-    /*  FTT_CMP_WRITE		52 */ 1,
-    /*  FTT_CMP_READ		53 */ 1,
-    /*  FTT_ERROR_CODE		54 */ 0,
-    /*  FTT_CUR_PART		54 */ 0,
-    /*  FTT_MOUNT_PART		54 */ 0,
+    /*  FTT_VENDOR_ID		0 * 0,*/4,/*0-3  header for dump DB*/ 
+    /*  FTT_PRODUCT_ID		1 * 0,*/4,
+    /*  FTT_FIRMWARE		2 * 0,*/4,
+    /*  FTT_SERIAL_NUM		3 * 0,*/4,
+    /*  FTT_CLEANING_BIT	5*/ 0,
+    /*  FTT_READ_COUNT		6*/ 1,
+    /*  FTT_WRITE_COUNT		7*/ 1,
+    /*  FTT_READ_ERRORS		8*/ 1,
+    /*  FTT_WRITE_ERRORS	9*/ 1,
+    /*  FTT_READ_COMP		11*/ 0,
+    /*  FTT_FILE_NUMBER		12*/ 0,
+    /*  FTT_BLOCK_NUMBER	13*/ 0,
+    /*  FTT_BOT			14*/ 0,
+    /*  FTT_READY		15*/ 0,
+    /*  FTT_WRITE_PROT		16*/ 0,
+    /*  FTT_FMK			17*/ 0,
+    /*  FTT_EOM			18*/ 0,
+    /*  FTT_PEOT		19*/ 0,
+    /*  FTT_MEDIA_TYPE		20*/ 0,
+    /*  FTT_BLOCK_SIZE		21*/ 0,
+    /*  FTT_BLOCK_TOTAL		22*/ 0,
+    /*  FTT_TRANS_DENSITY	23*/ 0,
+    /*  FTT_TRANS_COMPRESS	24*/ 0,
+    /*  FTT_REMAIN_TAPE		25   0,*/4,
+    /*  FTT_USER_READ		26*/ 1,
+    /*  FTT_USER_WRITE		27*/ 1,
+    /*  FTT_CONTROLLER		28*/ 0,
+    /*  FTT_DENSITY		29   0,*/4,
+    /*  FTT_ILI			30*/ 0,
+    /*  FTT_SCSI_ASC		31*/ 0,
+    /*  FTT_SCSI_ASCQ		32*/ 0,
+    /*  FTT_PF			33*/ 0,
+    /*  FTT_CLEANED_BIT	        34*/ 0,
+    /*  FTT_WRITE_COMP		35*/ 0,
+    /*  FTT_TRACK_RETRY		36*/ 0,
+    /*  FTT_UNDERRUN		37*/ 1,
+    /*  FTT_MOTION_HOURS	38*/ 1,
+    /*  FTT_POWER_HOURS		39*/ 1,
+    /*  FTT_TUR_STATUS		40*/ 0,
+    /*  FTT_BLOC_LOC		41*/ 1,
+    /*  FTT_COUNT_ORIGIN	42*/ 0,
+    /*  FTT_N_READS		43*/ 1,
+    /*  FTT_N_WRITES		44*/ 1,
+    /*  FTT_TNP			45*/ 0,
+    /*  FTT_SENSE_KEY		46*/ 0,
+    /*  FTT_TRANS_SENSE_KEY	47*/ 0,
+    /*  FTT_RETRIES		48*/ 1,
+    /*  FTT_FAIL_RETRIES	49*/ 1,
+    /*  FTT_RESETS		50*/ 1,
+    /*  FTT_HARD_ERRORS		51*/ 1,
+    /*  FTT_UNC_WRITE		50*/ 1,
+    /*  FTT_UNC_READ		51*/ 1,
+    /*  FTT_CMP_WRITE		52*/ 1,
+    /*  FTT_CMP_READ		53*/ 1,
+    /*  FTT_ERROR_CODE		54*/ 0,
+    /*  FTT_CUR_PART		54*/ 0,
+    /*  FTT_MOUNT_PART		54*/ 0,
 };
 
 void
@@ -230,6 +263,30 @@ ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 	}
     }
 }
+
+int
+ftt_get_statdb (ftt_descriptor d, ftt_statdb_buf b) {
+    ftt_stat_buf res1;
+    int ires1, i, j = 0;
+    char *stat_value;
+
+    ENTERING("ftt_get_statdb");
+    VCKNULL("statistics buffer pointer 1", b);
+
+    res1 = ftt_alloc_stat();
+    ires1 = ftt_get_stats(d, res1);
+    for (i = 0; ftt_stat_names[i] != 0; i++) {
+
+        if (ftt_numeric_tab[i]) {
+           stat_value = ftt_extract_stats(res1, i);
+           b ->value[j] = stat_value;
+           j++;
+        }
+    }
+    return ires1;
+}
+
+
 
 /*
 ** handy macros to increase readability:
@@ -523,7 +580,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	     * look up based on ANSI version *and* product id, so
 	     * we can have generic SCSI-2 cases, etc.
 	     */
-	    sprintf(buf, "%d%s", buf[2] & 0x3, ftt_unalias(d->prod_id));
+	   sprintf(buf, "%d%s", buf[2] & 0x3, ftt_unalias(d->prod_id)); 
 	    stat_ops = ftt_get_stat_ops(buf);
 	}
     }
@@ -582,7 +639,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    if (stat_ops & FTT_DO_DLTRS) {
 		set_stat(b,FTT_MOTION_HOURS,ftt_itoa((long)pack(0,0,buf[19],buf[20])),0);
 		set_stat(b,FTT_POWER_HOURS, ftt_itoa((long)pack(buf[21],buf[22],buf[23],buf[24])),0);
-		set_stat(b,FTT_REMAIN_TAPE, ftt_dtoa((double)pack(buf[25],buf[26],buf[27],buf[28])*4),0); 
+                set_stat(b,FTT_REMAIN_TAPE, ftt_dtoa((double)pack(buf[25],buf[26],buf[27],buf[28])*4),0);  
 	    }
 	    if (stat_ops & FTT_DO_AITRS) {
 		remain_tape=(double)pack(buf[22],buf[23],buf[24],buf[25]);
@@ -1063,6 +1120,25 @@ ftt_extract_stats(ftt_stat_buf b, int stat) {
 	ftt_errno= FTT_EFAULT;
 	return 0;
     }
+}
+
+int
+ftt_extract_statdb(ftt_statdb_buf *b, FILE *pf, int name) {
+     int i, stat = -1;
+
+     ENTERING("ftt_extract_statdb");
+     CKNULL("statistics db data pointer",b);
+     CKNULL("stdio file handle", pf);
+
+     for (i = 0; i <= name; i++) {
+          if (ftt_numeric_tab[i] != 0) stat++;
+     }
+
+        for (i = 0; i < FTT_MAX_NUMDB; i++) {
+            fprintf(pf, "%s\t",b[i]->value[stat]);
+        }
+        fprintf(pf, "\n");
+        return 0;
 }
 
 int
