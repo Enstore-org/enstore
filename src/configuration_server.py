@@ -158,7 +158,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         try:
             ticket['status']=(e_errors.OK, None)
             reply=ticket.copy()
-            reply["dump"] = pprint.pformat(self.configdict)
+            #reply["dump"] = pprint.pformat(self.configdic)
+	    reply["dump"] = self.configdict
             self.reply_to_caller(ticket)
             callback.user_callback_socket(reply)
 

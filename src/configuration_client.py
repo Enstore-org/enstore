@@ -211,7 +211,7 @@ def do_work(intf):
 
     elif intf.show:
         csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
-        print csc.config_dump["dump"]
+        print pprint.pformat(csc.config_dump["dump"])
         stati = csc.config_dump
 
     elif intf.load:
