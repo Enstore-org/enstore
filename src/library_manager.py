@@ -261,10 +261,10 @@ class LibraryManagerMethods(DispatchingWorker) :
         rticket["at movers"] = work_at_movers
         rticket["awaiting volume bind"] = work_awaiting_bind
         rticket["pending_work"] = pending_work
-        callback.write_tcp_socket(data_socket,rticket,
+        callback.write_tcp_socket(self.data_socket,rticket,
                                   "library_manager getwork, datasocket")
         self.data_socket.close()
-        callback.write_tcp_socket(control_socket,ticket,
+        callback.write_tcp_socket(self.control_socket,ticket,
                                   "library_manager getwork, controlsocket")
         self.control_socket.close()
 
@@ -341,9 +341,9 @@ if __name__ == "__main__" :
     lm.set_csc(csc)
 
     while 1:
-	try:
-	    lm.serve_forever()
-	except:
-	    continue
+        try:
+            lm.serve_forever()
+        except:
+            continue
 
 

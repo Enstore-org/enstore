@@ -220,7 +220,7 @@ if __name__ == "__main__" :
     cs.set_csc(csc)
 
     while 1:
-	try:
-	    cs.serve_forever()
-	except:
-	    continue
+        try:
+            cs.serve_forever()
+        except:
+            continue

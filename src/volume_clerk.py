@@ -469,7 +469,7 @@ if __name__ == "__main__" :
     vs.set_csc(csc)
 
     while 1:
-	try:
-	    vs.serve_forever()
-	except:
-	    continue
+        try:
+            vs.serve_forever()
+        except:
+            continue

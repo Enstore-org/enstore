@@ -80,7 +80,8 @@ class Mover :
 
     # send a message to our user
     def send_user_last(self, ticket):
-        callback.write_tcp_socket(data_socket,ticket, "mover send_user_last")
+        callback.write_tcp_socket(self.control_socket,ticket,\
+                                  "mover send_user_last")
         self.control_socket.close()
 
 

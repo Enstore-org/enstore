@@ -34,8 +34,7 @@ class LibraryManagerClient :
         ticket = {"work"               : "getwork",
                   "user_callback_port" : port,
                   "user_callback_host" : host,
-                  "unique_id"          : time()
-                  }
+                  "unique_id"          : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'] != "ok" :
