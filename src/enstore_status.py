@@ -54,8 +54,7 @@ def parse_encp_line(line):
         # total data transfer rate from the end of erest3
         [erest2, tt] = string.splitfields(erest3, "(", 1)
         [tt, etmp] = string.splitfields(tt, ")",1)
-        # what's left in erest2 is what we want, but make it clearer
-        # that the rate in this line is the user rate
+        [tt, etmp] = string.splitfields(tt, " ",1)
 	erate = string.splitfields(erest2, " ")
     else:
         # there was an error or warning
@@ -371,11 +370,11 @@ class EnStatus:
 	    str = str+spacing+einfo[0]+" on "+einfo[1]+" by "+einfo[2]
 	    spacing = "                  "
 	    if einfo[3] == log_client.sevdict[log_client.INFO]:
-	        str = str+" (Data Transfer Rate : "+einfo[4]+")"
+	        str = str+" (Data Transfer Rate : "+einfo[4]+" MB/S)"
 	        # what's left in erest2 is what we want, but make it clearer
 	        # that the rate in this line is the user rate
 	        str = str+prefix+einfo[5]+" bytes copied to "+einfo[6]+ \
-	              " at a user rate of "+einfo[7]+"\n"
+	              " at a user rate of "+einfo[7]+" MB/S\n"
 	    else:
 	        # there was an error or warning
 	        if len(einfo) == 7:
