@@ -3,8 +3,8 @@ import socket
 import os
 
 import event_relay_messages
-import enstore_functions
 import enstore_constants
+import e_errors
 
 """
 This class supports messages from the event relay process.  Methods are 
@@ -12,6 +12,19 @@ provided to read the message.
 """
 
 DEFAULT_PORT = 55510
+
+DEFAULT_TIMEOUT = 10
+DEFAULT_TRIES = 1
+
+def get_event_relay_host(csc):
+    ticket = csc.get(enstore_constants.EVENT_RELAY, DEFAULT_TIMEOUT,
+                     DEFAULT_TRIES)
+    if ticket['status'][0] == e_errors.OK:
+        host = ticket.get('host', "")
+    else:
+        host = ""
+    return host
+
 
 class EventRelayClient:
 
@@ -30,18 +43,15 @@ class EventRelayClient:
         self.notify_msg = None
         self.unsubscribe_msg = None
 
-        # get the address of the event relay process
+        # get the address of the event relay process.
+	import configuration_client
+	self.csc = configuration_client.ConfigurationClient()
+	event_relay_host = get_event_relay_host(self.csc)
 	if not event_relay_host:
-	    # try to get from the config host.  do not go thru the config server, get the
-	    # config file
-	    event_relay_host = enstore_functions.get_from_config_file(enstore_constants.EVENT_RELAY,
-								      "host", "")
-	    if event_relay_host == "":
-		event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST","")
+	    event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST","")
         if not event_relay_port:
 	    # try to get it from the config file
-	    event_relay_port = enstore_functions.get_from_config_file(enstore_constants.EVENT_RELAY,
-								      "port", DEFAULT_PORT)
+	    event_relay_port = DEFAULT_PORT
         self.event_relay_addr = (event_relay_host, event_relay_port)
 
 
