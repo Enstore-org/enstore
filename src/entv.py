@@ -452,6 +452,10 @@ def handle_messages(display, intf):
                 commands_file.close()
                 commands_file = open(intf.commands_file, "r")
                 continue
+            #Don't overwhelm the display thread.
+            time.sleep(0.03)
+            while len(display.command_queue) > 50:
+                time.sleep(0.01)
         else:
             #test whether there is a command ready to read, timeout in
             # 1 second.
