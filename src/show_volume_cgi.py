@@ -86,8 +86,6 @@ header = " volume         bfid             size      location cookie     status 
 print '<font color=#aa0000>'+header+'</font>'
 print '<p>'
 
-res.sort()
-# res.sort()
 for i in res:
     if string.find(i, 'active') != -1:
         print '<font color="#0000ff">',
