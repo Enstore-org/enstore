@@ -415,9 +415,12 @@ def fullpath(filename):
     elif type(filename) != types.StringType:
         return None, None, None, None
 
-    hostname=socket.gethostname()
-    hostinfo=socket.gethostbyaddr(hostname)
-    machine = hostinfo[0]  #hostaddr.gethostinfo()[0]
+    try:
+        machine = socket.gethostbyaddr(socket.gethostname())[0]
+    except (socket.herror, socket.gaierror):
+        #One known way to get here is to run out of file
+        # descriptors.  I'm sure there are others.
+        machine = None
 
     #Expand the path to the complete absolute path.
     filepath = os.path.expandvars(filename)
