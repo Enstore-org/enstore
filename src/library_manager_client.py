@@ -28,13 +28,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
         self.send_to = 20
         self.send_tries = 2
         self.u = udp_client.UDPClient()
-
-    def send (self, ticket, rcv_timeout=0, tries=0) :
-        # who's our library manager that we should send the ticket to?
-        lticket = self.csc.get(self.name)
-        # send user ticket and return answer back
-        return self.u.send(ticket, (lticket['hostip'], lticket['port']), rcv_timeout, tries )
-
+        self.server_address = self.get_server_address(self.name)
 
     def write_to_hsm(self, ticket) :
         return self.send(ticket)
