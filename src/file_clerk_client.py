@@ -21,17 +21,17 @@ MY_SERVER = "file_clerk"
 class FileClient(generic_client.GenericClient, 
                       backup_client.BackupClient):
 
-    def __init__( self, csc, bfid=0, servr_addr=None ):
+    def __init__( self, csc, bfid=0, server_addr=None ):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
 	self.bfid = bfid
         ticket = self.csc.get( MY_SERVER )
-	if servr_addr != None: self.servr_addr = servr_addr
-	else:                  self.servr_addr = (ticket['hostip'],ticket['port'])
+	if server_addr != None: self.server_addr = server_addr
+	else:                  self.server_addr = (ticket['hostip'],ticket['port'])
 
     def send (self, ticket, rcv_timeout=0, tries=0):
-        Trace.trace( 12, 'send to volume clerk %s'%(self.servr_addr,))
-        x = self.u.send( ticket, self.servr_addr, rcv_timeout, tries )
+        Trace.trace( 12, 'send to volume clerk %s'%(self.server_addr,))
+        x = self.u.send( ticket, self.server_addr, rcv_timeout, tries )
         return x
 
     def new_bit_file(self, ticket):
@@ -254,9 +254,10 @@ def do_work(intf):
     # now get a file clerk client
     fcc = FileClient((intf.config_host, intf.config_port), intf.bfid)
     Trace.init(fcc.get_name(MY_NAME))
-    if intf.alive:
-        ticket = fcc.alive(MY_SERVER, intf.alive_rcv_timeout,
-                           intf.alive_retries)
+
+    ticket = fcc.handle_generic_commands(MY_SERVER, intf)
+    if ticket:
+        pass
 
     elif intf.backup:
         ticket = fcc.start_backup()
