@@ -180,7 +180,10 @@ class UDPClient:
         msg, txn_id = self.protocolize(data)
         # keep track of whom we need to send a "done_cleanup" to
         tsd.send_done[dst] = 1
-        
+
+        #set up the static route before sending.
+        host_config.set_route(host_config.get_default_interface_ip(), dst[0])
+
         n_sent = 0
         while max_send==0 or n_sent<max_send:
             tsd.socket.sendto( msg, dst )
@@ -219,6 +222,8 @@ class UDPClient:
     def send_no_wait(self, data, address) :
         tsd = self.get_tsd()
         message, txn_id = self.protocolize( data )
+        #set up the static route before sending.
+        host_config.set_route(host_config.get_default_interface_ip(), address[0])
         return tsd.socket.sendto( message, address )
 
     # send message, return an ID that can be used in the recv_deferred function
@@ -226,6 +231,8 @@ class UDPClient:
         tsd = self.get_tsd()
         tsd.send_done[address] = 1
         message, txn_id = self.protocolize( data )
+        #set up the static route before sending.
+        host_config.set_route(host_config.get_default_interface_ip(), address[0])
         bytes_sent = tsd.socket.sendto( message, address )
         if bytes_sent < 0:
             return -1

@@ -17,6 +17,7 @@ import e_errors
 import multiple_interface
 import enroute
 import runon
+import pdb
 
 def find_config_file():
     config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
@@ -125,26 +126,33 @@ def runon_cpu(interface):
         else:
             Trace.log(e_errors.INFO, "runon(%s)" % (cpu,))
 
-def set_route(interface, dest):
+def set_route(interface_ip, dest):
     config = get_config()
     if not config:
         return
     interface_dict = config.get('interface')
-    interface_details = interface_dict[interface]
-    gw = interface_details.get('gw')
+
+    interface_details = {}
+    for interface in interface_dict.keys():
+        if interface_dict[interface]['ip'] == interface_ip:
+            interface_details = interface_dict[interface]
+
+    gw = interface_details.get('gw', None)
     if gw is not None and dest is not None:
         err=enroute.routeDel(dest)
-        if err:
-            Trace.log(e_errors.INFO,
-                      "enroute.routeDel(%s) returns %s" % (dest, err))
-        else:
-            Trace.log(e_errors.INFO, "enroute.routeDel(%s)" % (dest,))
+        #SENDING THINGS TO THE LOG FILE FROM THIS FUNCTION IS BAD!  IF DONE,
+        # AN INFINITE LOOP OCCURS.
+        #if err:
+        #    Trace.log(e_errors.INFO,
+        #              "enroute.routeDel(%s) returns %s" % (dest, err))
+        #else:
+        #    Trace.log(e_errors.INFO, "enroute.routeDel(%s)" % (dest,))
         err=enroute.routeAdd(dest, gw)
-        if err:
-            Trace.log(e_errors.INFO,
-                      "enroute.routeAdd(%s,%s) returns %s" % (dest, gw, err))
-        else:
-            Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
+        #if err:
+        #    Trace.log(e_errors.INFO,
+        #              "enroute.routeAdd(%s,%s) returns %s" % (dest, gw, err))
+        #else:
+        #    Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
 
     return interface_details
 
