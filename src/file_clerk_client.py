@@ -8,6 +8,7 @@ import errno
 import sys
 import socket
 import select
+import os
 
 import rexec
 _rexec = rexec.RExec()
@@ -26,6 +27,9 @@ import hostaddr
 import Trace
 import e_errors
 import pprint
+import volume_clerk_client
+import volume_family
+import pnfs
 
 MY_NAME = "FILE_C_CLIENT"
 MY_SERVER = "file_clerk"
@@ -309,13 +313,74 @@ class FileClient(generic_client.GenericClient,
 	return r
 
     # restore a deleted file
-    def restore(self, bfid, file_family = None):
+    def restore3(self, bfid, file_family = None):
         ticket = {"work": "restore_file2",
                   "bfid": bfid}
         if file_family:
             ticket['file_family'] = file_family
         r = self.send(ticket)
 	return r
+
+    def restore(self, bfid, file_family = None):
+        bit_file = self.bfid_info(bfid)
+        if bit_file['status'][0] != e_errors.OK:
+            return bit_file
+        del bit_file['status']
+
+        # check if the volume is deleted
+        if bit_file["external_label"][-8:] == '.deleted':
+            return {'status': (e_errors.ERROR, "volume %s is deleted"%(bit_file["external_label"]))}
+
+        # make sure the file has to be deleted
+        if bit_file['deleted'] != 'yes':
+            return {'status': (e_errors.ERROR, "%s is not deleted"%(bfid))}
+
+        # check if the path is a valid pnfs path
+        if bit_file['pnfs_name0'][:5] != '/pnfs':
+            return {'status': (e_errors.ERROR, "%s is not a valid pnfs path"%(bit_file['pnfs_name0']))}
+
+        # check if the file has already existed
+        if os.access(bit_file['pnfs_name0'], os.F_OK): # file exists
+            return {'status': (e_errors.ERROR, "%s exists"%(bit_file['pnfs_name0']))}
+
+        # its path has to exist
+        pp, pf = os.path.split(bit_file['pnfs_name0'])
+        if not os.access(pp, os.W_OK):
+            return {'status': (e_errors.ERROR, "can not write in directory %s"%(pp))}
+
+        if not file_family:
+            # has to find it out
+            vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+            vol = vcc.inquire_vol(bit_file['external_label'])
+            if vol['status'][0] != e_errors.OK:
+                return vol
+            file_family = volume_family.extract_file_family(vol['volume_family'])
+            del vcc
+
+        bit_file['file_family'] = file_family
+        pf = pnfs.File(bit_file)
+        # pf.show()
+
+        # Has it already existed?
+        if pf.exists():
+            return {'status': (e_errors.ERROR, "%s already exists"%(bit_file['pnfs_name0']))}
+
+        # To Do: check if any file has the same pnfs_id
+
+        # Now create it; catch any error
+        try:
+            pf.create()
+        except:
+            return {'status': (e_errors.ERROR, "can not create %s"%(pf.path))}
+
+        pnfs_id = pf.get_pnfs_id()
+        if pnfs_id != pf.pnfs_id:
+            # update file record
+            return self.modify({'bfid': bfid, 'pnfsid':pnfs_id, 'deleted':'no'})
+
+        return {'status':(e_errors.OK, None)}
+
+            
 
     # rebuild pnfs file entry
     def rebuild_pnfs_file(self, bfid, file_family = None):
