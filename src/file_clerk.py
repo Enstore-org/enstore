@@ -360,6 +360,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 record['deleted'] = 'no'
                 self.dict[bfid] = record
                 Trace.log(e_errors.INFO, "file %s has been restored"%(bfid))
+                # Take care of non_del_file count
+                vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+                vticket = vcc.decr_file_count(record['external_label'], -1)
+                status = vticket["status"]
+                if status[0] != e_errors.OK: 
+                    Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%(status,))
         else:
             status = (e_errors.ERROR, "file %d does not have volmap entry"%(bfid))
 
