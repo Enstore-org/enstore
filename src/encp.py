@@ -4288,7 +4288,7 @@ def main():
     except (OSError, IOError, KeyError, TypeError):
         file_family_wrapper = "Unknown"
     try:
-        file_family_width = t.get_file_family_width()()
+        file_family_width = t.get_file_family_width()
     except (OSError, IOError, KeyError, TypeError):
         file_family_width = "Unknown"
         
@@ -4328,10 +4328,10 @@ def main():
     # that shows how encp was called.
     if e.outtype == "hsmfile":  #write
         Trace.log(e_errors.INFO, "%s  %s  %s  %s  %s" %
-                  (version_line, id_line, tag_line, command_line, cwd_line))
+                  (version_line, id_line, tag_line, cwd_line, command_line))
     else:                       #read
         Trace.log(e_errors.INFO, "%s  %s  %s  %s" %
-                  (version_line, id_line, command_line, cwd_line))
+                  (version_line, id_line, cwd_line, command_line))
 
     if e.data_access_layer:
         global data_access_layer_requested
