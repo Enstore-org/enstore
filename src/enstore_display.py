@@ -79,11 +79,11 @@ def find_image(name):
     if img: #already cached, is it still valid?
         try:
             statinfo = os.stat(filename)
+            file_mtime = statinfo[stat.ST_MTIME]
+            if file_mtime > img_mtime: #need to reload
+                del _image_cache[name]
+                img = None
         except:
-            del _image_cache[name]
-            img = None
-        file_mtime = statinfo[stat.ST_MTIME]
-        if file_mtime > img_mtime: #need to reload
             del _image_cache[name]
             img = None
     if not img: # Need to load it
@@ -546,7 +546,8 @@ class Display(Canvas):
         self.bind('<Button-1>', self.action)
 
     def action(self, event):
-        print event.x, event.y
+        x, y = self.canvasx(event.x), self.canvasy(event.y)
+        print self.find_overlapping(x-1, y-1, x+1, y+1)
         
     def create_movers(self, mover_names):
         #Create a Mover class instance to represent each mover.
