@@ -33,8 +33,10 @@ if [ `uname -n | grep -c d0ensrv3` -ne 0 ]; then
   TAPE=/dev/rmt/tps0d4n;         export TAPE
   TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
   VAULT=/diska/BackupToTape
+  STATS=$VAULT/tape_stats
   PNFS=/diska/pnfs-backup
   ENSTORE=/diska/enstore-backup
+  ENSTORELOG=/diska/enstore-log-backup
   AML2=/diska/aml2Shadow
 
 else
@@ -65,7 +67,6 @@ if [ `echo $FULL_BACKUP_DAYS | grep -c "\`date +'%a'\`"` -ne 0 -a -r $FULL_BACKU
    echo "FULL BACKUP being performed"
    tar_options=""
    touch $FULL_BACKUP_LAST
-   rm -f $FULL_BACKUP_FLAG # indicate we've done the full backup on selected day (not twice per day)
    kind=FULL
 else
    reference="`date -r $FULL_BACKUP_LAST`"
@@ -85,6 +86,10 @@ doit "ls -l $PNFS_TAR"
 ENSTORE_TAR=$VAULT/enstore.`date_string`.$kind.tar
 doit "tar $tar_options -cvf $ENSTORE_TAR $ENSTORE"
 doit "ls -l $ENSTORE_TAR"
+
+ENSTORELOG_TAR=$VAULT/enstorelog.`date_string`.$kind.tar
+doit "tar $tar_options -cvf $ENSTORELOG_TAR $ENSTORELOG"
+doit "ls -l $ENSTORELOG_TAR"
 
 AML2_TAR=$VAULT/aml2.`date_string`.$kind.tar
 doit "tar $tar_options -cvf $AML2_TAR $AML2"
@@ -139,11 +144,14 @@ Enstore Backup
 $stats
 
 EOF
-else
-  echo ""
-  echo `expr $remaining_KB / 1024` MB left on $LABEL in $TAPE on `uname -n`
-  echo ""
 fi
+
+rm -f $STATS
+echo "" 
+echo `expr $remaining_KB / 1024` MB left on $LABEL in $TAPE on `uname -n`
+echo `expr $remaining_KB / 1024` MB left on $LABEL in $TAPE on `uname -n` >> $STATS
+echo ""
+echo ""  >> $STATS
 
 cleaning_needed=`echo "$stats" | grep FTT_CLEANING_BIT | cut -f3 -d' '`
 if [ $cleaning_needed -ne 0 ]; then
@@ -160,13 +168,16 @@ Enstore Backup
 $stats
 
 EOF
-else
-  echo ""
-  echo $TAPE on `uname -n` not reporting dirty
-  echo ""
 fi
 
+echo ""
+echo $TAPE on `uname -n` not reporting dirty
+echo $TAPE on `uname -n` not reporting dirty >> $STATS
+echo ""
+echo ""  >> $STATS
+
 echo "$stats"
+echo "$stats" >> $STATS
 echo
 
 exit 0
