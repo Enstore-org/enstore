@@ -6,6 +6,7 @@
 import string
 import os
 import time
+import calendar
 
 # enstore imports
 import enstore_status
@@ -17,7 +18,6 @@ import Trace
 PTS = ".pts"
 GNU = ".gnuplot"
 
-DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
                 "09", "10", "11", "12", "13", "14", "15", "16", \
                 "17", "18", "19", "20", "21", "22", "23"]
@@ -405,7 +405,7 @@ class BpdDataFile(EnPlot):
 	    if (imon == emon) and (iday == eday):
 	        break
 	    iday = iday + 1
-	    if iday <= DAYS_IN_MONTH[imon-1]:
+	    if iday <= calendar.mdays[imon]:
 	        tmp = "%i-%02i-%02i" % (iyr, imon, iday)
 	        ndate[tmp] = 0.0
 	        continue
