@@ -503,7 +503,6 @@ class LibraryManagerMethods:
             Trace.trace(11,"schedule: Error detected %s" % (rq.ticket,))
 
     def check_write_request(self, external_label, rq):
-        external_label = rq.ticket['fc'].get('external_label', external_label)
         Trace.trace(11, "check_write_request %s %s"%(external_label, rq.ticket))
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(rq.ticket['vc']['volume_family'])
         if wr_en >= rq.ticket["vc"]["file_family_width"]:
