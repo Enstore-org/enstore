@@ -34,11 +34,6 @@ class MediaChangerClient(generic_client.GenericClient):
         self.u = udp_client.UDPClient()
         self.server_address = self.get_server_address(name)
 
-    # default timeout is set to 0 which means that receive will try forever
-    # for lengthy operations rcv_timeout will be set to 300 and tries=10
-    def send (self, ticket, rcv_timeout=0, tries=0) :
-        Trace.trace(16, "send to media changer %s" % ticket)
-        return  self.u.send(ticket, self.server_address, rcv_timeout, tries)
 
     def loadvol(self, vol_ticket, mover, drive):
 	ticket = {'work'           : 'loadvol',
