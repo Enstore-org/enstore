@@ -1,0 +1,32 @@
+ftt_open
+ftt_rewind
+ftt_echo "partitions before:"
+ftt_get_partitions
+ftt_dump_partitions
+ftt_set_nparts 1
+ftt_set_part_size 1 1000
+ftt_echo "partitions after setting partition size:"
+ftt_dump_partitions
+ftt_debug 4
+ftt_write_partitions
+ftt_debug 0
+ftt_get_partitions
+ftt_echo "partitions read back from drive:"
+ftt_dump_partitions
+ftt_echo "currently at partition:"
+ftt_cur_part
+ftt_skip_part 1
+ftt_echo "after skip, at partition:"
+ftt_cur_part
+ftt_skip_part -1
+ftt_echo "after skip, at partition:"
+ftt_cur_part
+ftt_set_part_size 1 0
+ftt_set_nparts 0
+ftt_dump_partitions
+ftt_echo "Putting them back"
+ftt_debug 4
+ftt_write_partitions
+ftt_debug 0
+ftt_get_partitions
+ftt_dump_partitions
