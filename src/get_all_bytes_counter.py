@@ -67,6 +67,7 @@ if __name__ == "__main__":
     # directory is /fnal/ups/prd/www_pages/enstore.
     total = 0.0
     units = ""
+    dead_nodes = []
     for node in NODES:
         # make sure node is up before rcping
         if ping(node) == ALIVE:
@@ -83,8 +84,21 @@ if __name__ == "__main__":
 			units = fields[1]
 		else:
 		    file.close()
+	    else:
+		# no info from this node
+		dead_nodes.append(node)
+	else:
+	    dead_nodes.append(node)
     else:
+	# find out if we have any dead nodes
+	if dead_nodes:
+	    str = "(does not include - "
+	    dead_nodes.sort()
+	    for node in dead_nodes:
+		str = "%s, %s"%(str, node)
+	else:
+	    str = ""
 	# output the total count
 	file = open(TOTAL_FILE, 'w')
-	file.write("%s %s\n"%(total, units))
+	file.write("%s %s %s\n"%(total, units, str))
 	file.close()
