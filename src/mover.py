@@ -400,6 +400,7 @@ def do_fork( self, ticket, mode ):
     return None
 
 def forked_write_to_hsm( self, ticket ):
+    global vcc, fcc
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
     if mvr_config['do_fork']: do_fork( self, ticket, 'w' )
@@ -416,6 +417,14 @@ def forked_write_to_hsm( self, ticket ):
 	if sts == 'error':
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
 	    pass
+
+	# get vcc and fcc for this xfer
+	fcc = file_clerk_client.FileClient( csc, 0,
+					    ticket['fc']['address'][0],
+					    ticket['fc']['address'][1] )
+	vcc = volume_clerk_client.VolumeClerkClient( csc, 0,
+						     ticket['vc']['address'][0],
+						     ticket['vc']['address'][1] )
 
 	t0 = time.time()
 	sts = bind_volume( self, ticket['fc']['external_label'] )
@@ -571,6 +580,7 @@ def forked_write_to_hsm( self, ticket ):
     return {}
 
 def forked_read_from_hsm( self, ticket ):
+    global vcc, fcc
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
     if mvr_config['do_fork']: do_fork( self, ticket, 'r' )
@@ -587,6 +597,14 @@ def forked_read_from_hsm( self, ticket ):
 	if sts == "error":
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
 	    pass
+
+	# get vcc and fcc for this xfer
+	fcc = file_clerk_client.FileClient( csc, 0,
+					    ticket['fc']['address'][0],
+					    ticket['fc']['address'][1] )
+	vcc = volume_clerk_client.VolumeClerkClient( csc, 0,
+						     ticket['vc']['address'][0],
+						     ticket['vc']['address'][1] )
 
 	t0 = time.time()
 	sts = bind_volume( self, ticket['fc']['external_label'] )
@@ -862,6 +880,22 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	self.reply_to_caller( out_ticket )
 	return
 
+    def quit(self,ticket):		# override dispatching_worker -
+	#  method which does not clean up
+        Trace.trace(10,"{quit address="+repr(self.server_address))
+	del self.client_obj_inst	# clean up shm??? I should not have to!
+	# Note: 11-30-98 python v1.5 does cleans-up shm upon SIGINT (2)
+        ticket['address'] = self.server_address
+        ticket['status'] = (e_errors.OK, None)
+        ticket['pid'] = posix.getpid()
+        try:
+            self.enprint("QUITTING... via os_exit python call")
+        except:
+            generic_cs.enprint("QUITTING-e... via os_exit python call")
+        self.reply_to_caller(ticket)
+        os._exit(0)
+	return
+
     def shutdown( self, ticket ):
 	del self.client_obj_inst	# clean up shm??? I should not have to!
 	# Note: 11-30-98 python v1.5 does cleans-up shm upon SIGINT (2)
@@ -1104,8 +1138,6 @@ del mvr_config['status']
 # get clients -- these will be (readonly) global object instances
 udpc =          udp_client.UDPClient()	# for server to send (client) request
 logc =          log_client.LoggerClient( csc, mvr_config['logname'], 'logserver', 0 )
-fcc  = file_clerk_client.FileClient( csc )
-vcc  = volume_clerk_client.VolumeClerkClient( csc )
 
 # need a media changer to control (mount/load...) the volume
 mcc = media_changer_client.MediaChangerClient( csc, 0,
