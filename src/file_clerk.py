@@ -25,7 +25,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # we need a new bit field id for each new file in the system
     def new_bit_file(self, ticket) :
-     Trace.trace(10,'{new_bit_file')
+     Trace.trace(10,'{new_bit_file '+repr(ticket))
      # input ticket is a file clerk part of the main ticket
      try:
         # create empty record and control what goes into database
@@ -61,7 +61,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # call the volume server to find the library, and copy to the work
     # ticket the salient information
     def read_from_hsm(self, ticket):
-     Trace.trace(8,"{read_from_hsm")
+     Trace.trace(8,"{read_from_hsm "+repr(ticket))
      try:
         # everything is based on bfid - make sure we have this
         try:
@@ -156,7 +156,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          return
 
     def get_user_sockets(self, ticket):
-        Trace.trace(16,"{get_user_sockets")
+        Trace.trace(16,"{get_user_sockets "+repr(ticket))
         file_clerk_host, file_clerk_port, listen_socket =\
                            callback.get_callback()
         listen_socket.listen(4)
@@ -171,7 +171,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket):
-     Trace.trace(10,"{get_bfids  R U CRAZY?")
+     Trace.trace(10,"{get_bfids  R U CRAZY? "+repr(ticket))
      ticket["status"] = "ok"
      try:
         self.reply_to_caller(ticket)
@@ -209,7 +209,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # return all info about a certain bfid - this does everything that the
     # read_from_hsm method does, except send the ticket to the library manager
     def bfid_info(self, ticket):
-     Trace.trace(10,'{bfid_info')
+     Trace.trace(10,'{bfid_info '+repr(ticket))
      try:
         # everything is based on bfid - make sure we have this
         try:
@@ -284,7 +284,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # part is based on the time, and the least significant part is a count
     # to make it unique
     def unique_bit_file_id(self):
-     Trace.trace(10,'}unique_bit_file_id')
+     Trace.trace(10,'}unique_bit_file_id '+repr(ticket))
      try:
         bfid = time.time()
         bfid = long(bfid)*100000
@@ -301,14 +301,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          sys.exit(1)
 
     def start_backup(self,ticket):
-        Trace.trace(10,'{start_backup')
+        Trace.trace(10,'{start_backup '+repr(ticket))
         dict.start_backup()
         self.reply_to_caller({"status" : "ok",\
                 "start_backup"  : 'yes' })
         Trace.trace(10,'}start_backup')
 
     def stop_backup(self,ticket):
-        Trace.trace(10,'{stop_backup')
+        Trace.trace(10,'{stop_backup '+repr(ticket))
         dict.stop_backup()
         self.reply_to_caller({"status" : "ok",\
                 "stop_backup"  : 'yes' })
