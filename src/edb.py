@@ -223,7 +223,7 @@ class FileDB(DbTable):
 		if dbHome:
 			self.bdb = db.DbTable(self.name, dbHome, jou, ['external_label'],0)
 		else:
-			self.dbd = None
+			self.bdb = None
 
 		self.retrieve_query = "\
         		select \
@@ -321,7 +321,7 @@ class FileDB(DbTable):
 	def __setitem__(self, key, value):
 		DbTable.__setitem__(self, key, value)
 		if self.bdb != None:
-			self.dbd[key] = value
+			self.bdb[key] = value
 
 class VolumeDB(DbTable):
 	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None):
@@ -329,7 +329,7 @@ class VolumeDB(DbTable):
 		if dbHome:
 			self.bdb = db.DbTable(self.name, dbHome, jou, ['library', 'volume_family'])
 		else:
-			self.dbd = None
+			self.bdb = None
 
 		self.retrieve_query = "\
         		select \
@@ -428,4 +428,4 @@ class VolumeDB(DbTable):
 	def __setitem__(self, key, value):
 		DbTable.__setitem__(self, key, value)
 		if self.bdb != None:
-			self.dbd[key] = value
+			self.bdb[key] = value
