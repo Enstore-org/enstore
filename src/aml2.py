@@ -78,7 +78,7 @@ def mount(volume, drive, media_type,view_first=1):
 
     media_code = aci.__dict__.get("ACI_"+media_type)
     if media_code is None:
-        return 'BAD',9998,'Media code is None. media_type= %s  status= %s'%(media_type,)
+        return 'BAD',9998,'Media code is None. media_type= %s'%(media_type,)
     
     # check if tape is in the storage location or somewhere else
     if view_first:
