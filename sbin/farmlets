@@ -22,6 +22,7 @@ if $FIX; then
     $UPDATE  d0ensrv1:/usr/local/etc/farmlets/d0*  /usr/local/etc/farmlets/
     $UPDATE stkensrv1:/usr/local/etc/farmlets/stk* /usr/local/etc/farmlets/
     $UPDATE cdfensrv1:/usr/local/etc/farmlets/cdf* /usr/local/etc/farmlets/
+    $UPDATE ${gang}srv1:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/
 fi
 
 ND0=9999
