@@ -1806,7 +1806,8 @@ def create_read_requests(inputlist, outputlist, file_size,
             if vc_reply['status'][0] != e_errors.OK:
                 raise vc_reply['status']
 
-        except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED):
+        except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED,
+                e_errors.BROKEN):
             exc, msg, tb = sys.exc_info()
             print_data_access_layer_format(inputlist[i], outputlist[i], 0,
                                            {'status':(exc, msg)})
