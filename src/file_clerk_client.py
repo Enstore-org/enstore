@@ -262,7 +262,7 @@ class FileClient(generic_client.GenericClient,
         try:
             os.rename(a_path, bad_file)
         except:
-            msg = "failed to rename %s to %s"%(a_aoth, bad_file)
+            msg = "failed to rename %s to %s"%(a_path, bad_file)
             return {'status': (e_errors.ERROR, msg)}
 
         # log it
@@ -310,7 +310,7 @@ class FileClient(generic_client.GenericClient,
         try:
             os.rename(a_path, good_file)
         except:
-            msg = "failed to rename %s to %s"%(a_aoth, good_file)
+            msg = "failed to rename %s to %s"%(a_path, good_file)
             return {'status': (e_errors.ERROR, msg)}
 
         # log it
