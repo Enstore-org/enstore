@@ -21,6 +21,9 @@ import traceback
 import select
 
 # enstore modules
+
+import setpath #cgw
+
 import Trace_lite
 Trace=Trace_lite
 import pnfs
@@ -1467,6 +1470,11 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                                            0,
                                                            {'status':("EPROTO",
                                                                       "Network problem or mover crash")})
+                            try:
+                                if tempname!="/dev/null":
+                                    os.unlink(tempname)
+                            except:
+                                pass
                             quit()
 
                         control_socket.close()
