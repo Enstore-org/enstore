@@ -759,12 +759,12 @@ Mover receives an error while writing to the volume.
 time a file is written.
 <tr>
 <td valign=top>user_inhibit
-<td valign=top>string (d:"none" or "readonly", "all")
+<td valign=top>string (d:"none" or "readonly", "noaccess")
 <td valign=top>Specified by user at volume creation; access level for this
 volume, updated by Volume Clerk.
 <tr>
 <td valign=top>system_inhibit
-<td valign=top>string (d:"none" or "writing", "readonly", "full")
+<td valign=top>string (d:"none" or "writing", "readonly", "full", "noaccess")
 <td valign=top>Administrator generated limitation on the kind of access permitted to
 this volume; update by Volume Clerk when data are written on the volume, an
 error occurred while data were being written or the file size exceeded the
