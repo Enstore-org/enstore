@@ -224,6 +224,23 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	table.append(empty_row(cols))
 	return table
 
+    def add_source_server(self, cols=1):
+	tr = HTMLgen.TR(empty_data(cols))
+	td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Brought To You By : ", 
+						      size=-1)), 
+			align="RIGHT")
+	td.append(HTMLgen.Font("%s"%(self.source_server,), size=-1))
+	tr.append(td)
+	return tr
+
+    def add_last_updated(self):
+	td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Last updated : ", 
+						      size=-1)), 
+			align="RIGHT")
+	td.append(HTMLgen.Font("%s"%(enstore_functions.format_time(time.time()),), 
+			       html_escape='OFF', size=-1))
+	return td
+
     def table_top(self, cols=1, add_update=1):
 	# create the outer table and its rows	
 	fl_table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, 
@@ -231,30 +248,18 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	tr = HTMLgen.TR(HTMLgen.TD(self.nav_table()))
 	self.script_title(tr)
 	fl_table.append(tr)
-	# only add this info if we know it
 	if self.source_server:
-	    tr = HTMLgen.TR(empty_data())
-	    td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Brought To You By : ", 
-							  size=-1)), 
-			    align="RIGHT")
-	    td.append(HTMLgen.Font("%s"%(self.source_server,), size=-1))
-	    tr.append(td)
-	    fl_table.append(tr)
+	    fl_table.append(self.add_source_server())
 	# only add update information if asked to
 	if add_update:
 	    if self.system_tag:
 		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(self.system_tag,
-								    size="+1", 
-							      color=BRICKRED)),
+								     size="+1", 
+								     color=BRICKRED)),
 					   align="LEFT"))
 	    else:
 		tr = HTMLgen.TR(empty_data())
-	    td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Last updated : ", 
-							  size=-1)), 
-			    align="RIGHT")
-	    td.append(HTMLgen.Font("%s"%(enstore_functions.format_time(time.time()),), 
-				   html_escape='OFF', size=-1))
-	    tr.append(td)	    
+	    tr.append(self.add_last_updated())
 	    fl_table.append(tr)
 
 	if self.align == YES:
@@ -2323,7 +2328,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 						    size="-1")))
 	return td
 
-    def check_for_red(self, enstat_d, table):
+    def check_for_red(self, enstat_d, table, empty_rows=4):
 	# check if the enstore ball is red, if so we need to add something
 	ball_gif = self.get_gif(enstat_d, enstore_constants.ENSTORE)
 	if ball_gif.filename == self.redball_gif:
@@ -2337,10 +2342,12 @@ class EnSaagPage(EnBaseHtmlDoc):
 								 cellpadding=1, border=0, 
 								 align="CENTER", 
 								 width="90%"))))
-	    table.append(empty_row())
-	    table.append(empty_row())
-	    table.append(empty_row())
-	    table.append(empty_row())
+	    while empty_rows > 0:
+		table.append(empty_row())
+		empty_rows = empty_rows - 1
+	    return 1
+	else:
+	    return None
 	    
     def get_med_list(self, dict):
 	keys = dict.keys()
@@ -2596,3 +2603,100 @@ class EnSaagPage(EnBaseHtmlDoc):
 	table.append(HTMLgen.TR(HTMLgen.TD(self.make_legend_table())))
 	self.trailer(table)
 	self.append(table)
+
+
+class EnStatusOnlyPage(EnSaagPage):
+
+    def __init__(self, title="ENSTORE Production System's Status", 
+		 gif="en_all.gif"):
+	EnBaseHtmlDoc.__init__(self, refresh=370)
+	self.title = title
+	self.script_title_gif = gif
+	self.source_server = "SPAM"
+	self.description = ""
+
+    def table_top(self, cols=1):
+	# create the outer table and its rows	
+	table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, 
+				  align="LEFT", width="800")
+	tr = empty_row(3)
+	self.script_title(tr)
+	table.append(tr)
+	# only add this info if we know it
+	if self.source_server:
+	    table.append(self.add_source_server(3))
+	tr = HTMLgen.TR(empty_data(3))
+	tr.append(self.add_last_updated())
+	table.append(tr)
+	table.append(empty_row(4))
+	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR(size=2, noshade=1), colspan=4)))
+	table.append(empty_row(4))
+	return table
+
+    def add_to_row(self, tr, val, dict, outage_d, offline_d, alt_txt=None):
+	tr.append(self.get_color_ball(dict, val, "RIGHT"))
+	if not alt_txt:
+	    txt = HTMLgen.Font(val, size="+2")
+	else:
+	    txt = HTMLgen.Font(alt_txt, size="+2")
+	if dict.has_key(enstore_constants.URL):
+	    txt = HTMLgen.Href(dict[enstore_constants.URL], txt)
+	td = self.get_element(dict, val, outage_d, offline_d, txt)
+	td.colspan = 2
+	tr.append(td)
+
+    def add_status_row(self, estatus, txt, table):
+	# this list has the following elements -
+	#     enstore status
+	#     time status obtained
+	#     txt if known down, otherwise a -1
+	#     txt if scheduled outage, otherwise a -1
+	#     value overridden to, otherwise a -1
+	#     web server address
+	status, eftime, offline, outage, override, web_address = estatus
+	# first check the time.  if it is 10 minutes different than ours, enstore is
+	# assumed to be down
+	etime = enstore_functions.unformat_time(eftime)
+	if time.time() - etime > 600 and override == enstore_constants.NONE:
+	    # the time is too far off, make the enstore ball red
+	    status = enstore_constants.DOWN
+	# use the functions already provided so, need to format things a little
+	if offline == enstore_constants.NONE:
+	    offline_d = {}
+	else:
+	    offline_d = {enstore_constants.ENSTORE : offline}
+	if outage == enstore_constants.NONE:
+	    outage_d = {}
+	else:
+	    outage_d = {enstore_constants.ENSTORE : outage}
+	enstat_d = {enstore_constants.ENSTORE : status,
+		    enstore_constants.URL : "%s/enstore/%s"%(web_address,
+							     enstore_constants.SAAGHTMLFILE)}
+	if not self.check_for_red(enstat_d, table, 0):
+	    tr = HTMLgen.TR(empty_data())
+	    self.add_to_row(tr, enstore_constants.ENSTORE, enstat_d, outage_d, offline_d,
+			    txt)
+	    table.append(tr)
+	else:
+	    # enstore ball is red need to identify it better on the page as to which one
+	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(enstat_d[enstore_constants.URL],
+							    HTMLgen.Font(txt, size="+2", 
+									 color=BRICKRED)),
+					       colspan=4, align="center")))
+
+    def body(self, status_d, txt_d):
+	# create the outer table and its rows
+	table = self.table_top()
+	keys = status_d.keys()
+	keys.sort()
+	for key in keys:
+	    self.add_status_row(status_d[key], " %s (%s)"%(txt_d[key],
+							   status_d[key][1]), table)
+	    table.append(empty_row(4))
+	else:
+	    # add the legend table
+	    table_spacer(table, 4)
+	    table.append(HTMLgen.TR(HTMLgen.TD(self.make_legend_table(), colspan=4)))
+	    self.trailer(table, 4)
+	    self.append(table)
+
