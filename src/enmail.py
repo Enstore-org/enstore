@@ -58,21 +58,16 @@ def mail_bin(from_add, to_add, subject, file, msg):
 
 	server = smtplib.SMTP('localhost')
 	# server.set_debuglevel(1)	# no debug please
-	server.sendmail(from_add, to_addresses, mesg)
+	server.sendmail(from_add, to_add, mesg)
 	server.quit()
 
 # mail(from_add, to_add, subject, msg) -- s aimple mail through SMTP
 
 def mail(from_add, to_add, subject, msg):
 
-	if type(to_add) == type([]):
-		to_addresses = string.joinfields(to_add, ',')
-	else:
-		to_addresses = to_add
-
 	mesg = 'Subject: '+subject+'\r\n\r\n'+msg
 
 	server = smtplib.SMTP('localhost')
 	# server.set_debuglevel(1)	# no debug please
-	server.sendmail(from_add, to_addresses, mesg)
+	server.sendmail(from_add, to_add, mesg)
 	server.quit()
