@@ -195,6 +195,14 @@ class FileClient(generic_client.GenericClient,
         del r['work']
         return r
 
+    # This is only to be used internally
+    def exist_bfids(self, bfids = []):
+        if not bfids:
+            bfids = self.bfid
+        r = self.send({"work" : "exist_bfids",
+                       "bfids": bfids} )
+        return r['result']
+
     def set_deleted(self, deleted, restore_dir="no"):
         r = self.send({"work"        : "set_deleted",
                        "bfid"        : self.bfid,
