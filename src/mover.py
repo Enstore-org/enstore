@@ -72,7 +72,8 @@ import errno
 import pprint
 import socket
 import signal				
-import os,sys				
+import os				
+import sys				
 import time				
 import string				
 import select
@@ -1174,7 +1175,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                               'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
                               (self.mvr_config['hostip'],self.mvr_config['port']) )
             Trace.log(e_errors.INFO, "send returns %s, exit %s"%(r, m_err.index(status)))
-            sys.exit( m_err.index(status) )
+            os.exit( m_err.index(status) )
             pass
         return self.status_to_request( status ) # return_or_update_and_exit
 
@@ -1373,7 +1374,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	# Note: 11-30-98 python v1.5 does cleans-up shm upon SIGINT (2)
 	out_ticket = {'status':(e_errors.OK,None)}
 	self.reply_to_caller( out_ticket )
-	sys.exit( 0 )
+	os.exit( 0 )
 	return
 
     def crc_on( self, ticket ):
@@ -1697,7 +1698,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         try: del self.hsm_driver.msg
         except: pass			# wacky things can happen with forking
         #print '%d sigterm exiting'%os.getpid()
-        sys.exit( 0 )   # anything other than 0 causes traceback
+        os.exit( 0 )   # anything other than 0 causes traceback
 
         # sys.exit( 0x80 | sig ) # this is the way to indicate exit b/c of a signal
         return None
@@ -1708,7 +1709,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         print 'Traceback (innermost last):'
         traceback.print_stack( stack )
         print 'KeyboardInterrupt'
-        sys.exit( 1 )
+        os.exit( 1 )
         return None
 
     def sigsegv( self, sig, stack ):
@@ -1730,7 +1731,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         if self.pid:
             self.usr_driver.close()
         else:
-            sys.exit( 0x80 | sig )
+            os.exit( 0x80 | sig )
         return None
 
     def sigstop( self, sig, stack ):
@@ -1754,7 +1755,7 @@ class MoverInterface(generic_server.GenericServerInterface):
         if len(self.args) < 1 :
 	    self.missing_parameter(self.parameters())
             self.print_help(),
-            sys.exit(1)
+            os.exit(1)
         else:
             self.name = self.args[0]
 
