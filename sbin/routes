@@ -93,6 +93,7 @@ Rate test between various nodes and `uname -n`
 <td align=center><b><font color="$color">In<br>Production</font></b></td>
 <td align=center><b><font color="$color">Rate<br>10^6 bits/S</font></b></td>
 <td align=center><b><font color="$color">Less than<br>${checkat}<br>10^6 bits/S?</font></b></td>
+<td align=center><b><font color="$color">Previous<br>Rates</font></b></td>
 </tr>
 EOF
     for knode in $KNODES; do
@@ -114,19 +115,28 @@ EOF
       if [ -z "$v" ]; then v=0; i=0; fi
       if [ $i -lt 10 ]; then
          flag=" <-------------- CHECK THIS. Problem is either NIC/NODE/6509";
-         color=$red
+         fcolor=$red
          if [ $production -ne 0 ]; then
            flag2="CHECK"
          else
            flag2="yes"
          fi
       else
+         fcolor=$color
          flag=""
          flag2=""
       fi
       echo $node:  ${v} x 10^6 bits/S $flag
       echo "<td align=center><font color=\"$color\">$v</font></td>" >> $storit
-      echo "<td align=center><font color=\"$color\">$flag2</font></td>" >> $storit
+      echo "<td align=center><font color=\"$fcolor\">$flag2</font></td>" >> $storit
+      if [ -r /rate-$node ]; then 
+        #color=$yellow
+        tail -n 10 /rate-$node | while read line; do
+          rate=`echo $line | awk '{print $NF}'`
+          echo "<td align=center><font color=\"$color\">$rate</font></td>" >> $storit
+        done
+      fi
+      echo "`date` $v">>/rate-$node 2>/dev/null
     done
 cat << EOF >>$storit
 </table>
