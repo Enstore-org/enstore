@@ -5,7 +5,7 @@ SHELL=/bin/sh
 #
 #############################################################
 
-ALL_TARGETS=tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp
+ALL_TARGETS=tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp mouse_move autologinenstore
 
 all: adler32.a Makefile.modules Modules $(ALL_TARGETS)
 
@@ -108,10 +108,10 @@ ddencp: EXfer.c
 	cp $(@) ../bin
 
 autologinenstore: autologinenstore.c
-	$(CC) -o $@ autologinenstore.c
+	- $(CC) -o $@ autologinenstore.c
 
 mouse_move: mouse_move.c
-	$(CC) -o $@ $(XINCLUDES) mouse_move.c $(XLIBS)
+	- $(CC) -o $@ $(XINCLUDES) mouse_move.c $(XLIBS)
 
 installpyc:
 	for m in $(PYMODULES) the-end; do \
