@@ -5,11 +5,13 @@ import configuration_client
 import pg
 import info_client
 import generic_client
+import log_client
 import sys
 import string
 import os
 import pwd
 import Trace
+import e_errors
 
 MY_NAME = "QUOTA"
 MY_SERVER = None
@@ -48,7 +50,7 @@ def show_query_result(res):
 		if r[2] >= r[3] and r[3] >= r[4]:
 			print
 		else:
-			print " *"
+			print "*"
 
 class Quota:
 	def __init__(self, csc):
@@ -61,7 +63,7 @@ class Quota:
 		self.db = pg.DB(host=self.host, port=self.port, dbname=self.dbname)
 		self.uname = whoami()
 
-	def log(m):
+	def log(self, m):
 		Trace.log(e_errors.INFO, self.uname+' '+m)
 
 	def show_all(self):
@@ -401,6 +403,8 @@ class Interface(option.Interface):
 
 def do_work(intf):
 	q = Quota((intf.config_host, intf.config_port))
+	logc = log_client.LoggerClient(q.csc)
+	Trace.init(string.upper(MY_NAME))
 
 	if intf.show:
 		if intf.show == "-1":
@@ -438,6 +442,5 @@ def do_work(intf):
 		q.enable()
 
 if __name__ == '__main__':
-	Trace.init(string.upper(MY_NAME))
 	intf = Interface(user_mode=0)
 	do_work(intf)
