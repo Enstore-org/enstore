@@ -95,10 +95,11 @@ while [ $stat -ne 0 -a $try -lt $maxtry ]; do
 done
  
 if [ -r $write_in_progress ]; then
+   msg="Ball Red: $dcache dcache write failed."
    enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache write failed."
    echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache write failed." | Mail bakken@fnal.gov
-   enstore sched --override dcache_cdf --saagstatus red
-   enstore sched --override enstore    --saagstatus red
+   enstore sched --override dcache_cdf --saagstatus red --time="$msg"
+   enstore sched --override enstore    --saagstatus red --time="$msg"
    exit 6
 fi
 
@@ -130,10 +131,11 @@ while [ $stat -ne 0 -a $try -lt $maxtry ]; do
 done
 
 if [ -r $read_in_progress ]; then
+   msg="Ball Red: $dcache dcache read failed"
    enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache read failed"
    echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache read failed" | Mail bakken@fnal.gov
-   enstore sched --override dcache_cdf --saagstatus red
-   enstore sched --override enstore    --saagstatus red
+   enstore sched --override dcache_cdf --saagstatus red --time="$msg"
+   enstore sched --override enstore    --saagstatus red --time="$msg"
 
    exit 4
 fi
@@ -144,10 +146,11 @@ fi
 
 cmp $test_file $read_back
 if [ $? -ne 0 ]; then
+    msg="Ball Red: $dcache dcache cmp failed"
     enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed"
     echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed" | Mail bakken@fnal.gov
-    enstore sched --override dcache_cdf --saagstatus red
-    enstore sched --override enstore    --saagstatus red
+    enstore sched --override dcache_cdf --saagstatus red --time="$msg"
+    enstore sched --override enstore    --saagstatus red --time="$msg"
     exit $3
 fi
 
