@@ -3,7 +3,7 @@
 # $Id$
 #
 
-SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c ../checksum_wrap.c ../socket_ext_wrap.c ../strbuffer_wrap_thread.c ../ftt_low_wrap_thread.c 
+SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c ../checksum_wrap.c ../socket_ext_wrap.c ../strbuffer_wrap_thread.c ../ftt_low_wrap_thread.c ../runon_wrap.c ../enroute_wrap.c
 
 SWIG_GENERATED_PY_FILES=../aci_shadow.py
 
@@ -51,3 +51,10 @@ clean:
 	./threadit.py < strbuffer_wrap.c > ../strbuffer_wrap_thread.c ; \
 	rm strbuffer_wrap.c ;
 
+../enroute_wrap.c: enroute.i
+	swig -python enroute.i
+	mv enroute_wrap.c ..
+
+../runon_wrap.c: runon.i
+	swig -python runon.i
+	mv runon_wrap.c ..
