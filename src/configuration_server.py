@@ -218,6 +218,10 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 			str(sys.exc_info()[1]))
 	    return
 
+    def reply_configdict( self, ticket ):
+        out_ticket = {"status" : "ok", "list" : self.configdict }
+        self.reply_to_caller(out_ticket)
+	 
 
 class ConfigurationServer(ConfigurationDict,\
                           generic_server.GenericServer, SocketServer.UDPServer):

@@ -17,7 +17,7 @@ python -c '
 import configuration_client
 intf=configuration_client.ConfigurationClientInterface()
 csc=configuration_client.ConfigurationClient("'$ENSTORE_CONFIG_HOST'"',$ENSTORE_CONFIG_PORT',intf.config_list)
-t=csc.u.send({"work":"hi"},csc.config_address)
+t=csc.u.send({"work":"reply_configdict"},csc.config_address)
 configdict = t["list"]
 for key in configdict.keys():
     try:
