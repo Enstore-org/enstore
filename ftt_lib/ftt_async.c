@@ -22,9 +22,9 @@ static char rcsid[] = "@(#)$Id$";
 int
 ftt_fork(ftt_descriptor d) {
     int fds[2];
-    int res;
+    int res=0;
 
-    CKOK(d,"ftt_fork",0,0);
+    ENTERING("ftt_fork");			
     CKNULL("ftt_descriptor", d);
 
     ftt_close_dev(d);
