@@ -1000,8 +1000,9 @@ def query_lm_queue(node,
 		user = pw_list[i]["wrapper"]["uname"]
 		pnfsfn = pw_list[i]["wrapper"]["pnfsFilename"]
 		fn = pw_list[i]["wrapper"]["fullname"]
+		at_top = pw_list[i]["at_the_top"]
 		if host == node:
-		    print "%s %s %s %s P" % (host,user,pnfsfn,fn)
+		    print "%s %s %s %s P %d" % (host,user,pnfsfn,fn, at_top)
 	    for i in range(0, len(at_list)):
 		host = at_list[i]["wrapper"]["machine"][1]
 		user = at_list[i]["wrapper"]["uname"]

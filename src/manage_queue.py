@@ -52,6 +52,7 @@ class Queue:
    def insert_job(self,ticket):
       ticket['times']['job_queued'] = time.time()
       #print "REQ LC:", ticket['fc']['location_cookie']
+      ticket['at_the_top'] = 0
       self.queue.append(ticket)
    
    # Remove a ticket 
@@ -83,16 +84,15 @@ class Queue:
       self.queue_ptr=0
       if len(self.queue) == 0:			    # There are no jobs
           return
-      #for w in self.queue:
-      #   w["fc"]["location_cookie"] = self.priority(w)
       self.queue.sort(self.compare_location)	    # Sort the jobs by location
-      #self.queue.reverse()
       return self.queue[0]			    # Return the top one
 
    # Return the next highest priority job.  get_init must be called first
    def get_next(self):
       self.queue_ptr=self.queue_ptr+1
       if len(self.queue) > self.queue_ptr:
+	  self.queue[self.queue_ptr]['at_the_top'] = \
+	  self.queue[self.queue_ptr]['at_the_top'] + 1
           return self.queue[self.queue_ptr]
       return
 
@@ -105,10 +105,12 @@ class Queue:
 		 v['vc']["external_label"]:
 		  if self.queue[i]['fc']['location_cookie'] > \
 		     v['vc']['current_location']:
+		      self.queue[i]['at_the_top'] = self.queue[i]['at_the_top']+1
 		      return self.queue[i]
       # no match has been found, return first for this volume
       for i in range (0, len(self.queue)):
-	  if self.queue[i]['vc']['external_label'] == v['vc']["external_label"]:
+	  if self.queue[i]['vc']['external_label'] ==v['vc']["external_label"]:
+	      self.queue[i]['at_the_top'] = self.queue[i]['at_the_top']+1
 	      return self.queue[i]
       return
 
