@@ -63,7 +63,6 @@ class ConfigurationClient(generic_client.GenericClient):
         self.timeout = timeout #Remember this.
         self.retry = retry     #Remember this.
         if key == enstore_constants.CONFIGURATION_SERVER:
-            print "key = %s"%(key,)
             ret = {'hostip':self.server_address[0],
                    'port':self.server_address[1],
                    'status':(e_errors.OK, None)}
