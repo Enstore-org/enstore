@@ -24,7 +24,7 @@ acc = None
 t0 = time.time()
 
 def get_vq_format_file(output_dir):
-    return output_dir + enstore_constants.VQFORMATED
+    return os.path.join(output_dir, enstore_constants.VQFORMATED)
 
 def tod():
     return time.strftime("%c",time.localtime(time.time()))
@@ -41,14 +41,14 @@ def get_vol_filenames(output_dir):
         total_bytes_file = "/dev/stdout"
         declaration_error = "/dev/stdout"
     else:
-        last_access_file = output_dir + "LAST_ACCESS"
-        volume_size_file = output_dir + "VOLUME_SIZE"
-        volumes_defined_file = output_dir + "VOLUMES_DEFINED"
-        volumes_too_many_mounts_file = output_dir + "VOLUMES_TOO_MANY_MOUNTS"
-        volume_quotas_file = output_dir + "VOLUME_QUOTAS"
+        last_access_file = os.path.join(output_dir, "LAST_ACCESS")
+        volume_size_file = os.path.join(output_dir, "VOLUME_SIZE")
+        volumes_defined_file = os.path.join(output_dir, "VOLUMES_DEFINED")
+        volumes_too_many_mounts_file = os.path.join(output_dir, "VOLUMES_TOO_MANY_MOUNTS")
+        volume_quotas_file = os.path.join(output_dir, "VOLUME_QUOTAS")
 	volume_quotas_format_file = get_vq_format_file(output_dir)
-        total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
-        declaration_error = output_dir + "DECLARATION_ERROR"
+        total_bytes_file = os.path.join(output_dir, "TOTAL_BYTES_ON_TAPE")
+        declaration_error = os.path.join(output_dir, "DECLARATION_ERROR")
     return last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
 		      total_bytes_file, volumes_too_many_mounts_file, \
@@ -491,7 +491,7 @@ def create_fd_list(volume_list, output_dir):
             fd = 1
             print "setting file descriptor to 1."
         else:
-            file_string = output_dir + volume['external_label']
+            file_string = os.path.join(output_dir, volume['external_label'])
 
             count = count + 1
             print count,
@@ -791,7 +791,7 @@ def inventory(output_dir, cache_dir):
             n_unchanged = n_unchanged + 1
         else:
             if fd_output != 1:
-                fd_output = os.open(output_dir + vv['external_label'],
+                fd_output = os.open(os.path.join(output_dir, vv['external_label']),
                                     os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
                                     0666)
             print_header(vv, fd_output)
@@ -1067,10 +1067,6 @@ if __name__ == "__main__":
 
     (inventory_dir, inventory_rcp_dir, inventory_cache_dir) = inventory_dirs()
 
-    #Make sure all of the directories end with a /
-    if inventory_rcp_dir != "" and inventory_rcp_dir[-1] != "/":
-        inventory_rcp_dir = inventory_rcp_dir + "/"
-        
 #    print "inventory_dir", inventory_dir
 #    print "inventory_rcp_dir", inventory_rcp_dir
 
@@ -1079,7 +1075,7 @@ if __name__ == "__main__":
         output_dir = "/dev/stdout/"
         inventory_rcp_dir = "" #Makes no sense to move files that don't exist.
     elif "-o" in sys.argv:
-        output_dir = sys.argv[sys.argv.index("-o") + 1] + "/"
+        output_dir = sys.argv[sys.argv.index("-o") + 1]
     else:
         output_dir = inventory_dir
         
@@ -1093,8 +1089,8 @@ if __name__ == "__main__":
     #Move all of the output files over to the web server node.
     if inventory_rcp_dir:
         if string.find(output_dir, "/dev/stdout") == -1:
-            print "enrcp %s %s" % (output_dir + "*", inventory_rcp_dir)
-            os.system("enrcp %s %s" % (output_dir + "*", inventory_rcp_dir))
+            print "enrcp %s %s" % (os.path.join(output_dir, "*"), inventory_rcp_dir)
+            os.system("enrcp %s %s" % (os.path.join(output_dir, "*"), inventory_rcp_dir))
 
     #Print stats regarding the data generated.
     delta_t = time.time() - t0
