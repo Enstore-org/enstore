@@ -594,7 +594,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "suspect_vols - ERROR, timed out")
             return None
-        elif not enstore_functions.is_ok(state):
+        elif not e_errors.is_ok(state):
             self.handle_lmc_error(lib_man, time, state) 
             return None
         return 1
@@ -746,7 +746,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "work_queue - ERROR, timed out")
             return None
-        elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
+        elif not e_errors.is_ok(self.lm_queues[lib_man.name]):
             self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
             return None
         return 1
@@ -790,7 +790,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "active volumes - ERROR, timed out")
             return None
-        elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
+        elif not e_errors.is_ok(self.lm_queues[lib_man.name]):
             self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
             return None
         return 1
@@ -827,7 +827,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "lm_state - ERROR, timed out")
             return None
-        elif not enstore_functions.is_ok(state):
+        elif not e_errors.is_ok(state):
             self.handle_lmc_error(lib_man, time, state)
             return None
         return 1
@@ -1190,10 +1190,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def periodic_tasks(self, reason_called=TIMEOUT):
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "periodic timeout")
-        # just output the inquisitor alive info, if we are doing this, we are alive.
-        self.server_is_alive(self.inquisitor.name)
         # check for all received event messages
         self.process_event_message(reason_called)
+        # just output the inquisitor alive info, if we are doing this, we are alive.
+        self.server_is_alive(self.inquisitor.name)
         # see if there are any servers in cardiac arrest (no heartbeat)
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "periodic timeout - check last alive")
