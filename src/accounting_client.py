@@ -183,7 +183,7 @@ class accClient(generic_client.GenericClient):
 	def log_encp_error(self, src, dst, size, storage_group, encp_id, version,
 		type, error, node=None, date=None, file_family=None,
 		wrapper=None, mover=None, drive_id=None, drive_sn=None,
-		rw=None):
+		rw=None, volume=None):
 
 		if not self.server_address: return
 
@@ -212,7 +212,8 @@ class accClient(generic_client.GenericClient):
 			'mover'		: mover,
 			'drive_id'	: drive_id,
 			'drive_sn'	: drive_sn,
-			'rw'		: rw}
+			'rw'		: rw,
+			'volume'	: volume}
 		self.send2(ticket)
 
 	def log_start_event(self, name):

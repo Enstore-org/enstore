@@ -240,6 +240,20 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	# log_encp_error(....)
 	def log_encp_error(self, ticket):
 		st = time.time()
+		if not ticket.has_key('file_family'):
+			v = vcc.inquire_vol(ticket['volume'])
+			sg, ticket['file_family'], ticket['wrapper'] = string.split(v['volume_family'], ".")
+
+		if not ticket.has_key('mover'):
+			ticket['mover'] = None
+		if not ticket.has_key('drive_id'):
+			ticket['drive_id'] = None
+		if not ticket.has_key('drive_sn'):
+			ticket['drive_sn'] = None
+		if not ticket.has_key('rw'):
+			ticket['rw'] = None
+		if not ticket.has_key('volume'):
+			ticket['volume'] = None
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_encp_error(
