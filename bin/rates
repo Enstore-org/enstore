@@ -52,6 +52,7 @@ u = udp_client.UDPClient()
 bytes=-1
 t=-1
 nt=-1.
+tfmt="%a %m-%d-%Y-%H:%M:%S"
 while 1==1:
   try:
     s = u.send( {"work":"status"}, ("'$host'",'$port'), '${opt_udp_timeout:-3}', '${opt_udp_retries:-2}' )
@@ -75,16 +76,18 @@ while 1==1:
         moved = s["wr_bytes"]
         state = "writing"
         if rate<0.:
-	  rate = 0.
+          rate = 0.
       bytes=s["wr_bytes"]
-    print "%.3f %.3f %.10i %9.9s %s %s %i %s" % (nt, rate, moved, state, "'$mvr'","'$host'",'$port', time.strftime("%c",time.localtime(nt)))
+    print "%s %.3f %.10i %9.9s %s %s %i %.3f" % (time.strftime(tfmt,time.localtime(nt)), rate, moved, state, "'$mvr'","'$host'",'$port',nt)
+    sys.stdout.flush()
     t=nt
     time.sleep('${opt_update_delay:-2}')
   except errno.errorcode[errno.ETIMEDOUT]:
     rate = 0.
     moved = 0
     state = "timeout"
-    print "%.3f %.3f %.10i %.9s %s %s %i %s" % (nt, rate, moved, state, "'$mvr'","'$host'",'$port', time.strftime("%c",time.localtime(nt)))
+    print "%s %.3f %.10i %9.9s %s %s %i %.3f" % (time.strftime(tfmt,time.localtime(nt)), rate, moved, state, "'$mvr'","'$host'",'$port',nt)
+    sys.stdout.flush()
   except:
     traceback.print_exc()
     sts=1
