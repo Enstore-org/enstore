@@ -1073,9 +1073,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                         remaining = long(remaining)
                         self.vol_info['remaining_bytes'] = remaining * 1024L
                         ##XXX keep everything in KB?
-                self.vcc.set_remaining_bytes(volume_label,
-                                              self.vol_info['remaining_bytes'],
-                                              self.vol_info['eod_cookie'])
+                ret = self.vcc.set_remaining_bytes(volume_label,
+                                                   self.vol_info['remaining_bytes'],
+                                                   self.vol_info['eod_cookie'])
+                if ret['status'][0] != e_errors.OK:
+                    self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
+                    return 0
+                    
 
         if verify_label:
             status = self.tape_driver.verify_label(volume_label, self.mode)
@@ -1116,7 +1120,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.INFO,
                                   "heuristic: write error on vol %s, remaining=%s, capacity=%s, marking volume full"%
                                   (self.current_volume, remaining, capacity))
-                        self.vcc.set_remaining_bytes(self.current_volume, 0, None, None)
+                        ret = self.vcc.set_remaining_bytes(self.current_volume, 0, None, None)
+                        if ret['status'][0] != e_errors.OK:
+                            self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE) ### XXX trasfer failed called inside of transfer_failed : NONCENCE.
+                            return
+
                 except:
                     exc, msg, tb = sys.exc_info()
                     Trace.log(e_errors.ERROR, "%s %s" % (exc, msg))
@@ -1248,6 +1256,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_work_ticket['fc'] = fc_ticket
         Trace.log(e_errors.INFO,"set remaining: %s %s %s" %(self.current_volume, remaining, eod))
         reply = self.vcc.set_remaining_bytes(self.current_volume, remaining, eod, bfid)
+        if ret['status'][0] != e_errors.OK:
+            self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
+            return 0
         self.vol_info.update(reply)
         if self.current_volume:
             self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
