@@ -28,8 +28,11 @@ testdict = {}       # HOLDS THE CHILD PID IN CASE THE TEST 'HANGS'
 tstseqdict = {}     # HOLDS THE SEQUENCE IN WHICH THE NODES ARE TO BE TESTED IN
 tempresltdict = {}  # HOLDS THE STRING FROM THE TEST. IT IS NEEDED IN CASE THE CHILD TEST HANGS - THE PROGRAM WON'T HANG
 testList = []       # HOLDS THE LIST OF NODES TO BE TESTED
-cuTime = 5          # CLEAN UP TIME. A DELAY THAT ALLOWS THE SYSTEM TO FINISH UP TESTING. IF YOU SET THIS VALUE TO 3 OR
-                    # LESS, THE SYSTEM WILL GET MORE SLOW OR HUNG (-1) INDICATIONS THAN IT NORMALLY SHOULD 
+cuTime = "5"        # CLEAN UP TIME. A DELAY THAT ALLOWS THE SYSTEM TO FINISH UP TESTING. IF YOU SET THIS VALUE TO 3 OR
+                    # LESS, THE SYSTEM WILL GET MORE SLOW OR HUNG (-1) INDICATIONS THAN IT NORMALLY SHOULD
+defTstTime = "5"    # DEFAULT TIME FOR TEST TO RUN IF NO  OPTION GIVEN
+defNetPerfPath = "/opt/netperf/netperf"           # LOCATION OF NETWORK PERFORMANCE TEST
+defListPath = "/usr/local/etc/farmlets/rip.all"   # LOCATION OF FILE CONTAINING LIST OF NODES TO BE TESTED
 TRUE = 1
 FALSE = 0
 
@@ -42,7 +45,7 @@ FALSE = 0
 def testSeq(fromNode, toNode):
     ppid = os.getpid()
     testdict["%s %s" % (fromNode, toNode)] = ""
-    tempresltdict["%s %s" % (fromNode, toNode)] = os.popen('rsh %s "/opt/netperf/netperf -l %s -H %s" 2>/dev/null' % (fromNode, paramdict['testtime'], toNode))
+    tempresltdict["%s %s" % (fromNode, toNode)] = os.popen('rsh %s "%s -l %s -H %s" 2>/dev/null' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode))
     if testdict["%s %s" % (fromNode, toNode)] == "":
         testdict["%s %s" % (fromNode, toNode)] = findChild(ppid, fromNode, toNode)
     
@@ -65,7 +68,7 @@ def findChild(ppid, fromNode, toNode):
     num = 0
     while num < len(a) - 1:
         b = string.split(a[num])
-        if b[0] == str(ppid) and string.find(a[num], 'rsh %s "/opt/netperf/netperf -l %s -H %s"' % (fromNode, paramdict['testtime'], toNode)) >= 0:
+        if b[0] == str(ppid) and string.find(a[num], 'rsh %s "%s -l %s -H %s"' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode)) >= 0:
             cpid = str(b[1])
             break
         else:
@@ -102,11 +105,11 @@ def tstHung():
                     resultdict[name] = "-1"
                 else:
                     tempresltdict[name] = tempresltdict[name].read()
-                    tempresltdict[name] = string.split(tempresltdict[name], "\n") # IF IT DID PUT THE RESULTS INTO THE TEMPRESULTDICT
-                    if string.find(tempresltdict[name][0], "TCP STREAM TEST") < 0:
+                    tempresltdict[name] = string.split(tempresltdict[name], "\n")
+                    if string.find(tempresltdict[name][0], "TCP STREAM TEST") < 0:   # SEE IF TEST WAS EVER DONE
                         resultdict[name] = "-2"
                     else:
-                        tempresltdict[name] = tempresltdict[name][6]
+                        tempresltdict[name] = tempresltdict[name][6]                 # IF IT DID PUT THE RESULTS INTO THE TEMPRESULTDICT
                         tempresltdict[name] = string.split(tempresltdict[name])
                         resultdict[name] = tempresltdict[name][4]
         num = num + 1
@@ -115,7 +118,7 @@ def tstHung():
 # DESCRIPTION  : THIS FUNCTION GENERATES THE SEQUENCE IN WHICH
 #              : THE NODES WILL BE TESTED.
 # PRECONDITION : 'TESTLIST' EXISTS AND HAS VALID NODES IN IT
-# POSTCONDITION: A TEST SEQUENCE THAT DOESN'T CAUSE A RIP NODE TO TRY
+# POSTCONDITION: A TEST SEQUENCE THAT DOESN'T CAUSE A NODE TO TRY
 #              : TO DO MANY TESTS AT ONCE IS GENERATED.
 ##########################################################################
 def genTstSeq():
@@ -161,20 +164,29 @@ def testNodes():
     testNum = 1
     
     seqLen = len(tstseqdict[grpSeqNum])
+    if paramdict['fFlg']:
+        numTests = numTstGrps * numTstGrps
+    else:
+        numTests = numTstGrps * numTstGrps - numTstGrps
+        
     if paramdict['oFlg']:
-        testTime = 2 * numTstGrps * string.atoi(paramdict['testtime']) + cuTime
         if seqLen % 2 == 1:
             toTest = seqLen / 2 + 1
         else:
             toTest = seqLen / 2
     else:
-        testTime = numTstGrps * string.atoi(paramdict['testtime']) + cuTime
         toTest = seqLen
-
-    if paramdict['fFlg']:
-        numTests = numTstGrps * numTstGrps
+        
+    if numTests < 3:
+        if numTstGrps == 2 and paramdict['tFlg'] and not paramdict['fFlg']:
+            testTime = string.atoi(paramdict['testtime']) + string.atoi(cuTime)
+        else:
+            testTime = numTests * string.atoi(paramdict['testtime']) + string.atoi(cuTime)
     else:
-        numTests = numTstGrps * numTstGrps - numTstGrps
+        if paramdict['tFlg']:
+            testTime = numTstGrps * string.atoi(paramdict['testtime']) + string.atoi(cuTime)
+        else:
+            testTime = 2 * numTstGrps * string.atoi(paramdict['testtime']) + string.atoi(cuTime)
     sys.stdout.write("\nThere are %s tests:\n" % str(numTests))
     sys.stdout.write("This program will take app. %s seconds to run.\n" % str(testTime))
     sys.stdout.write("It could take much longer depending on how busy the systems are.\n")
@@ -230,15 +242,15 @@ def printResults():
     maxColWidth = 0
     hdrLen = 0
     lpCntr = 0
-    
+
     while lpCntr < len(testList):                 # CENTERS 'TEST RESULTS' OVER THE GENERATED TABLE
         if len(testList[lpCntr]) > maxColWidth:   # NO MATTER HOW WIDE THE TABLE.
             maxColWidth = len(testList[lpCntr])
             if maxColWidth < 7:
                 maxColWidth = 7
         lpCntr = lpCntr + 1
-    maxColWidth = maxColWidth
     strtColWidth = maxColWidth
+    maxColWidth = maxColWidth + 1
     hdrLen = maxColWidth * len(testList)
     sys.stdout.write(string.center("TEST RESULTS\n", (hdrLen + strtColWidth)))
     
@@ -269,7 +281,7 @@ def printResults():
         fromPtr = fromPtr + 1
     sys.stdout.write("\n\n    -2 : AN 'UNKNOWN ERROR' OCCURRED. RUN THE TEST BY HAND\n")
     sys.stdout.write("       : TO SEE WHAT THE ERROR WAS.\n")
-    sys.stdout.write("""       : rsh fromNode "/opt/netperf/netperf -l testtime -H toNode"\n""")
+    sys.stdout.write("""       : rsh fromNode "netPerfPath -l testtime -H toNode"\n""")
     sys.stdout.write("    -1 : SYSTEM HUNG OR HAS VERY SLOW RESPONSE\n")
     sys.stdout.write(" BLANK : SELF TEST. DEVICE DID NOT TEST ITSELF.\n")
     sys.stdout.write("# >= 0 : THROUGHPUT: NUM * 10^6 BITS/SEC\n\n")
@@ -282,11 +294,11 @@ def printResults():
 def printHelp():
     sys.stdout.write("Here are the options to run this program:\n\n")
     sys.stdout.write("-h: HELP - Prints this help message.\n")
-    sys.stdout.write("-o: ONE_WAY DATA TRANSFER (default) - Ex. rip1 will transmit data but not recieve data,\n")
-    sys.stdout.write("    or rip1 will recieve the data but not transmit it at the same time.\n")
+    sys.stdout.write("-o: ONE_WAY DATA TRANSFER (default) - Ex. node1 will transmit data but not recieve data,\n")
+    sys.stdout.write("    or node1 will recieve the data but not transmit it at the same time.\n")
     sys.stdout.write("    ONE WAY TEST WILL TAKE 'NUM_NODES * 2 * TESTTIME' SECONDS TO COMPLETE.\n")
     sys.stdout.write("    *** NOTE *** '-o' and '-t' flags can't be set at the same time.\n")
-    sys.stdout.write("-t: TWO_WAY DATA TRANSFER - Ex. rip1 will transmit and recieve data\n")
+    sys.stdout.write("-t: TWO_WAY DATA TRANSFER - Ex. node1 will transmit and recieve data\n")
     sys.stdout.write("    at the same time.\n")
     sys.stdout.write("    TWO WAY TEST WILL TAKE 'NUM_NODES * TESTTIME' SECONDS TO COMPLETE.\n")
     sys.stdout.write("    *** NOTE *** '-o' and '-t' flags can't be set at the same time.\n")
@@ -299,7 +311,7 @@ def printHelp():
     sys.stdout.write("-s: SECONDS: '-s seconds' - THIS IS 'TESTTIME' - default is 5 seconds\n")
     sys.stdout.write("    How long (in seconds) you want\n")
     sys.stdout.write("    the device to be tested.\n")
-    sys.stdout.write("-f: SELF-TEST: '-f y' or -f n' - '-f y' is default. Allows a rip system to test\n    itself. Ex: rip1 to rip1\n")
+    sys.stdout.write("-f: SELF-TEST: '-f y' or -f n' - '-f y' is default. Allows a system to test\n    itself. Ex: node1 to node1\n")
     
 ##############################################################
 # DESCRIPTION  : GETS THE TEST LIST FROM A FILE.
@@ -335,12 +347,12 @@ def getArgs(args):
     paramdict['mFlg'] = FALSE
     paramdict['sFlg'] = FALSE
 
-    paramdict['testNodes'] = "/usr/local/etc/farmlets/rip.all"
-    paramdict['testtime'] = "5"
+    paramdict['testNodes'] = defListPath
+    paramdict['testtime'] = defTstTime
     
     optlist, args = getopt.getopt(sys.argv[1:], 'hots:l:m:f:')
     if len(optlist) > 4:
-        sys.stderr.write("ERROR: To many parameters entered.\n%s -h for help\n" % sys.argv[0])
+        sys.stderr.write("ERROR: To many parameters entered.\n%s -h for help\n" % os.path.basename(sys.argv[0]))
         sys.exit(1)
         
     num = 0
@@ -374,10 +386,10 @@ def getArgs(args):
                 tmpnum = tmpnum + 1
         num = num + 1
     if (paramdict['oFlg'] == TRUE and paramdict['tFlg'] == TRUE):
-        sys.stderr.write("ERROR: Can't have -o and -t at the same time.\n%s -h for help\n" % sys.argv[0])
+        sys.stderr.write("ERROR: Can't have -o and -t at the same time.\n%s -h for help\n" % os.path.basename(sys.argv[0]))
         sys.exit(1)
     if (paramdict['lFlg'] == TRUE and paramdict['mFlg'] == TRUE):
-        sys.stderr.write("ERROR: Can't have -l and -m at the same time.\n%s -h for help\n" % sys.argv[0])
+        sys.stderr.write("ERROR: Can't have -l and -m at the same time.\n%s -h for help\n" % os.path.basename(sys.argv[0]))
         sys.exit(1)
     if (paramdict['oFlg'] == FALSE and paramdict['tFlg'] == FALSE):
         paramdict['oFkg'] = TRUE
@@ -394,7 +406,7 @@ if __name__ == "__main__":
     testNodes()
     sys.stdout.write("\nSystem cleanup and looking for hung devices. . .")
     sys.stdout.flush()
-    time.sleep(cuTime)
+    time.sleep(string.atoi(cuTime))
     tstHung()
     sys.stdout.write("\n\n")
     printResults()
