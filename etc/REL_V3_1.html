@@ -5,6 +5,9 @@ Encp changes:
 =============
 
 With the --threaded option, encp will multi-thread the actual data transfer.
+This has two advantages.  First, there is usually (though not always)
+an increase in the transfer rate.  Second, this allows for encp to
+independently measure the access to/from local disk and the network.
 
 A bug fix was made to limit the number of "mover importer" error messages.
 This was caused by an obscure order of events with a symptom of 15 minutes
