@@ -209,6 +209,41 @@ int ftt_trans_out[MAX_TRANS_ERRNO] = {
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
 };
 
+int ftt_trans_chall[MAX_TRANS_ERRNO] = {
+	/*    0 NOERROR	*/	FTT_SUCCESS,
+	/*    1	EPERM	*/	FTT_EPERM,
+	/*    2	ENOENT	*/	FTT_ENOENT,
+	/*    3	ESRCH	*/	FTT_ENOENT,
+	/*    4	EINTR	*/	FTT_EUNRECOVERED,
+	/*    5	EIO	*/	FTT_EIO,
+	/*    6	ENXIO	*/	FTT_ENXIO,
+	/*    7	E2BIG	*/	FTT_EBLKSIZE,
+	/*    8	ENOEXEC	*/	FTT_EPERM,
+	/*    9	EBADF	*/	FTT_EPERM,
+	/*   10	ECHILD	*/	FTT_ENOTSUPPORTED,
+	/*   11	EAGAIN	*/	FTT_EBUSY,
+	/*   12	ENOMEM	*/	FTT_ENOMEM,
+	/*   13	EACCES	*/	FTT_EPERM,
+	/*   14	EFAULT	*/	FTT_EFAULT,
+	/*   15	ENOTBLK	*/	FTT_ENOTSUPPORTED,
+	/*   16	EBUSY	*/	FTT_EBUSY,
+	/*   17	EEXIST	*/	FTT_ENOENT,
+	/*   18	EXDEV	*/	FTT_ENOENT,
+	/*   19	ENODEV	*/	FTT_ENOENT,
+	/*   20	ENOTDIR	*/	FTT_ENOENT,
+	/*   21	EISDIR	*/	FTT_ENOENT,
+	/*   22	EINVAL	*/	FTT_ENOENT,
+	/*   23	ENFILE	*/	FTT_ENFILE,
+	/*   24	EMFILE	*/	FTT_ENFILE,
+	/*   25	ENOTTY	*/	FTT_ENOTTAPE,
+	/*   26	ETXTBSY	*/	FTT_ENOENT,
+	/*   27	EFBIG	*/	FTT_EBLKSIZE,
+	/*   28	ENOSPC	*/	FTT_EIO,
+	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
+	/*   30	EROFS	*/	FTT_EPERM,
+	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+};
+
 int *ftt_trans_table[] = {
     /* none...but just to be safe0 */ ftt_trans_in,
     /* FTT_OPN_READ		 1 */ ftt_trans_in,
@@ -224,7 +259,7 @@ int *ftt_trans_table[] = {
     /* FTT_OPN_GET_STATUS	11 */ ftt_trans_in,
     /* FTT_OPN_ASYNC 		12 */ ftt_trans_in,
     /* FTT_OPN_PASSTHRU         13 */ ftt_trans_out,
-    /* FTT_OPN_CHALL            14 */ ftt_trans_out,
+    /* FTT_OPN_CHALL            14 */ ftt_trans_chall,
     /* FTT_OPN_OPEN             15 */ ftt_trans_open,
     /* FTT_OPN_RSKIPREC		16 */ ftt_trans_skiprec,
     /* FTT_OPN_RSKIPFM		16 */ ftt_trans_skipr,
@@ -315,7 +350,7 @@ static char OSF1find[] =
 #define EXB_MAX_BLKSIZE 245760
 #define IRIX_MAX_BLKSIZE 131072
 ftt_dev_entry devtable[] = {
-    {"OSF1", "", "SCSI", 0, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"OSF1", "", "SCSI", FTT_FLAG_SUID_SCSI, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
 	"/dev/%3$[n]rmt%d", 1, OSF1find,  {
     /*   string                  den mod hwd pas fxd rewind            1st */
     /*   ======                  === === === === === ======            === */
@@ -441,7 +476,7 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/tps%dd%ds",     5,  0,0x1A, 0,  1, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/tps%dd%dnrs" ,  5,  0,0x1A, 0,  1,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/tps%dd%dsv",    5,  0,0x1A, 0,  0, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
-	{ "/dev/rmt/tps%dd%dnrsv ", 5,  0,0x1A, 0,  0,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
+	{ "/dev/rmt/tps%dd%dnrsv", 5,  0,0x1A, 0,  0,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/tps%dd%dc",     5,  0,0x1A, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/tps%dd%dnrc",   5,  1,0x1A, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/tps%dd%dvc",    5,  1,0x1A, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
@@ -608,7 +643,7 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/jag%dd%ds",     5,  0,0x1A, 0,  1, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/jag%dd%dnrs" ,  5,  0,0x1A, 0,  1,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/jag%dd%dsv",    5,  0,0x1A, 0,  0, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
-	{ "/dev/rmt/jag%dd%dnrsv ", 5,  0,0x1A, 0,  0,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
+	{ "/dev/rmt/jag%dd%dnrsv",  5,  0,0x1A, 0,  0,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/jag%dd%dc",     5,  0,0x1A, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/jag%dd%dnrc",   5,  1,0x1A, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
 	{ "/dev/rmt/jag%dd%dvc",    5,  1,0x1A, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},

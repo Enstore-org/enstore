@@ -41,6 +41,7 @@ ftt_fork(ftt_descriptor d) {
 
 	default:     /* parent */
 	    close(fds[1]);
+	    waitpid(res,0,0);
 	    d->async_pf = fdopen(fds[0],"r");
 	    setlinebuf(d->async_pf);
 	    res = fscanf(d->async_pf, "%d", &d->async_pid);
@@ -49,7 +50,6 @@ ftt_fork(ftt_descriptor d) {
 	        res = fscanf(d->async_pf, "\n%d", &d->async_pid);
 	    }
 	    DEBUG3(stderr,"got pid %d\n", d->async_pid);
-	    waitpid(res,0,0);
 	    break;
 
 	case -1:
@@ -89,7 +89,7 @@ ftt_wait(ftt_descriptor d) {
 
     DEBUG3(stderr,"async_pid is %d", d->async_pid );
     DEBUG3(stderr,"async_pf is %lx\n", (long)d->async_pf );
-    ftt_eprintf("ftt_wait: unable to rendezvous with background process %d",
+    ftt_eprintf("ftt_wait: unable to rendezvous with background process %d, ftt_errno FTT_ENXIO",
 		d->async_pid);
     ftt_errno = FTT_ENXIO;
     if (0 != d->async_pid ) {
@@ -107,6 +107,7 @@ ftt_wait(ftt_descriptor d) {
 	    return 0;
 	}
     } else {
+       ftt_eprintf("ftt_wait: there is no background process, ftt_errno FTT_ENXIO");
        return -1;
     }
 }
@@ -115,7 +116,8 @@ void
 ftt_report(ftt_descriptor d) {
     int e; char *p;
 
-    ENTERING("ftt_report");
+    char *_name = "ftt_report";
+    DEBUG1(stderr,"Entering ftt_report");
     VCKNULL("ftt_descriptor", d);
 
     p = ftt_get_error(&e);

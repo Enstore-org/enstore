@@ -170,7 +170,6 @@ ftt_close(ftt_descriptor d){
 	ftt_eprintf("ftt_close: called twice on the same descriptor!\n");
 	return -1;
     }
-    d->which_is_open = -3;
     res = ftt_close_scsi_dev(d);
     res2 = ftt_close_dev(d);
     for(j = 0; 0 != d->devinfo[j].device_name ; j++ ) {
@@ -184,6 +183,7 @@ ftt_close(ftt_descriptor d){
 	free(d->prod_id);
 	d->prod_id = 0;
     }
+    d->which_is_open = -3;
     free(d);
     return res < 0 ? res : res2;
 }
