@@ -797,7 +797,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         now=timeofday.tod()
         p2cread, p2cwrite = os.pipe()
         c2pread, c2pwrite = os.pipe()
-        command = "echo %s|/export/home/ACSSS/bin/cmd_proc 2>&1" % (cmd,)
+        command = "(echo %s;echo logoff)|/export/home/ACSSS/bin/cmd_proc 2>&1" % (cmd,)
         cmd_lookfor = "ACSSA> %s" % (cmd,)
 
         # can not use dispatching work fork because we are already child.
