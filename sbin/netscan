@@ -444,7 +444,7 @@ done
 #+++++++++++++++++++++++ tasks that go over network. Can hang sometimes. Do this last.
 
 # check that farmlets match
-if [ $gang = "rip" ]; then 
+if [ $gang != "rip" ]; then 
   msg="`$FARMLETS` 2>&1"
   if [ $? -ne 0 ]; then
      logit "$msg"
