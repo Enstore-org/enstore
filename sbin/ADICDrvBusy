@@ -2,126 +2,149 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+command=${1:-plot}
+node=`hostname -s`
+gang=`gang`
+case $gang in
+   d0en)
+	 ;;
+  stken)
+	 ;;
+      *) echo \"$0 $command\" not supported on $gang
+	 exit 1
+	 ;;
+esac
 
 busy=/home/enstore/ADIC_DRIVE_UTILIZATION
 
-command=${1:-plot}
-getnode=d0ensrv4
-plotnode=d0ensrv2
+getnode=${gang}srv4
+plotnode=${gang}srv2
+
+case $command in
+  get)
+    if [ $node = $getnode ] ; then
+      dinfo=/tmp/adic.dinfo
+      rm -f $dinfo
+      dasadmin listd2 ${getnode}p >$dinfo
+    else
+      echo \"$0 $command\" can only be run on $getnode
+      echo because that is the one where dasadmin is setup
+      exit 1
+    fi
+    ;;
+  plot)
+    if [ $node = $plotnode ] ; then
+      enrcp $getnode:$busy $busy
+      pltcmd=/tmp/adic.du.gnu
+    else
+      echo \"$0 $command\" can only be run on $plotnode
+      echo because that is the one that has a web server
+      exit 1
+    fi
+    ;;
+  *)
+    exit 1
+    ;;
+esac
 
 now=`date +"%Y-%m-%d:%H:%M:%S"`
-Quarter_ago=`date --date "90 days ago" +"%Y-%m-%d:%H:%M:%S"`
+Quarter_ago=`date --date "91 days ago" +"%Y-%m-%d:%H:%M:%S"`
+
+# function to generate utilization plots for a specific ADIC drive type
+drive_plot() {
+	plt=$1		# plot location (no extension)
+	drv=$2		# label string
+	ord=$3		# y-axis index
+
+	rm -f $pltcmd
+	echo "set output \"$plt.ps\"
+set terminal postscript color solid
+set title \"ADIC $drv Drive Utilization $now\"
+set xlabel \"Date\"
+set timefmt \"%Y-%m-%d:%H:%M:%S\"
+set xdata time
+set xrange [\"$Quarter_ago\" : ]
+set ylabel \"Number in Use\"
+set grid
+set yrange [0: ]
+set format x \"%m-%d\"
+set nokey
+plot \"$busy\" using 1:$ord t \"$drv in use\" w impulses" >$pltcmd
+	gnuplot $pltcmd
+	convert -rotate 90 $plt.ps $plt.jpg
+	convert -geometry 120x120 -modulate 80 $plt.jpg ${plt}_stamp.jpg
+	     }
+
+# function to generate utilization plots for a specific ADIC drive type
+# using points instead of lines
+drive_plot_dl() {
+	plt=$1		# plot location (no extension)
+	drv=$2		# label string
+	ord=$3		# y-axis index
+
+	rm -f $pltcmd
+	echo "set output \"$plt.ps\"
+set terminal postscript color solid
+set title \"ADIC $drv DL Drive Utilization $now\"
+set xlabel \"Date\"
+set timefmt \"%Y-%m-%d:%H:%M:%S\"
+set xdata time
+set xrange [\"$Quarter_ago\" : ]
+set ylabel \"Number in Use\"
+set grid
+set yrange [0: ]
+set format x \"%m-%d\"
+set nokey
+plot \"$busy\" using 1:$ord t \"$drv in use\" " >$pltcmd
+	gnuplot $pltcmd
+	convert -rotate 90 $plt.ps $plt.jpg
+	convert -geometry 120x120 -modulate 80 $plt.jpg ${plt}_stamp.jpg
+		}
 
 case $command in
 
     get)
-        if [ $node = $getnode ] ; then
-         dinfo=/tmp/dinfo
-         rm -f $dinfo
-         dasadmin listd2  >$dinfo
-         nM1=`grep "type: M"  $dinfo | grep -vc "volser:   c"`
-         nM2=`grep "type: I"  $dinfo | grep -vc "volser:   c"`
-         nLTO=`grep "type: 3"  $dinfo | grep -vc "volser:   c"`
-         nDLT=`grep "type: E"  $dinfo | grep -vc "volser:   c"`
-         aM1=`grep "type: M"  $dinfo | grep -c " UP "`
-         aM2=`grep "type: I"  $dinfo | grep -c " UP "`
-         aLTO=`grep "type: 3"  $dinfo | grep -c  " UP "`
-         aDLT=`grep "type: E"  $dinfo | grep -c  " UP "`
-         echo "$now $nM1 $aM1 $nM2 $aM2 $nLTO $aLTO $nDLT $aDLT">>$busy
+      if [ $gang = d0en ] ; then
 
-        else
-         echo \"$0 $command\" can only be run on $getnode because that is the where it is setup
-        fi
-        ;;
+#	nMAM1=`grep "type: M" $dinfo | grep -vc "volser:   c"`
+#	aMAM1=`grep "type: M" $dinfo | grep -c  " UP "`
+#	nMAM2=`grep "type: I" $dinfo | grep -vc "volser:   c"`
+#	aMAM2=`grep "type: I" $dinfo | grep -c  " UP "`
+	nLTO1=`grep "type: 3" $dinfo | grep 'drive: D[35]' | grep -vc "volser:   c"`
+	aLTO1=`grep "type: 3" $dinfo | grep 'drive: D[35]' | grep -c  " UP "`
+	nLTO2=`grep "type: 3" $dinfo | grep 'drive: D[24]' | grep -vc "volser:   c"`
+	aLTO2=`grep "type: 3" $dinfo | grep 'drive: D[24]' | grep -c  " UP "`
 
+	echo "$now $nLTO1 $aLTO1 $nLTO2 $aLTO2" >>$busy
+
+      elif [ $gang = stken ] ; then
+
+	nDLT4=`grep "type: E" $dinfo | grep -vc "volser:   c"`
+	aDLT4=`grep "type: E" $dinfo | grep -c  " UP "`
+	nDLT8=`grep "type: G" $dinfo | grep -vc "volser:   c"`
+	aDLT8=`grep "type: G" $dinfo | grep -c  " UP "`
+
+	echo "$now $nDLT4 $aDLT4 $nDLT8 $aDLT8" >>$busy
+
+      fi
+      ;;
 
     plot)
-        if [ $node = $plotnode ] ; then
-         enrcp $getnode:$busy $busy
-         plotM1=/fnal/ups/prd/www_pages/enstore/M1_Utilization
-         plotM2=/fnal/ups/prd/www_pages/enstore/M2_Utilization
-         plotLTO=/fnal/ups/prd/www_pages/enstore/LTO_Utilization
-         plotDLT=/fnal/ups/prd/www_pages/enstore/DLT_Utilization
-         pltcmd=/tmp/adicdu.gnu
+      if [ $gang = d0en ] ; then
 
-         rm -f $pltcmd
-         echo "set output \"$plotM1.ps\"
-set terminal postscript color solid
-set title \"ADIC M1 Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in Use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy\" using 1:2 t \"M1 in use\" w impulses" >$pltcmd
-         gnuplot $pltcmd
-         convert -rotate 90 $plotM1.ps $plotM1.jpg
-	 convert -geometry 120x120 -modulate 80 $plotM1.jpg ${plotM1}_stamp.jpg
+	drive_plot /fnal/ups/prd/www_pages/enstore/LTO1_Utilization LTO1 2
+	drive_plot /fnal/ups/prd/www_pages/enstore/LTO2_Utilization LTO2 4
 
-         rm -f $pltcmd
-         echo "set output \"$plotM2.ps\"
-set terminal postscript color solid
-set title \"ADIC M2 Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in Use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy\" using 1:4 t \"M2 in use\" w impulses" >$pltcmd
-         gnuplot $pltcmd
-         convert -rotate 90 $plotM2.ps $plotM2.jpg
-	 convert -geometry 120x120 -modulate 80 $plotM2.jpg ${plotM2}_stamp.jpg
+	# the same, but with points instead of lines
+	drive_plot_dl /fnal/ups/prd/www_pages/enstore/LTO1_Utilization_dl LTO1 2
+	drive_plot_dl /fnal/ups/prd/www_pages/enstore/LTO2_Utilization_dl LTO2 4
 
-         rm -f $pltcmd
-         echo "set output \"$plotLTO.ps\"
-set terminal postscript color solid
-set title \"ADIC LTO Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in Use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy\" using 1:6 t \"LTO in use\" w impulses" >$pltcmd
-         gnuplot $pltcmd
-         convert -rotate 90 $plotLTO.ps $plotLTO.jpg
-	 convert -geometry 120x120  -modulate 80 $plotLTO.jpg ${plotLTO}_stamp.jpg
+      elif [ $gang = stken ] ; then
 
-if /bin/false; then
-         rm -f $pltcmd
-         echo "set output \"$plotDLT.ps\"
-set terminal postscript color solid
-set title \"ADIC DLT Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in Use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy\" using 1:8 t \"DLT in use\" w impulses" >$pltcmd
-         gnuplot $pltcmd
-         convert -rotate 90 $plotDLT.ps $plotDLT.jpg
-	 convert -geometry 120x120  -modulate 80 $plotDLT.jpg ${plotDLT}_stamp.jpg
-fi
+	drive_plot /fnal/ups/prd/www_pages/enstore/DLT4_Utilization DLT4000 2
+	drive_plot /fnal/ups/prd/www_pages/enstore/DLT8_Utilization DLT8000 '(valid(4)?$4:1/0)'
 
+      fi
+      ;;
 
-        else
-         echo \"$0 $command\" can only be run on $plotnode because that is the only one that has a web server
-        fi
-        ;;
 esac
