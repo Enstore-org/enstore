@@ -324,7 +324,7 @@ class VOL1(Label):
 		 implementation_id=13*SPACE, owner_id=14*SPACE):
 	Label.__init__(self)
 	self.label = "VOL1"
-	self.volume_id = volume_id
+        self.volume_id = volume_id[0:6]
 	self.volume_access = volume_access
 	self.reserved1 = 13*SPACE
 	self.implementation_id = implementation_id
