@@ -1421,16 +1421,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 after_function()
 
         self.state = DISMOUNT_WAIT
-        have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
-        if have_tape == 1:
-            try:
-                self.tape_driver.rewind()
-            except:
-                pass
-            ejected = self.tape_driver.eject()
-            if ejected == -1:
-                self.error("Cannot eject tape")
-                return
+
+        ejected = self.tape_driver.eject()
+        if ejected == -1:
+            self.error("Cannot eject tape")
+            return
         self.tape_driver.close()
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
