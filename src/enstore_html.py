@@ -169,7 +169,6 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.contents = []
 	self.help_file = help_file
 	self.system_tag = system_tag
-	self.html_dir = enstore_functions.get_html_dir()
 
     # generate the three button navigation table for the top of each of the
     # enstore web pages
@@ -751,7 +750,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 		# we have put the max number on the main page, now make an additional page
 		if not started_extra_page:
 		    started_extra_page = 1
-		    filename = "%s/%s-read.html"%(self.html_dir, self.lm)
+		    filename = "%s-read.html"%(self.lm,)
 		    new_key = "%s-read"%(self.lm,)
 		    self.extra_queue_pages[new_key] = (EnExtraLmQueuePages(self,
 									   self.lm),
@@ -803,7 +802,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 		# we have put the max number on the main page, now make an additional page
 		if not started_extra_page:
 		    started_extra_page = 1
-		    filename = "%s/%s-write.html"%(self.html_dir, self.lm)
+		    filename = "%s-write.html"%(self.lm,)
 		    new_key = "%s-write"%(self.lm,)
 		    self.extra_queue_pages[new_key] = (EnExtraLmQueuePages(self,
 									   self.lm),
@@ -1105,7 +1104,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	    # output on the main status page, and add a link to point to the 
 	    # rest that will be on another page. however, there is only one 
 	    # other page at this time
-	    filename = "%s/%s-full_%s.html"%(self.html_dir, self.lm, queue)
+	    filename = "%s-full_%s.html"%(self.lm, queue)
 	    tr0 = HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
 					      'Extra Queue Rows (%s)'%(qlen - 
 							     self.max_lm_rows,)),
@@ -1233,7 +1232,7 @@ class EnFileListPage(EnBaseHtmlDoc):
 	    # output on the main status page, and add a link to point to the 
 	    # rest that will be on another page. however, there is only one 
 	    # other page at this time
-	    filename = "%s/enstore_files-1.html"%(self.html_dir,)
+	    filename = "enstore_files-1.html"
 	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
 						    'More Files Here (%s)'%(flen - 
 									    self.max_rows,)),
@@ -1382,8 +1381,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		# we output on the main status page, and add a link to point 
 		# to the rest that will be on another page. however, there is 
 		# only one other page at this time
-		filename = "%s/%s_%s.html"%(self.html_dir, lm, 
-					    enstore_constants.WORK)
+		filename = "%s_%s.html"%(lm, enstore_constants.WORK)
 		rows.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
 					'Extra Queue Rows (%s)'%(extra_rows,)),
 						  colspan=cols)))
@@ -1421,7 +1419,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	rows = []
 	extra_read_rows = []
 	extra_write_rows = []
-	filename = "%s/%s_%s.html"%(self.html_dir, lm, enstore_constants.PENDING)
+	filename = "%s_%s.html"%lm, enstore_constants.PENDING)
 	max_lm_rows = self.max_lm_rows.get(lm, DEFAULT_THRESHOLDS)[0]
 	# do the read queue first
 	if not the_work[enstore_constants.READ] == []:
