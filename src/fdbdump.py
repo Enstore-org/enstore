@@ -3,6 +3,7 @@
 import db
 import sys
 import time
+import pprint
 
 def formatedf(file):
 	bfid = file.get('bfid', None)
@@ -25,10 +26,14 @@ def formatedf(file):
 	if sanity_cookie_1 == None:
 		sanity_cookie_1 = 0
 	size = file.get('size', 0)
-	res = '%s\t%d\t%c\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d'% (
+	try:
+		res = '%s\t%d\t%c\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d'% (
 		bfid, complete_crc, deleted, drive, external_label,
 		location_cookie, pnfs_name0, pnfsid,
 		sanity_cookie_0, sanity_cookie_1, size)
+	except:
+		pprint.pprint(file)
+		res = None
 
 	return res
 
@@ -45,7 +50,10 @@ if __name__ == '__main__':
 	last_time = time.time()
 	while k:
 		l = formatedf(v)
-		outf.write(l+'\n')
+		if l:
+			outf.write(l+'\n')
+		else:
+			print count
 		k, v = c.next()
 		count = count + 1
 		if count % 1000 == 0:
