@@ -602,11 +602,29 @@ class EnEncpDataFile(EnDataFile):
             encp_line = enstore_status.EncpLine(line)
             if encp_line.valid:
                 if not mcs or enstore_status.mc_in_list(encp_line.mc, mcs):
+		    # remove the directory and the log prefix to get just the
+		    # date and time
                     etime = enstore_functions.strip_file_dir(encp_line.time)
                     self.data.append([string.replace(etime, 
                                                      enstore_constants.LOG_PREFIX, 
 						     ""), 
                                       encp_line.bytes, encp_line.direction])
+
+class EnSgDataFile(EnDataFile):
+
+    # pull out the plottable data from each line
+    def parse_data(self, prefix):
+	self.data = {}
+        for line in self.lines:
+	    sg_line = enstore_status.SgLine(line)
+	    # remove the directory and the log prefix to get just the
+	    # date and time
+	    etime = enstore_functions.strip_file_dir(sg_line.time)
+	    etime = string.replace(etime, prefix, "")
+	    if self.data.has_key(sg_line.sg):
+		self.data[sg_line.sg].append([etime, sg_line.pending])
+	    else:
+		self.data[sg_line.sg] = [[etime, sg_line.pending],]
 
 class HtmlAlarmFile(EnFile):
 

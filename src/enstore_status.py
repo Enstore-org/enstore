@@ -153,6 +153,22 @@ class EncpLine:
             self.text = aList[0]
             self.valid = 1
 
+
+class SgLine:
+
+    def __init__(self, line):
+	self.line = line
+        [self.time, self.node, self.pid, self.user, self.status, self.server, 
+         self.text] = string.split(line, None, 6)
+	if not string.find(self.text, enstore_constants.PENDING) == -1:
+	    # this is an add to the pending queue
+	    self.pending = 1
+	else:
+	    self.pending = None
+	# get the storage group
+	dummy, sg = string.split(self.text, ":")
+	self.sg = string.strip(sg)
+
 class EnStatus:
 
     # remove all single quotes

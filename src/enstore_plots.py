@@ -647,3 +647,64 @@ class BpdDataFile(EnPlot):
 	os.system("cp %s %s %s"%(psfiler, psfilew, dir))
 	convert_to_jpg(psfiler, "%s/%s"%(dir, filer))
 	convert_to_jpg(psfilew, "%s/%s"%(dir, filew))
+
+
+class SgGnuFile(enstore_files.EnFile):
+
+    def write(self, outfile, ptsfiles):
+	plot_command = "plot "
+	for ptsfile in ptsfiles:
+	    plot_command = plot_command + "'%s' using 1:2 t '%s(%s)' with points,"%(ptsfile[0],
+										    ptsfile[1],
+										    ptsfile[2])
+	else:
+	    # remove the final ','
+	    plot_command = plot_command[0:-1]
+	self.openfile.write("set output '"+outfile+"\n"+ \
+			    "set terminal postscript color solid\n"+ \
+			    "set title 'Pending->Active Jobs By Storage Group "+plot_time()+"'\n"+ \
+			    "set xlabel 'Date'\n"+ \
+			    "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+			    "set xdata time\n"+ \
+			    "set xrange [ : ]\n"+ \
+			    "set ylabel 'Storage Group'\n"+ \
+			    "set grid\n"+ \
+			    "set key outside\n" + \
+			    "set format x \"%m-%d:%H\"\n"+ \
+			    plot_command)
+
+
+class SgDataFile(EnPlot):
+
+    def __init__(self, dir):
+	EnPlot.__init__(self, dir, enstore_constants.SG_FILE)
+	self.ptsfiles = []
+
+    def plot(self, data):
+	sgs = data.keys()
+	sgs.sort()
+	num_sgs = len(sgs)
+	index = num_sgs
+	decr = 1
+	offset = .3
+	# create the data files
+	for sg in sgs:
+	    self.ptsfile = "%s%s"%(sg, PTS)
+	    self.ptsfiles.append([self.ptsfile, sg, index])
+	    self.open()
+	    for point in data[sg]:
+		if point[1] is None:
+		    # this is a wam operation
+		    pt = index + offset
+		else:
+		    pt = index
+		self.openfile.write("%s  %s\n"%(point[0], pt))
+	    else:
+		self.openfile.close()
+		index = index - decr
+	else:
+	    # now creat the gnu command file
+	    gnucmds = SgGnuFile(self.gnufile)
+	    gnucmds.open('w')
+	    gnucmds.write(self.psfile, self.ptsfiles)
+	    gnucmds.close()
