@@ -311,7 +311,7 @@ def forked_write_to_hsm( self, ticket ):
 	    t0 = time.time()
 	    do.seek( self.vol_info['eod_cookie'] )
 	    ticket['times']['seek_time'] = time.time() - t0
-	    self.vol_info['eod_cookie'] = do.cur_loc_cookie# vol_info may be 'none'
+	    self.vol_info['eod_cookie'] = do.tell()# vol_info may be 'none'
 
 	    fast_write = 1
 
