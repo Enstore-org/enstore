@@ -1057,7 +1057,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                       "file %s restored from volmap"%(self.origname,))
             return e_errors.OK, None
         except:
-            exc, val, tb = e_errors.handle_error()
+            exc, val, tb = Trace.handle_error()
             return e_errors.ERROR, (str(exc), str(val))
 
     def log_err(self,func_name):
