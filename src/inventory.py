@@ -908,6 +908,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         sum_f = open(volume_summary_cache_file)
         vol_sum = cPickle.load(sum_f)
         sum_f.close()
+    else:
+        vol_sum = {}
 
     vols = db.DbTable('volume', os.path.split(volume_file)[0], '/tmp', [], 0)
     files = db.DbTable('file', os.path.split(metadata_file)[0], '/tmp', ['external_label'], 0)
