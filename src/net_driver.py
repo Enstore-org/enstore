@@ -18,9 +18,9 @@ class NetDriver(driver.Driver):
 
     def __init__(self):
         self.sock = None
-        self._bytes_transferred = 0
+        self._bytes_transferred = 0L
         self._start_time = None
-        self._rate = self._last_rate = 0
+        self._rate = self._last_rate = 0L
         
     def fdopen(self, sock):
         self.sock = sock
