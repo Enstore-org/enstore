@@ -23,7 +23,8 @@ BPD_FILE_W = "%s_w"%(BPD_FILE,)
 XFER_FILE = "%s%s"%(FILE_PREFIX, XFER)
 XFERLOG_FILE = "%s%s"%(XFER_FILE, LOG)
 # ratekeeper generated plot data files
-RATES = "rates"
+NULL_RATES = "null_rates"
+REAL_RATES = "real_rates"
 
 JPG = ".jpg"
 PS = ".ps"
@@ -36,6 +37,8 @@ ALARM = "alarm"
 ANYALARMS = "alarms"
 URL = "url"
 ROOT_ERROR = "root_error"
+
+NULL_DRIVER = "NullDriver"
 
 ALIVE_INTERVAL = "alive_interval"
 DEFAULT_ALIVE_INTERVAL = "default_alive_interval"
