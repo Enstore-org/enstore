@@ -28,6 +28,7 @@ import sg_db
 import enstore_constants
 import monitored_server
 import file_clerk_client
+import inquisitor_client
 
 def hack_match(a,b): #XXX clean this up
     a = string.split(a, '.')
@@ -1187,6 +1188,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 if q_dict:
                     if self.check_quota(q_dict, library, sg):
                         inc_counter = 1
+                        # this should not happen, do it but let someone know that
+                        # more volumes need to be assigned to the storage group.
+                        Trace.alarm(e_errors.ERROR,
+                          "Volume Clerk: Selecting volume from common pool, add more volumes for %s"%(vol_fam,))
+                        # this is important so turn the enstore ball red
+                        inquisitor_client.override(enstore_constants.ENSTORE,
+                                                   enstore_constants.RED)
+
                     else:
                         msg="Volume Clerk: Quota exceeded, contact enstore admin."
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
