@@ -110,6 +110,7 @@ def init(name):
     logname=name
 
 def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
+    global logname
     msg = trunc(msg)
     if  log_func:
         try:
