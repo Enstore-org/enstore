@@ -63,8 +63,10 @@ def check(f):
     # size
     try:
         real_size = os.stat(f)[stat.ST_SIZE]
-        if real_size != eval(pf.size) or fr['size'] != real_size:
-            msg.append('size(%d, %d, %d)'%(eval(pf.size), real_size, fr['size']))
+        if long(pf.size) != long(fr['size']):
+            msg.append('size(%d, %d, %d)'%(long(pf.size), long(real_size), long(fr['size'])))
+        elif real_size != 1 and long(real_size) != long(pf.size):
+            msg.append('size(%d, %d, %d)'%(long(pf.size), long(real_size), long(fr['size'])))
     except:
         msg.append('no or corrupted size')
     # file_family
