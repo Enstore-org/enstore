@@ -416,7 +416,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
            "Blank Vols", "Written Vols", "Deleted Vols", "Space Used ",
            "Active Files", "Deleted Files", "Unknown Files"))
 
-    if quotas.has_key('librarirs'):
+    if quotas.has_key('libraries'):
         libraries = quotas['libraries'].keys()
     else:
         libraries = []
