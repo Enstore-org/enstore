@@ -1434,8 +1434,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             ticket = self.current_work_ticket
             data_ip=self.config.get("data_ip",None)
-            host, port, listen_socket = callback.get_callback()
-            listen_socket.listen(4)
+            host, port, listen_socket = callback.get_callback(ip=data_ip)
+            listen_socket.listen(1)
             ticket['mover']['callback_addr'] = (host,port) #client expects this
 
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1475,7 +1475,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 if data_ip:
                     interface=hostaddr.interface_name(data_ip)
-                    if 0 and interface:
+                    if interface:
                         status=socket_ext.bindtodev(client_socket.fileno(),interface)
                         if status:
                             Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
