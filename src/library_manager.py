@@ -36,18 +36,25 @@ mover_index = 0  # index if current mover in the queue
 def add_mover(name, address):
     global mover_cnt
     Trace.trace(4, "{add_mover " + repr(name) + " " + repr(address))
-    mover = {'mover'   : name,             # mover name
-	     'address' : address,          # mover address
-	     'state'   : 'idle_mover',     # mover state
-	     'last_checked' : time.time(), # last time the mover has been updated
-	     'summon_try_cnt' : 0,         # number of summon attempts till succeeded
-	     'tr_error' : 'ok',            # transmission error
-	     'file_family':''              # last file family the mover had worked with
-	     }
-    movers.append(mover)
-    mover_cnt = mover_cnt + 1
-    Trace.trace(4, "}add_mover " + repr(mover) + "mover count=" + \
-		repr(mover_cnt))
+    found = 0
+    for mv in movers:
+	# check if mover is already in the list
+	if (address == mv['address']):
+	    found = 1
+	    break
+    if not found:
+	mover = {'mover'   : name,             # mover name
+		 'address' : address,          # mover address
+		 'state'   : 'idle_mover',     # mover state
+		 'last_checked' : time.time(), # last time the mover has been updated
+		 'summon_try_cnt' : 0,         # number of summon attempts till succeeded
+		 'tr_error' : 'ok',            # transmission error
+		 'file_family':''              # last file family the mover had worked with
+		 }
+	movers.append(mover)
+	mover_cnt = mover_cnt + 1
+	Trace.trace(4, "}add_mover " + repr(mover) + "mover count=" + \
+		    repr(mover_cnt))
     
 
 # get list of assigned movers from the configuration list
@@ -143,7 +150,28 @@ def remove_from_summon_list(self, ticket, state):
 	self.summon_queue.remove(mv)
 
 	
-
+# remove all pending works
+def flush_pending_jobs(self, status, *jobtype):
+    Trace.trace(3,"{flush_pending_jobs: status "+repr(status))
+    generic_cs.enprint("flush_pending_jobs: status"+repr(status),
+		       generic_cs.DEBUG, self.verbose) 
+    w = pending_work.get_init()
+    while w:
+	delete_this_job = 0
+	if jobtype:
+	    # try to match the jobtype with work
+	    if w['work'] == jobtype:
+		delete_this_job = 1
+	else:
+	    # delete no matter what work it is
+	   delete_this_job = 1
+	w['status'] = status
+	send_regret(w, self.verbose)
+	pending_work.delete_job(w)
+	w1 = pending_work.get_next()
+	w = w1
+    Trace.trace(3,"}flush_pending_jobs ")
+    
 ##############################################################
 
 work_at_movers = []
@@ -239,7 +267,7 @@ def next_work_any_volume(self, csc, verbose):
 	    # sort requests according file locations
 	    w = pending_work.get_init_by_location()
 	    # return read work ticket
-	    return w
+	    break
 
         # if we need to write: ask the volume clerk for a volume, but first go
         # find volumes we _dont_ want to hear about -- that is volumes in the
@@ -300,7 +328,8 @@ def next_work_any_volume(self, csc, verbose):
 		raise "key error"+str(sys.exc_info()[0])+\
 		      str(sys.exc_info()[1])+ repr(v)
 	    Trace.trace(3,"}next_work_any_volume "+ repr(w))
-            return w
+            #return w
+	    break
 
         # alas, all I know about is reading and writing
         else:
@@ -312,6 +341,28 @@ def next_work_any_volume(self, csc, verbose):
 	                       verbose)
             raise "assertion error"
         w=pending_work.get_next()
+
+    # check if this volume is ok to work with
+    if w:
+	self.enprint("check volume "+repr(w['fc']['external_label']),\
+		     generic_cs.DEBUG, self.verbose)
+	if w["status"][0] == e_errors.OK:
+	    vol_info = vc.inquire_vol(w['fc']['external_label'])
+	    if (vol_info['system_inhibit'] == e_errors.NOACCESS or
+		(vol_info['system_inhibit'] != 'none' and 
+		 w['work'] == 'write_to_hsm') or
+		((vol_info['system_inhibit'] != 'none' and
+		  vol_info['system_inhibit'] != 'readonly') and
+		 w['work'] == 'read_from_hsm')):
+		self.enprint("work can not be done at this volume"+repr(vol_info),\
+			     generic_cs.DEBUG, self.verbose)
+		pending_work.delete_job(w)
+		send_regret(w, self.verbose)
+		Trace.trace(0,"next_work_any_volume: cannot do the work for "+\
+			    repr(w['fc']['external_label'])+ " status:" + \
+			    repr(vol_info['system_inhibit']))
+		return {"status" : (e_errors.NOWORK, None)}
+	return w
     # if the pending work queue is empty, then we're done
     Trace.trace(3,"}next_work_any_volume: pending work queue is empty ")
     return {"status" : (e_errors.NOWORK, None)}
@@ -491,6 +542,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(10, '{__init__')
 	self.verbose = verbose
 	self.print_id = libman
+	self.name = libman
         # get the config server
         configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system
@@ -570,12 +622,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				send_regret(mv["work_ticket"], self.verbose)
 
 				# flush pending jobs
-				w = pending_work.get_init()
-				while w:
-				    send_regret(w, self.verbose)
-				    w1 = pending_work.get_next()
-				    pending_work.delete_job(w)
-				    w = w1
+				flush_pending_jobs(self, 
+						   (e_errors.NOMOVERS, None))
 				return
 				
 			    # try another mover
@@ -611,24 +659,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				pending_work.delete_job(mv["work_ticket"])
 				send_regret(mv["work_ticket"], self.verbose)
 				# flush pending jobs
-				w = pending_work.get_init()
-				while w:
-				    send_regret(w, self.verbose)
-				    w1 = pending_work.get_next()
-				    pending_work.delete_job(w)
-				    w = w1
+				flush_pending_jobs(self,
+						   (e_errors.NOMOVERS, None))
 				return
 			    
 				
 	else:
 	    # no movers
 	    # check if there are any pending works and remove them
-	    w = pending_work.get_init()
-	    while w:
-		send_regret(w, self.verbose)
-		w1 = pending_work.get_next()
-		pending_work.delete_job(w)
-		w = w1
+	    flush_pending_jobs(self, (e_errors.NOMOVERS, None))
 	    # also clear summon queue
 	    self.summon_queue = []
 	    
@@ -807,22 +846,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # ok, we have some work - try to bind the volume
 	elif w["status"][0] == e_errors.OK:
-	    # check if volume can be used to do work
 	    vc = volume_clerk_client.VolumeClerkClient(self.csc)
-	    vol_info = vc.inquire_vol(w['fc']['external_label'])
-	    if (vol_info['system_inhibit'] == e_errors.NOACCESS or
-		(vol_info['system_inhibit'] != 'none' and 
-		 w['work'] == 'write_to_hsm') or
-		((vol_info['system_inhibit'] != 'none' and
-		  vol_info['system_inhibit'] != 'readonly') and
-		 w['work'] == 'read_from_hsm')):
-		self.enprint("work can not be done at this volume"+repr(vol_info),\
-	                             generic_cs.DEBUG, self.verbose)
-		self.reply_to_caller({"work" : "nowork"})
-		pending_work.delete_job(w)
-		send_regret(w, self.verbose)
-		return
-		
 	    # check if the volume for this work had failed on this mover
             self.enprint("SUSPECT_VOLS "+repr(self.suspect_volumes), \
 	                 generic_cs.DEBUG, self.verbose)
@@ -876,12 +900,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			w['status'] = (e_errors.NOMOVERS, 'Read failed') # set it to something more specific
 			send_regret(w, self.verbose)
 			# check if there are any pending works and remove them
-			w = pending_work.get_init()
-			while w:
-			    send_regret(w, self.verbose)
-			    w1 = pending_work.get_next()
-			    pending_work.delete_job(w)
-			    w = w1
+			flush_pending_jobs(self, 
+					   (e_errors.NOMOVERS, 'Read failed'))
 			#remove volume from suspect volume list
 			self.suspect_volumes.remove(item)
 			Trace.trace(3,"}idle_mover: only one mover in config." \
@@ -908,7 +928,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	    # check the volume state and try to lock it
 	    #vc = volume_clerk_client.VolumeClerkClient(self.csc)
-	    #vol_info = vc.inquire_vol(w['fc']['external_label'])
+	    vol_info = vc.inquire_vol(w['fc']['external_label'])
 	    if vol_info['at_mover'][0] == 'unmounted':
 		# set volume to mounting
 		v = vc.set_at_mover(w['fc']['external_label'], 'mounting', 
@@ -1238,12 +1258,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		# send_regret(w, self.verbose)
 		
 		# check if there are any pending works and remove them
-		w = pending_work.get_init()
-		while w:
-		    send_regret(w, self.verbose)
-		    w1 = pending_work.get_next()
-		    pending_work.delete_job(w)
-		    w = w1
+		flush_pending_jobs(self, (e_errors.NOMOVERS, None))
 	Trace.trace(3,"}unilateral_unbind ")
 
     # what is next on our list of work?
@@ -1263,7 +1278,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    Trace.trace(3,"}schedule: Error detected " + repr(w))
             #callback.send_to_user_callback(w)
 
-
+    # load mover list form the configurarion server
+    def load_mover_list(self, ticket):
+	Trace.trace(3, "{load_mover_list for " + repr(self.name))
+	get_movers(self.csc, self.name, self.verbose)
+	ticket['movers'] = movers
+	ticket["status"] = (e_errors.OK, None)
+	self.reply_to_caller(ticket)
+	Trace.trace(3, "}load_mover_list for " + repr(movers))
+	
     # what is going on
     def getwork(self,ticket):
         self.enprint("getwork "+ repr(ticket), generic_cs.SERVER, self.verbose)
