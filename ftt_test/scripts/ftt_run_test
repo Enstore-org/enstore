@@ -46,5 +46,5 @@ then
     exit 0 
 fi
 
-exec  ${FTT_DIR}/ftt_test/ftt_test < $script
+exec  ${FTT_DIR}/bin/ftt_test < $script
 
