@@ -73,7 +73,6 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     int res = 0;
 
     DEBUG1(stderr,"entering ftt_set_hwdens_blocksize %d\n", blocksize);
-    recursing = 1;
     if (0 > (res = ftt_open_io_dev(d))) { 
 	return res;
     }
