@@ -39,7 +39,6 @@ ENSTORE_HOME = /usr/hppc_home/www/enstore
 PIC_GIF_FILES = \
 	./desy.gif \
 	./enstore.gif \
-	./enstoreRead.gif \
 	./enstoreSimple.gif \
 	./enstore_at_fnal.gif \
 	./enstore_at_fnal2.gif \
@@ -52,7 +51,6 @@ PIC_GIF_FILES = \
 PIC_PS_FILES = \
 	./desy.ps \
 	./enstore.ps \
-	./enstoreRead.ps \
 	./enstoreSimple.ps \
 	./enstore_at_fnal.ps \
 	./enstore_at_fnal2.ps \
