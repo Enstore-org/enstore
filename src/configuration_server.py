@@ -288,7 +288,7 @@ if __name__ == "__main__":
     # get a configuration server
     cs = ConfigurationServer((intf.config_host, intf.config_port),
 	                     intf.config_file)
-
+    cs.handle_generic_commands(intf)
     while 1:
         try:
             Trace.log(e_errors.INFO,"Configuration Server (re)starting")
