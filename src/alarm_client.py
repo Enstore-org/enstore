@@ -198,7 +198,7 @@ def do_work(intf):
         ticket = alc.dump()
 
     elif intf.alarm:
-        alc.alarm(intf.severity, intf.root_error, {'msg':intf.message})
+        alc.alarm(intf.severity, intf.root_error, intf.message)
         ticket = {}
 
     else:
