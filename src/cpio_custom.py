@@ -79,6 +79,13 @@ To list them: cpio -tv < archive
 To extract:   cpio -idmv < archive
 
 """
+
+def hex_string_to_signed_int(s):
+    x=string.atol(s,16)
+    if x > 7fffffffL: x = x - 0x10000000L
+    return int(x)
+
+
 class Wrapper :
 
     def sw_mount( self, driver, info ):
@@ -279,7 +286,7 @@ def encrc( buffer ):
         # either use long casts everywhere the crc is calculated or force this crc
         # to be a 32 bit number.  The exec line causes the crc to be a 32 bit number,
         # exactly as it was stored.
-        exec("crc=0x"+buffer[data_offset:data_offset+8])
+        crc=hex_string_to_signed_int(buffer[data_offset:data_offset+8]))
         return crc
 
 ###############################################################################
