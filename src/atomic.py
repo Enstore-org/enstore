@@ -28,7 +28,7 @@ def _open1(pathname,mode=0666):
 ##               2, in which case the lock is also successful.
 
 
-def _open2(pathname,mode=0666)
+def _open2(pathname,mode=0666):
 
     tmpname = "%s-%s-%s" % (pathname, os.uname()[1], os.getpid())
     delete_at_exit.register(tmpname)
