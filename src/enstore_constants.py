@@ -84,6 +84,12 @@ NETWORK = "network"
 TIME = "time"
 UNKNOWN = "UNKNOWN TIME"
 
+ACTION = 'action'
+NODES = "nodes"
+DO_ACTION_AFTER = "do_action_after"
+
+RED = "red"
+
 # these next 2 are related. both must be changed
 SAAG_STATUS = ["red", "yellow", "green", "question"]
 REAL_STATUS = [DOWN, WARNING, UP, SEEN_DOWN]
@@ -100,7 +106,6 @@ READONXFERS = "read_ong_xfers"
 WRITEONXFERS = "write_ong_xfers"
 PENDING = "pending"
 WORK = "work"
-MOVER = "mover"
 MOVERS = "movers"
 ID = "id"
 PORT = "port"

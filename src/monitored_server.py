@@ -74,6 +74,7 @@ class MonitoredServer:
 	self.restart_failed = 0
 	self.did_restart_alarm = 0
         self.state = NO_TIMEOUT
+	self.server_status = None
 	self.update_alive_interval()
 
     def __getattr__(self, attr):
@@ -236,5 +237,6 @@ class MonitoredLibraryManager(MonitoredServer):
 
     def __init__(self, config, name, csc):
 	MonitoredServer.__init__(self, config, name)
+	self.time_bad = 0
 	self.csc = csc
 	self.client = library_manager_client.LibraryManagerClient(self.csc, self.name)
