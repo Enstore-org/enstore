@@ -276,8 +276,11 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, double divide
 	    } else {
 		sprintf(printbuf, "%.0f", value / divide);
             }
+          if ( (buf[0] != 0x32) || ((buf[0] == 0x32) && (param == 0 || param == 1))
+          {
 	    set_stat(b,stat,printbuf,0);
 	    DEBUG3(stderr," stat %d - value %s = %g \n",stat,printbuf,value / divide);
+          }
             return;
 	}
 	page += 4 + thislength;
@@ -620,6 +623,20 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 	    n_blocks =     pack(0,buf[5],buf[6],buf[7]);
 	    block_length = pack(0,buf[9],buf[10],buf[11]);
+                if (d->prod_id[5] == '9') {
+                     DEBUG2(stderr, "total block 8900 case... \n");
+                     /* 8900's count 16k blocks, not 1k blocks */
+                     n_blocks *= 16.0;
+
+                } else if (d->prod_id[5] == 't') {
+
+                     DEBUG2(stderr, "total bloks Mammoth2 case... \n");
+                     /* Mammoth's count 33k blocks, not 1k blocks */
+                     n_blocks *= 33.0;
+                } else {
+                     DEBUG2(stderr, "remain_tape non-8900 case... \n");
+                     ;
+}
 	    tape_size =    n_blocks;
 
 	    if (0 == b->value[FTT_TNP]) {
@@ -744,6 +761,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	for( i = 0; i <= npages; i++ ) {
 	    int do_page;
             int slot;
+            int ubytesw, cbytesw, j;
+            int ubytesr, cbytesr;
+            long umbytesw, cmbytesw, total, block;
+            long umbytesr, cmbytesr;
 
 	    do_page = buf2[4+i];
             switch( do_page ) {
@@ -776,14 +797,16 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 			case 0x2e:
 			    /* stk Tape Alert page */
-			    if (0 == strncmp(d->prod_id,"9840",4)) {
+			    if (0 == strncmp(d->prod_id,"9840",4)) ||
+                                0 == strncmp(d->prod_id,"T9940A",6)) {
 			    (void)decrypt_ls(b,buf,0x15,FTT_CLEANING_BIT,1.0);
                             }
 			    break;
 
 			case 0x30:
 			    /* stk 9840 vendor unique */
-			    if (0 == strncmp(d->prod_id,"9840",4)) {
+			    if (0 == strncmp(d->prod_id,"9840",4)) ||
+                                0 == strncmp(d->prod_id,"T9940A",6)) {
 			    (void)decrypt_ls(b,buf,0x17,FTT_REMAIN_TAPE,0.25);
 			    (void)decrypt_ls(b,buf,0x0f,FTT_UNC_READ,1.0);
 			    (void)decrypt_ls(b,buf,0x11,FTT_UNC_WRITE,1.0);
@@ -833,7 +856,20 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    if( b->value[FTT_REMAIN_TAPE] == 0) {
 			      slot = ((current_partition & 0x7f) << 1) |
 				      (current_partition & 0x01);
+
 			      (void)decrypt_ls(b,buf,slot+1,FTT_REMAIN_TAPE,1.0);
+                                   blocks = 0;
+                                   for (j=0; j < 4; j++) {
+                                       blocks = blocks*256 + buf[8+j];
+                                   }
+                                   blocks = blocks*1000;
+                            set_stat(b,FTT_REMAIN_TAPE,ftt_itoa((long)blocks), 0);
+                              blocks = 0;
+                                   for (j=0; j < 4; j++) {
+                                       blocks = blocks*256 + buf[24+j];
+                                   }
+                                   blocks = blocks*1000;
+                               set_stat(b,FTT_BLOCK_TOTAL,ftt_itoa((long)blocks), 0);
 			    }
 			    break;
 
