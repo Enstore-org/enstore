@@ -1,4 +1,6 @@
 static char rcsid[] = "@(#)$Id$";
+extern char[] ftt_version;
+static char *rcslink = ftt_version;
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -310,6 +312,11 @@ ftt_open_set_mode (ftt_descriptor d,int status_res) {
 	 * a mount -- the tape we have may be readonly, etc. but we
 	 * may be setting it for the *next* tape
 	 */
+	if (d->flags & FTT_FLAG_NO_DENSITY) {
+	     /* pretend we already did it ... */
+	     d->density_is_set = 1;
+	}
+
 	if (!d->density_is_set) {
 	    res = ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
 	    if (res < 0) {

@@ -674,6 +674,14 @@ int *ftt_trans_table[] = {
     /* FTT_OPN_RSKIPFM		17 */ ftt_trans_skipr,
 };
 
+char *Redwood_density_trans[MAX_TRANS_DENSITY] = {
+	"16-track",
+	"48-track",
+	"SD-3",
+	"unknown",
+	0
+};
+
 char *Generic_density_trans[MAX_TRANS_DENSITY] = {
 	"unknown",
 	"low",
@@ -1346,6 +1354,29 @@ ftt_dev_entry devtable[] = {
         { "dev/rmt%d.3",        1,  0, 0x15, 0,  1,        0|FTT_RTOO, 1, EXB_MAX_BLKSIZE},
         { 0, },
     }},
+    {"AIX", "SD-3", "SCSI", FTT_FLAG_HOLD_SIGNALS|FTT_FLAG_SUID_SCSI|FTT_FLAG_NO_DENSITY,
+FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Redwood_density_trans,
+	"dev/rmt%d","dev/rmt%d", 1, AIXfind,  {
+    /*   string                den mod hwd   pas fxd rewind         1st */
+    /*   ======                === === ===   === === ======         === */
+    /* Default */
+        { "dev/rmt%d.1",        0,  0, 0x09, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.1",        1,  0, 0x28, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.1",        2,  0, 0x2b, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.1",       -1,  0,   -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
+    /* Fixed Usable */
+        { "dev/rmt%d.1",        0,  0, 0x00, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
+    /* Descriptive */
+        { "dev/rmt%d",          0,  0, 0x00, 0,  1, FTT_RWOC|       0, 1, 512},
+        { "dev/rmt%d.1",        0,  0, 0x00, 0,  1,                 0, 1, 512},
+        { "dev/rmt%d.2",        0,  0, 0x00, 0,  1, FTT_RWOC|FTT_RTOO, 1, 512},
+        { "dev/rmt%d.3",        0,  0, 0x00, 0,  1,          FTT_RTOO, 1, 512},
+        { "dev/rmt%d.4",        0,  0, 0x00, 0,  1, FTT_RWOC|       0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.5",        0,  0, 0x00, 0,  1,                 0, 1, 512},
+        { "dev/rmt%d.6",        0,  0, 0x00, 0,  1, FTT_RWOC|FTT_RTOO, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.7",        0,  0, 0x00, 0,  1,        0|FTT_RTOO, 1, EXB_MAX_BLKSIZE},
+        { 0, },
+    }},
     {"AIX", "EXB-8200", "SCSI", FTT_FLAG_HOLD_SIGNALS|FTT_FLAG_SUID_SCSI, 
 FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
 	"dev/rmt%d","dev/rmt%d", 1, AIXfind,  {
@@ -1858,6 +1889,10 @@ ftt_stat_entry ftt_stat_op_tab[] = {
 	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_RS|
 	FTT_DO_EXBRS|FTT_DO_05RS|FTT_DO_SN|
 	FTT_DO_LSRW|FTT_DO_RP_SOMETIMES},
+
+    {"SD-3", 
+	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_RS|
+	FTT_DO_LSRW|FTT_DO_RP},
 
     {"DLT",      
 	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_MS_Px10|FTT_DO_RS|

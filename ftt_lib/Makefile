@@ -16,6 +16,7 @@ SUIDOBJ= ftt_suid.o
 SRC= ftt_open.c ftt_tables.c ftt_skip.c ftt_stats.c ftt_info.c \
 	ftt_rdwr.c ftt_do_scsi.c ftt_error.c ftt_debug.c ftt_global.c \
 	ftt_label.c ftt_higher.c ftt_async.c ftt_find.c\
+	ftt_version.c \
 	$(SCSISRC) $(MACHDEPSRC) 
 
 HDR= ftt_private.h ftt_common.h ftt_macros.h local/ftt_mtio.h \
@@ -23,7 +24,7 @@ HDR= ftt_private.h ftt_common.h ftt_macros.h local/ftt_mtio.h \
 
 OBJ= $(SYSOBJ) ftt_do_scsi.o ftt_error.o ftt_debug.o ftt_global.o \
 	ftt_open.o ftt_rdwr.o ftt_tables.o ftt_skip.o ftt_stats.o ftt_info.o \
-	ftt_label.o ftt_higher.o ftt_async.o ftt_find.o
+	ftt_label.o ftt_higher.o ftt_async.o ftt_find.o ftt_version.o
 
 CFLAGS=-I. -Ilocal -g  $(WARN) `cat local/flags`
 
@@ -135,3 +136,4 @@ ftt_scsi.o: $(SCSISRC)
 
 ftt_machdep.o: $(MACHDEPSRC)
 	$(CC) $(CFLAGS) -c local/ftt_machdep.c
+

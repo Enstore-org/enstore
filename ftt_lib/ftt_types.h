@@ -111,6 +111,7 @@ typedef struct {
 #define FTT_FLAG_VERIFY_EOFS	0x00000080	/* check whether EOF is EOT */
 #define FTT_FLAG_SUID_DRIVEID	0x00000100	/* need root to get driveid */
 #define FTT_FLAG_MODE_AFTER     0x00000200  /* set mode After dev is opened */
+#define FTT_FLAG_NO_DENSITY	0x00000400  /* dont actually set density */
 
 typedef struct {
 	char *value[FTT_MAX_STAT];

@@ -9,6 +9,7 @@
 
 # Product name for ups
 PROD=ftt
+PRODUCT_DIR=FTT_DIR
 
 # version for ups
 VERS=v2_0
