@@ -1897,19 +1897,85 @@ These examples reflect a running system on the <i>rip</i> cluster.
 <h4><a name="inquisitor_ascii_status">
 1.3.8.3.1 Example Ascii Status File
 </h4>
+This file records a continuous history of the status of the enstore system as
+monitored by the Inquisitor.  It contains the following information:<br>
+<ul>
+<li>block size information as recorded in the enstore config file
+<li>alive status for each server including node, port, and time
+<li>library manager specific information
+<ul>
+<li>suspect volumes
+<li>list of known movers, their ports, state, last time they were summoned and
+number of attempts to summon them
+<li>work queue including:
+<ul>
+<li>assigned mover
+<li>node, node type, and port where mover is located
+<li>work that mover is doing
+<li>device label
+<li>file family and file family width
+<li>priorities of the work
+<li>associated times
+</ul>
+<li>pending work queue including:
+<ul>
+<li>node, node type, and port where work originated
+<li>work to be done
+<li>file family and file family width
+<li>priorities of the work
+<li>associated times
+</ul>
+</ul>
+<li>mover specific information
+<ul>
+<li>number of completed transfers
+<li>current state of the mover
+<li>number of bytes read and written on the last transfer (if idle)
+<li>number of bytes read and written so far on the current transfer (if working)
+</ul>
+</ul>
+
 <h4><a name="inquisitor_html_status">
 1.3.8.3.2 Example Html Status Snapshot File
 </h4>
+The html snapshot file contains the last know status of the Enstore system. 
+As such it will be a repeat of the last set of information in the Ascii status
+file formatted for browsing.
 <h4><a name="inquisitor_encp_status">
 1.3.8.3.3 Example Encp History Snapshot File
 </h4>
+Each <em>encp</em> history line contains the following information
+<ul>
+<li>end of transfer time
+<li>node of encp process
+<li>user tunning encp
+<li>data transfer rate
+<li>number of bytes transferred
+<li>type of transfer (read or write)
+<li>user rate of transfer
+</ul>
+<p>
+
 <h4><a name="inquisitor_plot_ita">
 1.3.8.3.4 Example Individual Transfer Activity Plot
 </h4>
+This plot shows the history of individual transfers (and their size) over a 
+specified time interval.  This includes both reads and writes.
+<p>
+<img src="bpt.pts.gif">
+<p>
+<a href="bpt.pts.ps">(also available in Postscript)</a>
+<p>
 <h4><a name="inquisitor_plot_btd">
 1.3.8.3.5 Example Bytes Transferred/Day Plot
 </h4>
-
+This plot shows the number of bytes transferred per day over a specified time
+interval.  This includes both reads and writes.
+<p>
+<img src="bytes.pts.gif">
+<p>
+<a href="bytes.pts.ps">(also available in Postscript)</a>
+<p>
 <h3><a name="alarm_server">
 1.3.9 Alarm Server
 </h3>
