@@ -1162,6 +1162,8 @@ def do_work(intf):
         if ticket['status'][0] == e_errors.OK:
             status = ticket['status']
             del ticket['status']
+            # do not show non_del_files
+            del ticket['non_del_files']
             pprint.pprint(ticket)
             ticket['status'] = status
     elif intf.gvol:
@@ -1169,6 +1171,8 @@ def do_work(intf):
         if ticket['status'][0] == e_errors.OK:
             status = ticket['status']
             del ticket['status']
+            # do not show non_del_files
+            del ticket['non_del_files']
             ticket['declared'] = time.ctime(ticket['declared'])
             ticket['first_access'] = time.ctime(ticket['first_access'])
             ticket['last_access'] = time.ctime(ticket['last_access'])
