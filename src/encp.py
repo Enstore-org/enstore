@@ -1659,7 +1659,10 @@ def clients(intf):
     global __alarmc
 
     # get a configuration server client
-    csc = get_csc()
+    try:
+        csc = get_csc()
+    except EncpError, msg:
+        return {'status' : (msg.type, str(msg))}
 
     #Report on the success of getting the csc and logc.
     #Trace.message(CONFIG_LEVEL, format_class_for_print(client['csc'],'csc'))
@@ -3979,9 +3982,12 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # for a mover are both 15 minutes.  If the later were to become
         # greater than the former, a potential time window of missed messages
         # could exist.
-        csc = get_csc()
-        if csc.new_config_obj.is_caching_enabled():
-            csc.new_config_obj.erc.subscribe()
+        try:
+            csc = get_csc()
+            if csc.new_config_obj.is_caching_enabled():
+                csc.new_config_obj.erc.subscribe()
+        except EncpError:
+            pass
         
         ###Is the work done here duplicated in the next commented code line???
         # 1-21-2004 MWZ: By testing for a non-empty request_list this code
@@ -4080,9 +4086,12 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # for a mover are both 15 minutes.  If the later were to become
         # greater than the former, a potential time window of missed messages
         # could exist.
-        csc = get_csc()
-        if csc.new_config_obj.is_caching_enabled():
-            csc.new_config_obj.erc.subscribe()
+        try:
+            csc = get_csc()
+            if csc.new_config_obj.is_caching_enabled():
+                csc.new_config_obj.erc.subscribe()
+        except EncpError:
+            pass
         
         #Log the intermidiate error as a warning instead as a full error.
         Trace.log(e_errors.WARNING, "Retriable error: %s" % str(status))
@@ -5366,14 +5375,22 @@ def write_to_hsm(e, tinfo):
             msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket
 
-    #Set the max attempts that can be made on a transfer.
+    #Determine the name of the library.
     check_lib = request_list[0]['vc']['library'] + ".library_manager"
-    max_attempts(check_lib, e)
+
+    #Set the max attempts that can be made on a transfer.
+    try:
+        max_attempts(check_lib, e)
+    except EncpError, msg:
+        return {'status' : (msg.type, str(msg))}
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
     if e.check:
-        return check_library(check_lib, e)
+        try:
+            return check_library(check_lib, e)
+        except EncpError, msg:
+            return {'status' : (msg.type, str(msg))}
 
     #Create the zero length file entry.
     if not e.put_cache: #Skip this for dcache transfers.
@@ -7160,15 +7177,23 @@ def read_from_hsm(e, tinfo):
             msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket
 
-    #Set the max attempts that can be made on a transfer.
+    #Determine the name of the library.
     check_lib = requests_per_vol.values()[0][0]['vc']['library'] + \
                 ".library_manager"
-    max_attempts(check_lib, e)
+
+    #Set the max attempts that can be made on a transfer.
+    try:
+        max_attempts(check_lib, e)
+    except EncpError, msg:
+        return {'status' : (msg.type, str(msg))}
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
     if e.check:
-        return check_library(check_lib, e)
+        try:
+            return check_library(check_lib, e)
+        except EncpError, msg:
+            return {'status' : (msg.type, str(msg))}
 
     #Create the zero length file entry.
     for vol in requests_per_vol.keys():

@@ -946,16 +946,23 @@ def readtape_from_hsm(e, tinfo):
         lambda x, y: cmp(x['fc']['location_cookie'],
                         y['fc']['location_cookie']))
 
-    #Set the max attempts that can be made on a transfer.
-    #check_lib = requests_per_vol.keys()
+    #Determine the name of the library.
     check_lib = requests_per_vol.values()[0][0]['vc']['library'] + \
                 ".library_manager"
-    encp.max_attempts(check_lib, e)
 
-    #If we are only going to check if we can succed, then the last
+    #Set the max attempts that can be made on a transfer.
+    try:
+        encp.max_attempts(check_lib, e)
+    except encp.EncpError, msg:
+        return {'status' : (msg.type, str(msg))}
+
+    #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
     if e.check:
-        return encp.check_library(check_lib, e)
+        try:
+            return encp.check_library(check_lib, e)
+        except encp.EncpError, msg:
+            return {'status' : (msg.type, str(msg))}
     
     #Make sure that we are not clobbering files.
     Trace.message(4, "Checking status of files.")
