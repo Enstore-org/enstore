@@ -297,6 +297,7 @@ class  FTTDriver(GenericDriver) :
 	# recreating the sem and msg insures that they are cleared
 	self.sem = IPC.semget( IPC.IPC_PRIVATE, 1, IPC.IPC_CREAT|0x1ff )
 	self.msg = IPC.msgget( IPC.IPC_PRIVATE, IPC.IPC_CREAT|0x1ff )
+        #print self.msg.id, self.sem.id
 	self.shm.offset( 2, self.sem.id )
 	self.shm.offset( 3, self.msg.id )
 	try:
