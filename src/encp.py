@@ -1356,7 +1356,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 	    # initiating the retry.  If no routing was done, wait for the
 	    # mover to callback as originally done.
 	    if host_config.get_config():
-		for i in range(encp_intf.max_retry):
+		for i in range(int(encp_intf.mover_timeout/10)):
 		    try:
 			control_socket, mover_address, ticket = \
 					open_control_socket(
