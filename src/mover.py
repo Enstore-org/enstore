@@ -1167,12 +1167,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 client_socket, address = listen_socket.accept()
                 listen_socket.close()
                 if not self.client_hostname:
-                    try:
-                        tmp = socket.gethostbyaddr(address)
-                        self.client_hostname = tmp[0]
-                    except:
-                        Trace.log(e_errors.ERROR, "error performing reverse DNS lookup for %s" % (address,))
-                        
+                    self.client_hostname = address[0]
                 Trace.notify("connect %s %s" % (self.shortname, self.client_hostname))
                 self.net_driver.fdopen(client_socket)
                 return control_socket, client_socket
