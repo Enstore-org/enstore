@@ -994,8 +994,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 						     self.system_tag)
 	self.encpfile = enstore_files.HTMLEncpStatusFile(encp_file, refresh,
 							 self.system_tag)
-        self.loghtmlfile = enstore_files.HTMLLogFile(self.logc.log_dir+"/"+\
-						     LOGHTMLFILE_NAME+SUFFIX, 
+        self.loghtmlfile = enstore_files.HTMLLogFile(self.logc.log_dir,
+						     LOGHTMLFILE_NAME, self.html_dir,
 						     self.system_tag)
         self.confightmlfile = enstore_files.HTMLConfigFile(config_file, 
 							   self.system_tag)
@@ -1068,9 +1068,9 @@ if __name__ == "__main__":
 
     # get the inquisitor
     inq = Inquisitor((intf.config_host, intf.config_port), 
-                     intf.inq_timeout,intf.html_file,
+                     intf.inq_timeout, intf.html_file,
                      intf.alive_rcv_timeout, intf.alive_retries,
-	             intf.max_encp_lines,intf.refresh)
+	             intf.max_encp_lines, intf.refresh)
 
     if inq.startup_state == e_errors.TIMEDOUT:
 	Trace.trace(6, "Inquisitor TIMED OUT when contacting %s"%(inq.startup_text))
