@@ -705,9 +705,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_written = self.buffer.stream_write(nbytes, driver)
             except:
                 exc, detail, tb = sys.exc_info()
+                self.state = HAVE_BOUND
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
                 break
             if bytes_written < 0:
+                self.state = HAVE_BOUND
                 self.transfer_failed(e_errors.ENCP_GONE, None) #XXX detail?
                 break
             if bytes_written != nbytes:
