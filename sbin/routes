@@ -305,10 +305,10 @@ EOF
          fcolor=$red
          if [ $production -ne 0 ]; then
            msg="Node $node has rate=$i.  FIX, or disable its mover"
-           enstore alarm --raise --severity 'A' --root_error="$msg"
            flag2="CHECK"
            current=`expr $current + 1`
            if [ $current -gt $complain ]; then
+             enstore alarm --raise --severity 'A' --root_error="$msg"
              #enstore sched --override enstore --saagStatus red
              /usr/bin/Mail -s "$msg" $ENSTORE_MAIL <<EOF
 `date`
