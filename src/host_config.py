@@ -130,7 +130,7 @@ def set_route(interface_ip, dest):
     config = get_config()
     if not config:
         return
-    interface_dict = config.get('interface')
+    interface_dict = config.get('interface', {})
 
     interface_details = {}
     for interface in interface_dict.keys():
