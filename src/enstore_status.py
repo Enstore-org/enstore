@@ -202,7 +202,8 @@ class EncpLine:
             except ValueError:
                 # we do not handle this formatting
                 self.valid = 0
-        elif not self.status == e_errors.sevdict[e_errors.MISC]:
+        elif not self.status in [e_errors.sevdict[e_errors.MISC],
+                                 e_errors.sevdict[e_errors.ALARM]]:
             # get rid of the MSG_TYPE=xxx information at the end of the line
             aList = string.splitfields(self.text, Trace.MSG_TYPE)
             # some of the lines  do not have MSG_TYPE in them (??? hmmm) so we cannot count on
