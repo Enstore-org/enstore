@@ -582,6 +582,8 @@ def is_write(ticket_or_interface):
     return not is_read(ticket_or_interface)
 
 def collect_garbage():
+    collect_garbage_start_time = time.time()
+    
     #Force garbage collection while there is a lull in the action.  This
     # has nothing to do with opening the data tcp socket; just an attept
     # at optimizing performance.
@@ -592,6 +594,9 @@ def collect_garbage():
     del gc.garbage[:]
     if uncollectable_count > 0:
         Trace.message(1, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
+
+    Trace.message(TIME_LEVEL, "Time to collect garbage: %s sec." %
+                  (time.time() - collect_garbage_start_time,))
 
 ############################################################################
 
@@ -3057,6 +3062,8 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
 
 def submit_one_request(ticket):
 
+    submit_one_request_start_time = time.time()
+
     #Before resending, there are some fields that the library
     # manager and mover don't expect to receive from encp,
     # these should be removed.
@@ -3132,6 +3139,9 @@ def submit_one_request(ticket):
     #It will most likely be a while, so this would be a good time to
     # perform this maintenance.
     collect_garbage()
+
+    Trace.message(TIME_LEVEL, "Time to submit one request: %s sec." %
+                  (time.time() - submit_one_request_start_time,))
     
     return responce_ticket
 
@@ -3140,6 +3150,8 @@ def submit_one_request(ticket):
 #mode should only contain two values, "read", "write".
 #def open_local_file(filename, e):
 def open_local_file(work_ticket, e):
+    open_local_file_start_time = time.time()
+    
     if is_write(e):
         flags = os.O_RDONLY
     else: #reads
@@ -3198,6 +3210,11 @@ def open_local_file(work_ticket, e):
             return done_ticket
 
     done_ticket = {'status':(e_errors.OK, None), 'fd':local_fd}
+
+    #Record this.
+    Trace.message(TIME_LEVEL, "Time to open local file: %s sec." %
+                  (time.time() - open_local_file_start_time,))
+    
     return done_ticket
 
 ############################################################################
@@ -3419,6 +3436,8 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
 
 def check_crc(done_ticket, encp_intf, fd=None):
 
+    check_crc_start_time = time.time()
+
     #Make these more accessable.
     mover_crc = done_ticket['fc'].get('complete_crc', None)
     encp_crc = done_ticket['exfer'].get('encp_crc', None)
@@ -3498,6 +3517,9 @@ def check_crc(done_ticket, encp_intf, fd=None):
                            encp_crc, hex(encp_crc))
                     done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
                     return
+
+    Trace.message(TIME_LEVEL, "Time to check CRC: %s sec." %
+                  (time.time() - check_crc_start_time,))
 
 ############################################################################
 
@@ -3678,7 +3700,8 @@ def internal_handle_retries(request_list, request_dictionary, error_dictionary,
 
 def handle_retries(request_list, request_dictionary, error_dictionary,
                    encp_intf, listen_socket = None, udp_server = None,
-                   control_socket = None, local_filename = None):
+                   control_socket = None, local_filename = None,
+                   external_label = None):
     #Extract for readability.
     max_retries = encp_intf.max_retry
     max_submits = encp_intf.max_resubmit
@@ -3711,12 +3734,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #Get volume info from the volume clerk.
     #Need to check if the volume has been marked NOACCESS since it
     # was checked last.  This should only apply to reads.
-    if request_dictionary.get('fc', {}).has_key('external_label'):
+    #if request_dictionary.get('fc', {}).has_key('external_label'):
+    if external_label and external_label == \
+           request_dictionary.get('fc', {}).get('external_label', None):
         try:
             vc_reply = get_volume_clerk_info(request_dictionary)
             vc_status = vc_reply['status']
         except EncpError, msg:
-            vc_status = (msg.get('type', e_errors.UNKNOWN), str(msg))
+            vc_status = (getattr(msg, 'type', e_errors.UNKNOWN), str(msg))
     else:
         vc_status = (e_errors.OK, None)
 
@@ -4957,10 +4982,12 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Handle any possible errors that occured so far.
         local_filename = work_ticket.get('wrapper', {}).get('fullname', None)
+        external_label = work_ticket.get('fc', {}).get('external_label', None)
         result_dict = handle_retries([work_ticket], work_ticket, ticket, e,
                                      listen_socket = listen_socket,
                                      udp_server = route_server,
-                                     local_filename = local_filename)
+                                     local_filename = local_filename,
+                                     external_label = external_label)
 
         if e_errors.is_resendable(result_dict['status'][0]):
             continue
@@ -5093,10 +5120,12 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         close_descriptors(control_socket, data_path_socket, in_fd)
 
         #Verify that everything is ok on the mover side of the transfer.
+        external_label = work_ticket.get('fc',{}).get('external_label',None)
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e,
                                      listen_socket = listen_socket,
-                                     udp_server = route_server)
+                                     udp_server = route_server,
+                                     external_label = external_label)
 
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
@@ -6712,11 +6741,13 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
         done_ticket = request_ticket #Make sure this exists by this point.
         local_filename = request_ticket.get('wrapper',{}).get('fullname', None)
+        external_label = request_ticket.get('fc',{}).get('external_label',None)
         result_dict = handle_retries(request_list, request_ticket,
                                      request_ticket, e,
                                      listen_socket = listen_socket,
                                      udp_server = route_server,
-                                     local_filename = local_filename)
+                                     local_filename = local_filename,
+                                     external_label = external_label)
 
         if e_errors.is_resendable(result_dict['status']):
             continue
@@ -6818,10 +6849,12 @@ def read_hsm_files(listen_socket, route_server, submitted,
                        time.time() - tinfo['encp_start_time']))
 
         #Verify that everything went ok with the transfer.
+        external_label = request_ticket.get('fc',{}).get('external_label',None)
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, e,
                                      listen_socket = listen_socket,
-                                     udp_server = route_server)
+                                     udp_server = route_server,
+                                     external_label = external_label)
         
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket, out_fd)

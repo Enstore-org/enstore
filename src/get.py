@@ -31,6 +31,8 @@ SUCCESS = "SUCCESS"
 FAILURE = "FAILURE"
 EOD = "EOD"  #Don't stop until EOD is reached.
 
+TIME_LEVEL = encp.TIME_LEVEL
+
 def get_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
@@ -304,21 +306,24 @@ def wait_for_final_dialog(control_socket, udp_socket, e):
     # has an error, don't wait for the mover in case the mover is waiting
     # for "Get" to do something.
     if control_socket != None:
+        final_dialog_start_time = time.time()
+        
         Trace.message(5, "Waiting for final dialog (1).")
         mover_done_ticket = encp.receive_final_dialog(control_socket)
         Trace.message(5, "Received final dialog (1).")
         Trace.message(10, "FINAL DIALOG (tcp):")
         Trace.message(10, pprint.pformat(mover_done_ticket))
         Trace.log(e_errors.INFO, "Received final dialog (1).")
+
+        Trace.message(TIME_LEVEL, "Time to receive final dialog: %s sec." %
+                      (time.time() - final_dialog_start_time,))
     else:
         mover_done_ticket = {'status' : (e_errors.OK, None)}
 
     #Keep the udp socket queues clear.
-    start_time = time.time()
+    final_dialog_2_start_time = time.time()
     Trace.message(5, "Waiting for final dialog (2).")
-    while time.time() < start_time + e.mover_timeout:
-        #Keep looping until one of these two messages arives.  Ignore
-        # any other that my be received.
+    while time.time() < final_dialog_2_start_time + e.mover_timeout:
         mover_udp_done_ticket = udp_socket.process_request()
 
         #If requested output the raw 
@@ -328,6 +333,8 @@ def wait_for_final_dialog(control_socket, udp_socket, e):
         #Make sure the messages are what we expect.
         if mover_udp_done_ticket == None: #Something happened, keep trying.
             continue
+        #Keep looping until one of these two messages arives.  Ignore
+        # any other that my be received.
         elif mover_udp_done_ticket['work'] != 'mover_bound_volume' and \
            mover_udp_done_ticket['work'] != 'mover_error':
             continue
@@ -337,6 +344,9 @@ def wait_for_final_dialog(control_socket, udp_socket, e):
     Trace.message(10, "FINAL DIALOG (udp):")
     Trace.message(10, pprint.pformat(mover_udp_done_ticket))
     Trace.log(e_errors.INFO, "Received final dialog (2).")
+
+    Trace.message(TIME_LEVEL, "Time to receive final dialog (2): %s sec." %
+                  (time.time() - final_dialog_2_start_time,))
 
     return mover_done_ticket
 
@@ -348,26 +358,13 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         Trace.message(5, "Opening local file.")
         Trace.log(e_errors.INFO, "Opening local file.")
 
-        #If necessary, create the file.
-        #if work_ticket.get('completion_status', None) == EOD and \
-        #   not os.path.exists(work_ticket['outfile']):
-        #    encp.create_zero_length_files(work_ticket['outfile'])
         # Open the local file.
-        #done_ticket = encp.open_local_file(work_ticket['outfile'], e)
         done_ticket = encp.open_local_file(work_ticket, e)
         
         if not e_errors.is_ok(done_ticket):
             return done_ticket
-            #eys.stderr.write("Unable to open local file %s: %s\n" %
-            #                 (work_ticket['outfile'], done_ticket['status'],))
-            #halt(1)
         else:
             out_fd = done_ticket['fd']
-
-        message = "Sending file %s request to the mover." % \
-                 encp.extract_file_number(work_ticket['fc']['location_cookie'])
-        Trace.message(5, message)
-        Trace.log(e_errors.INFO, message)
 
         #This is an evil hack to modify work_ticket outside of
         # create_read_requests().
@@ -377,9 +374,14 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         #The ticket item of 'routing_callback_addr' is a legacy name.
         work_ticket['routing_callback_addr'] = udp_callback_addr
 
-        #Send the actual request to the mover.
+        #Record the event of sending the request to the mover.
+        message = "Sending file %s request to the mover." % \
+                encp.extract_file_number(work_ticket['fc']['location_cookie'])
+        Trace.message(5, message)
+        Trace.log(e_errors.INFO, message)
         Trace.message(10, "MOVER_REQUEST_SUBMISSION:")
         Trace.message(10, pprint.pformat(work_ticket))
+        #Send the actual request to the mover.
         udp_socket.reply_to_caller(work_ticket)
 
         #It will most likely be a while, so this would be a good time to
@@ -434,8 +436,10 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             work_ticket['status'] = (e_errors.NET_ERROR, str(msg))
 
         # Verify that everything went ok with the transfer.
+        external_label = work_ticket.get('fc', {}).get('external_label', None)
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          work_ticket, e)
+                                          work_ticket, e,
+                                          external_label = external_label)
 
         if not e_errors.is_ok(result_dict):
             #Log the error.
@@ -530,8 +534,10 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         Trace.message(10, pprint.pformat(done_ticket))
 
         # Verify that everything went ok with the transfer.
+        external_label = work_ticket.get('fc', {}).get('external_label', None)
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          done_ticket, e)
+                                          done_ticket, e,
+                                          external_label = external_label)
 
         #DELETE THE FOUR FOLOWING Trace.log() CALLS WHEN DONE.
         #Trace.log(e_errors.ERROR, "WORK_TICKET: %s" % str(work_ticket))
@@ -609,6 +615,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         if len(work_ticket.get('fc', {}).keys()) > 0 and \
            work_ticket.get('fc', {}).get('bfid', "no_bfid") == None:
 
+            workaround_start_time = time.time()
+
             #Get the file info list dump of the tape.
             unused, fcc = encp.get_clerks(e.volume)
             tape_ticket = fcc.tape_list(e.volume)
@@ -638,6 +646,9 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                                                     item['sanity_cookie']
                         work_ticket['fc']['size'] = item['size']
                         break
+
+            Trace.message(TIME_LEVEL, "Time to apply workaround: %s sec." %
+                          (time.time() - workaround_start_time,))
 
         ###################################################################
         
@@ -1041,8 +1052,10 @@ def readtape_from_hsm(e, tinfo):
         Trace.message(10, pprint.pformat(ticket))
         
 	# Verify that everything went ok with the handshake.
+        external_label = request.get('fc', {}).get('external_label', None)
         result_dict = encp.handle_retries([request], request,
-                                          ticket, e)
+                                          ticket, e,
+                                          external_label = external_label)
 
         if not e_errors.is_ok(result_dict):
             # Close these descriptors before they are forgotten about.
@@ -1149,12 +1162,17 @@ def readtape_from_hsm(e, tinfo):
             Trace.log(e_errors.INFO,
                       "Preparing to read %s." % request['infile'])
 
+            get_single_file_start_time = time.time()
+
             ################################################################
             #In this function call is where most of the work in transfering
             # a single file is done.
             done_ticket = get_single_file(request, tinfo, control_socket,
                                           udp_socket, e)
             ################################################################
+
+            Trace.message(TIME_LEVEL, "Time to get_single_file: %s sec." %
+                  (time.time() - get_single_file_start_time,))
 
             #Print out the final ticket.
             Trace.message(10, "DONE_TICKET (get_single_file):")
