@@ -92,9 +92,8 @@ class Interface:
             else:            
                 self.check_host(host)
 
-                self.check_port(port)
+            self.check_port(port)
 
-            # now parse the options
             self.parse_options()
 
     def check_host(self, host):
@@ -138,7 +137,8 @@ class Interface:
 	return "\n\n\t where 'opts' are:\n"
 
     def help_line(self):
-        return self.help_prefix()+self.parameters()+self.help_suffix()+self.format_options(self.options(), "\n\t\t")
+        return self.help_prefix()+self.parameters()+self.help_suffix()+self.format_options(
+            self.options(), "\n\t\t")
 
     def check_port(self, port):
 	# bomb out if port isn't numeric
@@ -232,8 +232,6 @@ class Interface:
                 self.delete_work = 1
             elif opt == "--change_priority" :
                 self.change_priority = 1
-            elif opt == "--summon" :
-                self.summon = value
             elif opt == "--poll" :
                 self.poll = 1
             elif opt == "--load_movers" :
@@ -331,9 +329,6 @@ class Interface:
                     self.verbose = self.verbose | int(value)
             elif opt == "--status":
                 self.status = 1
-            elif opt == "--local_mover":
-                self.local_mover = 1
-                self.enable = int(value)
             elif opt == "--max_work":
                 self.max_work = int(value)
             elif opt == "--mount" :
@@ -427,6 +422,10 @@ class Interface:
 		self.description = value
 	    elif opt == "--html_file":
 		self.html_file = value
+	    elif opt == "--html_gen_host":
+		self.html_gen_host = value
+	    elif opt == "--html":
+		self.html = 1
 	    elif opt == "--input_dir":
 		self.input_dir = value
 	    elif opt == "--url":
