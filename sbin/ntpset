@@ -1,0 +1,63 @@
+#!/bin/sh
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
+if [ "${1:-}" = "-c" ] ; then CHKONLY=1;shift; else CHKONLY=0; fi
+if [ "${1:-}" = "-q" ] ; then QUIET=1; shift; else QUIET=0; fi
+
+
+UNAME="/bin/uname"
+CMP="/usr/bin/cmp"
+ECHO="/bin/echo"
+XNTPDC="/usr/sbin/xntpdc"
+NTPDATE="/usr/sbin/ntpdate"
+XNTP="/etc/rc.d/init.d/xntpd restart"
+EGREP="/bin/egrep"
+AWK="/bin/awk"
+WC="/usr/bin/wc"
+DATE="/bin/date"
+CAT="/bin/cat"
+SED="/bin/sed"
+MKDIR="/bin/mkdir"
+
+node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`/home/enstore/enstore/sbin/gang`
+
+LOG=/tmp/ntpset.log
+HIST=/root/CRON/ntpsetH
+if [ ! -d `dirname $HIST` ]; then $MKDIR -p `dirname $HIST`;fi
+TIME_NOT_SYNCD=/root/time_not_syncd
+
+# function to log messages, optionally print the ps state
+logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
+          if [ "${2:-}"x = "psx" ]; then
+             $ECHO "${PSfirst:-}"  >>$LOG 2>&1
+          fi
+          $ECHO "$1"
+        }
+# check that ntp is working, fix if not, complain if down more than once
+if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
+    x=`$XNTPDC -p`
+    logit "NO TIME SYNC"
+    logit "$x"
+    if [ $ALARM -eq 1 ]; then
+      if [ -r $TIME_NOT_SYNCD ]; then
+        enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
+      fi
+    fi
+    touch $TIME_NOT_SYNCD
+    if [ $CHKONLY -eq 0 ]; then
+      $XNTP stop >>$LOG 2>&1
+      # set the time, but use more than just fermilab to sync it
+      $NTPDATE -b -p 8 -u -v `$CAT /etc/ntp/step-tickers` ntp-1.cso.uiuc.edu ntp-1.mcs.anl.gov ntp.cmr.gov >>$LOG 2>&1
+      # start up ntp again - this just syncs to fermilab, according to policy.
+      $XNTP start >>$LOG 2>&1
+    fi
+    $ECHO `$DATE +"%Y-%m-%d:%H:%M:%S"` 1 >>$HIST
+else
+  rm -f $TIME_NOT_SYNCD
+  if [ $QUIET -ne 1 ]; then
+    logit  "TIME SYNCD, ok"
+  fi
+  $ECHO `$DATE +"%Y-%m-%d:%H:%M:%S"` 0 >>$HIST
+fi
+
