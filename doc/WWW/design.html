@@ -698,8 +698,9 @@ CA2902 (tape label)
 '0000_000000000_0000132' (positioning info)
 104857600 (file size)
 jon-ait-1 (file family)
-/pnfs/grau/ait/jon1/100MB.trand__Jan05005204rip8.fnal.gov16199 (original name)
-/pnfs/grau/ait/volmap/jon-ait-1/CA2902/0000_000000000_0000132 (volume map name)
+/pnfs/grau/ait/jon1/100MB.trand (original name)
+/pnfs/grau/ait/volmap/jon-ait-1/CA2902/...
+   ... 0000_000000000_0000132 (volume map name)
 0001000000000000000928D0 (<em>pnfs</em> id of file)
 0001000000000000000928E0 (<em>pnfs</em> id of volume map file)
 </pre></TD>
@@ -851,7 +852,7 @@ Don't use these unless you can interpret the results:
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>shows the filename</TD>
 <TD NOSAVE>pcmd nameof id </TD>
-<TD NOSAVE>&nbsp;<<pre>
+<TD NOSAVE>&nbsp;<pre>
 </pre></TD>
 </TR>
 
@@ -1067,7 +1068,7 @@ extension to <em>encp</em>.
 <p>The d0sam option provides the output of <em>encp</em> in a format required
 by the D0 SAM system. The example output is below:
 <pre>
-[enter command] ecmd encp --d0sam /pnfs/rip6/M1 .
+$ encp --d0sam /pnfs/rip6/M1 .
 INFILE=/pnfs/rip6/M1
 OUTFILE=/home/moibenko/enstore/src/tst/M1
 FILESIZE=21036
@@ -1108,7 +1109,7 @@ since at most 15 will be active in the system at any time.
 </h3>
 
 <em>Encp</em> duplicates unix cp's behavior when one tries to read or write
-multiple input files from the HSM: <br><br> ecmd <em>encp</em> [options]
+multiple input files from the HSM: <br><br> <em>encp</em> [options]
 source... directory<br><br> That is, the final item has to be a directory when
 specifying an input list.  There is one caveat when specifying multiple files
 using a single <em>encp</em> command: there is at most one mover processing your
@@ -1153,21 +1154,21 @@ files and then does the same for flop302 and flop303.
 
 Here is the output of an actual test:
 <pre>
-$ ecmd encp $P/ran-1       $P/ran-2        $P/ran-3        $P/ran-4 \
-            $P/test2/ran-5 $P/test2/ran-6  $P/test2/ran-7  $P/test2/ran-8 \
-            $P/test3/ran-9 $P/test3/ran-10 $P/test3/ran-11 $P/test3/ran-12 .
-/pnfs/enstore/airedale/test2/ran-5 -> /home/bakken/enstore/src/ran-5 : 102400 bytes copied from flop302 at 0.190780317582 MB/S  requestor:bakken     cum= 3.534426
-/pnfs/enstore/airedale/test2/ran-6 -> /home/bakken/enstore/src/ran-6 : 102400 bytes copied from flop302 at 0.426923710317 MB/S  requestor:bakken     cum= 3.787567
-/pnfs/enstore/airedale/test2/ran-7 -> /home/bakken/enstore/src/ran-7 : 102400 bytes copied from flop302 at 0.462479436263 MB/S  requestor:bakken     cum= 3.999860
-/pnfs/enstore/airedale/test2/ran-8 -> /home/bakken/enstore/src/ran-8 : 102400 bytes copied from flop302 at 0.462523304015 MB/S  requestor:bakken     cum= 4.212137
-/pnfs/enstore/airedale/test3/ran-9 -> /home/bakken/enstore/src/ran-9 : 102400 bytes copied from flop303 at 0.129460905635 MB/S  requestor:bakken     cum= 5.479408
-/pnfs/enstore/airedale/test3/ran-10 -> /home/bakken/enstore/src/ran-10 : 102400 bytes copied from flop303 at 0.491317380712 MB/S  requestor:bakken     cum= 5.679356
-/pnfs/enstore/airedale/test3/ran-11 -> /home/bakken/enstore/src/ran-11 : 102400 bytes copied from flop303 at 0.454401235403 MB/S  requestor:bakken     cum= 5.895427
-/pnfs/enstore/airedale/test3/ran-12 -> /home/bakken/enstore/src/ran-12 : 102400 bytes copied from flop303 at 0.455049173862 MB/S  requestor:bakken     cum= 6.111198
-/pnfs/enstore/airedale/ran-1 -> /home/bakken/enstore/src/ran-1 : 102400 bytes copied from flop301 at 0.124436148701 MB/S  requestor:bakken     cum= 7.414610
-/pnfs/enstore/airedale/ran-2 -> /home/bakken/enstore/src/ran-2 : 102400 bytes copied from flop301 at 0.45439695057 MB/S  requestor:bakken     cum= 7.630682
-/pnfs/enstore/airedale/ran-3 -> /home/bakken/enstore/src/ran-3 : 102400 bytes copied from flop301 at 0.422761844505 MB/S  requestor:bakken     cum= 7.862842
-/pnfs/enstore/airedale/ran-4 -> /home/bakken/enstore/src/ran-4 : 102400 bytes copied from flop301 at 0.454517460805 MB/S  requestor:bakken     cum= 8.078855
+$ encp $P/ran-1       $P/ran-2        $P/ran-3        $P/ran-4 \
+       $P/test2/ran-5 $P/test2/ran-6  $P/test2/ran-7  $P/test2/ran-8 \
+       $P/test3/ran-9 $P/test3/ran-10 $P/test3/ran-11 $P/test3/ran-12 .
+/pnfs/enstore/airedale/test2/ran-5 -> /home/bakken/enstore/src/ran-5 : 102400 bytes copied from flop302 at 0.19 MB/S  requestor:bakken     cum= 3.5
+/pnfs/enstore/airedale/test2/ran-6 -> /home/bakken/enstore/src/ran-6 : 102400 bytes copied from flop302 at 0.42 MB/S  requestor:bakken     cum= 3.7
+/pnfs/enstore/airedale/test2/ran-7 -> /home/bakken/enstore/src/ran-7 : 102400 bytes copied from flop302 at 0.46 MB/S  requestor:bakken     cum= 3.9
+/pnfs/enstore/airedale/test2/ran-8 -> /home/bakken/enstore/src/ran-8 : 102400 bytes copied from flop302 at 0.46 MB/S  requestor:bakken     cum= 4.2
+/pnfs/enstore/airedale/test3/ran-9 -> /home/bakken/enstore/src/ran-9 : 102400 bytes copied from flop303 at 0.12 MB/S  requestor:bakken     cum= 5.4
+/pnfs/enstore/airedale/test3/ran-10 -> /home/bakken/enstore/src/ran-10 : 102400 bytes copied from flop303 at 0.49 MB/S  requestor:bakken   cum= 5.6
+/pnfs/enstore/airedale/test3/ran-11 -> /home/bakken/enstore/src/ran-11 : 102400 bytes copied from flop303 at 0.45 MB/S  requestor:bakken   cum= 5.8
+/pnfs/enstore/airedale/test3/ran-12 -> /home/bakken/enstore/src/ran-12 : 102400 bytes copied from flop303 at 0.45 MB/S  requestor:bakken   cum= 6.1
+/pnfs/enstore/airedale/ran-1 -> /home/bakken/enstore/src/ran-1 : 102400 bytes copied from flop301 at 0.124436148701 MB/S  requestor:bakken cum= 7.4
+/pnfs/enstore/airedale/ran-2 -> /home/bakken/enstore/src/ran-2 : 102400 bytes copied from flop301 at 0.45439695057 MB/S  requestor:bakken  cum= 7.6
+/pnfs/enstore/airedale/ran-3 -> /home/bakken/enstore/src/ran-3 : 102400 bytes copied from flop301 at 0.422761844505 MB/S  requestor:bakken cum= 7.8
+/pnfs/enstore/airedale/ran-4 -> /home/bakken/enstore/src/ran-4 : 102400 bytes copied from flop301 at 0.454517460805 MB/S  requestor:bakken cum= 8.0
 </pre>
 
 
@@ -1199,12 +1200,12 @@ around both complications.
 <p>
 Here's an example of how it is used:
 <pre>
-$ ecmd encp --queue rip8.fnal.gov
+$ encp --queue rip8.fnal.gov
 rip8.fnal.gov bakken /raid/1MB.trand /pnfs/grau/ait/jon1/1MB.trand P
 rip8.fnal.gov bakken /raid/1GB.trand /pnfs/grau/ait/jon2/1GB.trand M
 rip8.fnal.gov bakken /raid/1GB.trand /pnfs/grau/ait/jon1/1GB.trand M
 
-$ ecmd encp --queue rip4.fnal.gov
+$ encp --queue rip4.fnal.gov
 rip4.fnal.gov bakken /raid/1MB.trand /pnfs/grau/ait/jon2/1MB.trand M
 </pre>
 
@@ -1670,6 +1671,10 @@ and inelegant information.  This will be fixed in the future.
 <td NOSAVE>ecmd start --just file_clerk</td>
 </tr>
 <tr NOSAVE>
+<td NOSAVE>start the Enstore system on the whole Enstore cluster</td>
+<td NOSAVE>ecmd Estart</td>
+</tr>
+<tr NOSAVE>
 <td NOSAVE>stop the Enstore system on the current node</td>
 <td NOSAVE>ecmd stop</td>
 </tr>
@@ -1678,12 +1683,28 @@ and inelegant information.  This will be fixed in the future.
 <td NOSAVE>ecmd stop --just logserver</td>
 </tr>
 <tr NOSAVE>
+<td NOSAVE>stop the Enstore system on the whole Enstore cluster</td>
+<td NOSAVE>ecmd stop</td>
+</tr>
+<tr NOSAVE>
 <td NOSAVE>stop and then start the Enstore system</td>
 <td NOSAVE>ecmd restart</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>stop and then restart only the inquisitor on the current node</td>
 <td NOSAVE>ecmd restart --just inq</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>stop and then start the Enstore system on the whole Enstore cluster</td>
+<td NOSAVE>ecmd restart</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>display the mount status on the EMASS robot</td>
+<td NOSAVE>ecmd emass</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>display the Enstore-associated processes on the whole Enstore cluster</td>
+<td NOSAVE>ecmd Esys</td>
 </tr>
 </table>
 <p>
