@@ -97,13 +97,15 @@ def pgrep_html(pat, files, sensit):
 	    fd = open(file, 'r')
 	else:
 	    fd = gzip.open(file, 'r')
-	line = fd.read()
+	line = fd.readline()
 	while line:
 	    if patr.search(line) >=0:
 		# only print out the name of the file and not the directory path
 		print '[<B>%s</B>] %04d) %s<BR>' %(filename, lineno, line)
 	    lineno = lineno + 1
-	    line = fd.read()
+	    line = fd.readline()
+	else:
+	    fd.close()
 	print "<HR>"
 
 def agrep_html(pat1, pat2, files, sensit):
