@@ -191,8 +191,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # Do the forking and call the function
     def DoWork(self, function, ticket):
 	if ticket['function'] == "mount" or ticket['function'] == "dismount":
-            Trace.trace(e_errors.INFO, 'REQUESTED '+ticket['function']+ \
-		   ticket['vol_ticket']['external_label']+ticket['drive_id'])
+            Trace.trace(e_errors.INFO, 'REQUESTED '+ticket['function']+ ' ' + \
+		   ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
         else:
             Trace.trace(e_errors.INFO, 'REQUESTED '+ticket['function'])
         #if we have max number of working children, assume client will resend
@@ -226,8 +226,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             if not self.fork():
                 # if in child process
 	        if ticket['function'] == "mount" or ticket['function'] == "dismount":
-                    Trace.trace(e_errors.INFO, 'mcDoWork>>> forked (child)'+ticket['function']+ \
-		           ticket['vol_ticket']['external_label']+ticket['drive_id'])
+                    Trace.trace(e_errors.INFO, 'mcDoWork>>> forked (child) '+ticket['function']+ \
+		            ' ' +ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
                 else:
                     Trace.trace(e_errors.INFO, 'mcDoWork>>> '+ticket['function'])
                 os.close(pipe[0])
@@ -288,8 +288,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
               break
         # report back to original client - probably a mover
 	if ticket['function'] == "mount" or ticket['function'] == "dismount":
-            Trace.trace(e_errors.INFO, 'FINISHED '+ticket['function']+ \
-		   ticket['vol_ticket']['external_label']+ticket['drive_id'])
+            Trace.trace(e_errors.INFO, 'FINISHED '+ticket['function']+ ' ' +\
+		   ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
         else:
             Trace.trace(e_errors.INFO, 'FINISHED '+ticket['function'])
         # reply_with_address uses the "ra" entry in the ticket
