@@ -1889,21 +1889,15 @@ def filename_check(filename):
                         e_errors.USERERROR)
 
 #Make sure that the filesystem can handle the filesize.
-def filesystem_check(target_filesystem, inputfile):
+def filesystem_check(work_ticket):
 
-    #Get filesize
-    try:
-        size = get_file_size(inputfile)
-    except (OSError, IOError):
-        msg = sys.exc_info()[1]
-        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR,
-                        {'infile' : inputfile})
+    #Get the target from the ticket.
+    target_file = work_ticket['outfile']
+    target_filesystem = os.path.split(target_file)[0]
+
+    #Get the file size from the ticket.
+    size = work_ticket['file_size']
         
-    #os.pathconf likes its targets to exist.  If the target is not a directory,
-    # use the parent directory.
-    if not os.path.isdir(target_filesystem):
-        target_filesystem = os.path.split(target_filesystem)[0]
-
     #Not all operating systems support this POSIX limit yet (ie OSF1).
     try:
         #get the maximum filesize the local filesystem allows.
@@ -1920,77 +1914,82 @@ def filesystem_check(target_filesystem, inputfile):
             sys.stderr.write("WARNING: %s  Continuing." % (msg2,))
             return  #Nothing to test, user needs to be carefull.
         else:
-            raise EncpError(getattr(msg,"errno",None), msg2, e_errors.OSERROR,
-                        {'infile' : inputfile, 'outfile' : target_filesystem})
+            raise EncpError(getattr(msg, "errno", None), msg2,
+                            e_errors.OSERROR, work_ticket)
 
+    #Need to convert the bits into the maximum file size allowed.
     filesystem_max = 2L**(bits - 1) - 1
 
     #Normally, encp would find this an error, but "Get" may not.  Raise
     # an exception and let the caller decide.
     if size == None:
         raise EncpError(None, "Filesize is not known.", e_errors.OSERROR,
-                        {'infile' : inputfile, 'outfile' : target_filesystem})
+                        work_ticket)
+
     #Compare the max sizes.
     elif size > filesystem_max:
         raise EncpError(errno.EFBIG,
                         "Filesize (%s) larger than filesystem allows (%s)." \
                         % (size, filesystem_max),
-                        e_errors.USERERROR,
-                        {'infile' : inputfile, 'outfile' : target_filesystem})
+                        e_errors.USERERROR, work_ticket)
 
 #Make sure that the wrapper can handle the filesize.
-def wrappersize_check(target_filepath, inputfile):
+def wrappersize_check(work_ticket):
 
-    #Get filesize
+    #Get the wrapper from the ticket.
+    vc_ticket = work_ticket.get('vc', {})
+    wrapper = vc_ticket.get('wrapper', None)
+
+    #Get the file size from the ticket.
+    size = work_ticket['file_size']
+
     try:
-        size = get_file_size(inputfile)
-
-        #Get the remote pnfs wrapper.  If the maximum size of the
-        # wrapper isn't in the configuration file, assume 2GB-1.
-        pout = pnfs.Tag((os.path.dirname(target_filepath)))
-        pout.get_file_family_wrapper()
         # get a configuration server and the max filesize the wrappers allow.
         csc = get_csc()
         wrappersizes = csc.get('wrappersizes', {})
-        wrapper_max = wrappersizes.get(pout.file_family_wrapper,
-                                       MAX_FILE_SIZE)
+        wrapper_max = wrappersizes.get(wrapper, MAX_FILE_SIZE)
     except (OSError, IOError):
         msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR,
-                        {'infile' : inputfile, 'outfile' : target_filepath})
+                        work_ticket)
 
     if size > wrapper_max:
         raise EncpError(errno.EFBIG,
                         "Filesize (%s) larger than wrapper (%s) allows (%s)." \
-                        % (size, pout.file_family_wrapper, wrapper_max),
-                        e_errors.USERERROR,
-                        {'infile' : inputfile, 'outfile' : target_filepath})
+                        % (size, wrapper, wrapper_max),
+                        e_errors.USERERROR, work_ticket)
     
 #Make sure that the library can handle the filesize.
-def librarysize_check(target_filepath, inputfile):
+#def librarysize_check(target_filepath, inputfile):
+def librarysize_check(work_ticket):
 
-    #Get filesize
+    #Get the library from the ticket.
+    vc_ticket = work_ticket.get('vc', {})
+    library = vc_ticket.get('library', None)
+    if library[-16:] == ".library_manager":
+        use_lm = library
+    else:
+        use_lm = library + ".library_manager"
+
+    #Get the file size from the ticket.
+    size = work_ticket['file_size']
+
     try:
-        size = get_file_size(inputfile)
-
         #Determine the max allowable size for the given library.
-        pout = pnfs.Tag(os.path.dirname(target_filepath))
-        pout.get_library()
         csc = get_csc()
-        library = csc.get(pout.library + ".library_manager", {})
-        library_max = library.get('max_file_size', MAX_FILE_SIZE)
+        lib_info = csc.get(use_lm, {})
+        library_max = lib_info.get('max_file_size', MAX_FILE_SIZE)
     except (OSError, IOError):
         msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR,
-                        {'infile' : inputfile, 'outfile' : target_filepath})
+                        work_ticket)
 
     #Compare the max sizes allowed for these various conditions.
     if size > library_max:
         raise EncpError(errno.EFBIG,
                         "Filesize (%s) larger than library (%s) allows (%s)." \
-                        % (size, pout.library, library_max),
-                        e_errors.USERERROR,
-                        {'infile' : inputfile, 'outfile' : target_filepath})
+                        % (size, library, library_max),
+                        e_errors.USERERROR, work_ticket)
 
 # check the input file list for consistency
 def inputfile_check(input_files, e):
@@ -2265,31 +2264,6 @@ def outputfile_check(inputlist, outputlist, e):
                                 e_errors.UNKNOWN,
                                 {'outfile' : outputlist[i]})
 
-            #Make sure the output file system can handle a file as big as
-            # the input file.  Also, make sure that the maximum size that
-            # the wrapper and library use are greater than the filesize.
-            # These function will raise an EncpError on an error.
-            if e.intype == "hsmfile": #READS
-                try:
-                    #If the user did not bypass the check of the
-                    # maximum filesize the filesystem allows, check if
-                    # the filesystem can handle the size of all the files.
-                    if e.bypass_filesystem_max_filesize_check == 0:
-                        filesystem_check(outputlist[i], inputlist[i])
-                except EncpError, msg:
-                    #If the volume is being read in, the filesize may not
-                    # be known yet.  Don't fail these but continue to fail
-                    # such errors if they are of this type for normal reads.
-                    if msg.errno == None and msg.type == e_errors.OSERROR \
-                       and e.volume:
-                        pass  #Get ingest.
-                    else:
-                        raise msg
-            else: #WRITES
-                librarysize_check(outputlist[i], inputlist[i])
-                wrappersize_check(outputlist[i], inputlist[i])
-                #filesystem_check(outputlist[i], inputlist[i])
-
             # we cannot allow 2 output files to be the same
             # this will cause the 2nd to just overwrite the 1st
             # In principle, this is already taken care of in the
@@ -2303,18 +2277,6 @@ def outputfile_check(inputlist, outputlist, e):
                                 {'outfile' : outputlist[i]})
             except ValueError:
                 pass  #There is no error.
-
-        #except KeyboardInterrupt:
-        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        #except EncpError:
-        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        #    #msg = sys.exc_info()[1]
-        #    #size = get_file_size(inputlist[i])
-        #    #print_data_access_layer_format("", outputlist[i], size,
-        #    #                               {'status':(msg.type, msg.strerror)})
-        #    #quit()
-        #except (OSError, IOError):
-        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
 #######################################################################
 
@@ -4675,6 +4637,10 @@ def verify_write_request_consistancy(request_list):
                  % ("file_family_width",)
             raise EncpError(None, str(msg), e_errors.USERERROR)
 
+        #Verify that the library and wrappers are valid.
+        librarysize_check(request)
+        wrappersize_check(request)
+                
 ############################################################################
 
 def set_pnfs_settings(ticket, intf_encp):
@@ -4922,13 +4888,8 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
         if e.put_cache:
             p = pnfs.Pnfs(e.put_cache, mount_point = e.pnfs_mount_point)
-            #try:
+
             ofullname = p.get_path()
-            #except (OSError, IOError), msg:
-            #    print_data_access_layer_format(
-            #        e.input[0], e.put_cache, 0,
-            #        {'status':(e_errors.OSERROR, str(msg))})
-            #    quit()
 
             unused, ifullname, unused, unused = fullpath(e.input[0])
 
@@ -4938,54 +4899,18 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
         #Fundamentally this belongs in veriry_read_request_consistancy(),
         # but information needed about the input file requires this check.
-        #try:
         inputfile_check(ifullname, e)
-        #except KeyboardInterrupt:
-        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        #except (OSError, IOError, EncpError):
-        #    msg = sys.exc_info()[1]
-        #    size = get_file_size(ifullname)
-        #    if hasattr(msg, "type"):
-        #        error = msg.type
-        #    else:
-        #        error = errno.errorcode.get(getattr(msg, "errno", None),
-        #                                errno.errorcode[errno.ENODATA])
-        #    print_data_access_layer_format(
-        #        ifullname, "", size, {'status':(error, str(msg))})
-        #    quit()
         
         #Fundamentally this belongs in veriry_write_request_consistancy(),
         # but information needed about the output file requires this check.
-        #try:
         outputfile_check(ifullname, ofullname, e)
-        #except KeyboardInterrupt:
-        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        #except (OSError, IOError, EncpError):
-        #    msg = sys.exc_info()[1]
-        #    size = get_file_size(ofullname)
-        #    if hasattr(msg, "type"):
-        #        error = msg.type
-        #    else:
-        #        error = errno.errorcode.get(getattr(msg, "errno", None),
-        #                                errno.errorcode[errno.ENODATA])
-        #    print_data_access_layer_format(
-        #        ofullname, "", size, {'status':(error, str(msg))})
-        #    quit()
 
         #Get these two pieces of information about the local input file.
-        #try:
         stats = os.stat(ifullname)
         file_size = stats[stat.ST_SIZE]
         file_inode = stats[stat.ST_INO]
-        #except OSError, detail:
-        #    print_data_access_layer_format(
-        #        ifullname, ofullname, 0,
-        #        {'status':(e_errors.OSERROR, str(detail))})
-        #    quit()
 
         #Obtain the pnfs tag information.
-        #try:
-        #t=pnfs.Tag(odir)
         t=pnfs.Tag(os.path.dirname(ofullname))
 
         #There is no sense to get these values every time.  Only get them
@@ -5017,19 +4942,12 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 storage_group = e.output_storage_group
             else:
                 storage_group = t.get_storage_group()
-        #except (OSError, IOError), msg:
-        #    print_data_access_layer_format(
-        #        '', '', 0, {'status':
-        #                    (errno.errorcode[getattr(msg, "errno", errno.EIO)],
-        #                     str(msg))})
-        #    quit()
 
         #Get the data aquisition information.
         encp_daq = get_dinfo()
 
         p = pnfs.Pnfs(ofullname)
 
-        #try:
         #Snag the three pieces of information needed for the wrapper.
         pinfo = get_pinfo(p)
         uinfo = get_uinfo()
@@ -5040,11 +4958,6 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         
         #Create the sub-ticket of the command line argument information.
         encp_el = get_einfo(e)
-        #except EncpError, detail:
-        #    print_data_access_layer_format(
-        #        ifullname, ofullname, file_size,
-        #        {'status':(detail.type, detail.strerror)})
-        #    quit()
 
         # If this is not the last transfer in the list, force the delayed
         # dismount to be 'long.'  The last transfer should continue to use
@@ -5055,14 +4968,8 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
         #only do this the first time.
         if not vcc or not fcc:
-            #try:
             csc = get_csc() #Get csc once for max_attempts().
             vcc, fcc = get_clerks()
-            #except EncpError, detail:
-            #    print_data_access_layer_format(
-            #        ifullname, ofullname, file_size,
-            #        {'status':(detail.type, detail.strerror)})
-            #    quit()
                 
         #Get the information needed to contact the file clerk, volume clerk and
         # the library manager.
@@ -5753,25 +5660,12 @@ def verify_read_request_consistancy(requests_per_vol):
                                     (request['vc']['external_label'],
                                      request['fc']['external_label']),
                                     e_errors.CONFLICT, request)
-            #except EncpError:
-            #        request['status'] = (e_errors.USERERROR, msg)
-            #        print_data_access_layer_format(request['infile'],
-            #                                       request['outfile'],
-            #                                       request['file_size'],
-            #                                       request)
-            #        quit() #Harsh, but necessary.
             except (ValueError, AttributeError, TypeError,
                     IndexError, KeyError), msg:
                 raise EncpError(None,
                                 "Unrecoverable read list consistancy error " \
                                 "for volume %s on external_label check." %
                                 (vol,), e_errors.KEYERROR, request)
-                                
-            #    print_data_access_layer_format("", "", 0, {'status':
-            #                    "Unrecoverable read list consistancy error " \
-            #                    "for volume %s on external_label check." %
-            #                    (vol,)})
-            #    quit() #Harsh, but necessary.
 
             #If no layer 4 is present, then report the error, raise an alarm,
             # but continue with the transfer.
@@ -5785,12 +5679,10 @@ def verify_read_request_consistancy(requests_per_vol):
             except (OSError, IOError), msg:
                 raise EncpError(getattr(msg, "errno", errno.EIO),
                                 str(msg), e_errors.PNFS_ERROR, request)
-                #request['status'] = (errno.errorcode[
-                #    getattr(msg, "errno", errno.EIO)], str(msg))
-                #print_data_access_layer_format(request['infile'],
-                #                               request['outfile'],
-                #                               request['file_size'], request)
-                #quit() #Harsh, but necessary.
+
+            #Raise an EncpError if the (input)file is larger than the output
+            # filesystem supports.
+            filesystem_check(request)
 
             #Determine if the pnfs layers and the file data are consistant.
             rest = {}
@@ -5998,110 +5890,12 @@ def verify_read_request_consistancy(requests_per_vol):
                         "Probable database conflict with pnfs: %s" % str(rest),
                                 e_errors.CONFLICT, request)
 
-            """
-            #Get the database information.
-            try:
-                db_volume = request['fc']['external_label']
-                db_location_cookie = request['fc']['location_cookie']
-                db_size = long(request['fc']['size'])
-                db_file_family = volume_family.extract_file_family(
-                    request['vc']['volume_family'])
-                db_pnfs_name0 = request['fc']['pnfs_name0']
-                db_pnfsid = request['fc']['pnfsid']
-                db_bfid = request['fc']['bfid']
-                db_crc = request['fc']['complete_crc']
-            except (ValueError, AttributeError, TypeError,
-                    IndexError, KeyError), msg:
-                raise EncpError(
-                    None, "Unable to obtain database information: " + str(msg),
-                    e_errors.KEYERROR, request)
-                #request['status'] = (e_errors.KEYERROR,
-                #                     "Unable to obtain database information: "\
-                #                     + str(msg))
-                #print_data_access_layer_format(request['infile'],
-                #                               request['outfile'],
-                #                               request['file_size'], request)
-                #quit() #Harsh, but necessary.
-            
-            if (p.volume == pnfs.UNKNOWN or
-                p.location_cookie == pnfs.UNKNOWN or
-                p.size == pnfs.UNKNOWN or
-                p.origff == pnfs.UNKNOWN  or
-                p.origname == pnfs.UNKNOWN or
-                #Mapfile no longer used.
-                p.pnfsid_file == pnfs.UNKNOWN or
-                #Volume map file id no longer used.
-                p.bfid == pnfs.UNKNOWN
-                #Origdrive has not always been recored.
-                #CRC has not always been recored.
-                ):
-                rest = {'infile':request['infile'],
-                        'bfid':request['bfid'],
-                        'pnfs_volume':p.volume,
-                        'pnfs_location_cookie':p.location_cookie,
-                        'pnfs_size':p.size,
-                        'pnfs_origff':p.origff,
-                        'pnfs_origname':p.origname,
-                        'pnfs_id':p.pnfsid_file,
-                        'pnfs_bfid':p.bfid,
-                        'pnfs_origdrive':p.origdrive,
-                        'status':"Missing data in pnfs layer 4."}
-                sys.stderr.write(rest['status'] + "  Continuing.\n")
-                Trace.alarm(e_errors.ERROR, e_errors.PNFS_ERROR, rest)
-
-            #If there is a layer 4, but the data does not match that in
-            # the file and volume clerk databases, then raise alarm and exit.
-            elif (db_volume != p.volume or
-                  not same_cookie(db_location_cookie, p.location_cookie) or
-                  long(db_size) != long(p.size) or
-                  db_file_family != p.origff or
-                  db_pnfs_name0 != p.origname or
-                  #Mapfile no longer used.
-                  db_pnfsid != p.pnfsid_file or
-                  #Volume map file id no longer used.
-                  db_bfid != p.bfid or
-                  #Origdrive has not always been recored.
-                  (p.crc != pnfs.UNKNOWN and long(db_crc) != long(p.crc))):
-                rest = {'infile':request['infile'],
-                        'outfile':request['outfile'],
-                        'bfid':request['bfid'],
-                        'db_volume':db_volume,
-                        'pnfs_volume':p.volume,
-                        'db_location_cookie':db_location_cookie,
-                        'pnfs_location_cookie':p.location_cookie,
-                        'db_size':long(db_size),
-                        'pnfs_size':long(p.size),
-                        'db_file_family':db_file_family,
-                        'pnfs_file_family':p.origff,
-                        'db_pnfsid':db_pnfsid,
-                        'pnfs_pnfsid':p.pnfsid_file,
-                        'db_bfid':db_bfid,
-                        'pnfs_bfid':p.bfid,
-                        'db_crc':db_crc,
-                        'pnfs_crc':p.crc,
-                        'status':"Probable database conflict with pnfs."}
-                Trace.alarm(e_errors.ERROR, e_errors.CONFLICT, rest)
-                raise EncpError(None,
-                                "Probable database conflict with pnfs.",
-                                e_errors.CONFLICT, request)
-                #request['status'] = (e_errors.CONFLICT, rest['status'])
-                #print_data_access_layer_format(request['infile'],
-                #                               request['outfile'],
-                #                               request['file_size'], request)
-                #quit() #Harsh, but necessary.
-
-            """
             #Test to verify that all the brands are the same.  If not exit.
             # If so, then the system will function.  If this was not true,
             # then a lot of file clerk key errors could occur.
             if extract_brand(db_bfid) != extract_brand(bfid_brand):
                 msg = "All bfids must have the same brand."
                 raise EncpError(None, str(msg), e_errors.USERERROR, request)
-                #request['status'] = (e_errors.USERERROR, msg)
-                #print_data_access_layer_format(request['infile'],
-                #                               request['outfile'],
-                #                               request['file_size'], request)
-                #quit() #Harsh, but necessary.
 
             #sum up the size to verify there is sufficent disk space.
             try:
@@ -6117,11 +5911,6 @@ def verify_read_request_consistancy(requests_per_vol):
                 msg = "Disk is full.  %d bytes available for %d requested." % \
                       (bytes_free, sum_size)
                 raise EncpError(None, str(msg), e_errors.USERERROR, request)
-                #request['status'] = (e_errors.USERERROR, msg)
-                #print_data_access_layer_format(request['infile'],
-                #                               request['outfile'],
-                #                               request['file_size'], request)
-                #quit() #Harsh, but necessary.
 
 #######################################################################
 
@@ -6245,8 +6034,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
     requests_per_vol = {}
     csc = None
 
-    #vcc = fcc = None #Initialize these, so that they can be set only once.
-    #print time.ctime(time.time())
     # create internal list of input unix files even if just 1 file passed in
     if type(e.input)==types.ListType:
         pass #e.input = e.input
@@ -6270,69 +6057,22 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
         # get_clerks() can determine which it is and return the volume_clerk
         # and file clerk that it corresponds to.
-        #try:
         vcc, fcc = get_clerks(e.volume)
-        #except EncpError, msg:
-        #    print_data_access_layer_format(
-        #        e.input, e.output, 0,
-        #        {'status':(msg.type, msg.strerror)})
-        #    quit(1)
-
-        #try:
-        #    #Get the system information from the clerks.
-        #    bfids_dict = fcc.get_bfids(e.volume)
-        #except (ValueError, KeyError, TypeError, AttributeError), msg:
-        #    rest = {'volume':e.volume}
-        #    raise EncpError(None,
-        #            "Unable to obtain information about volume %s." % e.volume,
-        #                    e_errors.NOVOLUME, rest) 
-            #print_data_access_layer_format(
-            #    e.input, e.output, 0,
-            #    {'status':(msg.type, msg.strerror)})
-            #quit(1)
-
-        #if e_errors.is_ok(bfids_dict):
-        #    bfids_list = bfids_dict['bfids']
-        #else:
-        #    rest = {'volume':e.volume}
-        #    raise EncpError(None, bfids_dict['status'][1],
-        #                    bfids_dict['status'][0], rest)
-            #print_data_access_layer_format(
-            #    e.input, e.output, 0, {'status':bfids_dict['status']})
-            #quit(1)
 
         #Just be sure that the output target is a directory.
         if not os.path.exists(e.output[0]):
             rest = {'volume':e.volume}
             raise EncpError(errno.ENOENT, e.output[0],
                             e_errors.USERERROR, rest)
-            #print_data_access_layer_format(
-            #    e.volume, e.output[0], 0,
-            #    {'status':(e_errors.USERERROR,
-            #               "%s: %s" % (errno.errorcode[errno.ENOENT],
-            #                           e.output[0]))})
-            #quit(1)
+
         elif e.output[0] != "/dev/null" and not os.path.isdir(e.output[0]):
             rest = {'volume':e.volume}
             raise EncpError(errno.ENOTDIR, e.output[0],
                             e_errors.USERERROR, rest)                          
-            #print_data_access_layer_format(
-            #    e.volume, e.output[0], 0,
-            #    {'status':(e_errors.USERERROR,
-            #               "%s: %s" % (errno.errorcode[errno.ENOTDIR],
-            #                           e.output[0]))})
-            #quit(1)
 
         #Make sure there is a valid volume clerk inquiry.
-        #try:
         vc_reply = get_volume_clerk_info(e.volume)
-        #except EncpError, msg:
-        #    raise EncpError(None, ,
-        #                    msg.type, rest)
-            #print_data_access_layer_format(
-            #    e.volume, e.output[0], 0,
-            #    {'status':(msg.type, str(msg))})
-            #quit(1)
+
         #Make sure that the volume exists.
         if vc_reply['status'][0] == e_errors.KEYERROR:
             rest = {'volume':e.volume}
@@ -6357,25 +6097,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             message = "Error obtaining tape listing: %s" % status[1]
             raise EncpError(None, message, status[0], rest)
 
-        try:
-            #When a volume is read, "encp --volume <volume>..." will set
-            # e.input[0] to none.  A read by "get" will set e.input[0] to
-            # the pnfs directory.
-            if e.input[0] == None:
-                pass
-                #input_dir_list = []
-            else:
-                pass
-                #Trace.message(TRANSFER_LEVEL, "Obtaining directory listing.")
-                #sys.stdout.flush()
-                
-                #input_dir_list = os.listdir(e.input[0])
-        except OSError, msg:
-            rest = {'volume':e.volume}
-            raise EncpError(getattr(msg, "errno", None),
-                            "Error obtaining tape listing.",
-                            e_errors.OSERROR, rest)
-
         #Set these here.  ("Get" with --list.)
         if e.list:
             #If a list was supplied, determine how many files are in the list.
@@ -6389,13 +6110,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 raise EncpError(getattr(msg, "errno", errno.EIO),
                                 "List file not accessable.",
                                 e_errors.OSERROR, rest) 
-                #print_data_access_layer_format(
-                #    e.input, e.output, 0,
-                #    {'status' : ("Unable to read list file", str(msg))})
-                #quit(1)
 
         else:        
-            #number_of_files = len(bfids_dict['bfids'])
             number_of_files = len(tape_ticket['tape_list'])
             #Always say one (for the ticket to send to the LM) when the
             # number of files is unknown.
@@ -6620,25 +6336,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         #If the user specified a bfid for the file to read.
         elif e.get_bfid:
 
-            # get_clerks() can determine which it is and return the
-            # volume_clerk and file clerk that it corresponds to.
-            #try:
-            #vcc, fcc = get_clerks(e.get_bfid)
-            #except EncpError:
-            #    print_data_access_layer_format(
-            #        e.input, e.output, 0,
-            #        {'status':(msg.type, msg.strerror)})
-            #    quit()
-                
-            #try:
             #Get the system information from the clerks.  In this case
             # e.input[i] doesn't contain the filename, but the bfid.
-            #vc_reply, fc_reply = get_clerks_info(vcc, fcc, e.get_bfid, e)
-            #except EncpError, msg:
-            #    print_data_access_layer_format(
-            #        e.get_bfid, e.output[0], 0,
-            #        {'status':(msg.type, msg.strerror)})
-            #    quit()
 
             vc_reply, fc_reply = get_clerks_info(e.get_bfid, e)
 
@@ -6648,20 +6347,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                                 "Unable to obtain pnfsid from file clerk.",
                                 e_errors.CONFLICT,
                                 {'fc' : fc_reply, 'vc' : vc_reply})
-                #print_data_access_layer_format(
-                #    e.get_bfid, e.output[0], 0,
-                #    {'status':(e_errors.KEYERROR,
-                #               "Unable to obtain pnfsid from file clerk.")})
-                #quit()
 
-            #try:
             p = pnfs.Pnfs(pnfsid, mount_point=e.pnfs_mount_point)
-            #except (OSError, IOError), msg:
-            #    print_data_access_layer_format(
-            #        e.get_cache, e.output[0], 0,
-            #        {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
-            #                   str(msg))})
-            #    quit()
 
             if e.shortcut:
                 ifullname = os.path.join(e.pnfs_mount_point,
@@ -6686,12 +6373,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
         #### PNFS ID ###################################################
         elif e.get_cache:
-            #pnfs_id = sys.argv[-2]
-            #local_file = sys.argv[-1]
-            #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
-            #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
-            #try:
-                #p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
             p = pnfs.Pnfs(e.get_cache, mount_point=e.pnfs_mount_point)
 
             ifullname = p.get_path()
@@ -6699,31 +6380,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             file_size = get_file_size(ifullname)
             
             bfid = p.get_bit_file_id()
-            #except (OSError, IOError), msg:
-            #    print_data_access_layer_format(
-            #        e.get_cache, e.output[0], 0,
-            #        {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
-            #                   str(msg))})
-            #    quit()
-
-            # get_clerks() can determine which it is and return the
-            # volume_clerk and file clerk that it corresponds to.
-            #try:
-            #vcc, fcc = get_clerks(bfid)
-            #except EncpError:
-            #    print_data_access_layer_format(
-            #        e.input, e.output, 0,
-            #        {'status':(msg.type, msg.strerror)})
-            #    quit()
-
-            #try:
-            #Get the system information from the clerks.
-            #vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid, e)
-            #except EncpError, msg:
-            #    print_data_access_layer_format(
-            #        e.get_cache, e.output[0], 0,
-            #        {'status':(msg.type, msg.strerror)})
-            #    quit()
 
             vc_reply, fc_reply = get_clerks_info(bfid, e)
 
@@ -6743,68 +6399,16 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             # but information needed about the input file requires this check.
             #try:
             inputfile_check(ifullname, e)
-            #except KeyboardInterrupt:
-            #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            #except (OSError, IOError, EncpError):
-            #    msg = sys.exc_info()[1]
-            #    size = get_file_size(ofullname)
-            #    if hasattr(msg, "type"):
-            #        error = msg.type
-            #    else:
-            #        error = errno.errorcode.get(getattr(msg, "errno", None),
-            #                                    errno.errorcode[errno.ENODATA])
-            #    print_data_access_layer_format(
-            #        ofullname, "", size, {'status':(error, str(msg))})
-            #    quit()
             
             #Fundamentally this belongs in veriry_read_request_consistancy(),
             # but information needed about the input file requires this check.
             #try:
             outputfile_check(ifullname, ofullname, e)
-            #except KeyboardInterrupt:
-            #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            #except (OSError, IOError, EncpError):
-            #    msg = sys.exc_info()[1]
-            #    size = get_file_size(ofullname)
-            #    if hasattr(msg, "type"):
-            #        error = msg.type
-            #    else:
-            #        error = errno.errorcode.get(getattr(msg, "errno", None),
-            #                                    errno.errorcode[errno.ENODATA])
-            #    print_data_access_layer_format(
-            #        ofullname, "", size, {'status':(error, str(msg))})
-            #    quit()
 
             file_size = get_file_size(ifullname)
 
-            #try:
             p = pnfs.Pnfs(ifullname)
             bfid = p.get_bit_file_id()
-            #except (OSError, IOError), msg:
-            #    print_data_access_layer_format(
-            #        ifullname, ofullname, file_size,
-            #        {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
-            #                   str(msg))})
-            #    quit()
-
-            # get_clerks() can determine which it is and return the
-            # volume_clerk and file clerk that it corresponds to.
-            #try:
-            #vcc, fcc = get_clerks(bfid)
-            #except EncpError:
-            #    print_data_access_layer_format(
-            #        e.input, e.output, 0,
-            #        {'status':(msg.type, msg.strerror)})
-            #    quit()
-                
-            #try:
-            #Get the system information from the clerks.
-            #vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid, e)
-            #except EncpError, detail:
-            #    print_data_access_layer_format(
-            #        ifullname, ofullname, file_size,
-            #        {'status':(detail.type, detail.strerror)})
-            #    quit()
 
             vc_reply, fc_reply = get_clerks_info(bfid, e)
 
@@ -6828,12 +6432,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                             {'fc' : fc_reply, 'vc' : vc_reply,
                              'infile' : ifullname, 'outfile' : ofullname,
                              'file_size' : file_size})
-            #print_data_access_layer_format(
-            #        ifullname, ofullname, file_size,
-            #        {'status':(e_errors.KEYERROR,
-            #                   "File clerk resonce did not contain an " \
-            #                   "external label.")})
-            #quit()
 
         try:
             # comment this out not to confuse the users
@@ -6849,7 +6447,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         #Get the data aquisition information.
         encp_daq = get_dinfo()
 
-        #try:
         #Snag the three pieces of information needed for the wrapper.
         uinfo = get_uinfo()
         finfo = get_finfo(ifullname, ofullname, e, p)
@@ -6860,11 +6457,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         
         #Create the sub-ticket of the command line argument information.
         encp_el = get_einfo(e)
-        #except EncpError, detail:
-        #    print_data_access_layer_format(
-        #        ifullname, ofullname, file_size,
-        #        {'status':(detail.type, detail.strerror)})
-        #    quit()
 
         #There is no need to deal with routing on non-multihomed machines.
         #config = host_config.get_config()
@@ -6917,7 +6509,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         sys.stdout.flush()
         sys.stderr.flush()
     
-    #print time.ctime(time.time())
     return requests_per_vol
 
 #######################################################################
@@ -7953,92 +7544,28 @@ class EncpInterface(option.Interface):
             sys.exit(1)
 
         if self.volume:
-            #local_file = sys.argv[-1]
-            #remote_file = sys.argv[-2]   #Really just the tape.
-
-            #self.args[0:2] = [remote_file, local_file]
             self.input = None   #[self.args[0]]
-            self.output = sys.argv[-1]  #[self.args[self.arglen-1]]
+            self.output = self.argv[-1]  #[self.args[self.arglen-1]]
             self.intype = "hsmfile"   #"hsmfile"
             self.outtype = "unixfile"
             return #Don't continue.
 
         if self.get_bfid:
-            #local_file = sys.argv[-1]
-            #remote_file = sys.argv[-2]
-            #if local_file[:6] == "/pnfs/":
-            #    print_data_access_layer_format(
-            #        local_file, remote_file, 0,
-            #        {'status':(e_errors.USERERROR,
-            #                   "Local file cannot begin with '/pnfs/'.")})
-            #    quit()
-            #self.args[0:2] = [remote_file, local_file]
             self.input = None #[self.args[0]]
-            self.output = sys.argv[-1] #[self.args[self.arglen-1]]
+            self.output = self.argv[-1] #[self.args[self.arglen-1]]
             self.intype = "hsmfile"  #What should this bee?
             self.outtype = "unixfile"
             return #Don't continue.
         
-        #if self.get_cache and self.shortcut:
-        #    pnfs_id = sys.argv[-2]
-        #    local_file = sys.argv[-1]
-        #    if local_file[:6] == "/pnfs/":
-        #        print_data_access_layer_format(
-        #            local_file, remote_file, 0,
-        #            {'status':(e_errors.USERERROR,
-        #                       "Local file cannot begin with '/pnfs/'.")})
-        #        quit()
-        #    remote_file = os.path.join(self.pnfs_mount_point,
-        #                               ".(access)(%s)" % pnfs_id)
-        #    self.args[0:2] = [remote_file, local_file]
-        #    self.input = [self.args[0]]
-        #    self.output = [self.args[self.arglen-1]]
-        #    self.intype = "hsmfile"
-        #    self.outtype = "unixfile"
-        #    return #Don't continue.
         if self.get_cache:
-            #pnfs_id = sys.argv[-2]
-            #local_file = sys.argv[-1]
-            #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
-            #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
-            #try:
-            #    p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
-            #    p.get_path()
-            #    remote_file = p.path
-            #except (OSError, IOError), msg:
-            #    print_data_access_layer_format(
-            #        local_file, pnfs_id, 0,
-            #        {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
-            #                   str(msg))})
-            #    quit()
-                
-            #self.args[0:2] = [remote_file[0][:-1], local_file]
-            #self.args[0:2] = [remote_file, local_file]
             self.input = None  #[self.args[0]]
-            self.output = sys.argv[-1]  #[self.args[self.arglen-1]]
+            self.output = self.argv[-1]  #[self.args[self.arglen-1]]
             self.intype = "hsmfile"   #What should this bee?
             self.outtype = "unixfile"
             return #Don't continue.
         
         if self.put_cache:
-            #pnfs_id = sys.argv[-2]
-            #local_file = sys.argv[-1]
-            #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
-            #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
-            #try:
-            #    p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
-            #    p.get_path()
-            #    remote_file = p.path
-            #except (OSError, IOError), msg:
-            #    print_data_access_layer_format(
-            #        local_file, pnfs_id, 0,
-            #        {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
-            #                   str(msg))})
-            #    quit()
-            #self.args[0:2] = [local_file, remote_file[0][:-1]]
-            #self.args[0:2] = [local_file, remote_file]
-
-            self.input = sys.argv[-1]  #[self.args[0]]
+            self.input = self.argv[-1]  #[self.args[0]]
             self.output = None  #[self.args[self.arglen-1]]
             self.intype = "unixfile"
             self.outtype = "hsmfile"  #What should this bee?
@@ -8239,7 +7766,7 @@ def log_encp_start(tinfo, intf):
         
     #Other strings for the log file.
     start_line = "Start time: %s" % time.ctime(tinfo['encp_start_time'])
-    command_line = "Command line: %s" % (string.join(sys.argv),)
+    command_line = "Command line: %s" % (string.join(intf.argv),)
     version_line = "Version: %s" % (encp_client_version().strip(),)
     id_line = "User: %s(%d)  Group: %s(%d)  Euser: %s(%d)  Egroup: %s(%d)" %\
               (real_name, os.getuid(), real_group, os.getgid(),
