@@ -938,6 +938,9 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
     unchanged = []
 
+    n_unchanged = 0
+    n_changed = 0
+
     # read volume ... one by one
 
     vc = vols.newCursor()
@@ -965,6 +968,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             unknown_size = vsum['unknown_size']
             total = active + deleted + unknown
             unchanged.append(vk)
+            n_unchanged = n_unchanged + 1
         else:
             if fd_output != 1:
                 fd_output = os.open(output_dir + vv['external_label'],
@@ -1026,6 +1030,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                     'deleted_size':deleted_size,
                     'unknown_size':unknown_size}
             vol_sum[vk] = vsum
+            n_changed = n_changed + 1
 
 
         # volume_sums[vk] = {'active':active, 'deleted':deleted,
@@ -1131,7 +1136,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                             volume_quotas_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
-    return n_vols, n_files
+    return n_vols, n_files, n_unchanged, n_changed
 
 
 
@@ -1247,4 +1252,6 @@ if __name__ == "__main__":
     delta_t = time.time() - t0
     print "%d files on %d volumes processed in %s." % \
           (counts[1], counts[0], parse_time(delta_t))
+    print "%d volumes changed while %d volume unchanged." % \
+          (counts[3], counts[2])
 
