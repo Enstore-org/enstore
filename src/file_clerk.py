@@ -338,7 +338,20 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(10,"restore_file %s"%(ticket["status"],))
             return
 
-        if string.find(record["external_label"],'.deleted') !=-1:
+        if record.has_key('pnfs_name0'):
+            if os.access(record['pnfs_name0'], os.F_OK): # file exists
+                ticket["status"] = "EFEXIST", "%s exists"%(record['pnfs_name0'])
+                self.reply_to_caller(ticket)
+                Trace.trace(10,"restore_file %s"%(ticket["status"],))
+                return
+        else:
+            ticket["status"] = "ENOPNFSNAME", "no pnfs entry for file %s"%(bfid)
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"restore_file %s"%(ticket["status"],))
+            return
+
+        if len(record["external_label"]) >= 8 \
+           and record["external_label"][-8:] == '.deleted':
             ticket["status"] = "EACCES", "volume %s is deleted"%(record["external_label"],)
             Trace.log(e_errors.INFO, "%s"%(ticket,))
             self.reply_to_caller(ticket)
