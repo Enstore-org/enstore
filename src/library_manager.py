@@ -731,7 +731,8 @@ class LibraryManagerMethods:
             if rc and fun and action:
                 rq.ticket["status"] = (e_errors.OK, None)
                 if fun == 'restrict_host_access':
-                    ret = apply(getattr(self,fun), args, rq.ticket['wrapper']['machine'][1])
+                    args.append(rq.ticket['wrapper']['machine'][1])
+                    ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "access delayed for %s : library=%s family=%s requester:%s"
