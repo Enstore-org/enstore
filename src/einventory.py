@@ -907,7 +907,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             for pfk in bfids:
                 # to work around the infamous missing key error due to
                 # live backup
-                f = files[pfk]
+                f = file[pfk]
                 if f.has_key('deleted'):
                     if f['deleted'] == 'yes':
                         deleted = deleted + 1
@@ -1212,11 +1212,6 @@ if __name__ == "__main__":
     #Remove the contents of existing direcories and create them if they do
     # not exist.
     create_clean_dirs(output_dir, inventory_extract_dir, inventory_tmp_dir)
-
-    #If the backup needs to be extracted (the defualt) then do.
-    if "-f" not in sys.argv and "-v" not in sys.argv:
-        container = checkBackedUpDatabases.check_backup(backup_dir,backup_node)
-        checkBackedUpDatabases.extract_backup(inventory_extract_dir, container)
 
     #Inventory is the main function that does work.
     counts = inventory(volume_file, file_file, output_dir,
