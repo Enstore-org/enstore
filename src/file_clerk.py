@@ -285,7 +285,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # part is based on the time, and the least significant part is a count
     # to make it unique
     def unique_bit_file_id(self):
-     Trace.trace(10,'}unique_bit_file_id '+repr(ticket))
+     Trace.trace(10,'}unique_bit_file_id')
      try:
         bfid = time.time()
         bfid = long(bfid)*100000
