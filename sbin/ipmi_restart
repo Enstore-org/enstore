@@ -17,7 +17,7 @@ cd /root
 ### uncomment these lines to get the functionality back.
 ###echo `date` Stopping watchdog timer and ipmisrv
 echo `date` Stopping ipmisrv  ### remove me for watchdog support
-###/usr/local/bin/dogdisarm
+$IPMI_DIR/dogdisarm
 
 ps axuww|grep ipmisrv| grep -v grep  
 
@@ -34,8 +34,8 @@ sleep 3
 
 ###echo `date` Starting watchdog timer and ipmisrv process
 echo `date` Starting ipmisrv process  ### remove me for watchdog support
-###/usr/local/bin/ipmisrv 1>&- 2>1 <&- &
-/usr/local/bin/ipmisrv NO_DOG 1>&- 2>1 <&- & ### remove me for watchdog support
+###$IPMI_DIR/ipmisrv 1>&- 2>1 <&- &
+$IPMI_DIR/ipmisrv NO_DOG 1>&- 2>1 <&- & ### remove me for watchdog support
 
 sleep 3
 ###/usr/local/bin/dogarm
