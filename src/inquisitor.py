@@ -174,18 +174,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                                monitored_server.DEFAULT_HUNG_INTERVAL)
 
     def mark_event_relay(self, state):
-        self.serverfile.output_etimedout(self.erc.event_relay_addr[0], 
-                                         self.erc.event_relay_addr[1], state,
+        self.serverfile.output_etimedout(self.erc.event_relay_addr[0], state,
                                          time.time(), enstore_constants.EVENT_RELAY, 
                                          self.event_relay.last_alive)
+	self.new_server_status = 1
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
 				   "mark event relay as %s"%(state,))
 
     def mark_server(self, state, server):
         if server.no_thread():
-            self.serverfile.output_etimedout(server.host, server.port, state, 
-                                             time.time(), server.name, 
-                                             server.output_last_alive)
+            self.serverfile.output_etimedout(server.host, state, time.time(), 
+					     server.name, server.output_last_alive)
             self.new_server_status = 1
             enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
 				       "mark %s as %s"%(server.name, state,))
@@ -459,8 +458,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def handle_lmc_error(self, lib_man, time, state):
         status = enstore_functions.get_status(state)
-        self.serverfile.output_error(lib_man.host, lib_man.port, status,
-				     time, lib_man.name)
+        self.serverfile.output_error(lib_man.host, status, time, lib_man.name)
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				   "lm client - ERROR: %s"%(status,))
 
@@ -478,7 +476,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		 "get new suspect vol list from %s"%(lib_man.name,))
         self.serverfile.output_suspect_vols(state, lib_man.name)
         if enstore_functions.is_timedout(state):
-            self.serverfile.output_etimedout(lib_man.host, lib_man.port,
+            self.serverfile.output_etimedout(lib_man.host,
 					     TIMED_OUT_SP, time, lib_man.name)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "suspect_vols - ERROR, timed out")
@@ -487,14 +485,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     check_nodes = ["d0olc",]
 
-    def num_in_queue(self, node, queue):
-	ff_dict = {}
+    def num_in_queue(self, node, queue, ff_d={}):
+	if ff_d:
+	    ff_dict = ff_d
+	else:
+	    ff_dict = {}
 	for elem in queue:
 	    if elem['work'] == "write_to_hsm" and \
 	       enstore_functions.strip_node(elem['wrapper']['machine'][1]) == node:
 		ff = elem['pnfs']['file_family']
 		if ff_dict.has_key(ff):
-		    ff_dict[ff][FF_W] = elem['pnfs']['file_family_width']
+		    if ff_dict[ff][FF_W] > elem['pnfs']['file_family_width']:
+			ff_dict[ff][FF_W] = elem['pnfs']['file_family_width']
 		    ff_dict[ff][NUM_IN_Q] = ff_dict[ff][NUM_IN_Q] + 1
 		else:
 		    ff_dict[ff] = {FF_W : elem['pnfs']['file_family_width']}
@@ -538,11 +540,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    txt = "Write queue stall for %s, file_family: %s, from node %s"%(server.name,
 									     ff, node)
 	    Trace.alarm(e_errors.ERROR, txt)
+	    enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, txt)
 	    enstore_functions.send_mail(MY_NAME, 
 	      enstore_functions.format_mail("Write data using the full file_family width to enstore from %s"%(node,),
 			  "Why are there %s elems in the pend queue and only %s elems in the wam queue?"%(pend_num, 
 													  wam_num),
 					    txt), "Write Queue Stall")
+	    enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
+				       "get new work queue from %s"%(lib_man.name,))
 
     def check_for_stalled_queue(self, lib_man):
 	# get the number of writes that are being done now
@@ -551,7 +556,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # we can overwrite ff_width because we are really concerned about what is in
 	    # the pending queue.  if there is nothing, ff_width  = 0, but we don't care
 	    wam_dict = self.num_in_queue(node, lib_man.wam_queue)
-	    pend_dict = self.num_in_queue(node, lib_man.pend_queue)
+	    # the pending queue is actually 3 queues, ignore the read queue
+	    pend_dict2 = self.num_in_queue(node, 
+					  lib_man.pend_queue[enstore_constants.ADMIN_QUEUE])
+	    pend_dict = self.num_in_queue(node, 
+					   lib_man.pend_queue[enstore_constants.WRITE_QUEUE],
+					  pend_dict2)
 	    # loop over all the file families that have an element in the pending queue.
 	    # see if there are file_family_width elements in the wam queue to account for
 	    # there being elements in the pending queue.
@@ -567,6 +577,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			# no stall here, move along
 			self.lm.no_stall(node, ff)
 			self.clear_sent_stalled_mail(lib_man.name, node, ff)
+			enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
+						   "%s queue not stalled"%(lib_man.name))
 		else:
 		    # there are no elements in the wam queue for this ff. oops.
 		    self.queue_is_stalled(lib_man, node, ff, pend_dict[ff][NUM_IN_Q], 0)
@@ -580,23 +592,44 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager work queue and output it
     def work_queue(self, lib_man, time):
 	try:
-	    self.lm_queues[lib_man.name] = safe_dict.SafeDict(lib_man.client.getwork())
+	    self.lm_queues[lib_man.name] = safe_dict.SafeDict(lib_man.client.getworks_sorted())
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
-	    msg = "Error while getting work queue from %s (%s)"%(lib_man.name, detail)
+	    msg = "Error while getting sorted work queue from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return
 
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				  "get new work queue from %s"%(lib_man.name,))
 	lib_man.wam_queue = self.lm_queues[lib_man.name]['at movers']
-	lib_man.pend_queue = self.lm_queues[lib_man.name]['pending_work']
+	lib_man.pend_queue = self.lm_queues[lib_man.name]['pending_works']
         self.serverfile.output_lmqueues(self.lm_queues[lib_man.name], lib_man.name)
 	self.check_for_stalled_queue(lib_man)
         if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
-            self.serverfile.output_etimedout(lib_man.host, lib_man.port,
+            self.serverfile.output_etimedout(lib_man.host,
 					     TIMED_OUT_SP, time, lib_man.name)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "work_queue - ERROR, timed out")
+        elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
+            self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
+
+    # get the library manager active_volumes and output it
+    def active_volumes(self, lib_man, time):
+	try:
+	    ticket = safe_dict.SafeDict(lib_man.client.get_active_volumes())
+	except (e_errors.TCP_EXCEPTION, socket.error), detail:
+	    msg = "Error while getting active volumes from %s (%s)"%(lib_man.name, detail)
+	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    return
+
+        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
+				  "get new active volumes from %s"%(lib_man.name,))
+	lib_man.active_volumes = ticket['movers']
+        self.serverfile.output_lmactive_volumes(lib_man.active_volumes, lib_man.name)
+        if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
+            self.serverfile.output_etimedout(lib_man.host,
+					     TIMED_OUT_SP, time, lib_man.name)
+            enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+				       "active volumes - ERROR, timed out")
         elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
             self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
 
@@ -613,7 +646,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	lib_man.server_status = state.get(enstore_constants.STATE, "")
         self.serverfile.output_lmstate(state, lib_man.name)
         if enstore_functions.is_timedout(state):
-            self.serverfile.output_etimedout(lib_man.host, lib_man.port,
+            self.serverfile.output_etimedout(lib_man.host,
 					     TIMED_OUT_SP, time, lib_man.name)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "lm_state - ERROR, timed out")
@@ -627,6 +660,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.lm_state(lib_man, now)
         self.suspect_vols(lib_man, now)
         self.work_queue(lib_man, now)
+	self.active_volumes(lib_man, now)
         self.new_server_status = 1
         return
 
@@ -639,7 +673,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
 	mover.server_status = self.mover_state[mover.name][enstore_constants.STATE]
         if enstore_functions.is_timedout(self.mover_state[mover.name]):
-            self.serverfile.output_etimedout(mover.host, mover.port, TIMED_OUT_SP,
+            self.serverfile.output_etimedout(mover.host, TIMED_OUT_SP,
 					     time.time(), mover.name)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "mover_status - ERROR, timed out")
@@ -648,7 +682,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # only change the status of the inquisitor on the system status page to
     # timed out, then exit.
     def update_exit(self, exit_code):
-        self.serverfile.output_alive(self.inquisitor.host, self.inquisitor.port, 
+        self.serverfile.output_alive(self.inquisitor.host,
                                      "exiting", time.time(), self.name)
         self.new_server_status = 1
         # the above just stored the information, now write the page out
@@ -849,8 +883,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         now = time.time()
         server = self.server_d.get(name, None)
         if server:
-            self.serverfile.output_alive(server.host, server.port, ALIVE, 
-                                         now, name)
+            self.serverfile.output_alive(server.host, ALIVE, now, name)
             self.new_server_status = 1
             server.is_alive()
             server.did_restart_alarm = 0
@@ -869,10 +902,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # the event relay is alive
         now = time.time()
         self.serverfile.output_alive(self.erc.event_relay_addr[0], 
-                                     self.erc.event_relay_addr[1],
                                      ALIVE, now, enstore_constants.EVENT_RELAY)
         # if this is the first time alive after the event relay was thought 
-	# to be deadm  then we must adjust the last alive times for all of
+	# to be dead then we must adjust the last alive times for all of
 	# the servers,  otherwise we will think the server is dead immediately
 	# and not allow any time to receive the alive message from it.  
         if not self.event_relay.is_alive():

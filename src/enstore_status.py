@@ -14,12 +14,17 @@ def eval(stuff):
 
 # enstore imports
 import Trace
-import alarm
 import e_errors
 import enstore_constants
 import enstore_functions
 import mover_constants
 
+FILE_FAMILY = 'file_family'
+FILE_FAMILY_WIDTH = 'file_family_width'
+SEEN = 'seen'
+VOLUME = 'volume'
+STORAGE_GROUP = 'storage_group'
+STORAGE_GROUP_LIMIT = 'storage_group_limit'
 
 
 # locate and pull out the dictionaries in the text message. assume that if
@@ -154,83 +159,104 @@ class EnStatus:
     def unquote(self, s):
         return string.replace(s,"'","")
 
-    # parse the library manager queues returned from "getwork". pull out the
+    def get_common_q_info(self, mover, writekey, readkey, dict):
+	dict[enstore_constants.ID] = mover['unique_id']
+	dict[enstore_constants.PORT] = mover['callback_addr'][1]
+	if mover['work'] == 'write_to_hsm':
+	    self.text[key][writekey] = self.text[key][writekey] + 1
+	    dict[enstore_constants.WORK] = enstore_constants.WRITE
+	else:
+	    self.text[key][readkey] = self.text[key][readkey] + 1
+	    dict[enstore_constants.WORK] = enstore_constants.READ
+
+	encp = mover['encp']
+	dict[enstore_constants.CURRENT] = repr(encp['curpri'])
+	dict[enstore_constants.BASE] = repr(encp['basepri'])
+	dict[enstore_constants.DELTA] = repr(encp['delpri'])
+	dict[enstore_constants.AGETIME] = repr(encp['agetime'])
+
+	wrapper = mover['wrapper']
+	if wrapper['fullname'] == "/dev/null":
+	    dict[enstore_constants.FILE] = wrapper['pnfsFilename']
+	else:
+	    dict[enstore_constants.FILE] = wrapper['fullname']
+	dict[enstore_constants.BYTES] = add_commas(str(wrapper['size_bytes']))
+
+	# 'mtime' not found in reads
+	if wrapper.has_key('mtime'):
+	    dict[enstore_constants.MODIFICATION] = \
+				       enstore_functions.format_time(wrapper['mtime'])
+	machine = wrapper['machine']
+	dict[enstore_constants.NODE] = self.unquote(machine[1])
+
+	times = mover['times']
+	dict[enstore_constants.SUBMITTED] = enstore_functions.format_time(times['t0'])
+
+	vc = mover['vc']
+	# 'file_family' is not present in a read, use volume family instead
+	if vc.has_key('volume_family'):
+	    dict[enstore_constants.VOLUME_FAMILY] = vc['volume_family']
+	elif vc.has_key('file_family'):
+	    dict[enstore_constants.FILE_FAMILY] = vc['file_family']
+	    dict[enstore_constants.FILE_FAMILY_WIDTH] = \
+						 repr(vc.get('file_family_width', ""))
+	# 'fc' not found in pending work
+	fc = mover.get('fc', "")
+	# 'external_label' not found in pending work
+	if fc and fc.has_key('external_label'):
+	    if not (worktype is enstore_constants.PENDING and \
+	       dict[enstore_constants.WORK] is enstore_constants.WRITE):
+		dict[enstore_constants.DEVICE] = fc['external_label']
+
+    def get_pend_dict(self, mover, write_key, read_key):
+	# 'mover' not found in pending work
+	dict = {enstore_constants.MOVER : " "}
+	self.get_common_q_info(mover, write_key, read_key, dict)
+	if mover.has_key(enstore_constants.REJECT_REASON):
+	    dict[enstore_constants.REJECT_REASON] = \
+					    mover[enstore_constants.REJECT_REASON][0]
+	return dict
+
     # information we want and put it in a dictionary
-    def parse_lm_queues(self, work, key, worktype, writekey, readkey):
-        self.text[key][worktype] = []
+    def parse_lm_pend_queues(self, work, key, writekey, readkey):
+	self.text[key][enstore_constants.PENDING] = {enstore_constants.READ : [],
+						     enstore_constants.WRITE: []}
+	# first the read queue, preserve the order sent from the lm
+	for mover in work['read_queue']:
+	    dict = self.get_pend_dict(mover, writekey, readkey)
+	    self.text[key][enstore_constants.PENDING][enstore_constants.READ].append(dict)
+	for mover in work['write_queue']:
+	    dict = self.get_pend_dict(mover, writekey, readkey)
+	    self.text[key][enstore_constants.PENDING][enstore_constants.WRITE].append(dict)
+
+    # information we want and put it in a dictionary
+    def parse_lm_wam_queues(self, work, key, writekey, readkey):
+        self.text[key][enstore_constants.WORK] = []
         for mover in work:
-            # 'mover' not found in pending work
-            dict = {enstore_constants.MOVER : mover.get('mover', " ")}
-            dict[enstore_constants.ID] = mover['unique_id']
-            if mover.has_key(enstore_constants.REJECT_REASON):
-                dict[enstore_constants.REJECT_REASON] = mover[enstore_constants.REJECT_REASON][0]
-            dict[enstore_constants.PORT] = mover['callback_addr'][1]
-            if mover['work'] == 'write_to_hsm':
-                self.text[key][writekey] = self.text[key][writekey] + 1
-                dict[enstore_constants.WORK] = enstore_constants.WRITE
-            else:
-                self.text[key][readkey] = self.text[key][readkey] + 1
-                dict[enstore_constants.WORK] = enstore_constants.READ
-
-            encp = mover['encp']
-            dict[enstore_constants.CURRENT] = repr(encp['curpri'])
-            dict[enstore_constants.BASE] = repr(encp['basepri'])
-            dict[enstore_constants.DELTA] = repr(encp['delpri'])
-            dict[enstore_constants.AGETIME] = repr(encp['agetime'])
-
-            wrapper = mover['wrapper']
-            dict[enstore_constants.FILE] = wrapper['fullname']
-            dict[enstore_constants.BYTES] = add_commas(str(wrapper['size_bytes']))
-
-            # 'mtime' not found in reads
-            if wrapper.has_key('mtime'):
-                dict[enstore_constants.MODIFICATION] = enstore_functions.format_time(wrapper['mtime'])
-
-            machine = wrapper['machine']
-            dict[enstore_constants.NODE] = self.unquote(machine[1])
-
-            times = mover['times']
-            dict[enstore_constants.SUBMITTED] = enstore_functions.format_time(times['t0'])
-            # 'lm_dequeued' not found in pending work
-            if times.has_key('lm_dequeued'):
-                dict[enstore_constants.DEQUEUED] = enstore_functions.format_time(times['lm_dequeued'])
-
-            vc = mover['vc']
-            # 'file_family' is not present in a read, use volume family instead
-            if vc.has_key('volume_family'):
-                dict[enstore_constants.VOLUME_FAMILY] = vc['volume_family']
-            elif vc.has_key('file_family'):
-                dict[enstore_constants.FILE_FAMILY] = vc['file_family']
-                dict[enstore_constants.FILE_FAMILY_WIDTH] = repr(vc.get('file_family_width', ""))
-
-            # 'fc' not found in pending work
-            fc = mover.get('fc', "")
-            # 'external_label' not found in pending work
-            if fc and fc.has_key('external_label'):
-		if not (worktype is enstore_constants.PENDING and \
-		   dict[enstore_constants.WORK] is enstore_constants.WRITE):
-		    dict[enstore_constants.DEVICE] = fc['external_label']
-            self.text[key][worktype].append(dict)
+            dict = {enstore_constants.MOVER : mover['mover']}
+	    self.get_common_q_info(mover, write_key, read_key, dict)
+ 	    dict[enstore_constants.DEQUEUED] = \
+				enstore_functions.format_time(mover['times']['lm_dequeued'])
+            self.text[key][enstore_constants.WORK].append(dict)
 
     def format_host(self, host):
         fhost = self.unquote(host)
         return enstore_functions.strip_node(fhost)
 
     # output the passed alive status
-    def output_alive(self, host, port, state, time, key):
+    def output_alive(self, host, state, time, key):
         if not self.text.has_key(key):
             self.text[key] = {}
         self.text[key][enstore_constants.STATUS] = [state, 
                                                     self.format_host(host), 
-                                                    repr(port), 
                                                     enstore_functions.format_time(time)]
 
     # output the passed alive status
-    def output_error(self, host, port, state, time, key):
-	self.output_alive(host, port, "ERROR: %s"%(state,), time, key)
+    def output_error(self, host, state, time, key):
+	self.output_alive(host, "ERROR: %s"%(state,), time, key)
 
     # output the timeout error
-    def output_etimedout(self, host, port, state, time, key, last_time=0):
+    def output_etimedout(self, host, state, time, key, last_time=0):
         if last_time == -1:
             ltime = enstore_constants.NO_INFO
         else:
@@ -238,8 +264,7 @@ class EnStatus:
         if not self.text.has_key(key):
             self.text[key] = {}
         self.text[key][enstore_constants.STATUS] = [state, self.format_host(host),
-                                                    repr(port), 
-                                                    enstore_functions.format_time(time), ltime]
+                                               enstore_functions.format_time(time), ltime]
 
     # output the library manager suspect volume list
     def output_suspect_vols(self, ticket, key):
@@ -249,18 +274,16 @@ class EnStatus:
         if sus_vols:
             self.text[key][enstore_constants.SUSPECT_VOLS] = []
             for svol in sus_vols:
-                str = svol['external_label']+" - "
-                movers = svol['movers']
-                if movers:
-                    not_first_one = 0
-                    for mover in movers:
-                        if not_first_one:
-                            str=str+", "
-                        str = str+mover
-                        not_first_one = 1
-                self.text[key][enstore_constants.SUSPECT_VOLS].append(str)
+		self.text[key][enstore_constants.SUSPECT_VOLS].append(\
+		                              [svol['external_label'], svol['movers']])
         else:
             self.text[key][enstore_constants.SUSPECT_VOLS] = ["None"]
+
+    # output the active volumes list
+    def output_lmactive_volumes(self, active_volumes, key):
+        if not self.text.has_key(key):
+            self.text[key] = {}
+        self.text[key][enstore_constants.ACTIVE_VOLUMES] = active_volumes
 
     # output the state of the library manager
     def output_lmstate(self, ticket, key):
@@ -280,17 +303,15 @@ class EnStatus:
         self.text[key][enstore_constants.READONXFERS] = 0
         self.text[key][enstore_constants.WRITEONXFERS] = 0
         if work:
-            self.parse_lm_queues(work, key, enstore_constants.WORK, 
-                                 enstore_constants.WRITEONXFERS,
-                                 enstore_constants.READONXFERS)
+            self.parse_lm_wam_queues(work, key, enstore_constants.WRITEONXFERS,
+				     enstore_constants.READONXFERS)
             self.text[key][enstore_constants.TOTALONXFERS] = self.text[key][enstore_constants.READONXFERS] + self.text[key][enstore_constants.WRITEONXFERS]
         else:
             self.text[key][enstore_constants.WORK] = enstore_constants.NO_WORK
-        pending_work = ticket['pending_work']
+        pending_work = ticket['pending_works']
         if pending_work:
-            self.parse_lm_queues(pending_work, key, enstore_constants.PENDING,
-                                 enstore_constants.WRITEPXFERS,
-                                 enstore_constants.READPXFERS)
+            self.parse_lm_pend_queues(pending_work, key, enstore_constants.WRITEPXFERS,
+				      enstore_constants.READPXFERS)
             self.text[key][enstore_constants.TOTALPXFERS] = self.text[key][enstore_constants.READPXFERS] + self.text[key][enstore_constants.WRITEPXFERS]
         else:
             self.text[key][enstore_constants.PENDING] = enstore_constants.NO_PENDING
