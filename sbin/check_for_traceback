@@ -1,0 +1,12 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+d=`date +"%Y-%m-%d"`
+LOGFILE="/diska/enstore-log/LOG-$d"
+MAILTO="enstore@fnal.gov"
+MAILFILE="/tmp/Traceback-$d"
+grep Traceback $LOGFILE > $MAILFILE
+if [ $? -eq 0 ]; then
+   echo "For more details check $LOGFILE" >> $MAILFILE
+   /bin/mail -s "Traceback found. Please investigate!" $MAILTO <$MAILFILE
+fi
