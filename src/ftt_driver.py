@@ -49,7 +49,7 @@ class FTTDriver(driver.Driver):
         Trace.trace(25, "ftt_open returns %s" % (self.ftt,))
         self.fd = None
 
-        self.__open_dev__(retry_count)
+        self._open_dev(retry_count)
             
         if self.fd is None:
             return -1 #or exception?
@@ -65,7 +65,7 @@ class FTTDriver(driver.Driver):
                 break
             Trace.trace(25, "closing ftt device to get status to update")
             self.ftt.close_dev()
-            self.__open_dev__(2)
+            self._open_dev(2)
         else:
             return 0 #this is BADSWMOUNT
         
@@ -73,7 +73,7 @@ class FTTDriver(driver.Driver):
 
         return 1
     
-    def __open_dev__(self, retry_count):
+    def _open_dev(self, retry_count):
         for retry in xrange(retry_count):
             if retry:
                 Trace.trace(25, "retrying open %s"%(retry,))
