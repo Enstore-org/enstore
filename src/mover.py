@@ -1480,7 +1480,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(8, "read_client exiting, read %s/%s bytes" %(self.bytes_read, self.bytes_to_read))
                         
     def write_tape(self):
-        Trace.trace(8, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
+        Trace.log(e_errors.INFO, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         Trace.trace(8, "bytes_to_transfer=%s" % (self.bytes_to_transfer,))
         driver = self.tape_driver
         count = 0
@@ -1775,7 +1775,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     # read data from the tape
     def read_tape(self):
-        Trace.trace(8, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
+        Trace.log(e_erros.INFO, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         if self.buffer.client_crc_on:
             # calculate checksum when reading from
             # tape (see comment in setup_transfer)
