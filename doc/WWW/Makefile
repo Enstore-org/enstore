@@ -71,9 +71,10 @@ pics: PS_pics GIF_pics
 www_new: pics
 	@- rm -rf $(WWW_NEW)
 	mkdir $(WWW_NEW)
-	@- cp ../operations/d0en/consoles.html ./d0en_consoles.html
 	@- cp ../operations/d0en/operations.html ./d0en_operations.html
+	@- cp ../operations/d0en/node_details.html ./d0en_node_details.html
 	@- cp ../operations/d0en/check.html ./d0en_check.html
+	@- cp ../operations/d0en/consoles.html ./d0en_consoles.html
 	@- cp ../operations/d0en/d0ensrv1.html ./d0en_d0ensrv1.html
 	@- cp ../operations/d0en/d0ensrv2.html ./d0en_d0ensrv2.html
 	../moveAndAddButton.pl $(WWW_NEW) `justfiles`

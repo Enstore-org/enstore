@@ -49,7 +49,8 @@ see it directly by
     </ul>
 
 <p>
-<li> New configurations (be careful!) can be loaded by
+<li> New configurations (Be careful! You need 20 years experience
+before you do this.) can be loaded by
     <ul>
 
        <li> Logging in as enstore to one of the console servers
@@ -79,7 +80,21 @@ Detailed Information </a> on the Enstore Logger is available from the
 Technical Document.</a> Command details are covered there.
 
 <p>
-<li> The <a href="http://www-d0en.fnal.gov/enstore/enstore_logs.html
+<li> The log information ultimately goes into a file. This file is
+named by LOG-YYYY-MM-DD.  New logs are opened every midnight.  The
+logs are backed up to d0ensrv3 every 15 minutes.
+
+<p>
+<li> The <a href="http://www-d0en.fnal.gov/enstore/enstore_logs.html">
+Enstore Logs </a> are available on the web.  They are current when you
+load the page, but you need to hit the "reload" button to keep them
+current.
+
+<p>
+<li> You can also check the log out directly by looking at the log
+files on d0ensrv2:/diska/enstore-log.  An easy way to understand what
+is currently going on in the Enstore system is to "tail -f &lt
+log_file &gt.
 
 </ul>
 
@@ -221,35 +236,6 @@ priority.
 <br>
 Some Details:
 <ul>
-
-<li> Each serial line is configured at 19200 baud rate.
-
-<li> The linux kernel, via lilo, has been configured to send its root
-console output to ttyS0. The kernel sends its output to ttyS0 by
-adding "append="console=ttyS0,19200 console=tty0 ..." to the kernel
-stanza.
-
-<li> The barracuda 9 GB hard drives needs to have several options
-enabled to operate efficiently.  Do this by adding a line to each
-stanza of lilo.conf: append=".... console=tty0
-ncr53c8xx=tags:4,sync:10,ultra:y"
-
-<li> The bios needs to be configured to use vt100 terminals, xon/xoff
-flow control, and ???.  Also lilo needs to have the following line
-once, ahead of all stanzas, "serial=0,19200n8".
-
-<li> Gettys need to be running on in order to open a tty session. The
-/etc/inittab has to have "c:12345:respawn:/sbin/mingetty ttyS0" line.
-
-<li> A backup of the system ide disk is made once per day to
-rip8:/fnal/enstore/servers/srv1.  This allows one to have an
-up-to-date copy in order to replace a failed node. Procedures (tarit
-and loadit in /root) are in place to do this; One also needs the
-d0enrtbt floppy to create a replacement system disk.
-
-<li> Although a system disk backup is made daily, the user's home
-directory files are not copied. No one should be saving files on these
-nodes without copies in appropriately backed up machines.
 
 </ul>
 
