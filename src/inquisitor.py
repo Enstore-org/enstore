@@ -16,8 +16,6 @@ import threading
 
 # enstore imports
 import setpath
-import library_manager_client
-import mover_client
 import monitored_server
 import event_relay_messages
 import event_relay_client
@@ -309,7 +307,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if enstore_functions.is_mover(key):     
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
-                self.server_d[key] = monitored_server.MonitoredMover(cdict, key)
+                self.server_d[key] = monitored_server.MonitoredMover(cdict, key,
+								     self.csc)
         elif enstore_functions.is_media_changer(key):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
@@ -319,7 +318,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
                 self.server_d[key] = monitored_server.MonitoredLibraryManager(cdict,
-                                                                              key)
+                                                                              key,
+									      self.csc)
         else:
             # nothing to see here
             return
@@ -394,72 +394,71 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # now update all of the internal information based on the new config info.
         self.update_variables_from_config(new_config)
 
-    def handle_lmc_error(self, host, port, time, key, state):
+    def handle_lmc_error(self, lib_man, time, state):
         status = enstore_functions.get_status(state)
-        self.serverfile.output_error(host, port, status, time, key)
+        self.serverfile.output_error(lib_man.host, lib_man.port, status,
+				     time, lib_man.name)
         Trace.trace(enstore_constants.INQERRORDBG, "lm client - ERROR: %s"%(status,))
 
     # get the library manager suspect volume list and output it
-    def suspect_vols(self, lm, (host, port), key, time):
-        state = safe_dict.SafeDict(lm.get_suspect_volumes())
-        Trace.trace(enstore_constants.INQSERVERDBG, "get new suspect vol list from %s"%(key,))
-        self.serverfile.output_suspect_vols(state, key)
+    def suspect_vols(self, lib_man, time):
+        state = safe_dict.SafeDict(lib_man.client.get_suspect_volumes())
+        Trace.trace(enstore_constants.INQSERVERDBG,
+		    "get new suspect vol list from %s"%(lib_man.name,))
+        self.serverfile.output_suspect_vols(state, lib_man.name)
         if enstore_functions.is_timedout(state):
-            self.serverfile.output_etimedout(host, port, TIMED_OUT_SP, time, key)
+            self.serverfile.output_etimedout(lib_man.host, lib_man.port,
+					     TIMED_OUT_SP, time, lib_man.name)
             Trace.trace(enstore_constants.INQERRORDBG, "suspect_vols - ERROR, timed out")
         elif not enstore_functions.is_ok(state):
-            self.handle_lmc_error(host, port, time, key, state)
+            self.handle_lmc_error(lib_man, time, state)
 
     # get the library manager work queue and output it
-    def work_queue(self, lm, (host, port), key, time):
-        state = safe_dict.SafeDict(lm.getwork())
-        Trace.trace(enstore_constants.INQSERVERDBG, "get new work queue from %s"%(key,))
-        self.serverfile.output_lmqueues(state, key)
+    def work_queue(self, lib_man, time):
+        state = safe_dict.SafeDict(lib_man.client.getwork())
+        Trace.trace(enstore_constants.INQSERVERDBG,
+		    "get new work queue from %s"%(lib_man.name,))
+        self.serverfile.output_lmqueues(state, lib_man.name)
         if enstore_functions.is_timedout(state):
-            self.serverfile.output_etimedout(host, port, TIMED_OUT_SP, time, key)
+            self.serverfile.output_etimedout(lib_man.host, lib_man.port,
+					     TIMED_OUT_SP, time, lib_man.name)
             Trace.trace(enstore_constants.INQERRORDBG, "work_queue - ERROR, timed out")
         elif not enstore_functions.is_ok(state):
-            self.handle_lmc_error(host, port, time, key, state)
+            self.handle_lmc_error(lib_man, time, state)
 
     # get the library manager state and output it
-    def lm_state(self, lm, (host, port), key, time):
-        state = safe_dict.SafeDict(lm.get_lm_state())
-        Trace.trace(enstore_constants.INQSERVERDBG, "get new state from %s"%(key,))
-        self.serverfile.output_lmstate(state, key)
+    def lm_state(self, lib_man, time):
+        state = safe_dict.SafeDict(lib_man.client.get_lm_state())
+        Trace.trace(enstore_constants.INQSERVERDBG,
+		    "get new state from %s"%(lib_man.name,))
+        self.serverfile.output_lmstate(state, lib_man.name)
         if enstore_functions.is_timedout(state):
-            self.serverfile.output_etimedout(host, port, TIMED_OUT_SP, time, key)
+            self.serverfile.output_etimedout(lib_man.host, lib_man.port,
+					     TIMED_OUT_SP, time, lib_man.name)
             Trace.trace(enstore_constants.INQERRORDBG, "lm_state - ERROR, timed out")
         elif not enstore_functions.is_ok(state):
-            self.handle_lmc_error(host, port, time, key, state)
+            self.handle_lmc_error(lib_man, time, state)
 
     # get the information from the library manager(s)
     def update_library_manager(self, lib_man):
         # get a client and then check if the server is alive
-        lmc = library_manager_client.LibraryManagerClient(
-            self.csc, lib_man.name)
-        host = lib_man.host
-        port = lib_man.port
         now = time.time()
-        self.lm_state(lmc, (host, port), lib_man.name, now)
-        self.suspect_vols(lmc, (host, port), lib_man.name, now)
-        self.work_queue(lmc, (host, port), lib_man.name, now)
+        self.lm_state(lib_man, now)
+        self.suspect_vols(lib_man, now)
+        self.work_queue(lib_man, now)
         self.new_server_status = 1
         return
 
-    # get the movers' status
-    def mover_status(self, movc, (host, port), key, time):
-        state = safe_dict.SafeDict(movc.status(self.alive_rcv_timeout, 
-                                              self.alive_retries))
-        Trace.trace(enstore_constants.INQSERVERDBG, "get new state from %s"%(key,))
-        self.serverfile.output_moverstatus(state, key)
-        if enstore_functions.is_timedout(state):
-            self.serverfile.output_etimedout(host, port, TIMED_OUT_SP, time, key)
-            Trace.trace(enstore_constants.INQERRORDBG, "mover_status - ERROR, timed out")
-
-    # get the information from the movers
+    # get the information from the mover
     def update_mover(self, mover):
-        movc = mover_client.MoverClient(self.csc, mover.name)
-        self.mover_status(movc, (mover.host, mover.port), mover.name, time.time())
+        state = safe_dict.SafeDict(mover.client.status(self.alive_rcv_timeout, 
+						       self.alive_retries))
+        Trace.trace(enstore_constants.INQSERVERDBG, "get new state from %s"%(mover.name,))
+        self.serverfile.output_moverstatus(state, mover.name)
+        if enstore_functions.is_timedout(state):
+            self.serverfile.output_etimedout(mover.host, mover.port, TIMED_OUT_SP,
+					     time.time(), mover.name)
+            Trace.trace(enstore_constants.INQERRORDBG, "mover_status - ERROR, timed out")
         self.new_server_status = 1
 
     # only change the status of the inquisitor on the system status page to

@@ -314,7 +314,7 @@ class EnDataFile(EnFile):
             cdcmd = " "
         else:
             cdcmd = "cd %s;"%(indir,)
-        # NOTE os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
+        os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
         tmp = enstore_functions.strip_file_dir(inFile)
         self.date = string.replace(tmp, enstore_constants.LOG_PREFIX, "")
 

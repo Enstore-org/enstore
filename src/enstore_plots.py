@@ -195,17 +195,17 @@ class MphDataFile(EnPlot):
 	gnuinfo = []
 	self.psfiles = []
 	self.total_mounts = {}
+	self.latency = {}
 	for [mover, pid, volume, mtime, work] in data:
             aKey = "%s_%s_%s"%(volume, mover, pid)
             if work == enstore_files.MREQUEST:
                 # this is the mount request
                 dict[aKey] = mtime
             else:
-	        # this was the record of the mount having been done
-                if not dict.has_key(aKey):
-                    # we have no record of the mount request so ignore this one
-                    continue
-                else:
+	        # this was the record of the mount having been done, it is only valid
+		# if we have a record of the mount request
+                if dict.has_key(aKey):
+                    # we have a record of the mount request 
                     adate = mtime[0:13]
                     if ndata.has_key(adate):
                         ndata[adate] = ndata[adate] + 1
@@ -214,8 +214,10 @@ class MphDataFile(EnPlot):
                         ndata[adate] = 1
                         date_only[mtime[0:10]] = 0
                     # save the latency values too
-                    if self.latency.has_key(mtime):
-                        self.latency[adate].append = (dict[aKey], mtime)
+                    if self.latency.has_key(adate):
+                        self.latency[adate].append((dict[aKey], mtime))
+		    else:
+			self.latency[adate] = [(dict[aKey], mtime)]
 	# open the file for each day and write out the data points
 	days = date_only.keys()
 	days.sort()
@@ -288,10 +290,12 @@ class MpdDataFile(EnPlot):
 		    total_mounts = total_mounts + string.atoi(count)
 
 	# now add to list any of the new days that were not present in the old list
-	for day in new_mounts_d.keys():
+	days = new_mounts_d.keys()
+	days.sort()
+	for day in days:
 	    mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
 	    total_mounts = total_mounts + new_mounts_d[day]
-	return (mounts_l.sort(), total_mounts)
+	return mounts_l, total_mounts
 
     def open(self):
 	if os.path.isfile(self.ptsfile):
@@ -304,7 +308,7 @@ class MpdDataFile(EnPlot):
 	# the data currently in the total mount count file.  will read in current
 	# data and overrite any old data with the data that we have which is more
 	# recent.
-	(mounts_l, total_mounts) = self.get_all_mounts(new_mounts_d)
+	mounts_l, total_mounts = self.get_all_mounts(new_mounts_d)
 	if self.openfile:
 	    self.openfile.close()
 	self.openfile = open(self.ptsfile, 'w')
@@ -392,10 +396,11 @@ class MlatDataFile(EnPlot):
     def plot(self, data_d):
 	last_mount_req = ""
 	# write out the data points
-        mounts = data_d.keys()
-        for mount in mounts:
-            ltnc = self.latency(data_d[mount][0], data_d[mount][1])
-            self.openfile.write("%s %s\n"%(data_d[mount[1], ltnc]))
+        days = data_d.keys()
+        for day in days:
+	    for mount in data_d[day]:
+		ltnc = self.latency(mount[0], mount[1])
+		self.openfile.write("%s %s\n"%(mount[1], ltnc))
 
 	# we must create our gnu plot command file too
 	gnucmds = MlatGnuFile(self.gnufile)
