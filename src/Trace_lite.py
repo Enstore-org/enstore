@@ -45,7 +45,7 @@ def init(name):
 
 def log( severity, msg, msg_type=MSG_DEFAULT ):
     if  log_func:
-        log_func( time.time(), os.getpid(), logname, (severity,msg_type,msg))
+        log_func( time.time(), os.getpid(), logname, (severity,msg_type+msg))
     
         
 def alarm( severity, root_error, rest={} ):
@@ -78,6 +78,7 @@ pid = os.getpid()
 usr = pwd.getpwuid(os.getuid())[0]
 
 def default_log_func( time, pid, name, args ):
+    print "Log", time, pid, name, args
     severity = args[0]
     msg = args[1]
     if severity > e_errors.MISC: severity = e_errors.MISC
