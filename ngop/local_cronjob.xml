@@ -13,7 +13,7 @@
                </apply>
             </apply>
                <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
          </Condition>
         <Condition State="-2" SevLevel="0" Description="enstore cron job info is not available">
@@ -40,7 +40,7 @@
                </apply>
             </apply>
                <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
          </Condition>
         <Condition State="-2" SevLevel="0" Description="root cron job info is not available">
@@ -61,7 +61,7 @@
                </apply>
             </apply>
                <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
          </Condition>
          </ConditionSet>

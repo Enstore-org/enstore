@@ -37,7 +37,7 @@
                 </apply>
 		</apply>
                <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
           </Condition>
           <Condition State="1" SevLevel="4" Description="Average cpu load is between 2 and 3 during last 15 min">
@@ -55,7 +55,7 @@
                 </apply>
 		</apply>
               <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
           </Condition>
          </ConditionSet>
@@ -80,7 +80,7 @@
          	 <cn>0.99</cn>
     		</apply>
               <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
     		</Condition>
 	   </ConditionSet>
@@ -99,7 +99,7 @@
          	   <cn>0.30</cn>
     		</apply>
               <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
     		</Condition>
    		<Condition State="1" SevLevel="6" Description="Swap utilization between 20 and 30%">
@@ -125,7 +125,7 @@
     		 </apply>
 		</apply>
               <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
     		</Condition>
          </ConditionSet>
@@ -156,7 +156,7 @@
                      </apply>
 		    </apply>		
                     <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                    </Action>
    		   </Condition>	
 		   <Condition State="0" SevLevel="0" Description="{%Var} size exceeds 95%">	
@@ -166,7 +166,7 @@
                       <cn>95</cn>
 		    </apply>
                     <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                    </Action>
    		   </Condition>
 	 	</ConditionSet>
@@ -183,7 +183,7 @@
          <cn>0</cn>
     	</apply>
         <Action ID="email" Host="ngop" Type="central">
-          <Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+          <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
         </Action>
     	</Condition>
 	</ConditionSet>
@@ -199,7 +199,7 @@
          <cn>0</cn>
     	</apply>
         <Action ID="email" Host="ngop" Type="central">
-   		<Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
     	</Condition>       
     	<Condition State="0" SevLevel="0" Description="xntpd is dead">
@@ -209,7 +209,7 @@
          <cn>-2</cn>
     	</apply>
         <Action ID="email" Host="ngop" Type="central">
-   		<Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
     	</Condition>       
     	<Condition State="-1" SevLevel="0" Description="can not obtain information">
@@ -234,7 +234,7 @@
                   <cn>1</cn>
             </apply>
         <Action ID="email" Host="ngop" Type="central">
-   		<Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
 	</Condition>
         <Condition State="0" SevLevel="0" Description="No processor info found in cpuinfo">
@@ -244,7 +244,7 @@
                   <cn>0</cn>
             </apply>
         <Action ID="email" Host="ngop" Type="central">
-   		<Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
          </Condition>
         </ConditionSet>
@@ -267,7 +267,7 @@
             </apply>
             </apply>
         <Action ID="email" Host="ngop" Type="central" >
-   		<Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
 	</Condition>
          <Condition State="0" SevLevel="0" Description="Temperature is above critical threshold">
@@ -295,7 +295,7 @@
             </apply>
             </apply>
         <Action ID="email" Host="ngop" Type="central">
-   		<Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
 	</Condition>
 
@@ -352,7 +352,7 @@
            </apply> 
   </apply> 
    <Action ID="email" Host="ngop" Type="central" Gap="18000" Counter="5">
-   		<Exec Name="email" Argument="Address:tlevshin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
 	</Condition>
          <Condition State="-1" SevLevel="0" Description="Fan Speed is unknown">
@@ -375,12 +375,23 @@
        <MonitoredElement Name="firmware" Host="localhost" Type="Hardware">
          <ConditionSet>
          <fn Name="plug_ins" Arg="python /var/ngop/include/checkSensor.py firmware" RetVal="int:isWorking"/>
-         <Condition State="0" SevLevel="0" Description="ipmi needs to have its firmware reloaded">
+         <Condition State="0" SevLevel="0" Description="Firmware has to be reloaded">
             <apply>
                 <eq/>
-                <ci>isWorking</ci>
-                <cn>0</cn>
+                <ci>down</ci>
+                <cn>2</cn>
            </apply>
+   <Action ID="email" Host="ngop" Type="central" Gap="18000" Counter="5">
+                <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+        </Condition>
+         <Condition State="0" SevLevel="0" Description="ipmisrv  has to be restarted">
+            <apply>
+                <eq/>
+                <ci>down</ci>
+                <cn>1</cn>
+           </apply>
+   <Action ID="email" Host="ngop" Type="central" Gap="18000" Counter="5">
+                <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
         </Condition>
         </ConditionSet>
        </MonitoredElement>

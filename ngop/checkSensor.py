@@ -1,6 +1,28 @@
 import os
 import string
 import sys
+import re
+def checkFirmware():
+   p=os.popen('/home/enstore/ipmi/sdrread','r')
+   retList=p.readlines()
+   senDict={'Processor 1 Temp':0,\
+            'Processor 2 Temp':0,\
+            'Processor 1 Fan':0,\
+            'Processor 2 Fan':0,\
+   }
+   for line in retList:
+        if string.find(line,"GETINFO failed")>=0:
+                return 2,line[:-1]
+        if string.find(line,"Error sending command to IPMB")>=0:
+                return 1,line[:-1]
+        for str in senDict.keys():
+                if string.find(line,'%s:' % (str,))>=0:
+                        senDict[str]=1
+   for str,val in senDict.items():
+        if not val:
+                return 2,"Missing information at least about %s" % (str,)   
+   return 0,"Ok"
+
 def check(cmd):
     p=os.popen(cmd,'r')
     retVal=p.readlines()
@@ -15,8 +37,8 @@ if __name__=="__main__":
     if sys.argv[1]=="temp":
         cmd="/home/enstore/ipmi/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $2}'|awk -F'C' '{print $2}'"
         ret=check(cmd)
-	if len(ret)!=2:
-	    print -1
+        if len(ret)!=2:
+            print -1
             print -1
             sys.exit(0)
         try:
@@ -40,15 +62,10 @@ if __name__=="__main__":
             print -1
             print -1
     elif sys.argv[1]=="firmware":
-	cmd="/home/enstore/ipmi/sdrread|grep 'Error sending command to IPMB'"
-        ret=check(cmd)
-        if len(ret)!=1:
-            print 1
-        else:
-            print 0		
+        retVal,reason=checkFirmware()
+        print retVal
+        print re.sub(" ",'_',reason)
     else:
         print -1
         print -1
-
-
 
