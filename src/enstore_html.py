@@ -887,11 +887,15 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	    tr.append(empty_data(4))
 	else:
 	    for vol in vols:
-		txt = "%s%s-%s%s"%(str(HTMLgen.Href("tape_inventory/%s"%(vol[0],), vol[0])),
-			     NBSP, NBSP, 
-			     str(HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
-						       vol[1],), vol[1])))
-		tr.append(HTMLgen.TD(txt, colspan=4, html_escape='OFF'))
+		txt = "%s%s-%s"%(str(HTMLgen.Href("tape_inventory/%s"%(vol[0],), vol[0])),
+				 NBSP, NBSP)
+		td = HTMLgen.TD(txt, colspan=4, html_escape='OFF')
+		for mv in vol[1]:
+		    td.append(HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+						    mv), mv))
+		    td.append(" ")
+
+		tr.append(td)
 		table.append(tr)
 		tr = HTMLgen.TR(empty_data())
         table.append(empty_row(LM_COLS)) 
@@ -956,7 +960,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 		else:
 		    vol_str = "%s,  "%(vol_str,)
 	    ctr = ctr + 1
-	    vol_str = "%s %s - %s"%(vol_str, vol[0], 
+	    vol_str = "%s %s - %s"%(vol_str, vol[0],
 				    enstore_functions.print_list(vol[1]))
 	tr.append(HTMLgen.TD(vol_str, align="LEFT", colspan=4, 
 			     html_escape='OFF'))
