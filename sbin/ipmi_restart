@@ -1,0 +1,40 @@
+#!/bin/sh
+set -u  
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi 
+
+if [ "`whoami`" != "root" ]; then
+  echo `date` Only root can run $0
+  exit 1
+fi
+
+here=`pwd`
+cd /root
+
+# stop the watchdog timer and ipmisrv process
+
+echo `date` Stopping watchdog timer and ipmisrv
+/usr/local/bin/dogdisarm
+
+ps axuww|grep ipmisrv| grep -v grep  
+
+x=`ps axuww|grep ipmisrv| grep -v grep|awk '{print $2}'`
+echo kill $x
+kill $x
+sleep 3
+
+
+
+# Startup the watchdog timer and ipmisrv process.
+# The timer will reset the system if 5 minutes passes
+# without a reset by deadman with ipmisrv.
+
+echo `date` Starting watchdog timer and ipmisrv process
+/usr/local/bin/ipmisrv 1>&- 2>1 <&- &
+
+sleep 3
+/usr/local/bin/dogarm
+/usr/local/bin/dogreset
+
+ps axuww|grep ipmisrv| grep -v grep  
+
+cd $here
