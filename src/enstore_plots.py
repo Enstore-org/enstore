@@ -214,7 +214,7 @@ class MpdGnuFile(enstore_files.EnFile):
 			    "set yrange [0 : ]\n"+ \
 			    "set xrange [ : ]\n"+ \
 			    "set xdata time\n"+ \
-			    "set format x \"%Y-%m-%d\"\n"+ \
+			    "set format x \"%y-%m-%d\"\n"+ \
 			    "set ylabel 'Mounts'\n"+\
 			    "set grid\n"+ \
 			    "set output '"+outfile+"'\n"+\
