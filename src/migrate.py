@@ -732,7 +732,7 @@ def final_scan_volume(vol):
 		vf = string.join((sg, ff, wp), '.')
 		res = vcc.modify({'external_label':vol, 'volume_family':vf})
 		if res['status'][0] == e_errors.OK:
-			ok_log(MY_TASK, "restore volume_family of", vol, "to", vol)
+			ok_log(MY_TASK, "restore volume_family of", vol, "to", ff)
 		else:
 			error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
 			local_error = local_error + 1
