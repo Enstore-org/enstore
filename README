@@ -5,8 +5,8 @@
 
 
 Product Name:           ftt
-Product Version:        v2_2
-Date (yyyy-mm-dd):      1998-07-14
+Product Version:        v2_5
+Date (yyyy-mm-dd):      1999-06-21
 
 ----------------------------------------------------------------------------
 
@@ -98,12 +98,11 @@ Documentation
 Required Hardware and Software
 ------------------------------
 
-Currently, ftt fully supports Exabyte 82xx, Exabyte 85xx, and Quantum DLT
-tape drives, on AIX, IRIX, Solaris (SunOS), and Digital Unix (OSF1).  Other
-drives are not specifically supported and receive "generic" drive support,
-which includes input, output, and positioning, but very little in the way
-of statistics collection.
-
+Currently, ftt fully supports Exabyte 82xx, Exabyte 85xx, Exabyte Mammoth, 
+Quantum DLT, and Sony AIT tape drives, on AIX, IRIX, Linux, Solaris (SunOS), 
+and Tru-64 Unix (OSF1).  Other drives are not specifically supported and 
+receive "generic" drive support, which includes input, output, and 
+positioning, and if they are SCSI-II devices, minimal statistics collection.
 
 Product Installation
 --------------------
