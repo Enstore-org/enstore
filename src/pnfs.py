@@ -24,6 +24,7 @@ import option
 import enstore_constants
 import hostaddr
 import enstore_functions2
+import charset
 
 #ENABLED = "enabled"
 #DISABLED = "disabled"
@@ -1806,7 +1807,11 @@ class Tag:
             if intf.library == 1:
                 print self.get_library()
             else:
-                self.set_library(intf.library)
+                if charset.is_in_charset(intf.library):
+                    self.set_library(intf.library)
+                else:
+                    print "Pnfs tag, library, contains invalid characters."
+                    return 1
             return 0
         except (OSError, IOError), detail:
             print str(detail)
@@ -1818,7 +1823,11 @@ class Tag:
             if intf.file_family == 1:
                 print self.get_file_family()
             else:
-                self.set_file_family(intf.file_family)
+                if charset.is_in_charset(intf.file_family):
+                    self.set_file_family(intf.file_family)
+                else:
+                    print "Pnfs tag, file_family, contains invalid characters."
+                    return 1
             return 0
         except (OSError, IOError), detail:
             print str(detail)
@@ -1830,7 +1839,12 @@ class Tag:
             if intf.file_family_wrapper == 1:
                 print self.get_file_family_wrapper()
             else:
-                self.set_file_family_wrapper(intf.file_family_wrapper)
+                if charset.is_in_charset(intf.file_family_wrapper):
+                    self.set_file_family_wrapper(intf.file_family_wrapper)
+                else:
+                    print "Pnfs tag, file_family_wrapper, contains " \
+                          "invalid characters."
+                    return 1
             return 0
         except (OSError, IOError), detail:
             print str(detail)
@@ -1842,7 +1856,12 @@ class Tag:
             if intf.file_family_width == 1:
                 print self.get_file_family_width()
             else:
-                self.set_file_family_width(intf.file_family_width)
+                if charset.is_in_charset(intf.file_family_width):
+                    self.set_file_family_width(intf.file_family_width)
+                else:
+                    print "Pnfs tag, file_family_width, contains " \
+                          "invalid characters."
+                    return 1
             return 0
         except (OSError, IOError), detail:
             print str(detail)
@@ -1854,7 +1873,12 @@ class Tag:
             if intf.storage_group == 1:
                 print self.get_storage_group()
             else:
-                self.set_storage_group(intf.storage_group)
+                if charset.is_in_charset(intf.storage_group):
+                    self.set_storage_group(intf.storage_group)
+                else:
+                    print "Pnfs tag, storage_group, contains " \
+                          "invalid characters."
+                    return 1
             return 0
         except (OSError, IOError), detail:
             print str(detail)
