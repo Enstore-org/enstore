@@ -753,6 +753,7 @@ def inventory(output_dir, cache_dir):
 
     n_unchanged = 0
     n_changed = 0
+    n_migrated = 0
 
     # read volume ... one by one
 
@@ -871,6 +872,7 @@ def inventory(output_dir, cache_dir):
         # is this a migrated volume?
         if vv['system_inhibit'][1] == 'migrated' and active == 0:
 		mv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
+		n_migrated = n_migrated + 1
 
         # check if the volume is declared right
         if vk[:3] != 'CLN':
@@ -1022,6 +1024,8 @@ def inventory(output_dir, cache_dir):
     vd_file.close()
     tm_file.close()
     de_file.close()
+    # write out the count of migrated volumes
+    mv_file.write("\n(%d volumes)"%(n_migrated))
     mv_file.close()
     # make a html copy
     os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
