@@ -266,7 +266,12 @@ class MoverClient:
 	    config['device'] = dev_env + dev_rest
 	    pass
 
-	self.hsm_driver = eval( 'driver.'+config['driver']+'()' )
+        try:
+            self.hsm_driver = getattr(driver, config['driver']) ()
+        except AttributeError:
+            self.enprint("No such driver: "+config['driver'])
+            self.hsm_driver = None
+                        
 
 	# check for tape in drive
 	# if no vol one labels, I can only eject. -- tape maybe left in bad
@@ -440,7 +445,7 @@ def forked_write_to_hsm( self, ticket ):
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
 	    self.usr_driver.close()
 	    # make write specific and ...
-	    sts = eval( "e_errors.WRITE_"+sts )
+	    sts = getattr(e_errors,"WRITE_"+sts)
 	    send_user_done( self, ticket, sts )
 	    return_or_update_and_exit( self, self.lm_origin_addr, sts )
 	    pass
@@ -608,7 +613,7 @@ def forked_read_from_hsm( self, ticket ):
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
 	    self.usr_driver.close()
 	    # make read specific and ...
-	    sts = eval( "e_errors.READ_"+sts )
+	    sts = getattr(e_errors, "READ_"+sts )
 	    send_user_done( self, ticket, sts )
 	    return_or_update_and_exit( self, self.lm_origin_addr, sts )
 	    pass
@@ -842,7 +847,6 @@ def unilateral_unbind_next( self, error_info ):
     return next_req_to_lm
 
 
-def tt(x): print 'sdfkjsdkjflsd',x
 import timer_task
 # Gather everything together and add to the mess
 class MoverServer(  dispatching_worker.DispatchingWorker
@@ -869,7 +873,6 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	#print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
 	#timer_task.TimerTask.__init__( self, self.rcv_timeout )
 	timer_task.TimerTask.__init__( self, 5 )
-	#timer_task.msg_add( 5, tt,1 )
 	#timer_task.msg_add( 65, self.hello1 )
 	#timer_task.msg_add( 25, self.hello1 )
 	#timer_task.msg_add( 15, self.hello2 )
