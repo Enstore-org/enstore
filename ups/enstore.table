@@ -115,7 +115,7 @@ COMMON:
                 setupRequired("ftt v2_7")
 
 		# drivestat_client is the Fermi product that will allow us to monitor drive usage
-		setupOptional("drivestat_client x0_1")
+		setupOptional("drivestat_client v1_0")
 
                 # aci is the EMASS tape library and admin tool product
                 # the media changer is the only server that interfaces to it
