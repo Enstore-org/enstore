@@ -1368,7 +1368,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                  w["wrapper"]["uname"]))
             except KeyError:
                 Trace.log(e_errors.ERROR, "mover_bound_volume: Bad ticket: %s"%(w,))
-                raise KeyError
+                self.reply_to_caller({'work': 'no_work'})
+                return
             w['times']['lm_dequeued'] = time.time()
             if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s %s to mover %s %s DEL_DISM %s"%
