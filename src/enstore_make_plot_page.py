@@ -97,6 +97,6 @@ def do_work(intf):
 
 if __name__ == "__main__" :
 
-    intf = PlotPageInterface()
+    intf = PlotPageInterface(user_mode=0)
 
     do_work(intf)

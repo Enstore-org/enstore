@@ -464,7 +464,7 @@ if __name__ == "__main__":
 
     # take care of common command line arguments
 
-    intf = Interface()
+    intf = Interface(user_mode=0)
 
     sys.exit(do_work(intf))
 

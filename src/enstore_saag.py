@@ -21,19 +21,6 @@ This main line must have read access to the configuration
 file.
 
 """
-"""
-class SaagInterface(generic_client.GenericClientInterface):
-
-    def __init__(self, flag=1, opts=[]):
-	# fill in the defaults for the possible options
-	self.do_parse = flag
-	self.restricted_opts = opts
-	self.html_gen_host = None
-	generic_client.GenericClientInterface.__init__(self)
-
-    def options(self):
-	return self.help_options() + ["html-gen-host="]
-"""
 class SaagInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
@@ -150,6 +137,6 @@ def do_work(intf):
 
 if __name__ == "__main__" :
 
-    intf = SaagInterface()
+    intf = SaagInterface(user_mode=0)
 
     do_work(intf)
