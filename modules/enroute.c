@@ -100,6 +100,14 @@ static char *getexecpath(char *path)
 		return(path);
 	}
 
+	/* try /etc/enroute2 */
+
+	strcpy(path, "/etc/enroute2");
+	if (is_root_setuid_exe(path))
+	{
+		return(path);
+	}
+
 	return(NULL);
 }
 
