@@ -97,9 +97,10 @@ def write_to_hsm(unixfile, pnfsfile, u, csc) :
     done_ticket = a_to_dict(control_socket.recv(10000))
     control_socket.close()
     if done_ticket["status"] == "ok" :
-        print unixfile, done_ticket["bfid"]
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"],\
                           pprint.pformat(done_ticket))
+        print unixfile, p.pnfsFilename, p.bit_file_id, p.file_size,\
+              done_ticket["external_label"], done_ticket["bof_space_cookie"]
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: from control socket at "+repr(address)+\
               "  failed to transfer:  ticket[\"status\"]="+ticket["status"]
