@@ -177,11 +177,12 @@ class  FTTDriver(GenericDriver) :
 	    try:
 		status = FTT.status( 3 )
 		if status['ONLINE']: break
-		else:                break
 	    except FTT.error:
+		pass
 	    time.sleep( 1 )
 	    x = x -1
 	    pass
+	#if x == 0: problem???
 	FTT.rewind()
 	FTT.close()
 	# get blocksize into FTT so we do not have to pass it as param to
