@@ -689,7 +689,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             if record.has_key('pnfs_mapname'):
                 if not volmap_dir:
                     volmap_dir, f = os.path.split(record["pnfs_mapname"])
-                if not os.access(record["pnfs_mapname"]):
+                if not os.access(record["pnfs_mapname"], os.W_OK):
                     error_msg = "no write permission to %s"%(record["pnfs_mapname"])
                     Trace.log(e_errors.ERROR, error_msg)
                     return 'EACCESS', error_msg
