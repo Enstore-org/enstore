@@ -913,4 +913,4 @@ if __name__ == "__main__":
 		lm.logc.send(log_client.ERROR, 1, format)
 		Trace.trace(0,format)
 		continue
-    Trace.trace(1,"Library Manager finished (impossible)"
+    Trace.trace(1,"Library Manager finished (impossible)")
