@@ -42,11 +42,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
         #   exit if the host is not this machine
-        keys = self.csc.get(medch)
-        dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
-                                                      keys['port']))
+        mc_config = self.csc.get(medch)
+        dispatching_worker.DispatchingWorker.__init__(self, (mc_config['hostip'], \
+                                                      mc_config['port']))
         # get a logger
-        self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
+        self.logc = log_client.LoggerClient(self.csc, mc_config["logname"], \
                                             'logserver', 0)
         Trace.trace(10, '}__init__')
 
