@@ -1172,6 +1172,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w:
             Trace.trace(13,"removing %s  from the queue"%(w,))
 	    delayed_dismount = w['encp']['delayed_dismount']
+            if delayed_dismount > 0:
+                delayed_dismount = 0  ##XXXX KLUDGE 19991221 remove this please!! cgw
             # file family may be changed by VC during the volume
             # assignment. Set file family to what vC has returned
             if mticket['vc']["external_label"]:
@@ -1232,6 +1234,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s to mover"%(w,))
             self.reply_to_caller(w) # reply now to avoid deadlocks
 	    delayed_dismount = w['encp']['delayed_dismount']
+            if delayed_dismount > 0:
+                delayed_dismount = 0  ##XXXX KLUDGE 19991221 remove this please!! cgw
 	    state = 'work_at_mover'
 	    update_mover_list(mticket, state)
             w['mover'] = mticket['mover']
