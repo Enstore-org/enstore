@@ -29,6 +29,12 @@ Enstore Data Storage System
 <li><a href="#inquisitor">1.3.8 Inquisitor</a>
 <li><a href="#inquisitor_cmds">1.3.8.1 Command Line Control of the Inquisitor</a>
 <li><a href="#inquisitor_config">1.3.8.2 Inquisitor Config File Values</a>
+<li><a href="#inquisitor_outputs">1.3.8.3 Example Inquisitor Reports</a>
+<li><a href="#inquisitor_ascii_status">1.3.8.3.1 Example Ascii Status File</a>
+<li><a href="#inquisitor_html_status">1.3.8.3.2 Example Html Status Snapshot File</a>
+<li><a href="#inquisitor_encp_status">1.3.8.3.3 Example Encp History Snapshot File</a>
+<li><a href="#inquisitor_plot_ita">1.3.8.3.4 Example Individual Transfer Activity Plot</a>
+<li><a href="#inquisitor_plot_btd">1.3.8.3.5 Example Bytes Transferred/Day Plot</a>
 <li><a href="#db">2 Databases in Enstore</a>
 <li><a href="#backup_recovery">2.1 Backup and Recovery Procedures</a>
 <li><a href="#backup">2.1.1 Backup </a>
@@ -1349,9 +1355,16 @@ is the interface to the robotic software.
 <h3><a name="inquisitor">
 1.3.8 Inquisitor
 </h3>
-The Inquisitor 
-obtains information from the Enstore system and creates reports
-using this information.
+The Inquisitor obtains information from the Enstore system and creates the 
+following reports using this information:<BR>
+<UL>
+<LI>an <a href="#inquisitor_ascii_status">ascii file</a> continuously recording the Enstore system status
+<LI>an <a href="#inquisitor_html_status">html file</a> recording the latest status snapshot of the Enstore system
+<LI>an <a href="#inquisitor_encp_status">html file</a> recording a snapshot of a history of encp commands 
+<LI>a <a href="#inquisitor_plot_ita">plot of individual transfer activity</a>
+<LI>a <a href="#inquisitor_plot_btd">plot of total bytes transferred/day</a>
+</UL>
+
 
 <h3><a name="inquisitor_cmds">
 1.3.8.1 Command Line Control of the Inquisitor 
@@ -1598,6 +1611,25 @@ configdict['inquisitor']   = { 'host':'rip6',          \
                                'timeouts' : { 'ait.library_manager': 15} }
 </PRE>
 
+<h3><a name="inquisitor_outputs">
+1.3.8.3 Example Inquisitor Reports
+</h3>
+These examples reflect a running system on the <i>rip</i> cluster.
+<h3><a name="inquisitor_ascii_status">
+1.3.8.3.1 Example Ascii Status File
+</h3>
+<h3><a name="inquisitor_html_status">
+1.3.8.3.2 Example Html Status Snapshot File
+</h3>
+<h3><a name="inquisitor_encp_status">
+1.3.8.3.3 Example Encp History Snapshot File
+</h3>
+<h3><a name="inquisitor_plot_ita">
+1.3.8.3.4 Example Individual Transfer Activity Plot
+</h3>
+<h3><a name="inquisitor_plot_btd">
+1.3.8.3.5 Example Bytes Transferred/Day Plot
+</h3>
 
 <h2><a name="db">
 2 Databases in Enstore
