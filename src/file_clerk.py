@@ -34,8 +34,10 @@ MY_NAME = "file_clerk"
 
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
-    def __init__(self):
+    def __init__(self, csc):
+        dispatching_worker.DispatchingWorker.__init__(self, csc)
         self.dict = None
+        self.bfid_db = None
         return
 
     # set_brand(brand) -- set brand
@@ -1153,9 +1155,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
         self.alive_interval = monitored_server.get_alive_interval(self.csc,
                                                                   MY_NAME,
                                                                   keys)
-        dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], 
-                                                      keys['port']))
-        FileClerkMethods.__init__(self)
+        FileClerkMethods.__init__(self, (keys['hostip'], keys['port']))
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(enstore_constants.FILE_CLERK, 
                                  self.alive_interval)
