@@ -1244,7 +1244,7 @@ def get_state_build_next_lm_req( self, wait, exit_status ):
 	if pid == self.client_obj_inst.pid:
 	    self.client_obj_inst.pid = 0
 	    if self.client_obj_inst.state != 'crazed':
-                if self.client_onj_inst.state != 'draining':
+                if self.client_obj_inst.state != 'draining':
 		    self.client_obj_inst.state = 'idle'
 	    signal = status&0xff
 	    exit_status = status>>8
