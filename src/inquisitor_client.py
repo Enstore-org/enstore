@@ -22,17 +22,7 @@ class Inquisitor(generic_client.GenericClient):
 
     def update (self, server=""):
 	t = {"work"       : "update" }
-	# see if we have a server or not
-        if server and not server == "all":
-	    t['server'] = server
 	# tell the inquisitor to update the enstore system status info
-	return self.send(t)
-
-    def set_interval (self, tout, server):
-	t = {"work"     : "set_interval" ,
-	     "interval" : tout ,
-             "server"   : server}
-	# tell the inquisitor to set the interval between gathering stats
 	return self.send(t)
 
     def update_and_exit (self):
@@ -40,26 +30,15 @@ class Inquisitor(generic_client.GenericClient):
 	# tell the inquisitor to get out of town
 	return self.send(t)
 
-    def reset_interval (self, server):
-	t = {"work"     : "reset_interval",
-             "server"   : server}
-	# tell the inquisitor to reset the interval between gathering stats
-	return self.send(t)
-
-    def set_inq_timeout (self, tout):
-	t = {"work"         : "set_inq_timeout" ,
-             "inq_timeout"  : tout }
+    def set_update_interval (self, tout):
+	t = {"work"         : "set_update_interval" ,
+             "update_interval"  : tout }
 	# tell the inquisitor to set the select timeout
 	return self.send(t)
 
-    def get_inq_timeout (self):
-	t = {"work"     : "get_inq_timeout" }
+    def get_update_interval (self):
+	t = {"work"     : "get_update_interval" }
 	# tell the inquisitor to get the select wake up timeout
-	return self.send(t)
-
-    def reset_inq_timeout (self):
-	t = {"work"     : "reset_inq_timeout" }
-	# tell the inquisitor to reset the timeout for the inq select
 	return self.send(t)
 
     def max_encp_lines (self, value):
@@ -80,12 +59,6 @@ class Inquisitor(generic_client.GenericClient):
     def get_refresh (self):
 	# tell the inquisitor to return the current html file refresh value
 	return self.send({"work"       : "get_refresh" } )
-
-    def get_interval (self, server):
-	t = {"work"    : "get_interval",
-             "server"  : server }
-	# tell the inquisitor to return the interval between gathering stats
-	return self.send(t)
 
     def plot (self, logfile_dir="", start_time="", stop_time="", mcs=None,
               keep=0, pts_dir="", output_dir=""):
@@ -119,9 +92,6 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
         self.do_parse = flag
         self.restricted_opts = opts
 	self.update = ""
-	self.interval = 0
-	self.reset_interval = ""
-	self.get_interval = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.refresh = 0
@@ -136,37 +106,19 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
         self.keep = 0
         self.keep_dir = ""
         self.output_dir = ""
-        self.inq_timeout = -1
-        self.reset_inq_timeout = 0
-        self.get_inq_timeout = 0
+        self.update_interval = -1
+        self.get_update_interval = 0
 	self.update_and_exit = 0
         generic_client.GenericClientInterface.__init__(self)
         
-    #  define our specific help
-    def parameters(self):
-        return "server"
-
-    # parse the options like normal but see if we have a server
-    def parse_options(self):
-        interface.Interface.parse_options(self)
-        # see if we have a server
-        if self.interval:
-            if len(self.args) < 1 :
-                self.missing_parameter(self.parameters())
-                self.print_help()
-                sys.exit(1)
-            else:
-                self.server = self.args[0]
-
     # define the command line options that are valid
     def options(self):
         if self.restricted_opts:
             return self.restricted_opts
         else:
             return self.client_options() +[
-                "interval=", "get-interval=", "reset-interval=",
-                "inq-timeout=", "get-inq-timeout", "reset-inq-timeout",
-                "update=", "dump", "update-and-exit",
+                "update-interval=", "get-update-interval",
+                "update", "dump", "update-and-exit",
                 "refresh=", "get-refresh", "max-encp-lines=",
                 "get-max-encp-lines", "plot", "logfile-dir=",
                 "start-time=", "stop-time=", "media-changer=", "keep",
@@ -191,22 +143,12 @@ def do_work(intf):
     elif intf.update_and_exit:
         ticket = iqc.update_and_exit()
 
-    elif intf.interval:
-        ticket = iqc.set_interval(intf.interval, intf.server)
+    elif not intf.update_interval == -1:
+        ticket = iqc.set_update_interval(intf.update_interval)
 
-    elif not intf.inq_timeout == -1:
-        ticket = iqc.set_inq_timeout(intf.inq_timeout)
-
-    elif intf.get_inq_timeout:
-        ticket = iqc.get_inq_timeout()
-	print repr(ticket['inq_timeout'])
-
-    elif intf.reset_inq_timeout:
-        ticket = iqc.reset_inq_timeout()
-
-    elif intf.get_interval:
-        ticket = iqc.get_interval(intf.get_interval)
-	print repr(ticket['interval'])
+    elif intf.get_update_interval:
+        ticket = iqc.get_update_interval()
+	print repr(ticket['update_interval'])
 
     elif intf.get_refresh:
         ticket = iqc.get_refresh()
@@ -214,9 +156,6 @@ def do_work(intf):
 
     elif intf.refresh:
         ticket = iqc.refresh(intf.refresh)
-
-    elif intf.reset_interval:
-        ticket = iqc.reset_interval(intf.reset_interval)
 
     elif intf.max_encp_lines:
         ticket = iqc.max_encp_lines(intf.max_encp_lines)
