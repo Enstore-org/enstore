@@ -675,6 +675,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record['sum_rd_err'] = ticket.get('sum_rd_err', 0)
         record['sum_wr_access'] = ticket.get('sum_wr_access', 0)
         record['sum_rd_access'] = ticket.get('sum_rd_access', 0)
+        record['sum_mounts'] = ticket.get('sum_mounts', 0)
         record['non_del_files'] = ticket.get('non_del_files', 0)
         record['wrapper'] = ticket.get('wrapper', None)
         record['blocksize'] = ticket.get('blocksize', -1)
