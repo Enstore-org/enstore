@@ -14,4 +14,4 @@ set output 'bpt.pts.ps'
 set pointsize 2
 set nologscale y
 set yrange [0: ]
-plot 'bpt.pts' using 1:2 t '' w impulses, 'bytes.pts' using 1:5 t 'mean file size' w points
+plot 'bpt.pts' using 1:2 t '' w impulses, 'bytes.pts' using 1:5  t 'mean file size' w points 3 5
