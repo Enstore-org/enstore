@@ -47,7 +47,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(0,"}addvol "+repr(ticket["status"]))
             return
 
-        # can't have 2 with same label
+        # can't have 2 with same external_label
         if dict.has_key(external_label):
             ticket["status"] = (errno.errorcode[errno.EEXIST], \
 				"Volume Clerk: volume "+external_label\
@@ -69,6 +69,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"}addvol "+repr(ticket["status"]))
                 return
+
+        # check if library key is valid library manager name
+        llm = self.csc.get_library_managers(ticket)
+        if not(llm.has_key(ticket['library'])):
+            self.logc.send(e_errors.INFO,8,
+                " vc.addvol: License Manager does not exist: %s " \
+		        % ticket['library'])
+            Trace.trace(2," vc.addvol: License Manager does not exist: %s " \
+	                  % ticket['library'])
 
         # optional keys - use default values if not specified
         try:
