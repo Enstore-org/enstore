@@ -16,6 +16,7 @@ import alarm
 import e_errors
 import hostaddr
 import enstore_constants
+import enstore_functions2
 import www_server
 import enstore_html
 
@@ -33,6 +34,7 @@ DEFAULT_HTML_ALARM_FILE = "enstore_alarms.html"
 
 
 SEVERITY = alarm.SEVERITY
+
 
 class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
@@ -82,6 +84,73 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                        enstore_constants.ALARM    : repr(theAlarm.get_id()) }
         self.send_reply(ret_ticket)
 
+    def default_action(self, theAlarm, isNew, params=[]):
+        if isNew:
+            # save it in memory for us now
+            self.alarms[theAlarm.get_id()] = theAlarm
+        else:
+            # this new alarm is the same as an old one.  bump the counter
+            # in the old one and rewrite the web pages
+	    theAlarm.seen_again()
+
+        # write it to the persistent alarm file
+        self.write_alarm_file(theAlarm)
+        # write it to the web page
+        self.write_html_file()
+
+    # all action methods need to call this function
+    def action_defaults(self, theAlarm, isNew, params):
+        if isNew:
+            self.info_alarms[theAlarm.get_id()] = theAlarm
+
+    # params = [action_name, 1|*, optional_params...]
+    # if 1, only send mail the first time the alarm is seen
+    #    *, always send mail when get this alarm
+    def send_mail_action(self, theAlarm, isNew, params):
+        params_len = len(params)
+        if isNew or (params_len > 1 and params[1] == "*"):
+            enstore_functions2.send_mail(MY_NAME, theAlarm, "Alarm raised", params[2])
+        self.action_defaults(theAlarm, isNew, params)
+
+    # in order to create a new alarm action, do -
+    #  1. add an element to self.ALARM_ACTIONS
+    #  2. add a method with parameters like in send_mail_action
+    #  3. this method should call action_defaults method
+
+    # handle the alarm
+    def process_alarm(self, theAlarm, isNew):
+        actions = self.severity_actions.get(theAlarm.severity, [])
+        if actions:
+            # there is a specified action(s) for this alarm
+            for action in actions:
+                do_this = self.ALARM_ACTIONS.get(action[0], None)
+                if do_this:
+                    do_this(theAlarm, isNew, action)
+                else:
+                    # this was an unsupported action
+                    Trace.log(e_errors.USER_ERROR,
+                              "Unsupported action (%s) specified in alarm (%s). Ignoring."%(action[0],
+                                                                                            theAlarm))
+            pass
+        else:
+            # no specified action, do the default
+            self.default_action(theAlarm, isNew)
+
+    def find_alarm(self, host, severity, root_error, source, alarm_info):
+        # find the alarm that matches the above information
+        ids = self.alarms.keys()
+        for id in ids:
+            if self.alarms[id].compare(host, severity, root_error, source, \
+                                       alarm_info) == alarm.MATCH:
+                return self.alarms[id]
+        ids = self.info_alarms.keys()
+        for id in ids:
+            if self.info_alarms[id].compare(host, severity, root_error, source, \
+                                            alarm_info) == alarm.MATCH:
+                return self.info_alarms[id]
+        return
+        
+
     # raise the alarm
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY,
               root_error=e_errors.DEFAULT_ROOT_ERROR,
@@ -99,34 +168,14 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             # get a new alarm
             theAlarm = alarm.Alarm(host, severity, root_error, pid, uid,
                                    source, alarm_info)
-            # save it in memory for us now
-            self.alarms[theAlarm.get_id()] = theAlarm
-            # write it to the persistent alarm file
-            self.write_alarm_file(theAlarm)
-	    # write it to the web page
-	    self.write_html_file()
+            # process the alarm depending on the action
+            self.process_alarm(theAlarm, 1)
 	else:
-	    # this new alarm is the same as an old one.  bump the counter in the old one and
-	    # rewrite the web pages
-	    theAlarm.seen_again()
-            # rewrite the persistent alarm file
-            self.write_alarm_file()
-	    # write it to the web page
-	    self.write_html_file()
+            # process the alarm depending on the action
+            self.process_alarm(theAlarm, 0)
 
         Trace.trace(20, repr(theAlarm.list_alarm()))
         return theAlarm
-
-    def find_alarm(self, host, severity, root_error, source, alarm_info):
-        # find the alarm that matches the above information
-        ids = self.alarms.keys()
-        for id in ids:
-            if self.alarms[id].compare(host, severity, root_error, source, \
-                                       alarm_info) == alarm.MATCH:
-                break
-        else:
-            return
-        return self.alarms[id]
 
     def resolve(self, id):
         # an alarm is being resolved, we must do the following -
@@ -209,14 +258,24 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         self.alarms = self.alarm_file.read()
         self.alarm_file.close()
 
+
 class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 
     def __init__(self, csc):
+        # actions supported by the alarm server.  these actions can be
+        # specified in the config file for specific severities.  if no
+        # action is specified, the default action is to display the alarm
+        # on the alarm page
+        self.ALARM_ACTIONS = {'html_page' : self.default_action,
+                              'send_mail' : self.send_mail_action,
+                              }
+
         generic_server.GenericServer.__init__(self, csc, MY_NAME,
 					      flags=enstore_constants.NO_ALARM)
         Trace.init(self.log_name)
 
         self.alarms = {}
+        # keep a record of the alarms not written to the html file
         self.info_alarms = {}
         self.uid = os.getuid()
         self.pid = os.getpid()
@@ -232,6 +291,9 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 
 	self.system_tag = www_server.get_system_tag(self.csc)
 
+        # figure out which severities will have non-default actions
+        self.severity_actions = keys.get('alarm_actions', {})
+
         # see if an alarm file exists. if it does, open it and read it in.
         # these are the alarms that have not been dealt with.
         self.get_alarm_file()
@@ -240,7 +302,7 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 	self.alarmhtmlfile = enstore_files.HtmlAlarmFile("%s/%s"%( \
 	    self.get_www_path(), DEFAULT_HTML_ALARM_FILE), self.system_tag)
 
-	# write the current alarms to it
+	# write the current alarms to it if 
 	self.write_html_file()
 
 	# start our heartbeat to the event relay process
