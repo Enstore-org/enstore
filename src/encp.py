@@ -208,7 +208,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     # get a port to talk on and listen for connections
     Trace.trace(10,'write_to_hsm calling callback.get_callback')
-    host, port, listen_socket = callback.get_callback(use_multiple=1,verbose=verbose)
+    host, port, listen_socket = callback.get_callback(use_multiple=0,verbose=verbose)
     callback_addr = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'write_to_hsm got callback host='+repr(host)+
@@ -485,7 +485,8 @@ def write_to_hsm(input_files, output, output_file_family='',
 		chk_crc = 0
 	    else:
 		# Call back mover on mover's port and send file on that port
-		data_path_socket = callback.mover_callback_socket(ticket)
+		data_path_socket = callback.mover_callback_socket(ticket, use_multiple=1,
+                                                                  verbose=verbose)
 		in_file = open(inputlist[i], "r")
 		mycrc = 0
 		bufsize = 65536*4
@@ -873,7 +874,7 @@ def read_from_hsm(input_files, output,
 
     # get a port to talk on and listen for connections
     Trace.trace(10,'read_from_hsm calling callback.get_callback')
-    host, port, listen_socket = callback.get_callback(use_multiple=1)
+    host, port, listen_socket = callback.get_callback(verbose=verbose)
     client['callback_addr'] = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'read_from_hsm got callback host='+repr(host)+
@@ -1347,7 +1348,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    mycrc = 0
 	    bufsize = 65536*4
 
-	    data_path_socket = callback.mover_callback_socket(ticket)
+	    data_path_socket = callback.mover_callback_socket(ticket, use_multiple=1, verbose=1)
 	    data_path_socket_closed = 0
             try:
                 _f_ = open(tempname,"w")
