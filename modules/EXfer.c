@@ -156,7 +156,8 @@ static struct transfer* pack_return_values(struct transfer *info,
 static double elapsed_time(struct timeval* start_time,
 			   struct timeval* end_time);
 static double rusage_elapsed_time(struct rusage *sru, struct rusage *eru);
-static long long get_fsync_threshold(struct transfer *info); /*long long bytes, int blk_size);*/
+static long long get_fsync_threshold(struct transfer *info);
+static time_t get_fsync_waittime(struct transfer *info);
 static long align_to_page(long value);
 static long align_to_size(long value, long align);
 unsigned long long min(int num, ...);
@@ -179,6 +180,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 int thread_init(struct transfer *info);
 int thread_wait(int bin, struct transfer *info);
 int thread_signal(int bin, size_t bytes, struct transfer *info);
+int thread_collect(int tid, time_t wait_time);
 static void* thread_read(void *info);
 static void* thread_write(void *info);
 static void* thread_monitor(void *monitor);
@@ -347,6 +349,19 @@ static long long get_fsync_threshold(struct transfer *info)
   return (long long)max(3, (unsigned long long)temp_value,
 			(unsigned long long)info->block_size,
 			(unsigned long long)info->mmap_size);
+}
+
+/* Returns the number of seconds to wait for another thread. */
+static time_t get_fsync_waittime(struct transfer *info)
+{
+  /* Don't use info->fsync_threshold; it may not be initalized yet. */
+  
+  /* Calculate the amount of time to wait for the amount of data transfered
+     between syncs will take assuming a minumum rate requirement. */
+  return (time_t)(get_fsync_threshold(info)/524288.0) + 1;
+  
+  /* To cause intentional DEVICE_ERRORs use the following line instead. */
+  /*return (time_t)(info->block_size/524288.0) + 1;*/
 }
 
 /* A usefull function to round a value to the next full page. */
@@ -818,11 +833,15 @@ static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
   else
     sync_type = MS_ASYNC;
 
+  pthread_testcancel(); /* Any syncing action will take time. */
+
   /* Schedule the data for sync to disk now. */
   msync((void*)((unsigned int)info->mmap_ptr +
 		(unsigned int)info->mmap_offset),
 	bytes_to_transfer, sync_type);
   
+  pthread_testcancel(); /* Any syncing action will take time. */
+
   return bytes_to_transfer;
 }
 
@@ -918,6 +937,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
       if((info->last_fsync - info->bytes/* - sts*/) > info->fsync_threshold)
       {
 	info->last_fsync = info->bytes - sts;
+	pthread_testcancel(); /* Any sync action will take time. */
 	/*fsync(info->fd);*/
 	sync();
       }
@@ -925,10 +945,12 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
       else if((info->bytes - sts) == 0)
       {
 	info->last_fsync = info->bytes - sts;
+	pthread_testcancel(); /* Any syncing action will take time. */
 	/*fsync(info->fd);*/
 	sync();
       }
     }
+    pthread_testcancel(); /* Any syncing action will take time. */
   }
 
   return sts;
@@ -1108,10 +1130,10 @@ int thread_signal(int bin, size_t bytes, struct transfer *info)
    thread is allowd to use SIGALRM, sleep, pause, usleep.  Note: nanosleep()
    by posix definition is guarenteed not to use the alarm signal. */
 
-int thread_collect(int tid)
+int thread_collect(int tid, time_t wait_time)
 {
   int rtn;
-  
+
   errno = 0;
   
   /* We don't want to leave the thread behind.  However, if something
@@ -1128,7 +1150,7 @@ int thread_collect(int tid)
       pthread_cancel(tid);
 
       /* Collect the killed thread. */
-      alarm(5);
+      alarm(wait_time);
       rtn = pthread_join(tid, (void**)NULL);
       alarm(0);
       
@@ -1239,7 +1261,7 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 			     &thread_read, reads)) != 0)
   {
     /* Don't let this thread continue on forever. */
-    thread_collect(writes->thread_id);
+    thread_collect(writes->thread_id, get_fsync_waittime(writes));
 
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 		       "monitor thread creation failed", 0.0,
@@ -1253,8 +1275,8 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 			     &monitor_info)) != 0)
   {
     /* Don't let these threads continue on forever. */
-    thread_collect(writes->thread_id);
-    thread_collect(reads->thread_id);
+    thread_collect(writes->thread_id, get_fsync_waittime(writes));
+    thread_collect(reads->thread_id, get_fsync_waittime(reads));
 
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 		       "read thread creation failed", 0.0, __FILE__, __LINE__);
@@ -1267,9 +1289,9 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   if(gettimeofday(&cond_wait_tv, NULL) < 0)
   {
     /* Don't let these threads continue on forever. */
-    thread_collect(writes->thread_id);
-    thread_collect(reads->thread_id);
-    thread_collect(monitor_tid);
+    thread_collect(writes->thread_id, get_fsync_waittime(writes));
+    thread_collect(reads->thread_id, get_fsync_waittime(reads));
+    thread_collect(monitor_tid, get_fsync_waittime(writes));
 
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 		       "read thread creation failed", 0.0, __FILE__, __LINE__);
@@ -1286,16 +1308,22 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
      be so complicated.*/
   while(!reads->done || !writes->done)
   {
+  wait_for_condition:
+
     /* wait until the condition variable is set and we have the mutex */
     /* Waiting indefinatly could be dangerous. */
 
     if((p_rtn = pthread_cond_timedwait(&done_cond, &done_mutex,
 				       &cond_wait_ts)) != 0)
     {
+      /* If the wait was interupted, resume. */
+      if(p_rtn == EINTR)
+	goto wait_for_condition;
+
       /* Don't let these threads continue on forever. */
-      thread_collect(writes->thread_id);
-      thread_collect(reads->thread_id);
-      thread_collect(monitor_tid);
+      thread_collect(writes->thread_id, get_fsync_waittime(writes));
+      thread_collect(reads->thread_id, get_fsync_waittime(reads));
+      thread_collect(monitor_tid, get_fsync_waittime(writes));
       
       pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			 "waiting for condition failed", 0.0,
@@ -1308,16 +1336,20 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 
     if(reads->done > 0) /*true when thread_read ends*/
     {
-      if((p_rtn = thread_collect(reads->thread_id)) != 0)
+      if((p_rtn = thread_collect(reads->thread_id,
+				 get_fsync_waittime(reads))) != 0)
       {
 	/* If the error was EINTR, skip this handling.  The thread is hung
 	 and it is knowningly being abandoned. */
 	if(p_rtn != EINTR)
 	{
 	  /* Don't let these threads continue on forever. */
-	  thread_collect(writes->thread_id);
-	  thread_collect(monitor_tid);
+	  thread_collect(writes->thread_id, get_fsync_waittime(writes));
+	  thread_collect(monitor_tid, get_fsync_waittime(writes));
 	  
+	  /* Since, pack_return_values aquires this mutex, release it. */
+	  pthread_mutex_unlock(&done_mutex);
+
 	  pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			     "joining with read thread failed",
 			     0.0, __FILE__, __LINE__);
@@ -1347,15 +1379,19 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
     }
     if(writes->done > 0) /*true when thread_write ends*/
     {
-      if((p_rtn = thread_collect(writes->thread_id)) != 0)
+      if((p_rtn = thread_collect(writes->thread_id,
+				 get_fsync_waittime(writes))) != 0)
       {
 	/* If the error was EINTR, skip this handling.  The thread is hung
 	 and it is knowningly being abandoned. */
 	if(p_rtn != EINTR)
 	{
 	  /* Don't let these threads continue on forever. */
-	  thread_collect(reads->thread_id);
-	  thread_collect(monitor_tid);
+	  thread_collect(reads->thread_id, get_fsync_waittime(reads));
+	  thread_collect(monitor_tid, get_fsync_waittime(writes));
+	  
+	  /* Since, pack_return_values aquires this mutex, release it. */
+	  pthread_mutex_unlock(&done_mutex);
 
 	  pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			     "joining with write thread failed",
@@ -1388,7 +1424,7 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   pthread_mutex_unlock(&done_mutex);
 
   /* Don't let this thread continue on forever. */
-  thread_collect(monitor_tid);
+  thread_collect(monitor_tid, get_fsync_waittime(writes));
 
   /* Print out an error message.  This information currently is not returned
      to encp.py. */
@@ -1426,17 +1462,20 @@ static void* thread_monitor(void *monitor_info)
   struct transfer *read_info = ((struct monitor *)monitor_info)->read_info;
   struct transfer *write_info = ((struct monitor *)monitor_info)->write_info;
   struct timespec sleep_time;  /* Time to wait in nanosleep. */
-  struct timespec rem_time;    /* Nanosleep time left from signal interupt. */
   struct timeval start_read;   /* Old time to remember during nanosleep. */
   struct timeval start_write;  /* Old time to remember during nanosleep. */
+  sigset_t sigs_to_block;       /* Signal set of those to block. */
+
+  /* Block this signal.  Only the main thread should use/recieve it. */
+  sigemptyset(&sigs_to_block);
+  sigaddset(&sigs_to_block, SIGALRM);
+  if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
+    pthread_exit(NULL);
 
   /* This is the maximum time a read/write call is allowed to take. If it
      takes longer than this then it has not been able to achive a minimum 
      rate of 0.5 MB/S. */
-  /* Don't use read_info->fsync_threshold; it may not be initalized yet. */
-  sleep_time.tv_sec = (time_t)(get_fsync_threshold(read_info)/524288.0) + 1;
-  /* To cause intential DEVICE_ERRORs use the following line instead. */
-  /*sleep_time.tv_sec = (time_t)(read_info->block_size/524288.0) + 1;*/
+  sleep_time.tv_sec = get_fsync_waittime(read_info);
   sleep_time.tv_nsec = 0;
 
   pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
@@ -1463,19 +1502,21 @@ static void* thread_monitor(void *monitor_info)
     if(pthread_mutex_unlock(&monitor_mutex))
       pthread_exit(NULL);
     
-    while(1) /*rem_time.tv_sec > 0 && rem_time.tv_nsec > 0)*/
+    while(1)
     {
+    go_to_sleep:
+      
+      pthread_testcancel(); /* Don't sleep if main thread is waiting. */
+
       /* Wait for the amount of time that it would take to transfer the buffer
 	 at 0.5 MB/S. */
-      if(nanosleep(&sleep_time, &rem_time) < 0)
+      if(nanosleep(&sleep_time, NULL) < 0)
       {
+	pthread_testcancel(); /* Don't sleep if main thread is waiting. */
+
 	/* If the nanosleep was interupted we want to keep going. */
 	if(errno == EINTR)
-	{
-	  memcpy(&sleep_time, &rem_time, sizeof(struct timespec));
-	  continue;
-	}
-	/* If there was a real error that occured, there isn't much to do. */
+	  goto go_to_sleep;
 	else
 	  pthread_exit(NULL);
       }
@@ -1614,6 +1655,17 @@ static void* thread_read(void *info)
   struct timeval end_total;     /* Hold overall time measurment value. */
   double corrected_time = 0.0;  /* Corrected return time. */
   double transfer_time = 0.0;   /* Runing transfer time. */
+  sigset_t sigs_to_block;       /* Signal set of those to block. */
+
+  /* Block this signal.  Only the main thread should use/recieve it. */
+  sigemptyset(&sigs_to_block);
+  sigaddset(&sigs_to_block, SIGALRM);
+  if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
+  {
+    pack_return_values(info, 0, errno, READ_ERROR, "sigprocmask failed", 0.0,
+		       __FILE__, __LINE__);
+    return NULL;
+  }
 
   /* Initialize the time variables. */
 
@@ -1838,7 +1890,18 @@ static void* thread_write(void *info)
   struct timeval end_total;     /* Hold overall time measurment value. */
   double corrected_time = 0.0;  /* Corrected return time. */
   double transfer_time = 0.0;   /* Runing transfer time. */
+  sigset_t sigs_to_block;       /* Signal set of those to block. */
 
+  /* Block this signal.  Only the main thread should use/recieve it. */
+  sigemptyset(&sigs_to_block);
+  sigaddset(&sigs_to_block, SIGALRM);
+  if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
+  {
+    pack_return_values(info, 0, errno, READ_ERROR, "sigprocmask failed", 0.0,
+		       __FILE__, __LINE__);
+    return NULL;
+  }
+  
   /* Initialize the time variables. */
 
   /* Initialize the running time incase of early failure. */
