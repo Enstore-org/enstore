@@ -287,13 +287,10 @@ def set_route(dest, interface_ip):
     config = get_config()
     if not config:
         return
+    interfaces = get_interfaces()
+    if not interfaces:
+        return
     
-    for interface in get_interfaces():
-	if interface_ip == config['interface'][interface]['ip']:
-	    break
-    else:
-	return
-
     for interface in get_interfaces():
     	if interface_ip == config['interface'][interface]['ip']:
     	    gateway = config['interface'][interface]['gw']
@@ -320,6 +317,15 @@ def set_route(dest, interface_ip):
 def unset_route(dest):
     config = get_config()
     if not config:
+        return
+    interfaces = get_interfaces()
+    if not interfaces:
+        return
+
+    for interface in get_interfaces():
+	if interface_ip == config['interface'][interface]['ip']:
+	    break
+    else:
         return
 
     #Attempt to remove the route.
