@@ -348,21 +348,21 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	if self.mc_config.has_key('RobotArm'):   # error if robot not in config
 	    self.robotArm = string.strip(self.mc_config['RobotArm'])
 	else:
-            Trace.log(e_errors.ERROR, "ERROR:aml2 no robot arm key in configuration")
+            Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no robot arm key in configuration")
 	    self.robotArm = string.strip(self.mc_config['RobotArm']) # force the exception          
 	    return
 
 	if self.mc_config.has_key('IOBoxMedia'):   # error if IO box media assignments not in config
 	    self.mediaIOassign = self.mc_config['IOBoxMedia']
 	else:
-            Trace.log(e_errors.ERROR, "ERROR:aml2 no IO box media assignments in configuration")
+            Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no IO box media assignments in configuration")
 	    self.mediaIOassign = self.mc_config['IOBoxMedia'] # force the exception
 	    return
 
 	if self.mc_config.has_key('DriveCleanTime'):   # error if DriveCleanTime assignments not in config
 	    self.driveCleanTime = self.mc_config['DriveCleanTime']
 	else:
-            Trace.log(e_errors.ERROR, "ERROR:aml2 no DriveCleanTime assignments in configuration")
+            Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no DriveCleanTime assignments in configuration")
 	    self.driveCleanTime = self.mc_config['DriveCleanTime'] # force the exception
 	    return
 
@@ -371,10 +371,10 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    try:
 	        self.cleanTapeFileWrapper = string.split(self.cleanTapeFileFamily,'.')[1]
             except IndexError:
-	        Trace.log(e_errors.ERROR, "ERROR:aml2 bad CleanTapeFileFamily in configuration file")
+	        Trace.log(e_errors.ERROR, "ERROR:mc:aml2 bad CleanTapeFileFamily in configuration file")
 	        self.cleanTapeFileWrapper = string.split(self.cleanTapeFileFamily,'.')[1] # force error
 	else:
-            Trace.log(e_errors.ERROR, "ERROR:aml2 no CleanTapeFileFamily assignments in configuration")
+            Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no CleanTapeFileFamily assignments in configuration")
 	    self.cleanTapeFileFamily = self.mc_config['CleanTapeFileFamily'] # force the exception
 	    return
 
@@ -383,11 +383,11 @@ class AML2_MediaLoader(MediaLoaderMethods):
             if type(temp) == types.IntType:
 	        if temp < 20:   # wait at least 20 seconds
 	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
-                    Trace.log(e_errors.ERROR, "ERROR:aml2 IdleHomeTimeTooSmall(>20), default used")
+                    Trace.log(e_errors.ERROR, "ERROR:mc:aml2 IdleHomeTimeTooSmall(>20), default used")
 		else:
 	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
 	    else:
-                Trace.log(e_errors.ERROR, "ERROR:aml2 IdleHomeTimeNotAnInt, default used")
+                Trace.log(e_errors.ERROR, "ERROR:mc:aml2 IdleHomeTimeNotAnInt, default used")
 
 	import aml2
         self.load=aml2.mount
@@ -437,25 +437,25 @@ class AML2_MediaLoader(MediaLoaderMethods):
     def doCleaningCycle(self, inTicket):
         """ do drive cleaning cycle """
         import aml2
-        Trace.log(e_errors.INFO, 'mc: ticket='+repr(inTicket))
+        Trace.log(e_errors.INFO, 'mc:aml2 ticket='+repr(inTicket))
         classTicket = { 'mcSelf' : self }
 	ticket = {}
         try:
             ticket['drive'] = inTicket['moverConfig']['device']
         except KeyError:
-            Trace.log(e_errors.ERROR, 'aml2 no device field found in ticket.')
+            Trace.log(e_errors.ERROR, 'mc:aml2 no device field found in ticket.')
 	    status = 1
             return "ERROR", status, "no device field found in ticket"
         try:
             ticket['mc_device'] = inTicket['moverConfig']['mc_device']
         except KeyError:
-            Trace.log(e_errors.ERROR, 'aml2 no mc_device field found in ticket.')
+            Trace.log(e_errors.ERROR, 'mc:aml2 no mc_device field found in ticket.')
 	    status = 1
             return "ERROR", status, "no mc_device field found in ticket"
         try:
 	    ticket['media_type'] = inTicket['volInfo']['media_type']
         except KeyError:
-            Trace.log(e_errors.ERROR, 'aml2 no media_type field found in ticket.')
+            Trace.log(e_errors.ERROR, 'mc:aml2 no media_type field found in ticket.')
 	    status = 1
             return "ERROR", status, "no media_type field found in ticket"
 	
@@ -471,7 +471,16 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    wrapper = self.cleanTapeFileWrapper
 	    vol_veto_list = []
 	    first_found = 0
-	    cleaningVolume = vcc.next_write_volume(inTicket['moverConfig']['library'],
+	    libraryManagers = inTicket['moverConfig']['library']
+        	if type(libraryManagers) == types.StringType:
+                    library = string.split(libraryManagers,".")[0]
+        	elif type(libraryManagers) == types.ListType:
+                    library = string.split(libraryManagers[0],".")[0]
+        	else:
+                    Trace.log(e_errors.ERROR, 'mc:aml2 library_manager field found in ticket.')
+        	    status = 1
+                    return "ERROR", status, "no library_manager field found in ticket"
+	    cleaningVolume = vcc.next_write_volume(library,
 	                      min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
 			      vol_veto_list, first_found)  # get which volume to use
 	ticket['volume'] = cleaningVolume
