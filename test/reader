@@ -15,11 +15,11 @@ set -u  # force better programming and ability to use check for not set
 read_list=./reader_list.$$
 
 while /bin/true; do
-    if [ -e $ENSTORE_DIR/test/readstop ] ; then exit 0; fi
+    if [ -r $ENSTORE_DIR/test/readstop ] ; then exit 0; fi
     rm -fr $read_list
     find $base/ -type f -print >> $read_list
     cat $read_list | while read f; do
-        if [ -e $ENSTORE_DIR/test/readstop ] ; then exit 0; fi
+        if [ -r $ENSTORE_DIR/test/readstop ] ; then exit 0; fi
         rm -f reader.out
         ecmd encp $f reader.out
     done
