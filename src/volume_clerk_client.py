@@ -619,6 +619,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.vol = ""
         self.check = ""
         self.add = ""
+        self.erase = None
         self.modify = ""
         self.delete = ""
         self.restore = ""
@@ -726,13 +727,13 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        option.VALUE_LABEL:"volume_name",
                        option.USER_LEVEL:option.ADMIN},
         option.IGNORE_STORAGE_GROUP:{option.HELP_STRING:
-                      "ignore a storage group",
+                      'ignore a storage group. The format is "<library>.<storage_group>"',
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"storage_group",
                       option.USER_LEVEL:option.ADMIN},
         option.IMPORT:{option.HELP_STRING:
-                       "import an exported volume onject",
+                       'import an exported volume object. The file name is of the format "vol.<volume_name>.obj"',
                        option.DEFAULT_TYPE:option.STRING,
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_LABEL:"exported_volume_object",
