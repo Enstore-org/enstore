@@ -40,6 +40,8 @@ corresponding server when generating the SAAG page, and will not use
 </th>
 </tr>
 
+<tr><td><a NAME="lock">lock</a></td><td>if specified LM will start in
+this state. Allowed values:locked, unlocked, ignore, pause, nowrite, noread</td></tr>
 <tr><td><a NAME="max_encp_retries">max_encp_retries</a></td><td>maximal number of encp retries for a given LM</td></tr>
 <tr><td><a NAME="max_suspect_movers">max_suspect_movers</a></td><td>if number of suspect movers on which a given volume failed >= of max_suspect_movers, this volume will be set to NOACCESS state (default value - 3)</td></tr>
 <tr><td><a NAME="suspect_volume_expiration_time">suspect_volume_expiration_time</a></td><td>remove entry from suspect volume list after this period of time (default value - None)</td></tr>
@@ -287,7 +289,7 @@ state. Default - do not restart</td></tr>
 <p>  
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Mon Aug  2 16:11:57 CDT 2004
+Last modified: Tue Jan 11 13:35:04 CST 2005
 <!-- hhmts end -->
   </body>
 </html>
