@@ -67,7 +67,7 @@ def encp_client_version():
     return version_string
 
 #seconds to wait for mover to call back, before resubmitting req. to lib. mgr.
-mover_timeout = 20#15*60  #15 minutes
+mover_timeout = 15*60  #15 minutes
 
 data_access_layer_format = """INFILE=%s
 OUTFILE=%s
