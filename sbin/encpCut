@@ -438,6 +438,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR/pnfs_common
                 copyit $ENSTORE_DIR/sbin/EPS                    $INSTALLDIR/EPS
                 copyit $ENSTORE_DIR/ups/encp.table              $INSTALLDIR/encp.table
+                copyit $ENSTORE_DIR/ups/encp_mni_install.sh     $INSTALLDIR/encp_mni_install.sh
                 copyit $ENSTORE_DIR/ups/chooseConfig            $INSTALLDIR/chooseConfig
                 manifest=$INSTALLDIR/.encpCut.manifest
 
