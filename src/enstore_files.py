@@ -167,7 +167,7 @@ class EnFile:
                     os.remove(self.file_name)
 
     def exists(self):
-        if os.exists(self.file_name):
+        if os.path.exists(self.file_name):
             return 1
         else:
             return 0
