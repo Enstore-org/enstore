@@ -48,7 +48,7 @@ os.system(cmd)
 
 d1 = None
 d2 = None
-hosts = ("d0ensrv0.fnal.gov","stkensrv0.fnal.gov","cdfensrv0.fnal.gov")
+hosts = ("d0ensrv0.fnal.gov","stkensrv6.fnal.gov","cdfensrv0.fnal.gov")
 
 for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-%y"':
     d = os.popen(when,'r')
@@ -275,16 +275,16 @@ for g in group_fd.keys():
         
             
     elif g == "CD-9840":
-        (wv1,bv1,su1,l) = QUOTAS['blank-9840.none']
-        (wv2,bv2,su2,l) = QUOTAS['eagle.none:']
+        (wv1,bv1,su1,l) = QUOTAS.get('blank-9840.none',('-1','-1','-1','-1'))
+        (wv2,bv2,su2,l) = QUOTAS.get('eagle.none:',('-1','-1','-1','-1'))
         #wv = string.atoi(wv1)+string.atoi(wv2)
         wv = len(eagle_v)
         bv = string.atoi(bv1)+string.atoi(bv2)
         #su = '0.0GB'
         su="%.2f%s"%(eagle_mb / 1024.,"GB")
     elif g == "CD-9940":
-        (wv1,bv1,su1,l) = QUOTAS['blank-9940.none']
-        (wv2,bv2,su2,l) = QUOTAS['9940.none:']
+        (wv1,bv1,su1,l) = QUOTAS.get('blank-9940.none',('-1','-1','-1','-1'))
+        (wv2,bv2,su2,l) = QUOTAS.get('9940.none:',('-1','-1','-1','-1'))
         #wv = string.atoi(wv1)+string.atoi(wv2)
         wv = len(beagle_v)
         bv = string.atoi(bv1)+string.atoi(bv2)
