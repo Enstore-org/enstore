@@ -16,9 +16,12 @@
 # system imports
 import os
 import sys
-import time				# sleep
+import time
 import popen2
 import string
+import socket
+import time
+import hostaddr
 
 # enstore imports
 import configuration_client
@@ -27,11 +30,12 @@ import generic_server
 import interface
 import Trace
 import e_errors
-import hostaddr
+import timer_task
 
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
-	                 generic_server.GenericServer) :
+	                 generic_server.GenericServer,
+			 timer_task.TimerTask):
     work_list = []
 
     def __init__(self, medch, maxwork, csc):
@@ -40,6 +44,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         generic_server.GenericServer.__init__(self, csc, medch)
         Trace.init(self.log_name)
         self.MaxWork = maxwork
+	self.workQueueClosed = 0
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
@@ -47,7 +52,18 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.mc_config = self.csc.get(medch)
         dispatching_worker.DispatchingWorker.__init__(self, \
 	                 (self.mc_config['hostip'], self.mc_config['port']))
+        self.idleTimeLimit = 600  # default idle time in seconds
+	self.insertNewLibName = "robot"  # default-default name
+        self.lastWorkTime = time.time()
+	self.robotNotAtHome = 1
+        self.timeInsert = time.time()
+	timer_task.TimerTask.__init__(self, 10)
+	timer_task.msg_add(180, self.checkMyself) # initial check time in seconds
 
+    def checkMyself(self):
+        pass
+	#timer_task.msg_add(180, self.checkMyself) # recheck time in seconds
+	
     # wrapper method for client - server communication
     def loadvol(self, ticket):        
         ticket["function"] = "mount"
@@ -63,6 +79,27 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         ticket["status"] = self.view(ticket["vol_ticket"]["external_label"], \
 	               ticket["vol_ticket"]["media_type"])
         self.reply_to_caller(ticket)
+	
+    # wrapper method for client - server communication - to replace above tgj1
+    #def viewvol(self, ticket):
+    #    ticket["function"] = "view"
+    #    return self.DoWork( self.view, ticket)
+
+    # wrapper method for client - server communication
+    def insertvol(self, ticket):
+        ticket["function"] = "insert"
+	if not ticket.has_key("newlib"):
+	    ticket["newlib"] = self.insertNewLibName
+        return self.DoWork( self.insert, ticket)
+
+    # wrapper method for client - server communication
+    def ejectvol(self, ticket):
+        ticket["function"] = "eject"
+        return self.DoWork( self.eject, ticket)
+
+    def homeAndRestartRobot(self, ticket):
+        ticket["function"] = "homeAndRestart"
+        return self.DoWork( self.robotHomeAndRestart, ticket)
 
     def maxwork(self,ticket):
         self.MaxWork = ticket["maxwork"]
@@ -79,7 +116,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def load(self,
              external_label,    # volume external label
              drive,             # drive id
-             media_type) :	# media type
+             media_type):	# media type
         if 0: print media_type #lint fix
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
 	    # YES, THIS BLOCK IS FOR THE DEVELOPMENT ENVIRONMENT AND THE
@@ -92,8 +129,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # unload volume from the drive;  default overridden for other media changers
     def unload(self,
                external_label,  # volume external label
-               drive,
-	       media_type) :         # drive id
+               drive,           # drive id
+	       media_type):     # media type
         if 0: print media_type #lint fix
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
             Trace.log(e_errors.INFO,
@@ -104,10 +141,34 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # view volume in the drive;  default overridden for other media changers
     def view(self,
                external_label,  # volume external label
-	       media_type) :         # drive id 
+	       media_type):         # media type
         if 0: print media_type #lint fix
         return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
-	#return (e_errors.OK, 0, None, None)
+    # view volume in the drive;  default overridden for other media changers - to replace above tgj1
+    #def view(self,
+    #         external_label,   # volume external label
+    #         drive,            # drive id
+    #         media_type) :     # media type
+    #    if 0: print media_type #lint fix
+    #    return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
+
+    # insert volume into the robot;  default overridden for other media changers
+    def insert(self,ticket):
+        if 0: print media_type #lint fix
+        return (e_errors.OK, 0, None, '') # return '' - no inserted volumes
+
+    # eject volume from the robot;  default overridden for other media changers
+    def eject(self,ticket):
+        if 0: print media_type #lint fix
+        return (e_errors.OK, 0, None) 
+
+    def robotHomeAndRestart(self,ticket):
+        pass
+        return (e_errors.OK, 0, None) 
+
+    def startTimer(self,ticket):
+        pass
+        return (e_errors.OK, 0, None) 
 
     # prepare is overridden by dismount for mount; i.e. for tape drives we always dismount before mount
     def prepare(self,
@@ -116,26 +177,29 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                media_type) :        
         if 0: print external_label, drive, media_type, self.keys()
         pass
-	
-    def getNretry(self) :
-        numberOfRetries = 10
+
+    def doWaitingInserts(self):
+        pass
+        return (e_errors.OK, 0, None) 
+
+    def getNretry(self):
+        numberOfRetries = 2
         return numberOfRetries
 
-    # Do the forking and call the function which will be load or unload
+    # Do the forking and call the function
     def DoWork(self, function, ticket):
-
         Trace.trace(10, '>mcDoWork')
-        Trace.log(e_errors.INFO, "REQUESTED "+ticket['function']+" "  +\
-                  ticket['vol_ticket']['external_label']+" "  +\
-                  ticket['drive_id']+" "  +\
-                  ticket['vol_ticket']['media_type'] )
+        Trace.log(e_errors.INFO, "REQUESTED "+ticket['function'])
         #if we have max number of working children, assume client will resend
         if len(self.work_list) >= self.MaxWork :
             Trace.log(e_errors.INFO,
                       "MC Overflow: "+ repr(self.MaxWork) + " " +\
-                      ticket['vol_ticket']['external_label'] + " " + \
-                      ticket['drive_id'])
-        # otherwise, we can do this
+		      ticket['function'])
+        #elif work queue is temporarily closed, assume client will resend
+        elif self.workQueueClosed and len(self.work_list)>0:
+            Trace.log(e_errors.INFO,
+                      "MC Queue Closed: " + ticket['function'] + " " + repr(len(self.work_list)))
+        # otherwise, we can process work
         else:
             #Trace.log(e_errors.INFO, "DOWORK "+repr(ticket))
             # set the reply address - note this could be a general thing in dispatching worker
@@ -144,14 +208,22 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             for i in self.work_list:
                 if i["ra"] == ticket["ra"]:
                     return
+	    # if function is insert, close work queue
+            if ticket["function"] == "insert":
+	        if len(self.work_list)>0:
+	           self.workQueueClosed = 1
+		   self.timeInsert = time.time()
+		   return
+		else:
+		   self.workQueueClosed = 0
             # if not duplicate, fork the work
             pipe = os.pipe()
-            if not self.fork() :
+            if not self.fork():
                 # if in child process
-                Trace.trace(10, 'mcDoWork>forked')
-                #Trace.log(e_errors.INFO, "FORKED "+repr(ticket))
+                Trace.trace(e_errors.INFO, 'mcDoWork>forked')
                 os.close(pipe[0])
-                # do the work, if this is a mount, dismount first
+		# do the work ...
+                # ... if this is a mount, dismount first
                 if ticket['function'] == "mount":
                     Trace.trace(10, 'mcDoWork>dismount for mount')
                     #Trace.log(e_errors.INFO, "PREPARE "+repr(ticket))
@@ -160,20 +232,38 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
 
-                Trace.trace(10, 'mcDoWork>>> '+ticket['function'])
-                #Trace.log(e_errors.INFO, "MOUNT "+repr(ticket))
+                Trace.trace(e_errors.INFO, 'mcDoWork>>> '+ticket['function'])
                 count = self.getNretry()
+		rpcErrors = 0
                 sts=("",0,"")
 		while count > 0 and sts[0] != e_errors.OK:
-		    count = count - 1
-		    sts = function(
-			ticket['vol_ticket']['external_label'],
-			ticket['drive_id'],
-			ticket['vol_ticket']['media_type'])
-                    Trace.trace(10, 'mcDoWork >>> called fn '+repr(count)+' '+repr(sts[2]))
+		    if ticket['function'] == 'insert':
+			classTicket = { 'mcSelf' : self }
+	                ticket['timeOfCmd'] = time.time()
+			sts = function(ticket, classTicket)
+			#ticket['mcSelf'] = self  #this wold be cleaner but eval(ticket) gets sick
+			#sts = function(ticket)
+		    elif ticket['function'] == 'eject':
+			classTicket = { 'mcSelf' : self }
+			sts = function(ticket, classTicket)
+		    elif ticket['function'] == 'homeAndRestart':
+			classTicket = { 'mcSelf' : self }
+			ticket = { 'robotArm' : 'R1' }
+			sts = function(ticket, classTicket)
+		    else:
+		        sts = function(
+			    ticket['vol_ticket']['external_label'],
+			    ticket['drive_id'],
+			    ticket['vol_ticket']['media_type'])
+		    if sts[1] == 1 and rpcErrors < 10:  # RPC failure
+		        time.sleep(5)
+			rpcErrors = rpcErrors + 1
+		    else:
+			count = count - 1
+                    Trace.trace(10, 'mcDoWork >>> called fn '+repr(rpcErrors)+' '+repr(count)+' '+repr(sts[2]))
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
                 Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
-                ticket["work"]="WorkDone"			# so dispatching_worker calls WorkDone
+                ticket["work"]="WorkDone"	# so dispatching_worker calls WorkDone
                 ticket["status"]=sts
                 msg = repr(('0','0',ticket))
                 bytecount = "%08d" % len(msg)
@@ -197,25 +287,41 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
            if i["ra"] == ticket["ra"]:
               self.work_list.remove(i)
               break
-        Trace.log(e_errors.INFO, "FINISHED "+ticket['function']+" "  +\
-                  ticket['vol_ticket']['external_label']+" "  +\
-                  ticket['drive_id']+" "  +\
-                  repr(ticket['status']) )
+        Trace.log(e_errors.INFO, "FINISHED "+ticket['function'])
         # report back to original client - probably a mover
         Trace.trace(10, '<<< mcWorkDone')
         # reply_with_address uses the "ra" entry in the ticket
         self.reply_with_address(ticket)
+	self.robotNotAtHome = 1
+        self.lastWorkTime = time.time()
+	# if function is insert, reopen work queue
+	sts = self.doWaitingInserts()
 
 # EMASS robot loader server
-class EMASS_MediaLoader(MediaLoaderMethods) :
+class EMASS_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=10, csc=None):
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
+        MediaLoaderMethods.__init__(self, medch, maxwork, csc)
+	self.robotArm = 'R1'  # chioces are 'R1', 'R2' or 'Both'
+	if self.mc_config.has_key('RobotArm'):
+	    self.robotArm = string.strip(self.mc_config['RobotArm'])
+	if self.mc_config.has_key('IdleHomeTime'):
+	    self.idleTimeLimit = int(string.strip(self.mc_config['IdleHomeTime']))
+	if self.mc_config.has_key('NewLibName'):
+	    self.insertNewLibName = int(string.strip(self.mc_config['NewLibName']))
         import EMASS
         self.load=EMASS.mount
         self.unload=EMASS.dismount
+        self.insert=EMASS.insert
+        self.eject=EMASS.eject
         self.prepare=EMASS.dismount
+        self.robotHome=EMASS.robotHome
+        self.robotStatus=EMASS.robotStatus
+        self.robotStart=EMASS.robotStart
+        self.robotHomeAndRestart=EMASS.robotHomeAndRestart
 
-    def view(self, external_label, media_type):
+    # view - to replace below tgj1
+    #def view(self, external_label, drive, media_type):
+    def view(self, external_label, media_type): # todo: put this view code into EMASS.py
 	"get current state of the tape"
         import EMASS
 	rt = EMASS.view(external_label, media_type)
@@ -227,9 +333,27 @@ class EMASS_MediaLoader(MediaLoaderMethods) :
           state = rt[5]
         return (rt[0], rt[1], rt[2], state)
 
+    def doWaitingInserts(self):
+        """ do delayed insertvols"""
+	if self.workQueueClosed and len(self.work_list)==0:
+	    self.workQueueClosed = 0
+	    ticket = { 'function' : 'insert',
+	               'timeOfCmd' : self.timeInsert }
+	    self.DoWork( self.insert, ticket)
+        return (e_errors.OK, 0, None) 
+
+    def checkMyself(self):
+        """ do regularily scheduled internal checks"""
+	if self.robotNotAtHome and (time.time()-self.lastWorkTime) > self.idleTimeLimit:
+	    self.robotNotAtHome = 0
+            classTicket = { 'mcSelf' : self }
+            ticket = { 'function' : 'homeAndRestart', 'robotArm' : self.robotArm }
+	    sts = self.robotHomeAndRestart(ticket, classTicket)
+	    self.lastWorkTime = time.time()
+	timer_task.msg_add(29, self.checkMyself) # recheck time in seconds
 
 # STK robot loader server
-class STK_MediaLoader(MediaLoaderMethods) :
+class STK_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
         import STK
@@ -238,7 +362,7 @@ class STK_MediaLoader(MediaLoaderMethods) :
         self.prepare=STK.dismount
 
 # Raw Disk and stand alone tape media server
-class RDD_MediaLoader(MediaLoaderMethods) :
+class RDD_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=1, csc=None):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
 
@@ -247,7 +371,7 @@ class RDD_MediaLoader(MediaLoaderMethods) :
         return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
 
 # "Shelf" manual media server - interfaces with OCS
-class Shelf_MediaLoader(MediaLoaderMethods) :
+class Shelf_MediaLoader(MediaLoaderMethods):
     """
       Reserving tape drives for the exclusive use of the Enstore-media_changer
       can be done by establishing an OCS Authorization Group inwhich the sole
@@ -281,9 +405,8 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
       'ERRDsmRsh': (e_errors.DISMOUNTFAILED, "mc:Shlf dismount rsh error")
       }
 
-    def __init__(self, medch, maxwork=1, csc=None):
+    def __init__(self, medch, maxwork=1, csc=None): #Note: maxwork may need to be changed, tgj
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
-	#self.prepare=self.unload  #  override prepare with dismount
 	self.prepare=self.unload #override prepare with dismount and deallocate
 	
 	fnstatusO = self.getOCSHost()
@@ -522,7 +645,7 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
             Trace.log(e_errors.ERROR, "ERROR:Shelf unload exit fnst=%s %s %s" % (status, fnstatus, self.status_message[fnstatus][1]) )
         return self.status_message[fnstatus][0], status, self.status_message[fnstatus][1]
 
-    def getNretry(self) :
+    def getNretry(self):
         numberOfRetries = 1
         return numberOfRetries
 
