@@ -7,6 +7,8 @@
 #   $Revision$
 #   $Date$
 
+ctlr=3
+
 if [ `hostname` != rip2.fnal.gov ];then
     echo "must be run from specific node (rip2 in this case)"
     exit
@@ -26,8 +28,8 @@ backup() # $1 is file to be backed up
 }
 
 for dd in 1 2 3 4;do
-    if [ ! -d 2d$dd ];then mkdir 2d$dd; fi
-    cd 2d$dd
+    if [ ! -d ${ctlr}d$dd ];then mkdir ${ctlr}d$dd; fi
+    cd ${ctlr}d$dd
     backup *.log
     cd ..
 done
@@ -36,19 +38,19 @@ rsh rip10 ". /usr/local/etc/setups.sh;setup enstore;\
            dasadmin list rip3;\
            dasadmin list rip10"
 
-mt -f /dev/rmt/tps2d1 status
-mt -f /dev/rmt/tps2d2 status
-mt -f /dev/rmt/tps2d3 status
-mt -f /dev/rmt/tps2d4 status
+mt -f /dev/rmt/tps${ctlr}d1n status
+mt -f /dev/rmt/tps${ctlr}d2n status
+mt -f /dev/rmt/tps${ctlr}d3n status
+mt -f /dev/rmt/tps${ctlr}d4n status
 
-cd 2d1
-../fd_xfer.py /raid/enstore/random/200MB.trand /dev/rmt/tps2d1 None 1000 DECDLT DE01 CA2502 rip10 >2d1.log 2>&1 &
-cd ../2d2
-../fd_xfer.py /raid/enstore/random/300MB.trand /dev/rmt/tps2d2 None 1000 DECDLT DE02 CA2504 rip10 >2d2.log 2>&1 &
-cd ../2d3
-#../fd_xfer.py /raid/enstore/random/400MB.trand /dev/rmt/tps2d3 None  800 DECDLT DE14 CA2508 rip3 >2d3.log 2>&1 &
-../fd_xfer.py /raid/enstore/random/400MB.trand /dev/rmt/tps2d3 None  800 >2d3.log 2>&1 &
-cd ../2d4
-#../fd_xfer.py /raid/enstore/random/200MB.trand /dev/rmt/tps2d4 None  800 DECDLT DE13 CA2506 rip3 >2d4.log 2>&1 &
+cd ${ctlr}d1
+../fd_xfer.py /raid/enstore/random/200MB.trand /dev/rmt/tps${ctlr}d1n None 1000 DECDLT DE01 CA2502 rip10 >${ctlr}d1.log 2>&1 &
+cd ../${ctlr}d2
+../fd_xfer.py /raid/enstore/random/300MB.trand /dev/rmt/tps${ctlr}d2n None 1000 DECDLT DE02 CA2504 rip10 >${ctlr}d2.log 2>&1 &
+cd ../${ctlr}d3
+#../fd_xfer.py /raid/enstore/random/400MB.trand /dev/rmt/tps${ctlr}d3n None  800 DECDLT DE14 CA2508 rip3 >${ctlr}d3.log 2>&1 &
+../fd_xfer.py /raid/enstore/random/400MB.trand /dev/rmt/tps${ctlr}d3n None  800 >${ctlr}d3.log 2>&1 &
+cd ../${ctlr}d4
+#../fd_xfer.py /raid/enstore/random/200MB.trand /dev/rmt/tps${ctlr}d4n None  800 DECDLT DE13 CA2506 rip3 >${ctlr}d4.log 2>&1 &
 
 
