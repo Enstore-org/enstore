@@ -30,8 +30,6 @@
         <Host Name="stkenmvr9a"/>
         <Host Name="rip9"/>
         <Host Name="rip10"/>	
-        <Host Name="d0enmvr4a"/>
-        <Host Name="d0enmvr7a"/>
       </ServiceType>
     </Cluster>
 </Cluster>
