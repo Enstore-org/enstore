@@ -451,6 +451,9 @@ class AML2_MediaLoader(MediaLoaderMethods):
                       sts[1] == 24):         # requested volume in use
                     count = count - 1
                     time.sleep(20)
+                elif (sts[1] == 9999):       # tape not in home position
+                    count = count - 1
+                    time.sleep(120)
                 else:
                     break
             except:
