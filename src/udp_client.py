@@ -20,7 +20,6 @@ import rexec
 import Trace
 import setpath
 import e_errors
-import interface
 import checksum
 import cleanUDP
 import hostaddr
