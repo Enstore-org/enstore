@@ -20,6 +20,7 @@ import string
 import traceback
 import select
 import signal
+import random
 
 # enstore modules
 
@@ -481,7 +482,7 @@ def check_load_balance(mode, dest):
     Trace.log(e_errors.INFO, "interface rates: %s" % (rate_dict,))
     choose = []
     for interface in interfaces:
-        weight = interface_dict[interface].get('weight', 1)
+        weight = interface_dict[interface].get('weight', 1.0)
         recv_rate, send_rate = rate_dict[interface]
         recv_rate = recv_rate/weight
         send_rate = send_rate/weight
@@ -489,6 +490,13 @@ def check_load_balance(mode, dest):
             choose.append((send_rate, interface))
         else:
             choose.append((recv_rate, interface))
+    tmp = choose[:]
+    choose = []
+    while tmp:
+        item = random.choice(tmp)
+        choose.append(item)
+        tmp.remove(item)
+    Trace.log(e_errors.INFO, "interface: choose = %s" % (choose,))
     choose.sort()
     rate, interface = choose[0]
     Trace.log(e_errors.INFO, "chose interface %s, %s rate=%s" % (
