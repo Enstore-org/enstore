@@ -196,7 +196,7 @@ if __name__ == '__main__':
 	# try to find "delfile"
 
 	if not intf.skip_pnfs:
-		delfile = os.path.join(os.environ['ENSTORE_DIR'], 'sbin', 'delfile')
+		delfile = os.path.join(os.environ['ENSTORE_DIR'], 'sbin', 'delfile.py')
 		if not os.access(delfile, os.X_OK):
 			print 'can not find executable', delfile
 			sys.exit(0)
