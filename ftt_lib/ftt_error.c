@@ -182,8 +182,13 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	terrno = keep_errno;
     } 
 
+
     guess_errno = d->errortrans[opn][terrno];
 
+    /* mystery OSF1 error... */
+    if (EADDRINUSE == keep_errno) {
+	guess_errno = FTT_EBUSY;
+    }
 
     if (0 == res && FTT_OPN_READ == opn && 0 !=(d->flags&FTT_FLAG_VERIFY_EOFS)) {
 	DEBUG2(stderr, "translate_error: Verifying an eof...\n");
