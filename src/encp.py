@@ -1071,11 +1071,11 @@ def get_uinfo():
     uinfo['gid'] = os.getgid()
     try:
         uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
-    except (ValueError, AttributeError, TypeError, IndexError):
+    except (ValueError, AttributeError, TypeError, IndexError, KeyError):
         uinfo['gname'] = 'unknown'
     try:
         uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
-    except (ValueError, AttributeError, TypeError, IndexError):
+    except (ValueError, AttributeError, TypeError, IndexError, KeyError):
         uinfo['uname'] = 'unknown'
     uinfo['machine'] = os.uname()
 
@@ -3646,8 +3646,15 @@ def main():
     for x in xrange(1, e.verbose+1):
         Trace.do_message(x)
 
+    #If verbosity turn on get the user name.
+    try:
+        user_name = pwd.getpwuid(os.geteuid())[0]
+    except (OSError, KeyError):
+        user_name = os.geteuid()
+
     #Print this information to make debugging easier.
     Trace.message(DONE_LEVEL, 'Start time: %s' % time.ctime(encp_start_time))
+    Trace.message(DONE_LEVEL, 'User: %s' % user_name)
     Trace.message(DONE_LEVEL, 'Command line: %s' % string.join(sys.argv))
     Trace.message(DONE_LEVEL, 'Version: %s' % encp_client_version())
 
