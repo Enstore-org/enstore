@@ -53,7 +53,7 @@ def busy_vols_in_family (family_name):
     vols = []
     for w in work_at_movers + work_awaiting_bind:
      try:
-        if w["file_family"] == family_name:
+        if w["fc"]["file_family"] == family_name:
             vols.append(w["external_label"])
      except:
         import pprint
@@ -107,17 +107,17 @@ def next_work_any_volume(csc):
         # find volumes we _dont_ want to hear about -- that is volumes in the
         # apropriate family which are currently at movers.
         elif w["work"] == "write_to_hsm":
-            vol_veto_list = busy_vols_in_family(w["file_family"])
+            vol_veto_list = busy_vols_in_family(w["fc"]["file_family"])
             # only so many volumes can be written to at one time
-            if len(vol_veto_list) >= w["file_family_width"]:
+            if len(vol_veto_list) >= w["fc"]["file_family_width"]:
                 continue
             # width not exceeded, ask volume clerk for a new volume.
             vc = volume_clerk_client.VolumeClerkClient(csc)
             first_found = 0
             t1 = time.time()
-            v = vc.next_write_volume (w["library"], w["uinfo"]\
+            v = vc.next_write_volume (w["fc"]["library"], w["uinfo"]\
 				      ["size_bytes"],\
-                                      w["file_family"], vol_veto_list,\
+                                      w["fc"]["file_family"], vol_veto_list,\
                                       first_found)
             t2 = time.time()-t1
             #print "  next_write_volume dt=",t2
@@ -149,11 +149,11 @@ def next_work_this_volume(v):
     for w in pending_work:
 
         # writing to this volume?
-        if (w["work"]           == "write_to_hsm"    and
-            w["file_family"]    == v["file_family"]  and
-            v["user_inhibit"]   == "none"            and
-            v["system_inhibit"] == "none"            and
-            w["uinfo"]["size_bytes"]    <= v["remaining_bytes"]):
+        if (w["work"]                == "write_to_hsm"         and
+            w["fc"]["file_family"]   == v["fc"]["file_family"] and
+            v["user_inhibit"]        == "none"                 and
+            v["system_inhibit"]      == "none"                 and
+            w["uinfo"]["size_bytes"] <= v["remaining_bytes"]):
             w["external_label"] = v["external_label"]
             # ok passed criteria, return write work ticket
             return w
@@ -180,7 +180,8 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
         logticket = self.logc.send(log_client.INFO, 2, format,
                                    repr(ticket["uinfo"]["fullname"]),
                                    ticket["pinfo"]["pnfsFilename"],
-                                   ticket["library"],ticket["file_family"],
+                                   ticket["fc"]["library"],
+                                   ticket["fc"]["file_family"],
                                    ticket["uinfo"]["uname"])
         queue_pending_work(ticket)
 

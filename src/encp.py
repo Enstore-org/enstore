@@ -182,7 +182,9 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
             # if no ticket, then this is a not a retry
             except NameError:
-                file_clerk = {}
+                file_clerk = {"library"            : library[i],\
+                              "file_family"        : file_family[i],\
+                              "file_family_width"  : width[i]}
                 uinfo["callback_addr"] = (host, port)
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
@@ -190,10 +192,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
                 uinfo["mtime"] = int(time.time())
                 work_ticket = {"work"               : "write_to_hsm",\
                                "priority"           : 1,\
-                               "library"            : library[i],\
                                "fc"                 : file_clerk,\
-                               "file_family"        : file_family[i],\
-                               "file_family_width"  : width[i],\
                                "pinfo"              : pinfo[i],\
                                "uinfo"              : uinfo,\
                                "unique_id"          : unique_id[i]
