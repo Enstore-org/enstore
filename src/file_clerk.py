@@ -84,7 +84,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record = dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR,"File Clerk: bfid %s not found"%bfid)
-            Trace.log(e_errors.INFO, "%s"%(ticket)
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
             Trace.trace(10,"bfid_info %s"%ticket["status"])
             return
