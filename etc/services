@@ -162,7 +162,7 @@ ipx		213/udp
 imap3		220/tcp				# Interactive Mail Access
 imap3		220/udp				# Protocol v3
 link		245/tcp		ttylink
-link		245/ucp		ttylink
+link		245/udp		ttylink
 fatserv		347/tcp				# Fatmen Server
 fatserv		347/udp				# Fatmen Server
 rsvp_tunnel	363/tcp
@@ -222,7 +222,7 @@ npmp-gui	611/udp		dqs313_execd	# npmp-gui / DQS
 hmmp-ind	612/tcp		dqs313_intercell # HMMP Indication / DQS
 hmmp-ind	612/udp		dqs313_intercell # HMMP Indication / DQS
 ipp		631/tcp				# Internet Printing Protocol
-ipp		631/ucp				# Internet Printing Protocol
+ipp		631/udp				# Internet Printing Protocol
 ldaps		636/tcp				# LDAP over SSL
 ldaps		636/udp				# LDAP over SSL
 acap		674/tcp
@@ -391,8 +391,9 @@ icpv2		3130/tcp			# Internet Cache Protocol V2 (Squid)
 icpv2		3130/udp			# Internet Cache Protocol V2 (Squid)
 mysql		3306/tcp			# MySQL
 mysql		3306/udp			# MySQL
-trnsprntproxy   3346/tcp			# Trnsprnt Proxy
-trnsprntproxy   3346/udp			# Trnsprnt Proxy
+trnsprntproxy	3346/tcp			# Trnsprnt Proxy
+trnsprntproxy	3346/udp			# Trnsprnt Proxy
+pxe		4011/udp			# PXE server
 rwhois		4321/tcp			# Remote Who Is
 rwhois		4321/udp			# Remote Who Is
 krb524		4444/tcp			# Kerberos 5 to 4 ticket xlator
@@ -449,7 +450,7 @@ vopied		13783/udp			# VOPIED Protocol
 # This port is registered as wnn6, but also used under the unregistered name
 # "wnn4" by the FreeWnn package.
 wnn6		22273/tcp	wnn4
-wnn6		22273/ucp	wnn4
+wnn6		22273/udp	wnn4
 
 quake		26000/tcp
 quake		26000/udp
