@@ -1,9 +1,9 @@
 #!/bin/sh
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # this is cheap argument processing. Must be in this order when checking. I want it cheap!
-if [ "${1:-}" = "-c" ] ; then CHECK=1;            shift; else CHECK=0;                   fi
-if [ "${1:-}" = "-v" ] ; then SKIP="ecron|ekill"; shift; else SKIP="`/bin/echo '\001'`"; fi #skip grep|ekill or ^a 
-if [ "${1:-}" = "-9" ] ; then SIG='-9';           shift; else SIG=' ';                   fi
+if [ "${1:-}" = "-c" ] ; then CHECK=1;                  shift; else CHECK=0;                   fi
+if [ "${1:-}" = "-v" ] ; then SKIP="ecron|ekill|rgang"; shift; else SKIP="`/bin/echo '\001'`"; fi #skip grep|ekill or ^a 
+if [ "${1:-}" = "-9" ] ; then SIG='-9';                 shift; else SIG=' ';                   fi
 
 if [ -z "${1:-}" ]; then echo 'USUAGE: $0 [-c -9] \"egrep search string for kill\"'; exit 2; fi
 lookfor="${1}"
