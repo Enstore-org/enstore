@@ -46,6 +46,7 @@ import entv
 import threading
 import re
 import configuration_client
+import e_errors
 
 #A lock to allow only one thread at a time access the display class instance.
 display_lock = threading.Lock()
@@ -1736,9 +1737,28 @@ class Display(Tkinter.Canvas):
         self.title_animation = Title(title, self)
 
     def csc_command(self, command_list):
-        self.csc = configuration_client.ConfigurationClient((command_list[1],
+        try:
+            csc = configuration_client.ConfigurationClient((command_list[1],
                                                          int(command_list[2])))
-    
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
+        except:
+            exc, msg, tb = sys.exc_info()
+            print "Error processing %s: %s" % (str(command_list),
+                                               (str(exc), str(msg)))
+
+        #Before blindly setting the value.  Make sure that it is good.
+        rtn = csc.alive("configuration_server", 3, 3)
+        if e_errors.is_ok(rtn):
+           self.csc = csc
+
+        #This is rather harsh, but hopefully will fix all 'major' failures.
+        #  Wait 1 minutes before starting over.
+        if not getattr(self, "csc", None):
+            time.sleep(60)
+            os.execvp(sys.argv[0], sys.argv)
+        
     def client_command(self, command_list):
         ## For now, don't draw waiting clients (there are just
         ## too many of them)
