@@ -19,7 +19,7 @@ from rvolume;
 
 insert into file (
 	bfid, crc, deleted, drive, volume, location_cookie,
-	pnfs_path, pnfs_id, sanity_cookie_0, sanity_cookie_1, size)
+	pnfs_path, pnfs_id, sanity_size, sanity_crc, size)
 select	bfid, complete_crc, deleted, drive, volume.id, location_cookie,
 	pnfs_name0, pnfsid, sanity_cookie_0, sanity_cookie_1, size
 from rfile, volume

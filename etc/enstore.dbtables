@@ -46,8 +46,8 @@ create table file (
 	location_cookie	varchar(24),
 	pnfs_path	varchar,
 	pnfs_id		varchar(24),
-	sanity_cookie_0 bigint default -1,
-	sanity_cookie_1 bigint default -1,
+	sanity_size	bigint default -1,
+	sanity_crc	bigint default -1,
 	size		bigint default 0
 );
 create index file_volume_idx on file(volume);

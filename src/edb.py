@@ -230,7 +230,7 @@ class FileDB(DbTable):
         		select \
                 		bfid, crc, deleted, drive, \
 				volume.label, location_cookie, pnfs_path, \
-                		pnfs_id, sanity_cookie_0, sanity_cookie_1, size \
+                		pnfs_id, sanity_size, sanity_crc, size \
         		from file, volume \
         		where \
                 		file.volume = volume.id and \
@@ -256,14 +256,14 @@ class FileDB(DbTable):
 			deleted = 'unknown'
 
 		# take care of sanity_cookie
-		if s['sanity_cookie_0'] == -1:
-			sanity_cookie_0 = None
+		if s['sanity_size'] == -1:
+			sanity_size = None
 		else:
-			sanity_cookie_0 = s['sanity_cookie_0']
-		if s['sanity_cookie_1'] == -1:
-			sanity_cookie_1 = None
+			sanity_size = s['sanity_size']
+		if s['sanity_crc'] == -1:
+			sanity_crc = None
 		else:
-			sanity_cookie_1 = s['sanity_cookie_1']
+			sanity_crc = s['sanity_crc']
 
 		# take care of crc
 		if s['crc'] == -1:
@@ -280,7 +280,7 @@ class FileDB(DbTable):
 			'location_cookie': s['location_cookie'],
 			'pnfs_name0': s['pnfs_path'],
 			'pnfsid': s['pnfs_id'],
-			'sanity_cookie': (sanity_cookie_0, sanity_cookie_1),
+			'sanity_cookie': (sanity_size, sanity_crc),
 			'size': s['size']
 			}
 
@@ -294,13 +294,13 @@ class FileDB(DbTable):
 
 		# Take care of sanity_cookie
 		if s['sanity_cookie'][0] == None:
-			sanity_cookie_0 = -1 
+			sanity_size = -1 
 		else:
-			sanity_cookie_0 = s['sanity_cookie'][0]
+			sanity_size = s['sanity_cookie'][0]
 		if s['sanity_cookie'][1] == None:
-			sanity_cookie_1 = -1 
+			sanity_crc = -1 
 		else:
-			sanity_cookie_1 = s['sanity_cookie'][1]
+			sanity_crc = s['sanity_cookie'][1]
 
 		# take care of crc
 		if s['complete_crc'] == None:
@@ -317,8 +317,8 @@ class FileDB(DbTable):
 			'location_cookie': s['location_cookie'],
 			'pnfs_path': s['pnfs_name0'],
 			'pnfs_id': s['pnfsid'],
-			'sanity_cookie_0': sanity_cookie_0,
-			'sanity_cookie_1': sanity_cookie_1,
+			'sanity_size': sanity_size,
+			'sanity_crc': sanity_crc,
 			'size': s['size']
 			}
 	def __setitem__(self, key, value):

@@ -674,7 +674,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         
         q = "select bfid, crc, deleted, drive, volume.label, \
                     location_cookie, pnfs_path, pnfs_id, \
-                    sanity_cookie_0, sanity_cookie_1, size \
+                    sanity_size, sanity_crc, size \
              from file, volume \
              where \
                  file.volume = volume.id and volume.label = '%s';"%(
@@ -725,7 +725,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         q = "select bfid, crc, deleted, drive, volume.label, \
                     location_cookie, pnfs_path, pnfs_id, \
-                    sanity_cookie_0, sanity_cookie_1, size \
+                    sanity_size, sanity_crc, size \
              from file, volume \
              where \
                  file.volume = volume.id and volume.label = '%s';"%(
