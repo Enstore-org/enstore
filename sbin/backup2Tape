@@ -122,13 +122,14 @@ rm -f $PNFS_FILES
 find $PNFS $find_options -type f  -print | sort -r | while read f; do 
     basename $f | cut -f1 -d.
   done | uniq | while read g; do 
-    ls -ltr $PNFS/${g}.*.Z | head -n1 |awk '{print $NF}'
+    ls -lt $PNFS/${g}.*.Z | head -n1 |awk '{print $NF}'
   done > $PNFS_FILES
 
 lines=`wc -l $PNFS_FILES | awk '{print $1}'`
 list ""
 list "PNFS databases backup: $lines files to backup to tape"
 doit "cat $PNFS_FILES"
+cat $PNFS_FILES | while read f ; do ls -l $f; done
 list ""
 counter=0
 cat $PNFS_FILES| while read file; do
@@ -147,7 +148,7 @@ find $PNFS -type f -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 ENSTORE_FILES=$VAULT/enstore.files
 rm -f $ENSTORE_FILES
 #only backup the latest directory copy.
-ELAST=`ls -ltrd  $ENSTORE/dbase.* | head -n1 | awk '{print $NF}'`
+ELAST=`ls -ltd  $ENSTORE/dbase.* | head -n1 | awk '{print $NF}'`
 find $ELAST -type f $find_options -print > $ENSTORE_FILES
 
 lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
