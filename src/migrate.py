@@ -256,7 +256,7 @@ def log_copied(bfid1, bfid2, db):
 		db.query(q)
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_COPIED", str(exc_type), str(exc_value))
+		error_log("LOG_COPIED", str(exc_type), str(exc_value), q)
 	return
 
 # log_swapped(bfid1, bfid2) -- log a successful swap
@@ -270,7 +270,7 @@ def log_swapped(bfid1, bfid2, db):
 		db.query(q)
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_SWAPPED", str(exc_type), str(exc_value))
+		error_log("LOG_SWAPPED", str(exc_type), str(exc_value), q)
 	return
 
 # log_checked(bfid1, bfid2) -- log a successful readback 
@@ -284,7 +284,7 @@ def log_checked(bfid1, bfid2, db):
 		db.query(q)
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_CHECKED", str(exc_type), str(exc_value))
+		error_log("LOG_CHECKED", str(exc_type), str(exc_value), q)
 	return
 
 # log_closed(bfid1, bfid2) -- log a successful readback after closing
@@ -298,10 +298,21 @@ def log_closed(bfid1, bfid2, db):
 		db.query(q)
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_CLOSED", str(exc_type), str(exc_value))
+		error_log("LOG_CLOSED", str(exc_type), str(exc_value), q)
 	return
 
-
+# log_history(src, dst) -- log a migration history
+def log_history(src, dst, db):
+	q = "insert into migration_history (src, dst) values \
+		('%s', '%s');"%(src, dst)
+	if debug:
+		log("log_history():", q)
+	try:
+		db.query(q)
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
+	return
 # run_encp(args) -- excute encp using os.system()
 # -- encp, like most of the enstore, is not thread safe.
 #    in order to run multiple encp streams, we have to use os.system()
@@ -707,6 +718,13 @@ def final_scan_volume(vol):
 		if not ct:
 			# get the real path
 			pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(pnfs_id)
+
+			# make sure the path is NOT a migration path
+			if pnfs_path[:22] == f_prefix+'/Migration':
+				error_log(MY_TASK, 'none swapped file %s'%(pnfs_path))
+				local_error = local_error + 1
+				continue
+
 			# make sure the volume is the same
 			pf = pnfs.File(pnfs_path)
 			if pf.volume != vol:
@@ -866,6 +884,9 @@ def migrate_volume(vol):
 		to_list = migrated_to(vol, db)
 		vol_list = ""
 		for i in to_list:
+			# log history
+			log_history(vol, i, db)
+			# build comment
 			vol_list = vol_list + ' ' + i
 		if vol_list:
 			res = vcc.set_comment(vol, "=>"+vol_list)
