@@ -228,7 +228,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
          if (! (statres & FTT_ONLINE)) {
 	     guess_errno = FTT_ENOTAPE;
 	     res = -1;
-         } else {
+         } else if (statres & (FTT_AEOT|FTT_ABOT)) {
              if (statres & FTT_AEOT) {
 		 guess_errno = FTT_EBLANK;
 		 res = -1;
