@@ -64,7 +64,7 @@ def get_file_list(dir, prefix):
     # pull out the files and get their sizes
     prefix_len = len(prefix)
     for file in files:
-	if file[0:prefix_len] == prefix:
+	if file[0:prefix_len] == prefix and not file[-3:] == ".gz":
 	    logfiles[file] = os.stat('%s/%s'%(dir,file))[stat.ST_SIZE]
     return logfiles
 
