@@ -2,6 +2,7 @@
 #
 #  $Id$
 #
+CC=`grep '^CC=' $(PYTHON_DIR)/lib/python*/config/Makefile | sed -e 's/CC=[       ]*//'`
 
 all:	 Trace adler32.a Makefile.modules Modules 
 
