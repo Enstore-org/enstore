@@ -11,6 +11,7 @@ if [ ! -d $work ]; then
 fi
 
 for i in $work/*; do
+  t0=`date  +'%s'`
   . $i |tee $output 2>&1
   echo 
   echo
@@ -29,6 +30,12 @@ for i in $work/*; do
   /usr/bin/rsh $sun -l acsss "echo set cap mode manual 0,0,0 |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
   echo 
   echo
+  t1=`date  +'%s'`
+  delta=`expr $t1 - $t0`
+  deltam=`expr $delta / 60`
+  smin=`expr $deltam \* 60`
+  deltas=`expr $delta - $smin`
+  echo That cycle took $deltam minutes $deltas sec
   /bin/echo -n "Were all of these steps successful [y or n]? "
   read ans
   if [ $? -eq 0 ] &&  expr "$ans" : '[Yy]' >/dev/null ; then
@@ -39,7 +46,9 @@ for i in $work/*; do
   fi
   echo
   echo
-  /bin/echo -n "Another [yn]? "
+  left=`ls -1 $work|wc`
+  left=`expr $left - 1 `
+  /bin/echo -n "There are $left groups left to do.  Another [yn]? "
   read ans
   if [ $? -eq 0 ] &&  expr "$ans" : '[Yy]' >/dev/null ; then
      x=1
