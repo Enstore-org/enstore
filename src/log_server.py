@@ -182,9 +182,8 @@ class Logger(  dispatching_worker.DispatchingWorker
         # open log file
         self.open_logfile(self.logfile_name)
         while 1:
-            self.handle_request() # this method will eventually call
-                                  # log_message()
-
+            self.do_one_request() ## this method will eventually call
+                                               ## log_message()
             # get local time
             tm = time.localtime(time.time())
             day = tm[2];
