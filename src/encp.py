@@ -178,7 +178,7 @@ def write_to_hsm(input, output,
     # ask configuration server what port the file clerk is using
     Trace.trace(10,"write_to_hsm calling config server to find file clerk")
     fticket = csc.get("file_clerk")
-    Trace.trace(10,"read_from_hsm file clerk at host="+\
+    Trace.trace(10,"write_to_hsm file clerk at host="+\
                 repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
     tinfo["get_fileclerk"] = time.time() - t1 #-----------------------------End
@@ -557,15 +557,20 @@ def read_from_hsm(input, output,
     vinfo = []
     volume = []
     unique_id = []
+    retry = []
     vols_needed = {}
     delayed_dismount = 0
-    current_library = ''
+    maxretry = 2
+
     global logc
-    (csc,u,uinfo) = clients(config_host,config_port,list)
+    client = {}
+#    (csc,u,uinfo) = clients(config_host,config_port,list)
+    (client['csc'],client['u'],client['uinfo']) = clients(config_host, \
+							  config_port,list)
 
     wrapper = {}
-    for key in uinfo.keys():
-        wrapper[key] = uinfo[key]
+    for key in client['uinfo'].keys():
+        wrapper[key] = client['uinfo'][key]
 
     # make the part of the ticket that encp knows about (there's more later)
     encp = {}
@@ -573,19 +578,17 @@ def read_from_hsm(input, output,
     encp["adminpri"] = -1
     encp["delpri"] = delpri
     encp["agetime"] = agetime
+    encp["delayed_dismount"] = delayed_dismount
 
-    # create the time subticket
-    times = {}
-    times["t0"] = tinfo["abs_start"]
 
     tinfo["clients"] = time.time() - t1 #-----------------------------------End
     if list>2:
         print "  dt:",tinfo["clients"], "   cumt=",time.time()-t0
     if list>3:
-        print "csc=",csc
-        print "u=",u
+        print "csc=",client['csc']
+        print "u=",client['u']
         print "logc=",logc
-        print "uinfo=",uinfo
+        print "uinfo=",client['uinfo']
 
     if list>2:
         print "Checking input pnfs files:",input, "   cumt=",time.time()-t0
@@ -627,7 +630,7 @@ def read_from_hsm(input, output,
     # get a port to talk on and listen for connections
     Trace.trace(10,'read_from_hsm calling callback.get_callback')
     host, port, listen_socket = callback.get_callback()
-    callback_addr = (host, port)
+    client['callback_addr'] = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'read_from_hsm got callback host='+repr(host)+\
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
@@ -644,7 +647,7 @@ def read_from_hsm(input, output,
 
     # ask configuration server what port the file clerk is using
     Trace.trace(10,"read_from_hsm calling config server to find file clerk")
-    fticket = csc.get("file_clerk")
+    fticket = client['csc'].get("file_clerk")
     Trace.trace(10,"read_from_hsm file clerk at host="+\
                 repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
@@ -663,7 +666,7 @@ def read_from_hsm(input, output,
         unique_id.append(0) # will be set later when submitted
         Trace.trace(7,"read_from_hsm calling file clerk for bfid="+\
                     repr(bfid[i]))
-        binfo  = u.send({'work': 'bfid_info', 'bfid': bfid[i]},
+        binfo  = client['u'].send({'work': 'bfid_info', 'bfid': bfid[i]},
                         (fticket['hostip'],fticket['port']))
         if binfo['status'][0]!='ok':
             pprint.pprint(binfo)
@@ -675,6 +678,7 @@ def read_from_hsm(input, output,
         finfo.append(binfo['fc'])
         label = binfo['fc']['external_label']
         volume.append(label)
+	retry.append(0)
         try:
             vols_needed[label] = vols_needed[label]+1
         except KeyError:
@@ -689,296 +693,55 @@ def read_from_hsm(input, output,
         print "Sending ticket to file clerk", "   cumt=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
 
+    total_bytes = 0
     # loop over all volumes that are needed and submit all requests for
     # that volume. Read files from each volume before submitting requests
     # for different volumes.
 
-    for vol in vols_needed.keys():
-        t2 = time.time() #--------------------------------------------Lap-Start
-        submitted = 0
-        Qd=""
-        system_enabled(p) # make sure system is still enabled before submitting
-        for i in range(0,ninput):
-            if volume[i]==vol:
-                unique_id[i] = time.time()  # note that this is down to mS
-                wrapper["fullname"] = outputlist[i]
-                wrapper["sanity_size"] = 65535
-                wrapper["size_bytes"] = file_size[i]
-                encp["delayed_dismount"] = delayed_dismount
+    files_left = ninput
+    while files_left:
 
-                # store the pnfs information info into the wrapper
-                for key in pinfo[i].keys():
-                    if not uinfo.has_key(key) : # the user key takes precedence over the pnfs key
-                        wrapper[key] = pinfo[i][key]
+	for vol in vols_needed.keys():
+	    system_enabled(p) # make sure system is still enabled before submitting
+	    (submitted,Qd, unique_id) = submit_read_requests(bfid, inputlist, 
+							 outputlist, wrapper, 
+							 file_size, pinfo, 
+							 client, tinfo, vol, 
+							 volume, finfo, 
+							 vinfo, encp, files_left,
+							 retry,
+							 list)
 
 
-                # generate the work ticket
+	    tinfo["send_ticket"] = time.time() - t1 #---------------------------End
+	    if list:
+		print Qd
+	    if list>1:
+		print "  dt:",tinfo["send_ticket"], "   cumt=",time.time()-t0
 
-                #file_clerk = {"bfid"               : bfid[i]}
-                work_ticket = {"work"              : "read_from_hsm",
-                               "wrapper"           : wrapper,
-                               "callback_addr"     : callback_addr,
-                               "fc"                : finfo[i],
-                               "vc"                : vinfo[i],
-                               "encp"              : encp,
-                               "times"             : times,
-                               "unique_id"         : unique_id[i]
-                               }
+		# We have placed our work in the system and now we have to 
+		#wait for resources. All we need to do is wait for the system
+		# to call us back, and make sure that is it calling _us_ back,
+		# and not some sort of old call-back to this very same port. 
+		# It is dicey to time out, as it is probably legitimate to 
+		# wait for hours....
 
-
-                # send ticket to file clerk who sends it to right library manger
-                Trace.trace(7,"read_from_hsm q'ing:"+repr(work_ticket))
-
-
-
-
-                # get the library manager
-                library = vinfo[i]['library']
-                # get LM info from Config Server only if it is different
-                if (current_library != library):
-                    current_library = library
-                    Trace.trace(10,"write_to_hsm calling config server\
-                    to find "+current_library+".library_manager")
-                    if list > 3:
-                        print "calling Config. Server to get LM info for", \
-                              current_library
-                    lmticket = csc.get(current_library+".library_manager")
-                    Trace.trace(10,"read_from_hsm."+ current_library+\
-                                ".library_manager at host="+\
-                                repr(lmticket["hostip"])+\
-                                " port="+repr(lmticket["port"]))
-                    if lmticket["status"][0] != e_errors.OK:
-                        pprint.pprint(lmticket)
-                        Trace.trace(0,"read_from_hsm "+ \
-                                    repr(lmticket["status"]))
-
-                # send to library manager and tell user
-                ticket = u.send(work_ticket, (lmticket['hostip'], lmticket['port']))
-                if list > 3:
-                    print "ENCP:read_from_hsm FC read_from_hsm returned"
-                    pprint.pprint(ticket)
-                if ticket['status'][0] != "ok" :
-                    jraise(errno.errorcode[errno.EPROTO],\
-                           " encp.read_from_hsm: from"\
-                           +"u.send to file_clerk at "+fticket['hostip']+"/"\
-                           +repr(fticket['port']) +", ticket[\"status\"]="\
-                           +repr(ticket["status"]))
-                submitted = submitted+1
-                tinfo["send_ticket"+repr(i)] = time.time() - t2 #------Lap-End
-                if list :
-                    if len(Qd)==0:
-                        format = "  Q'd: %s %s bytes: %d on %s %s "\
-                                 "dt: %f   cumt=%f"
-                        Qd = format %\
-                             (inputlist[i],bfid[i],file_size[i],\
-                              finfo[i]["external_label"],\
-                              finfo[i]["location_cookie"],\
-                              tinfo["send_ticket"+repr(i)],time.time()-t0)
-                    else:
-                        Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s "\
-                             "dt: %f   cumt=%f" %\
-                             (Qd,inputlist[i],bfid[i],file_size[i],\
-                              finfo[i]["external_label"],\
-                              finfo[i]["location_cookie"],\
-                              tinfo["send_ticket"+repr(i)],time.time()-t0)
-
-
-
-        tinfo["send_ticket"] = time.time() - t1 #---------------------------End
-        if list:
-            print Qd
-        if list>1:
-            print "  dt:",tinfo["send_ticket"], "   cumt=",time.time()-t0
-
-        # We have placed our work in the system and now we have to wait for
-        # resources. All we need to do is wait for the system to call us
-        # back, and make sure that is it calling _us_ back, and not some
-        # sort of old call-back to this very same port. It is dicey to time
-        # out, as it is probably legitimate to wait for hours....
-
-        for waiting in range(0,submitted):
-            if list>1:
-                print "Waiting for mover to call back",\
-                      "   cumt=",time.time()-t0
-            t2 = time.time() #----------------------------------------Lap-Start
-            tMBstart = t2
-
-            # listen for a mover - see if id corresponds to one of the tickets
-            #   we submitted for the volume
-            while 1 :
-                Trace.trace(10,"read_from_hsm listening for callback")
-                control_socket, address = listen_socket.accept()
-                ticket = callback.read_tcp_socket(control_socket,\
-                             "encp read_from_hsm, mover call back")
-                if list > 3:
-                    print "ENCP:read_from_hsm MV called back with"
-                    pprint.pprint(ticket)
-                callback_id = ticket['unique_id']
-                forus = 0
-                for j in range(0,ninput):
-                    # compare strings not floats (floats fail comparisons)
-                    if str(unique_id[j])==str(callback_id):
-                        forus = 1
-                        break
-                if forus==1:
-                    Trace.trace(10,"read_from_hsm mover called back on "+\
-                                "control_socket="+repr(control_socket)+\
-                                " address="+repr(address))
-                    break
-                else:
-                    print ("encp read_from_hsm: imposter called us back, "\
-                           +"trying again")
-                    Trace.trace(10,"write_to_hsm mover imposter called us "+\
-                                "control_socket="+repr(control_socket)+\
-                                " address="+repr(address))
-                    control_socket.close()
-
-            # ok, we've been called back with a matched id - how's the status?
-            if ticket["status"][0] != "ok" :
-                jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
-                       +"1st (pre-file-read) mover callback on socket "\
-                       +repr(address)+", failed to setup transfer: "\
-                       +"ticket[\"status\"]="+repr(ticket["status"]))
-            data_path_socket = callback.mover_callback_socket(ticket)
-
-            tinfo["tot_to_mover_callback"+repr(j)] = time.time() - t0 #-----Cum
-            dt = time.time() - t2 #-------------------------------------Lap-End
-            if list>1:
-                print " ",ticket["mover"]["callback_addr"][0],\
-                      ticket["mover"]["callback_addr"][1],\
-                      "cum:",tinfo["tot_to_mover_callback"+repr(j)]
-                print "  dt:",dt,"   cumt=",time.time()-t0
-
-            if list:
-                print "Receiving data for file ", outputlist[j],\
-                      "   cumt=",time.time()-t0
-            t2 = time.time() #----------------------------------------Lap-Start
-
-            # open file that corresponds to the mover call back and read file
-            # crc the data if user has request crc check
-            l = 0
-            mycrc = 0
-            bufsize = 65536*4
-            f = open(outputlist[j],"w")
-            Trace.trace(7,"read_from__hsm: reading data to  file="+\
-                        inputlist[i]+" socket="+repr(data_path_socket)+\
-                        " bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
-            while 1:
-                buf = data_path_socket.recv(bufsize)
-                l = l + len(buf)
-                if len(buf) == 0 : break
-                if chk_crc != 0 :
-                    mycrc = ECRC.ECRC(buf,mycrc)
-                f.write(buf)
-            data_path_socket.close()
-            f.close()
-            fsize = l
-
-            tinfo["recvd_bytes"+repr(j)] = time.time()-t2 #-------------Lap-End
-            if list>1:
-                if tinfo["recvd_bytes"+repr(j)]!=0:
-                    rdrate = 1.*fsize/1024./1024./tinfo["recvd_bytes"+repr(j)]
-                else:
-                    rdrate = 0.0
-                print "  bytes:",fsize, " Socket read Rate = ",rdrate," MB/S"
-                print "  dt:",tinfo["recvd_bytes"+repr(j)],\
-                      "   cumt=",time.time()-t0
-            if list>1:
-                print "Waiting for final mover dialog",\
-                      "   cumt=",time.time()-t0
-            t2 = time.time() #----------------------------------------Lap-Start
-
-            # File has been read - wait for final dialog with mover.
-            Trace.trace(10,"read_from_hsm waiting for final mover dialog on"+\
-                        repr(control_socket))
-            done_ticket = callback.read_tcp_socket(control_socket,\
-                          "encp read_from_hsm, mover final dialog")
-            control_socket.close()
-            Trace.trace(10,"read_from_hsm final dialog recieved")
-
-            # make sure the mover thinks the transfer went ok
-            if done_ticket["status"][0] != "ok" :
-                jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
-                       +"2nd (post-file-read) mover callback on socket "\
-                       +repr(address)+", failed to transfer: "\
-                       +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
-
-            # verify that the crc's match
-            if chk_crc != 0 :
-                if done_ticket["fc"]["complete_crc"] != mycrc :
-                    jraise(errno.errorcode[errno.EPROTO],\
-                           " encp.read_from_hsm: CRC's mismatch: "\
-                           +repr(complete_crc)+" "+repr(mycrc))
-
-            tinfo["final_dialog"+repr(j)] = time.time()-t2 #------------Lap-End
-            if list>1:
-                print "  dt:",tinfo["final_dialog"+repr(j)],\
-                "   cumt=",time.time()-t0
-
-
-            # update the last parked info if we have write access
-            if 0:
-                if list>1:
-                    print "Updating pnfs last parked",\
-                          "   cumt=",time.time()-t0
-                try:
-                    p.set_lastparked(repr(wrapper['fullname']))
-                except:
-                    print "Failed to update last parked info"
-                if list>1:
-                    print "  dt:",tinfo["last_parked"],\
-                          "   cumt=",time.time()-t0
-
-            # calculate some kind of rate - time from beginning to wait for
-            # mover to respond until now. This doesn't include the overheads
-            # before this, so it isn't a correct rate. I'm assuming that the
-            # overheads I've neglected are small so the quoted rate is close
-            # to the right one.  In any event, I calculate an overall rate at
-            # the end of all transfers
-            tnow = time.time()
-            if (tnow-tMBstart)!=0:
-                tinfo['rate'+repr(j)] = 1.*fsize/1024./1024./(tnow-tMBstart)
-            else:
-                tinfo['rate'+repr(j)] = 0.0
-            format = "  %s -> %s : %d bytes copied from %s at"+\
-                     " %s MB/S  requestor:%s     cumt= %f"
-
-            if list:
-                print format %\
-                      (inputlist[j], outputlist[j], fsize,\
-                       done_ticket["fc"]["external_label"],\
-                       tinfo["rate"+repr(j)], wrapper["uname"],\
-                       time.time()-t0)
-            if d0sam:
-                print d0sam_format % \
-                      (inputlist[i],
-                       outputlist[i],
-                       fsize,
-                       done_ticket["fc"]["external_label"],
-                       done_ticket["mover"]["device"],
-                       done_ticket["times"]["transfer_time"],
-                       done_ticket["times"]["seek_time"],
-                       done_ticket["times"]["mount_time"],
-                       done_ticket["times"]["in_queue"],
-                       time.time()-done_ticket["times"]["t0"],
-                       e_errors.OK)
-
-            logc.send(log_client.INFO, 2, format,
-                      inputlist[j], outputlist[j], fsize,
-                      done_ticket["fc"]["external_label"],
-                      tinfo["rate"+repr(j)], wrapper["uname"],
-                      time.time()-t0)
-
+	    files_left, bytes = read_hsm_files(listen_socket, submitted, 
+					       files_left, unique_id, 
+					       inputlist, outputlist, 
+					       file_size, pinfo, finfo, vinfo,
+					       tinfo, wrapper, chk_crc, d0sam,
+					       encp, maxretry, retry, list)
+	    print "FILES_LEFT ", files_left
 
     # we are done transferring - close out the listen socket
     listen_socket.close()
 
     # Calculate an overall rate: all bytes, all time
     tf=tinfo["total"] = time.time()-t0
+    done_ticket = {}
     done_ticket["tinfo"] = tinfo
-    total_bytes = 0
-    for i in range(0,ninput):
-        total_bytes = total_bytes+file_size[i]
+    total_bytes = total_bytes + bytes
     tf = time.time()
     if tf!=t0:
         done_ticket["MB_per_S"] = 1.*total_bytes/1024./1024./(tf-t0)
@@ -1000,6 +763,440 @@ def read_from_hsm(input, output,
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
     #u.send_no_wait({"work":"done_cleanup"}, (fticket['hostip'], fticket['port']))
+
+##############################################################################
+
+# submit read_from_hsm requests
+
+def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size, 
+			 pinfo, client, tinfo, vol, volume, finfo, vinfo, 
+			 encp, ninput, retry, list):
+
+    t2 = time.time() #--------------------------------------------Lap-Start
+    Trace.trace(7,"{submit_read_requests="+repr(inputlist)+" t2="+repr(t2))
+    Qd=""
+    current_library = ''
+    submitted = 0
+    unique_id = []
+    # create the time subticket
+    times = {}
+    times["t0"] = tinfo["abs_start"]
+
+    for i in range(0,ninput):
+        if volume[i]==vol:
+            unique_id.append(time.time())  # note that this is down to mS
+            wrapper["fullname"] = outputlist[i]
+            wrapper["sanity_size"] = 65535
+            wrapper["size_bytes"] = file_size[i]
+
+            # store the pnfs information info into the wrapper
+            for key in pinfo[i].keys():
+                if not client['uinfo'].has_key(key) : # the user key takes precedence over the pnfs key
+                    wrapper[key] = pinfo[i][key]
+
+	    if list > 1: print "RETRY_CNT=", retry[i]
+
+            # generate the work ticket
+            work_ticket = {"work"              : "read_from_hsm",
+                           "wrapper"           : wrapper,
+                           "callback_addr"     : client['callback_addr'],
+                           "fc"                : finfo[i],
+                           "vc"                : vinfo[i],
+                           "encp"              : encp,
+			   "retry_cnt"         : retry[i],
+                           "times"             : times,
+                           "unique_id"         : unique_id[i]
+                           }
+
+            # send ticket to file clerk who sends it to right library manger
+            Trace.trace(8,"submit_read_requests q'ing:"+repr(work_ticket))
+
+            # get the library manager
+            library = vinfo[i]['library']
+            # get LM info from Config Server only if it is different
+            if (current_library != library):
+                current_library = library
+                Trace.trace(8,"submit_read_requests calling config server\
+                to find "+current_library+".library_manager")
+                if list > 3:
+                    print "calling Config. Server to get LM info for", \
+                          current_library
+                lmticket = client['csc'].get(current_library+".library_manager")
+                Trace.trace(8,"submit_read_requests "+ current_library+\
+                            ".library_manager at host="+\
+                            repr(lmticket["hostip"])+\
+                            " port="+repr(lmticket["port"]))
+                if lmticket["status"][0] != e_errors.OK:
+                    pprint.pprint(lmticket)
+                    Trace.trace(0,"submit_read_requests "+ \
+                                repr(lmticket["status"]))
+
+            # send to library manager and tell user
+            ticket = client['u'].send(work_ticket, (lmticket['hostip'], lmticket['port']))
+            if list > 3:
+                print "ENCP:read_from_hsm FC read_from_hsm returned"
+                pprint.pprint(ticket)
+            if ticket['status'][0] != "ok" :
+                jraise(errno.errorcode[errno.EPROTO],\
+                       " encp.read_from_hsm: from"\
+                       +"u.send to file_clerk at "+fticket['hostip']+"/"\
+                       +repr(fticket['port']) +", ticket[\"status\"]="\
+                       +repr(ticket["status"]))
+            submitted = submitted+1
+
+            tinfo["send_ticket"+repr(i)] = time.time() - t2 #------Lap-End
+            if list :
+                if len(Qd)==0:
+                    format = "  Q'd: %s %s bytes: %d on %s %s "\
+                             "dt: %f   cumt=%f"
+                    Qd = format %\
+                         (inputlist[i],bfid[i],file_size[i],\
+                          finfo[i]["external_label"],\
+                          finfo[i]["location_cookie"],\
+                          tinfo["send_ticket"+repr(i)], \
+			  time.time()-tinfo['abs_start'])
+                else:
+                    Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s "\
+                         "dt: %f   cumt=%f" %\
+                         (Qd,inputlist[i],bfid[i],file_size[i],\
+                          finfo[i]["external_label"],\
+                          finfo[i]["location_cookie"],\
+                          tinfo["send_ticket"+repr(i)], \
+			  time.time()-tinfo['abs_start'])
+    
+    Trace.trace(7,"}submit_read_requests. submitted="+repr(submitted)+ \
+		" Qd:"+repr(Qd))
+    return submitted, Qd, unique_id
+
+
+##############################################################################
+
+# read hsm files in the loop after read requests have been submitted
+
+def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outputlist, file_size, pinfo, finfo, vinfo, tinfo, wrapper,
+		   chk_crc, d0sam, encp, maxretry, retry, list):
+    Trace.trace(7,"{read_hsm_files:"+repr(inputlist))
+    files_left = ninput
+    bytes = 0
+    for waiting in range(0,submitted):
+        if list>1:
+            print "Waiting for mover to call back",\
+                  "   cumt=",time.time()-t0
+        t2 = time.time() #----------------------------------------Lap-Start
+        tMBstart = t2
+
+        # listen for a mover - see if id corresponds to one of the tickets
+        #   we submitted for the volume
+        while 1 :
+            Trace.trace(8,"read_hsm_files listening for callback")
+            control_socket, address = listen_socket.accept()
+            ticket = callback.read_tcp_socket(control_socket,\
+                         "encp read_from_hsm, mover call back")
+            if list > 3:
+                print "ENCP:read_from_hsm MV called back with"
+                pprint.pprint(ticket)
+            callback_id = ticket['unique_id']
+            forus = 0
+            for j in range(0,ninput):
+                # compare strings not floats (floats fail comparisons)
+                if str(unique_id[j])==str(callback_id):
+                    forus = 1
+                    break
+            if forus==1:
+                Trace.trace(8,"read_hsm_files: mover called back on "+\
+                            "control_socket="+repr(control_socket)+\
+                            " address="+repr(address))
+                break
+            else:
+                print ("read_hsm_files: imposter called us back, "\
+                       +"trying again")
+                Trace.trace(8,"read_hsm_files: mover imposter called us "+\
+                            "control_socket="+repr(control_socket)+\
+                            " address="+repr(address))
+                control_socket.close()
+
+        # ok, we've been called back with a matched id - how's the status?
+        if ticket["status"][0] != e_errors.OK :
+	    # print error to stdout in d0sam format
+	    print_d0sam_format(inputlist[j], outputlist[j], file_size[j],
+			       ticket)
+	    if not e_errors.is_retriable(ticket["status"][0]):
+		# exit here
+		jraise(errno.errorcode[errno.EPROTO],\
+		       " encp.read_from_hsm: "\
+		       +"1st (pre-file-read) mover callback on socket "\
+		       +repr(address)+", failed to setup transfer: "\
+		       +"ticket[\"status\"]="+repr(ticket["status"]))
+
+	    print_error (errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+                   +"1st (pre-file-read) mover callback on socket "\
+                   +repr(address)+", failed to setup transfer: "\
+                   +"ticket[\"status\"]="+repr(ticket["status"]))
+
+	    if ticket['retry_cnt'] >= maxretry:
+		inputlist.remove(inputlist[j])
+		outputlist.remove(outputlist[j])
+		file_size.remove(file_size[j])
+		pinfo.remove(pinfo[j])
+		finfo.remove(finfo[j])
+		vinfo.remove(vinfo[j])
+		unique_id.remove(unique_id[j])
+		retry.remove(retry[j])
+		if files_left > 0:
+		    files_left = files_left - 1
+	    else:
+		retry[j] = retry[j]+1
+	    continue
+
+        data_path_socket = callback.mover_callback_socket(ticket)
+
+        tinfo["tot_to_mover_callback"+repr(j)] = time.time() - t0 #-----Cum
+        dt = time.time() - t2 #-------------------------------------Lap-End
+        if list>1:
+            print " ",ticket["mover"]["callback_addr"][0],\
+                  ticket["mover"]["callback_addr"][1],\
+                  "cum:",tinfo["tot_to_mover_callback"+repr(j)]
+            print "  dt:",dt,"   cumt=",time.time()-t0
+
+        if list:
+            print "Receiving data for file ", outputlist[j],\
+                  "   cumt=",time.time()-t0
+        t2 = time.time() #----------------------------------------Lap-Start
+
+        # open file that corresponds to the mover call back and read file
+        # crc the data if user has request crc check
+        l = 0
+        mycrc = 0
+        bufsize = 65536*4
+        f = open(outputlist[j],"w")
+        Trace.trace(8,"read_hsm_files: reading data to  file="+\
+                    inputlist[j]+" socket="+repr(data_path_socket)+\
+                    " bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
+        while 1:
+            buf = data_path_socket.recv(bufsize)
+            l = l + len(buf)
+            if len(buf) == 0 : break
+            if chk_crc != 0 :
+                mycrc = ECRC.ECRC(buf,mycrc)
+            f.write(buf)
+        data_path_socket.close()
+        f.close()
+        fsize = l
+
+        tinfo["recvd_bytes"+repr(j)] = time.time()-t2 #-------------Lap-End
+        if list>1:
+            if tinfo["recvd_bytes"+repr(j)]!=0:
+                rdrate = 1.*fsize/1024./1024./tinfo["recvd_bytes"+repr(j)]
+            else:
+                rdrate = 0.0
+            print "  bytes:",fsize, " Socket read Rate = ",rdrate," MB/S"
+            print "  dt:",tinfo["recvd_bytes"+repr(j)],\
+                  "   cumt=",time.time()-t0
+        if list>1:
+            print "Waiting for final mover dialog",\
+                  "   cumt=",time.time()-t0
+        t2 = time.time() #----------------------------------------Lap-Start
+
+        # File has been read - wait for final dialog with mover.
+        Trace.trace(8,"read_hsm_files waiting for final mover dialog on"+\
+                    repr(control_socket))
+        done_ticket = callback.read_tcp_socket(control_socket,\
+                      "encp read_from_hsm, mover final dialog")
+        control_socket.close()
+        Trace.trace(8,"read_hsm_files final dialog recieved")
+
+        # make sure the mover thinks the transfer went ok
+        if done_ticket["status"][0] != e_errors.OK:
+	    # print error to stdout in d0sam format
+	    print_d0sam_format(inputlist[j], outputlist[j], file_size[j],
+			       done_ticket)
+	    # exit here
+	    if not e_errors.is_retriable(ticket["status"][0]):
+		jraise(errno.errorcode[errno.EPROTO], \
+		       " encp.read_from_hsm: "\
+		       +"2nd (post-file-read) mover callback on socket "\
+		       +repr(address)+", failed to transfer: "\
+		       +"done_ticket[\"status\"]="\
+		       +repr(done_ticket["status"]))
+
+
+            print_error(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+                   +"2nd (post-file-read) mover callback on socket "\
+                   +repr(address)+", failed to transfer: "\
+                   +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
+
+	    if ticket['retry_cnt'] >= maxretry:
+		inputlist.remove(inputlist[j])
+		outputlist.remove(outputlist[j])
+		file_size.remove(file_size[j])
+		pinfo.remove(pinfo[j])
+		finfo.remove(finfo[j])
+		vinfo.remove(vinfo[j])
+		unique_id.remove(unique_id[j])
+		retry.remove(retry[j])
+		if files_left > 0:
+		    files_left = files_left - 1
+	    else:
+		retry[j] = retry[j]+1
+	    continue
+
+        # verify that the crc's match
+        if chk_crc != 0 :
+            if done_ticket["fc"]["complete_crc"] != mycrc :
+		# print error to stdout in d0sam format
+		done_ticket['status'][0] = e_errors.READ_COMPCRC
+		print_d0sam_format(inputlist[j], outputlist[j], file_size[j],
+				   done_ticket)
+
+                print_error(errno.errorcode[errno.EPROTO],\
+                       " encp.read_from_hsm: CRC's mismatch: "\
+                       +repr(complete_crc)+" "+repr(mycrc))
+
+		# no retry for this case
+		bytes = bytes+file_size[j]
+		inputlist.remove(inputlist[j])
+		outputlist.remove(outputlist[j])
+		file_size.remove(file_size[j])
+		pinfo.remove(pinfo[j])
+		finfo.remove(finfo[j])
+		vinfo.remove(vinfo[j])
+		unique_id.remove(unique_id[j])
+		retry.remove(retry[j])
+		if files_left > 0:
+		    files_left = files_left - 1
+
+		continue
+		
+
+        tinfo["final_dialog"+repr(j)] = time.time()-t2 #-----------Lap-End
+        if list>1:
+            print "  dt:",tinfo["final_dialog"+repr(j)],\
+            "   cumt=",time.time()-t0
+
+
+	
+        # update the last parked info if we have write access
+        if 0:
+            if list>1:
+                print "Updating pnfs last parked",\
+                      "   cumt=",time.time()-t0
+            try:
+                p.set_lastparked(repr(wrapper['fullname']))
+            except:
+                print "Failed to update last parked info"
+            if list>1:
+                print "  dt:",tinfo["last_parked"],\
+                      "   cumt=",time.time()-t0
+
+        # calculate some kind of rate - time from beginning to wait for
+        # mover to respond until now. This doesn't include the overheads
+        # before this, so it isn't a correct rate. I'm assuming that the
+        # overheads I've neglected are small so the quoted rate is close
+        # to the right one.  In any event, I calculate an overall rate at
+        # the end of all transfers
+        tnow = time.time()
+        if (tnow-tMBstart)!=0:
+            tinfo['rate'+repr(j)] = 1.*fsize/1024./1024./(tnow-tMBstart)
+        else:
+            tinfo['rate'+repr(j)] = 0.0
+        format = "  %s -> %s : %d bytes copied from %s at"+\
+                 " %s MB/S  requestor:%s     cumt= %f"
+
+        if list:
+            print format %\
+                  (inputlist[j], outputlist[j], fsize,\
+                   done_ticket["fc"]["external_label"],\
+                   tinfo["rate"+repr(j)], wrapper["uname"],\
+                   time.time()-t0)
+        if d0sam:
+	    print_d0sam_format(inputlist[j], outputlist[j], fsize,
+			       done_ticket)
+
+        logc.send(log_client.INFO, 2, format,
+                  inputlist[j], outputlist[j], fsize,
+                  done_ticket["fc"]["external_label"],
+                  tinfo["rate"+repr(j)], wrapper["uname"],
+                  time.time()-t0)
+	# remove file requests if transfer completed succesfuly
+	if (done_ticket["status"][0] == e_errors.OK):
+	    bytes = bytes+file_size[j]
+	    inputlist.remove(inputlist[j])
+	    outputlist.remove(outputlist[j])
+	    file_size.remove(file_size[j])
+	    pinfo.remove(pinfo[j])
+	    finfo.remove(finfo[j])
+	    vinfo.remove(vinfo[j])
+	    unique_id.remove(unique_id[j])
+	    retry.remove(retry[j])
+	    if files_left > 0:
+		files_left = files_left - 1
+
+	if list > 3:
+	    print "Done"
+	    pprint.pprint(done_ticket)
+    
+    Trace.trace(7,"}read_hsm_files. files left=:"+repr(files_left))
+    return files_left, bytes
+	    
+##############################################################################
+
+# log the error to the logger and print it to the stderr
+
+def print_error(errcode,errmsg) :
+    Trace.trace(0,"{encp.print_error errcode="+repr(errcode)+\
+                " errmsg="+repr(errmsg))
+
+    format = "Fatal error:"+str(errcode)+str(errmsg)
+    x=sys.stdout;sys.stdout=sys.stderr
+    print format
+    try:
+        global logc
+        logc.send(log_client.ERROR, 1, format)
+    except:
+        pass
+    sys.stdout=x
+    Trace.trace(0,"}encp.print_error")
+
+##############################################################################
+# print statistics in d0sam format
+def print_d0sam_format(inputfile, outputfile, filesize, ticket):
+    # check if all fields in ticket present
+    try:
+	external_label = ticket["fc"]["external_label"]
+    except:
+	external_label = ''
+    try:
+	device = ticket["mover"]["device"]
+    except:
+	device = ''
+    try:
+	transfer_time = ticket["times"]["transfer_time"]
+    except:
+	transfer_time = 0
+    try:
+	seek_time = ticket["times"]["seek_time"]
+    except:
+	seek_time = 0
+    try:
+	mount_time = ticket["times"]["mount_time"]
+    except:
+	mount_time = 0
+    try:
+	in_queue = ticket["times"]["in_queue"]
+    except:
+	in_queue = 0
+    try:
+	total = time.time()-ticket["times"]["t0"]
+    except:
+	total = 0
+    try:
+	status = ticket["status"][0]
+    except:
+	status = 'Unknown'
+    print d0sam_format % (inputfile, outputfile, filesize, external_label,
+	   device, transfer_time, seek_time, mount_time, in_queue, total,
+	   status)
+
 
 ##############################################################################
 
@@ -1427,3 +1624,18 @@ if __name__  ==  "__main__" :
         jraise(errno.errorcode[errno.EPROTO],emsg)
 
     Trace.trace(1,"encp finished at "+repr(time.time()))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
