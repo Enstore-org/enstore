@@ -159,7 +159,7 @@ def move_file(input_filename, output_filename):
         print_error(e_errors.CONFLICT,
                     "Original drive information does not match.")
         sys.exit(1)
-    elif p.crc != pnfs.UNKNOWN and file_info['complete_crc']:
+    elif p.crc != pnfs.UNKNOWN and long(p.crc) != file_info['complete_crc']:
         print_error(e_errors.CONFLICT,
                     "CRC information does not match.")
         sys.exit(1)
