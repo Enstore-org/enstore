@@ -734,7 +734,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		callback.write_tcp_obj(self.data_socket,ticket)
 
 		# log the activity
-		Trace.log(e_errors.INFO, "start listing "+external_label)
+		Trace.log(e_errors.INFO, "start listing "+external_label+" (2)")
 		
 		q = "select bfid, crc, deleted, drive, volume.label, \
 					location_cookie, pnfs_path, pnfs_id, \
@@ -750,7 +750,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.data_socket.close()
 		callback.write_tcp_obj(self.control_socket,ticket)
 		self.control_socket.close()
-		Trace.log(e_errors.INFO, "finish listing "+external_label)
+		Trace.log(e_errors.INFO, "finish listing "+external_label+" (2)")
 		return
 
 	# list_active(self, ticket) -- list the active files on a volume
