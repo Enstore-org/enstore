@@ -412,8 +412,8 @@ def print_volume_quotas_status(volume_quotas, output_file):
         if keys not in top + bottom:
             middle.append(keys)
 
-    #quotas.sort()
     for quotas in (top, middle, bottom):
+        quotas.sort()
         for keys in quotas:
             formated_tuple = volume_quotas[keys][0:7] + \
                              format_storage_size(volume_quotas[keys][6]) + \
