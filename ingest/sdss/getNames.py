@@ -34,9 +34,14 @@ def findFile(username, nodename, mjd, tapeLabel):
         remoteMetaTapeLogFilePath = os.path.join(GOLDEN_DIR, mjd,
                                                  metaTapeLogFileName)
 
+        #Create the strings for finding the par file.
+        # The ls_command string is the command to run via rsh.
         ls_command = "ls %s %s" % (remoteMetaTarTapeFilePath,
                                    remoteMetaTapeLogFilePath)
-        rsh_command = 'rsh -l %s %s %s 2> /dev/null' % \
+        # The rsh_command string needs the -n option to redirect stdin
+        # correctly to keep the job from being stopped in some cases.  The
+        # -l <username> options tell the process to rsh as the specified user.
+        rsh_command = 'rsh -n -l %s %s %s 2> /dev/null' % \
                       (username, nodename, ls_command)
 
         print rsh_command
@@ -54,11 +59,17 @@ def findFile(username, nodename, mjd, tapeLabel):
               "command line for volume %s.  Attepting to find par file.  " \
               " This will take a while." % (tapeLabel,)
 
+        #Create the strings for finding the par file.
+        # The find_command string is the command to search all of SDSS's
+        # par files for the one describing the current tape.
         find_command = "find %s -follow -maxdepth 2 " \
                        "-name %s -o -name %s" % \
                        (GOLDEN_DIR, metaTarTapeFileName,
                         metaTapeLogFileName)
-        rsh_command = 'rsh -l %s %s %s 2> /dev/null' % \
+        # The rsh_command string needs the -n option to redirect stdin
+        # correctly to keep the job from being stopped in some cases.  The
+        # -l <username> options tell the process to rsh as the specified user.
+        rsh_command = 'rsh -n -l %s %s %s 2> /dev/null' % \
                       (username, nodename, find_command)
 
         print rsh_command
