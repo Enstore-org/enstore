@@ -8,11 +8,16 @@ import socket
 import select
 import string
 import time
+import threading
+import enstore_display
 
 import rexec
 
+_rexec = rexec.RExec()
+
+
 def eval(stuff):
-    return rexec.RExec().r_eval(stuff)
+    return _rexec.r_eval(stuff)
 
 import setpath
 import udp_client
@@ -90,36 +95,35 @@ def handle_status(mover, status):
             client = client[:colon]
         if client:
             send("connect %s %s" % (mover, client))
-    
+            
 def main():
     global s, dst
 
     if len(sys.argv) > 1:
-        event_relay_host = sys.argv[1] # gets command line parameters
+        event_relay_host = sys.argv[1]
     else:
-        event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST") #if we don't specify a host, this will get the default host which is rip7
-        system_name = event_relay_host #this will be the name of display
+        event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
+        system_name = event_relay_host
     if event_relay_host[:2]=='d0':
         event_relay_host = 'd0ensrv2.fnal.gov'
         system_name = 'd0en'
     elif event_relay_host[:3]=='stk':
         event_relay_host = 'stkensrv2.fnal.gov'
         system_name = 'stken'
-
-
+        
     event_relay_port = 55510
     os.environ['ENSTORE_CONFIG_HOST'] = event_relay_host
 
-    pipe = os.popen("python -u ./enstore_display.py %s"%(system_name,), 'r')
-    msg = pipe.readline()
-    words = string.split(msg)
-    if words[0]!='addr=':
-        print "Error", msg
-        sys.exit(-1)
-    
-    target_ip = words[1]
-    target_port = int(words[2])
-    dst = (target_ip, target_port)
+    display = enstore_display.Display(master=None, title=system_name,
+                                      window_width=700, window_height=1600,
+                                      canvas_width=1000, canvas_height=2000,
+                                      background='#add8e6')
+    display_thread = threading.Thread(group=None, target=display.mainloop,
+                                      name='', args=(), kwargs={})
+    display_thread.start()
+
+
+    dst = display.addr
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     #Tell enstore_display what the movers are
@@ -129,25 +133,25 @@ def main():
     #give it a little time to draw the movers
     time.sleep(3)
 
-    config = get_config()#we need the config file to locate: port numbers....
+    config = get_config()
 
     u = udp_client.UDPClient()
-    tsd = u.get_tsd()#thread specific data (this is where we get socket)
-    sock =  tsd.socket.socket #XXXXXXXXXX
+    tsd = u.get_tsd()
+    sock =  tsd.socket.socket
     reqs = {}
     ticket = {"work" : "status"}
         
     for mover in movers:
         mover_config = config[mover+'.mover']
         mover_addr = (mover_config['hostip'], mover_config['port'])
-        u.send_no_wait(ticket, mover_addr)#the ticket and mover_addr is found in the figure file  (ex.  hostip and port numbers can be found there)
+        u.send_no_wait(ticket, mover_addr)
         reqs[tsd.txn_counter] = mover
         
     
     # Subscribe to the event notifier
     if debug:
         print "subscribe"
-    s.sendto("notify %s %s" % (target_ip, target_port),
+    s.sendto("notify %s %s" % (dst),
              (event_relay_host, event_relay_port))
 
             
@@ -157,7 +161,7 @@ def main():
     # every 10 minutes
     last_sub = 0
     while 1:
-        r, w, x = select.select([pipe, sock], [], [], 600)
+        r, w, x = select.select([sock], [], [], 600)
         
         if sock in r: #getting responses to our mover status queries
             try:
@@ -168,15 +172,9 @@ def main():
             try:
                 msg_id, status, timestamp = eval(msg)
                 mover = reqs[msg_id]
-                handle_status(mover, status)### sending statements like : sending state DI53M2 IDLE 536451.44303
+                handle_status(mover, status)
             except:
                 print "Error", msg
-            
-        if pipe in r: #getting messages from the child (enstore display)
-            l = pipe.readline()
-            if not l:
-                break
-            print l,
             
         now = time.time()
         if now - last_sub >= 600:
@@ -186,8 +184,7 @@ def main():
                 last_sub = now
             except:
                 pass
-
+        
 if __name__ == "__main__":
     main()
-   
     
