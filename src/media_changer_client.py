@@ -17,6 +17,7 @@ import udp_client
 import interface
 import generic_client
 import Trace
+import e_errors
 
 class MediaChangerClient(generic_client.GenericClient):
     def __init__(self, csc=0, list=0, name="", host=interface.default_host(), \
@@ -107,7 +108,7 @@ if __name__ == "__main__" :
 
     del mcc.csc.u
     del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if ticket['status'] == 'ok' :
+    if ticket['status'][0] == e_errors.OK :
         if intf.list:
             pprint.pprint(ticket)
         Trace.trace(1,"mcc exit ok")
