@@ -2835,7 +2835,7 @@ def open_control_socket(listen_socket, mover_timeout):
 
     #Perform one last test of the socket.  This should never fail, but
     # on occasion does...
-    fds, unused, unused = select.select([control_socket], [], [], 1)
+    fds, unused, unused = select.select([control_socket], [], [], 0.0)
     try:
         if fds:
             ticket = callback.read_tcp_obj(control_socket)
@@ -2961,11 +2961,14 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
     unique_id_list = []
     for work_ticket in work_tickets:
         unique_id_list.append(work_ticket['unique_id'])
-        
+
+    start_time = time.time()
+    while time.time() < start_time + encp_intf.mover_timeout:
         #Attempt to get the control socket connected with the mover.
+        duration = max(start_time + encp_intf.mover_timeout - time.time(), 0)
         try:
 		control_socket, mover_address, ticket = open_control_socket(
-		    use_listen_socket, encp_intf.mover_timeout)
+		    use_listen_socket, duration)
         except (socket.error, select.error, EncpError), msg:
             #exc, msg = sys.exc_info()[:2]
             if getattr(msg, "errno", None) == errno.EINTR:
@@ -3101,6 +3104,9 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
         #ticket['status'] = (e_errors.NET_ERROR, "because I closed them")
 
         return control_socket, data_path_socket, ticket
+
+    ticket['status'] = (e_errors.TIMEDOUT, "Mover did not call back.")
+    return None, None, ticket
     
 ############################################################################
 ############################################################################
@@ -3831,7 +3837,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 #Determine if the control socket has some error to report.
                 try:
                     read_fd, unused, unused = select.select([control_socket],
-                                                            [], [], 1)
+                                                            [], [], 0.0)
                     break  #No exception raised; success.
                 except select.error, msg:
                     if getattr(msg, "errno", None) == errno.EINTR:
@@ -3842,12 +3848,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                         read_fd = []
                         break
                         
-            #check control socket for error.
+            #Check control socket for error.
             if read_fd:
                 socket_dict = receive_final_dialog(control_socket)
                 socket_status = socket_dict.get('status', (e_errors.OK , None))
                 request_dictionary = combine_dict(socket_dict,
                                                   request_dictionary)
+                Trace.log(e_errors.WARNING,
+                          "Control socket status: %s" % (socket_status,))
 
     #Just to be paranoid check the listening socket.  Check the current
     # socket status to avoid wiping out an error.
@@ -5101,6 +5109,65 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
 
 ############################################################################
 
+def stall_write_transfer(data_path_socket, e):
+    #Stall starting the count until the first byte is ready for writing.
+    duration = e.mover_timeout
+    while 1:
+        start_time = time.time()
+        try:
+            write_fd = select.select([], [data_path_socket], [],
+                                     duration)[1]
+            break
+        except select.error, msg:
+            if getattr(msg, "errno", None) == errno.EINTR:
+                #If the select was interupted by a signal, keep going.
+                duration = duration - (time.time() - start_time)
+                continue
+            else:
+                write_fd = []
+                break
+
+    if data_path_socket not in write_fd:
+        status_ticket = {'status' : (e_errors.UNKNOWN,
+                                     "No data written to mover.")}
+
+    #To achive more accurate rates on writes to enstore when a tape
+    # needs to be mounted, wait until the mover has sent a byte as
+    # a signal to encp that it is ready to read data from its socket.
+    # Otherwise, 64K bytes just sit in the movers recv queue and the clock
+    # ticks by making the write rate worse.  When the mover finally
+    # mounts and positions the tape, the damage to the rate is already
+    # done.
+    duration = e.mover_timeout
+    while 1:
+        start_time = time.time()
+        try:
+            read_fd = select.select([data_path_socket], [], [],
+                                     duration)[0]
+            break
+        except select.error, msg:
+            if getattr(msg, "errno", None) == errno.EINTR:
+                #If the select was interupted by a signal, keep going.
+                duration = duration - (time.time() - start_time)
+                continue
+            else:
+                read_fd = []
+                break
+
+    if data_path_socket not in read_fd:
+        status_ticket = {'status' : (e_errors.UNKNOWN,
+                                     "No data written to mover.")}
+    #If there is no data waiting in the buffer, we have an error.
+    elif len(data_path_socket.recv(1, socket.MSG_PEEK)) == 0:
+        status_ticket = {'status' : (e_errors.UNKNOWN,
+                                     "No data written to mover.")}
+    else:
+        status_ticket = {'status' : (e_errors.OK, None)}
+
+    return status_ticket
+
+############################################################################
+
 
 def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
@@ -5176,72 +5243,32 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
                       (work_ticket['infile'],
                        time.time()-tinfo['encp_start_time']))
 
-
-        #Stall starting the count until the first byte is ready for writing.
-        duration = e.mover_timeout
-        while 1:
-            start_time = time.time()
-            try:
-                write_fd = select.select([], [data_path_socket], [],
-                                         duration)[1]
-                break
-            except select.error, msg:
-                if getattr(msg, "errno", None) == errno.EINTR:
-                    #If the select was interupted by a signal, keep going.
-                    duration = duration - (time.time() - start_time)
-                    continue
-                else:
-                    write_fd = []
-                    break
+        #We need to stall the transfer until the mover is ready.
+        done_ticket = stall_write_transfer(data_path_socket, e)
         
-        #To achive more accurate rates on writes to enstore when a tape
-        # needs to be mounted, wait until the mover has sent a byte as
-        # a signal to encp that it is ready to read data from its socket.
-        # Otherwise, 64K bytes just sit in the movers recv queue and the clock
-        # ticks by making the write rate worse.  When the mover finally
-        # mounts and positions the tape, the damage to the rate is already
-        # done.
-        duration = e.mover_timeout
-        while 1:
-            start_time = time.time()
-            try:
-                read_fd = select.select([data_path_socket], [], [],
-                                         duration)[0]
-                break
-            except select.error, msg:
-                if getattr(msg, "errno", None) == errno.EINTR:
-                    #If the select was interupted by a signal, keep going.
-                    duration = duration - (time.time() - start_time)
-                    continue
-                else:
-                    read_fd = []
-                    break
-                
-        if not write_fd or not read_fd:
-            status_ticket = {'status':(e_errors.UNKNOWN,
-                                       "No data written to mover.")}
+        if not e_errors.is_ok(done_ticket):
+            #Make one last check of everything before entering transfer_file().
+            # Only test control_socket if a known problem exists.  Otherwise,
+            # for small files it is possible that a successful final dialog
+            # message gets 'eaten' up.
             external_label = work_ticket.get('fc',{}).get('external_label',
                                                           None)
             result_dict = handle_retries([work_ticket], work_ticket,
-                                         status_ticket, e,
+                                         done_ticket, e,
                                          listen_socket = listen_socket,
                                          udp_server = route_server,
                                          control_socket = control_socket,
                                          external_label = external_label)
-            
-            close_descriptors(control_socket, data_path_socket, in_fd)
-            
+
             if e_errors.is_retriable(result_dict['status'][0]):
+                close_descriptors(control_socket, data_path_socket, in_fd)
                 continue
             elif e_errors.is_non_retriable(result_dict['status'][0]):
+                close_descriptors(control_socket, data_path_socket, in_fd)
                 return combine_dict(result_dict, work_ticket)
 
-        #Trace.message(TRANSFER_LEVEL, "Starting transfer.  elapsed=%s" %
-        #          (time.time() - tinfo['encp_start_time'],))
-            
         lap_time = time.time() #------------------------------------------Start
 
-        #done_ticket = transfer_file(in_fd, data_path_socket.fileno(),
         done_ticket = transfer_file(in_fd, data_path_socket,
                                     control_socket, work_ticket,
                                     tinfo, e)
@@ -6867,6 +6894,52 @@ def submit_read_requests(requests, tinfo, encp_intf):
 
     return submitted, ticket
 
+#######################################################################
+
+def stall_read_transfer(data_path_socket, work_ticket, e):
+    #Stall starting the count until the first byte is ready for reading.
+    duration = e.mover_timeout
+    while 1:
+        start_time = time.time()
+        try:
+            read_fd, unused, unused = select.select([data_path_socket],
+                                                    [], [], duration)
+            break
+        except select.error, msg:
+            if getattr(msg, "errno", None) == errno.EINTR:
+                #If the select was interupted by a signal, keep going.
+                duration = duration - (time.time() - start_time)
+                continue
+            else:
+                read_fd = []
+                break
+
+    if data_path_socket not in read_fd:
+        status_ticket = {'status' : (e_errors.UNKNOWN,
+                                     "No data read from mover.")}
+        return status_ticket
+
+    if work_ticket['file_size'] == 0:
+        #In the odd case that the file is of zero length, we would expect
+        # that the socket buffer be empty.
+        target_size = 0
+    elif work_ticket['file_size'] == None:
+        #This case happens with get transfers without known metadata.
+        target_size = None
+    else:
+        target_size = 1
+
+    #If there is no data waiting in the buffer, we have an error.
+    if target_size == None:
+        status_ticket = {'status' : (e_errors.OK, None)}
+    elif len(data_path_socket.recv(1, socket.MSG_PEEK)) != target_size:
+        status_ticket = {'status' : (e_errors.UNKNOWN,
+                                     "No data read from mover.")}
+    else:
+        status_ticket = {'status' : (e_errors.OK, None)}
+
+    return status_ticket
+
 #############################################################################
 
 # read hsm files in the loop after read requests have been submitted
@@ -6984,44 +7057,30 @@ def read_hsm_files(listen_socket, route_server, submitted,
                   (request_ticket['outfile'],
                    time.time() - tinfo['encp_start_time']))
 
-        #Stall starting the count until the first byte is ready for reading.
-        duration = e.mover_timeout
-        while 1:
-            start_time = time.time()
-            try:
-                read_fd = select.select([data_path_socket], [], [], duration)
-                break
-            except select.error, msg:
-                if getattr(msg, "errno", None) == errno.EINTR:
-                    #If the select was interupted by a signal, keep going.
-                    duration = duration - (time.time() - start_time)
-                    continue
-                else:
-                    read_fd = []
-                    break
+        #We need to stall the transfer until the mover is ready.
+        done_ticket = stall_read_transfer(data_path_socket, request_ticket, e)
 
-        if not read_fd:
-            status_ticket = {'status':(e_errors.UNKNOWN,
-                                       "No data read from mover.")}
+        if not e_errors.is_ok(done_ticket):
+            #Make one last check of everything before entering transfer_file().
+            # Only test control_socket if a known problem exists.  Otherwise,
+            # for small files it is possible that a successful final dialog
+            # message gets 'eaten' up.
+                                         
             external_label = request_ticket.get('fc',{}).get('external_label',
                                                              None)
             result_dict = handle_retries([request_ticket], request_ticket,
-                                         status_ticket, e,
+                                         done_ticket, e,
                                          listen_socket = listen_socket,
                                          udp_server = route_server,
                                          control_socket = control_socket,
                                          external_label = external_label)
-            
-            close_descriptors(control_socket, data_path_socket, out_fd)
-            
+
             if e_errors.is_retriable(result_dict['status'][0]):
+                close_descriptors(control_socket, data_path_socket, out_fd)
                 continue
             elif e_errors.is_non_retriable(result_dict['status'][0]):
+                close_descriptors(control_socket, data_path_socket, out_fd)
                 return combine_dict(result_dict, request_ticket)
-
-
-        #Trace.message(TRANSFER_LEVEL, "Starting transfer.  elapsed=%s" %
-        #          (time.time() - tinfo['encp_start_time'],))
         
         lap_start = time.time() #----------------------------------------Start
 

@@ -480,30 +480,24 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
         Trace.message(5, "Waiting for data")
         Trace.log(e_errors.INFO, "Waiting for data")
-        
-        # Stall starting the count until the first byte is ready for reading.
-        duration = e.mover_timeout
-        while 1:
-            start_time = time.time()
-            try:
-                read_fd, unused, unused = select.select([data_path_socket],
-                                                        [], [], duration)
-                break
-            except socket.error, msg:
-                if getattr(msg, "errno", None) == errno.EINTR:
-                    duration = duration - (time.time() - start_time)
-                    continue
-                else:
-                    read_fd = []
-                    break
-                
-        if data_path_socket not in read_fd:
-            status_ticket = {'status':(e_errors.UNKNOWN,
-                                       "No data read from mover.")}
+
+        #We need to stall the transfer until the mover is ready.
+        done_ticket = encp.stall_read_transfer(data_path_socket,
+                                               work_ticket, e)
+
+        if not e_errors.is_ok(done_ticket):
+            #Make one last check of everything before entering transfer_file().
+            # Only test control_socket if a known problem exists.  Otherwise,
+            # for small files it is possible that a successful final dialog
+            # message gets 'eaten' up.
+
+            #Make one last check of everything before entering transfer_file().
             external_label = work_ticket.get('fc', {}).get('external_label',
                                                            None)
             result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                              status_ticket, e,
+                                              done_ticket, e,
+                                              udp_server = udp_socket,
+                                              control_socket = control_socket,
                                               external_label = external_label)
 
             if not e_errors.is_ok(result_dict):
