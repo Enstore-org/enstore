@@ -58,7 +58,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_alive(host, prefix, stat)
 	    self.htmlfile.output_alive(host, prefix, stat)
-	except errno.errorcode[errno.ETIMEDOUT]:	
+	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.essfile.output_etimedout((host, port), prefix)
 	    self.htmlfile.output_etimedout((host, port), prefix)
 	    ret = timed_out
@@ -67,6 +67,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the library manager work queue and output it
     def work_queue(self, lm, (host, port), list):
+        Trace.trace(13,"{work_queue "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.getwork(list)
 	    self.essfile.output_lmqueues(stat, list)
@@ -74,9 +75,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout((host, port), "    ")
 	    self.htmlfile.output_etimedout((host, port), "    ")
+        Trace.trace(13,"}work_queue ")
 
     # get the library manager mover list and output it
     def mover_list(self, lm, (host, port), list):
+        Trace.trace(13,"{mover_list "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.getmoverlist()
 	    self.essfile.output_lmmoverlist(stat, list)
@@ -84,6 +87,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout((host, port), "    ")
 	    self.htmlfile.output_etimedout((host, port), "    ")
+        Trace.trace(13,"}mover_list ")
 
     # get the information from the configuration server
     def update_config(self):
