@@ -172,6 +172,8 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.contents = []
 	self.help_file = help_file
 	self.system_tag = system_tag
+	self.script_title_gif = None
+	self.description = None
 
     # generate the three button navigation table for the top of each of the
     # enstore web pages
