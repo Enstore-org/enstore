@@ -60,6 +60,10 @@ def mkdir_p(path): # python 1.5.2 has makedirs but we may not be running that ve
 
     head, tail = os.path.split(path)
 
+    if not head:
+        os.mkdir(tail, 0777)
+        return
+    
     if os.path.exists(head):
         if not os.path.isdir(head):
             raise "OSError", (head, "not a directory")
@@ -135,7 +139,7 @@ if __name__=="__main__":
         #media_type came from cmdline
         capacity_bytes=0
         remaining_bytes=0
-        nfiles = string.atoi(vol["next_file"])
+        nfiles = string.atoi(vol["next_file"]) - 1
         eod_cookie = "0000_000000000_%07d"%(nfiles+1) #+1 to skip VOL1 label
         user_inhibit = "none"
         error_inhibit = "none"
@@ -147,11 +151,12 @@ if __name__=="__main__":
         declared = first_access
         sum_wr_err = 0
         sum_rd_err = 0
-        non_del_files = sum_wr_access = nfiles+1
+        non_del_files = sum_wr_access = nfiles
         sum_rd_access = 0
         wrapper = vol["format"]
         blocksize = string.atoi(vol["blocksize"])
-
+        system_inhibit = "readonly"
+        
         if verbose: print "addvol", vol_name
         ## addvol, set file family to remote hostname (from metadata)
         done_ticket = vcc.addvol( library,      
@@ -172,7 +177,8 @@ if __name__=="__main__":
                                   sum_rd_access,
                                   wrapper,
                                   blocksize,
-                                  non_del_files)
+                                  non_del_files,
+                                  system_inhibit)
 
         status = done_ticket["status"]
         if status[0] != "ok":
@@ -182,7 +188,7 @@ if __name__=="__main__":
         
         for file_num in vol['files'].keys():
             file = vol['files'][file_num]
-            n = string.atoi(file_num)+1 # skip over VOL1 header
+            n = string.atoi(file_num) 
             loc_cookie = "0000_000000000_%07d" % n
             if (file['early_checksum_size'] == 'None'
                 or file['early_checksum'] == 'None'):
