@@ -31,8 +31,12 @@ ftt_status(ftt_descriptor d, int time_out) {
     res = ftt_translate_error(d,FTT_OPN_STATUS,"ftt_status",
 				res,"an MTIOCGET ioctl()",1);
 
+    ftt_close_dev(d);
     while ((0 <= res && !(GMT_ONLINE(buf.mt_gstat)) && time_out > 0)) {
 	sleep(1);
+
+	if (0 > (res = ftt_open_dev(d))) return res;
+
 	res = ioctl(d->file_descriptor,MTIOCGET,&buf);
 	res = ftt_translate_error(d,FTT_OPN_STATUS,"ftt_status",
 				res,"an MTIOCGET ioctl()",1);
