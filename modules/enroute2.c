@@ -39,37 +39,28 @@ static char *signature = "Enstore \nSignature: \n2nst4r2 \n2etuorne ";
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
+#include <limits.h>
+#include <ctype.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/route.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <netdb.h>
-#include <errno.h>
-#include <sys/stat.h>
-#include <limits.h>
-#include <sys/wait.h>
-//#include <setjmp.h>
-//#include <signal.h>
-//#include <fcntl.h>
-#include <sys/ioctl.h>
 
 #define SEQ 1
 
 #include "enrouteError.h"
 
 static int valid_key(char *key);
-static int is_exe(char *path);
-static char *getexecpath(char *path);
-static int force_arp_update(char *dest_addr, char *local_intf);
-
 static int do_routing(char *cmd, char *dest, char *gw, char *if_name);
 static int do_arping(char *cmd, char *dest, char *dest_hwaddr);
-
-//static jmp_buf alarm_jump;
 
 main(argc, argv)
 int argc;
@@ -139,28 +130,33 @@ static do_routing(char *cmd, char *dest, char *gw, char *if_name)
   int rs;   /*routing socket*/
    
   /*routing socket*/
+  
   rs = socket(PF_INET, SOCK_DGRAM, 0);
 
   /*clear these stuctures*/
+  
   memset(&addr, 0, sizeof(struct sockaddr_in));
   memset(&rt_msg, 0, sizeof(struct rtentry));
 
   /*Set the flags*/
+  
   rt_msg.rt_flags = RTF_UP | RTF_HOST;
 
   /* destination */
+  
   host = gethostbyname(dest);
   addr.sin_family = AF_INET;
   addr.sin_addr = *((struct in_addr*) host->h_addr_list[0]);
-  memcpy(&(rt_msg.rt_dst), &addr, sizeof(addr));
+  (void) memcpy(&(rt_msg.rt_dst), &addr, sizeof(addr));
 
-  /* gateway */
+  /* gateway, if any */
+  
   if (gw != NULL)
   {
     host = gethostbyname(gw);
     addr.sin_family = AF_INET;
     addr.sin_addr = *((struct in_addr*) host->h_addr_list[0]);
-    memcpy(&(rt_msg.rt_gateway), &addr, sizeof(addr));
+    (void) memcpy(&(rt_msg.rt_gateway), &addr, sizeof(addr));
 
     rt_msg.rt_flags |= RTF_GATEWAY;
   }
@@ -181,9 +177,9 @@ static do_routing(char *cmd, char *dest, char *gw, char *if_name)
     {
        if(errno != EEXIST)
        {
-	  fprintf(stderr,
-		  "enroute2(SIOCADDRT): errno %d: %s\n",
-		  errno, strerror(errno));
+	  (void) fprintf(stderr,
+			 "enroute2(SIOCADDRT): errno %d: %s\n",
+			 errno, strerror(errno));
 	  exit(RSOpenFailure);
        }
     }
@@ -191,6 +187,7 @@ static do_routing(char *cmd, char *dest, char *gw, char *if_name)
   }
   else if(!strcmp(cmd, "del"))
   {
+    /* Delete the specified route from the routing table. */
     if(ioctl(rs, SIOCDELRT, &rt_msg) < 0)
     {
        /*
@@ -200,9 +197,9 @@ static do_routing(char *cmd, char *dest, char *gw, char *if_name)
 	*/
        if(errno != ESRCH)
        {
-	  fprintf(stderr,
-		  "enroute2(SIOCDELRT): errno %d: %s\n",
-		  errno, strerror(errno));
+	  (void) fprintf(stderr,
+			 "enroute2(SIOCDELRT): errno %d: %s\n",
+			 errno, strerror(errno));
 	  exit(RSOpenFailure);
        }
     }
@@ -210,15 +207,15 @@ static do_routing(char *cmd, char *dest, char *gw, char *if_name)
   else if(!strcmp(cmd, "change"))
   {
     /* Do not use the gateway when deleting a route; it will not match. */
-    memcpy(&rt_change_msg, &rt_msg, sizeof(rt_msg));
-    memset(&(rt_msg.rt_gateway), 0, sizeof(addr));
+    (void) memcpy(&rt_change_msg, &rt_msg, sizeof(rt_msg));
+    (void) memset(&(rt_msg.rt_gateway), 0, sizeof(addr));
     if(ioctl(rs, SIOCDELRT, &rt_change_msg) < 0)
     {
        if(errno != ESRCH)
        {
-	  fprintf(stderr,
-		  "enroute2(SIOCDELRT): errno %d: %s\n",
-		  errno, strerror(errno));
+	  (void) fprintf(stderr,
+			 "enroute2(SIOCDELRT): errno %d: %s\n",
+			 errno, strerror(errno));
 	  exit(RSOpenFailure);
        }
     }
@@ -226,16 +223,16 @@ static do_routing(char *cmd, char *dest, char *gw, char *if_name)
     {
        if(errno != EEXIST)
        {
-	  fprintf(stderr,
-		  "enroute2(SIOCADDRT): errno %d: %s\n",
-		  errno, strerror(errno));
+	  (void) fprintf(stderr,
+			 "enroute2(SIOCADDRT): errno %d: %s\n",
+			 errno, strerror(errno));
 	  exit(RSOpenFailure);
        }
     }
   }
 
   close(rs);
-  exit(0);
+  return(OK);
 }
 
 
@@ -247,9 +244,7 @@ static do_routing(char *cmd, char *dest, char *gw, char *if_name)
 
 int do_routing(char *cmd, char *dest, char *gw, char *if_name)
 {
-	struct rtentry rt_msg;
 	struct hostent *host;
-	struct sockaddr_in addr;
 	int rs;   /*routing socket*/
 	char buf[512];	/* no memory allocation, no memory leak */
 
@@ -341,7 +336,7 @@ int do_routing(char *cmd, char *dest, char *gw, char *if_name)
 	(void) write(rs, rtm, rtm->rtm_msglen);
 
 	(void) close(rs);
-	exit(0);
+	return(OK);
 }
 
 #endif
@@ -351,38 +346,85 @@ static int do_arping(char *cmd, char *dest, char *dest_hwaddr)
    struct arpreq arp_msg;
    struct hostent *host;
    struct sockaddr_in addr;
-   struct sockaddr hwaddr;
    char dummy[32]; /*holder for the hardware addr*/
-   int rs;   /*routing socket*/
-   int i, j=0;
+   int as;   /*arping socket*/
+   unsigned int i, j = 0U;
    unsigned char *a_ptr;  /*array pointer*/
-   
-   /*routing socket*/
-   rs = socket(PF_INET, SOCK_DGRAM, 0);
+   unsigned short holder; /*holder since C99 hh modifier is not everywhere*/
 
-   memset(&arp_msg, 0, sizeof(struct arpreq));
-   memset(dummy, 0 , 32);   
+   if(strcmp(cmd, "arp"))
+   {
+      exit(SyntaxError);
+   }
+   
+   /*arping socket*/
+
+   as = socket(PF_INET, SOCK_DGRAM, 0);
+
+   (void) memset(&arp_msg, 0, sizeof(struct arpreq));
+   (void) memset(dummy, 0 , 32);   
 
    /*destination ip addr*/
+
    host = gethostbyname(dest);
    addr.sin_family = AF_INET;
    addr.sin_addr = *((struct in_addr*) host->h_addr_list[0]);
-   memcpy(&(arp_msg.arp_pa), &addr, sizeof(addr));
+   (void) memcpy(&(arp_msg.arp_pa), &addr, sizeof(addr));
 
    /*destination hardware addr*/
-   for(i = 0; i < strlen(dest_hwaddr) && j < 32; i++)
+
+   for(i = 0U; i < strlen(dest_hwaddr) && j < 32U; /* blank */ )
    {
-      if(isxdigit(dest_hwaddr[i]))
+      /* Hardware addresses are typically represented like AA:BB:CC:DD:EE:FF,
+       * A:BB:C:D:EE:FF or AABBCCDDEEFF.  The first if handles the first and
+       * third situations.  The second if is for the second situation.  The
+       * trailing else is almost always used.
+       */
+      
+      if(isxdigit(dest_hwaddr[i]) && isxdigit(dest_hwaddr[i + 1]))
       {
 	 dummy[j] = dest_hwaddr[i];
-	 j++;
+	 dummy[j + 1] = dest_hwaddr[i + 1];
+	 j += 2;
+	 i += 2;
       }
+      if(isxdigit(dest_hwaddr[i]) && dest_hwaddr[i + 1] == ':')
+      {
+	 dummy[j] = '0'; /* Insert the implied 0. */
+	 dummy[j + 1] = dest_hwaddr[i];
+	 j += 2;
+	 i += 2;
+      }
+      else /* This is most likely dest_hwaddr[i] == ":" */
+	 i++;
    }
-   a_ptr = (void*)&(hwaddr.sa_data);
-   sscanf(dummy, "%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx",
-	  a_ptr, (a_ptr + 1), (a_ptr + 2),
-	  (a_ptr + 3), (a_ptr + 4), (a_ptr + 5));
-   
+   a_ptr = (void*)&(arp_msg.arp_ha.sa_data); /* shorthand pointer */
+   /*
+    * Copy each byte into the correct location in the hardware address's
+    * location in memory.  C99 compilant systems could do this much more
+    * efficently, since the hh modifier could then be used.
+    *
+    *   if(sscanf(dummy, "%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx",
+    *	     a_ptr, (a_ptr + 1), (a_ptr + 2),
+    *	     (a_ptr + 3), (a_ptr + 4), (a_ptr + 5)) == EOF)
+    *   {
+    *      return(SyntaxError);
+    *   }
+    *
+    */
+   if(sscanf(dummy + 0, "%2hx", &holder) == EOF) { return(SyntaxError); }
+   *(a_ptr + 0) = (unsigned char) holder;
+   if(sscanf(dummy + 2, "%2hx", &holder) == EOF) { return(SyntaxError); }
+   *(a_ptr + 1) = (unsigned char) holder;
+   if(sscanf(dummy + 4, "%2hx", &holder) == EOF) { return(SyntaxError); }
+   *(a_ptr + 2) = (unsigned char) holder;
+   if(sscanf(dummy + 6, "%2hx", &holder) == EOF) { return(SyntaxError); }
+   *(a_ptr + 3) = (unsigned char) holder;
+   if(sscanf(dummy + 8, "%2hx", &holder) == EOF) { return(SyntaxError); }
+   *(a_ptr + 4) = (unsigned char) holder;
+   if(sscanf(dummy + 10, "%2hx", &holder) == EOF) { return(SyntaxError); }
+   *(a_ptr + 5) = (unsigned char) holder;
+
    /*
     * Set the address family for the hardware address.  Stevens says that
     * this should be AF_UNSPEC, however Linux needs ARPHRD_ETHER instead.
@@ -392,14 +434,31 @@ static int do_arping(char *cmd, char *dest, char *dest_hwaddr)
 #else
    arp_msg.arp_ha.sa_family = AF_UNSPEC;
 #endif
-   
-   if(ioctl(rs, SIOCSARP, &arp_msg) < 0)
-    {
-       fprintf(stderr,
-	       "add enroute2(SIOCSARP): errno %d: %s\n",
-	       errno, strerror(errno));
-       exit(RSOpenFailure);
-    }
+   arp_msg.arp_flags = ATF_PUBL;
+
+   errno = 0;
+   if(ioctl(as, SIOCSARP, &arp_msg) < 0)
+   {
+      /* This will only work if the destination is on a different subnet
+       * than every interface this host is on.  Thus, ENETUNREACH should
+       * be ignored when this occurs.
+       * For Linux only:  If the destination ip is on the local machine we
+       * get EINVAL.  On non-Linux machines this is valid.
+       */
+      if(errno != ENETUNREACH
+#ifdef __linux__
+	 && errno != EINVAL
+#endif
+	 )
+      {
+	 (void) fprintf(stderr,
+			"enroute2(SIOCSARP): errno %d: %s\n",
+			errno, strerror(errno));
+	 exit(RSOpenFailure);
+      }
+   }
+
+   return(OK);
 }
 
 static int valid_key(key)
