@@ -122,7 +122,8 @@ class accDB:
 		self.insert('encp_xfer', xfer)
 
 	def log_encp_xfer(self, date, node, pid, username, src, dst,
-		size, volume, rate, net_rate, drive_rate, mover,
+		size, volume, network_rate, drive_rate, disk_rate,
+		overall_rate, transfer_rate, mover,
 		drive_id, drive_sn, elapsed, media_changer,
 		mover_interface, driver, storage_group, encp_ip,
 		encp_id, rw):
@@ -138,9 +139,11 @@ class accDB:
 			'dst'		: dst,
 			'size'		: size,
 			'volume'	: volume,
-			'rate'		: rate,
-			'net_rate'	: net_rate,
+			'overall_rate'	: overall_rate,
+			'network_rate'	: network_rate,
 			'drive_rate'	: drive_rate,
+			'disk_rate'	: disk_rate,
+			'transfer_rate'	: transfer_rate,
 			'mover'		: mover,
 			'drive_id'	: drive_id,
 			'drive_sn'	: drive_sn,

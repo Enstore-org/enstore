@@ -125,8 +125,9 @@ class accClient(generic_client.GenericClient):
 		if not self.server_address: return
 		self.log_finish_dismount(volume, finish, state)
 
-	def log_encp_xfer(self, date, src, dst, size, volume, rate,
-		net_rate, drive_rate, mover, drive_id, drive_sn,
+	def log_encp_xfer(self, date, src, dst, size, volume,
+		network_rate, drive_rate, disk_rate, overall_rate,
+		transfer_rate, mover, drive_id, drive_sn,
 		elapsed, media_changer, mover_interface, driver,
 		storage_group, encp_ip, encp_id, rw):
 
@@ -145,9 +146,11 @@ class accClient(generic_client.GenericClient):
 			'dst'		: dst,
 			'size'		: size,
 			'volume'	: volume,
-			'rate'		: rate,
-			'net_rate'	: net_rate,
+			'network_rate'	: network_rate,
 			'drive_rate'	: drive_rate,
+			'disk_rate'	: disk_rate,
+			'overall_rate'	: overall_rate,
+			'transfer_rate'	: transfer_rate,
 			'mover'		: mover,
 			'drive_id'	: drive_id,
 			'drive_sn'	: drive_sn,
