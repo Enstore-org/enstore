@@ -897,7 +897,12 @@ def receive_final_dialog(control_socket, work_ticket):
         
 ############################################################################
 
+#Returns two-tuple.  First is dictionary with 'status' element.  The next
+# is an integer of the crc value.  On error returns 0.
 def transfer_file(input_fd, output_fd, control_socket, request, e):
+
+    encp_crc = 0
+    
     #Read/Write in/out the data to/from the mover and write/read it out to
     # file.  Also, total up the crc value for comparison with what was
     # sent from the mover.
@@ -911,7 +916,8 @@ def transfer_file(input_fd, output_fd, control_socket, request, e):
                                  e.bufsize, crc_flag, 0)
         EXfer_ticket = {'status':(e_errors.OK, None)}
     except EXfer.error, msg:
-        Trace.log(e_errors.WARNING,"write_to_hsm EXfer error: %s" % (msg,))
+        EXfer_ticket = {'status':(e_errors.IOERROR, msg)}
+        Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" % (msg,))
 
     # File has been read - wait for final dialog with mover.
     Trace.trace(8,"read_hsm_files waiting for final mover dialog on %s" %
@@ -923,15 +929,15 @@ def transfer_file(input_fd, output_fd, control_socket, request, e):
     done_ticket = receive_final_dialog(control_socket, request)
 
     if not e_errors.is_retriable(done_ticket['status'][0]):
-        return done_ticket
-    elif not e_errors.is_retriable(done_ticket['status'][0]):
-        return EXfer_ticket
+        return done_ticket, 0
+    elif not e_errors.is_retriable(EXfer_ticket['status'][0]):
+        return EXfer_ticket, 0
     elif done_ticket['status'][0] != (e_errors.OK):
-        return done_ticket
+        return done_ticket, 0
     elif EXfer_ticket['status'][0] != (e_errors.OK):
-        return EXfer_ticket
+        return EXfer_ticket, 0
     else:
-        return done_ticket, encp_crc
+        return done_ticket, encp_crc #Success.
 
 ############################################################################
 
