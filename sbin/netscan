@@ -185,6 +185,7 @@ ALLOW_BASE="
        LISTEN,netserver,:,TCP,x
        LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh
        LISTEN,sh,inet,TCP,MSG_TYPE
+       LISTEN,grep,inet,TCP,MSG_TYPE
        LISTEN,ALARM_CLIENT,inet,TCP,x
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
        UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
