@@ -2561,11 +2561,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         if type(msg) != type(""):
             msg = str(msg)
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR:
-            if msg.find("FTT_EIO") != -1:
+            if (msg.find("FTT_EIO") != -1):
                 # possibly a scsi error, log low level diagnostics
                 # report error but go idle
                 self.watch_syslog()
                 ftt_eio = 1
+            elif msg.find("FTT_EBLANK") != -1:
+                # possibly a scsi error, log low level diagnostics
+                self.watch_syslog()
         
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
