@@ -1257,7 +1257,7 @@ def open_data_socket(mover_addr, interface_ip):
         error = 0
     except socket.error, msg:
         #We have seen that on IRIX, when the connection succeds, we
-        # get an ISCONN error.
+        # get an EISCONN error.
         if hasattr(errno, 'EISCONN') and msg[0] == errno.EISCONN:
             pass
         #The TCP handshake is in progress.

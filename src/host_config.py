@@ -13,6 +13,7 @@ import random
 import socket
 import pprint
 import re
+import errno
 
 import Trace
 import e_errors
