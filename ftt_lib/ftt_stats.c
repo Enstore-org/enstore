@@ -258,7 +258,7 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
     DEBUG3(stderr,"entering decrypt_ls for parameter %d stat %d\n", param, stat);
     page = buf + 4;
     length = pack(0,0,buf[2],buf[3]);
-    DEBUG3(stderr,"decrypt_ls: page is %d length is %d \n", page, length);
+    DEBUG3(stderr,"decrypt_ls: length is %d \n", length);
     while( page < (buf + length) ) {
 	thisparam = pack(0,0,page[0],page[1]);
 	thislength = page[3];
@@ -309,7 +309,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     int hwdens;
     int failures = 0;
     int i;
-    unsigned char buf[512];
+    unsigned char buf[2048];
     long int tape_size, error_count, data_count;
     double remain_tape;
     int n_blocks, block_length;
@@ -716,7 +716,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
  	int npages;
 	static char buf2[1028];
 	static unsigned char cdb_log_sense[]= {0x4d, 0x00, 0x00, 0x00, 0x00, 
-						   0x00, 0x00, 0, 1028, 0};
+						   0x00, 0x00, 4, 4, 0};
 
 
         /* check supported page list, we want 0x32 or 0x39... */
