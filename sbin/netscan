@@ -344,7 +344,12 @@ done
 
 
 # check that farmlets match
-$FARMLETS -a >>$LOG 2>&1
+msg="`$FARMLETS`"
+if [ $? -ne 0 ]; then
+   logit "$msg"
+elif [ $QUIET -ne 1 ]; then
+   logit  "$msg"
+fi
 
 # get open files - twice - get ps in between - only take connections that survive past this
 # otherwise it is impossible to compare and see if they are allowed.
