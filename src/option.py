@@ -300,6 +300,7 @@ URL = "url"                                  #plotter
 USAGE = "usage"
 VERBOSE = "verbose"                          #monitor, ensync, assert
 VOL = "vol"                                  #volume
+GVOL = "gvol"                                #volume
 VOLS = "vols"                                #volume, library
 VOLUME = "volume"                            #pnfs
 VOL1OK = "VOL1OK"                            #volume
@@ -332,7 +333,7 @@ valid_option_list = [
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GET_ASSERTS, GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME,
     GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
-    GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
+    GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED, GVOL,
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, INPUT_DIR, IO,
     JOUHOME, JUST,
