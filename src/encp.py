@@ -64,7 +64,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
 
     # send the work ticket to the library manager
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
-    if not ticket['status'] == "ok" :
+    if ticket['status'] != "ok" :
         raise errorcode[EPROTO],"encp.write_to_hsm: from u.send to "\
               +p.library+".library_manager at "\
               +vticket['host']+"/"+repr(vticket['port'])\
@@ -88,7 +88,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
             print ("encp write_to_hsm: imposter called us back, trying again")
             control_socket.close()
     ticket = new_ticket
-    if not ticket["status"] == "ok" :
+    if ticket["status"] != "ok" :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
               +"1st (pre-file-send) mover callback on socket at "\
               +repr(address)+", failed to setup transfer: "\
@@ -153,7 +153,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
 
     # send work ticket to file clerk who sends it to right library manger
     ticket = u.send(ticket, (fticket['host'], fticket['port']))
-    if not ticket['status'] == "ok" :
+    if ticket['status'] != "ok" :
         raise errorcode[EPROTO],"encp.read_from_hsm: from u.send to "\
               +"file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
@@ -176,7 +176,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
             print ("encp read_from_hsm: imposter called us back, trying again")
             control_socket.close()
     ticket = new_ticket
-    if not ticket["status"] == "ok" :
+    if ticket["status"] != "ok" :
         raise errorcode[EPROTO],"encp.read_from_hsm: "\
               +"1st (pre-file-read) mover callback on socket at "\
               +repr(address)+", failed to setup transfer: "\
@@ -197,7 +197,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # File has been read - wait for final dialog with mover.
     done_ticket = a_to_dict(control_socket.recv(10000))
     control_socket.close()
-    if not done_ticket["status"] == "ok" :
+    if done_ticket["status"] != "ok" :
         raise errorcode[EPROTO],"encp.read_from_hsm: "\
               +"2nd (post-file-read) mover callback on socket at "\
               +repr(address)+", failed to transfer: "\

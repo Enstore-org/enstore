@@ -87,7 +87,7 @@ def next_work_any_volume(csc) :
                                 vol_veto_list)
 
                         if (len(vol_veto_list) == 0 and
-                              not v["status"] == "ok") :
+                              v["status"] != "ok") :
                         # If the volume clerk has no volumes and
                         # our veto list was empty, then we have run
                         # out of space for this file family. so

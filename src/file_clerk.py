@@ -57,7 +57,7 @@ class FileClerkMethods(DispatchingWorker) :
         # got the library, now send it to the apropos library manager
         # we get the library manager from our configuration server, of course
         vmticket = csc.get(library + ".library_manager")
-        if not vmticket["status"] == "ok" :
+        if vmticket["status"] != "ok" :
             self.reply_to_caller(vmticket)
             return
         u = UDPClient()

@@ -49,7 +49,7 @@ class Mover :
                 # movers attacke to virtual library....
                 csc = configuration_client(self.config_host,self.config_port)
                 mconfig = csc.get(self.name)
-                if not mconfig["status"] == "ok" :
+                if mconfig["status"] != "ok" :
                         raise "could not start mover up:" + mconfig["status"]
                 self.library_device = mconfig["library_device"]
                 self.driver_name = mconfig["driver"]
@@ -70,7 +70,7 @@ class Mover :
                 self.external_label = ticket["external_label"]
                 ss = VolumeClerkClient(csc)
                 vticket = ss.inquire_vol(self.external_label)
-                if not vticket["status"] == "ok" :
+                if vticket["status"] != "ok" :
                         self.unilateral_unbind_next()
                         return
                 self.vticket = vticket
@@ -82,7 +82,7 @@ class Mover :
 
                 ml = MediaLoaderClient(self.library + ".media_loader")
                 lmticket = ml.load(self.external_label, self.library_device)
-                if not lmticket["status"] == "ok" :
+                if lmticket["status"] != "ok" :
                         if lmticket["status"] == "media_in_another_device" :
                         # it is possible under normal functioning of the
                         #  system to be in the following race condition
@@ -108,7 +108,7 @@ class Mover :
                 self.driver.unload()
                 ticket = ml.unload(self.external_label,
                                                 self.library_device)
-                if not ticket["status"] == "ok" :
+                if ticket["status"] != "ok" :
                         raise "media loader cannot unload my volume"
 
                 # need to call the driver destructor....
@@ -138,11 +138,11 @@ class Mover :
 
         def write_to_hsm(self, ticket) :
 
-                if not ticket["external_label"] == self.external_label :
+                if ticket["external_label"] != self.external_label :
                         raise "volume manager and I disagree on volume"
                 ss = VolumeClerkClient(csc)
                 vticket = ss.set_writing(self.external_label)
-                if not ticket["status"] == "ok" :
+                if ticket["status"] != "ok" :
                         raise "volume clerk forgot about this volume"
 
                 # space to where the file will begin and save location
@@ -176,7 +176,7 @@ class Mover :
 
                 ss = VolumeClerkClient(csc)
 
-                if not bytes_recvd == ticket["size_bytes"] :
+                if bytes_recvd != ticket["size_bytes"] :
                         user_send_error = 1
 
                 if user_send_error:
@@ -243,11 +243,11 @@ class Mover :
                 self.have_bound_volume_next()
 
         def read_from_hsm(self, ticket) :
-                if not ticket["external_label"] == self.external_label :
+                if ticket["external_label"] != self.external_label :
                         raise "volume manager and I disagree on volume"
                 ss = VolumeClerkClient(csc)
                 vticket = ss.inquire_vol(self.external_label)
-                if not ticket["status"] == "ok" :
+                if ticket["status"] != "ok" :
                         raise "volume clerk forgot about this volume"
 
                 # space to where the file will begin and save location
