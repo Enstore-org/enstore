@@ -14,7 +14,6 @@ print time.strftime("%c",time.localtime('$1'))
 if [ -z "${1-}" ] ; then
   # write the output to a sub-directory in the inquisitor's web directory
   output=`conf.sh -k inquisitor | awk '($1 ~ /html_file/) {print $2}' | sed -e "s/'//g" -e "s/,//g"`tape_inventory
-  echo "OUT $output"
   if [ "$output" = "" ]; then exit 2; fi
   if [ ! -d $output ] ; then mkdir -p $output || exit 3; fi
   out=$output/VOLUMES_DEFINED
