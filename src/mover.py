@@ -542,7 +542,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.INFO, "Rewinding tape %s to check VOL1 label"%(external_label,))
                 r=driver_object.rewind()
                 header_type, header_label, extra = driver_object.check_header()
-                Trace.log(e_errors.INFO, "header_type=%s, label=%s, cookie=%s" % (header_type,header_label,tmp_vol_info['eod_cookie']))
+                Trace.log(e_errors.INFO, "header_type=%s, label=%s, cookie=%s" % (header_type,header_label,extra))
                 if debug_paranoia: print "header_type=",header_type, "label=",header_label,"extra=",extra
                 if header_type == None:
                     ##This only happens if there was a read error, which is
