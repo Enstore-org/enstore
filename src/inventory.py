@@ -963,8 +963,6 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         else:
             vsum = {}
 
-        print 'processing', vk, '...',
-
         if vsum and vsum['last'] > vv['last_access']:
             # good, don't do anything
             active = vsum['active']
