@@ -30,6 +30,8 @@ class FTTDriver(driver.Driver):
     def open(self, device=None, mode=None, retry_count=10):
         """Open will return 1 if there's a volume, 0 if there is no volume
         but otherwise OK, -1 or exception on errors"""
+        if mode is None:
+            mode = 0
         if mode not in (0,1):
             raise ValueError, ("illegal mode", mode)
 
