@@ -88,6 +88,9 @@ class EncpLine:
     def __init__(self, line):
         self.line = line
         self.valid = 0
+        self.time = ""
+        self.node = ""
+        self.text = ""
 	# on linux, if there is some garbage in the log file, grep may decide the
 	# log file is a binary file. then it will produce a message -
 	# Binary file LOG-2001-02-08 matches
