@@ -2419,7 +2419,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             # but tape thread did not exit for some reason
             # usually this happens with DLT tapes
             Trace.log(e_errors.INFO, "write_client waits for tape thread to exit")
-            for i in range(20):
+            time_to_sleep = 20
+            if self.config['product_id'].find("DLT") != -1:
+                # for dlt drives make it bigger
+                time_to_sleep = 60
+            for i in range(time_to_sleep):
+                if self.read_tape_running == 0:
+                    break
                 time.sleep(1)
         self.transfer_completed()
         Trace.log(e_errors.INFO, "write_client exits")
