@@ -629,6 +629,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                       self.keys['port']))
 	timer_task.TimerTask.__init__( self, 10 )
 	self.set_udp_client()
+        self.force_summon_to = 30.
+        self.force_summon_last_called = time.time()
 
     # get lock from a lock file
     def get_lock(self):
@@ -1433,6 +1435,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # go through entire pending work queue and summon movers
     def force_summon(self):
+        now = time.time()
+        if now - self.force_summon_last_called < self.force_summon_to:
+            # return: it is not time to
+            # force summon yet
+            self.force_summon_last_called = now
+            return
+
         # save mover_index
         mv_index = self.mover_index
 	vols = []
