@@ -289,12 +289,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             generic_server.GenericServer):
 
     def __init__(self, csc_address, name):
-
-        self.name = name
-        self.t0 = time.time()
-        
         generic_server.GenericServer.__init__(self, csc_address, name)
+        self.name = name
 
+    def start(self):
+        name = self.name
+        self.t0 = time.time()
         self.config = self.csc.get(name)
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
@@ -1357,6 +1357,7 @@ if __name__ == '__main__':
     intf = MoverInterface()
     mover =  Mover((intf.config_host, intf.config_port), intf.name)
     mover.handle_generic_commands(intf)
+    mover.start()
     
     while 1:
         try:
