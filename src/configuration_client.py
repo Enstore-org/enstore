@@ -28,43 +28,43 @@ def set_csc(self, csc=[], host=generic_client_server.default_host(), port=generi
         self.csc = configuration_client(host, port)
     else:
         self.csc = csc
-  
 
-class configuration_client(generic_client_server.GenericClientServer) :
+
+class configuration_client(generic_client_server.GenericClientServer):
 
     def __init__(self, host=generic_client_server.default_host(), port=generic_client_server.default_port()):
         self.clear()
-	generic_client_server.GenericClientServer.__init__(self, host, port)
+        generic_client_server.GenericClientServer.__init__(self, host, port)
         self.config_list = 0
         self.dict = 0
         self.doload = 0
         self.doalive = 0
         self.dolist = 0
-       	self.config_file = ""
+        self.config_file = ""
 
     # define the command line options that are valid
     def options(self):
         return generic_client_server.GenericClientServer.config_options(self)+\
-      	       generic_client_server.GenericClientServer.list_options(self)  +\
-	       ["config_file=","config_list","dict","load","alive"] + \
-	       generic_client_server.GenericClientServer.options(self)
+               generic_client_server.GenericClientServer.list_options(self)  +\
+               ["config_file=","config_list","dict","load","alive"] + \
+               generic_client_server.GenericClientServer.options(self)
 
     # we cannot use the one in GenericClientServer because it assumes that the
     # value is actually stored in self.csc
     def parse_config_host(self, value):
         self.config_host = value
-	self.check_host()
+        self.check_host()
 
     # we cannot use the one in GenericClientServer because it assumes that the
     # value is actually stored in self.csc
     def parse_config_port(self, value):
-	self.check_port(value)
+        self.check_port(value)
 
     # connect to the configuration client
     def connect(self):
-	if self.config_list :
+        if self.config_list:
             print "Connecting to configuration server at ",\
-	        self.config_host, self.config_port
+                self.config_host, self.config_port
         self.config_address=(self.config_host,self.config_port)
         self.u = udp_client.UDPClient()
 
@@ -75,18 +75,18 @@ class configuration_client(generic_client_server.GenericClientServer) :
     # get value for requested item from server, store locally in own cache
     def get_uncached(self, key):
         request = {'work' : 'lookup', 'lookup' : key }
-        while 1 :
+        while 1:
             try:
                 self.cache[key] = self.u.send(request, self.config_address )
                 break
-            except socket.error :
-                if sys.exc_info()[1][0] == errno.CONNREFUSED :
+            except socket.error:
+                if sys.exc_info()[1][0] == errno.CONNREFUSED:
                     delay = 3
                     print sys.exc_info()[1][0], "socket error. configuration "\
                           +"sending to",self.config_address\
                           ,"server down?  retrying in ",delay," seconds"
                     time.sleep(delay)
-                else :
+                else:
                     raise sys.exc_info()[0],sys.exc_info()[1]
         return self.cache[key]
 
@@ -95,40 +95,40 @@ class configuration_client(generic_client_server.GenericClientServer) :
         # try the cache
         try:
             return self.cache[key]
-        except :
+        except:
             return self.get_uncached(key)
 
     # dump the configuration dictionary
     def list(self):
         request = {'work' : 'list' }
-        while 1 :
+        while 1:
             try:
                 self.config_list = self.u.send(request, self.config_address )
                 break
-            except socket.error :
-                if sys.exc_info()[1][0] == errno.CONNREFUSED :
+            except socket.error:
+                if sys.exc_info()[1][0] == errno.CONNREFUSED:
                     delay = 3
                     print sys.exc_info()[1][0], "socket error. configuration "\
                           +"sending to",self.config_address\
                           ,"server down?  retrying in ",delay," seconds"
                     time.sleep(delay)
-                else :
+                else:
                     raise sys.exc_info()[0],sys.exc_info()[1]
 
     # reload a new  configuration dictionary
     def load(self, configfile):
         request = {'work' : 'load' ,  'configfile' : configfile }
-        while 1 :
+        while 1:
             try:
                 return self.u.send(request, self.config_address)
-            except socket.error :
-                if sys.exc_info()[1][0] == errno.CONNREFUSED :
+            except socket.error:
+                if sys.exc_info()[1][0] == errno.CONNREFUSED:
                     delay = 3
                     print sys.exc_info()[1][0], "socket error. configuration "\
                           +"sending to",self.config_address\
                           ,"server down?  retrying in ",delay," seconds"
                     time.sleep(delay)
-                else :
+                else:
                     raise sys.exc_info()[0],sys.exc_info()[1]
 
     # check on alive status
@@ -136,7 +136,7 @@ class configuration_client(generic_client_server.GenericClientServer) :
         return self.u.send({'work':'alive'},self.config_address )
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
     import pprint
     Trace.init("config cli")
@@ -154,7 +154,7 @@ if __name__ == "__main__" :
         stati = csc.alive()
         if csc.dolist:
             pprint.pprint(stati)
-    
+
     elif csc.dict:
         csc.list()
         if csc.dolist:
@@ -168,7 +168,9 @@ if __name__ == "__main__" :
             pprint.pprint(stati)
         stat=stati['status']
 
-    if stat == 'ok' :
+    if stat == 'ok':
+        Trace.trace(1,"config client exit ok")
         sys.exit(0)
-    else :
+    else:
+        Trace.trace(0,"csc BAD STATUS - "+repr(stat))
         sys.exit(1)
