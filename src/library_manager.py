@@ -78,6 +78,7 @@ class AtMovers:
         # work (read/write)
         # current location
         Trace.trace(11,"put: %s" % (mover_info,))
+        if not mover_info['external_label']: return
         if not mover_info['volume_family']: return
         if not mover_info['mover']: return
         storage_group = volume_family.extract_storage_group(mover_info['volume_family'])
