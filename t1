@@ -1,12 +1,9 @@
-# for tanya's work
-
-#export PYTHON_DIR=/usr/local
-
-# cd ~bakken/enstore
-#export ENSTORE_DIR=`pwd`
-
-#. ups/setup.sh
-
-export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/tanya.conf
-export ENSTORE_CONFIG_PORT=7520
-export ENSTORE_CONFIG_HOST=localhost
+setenv ENSTORE_DIR `pwd`
+setenv ENSTORE_CONFIG_FILE  $ENSTORE_DIR/etc/tanya.conf
+setenv ENSTORE_DB $ENSTORE_DIR/db
+setenv ENSTORE_DB_BACKUP /usr2/backup
+setenv ENSTORE_BCKP_HST agony 
+setenv ENSTORE_CONFIG_PORT  7560
+setenv ENSTORE_CONFIG_HOST  pcfarm9
+setup libtp
+setup libtppy
