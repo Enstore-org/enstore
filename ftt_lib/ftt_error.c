@@ -241,7 +241,10 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	    /*  have verify_blank double check the report so we know it's */
 	    /*  not a mis-diagnosed error.                                */
 
+	 DEBUG3(stderr, "Checking for blank tape on other error\n");
 	 ftt_get_stats(d, &sbuf);
+         ftt_errno = save2;
+
 	 if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY)) && 8 == atoi(p)) {
 	     DEBUG3(stderr, "Saw blank check sense key\n");
 	     ftt_errno = FTT_EBLANK;
