@@ -257,7 +257,6 @@ if __name__ == "__main__" :
 	    if intf.restore_dir: dir ="yes"
 	except AttributeError:
 	    dir = "no"
-	print "DIR",dir
         ticket = fcc.set_deleted(intf.deleted, dir)
         Trace.trace(13, repr(ticket))
 
