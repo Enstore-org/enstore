@@ -108,6 +108,8 @@ def update_mover_list(mover, state):
 
 # remove mover from list
 def remove_mover(mover, mover_list):
+    if debug:
+	print 'removing mover ', mover
     Trace.trace(3,"{remove_mover " + repr(mover) + "from " + repr(mover_list))
     mv = find_mover(mover, mover_list)
     if mv == None:
@@ -347,25 +349,29 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	list of known movers as well as from the list of movers 
 	being summoned
 	"""
-	for mv in self.summon_queue:
-	    if mv['state'] == 'summoned':
-		if (t - mv['last_checked']) > self.rcv_timeout:
-
-		    if mv['summon_try_cnt'] < self.max_summon_attempts:
-			# retry summon
-			Trace.trace(3,"handle_timeout retrying " + repr(mv))
-			self.summon_mover(mv)
-		    else:
-			# mover is dead. Remove it from all lists
-			Trace.trace(3,"handle_timeout: mover " + repr(mv) \
+	if mover_cnt != 0:
+	    
+	    for mv in self.summon_queue:
+		if mv['state'] == 'summoned':
+		    if (t - mv['last_checked']) > self.rcv_timeout:
+			if mv['summon_try_cnt'] < self.max_summon_attempts:
+			    # retry summon
+			    Trace.trace(3,"handle_timeout retrying " + repr(mv))
+			    self.summon_mover(mv)
+			else:
+			    if debug:
+				print 'mover ', mv, ' is dead'
+			    # mover is dead. Remove it from all lists
+			    Trace.trace(3,"handle_timeout: mover " + repr(mv) \
 				    + " is dead")
-			movers.remove(mv)
-			self.summon_queue.remove(mv)
-			if mover_cnt > 0:
-			    mover_cnt = mover_cnt - 1
+			    movers.remove(mv)
+			    self.summon_queue.remove(mv)
+			    if mover_cnt > 0:
+				mover_cnt = mover_cnt - 1
 
 	if debug: 
 	    print "movers queue after processing TO"
+	    print 'mover count ', mover_cnt
 	    pprint.pprint(movers)
 	    print "summon queue after processing TO"
 	    pprint.pprint(self.summon_queue)
@@ -532,6 +538,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    pending_work.delete_job(w)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
+	    update_mover_list(mticket, 'work_at_mover')
 	    if list: 
 		print "Work at movers appended"
 		pprint.pprint(w)
@@ -595,6 +602,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    w['times']['lm_dequeued'] = time.time()
 	    if list: print "sending ", w, " to mover"
             self.reply_to_caller(w) # reply now to avoid deadlocks
+	    state = 'work_at_mover'
+	    update_mover_list(mticket, state)
             pending_work.delete_job(w)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
@@ -613,7 +622,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        mticket["mover"])
 	    mv = find_mover(mticket, movers)
 	    #if list: print "unbind volume before ", mv
-	    mv['state'] = 'idle_mover'
+	    mv['state'] = 'unbind_sent'
 	    if list: print "unbind volume for ", mv
             self.reply_to_caller({"work" : "unbind_volume"})
 	    Trace.trace(3,"}have_bound_volume: No work, sending unbind ")
@@ -796,7 +805,7 @@ if __name__ == "__main__":
     debug = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list","list","nosummon","help"]
+    options = ["config_host=","config_port=","config_list","list","debug","nosummon","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist:
         if opt == "--config_host":
