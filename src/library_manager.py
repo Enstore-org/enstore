@@ -935,6 +935,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.rcv_timeout = 10 # set receive timeout
 
     def write_to_hsm(self, ticket):
+        if ticket.has_key('mover'):
+            Trace.log(e_errors.WARNING,'input ticket has key mover in it %s'%(ticket,))
+            del(ticket['mover'])
+        if ticket.vc.has_key('external_label'):
+            del(ticket.vc['external_label'])
+            
         # data for Trace.notify
         host = ticket['wrapper']['machine'][1]
         work = 'write'
@@ -1002,6 +1008,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
 
     def read_from_hsm(self, ticket):
+        if ticket.has_key('mover'):
+            Trace.log(e_errors.WARNING,'input ticket has key mover in it %s'%(ticket,))
+            del(ticket['mover'])
         # data for Trace.notify
         host = ticket['wrapper']['machine'][1]
         work = 'read'
