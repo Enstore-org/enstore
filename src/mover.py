@@ -533,11 +533,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_read = self.buffer.stream_read(nbytes, driver)
             except exceptions.Exception, detail:
-                self.transfer_failed(e_errors.READ_ERROR, detail)
+                self.transfer_failed(e_errors.ENCP_GONE, detail)
                 return
             if bytes_read <= 0:  #  The client went away!
                 Trace.log(e_errors.ERROR, "read_client: dropped connection")
-                self.transfer_failed(e_errors.READ_ERROR, None)
+                self.transfer_failed(e_errors.ENCP_GONE, None)
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
@@ -695,10 +695,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
             except exceptions.Exception, detail:
-                self.transfer_failed(e_errors.WRITE_ERROR, detail)
+                self.transfer_failed(e_errors.ENCP_GONE, detail)
                 break
             if bytes_written < 0:
-                self.transfer_failed(e_errors.WRITE_ERROR, None) #XXX detail?
+                self.transfer_failed(e_errors.ENCP_GONE, None) #XXX detail?
                 break
             if bytes_written != nbytes:
                 pass #this is not unexpected, since we send with MSG_DONTWAIT
