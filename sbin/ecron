@@ -1,0 +1,91 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+start=`date +"%Y-%m-%d:%H:%M:%S"`
+basename=`basename $0`
+# sbin/$RCSfile$  $Revision$
+
+# This is a derivative work, but it is still based on:
+
+# Copyrighted as an unpublished work.
+# (c) Copyright 1996,1997,1998 DESY Hamburg DMG-Division
+# All rights reserved.
+
+# RESTRICTED RIGHTS
+
+# These programs are supplied under a license.  They may be used,
+# disclosed, and/or copied only as permitted under such license
+# agreement.  Any copy must contain the above copyright notice and
+# this restricted rights notice.  Use, copying, and/or disclosure
+# of the programs is strictly prohibited unless otherwise provided
+# in the license agreement.
+
+sendMail() {
+  filename=$1
+  mode=$2
+  if [ "$mode" = "emergency" ] ; then
+     mailaddress="enstore@fnal.gov"
+  else
+     mailaddress=bakken@fnal.gov
+  fi
+  /usr/bin/Mail -s "${3:-\"Enstore ecron Scheduler\"}" $mailaddress <$filename
+}
+
+quit() {
+  message="$1"
+  code=$2
+  if [ -n "${message-}" ]; then echo "$1"; fi
+  rmdir $activeFlag   >/dev/null 2>&1
+  done=`date +"%Y-%m-%d:%H:%M:%S"`
+  echo "$done $code" >> $histogram
+  exit $code
+}
+
+procName=$1
+
+procInfos=~/$procName
+activeFlag=${procInfos}ACTIVE
+histogram=${procInfos}HISTOGRAM
+procOutput=${procInfos}-output
+procMail=${procInfos}-mail
+
+rm -f $procOutput
+rm -f $procMail
+
+echo "$start 10" >> $histogram
+
+#  check whether this proc is enabled
+if [ ! -f ${procInfos}OK ] ; then quit ""  1; fi
+
+#  check if a similar proc is already active
+mkdir $activeFlag 1>/dev/null 2>/dev/null
+if [ $? -ne 0 ] ; then quit "" 2; fi
+
+if [ $# -eq 0 ] ; then quit "USAGE: $basename <enstoreName> <args ... >" 3; fi
+
+setup=/usr/local/etc/setups.sh
+if [ ! -f $setup ] ; then quit "$setup not found" 4; fi
+. $setup
+# should check that enstore was setup properly as well
+setup enstore
+
+shift
+#echo  Executing: $procName $*
+
+eval $procName $*  >$procOutput 2>&1
+problem=$?
+if [ $problem -ne 0 ] ; then
+   echo "" >$procMail
+   echo "  The Enstore ecron Scheduler found a problem running task !!! $procName !!! " >>$procMail 
+   echo "  Date       :" `date`      >>$procMail 
+   echo "  Path       : $procName "  >>$procMail 
+   echo "  ReturnCode : $problem "   >>$procMail 
+   echo "  Output and error messages ... " >>$procMail 
+   echo "  -------------------- start of messages ---------------------- ">>$procMail 
+   cat $procOutput >>$procMail 2>/dev/null
+   echo "  -------------------- end of messages   ---------------------- ">>$procMail 
+   sendMail $procMail emegency "Enstore ecron Scheduler: $procName "
+fi
+
+quit "" 0
