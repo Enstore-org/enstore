@@ -1,0 +1,14 @@
+#!/bin/sh
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+set -u  # force better programming and ability to use check for not set
+
+# bin/install-web-files  $Revision$
+# wrapper around install-web-files.py
+
+if [ -z "${1-}" ] ;
+then
+  python $ENSTORE_DIR/bin/install_web_files.py
+else
+  python $ENSTORE_DIR/bin/install_web_files.py ${*}
+fi
+
