@@ -527,31 +527,58 @@ class EnDataFile(EnFile):
 
 class EnMountDataFile(EnDataFile):
 
+    def __init__(self, inFile, oFile, text, indir="", fproc="", config={}):
+	EnDataFile.__init__(self, inFile, oFile, text, indir, fproc)
+	self.config = config
+	self.servers = self.config.keys()
+
+    # find out if this is a null mover
+    def is_null_mover(self, mover_log_name):
+	for server in self.servers:
+	    if self.config[server].has_key('logname') and \
+	       self.config[server]['logname'] == mover_log_name:
+		if self.config[server]['driver'] == 'NullDriver':
+		    # this is a null mover
+		    rtn = 1
+		    break
+		else:
+		    # this is not a null mover
+		    rtn = 0
+		    break
+	else:
+	    # assume this is not a null mover
+	    rtn = 0
+	return rtn
+
     # parse the mount line
     def parse_line(self, line):
         [etime, enode, epid, euser, estatus, mover, type, request, volume] = \
                                                    string.split(line, None, 8)
-        if type == string.rstrip(Trace.MSG_MC_LOAD_REQ) :
-            # this is the request for the mount
-            start = MREQUEST
-        else:
-            start = MMOUNT
+	# if this is a null mover, ignore it
+	if not self.is_null_mover(mover):
+	    if type == string.rstrip(Trace.MSG_MC_LOAD_REQ) :
+		# this is the request for the mount
+		start = MREQUEST
+	    else:
+		start = MMOUNT
 
-        # parse out the file directory , a remnant from the grep in the time 
-        # field
-        etime = enstore_functions.strip_file_dir(etime)
+	    # parse out the file directory , a remnant from the grep in the time 
+	    # field
+	    etime = enstore_functions.strip_file_dir(etime)
 
-        # pull out any dictionaries from the rest of the message
-        #msg_dicts = enstore_status.get_dict(erest)
-	msg_dicts = {}        # this needs to be fixed NOTE: efb
-        return [etime, enode, euser, estatus, mover, epid, volume, start, msg_dicts]
+	    # pull out any dictionaries from the rest of the message
+	    #msg_dicts = enstore_status.get_dict(erest)
+	    msg_dicts = {}        # this needs to be fixed NOTE: efb
+	    return [etime, enode, euser, estatus, mover, epid, volume, start, msg_dicts]
+	else:
+	    return []
 
     # pull out the plottable data from each line that is from one of the
     # specified movers
     def parse_data(self, mcs):
         for line in self.lines:
             minfo = self.parse_line(line)
-            if not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs):
+            if minfo and (not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs)):
                 self.data.append([minfo[MDEV], minfo[MPID], minfo[MVOLUME],
                                   string.replace(minfo[0],
                                                  enstore_constants.LOG_PREFIX,

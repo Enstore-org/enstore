@@ -72,10 +72,10 @@ THE_ALARM_SERVER = "The Alarm Server"
 RESOLVEALL = "Resolve All"
 RESOLVESELECTED = "Resolve Selected"
 
-PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
-	     [enstore_constants.MPD_FILE, "Mounts/Day"],
-	     [enstore_constants.MPD_MONTH_FILE, "Mounts/Day (30 days)"],
-	     [enstore_constants.MLAT_FILE, "Mount Latency"],
+PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour (no null mvs)"],
+	     [enstore_constants.MPD_FILE, "Mounts/Day (no null mvs as of 8/1/01)"],
+	     [enstore_constants.MPD_MONTH_FILE, "Mounts/Day (30 days) (no null mvs)"],
+	     [enstore_constants.MLAT_FILE, "Mount Latency (no null mvs)"],
 	     [enstore_constants.BPD_FILE_R, "Bytes Read/Day (no null mvs)"],
 	     [enstore_constants.BPD_FILE_W, "Bytes Written/Day (no null mvs)"],
 	     [enstore_constants.BPD_FILE, "Bytes/Day (no null mvs)"], 
