@@ -1281,7 +1281,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         t_thread = getattr(self, 'tape_thread', None)
         n_thread = getattr(self, 'net_thread', None)
         if self.state in (IDLE, HAVE_BOUND):
-            t_in_state = int(now - self.state_change_time)
+            t_in_state = int(time.time() - self.state_change_time)
             if n_thread and n_thread.isAlive() and t_in_state > 11:
                 # 11 sec to allow network thread to complete
                 Trace.alarm(e_errors.ALARM,
