@@ -559,12 +559,13 @@ def final_scan():
 			else: # error
 				error_log(MY_TASK, "failed on %s %s"%(bfid2, src))
 
-			# mark the original deleted
-			res = fcc.set_deleted('yes', bfid=bfid)
-			if res['status'][0] == e_errors.OK:
-				ok_log(MY_TASK, "set %s deleted"%(bfid))
-			else:
-				error_log(MY_TASK, "failed to set %d deleted"%(bfid))
+			# do not mark it deleted for now
+			# # mark the original deleted
+			# res = fcc.set_deleted('yes', bfid=bfid)
+			# if res['status'][0] == e_errors.OK:
+			# 	ok_log(MY_TASK, "set %s deleted"%(bfid))
+			# else:
+			# 	error_log(MY_TASK, "failed to set %d deleted"%(bfid))
 		else:
 			ok_log(MY_TASK, "%s %s was checked on %s"%(bfid2, src, ct))
 			# make sure the original is marked deleted
