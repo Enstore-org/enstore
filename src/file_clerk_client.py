@@ -332,7 +332,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                 "bfid=","deleted=","list=","backup",
                 "get-crcs=","set-crcs=",
                 "restore=", "recursive", "bfids=", "ls-active=",
-                "modify=", "add=", "dont-try-this-at-home-erase="]
+                "modify=", "add=" ]
             
 def do_work(intf):
     # now get a file clerk client
@@ -432,7 +432,10 @@ def do_work(intf):
         ticket = fcc.modify(d)
         print "bfid =", ticket['bfid']
     elif intf.dont_try_this_at_home_erase:
-        ticket = fcc.del_bfid(intf.dont_try_this_at_home_erase)
+        # Comment out -- this is too dangerous
+        # ticket = fcc.del_bfid(intf.dont_try_this_at_home_erase)
+        ticket = {}
+        ticket['status'] = (e_errors.OK, None)
     elif intf.get_crcs:
         bfid=intf.get_crcs
         ticket = fcc.get_crcs(bfid)
