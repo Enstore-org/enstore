@@ -533,7 +533,7 @@ class Display(Canvas):
             M.draw()
 
     def reposition_movers(self):
-        items = self.clients.items()
+        items = self.movers.items()
         N = len(items) #need this to determine angle
         for mover_name, mover in items:
             mover.reposition(N)            
