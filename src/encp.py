@@ -691,10 +691,10 @@ def write_to_hsm(input, output, output_file_family='',
     msg ="Complete: "+repr(total_bytes)+" bytes in "+repr(ninput)+" files"+\
           " in "+repr(tf-t0)+"S.  Overall rate = "+\
           repr(done_ticket["MB_per_S"])+" MB/S"
-    if file_family[0] == "ephemeral":
-	ff = string.split(done_ticket["vc"]["file_family"], ".")
-	
-	print "New File Family Created:", ff[0]
+    if verbose:
+	if file_family[0] == "ephemeral":
+	    ff = string.split(done_ticket["vc"]["file_family"], ".")
+	    print "New File Family Created:", ff[0]
 
     if verbose:
         print msg
