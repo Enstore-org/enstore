@@ -468,7 +468,6 @@ def write_to_hsm(input, output,
 				   file_size[i], done_ticket)
 		# exit here
 		if not e_errors.is_retriable(done_ticket["status"][0]):
-		    print "NON RETRIABLE"
 		    jraise(errno.errorcode[errno.EPROTO],
 			   " encp.write_to_hsm: 2nd (post-file-send)"+\
 			   "mover callback on socket "+\
@@ -476,7 +475,6 @@ def write_to_hsm(input, output,
 			   "done_ticket[\"status\"]="+\
 			   repr(done_ticket["status"]))
 
-		print "RETRIABLE"
 		print_error(errno.errorcode[errno.EPROTO],
 			    " encp.write_to_hsm:2nd (post-file-send)"+\
 			    "mover callback on socket "+\
@@ -1473,7 +1471,8 @@ def jraise(errcode,errmsg,exit_code=1) :
     Trace.trace(0,"{encp.jraise errcode="+repr(errcode)+\
                 " errmsg="+repr(errmsg)+" exit_code="+repr(exit_code))
 
-    format = "Fatal error:"+str(errcode)+str(errmsg)
+    format = "Fatal error:"+str(errcode)+str(errmsg)+" Exit code:"+\
+	     str(exit_code)
     x=sys.stdout;sys.stdout=sys.stderr
     print format
     try:
