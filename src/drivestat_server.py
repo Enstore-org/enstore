@@ -15,7 +15,7 @@ import dispatching_worker
 import generic_server
 import Trace
 import e_errors
-import drivestat
+import drivestat2
 
 MY_NAME = "drivestat_server"
 
@@ -40,7 +40,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.hostip = att['hostip']
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
-		self.dsDB = drivestat.dsDB(att['dbhost'], att['dbname'], att['dbport'])
+		self.dsDB = drivestat2.dsDB(att['dbhost'], att['dbname'], att['dbport'])
 		return
 
 	def log_stat(self, ticket):
