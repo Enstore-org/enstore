@@ -74,8 +74,13 @@ def write_to_hsm(input, output,
     # make the part of the ticket that encp knows about (there's more later)
     encp = {}
     encp["pri"] = pri
+    encp["adjpri"] = -1
     encp["delpri"] = delpri
     encp["agetime"] = agetime
+
+    # create the time subticket
+    times = {}
+    times["t0"] = tinfo["abs_start"]
 
     tinfo["clients"] = time.time() - t1 #-----------------------------------End
     if list>2:
@@ -204,8 +209,12 @@ def write_to_hsm(input, output,
             # if old ticket exists, that means we are retrying
             #    then just bump priority and change unique id
             try:
+		if work_ticket["encp"]["adjpri"] != -1 :
+		    work_ticket["encp"]["adjpri"] = work_ticket["encp"]["adjpri"] +4
+		    work_ticket["encp"]["pri"] = work_ticket["encp"]["adjpri"]
+		else :
+		    work_ticket["encp"]["pri"] = work_ticket["encp"]["pri"] +4
                 work_ticket["priority"] = workticket["priority"]+4 # this will be deleted shortly
-                work_ticket["encp"]["pri"] = work_ticket["encp"]["pri"] +4
                 work_ticket["unique_id"] = unique_id[i]
 
             # if no ticket, then this is a not a retry
@@ -225,6 +234,7 @@ def write_to_hsm(input, output,
                                "pinfo"              : pinfo[i],
                                "uinfo"              : uinfo,
                                "encp"               : encp,
+			       "times"              : times,
                                "unique_id"          : unique_id[i]
                                }
 
@@ -512,8 +522,13 @@ def read_from_hsm(input, output,
     # make the part of the ticket that encp knows about (there's more later)
     encp = {}
     encp["pri"] = pri
+    encp["pri"] = -1
     encp["delpri"] = delpri
     encp["agetime"] = agetime
+
+    # create the time subticket
+    times = {}
+    times["t0"] = tinfo["abs_start"]
 
     tinfo["clients"] = time.time() - t1 #-----------------------------------End
     if list>2:
@@ -652,6 +667,7 @@ def read_from_hsm(input, output,
                                "fc"                : file_clerk,
                                "pinfo"             : pinfo[i],
                                "encp"              : encp,
+			       "times"             : times,
                                "unique_id"         : unique_id[i]
                                }
 
