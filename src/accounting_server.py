@@ -62,8 +62,10 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	# These need confirmation
 	def quit(self, ticket):
 		self.accDB.close()
-		self.reply_to_caller({'status':(e_errors.OK, None)})
-		sys.exit(0)
+		dispatching_worker.DispatchingWorker.quit(self, ticket)
+		# can't go this far
+		# self.reply_to_caller({'status':(e_errors.OK, None)})
+		# sys.exit(0)
 
 	# log_start_mount(self, node, volume, type, logname, start)
 	def log_start_mount(self, ticket):

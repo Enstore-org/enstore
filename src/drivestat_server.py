@@ -100,8 +100,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	# These need confirmation
 	def quit(self, ticket):
 		self.dsDB.close()
-		self.reply_to_caller({'status':(e_errors.OK, None)})
-		sys.exit(0)
+		dispatching_worker.DispatchingWorker.quit(self, ticket)
 
 
 if __name__ == '__main__':
