@@ -579,14 +579,14 @@ class VolumeClerkMethods(DispatchingWorker) :
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket) :
-     try:
-         self.reply_to_caller({"status" : "ok"}
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
-         pprint.pprint(ticket)
-         self.reply_to_caller(ticket)
-         return
+        try:
+            self.reply_to_caller({"status" : "ok"})
+        # even if there is an error - respond to caller so he can process it
+        except:
+            ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
 
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client

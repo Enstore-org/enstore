@@ -72,7 +72,59 @@ class VolumeClerkClient :
 
     # get a list of all volumnes
     def get_vols(self):
-        return self.send({"work" : "get_vols"} )
+        # get a port to talk on and listen for connections
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"               : "get_vols",
+                  "user_callback_port" : port,
+                  "user_callback_host" : host,
+                  "unique_id"          : time.time() }
+        # send the work ticket to the library manager
+        ticket = self.send(ticket)
+        if ticket['status'] != "ok" :
+            raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket"\
+                  +repr(ticket)
+
+        # We have placed our request in the system and now we have to wait.
+        # All we  need to do is wait for the system to call us back,
+        # and make sure that is it calling _us_ back, and not some sort of old
+        # call-back to this very same port. It is dicey to time out, as it
+        # is probably legitimate to wait for hours....
+        while 1 :
+            control_socket, address = listen_socket.accept()
+            new_ticket = callback.read_tcp_socket(control_socket, "volume"+\
+			          "clerk client get_vols,  vc call back")
+            if ticket["unique_id"] == new_ticket["unique_id"] :
+                listen_socket.close()
+                break
+            else:
+                print ("vcc.get_vols: imposter called us back, trying again")
+                control_socket.close()
+        ticket = new_ticket
+        if ticket["status"] != "ok" :
+            raise errno.errorcode[errno.EPROTO],"vcc.get_vols: "\
+                  +"1st (pre-work-read) volume clerk callback on socket "\
+                  +repr(address)+", failed to setup transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+
+        # If the system has called us back with our own  unique id, call back
+        # the library manager on the library manager's port and read the
+        # work queues on that port.
+        data_path_socket = callback.volume_client_callback_socket(ticket)
+        worklist = callback.read_tcp_socket(data_path_socket,"volume clerk "+\
+                                    "client get_vols, reading worklist")
+        data_path_socket.close()
+
+        # Work has been read - wait for final dialog with volume clerk
+        done_ticket = callback.read_tcp_socket(control_socket, "volume clerk"+\
+                                      "client get_vols, vc final dialog")
+        control_socket.close()
+        if done_ticket["status"] != "ok" :
+            raise errno.errorcode[errno.EPROTO],"vcc.get_vols "\
+                  +"2nd (post-work-read) volume clerk callback on socket "\
+                  +repr(address)+", failed to transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+        return worklist
 
     # what is the current status of a specified volume?
     def inquire_vol(self, external_label) :
