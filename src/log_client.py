@@ -30,19 +30,6 @@ MY_SERVER = "log_server"
 VALID_PERIODS = {"today":1, "week":7, "month":30, "all":-1}
 
 
-
-class LoggerLock:
-    def __init__(self):
-	self.locked = 0
-    def unlock(self):
-	self.locked = 0
-    def test_and_set(self):
-	s = self.locked
-	self.locked=1
-	return s
-
-
-
 #############################################################################################
 # AUTHOR        : FERMI-LABS
 # DATE          : JUNE 8, 1999
@@ -325,13 +312,8 @@ class LoggerClient(generic_client.GenericClient):
         self.log_dir = lticket.get("log_file_path", "")
         self.u = udp_client.UDPClient()
 	Trace.set_log_func( self.log_func )
-	self.lock = LoggerLock() 
 
     def log_func( self, time, pid, name, args ):
-	#prevent log func from calling itself recursively
-	if self.lock.test_and_set():
-            return
-
 	severity = args[0]
 	msg      = args[1]
         if self.log_name:
@@ -346,7 +328,6 @@ class LoggerClient(generic_client.GenericClient):
 				       e_errors.sevdict[severity],name,msg)
 	ticket = {'work':'log_message', 'message':msg}
 	self.u.send_no_wait( ticket, self.logger_address )
-	return 	self.lock.unlock()
 
     def send( self, severity, priority, format, *args ):
 	if args != (): format = format%args
