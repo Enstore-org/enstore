@@ -191,8 +191,8 @@
     </For>
     <MonitoredElement Name="timeSync" Host="localhost" Type="Daemon">
         <ConditionSet>
-        <fn Name="plug_ins" Arg="python /var/ngop/include/checkTime.py 4 3.0" RetVal="int:isSync"/>
-    	<Condition State="1" SevLevel="6" Description="Time is not syncronized (more then 3 seconds off) for more than 4 hours">
+        <fn Name="plug_ins" Arg="python /var/ngop/include/checkTime.py 4 60.0" RetVal="int:isSync"/>
+    	<Condition State="1" SevLevel="6" Description="Time is not syncronized (more then 1 minute off) for more than 4 hours">
         <apply>
        	<eq/>
          <ci>isSync</ci>
