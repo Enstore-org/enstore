@@ -263,12 +263,12 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             work_ticket['status'] = (e_errors.UNKNOWN,
                                      "Get does not know number of bytes"
                                      " transfered.")
-            return
+            return work_ticket
         elif mover_size == None:
             work_ticket['status'] = (e_errors.UNKNOWN,
                                      "Mover did not report how many bytes"
                                      " where transfered.")
-            return
+            return work_ticket
         elif long(encp_size) != long(mover_size):
             #We get here if the two sizes to not match.  This is a very bad
             # thing to occur.
@@ -276,6 +276,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                    "Encp bytes read (%s) do not match the mover "
                    "bytes written (%s)." % (encp_size, mover_size))
             work_ticket['status'] = (e_errors.CONFLICT, msg)
+            return work_ticket
         else:
             if work_ticket['file_size'] == None:
                 #If the number of bytes transfered is consistant with Get and
