@@ -223,18 +223,19 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 exec("x="+finfo["sanity_cookie"])
                 finfo["sanity_cookie"] = x
                 dict[bfid] = copy.deepcopy(finfo) # copy back to database
-            filelf = os.popen("pcmd path "+finfo["pnfsid"],'r').readlines()
-            file = regsub.sub("\012","",filelf[0])
-            finfo["pnfsfilename"] = file
-            if 1==1 and file!="NO_SUCH_FILE":
-                fstat = os.stat(file)
-                psize = fstat[stat.ST_SIZE]
-                if psize != finfo['size']:
-                    self.enprint("Size mismatch between "+file+"="+repr(psize)+" and fc="+repr(finfo['size']))
-                    finfo['size'] = psize
-                    exec("bof="+finfo["bof_space_cookie"])
-                    #finfo['bof_space_cookie'] = repr((bof[0],psize))  don't fix this for now, use as safeguard to get old size back
-                    dict[bfid] = copy.deepcopy(finfo) # copy back to database
+            if 0==1:
+                filelf = os.popen("pcmd path "+finfo["pnfsid"],'r').readlines()
+                file = regsub.sub("\012","",filelf[0])
+                finfo["pnfsfilename"] = file
+                if 1==1 and file!="NO_SUCH_FILE":
+                    fstat = os.stat(file)
+                    psize = fstat[stat.ST_SIZE]
+                    if psize != finfo['size']:
+                        self.enprint("Size mismatch between "+file+"="+repr(psize)+" and fc="+repr(finfo['size']))
+                        finfo['size'] = psize
+                        exec("bof="+finfo["bof_space_cookie"])
+                        #finfo['bof_space_cookie'] = repr((bof[0],psize))  don't fix this for now, use as safeguard to get old size back
+                        dict[bfid] = copy.deepcopy(finfo) # copy back to database
             #######################################################################END#TEMPORARY##########
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
