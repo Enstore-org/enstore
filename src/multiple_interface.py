@@ -130,7 +130,6 @@ def rates(interfaces):
         rrate = (r1-r0)/tdiff
         srate = (s1-s0)/tdiff
         ret[interface] = (rrate, srate)
-    print ret #REMOVE CGW
     return ret
 
 if __name__ == '__main__':
