@@ -51,11 +51,11 @@ class FileClient(generic_client.GenericClient,
         r = self.send(ticket)
         return r
 
-    def set_delete(self, ticket):
-        #Is this really set_deleted or set_delete?
-        ticket['work'] = "set_deleted"
-        r = self.send(ticket)
-        return r
+    # def set_delete(self, ticket):
+    #     #Is this really set_deleted or set_delete?
+    #     ticket['work'] = "set_deleted"
+    #     r = self.send(ticket)
+    #     return r
 
     def get_bfids(self,external_label):
         host, port, listen_socket = callback.get_callback()
