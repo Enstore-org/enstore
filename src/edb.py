@@ -213,7 +213,7 @@ class DbTable:
 
 class FileDB(DbTable):
 	def __init__(self, host='localhost', port=8888, jou='.', database=default_database):
-		DbTable.__init__(self, host, database, jouHome=jou, table='file', pkey='bfid', auto_journal = 1)
+		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal = 1)
 		self.retrieve_query = "\
         		select \
                 		bfid, crc, deleted, drive, \
@@ -235,22 +235,40 @@ class FileDB(DbTable):
 
 
 	def export_format(self, s):
+		# take care of deleted
 		if s['deleted'] == 'y':
 			deleted = 'yes'
 		elif s['deleted'] == 'n':
 			deleted = 'no'
 		else:
 			deleted = 'unknown'
+
+		# take care of sanity_cookie
+		if s['sanity_cookie_0'] == 0:
+			sanity_cookie_0 = None
+		else:
+			sanity_cookie_0 = s['sanity_cookie_0']
+		if s['sanity_cookie_1'] == 0:
+			sanity_cookie_1 = None
+		else:
+			sanity_cookie_1 = s['sanity_cookie_1']
+
+		# take care of crc
+		if s['crc'] == 0:
+			crc = None
+		else:
+			crc = s['crc']
+
 		return {
 			'bfid': s['bfid'],
-			'complete_crc': s['crc'],
+			'complete_crc': crc,
 			'deleted': deleted,
 			'drive': s['drive'],
 			'external_label': s['label'],
 			'location_cookie': s['location_cookie'],
 			'pnfs_name0': s['pnfs_path'],
 			'pnfsid': s['pnfs_id'],
-			'sanity_cookie': (s['sanity_cookie_0'], s['sanity_cookie_1']),
+			'sanity_cookie': (sanity_cookie_0, sanity_cookie_1),
 			'size': s['size']
 			}
 
@@ -261,23 +279,38 @@ class FileDB(DbTable):
 			deleted = 'n'
 		else:
 			deleted = 'u'
+
+		# Take care of sanity_cookie
+		if s['sanity_cookie'][0] == None:
+			sanity_cookie_0 = 0
+		else:
+			sanity_cookie_0 = s['sanity_cookie'][0]
+		if s['sanity_cookie'][1] == None:
+			sanity_cookie_1 = 0
+
+		# take care of crc
+		if s['complete_crc'] == None:
+			crc = 0
+		else:
+			crc = s['complete_crc']
+
 		return {
 			'bfid': s['bfid'],
-			'crc': s['complete_crc'],
+			'crc': crc,
 			'deleted': deleted,
 			'drive': s['drive'],
 			'volume': ('lookup_vol', s['external_label']),
 			'location_cookie': s['location_cookie'],
 			'pnfs_path': s['pnfs_name0'],
 			'pnfs_id': s['pnfsid'],
-			'sanity_cookie_0': s['sanity_cookie'][0],
-			'sanity_cookie_1': s['sanity_cookie'][1],
+			'sanity_cookie_0': sanity_cookie_0,
+			'sanity_cookie_1': sanity_cookie_1,
 			'size': s['size']
 			}
 
 class VolumeDB(DbTable):
 	def __init__(self, host='localhost', port=8888, jou='.', database=default_database):
-		DbTable.__init__(self, host, database, jouHome=jou, table='volume', pkey='label', auto_journal = 1)
+		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal = 1)
 		self.retrieve_query = "\
         		select \
 				label, block_size, capacity_bytes, \
