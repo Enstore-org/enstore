@@ -19,14 +19,14 @@ int
 do_add_file(char *destination, char *source)
 {
     char dbpath[MAX_PATH_LEN];
-    char buf[80];
+    char dbvalue[256];
     int size;
     struct stat sbuf;
     char *read_buffer;
     int nbytes;
+    int check_blocksize;
 
-
-
+    
     read_buffer = (char*)malloc(blocksize);
     if (read_buffer == (char*)0){
 	fprintf(stderr,"%s: cannot allocate %d bytes for read buffer ", 
@@ -35,7 +35,34 @@ do_add_file(char *destination, char *source)
     }
 
     sprintf(dbpath,"%s/volumes/%s", tape_db, volume_label);
-    if (read_db_i(dbpath, "next_file", &file_number)){
+    
+    if (read_db_i(dbpath, "blocksize", &check_blocksize, 0) ==0 ){
+	/* blocksize is already in database, does it match? */
+	if (check_blocksize != blocksize){
+	    fprintf(stderr, "%s: blocksize has been changed from %d to %d\n",
+		    progname, check_blocksize, blocksize);
+	    return -1;
+	}
+    } else { /* add blocksize to database */
+	if (write_db_i(dbpath, "blocksize", blocksize))
+	    return -1;
+    }
+    
+    if (read_db_s(dbpath, "format", dbvalue, 0) == 0){
+	/* format is already in database, does it match? */
+	/* note: we only use cpio_odc */
+	if (strcmp(dbvalue, "cpio_odc")){
+	    fprintf(stderr, "%s: format has been changed from %s to %s\n",
+		    progname, dbvalue, "cpio_odc");
+	    return -1;
+	}
+    } else { /* add format to database */
+	if (write_db_s(dbpath, "format", "cpio_odc"))
+	    return -1;
+    }
+    
+
+    if (read_db_i(dbpath, "next_file", &file_number, 1)){
 	return -1;
     }
     
@@ -65,8 +92,8 @@ do_add_file(char *destination, char *source)
 		nbytes=-1;
 		if (errno==ENOSPC){
 		    fprintf(stderr,"%s: tape full\n", progname);
-		    sprintf(buf,"volumes/%s/tape_full",volume_label);
-		    write_db_i(tape_db,buf,1);
+		    sprintf(dbvalue,"volumes/%s/tape_full",volume_label);
+		    write_db_i(tape_db,dbvalue,1);
 		}
 		break;
 	    }
@@ -92,19 +119,26 @@ do_add_file(char *destination, char *source)
     
     sprintf(dbpath,"%s/volumes/%s/files/%07d", tape_db, volume_label, file_number);
     if (write_db_u(dbpath,"checksum", checksum)
-	||write_db_i(dbpath,"blocksize",blocksize)
 	||write_db_i(dbpath,"size", size) 
 	||write_db_s(dbpath,"source", source)
 	||write_db_s(dbpath,"destination", destination)
 	||write_db_i(dbpath,"early_checksum_size", early_checksum_size)
 	||write_db_u(dbpath,"early_checksum", early_checksum)
 	) goto cleanup;
-    
-    sprintf(buf,"%07d", file_number+1);
+
+
+
+    sprintf(dbvalue,"%07d", file_number+1);
     sprintf(dbpath, "%s/volumes/%s", tape_db, volume_label);
-    if(write_db_s(dbpath, "next_file", buf))
+    if(write_db_s(dbpath, "next_file", dbvalue))
 	goto cleanup;
-    
+
+    if (timestamp(dbvalue)){ /* this is not fatal */
+	fprintf(stderr, "%s: unable to get time of day\n", progname);
+    } else {
+	write_db_s(dbpath, "last_access", dbvalue);
+    }
+
     return 0;
     
   cleanup:
