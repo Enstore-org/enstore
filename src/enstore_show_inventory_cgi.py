@@ -19,10 +19,9 @@ elif host[:3] == "cdf":
 else:
 	cluster = "unknown"
 
-special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED', 'VOLUME_QUOTAS', 'VOLUME_SIZE', 'LAST_ACCESS', 'NOACCESS']
+special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED', 'VOLUME_QUOTAS', 'VOLUME_SIZE', 'LAST_ACCESS', 'NOACCESS', 'CLEANING']
 
 if cluster == "d0en":
-	special.append('CLEANING')
 	special.append('AML2-VOLUMES.html')
 elif cluster == "stken":
 	special.append('VOLUME_QUOTAS_UPDATE')
