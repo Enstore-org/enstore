@@ -23,6 +23,20 @@ import e_errors
 import configuration_client
 import bfid_db
 
+# This file is a total disaster.  Look at how next_write_volume and find_matching_volume
+# interact.  The former calls the latter, but they both return to caller!  Either this is
+# completely erroneous, or, if correct, it's so confusing as to be unmaintainable.
+# Somebody clean this shit up!
+
+def hack_match(a,b): #XXX clean this up
+    a = string.split(a, '.')
+    b = string.split(b, '.')
+    if len(a) != len(b):
+        min_len = min(len(a), len(b))
+        a = a[:min_len]
+        b = b[:min_len]
+    return a==b
+
 # conditional comparison
 def mycmp(cond, a, b):
     # condition may be None or some other
@@ -517,8 +531,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     vf = string.split(ticket['volume_family'],'.')
                     Trace.trace(35, "is_vol_available: ticket %s, record %s" %
                                 (ticket['volume_family'],record['volume_family']))
-                    
-                    if (ticket['volume_family'] == record['volume_family'] or
+
+                    #XXX deal with 2-tuple vs 3-tuple...
+                    if (hack_match(ticket['volume_family'],record['volume_family']) or
                         vf[1] == 'ephemeral'):
                         ret = self.is_volume_full(record,ticket['file_size'])
                         if not ret:
