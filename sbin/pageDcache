@@ -178,7 +178,7 @@ case $gang in
 		   case $testToDo in
 			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
 			      ;;
-			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
+			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output _gridftp 2>&1; echo $? > $exit_code_gridftp`&
 			         ;;
 			srm) `pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
 			     ;;
@@ -193,7 +193,9 @@ case $gang in
 	 ;;
   cdfen) case $dcacheToTest in
 	    cdfen|*) strip_dir="/pnfs/cdfen"
+	             door_list="/pnfs/cdfen/.(config)(dCache)(dcache.conf)"
 	             w=$strip_dir/jon/fcdfsgi2/$N.dcache_page_$$
+		     wd=/pnfs/fnal.gov/usr/cdfen/jon/fcdfsgi2/$N.dcache_page_$$
 		     wp=$strip_dir/jon/fcdfsgi2/$N.dcache_page_p_$$
 		     wa=$strip_dir/jon/fcdfsgi2/$N.dcache_page_a_$$
 		     wpc=$strip_dir/jon/fcdfsgi2/$N.dcache_page_pc_$$
@@ -205,7 +207,7 @@ case $gang in
 		     get_ports
 		     get_ticket
 		     case $testToDo in
-			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w $door_list $wd > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
 			      ;;
 			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
 			         ;;
