@@ -1116,7 +1116,7 @@ def get_vcc(parameter = None):
         else:
             Trace.log(e_errors.WARNING,
                       "Volume clerk (%s) knows nothing about %s.\n"
-                      % (__vcc.server_address, volume))
+                      % (test_vcc.server_address, volume))
 
 
     # get a configuration server
@@ -5233,83 +5233,47 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 #    {'status' : status, 'volume' : e.volume})
                 #quit(1)
 
-            #These two lines should NEVER give an error.
+            #These lines should NEVER give an error.
             bfid = fc_reply['bfid']
             lc = fc_reply['location_cookie']
+            pnfs_name0 = fc_reply.get('pnfs_name0', None)
+            pnfsid = fc_reply.get('pnfsid', None)
 
-            #If the filename from the --list file and the path from the
-            # command line do not match the name in the file database,
-            # using the pnfs in the database determine the current name
-            # of the file.
-            if (fc_reply.get('pnfs_name0', None) != None) and \
-               (fullpath(os.path.join(e.input[0], filename))[1]
-                 != fc_reply.get('pnfs_name0', None)):
+            if pnfsid == None or pnfs_name0 == None:
+                #If we get here, then most likely, this is the first time
+                # the volume has been read.
+                sys.stdout.write("Location %s is active, but the "
+                                 "pnfs id is unknown.\n" % lc)
+
+                #Determine the inupt filename.
+                ifullname = os.path.join(e.input[0], filename)
+            elif os.path.exists(pnfs_name0):
+                #If we get here, then we have the file's metadata and
+                # the file does exist.
+                
+                #Determine the inupt filename.
+                ifullname = pnfs_name0
+            else:
                 try:
-                    #If we fall into here, then there is not a file with
-                    # the original name.  It may not exists, in which case
-                    # we will fall into the execpt clause.  If the file
-                    # has been moved/renamed, then we need to find the
-                    # new name based on the original pnfs id.
-
-                    #Attempt to get the pnfs ID.  If an encp failed in the
-                    # right way it is possible for this entry to not exist.
-                    try:
-                        pnfsid = fc_reply['pnfsid']
-                        if pnfsid == None:
-                            raise KeyError("pnfsid")
-                    except KeyError:
-                        #If we get here, then a file does not have all
-                        # the information in the file database, but does
-                        # have the deleted field set to 'no'.
-                        pnfsid = None
-                        sys.stdout.write("Location %s is active, but the "
-                                         "pnfs id is unknown.\n" % lc)
-
-                    #Using the original directory, try and determine
-                    # the new file name.
-                    orignal_directory = os.path.dirname(fc_reply['pnfs_name0'])
+                    #Using the original directory as a starting point, try
+                    # and determine the new file name/path/location.
+                    orignal_directory = os.path.dirname(pnfs_name0)
                     #Try to obtain the file name and path that the
                     # file currently has.
                     p = pnfs.Pnfs(pnfsid, orignal_directory)
                     ifullname = p.get_path() #pnfsid, orignal_directory)
-
-                    #Determine the filesize.
-                    file_size = get_file_size(ifullname)
-                
                 except (OSError, KeyError, AttributeError):
-                    #If we get here then there was a problem determining
-                    # the name and path of the file.  Most likely, there
-                    # is an entry in pnfs but the metadata is not complete.
-
-                    ifullname = os.path.join(e.input[0], filename)
-
-                    p = pnfs.Pnfs(ifullname)
-
-                    try:
-                        file_size = long(fc_reply['size'])
-                    except (KeyError, TypeError):
-                        file_size = None #Not known.
-
                     sys.stdout.write("Location %s is active, but the "
                                      "file has been deleted.\n" % lc)
+
+                    #Determine the inupt filename.
+                    ifullname = os.path.join(e.input[0], filename)
+
+            #Get the pnfs interface class instance.
+            p = pnfs.Pnfs(ifullname)
             
-            #Case1:
-            #This is the case where no previous information is known
-            # about the filename of the file at the requested posistion
-            # on the tape.  Thus, just use what is in the list.
-            #Case2:
-            #The original filename and path in the database matches
-            # the filename and path that was passed to get.
-            else:
-                #Determine the inupt filename.  If necessary, get the
-                # current filename by using the pnfs id.
-                ifilename = os.path.join(e.input[0], filename)
-                unused, ifullname, unused, unused = fullpath(ifilename)
-
-                p = pnfs.Pnfs(ifullname)
-
-                #Determine the filesize.
-                file_size = get_file_size(ifullname)
+            #Determine the filesize.  None if non-existant.
+            file_size = get_file_size(ifullname)
 
             #Determine the output filename.
             if e.output[0] == "/dev/null":
