@@ -19,7 +19,7 @@ import access
 
 hostinfo=None
 
-def gethostinfo(verbose=1):
+def gethostinfo(verbose=0):
     global hostinfo
     if not hostinfo:
         hostname=socket.gethostname()
@@ -35,6 +35,7 @@ def gethostinfo(verbose=1):
     return hostinfo
 
 known_ips = {}
+
 def address_to_name(addr):
     ## this will return the address if it can't be resolved into a hostname
     if addr in known_ips.keys():
@@ -58,7 +59,7 @@ def name_to_address(name):
     known_names[name] = addr
     return addr
     
-def get_interface_file_name(verbose=1):
+def get_interface_file_name(verbose=0):
     hostname, junk, junk = gethostinfo()
     if '.' in hostname:
         hostname=string.split(hostname,'.')[0]
@@ -82,7 +83,7 @@ def get_interface_file_name(verbose=1):
 multi_interface_table=None
 last_mtime = 0
 
-def get_multiple_interfaces(verbose=1):
+def get_multiple_interfaces(verbose=0):
     global multi_interface_table
     global last_mtime
 
