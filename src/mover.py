@@ -38,6 +38,7 @@ import udp_client
 import socket_ext
 import hostaddr
 import string_driver
+import socket_ext
 
 import Trace
 
@@ -1433,7 +1434,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             ticket = self.current_work_ticket
             data_ip=self.config.get("data_ip",None)
-            host, port, listen_socket = callback.get_callback(fixed_ip=data_ip)
+            host, port, listen_socket = callback.get_callback()
             listen_socket.listen(4)
             ticket['mover']['callback_addr'] = (host,port) #client expects this
 
@@ -1471,6 +1472,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             if listen_socket in read_fds:
                 Trace.trace(10, "accepting client connection")
                 client_socket, address = listen_socket.accept()
+
+                if data_ip:
+                    interface=hostaddr.interface_name(data_ip)
+                    if interface:
+                        status=socket_ext.bindtodev(client_socket.fileno(),interface)
+                        if status:
+                            Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
+
                 listen_socket.close()
                 self.client_ip = address[0]
                 Trace.notify("connect %s %s" % (self.shortname, self.client_ip))
