@@ -1390,6 +1390,23 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 ##            elif wt["unique_id"] == ticket["unique_id"]:
 ##                break
 ##        else:
+        # check if work is in the at mover list before inserting it
+        for wt in self.work_at_movers.list:
+            # 2 requests cannot have the same output file names
+            if ((wt["wrapper"]['pnfsFilename'] == ticket["wrapper"]["pnfsFilename"]) and
+                (wt["unique_id"] == ticket["unique_id"])):
+                ticket['status'] = (e_errors.OK,"Operation in progress")
+                self.reply_to_caller(ticket)
+                format = "write rq. is already in the at mover queue %s (%s) -> %s : library=%s family=%s requester:%s volume_family:%s"
+                Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
+                                                 ticket["unique_id"],
+                                                 ticket["wrapper"]["pnfsFilename"],
+                                                 ticket["vc"]["library"],
+                                                 ticket["vc"]["file_family"],
+                                                 ticket["wrapper"]["uname"],
+                                                 ticket['vc']["volume_family"]))
+                return
+            
         if not ticket.has_key('lm'):
             ticket['lm'] = {'address':self.server_address }
         # set up priorities
@@ -1498,11 +1515,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['lm'] = {'address' : self.server_address}
 
         # check if work is in the at mover list before inserting it
+        format = None
         for wt in self.work_at_movers.list:
             if wt["unique_id"] == ticket["unique_id"]:
                 status = e_errors.OK
                 ticket['status'] = (status, None)
                 rq = None
+                format = "read rq. is already in the at mover queue %s (%s) -> %s : library=%s family=%s requester:%s"
+                
                 break
         else:
             # set up priorities
@@ -1514,7 +1534,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         if status == e_errors.OK:
             if not rq:
-                format = "read rq. is already in the queue %s (%s) -> %s : library=%s family=%s requester:%s"
+                if not format:
+                    format = "read rq. is already in the queue %s (%s) -> %s : library=%s family=%s requester:%s"
                 file1 = ticket['wrapper']['fullname']
                 file2 = ticket['wrapper']['pnfsFilename']
             else:
