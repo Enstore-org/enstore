@@ -237,14 +237,22 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # This one is very dangerous
 
     def __erase_volume(self, vol):
+
+        # only allow deleted volume to be erased
+        if vol[-8:] != '.deleted':
+            error_msg = 'try to erase undeleted volume %s'%(vol)
+            Trace.log(e_errors.ERROR, error_msg)
+            return e_errors.ERROR, error_msg
+
         fcc = file_clerk_client.FileClient(self.csc)
+
         # erase file record
         status = fcc.erase_volume(vol)
         if status[0] != e_errors.OK:
             return status
         # erase volume record
         del self.dict[vol]
-        return
+        return e_errors.OK, None
 
     # erase_volume(vol) -- server version of __erase_volume()
 
