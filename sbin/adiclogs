@@ -1,0 +1,32 @@
+#!/bin/sh
+#set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# if called with no arguments, then assume that we have get the logs first
+# and then pass them along for decoding
+if [ -z "${1-}" ]; then
+
+   if [ -z "${BASE-}" ]; then
+      BASE=/rip8a/enstore/adicShadow/AMU/LOGS-TRC
+   fi
+
+  #mirror $ENSTORE_DIR/sbin/adic.mirror
+   mirror $ENSTORE_DIR/sbin/adic.log.mirror
+   find $BASE -type f -name "log*" -maxdepth 1 -exec $0 {} \;
+
+# otherwise we need to create a version people can read
+# then gzip it to save space - note that most browsers can decode gzip formats
+else
+
+    if [ -z "${DECODED-}" ]; then
+       DECODED=/fnal/ups/prd/www_pages/enstore/adiclog
+    fi
+
+    #asc=$DECODED/`basename $1`.gz
+    asc=$DECODED/`basename $1`.ascii
+    if [ ! -r $asc -o $asc -ot $1 ]; then
+       echo $asc
+      #nice -n 20 $ENSTORE_DIR/sbin/dump_emass_log.py $1 | /bin/gzip -9 > $asc
+       nice -n 20 $ENSTORE_DIR/sbin/dump_emass_log.py $1 > $asc
+    fi
+fi
