@@ -48,3 +48,24 @@ READ_UNMOUNT    = 'READ_UNMOUNT'
 ENCP_GONE       = 'ENCP_GONE'
 TCP_HUNG        = 'TCP_HUNG'
 MOVER_CRASH     = 'MOVER_CRASH'
+
+
+def is_retriable(error):
+    if error == NOMOVERS or \
+       error == WRONGPARAMETER or \
+       error == MOUNTFAILED or \
+       error == USERERROR  or \
+       error == UNKNOWNMEDIA or \
+       error == NOVOLUME or \
+       error == WRITE_NOTAPE or \
+       error == WRITE_NOBLANKS or \
+       error == READ_NOTAPE or \
+       error == READ_BADMOUNT or \
+       error == READ_BADLOCATE or \
+       error == READ_UNLOAD or \
+       error == READ_UNMOUNT:
+	return 0
+    return 1
+    
+    
+
