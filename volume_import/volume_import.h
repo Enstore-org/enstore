@@ -25,25 +25,28 @@ prototypes and necessary headers for the volume import package
 
 int do_add_file(char *pnfs_dir, char *filename);
 int verify_file(char *pnfs_dir, char *filename);
-int verify_tape_db();
-int verify_tape_device();
-int verify_volume_label();
-int verify_db_volume();
+int verify_tape_db(int);
+int verify_tape_device(void);
+int verify_volume_label(void);
+int verify_db_volume(int);
 
 unsigned int adler32(int adler, char *buf, int len);
 int write_db_s(char *path, char *key, char *value);
 int write_db_i(char *path, char *key, int value);
 int write_db_u(char *path, char *key, unsigned  value);
+int read_db_i(char *path, char *key, int *value);
 
-int open_tape();
-int rewind_tape();
+int open_tape(void);
+int rewind_tape(void);
 int read_tape(char *, int);
 int write_tape(char *, int);
-int write_vol1_header();
+int write_vol1_header(void);
 int write_eot1_header(int);
-int set_variable_blocksize();
-int write_eof(int);
-int close_tape();
+int set_variable_blocksize(void);
+int write_eof_marks(int);
+int skip_eof_marks(int);
+int backward_record(int); 
+int close_tape(void);
 
 int cpio_start(char *);
 int cpio_next_block(char *, int);
@@ -55,7 +58,7 @@ extern int tape_fd;
 extern char *tape_db;
 extern char *volume_label;
 extern char *progname;
-
+int file_number;
 extern int blocksize;
 extern int verbose;
 

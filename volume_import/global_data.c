@@ -9,6 +9,7 @@ char *volume_label = NULL;
 char *progname;
 int blocksize = 4096;
 int verbose = 0;
+int file_number = 0;
 unsigned int checksum=0, early_checksum=0;
 unsigned int early_checksum_size=0;
 

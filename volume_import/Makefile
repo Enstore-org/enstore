@@ -5,7 +5,7 @@ PROGS=add_to_tape init_tape
 ADD_OBJS=add_to_tape.o do_add_file.o verify.o dbfuncs.o tape.o \
 	cpio.o ECRC.o global_data.o	
 
-INIT_OBJS=init_tape.o verify.o tape.o global_data.o
+INIT_OBJS=init_tape.o verify.o tape.o dbfuncs.o global_data.o 
 
 HDRS=volume_import.h
 

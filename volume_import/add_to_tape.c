@@ -141,10 +141,15 @@ main(int argc, char **argv)
 	fprintf(stderr, "%s: no tape db specified\n", progname);
 	Usage();
     }
+    
+    if (verify_tape_device()
+	||verify_tape_db(0)
+	||verify_volume_label())
+	{
+	    fprintf(stderr,"%s: failed\n",progname);
+	    exit(-1);
+	}
 
-    verify_tape_device();
-    verify_tape_db(0);
-    verify_volume_label();
     
     for (; i<argc; ++i) {
 	if (argv[i][0] == '-') {
@@ -165,11 +170,12 @@ main(int argc, char **argv)
 	    }
 	}
 	filename = argv[i];
-	verify_file(pnfs_dir, filename);
+	if (verify_file(pnfs_dir, filename))
+	    exit(-1);
 	append_to_file_list(pnfs_dir, filename);
     }
     
-    if (open_tape(2)) /* || rewind_tape()) */
+    if (open_tape()) /* || rewind_tape()) */
 	exit(-2);
     
     for (nfiles=0,node=file_list; node; ++nfiles,node=node->next) {
@@ -178,7 +184,7 @@ main(int argc, char **argv)
 	if (do_add_file(node->pnfs_dir, node->filename)){
 	    break;  /* XXX clean up this whole batch of additions ? */
 	}
-	if (write_eof(1)){
+	if (write_eof_marks(1)){
 	    break;
 	}
     }

@@ -4,14 +4,14 @@
 
 #include "volume_import.h"
 
-int open_tape(mode){
+int open_tape(){
     verbage("%s: opening %s\n", progname, tape_device);
 
     if (!tape_device){
 	fprintf(stderr,"%s: tape_device not specified\n", progname);
 	return -1;
     }
-    tape_fd = open(tape_device, mode);
+    tape_fd = open(tape_device, 2);
     if (tape_fd<0){
 	fprintf(stderr, "%s: ", progname);
 	perror(tape_device);
@@ -71,11 +71,26 @@ set_variable_blocksize(){
     return check_tape_ioctl(MTSETBLK, 0, "set block size");
 }
 
-int write_eof(int n){
+int 
+write_eof_marks(int n){
     verbage("%s: writing %d eof markers on %s\n", progname,
 			n, tape_device);
     return check_tape_ioctl(MTWEOF, n, "write eof");
 }
+
+int
+skip_eof_marks(int n){
+    verbage("%s: skipping %d eof markers on %s\n", progname,
+			n, tape_device);
+    return check_tape_ioctl(MTFSF, n, "skip file mark");
+} 
+
+int
+backward_record(int n){ /*XXX better name!*/
+    verbage("%s: skipping %d records backward on %s\n", progname,
+			n, tape_device);
+    return check_tape_ioctl(MTBSR, n, "skip record backward");
+} 
 
 int
 write_tape(char *data, int count){
@@ -119,9 +134,9 @@ read_tape(char *data, int count){
     
     check_tape_fd("read");
 
-    while (count){
+    while (count>0){
 	nbytes = count>blocksize ? blocksize:count;
-	if ( (nread=write(tape_fd, data, nbytes)) != nbytes){
+	if ( (nread=read(tape_fd, data, nbytes)) != nbytes){
 	    fprintf(stderr,"%s: short read %d!=%d\n", progname, 
 		    nread, nbytes);
 	    if (nread<=0){

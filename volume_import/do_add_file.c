@@ -17,11 +17,10 @@ rm_rf(char *path){
 int
 do_add_file(char *pnfs_dir, char *filename)
 {
-    int file_number; /* index into this volume */
     char path[MAX_PATH_LEN];
+    char buf[10];
     int size;
     struct stat sbuf;
-    FILE *fp;
     char *read_buffer;
     int nbytes;
 
@@ -31,30 +30,24 @@ do_add_file(char *pnfs_dir, char *filename)
 		progname, blocksize);
 	return -1;
     }
-	
-    sprintf(path,"%s/volumes/%s/next_file", tape_db, volume_label);
-    fp = fopen(path, "r");
-    if (!fp){
-	file_number = 0;
-    } else {
-	if (fscanf(fp,"%d", &file_number) != 1){
-	    fprintf(stderr,"%s: %s exists but cannot read contents\n", progname,
-		    path);
-	    return -1;
-	}
-	fclose(fp);
+
+    
+    sprintf(path,"%s/volumes/%s", tape_db, volume_label);
+    if (read_db_i(path, "next_file", &file_number)){
+	fprintf(stderr,"%s: %s/next_file exists but cannot read contents\n", progname,
+		path);
+	return -1;
     }
-
-
-    fp = fopen(path, "w");
-    if (!fp){
-	fprintf(stderr, "%s: cannot write ", progname);
+    
+    sprintf(buf,"%07d", file_number+1);
+    
+    if (write_db_s(path, "next_file", buf)){
 	perror(path);
 	return -1;
     }
-    fprintf(fp,"%07d\n",file_number+1);
-    fclose(fp);
-
+    
+    
+    /*use some verify function to do this XXX */
     sprintf(path,"%s/volumes/%s/%07d", tape_db, volume_label, file_number);
     
     if (mkdir(path, 0775)){
@@ -84,8 +77,8 @@ do_add_file(char *pnfs_dir, char *filename)
 	||write_db_s(path,"pnfs_dir", pnfs_dir)
 	||write_db_i(path,"early_checksum_size", 
 		     early_checksum_size=min(size, EARLY_CHECKSUM_SIZE))
-	||cpio_start(filename))
-	goto cleanup;
+	||cpio_start(filename)
+	) goto cleanup;
     
     /* terminate when nbytes=0, i.e. we've handled the last block */
     while ( (nbytes=cpio_next_block(read_buffer, blocksize)) ){
@@ -102,22 +95,16 @@ do_add_file(char *pnfs_dir, char *filename)
     
     if (nbytes<0
 	||write_db_u(path,"early_checksum", early_checksum)
-	||write_db_u(path,"checksum", checksum))
-	goto cleanup;
+	||write_db_u(path,"checksum", checksum)
+	) goto cleanup;
     
     return 0;
     
  cleanup:
     rm_rf(path);
-    sprintf(path,"%s/volumes/%s/next_file", tape_db, volume_label);
-    fp = fopen(path, "w");
-    if (!fp){
-	fprintf(stderr, "%s: cannot write ", progname);
-	perror(path);
-    } else {
-	fprintf(fp,"%07d\n",file_number);
-	fclose(fp);
-    }
+    sprintf(path,"%s/volumes/%s", tape_db, volume_label);
+    sprintf(buf,"%07d",file_number);
+    write_db_s(path, "next_file", buf);
     return -1;
 }
     
