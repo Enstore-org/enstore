@@ -11,9 +11,18 @@ echo Stopping `basename $1 | sed -e 's/_pids$//'`
 cat $1 | while read pid; do
     if [ `ps -p $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
       kill $pid
-      if [ `ps -p $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
-        echo "ERROR: Process $pid STILL LIVES" 
-      fi
+      cnt=0
+      max=3
+      while [ $cnt -le $max ]; do
+        if [ `ps -p $pid 2>&1 | grep -c $pid` -eq 0 ]; then 
+	  break
+	elif [ $cnt -eq $max ]; then
+          echo "ERROR: Process $pid STILL LIVES" 
+	  break
+        fi
+	sleep 1
+	cnt=`expr $cnt + 1`
+      done
     fi
 done
 
