@@ -227,7 +227,7 @@ class  FTTDriver(GenericDriver) :
             # if you don't close/reopen, the status never changes, but a check outside of enstore
             # using the same python calls succeeds right away after enstore reports failure - bakken 3/3/99
             FTT.close()
-	    time.sleep( 1 )
+	    #time.sleep( 1 )
             FTT.open( device, 'r' )
 	    x = x -1
 	    pass
