@@ -17,11 +17,11 @@
 #include <sys/msg.h>		/* msg{snd,rcv} */
 #include <Python.h>		/* all the Py.... stuff */
 #include <assert.h>             /* assert */
+#include <errno.h>
 #if 1
 # include <ftt.h>		/* ftt_read/write */
 #else
 /* from ftt_lib/ftt_private.h */
-# include <errno.h>
 # include <../ftt_lib/ftt_defines.h>
 # include <../ftt_lib/ftt_macros.h>
 # include <../ftt_lib/ftt_scsi.h>
@@ -49,6 +49,7 @@ enum e_mtype
   , SanCrc
   , DatCrc
   , DatByt
+  , Err
 };
 struct s_msg
 {
@@ -68,23 +69,26 @@ struct s_msg
 
 static PyObject *EXErrObject;
 
-static PyObject *
-#ifdef HAVE_STDARG_PROTOTYPES
-raise_exception(  char		*method_name
-		, ... )
-#else
-raise_exception( method_name, ETdesc, va_alist )
-     char		*method_name;
-     va_dcl;
-#endif
-{							/* @-Public-@ */
-	char	errbuf[500];
 
-    /*  dealloc and raise exception fix */
-    sprintf(  errbuf, "Error in %s\n", method_name );
-    PyErr_SetString( EXErrObject, errbuf );
-    return (NULL);
-}   /* raise_exception */
+static PyObject *
+raise_exception( char *msg )
+{
+	char		*buf[200];
+        PyObject	*v;
+        int		i = errno;
+
+#   ifdef EINTR
+    if ((i==EINTR) && PyErr_CheckSignals()) return NULL;
+#   endif
+
+    sprintf( buf, "%s - %s", msg, strerror(i) );
+    v = Py_BuildValue( "(is)", i, buf );
+    if (v != NULL)
+    {   PyErr_SetObject( EXErrObject, v );
+	Py_DECREF(v);
+    }
+    return NULL;
+}
 
 
 /******************************************************************************
@@ -284,6 +288,15 @@ EXto_HSM(  PyObject	*self
 		{   eof_flg = 1;
 		    break;	/* manual break out for eof */
 		}
+		else if (just_red_byts == -1)
+		{   
+		    perror( "EXfer.to_HSM - read" );
+		    msgbuf_s.mtype = Err;
+		    msgbuf_s.data = errno;
+		    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.data),0) == -1) /* normal blocking send */
+			perror( "msgsnd - read" );
+		    exit (0);
+		}
 		shm_byts += just_red_byts;	/* only differ for ... */
 		dat_byts += just_red_byts;	/* ... 1st read */
 	    }
@@ -384,6 +397,15 @@ EXto_HSM(  PyObject	*self
 	case DatCrc:
 	    /*printf( "EXfer crc is %d\n", msgbuf_s.data );*/
 	    dat_crc = msgbuf_s.data;
+	    break;
+	case Err:
+	    semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
+	    (void)semctl( semid, 0, IPC_RMID, semun_u );
+	    (void)shmdt( shmaddr );
+	    (void)shmctl( shmid, IPC_RMID, 0 );
+	    (void)msgctl( msgqid, IPC_RMID, 0 );
+	    errno = msgbuf_s.data;
+	    return raise_exception( "error reading from user" );
 	    break;
 	default:		/* assume DatByt */
 	    dat_byts = msgbuf_s.data;
