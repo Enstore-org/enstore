@@ -277,7 +277,7 @@ class Buffer:
     def __repr__(self):
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
-    def block_read(self, nbytes, driver, fill_buffer=1):
+    def block_read(self, nbytes, driver, fill_buffer=1, id=None):
 
 	# SEVA FOO
 	pad = (-nbytes % 512)
@@ -2041,11 +2041,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.tape_driver.write(vol1_label, 0, 80)
                     self.tape_driver.writefm()
 	            # WAYNE FOO
-	            Trace.trace(42, "WAYNE DEBUG: rewinding")
-                    self.tape_driver.rewind()
-	            Trace.trace(42, "WAYNE DEBUG: rewriting label")
-                    self.tape_driver.write(vol1_label, 0, 80)
-                    self.tape_driver.writefm()
+                    if self.config['product_id'] == 'T9940B':
+                        Trace.trace(42, "WAYNE DEBUG: rewinding")
+                        self.tape_driver.rewind()
+                        Trace.trace(42, "WAYNE DEBUG: rewriting label")
+                        self.tape_driver.write(vol1_label, 0, 80)
+                        self.tape_driver.writefm()
 	            # END WAYNE FOO
                 except: 
                     exc, detail, tb = sys.exc_info()
