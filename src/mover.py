@@ -295,7 +295,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     volname=buf[4:]
                     self.current_volume = volname
                     if verbose: print "have vol %s at startup" % (self.current_volume,)
-            except FTTError, detail:
+            except ftt.FTTError, detail:
                 if verbose:
                     print "checking for loaded tape:", detail
                 try:
