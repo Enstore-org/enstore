@@ -535,6 +535,7 @@ ALLOW_SSRV2="$ALLOW_SRV2
 
 # Extra for cmspnfs1 - pnfs server
 ALLOW_CMS1="$ALLOW_SRV1
+	LISTEN,postmaste,:(postgres|5432),TCP,x\n
 	LISTEN,sendmail,:smtp,TCP,x\n
 "
 
@@ -716,7 +717,7 @@ then
 	enstore alarm --raise --severity "A" --root-error "$msg"
      fi
      ngop stop >>$LOG 2>&1
-     sleep 3
+     $SLEEP 3
      ngop start >>$LOG 2>&1
   elif [ $QUIET -ne 1 ]; then
      logit "two ngop agents running, ok"
@@ -934,10 +935,18 @@ done
 check_owner /local/ups/kt
 check_owner /local/ups/kt/enstorekt
 
-# verify ownership of log files
+# verify ownership of log files (but no alarms right after a reboot)
 if [ -e /PRODUCTION ]; then
-   check_owner ~enstore/`$HOSTNAME`.startup
-   check_owner /`$HOSTNAME`.monitor_server.output	root
+   if [ $REBOOT -eq 1 ]; then
+    (
+     ALARM=0
+     check_owner ~enstore/`$HOSTNAME`.startup
+     check_owner /`$HOSTNAME`.monitor_server.output	   root
+    )
+   else
+     check_owner ~enstore/`$HOSTNAME`.startup
+     check_owner /`$HOSTNAME`.monitor_server.output	   root
+   fi
 fi
 
 # check that we don't have too many processes running
@@ -1028,7 +1037,7 @@ today=`$DATE -I`
        done
     fi
     # check for pnfs manager for dCache on production server
-    if [ -e /PRODUCTION ]; then
+    if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
        if [ `$PS --no-headers -C pnfs | $WC -l` -ne 1 ]; then
 	  msg="ERROR: pnfs manager process not found"
 	  logit "$msg"
@@ -1130,7 +1139,7 @@ esac
 case $node in
 # web servers should be running on these nodes
   rip7|d0ensrv2|stkensrv2|cdfensrv2|stkendca3a)
-    if [ -e /PRODUCTION ]; then
+    if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
        if [ `$PS --no-headers -C httpd | $WC -l` -eq 0 ]; then
 	  msg="httpd web server not running"
 	  logit "$msg"
@@ -1242,7 +1251,8 @@ do
 done
 
 
-if [ -e /PRODUCTION ]; then
+# skip IPMI checks for non-production nodes, and immediately after reboot
+if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
 
    if [ ${IPMISRV:-0} -eq 1 ]; then
       # we need ipmi device to make ipmisrv work
@@ -1289,9 +1299,30 @@ if [ -e /PRODUCTION ]; then
 	if [ -n "${ACTION:-}" ]; then
 	   break
 	fi
-	$SLEEP 3
+	$SLEEP $((8>>try))
       done
-      if [ "$ACTION" != "00" ]; then
+      current=0
+      if [ -z "${ACTION:-}" ]; then
+	 if [ -r /tmp/watchdog-action-null ]; then
+	    current=$(</tmp/watchdog-action-null)
+	 fi
+	 $ECHO $((++current)) > /tmp/watchdog-action-null
+	 msg="watchdog action read failed $current times"
+	 logit "$msg"
+	 complain=3
+	 # back off the frequency with which we complain (Fibonacci wise)
+	 fminus1=$complain
+	 until [ $complain -ge $current ]; do
+	   fminus2=$fminus1
+	   fminus1=$complain
+	   complain=$((fminus2 + fminus1))
+	 done
+	 if [ $complain -eq $current ]; then
+	    if [ $ALARM -eq 1 ]; then
+	       enstore alarm --raise --severity "A" --root-error "$msg"
+	    fi
+	 fi
+      elif [ "$ACTION" != "00" ]; then
 	 msg="watchdog action is ${ACTION:-NULL} - should be 00"
 	 logit "$msg"
 	 if [ $ALARM -eq 1 ]; then
@@ -1302,6 +1333,7 @@ if [ -e /PRODUCTION ]; then
       elif [ $QUIET -ne 1 ]; then
 	 logit "watchdog action is $ACTION, ok"
       fi
+      [ $current -eq 0 ] && $RM -f /tmp/watchdog-action-null
    fi
 
 fi
@@ -1344,7 +1376,7 @@ fi
 
 # if we're not in /etc/cron.d, create us there
 if [ ! -r /etc/cron.d/netscan ]; then
-   echo "7,22,37,52 * * * * root /home/enstore/enstore/sbin/netscan -a -c -q >/dev/null 2>/dev/null" > /etc/cron.d/netscan
+   $ECHO "7,22,37,52 * * * * root /home/enstore/enstore/sbin/netscan -a -c -q >/dev/null 2>/dev/null" > /etc/cron.d/netscan
 fi
 
 # if we're still in the root crontab, remove us
