@@ -75,6 +75,8 @@ CONFIG_S = "configuration_server"
 ALARM_S = "alarm_server"
 LOG_S = "log_server"
 
+NO_PING = -1
+
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the alive status of the server and output it
@@ -712,12 +714,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        delta = self.intervals[key]
 
 	    # see if we need to update the info on this server.  do not do it
-	    # if the interval was set to -1.  this 'disables' getting info on
+	    # if the interval was set to NO_PING.  this 'disables' getting info on
 	    # this server.  do it if either we were asked to get info on all 
 	    # the servers or it has been longer than interval since we last
 	    # gathered info on this server, or we were asked to get info on
             # this server specifically.
-	    if self.intervals[key] != -1:
+	    if self.intervals[key] != NO_PING:
 	        if do_all or delta >= self.intervals[key] \
                    or self.update_request.has_key(key):
                     # clean up the update_request dict
@@ -862,6 +864,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if self.intervals.has_key(ticket[SERVER_KEYWORD]):
             self.intervals[ticket[SERVER_KEYWORD]] = ticket["interval"]
             self.reset[ticket[SERVER_KEYWORD]] = ticket["interval"]
+	    if ticket["interval"] == NO_PING:
+		# we will no longer ping this server
+		self.remove_key(ticket[SERVER_KEYWORD])
         else:
             ticket["status"] = (e_errors.DOESNOTEXIST, None)
 	self.send_reply(ticket)
@@ -917,7 +922,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                           SERVER_KEYWORD: ticket[SERVER_KEYWORD], 
                           'status'  : (e_errors.OK, None) }
         else:        
-            ret_ticket = { 'interval' : -1,
+            ret_ticket = { 'interval' : NO_PING,
                            SERVER_KEYWORD  : ticket[SERVER_KEYWORD], 
                            'status'  : (e_errors.DOESNOTEXIST, None) }
 	self.send_reply(ret_ticket)
