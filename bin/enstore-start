@@ -382,9 +382,13 @@ fi
 ###################################################################################################################################
 # dbase
 #start database administrator
+
+enstore_db=`udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT 4 --work lookup --additional_ticket '"lookup":"database"' | cut -d: -f2 | cut -d, -f1 | cut -d\' -f2`
+
+echo enstore_db=$enstore_db
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
     if [ "${opt_ping-}" != 1 -a $enstore_start_admin -eq 1 ];then
-        if [ -r $ENSTORE_DB/file -a -r $ENSTORE_DB/volume ] ;  then
+        if [ -r $enstore_db/file -a -r $enstore_db/volume ] ;  then
             if    [ ! "${opt_nocheck-}" ]\
              && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep admin_cle|sed -e 's/.*://'` $timeout>/dev/null
                 then
@@ -393,14 +397,14 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
                 echo "Starting database checkpoint daemon  on `hostname`"
 		out=$PID_DIR/db_checkpoint
 		rm -f $out
-                cmd="db_checkpoint -h $ENSTORE_DB  -p 5 `output $out`"
+                cmd="db_checkpoint -h $enstore_db  -p 5 `output $out`"
 		eval "$cmd &"
                 echo $! >> $PID_DIR/`uname -n`-db_check_pids
 
                 echo "Starting database deadlock daemon  on `hostname`"
 		out=$PID_DIR/db_deadlock
 		rm -f $out
-                cmd="db_deadlock -h $ENSTORE_DB  -t 1 `output $out`"
+                cmd="db_deadlock -h $enstore_db  -t 1 `output $out`"
 		eval "$cmd &"
                 echo $! >> $PID_DIR/`uname -n`-db_dlck_pids
 
