@@ -26,6 +26,7 @@ import manage_queue
 import e_errors
 import lm_list
 import volume_family
+import priority_selector
 
 def p(*args):
     print args
@@ -752,12 +753,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #   exit if the host is not this machine
         self.keys = self.csc.get(libman)
 
+        enstore_dir = os.environ['ENSTORE_DIR']
+        priority_config_file = self.keys.get('pri_conf_file', os.path.join(enstore_dir, 'etc','pri_conf.py'))
+        self.pri_sel = priority_selector.PriSelector(priority_config_file)
+
         self.lm_lock = self.get_lock()
         if not self.lm_lock:
             self.lm_lock = 'unlocked'
             self.set_lock(self.lm_lock)
         Trace.log(e_errors.INFO,"Library manager started in state:%s"%(self.lm_lock,))
-
 
         # setup a start up delay
         # this delay is needed to update state of the movers
@@ -849,6 +853,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         else:
             if not ticket.has_key('lm'):
                 ticket['lm'] = {'address':self.server_address }
+            # set up priorities
+            ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel(ticket)
             # put ticket into request queue
             rq, status = self.pending_work.put(ticket)
             if status == e_errors.INPROGRESS:
@@ -876,7 +882,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                              ticket["vc"]["library"],
                                              ticket["vc"]["file_family"],
                                              ticket["wrapper"]["uname"]))
-
 
     def read_from_hsm(self, ticket):
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
@@ -913,6 +918,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 rq = None
 		break
         else:
+            # set up priorities
+            ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
             # put ticket into request queue
             rq, status = self.pending_work.put(ticket)
             if status == e_errors.INPROGRESS:
@@ -1168,7 +1175,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.suspect_volumes.remove(vol)
 	    Trace.trace(13,"removed from suspect volume list %s"%(vol,))
 
-	    self.send_regret(w)
+	    #self.send_regret(w)
 	    # send regret to all clients requested this volume and remove
 	    # requests from a queue
 	    self.flush_pending_jobs(e_errors.NOACCESS, label)
