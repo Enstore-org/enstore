@@ -133,7 +133,7 @@ def read_tcp_raw(sock):
     salt=string.atoi(tmp[6:])
     msg = ""
     while len(msg) < bytecount:
-        tmp = sock.recv(bytecount)
+        tmp = sock.recv(bytecount - len(msg))
         if not tmp:
             break
         msg = msg+tmp
@@ -141,7 +141,7 @@ def read_tcp_raw(sock):
         Trace.trace(6,"read_tcp_raw: bytecount mismatch %s != %s"%(len(msg),bytecount))
         return ""
     tmp = sock.recv(8)
-    crc = string.atol(tmp, 16)
+    crc = string.atol(tmp, 16)  #XXX 
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
         Trace.trace(6,"read_tcp_raw: checksum mismatch %s != %s"%(mycrc, crc))
