@@ -33,8 +33,14 @@ if __name__=="__main__":
 		dur=4*60*60
 		disp=3.0
 	fileName="/var/ngop/include/.timeSync"
-	#check if xntpd  is running
+	#check if xntpd is running
         retVal=string.atoi(check("cat /proc/[0-9]*/stat|grep \(*xntpd\)|wc -l"))
+	if retVal==0:
+	    # try ntpd only
+	    retVal=string.atoi(check("cat /proc/[0-9]*/stat|grep \(*ntpd\)|wc -l"))
+	    executable = ntpdc
+	else:
+	    executable = xntpdc
         if retVal==0:
             try:
                 os.unlink(fileName)
@@ -43,7 +49,7 @@ if __name__=="__main__":
             print -2 #-2  - not alive
             sys.exit(0)
 	#check if peer exists
-        retVal=string.atoi(check("/usr/sbin/xntpdc -p | grep '*'|wc -l"))
+	retVal=string.atoi(check("/usr/sbin/%s -p | grep '*'|wc -l"%(executable,)))
         if  retVal==0: #no peer to syncronize
                 r=isTime(fileName,dur)
                 if r==0:
@@ -53,7 +59,7 @@ if __name__=="__main__":
                 sys.exit(0)
 	#find disp
         try:
-            retVal=string.atof(check("echo `/usr/sbin/xntpdc -p | grep '*'|awk '{print $8}'`"))
+            retVal=string.atof(check("echo `/usr/sbin/%s -p | grep '*'|awk '{print $8}'`"%(executable,)))
             if retVal>disp:
                 r=isTime(fileName,dur)
                 if r==0:
