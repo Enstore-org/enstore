@@ -14,6 +14,7 @@ import string,re
 
 #Enstore imports
 import Trace
+import e_errors
 
 hostinfo=None
 
@@ -73,11 +74,18 @@ def allow(addr):
             addr = addr[0]
         else:
             raise TypeError
-    if addr[0] not in string.digits:
-        addr = name_to_address(addr)
-    if addr[0] not in string.digits:
-        Trace.trace(19, "allow: not allowing %s" % (addr,))
-        return 0
+    try:    
+        if addr[0] not in string.digits:
+            Trace.trace(19, "allow: not allowing %s" % (addr,))
+            addr = name_to_address(addr)
+            return 0
+    except IndexError, detail:
+        try:
+            Trace.log(e_errors.ERROR,"Wrong address: %s %s"%(addr, detail))
+        except:
+            pass
+        raise IndexError
+
     tok = string.split(addr, '.')
     if len(tok) != 4:
         Trace.trace(19, "allow: not allowing %s" % (addr,))

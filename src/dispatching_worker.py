@@ -253,7 +253,12 @@ class DispatchingWorker(udp_server.UDPServer):
                     return request
                 elif fd == self.server_socket:
                     req,addr = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
-                    if not hostaddr.allow(addr):
+                    try:
+                        host_address = hostaddr.allow(addr)
+                    except IndexError, detail:
+                        Trace.log(e_errors.ERROR, "hostaddr failed with %s Req.= %s, addr= %s"%(detail,req, addr))
+                        raise IndexError
+                    if not host_address:
                         Trace.log(e_errors.ERROR, "attempted connection from disallowed host %s" % (addr[0],))
                         request = None
                     gotit = 1
