@@ -139,12 +139,12 @@ case `uname -n` in
 
    ripsgi*)
     stopit; starttrc
-    cmd="python /export/home/bakken/enstore/src/mover.py DM07AIT.mover &"; doit
-    cmd="python /export/home/bakken/enstore/src/mover.py DM08AIT.mover &"; doit
-    cmd="python /export/home/bakken/enstore/src/mover.py DM09AIT.mover &"; doit
-    cmd="python /export/home/bakken/enstore/src/mover.py DM10AIT.mover &"; doit
-    cmd="python /export/home/bakken/enstore/src/mover.py DM11AIT.mover &"; doit
-    cmd="python /export/home/bakken/enstore/src/mover.py DM12AIT.mover &"; doit
+    cmd="python /usr/people/bakken/enstore/src/mover.py DM07AIT.mover &"; doit
+    cmd="python /usr/people/bakken/enstore/src/mover.py DM08AIT.mover &"; doit
+    cmd="python /usr/people/bakken/enstore/src/mover.py DM09AIT.mover &"; doit
+    cmd="python /usr/people/bakken/enstore/src/mover.py DM10AIT.mover &"; doit
+    cmd="python /usr/people/bakken/enstore/src/mover.py DM11AIT.mover &"; doit
+    cmd="python /usr/people/bakken/enstore/src/mover.py DM12AIT.mover &"; doit
     (sleep 2;ecmd mvc --alive DM07AIT.mover; if [ $? -ne 0 ]; then echo DM07AIT.MOVER DEAD; else echo dm07ait.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DM08AIT.mover; if [ $? -ne 0 ]; then echo DM08AIT.MOVER DEAD; else echo dm08ait.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DM09AIT.mover; if [ $? -ne 0 ]; then echo DM09AIT.MOVER DEAD; else echo dm09ait.mover alive; fi) &
