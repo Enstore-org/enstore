@@ -349,7 +349,7 @@ get_msg(  PyObject	*args
     {
     case 'c':
 	nargs = code_args_as_string(frame, code, buf, 200);
-	sprintf(  msg, " call %s.%s((%d)%s) from %s:%d", /*XXX kludge alert!*/
+	sprintf(  msg, " call %s.%s(%s) from %s:%d", /*XXX kludge alert!*/
                   module_name,function_name, nargs, buf, from_source_file, from_line_no);
 	break;
     case 'r':
