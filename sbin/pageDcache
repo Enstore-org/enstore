@@ -234,7 +234,7 @@ esac
 # get the dcache node and ftp/kftp ports
 tmp_file=/tmp/dCacheSetup
 enrcp $dcache:~enstore/dcache-deploy/config/dCacheSetup $tmp_file
-. $tmp_file
+set +u;. $tmp_file;set -u
 rm $tmp_file
 strong_port=$kerberosFtpPort
 weak_port=$ftpPort
