@@ -162,9 +162,22 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 
     ftt_errno = d->errortrans[opn][terrno];
 
+    /*
+    ** Check for end of tape conditions for:
+    **   (sometimes) end of file on reads
+    **   errors on skip filemarks
+    ** This includes a (questionable) check that tells us whether we 
+    ** moved since last time we made this same check on tapes that have 
+    ** FTT_BLOCK_LOC statistics -- if we get the same location as last 
+    ** time, something is probably wrong -- this is questionable 'cause
+    ** we could legitimately be skipping back to the same place two skips
+    ** in a row.  Of course this only happens if we also got an error on
+    ** said skip so...
+    */
 #   define SKIPS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC)
 
-    if ((0 == res && FTT_OPN_READ == opn) || (-1 == res && ((1<<opn)&SKIPS) )) {
+    if ((0 == res && FTT_OPN_READ == opn && (d->flags & FTT_FLAG_VERIFY_EOFS)) 
+	|| (-1 == res && ((1<<opn)&SKIPS) )) {
 	/* 
 	** save errno and ftt_errno so we can restore them 
 	** after getting status 

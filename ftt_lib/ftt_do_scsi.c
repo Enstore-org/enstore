@@ -89,12 +89,19 @@ request sense data: \n\
     DEBUG2(stderr, "ftt_scsi_check called with status %d len %d\n", stat, len);
 
     if (0 != n) {
-	switch(stat){
+	switch(stat) {
+	default:
+	    ftt_errno = FTT_ENXIO;
+	    ftt_eprintf("While attempting SCSI passthrough, we encountered an \n\
+unrecoverable system error");
+	    break;
 	case 0x00:
 	    ftt_errno = FTT_SUCCESS;
 	    break;
 	case 0x04:
 	    ftt_errno = FTT_EBUSY;
+	    ftt_eprintf("While attempting SCSI passthrough, we encountered a \n\
+device which was not ready");
 	    break;
 	case 0x02:
             if (!recursive) {

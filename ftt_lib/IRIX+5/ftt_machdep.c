@@ -59,6 +59,7 @@ int
 ftt_set_compression(ftt_descriptor d, int compression) {
    return 0;
 }
+
 int
 ftt_set_hwdens(ftt_descriptor d, int hwdens) {
     /* ignore hwdens, 'cause we opened the right device node */

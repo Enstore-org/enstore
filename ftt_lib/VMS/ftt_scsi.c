@@ -177,6 +177,7 @@ ftt_scsi_close(char *pcDevice, long n)
 int 
 ftt_scsi_command(scsi_handle n, char *pcOp, char *pcCmd, int nCmd, char *pcRdWr, int nRdWr, int delay, int writeflag)
 {
+	int res;
         GK_DESC gk_desc;                                /* declare storage for the scsi frame descriptor */
         GK_IOSB gk_iosb;                                /* declare storage for the i/o status return values */
         long status;                                    /* VMS status returns */
@@ -226,13 +227,13 @@ ftt_scsi_command(scsi_handle n, char *pcOp, char *pcCmd, int nCmd, char *pcRdWr,
  */
         switch(status) {
           case SS$_DEVOFFLINE:                                  /* device is offline -- what?!?!?  */
-                return JGP_DEV_FAILED;
+		res = ftt_scsi_check(n, pcOp, 255, gk_iosb.scsilen);
                 break;
 
           default:
                 CHECK(status);                                  /* check VMS status returns */
                 if ( !(status&1) ) {
-                  return JGP_ERROR;                             /* some other error */
+		   res = ftt_scsi_check(n, pcOp, 255, gk_iosb.scsilen);
                 }
         }
 
@@ -240,15 +241,7 @@ ftt_scsi_command(scsi_handle n, char *pcOp, char *pcCmd, int nCmd, char *pcRdWr,
  *      Check the scsi status byte to see if we were
  *      successful in completion of the command:
  */
-        if ( gk_iosb.scsists != 0 ) {
-          DEBUG2(stderr,"scsi status byte says NOPE, in hex = %x\n",gk_iosb.scsists);
-          scsi_status = ftt_scsi_check(n, pcOp, gk_iosb.scsists);
-        } else {
-          DEBUG2(stderr,"scsi status byte ok.\n");
-          DEBUG2(stderr,"iosts = %d\n",gk_iosb.iosts);
-          DEBUG2(stderr,"iocnt = %d\n",gk_iosb.iocnt);
-          scsi_status = JGP_SUCCESS;
-        }
+        res = ftt_scsi_check(n, pcOp, gk_iosb.scsists, gk_iosb.scsilen);
         
-        return scsi_status;                                     /* return the translated scsi status byte!! */
+        return res;                                     /* return the translated scsi status byte!! */
 }

@@ -107,6 +107,7 @@ typedef struct {
 #define FTT_FLAG_SUID_SCSI	0x00000010	/* must be root to do scsi */
 #define FTT_FLAG_CHK_BOT_AT_FMK	0x00000020	/* check for reset/rewinds */
 #define FTT_FLAG_BSIZE_AFTER	0x00000040	/* set blocksize after open */
+#define FTT_FLAG_VERIFY_EOFS	0x00000080	/* check whether EOF is EOT */
 
 typedef struct {
 	char *value[FTT_MAX_STAT];

@@ -95,7 +95,8 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
         res = ioctl(fd, USCSICMD, &cmd);
 	DEBUG3(stderr, "USCSICMD ioctl returned %d, errno %d\n", res, errno);
 	if (-1 == res ) {
-		res = -255;
+                res = ftt_scsi_check(fd,pcOp, 255,
+				cmd.uscsi_buflen - cmd.uscsi_resid);
         } else {
                 res = ftt_scsi_check(fd,pcOp,cmd.uscsi_status,
 				cmd.uscsi_buflen - cmd.uscsi_resid);

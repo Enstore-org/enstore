@@ -270,7 +270,11 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 
     gotstatus = ccb.cam_scsi_status != 0;
 
-    res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status,ccb.cam_resid);
+    if (successful) {
+        res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status,ccb.cam_resid);
+    } else {
+        res = ftt_scsi_check(n,pcOp, 255, ccb.cam_resid);
+    }
 
     if (pcRdWr != 0 && nRdWr != 0){
 	DEBUG2(stderr,"Read/Write buffer:\n");
