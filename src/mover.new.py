@@ -149,7 +149,7 @@ class MoverClient:
 	self.pid = 0
 	self.vol_info = {'external_label':''}
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
-	self.san_func = ECRC.ECRC
+	self.crc_func = ECRC.ECRC
 
 	if config['device'][0] == '$':
 	    dev_rest=config['device'][string.find(config['device'],'/'):]
@@ -208,7 +208,7 @@ class MoverClient:
 #########################################################################
 
 # the library manager has told us to bind a volume so we can do some work
-def bind_volume( self, ticket ):
+def bind_volume( self, external_label ):
 
     #
     # NOTE: external_label is in rsponses from both the vc and fc
@@ -225,13 +225,10 @@ def bind_volume( self, ticket ):
     
     if self.vol_info['external_label'] == '':
 
-	tmp_vol_info = vcc.inquire_vol( ticket['fc']['external_label'] )
+	# NEW VOLUME FOR ME - find out what volume clerk knows about it
+	tmp_vol_info = vcc.inquire_vol( external_label )
 	if tmp_vol_info['status'][0] != "ok": return 'NOTAPE' # generic, not read or write specific
 
-	# NEW VOLUME FOR ME - find out what volume clerk knows about it
-	#self.vol_info.update( vcc.inquire_vol(ticket['fc']['external_label']) )
-	#if self.vol_info['status'] != "ok":
-	#    return 'NOTAPE' # generic, not read or write specific
 	self.vol_info['read_errors_this_mover'] = 0
 	rsp = mcc.loadvol( tmp_vol_info,
 			   self.config['mc_device'] )
@@ -249,12 +246,12 @@ def bind_volume( self, ticket ):
 	    self.hsm_driver.sw_mount( mvr_config['device'],
 				      tmp_vol_info['blocksize'],
 				      tmp_vol_info['remaining_bytes'],
-				      ticket['fc']['external_label'] )
+				      external_label )
 	except: return 'BADMOUNT' # generic, not read or write specific
 	self.vol_info.update( tmp_vol_info )
 	pass
-    elif ticket['fc']['external_label'] != self.vol_info['external_label']:
-	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],ticket['fc']['external_label']) )
+    elif external_label != self.vol_info['external_label']:
+	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],external_label) )
 	return 'NOTAPE' # generic, not read or write specific
 
     return e_errors.OK
@@ -281,7 +278,7 @@ def forked_write_to_hsm( self, ticket ):
 	    pass
 
 	t0 = time.time()
-	sts = bind_volume( self, ticket )
+	sts = bind_volume( self, ticket['fc']['external_label' )
 	ticket['times']['mount_time'] = time.time() - t0
 	if sts != e_errors.OK:
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
@@ -327,12 +324,12 @@ def forked_write_to_hsm( self, ticket ):
 	    san_bytes = ticket["wrapper"]["sanity_size"]
 	    if file_bytes < san_bytes: san_bytes = file_bytes
 	    san_crc = do.fd_xfer( self.usr_driver.fileno(),
-				  san_bytes, self.san_func, 0 )
+				  san_bytes, self.crc_func, 0 )
 	    Trace.trace( 11, 'done with sanity' )
 	    sanity_cookie = (san_bytes, san_crc)
 	    if file_bytes > san_bytes:
 		file_crc = do.fd_xfer( self.usr_driver.fileno(),
-				       file_bytes-san_bytes, self.san_func,
+				       file_bytes-san_bytes, self.crc_func,
 				       san_crc )
 	    else: file_crc = san_crc
 	    
@@ -348,7 +345,9 @@ def forked_write_to_hsm( self, ticket ):
 
             location_cookie = self.vol_info['eod_cookie']
 	    eod_cookie = do.tell()
+	    t0 = time.time()
 	    stats = do.get_stats()
+	    ticket['times']['get_stats_time'] = time.time() - t0
 	    do.close()			# b/c of fm above, this is purely sw.
 
         #except EWHATEVER_NET_ERROR:
@@ -422,7 +421,7 @@ def forked_read_from_hsm( self, ticket ):
 	    pass
 
 	t0 = time.time()
-	sts = bind_volume( self, ticket )
+	sts = bind_volume( self, ticket['fc']['external_label'] )
 	ticket['times']['mount_time'] = time.time() - t0
 	if sts != e_errors.OK:
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
@@ -466,10 +465,10 @@ def forked_read_from_hsm( self, ticket ):
             Trace.trace(11,'calling fd_xfer -sanity size='+repr(ticket['fc']['sanity_cookie'][0]))
             san_crc = do.fd_xfer( self.usr_driver.fileno(),
 				  ticket['fc']['sanity_cookie'][0],
-				  self.san_func,
+				  self.crc_func,
 				  0 )
 	    # check the san_crc!!!
-	    if     self.san_func != None \
+	    if     self.crc_func != None \
 	       and ticket['fc']['sanity_cookie'][1] != None \
 	       and san_crc != ticket['fc']['sanity_cookie'][1]:
 		pass
@@ -477,11 +476,11 @@ def forked_read_from_hsm( self, ticket ):
                 Trace.trace(11,'calling fd_xfer -rest size='+repr(ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]))
 		user_file_crc = do.fd_xfer( self.usr_driver.fileno(),
 					    ticket['fc']['size']-ticket['fc']['sanity_cookie'][0],
-					    self.san_func, san_crc )
+					    self.crc_func, san_crc )
 	    else:
 		user_file_crc = san_crc
 		pass
-	    if     self.san_func != None \
+	    if     self.crc_func != None \
 	       and ticket['fc']['complete_crc'] != None \
 	       and user_file_crc != ticket['fc']['complete_crc']:
 		pass
