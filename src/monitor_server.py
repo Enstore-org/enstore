@@ -132,8 +132,7 @@ if __name__ == "__main__":
     import sys
 
     intf = MonitorServerInterface()
-    csc = configurat
-    ion_client.ConfigurationClient((intf.config_host,
+    csc = configuration_client.ConfigurationClient((intf.config_host,
                                                     intf.config_port))
     config = csc.get('active_monitor')
 
