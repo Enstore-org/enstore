@@ -180,6 +180,7 @@ def restore(csc, intf, dbs, dbHome, jouHome):
 			print i+" is OK"
 
 def do_work(intf):
+    rtn = 0
     csc = configuration_client.ConfigurationClient((intf.config_host,
 						    intf.config_port))
     # find dbHome and jouHome
@@ -239,10 +240,12 @@ def do_work(intf):
 				    err = d.cross_check()
 				    if err:
 					    print i+" is inconsistent with journal"
+					    rtn = 1
 				    else:
 					    print i+" is OK"
 			    except:
 				    print i + " is corrupt"
+				    rtn = 1
 
 	    if intf.dump:
 		    work_done = 1
@@ -252,7 +255,9 @@ def do_work(intf):
 
     if not work_done:
  	    intf.print_help()
-	    sys.exit(0)
+	    sys.exit(rtn)
+
+    return rtn
 
 cursor_open = 0
 if 0: print cursor_open #quiet the linter
@@ -395,4 +400,4 @@ if __name__ == "__main__":
 
     intf = Interface()
 
-    do_work(intf, dbs)
+    sys.exit(do_work(intf, dbs))
