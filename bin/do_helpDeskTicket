@@ -12,8 +12,8 @@ if [ $rc != 0 ]; then echo "trouble $rc"; exit $rc
 rm -f $tickets
 
 chmod 666 FARenstore-opens-forISAgroup.rtf
-unrtf --text $tickets.rtf > $tickets.text
-unrtf --html $tickets.rtf > $tickets.html
+$ENSTORE_DIR/bin/unrtf --text $tickets.rtf > $tickets.text
+$ENSTORE_DIR/bin/unrtf --html $tickets.rtf > $tickets.html
 
 mv $tickets.* /fnal/ups/prd/www_pages/enstore/
 exit 0
