@@ -373,7 +373,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         host = inq.get('host')
         if not host:
             return 0
-        cmd = 'rsh %s \' su -c ". /usr/local/etc/setups.sh; setup enstore; enstore sched --show" enstore\'' % (host,)
+        cmd = 'rsh -n %s \' su -c ". /usr/local/etc/setups.sh; setup enstore; enstore sched --show" enstore\'' % (host,)
         p = os.popen(cmd, 'r')
         r = p.read()
         s = p.close()
@@ -396,7 +396,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         host = inq.get('host')
         if not host:
             return 0
-        cmd = 'rsh %s \' su -c ". /usr/local/etc/setups.sh; setup enstore; enstore sched --down=%s; enstore system" enstore\'' % (
+        cmd = 'rsh -n %s \' su -c ". /usr/local/etc/setups.sh; setup enstore; enstore sched --down=%s; enstore system" enstore\'' % (
             host, self.name)
         p = os.popen(cmd, 'r')
         r = p.read()
