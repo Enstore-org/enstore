@@ -517,10 +517,12 @@ class Manual_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
     def loadvol(self, ticket):
-        os.system("mc_popup 'Please load %s'"%ticket['vol_ticket']['external_label'])
+        if ticket['vol_ticket']['external_label']:
+            os.system("mc_popup 'Please load %s'"%ticket['vol_ticket']['external_label'])
         return MediaLoaderMethods.loadvol(self,ticket)
     def unloadvol(self, ticket):
-        os.system("mc_popup 'Please unload %s'"%ticket['vol_ticket']['external_label'])
+        if ticket['vol_ticket']['external_label']:
+            os.system("mc_popup 'Please unload %s'"%ticket['vol_ticket']['external_label'])
         return MediaLoaderMethods.unloadvol(self,ticket)
 
     
