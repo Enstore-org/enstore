@@ -3,6 +3,7 @@
 # src/$RCSfile$   $Revision$
 #
 # system imports
+import os
 import sys
 import string
 import time
@@ -20,6 +21,7 @@ import udp_client
 import Trace
 import e_errors
 import configuration_client
+import enstore_constants
 import enstore_functions
 import log_client
 
@@ -32,13 +34,15 @@ class MonitorServerClient:
                   html_servr_addr,
                   timeout,
                   block_size,
-                  block_count):
+                  block_count,
+		  summary):
         self.u = udp_client.UDPClient()
 	self.probe_servr_addr = probe_servr_addr
 	self.html_servr_addr = html_servr_addr
         self.timeout = timeout
         self.block_size = block_size
         self.block_count = block_count
+	self.summary = summary
         Trace.trace(10,'__init__ u='+str(self.u))
 
     # send Active Monitor probe request
@@ -48,7 +52,10 @@ class MonitorServerClient:
 
     # send measurement to the html server
     def _send_measurement (self, ticket):
-        x = self.u.send( ticket, self.html_servr_addr, self.timeout, 10 )
+	try:
+	    x = self.u.send( ticket, self.html_servr_addr, self.timeout, 10 )
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
 
     # ping a server like ENCP would
@@ -87,7 +94,8 @@ class MonitorServerClient:
         r,w,ex = select.select([c_socket], [c_socket], [c_socket],
                                self.timeout)
         if not r :
-            print "passive open did not hear back from monitor server via TCP"
+	    if not self.summary:
+		print "passive open did not hear back from monitor server via TCP"
             raise  errno.errorcode[errno.ETIMEDOUT]
         
         ms_socket, address = c_socket.accept()
@@ -150,9 +158,18 @@ class MonitorServerClient:
 class MonitorServerClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
-        generic_client.GenericClientInterface.__init__(self)
+        self.do_parse = flag
+        self.restricted_opts = opts
+	self.summary = 0
+	self.html_gen_host = None
+	generic_client.GenericClientInterface.__init__(self)
 
-
+    # define the command line options that are valid
+    def options(self):
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.help_options() + ["summary", "html_gen_host="]
 
 def get_all_ips(config_host, config_port, csc):
     """
@@ -211,41 +228,70 @@ class Vetos:
         return socket.gethostbyname(some_ip)
     
         
-# we need this in order to be called by the enstore.py code
-def do_work(intf):
-    csc = configuration_client.ConfigurationClient((intf.config_host,
-                                                    intf.config_port))
+# this is called by the enstore saag interface
+def do_real_work(summary, config_host, config_port, html_gen_host):
+    csc = configuration_client.ConfigurationClient((config_host, config_port))
     config = csc.get('active_monitor')
 
     logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
     
-    ip_list = get_all_ips(intf.config_host, intf.config_port, csc)
-    vetos = Vetos(config['veto_nodes'])
+    ip_list = get_all_ips(config_host, config_port, csc)
+    vetos = Vetos(config.get('veto_nodes', {}))
 
-    ##temp cmd line processing - should go through "interface"
-    if len(sys.argv)>1:
-        ip_list = sys.argv[1:]
-        config['html_gen_host'] = sys.argv[1]
-        
+
+    if html_gen_host:
+        config['html_gen_host'] = html_gen_host
+
+    summary_d = {enstore_constants.TIME: enstore_functions.format_time(time.time())}
+    summary_d[enstore_constants.BASENODE] = enstore_functions.strip_node(os.uname()[1])
+    summary_d[enstore_constants.NETWORK] = enstore_constants.UP  # assumption
         
     for ip in ip_list:
+	host = socket.gethostbyaddr(ip)
+	hostname = enstore_functions.strip_node(host[0])
         if vetos.is_vetoed_item(ip):
-            print "Skipping %s" % (vetos.veto_info(ip),)
+	    if not summary:
+		print "Skipping %s" % (vetos.veto_info(ip),)
             break
-        print "Trying", socket.gethostbyaddr(ip), 
-        msc = MonitorServerClient(
+	if not summary:
+	    print "Trying", host, 
+	msc = MonitorServerClient(
             (ip,                      config['server_port']),
             (config['html_gen_host'], config['server_port']),
             config['default_timeout'],
             config['block_size'],
-            config['block_count']
+            config['block_count'],
+	    summary
             )
         measurement=msc.monitor_one_interface(ip)
-        #pprint.pprint(measurement)
-        print "  Success.  Network rate measured at ",msc.send_measurement(measurement)," MB/S"
+	rate = msc.send_measurement(measurement)
+	if measurement.has_key('status') and \
+	   not measurement['status'] == (e_errors.OK, None) :
+	    # we had a problem
+	    if not summary:
+		print "  Error.    Status is %s"%(measurement['status'],)
+	    summary_d[hostname] = enstore_constants.DOWN
+	    summary_d[enstore_constants.NETWORK] = enstore_constants.DOWN
+	else:
+	    if not summary:
+                #pprint.pprint(measurement)
+		print "  Success.  Network rate measured at ",rate," MB/S"
+	    if rate == 0.0:
+		summary_d[hostname] = enstore_constants.DOWN
+		summary_d[enstore_constants.NETWORK] = enstore_constants.DOWN
+	    else:
+		summary_d[hostname] = enstore_constants.UP
     msc.flush_measurements()
+    
+    # add the name of the html file that will be created
+    summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
+    
+    return summary_d
 
+# we need this in order to be called by the enstore.py code
+def do_work(intf):
+    do_real_work(intf.summary, intf.config_host, intf.config_port, intf.html_gen_host)
 
 if __name__ == "__main__":
     

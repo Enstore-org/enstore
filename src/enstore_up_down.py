@@ -257,6 +257,7 @@ def do_real_work(summary):
     meds = {}
 
     for lm in library_managers:
+	print lib_man_d
 	lm_name = lib_man_d[lm]['name']
 	lmc = library_manager_client.LibraryManagerClient(csc,lm_name)
 	if not offline_d.has_key(lm_name):
