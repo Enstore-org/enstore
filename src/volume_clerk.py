@@ -755,7 +755,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             non_del_files = record['non_del_files']
         except KeyError:
-            record['non_del_files'] = record['sum_wr_access']
+            record['non_del_files'] = record['sum_wr_access'] - record['sum_wr_err']
 
         # update the non-deleted file count if we wrote to the tape
         # this key gets decremented when we delete files
