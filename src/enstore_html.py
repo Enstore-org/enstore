@@ -688,7 +688,8 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	tr.append(HTMLgen.TD(elem[2]))
 	# only display the last n characters of the file name
 	tr.append(HTMLgen.TD(HTMLgen.Font(elem[1][-70:], color=LIGHTBLUE)))
-	file_num = string.atoi(string.replace(elem[5], '_', ''))
+	file_num = string.split(elem[5], '_')
+	file_num = string.atoi(file_num[-1])
 	tr.append(HTMLgen.TD("(CurPri%s:%s%s%sFile%s:%s%s)"%(NBSP, NBSP, elem[4], 
 							     NBSP, NBSP, NBSP, file_num),
 			     html_escape='OFF'))
