@@ -17,6 +17,7 @@ import udp_client
 import interface
 import generic_client
 import generic_cs
+import log_client
 import Trace
 import volume_clerk_client
 import e_errors
@@ -47,19 +48,19 @@ class MediaChangerClient(generic_client.GenericClient):
 
     def loadvol(self, vol_ticket, mover, drive):
         ticket = {'work'           : 'loadvol',
-                  'vol_ticket' : vol_ticket,
+                  'vol_ticket'     : vol_ticket,
                   'drive_id'       : drive
                   }
 	rt = self.send(ticket)
 	if rt['status'][0] == e_errors.OK:
 	    vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-	    v = vcc.set_at_mover(vol_ticket['external_label'], 'mounted', 
-				mover)
+	    v = vcc.set_at_mover(vol_ticket['external_label'], 'mounted',mover)
 	    if v['status'][0] != e_errors.OK:
 		format = "cannot change to 'mounted' vol=%s mover=%s state=%s"
 		logticket = self.logc.send(log_client.INFO, 2, format,
-					   w["fc"]["external_label"],
+					   v["fc"]["external_label"],
 					   v['at_mover'][1], v['at_mover'][0])
+                if 0: print logticket #lint fix
 	    rt['status'] =  v['status']
 	    return rt
 	
@@ -79,8 +80,9 @@ class MediaChangerClient(generic_client.GenericClient):
 	    if v['status'][0] != e_errors.OK:
 		format = "cannot change to 'unmounted' vol=%s mover=%s state=%s"
 		logticket = self.logc.send(log_client.INFO, 2, format,
-					   w["fc"]["external_label"],
+					   v["fc"]["external_label"],
 					   v['at_mover'][1], v['at_mover'][0])
+                if 0: print logticket #lint fix
 		rt['status'] =  v['status']
 		return rt
         return rt
@@ -115,6 +117,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
 
     #  define our specific help
     def parameters(self):
+        if 0: print self.keys() #lint fix
         return "media_changer"
 
     # parse the options like normal but make sure we have other args
