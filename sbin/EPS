@@ -5,21 +5,28 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$  $Revision$
 # a file to do a ps on different OS's and check for Enstore-like programs
 
+if [ $# = 0 ]; 
+then 
+   p=" ";
+else
+   p=$@;
+fi
+
 case `uname` in
   Linux*)
-        x=`ps axuww   $@`
+        x=`ps axuww   $p`
         ;;
   OSF1*)
-        x=`ps  axguww $@`
+        x=`ps  axguww $p`
         ;;
   SunOS*)
-        x=`ps -ef     $@`
+        x=`ps -ef     $p`
         ;;
   IRIX*)
-        x=`ps -ef     $@`
+        x=`ps -ef     $p`
         ;;
       *)
-        x=`ps -ef     $@`
+        x=`ps -ef     $p`
         ;;
 esac
 

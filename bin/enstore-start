@@ -5,57 +5,6 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$   $Revision$
 # start enstore processes on the current node
 
-me=`whoami`
-PID_DIR=/tmp/enstore/$me
-
-opts_wo_args='ping|nocheck|async'
-opts_w_args='xterm|just'
-USAGE="`basename $0`: [--{$opts_w_args} <arg>] [--{$opts_wo_args}]"
-while opt=`expr "${1-}" : '--\(.*\)'`;do
-    shift
-    eval "case \$opt in
-    \\?) echo \"$USAGE\"; exit 0;;
-    $opts_wo_args)
-        eval opt_\$opt=1;;
-    $opts_w_args)
-        if [ $# = 0 ];then echo option $opt requires argument; exit 1; fi
-        eval opt_\$opt=\"'\$1'\";shift ;;
-    *)  echo \"invalid option: \$opt\"; exit 1;;
-    esac"
-done
-
-# this works for the case where opt_just is null
-opt_just_ere=`echo ${opt_just-} | sed -e 's/ /|/g' -e 's/,/|/g'`
-if [ "$opt_just_ere" = "" ];then opt_just_ere=".*";fi
-
-place=`pwd`
-cd $PID_DIR
-
-# we need both local_host and ENSTORE_CONFIG_HOST to be fully qualified or not qualified at all
-# can not be mixed for a meaningful comparison
-local_host=`hostname`
-enstore_start_config=0     # new default
-eful=0 lful=0
-if expr "$ENSTORE_CONFIG_HOST" : '.*\.' >/dev/null;then eful=1; fi
-if expr "$local_host" : '.*\.' >/dev/null;         then lful=1; fi
-
-if   [ $eful = 1 -a $lful = 0 ];then
-    echo "`date` Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup"
-    local_host=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
-    echo "`date` ...nslookup returned"
-elif [ $eful = 0 -a $lful = 1 ];then
-    echo "`date` Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup"
-    ENSTORE_CONFIG_HOST=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
-    echo "`date` ...nslookup returned"
-fi
-
-if [ $local_host = $ENSTORE_CONFIG_HOST ];then
-    enstore_start_config=1
-fi
-
-timeout=5
-tries=5
-
 # function to redirect input/output when there is not a controlling terminal
 output() { tty -s
            if [ $? -ne 0 ] ; then
@@ -129,10 +78,61 @@ start_db_daemons()
      fi
 }
 
+me=`whoami`
+PID_DIR=/tmp/enstore/$me
+
+opts_wo_args='ping|nocheck|async'
+opts_w_args='xterm|just'
+USAGE="`basename $0`: [--{$opts_w_args} <arg>] [--{$opts_wo_args}]"
+while opt=`expr "${1-}" : '--\(.*\)'`;do
+    shift
+    eval "case \$opt in
+    \\?) echo \"$USAGE\"; exit 0;;
+    $opts_wo_args)
+        eval opt_\$opt=1;;
+    $opts_w_args)
+        if [ $# = 0 ];then echo option $opt requires argument; exit 1; fi
+        eval opt_\$opt=\"'\$1'\";shift ;;
+    *)  echo \"invalid option: \$opt\"; exit 1;;
+    esac"
+done
+
+# this works for the case where opt_just is null
+opt_just_ere=`echo ${opt_just-} | sed -e 's/ /|/g' -e 's/,/|/g'`
+if [ "$opt_just_ere" = "" ];then opt_just_ere=".*";fi
+
+place=`pwd`
+cd $PID_DIR
+
+# we need both local_host and ENSTORE_CONFIG_HOST to be fully qualified or not qualified at all
+# can not be mixed for a meaningful comparison
+local_host=`hostname`
+enstore_start_config=0     # new default
+eful=0 lful=0
+if expr "$ENSTORE_CONFIG_HOST" : '.*\.' >/dev/null;then eful=1; fi
+if expr "$local_host" : '.*\.' >/dev/null;         then lful=1; fi
+
+if   [ $eful = 1 -a $lful = 0 ];then
+    echo "`date` Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup"
+    local_host=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
+    echo "`date` ...nslookup returned"
+elif [ $eful = 0 -a $lful = 1 ];then
+    echo "`date` Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup"
+    ENSTORE_CONFIG_HOST=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
+    echo "`date` ...nslookup returned"
+fi
+
+if [ $local_host = $ENSTORE_CONFIG_HOST ];then
+    enstore_start_config=1
+fi
+
+timeout=5
+tries=5
+
 ###################################################################################################################################
 
 # the configuration server needs to be the 1st thing started
-if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" \) -a $enstore_start_config -eq 1 ];then
+if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" != "" \) -a $enstore_start_config -eq 1 ];then
     if [ "${opt_ping-}" != 1 ];then
       if   [ ! "${opt_nocheck-}" ]\
         && udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT $timeout >/dev/null
@@ -249,7 +249,7 @@ for pass in $passes; do
 ###################################################################################################################################
 
 # the logger needs to be next
-if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" \) -a $enstore_start_log -eq 1 ];then
+if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" != "" \) -a $enstore_start_log -eq 1 ];then
     if [ "${opt_ping-}" != 1 -a $pass = "startem" ];then
       if   [ ! "${opt_nocheck-}" ]\
         && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep log_server |sed -e 's/.*://'` $timeout >/dev/null
@@ -279,7 +279,7 @@ fi
 ###################################################################################################################################
 
 # the alarm server is next
-if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep alarm`" \) -a $enstore_start_alarm -eq 1 ];then
+if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep alarm`" != "" \) -a $enstore_start_alarm -eq 1 ];then
     if [ "${opt_ping-}" != 1 -a $pass = "startem" ];then
       if   [ ! "${opt_nocheck-}" ]\
         && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep alarm_server |sed -e 's/.*://'` $timeout >/dev/null
@@ -309,7 +309,7 @@ fi
 ###################################################################################################################################
 
 # volume clerk
-if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" \) -a $enstore_start_volumeclerk -eq 1 ];then
+if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" != "" \) -a $enstore_start_volumeclerk -eq 1 ];then
     if [ "${opt_ping-}" != 1 -a $pass = "startem" ];then
       if   [ ! "${opt_nocheck-}" ]\
         && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep volume_clerk|sed -e 's/.*://'` $timeout>/dev/null
@@ -341,7 +341,7 @@ fi
 ###################################################################################################################################
 
 # file clerk
-if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" \) -a $enstore_start_fileclerk -eq 1 ];then
+if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" != "" \) -a $enstore_start_fileclerk -eq 1 ];then
     if [ "${opt_ping-}" != 1 -a $pass = "startem"  ];then
 
       if   [ ! "${opt_nocheck-}" ]\
@@ -375,7 +375,7 @@ fi
 
 # library manager
 
-if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" != "" ];then
     for i in $enstore_libraries; do
         do_server=`echo $i | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
@@ -410,7 +410,7 @@ fi
 ###################################################################################################################################
 
 # media changer
-if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" != "" ];then
     for i in $enstore_media_changers; do
         do_server=`echo $i | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
@@ -446,7 +446,7 @@ fi
 ###################################################################################################################################
 
 # mover
-if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" != "" ];then
     for i in $enstore_movers; do
         do_server=`echo $i | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
@@ -482,7 +482,7 @@ fi
 ###################################################################################################################################
 
 # inquisitor
-if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" \) -a $enstore_start_inquisitor = 1 ];then
+if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" != "" \) -a $enstore_start_inquisitor = 1 ];then
     if [ "${opt_ping-}" != 1 -a $pass = "startem" ];then
       if   [ ! "${opt_nocheck-}" ]\
         && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep inquisitor|sed -e 's/.*://'` $timeout >/dev/null
