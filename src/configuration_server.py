@@ -76,7 +76,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # does the configuration dictionary exist?
     def config_exists(self):
-     Trace.trace(16,"{ config_exists")
+     Trace.trace(16,"{config_exists")
      try:
         need = 0
         try:
@@ -239,7 +239,7 @@ class ConfigurationServer(ConfigurationDict,\
 
 if __name__ == "__main__":
     Trace.init("configsrvr")
-    Trace.trace(1,"{ called args="+repr(sys.argv))
+    Trace.trace(1,"{called args="+repr(sys.argv))
     import os
     import sys
     import getopt
@@ -306,4 +306,4 @@ if __name__ == "__main__":
                   sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
 
-    Trace.trace(1,"} finished")
+    Trace.trace(1,"}finished")
