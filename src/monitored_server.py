@@ -12,6 +12,7 @@ import Trace
 DEFAULT_ALIVE_INTERVAL = 30
 NO_HEARTBEAT = -1
 DEFAULT_HUNG_INTERVAL = 90
+DEFAULT_MOVER_HUNG_INTERVAL = 600
 NO_TIMEOUT = 0
 HUNG = 1
 TIMEDOUT = 2
@@ -222,7 +223,7 @@ class MonitoredConfigServer(MonitoredServer):
 class MonitoredMover(MonitoredServer):
 
     def __init__(self, config, name, csc):
-	MonitoredServer.__init__(self, config, name)
+	MonitoredServer.__init__(self, config, name, DEFAULT_MOVER_HUNG_INTERVAL)
 	self.csc = csc
 	self.client = mover_client.MoverClient(self.csc, self.name)
 
