@@ -158,9 +158,6 @@ egrep -v "^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while read
   n=`grep $vol /diska/tape-inventory/AML2-VOLUMES.html | wc | awk '{print $1}'`
   if [ $n -eq 0 ]; then
     echo 'Not in tower' $line
-  elif [ $n -gt 1 ]; then
-    echo 'In more than 1 tower' $line
-    grep $vol /diska/tape-inventory/AML2-VOLUMES.html
   fi
 done
 
