@@ -337,8 +337,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(8,"delvol "+repr(ticket["status"]))
             return
 
-        if record['at_mover'][0] != 'unmounted':
-           ticket["status"] = (e_errors.CONFLICT,"volume must be unmounted")
+        if record['at_mover'][0] != 'unmounted' and record['at_mover'][0] != '' and record['at_mover'][0] != 'E':
+           ticket["status"] = (e_errors.CONFLICT,"volume state must be unmounted or '' or 'E'")
            self.reply_to_caller(ticket)
            return
         if record.has_key('non_del_files'):
