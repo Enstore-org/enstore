@@ -2,10 +2,10 @@ import os
 import string
 import time
 import stat
-##from Worker import Worker
-##import MA_API   
-##import xparser 
-##import ngop_global
+from Worker import Worker
+import MA_API   
+import xparser 
+import ngop_global
 
 flag = 0
 CRON_DIR = "/var/spool/cron"
@@ -139,10 +139,9 @@ def calcuFreq(line):
        return 60*24*31*(calcuTime(my,12)-1)+60*24*(days-1)+60*(hrs-1)+mins
 
 
-##class CJFunc(Worker):
-class CJFunc:
+class CJFunc(Worker):
     def __init__(self):
-	##Worker.__init__(self)
+	Worker.__init__(self)
 	self.runAway={}
 
     def get_frequency(self, line):
