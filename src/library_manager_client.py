@@ -309,8 +309,8 @@ def do_work(intf):
     elif (intf.start_draining or intf.stop_draining):
         if intf.start_draining:
             if intf.start_draining == 'lock': lock = 'locked'
-            elif not (intf.start_draining in ('ignore', 'pause')):
-                print "only 'lock', 'ignore' and 'pause' are valid for start_draining option"
+            elif not (intf.start_draining in ('ignore', 'pause', 'noread', 'nowrite')):
+                print "only 'lock', 'ignore', 'noread', 'nowrite' and 'pause' are valid for start_draining option"
                 sys.exit(0)
             else: lock = intf.start_draining
         else: lock = 'unlocked'

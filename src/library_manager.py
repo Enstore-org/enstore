@@ -868,8 +868,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         work = 'write'
         ff = ticket['vc']['file_family']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
-        if self.lm_lock in ('locked', 'ignore', 'pause'):
-            if self.lm_lock == 'locked':
+        if self.lm_lock in ('locked', 'ignore', 'pause', 'nowrite'):
+            if self.lm_lock in  ('locked', 'nowrite'):
                 ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
             else:
                 ticket["status"] = (e_errors.OK, None)
@@ -946,8 +946,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         work = 'read'
         vol = ticket['fc']['external_label']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
-        if self.lm_lock in ('locked', 'ignore', 'pause'):
-            if self.lm_lock == 'locked':
+        if self.lm_lock in ('locked', 'ignore', 'pause', 'noread'):
+            if self.lm_lock in ('locked', noread):
                 ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
             else:
                 ticket["status"] = (e_errors.OK, None)
@@ -1362,7 +1362,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # change state of the library manager
     def change_lm_state(self, ticket):
         if ticket.has_key('state'):
-            if ticket['state'] in ('locked', 'ignore', 'unlocked', 'pause'):
+            if ticket['state'] in ('locked', 'ignore', 'unlocked', 'pause', 'noread', 'nowrite'):
                 self.lm_lock = ticket['state']
                 self.set_lock(ticket['state'])
                 ticket["status"] = (e_errors.OK, None)
