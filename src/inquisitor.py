@@ -77,7 +77,6 @@ VOLUME_STATES = ['full', 'readonly']
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
 FF_W = "file_family_width"
-FF = "file_family"
 NUM_IN_Q = "num_in_q"
 
 defaults = {'update_interval': 20,
@@ -163,6 +162,30 @@ class EventRelay:
 
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
+
+    # this whole function is here to calm down pychecker so that
+    # real errors can perhaps be found.
+    def __init__(self):
+	self.server_d = None
+	self.inquisitor = None
+	self.erc = None
+	self.event_relay = None
+	self.serverfile = None
+	self.encpfile = None
+	self.logfile = None
+	self.configfile = None
+	self.got_from_cmdline = None
+	self.csc = None
+	self.logc = None
+	self.log_server = None
+	self.server_status_file_event = None
+        self.sent_stalled_mail = {}
+	self.servers_by_name = {}
+	self.override_mail_sent = {}
+	self.mover_state = {}
+	self.lm_queues = {}
+        self.name = MY_NAME
+	self.html_dir = None
     
     def get_server(self, name):
 	if type(name) == types.ListType:
@@ -748,7 +771,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_alive(self.inquisitor.host,
                                      "exiting", time.time(), self.name)
         # the above just stored the information, now write the page out
-        self.make_server_status_html_file()
+        self.write_server_status_file()
         # Don't fear the reaper!!
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				   "exiting inquisitor due to request")
@@ -1313,14 +1336,11 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
     def __init__(self, csc, html_file="", update_interval=NOVALUE, alive_rcv_to=NOVALUE, 
                  alive_retries=NOVALUE, max_encp_lines=NOVALUE, refresh=NOVALUE):
 	global server_map
+	InquisitorMethods.__init__(self)
         generic_server.GenericServer.__init__(self, csc, MY_NAME, 
                                               self.process_event_message)
         Trace.init(self.log_name)
-        self.name = MY_NAME
         self.startup_state = e_errors.OK
-        self.sent_stalled_mail = {}
-	self.servers_by_name = {}
-	self.override_mail_sent = {}
 
         # set an interval and retry that we will use the first time to get the
         # config information from the config server.  we do not use the
@@ -1339,8 +1359,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         # these are the servers we will be monitoring, always get the inquisitor first
         self.inquisitor = monitored_server.MonitoredInquisitor(\
                                    self.config_d.get(enstore_constants.INQUISITOR, {}))
-        self.server_d = {enstore_constants.INQUISITOR : self.inquisitor}
 
+        self.server_d = {enstore_constants.INQUISITOR : self.inquisitor}
         self.got_from_cmdline = {}
         # if no interval to do updates was entered on the command line, get it from the 
         # configuration file.
@@ -1429,8 +1449,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             server = self.server_d[server_key]
             server.hung_interval = self.inquisitor.get_hung_interval(server.name)
 
-	self.mover_state = {}
-	self.lm_queues = {}
         for key in self.config_d.keys():
             self.add_new_server(key, self.config_d)
 	
@@ -1441,7 +1459,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         # set up a signal handler to catch termination signals (SIGKILL) so we can
         # update our status before dying
         signal.signal(signal.SIGTERM, self.s_update_exit)
-	signal.signal(signal.SIGSEGV, self.got_segv)
 
         # set an interval timer to periodically update the web pages
         self.add_interval_func(self.periodic_tasks, self.update_interval)
