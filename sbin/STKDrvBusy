@@ -2,84 +2,91 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+command=${1:-plot}
+node=`hostname -s`
 gang=`gang`
 case $gang in
-  stken) robot="PowderHorn 9310"
-	 copy_node=stkensrv4
-	 silo_node=fntt
-	  ;;
-  cdfen) robot="PowderHorn 9310"
-	 copy_node=cdfensrv4
-	 silo_node=fntt2
-	  ;;
-      *) robot="UNKNOWN"
-	  ;;
+   d0en) silo_node=fntt
+	 ;;
+  stken) silo_node=fntt
+	 ;;
+  cdfen) silo_node=fntt2
+	 ;;
+      *) echo \"$0 $command\" not supported on $gang
+	 exit 1
+	 ;;
 esac
 
+pcnt=/home/enstore/STK_ACSLS_PROC_COUNT
 busy=/home/enstore/STK_DRIVE_UTILIZATION
-busy_d0=/home/enstore/STK_DRIVE_UTILIZATION_D0
-busy_cdf=/home/enstore/STK_DRIVE_UTILIZATION
 
-command=${1:-plot}
-getnode=stkensrv4
-getnode_cdf=cdfensrv4
-plotnode=stkensrv2
-plotnode_d0=d0ensrv2
-plotnode_cdf=cdfensrv2
-
-now=`date +"%Y-%m-%d:%H:%M:%S"`
-Quarter_ago=`date --date "90 days ago" +"%Y-%m-%d:%H:%M:%S"`
+getnode=${gang}srv4
+plotnode=${gang}srv2
 
 case $command in
+  get)
+    if [ $node = $getnode ] ; then
+      dinfo=/tmp/stk.dinfo
+      rm -f $dinfo
+      /usr/bin/rsh $silo_node -l acsss "echo query drive all '\r' logoff | bin/cmd_proc -l -q 2>/dev/null" >$dinfo
+    else
+      echo \"$0 $command\" can only be run on $getnode
+      echo because that is the one that talks to $silo_node
+      exit 1
+    fi
+    ;;
+  plot)
+    if [ $node = $plotnode ] ; then
+      enrcp $getnode:$pcnt $pcnt
+      enrcp $getnode:$busy $busy
+      pltcmd=/tmp/stk.du.gnu
+    else
+      echo \"$0 $command\" can only be run on $plotnode
+      echo because that is the one that has a web server
+      exit 1
+    fi
+    ;;
+  *)
+    exit 1
+    ;;
+esac
 
-    get)
-	if [ $node = $getnode ] ; then
-	 dinfo=/tmp/dinfo
-	 rm -f $dinfo
-	 /usr/bin/rsh $silo_node -l acsss "echo query drive all '\r' logoff | bin/cmd_proc -l -q" >$dinfo
-	 n9840=`grep " 9840" $dinfo | grep -c "in use"`
-	 a9840=`grep " 9840" $dinfo | grep -c "online"`
-	 n9940a=`grep "T9940A" $dinfo | grep "   0, 0," | grep -c "in use"`
-	 a9940a=`grep "T9940A" $dinfo | grep "   0, 0," | grep -c "online"`
-	 n9940b=`grep "T9940B" $dinfo | grep "   0, [01]," | grep -c "in use"`
-	 a9940b=`grep "T9940B" $dinfo | grep "   0, [01]," | grep -c "online"`
-	 echo "$now $n9840 $a9840 $n9940a $a9940a $n9940b $a9940b" >>$busy
-	 n9940a=`grep "T9940A" $dinfo | grep "   1, 1," | grep -c "in use"`
-	 a9940a=`grep "T9940A" $dinfo | grep "   1, 1," | grep -c "online"`
-	 n9940b=`grep "T9940B" $dinfo | grep "   1, [01]," | grep -c "in use"`
-	 a9940b=`grep "T9940B" $dinfo | grep "   1, [01]," | grep -c "online"`
-	 echo "$now $n9940a $a9940a $n9940b $a9940b" >>$busy_d0
+now=`date +"%Y-%m-%d:%H:%M:%S"`
+Quarter_ago=`date --date "91 days ago" +"%Y-%m-%d:%H:%M:%S"`
 
-	elif [ $node = $getnode_cdf ] ; then
-	 dinfo=/tmp/dinfo
-	 rm -f $dinfo
-	 /usr/bin/rsh $silo_node -l acsss "echo query drive all '\r' logoff | bin/cmd_proc -l -q" >$dinfo
-	 n9940a=`grep "T9940A" $dinfo | grep "   0, [01]," | grep -c "in use"`
-	 a9940a=`grep "T9940A" $dinfo | grep "   0, [01]," | grep -c "online"`
-	 n9940b=`grep "T9940B" $dinfo | grep "   0, [01]," | grep -c "in use"`
-	 a9940b=`grep "T9940B" $dinfo | grep "   0, [01]," | grep -c "online"`
-	 echo "$now 0 0 $n9940a $a9940a $n9940b $a9940b" >>$busy_cdf
+# function to generate process count plots for ACSLS oommand processes
+acsls_plot() {
+	plt=$1		# plot location (no extension)
 
-	else
-	 echo \"$0 $command\" can only be run on $getnode or $getnode_cdf
-	 echo because they are the only ones that can talk to fntt or fntt2
-	fi
-	;;
-
-
-    plot)
-	if [ $node = $plotnode ] ; then
-	 enrcp $getnode:$busy $busy
-	 plot9840=/fnal/ups/prd/www_pages/enstore/9840_Utilization
-	 plot9940a=/fnal/ups/prd/www_pages/enstore/T9940A_Utilization
-	 plot9940b=/fnal/ups/prd/www_pages/enstore/T9940B_Utilization
-	 pltcmd=/tmp/stkdu.gnu
-
-	 rm -f $pltcmd
-	 echo "set output \"$plot9840.ps\"
+	rm -f $pltcmd
+	echo "set output \"$plt.ps\"
 set terminal postscript color solid
-set title \"STK 9840 Drive Utilization $now\"
+set title \"ACSLS Command Process Count $now\"
+set xlabel \"Date\"
+set timefmt \"%Y-%m-%d:%H:%M:%S\"
+set xdata time
+set xrange [\"$Quarter_ago\" : ]
+set ylabel \"Number in use\"
+set grid
+set yrange [0: ]
+set format x \"%m-%d\"
+set nokey
+plot \"$pcnt\" using 1:2 t \"process count\" w impulses" >$pltcmd
+	gnuplot $pltcmd
+	convert -rotate 90 $plt.ps $plt.jpg
+	convert -geometry 120x120 -modulate 80 $plt.jpg ${plt}_stamp.jpg
+	     }
+
+# function to generate utilization plots for a specific STK drive type
+drive_plot() {
+	plt=$1		# plot location (no extension)
+	drv=$2		# label string
+	ord=$3		# y-axis index
+
+	rm -f $pltcmd
+	echo "set output \"$plt.ps\"
+set terminal postscript color solid
+set title \"STK $drv Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
@@ -89,15 +96,23 @@ set grid
 set yrange [0: ]
 set format x \"%m-%d\"
 set nokey
-plot \"$busy\" using 1:2 t \"9840 in use\" w impulses" >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9840.ps $plot9840.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9840.jpg ${plot9840}_stamp.jpg
+plot \"$busy\" using 1:$ord t \"$drv in use\" w impulses" >$pltcmd
+	gnuplot $pltcmd
+	convert -rotate 90 $plt.ps $plt.jpg
+	convert -geometry 120x120 -modulate 80 $plt.jpg ${plt}_stamp.jpg
+	     }
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940a.ps\"
+# function to generate utilization plots for a specific STK drive type
+# using points instead of lines
+drive_plot_dl() {
+	plt=$1		# plot location (no extension)
+	drv=$2		# label string
+	ord=$3		# y-axis index
+
+	rm -f $pltcmd
+	echo "set output \"$plt.ps\"
 set terminal postscript color solid
-set title \"STK T9940A Drive Utilization $now\"
+set title \"STK $drv DL Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
@@ -107,199 +122,78 @@ set grid
 set yrange [0: ]
 set format x \"%m-%d\"
 set nokey
-plot \"$busy\" using 1:4 t \"T9940A in use\" w impulses" >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940a.ps $plot9940a.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940a.jpg ${plot9940a}_stamp.jpg
+plot \"$busy\" using 1:$ord t \"$drv in use\" " >$pltcmd
+	gnuplot $pltcmd
+	convert -rotate 90 $plt.ps $plt.jpg
+	convert -geometry 120x120 -modulate 80 $plt.jpg ${plt}_stamp.jpg
+		}
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940b.ps\"
-set terminal postscript color solid
-set title \"STK T9940B Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy\" using 1:(valid(6)?\$6:1/0) t \"T9940B in use\" w impulses" >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940b.ps $plot9940b.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940b.jpg ${plot9940b}_stamp.jpg
+case $command in
 
+    get)
+      nproc=`/usr/bin/rsh $silo_node -l acsss "pgrep cmd_proc" | wc -l`
+      echo "$now $nproc" >>$pcnt
 
-	elif [ $node = $plotnode_d0 ] ; then
-	 enrcp $getnode:$busy_d0 $busy_d0
-	 plot9940a=/fnal/ups/prd/www_pages/enstore/T9940A_Utilization
-	 plot9940b=/fnal/ups/prd/www_pages/enstore/T9940B_Utilization
-	 pltcmd=/tmp/stkdu.gnu
+      if [ $gang = d0en ] ; then
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940a.ps\"
-set terminal postscript color solid
-set title \"STK T9940A Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy_d0\" using 1:2 t \"T9940A in use\" w impulses" >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940a.ps $plot9940a.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940a.jpg ${plot9940a}_stamp.jpg
+	n9940a=`grep "T9940A" $dinfo | grep "   1, 1,"    | grep -c "in use"`
+	a9940a=`grep "T9940A" $dinfo | grep "   1, 1,"    | grep -c "online"`
+	n9940b=`grep "T9940B" $dinfo | grep "   1, [01]," | grep -c "in use"`
+	a9940b=`grep "T9940B" $dinfo | grep "   1, [01]," | grep -c "online"`
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940b.ps\"
-set terminal postscript color solid
-set title \"STK T9940B Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy_d0\" using 1:(valid(4)?\$4:1/0) t \"T9940B in use\" w impulses" >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940b.ps $plot9940b.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940b.jpg ${plot9940b}_stamp.jpg
+	echo "$now $n9940a $a9940a $n9940b $a9940b" >>$busy
 
-	 # now D0 likes dots instead of lines...
-	 plot9940a=/fnal/ups/prd/www_pages/enstore/T9940A_Utilization_dl
-	 plot9940b=/fnal/ups/prd/www_pages/enstore/T9940B_Utilization_dl
+      elif [ $gang = stken ] ; then
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940a.ps\"
-set terminal postscript color solid
-set title \"STK T9940A DL Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy_d0\" using 1:2 t \"T9940A in use\" " >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940a.ps $plot9940a.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940a.jpg ${plot9940a}_stamp.jpg
+	n9840=`grep " 9840" $dinfo | grep -c "in use"`
+	a9840=`grep " 9840" $dinfo | grep -c "online"`
+	n9940a=`grep "T9940A" $dinfo | grep "   0, 0,"    | grep -c "in use"`
+	a9940a=`grep "T9940A" $dinfo | grep "   0, 0,"    | grep -c "online"`
+	n9940b=`grep "T9940B" $dinfo | grep "   0, [01]," | grep -c "in use"`
+	a9940b=`grep "T9940B" $dinfo | grep "   0, [01]," | grep -c "online"`
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940b.ps\"
-set terminal postscript color solid
-set title \"STK T9940B DL Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy_d0\" using 1:(valid(4)?\$4:1/0) t \"T9940B in use\" " >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940b.ps $plot9940b.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940b.jpg ${plot9940b}_stamp.jpg
+	echo "$now $n9840 $a9840 $n9940a $a9940a $n9940b $a9940b" >>$busy
 
+      elif [ $gang = cdfen ] ; then
 
-	elif [ $node = $plotnode_cdf ] ; then
-	 enrcp $getnode_cdf:$busy_cdf $busy_cdf
-	 plot9940a=/fnal/ups/prd/www_pages/enstore/T9940A_Utilization
-	 plot9940b=/fnal/ups/prd/www_pages/enstore/T9940B_Utilization
-	 pltcmd=/tmp/stkdu.gnu
+	n9940a=`grep "T9940A" $dinfo | grep "   0, [01]," | grep -c "in use"`
+	a9940a=`grep "T9940A" $dinfo | grep "   0, [01]," | grep -c "online"`
+	n9940b=`grep "T9940B" $dinfo | grep "   0, [01]," | grep -c "in use"`
+	a9940b=`grep "T9940B" $dinfo | grep "   0, [01]," | grep -c "online"`
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940a.ps\"
-set terminal postscript color solid
-set title \"STK T9940A Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy_cdf\" using 1:4 t \"T9940A in use\" w impulses" >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940a.ps $plot9940a.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940a.jpg ${plot9940a}_stamp.jpg
+	echo "$now 0 0 $n9940a $a9940a $n9940b $a9940b" >>$busy
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940b.ps\"
-set terminal postscript color solid
-set title \"STK T9940B Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy_cdf\" using 1:(valid(6)?\$6:1/0) t \"T9940B in use\" w impulses" >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940b.ps $plot9940b.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940b.jpg ${plot9940b}_stamp.jpg
+      fi
+      ;;
 
-	 # dimitri wants dots instead of lines...
-	 plot9940a=/fnal/ups/prd/www_pages/enstore/T9940A_Utilization_dl
-	 plot9940b=/fnal/ups/prd/www_pages/enstore/T9940B_Utilization_dl
+    plot)
+      acsls_plot /fnal/ups/prd/www_pages/enstore/ACSLS_Process_Count
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940a.ps\"
-set terminal postscript color solid
-set title \"STK T9940A DL Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy_cdf\" using 1:4 t \"T9940A DL in use\" " >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940a.ps $plot9940a.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940a.jpg ${plot9940a}_stamp.jpg
+      if [ $gang = d0en ] ; then
 
-	 rm -f $pltcmd
-	 echo "set output \"$plot9940b.ps\"
-set terminal postscript color solid
-set title \"STK T9940B DL Drive Utilization $now\"
-set xlabel \"Date\"
-set timefmt \"%Y-%m-%d:%H:%M:%S\"
-set xdata time
-set xrange [\"$Quarter_ago\" : ]
-set ylabel \"Number in use\"
-set grid
-set yrange [0: ]
-set format x \"%m-%d\"
-set nokey
-plot \"$busy_cdf\" using 1:(valid(6)?\$6:1/0) t \"T9940B DL in use\" " >$pltcmd
-	 gnuplot $pltcmd
-	 convert -rotate 90 $plot9940b.ps $plot9940b.jpg
-	 convert -geometry 120x120 -modulate 80 $plot9940b.jpg ${plot9940b}_stamp.jpg
+	drive_plot /fnal/ups/prd/www_pages/enstore/T9940A_Utilization T9940A 2
+	drive_plot /fnal/ups/prd/www_pages/enstore/T9940B_Utilization T9940B '(valid(4)?$4:1/0)'
 
+	# the same, but with points instead of lines
+	drive_plot_dl /fnal/ups/prd/www_pages/enstore/T9940A_Utilization_dl T9940A 2
+	drive_plot_dl /fnal/ups/prd/www_pages/enstore/T9940B_Utilization_dl T9940B '(valid(4)?$4:1/0)'
 
-	else
-	 echo \"$0 $command\" can only be run on $plotnode, $plotnode_d0, or $plotnode_cdf
-	 echo because they are the only ones that have a web server
-	fi
-	;;
+      elif [ $gang = stken ] ; then
+
+	drive_plot /fnal/ups/prd/www_pages/enstore/9840_Utilization 9840 2
+	drive_plot /fnal/ups/prd/www_pages/enstore/T9940A_Utilization T9940A 4
+	drive_plot /fnal/ups/prd/www_pages/enstore/T9940B_Utilization T9940B '(valid(6)?$6:1/0)'
+
+      elif [ $gang = cdfen ] ; then
+
+	drive_plot /fnal/ups/prd/www_pages/enstore/T9940A_Utilization T9940A 4
+	drive_plot /fnal/ups/prd/www_pages/enstore/T9940B_Utilization T9940B '(valid(6)?$6:1/0)'
+
+	# the same, but with points instead of lines
+	drive_plot_dl /fnal/ups/prd/www_pages/enstore/T9940A_Utilization_dl T9940A 4
+	drive_plot_dl /fnal/ups/prd/www_pages/enstore/T9940B_Utilization_dl T9940B '(valid(6)?$6:1/0)'
+
+      fi
+      ;;
+
 esac
