@@ -31,6 +31,7 @@ def fixindent(line):
     line=level*' '+line
     return line
 
+
 import kjpylint
 
 #initialize
@@ -70,8 +71,6 @@ for filename in args:
     lines=string.split(data,'\n')
     lines=map(fixindent,lines)
     data =string.join(lines,'\n')
-    print "=============="
-    print "Checking", filename
     try:
         kjpylint.lint(data,pyg,context)
     except:
@@ -98,7 +97,6 @@ for filename in args:
                     err=lno.group(1)+":"+err
             print filename+":"+err
             
-print "Exiting with %s"%(exit_status,)
 sys.exit(exit_status)
     
 
