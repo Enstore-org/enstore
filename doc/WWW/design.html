@@ -1504,12 +1504,12 @@ following reports using this information:<BR>
 The reports are updated periodically based on 
 <a href="#inquisitor_config">timeout values</a> in the Enstore
 config file directing the Inquisitor to gather
-each servers' information on a specific frequency.  Each Enstore server may have
-its own unique timeout value specified for it.  For example, the Inquisitor
+each servers' information on a specific time frequency.  Each Enstore server may
+have its own unique timeout value specified for it.  For example, the Inquisitor
 may be instructed to gather information from the file_clerk every 60 seconds but
-from the log_server every 135 seconds.  However the plots are not updated
+from the logserver every 135 seconds.  However the plots are not updated
 automatically and may be updated by a user initiated command or by a cron job
-for example.  This information is obtained from the log files.
+for example.  The information for plotting is obtained from the log files.
 <p>
 The inquisitor will listen for command
 line requests sent to it and will periodically check to see if it is time to
@@ -1517,7 +1517,7 @@ update information for any of the servers that it is monitoring.  If so, then th
 server in question is contacted and the resulting information is formated for
 output to the various reports. The possible information gathered from each of the
 servers and which report it ends up in are listed below.  In addition to
-gathering information of each Enstore server, the Inquisitor will collect
+gathering information from each Enstore server, the Inquisitor will collect
 information from the log files on encp commands and report on the blocksizes
 set in the Enstore config file.
 
@@ -1709,7 +1709,7 @@ general commands supported by all other servers; <i>alive</i>,
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>monitor the log server now</TD>
-<TD NOSAVE>ecmd inq --update log_server</TD>
+<TD NOSAVE>ecmd inq --update logserver</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
