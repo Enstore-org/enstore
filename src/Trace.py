@@ -76,6 +76,5 @@ def default_log_func( time, pid, name, args ):
 set_log_func( default_log_func )
 
 
-# let user turn this on manully...
-sys.setprofile(Ptrace.profile)
+# let user turn this on manully...sys.setprofile(Ptrace.profile)
 
