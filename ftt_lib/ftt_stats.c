@@ -104,6 +104,8 @@ int ftt_numeric_tab[FTT_MAX_STAT] = {
     /*  FTT_COUNT_ORIGIN	42 */ 0,
     /*  FTT_N_READS		43 */ 1,
     /*  FTT_N_WRITES		44 */ 1,
+    /*  FTT_TNP			45 */ 0,
+    /*  FTT_TRANS_SENSE_KEY	45 */ 0,
 };
 
 void
@@ -343,6 +345,15 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    ftt_errno = FTT_EPARTIALSTAT;
 	    return res;
 	} else {
+	    static char *sense_key_trans[] = {
+		"NO SENSE", "NOT USED", "NOT READY", "MEDIUM ERROR",
+		"HARDWARE ERROR", "ILLEGAL REQUEST", "UNIT ATTENTION",
+		"DATA PROTECT", "BLANK CHECK", "EXABYTE", "COPY ABORTED",
+		"ABORTED COMMAND", "NOT USED", "VOLUME OVERFLOW",
+		"NOT USED", "RESERVED",
+	    };
+	    set_stat(b,FTT_SENSE_KEY, itoa(buf[2]&0xf), 0);
+	    set_stat(b,FTT_TRANS_SENSE_KEY, sense_key_trans[buf[2]&0xf], 0);
 	    set_stat(b,FTT_FMK, itoa(bit(7,buf[2])), 0);
 	    set_stat(b,FTT_EOM, itoa(bit(6,buf[2])),0);
 	    set_stat(b,FTT_ILI, itoa(bit(5,buf[2])),0);

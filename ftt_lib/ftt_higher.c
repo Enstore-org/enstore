@@ -212,7 +212,9 @@ char *ftt_stat_names[] = {
  /* FTT_N_READS		43 */ "FTT_N_READS",
  /* FTT_N_WRITES	44 */ "FTT_N_WRITES",
  /* FTT_TNP		45 */ "FTT_TNP",
- /* FTT_MAX_STAT	46 */ "FTT_MAX_STAT",
+ /* FTT_SENSE_KEY	46 */ "FTT_SENSE_KEY",
+ /* FTT_TRANS_SENSE_KEY	47 */ "FTT_TRANS_SENSE_KEY",
+ /* FTT_MAX_STAT	48 */ "FTT_MAX_STAT",
  0
 };
 
