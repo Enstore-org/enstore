@@ -149,7 +149,7 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
 
 
 
-def get_all_ips():
+def get_all_ips(config_host, config_port, csc):
     """
     inquire the configuration server, return a list
     of every  IP address involved in Enstore  
@@ -157,7 +157,7 @@ def get_all_ips():
 
     ## What if we cannot get to config server
     x = csc.u.send({"work":"reply_serverlist"},
-                   (intf.config_host, intf.config_port))
+                   (config_host, config_port))
     if x['status'][0] != 'ok': raise "error from config server"
     server_dict = x['server_list']
     ip_dict = {}
@@ -202,14 +202,13 @@ class Vetos:
         #return (ip_text, reason_text)
         return self.veto_item_dict[ip_as_canon]
 
-    def _canonicalize(self, some_ip) : return socket.gethostbyname(some_ip)
+    def _canonicalize(self, some_ip) :
+        return socket.gethostbyname(some_ip)
     
         
-csc=None
 
 if __name__ == "__main__":
     
-    global csc
 
     intf = MonitorServerClientInterface()
     
@@ -222,7 +221,7 @@ if __name__ == "__main__":
     logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
     
-    ip_list = get_all_ips()
+    ip_list = get_all_ips(intf.config_host, intf.config_port, csc)
     vetos = Vetos(config['veto_nodes'])
 
     ##temp cmd line processing - should go through "interface"
