@@ -167,7 +167,7 @@ COMMON:
                 envSet(ENSTORE_CONFIG_PORT, 7500)
 
                 # the place where mail gets sent when ther are problems
-                envSet(ENSTORE_MAIL,"enstore-admin@fnal.gov")
+                envSet(ENSTORE_MAIL,"enstore-auto@fnal.gov")
 
                 # special treatment for libds.a on IRIX64
                 execute("uname", UPS_ENV, ENSTORE_OSV)
