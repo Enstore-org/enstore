@@ -398,12 +398,12 @@ class Pnfs:
             self.get_info()
 
     # store the cross-referencing data
-    def set_xreference(self,volume,location_cookie,size):
-        Trace.trace(11,'pnfs.set_xref %s %s %s'%(volume,location_cookie,size))
+    def set_xreference(self,volume,location_cookie,size,drive):
+        Trace.trace(11,'pnfs.set_xref %s %s %s %s'%(volume,location_cookie,size,drive))
         self.volmap_filename(volume,location_cookie)
         Trace.trace(11,'making volume_file=%s'%(self.volume_file,))
         self.make_volmap_file()
-        value = (9*"%s\n")%(volume,
+        value = (10*"%s\n")%(volume,
                             location_cookie,
                             size,
                             self.file_family,
@@ -411,7 +411,8 @@ class Pnfs:
                             self.volume_file,
                             self.id,
                             self.volume_fileP.id,
-                            self.bit_file_id)
+                            self.bit_file_id,
+                            drive)
         Trace.trace(11,'value='+value)
         self.writelayer(4,value)
         self.get_xreference()
@@ -441,10 +442,12 @@ class Pnfs:
     # get the cross reference layer
     def get_xreference(self):
         (self.volume, self.location_cookie, self.size,
-         self.origff, self.origname, self.mapfile) = (UNKNOWN,)*6
+         self.origff, self.origname, self.mapfile, self.origdrive) = (UNKNOWN,)*7
         if self.valid == VALID and self.exists == EXISTS:
             try:
                 xinfo = self.readlayer(4)
+                if len(xinfo)>=10:
+                    self.origdrive = string.strip(xinfo[9])
                 xinfo = map(string.strip, xinfo[:6])
                 (self.volume, self.location_cookie, self.size,
                  self.origff, self.origname, self.mapfile) = xinfo

@@ -1117,10 +1117,13 @@ def write_to_hsm(input_files, output, output_file_family='',
                 Trace.log(e_errors.INFO, "chmod %s failed: %s %s" % (outputlist[i], exc, msg))
             
             # create volume map and store cross reference data
+            mover_ticket = done_ticket.get('mover', {})
+            drive = mover_ticket.get('device', 'Unknown') + ':' + mover_ticket.get('serial_num','Unknown')
             try:
                 p.set_xreference(done_ticket["fc"]["external_label"],
                                  done_ticket["fc"]["location_cookie"],
-                                 done_ticket["fc"]["size"])
+                                 done_ticket["fc"]["size"],
+                                 drive)
             except:
                 exc,msg,tb=sys.exc_info()
                 Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s, continuing" %(exc,msg))
