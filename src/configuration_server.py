@@ -63,10 +63,12 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         f.close()
         # ok, we read entire file - now set it to real dictionary
         self.configdict=copy.deepcopy(xconfigdict)
+        self.serverlist = {}
         for key in self.configdict.keys():
               for insidekey in self.configdict[key].keys():
                   if insidekey == 'host':
                      self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
+		     self.serverlist[key]= (self.configdict[key]['host'],self.configdict[key]['hostip'],self.configdict[key]['port'])
                      break
 
         Trace.trace(6,"}load_config ok")
@@ -220,6 +222,10 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     def reply_configdict( self, ticket ):
         out_ticket = {"status" : "ok", "list" : self.configdict }
+        self.reply_to_caller(out_ticket)
+
+    def reply_serverlist( self, ticket ):
+        out_ticket = {"status" : "ok", "server_list" : self.serverlist }
         self.reply_to_caller(out_ticket)
 	 
 
