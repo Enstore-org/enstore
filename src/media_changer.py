@@ -161,8 +161,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                drive,           # drive id
                media_type):     # media type
         if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-            Trace.log(e_errors.INFO,
-                      "remove tape "+external_label+" from drive "+drive)
+            Trace.log(e_errors.INFO, "remove tape "+external_label+" from drive "+drive)
             time.sleep( self.mc_config['delay'] )
         return (e_errors.OK, 0, None)
 
@@ -274,9 +273,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         # let work list length exceed max_work for cleaningCycle
         if ticket["function"] != "getVolState":
             if len(self.work_list) >= self.max_work:
-                Trace.log(e_errors.INFO,
-                          "MC Overflow: "+ repr(self.max_work) + " " +\
-                          ticket['function'])
+                Trace.log(e_errors.INFO, "MC Overflow: "+ repr(self.max_work) + " " + ticket['function'])
                 return
               ##elif work queue is temporarily closed, assume client will resend
             elif  self.workQueueClosed and len(self.work_list)>0:
@@ -286,14 +283,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             
         # otherwise, we can process work
 
-        #Trace.log(e_errors.INFO, "DOWORK "+repr(ticket))
         # set the reply address - note this could be a general thing in dispatching worker
         ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
         # bump other requests for cleaning
         if len(self.work_cleaning_list) > 0:
             if ticket['function'] != "waitingCleanCycle":
-                Trace.log(e_errors.INFO,
-                  "MC: "+ ticket['function'] + " bumped for cleaning")
+                Trace.log(e_errors.INFO, "MC: "+ ticket['function'] + " bumped for cleaning")
             ticket = self.work_cleaning_list[0][0]
             function = self.work_cleaning_list[0][1]
             self.work_cleaning_list.remove((ticket,function))
@@ -320,7 +315,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             os.close(pipe[1])
             # add entry to outstanding work 
             self.work_list.append(ticket)
-            Trace.trace(10, 'mcDoWork< Parent')
+            Trace.trace(11, 'mcDoWork< Parent')
             return
 
         #  in child process
@@ -328,33 +323,30 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             msg="%s %s %s" % (ticket['function'],ticket['vol_ticket']['external_label'], ticket['drive_id'])
         else:
             msg="%s" % (ticket['function'],)
-        Trace.log(e_errors.INFO, 'mcDoWork> child begin %s '%(msg,))
+        Trace.trace(11, 'mcDoWork> child begin %s '%(msg,))
         os.close(pipe[0])
         # do the work ...
         # ... if this is a mount, dismount first
         if ticket['function'] == "mount":
-            Trace.log(e_errors.INFO, 'mcDoWork> child prepare dismount for %s'%(msg,))
+            Trace.trace(11, 'mcDoWork> child prepare dismount for %s'%(msg,))
 	    self.logdetail = 0 # don't print a failure  (no tape mounted) message that is really a success
-            sts=self.prepare(
-                ticket['vol_ticket']['external_label'],
-                ticket['drive_id'],
-                ticket['vol_ticket']['media_type'])
+            sts=self.prepare( 'Unknown', ticket['drive_id'], ticket['vol_ticket']['media_type'])
 	    self.logdetail = 1 # back on
-            Trace.log(e_errors.INFO,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts[2]))
+            Trace.trace(11,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts[2]))
         if ticket['function'] in ('insert','eject','homeAndRestart','cleanCycle','getVolState'):
-            Trace.log(e_errors.INFO, 'mcDoWork> child doing %s'%(msg,))
+            Trace.trace(11, 'mcDoWork> child doing %s'%(msg,))
             sts = function(ticket)
-            Trace.log(e_errors.INFO,'mcDoWork> child %s returned %s'%(msg,sts))
+            Trace.trace(11,'mcDoWork> child %s returned %s'%(msg,sts))
         else:
-            Trace.log(e_errors.INFO, 'mcDoWork> child doing %s'%(msg,))
+            Trace.trace(11, 'mcDoWork> child doing %s'%(msg,))
             sts = function(
                 ticket['vol_ticket']['external_label'],
                 ticket['drive_id'],
                 ticket['vol_ticket']['media_type'])
-            Trace.log(e_errors.INFO,'mcDoWork> child %s returned %s'%(msg,sts))
+            Trace.trace(11,'mcDoWork> child %s returned %s'%(msg,sts))
 
         # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
-        Trace.trace(10, 'mcDoWork< sts'+repr(sts))
+        Trace.trace(11, 'mcDoWork< sts'+repr(sts))
         ticket["work"]="WorkDone"       # so dispatching_worker calls WorkDone
         ticket["status"]=sts
         msg = repr(('0','0',ticket))
@@ -708,7 +700,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         media_type = ticket['media_type']
         seq=self.next_seq()
         rt = self.retry_function(STK.query_volume,external_label,media_type,seq)
-        Trace.trace( 11, "getVolState returned %s"%(rt,))
+        Trace.trace(11, "getVolState returned %s"%(rt,))
         if rt[3] == '\000':
             state=''
         else :
@@ -1134,7 +1126,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__" :
     Trace.init("MEDCHANGER")
-    Trace.trace( 6, "media changer called with args: %s"%(sys.argv,) )
+    Trace.trace(6, "media changer called with args: %s"%(sys.argv,) )
 
     # get an interface
     intf = MediaLoaderInterface()
@@ -1156,13 +1148,11 @@ if __name__ == "__main__" :
     
     while 1:
         try:
-            #Trace.init(intf.name[0:5]+'.medc')
-            Trace.log(e_errors.INFO, "Media Changer %s (re) starting"%
-                      (intf.name,))
+            Trace.log(e_errors.INFO, "Media Changer %s (re) starting"%(intf.name,))
             mc.serve_forever()
         except SystemExit, exit_code:
             sys.exit(exit_code)
         except:
             mc.serve_forever_error("media changer")
             continue
-    Trace.trace(6,"Media Changer finished (impossible)")
+    Trace.log(e_errors.ERROR,"Media Changer finished (impossible)")
