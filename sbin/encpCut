@@ -26,20 +26,21 @@ USAGE="
 -?           to list this
 
 Steps to the cutting process:
-  1. cvs directory check
-  2. cd modules - make clean all
-  3. cd src - make clean encp
-  4. cvs tag
-  5. install into product area
-  6. ups undeclare
-  7. ups declare
-  8. upd delproduct
-  9. upd addproduct
+  1.  cvs directory check
+  2.  cd modules - make clean all
+  3.  cd src - make clean encp
+  4.  cd volume_import - make clean enstore_tape
+  5.  cvs tag
+  6.  install into product area
+  7.  ups undeclare
+  8.  ups declare
+  9.  upd delproduct
+  10. upd addproduct
 "
 
 ##############################################################################
 
-STEPSDEFINED=9
+STEPSDEFINED=10
 
 echo "$USAGE"
 
@@ -271,7 +272,15 @@ for try in list doit; do
            fi
            ;;
 
-        4) tag=${REV}_${product}_`uname`
+        4) echo "Step $Step:  cd volume_import and make clean enstore_tape    `starting`"
+           if [ "$try" = "doit" ] ; then
+              cd $ENSTORE_DIR/volume_import
+              make clean enstore_tape
+              check_status $? "make clean enstore_tape"
+           fi
+           ;;
+
+        5) tag=${REV}_${product}_`uname`
            echo "Step $Step:  cvs tag $tag    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR
@@ -280,7 +289,7 @@ for try in list doit; do
            fi
            ;;
 
-        5) echo "Step $Step:  install $product into $INSTALLDIR    `starting`"
+        6) echo "Step $Step:  install $product into $INSTALLDIR    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/src/ENCPBIN
               # check if directory doesn't exist
@@ -291,10 +300,12 @@ for try in list doit; do
               fi
               cp * $INSTALLDIR
               check_status $? "cp * $INSTALLDIR"
+	      cp $ENSTORE_DIR/volume_import/enstore_tape $INSTALLDIR
+	      check_status $? "cp enstore_tape $INSTALLDIR"
            fi
            ;;
 
-        6) echo "Step $Step:  ups undeclare -f $FLAVOR $product $REV    `starting`"
+        7) echo "Step $Step:  ups undeclare -f $FLAVOR $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
               a=`$UPS_DIR/bin/ups undeclare  -f $FLAVOR $product $REV 2>&1`
               stat=$?
@@ -304,14 +315,14 @@ for try in list doit; do
            fi
            ;;
 
-        7) echo "Step $Step:  ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV    `starting`"
+        8) echo "Step $Step:  ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
                  $UPS_DIR/bin/ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV
                  check_status $? "ups declare"
            fi
            ;;
 
-        8) echo "Step $Step:  upd delproduct -H $FLAVOR -f $FLAVOR  $product $REV   `starting`"
+        9) echo "Step $Step:  upd delproduct -H $FLAVOR -f $FLAVOR  $product $REV   `starting`"
            if [ "$try" = "doit" ] ; then
               a=`$UPD_DIR/bin/upd delproduct  -H $FLAVOR -f $FLAVOR $product $REV 2>&1`
               stat=$?
@@ -321,7 +332,7 @@ for try in list doit; do
            fi
            ;;
 
-        9) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV   `starting`"
+        10) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV   `starting`"
            if [ "$try" = "doit" ] ; then
               $UPD_DIR/bin/upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV
               check_status $? "upd addproduct"
@@ -340,8 +351,8 @@ for try in list doit; do
       ans=`echo_timed_read 10`
       if [ $? != 0 ] || expr "$ans" : '[Yy]' >/dev/null ; then
         echo "Proceeding with ${product}Cut..."
-        echo ""
-      else
+        echo ""  
+    else
          cd $thepwd
          exit 0
       fi
