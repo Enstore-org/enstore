@@ -1696,9 +1696,9 @@ def clients(config_host,config_port,verbose):
 
     # convenient, but maybe not correct place, to hack in log message that shows how encp was called
     
-    Trace.trace(e_errors.INFO,
-                'encp version %s, args %s' %
-                (encp_client_version(), sys.argv[1:]))
+    Trace.log(e_errors.INFO,
+                'encp version %s, command line: "%s"' %
+                (encp_client_version(), string.join(sys.argv)))
         
 
     uinfo = {}
