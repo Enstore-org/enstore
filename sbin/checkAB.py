@@ -282,14 +282,15 @@ if __name__ == '__main__':
 				print f2, 'does not exist'
 	elif sys.argv[1] == '-v':
 		for v2 in sys.argv[2:]:
-			print 'checking', v2, '...'
+			print 'checking', v2, '...',
 			vol = vcc.inquire_vol(v2)
 			if vol['staus'] != e_errors.OK:
-				print 'DOES NOT EXIST ... ERROR'
+				print 'does not exist ... ERROR'
 				continue
 			if vol['system_inhibit'][1] == 'migrated':
-				print 'already migrated ... ERROR'
+				print 'already migrated ... WARNING'
 				continue
+			print
 			result = fcc.list_active(v2)
 			if result['status'][0] == e_errors.OK:
 				for i in result['active_list']:
