@@ -175,17 +175,17 @@ verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 		progname, path,
 		"Has this volume been initialized?\n");
 	return -1;
-    } else { /* it exists */
-	if (!new) { /* is it already full? */
-	    sprintf(path,"%s/volumes/%s/tape_full", tape_db, volume_label);
-	    if (stat(path, &sbuf)==0) { 
-		/*don't use db function because we don't want a warning if file not found*/
+    } else { /* it exists... */
+	if (!new) { /* ...as we expected. */
+	    /* is it already full? */
+	    sprintf(path,"%s/volumes/%s", tape_db, volume_label);
+	    if (read_db_s(path, "tape_full", 0, 0) == 0){
 		fprintf(stderr, "%s: tape %s is full\n",
 			progname, volume_label);
 		return -1;
 	    }
 	    return 0;
-	}
+	} /*... we wanted it to be a new directory! */
 	fprintf(stderr,"%s: directory %s already exists.\n%s",
 		progname, path,
 		"Use '--erase' option to delete it\n");
@@ -207,7 +207,7 @@ int verify_tape_volume()
        tape_db and volume_label are non-NULL */
     sprintf(path,"%s/volumes/%s", tape_db, volume_label);
     
-    if (read_db_i(path, "next_file", &file_number))
+    if (read_db_i(path, "next_file", &file_number, 1))
 	return -1;
     
     /* try to read a volume label, either VOL1 or EOT1 */

@@ -7,12 +7,13 @@ prototypes and necessary headers for the volume import package
 
 #include <errno.h>
 
-#include <unistd.h> /*Portability?*/
+#include <unistd.h> 
 #include <stdlib.h>
 #include <string.h>
 
 #include <sys/stat.h>
 #include <sys/mtio.h>
+#include <sys/time.h>
 
 #define MAX_PATH_LEN 4096  /* get this (portably) from system headers */
 #define MAX_LABEL_LEN 70   /* maximum length of  volume label */
@@ -41,7 +42,9 @@ unsigned int adler32(int adler, char *buf, int len);
 int write_db_s(char *path, char *key, char *value);
 int write_db_i(char *path, char *key, int value);
 int write_db_u(char *path, char *key, unsigned  value);
-int read_db_i(char *path, char *key, int *value);
+int read_db_s(char *path, char *key, char *value, int warn);
+int read_db_i(char *path, char *key, int *value, int warn);
+int read_db_u(char *path, char *key, unsigned *value, int warn);
 
 int open_tape(void);
 int rewind_tape(void);
@@ -59,6 +62,7 @@ int cpio_start(char *);
 int cpio_next_block(char *, int);
 int join_path(char *, char *, char *);
 int strip_path(char *, char *, char *);
+int timestamp(char *);
 
 /* Global vars */
 
