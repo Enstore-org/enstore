@@ -956,6 +956,22 @@ class EnstoreStatusFile(EnFile):
 						   enstore_constants.ENONE),
 				    enstore_functions.get_www_host()],))
 
+
+class EnstoreIngestRatesFile(EnFile):
+
+    def __init__(self, file):
+	EnFile.__init__(self, file)
+        self.file_name = "%s.new"%(file,)
+
+    # format the config entry and write it to the file
+    def write(self):
+        if self.openfile:
+            doc = enstore_html.EnSGIngestPage()
+
+            doc.body()
+	    self.do_write(str(doc))
+
+
 class EnstoreBpdFile(EnDataFile):
 
     def __init__(self, file):

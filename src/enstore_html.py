@@ -2870,3 +2870,92 @@ class EnStatusOnlyPage(EnSaagPage):
             table.append(HTMLgen.TR(HTMLgen.TD(self.make_legend_table(), colspan=4)))
             self.trailer(table, 4)
             self.append(table)
+
+class EnSGIngestPage(EnBaseHtmlDoc):
+
+    def __init__(self, refresh=0, system_tag=""):
+	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+			       help_file="encpHelp.html",
+			       system_tag=system_tag)
+	self.align = NO
+	self.title = "Tape Ingest Rates by Storage Group"
+	#self.script_title_gif = "encph.gif"
+	#self.source_server = THE_INQUISITOR
+	#self.description = ""
+	#self.error_keys = self.error_text.keys()
+
+            
+    def body(self):
+        plots='burn-rate'
+        plots_dir="/local/ups/prd/www_pages/enstore/burn-rate"
+        stamps=[]
+        images=[]
+        files=os.listdir(plots_dir)
+        for file in files:
+            if file.find("_stamp.jpg") > 0:
+                stamps.append(file)
+            if file.find(".jpg") > 0 and file.find("_stamp") == -1:
+                images.append(file)
+ 
+        libraries = {}
+        for stamp in stamps:
+            sep ="_"
+            tape_sg = stamp.split("_")[0]
+            a = stamp.split("_")
+            b= []
+            for i in a:
+              if i.find("stamp") == -1:
+                  b.append(i)
+            if len(b) > 1:
+                a=sep.join(b)
+            else:
+                a=b[0]
+            s1 ="."
+                  
+            image = s1.join((a, "jpg"))
+            if len(image.split(".")) == 3:
+                lib = image.split(".")[0]
+                sg = image.split(".")[1]
+            else:
+               lib = image.split(".")[0]
+               sg = "All storage groups"
+
+            if not libraries.has_key(lib):
+                libraries[lib]=[]
+            if image in images:
+                libraries[lib].append((sg,os.path.join(plots,stamp), os.path.join(plots,image)))      
+
+
+        libs=libraries.keys()
+        libs.sort()
+        for lib in libs:
+            tr = HTMLgen.TR()
+            en_table = HTMLgen.TableLite(tr, border=1, bgcolor="#ffff00", width="100%",
+                                         cellspacing=5, 
+                                         cellpadding=CELLP)
+            en_table.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold(lib), 
+                                                         size="+3", color=BRICKRED)))
+            
+            rows = len(libraries[lib])/6 # 6 entries per raw
+            if len(libraries[lib])%6:
+                rows = rows+1
+
+
+            sg_count = 0
+            stop = 0
+            for i in range(rows):
+
+                tr = HTMLgen.TR(valign="CENTER")
+                for j in range(6):
+                    link=libraries[lib][sg_count][2]
+                    href=HTMLgen.Href(link,"<img src=%s><br>%s"%(libraries[lib][sg_count][1],
+                                                             libraries[lib][sg_count][0]))
+                    tr.append(HTMLgen.TD(href))
+                    sg_count = sg_count + 1
+                    if sg_count >= len(libraries[lib]):
+                        stop = 1
+                        break
+                en_table.append(tr)
+
+            self.append(en_table)
+            
