@@ -8,13 +8,13 @@ import time
 import errno
 
 import setpath
-import driver
+import generic_driver
 import e_errors
 import strbuffer
 import Trace
 
 
-class NetDriver(driver.Driver):
+class NetDriver(generic_driver.Driver):
 
     def __init__(self):
         self.sock = None
@@ -71,7 +71,7 @@ class NetDriver(driver.Driver):
             else:
                 msg = "net_driver: read(%d) returns %d, errno=%d" %(nbytes, r, strbuffer.cvar.errno)
                 Trace.log(e_errors.ERROR, msg)
-                raise driver.DriverError, msg
+                raise generic_driver.DriverError, msg
         if r > 0:
             now = time.time()
             t = now - t0
@@ -92,7 +92,7 @@ class NetDriver(driver.Driver):
             else:
                 msg =  "net_driver: write(%d) returns %d, errno=%d" % (nbytes, r, strbuffer.cvar.errno)
                 Trace.log(e_errors.ERROR, msg)
-                raise driver.DriverError, msg
+                raise generic_driver.DriverError, msg
         if r > 0:
             now = time.time()
             t = now - t0

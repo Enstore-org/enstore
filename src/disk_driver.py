@@ -7,12 +7,12 @@ import sys
 import time
 
 import setpath
-import driver
+import generic_driver
 import strbuffer
 import e_errors
 import Trace
 
-class DiskDriver(driver.Driver):
+class DiskDriver(generic_driver.Driver):
 
     def __init__(self):
         self.fd = -1

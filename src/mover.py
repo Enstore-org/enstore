@@ -52,7 +52,7 @@ import disk_driver
 import accounting_client
 import drivestat_client
 import Trace
-
+import generic_driver
 
 """
 Mover:
@@ -1626,7 +1626,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_written = self.net_driver.write("B", # write anything
                                                   0,
                                                   1) # just 1 byte
-        except driver.DriverError, detail:
+        except generic_driver.DriverError, detail:
             self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
             return
         except:
@@ -4297,7 +4297,7 @@ class DiskMover(Mover):
                                                   0,
                                                   1) # just 1 byte
 
-        except driver.DriverError, detail:
+        except generic_driver.DriverError, detail:
             self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
             return
         except:

@@ -6,12 +6,12 @@ import os
 import time
 
 import setpath
-import driver
+import generic_driver
 import strbuffer
 import e_errors
 import Trace
 
-class NullDriver(driver.Driver):
+class NullDriver(generic_driver.Driver):
 
     def __init__(self):
         self.fd = -1

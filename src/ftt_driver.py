@@ -9,7 +9,7 @@ import string
 import exceptions
 
 import Trace
-import driver
+import generic_driver
 import e_errors
 import ftt
 
@@ -18,7 +18,7 @@ MB=KB*KB
 GB=MB*KB
 
 
-class FTTDriver(driver.Driver):
+class FTTDriver(generic_driver.Driver):
     mount_delay = 5
     def __init__(self):
         self.fd = -1

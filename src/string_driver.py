@@ -3,10 +3,10 @@
 # $Id$
 
 import setpath
-import driver
+import generic_driver
 import strbuffer
 
-class StringDriver(driver.Driver):
+class StringDriver(generic_driver.Driver):
 
     def __init__(self, src):
         self.src = src
