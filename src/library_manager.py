@@ -1403,11 +1403,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # remove volume from suspect volume list
     def remove_suspect_volume(self, ticket):
-        if ticket['volume'] in self.suspect_volumes.list:
-            self.suspect_volumes.remove(ticket['volume'])
-            ticket['status'] = (e_errors.OK, None)
+        found = 0
+        for vol in self.suspect_volumes.list:
+            if ticket['volume'] ==  vol['external_label']:
+                ticket['status'] = (e_errors.OK, None)
+                found = 1
+                break
         else:
             ticket['status'] = (e_errors.NOVOLUME, "No such volume %s"%(ticket['volume']))
+        if found: self.suspect_volumes.remove(ticket['volume'])
         self.reply_to_caller(ticket)
             
         
