@@ -322,10 +322,10 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
         if fnstatus != 'OK' :
              Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
              return
-     	fnstatus = self.deallocateOCSdrive("AllTheTapeDrives")
-        if fnstatus != 'OK' :
-             Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
-             return
+     	#fnstatus = self.deallocateOCSdrive("AllTheTapeDrives")
+        #if fnstatus != 'OK' :
+        #     Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+        #     return
         Trace.log(e_errors.INFO, "Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
 	return
 
