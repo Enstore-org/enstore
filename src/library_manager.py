@@ -128,19 +128,22 @@ class AtMovers:
 
     def delete(self, mover_info):
         Trace.trace(13, "AtMovers delete. before: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
-        if not (mover_info['external_label'] and mover_info['volume_family'] and mover_info['mover']):
-            return
         mover = mover_info['mover']
         if self.at_movers.has_key(mover):
             Trace.trace(13, "MOVER %s" % (self.at_movers[mover],))
-            del(self.at_movers[mover])
-            #storage_group = volume_family.extract_storage_group(self.at_movers[mover]['volume_family'])
+            if  mover_info.has_key('volume_family') and mover_info['volume_family']:
+                vol_family = mover_info['volume_family']
+            else:
+                vol_family = self.at_movers[mover]['volume_family']
+            storage_group = volume_family.extract_storage_group(vol_family)
+            if mover_info.has_key('external_label') and mover_info['external_label']:
+                label = mover_info['external_label']
+            else:
+                label = self.at_movers[mover]['external_label']
             #vol_family = self.at_movers[mover]['volume_family']
             #self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family) 
-            storage_group = volume_family.extract_storage_group(mover_info['volume_family'])
-            vol_family = mover_info['volume_family']
-            self.sg_vf.delete(mover, mover_info['external_label'], storage_group, vol_family) 
-            #del(self.at_movers[mover])
+            self.sg_vf.delete(mover, label, storage_group, vol_family) 
+            del(self.at_movers[mover])
         Trace.trace(13,"AtMovers delete: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
 
    # return a list of busy volumes for a given volume family
