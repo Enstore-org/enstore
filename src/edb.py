@@ -326,6 +326,11 @@ class FileDB(DbTable):
 		if self.bdb != None:
 			self.bdb[key] = value
 
+	def __delitem__(self, key):
+		DbTable.__delitem__(self, key)
+		if self.bdb != None:
+			del self.bdb[key]
+
 class VolumeDB(DbTable):
 	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None):
 		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal = 1, rdb = rdb)
@@ -432,3 +437,8 @@ class VolumeDB(DbTable):
 		DbTable.__setitem__(self, key, value)
 		if self.bdb != None:
 			self.bdb[key] = value
+
+	def __delitem__(self, key):
+		DbTable.__delitem__(self, key)
+		if self.bdb != None:
+			del self.bdb[key]
