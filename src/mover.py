@@ -1158,7 +1158,7 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	    Trace.log( e_errors.ERROR,
                        'FATAL ENSTORE - libm gave busy or offline move work %s'%\
 		       rsp_ticket['work'] )
-	    if mvr_srvr['execution_env'][0:5] == 'devel':
+	    if mvr_config['execution_env'][0:5] == 'devel':
 		Trace.log( e_errors.ERROR, 'FATAL ENSTORE in devel env. => crazed' )
 		print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
 		self.client_obj_inst.state = 'crazed'
@@ -1173,7 +1173,7 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	    # CHANGE THIS TO Trace.alarm???
 	    Trace.log( e_errors.ERROR,
                        'FATAL ENSTORE - invalid rsp from libm: %s'%rsp_ticket )
-	    if mvr_srvr['execution_env'][0:5] == 'devel':
+	    if mvr_config['execution_env'][0:5] == 'devel':
 		Trace.log( e_errors.ERROR, 'FATAL ENSTORE in devel env. => crazed' )
 		print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
 		self.client_obj_inst.state = 'crazed'
