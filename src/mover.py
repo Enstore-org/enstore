@@ -2379,6 +2379,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.last_volume = self.current_volume
         self.last_location = self.current_location
 
+        if self.vol_info.has_key('external_label') and self.vol_info['external_label'] != self.current_volume:
+            # mover has arequest for a different volume (adminpi request)
+            vol_info = self.vcc.inquire_vol(self.current_volume)
+        else: vol_info = None
         if not self.vol_info.get('external_label'):
             if self.vcc:
                 if self.current_volume:
@@ -2400,7 +2404,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not self.vol_info.get('media_type'):
             self.vol_info['media_type'] = self.media_type #kludge
 
-        mcc_reply = self.mcc.unloadvol(self.vol_info, self.name, self.mc_device)
+        if not vol_info: vol_info = self.vol_info
+        mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
 
         status = mcc_reply.get('status')
         if status and status[0]==e_errors.OK:
@@ -2437,7 +2442,34 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken = ""
         self.dismount_time = None
         if self.current_volume:
+            old_volume = self.current_volume
             self.dismount_volume()
+            # tell lm that previously mounted volume is dismounted
+            vinfo = self.vcc.inquire_vol(old_volume)
+            volume_status = (vinfo.get('system_inhibit',['Unknown', 'Unknown']),
+                             vinfo.get('user_inhibit',['Unknown', 'Unknown']))
+
+            volume_family = vinfo.get('volume_family', 'Unknown')
+            ticket =  {
+                "mover":  self.name,
+                "address": self.address,
+                "external_label":  old_volume,
+                "current_location": loc_to_cookie(self.current_location),
+                "read_only" : 0, ###XXX todo: multiple drives on one scsi bus, write locking
+                "returned_work": None,
+                "state": state_name(IDLE),
+                "status": (e_errors.OK, None),
+                "volume_family": volume_family,
+                "volume_status": volume_status,
+                "operation": mode_name(self.mode),
+                "error_source": None,
+                "unique_id": self.unique_id,
+                "work": "mover_busy",
+                }
+            Trace.trace(14,"mount_volume: after dismount %s"%(ticket,)) 
+            for lib, addr in self.libraries:
+                self.udpc.send_no_wait(ticket, addr)
+
 
         self.state = MOUNT_WAIT
         self.current_volume = volume_label

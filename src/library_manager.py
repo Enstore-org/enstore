@@ -74,11 +74,15 @@ class SG_FF:
         self.vf = {}
 
     def delete(self, mover, volume, sg, vf):
+        if not (mover and volume and sg and vf): return
+        Trace.trace(13,"SG:delete mover %s, volume %s, sg %s, vf %s" % (mover, volume, sg, vf))
         if self.sg.has_key(sg) and (mover, volume) in self.sg[sg]:
+            Trace.trace(13,"SG:delete 111111111")
             self.sg[sg].remove((mover, volume))
             if len(self.sg[sg]) == 0:
                 del(self.sg[sg])
         if self.vf.has_key(vf) and (mover, volume) in self.vf[vf]:
+            Trace.trace(13,"SG:delete 22222222222")
             self.vf[vf].remove((mover, volume))
             if len(self.vf[vf]) == 0:
                 del(self.vf[vf])
@@ -117,19 +121,26 @@ class AtMovers:
         vol_family = mover_info['volume_family']
         mover = mover_info['mover']
         mover_info['updated'] = time.time()
+        if self.at_movers.has_key(mover):
+            if self.at_movers[mover]['external_label'] != mover_info['external_label']:
+                return
         self.at_movers[mover] = mover_info
         self.sg_vf.put(mover, mover_info['external_label'], storage_group, vol_family)
         Trace.trace(13,"AtMovers put: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
 
     def delete(self, mover_info):
-        Trace.trace(13, "AtMovers delete. before: %s" % (self.at_movers,))
+        Trace.trace(13, "AtMovers delete. before: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
         mover = mover_info['mover']
         if self.at_movers.has_key(mover):
             Trace.trace(13, "MOVER %s" % (self.at_movers[mover],))
-            storage_group = volume_family.extract_storage_group(self.at_movers[mover]['volume_family'])
-            vol_family = self.at_movers[mover]['volume_family']
-            self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family) 
             del(self.at_movers[mover])
+            #storage_group = volume_family.extract_storage_group(self.at_movers[mover]['volume_family'])
+            #vol_family = self.at_movers[mover]['volume_family']
+            #self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family) 
+            storage_group = volume_family.extract_storage_group(mover_info['volume_family'])
+            vol_family = mover_info['volume_family']
+            self.sg_vf.delete(mover, mover_info['external_label'], storage_group, vol_family) 
+            #del(self.at_movers[mover])
         Trace.trace(13,"AtMovers delete: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
 
    # return a list of busy volumes for a given volume family
@@ -353,7 +364,13 @@ class LibraryManagerMethods:
         
         # Check the presence of current_location field
         if not rq.ticket["vc"].has_key('current_location'):
-            rq.ticket["vc"]['current_location'] = rq.ticket['fc']['location_cookie']
+            try:
+                rq.ticket["vc"]['current_location'] = rq.ticket['fc']['location_cookie']
+            except KeyError:
+                Trace.log(e_errors.ERROR,"process_read_request loc cookie missing %s" %
+                          (rq.ticket,))
+                raise KeyError
+            
 
         # request has passed about all the criterias
         # check if it passes the fair share criteria
@@ -1293,7 +1310,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # mover is busy - update volumes_at_movers
     def mover_busy(self, mticket):
         Trace.trace(11,"BUSY RQ %s"%(mticket,))
-        self.volumes_at_movers.put(mticket)
+        state = mticket.get('state', None)
+        if state is 'IDLE':
+            # mover dismounted a volume on a request to mount another one
+            self.volumes_at_movers.delete(mticket)
+        else: self.volumes_at_movers.put(mticket)
         # do not reply to mover as it does not 
         
     # we have a volume already bound - any more work??
@@ -1386,7 +1407,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # which may happen in case of high pri. work
             # update volumes_at_movers
             if w["vc"]["external_label"] != mticket['external_label']:
-                self.volumes_at_movers.delete(mticket)
+                #self.volumes_at_movers.delete(mticket) # do not delete this entry
+                # because volume is still mounted and mover will tell when it is dismounted
+                # in a mover_busy request.
                 mticket['external_label'] = w["vc"]["external_label"]
                 # update volume status
                 # get it directly from volume clerk as mover
