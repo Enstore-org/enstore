@@ -78,7 +78,7 @@ class DispatchingWorker:
 
     max_packet_size = 8192
     
-    rcv_timeout = 60   # timeout for get_request in sec.
+    rcv_timeout = 60.   # timeout for get_request in sec.
 
     address_family = socket.AF_INET
 
@@ -153,6 +153,7 @@ class DispatchingWorker:
 
         f = self.server_fds + [self.socket.fileno()]
         r, w, x = select.select(f,[],f, self.rcv_timeout)
+        print (f,[],f, self.rcv_timeout)
         Trace.trace(20,'get_request select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
         
         if r:
