@@ -4,7 +4,6 @@
 # system import
 import sys
 import time
-import copy
 import string
 
 # enstore imports
@@ -40,7 +39,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         bfid = self.unique_bit_file_id()
         record["bfid"] = bfid
         # record it to the database
-        dict[bfid] = copy.deepcopy(record)
+        dict[bfid] = record ## was deepcopy
 
         ticket["fc"]["bfid"] = bfid
         ticket["status"] = (e_errors.OK, None)
@@ -94,7 +93,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            record = copy.deepcopy(dict[bfid])
+            record = dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid "+repr(bfid)+" not found")
@@ -115,7 +114,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             pass
 
         # record our changes
-        dict[bfid] = copy.deepcopy(record)
+        dict[bfid] = record ## was deepcopy
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(12,'set_pnfsid '+repr(ticket))
@@ -164,7 +163,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            record = copy.deepcopy(dict[bfid])
+            record = dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid "+repr(bfid)+" not found")
@@ -196,7 +195,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         vticket = vcc.decr_file_count(record['external_label'],decr_count)
 
         # record our changes
-        dict[bfid] = copy.deepcopy(record)
+        dict[bfid] = record ## was deepcopy
 
         Trace.log(e_errors.INFO,
                   "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
@@ -278,7 +277,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            finfo = copy.deepcopy(dict[bfid])
+            finfo = dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid "+repr(bfid)+" not found")
@@ -353,7 +352,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            finfo = copy.deepcopy(dict[bfid])
+            finfo = dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid "+repr(bfid)+" not found")
@@ -432,7 +431,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(10,"rename_volume "+repr(ticket["status"]))
             return
 
-	record = copy.deepcopy(dict[bfid])
+	record = dict[bfid] ## was deepcopy
 	# replace old volume name with new one
 	record["pnfs_mapname"] = string.replace(record["pnfs_mapname"], 
 						record["external_label"], 
@@ -446,7 +445,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    map = pnfs.Pnfs(record["pnfs_mapname"])
 	    map.restore_from_volmap()
 	    del map
-	dict[bfid] = copy.deepcopy(record)
+	dict[bfid] = record ## was deepcopy
  
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)

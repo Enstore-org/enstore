@@ -4,7 +4,6 @@
 # system imports
 import sys
 import os
-import copy
 import errno
 import stat
 import pwd
@@ -808,10 +807,9 @@ def findfiles(mainpnfsdir,                  # directory above volmap directory
     volfiles.sort()
 
     # create a sorted list of file number requests
-    try:
-        n = len(filenumberlist)
-        files = copy.deepcopy(filenumberlist)
-    except:
+    if type(filenumberlist) == type([]):
+        files = filenumberlist  ## was deepcopy
+    else:
         files = [filenumberlist]
     files.sort()
     n = len(files)

@@ -12,7 +12,6 @@ import pprint
 import pwd
 import grp
 import socket
-import copy
 import pdb
 import string
 import traceback
@@ -291,7 +290,7 @@ def write_to_hsm(input, output, output_file_family='',
             t1 = time.time() #-------------------------------Lap Start
 
             # store timing info for each transfer in pnfs, not for all
-            tinfo1 = copy.deepcopy(tinfo)
+            tinfo1 = tinfo.copy()  ## was deepcopy
 
             #unique_id[i] = time.time()  # note that this is down to mS
 	    unique_id[i] = "%s-%f-%d" \

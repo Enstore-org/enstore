@@ -4,7 +4,6 @@
 # system imports
 import os
 import time
-import copy
 
 # enstore imports
 import journal
@@ -118,7 +117,7 @@ class DbTable:
     if action=="delete":
       if self.auto_journal:
         if self.jou.has_key(c.Key) == 0:
-          self.jou[c.Key]=copy.deepcopy(self.db[c.Key])
+          self.jou[c.Key]=self.db[c.Key]  ## was deepcopy
         else:
           if self.jou[c.Key]['db_flag']=='delete':
             return
@@ -132,7 +131,7 @@ class DbTable:
     if action=="update":
       if self.auto_journal:
         if 'db_flag' in KeyOrValue.keys(): del KeyOrValue['db_flag']
-        self.jou[c.Key]=copy.deepcopy(KeyOrValue)
+        self.jou[c.Key]=KeyOrValue  ## was deepcopy
         self.jou[c.Key]['db_flag']='add'
         self.count=self.count+1
         if self.count > JOURNAL_LIMIT and backup_flag:
@@ -163,7 +162,7 @@ class DbTable:
   def __setitem__(self,key,value):
      if self.auto_journal:
        if 'db_flag' in value.keys(): del value['db_flag']
-       self.jou[key]=copy.deepcopy(value)
+       self.jou[key]=value  ## was deepcopy
        self.jou[key]['db_flag']='add'
        self.count=self.count+1
        if self.count > JOURNAL_LIMIT and backup_flag:
@@ -195,7 +194,7 @@ class DbTable:
 
      if self.auto_journal:
        if self.jou.has_key(key) == 0:
-         self.jou[key]=copy.deepcopy(self.db[key])
+         self.jou[key]=self.db[key]  ## was deepcopy
        else:
          if self.jou[key]['db_flag']=='delete':
 		return
