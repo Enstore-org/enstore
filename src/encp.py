@@ -1080,7 +1080,12 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         status = (e_errors.TOO_MANY_RETRIES, status)
     print "STATUS"
     print status
-    #If the error is not retriable, remove it from the request queue.
+
+    
+    #If the error is not retriable, remove it from the request queue.  There
+    # are two types of non retriable errors.  Those that cause the transfer
+    # to be aborted, and those that in addition to abborting the transfer
+    # tell the operator that someone needs to investigate what happend.
     if not e_errors.is_retriable(status[0]):
         #Print error to stdout in data_access_layer format. However, only
         # do so if the dictionary is full (aka. the error occured after
@@ -1114,48 +1119,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         
         result_dict = {'status':status, 'retry':retry,
                        'resubmits':resubmits,
-                       'queue_size':queue_size} #one less than before
-        return result_dict
+                       'queue_size':queue_size}
 
-
-    #Change the unique id so the library manager won't remove the retry
-    # request when it removes the old one.  Do this only when there was an
-    # actuall error, not just a timeout.  Also, increase the retry count by
-    # one.
-    if status[0] != e_errors.RESUBMITTING:
-        request_dictionary['unique_id'] = generate_unique_id()
-        #Keep retrying this file.
-        try:
-            #Increase the retry count.
-            request_dictionary['retry'] = retry + 1
-            
-            #Before resubmitting, there are some fields that the library
-            # manager and mover don't expect to receive from encp,
-            # these should be removed.
-            for item in ("mover", ):
-                del request_dictionary[item]
-                
-            #Since a retriable error occured, resubmit the ticket.
-            submit_one_request(request_dictionary, verbose)
-        except KeyError:
-            #If we get here, then the error occured while waiting for any
-            # (valid) mover to call back.  Since, there was no information
-            # then the submitting operation failed and we should go back
-            # to the top and wait for the other transfers to commence.
-            # The key error is generated trying to get
-            # request_dictionary['vc']['library']
-            pass
-
-        #Log the intermidiate error as a warning instead as a full error.
-        Trace.log(e_errors.WARNING, status)
-        Trace.log(e_errors.WARNING, (e_errors.RETRY,
-                                     request_dictionary['unique_id']))
-        
     #When nothing was recieved from the mover and the 15min has passed,
     # resubmit all entries in the queue.  Leave the unique id the same.
     # Even though for writes there is only one entry in the active request
     # list at a time, submitting like this will still work.
-    else:
+    elif status[0] == e_errors.RESUBMITTING:
         request_dictionary['resubmits'] = resubmits + 1
         
         for req in request_list:
@@ -1178,11 +1148,62 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             status = (status[0], req.get('unique_id', None))
             Trace.log(e_errors.WARNING, status)
 
+            result_dict = {'status':(e_errors.RESUBMITTING, None),
+                           'retry':request_dictionary.get('retry', 0),
+                           'resubmits':request_dictionary.get('resubmits', 0),
+                           'queue_size':len(request_list)}
 
-    result_dict = {'status':(e_errors.RESUBMITTING, None),
-                   'retry':request_dictionary.get('retry', 0),
-                   'resubmits':request_dictionary.get('resubmits', 0),
-                   'queue_size':len(request_list)}
+    #Change the unique id so the library manager won't remove the retry
+    # request when it removes the old one.  Do this only when there was an
+    # actuall error, not just a timeout.  Also, increase the retry count by 1.
+    else:
+        request_dictionary['unique_id'] = generate_unique_id()
+        #Keep retrying this file.
+        try:
+            #Increase the retry count.
+            request_dictionary['retry'] = retry + 1
+            
+            #Before resubmitting, there are some fields that the library
+            # manager and mover don't expect to receive from encp,
+            # these should be removed.
+            for item in ("mover", ):
+                del request_dictionary[item]
+                
+            #Since a retriable error occured, resubmit the ticket.
+            submit_one_request(request_dictionary, verbose)
+        except KeyError:
+            #If we get here, then the error occured while waiting for any
+            # (valid) mover to call back.  Since, there was no information
+            # then the submitting operation failed and we should go back
+            # to the top and wait for the other transfers to commence.
+            # The key error is generated trying to get
+            # request_dictionary['vc']['library']
+
+            #??? The situation described above is handled with the
+            # elif status[0] == e_errors.RESUBMITTING: line earlier in this
+            # function.  So what does this code do now???
+            pass
+
+        #Log the intermidiate error as a warning instead as a full error.
+        Trace.log(e_errors.WARNING, status)
+        Trace.log(e_errors.WARNING, (e_errors.RETRY,
+                                     request_dictionary['unique_id']))
+
+        result_dict = {'status':(e_errors.RETRY,
+                                 request_dictionary['unique_id']),
+                       'retry':request_dictionary.get('retry', 0),
+                       'resubmits':request_dictionary.get('resubmits', 0),
+                       'queue_size':len(request_list)}
+
+    #If we get here, then some type of error occured.  This means one of
+    # three things happend.
+    #1) The transfer was abborted.
+    #    a) A non-retriable error occured once.
+    #    b) A retriable error occured too many times.
+    #2) The request(s) was/were resubmited.
+    #    a) No mover called back before the listen socket timed out.
+    #3) The request(s) was/were retried.
+    #    a) A retriable error occured.
     return result_dict
 
 ############################################################################
@@ -1372,14 +1393,6 @@ def create_write_request(input_file, output_file,
     # create the wrapper subticket - copy all the user info 
     # into for starters
     wrapper = {}
-    wrapper["fullname"] = input_file
-    wrapper["type"] = ff_wrapper
-    #file permissions from PNFS are junk, replace them
-    #with the real mode
-    wrapper['mode']=os.stat(input_file)[stat.ST_MODE]
-    wrapper["sanity_size"] = 65536
-    wrapper["size_bytes"] = file_size
-    wrapper["mtime"] = int(time.time())
 
     # store the pnfs information info into the wrapper
     for key in pinfo.keys():
@@ -1388,6 +1401,15 @@ def create_write_request(input_file, output_file,
     # the user key takes precedence over the pnfs key
     for key in client['uinfo'].keys():
         wrapper[key] = client['uinfo'][key]
+
+    wrapper["fullname"] = input_file
+    wrapper["type"] = ff_wrapper
+    #file permissions from PNFS are junk, replace them
+    #with the real mode
+    wrapper['mode']=os.stat(input_file)[stat.ST_MODE]
+    wrapper["sanity_size"] = 65536
+    wrapper["size_bytes"] = file_size
+    wrapper["mtime"] = int(time.time())
 
     pnfs.get_file_family()
     pnfs.get_file_family_width()
@@ -2125,9 +2147,6 @@ def create_read_requests(inputlist, outputlist, file_size,
         request['volume'] = label
         request['work'] = 'read_from_hsm'
         request['wrapper'] = {}
-        request['wrapper']['fullname'] = request['outfile']
-        request['wrapper']['sanity_size'] = 65536
-        request['wrapper']['size_bytes'] = request['file_size']
 
         # store the pnfs information info into the wrapper
         for key in pinfo[i].keys(): #request['pinfo'].keys():
@@ -2136,6 +2155,10 @@ def create_read_requests(inputlist, outputlist, file_size,
         # the user key takes precedence over the pnfs key
         for key in client['uinfo'].keys():
             request['wrapper'][key] = client['uinfo'][key]
+
+        request['wrapper']['fullname'] = request['outfile']
+        request['wrapper']['sanity_size'] = 65536
+        request['wrapper']['size_bytes'] = request['file_size']
 
         requests_per_vol[label] = requests_per_vol.get(label,[]) + [request]
         nfiles = nfiles+1
@@ -2544,9 +2567,6 @@ def read_from_hsm(e, client, tinfo):
                                             client, tinfo, e, bfid, pinfo,
                                             file_clerk_address,
                                             volume_clerk_address)
-                                            #pinfo, p, e.verbose, e.priority,
-                                            #e.delpri, e.age_time,
-                                            #e.delayed_dismount,)
 
     #Determine how many times a transfer can be retried from failures.
     #Also, determine how many times encp resends the request to the lm
