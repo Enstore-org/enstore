@@ -38,19 +38,19 @@ import volume_clerk_client
 
 
 def _lock(f, op):
-	dummy = fcntl.fcntl(f.fileno(), FCNTL.F_SETLKW,
-			    struct.pack('2h8l', op,
-					0, 0, 0, 0, 0, 0, 0, 0, 0))
-	Trace.trace(21,'_lock '+repr(dummy))
-	
+        dummy = fcntl.fcntl(f.fileno(), FCNTL.F_SETLKW,
+                            struct.pack('2h8l', op,
+                                        0, 0, 0, 0, 0, 0, 0, 0, 0))
+        Trace.trace(21,'_lock '+repr(dummy))
+        
 def writelock(f):
-	_lock(f, FCNTL.F_WRLCK)
+        _lock(f, FCNTL.F_WRLCK)
 
 def readlock(f):
-	_lock(f, FCNTL.F_RDLCK)
+        _lock(f, FCNTL.F_RDLCK)
 
 def unlock(f):
-	_lock(f, FCNTL.F_UNLCK)
+        _lock(f, FCNTL.F_UNLCK)
 
 
 
@@ -67,7 +67,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         generic_server.GenericServer.__init__(self, csc, medch)
         Trace.init(self.log_name)
         self.max_work = max_work
-	self.workQueueClosed = 0
+        self.workQueueClosed = 0
         self.insertRA = None
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
@@ -75,17 +75,17 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         #   exit if the host is not this machine
         self.mc_config = self.csc.get(medch)
         dispatching_worker.DispatchingWorker.__init__(self, \
-	                 (self.mc_config['hostip'], self.mc_config['port']))
+                         (self.mc_config['hostip'], self.mc_config['port']))
         self.idleTimeLimit = 600  # default idle time in seconds
         self.lastWorkTime = time.time()
-	self.robotNotAtHome = 1
+        self.robotNotAtHome = 1
         self.timeInsert = time.time()
         
     # retry function call
     def retry_function(self,function,*args):
         return apply(function,args)
     
-	
+        
     # wrapper method for client - server communication
     def loadvol(self, ticket):        
         ticket["function"] = "mount"
@@ -101,7 +101,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     #    ticket["status"] = self.view(ticket["vol_ticket"]["external_label"], \
     #              ticket["vol_ticket"]["media_type"])
     #    self.reply_to_caller(ticket)
-	
+        
     # wrapper method for client - server communication - replaced viewvol above tgj1
     def viewvol(self, ticket):
         ticket["function"] = "getVolState"
@@ -110,10 +110,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # wrapper method for client - server communication
     def insertvol(self, ticket):
         ticket["function"] = "insert"
-	if not ticket.has_key("newlib"):
-	    ticket["status"] = (e_errors.WRONGPARAMETER, 37, "new library name not specified")
+        if not ticket.has_key("newlib"):
+            ticket["status"] = (e_errors.WRONGPARAMETER, 37, "new library name not specified")
             Trace.log(e_errors.ERROR, "ERROR:insertvol new library name not specified")
-	    return
+            return
         return self.DoWork( self.insert, ticket)
 
     # wrapper method for client - server communication
@@ -145,38 +145,38 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def load(self,
              external_label,    # volume external label
              drive,             # drive id
-             media_type):	# media type
-	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-	    # YES, THIS BLOCK IS FOR THE DEVELOPMENT ENVIRONMENT AND THE
-	    # OUTPUT OF THE PRINTS GO TO THE TERMINAL
-	    print "make sure tape %s in in drive %s"%(external_label,drive)
-	    time.sleep( self.mc_config['delay'] )
-	    print 'continuing with reply'
-	return (e_errors.OK, 0, None)
+             media_type):       # media type
+        if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
+            # YES, THIS BLOCK IS FOR THE DEVELOPMENT ENVIRONMENT AND THE
+            # OUTPUT OF THE PRINTS GO TO THE TERMINAL
+            print "make sure tape %s in in drive %s"%(external_label,drive)
+            time.sleep( self.mc_config['delay'] )
+            print 'continuing with reply'
+        return (e_errors.OK, 0, None)
 
     # load volume into the drive;  default, overridden for other media changers
     def load(self,
              external_label,    # volume external label
              drive,             # drive id
-             media_type):	# media type
-	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-	    # YES, THIS BLOCK IS FOR THE DEVELOPMENT ENVIRONMENT AND THE
-	    # OUTPUT OF THE PRINTS GO TO THE TERMINAL
-	    print "make sure tape %s in in drive %s"%(external_label,drive)
-	    time.sleep( self.mc_config['delay'] )
-	    print 'continuing with reply'
-	return (e_errors.OK, 0, None)
+             media_type):       # media type
+        if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
+            # YES, THIS BLOCK IS FOR THE DEVELOPMENT ENVIRONMENT AND THE
+            # OUTPUT OF THE PRINTS GO TO THE TERMINAL
+            print "make sure tape %s in in drive %s"%(external_label,drive)
+            time.sleep( self.mc_config['delay'] )
+            print 'continuing with reply'
+        return (e_errors.OK, 0, None)
 
     # unload volume from the drive;  default overridden for other media changers
     def unload(self,
                external_label,  # volume external label
                drive,           # drive id
-	       media_type):     # media type
-	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
+               media_type):     # media type
+        if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
             Trace.log(e_errors.INFO,
                       "remove tape "+external_label+" from drive "+drive)
-	    time.sleep( self.mc_config['delay'] )
-	return (e_errors.OK, 0, None)
+            time.sleep( self.mc_config['delay'] )
+        return (e_errors.OK, 0, None)
 
     # view volume in the drive;  default overridden for other media changers
     #def view(self,
@@ -253,14 +253,14 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                     
         else:
             Trace.log(e_errors.INFO, 'REQUESTED  %s'%(ticket['function'],))
-	#put cleaningCyles on cleaning list
-	if ticket['function'] == "cleanCycle":
+        #put cleaningCyles on cleaning list
+        if ticket['function'] == "cleanCycle":
             ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
-	    todo = (ticket,function)
-	    self.work_cleaning_list.append(todo)
-	
+            todo = (ticket,function)
+            self.work_cleaning_list.append(todo)
+        
         #if we have max number of working children, assume client will resend
-	# let work list length exceed max_work for cleaningCycle
+        # let work list length exceed max_work for cleaningCycle
         if ticket["function"] != "getVolState":
             if len(self.work_list) >= self.max_work:
                 Trace.log(e_errors.INFO,
@@ -342,7 +342,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
         # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
         Trace.trace(10, 'mcDoWork< sts'+repr(sts))
-        ticket["work"]="WorkDone"	# so dispatching_worker calls WorkDone
+        ticket["work"]="WorkDone"       # so dispatching_worker calls WorkDone
         ticket["status"]=sts
         msg = repr(('0','0',ticket))
         bytecount = "%08d" % (len(msg),)
@@ -365,20 +365,20 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             level = e_errors.INFO
         else:
             level = e_errors.ERROR
-	if ticket['function'] in ("mount","dismount"):
+        if ticket['function'] in ("mount","dismount"):
             Trace.log(level, 'FINISHED %s %s %s  returned %s' %
                       (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id'],fstat))
         else:
             Trace.log(level, 'FINISHED %s returned %s'%(ticket['function'],fstat))
         # reply_with_address uses the "ra" entry in the ticket
         self.reply_with_address(ticket)
-	self.robotNotAtHome = 1
+        self.robotNotAtHome = 1
         self.lastWorkTime = time.time()
-	# check for cleaning jobs
-	if len(self.work_list) < self.max_work and len(self.work_cleaning_list) > 0:
+        # check for cleaning jobs
+        if len(self.work_list) < self.max_work and len(self.work_cleaning_list) > 0:
             sts = self.doWaitingCleaningCycles(ticket)
- 	# if work queue is closed and work_list is empty, do insert
-	sts = self.doWaitingInserts()
+        # if work queue is closed and work_list is empty, do insert
+        sts = self.doWaitingInserts()
 
 # aml2 robot loader server
 class AML2_MediaLoader(MediaLoaderMethods):
@@ -386,45 +386,45 @@ class AML2_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, max_work=7, csc=None):
         MediaLoaderMethods.__init__(self, medch, max_work, csc)
 
-	# robot choices are 'R1', 'R2' or 'Both'
-	if self.mc_config.has_key('RobotArm'):   # error if robot not in config
-	    self.robotArm = string.strip(self.mc_config['RobotArm'])
-	else:
+        # robot choices are 'R1', 'R2' or 'Both'
+        if self.mc_config.has_key('RobotArm'):   # error if robot not in config
+            self.robotArm = string.strip(self.mc_config['RobotArm'])
+        else:
             Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no robot arm key in configuration")
-	    self.robotArm = string.strip(self.mc_config['RobotArm']) # force the exception          
-	    return
+            self.robotArm = string.strip(self.mc_config['RobotArm']) # force the exception          
+            return
 
-	if self.mc_config.has_key('IOBoxMedia'):   # error if IO box media assignments not in config
-	    self.mediaIOassign = self.mc_config['IOBoxMedia']
-	else:
+        if self.mc_config.has_key('IOBoxMedia'):   # error if IO box media assignments not in config
+            self.mediaIOassign = self.mc_config['IOBoxMedia']
+        else:
             Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no IO box media assignments in configuration")
-	    self.mediaIOassign = self.mc_config['IOBoxMedia'] # force the exception
-	    return
+            self.mediaIOassign = self.mc_config['IOBoxMedia'] # force the exception
+            return
 
-	if self.mc_config.has_key('DriveCleanTime'):   # error if DriveCleanTime assignments not in config
-	    self.driveCleanTime = self.mc_config['DriveCleanTime']
-	else:
+        if self.mc_config.has_key('DriveCleanTime'):   # error if DriveCleanTime assignments not in config
+            self.driveCleanTime = self.mc_config['DriveCleanTime']
+        else:
             Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no DriveCleanTime assignments in configuration")
-	    self.driveCleanTime = self.mc_config['DriveCleanTime'] # force the exception
-	    return
+            self.driveCleanTime = self.mc_config['DriveCleanTime'] # force the exception
+            return
 
-	if self.mc_config.has_key('CleanTapeFileFamily'):   # error if DriveCleanTime assignments not in config
-	    try:
+        if self.mc_config.has_key('CleanTapeFileFamily'):   # error if DriveCleanTime assignments not in config
+            try:
                 self.cleanTapeFileFamily,self.cleanTapeFileWrapper = string.split(self.mc_config['CleanTapeFileFamily'],'.') # expected format is "externalfamilyname.wrapper"
             except IndexError:
-	        Trace.log(e_errors.ERROR, "ERROR:mc:aml2 bad CleanTapeFileFamily in configuration file")
-	else:
-	    try:
+                Trace.log(e_errors.ERROR, "ERROR:mc:aml2 bad CleanTapeFileFamily in configuration file")
+        else:
+            try:
                 self.cleanTapeFileFamily,self.cleanTapeFileWrapper = string.split(self.mc_config['CleanTapeFileFamily'],'.')
             except:
                 Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no CleanTapeFileFamily assignments in configuration")
                 self.cleanTapeFileFamily,self.cleanTapeFileWrapper = None,None
 
-	if self.mc_config.has_key('IdleTimeHome'):
+        if self.mc_config.has_key('IdleTimeHome'):
             if (type(self.mc_config['IdleTimeHome']) == types.IntType and
                 self.mc_config['IdleTimeHome'] > 20):
                 self.idleTimeLimit = self.mc_config['IdleTimeHome']
-	    else:
+            else:
                 Trace.log(e_errors.INFO, "mc:aml2 IdleHomeTime is not defined or too small, default used")
 
         
@@ -456,15 +456,15 @@ class AML2_MediaLoader(MediaLoaderMethods):
                     break
             except:
                 exc,val,tb = e_errors.handle_error()
-		return "ERROR", 37, str(val)   #XXX very ad-hoc!
-	                         ## this is "command error" in aml2.py
+                return "ERROR", 37, str(val)   #XXX very ad-hoc!
+                                 ## this is "command error" in aml2.py
         return sts
     
     # load volume into the drive;
     def load(self,
              external_label,    # volume external label
              drive,             # drive id
-             media_type):	# media type
+             media_type):       # media type
         import aml2
         return self.retry_function(aml2.mount,external_label, drive,media_type)
     
@@ -472,7 +472,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
     def unload(self,
                external_label,  # volume external label
                drive,           # drive id
-	       media_type):     # media type
+               media_type):     # media type
         import aml2
         return self.retry_function(aml2.dismount,external_label, drive,media_type)
 
@@ -490,30 +490,30 @@ class AML2_MediaLoader(MediaLoaderMethods):
     
     def insert(self, ticket):
         import aml2
-	self.insertRA = None
+        self.insertRA = None
         classTicket = { 'mcSelf' : self }
-	ticket['timeOfCmd'] = time.time()
-	ticket['medIOassign'] = self.mediaIOassign
+        ticket['timeOfCmd'] = time.time()
+        ticket['medIOassign'] = self.mediaIOassign
         return self.retry_function(aml2.insert,ticket, classTicket)
-	
+        
     def eject(self, ticket):
         import aml2
         classTicket = { 'mcSelf' : self }
-	ticket['medIOassign'] = self.mediaIOassign
+        ticket['medIOassign'] = self.mediaIOassign
         return self.retry_function(aml2.eject,ticket, classTicket)
 
     def robotHomeAndRestart(self, ticket):
         import aml2
         classTicket = { 'mcSelf' : self }
-	ticket['robotArm'] = self.robotArm
+        ticket['robotArm'] = self.robotArm
         return self.retry_function(aml2.robotHomeAndRestart,ticket, classTicket)
     
     def getVolState(self, ticket):
         import aml2
-	"get current state of the tape"
-	external_label = ticket['external_label']
-	media_type = ticket['media_type']
-	rt = self.retry_function(aml2.view,external_label, media_type)
+        "get current state of the tape"
+        external_label = ticket['external_label']
+        media_type = ticket['media_type']
+        rt = self.retry_function(aml2.view,external_label, media_type)
         Trace.trace( 11, "getVolState returned %s"%(rt,))
         if rt[5] == '\000':
             Trace.trace( 11, "RT5 is 0")
@@ -524,7 +524,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
         if not state and rt[2]:  # volumes not in the robot
             state = rt[2]
         return (rt[0], rt[1], rt[2], state)
-	
+        
     def cleanCycle(self, inTicket):
         import aml2
         #do drive cleaning cycle
@@ -534,11 +534,11 @@ class AML2_MediaLoader(MediaLoaderMethods):
             drive = inTicket['moverConfig']['mc_device']
         except KeyError:
             Trace.log(e_errors.ERROR, 'mc:aml2 no device field found in ticket.')
-	    status = 37
+            status = 37
             return e_errors.DOESNOTEXIST, status, "no device field found in ticket"
-	
-	driveType = drive[:2]  # ... need device type, not actual device
-        cleanTime = self.driveCleanTime[driveType][0]  # clean time in seconds	
+        
+        driveType = drive[:2]  # ... need device type, not actual device
+        cleanTime = self.driveCleanTime[driveType][0]  # clean time in seconds  
         driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         min_remaining_bytes = 1
@@ -563,7 +563,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
             status = 37
             return v["status"][0], 0, v["status"][1]
 
-	for i in range(driveCleanCycles):
+        for i in range(driveCleanCycles):
             Trace.log(e_errors.INFO, "AML2 clean drive %s, vol. %s"%(drive,v['external_label']))
             rt = self.load(v['external_label'], drive, v['media_type']) 
             status = rt[1]
@@ -586,21 +586,21 @@ class AML2_MediaLoader(MediaLoaderMethods):
 
     def doWaitingInserts(self):
         #do delayed insertvols
-	if self.workQueueClosed and len(self.work_list)==0:
-	    self.workQueueClosed = 0
-	    ticket = { 'function'  : 'insert',
-	               'timeOfCmd' : self.timeInsert,
-		       'ra'        : self.insertRA }
-	    self.DoWork( self.insert, ticket)
+        if self.workQueueClosed and len(self.work_list)==0:
+            self.workQueueClosed = 0
+            ticket = { 'function'  : 'insert',
+                       'timeOfCmd' : self.timeInsert,
+                       'ra'        : self.insertRA }
+            self.DoWork( self.insert, ticket)
         return (e_errors.OK, 0, None) 
 
     def checkMyself(self):
         # do regularily scheduled internal checks
-	if self.robotNotAtHome and (time.time()-self.lastWorkTime) > self.idleTimeLimit:
-	    self.robotNotAtHome = 0
+        if self.robotNotAtHome and (time.time()-self.lastWorkTime) > self.idleTimeLimit:
+            self.robotNotAtHome = 0
             ticket = { 'function' : 'homeAndRestart', 'robotArm' : self.robotArm }
-	    sts = self.robotHomeAndRestart(ticket)
-	    self.lastWorkTime = time.time()
+            sts = self.robotHomeAndRestart(ticket)
+            self.lastWorkTime = time.time()
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods):
@@ -673,7 +673,7 @@ class STK_MediaLoader(MediaLoaderMethods):
     def load(self,
              external_label,    # volume external label
              drive,             # drive id
-             media_type):	# media type
+             media_type):       # media type
         import STK
         seq=self.next_seq()
         return self.retry_function(STK.mount,external_label,drive,media_type,seq)
@@ -682,17 +682,17 @@ class STK_MediaLoader(MediaLoaderMethods):
     def unload(self,
                external_label,  # volume external label
                drive,           # drive id
-	       media_type):     # media type
+               media_type):     # media type
         import STK
         seq=self.next_seq()
         return self.retry_function(STK.dismount,external_label,drive,media_type,seq)
 
     def getVolState(self, ticket):
         import STK
-	external_label = ticket['external_label']
-	media_type = ticket['media_type']
+        external_label = ticket['external_label']
+        media_type = ticket['media_type']
         seq=self.next_seq()
-	rt = self.retry_function(STK.query_volume,external_label,media_type,seq)
+        rt = self.retry_function(STK.query_volume,external_label,media_type,seq)
         Trace.trace( 11, "getVolState returned %s"%(rt,))
         if rt[3] == '\000':
             state=''
@@ -701,7 +701,7 @@ class STK_MediaLoader(MediaLoaderMethods):
             if not state and rt[2]:  # volumes not in the robot
                 state = rt[2]
         return (rt[0], rt[1], rt[2], state)
-	
+        
 
 # manual media changer
 class Manual_MediaLoader(MediaLoaderMethods):
@@ -773,242 +773,242 @@ class Shelf_MediaLoader(MediaLoaderMethods):
         
     def __init__(self, medch, max_work=1, csc=None): #Note: max_work may need to be changed, tgj
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
-	self.prepare=self.unload #override prepare with dismount and deallocate
-	
-	fnstatusO = self.getOCSHost()
-	fnstatus = self.getLocalHost()
+        self.prepare=self.unload #override prepare with dismount and deallocate
+        
+        fnstatusO = self.getOCSHost()
+        fnstatus = self.getLocalHost()
         Trace.trace(e_errors.INFO,"Shelf init localHost=%s OCSHost=%s" % (self.localHost, self.ocsHost))
-	if fnstatus == 'OK' and fnstatusO == 'OK' :
-	    index = string.find(self.localHost,self.ocsHost)
-	    if index > -1 :
-	        self.cmdPrefix = ""
-	        self.cmdSuffix = ""
-	    else :
-	        self.cmdPrefix = "rsh " + self.ocsHost + " '"
-	        self.cmdSuffix = "'"
+        if fnstatus == 'OK' and fnstatusO == 'OK' :
+            index = string.find(self.localHost,self.ocsHost)
+            if index > -1 :
+                self.cmdPrefix = ""
+                self.cmdSuffix = ""
+            else :
+                self.cmdPrefix = "rsh " + self.ocsHost + " '"
+                self.cmdSuffix = "'"
                 fnstatus = self.checkRemoteConnection()
-		if fnstatus != 'OK' :
+                if fnstatus != 'OK' :
                     Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
                               (fnstatus, self.status_message(fnstatus)))
-		    return
-	else :
+                    return
+        else :
             ## XXX fnstatusR not defined at this point...
             #Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
             # (fnstatusR, self.status_message(fnstatusR))
             Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
                       (fnstatus, self.status_message(fnstatus)))
-	    return
+            return
         fnstatus = self.checkOCSalive()
         if fnstatus != 'OK' :
              Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
                        (fnstatus, self.status_message(fnstatus)))
              return
-     	#fnstatus = self.deallocateOCSdrive("AllTheTapeDrives")
+        #fnstatus = self.deallocateOCSdrive("AllTheTapeDrives")
         #if fnstatus != 'OK' :
         #     Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" %
         #                   (fnstatus, self.status_message(fnstatus)))
         #     return
         Trace.log(e_errors.INFO, "Shelf init %s %s" % (fnstatus, self.status_message(fnstatus)))
-	return
+        return
 
     def getOCSHost(self):
         "get the hostname of the OCS machine from the config server"
         fnstatus = 'OK'
-	self.ocsHost = string.strip(self.mc_config['OCSclient'])
-	index = string.find(self.ocsHost,".")
-	if index == 0 :
-	    fnstatus = 'ERRCfgHst'
+        self.ocsHost = string.strip(self.mc_config['OCSclient'])
+        index = string.find(self.ocsHost,".")
+        if index == 0 :
+            fnstatus = 'ERRCfgHst'
         return fnstatus
-	
+        
     def getLocalHost(self):
         "get the hostname of the local machine"
         fnstatus = 'OK'
-	result = hostaddr.gethostinfo()
+        result = hostaddr.gethostinfo()
         self.localHost = result[0]
         return fnstatus
         
     def checkRemoteConnection(self):
-	"check to see if remote host is there"
+        "check to see if remote host is there"
         fnstatus = 'OK'
         command = self.cmdPrefix + "echo $(hostname) ; echo $?" + self.cmdSuffix
         Trace.log(e_errors.INFO, "Shelf cRC Cmd=%s" % (command, ))
         pipeObj = popen2.Popen3(command, 0, 0)
-	if pipeObj is None:
-	    fnstatus = 'ERRPipe'
+        if pipeObj is None:
+            fnstatus = 'ERRPipe'
             return fnstatus
-	stat = pipeObj.wait()
-	result = pipeObj.fromchild.readlines()  # result has returned string
+        stat = pipeObj.wait()
+        result = pipeObj.fromchild.readlines()  # result has returned string
         Trace.log(e_errors.INFO, "Shelf cRC rsh return strings=%s stat=%s" % (result, stat))
-	if stat == 0:
-	    retval = result[len(result)-1][0]
-	    if retval != '0':
-	        fnstatus = 'ERRHoCmd'
+        if stat == 0:
+            retval = result[len(result)-1][0]
+            if retval != '0':
+                fnstatus = 'ERRHoCmd'
                 return fnstatus
-	else :
-	    fnstatus = 'ERRHoNoRe'
+        else :
+            fnstatus = 'ERRHoNoRe'
             return fnstatus
         return fnstatus
 
     def checkOCSalive(self):
-	"check to see if OCS is alive"
+        "check to see if OCS is alive"
         fnstatus = 'OK'
         command = self.cmdPrefix + "ocs_left_allocated -l 0 ; echo $?"  + self.cmdSuffix
         Trace.log(e_errors.INFO, "Shelf cOa Cmd=%s" % (command,) )
         pipeObj = popen2.Popen3(command, 0, 0)
-	if pipeObj is None:
-	    fnstatus = 'ERRPipe'
+        if pipeObj is None:
+            fnstatus = 'ERRPipe'
             return fnstatus
-	stat = pipeObj.wait()
-	result = pipeObj.fromchild.readlines()  # result has returned string
+        stat = pipeObj.wait()
+        result = pipeObj.fromchild.readlines()  # result has returned string
         Trace.log(e_errors.INFO, "Shelf cOa rsh return strings=%s stat=%s" % (result, stat))
-	if stat == 0:
-	    retval = result[len(result)-1][0]
-	    if retval != '0':
-	        fnstatus = 'ERROCSCmd'
+        if stat == 0:
+            retval = result[len(result)-1][0]
+            if retval != '0':
+                fnstatus = 'ERROCSCmd'
                 return fnstatus
-	else :
-	    fnstatus = 'ERRHoNoRe'
+        else :
+            fnstatus = 'ERRHoNoRe'
             return fnstatus
-	return fnstatus
-	
+        return fnstatus
+        
     def allocateOCSdrive(self, drive):
-	"allocate an OCS managed drive"
-	fnstatus = 'OK'
-	command = self.cmdPrefix + "ocs_allocate -T " + drive + " ; echo $?" + self.cmdSuffix
+        "allocate an OCS managed drive"
+        fnstatus = 'OK'
+        command = self.cmdPrefix + "ocs_allocate -T " + drive + " ; echo $?" + self.cmdSuffix
         Trace.log(e_errors.INFO, "Shelf aOd Cmd=%s" % (command,) )
-	pipeObj = popen2.Popen3(command, 0, 0)
-	if pipeObj is None:
-	    fnstatus = 'ERRAloPip'
+        pipeObj = popen2.Popen3(command, 0, 0)
+        if pipeObj is None:
+            fnstatus = 'ERRAloPip'
             return fnstatus
-	stat = pipeObj.wait()
-	result = pipeObj.fromchild.readlines()  # result has returned string
+        stat = pipeObj.wait()
+        result = pipeObj.fromchild.readlines()  # result has returned string
         Trace.log(e_errors.INFO, "Shelf aOd rsh return strings=%s stat=%s" % (result, stat))
-	if stat == 0:
-	    retval = result[len(result)-1][0]
-	    if retval != '0':
-	        fnstatus = 'ERRAloCmd'
+        if stat == 0:
+            retval = result[len(result)-1][0]
+            if retval != '0':
+                fnstatus = 'ERRAloCmd'
                 return fnstatus
-	    else :   # check if OCS allocated a different drive
-	        retstring = result[0]
-		pos=string.find(retstring," "+drive)
-		if pos == -1 :  # different drive was allocated 
-		    fnstatus = 'ERRAloDrv'
-         	    pos=string.find(retstring," ")
-		    if pos != -1 :
-		        wrongdrive=string.strip(retstring[pos+1:])
+            else :   # check if OCS allocated a different drive
+                retstring = result[0]
+                pos=string.find(retstring," "+drive)
+                if pos == -1 :  # different drive was allocated 
+                    fnstatus = 'ERRAloDrv'
+                    pos=string.find(retstring," ")
+                    if pos != -1 :
+                        wrongdrive=string.strip(retstring[pos+1:])
                         Trace.log(e_errors.ERROR, "ERROR:Shelf aOd rsh wrongdrive=%s" % (wrongdrive,) )
-		    fnstatusR = self.deallocateOCSdrive(drive)
+                    fnstatusR = self.deallocateOCSdrive(drive)
                     return fnstatus
-	else :
-	    fnstatus = 'ERRAloRsh'
+        else :
+            fnstatus = 'ERRAloRsh'
             return fnstatus
         return fnstatus
         
     def mountOCSdrive(self, external_label, drive):
-	"request an OCS managed tape"
-	fnstatus = 'OK'
-	command = self.cmdPrefix + "ocs_request -t " + drive + \
-	          " -v " + external_label + " ; echo $?" + self.cmdSuffix
+        "request an OCS managed tape"
+        fnstatus = 'OK'
+        command = self.cmdPrefix + "ocs_request -t " + drive + \
+                  " -v " + external_label + " ; echo $?" + self.cmdSuffix
         Trace.log(e_errors.INFO, "Shelf mOd Cmd=%s" % (command,) )
-	pipeObj = popen2.Popen3(command, 0, 0)
-	if pipeObj is None:
-	    fnstatus = 'ERRReqPip'
-	    fnstatusR = self.deallocateOCSdrive(drive)
+        pipeObj = popen2.Popen3(command, 0, 0)
+        if pipeObj is None:
+            fnstatus = 'ERRReqPip'
+            fnstatusR = self.deallocateOCSdrive(drive)
             return fnstatus
-	stat = pipeObj.wait()
-	result = pipeObj.fromchild.readlines()  # result has returned string
+        stat = pipeObj.wait()
+        result = pipeObj.fromchild.readlines()  # result has returned string
         Trace.log(e_errors.INFO, "Shelf mOd rsh return strings=%s stat=%s" % (result, stat))
-	if stat == 0:
-	    retval = result[len(result)-1][0]
-	    if retval != '0':
-	        fnstatus = 'ERRReqCmd'
-	        fnstatusR = self.deallocateOCSdrive(drive)
+        if stat == 0:
+            retval = result[len(result)-1][0]
+            if retval != '0':
+                fnstatus = 'ERRReqCmd'
+                fnstatusR = self.deallocateOCSdrive(drive)
                 return fnstatus
-	else :
-	    fnstatus = 'ERRReqRsh'
-	    fnstatusR = self.deallocateOCSdrive(drive)
+        else :
+            fnstatus = 'ERRReqRsh'
+            fnstatusR = self.deallocateOCSdrive(drive)
             return fnstatus
         return fnstatus
 
     def deallocateOCSdrive(self, drive):
-	"deallocate an OCS managed drive"
-	fnstatus = 'OK'
-	if "AllTheTapeDrives" == drive :
-	    command = self.cmdPrefix + "ocs_deallocate -a " + \
-	              " ; echo $?" + self.cmdSuffix
-	else :
-	    command = self.cmdPrefix + "ocs_deallocate -t " + drive + \
-	              " ; echo $?" + self.cmdSuffix
+        "deallocate an OCS managed drive"
+        fnstatus = 'OK'
+        if "AllTheTapeDrives" == drive :
+            command = self.cmdPrefix + "ocs_deallocate -a " + \
+                      " ; echo $?" + self.cmdSuffix
+        else :
+            command = self.cmdPrefix + "ocs_deallocate -t " + drive + \
+                      " ; echo $?" + self.cmdSuffix
         Trace.log(e_errors.INFO, "Shelf dOd Cmd=%s" % (command,) )
-	pipeObj = popen2.Popen3(command, 0, 0)
-	if pipeObj is None:
-	    fnstatus = 'ERRDeaPip'
+        pipeObj = popen2.Popen3(command, 0, 0)
+        if pipeObj is None:
+            fnstatus = 'ERRDeaPip'
             return fnstatus
-	stat = pipeObj.wait()
-	result = pipeObj.fromchild.readlines()  # result has returned string
+        stat = pipeObj.wait()
+        result = pipeObj.fromchild.readlines()  # result has returned string
         Trace.log(e_errors.INFO, "Shelf dOd rsh return strings=%s stat=%s" % (result, stat))
-	if stat == 0:
-	    retval = result[len(result)-1][0]
-	    if retval != '0': #check if drive already deallocated (not an error)
-	        retstring = result[0]
-		pos=string.find(retstring,"drive is already deallocated")
-		if pos == -1 :  # really an error
-	            fnstatus = 'ERRDeaCmd'
+        if stat == 0:
+            retval = result[len(result)-1][0]
+            if retval != '0': #check if drive already deallocated (not an error)
+                retstring = result[0]
+                pos=string.find(retstring,"drive is already deallocated")
+                if pos == -1 :  # really an error
+                    fnstatus = 'ERRDeaCmd'
                     return fnstatus
-	else :
-	    fnstatus = 'ERRDeaRsh'
+        else :
+            fnstatus = 'ERRDeaRsh'
             return fnstatus
         return fnstatus
 
     def unmountOCSdrive(self, drive):
-	"dismount an OCS managed tape"
-	fnstatus = 'OK'
-	command = self.cmdPrefix + "ocs_dismount -t " + drive + \
-	          " ; echo $?" + self.cmdSuffix
+        "dismount an OCS managed tape"
+        fnstatus = 'OK'
+        command = self.cmdPrefix + "ocs_dismount -t " + drive + \
+                  " ; echo $?" + self.cmdSuffix
         Trace.log(e_errors.INFO, "Shelf uOd Cmd=%s" % (command,) )
-	pipeObj = popen2.Popen3(command, 0, 0)
-	if pipeObj is None:
-	    fnstat = 'ERRDsmPip'
+        pipeObj = popen2.Popen3(command, 0, 0)
+        if pipeObj is None:
+            fnstat = 'ERRDsmPip'
             return fnstatus
-	stat = pipeObj.wait()
-	result = pipeObj.fromchild.readlines()  # result has returned string
+        stat = pipeObj.wait()
+        result = pipeObj.fromchild.readlines()  # result has returned string
         Trace.log(e_errors.INFO, "Shelf uOd rsh return strings=%s stat=%s" % (result, stat))
-	if stat == 0:
-	    retval = result[len(result)-1][0]
-	    if retval != '0':
-	        fnstatus = 'ERRDsmCmd'
+        if stat == 0:
+            retval = result[len(result)-1][0]
+            if retval != '0':
+                fnstatus = 'ERRDsmCmd'
                 return fnstatus
-	else :
-	    fnstatus = 'ERRDsmRsh'
+        else :
+            fnstatus = 'ERRDsmRsh'
             return fnstatus
         return fnstatus
 
     def load(self, external_label, drive, media_type):
-	"load a tape"
-	fnstatus = self.allocateOCSdrive(drive)
-	if fnstatus == 'OK' :
-	    fnstatus = self.mountOCSdrive(external_label, drive)
-	if fnstatus == 'OK' :
-	    status = 0
-	else :
-	    status = 1
+        "load a tape"
+        fnstatus = self.allocateOCSdrive(drive)
+        if fnstatus == 'OK' :
+            fnstatus = self.mountOCSdrive(external_label, drive)
+        if fnstatus == 'OK' :
+            status = 0
+        else :
+            status = 1
             Trace.log(e_errors.ERROR, "ERROR:Shelf load exit fnst=%s %s %s" %
                       (status, fnstatus, self.status_message(fnstatus)))
         return self.status_code(fnstatus), status, self.status_message(fnstatus)
 
     def unload(self, external_label, drive, media_type):
-	"unload a tape"
-	fnstatusTmp = self.unmountOCSdrive(drive)
-     	fnstatus = self.deallocateOCSdrive(drive)
+        "unload a tape"
+        fnstatusTmp = self.unmountOCSdrive(drive)
+        fnstatus = self.deallocateOCSdrive(drive)
         Trace.log(e_errors.INFO, "Shelf unload deallocate exit fnstatus=%s" % (fnstatus,))
-	if fnstatusTmp != 'OK' :
+        if fnstatusTmp != 'OK' :
             Trace.log(e_errors.ERROR, "ERROR:Shelf unload deall exit fnst= %s %s" %
                       (fnstatus, self.status_message(fnstatus)))
-	    fnstatus = fnstatusTmp
-	if fnstatus == 'OK' :
-	    status = 0
-	else :
-	    status = 1
+            fnstatus = fnstatusTmp
+        if fnstatus == 'OK' :
+            status = 0
+        else :
+            status = 1
             Trace.log(e_errors.ERROR, "ERROR:Shelf unload exit fnst= %s %s" %
                       (fnstatus, self.status_message(fnstatus)))
         return self.status_code(fnstatus), status, self.status_message(fnstatus)
@@ -1017,7 +1017,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
         numberOfRetries = 1
         return numberOfRetries
 
-	
+        
 class MediaLoaderInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
@@ -1028,7 +1028,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+\
-	       ["log=","max_work="]
+               ["log=","max_work="]
 
     #  define our specific help
     def parameters(self):
@@ -1039,7 +1039,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
         interface.Interface.parse_options(self)
         # bomb out if we don't have a media_changer
         if len(self.args) < 1 :
-	    self.missing_parameter(self.parameters())
+            self.missing_parameter(self.parameters())
             self.print_help(),
             sys.exit(1)
         else:
@@ -1057,11 +1057,11 @@ if __name__ == "__main__" :
                                                      intf.config_port) )
     keys = csc.get(intf.name)
     try:
-	mc_type = keys['type']
+        mc_type = keys['type']
     except:
         exc,msg,tb=sys.exc_info()
-	Trace.log(e_errors.ERROR, "MC Error %s %s"%(exc,msg))
-	sys.exit(1)
+        Trace.log(e_errors.ERROR, "MC Error %s %s"%(exc,msg))
+        sys.exit(1)
 
     constructor=eval(mc_type)
     mc = constructor(intf.name, intf.max_work, (intf.config_host, intf.config_port))
@@ -1074,9 +1074,9 @@ if __name__ == "__main__" :
             Trace.log(e_errors.INFO, "Media Changer %s (re) starting"%
                       (intf.name,))
             mc.serve_forever()
-	except SystemExit, exit_code:
-	    sys.exit(exit_code)
+        except SystemExit, exit_code:
+            sys.exit(exit_code)
         except:
-	    mc.serve_forever_error("media changer")
+            mc.serve_forever_error("media changer")
             continue
     Trace.trace(6,"Media Changer finished (impossible)")
