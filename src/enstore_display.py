@@ -219,7 +219,7 @@ class Mover:
         progress_bar_bg_offset1    = XY(5, 17)
         progress_bar_bg_offset2    = XY(6, 26)
         state_offset               = XY(120, 8)
-        timer_offset               = XY(100, 22)
+        timer_offset               = XY(120, 22)
 
         # create color names
         mover_color                = colors('mover_color')
@@ -287,7 +287,7 @@ class Mover:
             
         
     def update_timer(self, seconds):
-        timer_offset = XY(100, 22)
+        timer_offset = XY(120, 22)
         #timer color
         timer_color = colors('timer_color')
         
@@ -885,6 +885,9 @@ class Display(Tkinter.Canvas):
                 return
 
             if words[0] in ['loading', 'loaded']:
+                if mover.state in ['IDLE']:
+                    print "An idle mover cannot have tape...ignore"
+                    return
                 load_state = words[0]=='loaded'
                 what_volume = words[2]
                 volume=self.volumes.get(what_volume)
