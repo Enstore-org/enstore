@@ -320,6 +320,12 @@ class Mover:
     def draw_state(self):
         x, y                    = self.x, self.y
 
+        #For small window sizes, the rate display is largely more important.
+        # This is simalar to the percent display size drawing restrictions.
+        if self.state == "ACTIVE" and self.display.width <= 470:
+            self.undraw_state()
+            return
+
         #Display the current state.
         img          = find_image(self.state + '.gif')
         if self.state_display:
@@ -480,6 +486,7 @@ class Mover:
             if self.progress_percent_display:
                 self.display.itemconfigure(self.progress_percent_display,
                                            text = str(self.percent_done)+"%")
+                self.display.lift(self.progress_percent_display)
             else:
                 self.progress_percent_display =  self.display.create_text(
                     x + self.percent_disp_offset.x,
