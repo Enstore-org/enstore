@@ -428,7 +428,7 @@ filecheck "ntpset"
 filecheck "netscan -a -q" # not so dumb, because we can run netscan manually, too
 #filecheck "ekill -v -9"
 filecheck "ekill -v -9 \"sdrread\|selread\|chip2\|Chip2\|netperf\|dog\|selbit\|selclear\|netstat\|Nodeinfo\|biterror\""
-filecheck "boot_cleanup -x" /etc/rc.d/rc.local
+filecheck "boot_cleanup" /etc/rc.d/rc.local
 
 if [ $IPMI -eq 1 ]; then
    # check that ipmisrv is running without watchdog timer
