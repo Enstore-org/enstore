@@ -1823,7 +1823,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if client_hostname:
             client_filename = client_hostname + ":" + client_filename
         if self.wrapper:
-            self.current_work_ticket['compression'] = self.compression
+            self.current_work_ticket['mover']['compression'] = self.compression
             self.wrapper_ticket = self.wrapper.create_wrapper_dict(self.current_work_ticket)
         if self.mode == READ:
             self.files = (pnfs_filename, client_filename)
