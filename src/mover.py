@@ -238,7 +238,12 @@ class MoverClient:
 	self.mode = ''			# will be either 'r' or 'w'
 	self.bytes_to_xfer = 0		# for status - needs to be initialized
 	self.pid = 0
+
 	self.vol_info = {'external_label':''}
+	self.vol_vcc = {}		# vcc associated with a particular
+	# vol_label (useful when other lib man summons during delayed
+	# dismount -- labels must be unique
+
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
 	self.crc_func = ECRC.ECRC
 
@@ -289,11 +294,13 @@ class MoverClient:
 	# now ask the media changer to unload the volume
 	logc.send(log_client.INFO,2,"Requesting media changer unload")
 	rr = mcc.unloadvol( self.vol_info, self.config['name'], 
-			    self.config['mc_device'] )
+			    self.config['mc_device'],
+			    self.vol_vcc[self.vol_info['external_label']] )
 	logc.send(log_client.INFO,2,"Media changer unload status"+str(rr['status']))
 	if rr['status'][0] != "ok":
 	    raise "media loader cannot unload my volume"
 
+	del self.vol_vcc[self.vol_info['external_label']]
 	self.vol_info['external_label'] = ''
 
 	return idle_mover_next( self )
@@ -318,7 +325,6 @@ class MoverClient:
 
 # the library manager has told us to bind a volume so we can do some work
 def bind_volume( self, external_label ):
-
     #
     # NOTE: external_label is in rsponses from both the vc and fc
     #       for a write:
@@ -342,6 +348,10 @@ def bind_volume( self, external_label ):
 	if tmp_vol_info['status'][0] != 'ok': return 'NOTAPE' # generic, not read or write specific
 
         # if there is a tape in the drive, eject it (then the robot can put it away and we can continue)
+	# NOTE: can we detect "cleaning in progress" or "cleaning cartridge (as
+	# opposed to data cartridge) in drive?"
+	# If we can detect "cleaning in progress" we can wait for it to
+	# complete before ejecting.
 	if mvr_config['do_eject'] == 'yes':
             logc.send(log_client.INFO,2,'Performing precautionary offline/eject of device'+str(mvr_config['device']))
 	    self.hsm_driver.offline(mvr_config['device'])
@@ -349,7 +359,8 @@ def bind_volume( self, external_label ):
 
 	self.vol_info['read_errors_this_mover'] = 0
 	logc.send(log_client.INFO,2,'Requesting media changer load '+str(tmp_vol_info)+' '+str(self.config['mc_device']))
-	try: rsp = mcc.loadvol( tmp_vol_info, self.config['name'], self.config['mc_device'] )
+	try: rsp = mcc.loadvol( tmp_vol_info, self.config['name'],
+				self.config['mc_device'], vcc )
 	except: rsp = { 'status':('ETIMEDOUT',None) }
 	logc.send(log_client.INFO,2,'Media changer load status'+str(rsp['status']))
 	if rsp['status'][0] != 'ok':
@@ -384,12 +395,11 @@ def bind_volume( self, external_label ):
 def do_fork( self, ticket, mode ):
     global vcc, fcc
     # get vcc and fcc for this xfer
-    fcc = file_clerk_client.FileClient( csc, 0,
-					ticket['fc']['address'][0],
-					ticket['fc']['address'][1] )
-    vcc = volume_clerk_client.VolumeClerkClient( csc, 0,
-						 ticket['vc']['address'][0],
-						 ticket['vc']['address'][1] )
+    fcc = file_clerk_client.FileClient( csc, 0, 0, 0, 0,
+					ticket['fc']['address'] )
+    vcc = volume_clerk_client.VolumeClerkClient( csc, 0, 0, 0,
+						 ticket['vc']['address'] )
+    self.vol_vcc[ticket['fc']['external_label']] = vcc# remember for unbind
     self.hsm_driver._bytes_clear()
     self.state = 'busy'
     self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
@@ -624,8 +634,7 @@ def forked_read_from_hsm( self, ticket ):
 	    ticket['times']['seek_time'] = time.time() - t0
 
 	    # create the wrapper instance (could be different for different tapes)
-	    tmp_vinfo = vcc.inquire_vol(ticket['fc']['external_label'])
-            wrapper=wrapper_selector.select_wrapper(tmp_vinfo['wrapper'])
+            wrapper=wrapper_selector.select_wrapper(self.vol_info['wrapper'])
 	    if wrapper == None:
 		wrapper=wrapper_selector.select_wrapper("cpio_custom")
 		if wrapper == None:
@@ -782,16 +791,17 @@ def get_user_sockets( self, ticket ):
 
 # create ticket that says we are idle
 def idle_mover_next( self ):
-    return {'work'   :'idle_mover',
-	    'mover'  :self.config['name'],
+    return {'work'   : 'idle_mover',
+	    'mover'  : self.config['name'],
+	    'state'  : self.state,
 	    'address': (self.config['hostip'],self.config['port'])}
 
 # create ticket that says we have bound volume x
 def have_bound_volume_next( self ):
     next_req_to_lm =  { 'work'   : 'have_bound_volume',
 			'mover'  : self.config['name'],
+			'state'  : self.state,
 			'address': (self.config['hostip'],self.config['port']),
-			'state'  : 'idle',
 			'vc'     : self.vol_info }
     return next_req_to_lm
 
@@ -803,6 +813,7 @@ def unilateral_unbind_next( self, error_info ):
     # The response to this command can be either 'nowork' or 'unbind'
     next_req_to_lm = {'work'           : 'unilateral_unbind',
 		      'mover'          : self.config['name'],
+		      'state'          : self.state,
 		      'address'        : (self.config['hostip'],self.config['port']),
 		      'external_label' : self.fc['external_label'],
 		      'state'          : self.state,
@@ -997,9 +1008,13 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	next_req_to_lm = method( self.client_obj_inst, rsp_ticket )
 	# note: order of check is important to avoid KeyError exception
 	if  len(self.summoned_while_busy) and next_req_to_lm=={}:
-	    next_req_to_lm = idle_mover_next( self.client_obj_inst )
-	    address = self.summoned_while_busy[0]
-	    del self.summoned_while_busy[0]
+	    # now check if next_req_to_lm=={} means we just started an xfer and
+	    # are waiting for completion.
+	    if self.client_obj_inst.state == 'idle':
+		next_req_to_lm = idle_mover_next( self.client_obj_inst )
+		address = self.summoned_while_busy[0]
+		del self.summoned_while_busy[0]
+		pass
 	elif len(self.summoned_while_busy) and next_req_to_lm['work']=='idle_mover':
 	    # do not tell this lm idle as he may keep giving work
 	    next_req_to_lm = idle_mover_next( self.client_obj_inst )
@@ -1031,7 +1046,6 @@ def get_state_build_next_lm_req( self, wait ):
 						exit_status )
 	else:
 	    next_req_to_lm = have_bound_volume_next( self.client_obj_inst )
-	    next_req_to_lm['state'] = 'busy'
 	    pass
 	pass
     else:
@@ -1040,7 +1054,6 @@ def get_state_build_next_lm_req( self, wait ):
 	else:
 	    next_req_to_lm = have_bound_volume_next( self.client_obj_inst )
 	    pass
-	next_req_to_lm['state'] = 'idle'
 	pass
     return next_req_to_lm
 
