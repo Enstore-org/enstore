@@ -239,8 +239,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                                   (ticket['function'],ticket['vol_ticket']['external_label'],
                                    ticket['drive_id']))
 
-                    return
-                except KeyError:
+                        return
+                except:
                     e_errors.handle_error()
                     Trace.log(e_errors.ERROR, "ERRROR %s"%(repr(i),))
                     
@@ -279,6 +279,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             # if this a duplicate request, drop it
             for i in self.work_list:
                 if i["ra"] == ticket["ra"]:
+                    Trace.log(e_errors.INFO,"duplicate request, drop it %s %s"%(repr(i["ra"]),repr(ticket["ra"])))
                     return
 	    # if function is insert and queue not empty, close work queue
             if ticket["function"] == "insert":
@@ -286,7 +287,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	           self.workQueueClosed = 1
 		   self.timeInsert = time.time()
 		   self.insertRA = ticket["ra"]
-		   return
+                   Trace.log(e_errors.INFO,"RET1 %s",%( ticket["function"],))
+		   return 
 		else:
 		   self.workQueueClosed = 0
             # if not duplicate, fork the work
