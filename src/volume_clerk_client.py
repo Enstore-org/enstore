@@ -157,16 +157,17 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   +"ticket[\"status\"]="+ticket["status"]
 
         # If the system has called us back with our own  unique id, call back
-        # the library manager on the library manager's port and read the
+        # the volume clerk on the volume clerk's port and read the
         # work queues on that port.
         data_path_socket = callback.volume_server_callback_socket(ticket)
         ticket= callback.read_tcp_obj(data_path_socket)
         volumes=''
-        while 1:
-            msg=callback.read_tcp_raw(data_path_socket)
-            if not msg: break
-            if volumes: volumes = volumes+","+msg
-            else: volumes=msg
+        volumes=callback.read_tcp_raw(data_path_socket)
+        ##while 1:
+        ##    msg=callback.read_tcp_raw(data_path_socket)
+        ##    if not msg: break
+        ##    if volumes: volumes = volumes+","+msg
+        ##    else: volumes=msg
         ticket['volumes'] = volumes
         data_path_socket.close()
 
@@ -533,7 +534,11 @@ def do_work(intf):
             key = None
             in_state = None 
         ticket = vcc.get_vols(key, in_state, not_cond)
-        print ticket['volumes']
+        if nargs == 0:
+            vols = string.split(ticket['volumes'],',')
+            for v in vols:
+                print v
+        else:print ticket['volumes']
     elif intf.rmvol:
         # optional argument
         if intf.rmvol == 'all': intf.rmvol = None
@@ -551,12 +556,12 @@ def do_work(intf):
 	pprint.pprint(ticket)
     elif intf.check:
         ticket = vcc.inquire_vol(intf.check)
-	#print repr(ticket)
+        ##print repr(ticket)
         print "%-10s  %5.2gGB %-12s  %s %s" % (ticket['external_label'],
-                                                      ticket['remaining_bytes']*1./1024./1024./1024.,
-                                                      ticket['at_mover'][0],
-                                                      ticket['system_inhibit'],
-                                                      ticket['user_inhibit'])
+                                               ticket['remaining_bytes']*1./1024./1024./1024.,
+                                               ticket['at_mover'][0],
+                                               ticket['system_inhibit'],
+                                               ticket['user_inhibit'])
     elif intf.add:
         print repr(intf.args)
         ticket = vcc.add(intf.args[0],              # library

@@ -1198,6 +1198,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             callback.write_tcp_obj(self.data_socket, ticket)
             dict.cursor("open")
             key,value=dict.cursor("first")
+            msg=''
             while key:
                 if ticket.has_key("not"): cond = ticket["not"]
                 if ticket.has_key("in_state") and ticket["in_state"] != None:
@@ -1208,16 +1209,26 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                             else:
                                 loc_val = value[ticket["key"]]
                             if mycmp(cond,loc_val,ticket["in_state"]):
-                                callback.write_tcp_raw(self.data_socket,repr(key))
+                                if msg: msg = msg+","+key
+                                else: msg = key
                             else:
                                 pass
                     else:
                         if value["system_inhibit"] == ticket["in_state"]:
-                            callback.write_tcp_raw(self.data_socket,repr(key))
+                            if msg: msg = msg+","+key
+                            else: msg = key
                 else:
-                    callback.write_tcp_raw(self.data_socket,repr(key))
+                    bytes_left = value['remaining_bytes']*1./1024./1024./1024.
+                    formatted_string="%-10s  %5.2gGB %-12s  %-12s %-12s"%\
+                                      (key,bytes_left,value['at_mover'][0],\
+                                      value['system_inhibit'],value['user_inhibit'])
+                    if msg: msg = msg+","+formatted_string
+                    else: msg = "%-10s  %-7s %-12s  %-12s %-12s"%\
+                                ("label","avail.","mount state","sys_inhibit","usr_inhibit")+\
+                                ","+formatted_string
+
                 key,value=dict.cursor("next")
-            callback.write_tcp_raw(self.data_socket,"")
+            callback.write_tcp_raw(self.data_socket,msg)
             dict.cursor("close")
             self.data_socket.close()
 
