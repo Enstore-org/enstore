@@ -174,11 +174,11 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         # fill in the defaults for the possible options
         self.config_dump = {}
         self.config_file = ""
-        self.dict = 0
+        self.show = 0
         self.load = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
-        self.get_keys = 0
+        self.summary = 0
         generic_client.GenericClientInterface.__init__(self)
 
         # if we are using the default host and port, warn the user
@@ -187,7 +187,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+[
-            "config_file=","get_keys","dict","load"]
+            "config_file=","summary","show","load"]
 
 if __name__ == "__main__":
     import sys
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     if intf.alive:
         stati = csc.alive(MY_SERVER, intf.alive_rcv_timeout,intf.alive_retries)
 
-    elif intf.dict:
+    elif intf.show:
         csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
         print csc.config_dump["dump"]
         stati = csc.config_dump
@@ -212,7 +212,7 @@ if __name__ == "__main__":
         stati= csc.load(intf.config_file, intf.alive_rcv_timeout, \
 	                intf.alive_retries)
 
-    elif intf.get_keys:
+    elif intf.summary:
         stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
 	pprint.pprint(stati['get_keys'])
 

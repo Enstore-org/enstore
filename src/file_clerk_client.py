@@ -217,18 +217,18 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
         # fill in the defaults for the possible options
         self.bfids = 0
-        self.tape_list = 0
+        self.list = 0
         self.bfid = 0
         self.backup = 0
         self.deleted = 0
-	self.restore = 0
+	self.restore = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+["bfids","bfid=","deleted=","tape_list=","backup", "restore=", "r"]
+        return self.client_options()+["bfids","bfid=","deleted=","list=","backup", "restore=", "recursive"]
 
 
 if __name__ == "__main__" :
@@ -264,8 +264,8 @@ if __name__ == "__main__" :
         ticket = fcc.get_bfids()
         print ticket['bfids']
 
-    elif intf.tape_list:
-        ticket = fcc.tape_list(intf.tape_list)
+    elif intf.list:
+        ticket = fcc.tape_list(intf.list)
         print ticket['tape_list']
         aticket = fcc.alive(MY_SERVER, intf.alive_rcv_timeout,
                             intf.alive_retries) #clear out any zombies from the forked file clerk
@@ -280,8 +280,8 @@ if __name__ == "__main__" :
 	    if intf.restore_dir: dir="yes"
 	except AttributeError:
 	    dir = "no"
-	print "file",intf.file 
-        ticket = fcc.restore(intf.file, dir)
+	print "file",intf.restore
+        ticket = fcc.restore(intf.restore, dir)
     else:
 	intf.print_help()
         sys.exit(0)

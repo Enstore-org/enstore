@@ -81,7 +81,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
 	print "ID", id
 	return self.send({"work":"remove_work", "unique_id": id})
 
-    def change_priority(self, id, pri):
+    def priority(self, id, pri):
 	return self.send({"work":"change_priority", "unique_id": id, "priority": pri})
 
     def load_mover_list(self):
@@ -149,15 +149,15 @@ class LibraryManagerClient(generic_client.GenericClient) :
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self) :
         self.name = ""
-        self.getwork = 0
+        self.get_work = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
-	self.getmoverlist = 0
+	self.get_mover_list = 0
 	self.get_susp_vols = 0
-	self.get_del_dismounts = 0
+	self.get_delayed_dismount = 0
 	self.get_susp_vols = 0
-	self.remove_work = 0
-	self.change_priority = 0
+        self.delete_work = 0
+	self.priority = -1
 	self.load_mover_list = 0
 	self.summon = 0
 	self.poll = 0
@@ -168,9 +168,9 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-	       ["getwork", "getmoverlist", "get_suspect_vols",
-		"get_del_dismount","del_work","change_priority","loadmovers",
-		"summon=", "poll","queue","host="]
+	       ["get_work", "get_mover_list", "get_suspect_vols",
+		"get_delayed_dismount","delete_work=","priority=",
+                "load_movers", "summon=", "poll", "queue","host="]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -185,23 +185,23 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             self.print_help(),
             sys.exit(1)
         else:
-	    if self.remove_work:
-		if len(self.args) != 2:
-		    self.print_remove_work_args()
+	    if self.delete_work:
+		if len(self.args) != 1:
+		    self.print_delete_work_args()
 		    sys.exit(1)
-	    elif self.change_priority:
-		if len(self.args) != 3:
-		    self.print_change_priority_args()
+	    elif not self.priority == -1:
+		if len(self.args) != 2:
+		    self.print_priority_args()
 		    sys.exit(1)
             if not  self.queue_list: self.name = self.args[0]
 
-    # print remove_work arguments
-    def print_remove_work_args(self):
-        print "   remove_work arguments: library work_id"
+    # print delete _work arguments
+    def print_delete_work_args(self):
+        print "   delete arguments: library"
 
-    # print change_priority arguments
-    def print_change_priority_args(self):
-        print "   change_priority arguments: library work_id priority"
+    # print priority arguments
+    def print_priority_args(self):
+        print "   priority arguments: library work_id"
 
 if __name__ == "__main__" :
     Trace.init("LIBM CLI")
@@ -217,24 +217,24 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = lmc.alive(intf.name, intf.alive_rcv_timeout,
                            intf.alive_retries)
-    elif  intf.getwork:
+    elif  intf.get_work:
         ticket = lmc.getwork()
 	print ticket['pending_work']
 	print ticket['at movers']
-    elif  intf.getmoverlist:
+    elif  intf.get_mover_list:
 	ticket = lmc.getmoverlist()
 	print ticket['moverlist']
     elif  intf.get_susp_vols:
 	ticket = lmc.get_suspect_volumes()
 	print ticket['suspect_volumes']
-    elif  intf.get_del_dismounts:
+    elif  intf.get_delayed_dismount:
 	ticket = lmc.get_delayed_dismounts()
 	print ticket['delayed_dismounts']
-    elif intf.remove_work:
-	ticket = lmc.remove_work(intf.args[1])
+    elif intf.delete_work:
+	ticket = lmc.remove_work(intf.work_to_delete)
 	print repr(ticket)
-    elif intf.change_priority:
-	ticket = lmc.change_priority(intf.args[1], string.atoi(intf.args[2]))
+    elif not intf.priority == -1:
+	ticket = lmc.priority(intf.args[1], intf.priority)
 	print repr(ticket)
     elif intf.load_mover_list:
 	ticket = lmc.load_mover_list()

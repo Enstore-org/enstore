@@ -112,8 +112,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.media_changer = ""
-        self.getwork=0
-        self.maxwork=-1
+        self.get_work=0
+        self.max_work=-1
         self.volume = 0
 	self.view = 0
 	self.insertvol = 0
@@ -126,8 +126,9 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["maxwork=","view=","getwork","insertvol",
+               ["max_work=","view=","get_work","insertvol",
 	        "ejectvol","insertlib="]
+
     #  define our specific help
     def parameters(self):
         if 0: print self.keys() #lint fix
@@ -163,8 +164,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                 sys.exit(1)
             else:
                 self.media_changer = self.args[0]
-        if (self.alive == 0) and (self.maxwork==-1) and \
-           (self.getwork==0) and (self.view == 0) and \
+        if (self.alive == 0) and (self.max_work==-1) and \
+           (self.get_work==0) and (self.view == 0) and \
            (self.insertvol==0) and (self.ejectvol == 0) and \
 	   (self.viewattrib == 0):
             # bomb out if number of arguments is wrong
@@ -174,8 +175,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # print out our extended help
     def print_help(self):
         interface.Interface.print_help(self)
-        print "        --maxwork=N        Max simultaneous operations allowed (may be 0)"
-        print "        --getwork          List oprations in progress"
+        print "        --max_work=N        Max simultaneous operations allowed (may be 0)"
+        print "        --get_work          List operations in progress"
         
 if __name__ == "__main__" :
     Trace.init("MEDCH CLI")
@@ -202,9 +203,9 @@ if __name__ == "__main__" :
 	ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
     elif intf.ejectvol:
         ticket=mcc.ejectvol(intf.media_type, intf.volumeList)
-    elif intf.maxwork  >= 0:
-        ticket=mcc.MaxWork(intf.maxwork)
-    elif intf.getwork:
+    elif intf.max_work  >= 0:
+        ticket=mcc.MaxWork(intf.max_work)
+    elif intf.get_work:
         ticket=mcc.GetWork()
         #print repr(ticket['worklist'])
     else:

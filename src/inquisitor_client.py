@@ -7,7 +7,7 @@ import udp_client
 import interface
 import Trace
 
-MY_NAME = "INQUISITOR"
+MY_NAME = "INQ_CLIENT"
 MY_SERVER = "inquisitor"
 
 class Inquisitor(generic_client.GenericClient):
@@ -29,26 +29,38 @@ class Inquisitor(generic_client.GenericClient):
     def update (self, server=""):
 	t = {"work"       : "update" }
 	# see if we have a server or not
-	if server:
+        if server and not server == "all":
 	    t['server'] = server
 	# tell the inquisitor to update the enstore system status info
 	return self.send(t)
 
-    def set_timeout (self, tout, server=""):
-	t = {"work"       : "set_timeout" ,\
-	     "timeout"    : tout }
-	# see if we have a server or not
-	if server:
-	    t['server'] = server
-	# tell the inquisitor to reset the timeout between gathering stats
+    def set_interval (self, tout, server):
+	t = {"work"     : "set_interval" ,
+	     "interval" : tout ,
+             "server"   : server}
+	# tell the inquisitor to set the interval between gathering stats
 	return self.send(t)
 
-    def reset_timeout (self, server=""):
-	t = {"work"       : "reset_timeout" }
-	# see if we have a server or not
-	if server:
-	    t['server'] = server
-	# tell the inquisitor to reset the timeout between gathering stats
+    def reset_interval (self, server):
+	t = {"work"     : "reset_interval",
+             "server"   : server}
+	# tell the inquisitor to reset the interval between gathering stats
+	return self.send(t)
+
+    def set_inq_timeout (self, tout):
+	t = {"work"         : "set_inq_timeout" ,
+             "inq_timeout"  : tout }
+	# tell the inquisitor to set the select timeout
+	return self.send(t)
+
+    def get_inq_timeout (self):
+	t = {"work"     : "get_inq_timeout" }
+	# tell the inquisitor to get the select wake up timeout
+	return self.send(t)
+
+    def reset_inq_timeout (self):
+	t = {"work"     : "reset_inq_timeout" }
+	# tell the inquisitor to reset the timeout for the inq select
 	return self.send(t)
 
     def timestamp (self):
@@ -58,7 +70,7 @@ class Inquisitor(generic_client.GenericClient):
     def max_ascii_size (self, value):
 	# tell the inquisitor to set the value for the timestamp for the ascii
 	# file
-	return self.send({"work"       : "set_maxi_size" ,\
+	return self.send({"work"       : "set_maxi_size" ,
                           "max_ascii_size"  : value })
 
     def get_max_ascii_size (self):
@@ -68,7 +80,7 @@ class Inquisitor(generic_client.GenericClient):
     def max_encp_lines (self, value):
 	# tell the inquisitor to set the value for the max num of displayed
 	# encp lines
-	return self.send({"work"       : "set_max_encp_lines" ,\
+	return self.send({"work"       : "set_max_encp_lines" ,
                           "max_encp_lines"  : value })
 
     def get_max_encp_lines (self):
@@ -77,23 +89,21 @@ class Inquisitor(generic_client.GenericClient):
 
     def refresh (self, value):
 	# tell the inquisitor to set the value for the html file refresh
-	return self.send({"work"     : "set_refresh" ,\
+	return self.send({"work"     : "set_refresh" ,
                           "refresh"  : value })
 
     def get_refresh (self):
 	# tell the inquisitor to return the current html file refresh value
 	return self.send({"work"       : "get_refresh" } )
 
-    def get_timeout (self, server=""):
-	t = {"work"       : "get_timeout" }
-	# see if we have a server or not
-	if server:
-	    t['server'] = server
-	# tell the inquisitor to return the timeout between gathering stats
+    def get_interval (self, server):
+	t = {"work"    : "get_interval",
+             "server"  : server }
+	# tell the inquisitor to return the interval between gathering stats
 	return self.send(t)
 
     def plot (self, logfile_dir="", start_time="", stop_time="", mcs=None,
-              keep=0, pts_dir="", out_dir=""):
+              keep=0, pts_dir="", output_dir=""):
         if mcs is None:
             mcs = []
 	# tell the inquisitor to plot bytes per unit of time
@@ -108,8 +118,8 @@ class Inquisitor(generic_client.GenericClient):
             t["keep"] = keep
         if pts_dir:
             t["keep_dir"] = pts_dir
-        if out_dir:
-            t["out_dir"] = out_dir
+        if output_dir:
+            t["out_dir"] = output_dir
         if mcs:
             # the user  specified a device to plot the data for.
             t['mcs'] = mcs
@@ -120,10 +130,10 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
         # fill in the defaults for the possible options
-	self.update = 0
-	self.timeout = 0
-	self.reset_timeout = 0
-	self.get_timeout = 0
+	self.update = ""
+	self.interval = 0
+	self.reset_interval = ""
+	self.get_interval = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.timestamp = 0
@@ -137,10 +147,13 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.logfile_dir = ""
 	self.start_time = ""
 	self.stop_time = ""
-        self.mcs = []
+        self.media_changer = []
         self.keep = 0
         self.keep_dir = ""
-        self.out_dir = ""
+        self.output_dir = ""
+        self.inq_timeout = -1
+        self.reset_inq_timeout = 0
+        self.get_inq_timeout = 0
         generic_client.GenericClientInterface.__init__(self)
 
     #  define our specific help
@@ -152,31 +165,28 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
     def parse_options(self):
         interface.Interface.parse_options(self)
         # see if we have a server
-        if len(self.args) < 1 :
-	    self.server = ""
-        else:
-            self.server = self.args[0]
+        if self.interval:
+            if len(self.args) < 1 :
+                self.missing_parameter(self.parameters())
+                self.print_help()
+                sys.exit(1)
+            else:
+                self.server = self.args[0]
 
     # define the command line options that are valid
     def options(self):
         return self.client_options() +\
-               ["timeout=", "get_timeout", "reset_timeout"] +\
-	       ["update", "timestamp", "max_ascii_size="] +\
-	       ["get_max_ascii_size", "dump"] +\
-	       ["refresh=", "get_refresh", "max_encp_lines="] +\
-	       ["get_max_encp_lines", "plot", "logfile_dir="] +\
-	       ["start_time=", "stop_time=", "mc=", "keep"]   +\
-               ["keep_dir=", "out_dir="]
+              ["interval=", "get_interval=", "reset_interval=",
+               "inq_timeout=", "get_inq_timeout", "reset_inq_timeout",
+               "update=", "timestamp", "max_ascii_size=",
+               "get_max_ascii_size", "dump",
+               "refresh=", "get_refresh", "max_encp_lines=",
+               "get_max_encp_lines", "plot", "logfile_dir=",
+               "start_time=", "stop_time=", "media_changer=", "keep",
+               "keep_dir=", "output_dir="]
 
-
-if __name__ == "__main__" :
-    import sys
-    Trace.init(MY_NAME)
-    Trace.trace(6,"iqc called with args "+repr(sys.argv))
-
-    # fill in interface
-    intf = InquisitorClientInterface()
-
+# this is where the work is actually done
+def do_work(intf):
     # now get an inquisitor client
     iqc = Inquisitor((intf.config_host, intf.config_port))
     Trace.init(iqc.get_name(MY_NAME))
@@ -189,14 +199,24 @@ if __name__ == "__main__" :
         ticket = iqc.dump(intf.alive_rcv_timeout, intf.alive_retries)
 
     elif intf.update:
-        ticket = iqc.update(intf.server)
+        ticket = iqc.update(intf.update)
 
-    elif intf.timeout:
-        ticket = iqc.set_timeout(intf.timeout, intf.server)
+    elif intf.interval:
+        ticket = iqc.set_interval(intf.interval, intf.server)
 
-    elif intf.get_timeout:
-        ticket = iqc.get_timeout(intf.server)
-	print repr(ticket['timeout'])
+    elif not intf.inq_timeout == -1:
+        ticket = iqc.set_inq_timeout(intf.inq_timeout)
+
+    elif intf.get_inq_timeout:
+        ticket = iqc.get_inq_timeout()
+	print repr(ticket['inq_timeout'])
+
+    elif intf.reset_inq_timeout:
+        ticket = iqc.reset_inq_timeout()
+
+    elif intf.get_interval:
+        ticket = iqc.get_interval(intf.get_interval)
+	print repr(ticket['interval'])
 
     elif intf.get_refresh:
         ticket = iqc.get_refresh()
@@ -205,8 +225,8 @@ if __name__ == "__main__" :
     elif intf.refresh:
         ticket = iqc.refresh(intf.refresh)
 
-    elif intf.reset_timeout:
-        ticket = iqc.reset_timeout(intf.server)
+    elif intf.reset_interval:
+        ticket = iqc.reset_interval(intf.reset_interval)
 
     elif intf.timestamp:
         ticket = iqc.timestamp()
@@ -227,13 +247,25 @@ if __name__ == "__main__" :
 
     elif intf.plot:
 	ticket = iqc.plot(intf.logfile_dir, intf.start_time, intf.stop_time,
-                          intf.mcs, intf.keep, intf.keep_dir, intf.out_dir)
+                          intf.media_changer, intf.keep, intf.keep_dir,
+                          intf.output_dir)
 
     else:
 	intf.print_help()
         sys.exit(0)
 
     del iqc.csc.u
-    del iqc.u           # del now, otherwise get name exception (just for python v1.5???)
+    del iqc.u     # del now, otherwise get name exception (just for python v1.5???)
 
     iqc.check_ticket(ticket)
+
+
+if __name__ == "__main__" :
+    import sys
+    Trace.init(MY_NAME)
+    Trace.trace(6,"iqc called with args "+repr(sys.argv))
+
+    # fill in interface
+    intf = InquisitorClientInterface()
+
+    do_work(intf)

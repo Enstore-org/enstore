@@ -124,7 +124,7 @@ class LoggerClient(generic_client.GenericClient):
 class LoggerClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
-        self.logit = ""
+        self.msg = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.get_logfile_name = 0
@@ -134,7 +134,7 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["logit=", "get_logfile_name", "get_last_logfile_name"]
+               ["message=", "get_logfile_name", "get_last_logfile_name"]
 
 
     """ 
@@ -173,8 +173,8 @@ if __name__ == "__main__" :
 	                               intf.alive_retries)
 	print(ticket['logfile_name'])
 
-    elif intf.logit:
-        ticket = logit(logc, intf.logit)
+    elif intf.message:
+        ticket = logit(logc, intf.message)
 
     else:
 	intf.print_help()

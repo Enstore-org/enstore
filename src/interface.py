@@ -110,7 +110,7 @@ class Interface:
 
     def alive_rcv_options(self):
         if 0: print self # lint fix
-	return ["alive_rcv_timeout=","alive_retries="]
+	return ["timeout=","retries="]
 
     def alive_options(self):
         if 0: print self # lint fix
@@ -205,8 +205,8 @@ class Interface:
         	self.bfids = 1
             elif opt == "--bfid" :
                 self.bfid = value
-            elif opt == "--tape_list" :
-                self.tape_list = value
+            elif opt == "--list" :
+                self.list = value
             elif opt == "--deleted" :
                 self.deleted = value
 	    elif opt == "--backup":
@@ -217,27 +217,28 @@ class Interface:
                 if len(self.config_file) :
                     statinfo = os.stat(self.config_file)
                     if 0: print statinfo # lint fix
-            elif opt == "--dict" :
-                self.dict = 1
-            elif opt == "--get_keys" :
-                self.get_keys = 1
-            elif opt == "--getwork" :
-                self.getwork = 1
-            elif opt == "--getmoverlist" :
-                self.getmoverlist = 1
+            elif opt == "--show" :
+                self.show = 1
+            elif opt == "--summary" :
+                self.summary = 1
+            elif opt == "--get_work" :
+                self.get_work = 1
+            elif opt == "--get_mover_list" :
+                self.get_mover_list = 1
             elif opt == "--get_suspect_vols" :
                 self.get_susp_vols = 1
-            elif opt == "--get_del_dismount" :
-                self.get_del_dismounts = 1
-            elif opt == "--del_work" :
-                self.remove_work = 1
+            elif opt == "--get_delayed_dismount" :
+                self.get_delayed_dismount = 1
+            elif opt == "--delete_work" :
+                self.work_to_delete = value
+                self.delete_work = 1
             elif opt == "--change_priority" :
                 self.change_priority = 1
             elif opt == "--summon" :
                 self.summon = value
             elif opt == "--poll" :
                 self.poll = 1
-            elif opt == "--loadmovers" :
+            elif opt == "--load_movers" :
                 self.load_mover_list = 1
             elif opt == "--load" :
                 self.load = 1
@@ -247,63 +248,64 @@ class Interface:
             elif opt == "--atmover" :
                 self.atmover = 1
 	    # END D0_TEMP
-            elif opt == "--nextvol" :
-                self.nextvol = 1
+            elif opt == "--next" :
+                self.next = 1
             elif opt == "--vol" :
                 self.vol = value
-            elif opt == "--chkvol" :
-                self.chkvol = value
-            elif opt == "--statvol" :
-                self.statvol = value
+            elif opt == "--check" :
+                self.check = value
             elif opt == "--view" :
                 self.view = value
-            elif opt == "--newlib" :
-                self.newlib = 1
             elif opt == "--insertvol" :
                 self.insertvol = 1
 	    elif opt == "--insertlib" :
 	        self.insertNewLib = value
             elif opt == "--ejectvol" :
                 self.ejectvol = 1
-            elif opt == "--rdovol" :
-                self.rdovol = 1
-            elif opt == "--noavol" :
-                self.noavol = 1
-            elif opt == "--addvol" :
-                self.addvol = 1
-            elif opt == "--delvol" :
-                self.delvol = 1
-            elif opt == "--restorevol" :
-                self.restorevol = 1
+            elif opt == "--new_library" :
+                self.new_library = value
+            elif opt == "--read_only" :
+                self.read_only = value
+            elif opt == "--no_access" :
+                self.no_access = value
+            elif opt == "--add" :
+                self.add = value
+            elif opt == "--delete" :
+                self.delete = value
             elif opt == "--restore" :
-                self.restore = 1
-		self.file = value
-            elif opt == "--r" :
+                self.restore = value
+            elif opt == "--recursive" :
                 self.restore_dir = 1
             elif opt == "--all" :
                 self.all = 1
             elif opt == "--force" :
                 self.force = 1
-            elif opt == "--clrvol" :
-                self.clrvol = 1
+            elif opt == "--clear" :
+                self.clear = value
             elif opt == "--decr_file_count" :
                 self.decr_file_count = value
-            elif opt == "--logit" :
-                self.logit = value
+            elif opt == "--message" :
+                self.message = value
             elif opt == "--alive" :
                 self.alive = 1
-            elif opt == "--alive_rcv_timeout" :
-                self.alive_rcv_timeout = int(value)
-            elif opt == "--alive_retries" :
-                self.alive_retries = int(value)
             elif opt == "--timeout" :
-                self.timeout = int(value)
-            elif opt == "--get_timeout" :
-                self.get_timeout = 1
-            elif opt == "--reset_timeout" :
-                self.reset_timeout = 1
+                self.alive_rcv_timeout = int(value)
+            elif opt == "--retries" :
+                self.alive_retries = int(value)
+            elif opt == "--interval" :
+                self.interval = int(value)
+            elif opt == "--inq_timeout" :
+                self.inq_timeout = int(value)
+            elif opt == "--get_inq_timeout" :
+                self.get_inq_timeout = 1
+            elif opt == "--reset_inq_timeout" :
+                self.reset_inq_timeout = 1
+            elif opt == "--get_interval" :
+                self.get_interval = value
+            elif opt == "--reset_interval" :
+                self.reset_interval = value
             elif opt == "--update" :
-                self.update = 1
+                self.update = value
             elif opt == "--timestamp" :
                 self.timestamp = 1
             elif opt == "--max_ascii_size" :
@@ -316,12 +318,12 @@ class Interface:
                 self.get_max_ascii_size = 1
             elif opt == "--crc":
                 self.chk_crc = 1
-            elif opt == "--pri" :
-                self.pri = int(value)
+            elif opt == "--priority" :
+                self.priority = int(value)
             elif opt == "--delpri" :
                 self.delpri = int(value)
-            elif opt == "--agetime" :
-                self.agetime = int(value)
+            elif opt == "--age_time" :
+                self.age_time = int(value)
             elif opt == "--delayed_dismount" :
                 self.delayed_dismount = int(value)
             elif opt == "--dump":
@@ -336,8 +338,8 @@ class Interface:
             elif opt == "--local_mover":
                 self.local_mover = 1
                 self.enable = int(value)
-            elif opt == "--maxwork":
-                self.maxwork = int(value)
+            elif opt == "--max_work":
+                self.max_work = int(value)
             elif opt == "--refresh":
                 self.refresh = int(value)
             elif opt == "--get_refresh":
@@ -365,12 +367,12 @@ class Interface:
 	        self.output_file_family="ephemeral"
             elif opt == "--file_family":
 	        self.output_file_family=value
-            elif opt == "--alarm" :
+            elif opt == "--raise" :
                 self.alarm = 1
             elif opt == "--resolve" :
                 self.resolve = float(value)
-            elif opt == "--patrol_file" :
-                self.patrol_file = 1
+            elif opt == "--get_patrol_file" :
+                self.get_patrol_file = 1
             elif opt == "--root_error" :
                 self.root_error = value
             elif opt == "--severity" :
@@ -381,8 +383,8 @@ class Interface:
                 self.keep = 1
             elif opt == "--keep_dir" :
                 self.keep_dir = value
-            elif opt == "--out_dir" :
-                self.out_dir = value
+            elif opt == "--output_dir" :
+                self.output_dir = value
             elif opt == "--test_mode":
                 file = globals().get('__file__', "")
                 if file == "<frozen>":

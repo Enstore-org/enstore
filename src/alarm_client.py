@@ -106,14 +106,14 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
         self.resolve = 0
         self.severity = e_errors.DEFAULT_SEVERITY
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
-        self.patrol_file = 0
+        self.get_patrol_file = 0
         generic_client.GenericClientInterface.__init__(self)
         interface.Interface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
         return self.client_options() +\
-	       ["alarm", "severity=", "root_error=", "patrol_file", \
+	       ["raise", "severity=", "root_error=", "get_patrol_file",
                 "resolve="]
 
 if __name__ == "__main__" :
@@ -142,7 +142,7 @@ if __name__ == "__main__" :
         alc.alarm(intf.severity, intf.root_error)
         ticket = {}
 
-    elif intf.patrol_file:
+    elif intf.get_patrol_file:
         ticket = alc.get_patrol_file()
         print(ticket['patrol_file'])
         

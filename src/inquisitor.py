@@ -4,8 +4,8 @@
 #   NAME                KEY TYPE               DESCRIPTION
 #   self.last_alive{}   same as config dict    last time found alive
 #   self.last_update{}  same as config dict    last time updated
-#   self.reset{}        same as config dict    timeouts reset on command line
-#   self.timeouts{}     same as config dict    timeouts for updates
+#   self.reset{}        same as config dict    intervals reset on command line
+#   self.intervals{}    same as config dict    intervals for updates
 #
 #   self.server_keys[]                         list of servers (and others) to
 #                                                 ping
@@ -42,7 +42,7 @@ import udp_client
 def default_timeout():
     return 5
 
-def default_server_timeout():
+def default_server_interval():
     return 60
 
 def default_alive_rcv_timeout():
@@ -74,7 +74,7 @@ TRAILER = " : "
 SUFFIX = ".new"
 SERVER_KEYWORD = "server"
 TIMED_OUT_SP = "    "
-DEFAULT_SERVER_TIMEOUT = "default_server_timeout"
+DEFAULT_SERVER_INTERVAL = "default_server_interval"
 
 CONFIG_S = "configuration_server"
 ALARM_S = "alarm_server"
@@ -91,9 +91,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.last_alive[key] = time
 	else:
             last_time = self.last_alive.get(key, -1)
-	    self.asciifile.output_etimedout((host, port), prefix, time, key, \
-	                                  last_time)
-	    self.htmlfile.output_etimedout((host, port), prefix, time, key, \
+	    self.asciifile.output_etimedout((host, port), prefix, time, key, 
+                                            last_time)
+	    self.htmlfile.output_etimedout((host, port), prefix, time, key, 
 	                                   last_time)
             Trace.trace(14,"alive_status - ERROR, alive timed out")
 	    return TIMED_OUT
@@ -217,28 +217,21 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	ret = DID_IT
         if t['status'] == (e_errors.OK, None):
-	    ret = self.alive_and_restart(client, (t['host'], t['port']),\
-	                            prefix, time, key)
+	    ret = self.alive_and_restart(client, (t['host'], t['port']),
+                                         prefix, time, key)
 	elif t['status'][0] == 'KEYERROR':
 	    # do not monitor this server any more, remove him from our dict
 	    self.remove_key(key)
 	return ret
 
-    # look for all keys that are of the form robot_xxxx_log_dir and pull out
-    # the xxxx and create a dictionary of the corresponding values
-    def get_log_dirs(self, inq_dict):
-        self.log_dirs = {}
-        for key in inq_dict.keys():
-            if (type(inq_dict[key]) == types.StringType) and \
-               (key[0:6] == "robot_") and (key[-8:] == "_log_dir"):
-                if inq_dict[key][0:5] == "http:" or \
-                   inq_dict[key][0:5] == "file:":
-                    self.log_dirs[key[6:-8]] = inq_dict[key]
-                else:
-                    self.log_dirs[key[6:-8]] = self.www_host+inq_dict[key]
-
     # create an html file that has a link to all of the current log files
-    def make_log_html_file(self):
+    def make_log_html_file(self, log_dirs):
+        # add the web host to the list of log directories if not already there
+        for key in log_dirs.keys():
+            if not log_dirs[key][0:5] == "http:" and \
+               not log_dirs[key][0:5] == "file:":
+                log_dirs[key] = self.www_host+log_dirs[key]
+
         # first get a list of all of the log files and their sizes
         if self.logc.log_dir:
             logfiles = {}
@@ -253,7 +246,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # real name after its creation.
                 self.loghtmlfile.open()
                 self.loghtmlfile.write(self.http_log_file_path, logfiles,
-                                       self.log_dirs, self.www_host)
+                                       log_dirs, self.www_host)
                 self.loghtmlfile.close()
                 # now we must move the new file to it's real name
                 os.system('mv %s/%s%s %s/%s'%(self.logc.log_dir,
@@ -265,7 +258,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.confightmlfile.open()
 	try:
             # get a list of the servers/keys in the config dictionary
-	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, \
+	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, 
 	                                 self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(12,"make_config_html_file - ERROR, getting config dict timed out")
@@ -362,7 +355,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the configuration server
     def update_config_server(self, key, time):
-	self.alive_and_restart(self.csc, self.csc.get_address(), \
+	self.alive_and_restart(self.csc, self.csc.get_address(), 
                                CFG_PREFIX, time, key)
 
     # get the information from the library manager(s)
@@ -378,7 +371,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if t['status'] == (e_errors.OK, None):
 	    # get a client and then check if the server is alive
             lmc = library_manager_client.LibraryManagerClient(self.csc, key)
-	    ret = self.alive_and_restart(lmc, (t['host'], t['port']), \
+	    ret = self.alive_and_restart(lmc, (t['host'], t['port']), 
                                          key+TRAILER, time, key)
 	    if ret == DID_IT:
 	        self.suspect_vols(lmc, (t['host'], t['port']), key, time)
@@ -401,7 +394,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
         if t['status'] == (e_errors.OK, None):
 	    movc = mover_client.MoverClient(self.csc, key)
-	    ret = self.alive_and_restart(movc, (t['host'], t['port']),\
+	    ret = self.alive_and_restart(movc, (t['host'], t['port']),
                                          key+TRAILER, time, key)
 	    if ret == DID_IT:
 	        self.mover_status(movc, (t['host'], t['port']), key, time)
@@ -468,11 +461,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                     time, key)
 	self.htmlfile.output_alive(t['host'], IN_PREFIX, work_ticket,
                                    time, key)
-        # we need to save all of the ancillary log directories
-        self.get_log_dirs(t)
 
         # update the web page that lists all the current log files
-        self.make_log_html_file()
+        self.make_log_html_file(t.get("user_log_dirs", {}))
 
         # if our dictionary contains a list of commands to do when we update
         # the inquisitor, do the commands, if there are any
@@ -483,9 +474,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# reading the keys of this dict.  so we just record the fact that this
 	# needs to get done and we will do it later
 	self.doupdate_server_dict = 1
-	self.new_timeouts = t['timeouts']
-        self.default_server_timeout = t.get(DEFAULT_SERVER_TIMEOUT,
-                                            default_server_timeout())
+	self.new_intervals = t['intervals']
+        self.default_server_interval = t.get(DEFAULT_SERVER_INTERVAL,
+                                             default_server_interval())
 
 	# clear out the cache in the config client so we can get new info on
 	# any of the servers in case the info has changed.
@@ -568,7 +559,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the keys from the inquisitor part of the config file ready for use
     def prepare_keys(self):
-	self.server_keys = self.timeouts.keys()
+	self.server_keys = self.intervals.keys()
 	self.server_keys.sort()
 
     # delete the key (server) from the main looping list and from the text
@@ -587,65 +578,65 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # fix up the server list that we are keeping track of.  this is part of the
     # update of the inquisitor information
     def update_server_dict(self):
-	self.timeouts = self.new_timeouts
+	self.intervals = self.new_intervals
 	# now we must look thru the whole config file and use the default
-	# server timeout for any servers that were not included in the
-	# inquisitors' 'timeouts' dict element
-	self.fill_in_default_timeouts()
-	# now look thru any server timeouts that may have reset by hand and
+	# server interval for any servers that were not included in the
+	# inquisitors' 'intervals' dict element
+	self.fill_in_default_intervals()
+	# now look thru any server intervals that may have reset by hand and
 	# keep the reset value
 	for key in self.reset.keys():
-	    if self.timeouts.has_key(key):
-	        self.timeouts[key] = self.reset[key]
+	    if self.intervals.has_key(key):
+	        self.intervals[key] = self.reset[key]
 	    else:
 	        del self.reset[key]
         # get a list of the servers that we will ping
 	self.prepare_keys()
 
-    # fill in a default timeout for any servers that did not have one specified
-    def fill_in_default_timeouts(self, ctime=time.time()):
-	itk = "inq_timeout"
+    # fill in a default interval for any servers that didn't have one specified
+    def fill_in_default_intervals(self, ctime=time.time()):
+	itk = "inq_interval"
 	try:
             # get a list of the servers/keys in the config dictionary
-	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, \
+	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, 
 	                                 self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-            Trace.trace(12,"fill_in_default_timeouts - ERROR, getting config dict timed out")
+            Trace.trace(12,"fill_in_default_intervals - ERROR, getting config dict timed out")
 	    return
         # for each server, get its config dict element and see if it specifies
-        # an inquisitor timeout. if so, use it.
+        # an inquisitor interval. if so, use it.
 	for a_key in csc_keys['get_keys']:
 	    k = self.csc.get(a_key)
 	    if k.has_key(itk):
-                # we found an inquisitor timeout key in the server dict element
-	        self.timeouts[a_key] = k[itk]
+                # we found inquisitor interval key in the server dict element
+	        self.intervals[a_key] = k[itk]
                 # if we have not yet kept track of the last successful update
                 # of this server, set it to now.
 	        if not self.last_update.has_key(a_key):
 	            self.last_update[a_key] = ctime
 	    else:
                 # if neither the inq dict element or the individual server dict
-                # element had a timeout value, and we currently don't have one,
-                # use the default
-	        if not self.timeouts.has_key(a_key):
-	            self.timeouts[a_key] = self.default_server_timeout
+                # element had an interval value, and we currently don't have 
+                # one, use the default
+	        if not self.intervals.has_key(a_key):
+	            self.intervals[a_key] = self.default_server_interval
 	            if not self.last_update.has_key(a_key):
 	                self.last_update[a_key] = ctime
-	# now get rid of any keys that are in timeouts and not in csc_keys
+	# now get rid of any keys that are in intervals and not in csc_keys
 	# make an exception for config_server and encp.  this takes care of the
         # case where a server was removed from the config dict.
-	for a_key in self.timeouts.keys():
+	for a_key in self.intervals.keys():
 	    if a_key not in csc_keys['get_keys']:
 	        if a_key != "config_server" and a_key != "encp":
-	            del self.timeouts[a_key]
+	            del self.intervals[a_key]
 	            self.asciifile.remove_key(a_key)
 	            self.htmlfile.remove_key(a_key)
-	# if there was no encp or config_server timeouts specified in the 
+	# if there was no encp or config_server intervals specified in the 
 	# inquisitor section of the config file then we will use the default
-	if not self.timeouts.has_key("config_server"):
-	    self.timeouts["config_server"] = self.default_server_timeout
-	if not self.timeouts.has_key("encp"):
-	    self.timeouts["encp"] = self.default_server_timeout
+	if not self.intervals.has_key("config_server"):
+	    self.intervals["config_server"] = self.default_server_interval
+	if not self.intervals.has_key("encp"):
+	    self.intervals["encp"] = self.default_server_interval
 
     # flush the files we have been writing to
     def flush_files(self):
@@ -696,16 +687,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        # the configuration file.  this means we have read in the
 	        # configuration file and this is a new key, we have not checked
 	        # this server before, so do it now
-	        delta = self.timeouts[key]
+	        delta = self.intervals[key]
 
 	    # see if we need to update the info on this server.  do not do it
-	    # if the timeout was set to -1.  this 'disables' getting info on
+	    # if the interval was set to -1.  this 'disables' getting info on
 	    # this server.  do it if either we were asked to get info on all 
-	    # the servers or it has been longer than timeout since we last
+	    # the servers or it has been longer than interval since we last
 	    # gathered info on this server, or we were asked to get info on
             # this server specifically.
-	    if self.timeouts[key] != -1:
-	        if do_all or delta >= self.timeouts[key] \
+	    if self.intervals[key] != -1:
+	        if do_all or delta >= self.intervals[key] \
                    or self.update_request.has_key(key):
                     # clean up the update_request dict
                     if self.update_request.has_key(key):
@@ -720,7 +711,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	            # make sure we support this type of server first
 	            if InquisitorMethods.__dict__.has_key(inq_func):
 	                if type(InquisitorMethods.__dict__[inq_func]) == \
-	                   types.FunctionType:
+                           types.FunctionType:
 	                    exec("self.%s(key, ctime)"%inq_func)
                             # we just updated the server info so record the
                             # current time as the last time updated.
@@ -740,7 +731,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	# now that we are out of the above loop we can update the server dict
 	# if we were asked to. we did not want to do it while doing the update
-	# as we might change some timeouts or servers in the list we were
+	# as we might change some intervals or servers in the list we were
 	# processing
 	if self.doupdate_server_dict:
 	    self.update_server_dict()
@@ -783,7 +774,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# if the ticket holds a server name then only update that one, else
 	# update everything we know about
 	if ticket.has_key(SERVER_KEYWORD):
-	    if self.timeouts.has_key(ticket[SERVER_KEYWORD]):
+	    if self.intervals.has_key(ticket[SERVER_KEYWORD]):
 	        # mark as needing an update when call do_update
                 self.update_request[ticket[SERVER_KEYWORD]] = 1
 	        do_all = 0
@@ -822,7 +813,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         Trace.trace(11, "last_update - %s"%self.last_update)
 	Trace.trace(11, "last_alive - %s"%self.last_alive)
-	Trace.trace(11, "timeouts    - %s"%self.timeouts)
+	Trace.trace(11, "intervals  - %s"%self.intervals)
 	Trace.trace(11, "server_keys - %s"%self.server_keys)
 	Trace.trace(11, "reset       - %s"%self.reset)
 	Trace.trace(11, "htmlfile_orig - %s"%self.htmlfile_orig)
@@ -830,37 +821,44 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(11, "parsed_file - %s"%self.parsed_file)
 	self.send_reply(ticket)
 
-    # set a new timeout value.  if a server keyword was entered, set the
-    # ping timeout value for that server.  else, set the timeout for the
-    # inq server in the udp select.
-    def set_timeout(self,ticket):
+    # set the select timeout
+    def set_inq_timeout(self,ticket):
         ticket["status"] = (e_errors.OK, None)
-	if ticket.has_key(SERVER_KEYWORD):
-	    if self.timeouts.has_key(ticket[SERVER_KEYWORD]):
-	        self.timeouts[ticket[SERVER_KEYWORD]] = ticket["timeout"]
-		self.reset[ticket[SERVER_KEYWORD]] = ticket["timeout"]
-	    else:
-	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
-	else:
-            self.rcv_timeout = ticket["timeout"]
+        self.rcv_timeout = ticket["inq_timeout"]
 	self.send_reply(ticket)
 
-    # reset the timeout value to what was in the config file
-    # if a server keyword was entered, reset the ping timeout value for that
-    # server.  else, reset the timeout for the inq server in the udp select.
-    def reset_timeout(self,ticket):
+    def reset_inq_timeout(self,ticket):
         ticket["status"] = (e_errors.OK, None)
-	if ticket.has_key(SERVER_KEYWORD):
-	    if self.reset.has_key(ticket[SERVER_KEYWORD]):
-                # delete the reset timeout, so we will use the one from the
-                # config file
-		del self.reset[ticket[SERVER_KEYWORD]]
-	    else:
-	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
-	else:
-	    t = self.csc.get(self.name, self.alive_rcv_timeout, \
-	                     self.alive_retries)
-            self.rcv_timeout = t["timeout"]
+        t = self.csc.get(self.name, self.alive_rcv_timeout, self.alive_retries)
+        self.rcv_timeout = t.get('timeout', default_timeout())
+	self.send_reply(ticket)
+
+    def get_inq_timeout(self, ticket):
+        ret_ticket = { 'inq_timeout' : self.rcv_timeout,
+                       'status'      : (e_errors.OK, None) }
+	self.send_reply(ret_ticket)
+
+    # set a new interval value.  if a server keyword was entered, set the
+    # ping interval value for that server.  else, set the interval for the
+    # inq server in the udp select.
+    def set_interval(self,ticket):
+        ticket["status"] = (e_errors.OK, None)
+        if self.intervals.has_key(ticket[SERVER_KEYWORD]):
+            self.intervals[ticket[SERVER_KEYWORD]] = ticket["interval"]
+            self.reset[ticket[SERVER_KEYWORD]] = ticket["interval"]
+        else:
+            ticket["status"] = (e_errors.DOESNOTEXIST, None)
+	self.send_reply(ticket)
+
+    # reset the interval value to what was in the config file
+    # if a server keyword was entered, reset the ping interval value for that
+    # server.  else, reset the interval for the inq server in the udp select.
+    def reset_interval(self,ticket):
+        ticket["status"] = (e_errors.OK, None)
+        if self.reset.has_key(ticket[SERVER_KEYWORD]):
+            # delete the reset interval, so we will use the one from the
+            # config file
+            del self.reset[ticket[SERVER_KEYWORD]]
 	self.send_reply(ticket)
 
     # set a new timestamp value
@@ -900,23 +898,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.asciifile.timestamp(enstore_status.FORCE)
 	self.send_reply(ticket)
 
-    # get the current timeout value
-    # if a server keyword was entered, get the ping timeout value for that
-    # server.  else, get the timeout for the inq server in the udp select.
-    def get_timeout(self, ticket):
-	if ticket.has_key(SERVER_KEYWORD):
-	    if self.timeouts.has_key(ticket[SERVER_KEYWORD]):
-	        ret_ticket = { \
-	               'timeout' : self.timeouts[ticket[SERVER_KEYWORD]],\
-                       SERVER_KEYWORD: ticket[SERVER_KEYWORD], \
-	               'status'  : (e_errors.OK, None) }
-	    else:        
-	        ret_ticket = { 'timeout' : -1,\
-	                  SERVER_KEYWORD  : ticket[SERVER_KEYWORD], \
-	                  'status'  : (e_errors.DOESNOTEXIST, None) }
-	else:
-	    ret_ticket = { 'timeout' : self.rcv_timeout,\
-	                   'status'  : (e_errors.OK, None) }
+    # get the current interval value
+    # if a server keyword was entered, get the ping interval value for that
+    # server.  else, get the interval for the inq server in the udp select.
+    def get_interval(self, ticket):
+        if self.intervals.has_key(ticket[SERVER_KEYWORD]):
+            ret_ticket = {'interval' : self.intervals[ticket[SERVER_KEYWORD]],
+                          SERVER_KEYWORD: ticket[SERVER_KEYWORD], 
+                          'status'  : (e_errors.OK, None) }
+        else:        
+            ret_ticket = { 'interval' : -1,
+                           SERVER_KEYWORD  : ticket[SERVER_KEYWORD], 
+                           'status'  : (e_errors.DOESNOTEXIST, None) }
 	self.send_reply(ret_ticket)
 
     # get the current maximum ascii file size
@@ -1010,20 +1003,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
-    def __init__(self, csc, timeout=-1, ascii_file="", \
-                 html_file="", alive_rcv_to=-1, alive_retries=-1, \
+    def __init__(self, csc, timeout=-1, ascii_file="", 
+                 html_file="", alive_rcv_to=-1, alive_retries=-1, 
 	         max_ascii_size=-1, max_encp_lines=-1, refresh=-1):
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)
 	self.name = MY_NAME
-	# set a timeout and retry that we will use the first time to get the
+	# set an interval and retry that we will use the first time to get the
 	# inquisitor information from the config server.  we do not use the
 	# passed values because they might have been defaulted and we need to
 	# look them up in the config file which we have not gotten yet.
 	use_once_timeout = 5
 	use_once_retry = 1
 	keys = self.csc.get(self.name, use_once_timeout, use_once_retry)
-	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
+	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], 
 	                                              keys['port']))
 
 	# initialize
@@ -1031,7 +1024,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.reset = {}
         self.update_request = {}
         self.forked = {}
-
+        self.intervals = {}
+        
         # if no timeout was entered on the command line, get it from the 
         # configuration file.  this variable is used in dispatching worker to
         # set how often the udp select times out.
@@ -1103,7 +1097,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             refresh = keys.get('refresh', refresh)
 
 	# get an ascii system status file, and open it
-	self.asciifile = enstore_status.AsciiStatusFile(self.parsed_file, \
+	self.asciifile = enstore_status.AsciiStatusFile(self.parsed_file, 
                                                         max_ascii_size)
 	self.asciifile.open()
 
@@ -1124,24 +1118,24 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                                                         refresh)
         self.mischtmlfile_orig = misc_file
 
-	# get the timeout for each of the servers from the configuration file.
+	# get the interval for each of the servers from the configuration file.
 	self.last_update = {}
 	self.last_alive = {}
-	if keys.has_key('timeouts'):
-	    self.timeouts = keys['timeouts']
+	if keys.has_key('intervals'):
+	    self.intervals = keys['intervals']
 	    # this dict records the last time that the associated server
 	    # info was updated. everytime we get a particular servers' info we
 	    # will update this time. start out at 0 so we do an update right
 	    # away
-	    for key in self.timeouts.keys():
+	    for key in self.intervals.keys():
 	        self.last_update[key] = 0
 
 	# now we must look thru the whole config file and use the default
-	# server timeout for any servers that were not included in the
-	# 'timeouts' dict element
-        self.default_server_timeout = keys.get(DEFAULT_SERVER_TIMEOUT,
-                                               default_server_timeout())
-	self.fill_in_default_timeouts(0)
+	# server interval for any servers that were not included in the
+	# 'intervals' dict element
+        self.default_server_interval = keys.get(DEFAULT_SERVER_INTERVAL,
+                                               default_server_interval())
+	self.fill_in_default_intervals(0)
 
 	# get a file clerk client, volume clerk client.
 	# connections to library manager client(s), media changer client(s)
@@ -1165,7 +1159,7 @@ class InquisitorInterface(generic_server.GenericServerInterface):
 	self.html_file = ""
 	self.alive_rcv_timeout = -1
 	self.alive_retries = -1
-	self.timeout = -1
+	self.inq_timeout = -1
 	self.max_ascii_size = -1
 	self.max_encp_lines = -1
 	self.refresh = -1
@@ -1174,8 +1168,8 @@ class InquisitorInterface(generic_server.GenericServerInterface):
     # define the command line options that are valid
     def options(self):
 	return generic_server.GenericServerInterface.options(self)+\
-	       ["ascii_file=","html_file=","timeout="] +\
-	       ["max_ascii_size=", "max_encp_lines=", "refresh="]+\
+	       ["ascii_file=","html_file=","inq_timeout=",
+                "max_ascii_size=", "max_encp_lines=", "refresh="]+\
 	       self.alive_rcv_options()
 
 if __name__ == "__main__":
@@ -1186,9 +1180,9 @@ if __name__ == "__main__":
     intf = InquisitorInterface()
 
     # get the inquisitor
-    inq = Inquisitor((intf.config_host, intf.config_port), \
-                     intf.timeout, intf.ascii_file, intf.html_file,\
-                     intf.alive_rcv_timeout, intf.alive_retries,\
+    inq = Inquisitor((intf.config_host, intf.config_port), 
+                     intf.inq_timeout, intf.ascii_file, intf.html_file,
+                     intf.alive_rcv_timeout, intf.alive_retries,
 	             intf.max_ascii_size, intf.max_encp_lines,intf.refresh)
     # we no longer need the interface
     del intf

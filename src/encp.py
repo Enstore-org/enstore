@@ -1964,9 +1964,9 @@ class encp(interface.Interface):
 
     def __init__(self):
         self.chk_crc = 0           # we will not check the crc unless told to
-        self.pri = 1               # lowest priority
+        self.priority = 1          # lowest priority
         self.delpri = 0            # priority doesn't change
-        self.agetime = 0           # priority doesn't age
+        self.age_time = 0          # priority doesn't age
         self.data_access_layer = 0 # no special listings
         self.verbose = 0           # no output yet
 	self.delayed_dismount = 0  # delayed dismount time is set to 0
@@ -1984,10 +1984,10 @@ class encp(interface.Interface):
     # define the command line options that are valid
     def options(self):
         the_options = self.config_options()+[
-            "verbose=","crc","pri=","delpri=","agetime=","delayed_dismount=",
-            "file_family=", "ephemeral", "data_access_layer", "d0sam", "queue",
-            "bytes=", "test_mode"
-            ] + self.help_options()
+                      "verbose=","crc","priority=","delpri=","age_time=",
+                      "delayed_dismount=", "file_family=", "ephemeral",
+                      "data_access_layer", "d0sam", "queue"
+                      ] + self.help_options()
 
         return the_options
 
@@ -2098,15 +2098,16 @@ if __name__  ==  "__main__" :
 	    write_to_hsm(e.input,  e.output, e.output_file_family,
 			 e.config_host, e.config_port,
 			 e.verbose, e.chk_crc,
-			 e.pri, e.delpri, e.agetime, e.delayed_dismount, t0,
-                         e.bytes)
+			 e.priority, e.delpri, e.age_time,
+                         e.delayed_dismount, t0, e.bytes)
 
 	# have we been called "encp hsmfile unixfile" ?
 	elif e.intype=="hsmfile" and e.outtype=="unixfile" :
 	    read_from_hsm(e.input, e.output,
 			  e.config_host, e.config_port,
 			  e.verbose, e.chk_crc,
-			  e.pri, e.delpri, e.agetime, e.delayed_dismount, t0)
+			  e.priority, e.delpri, e.age_time,
+                          e.delayed_dismount, t0)
 
 	# have we been called "encp unixfile unixfile" ?
         elif e.intype=="unixfile" and e.outtype=="unixfile" :

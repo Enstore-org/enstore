@@ -38,34 +38,34 @@ class VolumeClerkClient(generic_client.GenericClient,\
         return x
 
     # add a volume to the stockpile
-    def addvol(self,
-               library,               # name of library media is in
-               file_family,           # volume family the media is in
-               media_type,            # media
-               external_label,        # label as known to the system
-               capacity_bytes,        #
-               remaining_bytes,       #
-               eod_cookie  = "none",  # code for seeking to eod
-               user_inhibit  = "none",# "none" | "readonly" | "NOACCESS"
-               error_inhibit = "none",# "none" | "readonly" | "NOACCESS" | "writing"
-                                      # lesser access is specified as
-                                      #       we find media errors,
-                                      # writing means that a mover is
-                                      #       appending or that a mover
-                                      #       crashed while writing
-               last_access = -1,      # last accessed time
-               first_access = -1,     # first accessed time
-               declared = -1,         # time volume was declared to system
-               sum_wr_err = 0,        # total number of write errors
-               sum_rd_err = 0,        # total number of read errors
-               sum_wr_access = 0,     # total number of write mounts
-               sum_rd_access = 0,     # total number of read mounts
-               wrapper = "cpio_odc",  # kind of wrapper for volume
-               blocksize = -1,        # blocksize (-1 =  media type specifies)
-               non_del_files = 0,     # non-deleted files
-               system_inhibit = "none" # "none" | "readonly" | "NOACCESS"
-               ):
-        Trace.trace( 6, 'add_vol label=%s'%external_label )
+    def add(self,
+            library,               # name of library media is in
+            file_family,           # volume family the media is in
+            media_type,            # media
+            external_label,        # label as known to the system
+            capacity_bytes,        #
+            remaining_bytes,       #
+            eod_cookie  = "none",  # code for seeking to eod
+            user_inhibit  = "none",# "none" | "readonly" | "NOACCESS"
+            error_inhibit = "none",# "none" | "readonly" | "NOACCESS" | "writing"
+                                   # lesser access is specified as
+                                   #       we find media errors,
+                                   # writing means that a mover is
+                                   #       appending or that a mover
+                                   #       crashed while writing
+            last_access = -1,      # last accessed time
+            first_access = -1,     # first accessed time
+            declared = -1,         # time volume was declared to system
+            sum_wr_err = 0,        # total number of write errors
+            sum_rd_err = 0,        # total number of read errors
+            sum_wr_access = 0,     # total number of write mounts
+            sum_rd_access = 0,     # total number of read mounts
+            wrapper = "cpio_odc",  # kind of wrapper for volume
+            blocksize = -1,        # blocksize (-1 =  media type specifies)
+            non_del_files = 0,     # non-deleted files
+            system_inhibit = "none" # "none" | "readonly" | "NOACCESS"
+            ):
+        Trace.trace( 6, 'add label=%s'%external_label )
         ticket = { 'work'            : 'addvol',
                    'library'         : library,
                    'file_family'     : file_family,
@@ -93,7 +93,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
 
     # delete a volume from the stockpile
-    def delvol(self, external_label,force=0):
+    def delete(self, external_label,force=0):
         ticket= { 'work'           : 'delvol',
                   'external_label' : external_label,
                   'force'          : force }
@@ -101,7 +101,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
         return x
 
     # delete a volume from the stockpile
-    def restorevol(self, external_label, restore=0):
+    def restore(self, external_label, restore=0):
 	if restore: restore_vm = "yes"
 	else: restore_vm = "no"
         ticket= { 'work'           : 'restorevol',
@@ -341,21 +341,21 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
-        self.clrvol = 0
-        self.statvol = ""
+        self.clear = ""
+        self.update = ""
         self.backup = 0
         self.vols = 0
-        self.nextvol = 0
+        self.next = 0
         self.vol = ""
-        self.chkvol = ""
-        self.addvol = 0
-        self.delvol = 0
-        self.restorevol = 0
+        self.check = ""
+        self.add = ""
+        self.delete = ""
+        self.restore = ""
         self.all = 0
         self.force  = 0
-        self.newlib = 0
-        self.rdovol = 0
-        self.noavol = 0
+        self.new_library = ""
+        self.read_only = ""
+        self.no_access = ""
         self.decr_file_count = 0
 	self.atmover = 0 # for the backward compatibility D0_TEMP
         generic_client.GenericClientInterface.__init__(self)
@@ -363,47 +363,23 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["clrvol", "backup", "vols","nextvol","vol=","chkvol=","addvol","statvol=",
-	        "delvol","newlib","rdovol","noavol","atmover","decr_file_count=","force","restorevol", "all"]
+               ["clear=", "backup", "vols","next","vol=","check=","add=",
+                "update=", "delete=","new_library=","read_only=","no_access=",
+                "atmover","decr_file_count=","force","restore=", "all"]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
         interface.Interface.parse_options(self)
-        if self.nextvol:
+        if self.next:
             if len(self.args) < 3:
-                self.print_addvol_args()
+                self.print_add_args()
                 sys.exit(1)
-        elif self.addvol:
-            if len(self.args) < 6:
-                self.print_addvol_args()
+        elif self.add:
+            if len(self.args) < 5:
+                self.print_add_args()
                 sys.exit(1)
-        elif self.delvol:
+        elif self.new_library:
             if len(self.args) < 1:
-                self.print_delvol_args()
-                sys.exit(1)
-        elif self.restorevol:
-            if len(self.args) < 1:
-                self.print_restorevol_args()
-                sys.exit(1)
-        elif self.clrvol:
-            if len(self.args) < 1:
-                self.print_clr_inhibit_args()
-                sys.exit(1)
-        #elif self.statvol != "":
-        #    if len(self.args) < 1:
-	#        print "vcc.parse_options statvol self.args= ", self.args
-        #        self.print_update_mc_state_args()
-        #        sys.exit(1)
-        elif self.rdovol:
-            if len(self.args) < 1:
-                self.print_set_system_readonly_args()
-                sys.exit(1)
-        elif self.noavol:
-            if len(self.args) < 1:
-                self.print_set_system_noaccess_args()
-                sys.exit(1)
-        elif self.newlib:
-            if len(self.args) < 2:
                 self.print_new_library_args()
                 sys.exit(1)
 
@@ -411,45 +387,20 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     def print_update_mc_state_args(self):
         print "   update_mc_state arguments: volume_name"
 
-    # print clr_inhibit arguments
-    def print_clr_inhibit_args(self):
-        print "   clr_inhibit arguments: volume_name"
-
-    # print rdovol arguments
-    def print_set_system_readonly_args(self):
-        print "   rdovol arguments: volume_name"
-
-    # print noavol arguments
-    def print_set_system_noaccess_args(self):
-        print "   noavol arguments: volume_name"
-
     # print new library arguments
     def print_new_library_args(self):
-        print "   newlib arguments: volume_name new_library_name"
+        print "   new_library arguments: volume_name"
 
-    # print addvol arguments
-    def print_addvol_args(self):
-        print "   addvol arguments: library file_family media_type"\
-              +", volume_name, volume_byte_capacity remaining_capacity"
-
-    # print delvol arguments
-    def print_delvol_args(self):
-        print "   delvol arguments: volume_name"
-
-    # print delvol arguments
-    def print_restorevol_args(self):
-        print "   restrevol arguments: volume_name"
+    # print add arguments
+    def print_add_args(self):
+        print "   add arguments: library file_family media_type"\
+              +", volume_byte_capacity remaining_capacity"
 
     # print out our extended help
     def print_help(self):
         interface.Interface.print_help(self)
-        self.print_addvol_args()
-        self.print_delvol_args()
-        self.print_restorevol_args()
-        self.print_clr_inhibit_args()
+        self.print_add_args()
         self.print_update_mc_state_args()
-        self.print_set_system_readonly_args()
-        self.print_set_system_noaccess_args()
         self.print_new_library_args()
 
 
@@ -475,7 +426,7 @@ if __name__ == "__main__":
     elif intf.vols:
         ticket = vcc.get_vols()
         print ticket['volumes']
-    elif intf.nextvol:
+    elif intf.next:
         ticket = vcc.next_write_volume(intf.args[0], #library
                                        string.atol(intf.args[1]), #min_remaining_byte
                                        intf.args[2], #file_family
@@ -485,39 +436,40 @@ if __name__ == "__main__":
         ticket = vcc.inquire_vol(intf.vol)
 	#print repr(ticket)
 	pprint.pprint(ticket)
-    elif intf.chkvol:
-        ticket = vcc.inquire_vol(intf.chkvol)
+    elif intf.check:
+        ticket = vcc.inquire_vol(intf.check)
         print "%-10s  %5.2gGB %-12s  %s %s" % (ticket['external_label'],
                                                       ticket['remaining_bytes']*1./1024./1024./1024.,
                                                       ticket['at_mover'][0],
                                                       ticket['system_inhibit'],
                                                       ticket['user_inhibit'])
-    elif intf.addvol:
-        ticket = vcc.addvol(intf.args[0],              # library
-                            intf.args[1],              # file family
-                            intf.args[2],              # media type
-                            intf.args[3],              # name of this volume
-                            string.atol(intf.args[4]), # cap'y of vol (bytes)
-                            string.atol(intf.args[5])) # rem cap'y of volume
-    elif intf.newlib:
+    elif intf.add:
+        print repr(intf.args)
+        ticket = vcc.add(intf.args[0],              # library
+                         intf.args[1],              # file family
+                         intf.args[2],              # media type
+                         intf.add,                  # name of this volume
+                         string.atol(intf.args[3]), # cap'y of vol (bytes)
+                         string.atol(intf.args[4])) # rem cap'y of volume
+    elif intf.new_library:
         ticket = vcc.new_library(intf.args[0],         # volume name
-                                 intf.args[1])         # new library name
-    elif intf.delvol:
-        ticket = vcc.delvol(intf.args[0],intf.force)   # name of this volume
-    elif intf.restorevol:
-        ticket = vcc.restorevol(intf.args[0], intf.all)   # name of this volume
-    elif intf.clrvol:
-        ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
-    elif intf.statvol != "":
-        ticket = vcc.update_mc_state(intf.statvol)  # name of this volume
+                                 intf.new_library)     # new library name
+    elif intf.delete:
+        ticket = vcc.delete(intf.delete,intf.force)   # name of this volume
+    elif intf.restore:
+        ticket = vcc.restore(intf.restore, intf.all)  # name of volume
+    elif intf.clear:
+        ticket = vcc.clr_system_inhibit(intf.clear)  # name of this volume
+    elif intf.update:
+        ticket = vcc.update_mc_state(intf.update)  # name of this volume
         Trace.trace(12, repr(ticket))
     elif intf.decr_file_count:
         ticket = vcc.decr_file_count(intf.args[0],string.atoi(intf.decr_file_count))
         Trace.trace(12, repr(ticket))
-    elif intf.rdovol:
-        ticket = vcc.set_system_readonly(intf.args[0])  # name of this volume
-    elif intf.noavol:
-        ticket = vcc.set_system_noaccess(intf.args[0])  # name of this volume
+    elif intf.read_only:
+        ticket = vcc.set_system_readonly(intf.read_only)  # name of this volume
+    elif intf.no_access:
+        ticket = vcc.set_system_noaccess(intf.no_access)  # name of this volume
     # D0_TEPM
     elif intf.atmover:
 	ticket = vcc.add_at_mover (intf.args[0])
