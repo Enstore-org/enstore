@@ -10,6 +10,8 @@ setup enstore
 # . Correct configuration files
 # . Correct ntp time sync (allow * and ~ on 1st line)
 # . Check for open LISTEN sockets
+# . two processors
+# . less than 90% full on mounted disks.
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -42,6 +44,8 @@ DATE="/bin/date"
 CAT="/bin/cat"
 SORT="/bin/sort"
 UNIQ="/usr/bin/uniq"
+DF="/bin/df"
+SED="/bin/sed"
 RPM="/bin/rpm"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
@@ -115,6 +119,20 @@ if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
       enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
     fi
 fi
+
+dflines=`$DF -P`
+$ECHO "$dflines" | while read a b c d e rest; do
+  if [ `$ECHO $e| $EGREP -c %` -eq 1 ]; then
+    cap=`$ECHO $e | $SED -e 's/%//'`
+    if [ $cap -ge 90 ]; then
+      msg="DISK FULL: $a $b $c $d $e $rest"
+      logit "$msg"
+      if [ $ALARM -eq 1 ]; then
+        enstore alarm --raise --severity "A" --root-error "$msg"
+      fi
+    fi
+  fi
+done
 
 ALLOW_BASE="
        LISTEN,inetd,:ftp,TCP,x
