@@ -2302,6 +2302,10 @@ class File:
 			    self.path = file['pnfs_name0']
 			else:
 			    self.path = 'unknown'
+			if file.has_key('complete_crc'):
+			    self.complete_crc = file['complete_crc']
+			else:
+			    self.complete_crc = None
 			self.p_path = self.path
 		else:
 			self.path = os.path.abspath(file)
@@ -2310,6 +2314,14 @@ class File:
 				f = open(self.layer_file(4))
 				finfo = map(string.strip, f.readlines())
 				f.close()
+				if len(finfo) == 11:
+					self.volume,\
+					self.location_cookie,\
+					self.size, self.file_family,\
+					self.p_path, self.volmap,\
+					self.pnfs_id, self.pnfs_vid,\
+					self.bfid, self.drive, \
+					self.complete_crc = finfo
 				if len(finfo) == 10:
 					self.volume,\
 					self.location_cookie,\
@@ -2317,6 +2329,7 @@ class File:
 					self.p_path, self.volmap,\
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid, self.drive = finfo
+					self.complete_crc = None
 				elif len(finfo) == 9:
 					self.volume,\
 					self.location_cookie,\
@@ -2325,6 +2338,7 @@ class File:
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid = finfo
 					self.drive = "unknown:unknown"
+					self.complete_crc = None
 					
 				# if self.p_path != self.path:
 				#	raise 'DIFFERENT_PATH'
@@ -2341,6 +2355,7 @@ class File:
 				self.pnfs_vid = ""
 				self.bfid = ""
 				self.drive = ""
+				self.complete_crc = None
 				self.p_path = self.path
 		return
 
@@ -2383,6 +2398,7 @@ class File:
 		print "           bfid =", self.bfid
 		print "          drive =", self.drive
 		print "      meta-path =", self.p_path
+		print "   complete_crc =", self.complete_crc
 		return
 
 	# set_size() -- set size in pnfs
@@ -2437,6 +2453,7 @@ class File:
 			f.write(self.pnfs_vid+'\n')
 			f.write(self.bfid+'\n')
 			f.write(self.drive+'\n')
+			f.write(self.complete_crc+'\n')
 			f.close()
 			# set file size
 			self.set_size()
@@ -2508,6 +2525,9 @@ class File:
 			changed = 1
 		if file.has_key('pnfs_name0'):
 			self.path = file['pnfs_name0']
+			changed = 1
+		if file.has_key('complete_crc'):
+			self.complete_crc = file['complete_crc']
 			changed = 1
 		if changed:
 			res = self.update()
