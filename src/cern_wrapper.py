@@ -60,13 +60,13 @@ class Label1(Label):
 
     def __init__(self, file_id, file_set_id, file_section_number, 
 		 file_seq_number, gen_number, gen_ver_number, expiration_date,
-		 file_access):
+		 file_access, implementation_id):
 	Label.__init__(self)
 	self.file_id = file_id[0:FILENAMELEN1]
 	# pad the string to be 17 bytes long
-	if len(file_id) < FILE_ID_SIZE:
+	if len(file_id) < FILENAMELEN1:
 	    self.file_id = "%s%s"%(self.file_id, 
-				   (FILE_ID_SIZE - len(file_id))*SPACE)
+				   (FILENAMELEN1 - len(file_id))*SPACE)
 	self.file_set_id = file_set_id
 	self.file_section_number = file_section_number
 	self.file_seq_number = file_seq_number
@@ -75,7 +75,7 @@ class Label1(Label):
 	self.creation_date = get_date(time.time())
 	self.expiration_date = get_date(expiration_date)
 	self.file_access = file_access
-	self.implement_id = 13*SPACE
+	self.implementation_id = implementation_id
 	self.reserved = 7*SPACE
 	# this 1 needs to be filled in by the subclass
 	self.block_count = 6*ZERO
@@ -92,7 +92,7 @@ class Label1(Label):
 						  self.expiration_date, 
 						  self.file_access,
 						  self.block_count, 
-						  self.implement_id,
+						  self.implementation_id,
 						  self.reserved)
 	self.text_len()
 	return self.text
@@ -101,7 +101,7 @@ class Label1(Label):
 class Label2(Label):
 
     def __init__(self, record_format, block_length, record_length, 
-		 offset_length):
+		 implementation_id, offset_length):
 	self.label = "HDR2"
 	if record_format not in RECORD_FORMAT:
 	    raise UNKNOWNRECFORMAT, \
@@ -110,7 +110,7 @@ class Label2(Label):
 	self.record_format = record_format
 	self.block_length = block_length
 	self.record_length = record_length
-	self.implementation = 35*SPACE
+	self.implementation_id = implementation_id
 	self.offset_length = offset_length
 	self.reserved = 28*SPACE
 
@@ -118,18 +118,19 @@ class Label2(Label):
 	# format ourselves to be a string of length 80
 	self.text = "%s%s%s%s%s%s%s"%(self.label, self.record_format, 
 				      self.block_length, self.record_length, 
-				      self.implementation, self.offset_length,
-				      self.reserved)
+				      self.implementation_id, 
+				      self.offset_length, self.reserved)
 	self.text_len()
 	return self.text
 
 
 class UserLabel1(Label):
 
-    def __init__(self, file_seq_number, block_size, site, hostname, drive_mfg,
-		 drive_model, drive_serial_num):
+    def __init__(self, file_seq_number, block_size, record_length, site, 
+		 hostname, drive_mfg, drive_model, drive_serial_num):
 	self.file_seq_number = file_seq_number  # this must be filled in
 	self.block_size = block_size            # this must be filled in
+	self.record_length = record_length
 	self.site = site
 	self.hostname = hostname
 	self.drive_mfg = drive_mfg
@@ -169,7 +170,7 @@ class UserLabel2(Label):
 	return self.text
 
 
-class UserLabel3:
+class UserLabel3(Label):
 
     def __init__(self, username, experiment, last_mod):
 	self.username = username
@@ -185,7 +186,7 @@ class UserLabel3:
 	return self.text
 
 
-class UserLabel4:
+class UserLabel4(Label):
 
     def __init__(self, copy_num, segment_num, segment_size, segment_checksum, 
 		 timestamp, num_of_blocks=10*ZERO):
@@ -219,35 +220,54 @@ class UserLabelN:
 	return self.text
 
 
-class VOL1:
+class VOL1(Label):
 
-    def __init__(self, volume_id=6*SPACE, volume_access=SPACE):
+    # Enstore will use the following fields -
+    #        volume_id  : same as volume label
+    #        owner_id   : "ENSTORE"
+    def __init__(self, volume_id=6*SPACE, volume_access=SPACE,
+		 implementation_id=13*SPACE, owner_id=14*SPACE):
+	Label.__init__(self)
 	self.label = "VOL1"
 	self.volume_id = volume_id
 	self.volume_access = volume_access
-	self.implementation_id = 13*SPACE
-	self.owner_id = 14*SPACE
-	self.label_version = 4
+	self.reserved1 = 13*SPACE
+	self.implementation_id = implementation_id
+	self.owner_id = owner_id
+	self.reserved2 = 28*SPACE
+	self.label_version = 3
+
+    def __repr__(self):
+	# format ourselves to be a string of length 80
+	self.text =  "%s%s%s%s%s%s%s%s"%(self.label, self.volume_id,
+					 self.volume_access, self.reserved1, 
+					 self.implementation_id, 
+					 self.owner_id, self.reserved2, 
+					 self.label_version)
+	self.text_len()
+	return self.text
 
 
 class HDR1(Label1):
 
     def __init__(self, file_id, file_set_id, file_section_number, 
 		 file_seq_number, gen_number, gen_ver_number, expiration_date,
-		 file_access):
+		 file_access, implementation_id):
 	Label1.__init__(self, file_id, file_set_id, file_section_number, 
 			file_seq_number, gen_number, gen_ver_number, 
-			expiration_date, file_access)
+			expiration_date, file_access, implementation_id)
 	self.label = "HDR1"
 
 
 class EOF1(Label1):
     def __init__(self, file_id, file_set_id, file_section_number, 
 		 file_seq_number, gen_number, gen_ver_number, expiration_date,
-		 block_count, file_access, block_count):
+		 block_count, file_access, block_count,
+		 implementation_id):
 	Label1.__init__(self, file_id, file_set_id, file_section_number, 
 			file_seq_number, gen_number, gen_ver_number, 
-			expiration_date, file_access)
+			expiration_date, file_access,
+			implementation_id)
 	self.label = "EOF1"
 	self.block_count = block_count
 
@@ -255,36 +275,38 @@ class EOF1(Label1):
 class HDR2(Label2):
 
     def __init__(self, record_format, block_length, record_length, 
-		 offset_length):
+		 implementation_id, offset_length):
 	Label2.__init__(self, record_format, block_length, record_length,
-			offset_length)
+			implementation_id, offset_length)
 	self.label = "HDR2"
 
 
 class EOF2(Label2):
 
     def __init__(self, record_format, block_length, record_length,
-		 offset_length):
+		 implementation_id, offset_length):
 	Label2.__init__(self, record_format, block_length, record_length,
-			offset_length)
+			implementation_id, offset_length)
 	self.label = "EOF2"
    
 
 class UHL1(UserLabel1):
 
-    def __init__(self, file_seq_number, block_size, site, hostname, drive_mfg,
-		 drive_model, drive_serial_num):
-	UserLabel1.__init__(self, file_seq_number, block_size, site, hostname,
-			    drive_mfg, drive_model, drive_serial_num)
+    def __init__(self, file_seq_number, block_size, record_length, site, 
+		 hostname, drive_mfg, drive_model, drive_serial_num):
+	UserLabel1.__init__(self, file_seq_number, block_size, record_length,
+			    site, hostname, drive_mfg, drive_model, 
+			    drive_serial_num)
 	self.label = "UHL1"
 
 
 class UTL1(UserLabel1):
 
-    def __init__(self, file_seq_number, block_size, site, hostname, drive_mfg,
-		 drive_model, drive_serial_num):
-	UserLabel1.__init__(self, file_seq_number, block_size, site, hostname,
-			    drive_mfg, drive_model, drive_serial_num)
+    def __init__(self, file_seq_number, block_size, record_length, site, 
+		 hostname, drive_mfg, drive_model, drive_serial_num):
+	UserLabel1.__init__(self, file_seq_number, block_size, record_length,
+			    site, hostname, drive_mfg, drive_model, 
+			    drive_serial_num)
 	self.label = "UTL1"
 
 
@@ -338,14 +360,14 @@ class UTL4(UserLabel4):
 class UHLN(UserLabelN):
 
     def __init__(self, label, filename_chunk):
-	UserLabelA.__init__(self, filename_chunk)
+	UserLabelN.__init__(self, filename_chunk)
 	self.label = "UHL%s"%(label,)
 
 
-class UTLA(UserLabelA):
+class UTLN(UserLabelN):
 
     def __init__(self, label, filename_chunk):
-	UserLabelA.__init__(self, filename_chunk)
+	UserLabelN.__init__(self, filename_chunk)
 	self.label = "UTL%s"%(label,)
 
 
@@ -356,6 +378,7 @@ class EnstoreFile(File):
 	# LEGEND:     NU - not used
 	#             ST - set to default from Standard
 	#             FN - fermi specific setting
+	#             CN - cern specific setting
 
 	# HDR1/EOF1
 	self.filename = ticket.get('pnfsFilename', 
@@ -369,23 +392,29 @@ class EnstoreFile(File):
 	self.gen_number = 4*ZERO                  # NU
 	self.gen_ver_number = 2*ZERO              # NU
 	self.expiration_date = MINUS1             # NU, ST - when data obsolete
-	self.file_access = SPACE                  # FN - no access restrictions
+	self.file_access = SPACE                  # CN - no access restrictions
 	self.block_count = 6*ZERO                 # FN - set in trailer
+	self.implementation_1 =                   # FN - ENCP version
 
 	# HDR2/EOF2
 	self.record_format = RECORDFORMAT[FIXED]  # FN - fixed length records
-	self.block_length =                       # 
-	self.record_length =                      # 
+	self.block_length =                       # CN - set to 0 if > 99999
+	self.record_length =                      # CN - set to 0 if > 99999
+	self.implementation_2 = 13*SPACE          # CN - byte 35 : tape
+	                                          #       recording technique,
+						  #       P means drive
+						  #       compression used
 	self.offset_length = 2*ZERO               # NU
 
 	# UHL1/UTL1
-	self.file_seq_number =                    #
-	self.block_size =                         #
-	self.site = FERMILAB                      # FN
-	self.hostname = 
-	self.drive_mfg = 
-	self.drive_model = 
-	self.drive_serial_number = 
+	self.file_seq_number =                    # the actual value
+	self.block_size =                         # the actual value
+	self.record_size =                        # the actual value
+	self.site = FERMILAB                      # 
+	self.hostname =                           # where mover runs
+	self.drive_mfg =                          # 
+	self.drive_model =                        # 
+	self.drive_serial_number =                # 
 
 	# UHL2/UTL2
 	self.file_id = 
@@ -393,12 +422,13 @@ class EnstoreFile(File):
 	self.uid = ticket.get('uid', 0)           # uid
 	self.gid = ticket.get('gid', 0)           # gid
 	self.filesize = ticket.get('size_bytes', 0L)   # 64 bit file size
-	self.file_checksum = 
+	self.checksum_algorithm =                 # AD = Adler32, CS = cksum
+	self.file_checksum =                      # 
 
 	# UHL3/UTL3
-	self.username = 
-	self.experiment = 
-	self.last_mod = 
+	self.username =                           #
+	self.experiment =                         #
+	self.last_mod =                           # last modification date/time
 
 	# UHL4/UTL4
 	self.copy_num = 
@@ -445,11 +475,14 @@ class EnstoreFile(File):
 	self.hdr1 = HDR1(self.filename, self.file_set_id, 
 			 self.file_section_number, self.file_seq_number,
 			 self.gen_number, self.gen_ver_number,
-			 self.expiration_date, self.file_access)
+			 self.expiration_date, self.file_access,
+			 self.implementation_1)
 	self.hdr2 = HDR2(self.record_format, self.block_length,
-			 self.record_length, self.offset_length)
-	self.uhl1 = UHL1(self.file_seq_number, self.block_size, self.site,
-			 self.hostname, self.drive_mfg, self.drive_model,
+			 self.record_length, self.implementation_2,
+			 self.offset_length)
+	self.uhl1 = UHL1(self.file_seq_number, self.block_size, 
+			 self.record_size, self.site, self.hostname, 
+			 self.drive_mfg, self.drive_model, 
 			 self.drive_serial_number)
 	self.uhl2 = UHL2(self.file_id, self.mode, self.uid, self.gid,
 			 self.file_size, self.file_checksum)
@@ -467,14 +500,17 @@ class EnstoreFile(File):
 	self.eof1 = EOF1(self.filename, self.file_set_id, 
 			 self.file_section_number, self.file_seq_number,
 			 self.gen_number, self.gen_ver_number,
-			 self.expiration_date, self.file_access, self.block_count)
+			 self.expiration_date, self.file_access, 
+			 self.block_count, self.implementation_1)
 	self.eof2 = EOF2(self.record_format, self.block_length,
-			 self.record_length, self.offset_length)
+			 self.record_length, self.implementation_2,
+			 self.offset_length)
 	self.uhl1 = UHL1(self.file_seq_number, self.block_size, self.site,
 			 self.hostname, self.drive_mfg, self.drive_model,
 			 self.drive_serial_number)
-	self.utl1 = UTL1(self.file_seq_number, self.block_size, self.site,
-			 self.hostname, self.drive_mfg, self.drive_model,
+	self.utl1 = UTL1(self.file_seq_number, self.block_size, 
+			 self.record_size, self.site, self.hostname, 
+			 self.drive_mfg, self.drive_model,
 			 self.drive_serial_number)
 	self.utl2 = UTL2(self.file_id, self.mode, self.uid, self.gid,
 			 self.file_size, self.file_checksum)
