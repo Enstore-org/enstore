@@ -42,6 +42,8 @@ TIMEOUT=1
 ENCP_UPDATE_INTERVAL = 60
 LOG_UPDATE_INTERVAL = 300
 
+DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+
 def default_update_interval():
     return 20
 
@@ -77,10 +79,7 @@ class EventRelay:
 
     def __repr__(self):
 	import pprint
-	print "event_relay : ",
-	pprint.pprint(self.__dict__)
-	print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-        return " "
+	return "event_relay : %s\n%s"%(pprint.pformat(self.__dict__), DIVIDER)
     
     def alive(self, now):
 	self.last_alive = now

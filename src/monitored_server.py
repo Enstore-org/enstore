@@ -15,6 +15,8 @@ CONFIG = "config"
 FINISHED = 1
 ACTIVE = 2
 
+DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+
 # get the alive_interval from the server or the default from the inquisitor
 def get_alive_interval(csc, name, config={}):
     if not config:
@@ -119,10 +121,8 @@ class MonitoredServer:
 
     def __repr__(self):
 	import pprint
-	print "%s : "%(self.name,),
-	pprint.pprint(self.__dict__)
-	print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-        return " "
+	return "%s : %s\n%s"%(self.name, pprint.pformat(self.__dict__), DIVIDER)
+
 class MonitoredInquisitor(MonitoredServer):
 
     def update_default_alive_interval(self, config):
