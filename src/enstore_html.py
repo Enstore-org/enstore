@@ -66,6 +66,7 @@ HEADINGS = ["Name", "Status", "Host", "Date/Time", "Last Time Alive"]
 MEDIA_CHANGERS = "Media Changers"
 SERVERS = "Servers"
 MOVERS = "Movers"
+UNMONITORED_SERVERS = "Unmonitored Servers"
 THE_INQUISITOR = "The Inquisitor"
 THE_ALARM_SERVER = "The Alarm Server"
 
@@ -1272,6 +1273,13 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	self.extra_queue_pages = {}
 	self.max_lm_rows = max_lm_rows
 
+    def not_being_monitored(self, server):
+	if self.data_dict[server][enstore_constants.STATUS] == \
+	   enstore_constants.NOT_MONITORING:
+	    return 1
+	else:
+	    return None
+
     # output the list of shortcuts on the top of the page
     def shortcut_table(self):
 	# get a list of all the servers we have.  we will output a link for the
@@ -1280,8 +1288,12 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	#              movers
 	self.servers = sort_keys(self.data_dict)
 	got_movers = 0
+	got_unmonitored_server = 0
 	shortcut_lm = []
 	for server in self.servers:
+	    if not got_unmonitored_server and self.not_being_monitored(server):
+		got_unmonitored_server = 1
+		first_unmonitored_server = server
 	    if enstore_functions.is_library_manager(server):
 		shortcut_lm.append(server)
 	    elif not got_movers and enstore_functions.is_mover(server):
@@ -1301,10 +1313,15 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	for lm in shortcut_lm:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(lm,), lm)
-	# now finish up with the movers
+	# now the movers
 	if got_movers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(first_mover,), MOVERS)
+	# now the unmonitored servers
+	if got_unmonitored_server:
+	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
+						  '#%s'%(first_unmonitored_server,), 
+						 UNMONITORED_SERVERS)
 	# add a link to the full file list page
 	tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 				       '%s'%(enstore_constants.FILE_LIST_NAME),
@@ -1315,23 +1332,30 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	table.append(tr)
 	return table
 
+    def server_row(self, server):
+	return self.alive_row(server, 
+			      self.data_dict[server][enstore_constants.STATUS])
     # add in the information for the generic servers. these only have alive
     # information
     def generic_server_rows(self, table):
 	for server in enstore_constants.GENERIC_SERVERS:
 	    if self.data_dict[server]:
-		# output its information
-		table.append(self.alive_row(server, 
-			    self.data_dict[server][enstore_constants.STATUS]))
+		if self.not_being_monitored(server):
+		    self.unmonitored_servers.append(self.server_row(server))
+		else:
+		    # output its information
+		    table.append(self.server_row(server))
 
     # output all of the media changer rows 
     def media_changer_rows(self, table, skeys):
 	# now output the media changer information
 	for server in skeys:
 	    if enstore_functions.is_media_changer(server):
-		# this is a media changer. output its alive info
-		table.append(self.alive_row(server,
-			     self.data_dict[server][enstore_constants.STATUS]))
+		if self.not_being_monitored(server):
+		    self.unmonitored_servers.append(self.server_row(server)))
+		else:
+		    # this is a media changer. output its alive info
+		    table.append(self.server_row(server))
 
     # output the row that lists the total transfers (current and pending) row
     def xfer_row(self, lm):
@@ -1478,7 +1502,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	return rows
 
     # output the information for a library manager
-    def lm_rows(self, lm, table):
+    def lm_rows(self, lm):
+	table_rows = []
 	cols = 5
 	# first the alive information
 	lm_d = self.data_dict[lm]
@@ -1499,11 +1524,11 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    words = ["",]
 	name = self.server_url(lm, "%s.html"%(lm,))
 	if words[0] in BAD_LM_STATES:
-	    table.append(self.alive_row(lm, lm_d[enstore_constants.STATUS], 
-					FUSCHIA, link=lm))
+	    table_rows.append(self.alive_row(lm, lm_d[enstore_constants.STATUS], 
+					     FUSCHIA, link=lm))
 	else:
-	    table.append(self.alive_row(lm, lm_d[enstore_constants.STATUS],
-					link = name))
+	    table_rows.append(self.alive_row(lm, lm_d[enstore_constants.STATUS],
+					     link = name))
 	# we may have gotten an error while trying to get the info, 
 	# so check for a piece of it first
 	if lm_d.has_key(enstore_constants.LMSTATE):
@@ -1523,50 +1548,66 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		lm_table.append(row)
 	    tr = HTMLgen.TR(empty_data())
 	    tr.append(HTMLgen.TD(lm_table, colspan=cols))
-	    table.append(tr)
+	    table_rows.append(tr)
+	return rows
 
     # output all of the library manager rows and their associated movers
     def library_manager_rows(self, table, skeys):
 	for server in skeys:
 	    if enstore_functions.is_library_manager(server):
-		# this is a library manager. output all of its info and then
-		# info for each of its movers
-		self.lm_rows(server, table)
+		# this is a library manager. output all of its info
+		rows = self.lm_rows(server)
+		if self.not_being_monitored(server):
+		    aList = self.unmonitored_servers
+		else:
+		    aList = table
+		for row in rows:
+		    aList.append(row)
+
+    def mover_row(self, server):
+	# this is a mover. output its info
+	mover_d = self.data_dict[server]
+	name = self.server_url(server, enstore_functions.get_mover_status_filename(),
+			       server)
+	if mover_d.has_key(enstore_constants.STATE) and \
+	   mover_d[enstore_constants.STATE]:
+	    # append the movers state to its status information
+	    # if we are updating the web page faster that receiving the new
+	    # info, then we already have a correct status
+	    if string.find(mover_d[enstore_constants.STATUS][0], NBSP) == -1 and \
+	       mover_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
+		mover_d[enstore_constants.STATUS][0] = \
+			      "%s%s:%s%s"%(mover_d[enstore_constants.STATUS][0], 
+					   NBSP, NBSP, 
+					   mover_d[enstore_constants.STATE])
+	    # get the first word of the mover state, we will use this
+	    # to tell if this is a bad state or not
+	    words = string.split(mover_d[enstore_constants.STATE])
+	    if words[0] in BAD_MOVER_STATES:
+		return self.alive_row(server, 
+				      mover_d[enstore_constants.STATUS], 
+				      FUSCHIA, link=name)
+	    else:
+		return self.alive_row(server, 
+				      mover_d[enstore_constants.STATUS],
+				      link=name)
+	else:
+	    return self.alive_row(server, 
+				  mover_d[enstore_constants.STATUS],
+				  link=name)
 
     # output all of the mover rows 
     def mover_rows(self, table, skeys):
 	for server in skeys:
 	    if enstore_functions.is_mover(server):
-		# this is a mover. output its info
-		mover_d = self.data_dict[server]
-		name = self.server_url(server, enstore_functions.get_mover_status_filename(),
-				       server)
-		if mover_d.has_key(enstore_constants.STATE) and \
-                   mover_d[enstore_constants.STATE]:
-		    # append the movers state to its status information
-		    # if we are updating the web page faster that receiving the new
-		    # info, then we already have a correct status
-		    if string.find(mover_d[enstore_constants.STATUS][0], NBSP) == -1 and \
-		       mover_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
-			mover_d[enstore_constants.STATUS][0] = \
-				      "%s%s:%s%s"%(mover_d[enstore_constants.STATUS][0], 
-						   NBSP, NBSP, 
-						   mover_d[enstore_constants.STATE])
-		    # get the first word of the mover state, we will use this
-		    # to tell if this is a bad state or not
-		    words = string.split(mover_d[enstore_constants.STATE])
-		    if words[0] in BAD_MOVER_STATES:
-			table.append(self.alive_row(server, 
-					mover_d[enstore_constants.STATUS], 
-						    FUSCHIA, link=name))
-		    else:
-			table.append(self.alive_row(server, 
-					    mover_d[enstore_constants.STATUS],
-						    link=name))
+		if self.not_being_monitored(server):
+		    self.unmonitored_servers.append(self.mover_row(server))
 		else:
-		    table.append(self.alive_row(server, 
-					    mover_d[enstore_constants.STATUS],
-						link=name))
+		    table.append(self.mover_row(server))
+
+    def unmonitored_server_rows(self, table):
+	for row in self.unmonitored_servers:
+	    table.append(row)
 
     # generate the main table with all of the information
     def main_table(self):
@@ -1581,6 +1622,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	self.media_changer_rows(table, skeys)
 	self.library_manager_rows(table, skeys)
 	self.mover_rows(table, skeys)
+	self.unmonitored_server_rows(table)
 	return table
 
     # generate the body of the file
