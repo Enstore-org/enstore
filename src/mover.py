@@ -978,9 +978,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if state is IDLE:
             work = "mover_idle"
-        elif state in (MOUNT_WAIT, HAVE_BOUND):
+        elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
-        elif state in (ACTIVE, DISMOUNT_WAIT):
+        elif state in (ACTIVE, MOUNT_WAIT, DISMOUNT_WAIT):
             work = "mover_busy"
         elif state is ERROR:
             work = "mover_error"
