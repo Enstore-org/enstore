@@ -1,6 +1,5 @@
 #!/bin/sh
-#  Edit-Time-stamp: <98/06/18 15:28:49 bakken>
-
+#  Edit-Time-stamp: <1998-06-18 17:23:33 bakken>
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
