@@ -1,9 +1,8 @@
 #!/bin/sh
 
-# Script that 
-#    a. return mt command results of drives 
-#    b  eases mounting/dismounting of volumes in drives 
-# located in AML2 robot
+# Script that
+#    a. return mt command results of drives
+#    b  eases mounting/dismounting of volumes in drives located in AML2 robot
 
 # This script is meant to be run outside of enstore, hence everything
 # is hard-coded and nothing is looked up from the configuration server
@@ -20,6 +19,9 @@ Usage $0 <dismount <drive>"
 fi
 
 # we have nameserver lookup troubles - skip this step and use the numeric ip's
+
+adic2=131.225.164.19          
+
 rip1=131.225.164.1
 rip2=131.225.164.2
 rip5=131.225.164.5
@@ -27,17 +29,93 @@ rip9=131.225.164.15
 rip10=131.225.16.14
 rip11=131.225.164.17
 rip12=131.225.164.18
+
 fntt=131.225.164.13
+
 ripsgi=131.225.164.16
+
+samson=131.225.165.8           
+
 d0enmvr1=131.225.164.24
 d0enmvr2=131.225.164.25
 d0enmvr3=131.225.164.26
 
+d0ensrv1=131.225.164.21
+d0ensrv2=131.225.164.22
 d0ensrv3=131.225.164.23
-rip8=131.225.164.8
+d0ensrv4=131.225.164.84
+d0ensrv5=131.225.164.85
+d0ensrv6=131.225.164.86
+
+d0enmvr4a=131.225.164.104         
+d0enmvr5a=131.225.164.105         
+d0enmvr6a=131.225.164.106         
+d0enmvr7a=131.225.164.107         
+d0enmvr8a=131.225.164.108         
+d0enmvr9a=131.225.164.109         
+d0enmvr10a=131.225.164.110         
+d0enmvr11a=131.225.164.111         
+d0enmvr12a=131.225.164.112         
+d0enmvr13a=131.225.164.113         
+d0enmvr14a=131.225.164.114         
+d0enmvr15a=131.225.164.115         
+d0enmvr16a=131.225.164.116         
+d0enmvr17a=131.225.164.117         
+d0enmvr18a=131.225.164.118         
+
 dasnode=$d0ensrv3
 
+
+# these drive nodes should be looked up in the config file!
+
+de13node=$d0enmvr4a
+de14node=$d0enmvr4a
+
+dm18node=$d0enmvr5a
+dm19node=$d0enmvr5a
+
+dc15node=$d0enmvr6a
+dc16node=$d0enmvr6a
+dc17node=$d0enmvr5a
+dc20node=$d0enmvr11a
+dc21node=$d0enmvr11a
+dc22node=$d0enmvr10a
+dc23node=$d0enmvr10a
+dc24node=$d0enmvr9a
+dc25node=$d0enmvr9a
+dc26node=$d0enmvr8a
+dc27node=$d0enmvr8a
+dc28node=$d0enmvr7a
+dc29node=$d0enmvr7a
+
+
+# these devives should be looked up in the config file!
+
+dc15device=/dev/rmt/tps2d4n
+dc16device=/dev/rmt/tps3d6n
+dc17device=/dev/rmt/tps2d5n
+dc20device=/dev/rmt/tps0d1n
+dc21device=/dev/rmt/tps3d1n
+dc22device=/dev/rmt/tps0d1n
+dc23device=/dev/rmt/tps3d1n
+dc24device=/dev/rmt/tps0d1n
+dc25device=/dev/rmt/tps3d1n
+dc26device=/dev/rmt/tps0d1n
+dc27device=/dev/rmt/tps3d1n
+dc28device=/dev/rmt/tps0d1n
+dc29device=/dev/rmt/tps3d1n
+
+de13device=/dev/rmt/tps2d4n
+de14device=/dev/rmt/tps3d3n
+
+dm18device=/dev/rmt/tps3d1n
+dm19device=/dev/rmt/tps3d2n
+
+
+#===================================================
+
 drive=`echo $1 | tr '[A-Z]' '[a-z]'`
+command="${2:-status}"
 
 if [ "$drive" = "mount" ]; then
   if [ -z "${2-}" -o -z "${3-} -z "${4-} ] ; then
@@ -73,10 +151,10 @@ elif [ "$drive" = "dismount" ]; then
     exit $stat
   fi
 fi
- 
+
 
 aits="dm07 dm08 dm09 dm10 dm11 dm12 dm18 dm19"
-mams="dc03 dc04 dc05 dc06 dc15 dc16 dc17"
+mams="dc03 dc04 dc05 dc06 dc15 dc16 dc17 dc20 dc21 dc22 dc23 dc24 dc25 dc26 dc27 dc28 dc29"
 dlts="de01 de02 de13 de14"
 
 multiple=0
@@ -119,17 +197,25 @@ case $drive in
   dm11) cmd="rsh $ripsgi 'mt -f /dev/rmt/tps2d3nrvc $command 2>&1; echo \$?'" ;;
   dm12) cmd="rsh $ripsgi 'mt -f /dev/rmt/tps2d4nrvc $command 2>&1; echo \$?'" ;;
 
+  de13) cmd="rsh $de13node 'mt -f $de13device $command 2>&1; echo \$?'" ;;
+  de14) cmd="rsh $de14node 'mt -f $de14device $command 2>&1; echo \$?'" ;;
 
+  dc15) cmd="rsh $dc15node 'mt -f $dc15device $command 2>&1; echo \$?'" ;;
+  dc16) cmd="rsh $dc16node 'mt -f $dc16device $command 2>&1; echo \$?'" ;;
+  dc17) cmd="rsh $dc17node 'mt -f $dc17device $command 2>&1; echo \$?'" ;;
+  dc20) cmd="rsh $dc20node 'mt -f $dc20device $command 2>&1; echo \$?'" ;;
+  dc21) cmd="rsh $dc21node 'mt -f $dc21device $command 2>&1; echo \$?'" ;;
+  dc22) cmd="rsh $dc22node 'mt -f $dc22device $command 2>&1; echo \$?'" ;;
+  dc23) cmd="rsh $dc23node 'mt -f $dc23device $command 2>&1; echo \$?'" ;;
+  dc24) cmd="rsh $dc24node 'mt -f $dc24device $command 2>&1; echo \$?'" ;;
+  dc25) cmd="rsh $dc25node 'mt -f $dc26device $command 2>&1; echo \$?'" ;;
+  dc26) cmd="rsh $dc26node 'mt -f $dc26device $command 2>&1; echo \$?'" ;;
+  dc27) cmd="rsh $dc27node 'mt -f $dc27device $command 2>&1; echo \$?'" ;;
+  dc28) cmd="rsh $dc28node 'mt -f $dc28device $command 2>&1; echo \$?'" ;;
+  dc29) cmd="rsh $dc29node 'mt -f $dc29device $command 2>&1; echo \$?'" ;;
 
-  de13) cmd="rsh $d0enmvr3 'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
-  de14) cmd="rsh $d0enmvr3 'mt -f /dev/rmt/tps3d3n $command 2>&1; echo \$?'" ;;
-
-  dc15) cmd="rsh $d0enmvr1 'mt -f /dev/rmt/tps5d4n $command 2>&1; echo \$?'" ;;
-  dc16) cmd="rsh $d0enmvr1 'mt -f /dev/rmt/tps4d6n $command 2>&1; echo \$?'" ;;
-  dc17) cmd="rsh $d0enmvr1 'mt -f /dev/rmt/tps3d5n $command 2>&1; echo \$?'" ;;
-
-  dm18) cmd="rsh $d0enmvr2 'mt -f /dev/rmt/tps4d1n $command 2>&1; echo \$?'" ;;
-  dm19) cmd="rsh $d0enmvr2 'mt -f /dev/rmt/tps4d2n $command 2>&1; echo \$?'" ;;
+  dm18) cmd="rsh $dm18node 'mt -f $dm18device $command 2>&1; echo \$?'" ;;
+  dm19) cmd="rsh $dm19node 'mt -f $dm19device $command 2>&1; echo \$?'" ;;
 
   stk1) cmd="rsh $rip9   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
   stk2) cmd="rsh $rip9   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
