@@ -80,7 +80,7 @@ def check_csc(csc):
         print "Configuration server already stopped: %s:%s" % \
               csc.server_address
 
-def check_db(name):
+def check_db(csc, name):
 
     info = csc.get("volume_clerk", 5, 3)
     if not info.get('host', None) in this_host() and \
@@ -104,38 +104,45 @@ def check_event_relay(csc):
            not info.get('hostip', None) in this_host():
         return
 
-    print "Checking event_relay."
-    
-    rtn = os.popen("ps -elf | grep event_relay | grep -v grep").readlines()
+    erc = event_relay_client.EventRelayClient(event_relay_host=info['hostip'],
+                                              event_relay_port=info['port'])
 
-    if rtn:
-        pid = int(re.sub("\s+", " ", rtn[0]).split(" ")[3])
-        print "Stopping %s: %d" % ("event_relay", pid)
-        os.kill(pid, signal.SIGTERM)
+    print "Checking event_relay."
+
+    rtn = erc.alive()
+    
+    if not rtn:
+        print "Stopping %s." % ("event_relay",)
+        erc.quit()
 
 def check_server(csc, name):
 
-    print "Checking %s." % name
 
-    #Initialize, send and receive alive responce.
-    u = udp_client.UDPClient()
+    # Get the address and port of the server.
     info = csc.get(name, 5, 3)
-
-    #Process responce.
+    # If the process is running on this host continue, if not running on
+    # this host return.
     if not info.get('host', None) in this_host() and \
            not info.get('hostip', None) in this_host():
         return
     
+    gc = generic_client.GenericClient(csc, name,
+                                      server_address=(info['hostip'],
+                                                      info['port']))
+
+    print "Checking %s." % name
+
     try:
-        rtn = u.send({'work':"alive"}, (info['hostip'], info['port']), 3, 3)
+        # Determine if the host is alive.
+        rtn = gc.alive(name, 3, 3)
     except errno.errorcode[errno.ETIMEDOUT]:
         rtn = {'status':(e_errors.TIMEDOUT, errno.errorcode[errno.ETIMEDOUT])}
         
-    
+    # If the host is alive, tell it to to quit.
     if e_errors.is_ok(rtn):
         #Stop the server.
         print "Stopping %s: %s:%s" % (name, info['hostip'], info['port'])
-        os.kill(rtn['pid'], signal.SIGTERM)
+        gc.quit(3, 3)
     else:
         print "Already stopped %s: %s:%s" % (name, info.get('hostip', None),
                                              info.get('port', None))
@@ -248,9 +255,9 @@ def do_work(intf):
     if intf.should_start("volume_clerk"):
         check_server(csc, "volume_clerk")
     if intf.should_start("db_checkpoint"):
-        check_db("db_checkpoint")
+        check_db(csc, "db_checkpoint")
     if intf.should_start("db_deadlock"):
-        check_db("db_deadlock")
+        check_db(csc, "db_deadlock")
     if intf.should_start("alarm_server"):
         check_server(csc, "alarm_server")
     if intf.should_start("log_server"):

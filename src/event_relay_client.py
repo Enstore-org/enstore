@@ -181,7 +181,7 @@ class EventRelayClient:
                 if msg:
                     # we got one, we are done
                     self.unsubscribe()
-                    self.sock.close()
+                    #self.sock.close()
                     return 0
         # we did not get a message, assume the event relay is not alive
         return 1

@@ -213,3 +213,8 @@ class GenericClient:
     def dump(self, rcv_timeout=0, tries=0):
         x = self.send({'work':'dump'}, rcv_timeout, tries)
         return x
+
+    # tell the server to 'go away' in a polite manner.
+    def quit(self, rcv_timeout=0, tries=0):
+        x = self.send({'work':'quit'}, rcv_timeout, tries)
+        return x

@@ -41,6 +41,22 @@ import ratekeeper_client
 import event_relay_client
 
 
+server_names = {
+    "coniguration_server":configuration_client.ConfigurationClient,
+    "event_relay":event_relay_client.EventRelayClient,
+    "log_server":log_client.LoggerClient,
+    "alarm_server":alarm_client.AlarmClient,
+    "volume_clerk":volume_clerk_client.VolumeClerkClient,
+    "file_clerk":file_clerk_client.FileClient,
+    #"db_checkpoint",
+    #"db_deadlock",
+    "inquisitor":inquisitor_client.Inquisitor,
+    "ratekeeper":ratekeeper_client.RatekeeperClient,
+    "library":library_manager_client.LibraryManagerClient,
+    "media":media_changer_client.MediaChangerClient,
+    "mover":mover_client.MoverClient,
+    }
+
 def get_csc():
     # get a configuration server
     config_host = enstore_functions2.default_host()
@@ -106,11 +122,14 @@ def check_event_relay(csc, cmd):
            not info.get('hostip', None) in this_host():
         return
 
+    erc = event_relay_client.EventRelayClient(event_relay_host=info['hostip'],
+                                              event_relay_port=info['port'])
+
     print "Checking event_relay."
 
-    rtn = os.popen("ps -elf | grep event_relay | grep -v grep").readlines()
+    rtn = erc.alive()
 
-    if not rtn:
+    if rtn:
         print "Starting event_relay."
         os.system(cmd)
     else:
@@ -231,39 +250,30 @@ def do_work(intf):
         print "Unable to determine database directory."
         sys.exit(1)
 
-    #Start the servers.
+    #Start the event relay.
 
     if intf.should_start("event_relay"):
         check_event_relay(csc, "python $ENSTORE_DIR/src/event_relay.py &")
-    if intf.should_start("log_server"):
-        check_server(csc, "log_server",
-                     "python $ENSTORE_DIR/src/log_server.py &")
-    if intf.should_start("alarm_server"):
-        check_server(csc, "alarm_server",
-                     "python $ENSTORE_DIR/src/alarm_server.py &")
-    if intf.should_start("volume_clerk"):
-        check_server(csc, "volume_clerk",
-                     "python $ENSTORE_DIR/src/volume_clerk.py &")
+
+    #Start the Berkley DB dameons.
     if intf.should_start("db_checkpoint"):
         check_db(csc, "db_checkpoint",
                  "db_checkpoint -h %s  -p 5 &" % db_dir)
     if intf.should_start("db_deadlock"):
         check_db(csc, "db_deadlock",
                  "db_deadlock -h %s  -t 1 &" % db_dir)
-    if intf.should_start("file_clerk"):
-        check_server(csc, "file_clerk",
-                     "python $ENSTORE_DIR/src/file_clerk.py &")
-    if intf.should_start("inquisitor"):
-        check_server(csc, "inquisitor",
-                     "python $ENSTORE_DIR/src/inquisitor.py &")
-    if intf.should_start("ratekeeper"):
-        check_server(csc, "ratekeeper",
-                     "python $ENSTORE_DIR/src/ratekeeper.py &")
+        
+    for server in ["log_server", "alarm_server", "volume_clerk", "file_clerk",
+                   "inquisitor", "ratekeeper"]:
+        if intf.should_start(server):
+            check_server(csc, server,
+                         "python $ENSTORE_DIR/src/%s.py &" % server)
 
     #Get the library names.
     libraries = csc.get_library_managers({}).keys()
     libraries = map((lambda l: l + ".library_manager"), libraries)
 
+    #Libraries.
     if intf.should_start("library"):
         for library in libraries:
             check_server(csc, library,
@@ -272,6 +282,7 @@ def do_work(intf):
         check_server(csc, intf.just,
                  "python $ENSTORE_DIR/src/library_manager.py %s &" % intf.just)
 
+    #Media changers.
     if intf.should_start("media"):
         for library in libraries:
             media = csc.get_media_changer(library)
@@ -280,7 +291,8 @@ def do_work(intf):
     elif intf.just[-14:] == ".media_changer":
         check_server(csc, intf.just,
                  "python $ENSTORE_DIR/src/media_changer.py %s &" % intf.just)
-        
+
+    #Movers.
     if intf.should_start("mover"):
         for library in libraries:
             for mover in csc.get_movers(library):
