@@ -327,6 +327,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    self.server_d[key].hung_interval = \
 				    self.inquisitor.get_hung_interval(self.server_d[key].name)
 	    event_relay_interval = max(event_relay_interval, self.server_d[key].hung_interval)
+	else:
+	    self.serverfile.dont_monitor(key, cdict.get("host", ""), cdict.get("port", ""))
 
     def update_config_page(self, config):
 	Trace.trace(enstore_constants.INQFILEDBG, "make new html config file")
@@ -338,9 +340,9 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     def stop_monitoring(self, server, skey):
 	# set this so if there is a thread attempting to restart this
 	# server, it will notice and abort the attempt.
+	self.serverfile.dont_monitor(server.name, server.host, server.port)
 	server.delete_me()
 	del self.server_d[skey]
-	self.serverfile.remove_key(server.name)
 
     def update_variables_from_config(self, config):
 	self.inquisitor.update_config(config.get(self.inquisitor.name, {}))
@@ -809,45 +811,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.server_d = {enstore_constants.INQUISITOR : self.inquisitor}
 	event_relay_interval = 0
 
-	cdict = config_d.get(enstore_constants.ALARM_SERVER, {})
-	self.alarm_server = monitored_server.MonitoredAlarmServer(cdict)
-	if self.ok_to_monitor(cdict):
-	    self.server_d[enstore_constants.ALARM_SERVER] = self.alarm_server
-
-	cdict = config_d.get(enstore_constants.LOG_SERVER, {})
-	self.log_server = monitored_server.MonitoredLogServer(cdict)
-	if self.ok_to_monitor(cdict):
-	    self.server_d[enstore_constants.LOG_SERVER]  = self.log_server
-
-	cdict = config_d.get(enstore_constants.FILE_CLERK, {})
-	self.file_clerk = monitored_server.MonitoredFileClerk(cdict)
-	if self.ok_to_monitor(cdict):
-	    self.server_d[enstore_constants.FILE_CLERK]  = self.file_clerk
-
-	cdict = config_d.get(enstore_constants.VOLUME_CLERK, {})
-	self.volume_clerk = monitored_server.MonitoredVolumeClerk(cdict)
-	if self.ok_to_monitor(cdict):
-	    self.server_d[enstore_constants.VOLUME_CLERK]  = self.volume_clerk
-
-	cdict = config_d.get(enstore_constants.CONFIG_SERVER, {})
-	self.config_server = monitored_server.MonitoredConfigServer(cdict)
-	if self.ok_to_monitor(cdict):
-	    self.server_d[enstore_constants.CONFIG_SERVER]  = self.config_server
-
-	for server_key in self.server_d.keys():
-	    server = self.server_d[server_key]
-	    server.hung_interval = self.inquisitor.get_hung_interval(server.name)
-	    event_relay_interval = max(event_relay_interval, server.hung_interval)
-
-	self.lib_man_d = {}
-	self.mover_d = {}
-	self.media_changer_d = {}
-	for key in config_d.keys():
-	    self.add_new_mv_lm_mc(key, config_d, event_relay_interval)
-
-	dispatching_worker.DispatchingWorker.__init__(self, 
-						      (self.inquisitor.hostip,
-						       self.inquisitor.port))
 	self.got_from_cmdline = {}
 	# if no interval to do updates was entered on the command line, get it from the 
 	# configuration file.
@@ -910,6 +873,66 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 						       self.system_tag)
 	self.plotfile = enstore_files.HTMLPlotFile(plot_file, 
 						   self.system_tag)
+
+	cdict = config_d.get(enstore_constants.ALARM_SERVER, {})
+	self.alarm_server = monitored_server.MonitoredAlarmServer(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.ALARM_SERVER] = self.alarm_server
+	else:
+	    self.serverfile.dont_monitor(enstore_constants.ALARM_SERVER,
+					 self.alarm_server.host,
+					 self.alarm_server.port)
+
+	cdict = config_d.get(enstore_constants.LOG_SERVER, {})
+	self.log_server = monitored_server.MonitoredLogServer(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.LOG_SERVER]  = self.log_server
+	else:
+	    self.serverfile.dont_monitor(enstore_constants.LOG_SERVER,
+					 self.log_server.host,
+					 self.log_server.port)
+
+	cdict = config_d.get(enstore_constants.FILE_CLERK, {})
+	self.file_clerk = monitored_server.MonitoredFileClerk(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.FILE_CLERK]  = self.file_clerk
+	else:
+	    self.serverfile.dont_monitor(enstore_constants.FILE_CLERK,
+					 self.file_clerk.host,
+					 self.file_clerk.port)
+
+	cdict = config_d.get(enstore_constants.VOLUME_CLERK, {})
+	self.volume_clerk = monitored_server.MonitoredVolumeClerk(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.VOLUME_CLERK]  = self.volume_clerk
+	else:
+	    self.serverfile.dont_monitor(enstore_constants.VOLUME_CLERK,
+					 self.volume_clerk.host,
+					 self.volume_clerk.port)
+
+	cdict = config_d.get(enstore_constants.CONFIG_SERVER, {})
+	self.config_server = monitored_server.MonitoredConfigServer(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.CONFIG_SERVER]  = self.config_server
+	else:
+	    self.serverfile.dont_monitor(enstore_constants.CONFIG_SERVER,
+					 self.config_server.host,
+					 self.config_server.port)
+
+	for server_key in self.server_d.keys():
+	    server = self.server_d[server_key]
+	    server.hung_interval = self.inquisitor.get_hung_interval(server.name)
+	    event_relay_interval = max(event_relay_interval, server.hung_interval)
+
+	self.lib_man_d = {}
+	self.mover_d = {}
+	self.media_changer_d = {}
+	for key in config_d.keys():
+	    self.add_new_mv_lm_mc(key, config_d, event_relay_interval)
+
+	dispatching_worker.DispatchingWorker.__init__(self, 
+						      (self.inquisitor.hostip,
+						       self.inquisitor.port))
 
 	# set up a signal handler to catch termination signals (SIGKILL) so we can
 	# update our status before dying
