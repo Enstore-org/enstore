@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-
+#
+# $Id$
+#
+# Script to check on drives in D0 AML/2 robot
+#
 import os
 import pprint
 import string
@@ -12,6 +16,8 @@ if __name__=="__main__":
     drives = {}
     command = "dasadmin listd2"
     listd2 = os.popen(command,'r').readlines()
+    command = "enstore sched --show"
+    schedule = os.popen(command,'r').readlines()
     for line in range(0,len(listd2)):
         #print listd2[line]
         tokens = string.split(listd2[line])
@@ -81,6 +87,17 @@ if __name__=="__main__":
         else:
             other.append(drive)
 
+    extern = []
+    for mover in movers:
+        found = 0
+        for drive in drives.keys():
+            if mover == drives[drive]['name']:
+                found = 1
+                break
+        if not found:
+            extern.append(mover)
+    #pprint.pprint(extern)
+
     down.sort()
     unattached.sort()
     sammam.sort()
@@ -89,36 +106,61 @@ if __name__=="__main__":
     testm2.sort()
     testlto.sort()
     other.sort()
+    extern.sort()
 
-    print 'D0 AML/2 - Enstore Drive Report'
+    print 'D0 AML/2 - Enstore Tape Drive Report'
     print timeofday.tod()
-    print "\nFound",len(drives),"defined in the AML/2"
+    print "\nFound",len(drives),"defined in the AML/2 and",len(movers),"movers in Enstore"
+
+    #pprint.pprint(schedule)
+    for line in range(0,len(schedule)):
+        print schedule[line][:-1]
+    print "All down or scheduled-to-be-down items need to be understood"
+
+    print
     print "\nFound",len(sammam),"drives in AML/2 in sammam library"
     print "\nFound",len(testa2),"drives in AML/2 in samm2 library"
+
     print "\nFound",len(down),"drives marked DOWN in AML/2"
     if len(down)!=0:
         print "\t",down
         print "\t Please verify that this is correct"
+
     print "\nFound",len(testa2),"drives in AML/2 in testa2 library"
     if len(testa2)!=0:
         print "\t",testa2
         print "\t Please verify that this is correct"
+
     print "\nFound",len(testm2),"drives in AML/2 in testm2 library"
     if len(testm2)!=0:
         print "\t",testm2
         print "\t Please verify that this is correct"
+
     print "\nFound",len(testlto),"drives in AML/2 in testlto library"
     if len(testlto)!=0:
         print "\t",testlto
         print "\t Please verify that this is correct"
+
     print "\nFound",len(unattached),"drives in AML/2, but not defined to any enstore mover"
     if len(unattached)!=0:
         print "\t",unattached
         print "\tThis can not be correct"
         print "\tEither mark drives as DOWN in AML/2 or attached them to a mover or remove them from AML/2"
+
     print "\nFound",len(other),"drives in non-production libraries"
     for drive in other:
         dinfo = drives[drive]
-        print drive, dinfo['name'],dinfo['host'],dinfo['library'],dinfo['device']
+        print "\t%-15s %-20s %-20s %-30s %-s"%(drive,dinfo['name'],dinfo['host'],dinfo['library'],dinfo['device'])
     if len(other)!=0:
         print "THE MAXIMUM SUGGESTED TIME A DRIVE SHOULD BE IN a NON-PRODUCTION LIBRARY IS 1 DAY."
+
+    print "\nFound",len(extern),"extern drives not in AML/2 but defined to Enstore"
+    for mover in extern:
+        dinfo['name'] = mover
+        dinfo['config'] = cdump['dump'][mover]
+        dinfo['host'] = cdump['dump'][mover].get('host','UNKNOWN')
+        dinfo['library'] = cdump['dump'][mover].get('library',['UNKNOWN',])[0]
+        dinfo['device']  = cdump['dump'][mover].get('device','UNKNOWN')
+        print "\t%-20s %-20s %-30s %-s"%(dinfo['name'],dinfo['host'],dinfo['library'],dinfo['device'])
+    if len(extern)!=0:
+        print "\tPlease verify that this is correct"
