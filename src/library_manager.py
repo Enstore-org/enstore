@@ -980,13 +980,13 @@ class LibraryManagerMethods:
         external_label = label
         Trace.trace(19, "check_write_request %s %s"%(external_label, rq.ticket))
         if wr_en >= rq.ticket["vc"]["file_family_width"]:
-            #if not external_label in vol_veto_list:
+            if (not external_label in vol_veto_list) and   (wr_en > rq.ticket["vc"]["file_family_width"]):
                 #if rq.adminpri < 0: # This allows request with admin pri to go even it exceeds its limit
-            rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
-            Trace.trace(19, "check_write_request: request for volume %s rejected %s"%
-                        (external_label, rq.ticket["reject_reason"]))
-            rq.ticket['status'] = ("VOLS_IN_WORK",None)
-            return rq, rq.ticket['status']
+                rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
+                Trace.trace(19, "check_write_request: request for volume %s rejected %s"%
+                            (external_label, rq.ticket["reject_reason"]))
+                rq.ticket['status'] = ("VOLS_IN_WORK",None)
+                return rq, rq.ticket['status']
 
             
         
