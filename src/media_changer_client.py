@@ -222,8 +222,10 @@ def do_work(intf):
     elif intf.update:
         # get a volume clerk client
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
-        v_ticket = vcc.inquire_vol(intf.view)
-	ticket=mcc.viewvol(v_ticket)
+        v_ticket = vcc.inquire_vol(intf.update)
+	volume = v_ticket['external_label']
+	m_type = v_ticket['media_type']
+	ticket=mcc.viewvol(volume, m_type)
 	del vcc
     elif intf._import:
 	ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
