@@ -1,7 +1,6 @@
 import time
 import errno
 from configuration_client import configuration_client
-import dict_to_a
 import callback
 from udp_client import UDPClient, TRANSFER_MAX
 
@@ -71,13 +70,9 @@ class LibraryManagerClient :
         # the library manager on the library manager's port and read the
         # work queues on that port.
         data_path_socket = callback.library_manager_callback_socket(ticket)
-        workmsg = ""
-        while 1:
-            buf = data_path_socket.recv(65536*4)
-            if len(buf) == 0 : break
-            workmsg = workmsg+buf
+        worklist = callback.read_tcp_socket(data_path_socket,"library "+\
+                                    "manager getwork, reading worklist")
         data_path_socket.close()
-        worklist = dict_to_a.a_to_dict(workmsg)
 
         # Work has been read - wait for final dialog with library manager.
         done_ticket = callback.read_tcp_socket(control_socket, "library "+\

@@ -5,7 +5,6 @@ from volume_clerk_client import VolumeClerkClient
 from file_clerk_client import FileClerkClient
 from udp_client import UDPClient
 import callback
-import dict_to_a
 from driver import RawDiskDriver, FTTDriver
 from media_changer_client import MediaLoaderClient
 import cpio

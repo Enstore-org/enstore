@@ -87,7 +87,7 @@ def read_tcp_socket(sock,errmsg="") :
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
             print errmsg,"pre-recv error:", errno.errorcode[badsock]
-        buf = data_path_socket.recv(65536*4)
+        buf = sock.recv(65536*4)
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
             print errmsg,"post-recv error:", errno.errorcode[badsock]
