@@ -427,7 +427,11 @@ class Request_Queue:
         if ticket['work'] == 'write_to_hsm':
             # backward compatibility
             if not ticket['vc'].has_key('storage_group'):
-               ticket['vc']['storage_group'] = 'unknown' 
+                # special treatment for D0 requests
+                if string.find(ticket['wrapper']['pnfsFilename'], "/pnfs/sam") != -1:
+                    ticket['vc']['storage_group'] = 'D0'
+                else:
+                    ticket['vc']['storage_group'] = 'unknown' 
             # combine volume family
             if ticket['vc']['file_family'] != 'ephemeral':
                 key = string.join((ticket['vc']['storage_group'],
