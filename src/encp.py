@@ -2998,7 +2998,7 @@ def submit_one_request(ticket):
 #mode should only contain two values, "read", "write".
 #def open_local_file(filename, e):
 def open_local_file(work_ticket, e):
-    if is_write(e):  #.outtype == "hsmfile": #writes
+    if is_write(e):
         flags = os.O_RDONLY
     else: #reads
         #Setting the local fd to read/write access on reads from enstore
@@ -3012,22 +3012,47 @@ def open_local_file(work_ticket, e):
 
     #Try to open the local file for read/write.
     try:
-        local_fd = os.open(filename, flags)  #, 0666)
+        local_fd = os.open(filename, flags)
     except OSError, detail:
-        done_ticket = {'status':(e_errors.OSERROR, str(detail))}
+        if getattr(detail, "errno", None) in \
+               [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
+            done_ticket = {'status':(e_errors.FILE_MODIFIED, str(detail))}
+        else:
+            done_ticket = {'status':(e_errors.OSERROR, str(detail))}
+            
+        return done_ticket
+
+    #Try to grab the os stats of the file.
+    try:
+        stats = os.fstat(local_fd)
+    except OSError, detail:
+        if getattr(detail, "errno", None) in \
+               [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
+            done_ticket = {'status':(e_errors.FILE_MODIFIED, str(detail))}
+        else:
+            done_ticket = {'status':(e_errors.OSERROR, str(detail))}
+        return done_ticket
+
+    #Compare the file sizes.
+    if is_read(e) and stats[stat.ST_SIZE] != 0L:
+        #When reading from enstore the local file being written to should
+        # be zero at this point; even if this is a retry the file should have
+        # been clobbered thereby setting the size back to zero.
+        done_ticket = {'status':(e_errors.FILE_MODIFIED,
+                                 "Local file size has changed.")}
+        return done_ticket
+    if is_write(e) and stats[stat.ST_SIZE] != work_ticket['file_size']:
+        #When writing to enstore the local file being read from should
+        # be the real file size.
+        done_ticket = {'status':(e_errors.FILE_MODIFIED,
+                                 "Local file size has changed.")}
         return done_ticket
 
     #Attempt to catch changes to the local file made externally to the
     # current encp process.
     if work_ticket.get("local_inode", 0) != 0:
-        try:
-            stats = os.fstat(local_fd)
-        except OSError, detail:
-            done_ticket = {'status':(e_errors.OSERROR, str(detail))}
-            return done_ticket
-
         if stats[stat.ST_INO] != work_ticket['local_inode']:
-            done_ticket = {'status':(e_errors.USERERROR,
+            done_ticket = {'status':(e_errors.FILE_MODIFIED,
                                      "Local file inode has changed.")}
             return done_ticket
 
@@ -4772,14 +4797,12 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         #maybe this isn't a good idea...
         work_ticket = combine_dict(ticket, work_ticket)
 
-        #done_ticket = open_local_file(work_ticket['infile'], e)
         done_ticket = open_local_file(work_ticket, e)
 
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, listen_socket, route_server,
                                      None, e)
         
-        #if result_dict['status'][0] == e_errors.RETRY:
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket)
             continue
@@ -6512,10 +6535,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
             if e_errors.is_resendable(result_dict['status']):
                 continue
-            #if result_dict['status'][0]== e_errors.RETRY or \
-            #   result_dict['status'][0]== e_errors.RESUBMITTING:
-            #    continue
-            elif result_dict['status'][0]== e_errors.TOO_MANY_RESUBMITS:
+            elif result_dict['status'][0] == e_errors.TOO_MANY_RESUBMITS:
                 for n in range(files_left):
                     failed_requests.append(request_ticket)
                 files_left = 0
@@ -6531,7 +6551,6 @@ def read_hsm_files(listen_socket, route_server, submitted,
         Trace.message(TICKET_LEVEL, pprint.pformat(request_ticket))
 
         #Open the output file.
-        #done_ticket = open_local_file(request_ticket['outfile'], e)
         done_ticket = open_local_file(request_ticket, e)
 
         result_dict = handle_retries(request_list, request_ticket,
@@ -6542,6 +6561,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
             failed_requests.append(request_ticket)
 
             close_descriptors(control_socket, data_path_socket)
+            continue
+        elif not e_errors.is_ok(result_dict['status'][0]):
+            print done_ticket
             continue
         else:
             out_fd = done_ticket['fd']
