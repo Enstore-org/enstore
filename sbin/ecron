@@ -53,7 +53,7 @@ quit() {
   message="$1"
   code=$2
   if [ -n "${message-}" ]; then echo "$1"; fi
-  rmdir $activeFlag   >/dev/null 2>&1
+  if [ "${3:-}" != "keepactive" ] ; then rmdir $activeFlag >/dev/null 2>&1; fi
   done=`date +"%Y-%m-%d:%H:%M:%S"`
   echo "$done $code" >> $histogram
   if test -w /dev/console -a $quiet -ne 1; then
@@ -144,16 +144,16 @@ rm -f $procMail
 echo "$start 10" >> $histogram
 
 #  check whether this proc is enabled
-if [ ! -f ${procInfos}OK ] ; then quit ""  1; fi
+if [ ! -f ${procInfos}OK ] ; then quit ""  -1 ; fi
 
 #  check if a similar proc is already active
 mkdir $activeFlag 1>/dev/null 2>/dev/null
-if [ $? -ne 0 ] ; then quit "" 2; fi
+if [ $? -ne 0 ] ; then quit "" -2 "keepactive"; fi
 
-if [ $# -eq 0 ] ; then quit "USAGE: $basename <enstoreName> <args ... >" 3; fi
+if [ $# -eq 0 ] ; then quit "USAGE: $basename <enstoreName> <args ... >" -3; fi
 
 setup=/usr/local/etc/setups.sh
-if [ ! -f $setup ] ; then quit "$setup not found" 4; fi
+if [ ! -f $setup ] ; then quit "$setup not found" -44; fi
 . $setup
 # should check that enstore was setup properly as well
 setup enstore
