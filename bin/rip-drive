@@ -26,18 +26,7 @@ rip2=131.225.164.2
 rip5=131.225.164.5
 rip9=131.225.13.20
 rip10=131.225.13.22
-rip11=131.225.164.17
-rip12=131.225.164.18
-
-fntt=131.225.164.13
-
 ripsgi=131.225.164.16
-
-samson=131.225.165.8
-
-d0enmvr1=131.225.164.24
-d0enmvr2=131.225.164.25
-d0enmvr3=131.225.164.26
 
 d0ensrv1=131.225.164.21
 d0ensrv2=131.225.164.22
@@ -46,6 +35,9 @@ d0ensrv4=131.225.164.84
 d0ensrv5=131.225.164.85
 d0ensrv6=131.225.164.86
 
+d0enmvr1a=131.225.164.24
+d0enmvr2a=131.225.164.25
+d0enmvr3a=131.225.164.26
 d0enmvr4a=131.225.164.104
 d0enmvr5a=131.225.164.105
 d0enmvr6a=131.225.164.106
@@ -67,55 +59,59 @@ stkensrv2=131.225.13.2
 stkensrv3=131.225.13.3
 stkensrv4=131.225.13.4
 stkenmvr1a=131.225.13.5
-stkenmvr1b=131.225.13.6
 stkenmvr2a=131.225.13.7
-stkenmvr2b=131.225.13.8
 stkenmvr3a=131.225.13.9
-stkenmvr3b=131.225.13.10
 stkenmvr4a=131.225.13.11
-stkenmvr4b=131.225.13.12
-
 stkenmvr5a=131.225.13.13
-stkenmvr5b=131.225.13.14
-fntt=131.225.13.15
 
 dasnode=$d0ensrv4
-acsssnode=$fntt
 
 # these drive nodes should be looked up in the config file!
 
-de01node=$rip2
-de02node=$rip2
+de01node=$rip2 #not connected right now
+de02node=$rip2 #not connected right now
 
-dc03node=$rip2
-dc04node=$rip1
-dc05node=$rip2
-dc06node=$rip1
-
+dc03node=$d0enmvr18a
+dc04node=$d0enmvr18a
+dc05node=$d0enmvr18a
+dc06node=$d0enmvr18a
 
 de13node=$d0enmvr4a
 de14node=$d0enmvr4a
 
 dc15node=$d0enmvr5a
 dc16node=$d0enmvr5a
-
 dc17node=$d0enmvr4a
 
 dc20node=$d0enmvr11a
 dc21node=$d0enmvr11a
-
 dc22node=$d0enmvr11a
 dc23node=$d0enmvr11a
-
 dc24node=$d0enmvr9a
 dc25node=$d0enmvr9a
-
 dc26node=$d0enmvr9a
 dc27node=$d0enmvr9a
-
 dc28node=$d0enmvr5a
 dc29node=$d0enmvr5a
 
+di36node=$d0enmvr12a
+di37node=$d0enmvr12a
+di38node=$d0enmvr13a
+di39node=$d0enmvr13a
+di40node=$d0enmvr14a
+di41node=$d0enmvr14a
+di42node=$d0enmvr15a
+di43node=$d0enmvr15a
+di44node=$d0enmvr16a
+di45node=$d0enmvr16a
+di46node=$d0enmvr17a
+di47node=$d0enmvr17a
+di48node=$d0enmvr6a
+di49node=$d0enmvr6a
+di50node=$d0enmvr7a
+di51node=$d0enmvr7a
+di52node=$d0enmvr8a
+di53node=$d0enmvr8a
 
 ea11node=$stkenmvr1a
 ea12node=$stkenmvr1a
@@ -137,18 +133,21 @@ jde04node=$rip9
 
 # these devices should be looked up in the config file!
 
-de01device=/dev/rmt/tps2d1n
-de02device=/dev/rmt/tps2d2n
-dc03device=/dev/rmt/tps3d1n
-dc04device=/dev/rmt/tps2d2n
-dc05device=/dev/rmt/tps2d3n
-dc06device=/dev/rmt/tps3d4n
+de01device=/dev/rmt/tps2d1n #not connected right now
+de02device=/dev/rmt/tps2d2n #not connected right now
 
-de13device=/dev/rmt/tps2d4n
-de14device=/dev/rmt/tps3d3n
+dc03device=/dev/rmt/tps5d1n
+dc04device=/dev/rmt/tps4d2n
+dc05device=/dev/rmt/tps1d3n
+dc06device=/dev/rmt/tps0d4n
+
+de13device=/dev/rmt/tps2d4n #not connected right now
+de14device=/dev/rmt/tps3d3n #not connected right now
+
 dc15device=/dev/rmt/tps0d4n
 dc16device=/dev/rmt/tps1d6n
 dc17device=/dev/rmt/tps2d5n
+
 dc20device=/dev/rmt/tps0d1n
 dc21device=/dev/rmt/tps1d1n
 dc22device=/dev/rmt/tps4d1n
@@ -159,6 +158,25 @@ dc26device=/dev/rmt/tps4d1n
 dc27device=/dev/rmt/tps5d1n
 dc28device=/dev/rmt/tps4d1n
 dc29device=/dev/rmt/tps5d1n
+
+di36device=/dev/rmt/tps0d1n
+di37device=/dev/rmt/tps0d2n
+di38device=/dev/rmt/tps0d1n
+di39device=/dev/rmt/tps0d2n
+di40device=/dev/rmt/tps0d1n
+di41device=/dev/rmt/tps0d2n
+di42device=/dev/rmt/tps0d1n
+di43device=/dev/rmt/tps0d2n
+di44device=/dev/rmt/tps0d1n
+di45device=/dev/rmt/tps0d2n
+di46device=/dev/rmt/tps0d1n
+di47device=/dev/rmt/tps0d2n
+di48device=/dev/rmt/tps0d1n
+di49device=/dev/rmt/tps0d2n
+di50device=/dev/rmt/tps0d1n
+di51device=/dev/rmt/tps0d2n
+di52device=/dev/rmt/tps0d1n
+di53device=/dev/rmt/tps0d2n
 
 ea11device=/dev/rmt/tps0d1n
 ea12device=/dev/rmt/tps3d1n
@@ -207,7 +225,9 @@ case $drive in
   de13|de14|\
   dc15|dc16|dc17|\
   dc20|dc21|dc22|dc23|dc24|dc25|dc26|dc27|dc28|dc29|\
-  ea11|ea12|ea21|ea22|ea31|\
+  di36|di37|di38|di39|di40|di41|di42|di43|di44|di45|di46|di47|\
+  di48|di49|di50|di51|di52|di53|\
+  ea11|ea12|ea21|ea22|ea31|ea32|ea41|ea42|\
   jde01|jde02|jde03|jde04)
 
        eval node=\$${drive}node
