@@ -33,7 +33,7 @@ mover_index = 0  # index if current mover in the queue
 # add mover to the movers list
 def add_mover(name, address):
     global mover_cnt
-    Trace.trace( 7, "{add_mover " + repr(name) + " " + repr(address))
+    Trace.trace(7, "{add_mover " + repr(name) + " " + repr(address))
     found = 0
     for mv in movers:
 	# check if mover is already in the list
@@ -51,13 +51,13 @@ def add_mover(name, address):
 		 }
 	movers.append(mover)
 	mover_cnt = mover_cnt + 1
-	Trace.trace( 7, "}add_mover " + repr(mover) + "mover count=" + \
+	Trace.trace(7, "}add_mover " + repr(mover) + "mover count=" + \
 		    repr(mover_cnt))
     
 
 # get list of assigned movers from the configuration list
 def get_movers(config_client, lm_name, verbose=0):
-    Trace.trace( 6, "{get_movers for %s"%lm_name )
+    Trace.trace(6, "{get_movers for %s"%lm_name )
     generic_cs.enprint("get_movers", generic_cs.SERVER, verbose,\
 	               generic_cs.ENNONE, generic_cs.ENNONE, lm_name)
     movers_list = config_client.get_movers(lm_name)
@@ -69,7 +69,7 @@ def get_movers(config_client, lm_name, verbose=0):
 	    if (item.has_key('mover') and
 		item.has_key('address')):
 		add_mover(item['mover'], item['address'])
-    Trace.trace( 6, "}get_movers %s"%movers )
+    Trace.trace(6, "}get_movers %s"%movers )
     if movers:
 	generic_cs.enprint(movers, generic_cs.SERVER, verbose,\
 	                   generic_cs.ENNONE, generic_cs.ENNONE, lm_name)
@@ -80,7 +80,7 @@ def get_movers(config_client, lm_name, verbose=0):
 
 # find mover in the list
 def find_mover(mover, mover_list, verbose=0):
-    Trace.trace(4,"{find_mover " + repr(mover) + "in " + repr(mover_list))
+    Trace.trace(14,"{find_mover " + repr(mover) + "in " + repr(mover_list))
     found = 0
     try:
 	for mv in mover_list:
@@ -89,7 +89,7 @@ def find_mover(mover, mover_list, verbose=0):
 		break
 	if not found:
 	    mv = {}
-	Trace.trace(4,"}find_mover "+repr(mv))
+	Trace.trace(14,"}find_mover "+repr(mv))
 	return mv
     except KeyError:
 	Trace.trace(0,"}find_mover "+str(sys.exc_info()[0])+\
@@ -103,7 +103,7 @@ def find_mover(mover, mover_list, verbose=0):
     
 # update mover list
 def update_mover_list(self, mover, state):
-    Trace.trace(3,"{update_mover_list " + repr(mover))
+    Trace.trace(13,"{update_mover_list " + repr(mover))
     mv = find_mover(mover, movers, self.verbose)
     if mv == None:
 	# there is no such mover: return
@@ -125,7 +125,7 @@ def update_mover_list(self, mover, state):
     # change the state of the mover
     mv['state'] = state
     mv['last_checked'] = time.time()
-    Trace.trace(3,"}update_mover_list " + repr(mv))
+    Trace.trace(13,"}update_mover_list " + repr(mv))
     generic_cs.enprint("MOVER_LIST"+repr(movers), generic_cs.SERVER, \
 	               self.verbose)
     """
@@ -147,7 +147,7 @@ def remove_from_summon_list(self, ticket, state):
 	
 # remove all pending works
 def flush_pending_jobs(self, status, *jobtype):
-    Trace.trace(3,"{flush_pending_jobs: status "+repr(status))
+    Trace.trace(13,"{flush_pending_jobs: status "+repr(status))
     generic_cs.enprint("flush_pending_jobs: status"+repr(status),
 		       generic_cs.DEBUG, self.verbose) 
     w = pending_work.get_init()
@@ -166,7 +166,7 @@ def flush_pending_jobs(self, status, *jobtype):
 	    pending_work.delete_job(w)
 	    w1 = pending_work.get_next()
 	    w = w1
-    Trace.trace(3,"}flush_pending_jobs ")
+    Trace.trace(13,"}flush_pending_jobs ")
     
 ##############################################################
 
@@ -174,7 +174,7 @@ work_at_movers = []
 
 # return a list of busy volumes for a given file family
 def busy_vols_in_family (vc, family_name, verbose):
-    Trace.trace(4,"{busy_vols_in_family " + repr(family_name))
+    Trace.trace(14,"{busy_vols_in_family " + repr(family_name))
     vols = []
     # look in the list of work_at_movers
     for w in work_at_movers:
@@ -215,13 +215,13 @@ def busy_vols_in_family (vc, family_name, verbose):
 	 generic_cs.enprint(repr(mv)+"\n"+repr(work_at_movers), \
 			    generic_cs.DEBUG|generic_cs.PRETTY_PRINT, verbose)
 	 os._exit(222)
-     Trace.trace(4,"}busy_vols_in_family ")
+     Trace.trace(14,"}busy_vols_in_family ")
     return vols, work_movers
 
 
 # check if a particular volume with given label is busy
 def is_volume_busy(self, external_label):
-    Trace.trace(4,"{is_volume_busy " + repr(external_label))
+    Trace.trace(14,"{is_volume_busy " + repr(external_label))
     rc = 0
     for w in work_at_movers:
         if w["fc"]["external_label"] == external_label:
@@ -234,25 +234,25 @@ def is_volume_busy(self, external_label):
 	# volume is in unmounting state: can't give it out
 	rc = 1
 
-    Trace.trace(4,"}is_volume_busy " + repr(rc))
+    Trace.trace(14,"}is_volume_busy " + repr(rc))
     return rc
 
 
 # return ticket if given labelled volume in mover queue
 def get_work_at_movers(external_label):
     rc = {}
-    Trace.trace(4,"{get_work_at_movers " + repr(external_label))
+    Trace.trace(14,"{get_work_at_movers " + repr(external_label))
     for w in work_at_movers:
         if w["fc"]["external_label"] == external_label:
 	    rc = w
 	    break
-    Trace.trace(4,"}get_work_at_movers " + repr(rc))
+    Trace.trace(14,"}get_work_at_movers " + repr(rc))
     return rc
 
 ##############################################################
 # is there any work for any volume?
 def next_work_any_volume(self, csc, verbose):
-    Trace.trace(3,"{next_work_any_volume "+repr(csc))
+    Trace.trace(13,"{next_work_any_volume "+repr(csc))
 
     # instantiate volume clerk client
     vc = volume_clerk_client.VolumeClerkClient(csc)
@@ -265,7 +265,7 @@ def next_work_any_volume(self, csc, verbose):
                 w=pending_work.get_next()
                 continue
             # otherwise we have found a volume that has read work pending
-	    Trace.trace(3,"}next_work_any_volume "+ repr(w))
+	    Trace.trace(13,"}next_work_any_volume "+ repr(w))
             # ok passed criteria
 	    # sort requests according file locations
 	    w = pending_work.get_init_by_location()
@@ -288,14 +288,14 @@ def next_work_any_volume(self, csc, verbose):
 					      w["vc"]["wrapper"],
 					      mov["external_label"])
 		if v_info['status'][0] == e_errors.OK:
-		    Trace.trace(3,"{next_work_any_volume MV TO SUMMON"+\
+		    Trace.trace(13,"{next_work_any_volume MV TO SUMMON"+\
 				 repr(mov))
 		    # summon this mover
 		    summon_mover(self, mov, w)
 		    # and return no work to the idle requester mover
 		    return {"status" : (e_errors.NOWORK, None)}
 		else:
-		    Trace.trace(3,"{next_work_any_volume:can_write_volume returned"+repr(v_info['status']))
+		    Trace.trace(13,"{next_work_any_volume:can_write_volume returned"+repr(v_info['status']))
 
             # only so many volumes can be written to at one time
             if len(vol_veto_list) >= w["vc"]["file_family_width"]:
@@ -332,12 +332,12 @@ def next_work_any_volume(self, csc, verbose):
 		w["fc"]["external_label"] = v["external_label"]
 		w["fc"]["size"] = w["wrapper"]["size_bytes"]
 	    except KeyError:
-		Trace.trace(3,"}next_work_any_volume:keyerror "+\
+		Trace.trace(13,"}next_work_any_volume:keyerror "+\
 			    str(sys.exc_info()[0])+\
 			    str(sys.exc_info()[1])+ repr(v))
 		raise "key error"+str(sys.exc_info()[0])+\
 		      str(sys.exc_info()[1])+ repr(v)
-	    Trace.trace(3,"}next_work_any_volume "+ repr(w))
+	    Trace.trace(13,"}next_work_any_volume "+ repr(w))
             #return w
 	    break
 
@@ -377,13 +377,13 @@ def next_work_any_volume(self, csc, verbose):
 		return {"status" : (e_errors.NOWORK, None)}
 	return w
     # if the pending work queue is empty, then we're done
-    Trace.trace(3,"}next_work_any_volume: pending work queue is empty ")
+    Trace.trace(13,"}next_work_any_volume: pending work queue is empty ")
     return {"status" : (e_errors.NOWORK, None)}
 
 
 # is there any work for this volume??  v is a work ticket with info
 def next_work_this_volume(v,verbose):
-    Trace.trace(3,"{next_work_this_volume "+repr(v))
+    Trace.trace(13,"{next_work_this_volume "+repr(v))
     generic_cs.enprint("next_work_this_volume vol="+repr(v), \
 	                       generic_cs.DEBUG, verbose)
     # look in pending work queue for reading or writing work
@@ -398,7 +398,7 @@ def next_work_this_volume(v,verbose):
             w["fc"]["external_label"] = v['vc']["external_label"]
             w["fc"]["size"] = w["wrapper"]["size_bytes"]
             # ok passed criteria, return write work ticket
-	    Trace.trace(3,"}next_work_this_volume " + repr(w))
+	    Trace.trace(13,"}next_work_this_volume " + repr(w))
             return w
 
         # reading from this volume?
@@ -421,12 +421,12 @@ def next_work_this_volume(v,verbose):
 
 	    #print "LOCATION COOKIE:", w["fc"]["location_cookie"]
 	    # return read work ticket
-	    Trace.trace(3,"}next_work_this_volume " + repr(w))
+	    Trace.trace(13,"}next_work_this_volume " + repr(w))
 
             return w
         w=pending_work.get_next()
     # if the pending work queue for this volume is empty, then we're done
-    Trace.trace(3,"}next_work_this_volume: pending work queue for this volume\
+    Trace.trace(13,"}next_work_this_volume: pending work queue for this volume\
     is empty")
     return {"status" : (e_errors.NOWORK, None)}
 
@@ -437,7 +437,7 @@ def summon_mover(self, mover, ticket):
     if not summon: return
     self.enprint("SUMMON "+repr(mover), generic_cs.DEBUG, self.verbose)
     self.enprint("SUMMON TICKET"+repr(ticket), generic_cs.DEBUG, self.verbose)
-    Trace.trace(3,"{summon_mover " + repr(mover))
+    Trace.trace(13,"{summon_mover " + repr(mover))
     # update mover info
     mover['last_checked'] = time.time()
     mover['state'] = 'summoned'
@@ -461,14 +461,14 @@ def summon_mover(self, mover, ticket):
     self.enprint("summon_queue", generic_cs.DEBUG, self.verbose)
     self.enprint(self.summon_queue, generic_cs.DEBUG|generic_cs.PRETTY_PRINT, \
 	         self.verbose)
-    Trace.trace(3,"}summon_mover " + repr(mover))
+    Trace.trace(13,"}summon_mover " + repr(mover))
 
 
 # find the next idle mover
 def idle_mover_next(self,external_label):
     global mover_cnt
     global mover_index
-    Trace.trace(3,"{idle_mover_next ")
+    Trace.trace(13,"{idle_mover_next ")
     idle_mover_found = 0
     j = mover_index
     for i in range(0, mover_cnt):
@@ -503,7 +503,7 @@ def idle_mover_next(self,external_label):
 	mover_index = j
     else:
 	mv = None
-    Trace.trace(3,"}idle_mover_next " + repr(mv))
+    Trace.trace(13,"}idle_mover_next " + repr(mv))
     # return next idle mover
     return mv
 
@@ -516,7 +516,7 @@ def is_volume_suspect(self, external_label):
 
 # send a regret
 def send_regret(self, ticket, verbose):
-    Trace.trace(3,"}send_regret " + repr(ticket['status']))
+    Trace.trace(13,"}send_regret " + repr(ticket['status']))
     # fork off the regret sender
     generic_cs.enprint("FORKING REGRET SENDER",generic_cs.DEBUG, verbose)
     ret = self.fork()
@@ -524,9 +524,9 @@ def send_regret(self, ticket, verbose):
 	try:
 	    generic_cs.enprint("SENDING REGRET "+repr(ticket), generic_cs.DEBUG, \
 	                   verbose)
-	    Trace.trace(3,"{send_regret "+repr(ticket))
+	    Trace.trace(13,"{send_regret "+repr(ticket))
 	    callback.send_to_user_callback(ticket)
-	    Trace.trace(3,"}send_regret ")
+	    Trace.trace(13,"}send_regret ")
 	    generic_cs.enprint("REGRET SENDER EXITS", generic_cs.DEBUG, verbose)
 	except:
 	    generic_cs.enprint("send_regret "+str(sys.exc_info()[0])+\
@@ -606,7 +606,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    if (t - mv['last_checked']) > self.rcv_timeout:
 			if mv['summon_try_cnt'] < self.max_summon_attempts:
 			    # retry summon
-			    Trace.trace(3,"handle_timeout retrying " + repr(mv))
+			    Trace.trace(13,"handle_timeout retrying " + repr(mv))
 			    summon_mover(self, mv, mv["work_ticket"])
 			else:
                             generic_cs.enprint("mover "+repr(mv)+\
@@ -614,7 +614,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                                       generic_cs.DEBUG, 
 					       self.verbose)
 			    # mover is dead. Remove it from all lists
-			    Trace.trace(3,"handle_timeout: mover " +\
+			    Trace.trace(13,"handle_timeout: mover " +\
 					repr(mv) + " is dead")
 			    movers.remove(mv)
 			    self.summon_queue.remove(mv)
@@ -627,7 +627,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				generic_cs.enprint("handle_timeout: no movers left",
 	                                       generic_cs.DEBUG, 
 					       self.verbose)
-				Trace.trace(3,"handle_timeout: no movers left")
+				Trace.trace(13,"handle_timeout: no movers left")
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				pending_work.delete_job(mv["work_ticket"])
 				send_regret(self, mv["work_ticket"], self.verbose)
@@ -665,7 +665,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				generic_cs.enprint("handle_timeout: no movers left",
 	                                       generic_cs.DEBUG, 
 					       self.verbose)
-				Trace.trace(3,"handle_timeout: no movers left")
+				Trace.trace(13,"handle_timeout: no movers left")
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				# to catch rare key error
 				format = "NO Movers:%s "
@@ -704,7 +704,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	requests from another encp clients TO did not work even if
 	movers being summoned did not "respond"
 	"""
-        Trace.trace(3,"{write_to_hsm " + repr(ticket))
+        Trace.trace(13,"{write_to_hsm " + repr(ticket))
 	self.handle_timeout()
 	if movers:
 	    ticket["status"] = (e_errors.OK, None)
@@ -713,7 +713,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
 	if not movers:
-	    Trace.trace(3,"}write_to_hsm: No movers available")
+	    Trace.trace(13,"}write_to_hsm: No movers available")
 	    return
 
         format = "write Q'd %s -> %s : library=%s family=%s requester:%s"
@@ -739,10 +739,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if mv:
 	    # summon this mover
 	    summon_mover(self, mv, ticket)
-	Trace.trace(3,"}write_to_hsm")
+	Trace.trace(13,"}write_to_hsm")
 
     def read_from_hsm(self, ticket):
-	Trace.trace(3,"{read_from_hsm " + repr(ticket))
+	Trace.trace(13,"{read_from_hsm " + repr(ticket))
 	self.enprint("read_from_hsm "+repr(ticket), generic_cs.DEBUG, \
 	             self.verbose)
 	# check if this volume is OK
@@ -760,7 +760,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			   ticket['unique_id'],
 			   ticket['fc']['external_label'],
 			   ticket["status"][0])
-	    Trace.trace(3,"}read_from_hsm: volume has no access")
+	    Trace.trace(13,"}read_from_hsm: volume has no access")
 	    return
 	# if volume mouted on idle mover summon it
 	mv_found = 0
@@ -781,7 +781,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	"""
         #self.enprint("read_from_hsm "+repr(ticket), generic_cs.DEBUG, \
 	#             self.verbose)
-	Trace.trace(3,"{read_from_hsm " + repr(ticket))
+	Trace.trace(13,"{read_from_hsm " + repr(ticket))
 	self.handle_timeout()
 	#self.enprint("MOVERS "+repr(movers), generic_cs.DEBUG, self.verbose)
 	if movers:
@@ -790,7 +790,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    ticket["status"] = (e_errors.NOMOVERS, "No movers")
 	self.reply_to_caller(ticket) # reply now to avoid deadlocks
 	if not movers:
-	    Trace.trace(3,"}read_from_hsm: No movers available")
+	    Trace.trace(13,"}read_from_hsm: No movers available")
 	    return
 
         format = "read Q'd %s -> %s : vol=%s bfid=%s requester:%s"
@@ -820,14 +820,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			     generic_cs.DEBUG, self.verbose)
 		summon_mover(self, mv, ticket)
 
-	Trace.trace(3,"}read_from_hsm ")
+	Trace.trace(13,"}read_from_hsm ")
 	
 
     # mover is idle - see what we can do
     def idle_mover(self, mticket):
 	global mover_cnt
 	
-	Trace.trace(3,"{idle_mover " + repr(mticket))
+	Trace.trace(13,"{idle_mover " + repr(mticket))
         self.enprint("IDLE MOVER "+repr(mticket), generic_cs.DEBUG, \
 	             self.verbose)
 
@@ -889,7 +889,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                                 generic_cs.SERVER, self.verbose)
 			    # skip this mover
 			    self.reply_to_caller({"work" : "nowork"})
-			    Trace.trace(3,"}idle_mover: skipping " + \
+			    Trace.trace(13,"}idle_mover: skipping " + \
 					repr(item))
 			    mov_is_suspect = 1
 			    break
@@ -918,7 +918,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 			pending_work.delete_job(w)
 			send_regret(self, w, self.verbose)
-			Trace.trace(3,"}idle_mover: failed on more than "\
+			Trace.trace(13,"}idle_mover: failed on more than "\
 			 + repr(self.max_suspect_movers)+ " for " + repr(item))
 			return
 		    elif mover_cnt == 1:
@@ -932,7 +932,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					   (e_errors.NOMOVERS, 'Read failed'))
 			#remove volume from suspect volume list
 			self.suspect_volumes.remove(item)
-			Trace.trace(3,"}idle_mover: only one mover in config." \
+			Trace.trace(13,"}idle_mover: only one mover in config." \
 				    + repr(item))
 		    else:
 			# summon mover that can do the work
@@ -967,7 +967,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				   w["fc"]["external_label"],
 				   v['at_mover'][1], v['at_mover'][0])
 		
-		    Trace.trace(3,"}idle_mover: cannot change to 'mounting'"+repr(v['at_mover']))
+		    Trace.trace(13,"}idle_mover: cannot change to 'mounting'"+repr(v['at_mover']))
 		    self.reply_to_caller({"work" : "nowork"})
 		    return
 		else:
@@ -998,7 +998,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                 self.verbose)
             self.enprint(w, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
 	                 self.verbose)
-	    Trace.trace(3,"}idle_mover " + repr(w))
+	    Trace.trace(13,"}idle_mover " + repr(w))
             return
 
         # alas
@@ -1016,7 +1016,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
 	#print "HAVE_BOUND", mticket
-	Trace.trace(3,"{have_bound_volume " + repr(mticket))
+	Trace.trace(13,"{have_bound_volume " + repr(mticket))
         self.enprint("LM:have_bound_volume "+repr(mticket), generic_cs.DEBUG, self.verbose)
         self.enprint(mticket, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
 	             self.verbose)
@@ -1077,7 +1077,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.enprint("Pending Work", generic_cs.SERVER, self.verbose)
             self.enprint(w, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
 	                 self.verbose)
-	    Trace.trace(3,"}have_bound_volume " + repr(w))
+	    Trace.trace(13,"}have_bound_volume " + repr(w))
             return
 
         # if the pending work queue is empty, then we're done
@@ -1105,7 +1105,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				       summon_mover, self, mv, w)
 		    # do not dismount, rather send no work
 		    self.reply_to_caller({'work': 'nowork'})
-		    Trace.trace(3,"}have_bound_volume delayed dismount"+\
+		    Trace.trace(13,"}have_bound_volume delayed dismount"+\
 				repr(w))
 		    return
 		else:
@@ -1141,9 +1141,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				   v['at_mover'][1], 
 				   v['at_mover'][0])
 		
-		    Trace.trace(3,"have_bound_volume: cannot change to 'mounting'"+repr(v['at_mover']))
+		    Trace.trace(13,"have_bound_volume: cannot change to 'mounting'"+repr(v['at_mover']))
 		self.reply_to_caller({"work" : "unbind_volume"})
-		Trace.trace(3,"}have_bound_volume: No work, sending unbind "+\
+		Trace.trace(13,"}have_bound_volume: No work, sending unbind "+\
 			    repr(mv))
 	    
 
@@ -1165,7 +1165,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # THE LIBRARY COULD NOT MOUNT THE TAPE IN THE DRIVE AND IF THE MOVER
     # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
     def unilateral_unbind(self, ticket):
-	Trace.trace(3,"{unilateral_unbind " + repr(ticket))
+	Trace.trace(13,"{unilateral_unbind " + repr(ticket))
 	vc = volume_clerk_client.VolumeClerkClient(self.csc)
 
         # get the work ticket for the volume
@@ -1285,28 +1285,28 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    
 	    # check if there are any pending works and remove them
 	    #flush_pending_jobs(self, (e_errors.NOMOVERS, None))
-	Trace.trace(3,"}unilateral_unbind ")
+	Trace.trace(13,"}unilateral_unbind ")
 
     # what is next on our list of work?
     def schedule(self):
-	Trace.trace(3,"{schedule ")
+	Trace.trace(13,"{schedule ")
         while 1:
             w = next_work_any_volume(self, self.csc, self.verbose)
             if w["status"][0] == e_errors.OK or \
 	       w["status"][0] == e_errors.NOWORK:
-		Trace.trace(3,"}schedule " + repr(w))
+		Trace.trace(13,"}schedule " + repr(w))
                 return w
             # some sort of error, like write
             # work and no volume available
             # so bounce. status is already bad...
             pending_work.delete_job(w)
 	    send_regret(self, w, self.verbose)
-	    Trace.trace(3,"}schedule: Error detected " + repr(w))
+	    Trace.trace(13,"}schedule: Error detected " + repr(w))
             #callback.send_to_user_callback(w)
 
     # load mover list form the configuration server
     def load_mover_list(self, ticket):
-	Trace.trace( 6, "{load_mover_list for %s"%self.name )
+	Trace.trace(6, "{load_mover_list for %s"%self.name )
 	get_movers(self.csc, self.name, self.verbose)
 	ticket['movers'] = movers
 	ticket["status"] = (e_errors.OK, None)
@@ -1315,7 +1315,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # what is going on
     def getwork(self,ticket):
         self.enprint("getwork "+ repr(ticket), generic_cs.SERVER, self.verbose)
-	Trace.trace(3,"{getwork ")
+	Trace.trace(13,"{getwork ")
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
@@ -1333,14 +1333,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         callback.write_tcp_socket(self.control_socket,ticket,
                                   "library_manager getwork, controlsocket")
         self.control_socket.close()
-	Trace.trace(3,"}getwork ")
+	Trace.trace(13,"}getwork ")
         os._exit(0)
 
     # get list of assigned movers 
     def getmoverlist(self,ticket):
         self.enprint("getmoverlist "+ repr(ticket), generic_cs.SERVER, \
 	             self.verbose)
-	Trace.trace(3,"{getmoverlist ")
+	Trace.trace(13,"{getmoverlist ")
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
@@ -1367,7 +1367,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                   "library_manager getmoverlist, \
 				  controlsocket")
         self.control_socket.close()
-	Trace.trace(3,"}getmoverlist ")
+	Trace.trace(13,"}getmoverlist ")
         os._exit(0)
 
     # get Media Changer serving this LM
@@ -1383,7 +1383,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # get list of suspected volumes 
     def get_suspect_volumes(self,ticket):
-	Trace.trace(3,"{get_suspect_volumes ")
+	Trace.trace(13,"{get_suspect_volumes ")
         self.enprint("get_suspect_volumes "+ repr(ticket), generic_cs.SERVER, \
 	             self.verbose)
         ticket["status"] = (e_errors.OK, None)
@@ -1403,12 +1403,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                   "library_manager get_suspect_volumes, \
 				  controlsocket")
         self.control_socket.close()
-	Trace.trace(3,"}get_suspect_volumes ")
+	Trace.trace(13,"}get_suspect_volumes ")
         os._exit(0)
 
     # get list of delayed dismounts 
     def get_delayed_dismounts(self,ticket):
-	Trace.trace(3,"{get_delayed_dismounts ")
+	Trace.trace(13,"{get_delayed_dismounts ")
         self.enprint("get_delayed_dismounts "+repr(ticket),generic_cs.SERVER,
 	             self.verbose)
         ticket["status"] = (e_errors.OK, None)
@@ -1428,14 +1428,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                   "library_manager get_delayed_dismounts, \
 				  controlsocket")
         self.control_socket.close()
-	Trace.trace(3,"}get_delayed_dismounts ")
+	Trace.trace(13,"}get_delayed_dismounts ")
         os._exit(0)
 
 
     # get a port for the data transfer
     # tell the user I'm your library manager and here's your ticket
     def get_user_sockets(self, ticket):
-	Trace.trace(3,"{get_user_sockets " + repr(ticket))
+	Trace.trace(13,"{get_user_sockets " + repr(ticket))
         library_manager_host, library_manager_port, listen_socket =\
                               callback.get_callback()
         listen_socket.listen(4)
@@ -1445,7 +1445,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         data_socket, address = listen_socket.accept()
         self.data_socket = data_socket
         listen_socket.close()
-	Trace.trace(3,"}get_user_sockets " + repr(ticket))
+	Trace.trace(13,"}get_user_sockets " + repr(ticket))
     
     #pass
 
@@ -1453,7 +1453,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def remove_work(self, ticket):
 	try:
 	    id = ticket["unique_id"]
-	    Trace.trace(3,"{remove_work "+repr(id))
+	    Trace.trace(13,"{remove_work "+repr(id))
 	except:
 	    return {"status" : (e_errors.KEYERROR, "Key 'unique_id' does not exist")}
 	try:
@@ -1467,7 +1467,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		format = "Request:%s deleted. Complete request:%s"
 		self.logc.send(e_errors.INFO, 2, format,
 			       repr(w["unique_id"]), repr(w))
-		Trace.trace(3,"{remove_work ")
+		Trace.trace(13,"{remove_work ")
 		self.reply_to_caller({"status" : (e_errors.OK, "Work deleted")})
 		return
 	except:
@@ -1483,7 +1483,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	try:
 	    id = ticket["unique_id"]
 	    pri = ticket["priority"]
-	    Trace.trace(3,"{change_priority "+repr(id)+repr(pri))
+	    Trace.trace(13,"{change_priority "+repr(id)+repr(pri))
 	except:
 	    return {"status" : (e_errors.KEYERROR, "Key 'unique_id' does not exist")}
 	try:
@@ -1495,7 +1495,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		format = "Changed priority to:%s Complete request:%s"
 		self.logc.send(e_errors.INFO, 2, format,
 			       repr(w["encp"]["curpri"]), repr(w))
-		Trace.trace(3,"}change_priority ")
+		Trace.trace(13,"}change_priority ")
 		self.reply_to_caller({"status" : (e_errors.OK, "Priority changed")})
 		return
 	except:
@@ -1540,7 +1540,7 @@ if __name__ == "__main__":
     import sys
     import string
     Trace.init("libman")
-    Trace.trace( 6, "libman called with args "+repr(sys.argv) )
+    Trace.trace(6, "libman called with args "+repr(sys.argv) )
 
     # get an interface
     intf = LibraryManagerInterface()
