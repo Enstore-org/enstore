@@ -217,7 +217,7 @@ class UDPClient:
                         generic_cs.enprint(msg+" resending to "+repr(address)+message)
 
 	    elif tries!=0 and ntries>=tries:  # no reply after requested tries
-                Trace.trace(0,"send quiting,no reply after tries="+repr(ntries))
+                Trace.trace(10,"send quiting,no reply after tries="+repr(ntries))
 		raise errno.errorcode[errno.ETIMEDOUT]
             else:
                 Trace.trace(6,"send no reply after tries="+repr(ntries))

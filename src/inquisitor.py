@@ -631,9 +631,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(4,"}serve_forever ")
 
     def handle_timeout(self):
-	Trace.trace(4,"{handle_timeout ")
+	Trace.trace(14,"{handle_timeout ")
 	self.do_update(0)
-	Trace.trace(4,"}handle_timeout ")
+	Trace.trace(14,"}handle_timeout ")
 
     # our client said to update the enstore system status information
     def update(self, ticket):
