@@ -62,7 +62,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     work_cleaning_list = []
 
     def __init__(self, medch, max_work, csc):
-	self.logdetail = 1
+        self.logdetail = 1
         self.name = medch
         self.name_ext = "MC"
         generic_server.GenericServer.__init__(self, csc, medch)
@@ -75,8 +75,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.mc_config = self.csc.get(medch)
-        dispatching_worker.DispatchingWorker.__init__(self, \
-                         (self.mc_config['hostip'], self.mc_config['port']))
+        dispatching_worker.DispatchingWorker.__init__(self, 
+                                                      (self.mc_config['hostip'], self.mc_config['port']))
         self.idleTimeLimit = 600  # default idle time in seconds
         self.lastWorkTime = time.time()
         self.robotNotAtHome = 1
@@ -222,28 +222,28 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # Do the forking and call the function
     def DoWork(self, function, ticket):
         if not ticket.has_key("function"):
-	   e = 'MISSING FUNCTION KEY'
-	   Trace.log(e_errors.ERROR, "%s"%(e,))
-	   ticket['status'] = e
-	   return e
+           e = 'MISSING FUNCTION KEY'
+           Trace.log(e_errors.ERROR, "%s"%(e,))
+           ticket['status'] = e
+           return e
 
         if ticket['function'] in ("mount", "dismount"):
             if not ticket.has_key("vol_ticket"):
-	       e = 'MISSING VOL_TICKET'
-	       Trace.log(e_errors.ERROR, "%s"%(e,))
-	       ticket['status'] = e
-	       return e
-	    if not ticket.has_key("drive_id"):
-	       e = 'MISSING DRIVE_ID'
-  	       Trace.log(e_errors.ERROR, "%s"%(e,))
-	       ticket['status'] = e
-	       return e
+               e = 'MISSING VOL_TICKET'
+               Trace.log(e_errors.ERROR, "%s"%(e,))
+               ticket['status'] = e
+               return e
+            if not ticket.has_key("drive_id"):
+               e = 'MISSING DRIVE_ID'
+               Trace.log(e_errors.ERROR, "%s"%(e,))
+               ticket['status'] = e
+               return e
             if not ticket['vol_ticket'].has_key("external_label"):
-	       print "MISSING EXTERNAL_LABEL", ticket  ### XXX What is going on?
-	       e = "MISSING EXTERNAL LABEL for %s %s"%(ticket["function"],ticket["drive_id"])
-	       Trace.log(e_errors.ERROR, "%s"%(e,))
-	       ticket['status'] = e
-	       return e
+               print "MISSING EXTERNAL_LABEL", ticket  ### XXX What is going on?
+               e = "MISSING EXTERNAL LABEL for %s %s"%(ticket["function"],ticket["drive_id"])
+               Trace.log(e_errors.ERROR, "%s"%(e,))
+               ticket['status'] = e
+               return e
             Trace.log(e_errors.INFO, 'REQUESTED %s %s %s'%
                       (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
             # if drive is doing a clean cycle, drop request
@@ -329,9 +329,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         # ... if this is a mount, dismount first
         if ticket['function'] == "mount":
             Trace.trace(11, 'mcDoWork> child prepare dismount for %s'%(msg,))
-	    self.logdetail = 0 # don't print a failure  (no tape mounted) message that is really a success
+            self.logdetail = 0 # don't print a failure  (no tape mounted) message that is really a success
             sts=self.prepare( 'Unknown', ticket['drive_id'], ticket['vol_ticket']['media_type'])
-	    self.logdetail = 1 # back on
+            self.logdetail = 1 # back on
             Trace.trace(11,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts[2]))
         if ticket['function'] in ('insert','eject','homeAndRestart','cleanCycle','getVolState'):
             Trace.trace(11, 'mcDoWork> child doing %s'%(msg,))
@@ -431,8 +431,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
             try:
                 sts=apply(function,args)
                 if sts[1] != 0:
-		   if self.logdetail:
-		      Trace.log(e_errors.ERROR, 'function %s %s error %s'%(repr(function),args,sts[2])) 
+                   if self.logdetail:
+                      Trace.log(e_errors.ERROR, 'function %s %s error %s'%(repr(function),args,sts[2])) 
                 if sts[1] == 1 and rpcErrors < 2:  # RPC failure
                     time.sleep(10)
                     rpcErrors = rpcErrors + 1
@@ -565,7 +565,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
                                   min_remaining_bytes, cleanTapeVolumeFamily, 
                                   vol_veto_list, first_found, exact_match=1)  # get which volume to use
         if v["status"][0] != e_errors.OK:
-            Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
+            Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%
                       (v["status"][0],v["status"][1]))
             status = 37
             return v["status"][0], 0, v["status"][1]
@@ -614,6 +614,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 
     def __init__(self, medch, max_work=1, csc=None):
         import STK
+        self.STK = STK
         ###max_work=1 # VERY BAD, BUT THIS IS ALL THAT CAN BE HANDLED CORRECTLY FOR NOW. JAB 2/16/00
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
         self.prepare = self.unload
@@ -631,7 +632,6 @@ class STK_MediaLoader(MediaLoaderMethods):
         print "STK MediaLoader initialized"
 
     def next_seq(self):
-
         # First acquire the seq lock.  Once we have it, we have the exclusive right
         # to bump the sequence.  Lock will (I hope) properly serlialze the
         # waiters so that they will be services in the order of arrival.
@@ -662,10 +662,10 @@ class STK_MediaLoader(MediaLoaderMethods):
             try:
                 sts=apply(function,args)
                 if sts[1] != 0:
-		   if self.logdetail:
+                   if self.logdetail:
                       Trace.log(e_errors.ERROR, 'function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
                 if (sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
-                    fixsts=apply(STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
+                    fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
                     Trace.log(e_errors.INFO, 'Desperation STK.dismount after VOLUME_IN_DRIVE ERROR %s  sts[1] %s  sts[2] %s'%(args,sts[1],sts[2]))
                 if (sts[1] == 54 or          #IPC error
                     sts[1] == 68 or          #IPC error (usually)
@@ -684,25 +684,22 @@ class STK_MediaLoader(MediaLoaderMethods):
              external_label,    # volume external label
              drive,             # drive id
              media_type):       # media type
-        import STK
         seq=self.next_seq()
-        return self.retry_function(STK.mount,external_label,drive,media_type,seq)
+        return self.retry_function(self.STK.mount,external_label,drive,media_type,seq)
     
     # unload volume from the drive
     def unload(self,
                external_label,  # volume external label
                drive,           # drive id
                media_type):     # media type
-        import STK
         seq=self.next_seq()
-        return self.retry_function(STK.dismount,external_label,drive,media_type,seq)
+        return self.retry_function(self.STK.dismount,external_label,drive,media_type,seq)
 
     def getVolState(self, ticket):
-        import STK
         external_label = ticket['external_label']
         media_type = ticket['media_type']
         seq=self.next_seq()
-        rt = self.retry_function(STK.query_volume,external_label,media_type,seq)
+        rt = self.retry_function(self.STK.query_volume,external_label,media_type,seq)
         Trace.trace(11, "getVolState returned %s"%(rt,))
         if rt[3] == '\000':
             state=''
@@ -781,7 +778,7 @@ class Manual_MediaLoader(MediaLoaderMethods):
                                   min_remaining_bytes, cleanTapeVolumeFamily, 
                                   vol_veto_list, first_found, exact_match=1)  # get which volume to use
         if v["status"][0] != e_errors.OK:
-            Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
+            Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%
                       (v["status"][0],v["status"][1]))
             status = 37
             return v["status"][0], 0, v["status"][1]
@@ -1108,8 +1105,8 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
     # define the command line options that are valid
     def options(self):
-        return generic_server.GenericServerInterface.options(self)+\
-               ["log=","max_work="]
+        return generic_server.GenericServerInterface.options(self)+[
+            "log=","max_work="]
 
     #  define our specific help
     def parameters(self):
