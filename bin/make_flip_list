@@ -1,0 +1,55 @@
+#!/bin/sh
+
+. /usr/local/etc/setups.sh
+setup enstore
+
+sun=fntt
+
+cmd1="/usr/bin/rsh $sun -l acsss 'echo eject 0,0,0 \""
+cmd2="\" |/export/home/ACSSS/bin/cmd_proc'"
+
+flip_list=/tmp/flip.list
+tmp_list=/tmp/vol.list
+rm -f $flip_list $tmp_list
+
+work=/diska/write_protect_work
+if [ ! -d $work ]; then
+   echo `date` ERROR. $work does not exist
+   exit 1
+fi
+touch $work/$$ >/dev/null 2>/dev/null
+if [ $? -ne 0 ]; then
+   echo `date` ERROR. Can not write to $work
+   exit 1
+fi
+rm -f $work/$$
+
+get-i() { i=`ls -1U $work | sort -n | tail -n1`
+          if [ -z "$i" ]; then i=1; else i=`expr $i + 1`; fi
+          if [ -z "$i" ]; then i=1; fi # you need 2 of these to get a number
+          echo $i
+        }
+
+python $ENSTORE_DIR/src/readonly_volumes.py >$flip_list
+
+i=`get-i`
+count=0
+vols=""
+cat $flip_list | while read vol type rest; do
+    vols="$vols $vol"
+    count=`expr $count + 1`
+    if [ $count -eq 21 ]; then 
+       echo "$cmd1 $vols $cmd2" >$work/$i
+       i=`expr $i + 1`
+       vols=""
+       count=0
+    fi
+    echo "$vols" >|$tmp_list
+done
+
+i=`get-i`
+
+vols=`cat $tmp_list`
+if [ -n "$vols" ]; then 
+   echo "$cmd1 $vols $cmd2" >$work/$i
+fi
