@@ -11,6 +11,7 @@
      <MonitoredElement Name="numProcessors" Type="Hardware" Host="{%H}"/>
      <MonitoredElement Name="baseTemp"      Type="Hardware" Host="{%H}"/>
      <MonitoredElement Name="fanSpeed"      Type="Hardware" Host="{%H}"/>
+     <MonitoredElement Name="firmware"      Type="Hardware" Host="{%H}"/>
   </System> 
 </For>
 </For>

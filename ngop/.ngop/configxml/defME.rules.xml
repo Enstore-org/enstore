@@ -12,7 +12,7 @@
             </apply>
          </apply>
 </GenericRule>
-<GenericRule Status="Bad" Prio="0" SevLevel="None" >
+<GenericRule Status="Bad" Prio="0" SevLevel="0" >
          <apply>
             <apply>
                <eq/>
@@ -21,6 +21,38 @@
             </apply>
          </apply>
 </GenericRule>
+<GenericRule Status="Error" Prio="0" SevLevel="0" >
+         <apply>
+	   <and/>
+            <apply>
+               <eq/>
+               <ci>State</ci>
+               <cn>1</cn>
+            </apply>
+            <apply>
+               <eq/>
+               <ci>SevLevel</ci>
+               <cn>6</cn>
+            </apply>
+         </apply>
+</GenericRule>
+<GenericRule Status="Warning" Prio="0" SevLevel="0" >
+         <apply>
+           <and/>
+            <apply>
+               <eq/>
+               <ci>State</ci>
+               <cn>1</cn>
+            </apply>
+            <apply>
+               <eq/>
+               <ci>SevLevel</ci>
+               <cn>4</cn>
+            </apply>
+         </apply>
+</GenericRule>
+
+
 <GenericRule Status="Unknown" Prio="0" SevLevel="None" >
          <apply>
             <apply>
