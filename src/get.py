@@ -384,6 +384,10 @@ def main(e):
     t0 = time.time()
     tinfo = {'t0' : t0, 'encp_start_time' : t0}
 
+    #Some globals are expected to exists for normal operation (i.e. a logger
+    # client).  Create them.
+    client = encp.clients()
+
     #Initialize the Trace module.
     Trace.init("GET")
     for x in xrange(6, e.verbose+1):
