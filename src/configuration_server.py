@@ -155,24 +155,28 @@ class ConfigurationDict:
 
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):
+        out_ticket["status"] == (e_errors.OK, None)
 	try:
-	    try:
-		configfile = ticket["configfile"]
-		out_ticket = {"status" : self.load_config(configfile)}
-		if out_ticket["status"] == (e_errors.OK, None):
-		    # send an event relay message 
-		    self.erc.send(self.new_config_message)
-	    except KeyError:
-		out_ticket = {"status" : (e_errors.KEYERROR, "Configuration Server: no such name")}
-	    self.reply_to_caller(out_ticket)
-
-
-	# even if there is an error - respond to caller so he can process it
+            configfile = ticket["configfile"]
+            out_ticket = {"status" : self.load_config(configfile)}
+        except KeyError:
+            out_ticket = {"status" : (e_errors.KEYERROR,
+                                      "Configuration Server: no such name")}
 	except:
             exc,msg,tb=sys.exc_info()
-	    ticket["status"] = str(exc),str(msg)
-	    self.reply_to_caller(ticket)
+            out_ticket = {"status" : (str(exc), str(msg))}
 
+	# even if there is an error - respond to caller so he can process it
+        self.reply_to_caller(out_ticket)
+
+        if out_ticket["status"] == (e_errors.OK, None):
+            # send an event relay message 
+            self.erc.send(self.new_config_message)
+            # Record in the log file the successfull reload.
+            Trace.log(e_errors.INFO, "Configuration reloaded.")
+        else:
+            Trace.log(e_errors.ERROR,
+                      "Configuration reload failed: %s" % out_ticket['status'])
 
     # get list of the Library manager movers
     ## XXX this function is misleadingly named - it gives movers for a particular library
@@ -256,7 +260,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
     def __init__(self, csc, configfile=enstore_constants.DEFAULT_CONF_FILE):
 	self.running = 0
 	self.print_id = MY_NAME
-        print csc
+        #print csc
         # make a configuration dictionary
         cd =  ConfigurationDict()
 
