@@ -138,6 +138,8 @@ class GenericCS:
 	        l_logger = logger
 	else:
 	    l_logger = logger
+	    if l_logger == "":
+	        l_logger = ENNONE
 
 	enprint(msg, msg_bit, verbosity, l_logger, log_severity)
 	Trace.trace(23,"}self.enprint ")
