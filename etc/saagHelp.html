@@ -8,24 +8,22 @@
     <center><h1>Status-At-A-Glance Help</h1></center>
 
     <h1>Overview</h1>
-    <B><I>Status-At-A-Glance</I></B> provides the visual status of an Enstore system separated
-into 4 major sub-systems; the Enstore servers, the storage medium, the network
+    <B><I>Status-At-A-Glance</I></B> provides the visual status of an Enstore system 
+separated into 4 major sub-systems; the Enstore servers, the storage library, the network
 between the computers on which Enstore is running and any alarms that have been raised.
-The status for each sub-system as a whole, is presented in a summary section
-at the top of the page followed by the status for individual items within each sub-system.  The
-<I>alarms</I> sub-system does not have a separate section as it represents a toggle of whether
-alarms exist or not.  Once a
+In addition a more detailed status is given for each of the Enstore servers/movers that belong
+to the system.  Once a
 problem has been identified it is expected that the more complete and detailed view of the 
 <A HREF="status_enstore_system.html">Enstore servers</A>, the 
-<A HREF="active_monitor.html">network</A> and the <A HREF="enstore_alarms.html">alarms</A>
+<A HREF="enstore_saag_network.html">network</A> and the <A HREF="enstore_alarms.html">alarms</A>
 will be examined.
 <P>
 There are 4 levels of status represented on this page -<BR>
 <ul>
-<li><I>No problems</I> indicated by a <IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0">
-<li><I>Minor problem</I> indicated by a <IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0">
-<li><I>Major problem</I> indicated by a <IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0">
-<li><I>Situation under investigation</I> indicated by a <IMG src="star.gif" height="15" width="15" alt="star.gif" border="0">
+<li><I>No problems</I> indicated by a <IMG src="greenball.gif" height="15" width="15" alt="green ball" border="0">
+<li><I>Minor problem</I> indicated by a <IMG src="yelball.gif" height="15" width="15" alt="yel ball" border="0">
+<li><I>Major problem</I> indicated by a <IMG src="redball.gif" height="15" width="15" alt="red ball" border="0">
+<li><I>Situation under investigation</I> indicated by a <IMG src="star.gif" height="15" width="15" alt="question mark" border="0">
 </ul>
 
 In general a <I>Minor problem</I> will indicate that the Enstore system is still operational as a
@@ -50,7 +48,8 @@ Enstore system and the servers that run on each of them.
 
 <h1>Enstore Overall Status</h1>
 This section presents a summary of the information on the rest of the page.  The following table
-defines what the different status levels mean for each of the sub-systems.<BR>
+defines what the different status levels mean for each of the sub-systems.  Currently the colored
+ball next to the media library can only be controlled manually.<BR>
 <BR>
 
 <TABLE align="CENTER" cellpadding="3" cellspacing="5" border="2" width="100%" bgcolor="#DFF0FF">
@@ -69,12 +68,6 @@ defines what the different status levels mean for each of the sub-systems.<BR>
 	</ul></TD>
     <TD>At least one element is marked <IMG src="star.gif" height="15" width="15" alt="star.gif" border="0"></TD>
 </TR>
-<TR><TD>network</TD>
-    <TD>All elements of the network are marked <IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0"></TD>
-    <TD>At least one element of the network is marked <IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0"></TD>
-    <TD>&nbsp;</TD>
-    <TD>&nbsp;</TD>
-</TR>
 <TR><TD>alarms</TD>
     <TD>No alarms have been raised</TD>
     <TD>One or more alarms have been raised</TD>
@@ -86,7 +79,7 @@ defines what the different status levels mean for each of the sub-systems.<BR>
 A <IMG src="checkmark.gif" height="15" width="15" alt="checkmark.gif" border="0"> next to one of
 these sub-systems, indicates the entire sub-system will be unavailable.
 <P>
-If one of these sub-systems is <strike>crossed out</strike>, the entire sub-system can be 
+If enstore is <strike>crossed out</strike>, the entire sub-system (the servers/movers) can be 
 considered to be down.
 
 <h1>Enstore Individual Server Status</h1>
@@ -109,11 +102,11 @@ configdict['system'] = { 'allowed_down' : {'log_server' : [1,10],
 <BR><BR>
 then the log_server will be marked as a major problem 
 (<IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0">) the first time it 
-does not appear to be down.
+appears to be down.
 However, the following happens with respect to any library_manager -
 <BR><BR>
 <TABLE align="CENTER" cellpadding="3" cellspacing="5" border="2" bgcolor="#DFF0FF">
-<TR><TH>Num times down in a row</TH><TH>marker used</TH></TR>
+<TR><TH>Num times seen down in a row</TH><TH>marker used</TH></TR>
 <TR><TD>1</TD><TD><IMG src="star.gif" height="15" width="15" alt="star.gif" border="0"></TD></TR>
 <TR><TD>2</TD><TD><IMG src="redball.gif" height="15" width="15" alt="redball.gif" border="0"></TD></TR>
 </TABLE>
@@ -194,20 +187,12 @@ example, n = 2 for the library_manager).
 
 </TABLE>
 
-<h1>Enstore Network Status</h1>
-This section contains an element for all nodes mentioned in the configuration file.  A node may
-be explicitly listed as being excluded from this measurement.  An <I>encp-like</I> connection is
-made between the <B>Base Node</I> and each of the other nodes.  The data communications rate 
-between the two nodes is measured.  If the non-base node does not respond to the connection or if
-the data transfer rate between the two is 0.0, then the node is marked as 
-<IMG src="yelball.gif" height="15" width="15" alt="yelball.gif" border="0">.  Otherwise the node 
-is marked <IMG src="greenball.gif" height="15" width="15" alt="greenball.gif" border="0">.  
 <BR><BR>
 <HR><a href="http://www.fnal.gov/pub/disclaim.html">Legal Notices</a>
     <hr>
 <!-- Created: Tue May  9 11:01:16 CDT 2000 -->
 <!-- hhmts start -->
-Last modified: Fri Feb  2 15:24:33 CST 2001
+Last modified: Mon Mar 18 16:25:45 CST 2002
 <!-- hhmts end -->
   </body>
 </html>
