@@ -398,7 +398,7 @@ class Mover:
             self.send_user_last({"status" : "Mover: Retry: drive_error "+msg})
             #since we will kill ourselves, tell the library manager now....
 
-            ticket = send_library_manager_server(log_client.INFO,2,"READ"+str(ticket))
+            ticket = self.logc.send( log_client.INFO,2,"READ"+str(ticket) )
 
             raise "device panic -- I want to do no harm to media"
 
