@@ -1605,6 +1605,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         if failed: return
         if do_crc:
+            if self.tr_failed: return # do not calculate CRC if net thead detected a failed transfer
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
                         (self.buffer.complete_crc, self.file_info['complete_crc']))
             if self.buffer.complete_crc != self.file_info['complete_crc']:
@@ -1617,6 +1618,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                               (self.file_info['bfid'],sanity_cookie, self.buffer.complete_crc))
                     self.fcc.set_crcs(self.file_info['bfid'], sanity_cookie, self.buffer.complete_crc)
                 else:
+                    if self.tr_failed: return  # do not raise alarm if net thead detected a failed transfer
                     Trace.alarm(e_errors.ERROR, "read_tape CRC error")
                     self.transfer_failed(e_errors.CRC_ERROR, None)
                 return
