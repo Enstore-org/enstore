@@ -62,6 +62,7 @@ right_file /home/enstore/enstore/etc/root.k5login /root/.k5login
 right_file /home/enstore/enstore/etc/hosts.allow /etc/hosts.allow
 right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
 right_file /home/enstore/enstore/etc/hosts /etc/hosts
+right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
 right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
 
 #rpm -Va | $EGREP bin | | $EGREP -v '/usr/bin/X11|/usr/local/bin|/bin/bash|/usr/bin/bashbug|/usr/bin/db_|/usr/bin/run-parts|\.h$|\.h$|/bin/login'
