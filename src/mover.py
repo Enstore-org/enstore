@@ -1777,6 +1777,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def assert_vol(self):
         ticket = self.current_work_ticket
         self.t0 = time.time()
+        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                         server_address=ticket['vc']['address'])
         self.mount_volume(ticket['vc']['external_label'])
         #At this point the media changer claims the correct volume is loaded;
         have_tape = 0
@@ -1827,6 +1829,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
 
         self.dismount_volume(after_function=self.idle)
+
+        
         
     def finish_transfer_setup(self):
         Trace.trace(10, "client connect returned: %s %s" % (self.control_socket, self.client_socket))
@@ -2517,14 +2521,16 @@ class Mover(dispatching_worker.DispatchingWorker,
 	    # we have a connection
             fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags)
             Trace.trace(10, "connected")
-            # for ASSERT finish here
-            if self.setup_mode == ASSERT:
-               listen_socket.close()
-               self.run_in_thread('finish_transfer_setup_thread', self.assert_vol)
-               return
-
             try:
+                if self.setup_mode == ASSERT:
+                    ticket['status'] = (e_errors.OK, None)
                 callback.write_tcp_obj(control_socket, ticket)
+                # for ASSERT finish here
+                if self.setup_mode == ASSERT:
+                    listen_socket.close()
+                    self.control_socket  = control_socket
+                    self.run_in_thread('finish_transfer_setup_thread', self.assert_vol)
+                    return
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR,"error in connect_client: %s" % (detail,))
@@ -2762,6 +2768,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         status = mcc_reply.get('status')
         if status and status[0]==e_errors.OK:
             self.current_volume = None
+            if self.setup_mode == ASSERT:
+                self.send_client_done(self.current_work_ticket, e_errors.OK, None)
+
             if self.draining:
                 #self.state = OFFLINE
                 self.offline()
