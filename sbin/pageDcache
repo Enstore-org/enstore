@@ -204,13 +204,13 @@ case $gang in
 		    dcache_saag="dcache_d0"
 		    get_ports
 		    get_ticket
-		    #`pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
-		    #`pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
-		    `pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
-		    #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
+		    `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+		    `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
+		    #`pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
+		    pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
 		    # now test kftp with certificates
-		    #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wpc $wac cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
-		    #pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
+		    pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wpc $wac cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
+		    pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		    ;;
 	 esac
          ;;
