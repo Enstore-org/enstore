@@ -36,6 +36,27 @@ def capacity_str(x):
         x = -x
     return "%6.2f%s"%(x,suffix)
 
+KB=1024
+MB=KB*KB
+GB=MB*KB
+
+def my_atol(s):
+    s_orig = s
+    mult = 1
+    if not s:
+        raise ValueError, s_orig
+    e = string.lower(s[-1])
+    if e=='b':
+        s = s[:-1]
+        if not s:
+            raise ValueError, s_orig
+        e = string.lower(s[-1])
+    if e in 'lkmg':
+        s = s[:-1]
+        mult = {'l':1, 'm':MB, 'k':KB, 'g':GB}[e]
+    x = float(s)*mult
+    return(long(x))
+            
 
 class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
@@ -590,7 +611,7 @@ def do_work(intf):
     elif intf.add:
         print repr(intf.args)
         library, file_family, storage_group, media_type, capacity, remaining = intf.args[:6]
-        capacity, remaining = string.atol(capacity), string.atol(remaining)
+        capacity, remaining = my_atol(capacity), my_atol(remaining)
         if media_type == 'null': #media type
             wrapper = "null"
         else:
