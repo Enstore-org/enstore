@@ -93,7 +93,7 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
         cmd.uscsi_cdblen=nCmd;
         cmd.uscsi_bufaddr=(caddr_t)pcRdWr;
         cmd.uscsi_buflen=nRdWr;
-        cmd.uscsi_flags=USCSI_SILENT|(writeflag?USCSI_WRITE:USCSI_READ);
+        cmd.uscsi_flags=nRdWr?(USCSI_SILENT|(writeflag?USCSI_WRITE:USCSI_READ)):0;
 	cmd.uscsi_timeout=delay;
 #ifdef ARQ
         cmd.uscsi_flags|=USCSI_RQENABLE;
