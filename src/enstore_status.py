@@ -175,11 +175,13 @@ class EnStatus:
 	dict[enstore_constants.DELTA] = repr(encp['delpri'])
 	dict[enstore_constants.AGETIME] = repr(encp['agetime'])
 
-	wrapper = mover['wrapper']
-	if wrapper['fullname'] == "/dev/null":
-	    dict[enstore_constants.FILE] = wrapper['pnfsFilename']
+	# always try to get the users file name
+	if dict[enstore_constants.WORK] == enstore_constants.READ:
+	    dict[enstore_constants.FILE] = mover[enstore_constants.OUTFILE]
 	else:
-	    dict[enstore_constants.FILE] = wrapper['fullname']
+	    dict[enstore_constants.FILE] = mover[enstore_constants.INFILE]
+		
+	wrapper = mover['wrapper']
 	dict[enstore_constants.BYTES] = add_commas(str(wrapper['size_bytes']))
 
 	# 'mtime' not found in reads
