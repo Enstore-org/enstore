@@ -331,7 +331,13 @@ right_file /home/enstore/enstore/bin/enstore-boot /etc/rc.d/init.d/enstore-boot
 chmod 755 /etc/rc.d/rc.local # just force this
 chmod 755 /etc/rc.d/rc.sysinit # just force this
 chmod 755 /etc/rc.d/init.d/enstore-boot # just force this
-right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
+# there needs to be more login for xinetd or inetd files
+if [ -r "/etc/inetd.conf" ]; then
+    right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
+elif [ ! -r "/etc/xinetd" ]; then
+    # neither file existed, this is a problem
+    enstore alarm --raise --severity "A" --root-error "MISSING CONFIGURATION: no inetd.conf or xinetd.conf in /etc"
+fi
 right_file /home/enstore/enstore/etc/enstore.bashrc /home/enstore/.bashrc
 right_file /home/enstore/enstore/etc/enstore.bash_profile /home/enstore/.bash_profile
 right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
