@@ -16,17 +16,19 @@ import tkFont
 
 #Set up paths to find our private copy of tcl/tk 8.3
 ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
+TCLTK_DIR=None
 if ENSTORE_DIR:
     TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
-else:
+if TCLTK_DIR is None or not os.path.exists(TCLTK_DIR)
     TCLTK_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','TclTk'))
 os.environ["TCL_LIBRARY"]=os.path.join(TCLTK_DIR, 'tcl8.3')
 os.environ["TK_LIBRARY"]=os.path.join(TCLTK_DIR, 'tk8.3')
 sys.path.insert(0, os.path.join(TCLTK_DIR, sys.platform))
 
+IMAGE_DIR=None
 if ENSTORE_DIR:
     IMAGE_DIR=os.path.join(ENSTORE_DIR, 'etc', 'Images')
-else:
+if IMAGE_DIR is None or not os.path.exists(IMAGE_DIR):
     IMAGE_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','Images'))
 
 ##print "IMAGE_DIR=", IMAGE_DIR
