@@ -55,6 +55,27 @@ def getps(mover):
             ret.append(line)
     return ret
 
+def get_sched():
+    sched_dict = {}
+    key = None
+    lines = ssh(os.environ['ENSTORE_CONFIG_HOST'],
+                '. /usr/local/etc/setups.sh;setup enstore;enstore sched --show')
+    lines = string.split(lines,'\n')
+    for line in lines:
+        words = string.split(line)
+        if not words:
+            continue
+        if words[0]=='Enstore':
+            if len(words)<3:
+                continue
+            key = string.lower(words[2])
+        elif words[0][0]=='-':
+            continue
+        else:
+            if key:
+                sched_dict[key] = sched_dict.get(key,[]) + [words[0]]
+    return sched_dict
+    
 def reset(mover, reason=None):
     now = time.time()
     last_reset = reset_times.get(mover,0)
@@ -182,7 +203,6 @@ def check(mover):
     else:
         print
 
-
     if state=='ERROR':
         print mover,'\t', status
         return -1,  "Mover in ERROR state.\n\nFull status: %s" % pprint.pformat(d)
@@ -219,8 +239,14 @@ def main(reset_on_error=0):
     movers = get_movers()
     while 1:
         print time.ctime(time.time())
+        scheduled = get_sched()
+        known_down = scheduled.get('known',[])
         all_ok = 1
         for mover in movers:
+            if mover in known_down:
+                print "%-30s"%(mover,),
+                print \t "known down"
+                continue
             noreset = 1
             err, reason = check(mover)
             if err:
