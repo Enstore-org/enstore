@@ -725,9 +725,11 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'new' : new }
         return self.send(ticket,timeout,retry)
         
-    def delete_volume(self, vol, timeout=60, retry=10):
+    def delete_volume(self, vol, check_state=None, timeout=60, retry=10):
         ticket = {'work': 'delete_volume',
                   'external_label': vol}
+        if check_state != None:
+            ticket['check_state'] = check_state
         return self.send(ticket,timeout,retry)
 
     def erase_volume(self, vol, timeout=60, retry=1):

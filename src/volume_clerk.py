@@ -411,7 +411,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     #
     # if recycle flag is set, vol will be redeclared as a new volume
 
-    def __delete_volume(self, vol, recycle = 0):
+    def __delete_volume(self, vol, recycle = 0, check_state = 1):
         # check existence of the volume
         record = self.dict[vol]
         if not record:
@@ -435,13 +435,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.log(e_errors.ERROR, msg)
             return e_errors.ERROR, msg
 
-        # check its state
-        ret = self.get_media_changer_state(record["library"],
+        if check_state:
+            # check its state
+            ret = self.get_media_changer_state(record["library"],
                                            record["external_label"],
                                            record["media_type"])
 
-        if ret != 'unmounted' and ret != 'no_mc' and ret != '' and ret != 'E' and ret != 'U':
-            return e_errors.CONFLICT,"volume state must be unmounted or '' or 'E' or 'U'. state %s"%(ret)
+            if ret != 'unmounted' and ret != 'no_mc' and ret != '' and ret != 'E' and ret != 'U':
+                return e_errors.CONFLICT,"volume state must be unmounted or '' or 'E' or 'U'. state %s"%(ret)
 
         # delete the volume
         # check if <vol>.deleted exists, if so, erase it.
@@ -526,7 +527,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        ticket['status'] = self.__delete_volume(vol)
+        if ticket.has_key('check_state'):
+            ticket['status'] = self.__delete_volume(vol, check_state = ticket['check_state'])
+        else:
+            ticket['status'] = self.__delete_volume(vol)
         self.reply_to_caller(ticket)
         return
 
