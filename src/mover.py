@@ -1044,8 +1044,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         try:
             self.wrapper = __import__(self.wrapper_type + '_wrapper')
-        except ImportError, detail:
-            Trace.log(e_errors.ERROR, "%s"%(detail,))
+        except:
+            exc, msg, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "error importing wrapper: %s %s" %(exc,msg))
 
         if not self.wrapper:
             msg = e_errors.EPROTO, "Illegal wrapper type %s" % (self.wrapper_type)
