@@ -258,6 +258,9 @@ def do_work(intf):
     logthis(e_errors.INFO, "Start file backup")
     os.system("enstore file --backup")
     logthis(e_errors.INFO, "End file backup")
+    # this is a hack
+    if pgdb:
+        os.system("mv %s/*.tar %s"%(jouHome, dbHome))
     logthis(e_errors.INFO, "Start moving to archive")
     archive_backup(hst_bck,hst_local,dir_bck)
     logthis(e_errors.INFO, "Stop moving to archive")
