@@ -3890,12 +3890,21 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                         
             #Check control socket for error.
             if read_fd:
-                socket_dict = receive_final_dialog(control_socket)
-                socket_status = socket_dict.get('status', (e_errors.OK , None))
-                request_dictionary = combine_dict(socket_dict,
-                                                  request_dictionary)
-                Trace.log(e_errors.WARNING,
-                          "Control socket status: %s" % (socket_status,))
+                #socket_dict = receive_final_dialog(control_socket)
+                #socket_status = socket_dict.get('status', (e_errors.OK ,None))
+                #request_dictionary = combine_dict(socket_dict,
+                #                                  request_dictionary)
+
+                #Don't read the message.  Just determine if the socket is
+                # still open.  Reading the message with short files can
+                # read the final dialog early and give a false error.
+                if len(control_socket.recv(1, socket.MSG_PEEK)) == 0:
+                    socket_status = (e_errors.NET_ERROR,
+                                     "Control socket error: %s" %
+                                     os.strerror(errno.ENOTCONN))
+                    socket_dict = {'status':socket_status}
+                    Trace.log(e_errors.WARNING,
+                              "Control socket status: %s" % (socket_status,))
 
     #Just to be paranoid check the listening socket.  Check the current
     # socket status to avoid wiping out an error.
