@@ -282,8 +282,7 @@ if __name__ == '__main__':
 
 		# though it is not necessary, check it anyway
 		if vol['media_type'] != '9940':
-			print 'not a 9940 media ... ERROR'
-			continue
+			print 'not a 9940 media ...',
 
 		bfids = fcc.get_bfids(v2).get('bfids')
 		if bfids == None:	# impossible
