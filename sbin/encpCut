@@ -27,7 +27,6 @@ steps:
 1. cvs directory check
 2. cd modules - make clean all
 3. cd src - make clean encp
-3. cvs commit
 4. cvs tag
 5. sdssmake install
 6. ups undeclare
@@ -151,7 +150,7 @@ fi
 
 if [ -z "${REV-}" ] ; then
    Step="next revision"
-   last=`cvs status -v Makefile | grep \(revision: | grep $UNAME | head -1  | sed -e 's/^[ ]*//'`
+   last=`cvs status -v Makefile | grep \(revision: | grep $product | head -1  | sed -e 's/^[ ]*//'`
    check_status $? "cvs status -v Makefile"
    if [ -z "${last-}" ] ; then
      echo "revision info not available via cvs - defaulting to v0_0 as last known revision"
@@ -170,6 +169,7 @@ fi
 if [ -z "${newDIR-}" ] ; then
    case `uname -n` in
       airedale*) newDIR=/home/products/$product;;
+      pcfarm9*)  newDIR=/products/$product;;
       *)         newDIR=/p/$UNAME/$product;;
    esac
    echo "Install directory not specified - Defaulting to install directory of $newDIR"
@@ -252,15 +252,8 @@ for try in list doit; do
            fi
            ;;
 
-        3) echo "Step $Step cvs commit from `pwd` starting at `date`"
-           if [ "$try" = "doit" ] ; then
-              cvs commit -m "Changes when cutting $REV on $UNAME"
-              check_status $? "cvs commit"
-           fi
-           ;;
 
-
-        4) TAG=${REV}_${UNAME}
+        4) TAG=${REV}_${product}
            echo "Step $Step cvs tag $TAG starting at `date`"
            if [ "$try" = "doit" ] ; then
               cvs tag $TAG
