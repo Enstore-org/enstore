@@ -8,7 +8,7 @@ rm -f [1-9].out
 rm -f obj.dot
 rm -f obj.ps
 
-grep -h '^class.*\:' ../[a-z]*.py        > 1.out
+grep -h '^class.*\:' ${ENSTORE_DIR}/src/[a-z]*.py        > 1.out
 sed -e  's/class//g'             < 1.out > 2.out
 sed -e  's/://g'                 < 2.out > 3.out
 sed -e  's/pass//g'              < 3.out > 4.out

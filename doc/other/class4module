@@ -1,5 +1,5 @@
 #!/bin/sh
-files=../*.py
+files=${ENSTORE_DIR}/src/*.py
 
 rm -f *.out *.known *.dot
 
