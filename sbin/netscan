@@ -1,5 +1,6 @@
 #!/bin/sh
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+# this is cheap argument processing. Must be in this order when checking.
 if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
 if [ "${1:-}" = "-q" ] ; then QUIET=1; shift; else QUIET=0; fi
 
@@ -57,6 +58,9 @@ RPM="/bin/rpm"
 IFDOWN="/etc/sysconfig/network-scripts/ifdown"
 IFUP="/etc/sysconfig/network-scripts/ifup"
 FARMLETS="/home/enstore/enstore/sbin/farmlets"
+KILL="/bin/kill"
+SLEEP="/bin/sleep"
+MKDIR="/bin/mkdir"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`/home/enstore/enstore/sbin/gang`
@@ -73,7 +77,7 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
         }
 
 # function to compare files and complain if they are not the same
-right_file() { if [ ! -r $1 -o ! -r $2 ]; then 
+right_file() { if [ ! -r $1 -o ! -r $2 ]; then
                   msg1="BAD CONFIGURATION: $1 $2  do not both exist"
                   logit "$msg1"
                   if [ $ALARM -eq 1 ]; then
@@ -226,16 +230,29 @@ esac
 
 
 # try to start - but if one netscan already running, then exit
-mkdir $ACTIVE 1>/dev/null 2>/dev/null
+$MKDIR $ACTIVE 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ] ; then
-   msg="ERROR: netscan on $node already ACTIVE... exiting"
-   logit "$msg"
-   if [ $ALARM -eq 1 ]; then
-      enstore alarm --raise --severity "A" --root-error "$msg"
+   # ok, this is terrible..., but I don't know what else to do.  Dang kerberos!
+   # the most likely thing that has failed, or hung is the task that access the net.  Kill it.
+   $PS axwww | $EGREP farmlets|$EGREP -v grep| while read pid line; do
+      $ECHO $KILL -9 $pid $line >>$LOG 2>&1
+      $ECHO $KILL -9 $pid $line
+      $KILL -9 $pid
+   done;
+   $SLEEP 30
+   $MKDIR $ACTIVE 1>/dev/null 2>/dev/null
+   if [ $? -ne 0 ] ; then
+     msg="ERROR: netscan on $node already ACTIVE... exiting"
+     logit "$msg"
+     if [ $ALARM -eq 1 ]; then
+        enstore alarm --raise --severity "A" --root-error "$msg"
+     fi
+     exit 1
+   else
+     logit "netscan starting"
    fi
-   exit 1
 else
-   logit "netscan starting"
+  logit "netscan starting"
 fi
 
 
@@ -329,18 +346,9 @@ $ECHO "$dflines" | while read a b c d e rest; do
 done
 
 
-# check that farmlets match
-msg="`$FARMLETS` 2>&1"
-if [ $? -ne 0 ]; then
-   logit "$msg"
-elif [ $QUIET -ne 1 ]; then
-   logit  "$msg"
-fi
-
-
 # check that we have a check_watchdog_reset.py running in the crontab:
 if [ `$EGREP -c check_watchdog_reset.py /var/spool/cron/root` -ne 1 ]; then
-   msg="/var/spool/cron/root is missing check_watchdog_reset.py or it is misconfigured" 
+   msg="/var/spool/cron/root is missing check_watchdog_reset.py or it is misconfigured"
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
@@ -350,7 +358,7 @@ fi
 
 # check that we have a ntpset running in the crontab:
 if [ `$EGREP -c ntpset /var/spool/cron/root` -ne 1 ]; then
-   msg="/var/spool/cron/root is missing ntpset or misconfigured" 
+   msg="/var/spool/cron/root is missing ntpset or misconfigured"
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
@@ -360,7 +368,7 @@ fi
 
 # check that we have a netscan running in the crontab:
 if [ `$EGREP -c "netscan -a -q" /var/spool/cron/root` -ne 1 ]; then
-   msg="/var/spool/cron/root is missing netscan or misconfigured" 
+   msg="/var/spool/cron/root is missing netscan or misconfigured"
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
@@ -416,6 +424,19 @@ $ECHO "$N" | while read command pid rest; do
       fi
     fi
 done
+
+
+
+#+++++++++++++++++++++++ tasks that go over network. Can hang sometimes. Do this last.
+
+# check that farmlets match
+msg="`$FARMLETS` 2>&1"
+if [ $? -ne 0 ]; then
+   logit "$msg"
+elif [ $QUIET -ne 1 ]; then
+   logit  "$msg"
+fi
+
 
 
 
