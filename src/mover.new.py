@@ -71,7 +71,7 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	  e_errors.WRITE_BADMOUNT,
 	  e_errors.WRITE_BADSPACE,
 	  e_errors.WRITE_ERROR,
-	  e_errors.WRITE_EOT,		# special (not freeze_tape_in_driver, offline_drive, or freeze_tape)
+	  e_errors.WRITE_EOT,		# special (not freeze_tape_in_drive, offline_drive, or freeze_tape)
 	  e_errors.WRITE_UNLOAD,
 	  e_errors.WRITE_UNMOUNT,
 	  e_errors.WRITE_NOBLANKS,	# not handled by mover
@@ -93,19 +93,19 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT LIBRARY MANAGER CAN RSP UNBIND??
     vcc.set_system_readonly( self.vol_info['external_label'] )
 
-    logc.send( log_client.ERROR, 0, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+repr(error_info)+self.vol_info )
+    logc.send( log_client.ERROR, 0, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
 
     return unilateral_unbind_next( self, error_info )
 
 def freeze_tape_in_drive( self, error_info ):
     vcc.set_system_readonly( self.vol_info['external_label'] )
 
-    logc.send( log_client.ERROR, 0, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+repr(error_info)+self.vol_info )
+    logc.send( log_client.ERROR, 0, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
 
     return offline_drive( self, error_info )
 
 def offline_drive( self, error_info ):	# call directly for READ_ERROR
-    logc.send( log_client.ERROR, 0, "MOVER OFFLINE"+repr(error_info) )
+    logc.send( log_client.ERROR, 0, "MOVER OFFLINE"+str(error_info) )
 
     if error_info == e_errors.READ_ERROR:
 	if self.read_error[1]:
@@ -119,7 +119,7 @@ def offline_drive( self, error_info ):	# call directly for READ_ERROR
 
 
 def fatal_enstore( self, error_info, ticket ):
-    logc.send( log_client.ERROR, 0, "FATAL ERROR - MOVER - "+repr(error_info) )
+    logc.send( log_client.ERROR, 0, "FATAL ERROR - MOVER - "+str(error_info) )
     rsp = udpc.send( {'work':"unilateral_unbind",'status':error_info}, ticket['address'] )
     while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
     return
@@ -128,15 +128,16 @@ def fatal_enstore( self, error_info, ticket ):
 # send a message to our user (last means "done with the read or write")
 def send_user_done( self, ticket, error_info ):
     ticket['status'] = (error_info,None)
-    print "DONE ticket (TCP):"; pprint.pprint( ticket )
+    #print "DONE ticket (TCP):"; pprint.pprint( ticket )
     callback.write_tcp_socket( self.control_socket, ticket,
 			       "mover send_user_done" )
     self.control_socket.close()
     return
 
 #########################################################################
-# The next set of methods are ones that will be invoked via an eval of
-# the 'work' key of the ticket received.
+# The next set of methods are ones that will be invoked by calling
+# the MoverClient dictionary element specified by the 'work' key of the
+# ticket received.
 #
 class MoverClient:
     def __init__( self, config ):
@@ -172,12 +173,10 @@ class MoverClient:
 
     def unbind_volume( self, ticket ):
 	# do any driver level rewind, unload, eject operations on the device
-	self.hsm_driver.unload()
+	if mvr_config['do_eject'] == 'yes': self.hsm_driver.unload()
 
 	# now ask the media changer to unload the volume
-	print "ronDBG - asking media change"
 	rr = mcc.unloadvol( self.vol_info['external_label'], self.config['mc_device'] )
-	print "ronDBG - asked media change"
 	if rr['status'][0] != "ok":
 	    raise "media loader cannot unload my volume"
 
@@ -196,8 +195,9 @@ class MoverClient:
     pass
 
 #
-# End of set of methods that will be invoked via an eval of
-# the 'work' key of the ticket received.
+# End of set of methods are ones that will be invoked by calling
+# the MoverClient dictionary element specified by the 'work' key of the
+# ticket received.
 #########################################################################
 
 # the library manager has told us to bind a volume so we can do some work
@@ -220,7 +220,7 @@ def bind_volume( self, ticket ):
 	# NEW VOLUME FOR ME - find out what volume clerk knows about it
 	#self.vol_info.update( vcc.inquire_vol(ticket['fc']['external_label']) )
 	#if self.vol_info['status'] != "ok":
-	#    return 'vol_error'
+	#    return 'NOTAPE' # generic, not read or write specific
 	self.vol_info['read_errors_this_mover'] = 0
 	rsp = mcc.loadvol( ticket['fc']['external_label'],
 			   self.config['mc_device'] )
@@ -233,22 +233,22 @@ def bind_volume( self, ticket ):
 	    #     new mover before the old volume was given back to the library
 	    # SHULD I RETRY????????
 	    if rsp['status'][0] == "media_in_another_device": time.sleep (10)
-	    return 'mc_error'
+	    return 'TAPEBUSY' # generic, not read or write specific
 	pass
     elif ticket['fc']['external_label'] != self.vol_info['external_label']:
 	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],ticket['fc']['external_label']) )
-	return 'vol_error'
+	return 'NOTAPE' # generic, not read or write specific
 
     # FOR NOW - alway update info - as counts may be updated in child process
     self.vol_info.update( vcc.inquire_vol(ticket['fc']['external_label']) )
-    if self.vol_info['status'][0] != "ok": return 'vol_error'
+    if self.vol_info['status'][0] != "ok": return 'NOTAPE' # generic, not read or write specific
 
     self.hsm_driver.remaining_bytes = self.vol_info['remaining_bytes']
     self.hsm_driver.set_blocksize( self.vol_info['blocksize'] )
     sts = self.hsm_driver.load( self.vol_info['eod_cookie'] )# SOFTWARE "MOUNT"
-    if repr(sts) != 0 and repr(sts) != 'None': return 'mount_error'
+    if str(sts) != '0' and str(sts) != 'None': return 'BADMOUNT' # generic, not read or write specific
 	
-    return 'ok'
+    return e_errors.OK
 
 def forked_write_to_hsm( self, ticket ):
     # have to fork early b/c of early user (tcp) check
@@ -274,21 +274,15 @@ def forked_write_to_hsm( self, ticket ):
 	t0 = time.time()
 	sts = bind_volume( self, ticket )
 	ticket['times']['mount_time'] = time.time() - t0
-	if   sts == 'vol_error':
-	    print "ronDBG - sending WRITE_NOTAPE - after bind"
-	    send_user_done( self, ticket, e_errors.WRITE_NOTAPE )
-	    return_or_exit( self, origin_addr, e_errors.WRITE_NOTAPE )
-	elif sts == 'mc_error':
-	    send_user_done( self, ticket, e_errors.WRITE_TAPEBUSY )
-	    return_or_exit( self, origin_addr, e_errors.WRITE_TAPEBUSY )
-	elif sts == 'mount_error':
-	    send_user_done( self, ticket, e_errors.WRITE_BADMOUNT )
-	    return_or_exit( self, origin_addr, e_errors.WRITE_BADMOUNT )
+	if sts != e_errors.OK:
+	    # make write specific and ...
+	    sts = eval( "e_errors.WRITE_"+sts )
+	    send_user_done( self, ticket, sts )
+	    return_or_exit( self, origin_addr, sts )
 	    pass
 	    
 	sts = vcc.set_writing( self.vol_info['external_label'] )
 	if sts['status'][0] != "ok":
-	    print "ronDBG - sending WRITE_NOTAPE - after set_writing"
 	    send_user_done( self, ticket, e_errors.WRITE_NOTAPE )
 	    return_or_exit( self, origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
@@ -302,11 +296,16 @@ def forked_write_to_hsm( self, ticket ):
         # open the hsm file for writing
         try:
 	    t0 = time.time()
-            self.hsm_driver.open_file_write()
+	    # if forked, our eod info is not correct (after previous write)
+	    # WE COULD SEND EOD STATUS BACK, then we could test/check our
+	    # info against the vol_clerks
+	    self.hsm_driver.set_eod( self.vol_info['eod_cookie'] )
+            self.hsm_driver.open_file_write() # does positioning
 	    ticket['times']['seek_time'] = time.time() - t0
 
+	    # reads "control" writes
+            self.net_driver.blocksize = self.vol_info['blocksize']
 	    fast_write = 1
-	    print "ronDBG - net_driver=",self.net_driver,"; hsm_driver=",self.hsm_driver
 
 	    # create the wrapper instance (could be different for different tapes)
             wrapper = cpio.Cpio(  self.net_driver, self.hsm_driver, binascii.crc_hqx
@@ -336,8 +335,8 @@ def forked_write_to_hsm( self, ticket ):
 	    return_or_exit( self, origin_addr, e_errors.WRITE_ERROR )
 
         if wr_size != ticket['wrapper']['size_bytes']:
-            msg = "Expected "+repr(ticket['wrapper']['size_bytes'])+\
-		  " bytes  but only" +" stored"+repr(wr_size)
+            msg = "Expected "+str(ticket['wrapper']['size_bytes'])+\
+		  " bytes  but only" +" stored"+str(wr_size)
             logc.send( log_client.ERROR, 1, msg )
             send_user_done( self, ticket, e_errors.WRITE_ERROR )
 	    return_or_exit( self, origin_addr, e_errors.WRITE_ERROR )
@@ -382,7 +381,6 @@ def forked_read_from_hsm( self, ticket ):
     if mvr_config['do_fork'] and self.pid != 0:
         #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
 	self.vol_info['external_label'] = ticket['fc']['external_label']# assume success
-	print "FORKED PID ", self.pid
 	return {}			# forked with send 
     else:
 	logc.send(log_client.INFO,2,"READ_FROM_HSM"+str(ticket))
@@ -398,17 +396,11 @@ def forked_read_from_hsm( self, ticket ):
 	t0 = time.time()
 	sts = bind_volume( self, ticket )
 	ticket['times']['mount_time'] = time.time() - t0
-
-	if   sts == 'vol_error':
-	    print "ronDBG - sending WRITE_NOTAPE - after bind"
-	    send_user_done( self, ticket, e_errors.READ_NOTAPE )
-	    return_or_exit( self, origin_addr, e_errors.READ_NOTAPE )
-	elif sts == 'mc_error':
-	    send_user_done( self, ticket, e_errors.READ_TAPEBUSY )
-	    return_or_exit( self, origin_addr, e_errors.READ_TAPEBUSY )
-	elif sts == 'mount_error':
-	    send_user_done( self, ticket, e_errors.READ_BADMOUNT )
-	    return_or_exit( self, origin_addr, e_errors.READ_BADMOUNT )
+	if sts != e_errors.OK:
+	    # make read specific and ...
+	    sts = eval( "e_errors.READ_"+sts )
+	    send_user_done( self, ticket, sts )
+	    return_or_exit( self, origin_addr, sts )
 	    pass
 
         # space to where the file will begin and save location
@@ -480,11 +472,9 @@ def forked_read_from_hsm( self, ticket ):
 def return_or_exit( self, origin_addr, status ):
     if mvr_config['do_fork']:
 	summon_self( self, origin_addr )
-	print "ronDBG - exiting with status =",status
 	sys.exit( m_err.index(status) )
     else:
 	return status_to_request( self, status )
-    print "ronDBG - WHHHHHHHHHHHHHHHHOOOOOOOOOOOWWWWWWWWWAAAAA"
 
 
 # data transfer takes place on tcp sockets, so get ports & call user
@@ -542,7 +532,6 @@ def unilateral_unbind_next( self, error_info ):
     return next_req_to_lm
 
 def summon_self( self, origin_addr ):
-    print "ronDBG - summon_self"
     udpc.send_no_wait( {'work':"summon",
 			'address':origin_addr,
 			'pid':os.getpid()},
@@ -560,7 +549,7 @@ class Mover:
             print "Mover read_block, pre-recv error:", \
                   errno.errorcode[badsock]
 	    pass
-	block = self.data_socket.recv(self.hsm_driver.get_blocksize())
+	block = self.data_socket.recv( self.blocksize )
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
         if badsock != 0:
@@ -643,7 +632,6 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 
 def do_next_req_to_lm( self, next_req_to_lm, address ):
     while next_req_to_lm != {}:
-	print "next_req_to_lm",next_req_to_lm 
 	rsp_ticket = udpc.send(  next_req_to_lm, address )
 	if next_req_to_lm['work'] == "unilateral_unbind":
 	    # FOR SOME ERRORS I FREEZE
@@ -666,11 +654,8 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 
 def get_state_build_next_lm_req( self, wait ):
     if self.client_obj_inst.pid:
-	print "ronDBG - yes I have a pid to check; wait =",wait
 	pid, status = posix.waitpid( self.client_obj_inst.pid, wait )
-	print "ronDBG - waitpid",self.client_obj_inst.pid," returned pid =",pid
 	if pid == self.client_obj_inst.pid:
-	    print "I just completed -- infrom LIBRARY MANAGER"
 	    self.client_obj_inst.pid = 0
 	    self.client_obj_inst.state = 'idle'
 	    signal = status&0xff
@@ -722,7 +707,7 @@ def status_to_request( client_obj_inst, exit_status ):
 				e_errors.READ_EOD,
 				e_errors.READ_UNLOAD,
 				e_errors.READ_UNMOUNT]:
-	next_req_to_lm = freeze_tape_in_driver( client_obj_inst, m_err[exit_status] )
+	next_req_to_lm = freeze_tape_in_drive( client_obj_inst, m_err[exit_status] )
     else:
 	# new error
 	logc.send( log_client.ERROR, 0, "FATAL ERROR - MOVER - unknown transfer status - fix me now" )
@@ -791,6 +776,7 @@ mvr_config['name'] = args[0]
 mvr_config['config_host'] = config_host; del config_host
 mvr_config['config_port'] = config_port; del config_port
 mvr_config['do_fork'] = 1
+if not 'do_eject' in mvr_config.keys(): mvr_config['do_eject'] = 'yes'
 del mvr_config['status']
 
 # need a media changer to control (mount/load...) the volume
@@ -813,7 +799,6 @@ else:
     pass
 
 
-print "\nmy address is ",(mvr_config['hostip'],mvr_config['port']),"\n\n\n"
 mvr_srvr =  MoverServer( (mvr_config['hostip'],mvr_config['port']), 0 )
 mvr_srvr.rcv_timeout = 15
 
