@@ -1283,7 +1283,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state in (IDLE, HAVE_BOUND):
             t_in_state = int(time.time()) - int(self.state_change_time)
             if n_thread and n_thread.isAlive():
-                if t_in_state == 0:
+                if t_in_state <= 1:
                     ## skip sending lm _update
                     ## to allow network thread to complete
                     return
@@ -1296,7 +1296,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     self.restart()
             elif t_thread and t_thread.isAlive():
-                if t_in_state == 0:
+                if t_in_state <= 1:
                     ## skip sending lm _update
                     ## to allow tape thread to complete
                     return
