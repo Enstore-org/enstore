@@ -36,7 +36,19 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def __init__(self, csc):
         dispatching_worker.DispatchingWorker.__init__(self, csc)
         self.dict = None
+        self.set_error_handler(self.file_error_handler)
         return
+
+    def file_error_handler(self, exc, msg, tb):
+        if exc == edb.pg.error or msg == "no connection to the server":
+            self.reconnect(msg)
+        self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
+            'exc_type':str(exc), 'exc_value':str(msg)} )
+
+    # reconnect() -- re-establish connection to database
+    def reconnect(self, msg="unknown reason"):
+        Trace.alarm(e_errors.WARNING, "reconnect to database due to "+msg)
+        self.dict.reconnect()
 
     # set_brand(brand) -- set brand
 
@@ -970,6 +982,9 @@ if __name__ == "__main__":
         try:
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
             fc.serve_forever()
+        except edb.pg.error, exp:
+            fc.reconnect(exp):
+            continue
         except SystemExit, exit_code:
             # fc.dict.close()
             sys.exit(exit_code)
