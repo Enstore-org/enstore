@@ -435,8 +435,8 @@ for vol in ${volumes_del}; do
   IFS=$oldifs
   vol=`echo $vol`
   if [ "${vol}x" != "x" ] ; then
-    echo ecmd delvol $vol
-         ecmd delvol $vol
+    echo ecmd vcc --delvol $vol
+         ecmd vcc --delvol $vol
     if [ $? != 0 ] ; then echo \'ERROR\'; fi
   fi
   IFS=$newifs
@@ -447,8 +447,8 @@ for vol in $volumes; do
   IFS=$oldifs
   vol=`echo $vol`
   if [ "${vol}x" != "x" ] ; then
-    echo ecmd addvol $vol
-         ecmd addvol $vol
+    echo ecmd vcc --addvol $vol
+         ecmd vcc --addvol $vol
     if [ $? != 0 ] ; then echo \'ERROR\'; fi
   fi
   IFS=$newifs

@@ -8,7 +8,7 @@ set -u  # force better programming and ability to use check for not set
 x=0
 while [ $x -le 1000 ] ; do
   x=`expr $x + 1`
-  echo ecmd addvol shelf none redwood red$x   50000000000 50000000000
-       ecmd addvol shelf none redwood red$x   50000000000 50000000000
+  echo ecmd vcc --addvol shelf none redwood red$x   50000000000 50000000000
+       ecmd vcc --addvol shelf none redwood red$x   50000000000 50000000000
 done
 

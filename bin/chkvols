@@ -4,10 +4,10 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # bin/$RCSfile$  $Revision$
 
-vols=`ecmd vols | sed -e "s/'//g" -e "s/,/ /g"`
+vols=`ecmd vcc --vols | sed -e "s/'//g" -e "s/,/ /g"`
 for vol in $vols; do
   #ecmd vcc --atmover $vol
-  #status=`ecmd vol $vol | egrep 'at_mover|label|inhibit'`
+  #status=`ecmd vcc --vol=$vol | egrep 'at_mover|label|inhibit'`
   #echo $status
   ecmd vcc --chkvol=$vol
 done

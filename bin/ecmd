@@ -13,21 +13,6 @@ ecmd restart [--just server --xterm server ]
 ecmd encp    --queue [--verbose=] hostname
 "
 usage2="
-ecmd bfids   
-ecmd bfid    bfid
-
-ecmd vols   
-ecmd vol     external_label
-ecmd addvol  library file_family media_type  volume_name, volume_byte_capacity remaining_capacity
-ecmd delvol  volume_name
-ecmd restorevol  volume_name
-ecmd clrvol  volume_name
-ecmd statvol  volume_name
-ecmd rdovol  volume_name
-ecmd noavol  volume_name
-ecmd newlib  volume_name new_library_name
-
-
 ecmd Estart   farmlet  global Enstore start   on all farmlet nodes
 ecmd Estop    farmlet  global Enstore stop    on all farmlet nodes
 ecmd Erestart farmlet  global Enstore restart on all farmlet nodes
@@ -80,14 +65,6 @@ case $cmd in
     python $ENSTORE_DIR/src/file_clerk_client.py      --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
-  bfids)
-    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --bfids $@
-    stat=$?
-    ;;
-  bfid)
-    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --bfid=$@
-    stat=$?
-    ;;
 
   vcc|volume_clerk_client)
     python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
@@ -96,47 +73,6 @@ case $cmd in
 
   backup)
     python $ENSTORE_DIR/src/backup.py  $@ 
-    stat=$?
-    ;;
-
-  addvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --addvol $@
-    stat=$?
-    ;;
-  delvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --delvol $@
-    stat=$?
-    ;;
-  restorevol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --restorevol $@
-    stat=$?
-    ;;
-  clrvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --clrvol $@
-    stat=$?
-    ;;
-  statvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --statvol=$@
-    stat=$?
-    ;;
-  rdovol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --rdovol $@
-    stat=$?
-    ;;
-  noavol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --noavol $@
-    stat=$?
-    ;;
-  newlib)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --newlib $@
-    stat=$?
-    ;;
-  vols)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --vols $@
-    stat=$?
-    ;;
-  vol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --vol=$@
     stat=$?
     ;;
 

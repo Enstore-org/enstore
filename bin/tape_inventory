@@ -18,7 +18,7 @@ if [ ! -d $output ] ; then mkdir -p $output || exit 3; fi
 #echo $output
 
 # get all the volumes that have been defined
-vols=`ecmd vols | sed -e "s/'//g" -e "s/,/ /g"`
+vols=`ecmd vcc --vols | sed -e "s/'//g" -e "s/,/ /g"`
 #echo $vols
 
 # now loop over them and save the output
