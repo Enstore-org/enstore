@@ -123,7 +123,7 @@ def get_multiple_interfaces(verbose=0):
     if not table:
         if verbose: print "no multiple interface table"
         junk, junk, ips = gethostinfo()
-        table = (ips[0], 1)
+        table = [(ips[0], 1)]
     multi_interface_table = table
     return multi_interface_table
 
