@@ -1055,20 +1055,24 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     retry = request_dictionary.get('retry', 0)
     
     status = error_dictionary.get('status', (e_errors.OK, None))
-
+    print "Error dict. status:", status
+    print "Req dict. stauts:", request_dictionary.get('status',
+                                                      (e_errors.OK, None))
     #If there is no error, then don't do anything
     if status == (e_errors.OK, None):
-        result_dict = {'status':(e_errors.OK, None), 'retry':retry,
+        result_dict = {'status':(e_errors.OK, None), 'retry':retry, 
                        'queue_size':len(request_list)}
         return result_dict
-
+    elif type(status[0]) == type(socket):
+        Trace.log(e_errors.ERROR, "Malformed status detected: " + str(status))
+            
     #If the transfer has failed to many times, remove it from the queue.
     # Since TOO_MANY_RETRIES is non-retriable, set this here.
     if retry >= max_retries:
         if verbose > 2:
             print "To many retries for %s -> %s." % (infile, outfile)
         status = (e_errors.TOO_MANY_RETRIES, status)
-        
+    print "Status after TOO_MANY_RETRIES check:", status
     #If the error is not retriable, remove it from the request queue.
     if not e_errors.is_retriable(status[0]):
         #Print error to stdout in data_access_layer format. However, only
@@ -1362,7 +1366,6 @@ def submit_write_request(work_ticket, client, max_retry, verbose):
 ############################################################################
 
 def set_pnfs_settings(ticket, client, verbose):
-    
     # create a new pnfs object pointing to current output file
     Trace.trace(10,"write_to_hsm adding to pnfs "+ ticket['outfile'])
     p=pnfs.Pnfs(ticket['outfile'])
@@ -1380,7 +1383,7 @@ def set_pnfs_settings(ticket, client, verbose):
                          ticket["fc"]["location_cookie"],
                          ticket["fc"]["size"],
                          drive)
-        
+
         # add the pnfs ids and filenames to the file clerk ticket and store it
         fc_ticket = ticket.copy() #Make a copy so "work" isn't overridden.
         fc_ticket["fc"]["pnfsid"] = p.id
@@ -1391,11 +1394,11 @@ def set_pnfs_settings(ticket, client, verbose):
 
         fcc = file_clerk_client.FileClient(client['csc'], ticket["fc"]["bfid"])
         fc_reply = fcc.set_pnfsid(fc_ticket)
-    
+
         if fc_reply['status'][0] != e_errors.OK:
             print_data_access_layer_format('', '', 0, fc_reply)
             quit()
-        
+
         if verbose > 3:
             print "PNFS SET"
             pprint.pprint(fc_reply)
@@ -1405,6 +1408,7 @@ def set_pnfs_settings(ticket, client, verbose):
         exc,msg,tb=sys.exc_info()
         Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s, "
                   "continuing" % (exc, msg))
+        ticket['status'] = (exc, msg)
         
 ############################################################################
 
@@ -1538,6 +1542,18 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
             return combine_dict(result_dict, work_ticket)
+
+        #We know the file has hit some sort of media. When this occurs
+        # create a file in pnfs namespace with information about transfer.
+        set_pnfs_settings(done_ticket, client, e.verbose)
+
+        #Verify that the pnfs info was set correctly.
+        result_dict = handle_retries([work_ticket], work_ticket,
+                                     done_ticket, e.max_retry, e.verbose)
+        if result_dict['status'][0] == e_errors.RETRY:
+            continue
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
+            return combine_dict(result_dict, work_ticket)
         
         set_outfile_permissions(done_ticket) #Writes errors to log file.
         ###What kind of check should be done here?
@@ -1549,10 +1565,6 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
                                            done_ticket['outfile'],
                                            done_ticket['file_size'],
                                            done_ticket)
-
-        #We know the file has hit some sort of media. When this occurs
-        # create a file in pnfs namespace with information about transfer.
-        set_pnfs_settings(done_ticket, client, e.verbose)
 
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
@@ -2680,11 +2692,10 @@ def main():
                                            done_ticket.get('file_size', 0),
                                            done_ticket)
         else:
+            status = done_ticket.get('status', (e_errors.UNKNOWN,
+                                                e_errors.UNKNOWN)[1])
+            Trace.log(e_errors.INFO, string.replace(status[1], "\n\t", "  "))
             if e.verbose:
-                status = done_ticket.get('status', (e_errors.UNKNOWN,
-                                                    e_errors.UNKNOWN)[1])
-                Trace.log(e_errors.INFO, string.replace(status[1],
-                                                        "\n\t", "  "))
                 print status[1]
     except ValueError:
         pass
