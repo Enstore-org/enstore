@@ -32,7 +32,7 @@ import generic_server
 import event_relay_client
 import monitored_server
 import inquisitor_client
-import enstore_functions
+#import enstore_functions
 import enstore_functions2
 import enstore_constants
 import option
@@ -757,7 +757,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def set_sched_down(self):
 	self.inq = inquisitor_client.Inquisitor(self.csc)
 	ticket = self.inq.down(self.name, "set by mover", 15)
-	if not enstore_functions.is_ok(ticket):
+	if not e_errors.is_ok(ticket):
 	    Trace.log(e_errors.ERROR, 
 		      "error setting %s as known down in outage file : %s"%(self.name,
 						 enstore_functions2.get_status(ticket)))
