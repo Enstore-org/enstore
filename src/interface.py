@@ -184,8 +184,7 @@ class Interface:
             optlist,self.args=getopt.getopt(argv,self.charopts(),
                                             self.options())
         except getopt.error, detail:
-            Trace.trace(9, "ERROR: "+str(sys.exc_info()[0])+" "+\
-                        str(sys.exc_info()[1]))
+            Trace.trace(9, "ERROR: getopt error %s"%detail)
             print "error: ", detail
             self.print_help()
 	    sys.exit(1)

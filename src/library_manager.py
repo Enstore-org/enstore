@@ -38,9 +38,8 @@ def send_regret(self, ticket):
 	    callback.send_to_user_callback(ticket)
 	    Trace.trace(13,"send_regret ")
 	except:
-	    Trace.log(1,"send_regret "+str(sys.exc_info()[0])+\
-			str(sys.exc_info()[1])+repr(ticket))
-
+            exc,msg,tb=sys.exc_info()
+	    Trace.log(1,"send_regret %s %s %s"%(exc,msg,ticket))
 	os._exit(0)
     else:
         Trace.trace(12, "CHILD ID= %s"%ret)

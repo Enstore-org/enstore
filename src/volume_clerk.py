@@ -1229,9 +1229,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.control_socket.close()
             Trace.trace(17,'get_vols child exitting')
         except:
-            print "EXCEPTION"
-            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"get_vols child "+repr(status))
+            exc, msg, tb = sys.exc_info()
+            print exc, msg
+            status = str(exc), str(msg)
+            Trace.log(e_errors.ERROR,"get_vols child %s"%status)
         os._exit(0)
 
 
@@ -1250,9 +1251,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             listen_socket.close()
         # catch any error and keep going. server needs to be robust
         except:
-            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"get_user_sockets "+repr(status))
-
+            exc, msg, tb = sys.exc_info()
+            status = str(exc), str(msg)
+            Trace.log(e_errors.ERROR,"get_user_sockets %s"%status)
 
     def start_backup(self,ticket):
         try:
@@ -1262,8 +1263,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                   "start_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
         except:
-            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"start_backup "+repr(status))
+            exc, msg, tb = sys.exc_info()
+            status = str(exc), str(msg)
+            Trace.log(e_errors.ERROR,"start_backup %s"%status)
             self.reply_to_caller({"status"       : status,
                                   "start_backup" : 'no' })
 
@@ -1276,8 +1278,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                   "stop_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
         except:
-            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"stop_backup "+repr(status))
+            exc,msg,tb=sys.exc_info()
+            status = str(exc), str(msg)
+            Trace.log(e_errors.ERROR,"stop_backup %s"%status
             self.reply_to_caller({"status"       : status,
                                   "stop_backup"  : 'no' })
 
@@ -1289,14 +1292,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                   "backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
         except:
-            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"backup "+repr(status))
+            exc, msg, tb = sys.exc_info()
+            status = str(exc), str(msg)
+            Trace.log(e_errors.ERROR,"backup %s"%status)
             self.reply_to_caller({"status"       : status,
                                   "backup"  : 'no' })
 
 
-class VolumeClerk(VolumeClerkMethods,\
-                  generic_server.GenericServer):
+class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
     def __init__(self, csc):
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)

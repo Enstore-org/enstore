@@ -799,13 +799,13 @@ def forked_write_to_hsm( self, ticket ):
             self.store_dismount_statistics(driver_object)
 
         #except EWHATEVER_NET_ERROR:
-	except (FTT.error, EXfer.error), err_msg:
+	except (FTT.error, EXfer.error):
+            exc,msg,tb=sys.exc_info()
             Trace.log( e_errors.ERROR,
-		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
+		       'FTT or Exfer exception: %s %s '%(exc,msg))
 	    #traceback.print_exc()
-	    #print 'type of err_msg is',type(err_msg),'type of sys.exc_info()[1]) is',type(sys.exc_info()[1])
-	    # err_msg is <type 'instance'>
-	    if err_msg.args[0] == 'fd_xfer - read EOF unexpected':
+
+	    if msg.args[0] == 'fd_xfer - read EOF unexpected':
 		# assume encp dissappeared
 		return_or_update_and_exit( self, self.lm_origin_addr,
 					   e_errors.ENCP_GONE )
@@ -1023,18 +1023,19 @@ def forked_read_from_hsm( self, ticket ):
 	    wr_err,rd_err       = stats['wr_err'],stats['rd_err']
 	    wr_access,rd_access = 0,1
         #except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
-	except (FTT.error, EXfer.error), err_msg:
+	except (FTT.error, EXfer.error):
+            exc,msg,tb=sys.exc_info()
             # XXX
             # Check for a broken pipe.
 
-            if err_msg.args[2] == "Broken pipe": #XXX should compare ints rather than strings
+            if msg.args[2] == "Broken pipe": #XXX should compare ints rather than strings
                 err = e_errors.BROKENPIPE
                 ticket['status']=(e_errors.BROKENPIPE,None)
             else:
                 err = e_errors.READ_ERROR
                 traceback.print_exc()
             Trace.log( e_errors.ERROR,
-		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
+		       'FTT or Exfer exception: %s %s'%(exc,msg))
 	    self.usr_driver.close()
 	    send_user_done( self, ticket, err)
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
@@ -1515,12 +1516,15 @@ def get_state_build_next_lm_req( self, wait, exit_status ):
     if self.client_obj_inst.pid:
 	try: pid, status = os.waitpid( self.client_obj_inst.pid, wait )
 	except:
+            exc, msg, tb = sys.exc_info()
 	    if wait == 0: status = exit_status
 	    else:         status = m_err.index(e_errors.OK)<<8 # assume success???
 	    pid = self.client_obj_inst.pid
-	    m = 'waitpid-for pid:%s wait:%s exit_status:%s exc_info:%s%s'
-	    Trace.log( e_errors.WARNING,m%((self.client_obj_inst.pid,wait,
-					    exit_status)+sys.exc_info()[0:2]) )
+	    format = 'waitpid-for pid:%s wait:%s exit_status:%s exc_info:%s%s'% (
+                self.client_obj_inst, wait, exit_status, exc, msg)
+            
+	    Trace.log( e_errors.WARNING,format)
+
 	    #traceback.print_exc()
 	    #os.system( 'ps alxwww' )
 	    #raise

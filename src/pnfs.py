@@ -97,11 +97,11 @@ class Pnfs:
         if self.valid == VALID:
             try:
                 os.stat(self.dir+'/.(config)/disabled')
-            except os.error:
-                if sys.exc_info()[1][0] == errno.ENOENT:
+            except os.error, msg:
+                if msg.errno == errno.ENOENT:
                     return ENABLED
                 else:
-                    raise sys.exc_info()[0], sys.exc_info()[1]
+                    raise exc,msg
                 f = open(self.dir+'/.(config)(flags)/disabled')
                 why = f.readlines()
                 f.close()
@@ -126,14 +126,14 @@ class Pnfs:
             t = int(time.time())
             try:
                 os.utime(self.pnfsFilename,(t,t))
-            except os.error:
-                if sys.exc_info()[1][0] == errno.ENOENT:
+            except os.error, msg:
+                if msg.errno == errno.ENOENT:
                     f = open(self.pnfsFilename,'w')
                     f.close()
                 else:
                     Trace.log(e_errors.INFO, "problem with pnfsFilename = "+ 
                                        self.pnfsFilename)
-                    raise sys.exc_info()[0], sys.exc_info()[1]
+                    raise exc,msg
             self.pstatinfo()
             self.get_id()
 
@@ -144,9 +144,8 @@ class Pnfs:
             try:
                 t = int(time.time())
                 os.utime(self.pnfsFilename,(t,t))
-            except os.error:
-                Trace.log(e_errors.INFO, "can not utime: "+str(sys.exc_info()[0])+
-                                   " "+str(sys.exc_info()[1]))
+            except os.error, msg:
+                Trace.log(e_errors.INFO, "can not utime: %s %s"%(exc,msg))
             self.pstatinfo()
 
 
@@ -187,8 +186,9 @@ class Pnfs:
                     fcntl.flock(f.fileno(),8)
                     Trace.log(e_errors.INFO, "locked/unlocked - worked, a miracle")
                 except:
-                    Trace.log(e_errors.INFO, "Could not lock or unlock "\
-                          +self.pnfsFilename+" "+str(sys.exc_info()[1]))
+                    exc,msg,tb=sys.exc_info()
+                    Trace.log(e_errors.INFO, "Could not lock or unlock %s: %s"%
+                              (self.pnfsFilename, msg))
 
             if 0:
                 try:
@@ -196,8 +196,9 @@ class Pnfs:
                     lockfile.unlock(f)
                     Trace.log(e_errors.INFO, "locked/unlocked - worked, a miracle")
                 except:
-                    Trace.log(e_errors.INFO, "Could not lock or unlock "\
-                          +self.pnfsFilename+" "+str(sys.exc_info()[1]))
+                    exc,msg,tb=sys.exc_info()
+                    Trace.log(e_errors.INFO, "Could not lock or unlock %s: %s"%
+                              (self.pnfsFilename, msg))
 
             f.close()
 
@@ -327,18 +328,16 @@ class Pnfs:
                 self.pstat = os.stat(self.pnfsFilename)
                 self.exists = EXISTS
             # if that fails, try the directory
-            except os.error:
-                if sys.exc_info()[1][0] == errno.ENOENT:
+            except os.error, msg:
+                if msg.errno == errno.ENOENT:
                     try:
                         self.pstat = os.stat(self.dir)
                         self.exists = DIREXISTS
                     except:
-                        self.pstat = (ERROR,repr(sys.exc_info()[1])\
-                                     ,"directory: "+self.dir)
+                        self.pstat = (ERROR,str(msg),"directory: %s"%self.dir)
                         self.exists = INVALID
                 else:
-                    self.pstat = (ERROR,repr(sys.exc_info()[1])\
-                                 ,"file: "+self.pnfsFilename)
+                    self.pstat = (ERROR,str(msg),"file: %s"%self.pnfsFilename)
                     self.exists = INVALID
                     self.major,self.minor = (0,0)
 
@@ -355,9 +354,9 @@ class Pnfs:
                     os.remove(self.dir+'/.(fset)('+self.file+')(size)')
                     #self.utime()
                     self.pstatinfo()
-                except os.error:
+                except os.error, msg:
                     Trace.log(e_errors.INFO, "enoent path taken again!")
-                    if sys.exc_info()[1][0] == errno.ENOENT:
+                    if msg.errno == errno.ENOENT:
                         # maybe this works??
                         f = open(self.dir+'/.(fset)('\
                                  +self.file+')(size)('+repr(size)+')','w')
@@ -365,7 +364,7 @@ class Pnfs:
                         self.utime()
                         self.pstatinfo()
                     else:
-                        raise 
+                        raise os.error, msg
                 if self.file_size != 0:
                     Trace.log(e_errors.INFO, "can not set file size to 0 - oh well!")
             f = open(self.dir+'/.(fset)('+self.file+')(size)('\

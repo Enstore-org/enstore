@@ -88,10 +88,9 @@ def wait_rsp( sock, address, rcv_timeout ):
     if r:
 	reply , server = sock.recvfrom( TRANSFER_MAX )
     elif x or w :
-	Trace.log(e_errors.INFO,
-                  "UDPClient.send: exception on select after send to "+\
-                  repr(address)+" "+repr(x)+" "+str(sys.exc_info()[0])+" "+\
-                  str(sys.exc_info()[1]))
+        exc,msg,tb=sys.exc_info()
+	Trace.log(e_errors.INFO, "UDPClient.send: exception on select after send to %s %s: %s %s"%
+                  (address,x,exc,msg))
 	raise UDPError, "impossible to get these set w/out [r]"
     return reply, server
 
@@ -191,12 +190,12 @@ class UDPClient:
 		    number,  out, time  = eval(reply)   ##XXX
 		# did we read entire message (bigger than TRANSFER_MAX?)
 	        except exceptions.SyntaxError :
+                    exc,msg,tb=sys.exc_info()
 		    Trace.log(e_errors.ERROR,
-                              "send disaster: didn't read entire message"+\
-                              "server="+repr(server)+" "+\
-                              "reply: "+repr(reply)+" "+\
-                              str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-		    raise sys.exc_info()[0], sys.exc_info()[1]
+                              "send disaster: didn't read entire message"
+                              "server=%s, reply=%s, error=%s %s"%
+                              (server,reply,exc,msg))
+                    raise exc,msg
 		# goofy test feature - need for client being echo service only
 		except exceptions.ValueError :
 		    Trace.trace(6,'send GOOFY TEST FEATURE')
@@ -204,10 +203,11 @@ class UDPClient:
                     Trace.trace(20,'goofy test:'+repr((ident,number,out,time)))
                 # catch any error and keep going. server needs to be robust
                 except:
+                    exc,msg,tb=sys.exc_info()
                     Trace.log(e_errors.ERROR,
-                              "unexpected exception in udp_client:send "+
-                             str(sys.exc_info()[0])+" "+str(sys.exc_info()[1]))
-		    raise
+                              "unexpected exception in udp_client.send: %s %s "%
+                              (exc,msg))
+		    raise exc, msg
 
 		# now (after receive), check...
 		if number != self.number :

@@ -873,8 +873,8 @@ if __name__ == "__main__" :
     try:
 	mc_type = keys['type']
     except:
-	Trace.log(e_errors.ERROR,
-                  "MC Error "+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+        exc,msg,tb=sys.exc_info()
+	Trace.log(e_errors.ERROR, "MC Error %s %s"%(exc,msg))
 	sys.exit(1)
 
     del(csc)

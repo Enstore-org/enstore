@@ -74,11 +74,11 @@ class GenericServer(generic_client.GenericClient):
 
    # we got an uncaught error while in serve_forever
    def serve_forever_error(self, id):
-      traceback.print_exc()
-      format = timeofday.tod()+" "+str(sys.argv)+" "+\
-               str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])+" "+\
-               id+" serve_forever continuing"
-      Trace.log(e_errors.ERROR, repr(format))
+       exc,msg,tb=sys.exc_info()
+       traceback.print_exc()
+       format = "%s %s %s %s %s: serve_forever continuing" % (
+           timeofday.tod(),sys.argv,exc,msg,id)
+       Trace.log(e_errors.ERROR, repr(format))
 
    # send back our response
    def send_reply(self, t):
@@ -86,7 +86,8 @@ class GenericServer(generic_client.GenericClient):
          self.reply_to_caller(t)
       except:
          # even if there is an error - respond to caller so he can process it
-         t["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         exc,msg,tb=sys.exc_info()
+         t["status"] = (str(exc),str(msg))
          self.reply_to_caller(t)
-         Trace.trace(7,"send_reply "+repr(t))
+         Trace.trace(7,"send_reply %s"%t)
          return
