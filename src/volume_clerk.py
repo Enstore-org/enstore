@@ -334,8 +334,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                            record["external_label"],
                                            record["media_type"])
 
-        if ret != 'unmounted' and ret != '' and ret != 'E':
-            return e_errors.CONFLICT,"volume state must be unmounted or '' or 'E'. state %s"%(ret)
+        if ret != 'unmounted' and ret != '' and ret != 'E' and ret != 'U':
+            return e_errors.CONFLICT,"volume state must be unmounted or '' or 'E' or 'U'. state %s"%(ret)
 
         # delete the volume
         # check if <vol>.deleted exists, if so, erase it.
