@@ -387,6 +387,7 @@ def idle_mover_next(self,external_label):
 
 # send a regret
 def send_regret(ticket, verbose):
+    Trace.trace(3,"}send_regret " + repr(ticket['status']))
     # fork off the regret sender
     generic_cs.enprint("FORKING REGRET SENDER", generic_cs.DEBUG, verbose)
     ret = os.fork()
@@ -1020,7 +1021,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.enprint(self.suspect_volumes, generic_cs.PRETTY_PRINT)
 	    
 	    pending_work.delete_job(w)
-	    send_regret(w, self.verbose)
+	    # 01/22 do not send a regret as the mover had already
+	    # sent a status to encp
+	    # send_regret(w, self.verbose)
 	else:
 	
 	    # find next mover that can do this job
@@ -1040,9 +1043,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                     repr(next_mover), generic_cs.DEBUG, self.verbose)
 		summon_mover(self, next_mover, w)
 	    else:
-		w['status'] = (e_errors.NOMOVERS, None)
+		#w['status'] = (e_errors.NOMOVERS, None)
 		pending_work.delete_job(w)
-		send_regret(w, self.verbose)
+		# 01/22 do not send a regret as the mover had already
+		# sent a status to encp
+		# send_regret(w, self.verbose)
+		
 		# check if there are any pending works and remove them
 		w = pending_work.get_init()
 		while w:
