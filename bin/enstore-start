@@ -476,8 +476,13 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
         echo $! >> $PID_DIR/`uname -n`-inquisitor_pids
       fi
     fi
-
+    s_timeout=$timeout
+    s_tries=$tries
+    timeout=1
+    tries=1
     check_server inquisitor $PID_DIR/`uname -n`-inquisitor_pids
+    timeout=$s_timeout
+    tries=$s_tries
 
 fi
 
