@@ -5187,6 +5187,9 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             raise EncpError(None, "",
                             e_errors.NOVOLUME, rest)
 
+        Trace.message(TRANSFER_LEVEL, "Obtaining tape metadata.")
+        sys.stdout.flush()
+        
         #Obtain the complete listing of the volume.  It is best to do
         # this now as opposed to each iteration in the large while
         # loop below.
@@ -5206,6 +5209,9 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 
                 input_dir_list = []
             else:
+                Trace.message(TRANSFER_LEVEL, "Obtaining directory listing.")
+                sys.stdout.flush()
+                
                 input_dir_list = os.listdir(e.input[0])
         except OSError, msg:
             rest = {'volume':e.volume}
@@ -5244,205 +5250,133 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(number_of_files):
 
-        #### VOLUME from list #############################################
-        if e.volume and e.list:
-            
+        #### VOLUME #######################################################
+        #If the user specified a volume to read.
+        if e.volume:
+
             # Check the file number on the tape to make sure everything is
-            # correct.  This mass of code obtains a bfid or determines
-            # that it is not known.
+            # correct.  This if...else... statement determines the next
+            # fc_relply value from the tape listing.
 
-            #Get the number and filename for the next line on the file.
-            number, filename = list_of_files[i].split()[:2]
-            #Massage the two values.
-            number = int(number)
-            filename = os.path.basename(filename)
+            #If the list of files was passed in via --list, find the
+            # correct file and move on.
+            if getattr(e, "list", None):
+                #Get the number and filename for the next line on the file.
+                number, filename = list_of_files[i].split()[:2]
+                #Massage  the two values.
+                number = int(number)
+                filename = os.path.basename(filename)
+            
+                Trace.message(TRANSFER_LEVEL,
+                              "Preparing file number %s (%s) for transfer." %
+                              (number, filename))
 
-            Trace.message(TRANSFER_LEVEL,
-                          "Preparing file number %s (%s) for transfer." %
-                          (number, filename))
+                #If everything is okay, search the listing for the location
+                # of the file requested.  tape_ticket is used for performance
+                # reasons over fcc.get_bfid().
+                tape_list = tape_ticket.get("tape_list", [])
+                for i in range(len(tape_list)):
+                    #For each file number on the tape, compare it with
+                    # a location cookie in the list of tapes.
+                    if number == \
+                       extract_file_number(tape_list[i]['location_cookie']):
+                        #Make a copy so the following "del tape_list[i]" will
+                        # not cause reference problems.
+                        fc_reply = tape_list[i].copy()
+                        #Include the server address in the returned info.
+                        # Normally, get_file_clerk_info() would do this for us,
+                        # but since we are using tape_ticket instead (for
+                        # performance reasons) we need to set the address
+                        # explicitly.
+                        fc_reply['address'] = fcc.server_address
+                        #Shrink the tape_ticket list for performance reasons.
+                        del tape_list[i]
+                        break
+                else:
+                    fc_reply = {
+                        'address' : fcc.server_address,
+                        'bfid' : None,
+                        'complete_crc' : None,
+                        'deleted' : None,
+                        'drive' : None,
+                        'external_label' : e.volume,
+                        'location_cookie':generate_location_cookie(number),
+                        'pnfs_mapname': None,
+                        'pnfs_name0': os.path.join(e.input[0],
+                                            generate_location_cookie(number)),
+                        'pnfsid': None,
+                        'pnfsvid': None,
+                        'sanity_cookie': None,
+                        'size': None,
+                        'status' : (e_errors.OK, None)
+                        }
 
-            #If everything is okay, search the listing for the location
-            # of the file requested.  tape_ticket is used for performance
-            # reasons over fcc.get_bfid().
-            fc_reply = None
-            tape_list = tape_ticket.get("tape_list", [])
-            for i in range(len(tape_list)):
-                #For each file number on the tape, compare it with
-                # a location cookie in the list of tapes.
-                if number == \
-                   extract_file_number(tape_list[i]['location_cookie']):
-                    #Make a copy so the following "del tape_list[i]" will
-                    # not cause reference problems.
-                    fc_reply = tape_list[i].copy()
+            else: #No e.list from "get"'s --list switch.
+                
+                try:
+                    fc_reply = tape_ticket.get("tape_list", [])[i]
                     #Include the server address in the returned info.
                     # Normally, get_file_clerk_info() would do this for us,
                     # but since we are using tape_ticket instead (for
                     # performance reasons) we need to set the address
                     # explicitly.
                     fc_reply['address'] = fcc.server_address
-                    #Shrink the tape_ticket list for performance reasons.
-                    del tape_list[i]
-                    break
-            else:
-                fc_reply = {
-                    'address' : fcc.server_address,
-                    'bfid' : None,
-                    'complete_crc' : None,
-                    'deleted' : None,
-                    'drive' : None,
-                    'external_label' : e.volume,
-                    'location_cookie':generate_location_cookie(number),
-                    'pnfs_mapname': None,
-                    'pnfs_name0': None,
-                    'pnfsid': None,
-                    'pnfsvid': None,
-                    'sanity_cookie': None,
-                    'size': None,
-                    'status' : (e_errors.OK, None)
-                    }
+                except IndexError:
+                    #We get here if bfids_list[] is empty.  It is empty when
+                    # trying to read a volume with no known metadata (thus the
+                    # IndexError when reading the zeroth element).
+                    fc_reply = {'address' : fcc.server_address,
+                                'bfid' : None,
+                                'complete_crc' : None,
+                                'deleted' : None,
+                                'drive' : None,
+                                'external_label' : e.volume,
+                                'location_cookie':generate_location_cookie(1),
+                                'pnfs_mapname' : None,
+                                'pnfs_name0' : os.path.join(e.input[0],
+                                                 generate_location_cookie(1)),
+                                'pnfsid' : None,
+                                'pnfsvid' : None,
+                                'sanity_cookie' : None,
+                                'size' : None,
+                                'status' : (e_errors.OK, None)
+                                }
 
-            #Check to make sure that this file is not marked
-            # as deleted.  If so, print error and exit.
-            if fc_reply.get('deleted', None) == "yes":
-                status = (e_errors.USERERROR,
-                          "Requesting file (%s) that has been deleted."
-                          % (generate_location_cookie(number),))
-                raise EncpError(None, status[1], status[0],
-                                {'volume' : e.volume})
-                #print_data_access_layer_format(
-                #    filename, filename, 0,
-                #    {'status' : status, 'volume' : e.volume})
-                #quit(1)
-
-            #Check to make sure that the file was successfully
-            # written to tape.
-            #if fc_reply.get('deleted', None) == None:
-            #    status = (e_errors.USERERROR,
-            #          "Requesting file (%s) with unknown status."
-            #          % (generate_location_cookie(number),))
-                #raise EncpError(None, status[1], status[0],
-                #                {'volume' : e.volume})
-                #print_data_access_layer_format(
-                #    filename, filename, 0,
-                #    {'status' : status, 'volume' : e.volume})
-                #quit(1)
-
-            #These lines should NEVER give an error.
-            bfid = fc_reply['bfid']
-            lc = fc_reply['location_cookie']
-            pnfs_name0 = fc_reply.get('pnfs_name0', None)
-            pnfsid = fc_reply.get('pnfsid', None)
-
-            if pnfsid == None or pnfs_name0 == None:
-                #If we get here, then most likely, this is the first time
-                # the volume has been read.
-                sys.stdout.write("Location %s has no known metadata.\n" % lc)
-
-                #Determine the inupt filename.
-                ifullname = os.path.join(e.input[0], filename)
-            #elif os.path.exists(pnfs_name0):
-            elif os.path.basename(pnfs_name0) in input_dir_list:
-                #If we get here, then we have the file's metadata and
-                # the file does exist.
-                
-                #Determine the inupt filename.
-                ifullname = pnfs_name0
-            else:
-                try:
-                    #Using the original directory as a starting point, try
-                    # and determine the new file name/path/location.
-                    orignal_directory = os.path.dirname(pnfs_name0)
-                    #Try to obtain the file name and path that the
-                    # file currently has.
-                    p = pnfs.Pnfs(pnfsid, orignal_directory)
-                    ifullname = p.get_path() #pnfsid, orignal_directory)
-                except (OSError, KeyError, AttributeError):
-                    sys.stdout.write("Location %s is active, but the "
-                                     "file has been deleted.\n" % lc)
-
-                    #Determine the inupt filename.
-                    ifullname = os.path.join(e.input[0], filename)
-
-            #Get the pnfs interface class instance.
-            p = pnfs.Pnfs(ifullname)
-            
-            #Determine the filesize.  None if non-existant.
-            file_size = get_file_size(ifullname)
-
-            #Determine the output filename.
-            if e.output[0] == "/dev/null":
-                ofullname = e.output[0]
-            else:
-                ofullname = os.path.join(e.output[0], filename)
-
-            read_work = 'read_from_hsm' #'read_tape'
-            
-        #### VOLUME #######################################################
-        #If the user specified a volume to read.
-        elif e.volume:
-
-            try:
-                fc_reply = tape_ticket.get("tape_list", [])[i]
-                #Include the server address in the returned info.
-                # Normally, get_file_clerk_info() would do this for us,
-                # but since we are using tape_ticket instead (for
-                # performance reasons) we need to set the address
-                # explicitly.
-                fc_reply['address'] = fcc.server_address
-            except IndexError:
-                #We get here if bfids_list[] is empty.  It is empty when
-                # trying to read a volume with no known metadata (thus the
-                # IndexError when reading the zeroth element).
-                fc_reply = {'address' : fcc.server_address,
-                            'bfid' : None,
-                            'complete_crc' : None,
-                            'deleted' : None,
-                            'drive' : None,
-                            'external_label' : e.volume,
-                            'location_cookie':generate_location_cookie(1),
-                            'pnfs_mapname': None,
-                            'pnfs_name0': None,
-                            'pnfsid': None,
-                            'pnfsvid': None,
-                            'sanity_cookie': None,
-                            'size': None,
-                            'status' : (e_errors.OK, None)
-                            }
-
-            #Check to make sure that this file is not marked
-            # as deleted.  If so, print error and exit.
-            if fc_reply.get('deleted', None) == "yes":
-                status = (e_errors.USERERROR,
-                          "Requesting file (%s) that has been deleted."
-                          % (generate_location_cookie(number),))
-                raise EncpError(None, status[1], status[0],
-                                {'volume' : e.volume})
-
-            #These lines should NEVER give an error.
-            bfid = fc_reply['bfid']
-            lc = fc_reply['location_cookie']
-            pnfs_name0 = fc_reply.get('pnfs_name0', None)
-            pnfsid = fc_reply.get('pnfsid', None)
-            
-            Trace.message(TRANSFER_LEVEL,
+                    Trace.message(TRANSFER_LEVEL,
                           "Preparing file number %s for transfer." %
-                          (extract_file_number(lc),))
+                          (extract_file_number(fc_reply['location_cookie']),))
 
-            if pnfsid == None or pnfs_name0 == None:
-                #If we get here, then most likely, this is the first time
-                # the volume has been read.
-                sys.stdout.write("Location %s has no known metadata.\n" % lc)
+            #Check to make sure that this file is not marked
+            # as deleted.  If so, print error and exit.
+            if fc_reply.get('deleted', None) == "yes":
+                status = (e_errors.USERERROR,
+                          "Requesting file (%s) that has been deleted."
+                          % (generate_location_cookie(number),))
+                raise EncpError(None, status[1], status[0],
+                                {'volume' : e.volume})
 
-                #Determine the inupt filename.
-                ifullname = os.path.join(e.input[0], filename)
-            #elif os.path.exists(pnfs_name0):
-            elif os.path.basename(pnfs_name0) in input_dir_list:
+            #These lines should NEVER give an error.
+            bfid = fc_reply['bfid']
+            lc = fc_reply['location_cookie']
+            pnfs_name0 = fc_reply.get('pnfs_name0', None)
+            pnfsid = fc_reply.get('pnfsid', None)
+
+            #By this point pnfs_name0 should always have a non-None value.
+            # Assuming this would make coding easier, but there is the case
+            # were set_pnfs_metadata fails leaving the pnfs_name0 (and pnfsid)
+            # field None while other values have been updated.
+            
+            if pnfs_name0 != None and \
+               os.path.basename(pnfs_name0) in input_dir_list:
                 #If we get here, then we have the file's metadata and
                 # the file does exist.
                 
                 #Determine the inupt filename.
                 ifullname = pnfs_name0
-            else:
+
+                #Get the pnfs interface class instance.
+                p = pnfs.Pnfs(ifullname)
+            elif pnfsid != None and pnfs_name0 != None:
                 try:
                     #Using the original directory as a starting point, try
                     # and determine the new file name/path/location.
@@ -5456,13 +5390,25 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                                      "file has been deleted.\n" % lc)
 
                     #Determine the inupt filename.
-                    ifullname = os.path.join(e.input[0], filename)
+                    ifullname = pnfs_name0  #os.path.join(e.input[0], filename)
 
-            #Get the pnfs interface class instance.
-            p = pnfs.Pnfs(ifullname)
-            
+                    #Get the pnfs interface class instance.
+                    p = pnfs.Pnfs(ifullname)
+            else:
+                if pnfs_name0 == None:
+                    ifullname = os.path.join(e.input[0], lc)
+                else:
+                    ifullname = pnfs_name0
+
+                #Get the pnfs interface class instance.
+                p = pnfs.Pnfs(ifullname)
+
             #Determine the filesize.  None if non-existant.
-            file_size = get_file_size(ifullname)
+            #file_size = get_file_size(ifullname)
+            try:
+                file_size = p.get_file_size()
+            except OSError:
+                file_size = None
 
             #Determine the output filename.
             if e.output[0] == "/dev/null":
