@@ -916,11 +916,19 @@ class Interface:
                 #only use this old string for unknown options (aka values).
                 compare_arg = arg
 
-            #Look for the current argument in the list.  Since, it looks for
-            # things based on string.find() placing the "--" before the
-            # value of argument is ok to handle the substring problem that
-            # argument has the "--" and "-" removed.
-            if string.find("--"+argument, compare_arg) != -1:
+            # Since, it looks for things based on string.find() placing
+            # the "--" or "-" before the value of argument is ok to
+            # handle the substring problem that argument has the "--"
+            # and "-" removed.
+            if self.is_long_option(argument):
+                compare_opt = "--" + argument
+            elif self.is_short_option(argument):
+                compare_opt = "-" + argument
+            else:
+                compare_opt = argument
+                
+            #Look for the current argument in the list. 
+            if string.find(compare_opt, compare_arg) == 0:
                 #Now that the current item in the argument list is found,
                 # make sure it isn't the last and return the next.
                 index = self.some_args.index(arg)
