@@ -12,7 +12,7 @@ import sys
 import os
 from configuration_client import *
 from udp_client import UDPClient
-
+import pprint
 
 class MediaLoaderClient:
     def __init__(self, configuration_client, name) :
@@ -50,10 +50,11 @@ if __name__ == "__main__" :
     config_port = "7500"
     config_file = ""
     config_list = 0
+    list = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_file="\
-               ,"config_list","help"]
+               ,"config_list","list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -62,10 +63,18 @@ if __name__ == "__main__" :
             config_port = value
         elif opt == "--config_list" :
             config_list = 1
+        elif opt == "--list" :
+            list = 1
         elif opt == "--help" :
-	    print "python ",sys.argv[0], options, "media_changer"
+	    print "python ",sys.argv[0], options, "media_changer volume drive"
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
+
+    # bomb out if we number of arguments is wron
+    if len(args) < 3 :
+	print "python ",sys.argv[0], options, "media_changer volume drive"
+	print "   do not forget the '--' in front of each option"
+	sys.exit(1)
 
     # bomb out if can't translate host
     ip = socket.gethostbyname(config_host)
@@ -77,7 +86,45 @@ if __name__ == "__main__" :
         print "Connecting to configuration server at ",config_host,config_port
     csc = configuration_client(config_host,config_port)
 
-    mlc = MediaLoaderClient(csc, "STK.media_changer")
-    ticket = mlc.unloadvol('000007', '0,0,9,1')
+    media_changer_type = args[0]
+    volume = args[1]
+    drive = args[2]
+    if list :
+	pprint.pprint(args)
+    mlc = MediaLoaderClient(csc, media_changer_type)
+    ticket = mlc.unloadvol(volume, drive)
     print 'unload returned:' + ticket['status']
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
