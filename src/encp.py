@@ -74,8 +74,8 @@ def signal_handler(sig, frame):
     except:
         pass
     
-    if sig != signal.SIGTERM: #If they kill, don't do anything.
-        quit(1)
+    #if sig != signal.SIGTERM: #If they kill, don't do anything.
+    quit(1)
 
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
