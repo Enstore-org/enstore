@@ -1004,6 +1004,9 @@ today=`$DATE -I`
 	 dbname=`$BASENAME $db`
 	 dbfile=$dbfdir/$dbname
 	 if [ -d /diska/pnfs/db/data/base ]; then
+	    set +u
+	    setup pnfs		# needed for psql
+	    set -u
 	    dbpgid=`psql -t -A -U enstore template1 -c "select OID from pg_database where datname='$dbname'"`
 	    dbszKB=`$DU -ks /diska/pnfs/db/data/base/$dbpgid | $AWK '{print $1}'`
 	 else
@@ -1225,7 +1228,9 @@ netscan_n2=`$DIRNAME $LOG`/netscan_n2
 rm -f $netscan_n1
 rm -f $netscan_n2
 # sometimes we get no output from ps command
-for (( try=3; try--; ))
+let try=3
+while [ $((try-=1)) -ge 0 ]
+#for (( try=3; try--; ))
 do
   $LSOF -i TCP -i UDP > $netscan_n1
   PSfirst=`$PS --no-headers afuwwwx | $CUT -c1-250`
@@ -1276,7 +1281,9 @@ if [ -e /PRODUCTION ]; then
    if [ ${NOIPMI:-0} -ne 1 ]; then
       # check that watchdog timer action is to do nothing
       # try a few times until we read something
-      for (( try=3; try--; ))
+      let try=3
+      while [ $((try-=1)) -ge 0 ]
+      #for (( try=3; try--; ))
       do
 	ACTION=`$IPMI_DIR/dogread | $AWK '/^Actions:/ {print $2}'`
 	if [ -n "${ACTION:-}" ]; then
