@@ -179,7 +179,7 @@
          <cn>0</cn>
     	</apply>
     	</Condition>
-    	<Condition State="0" SevLevel="0" Description="Time is not syncronize">
+    	<Condition State="0" SevLevel="0" Description="Time is not syncronized">
     	<apply>
         <and/>
         <apply>
@@ -200,7 +200,7 @@
 </System>
 
        <System Name="Hardware" Cluster="localhost">
-      <MonitoredElement Name="NumProcessors" Host="localhost" Type="Hardware">
+      <MonitoredElement Name="numProcessors" Host="localhost" Type="Hardware">
          <ConditionSet>
          <fn Name="plug_ins" Arg="cat /proc/cpuinfo|grep processor|wc -l" RetVal="int:numPr"/>
          <Condition State="1" SevLevel="6" Description="Missing one processor">
