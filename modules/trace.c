@@ -12,8 +12,8 @@
 #include <stdarg.h>		/* varargs */
 #include <unistd.h>		/* mmap, unlink, sleep, lseek, getpid */
 #include <sys/mman.h>		/* mmap */
-#include <sys/types.h>		/* open, semop */
-#include <sys/stat.h>		/* open */
+#include <sys/types.h>		/* open, stat, semop */
+#include <sys/stat.h>		/* open, stat */
 #include <fcntl.h>		/* open */
 #include <sys/ipc.h>		/* semop, shmget */
 #include <sys/sem.h>		/* semop */
@@ -34,11 +34,12 @@ int			trc_tid;
 
 
 void
-trace_init(  const char	*name )
+trace_init(  const char	*name
+	   , const char	*key_file )
 {
 	int	ii;
 
-    trace_init_trc();
+    trace_init_trc( key_file );
 
     trc_pid = getpid();
 
@@ -132,8 +133,22 @@ trace_(  int lvl
 	    {   tp = &tt;
 		gettimeofday( tp, 0 );
 	    }
-	    sprintf(  buf, "utime: %10u %s%s\n", tp->tv_usec
-		    , &traceLvlStr[31-lvl], msg );
+	    if (trc_tid >= TRC_MAX_PIDS)
+	    {   sprintf(  buf
+			, "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s %s%s\n"
+			, (int)tp->tv_sec, (int)tp->tv_usec
+			, trc_pid
+			, trc_cntl_sp->t_name_a[trc_tid-TRC_MAX_PIDS]
+			, &traceLvlStr[31-lvl], msg );
+	    }
+	    else
+	    {   sprintf(  buf
+			, "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "d %s%s\n"
+			, (int)tp->tv_sec, (int)tp->tv_usec
+			, trc_pid
+			, trc_tid
+			, &traceLvlStr[31-lvl], msg );
+	    }
 	    va_start( ap, msg );
 	    vprintf( buf, ap );
 	    va_end( ap );
@@ -142,32 +157,105 @@ trace_(  int lvl
 }
 
 
+/* 
+EXAMPLES [start with IRIX man page]
+     Input string   Output pointer
+     _____________________________
+     /usr/lib       lib
+     /usr/          ""
+     /              ""
+*/
+
+char *
+trc_basename(  char	*name
+	     , char	cc )
+{
+	int	size;
+
+    size = strlen( name );
+
+    while (size--)
+    {
+	if (*(name+size) == cc)
+	    break;
+    }
+    return (name+size+1);
+}
+
+
 /******************************************************************************
  * @+Public+@
  * ROUTINE: trace_init_trc:  Added by ron on 27-Jul-1998
  *
  * DESCRIPTION:		set up global vars
- *
- * RETURN VALUES:	None.
- *
- * SIDE EFFECTS:	None
- *
- * SYSTEM CONCERNS:	None.
+ *                      The lock file will be created in the same dir as the
+ *                      key file. So, first determine where the key file is or
+ *                      where it will be: dir and name.
+ *                      Is dir absolute or relative?
+ *                      If file does not end with .key, append it!
+ *                      If key_file is "", then use default (def dir is .)
+ *                      Check for any file with a .key extenstion???
+ *                      Lock file will be key file with .lck substituted for
+ *                      .key.
  *
  ******************************************************************************/
 
 
 void
-trace_init_trc( void )
+trace_init_trc( const char *key_file_spec )
 {							/* @-Public-@ */
 	int			lck_fd, buf_fd;
 	int			idx, sts;
 	struct sembuf		sem_chk_s;
+	struct stat		stat_s;
+	char			dir[200]; /* arbitrary size for path */
+	char			lck_file[200]; /* arbitrary sizes */
+	char			key_file[200]; /* arbitrary sizes */
 
 
     /*  INITIALIZE -
         - first open lock file to check trace file and possible
 	  create/modify */
+
+    printf( "keyfile is %s\n", key_file_spec );
+
+    if (*key_file_spec == '\0')
+    {   printf( "default\n" );
+    }
+    else if ((stat(key_file_spec,&stat_s)==0) && S_ISDIR(stat_s.st_mode))
+    {
+	printf( "working with dir\n" );
+    }
+    else
+    {   /* check dirname */
+	char fil[200];	/* arbitrary size for file */
+	char *c_p;
+
+	if (key_file_spec[strlen(key_file_spec)-1] == '/')
+	{   printf( "error with key file specification; %s: directory does "
+		   "not exist\n", key_file_spec );
+	    exit( 1 );
+	}
+	strcpy( dir, key_file_spec );
+# if 0
+	if (dir[strlen(dir)-1] == '/')
+	    dir[strlen(dir)-1] =  '\0'; /* strip trailing / for trc_basename */
+# endif
+
+	c_p = trc_basename( dir, '/' );
+	strcpy( fil, c_p );	/* save the filename */
+	*c_p = '\0';
+	printf( "the dir part is %s\n", dir );
+	stat( dir, &stat_s );
+	if (!S_ISDIR(stat_s.st_mode))
+	{   printf( "error with key file specification; %s: directory does "
+		   "not exist\n", dir );
+	    exit( 1 );
+	}
+        if (strcmp(trc_basename(fil,'.'),".key") == 0)
+	    *(trc_basename(fil,'.')) = '\0';
+	
+    }
 
     trc_sem_get_s.sem_num = 0;  trc_sem_put_s.sem_num = 0; /* 1st and only sem */
     trc_sem_get_s.sem_op  = -1; trc_sem_put_s.sem_op  = 1; /* get's dec, put's inc */
@@ -181,10 +269,10 @@ trace_init_trc( void )
 	{   int		shm_id;
 
 	    /* I have the lock - ref. open(2) */
-	    buf_fd = open( TRC_BUF_FIL, O_RDWR );
+	    buf_fd = open( TRC_KEY_FIL, O_RDWR );
 	    if (buf_fd == -1)
 	    {   /* problem (could be permision???) - try creating */
-		buf_fd = open( TRC_BUF_FIL, O_CREAT|O_RDWR, 0x1b6 );
+		buf_fd = open( TRC_KEY_FIL, O_CREAT|O_RDWR, 0x1b6 );
 	    }
 	    read( buf_fd, &shm_id, sizeof(shm_id) );
 	    trc_cntl_sp = shmat( shm_id, 0,0 );/* no adr hint, no flgs */
