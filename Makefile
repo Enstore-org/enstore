@@ -62,6 +62,10 @@ SUBDIRS=ftt_lib ftt_test
 all: proddir_is_set
 	for d in $(SUBDIRS); do (cd $$d; $(MAKE) install); done
 
+cvswebtags: FORCE
+	find . -name '*.[ch]' -exec ctags -txw {} \; | \
+		grep -v '^if ' > cvswebtags
+
 clean:
 	for d in $(SUBDIRS); do (cd $$d; $(MAKE) $@); done
 
