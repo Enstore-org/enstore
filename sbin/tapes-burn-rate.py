@@ -16,7 +16,7 @@ os.system(cmd)
 
 d1 = None
 d2 = None
-for when in 'date --date "4 months ago"  +"%b-%y"','date --date "2 months"  +"%b-%y"':
+for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-%y"':
     d = os.popen(when,'r')
     dat=d.readlines()
     d.close()
