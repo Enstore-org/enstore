@@ -280,27 +280,26 @@ files that belong to this family will be stored on this volume.
 <tr>
 <td valign=top>media_type
 <td valign=top>string
-<td valign=top>Specified at volume creation; defines the block-size; used for
+<td valign=top>Specified at volume creation; implies the block-size; used for
 writing.
 <tr>
 <td valign=top>library
 <td valign=top>string
-<td valign=top>Specified by user on volume creation; defines which (virtual)
+<td valign=top>Specified by user on volume declaration; defines which (virtual)
 library currently holds the volume
 <tr>
 <td valign=top>first_access
 <td valign=top>int (-1)
-<td valign=top>Set by volume clerk when user issues the first <em>encp</em>
-command to copy to the media.
+<td valign=top>Unix time when user issues the first write command to copy data to the media.
+Set by the volume clerk.
 <tr>
 <td valign=top>last_access
 <td valign=top>int (-1)
-<td valign=top>Set by volume clerk when user issues the first <em>encp</em>
-command to copy to the media.
+<td valign=top>Unix time when  user last accessed the media. Set by the volume clerk.
 <tr>
 <td valign=top>declared
 <td valign=top>int
-<td valign=top>Set by volume clerk at time of volume creation.
+<td valign=top>Unix time when the volume is declared available to the system. Set by the volume clerk.
 <tr>
 <td valign=top>capacity_bytes
 <td valign=top>64-bit int
@@ -309,7 +308,7 @@ bytes that would fit on the media.
 <tr>
 <td valign=top>blocksize
 <td valign=top>int
-<td valign=top>Set by the volume clerk; defined by the media type.
+<td valign=top>Set by the volume clerk; derived from the the media type.
 <tr>
 <td valign=top>remaining_bytes
 <td valign=top>64-bit int
@@ -330,23 +329,23 @@ the media.
 <tr>
 <td valign=top>sum_rd_err
 <td valign=top>int (0)
-<td valign=top>Read error count; volume clerk updates this field when the mover
+<td valign=top>Read error count; volume clerk increments this field when the mover
 receives an error while reading from the media.
 <tr>
 <td valign=top>sum_rd_access
 <td valign=top>int (0)
-<td valign=top>Read access count; volume clerk updates this field
-every time the volume is mounted for reading.
+<td valign=top>Read access count; volume clerk increments this field
+every time a file is read.
 <tr>
 <td valign=top>sum_wr_err
 <td valign=top>int (0)
-<td valign=top>Write error count; volume clerk updates this field when the
+<td valign=top>Write error count; volume clerk increments this field when the
 mover receives an error while writing to the media.
 <tr>
 <td valign=top>sum_wr_access
 <td valign=top>int (0)
-<td valign=top>Write access count; volume clerk updates this field every time
-the volume is mounted for write.
+<td valign=top>Write access count; volume clerk incrementsthis field every time
+a file is written.
 <tr>
 <td valign=top>user_inhibit
 <td valign=top>string (d:"none" or "readonly", "all")
@@ -361,13 +360,13 @@ error occurred while data were being written or the file size exceeded the
 remaining number of bytes on the media.
 </table>
 <p>
-The volume clerk does the following short, atomic operations:
+The volume clerk does the following operations:
 <ul>
 <li>show the name of all the volumes
 <li>show volume information
 <li>add a volume
 <li>delete a volume
-<li>find the appropriate volume on which to write the file
+<li>find an appropriate volume on which to write the file
 <li>change the number of remaining bytes on the volume
 <li>set the number of read/write errors
 <li>set the current status of the volume
@@ -401,7 +400,8 @@ external_label in the volume table.
 <td valign=top>bof_space_cookie
 <td valign=top>string
 <td valign=top>Driver specific string telling how to space to the file on the
-media.
+media. A lexical sort of all bof_space_cookies for a given volume will yield a optimized
+traversal of the volume.
 <tr>
 <td valign=top>complete_crc
 <td valign=top>int
@@ -530,8 +530,9 @@ should be able to continue servicing requests.
 1.3.3.3 Publisher Requests
 </h3>
 It is possible to query the library manager and get information about its
-internal queues thereby knowing where work is.  More work needs to be done
-before this can be considered functional.
+internal queues thereby knowing where work is.  The prototype has a
+rudimentary implementation of this feature. More work needs to be done before
+this can be considered functional.
 
 <h3><a name="mover">
 1.3.4 Mover
@@ -648,15 +649,16 @@ is the interface to the robotic software.
 The database used in <em>Enstore</em> must provide the following:
 <ul>
 <li>
-Support "python dictionary" interface.
-<li>
-Support journaling of the database to record all changes.
+Support journaling of the database to record all changes and support full
+     database recovery.
 <li>
 Support database check-pointing in order to enable full database recovery.
 <li>
 Support performing daily backups of the database, log, and journal files.
 <li>
 Support recovery of corrupted databases using the journal or log files.
+<li>
+Support "python dictionary" interface.
 </ul>
 
 <h2><a name="backup_recovery">
@@ -787,6 +789,9 @@ LIBTP was chosen based on the following considerations:
 
 <ul>
 <li>
+Nimbleness to allow us to set up test stands while developing and not being encumbered by
+     database licensing issues.
+<li>
 It is similar to dbm-like databases used for the initial Enstore design.
 This made it easy to develop a Python interface for it and any necessary
 changes to the Enstore code were localized and relatively easy to make.
@@ -808,7 +813,7 @@ It is readily obtainable and free.
 
 Administrative tools will provide the following operations:
 <ul>
-<li>Display the volume for a specified media
+<li>Display all volumes for a specified media
 <li>List all the files and their location on a single or set of media
 <li>List file/files on the media by creation date
 <li>List all the media that belongs to a specified file family
@@ -824,6 +829,9 @@ Enstore system
 <li>List all files/volumes that belong to user/group
 <li>Mark the volume as readonly if all of the files on the media are older
 than a specified date
+<li> Delete specified files in the pnfs trashbin.
+<li>Find and recycle volumes where all files have been deleted.
+<li>Check for files known to the file clerk but unknown to pnfs
 </ul>
 
 <h2><a name="protocol">
@@ -832,9 +840,9 @@ than a specified date
 The base protocol for Enstore is UDP for "brief" messages and TCP for data
 transfers.
 
-Transfers that use UDP are all less than size of max UDP packet so there
-will be no problems with potential packet re-ordering (receiving packets out
-of order).
+UDP message sizes are all less than size of maximum UDP packet size so the
+protocol is very simple.
+
 <p>
 The base server protocol is the same for all servers.  State-fullness is
 minimized, not eliminated.
@@ -1010,7 +1018,7 @@ The mover tells the Media changer to dismount the volume.
 4 Error Control
 </h2>
 
-This section represents our error control developement plan -- error control
+This section represents our error control development plan -- error control
 was only partially implemented in the prototype. <p>
 
 Error control in Enstore is simple, because much of the system state
@@ -1024,8 +1032,8 @@ The Enstore system keeps unassigned read and write requests in a queue of
 unallocated work in the library manager. Once a read or write requests'
 turn comes, the library manager puts the request in a "work awaiting
 mount" or "work at mover" queue. The reason for this is to track the
-volumes for scheduling : the library manager must not command a different mover
-to mount a tape for another mover. It is the mover, and not the library
+volumes for scheduling : the library manager must not command a mover
+to mount a tape already in use by another mover. It is the mover, and not the library
 manager which completes requests.
 
 The three library manager queues are:
@@ -1080,7 +1088,7 @@ in the library manager ought to implement the logic associated with these
 fields.
 <p>
 The Enstore system should check the read/write state of a tape read very
-early when the request is queued, to give an error if the access
+early when the request is queued, to give a prompt error if the access
 is not allowed. However, an error may change the state of a tape while
 its corresponding work is in the library manager queue. Therefore, a
 late check is required. The system already performs a "late check"
@@ -1131,6 +1139,12 @@ the system falls below a threshold.
     Enstore has a bug, or some other system has mounted the tape or
     library micro put the tape somewhere else.
     Mover shall freeze the tape.
+    <em>encp</em> shall retry.
+<tr>
+<td valign=top><b>WRITE_DRIVEBUSY</b>
+<td valign=top>"The media changer says that some other tape is in the drive"
+    Need to investigate if this could ever be a clean tape otherwise a bug in
+    Enstore or a misconfiguration.     Mover shall offline the drive.
     <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_BADMOUNT</b>
@@ -1189,6 +1203,12 @@ the system falls below a threshold.
     Enstore has a bug, or some other system has mounted the tape or
     the robotic software put the tape somewhere else.
     Mover shall freeze the tape.
+<tr>
+<td valign=top><b>READ_DRIVEBUSY</b>
+<td valign=top>"The media changer says that some other tape is in the drive"
+    Need to investigate if this could ever be a clean tape otherwise a bug in
+    Enstore or a misconfiguration.     Mover shall offline the drive.
+    <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>READ_BADMOUNT</b>
 <td valign=top>Other Mount failure on read, or load operation failed.
