@@ -27,6 +27,7 @@ class PyGdb(Gdb):
                      " d: delete breakpoint (with no arg, delete all breakpoints)",
                      " h|?: help",
                      " i: info (lists breakpoints)",
+                     " l: list source code",
                      " q: quit",
                      " s: single-step",
                      " t: toggle tracing",
@@ -97,7 +98,9 @@ class PyGdb(Gdb):
 
     def backtrace(self):
         if self.at_gdb_breakpoint() != 1:
-            self.gdb_command('c')
+            return ['Not at a Python source line, printing C backtrace'] + \
+                   self.gdb_command('where')
+
         
         frame_expr = 'f'
         ret = []
