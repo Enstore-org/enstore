@@ -237,6 +237,9 @@ LOGFILE_DIR = "logfile-dir"                  #plotter
 LS = "ls"                                    #pnfs
 LS_ACTIVE = "ls-active"                      #volume, file
 MAKE_HTML = "make-html"                      #up_down
+MARK_BAD = "mark-bad"                        #file
+UNMARK_BAD = "unmark-bad"                    #file
+SHOW_BAD = "show-bad"                        #file
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
 MAX_RETRY = "max-retry"                      #encp
 MAX_RESUBMIT = "max-resubmit"                #encp
@@ -388,7 +391,7 @@ valid_option_list = [
     KEEP, KEEP_DIR, KEEP_VOL,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS,
     LS_ACTIVE, LIST_SG_COUNT,
-    MAKE_HTML,
+    MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MMAP_IO, MMAP_SIZE, MODIFY, MOUNT, MOVER_TIMEOUT,
     MOVERS_FILE, MIGRATED,
@@ -406,14 +409,14 @@ valid_option_list = [
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG,
     SHORTCUT, SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA,
-    SIZE, SKIP_PNFS,
+    SHOW_BAD, SIZE, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
     TEST, THREADED, TIME, TIMEOUT, TITLE, TITLE_GIF,
     TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
-    UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL, USAGE,
+    UNMARK_BAD, UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL, USAGE,
     VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST, WRITE_PROTECT_STATUS, WRITE_PROTECT_ON,
     WRITE_PROTECT_OFF, XREF,
