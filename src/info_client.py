@@ -119,7 +119,7 @@ class infoClient(generic_client.GenericClient):
 		if ticket['status'][0] != e_errors.OK:
 			return ticket
 
-		r,w,x = select.select([listen_socket], [], [], 15)
+		r,w,x = select.select([listen_socket], [], [], 60)
 		if not r:
 			raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for info clerk callback"
 		
@@ -204,7 +204,7 @@ class infoClient(generic_client.GenericClient):
 		if ticket['status'][0] != e_errors.OK:
 			return ticket
 
-		r,w,x = select.select([listen_socket], [], [], 15)
+		r,w,x = select.select([listen_socket], [], [], 60)
 		if not r:
 			raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for volume clerk callback"
 		
@@ -250,7 +250,7 @@ class infoClient(generic_client.GenericClient):
 		if ticket['status'][0] != e_errors.OK:
 			return ticket
 
-		r,w,x = select.select([listen_socket], [], [], 15)
+		r,w,x = select.select([listen_socket], [], [], 60)
 		if not r:
 			raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for volume clerk callback"
 		
@@ -294,7 +294,7 @@ class infoClient(generic_client.GenericClient):
 		if ticket['status'][0] != e_errors.OK:
 			return ticket
 
-		r, w, x = select.select([listen_socket], [], [], 15)
+		r, w, x = select.select([listen_socket], [], [], 60)
 		if not r:
 			listen_socket.close()
 			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
@@ -337,7 +337,7 @@ class infoClient(generic_client.GenericClient):
 		if ticket['status'][0] != e_errors.OK:
 			return ticket
 
-		r, w, x = select.select([listen_socket], [], [], 15)
+		r, w, x = select.select([listen_socket], [], [], 60)
 		if not r:
 			listen_socket.close()
 			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
@@ -380,7 +380,7 @@ class infoClient(generic_client.GenericClient):
 		if ticket['status'][0] != e_errors.OK:
 			return ticket
 
-		r, w, x = select.select([listen_socket], [], [], 15)
+		r, w, x = select.select([listen_socket], [], [], 60)
 		if not r:
 			listen_socket.close()
 			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
@@ -425,7 +425,7 @@ class infoClient(generic_client.GenericClient):
 		if ticket['status'][0] != e_errors.OK:
 			return ticket
 
-		r, w, x = select.select([listen_socket], [], [], 15)
+		r, w, x = select.select([listen_socket], [], [], 60)
 		if not r:
 			listen_socket.close()
 			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
@@ -472,7 +472,7 @@ class infoClient(generic_client.GenericClient):
 		if ticket['status'][0] != e_errors.OK:
 			return ticket
 
-		r, w, x = select.select([listen_socket], [], [], 15)
+		r, w, x = select.select([listen_socket], [], [], 60)
 		if not r:
 			listen_socket.close()
 			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
@@ -514,7 +514,7 @@ class infoClient(generic_client.GenericClient):
 		if ticket['status'][0] != e_errors.OK:
 			return ticket
 
-		r, w, x = select.select([listen_socket], [], [], 15)
+		r, w, x = select.select([listen_socket], [], [], 60)
 		if not r:
 			listen_socket.close()
 			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
