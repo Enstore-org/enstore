@@ -59,6 +59,12 @@ def get_remote_file(node, file, newfile):
 CTR_FILE = "/fnal/ups/prd/www_pages/enstore/enstore_system_user_data.html"
 NODES = ["d0ensrv2", "cdfensrv2", "stkensrv2"]
 TOTAL_FILE = "enstore_all_bytes"
+TOTAL_BYTES_FILE = "enstore_all_bytes.html"
+MB = 1024.0 * 1024.0
+GB = MB * 1024.0
+TB = GB * 1024.0
+PB = TB * 1024.0
+
 
 if __name__ == "__main__":
 
@@ -102,3 +108,16 @@ if __name__ == "__main__":
 	file = open(TOTAL_FILE, 'w')
 	file.write("%s %s %s\n"%(total, units, str))
 	file.close()
+
+        file = open(TOTAL_BYTES_FILE, 'w')
+        # convert to bytes
+        if units == "MB":
+            total = total * MB
+        elif units == "GB":
+            total = total * GB
+        elif units == "TB":
+            total = total * TB
+        elif units == "PB":
+            total = total * PB
+        file.write("%.0f"%(total,))
+        file.close()
