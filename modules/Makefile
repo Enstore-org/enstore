@@ -32,7 +32,7 @@ LIBSO=		`$(PYMAKE) -s echodestshared`
 # Put the object files for your module here:
 
 WARN=  `if [ \`uname\` = Linux ];then echo "-Wall"; fi`
-CFLAGS=-g $(WARN) -I./ -I$(FTT_DIR)/include `cat $$(FTT_DIR)/lib/libs`
+CFLAGS=-g $(WARN) -I./ -I$(FTT_DIR)/include `cat $(FTT_DIR)/lib/libs`
 
 MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
                 ASHAREDMODULE=$$MODULE \
@@ -45,7 +45,7 @@ MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
 
 
 # The libraries to use
-YOURLIBS="$(OLIB)/libftt.a `cat $$(FTT_DIR)/lib/libs`"
+YOURLIBS="$(OLIB)/libftt.a `cat $(FTT_DIR)/lib/libs`"
 YOURLIBS=$(OLIB)/libftt.a
 
 # If you have any Python modules, include them here, so that they
@@ -56,13 +56,13 @@ all:	EXfer ETape Devcodes
 
 ETape:
 	MODULE=ETape; \
-	YOURLIBS="$(FTT_DIR)/lib/libftt.a `cat $$(FTT_DIR)/lib/libs`"; \
+	YOURLIBS="$(FTT_DIR)/lib/libftt.a `cat $(FTT_DIR)/lib/libs`"; \
 	OBS=ETape.o ; \
 	$(MAKEIT)
 
 EXfer:
 	MODULE=EXfer; \
-	YOURLIBS="$(FTT_DIR)/lib/libftt.a `cat $$(FTT_DIR)/lib/libs` "; \
+	YOURLIBS="$(FTT_DIR)/lib/libftt.a `cat $(FTT_DIR)/lib/libs` "; \
 	OBS=EXfer.o ; \
 	$(MAKEIT)
 
