@@ -21,9 +21,9 @@
          	<ci>cpuLoad</ci>
          	<cn>5.0</cn>
     		</apply>
-               <Action ID="email" Host="ngopsrv" Type="central" Gap="9000" Counter="3">
-                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-               </Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
        	  </Condition>
           <Condition State="1" SevLevel="6" Description="Average cpu load is between 4 and 5 during last 15 min">
                 <apply>
@@ -39,9 +39,9 @@
                   <cn>5.0</cn>
                 </apply>
 		</apply>
-               <Action ID="email" Host="ngopsrv" Type="central" Gap="9000" Counter="3">
-                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-               </Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
           </Condition>
           <Condition State="1" SevLevel="4" Description="Average cpu load is between 3 and 4 during last 15 min">
                 <apply>
@@ -57,9 +57,9 @@
                   <cn>4.0</cn>
                 </apply>
 		</apply>
-              <Action ID="email" Host="ngopsrv" Type="central" Gap="9000" Counter="3">
-                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-               </Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
           </Condition>
          </ConditionSet>
     </MonitoredElement>
@@ -82,9 +82,9 @@
                  </apply>
          	 <cn>0.99</cn>
     		</apply>
-              <Action ID="email" Host="ngopsrv" Type="central">
-                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-               </Action>
+                <Action ID="enstore_alarm" Host="localhost" Type="local">
+	              <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+                </Action>
     		</Condition>
 	   </ConditionSet>
         </MonitoredElement>
@@ -101,9 +101,9 @@
         	   </apply>
          	   <cn>0.30</cn>
     		</apply>
-              <Action ID="email" Host="ngopsrv" Type="central">
-                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-               </Action>
+                <Action ID="enstore_alarm" Host="localhost" Type="local">
+	               <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+                </Action>
     		</Condition>
    		<Condition State="1" SevLevel="6" Description="Swap utilization between 20 and 30%">
     		<apply>
@@ -127,9 +127,9 @@
          	   <cn>0.30</cn>
     		 </apply>
 		</apply>
-              <Action ID="email" Host="ngopsrv" Type="central">
-                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-               </Action>
+                <Action ID="enstore_alarm" Host="localhost" Type="local">
+	                <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+                </Action>
     		</Condition>
          </ConditionSet>
     </MonitoredElement>
@@ -158,9 +158,9 @@
                       <cn>95</cn>
                      </apply>
 		    </apply>		
-                    <Action ID="email" Host="ngopsrv" Type="central">
-                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-                   </Action>
+                    <Action ID="enstore_alarm" Host="localhost" Type="local">
+	                <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+                    </Action>
    		   </Condition>	
 		   <Condition State="0" SevLevel="0" Description="{%Var} size exceeds 95%">	
     		    <apply>
@@ -168,8 +168,8 @@
                       <ci>size</ci>
                       <cn>95</cn>
 		    </apply>
-                    <Action ID="email" Host="ngopsrv" Type="central">
-                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+                   <Action ID="enstore_alarm" Host="localhost" Type="local">
+	                  <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
                    </Action>
    		   </Condition>
 	 	</ConditionSet>
@@ -185,9 +185,9 @@
          <ci>alive</ci>
          <cn>0</cn>
     	</apply>
-        <Action ID="email" Host="ngopsrv" Type="central">
-          <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-        </Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
     	</Condition>
 	</ConditionSet>
     	</MonitoredElement>
@@ -201,9 +201,9 @@
          <ci>isSync</ci>
          <cn>0</cn>
     	</apply>
-        <Action ID="email" Host="ngopsrv" Type="central">
-   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-	</Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
     	</Condition>       
     	<Condition State="0" SevLevel="0" Description="xntpd is dead">
         <apply>
@@ -211,9 +211,9 @@
          <ci>isSync</ci>
          <cn>-2</cn>
     	</apply>
-        <Action ID="email" Host="ngopsrv" Type="central">
-   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-	</Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
     	</Condition>       
     	<Condition State="-1" SevLevel="0" Description="can not obtain information">
         <apply>
@@ -236,9 +236,9 @@
                   <ci>numPr</ci>
                   <cn>1</cn>
             </apply>
-        <Action ID="email" Host="ngopsrv" Type="central">
-   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-	</Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
 	</Condition>
         <Condition State="0" SevLevel="0" Description="No processor info found in cpuinfo">
             <apply>
@@ -246,9 +246,9 @@
                   <ci>numPr</ci>
                   <cn>0</cn>
             </apply>
-        <Action ID="email" Host="ngopsrv" Type="central">
-   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-	</Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
          </Condition>
         </ConditionSet>
        </MonitoredElement>
@@ -269,9 +269,9 @@
             <cn>4</cn>
             </apply>
             </apply>
-        <Action ID="email" Host="ngopsrv" Type="central" >
-   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-	</Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
 	</Condition>
          <Condition State="0" SevLevel="0" Description="Temperature is above critical threshold">
             <apply>
@@ -297,9 +297,9 @@
             <cn>5</cn>
             </apply>
             </apply>
-        <Action ID="email" Host="ngopsrv" Type="central">
-   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-	</Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
 	</Condition>
 
 	<Condition State="-1" SevLevel="0" Description="Temperature is unknown">
@@ -354,9 +354,9 @@
             </apply>
            </apply> 
   </apply> 
-   <Action ID="email" Host="ngopsrv" Type="central" Gap="18000" Counter="5">
-   		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-	</Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
 	</Condition>
          <Condition State="-1" SevLevel="0" Description="Fan Speed is unknown">
             <apply>
@@ -384,9 +384,9 @@
                 <ci>down</ci>
                 <cn>2</cn>
            </apply>
-   <Action ID="email" Host="ngopsrv" Type="central" Gap="18000" Counter="5">
-                <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-   </Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
         </Condition>
          <Condition State="0" SevLevel="0" Description="ipmisrv  has to be restarted">
             <apply>
@@ -394,9 +394,9 @@
                 <ci>down</ci>
                 <cn>1</cn>
            </apply>
-   <Action ID="email" Host="ngopsrv" Type="central" Gap="18000" Counter="15">
-                <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
-   </Action>
+          <Action ID="enstore_alarm" Host="localhost" Type="local">
+	         <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
+          </Action>
         </Condition>
         </ConditionSet>
        </MonitoredElement>
