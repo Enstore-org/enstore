@@ -275,6 +275,7 @@ class MpdDataFile(EnPlot):
 
     def get_all_mounts(self, new_mounts_d):
 	mounts_l = []
+	new_mounts_l = []
 	total_mounts = 0
 	if self.openfile:
 	    mounts_l = self.openfile.readlines()
@@ -282,20 +283,20 @@ class MpdDataFile(EnPlot):
 		[day, count] = string.split(string.strip(line))
 		if new_mounts_d.has_key(day):
 		    # replace the old count with the new value
-                    mounts_l.remove(line)
-                    mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
+		    new_mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
                     total_mounts = total_mounts + new_mounts_d[day]
 		    del new_mounts_d[day]
 		else:
+		    new_mounts_l.append(line)
 		    total_mounts = total_mounts + string.atoi(count)
 
 	# now add to list any of the new days that were not present in the old list
 	days = new_mounts_d.keys()
 	days.sort()
 	for day in days:
-	    mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
+	    new_mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
 	    total_mounts = total_mounts + new_mounts_d[day]
-	return mounts_l, total_mounts
+	return new_mounts_l, total_mounts
 
     def open(self):
 	if os.path.isfile(self.ptsfile):
@@ -312,6 +313,7 @@ class MpdDataFile(EnPlot):
 	if self.openfile:
 	    self.openfile.close()
 	self.openfile = open(self.ptsfile, 'w')
+	mounts_l.sort()
 	for line in mounts_l:
 	    self.openfile.write(line)
 	# don't need to close the file as it is closed by the caller
