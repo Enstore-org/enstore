@@ -79,7 +79,7 @@ class MonitorServerClient(generic_client.GenericClient):
             # wait for a udp responce to the udp request, while at the same
             # time participating in the request via another connection.
             ##sim_thread = threading.Thread(target=self._simulate_encp_transfer,
-                                          args=(ticket,))
+            ##    args=(ticket,))
             ##sim_thread.start()
 
             #Send the message to start to the simulation.  Since, this
