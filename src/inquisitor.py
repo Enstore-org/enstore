@@ -334,14 +334,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # update the file that contains the configuration file information
     def make_config_html_file(self):
         self.confightmlfile.open()
+        d = {}
 	try:
             # get the config dictionary
-	    self.csc.dump(self.alive_rcv_timeout, self.alive_retries)
+	    d=self.csc.dump(self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(12,"make_config_html_file - ERROR, getting config dict timed out")
 	    return
 	# we may not have gotten the dict so check for it first before writing it.
-	self.confightmlfile.write(self.csc.config_dump.get('dump', {}))
+	self.confightmlfile.write(d.get('dump', {}))
 	self.confightmlfile.close()
 	self.move_file(1, self.confightmlfile_orig)
 
