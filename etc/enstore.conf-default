@@ -80,7 +80,7 @@ configdict['logserver'] = { 'status'        : 'ok', \
 configdict['hppcdisk.mover'] = { 'device'         : './hppcdisk.fake', \
                                  'library'        : 'hppcdisk.library_manager', \
                                  'driver'         : 'RawDiskDriver', \
-                                 'library_device' : '1', \
+                                 'mc_device'      : '1', \
                                  'media_changer'  : 'hppcdisk.media_changer', \
                                  'logname'        : 'HMOV', \
                                  'status'         : 'ok' }
@@ -88,7 +88,7 @@ configdict['hppcdisk.mover'] = { 'device'         : './hppcdisk.fake', \
 configdict['fntt1disk.mover'] = { 'device'         : './fntt1disk.fake', \
                                   'library'        : 'fntt1disk.library_manager', \
                                   'driver'         : 'RawDiskDriver', \
-                                  'library_device' : '1', \
+                                  'mc_device'      : '1', \
                                   'media_changer'  : 'fntt1disk.media_changer', \
                                   'logname'        : 'T1MOV', \
                                   'status'         : 'ok' }
@@ -96,7 +96,7 @@ configdict['fntt1disk.mover'] = { 'device'         : './fntt1disk.fake', \
 configdict['fndaprdisk.mover'] = { 'device'         : './fndaprdisk.fake', \
                                    'library'        : 'fndaprdisk.library_manager', \
                                    'driver'         : 'RawDiskDriver', \
-                                   'library_device' : '1', \
+                                   'mc_device'      : '1', \
                                    'media_changer'  : 'fndaprdisk.media_changer', \
                                    'logname'        : 'FMOV', \
                                    'status'         : 'ok' }
@@ -104,7 +104,7 @@ configdict['fndaprdisk.mover'] = { 'device'         : './fndaprdisk.fake', \
 configdict['stk0.mover'] = { 'device'         : '/dev/rmt0', \
                              'library'        : 'redwood50.library_manager', \
                              'driver'         : 'FTTDriver', \
-                             'library_device' : '0,0,9,1', \
+                             'mc_device'      : '0,0,9,1', \
                              'media_changer'  : 'STK.media_changer', \
                              'logname'        : 'STK0MOV', \
                              'status'         : 'ok' }
@@ -112,7 +112,7 @@ configdict['stk0.mover'] = { 'device'         : '/dev/rmt0', \
 configdict['stk1.mover'] = { 'device'         : '/dev/rmt1', \
                              'library'        : 'redwood50.library_manager', \
                              'driver'         : 'FTTDriver', \
-                             'library_device' : '0,0,9,3', \
+                             'mc_device'      : '0,0,9,3', \
                              'media_changer'  : 'STK.media_changer',\
                              'logname'        : 'STK1MOV', \
                              'status'         : 'ok' }
@@ -120,7 +120,7 @@ configdict['stk1.mover'] = { 'device'         : '/dev/rmt1', \
 configdict['8500.mover'] = { 'device'         : '/dev/rmt0', \
                              'library'        : '8500.library_manager', \
                              'driver'         : 'FTTDriver', \
-                             'library_device' : '/dev/rmt0', \
+                             'mc_device'      : '/dev/rmt0', \
                              'media_changer'  : 'FTT.media_changer',\
                              'logname'        : 'EXAMOV', \
                              'status'         : 'ok' }
