@@ -13,27 +13,26 @@
 <P>This section describes Enstore's error control policy and plan.
 
 <h2>Assumptions</h2>
-The behavior of the product is thought to conform to (oral) statements
-made about Run II operating conditions:
+Enstore conforms to the (oral) statements made about Run II operating conditions:
 <UL>
 	<LI>No single error when reading a tape is fatal to upper level
 		software.
 
-	<LI>When writing, errors should be handled by re-tries
+	<LI>When writing, errors should be handled by retries
 		on different media.
 
 	<LI>Mover nodes may crash, with minimal disruption of the system.
 
-	<LI>The system should generate alarms and recieve immediate service
-	   when its thoughput falls below pre-defined levels.
+	<LI>The system should generate alarms and receive immediate service
+	   when its throughput falls below predefined levels.
 
 	<LI>Routine error conditions should be cleared in normal
 	   business hours.
 
-	<LI>It shall be possible to re-direct writes to another library
+	<LI>It shall be possible to redirect writes to another library
 	   in case of library failure.
 
-	<LI>The system shall be suseptable to monitoring by PATROL.
+	<LI>The system shall be capable of being monitored by PATROL.
 
 </UL>
 </P>
@@ -41,71 +40,71 @@ made about Run II operating conditions:
 <h2>Overview</h2>
 
 <P> Enstore is a distributed system. For a transfer to succeed, many of the
-Enstore processes must be up and running.  Therefore, the servers shall be
+Enstore processes must be up and running.  Therefore, the servers are
 robust, and run on reliable computers. Nevertheless, it is good to consider
-the the intrinsic ability for the system to recover when a process or system
-running a process crashes.  This is summarized in the table below:
+the the intrinsic ability for the system to recover when a process or
+system running a process crashes.  This is summarized in the table below:
 
 
 <TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
 
 <TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Process</B></FONT></FONT></TH>
-<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>What State?</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Where is State?</B></FONT></FONT></TH>
 <TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Effect of Crash</B></FONT></FONT></TH>
 
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>ENCP</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>A transfer</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Transfer is canceled/aborted</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><em>Encp</em> </FONT> </TD>
+<TD> <P><FONT SIZE=2>In the user's <em>encp</em> transfer command </FONT> </TD>
+<TD> <P><FONT SIZE=2>Transfer is canceled/aborted </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>Configuration Server</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Static configuration File</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Wait for Restart of Server</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2>Configuration Server </FONT> </TD>
+<TD> <P><FONT SIZE=2>Static configuration file </FONT> </TD>
+<TD> <P><FONT SIZE=2>Wait for restart of server </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>File Clerk</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Persistent Database Table</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Wait for Restart of Server</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2>File Clerk </FONT> </TD>
+<TD> <P><FONT SIZE=2>Persistent database table </FONT> </TD>
+<TD> <P><FONT SIZE=2>Wait for restart of server </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>Volume Clerk</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Persistent Database Table</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Wait for Restart of Server</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2>Volume Clerk </FONT> </TD>
+<TD> <P><FONT SIZE=2>Persistent database table </FONT> </TD>
+<TD> <P><FONT SIZE=2>Wait for restart of server </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>Library Manager</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>In-memory lists of what work is queued, and what work
-is at what mover</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Recovery of state is not yet implemented. recovery of state is possible through ENCP retries.</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2>Library Manager </FONT> </TD>
+<TD> <P><FONT SIZE=2>In-memory lists of what work is queued, and what work
+is at what mover </FONT> </TD>
+<TD> <P><FONT SIZE=2>Recovery of state is not yet implemented. Recovery of state is possible through <em>encp</em> retries. </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>Mover</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>If busy, the current transfer + the current volume</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>ENCP retries writes, exits with errors on writes.</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2>Mover </FONT> </TD>
+<TD> <P><FONT SIZE=2>If busy, the current transfer + the current volume </FONT> </TD>
+<TD> <P><FONT SIZE=2><em>Encp</em> retries writes, exits with errors on read. </FONT> </TD>
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>PNFS NFS Servers</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>DBM database "file meta data"</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>NFS retry mechanisms</B> </FONT> </TD>
-
-
-<TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>Media Changer</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>In memory lists of work presented to library micro</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>State refreshed by UDP retry mechanism</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2><em>pnfs</em> NFS Servers </FONT> </TD>
+<TD> <P><FONT SIZE=2>DBM database "file meta data" </FONT> </TD>
+<TD> <P><FONT SIZE=2>NFS retry mechanisms </FONT> </TD>
 
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>Log Server</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>None</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Logs are not written</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2>Media Changer </FONT> </TD>
+<TD> <P><FONT SIZE=2>In memory lists of work given to library micro </FONT> </TD>
+<TD> <P><FONT SIZE=2>State refreshed by Enstore UDP retry protocol mechanism </FONT> </TD>
+
 
 <TR VALIGN=TOP>
-<TD> <P><FONT SIZE=2><B>Inquisitor</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>None</B> </FONT> </TD>
-<TD> <P><FONT SIZE=2><B>Displays are not refreshed until restart</B> </FONT> </TD>
+<TD> <P><FONT SIZE=2>Log Server </FONT> </TD>
+<TD> <P><FONT SIZE=2>None </FONT> </TD>
+<TD> <P><FONT SIZE=2>Logs are not written </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Inquisitor </FONT> </TD>
+<TD> <P><FONT SIZE=2>None </FONT> </TD>
+<TD> <P><FONT SIZE=2>Displays are not refreshed until restart </FONT> </TD>
 
 
 
@@ -114,8 +113,8 @@ is at what mover</B> </FONT> </TD>
 
 <h2>Detailed Errors</h2>
 
-<P>Much of the system state is stored within the user's encp client.
-This allows the encp client to retry on a large number of different
+<P>Much of the system state is stored within the user's <em>encp</em> client.
+This allows the <em>encp</em> client to retry on a large number of different
 errors. This retry is given a very high priority when it is received
 by the Library Manager so the user doesn't have to wait again for
 their job. It is the Library Manager's responsibility to ensure the
@@ -166,7 +165,7 @@ interim, Enstore will make the following working assumptions:
 			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Library Manager</FONT></FONT></P>
 			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
 		<TH>
-			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Encp</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2><em>encp</em></FONT></FONT></P>
 			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
 		<TH>
 			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Retry</FONT></FONT></TH>
@@ -519,7 +518,7 @@ interim, Enstore will make the following working assumptions:
 		<TD>
 			<P><FONT SIZE=2><B>WRITE_MOVER_CRASH</B></FONT></TD>
 		<TD>
-			<P><FONT SIZE=2>If mover is connected to an encp, encp will notice
+			<P><FONT SIZE=2>If mover is connected to an <em>encp</em>, <em>encp</em> will notice
 			its sockets being torn down prematurely. </FONT>
 		</TD>
 		<TD>
@@ -918,7 +917,7 @@ interim, Enstore will make the following working assumptions:
 		<TD>
 			<P><FONT SIZE=2><B>READ_MOVER_CRASH</B></FONT></TD>
 		<TD>
-			<P><FONT SIZE=2>If a Mover is connected to an encp, encp will
+			<P><FONT SIZE=2>If a Mover is connected to an <em>encp</em>, <em>encp</em> will
 			notice its sockets being torn down prematurely. The volume is tied
 			up at a mover. </FONT>
 		</TD>
@@ -989,8 +988,7 @@ interim, Enstore will make the following working assumptions:
 			<P><FONT SIZE=2><B>TCP_HUNG</B> </FONT>
 		</TD>
 		<TD>
-			<UL>
-				<P><FONT SIZE=2>It appears that the data TCP link is hung.</FONT></UL>
+			<P><FONT SIZE=2>It appears that the data TCP link is hung.</FONT>
 		</TD>
 		<TD>
 			<P><FONT SIZE=2>Check with user in morning </FONT>
@@ -1022,7 +1020,7 @@ interim, Enstore will make the following working assumptions:
 		</TD>
 		<TD>
 			<P><FONT SIZE=2>Library Manager crashes, and loses its queue of
-			pending work. The encp's will never be called back, and will wait
+			pending work. The <em>encp's</em> will never be called back, and will wait
 			forever. </FONT>
 		</TD>
 		<TD>
