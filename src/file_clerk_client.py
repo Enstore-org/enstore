@@ -243,7 +243,6 @@ def do_work(intf):
     # now get a file clerk client
     fcc = FileClient((intf.config_host, intf.config_port), intf.bfid)
     Trace.init(fcc.get_name(MY_NAME))
-
     if intf.alive:
         ticket = fcc.alive(MY_SERVER, intf.alive_rcv_timeout,
                            intf.alive_retries)

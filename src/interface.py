@@ -199,7 +199,7 @@ class Interface:
                         str(sys.exc_info()[1]))
             print "error: ", detail
             self.print_help()
-            sys.exit(1)
+	    sys.exit(1)
 	    
         for (opt,value) in optlist :
             # keep a list of the options entered without the leading "--"
