@@ -17,6 +17,7 @@ class NullDriver(driver.Driver):
         self._rate = 0
         self._last_rate = 0
         self._bytes_transferred = 0
+        self.verbose = 0
         
     def open(self, device=None, mode=None):
         if mode==0:
@@ -36,9 +37,11 @@ class NullDriver(driver.Driver):
         return self.open(device, mode)
     
     def rewind(self):
+        if self.verbose: print "rewind"
         self.loc = 0L
 
     def tell(self):
+        if self.verbose: print "tell", self.loc
         return self.loc
     
     def seek(self, loc):
@@ -46,6 +49,7 @@ class NullDriver(driver.Driver):
             if loc[-1]=='L':
                 loc=loc[:-1] #py1.5.2 
             loc = long(loc)
+        if self.verbose: print "seek", loc
         self.loc = loc
         
     def fileno(self):
@@ -55,11 +59,13 @@ class NullDriver(driver.Driver):
         pass
         
     def close(self):
+        if self.verbose: print "close"
         r = os.close(self.fd)
         self.fd = -1
         return r
 
     def read(self, buf, offset, nbytes):
+        if self.verbose: print "reading", nbytes
         if self.mode != 0:
             raise ValueError, "file not open for reading"
 
@@ -75,9 +81,11 @@ class NullDriver(driver.Driver):
         if r == -1:
             self.print_error("read")
             raise IOError, "read error on null device"
+        if self.verbose: print "read", r
         return r
     
     def write(self, buf, offset, nbytes):
+        if self.verbose: print "writing", nbytes
         if self.mode != 1:
             raise ValueError, "file not open for writing"
 
@@ -94,9 +102,11 @@ class NullDriver(driver.Driver):
         if r == -1:
             self.print_error("write")
             raise IOError, "write error on null device"
+        if self.verbose: print "wrote", r
         return r
         
     def writefm(self):
+        if self.verbose: print "writefm"
         self.loc = self.loc + 1
 
     def set_mode(self, density=None, compression=None, blocksize=None):
