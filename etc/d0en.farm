@@ -1,12 +1,12 @@
-REMOVE		d0ensrv		d0en-all[ab]	d0en-all
+REMOVE		d0ensrv		d0en-all[ab]	d0en-all	cons
 d0ensrv0	d0ensrv		d0en-alla	d0en-all
 d0ensrv1	d0ensrv		d0en-alla	d0en-all
 d0ensrv2	d0ensrv		d0en-alla	d0en-all
-d0ensrv3	d0ensrv		d0en-alla	d0en-all
+d0ensrv3	d0ensrv		d0en-alla	d0en-all	cons
 d0ensrv4	d0ensrv		d0en-alla	d0en-all
-d0ensrv5	d0ensrv		d0en-alla	d0en-all
+d0ensrv5	d0ensrv		d0en-alla	d0en-all	cons
 d0ensrv6	d0ensrv		d0en-alla	d0en-all
-d0ensrv7	d0ensrv		d0en-alla	d0en-all
+d0ensrv7	d0ensrv		d0en-alla	d0en-all	cons
 REMOVE		d0enmvr*[ab]
 d0enmvr1a	d0enmvr-a	d0en-alla	d0en-all
 d0enmvr2a	d0enmvr-a	d0en-alla	d0en-all
@@ -56,4 +56,8 @@ d0enmvr42a	d0enmvr-a	d0en-alla	d0en-all
 d0enmvr43a	d0enmvr-a	d0en-alla	d0en-all
 d0enmvr44a	d0enmvr-a	d0en-alla	d0en-all
 d0enmvr45a	d0enmvr-a	d0en-alla	d0en-all
-REMOVE		d0enout*
+d0enmvr46a	d0enmvr-a	d0en-alla	d0en-all
+d0enmvr47a	d0enmvr-a	d0en-alla	d0en-all
+d0enmvr48a	d0enmvr-a	d0en-alla	d0en-all
+d0enmvr49a	d0enmvr-a	d0en-alla	d0en-all
+REMOVE		d0enout*	rip*		rh73
