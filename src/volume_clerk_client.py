@@ -113,17 +113,15 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
         return  self.send(ticket)
 
 
-    # get a list of all volumnes
-
-
+    # get a list of all volumes
     def get_vols(self):
         import string
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
+	user_info = {"callback_addr" : (host, port)}
         ticket = {"work"               : "get_vols",
-                  "user_callback_port" : port,
-                  "user_callback_host" : host,
+                  "user_info"          : user_info,
                   "unique_id"          : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
@@ -303,8 +301,10 @@ if __name__ == "__main__":
             print "   clr_inhibit arguments: volume_name"
             sys.exit(1)
         ticket = vcc.clr_system_inhibit(vcc.args[0])  # name of this volume
-
-    if ticket['status'] != 'ok':
+    else:
+	print "syntax error"
+	sys.exit(1)
+    if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']
         pprint.pprint(ticket)
         sys.exit(1)
