@@ -38,6 +38,19 @@ HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
 
 STAMP_JPG = "%s%s"%(enstore_constants.STAMP, enstore_constants.JPG)
 
+LTO = "LTO"
+MAMMOTH = "Mammoth"
+
+DRIVE_IDS = { "ULT3580-TD1" : LTO,
+	      "ULTRIUM-TD1" : LTO,
+	      "EXB-89008E000112" : MAMMOTH,
+	      "EXB-8900" : MAMMOTH
+	      }
+
+# there may be several different drive ids that correspond to one type of drive.
+def translate_drive_id(drive_id):
+    return DRIVE_IDS.get(drive_id, drive_id)
+
 def get_ctr(fields):
     return long(float(fields[1])/float(fields[6]))
 
@@ -728,9 +741,11 @@ class BpdDataFile(EnPlot):
 		if not self.movers_d[mover].has_key(adate):
 		    self.movers_d[mover][adate] = [0.0, 0.0]
 	    else:
+		# translate the drive_id if necessary
+		drive_id_lcl = translate_drive_id(drive_id)
 		self.movers_d[mover] = {adate : [0.0, 0.0],
 					TOTAL : 0.0, CTR : 0,
-					DRIVE_ID : drive_id,
+					DRIVE_ID : drive_id_lcl,
 					USE_SUBDIR : YES}
 
 	    if type == WRITE:
