@@ -750,23 +750,16 @@ def final_scan_volume(vol):
 			error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
 			local_error = local_error + 1
 		# set comment
-		q = "select distinct va.label \
-			from volume va, volume vb, file fa, file fb, \
-			migration \
-			 where fa.volume = va.id and fb.volume = vb.id \
-				and fa.bfid = migration.src_bfid \
-				and fb.bfid = migration.dst_bfid \
-				and vb.label = '%s';"%(vol)
-		res = db.query(q).getresult()
+		from_list = migrated_from(vol, db)
 		vol_list = ""
-		for i in res:
-			vol_list = vol_list + ' ' + i[0]
+		for i in from_list:
+			vol_list = vol_list + ' ' + i
 		if vol_list:
-			res = vcc.set_comment(vol, "migrated from"+vol_list)
+			res = vcc.set_comment(vol, "<="+vol_list)
 			if res['status'][0] == e_errors.OK:
-				ok_log(MY_TASK, 'set comment of %s to "migrated from%s"'%(vol, vol_list))
+				ok_log(MY_TASK, 'set comment of %s to "<=%s"'%(vol, vol_list))
 			else:
-				error_log(MY_TASK, 'failed to set comment of %s to "migrated from%s"'%(vol, vol_list))
+				error_log(MY_TASK, 'failed to set comment of %s to "<=%s"'%(vol, vol_list))
 	return local_error
 
 # migrate(file_list): -- migrate a list of files
@@ -863,23 +856,16 @@ def migrate_volume(vol):
 		else:
 			error_log(MY_TASK, "failed to set %s migrated"%(vol))
 		# set comment
-		q = "select distinct vb.label \
-			from volume va, volume vb, file fa, file fb, \
-			migration \
-			 where fa.volume = va.id and fb.volume = vb.id \
-				and fa.bfid = migration.src_bfid \
-				and fb.bfid = migration.dst_bfid \
-				and va.label = '%s';"%(vol)
-		res = db.query(q).getresult()
+		to_list = migrated_to(vol, db)
 		vol_list = ""
-		for i in res:
-			vol_list = vol_list + ' ' + i[0]
+		for i in to_list:
+			vol_list = vol_list + ' ' + i
 		if vol_list:
-			res = vcc.set_comment(vol, "migrated to"+vol_list)
+			res = vcc.set_comment(vol, "=>"+vol_list)
 			if res['status'][0] == e_errors.OK:
-				ok_log(MY_TASK, 'set comment of %s to "migrated to%s"'%(vol, vol_list))
+				ok_log(MY_TASK, 'set comment of %s to "=>%s"'%(vol, vol_list))
 			else:
-				error_log(MY_TASK, 'failed to set comment of %s to "migrated to%s"'%(vol, vol_list))
+				error_log(MY_TASK, 'failed to set comment of %s to "=>%s"'%(vol, vol_list))
 	else:
 		error_log(MY_TASK, "do not set %s to migrated due to previous error"%(vol))
 	return res
