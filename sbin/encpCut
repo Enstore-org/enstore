@@ -492,7 +492,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                  $UPS_DIR/bin/ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
                  check_status $? "ups declare"
 	      else
-                 echo "PUNTING: ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV"
+                 echo "PUNTING: ups declare $CHAIN -f $FLAVOR -r \`pwd\` -M \`pwd\`${productUps} -m $product.table $product $REV"
               fi
            fi
            ;;
@@ -517,7 +517,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 $UPD_DIR/bin/upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
                 check_status $? "upd addproduct"
 	      else
-	        echo "PUNTING:upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV"
+	        echo "PUNTING:upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r \`pwd\` -M \`pwd\`${productUps} -m $product.table $product $REV"
               fi 
            fi
            ;;
