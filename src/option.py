@@ -129,6 +129,7 @@ ASSIGN_SG = "assign-sg"                      #volume
 BACKUP = "backup"                            #volume, file
 BFID = "bfid"                                #pnfs, file
 BFIDS = "bfids"                              #file
+BYPASS_LABEL_CHECK = "bypass-label-check"    #volume
 CAPTION_TITLE = "caption-title"              #enstore_make_log_plot
 CAT = "cat"                                  #pnfs
 CHECK = "check"                              #volume
@@ -295,7 +296,7 @@ TEST = "test"                                #option
 # in check.
 valid_option_list = [
     ADD, ALIVE, ALL, ASSIGN_SG,
-    BACKUP, BFID, BFIDS,
+    BACKUP, BFID, BFIDS, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR,
     DATABASE, DATABASEN, DBHOME,
