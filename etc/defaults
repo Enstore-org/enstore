@@ -47,6 +47,9 @@ elif [ `uname -n | grep -c airedale` -eq 1 ] ; then
   enstore_libraries="airedaledisk.library_manager"
   enstore_media_changers="airedaledisk.media_changer"
   enstore_movers="airedaledisk.mover"
+  export J=/jon/enstore/airedaledisk.fake
+  export P=/pnfs/enstore/airedale
+  export V=/pnfs/enstore/volmap
 
 elif [ `uname -n | grep -c hppc` -eq 1 ] ; then
   enstore_libraries="hppcdisk.library_manager"
