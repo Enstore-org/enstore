@@ -20,8 +20,6 @@ def write_request_ok(ticket):
     encp_keys = {'adminpri': -1,
                  'agetime': 0,
                  'basepri': 1,
-                 'curpri': 1,
-                 'delayed_dismount': None,
                  'delpri': 0}
     
     fc_keys = {'address': ('', 0),
@@ -94,8 +92,6 @@ def read_request_ok(ticket):
     encp_keys = {'adminpri': -1,
                  'agetime': 0,
                  'basepri': 1,
-                 'curpri': 1,
-                 'delayed_dismount': None,
                  'delpri': 0}
     
     fc_keys = {'address': ('', 0),
