@@ -763,7 +763,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.tape_driver.set_mode(compression = 0, blocksize = 0)
         if have_tape != 1:
             #This is bad...
-            Trace.log(e_errors.ERROR, "cannot open tape device for positioning")
+            Trace.log(e_errors.ERROR, "cannot open tape device for positioning, state=ERROR")
             self.state = ERROR
             return
         
@@ -814,7 +814,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.last_error = exc, msg
 
         if self.state == ERROR:
-            Trace.log(e_errors.ERROR, "Mover already in ERROR state %s" % (msg,))
+            Trace.log(e_errors.ERROR, "Mover already in ERROR state %s, state=ERROR" % (msg,))
             return
 
         ###XXX network errors should not count toward rd_err, wr_err
@@ -984,7 +984,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if work is None:
             Trace.log(e_errors.ERROR, "state: %s work: %s" %
                       (state_name(state),work))
-        if status is None:
+
+        if not status:
             status = e_errors.OK, None
             
         if type(status) != type(()) or len(status)!=2:
@@ -999,7 +1000,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "read_only" : 0, ###XXX todo: multiple drives on one scsi bus, write locking
             "returned_work": returned_work,
             "state": state_name(self.state),
-            "status": status, 
+            "status": status,
             "volume_family": self.volume_family,
             "volume_status": self.volume_status,
             "operation": mode_name(self.mode),
@@ -1036,7 +1037,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if have_tape == 1:
                 ejected = self.tape_driver.eject()
                 if ejected == -1:
-                    Trace.log(e_errors.ERROR, "Oops, cannot eject tape")
+                    Trace.log(e_errors.ERROR, "Oops, cannot eject tape, state=ERROR")
                     self.state = ERROR
             self.tape_driver.close()
         vol_info = self.vol_info.copy()
@@ -1056,7 +1057,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 self.idle()
         else:
-            Trace.log(e_errors.ERROR, "dismount volume: %s" % (status,))
+            Trace.log(e_errors.ERROR, "dismount volume: %s: state=ERROR" % (status,))
             self.state = ERROR
             if error_function:
                 error_function(self)
@@ -1171,14 +1172,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             f=open(filename,'w')
             f.write('locked\n')
             f.close()
-        except IOError:
+        except (OSError, IOError):
             Trace.log(e_errors.ERROR, "Cannot write %s"%(filename,))
             
     def remove_lockfile(self):
         filename=self.lockfile_name()
         try:
             os.unlink(filename)
-        except IOError:
+        except (OSError, IOError):
             Trace.log(e_errors.ERROR, "Cannot unlink %s"%(filename,))
 
     def check_lockfile(self):
