@@ -23,6 +23,7 @@ jpeg_output_logy_stamp = os.path.join(install_dir, output_file_logy+'_stamp.jpg'
 
 hist_out = output_file+'_hist'
 postscript_hist_out = os.path.join(install_dir, hist_out+'.ps')
+latex_hist_out = os.path.join(install_dir, hist_out+'.tex')
 jpeg_hist_out = os.path.join(install_dir, hist_out+'.jpg')
 jpeg_hist_out_stamp = os.path.join(install_dir, hist_out+'_stamp.jpg')
 
@@ -130,7 +131,7 @@ if __name__ == '__main__':
 	# The histogram
 
 	count = 0
-	set_xtics = "set xtics ("
+	set_xtics = "set xtics rotate ("
 	outf = open(tmp_data, "w")
 	for i in hist_keys:
 		count = count + 1
@@ -146,8 +147,8 @@ if __name__ == '__main__':
 	outf.write("set xlabel 'Mounts'\n")
 	outf.write("set xrange [0:%d]\n"%(count+1))
 	outf.write(set_xtics)
-	outf.write("set terminal postscript color solid\n")
-	outf.write("set output '"+postscript_hist_out+"'\n")
+	outf.write("set terminal pslatex color auxfile\n")
+	outf.write("set output '"+latex_hist_out+"'\n")
 	outf.write("set title 'Tape Mounts (plotted at %s)'\n"%(time.ctime(time.time())))
 	outf.write("plot '%s' notitle with impulse lw 5\n"%(tmp_data))
 	outf.close()
