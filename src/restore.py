@@ -30,7 +30,7 @@ class DbTable(db.DbTable):
 
 		self.dict = {}
 		for jf in jfiles:
-			jf = jf[:-1]		# trim /012
+			jf = jf[:-1]		# trim \012
 			try:
 				f = open(jf,"r")
 			except IOError:
@@ -169,7 +169,7 @@ if __name__ == "__main__":		# main
 	# to the "last good backup"
 
 	cmd = "rsh "+bckHost+" ls -1t "+bckHome+" | head -1"
-	bckHome = os.popen(cmd).readline()
+	bckHome = bckHome+"/"+os.popen(cmd).readline()[:-1]
 
 	print "restore from "+bckHost+":"+bckHome
 
@@ -183,13 +183,17 @@ if __name__ == "__main__":		# main
 	# save the current (bad?) database
 	for i in dbs:
 		cmd = "mv "+i+" "+i+".saved"
-		os.system(cmd)
-		print cmd
+		try:	# if doesn't succeed, never mind
+			os.system(cmd)
+			print cmd
+		except:
+			pass
 
 	# save all log.* files
 	cmd = "ls -1 log.*"
 	logs = os.popen(cmd).readlines()
 	for i in logs:
+		i = i[:-1]	# trim \012
 		cmd = "mv "+i+" "+i+".saved"
 		os.system(cmd)
 		print cmd
