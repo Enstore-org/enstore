@@ -128,7 +128,7 @@ class  RawDiskDriver(GenericDriver) :
         # new volumes for disk, don't start at 0 offset - set eod to end
         if eod_cookie == "none":
             eod_cookie = repr(self.df.tell())
-            print "adjusted eod from none to ",eod_cookie
+            #print "adjusted eod from none to ",eod_cookie
         self.set_eod(eod_cookie)
         self.blocksize = 4096
 
@@ -138,7 +138,6 @@ class  RawDiskDriver(GenericDriver) :
     def unload(self):
         #print "closing file"
         self.df.close()
-
 
     def set_eod(self, eod_cookie) :
         # When a volume is ceated, the system sets EOD cookie to "none"
