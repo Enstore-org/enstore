@@ -23,7 +23,7 @@ def default_port():
 
 class BaseDefaults:
 
-    def __init__(self, host, port):
+    def __init__(self, host="localhost", port=0):
         if host == "localhost" :
             (self.config_host, self.ca, self.ci) = \
                 socket.gethostbyaddr(socket.gethostname())
@@ -32,6 +32,7 @@ class BaseDefaults:
 
 	self.check_host()
 	self.check_port(port)
+        self.dolist = 0   # standard default
 
     def check_port(self, port):
 	# bomb out if port isn't numeric
@@ -57,20 +58,28 @@ class BaseDefaults:
         return ["list", "verbose"]
 
     def help_line(self):
-        print "python ",sys.argv[0], self.options(),
+        return "python"+repr(sys.argv[0])+repr(self.options())
 
     def print_help(self):
         print "USAGE:"
-	self.help_line()
+	#self.help_line()
+        print self.help_line()
 	print "" 
 	print "     (do not forget the '--' in  front of each option)"
 
     def parse_config_host(self, value):
-        self.csc.config_host = value
-	self.csc.check_host()
+        try:
+            self.csc.config_host = value
+            self.csc.check_host()
+        except AttributeError:
+            self.config_host = value
+            self.check_host()
 
     def parse_config_port(self, value):
-	self.csc.check_port(value)
+        try:
+            self.csc.check_port(value)
+        except AttributeError:
+            self.check_port(value)
 
     def strip(self, value):
 	return value
@@ -128,8 +137,12 @@ class BaseDefaults:
                 self.logmsg = value
             elif opt == "--alive" :
                 self.doalive = 1
-            elif opt == "--list" or opt == "--verbose" :
+            elif opt == "--nocrc":
+                self.chk_crc = 0
+            elif opt == "--list":
                 self.dolist = 1
+            elif opt == "--verbose" :
+                self.dolist = string.atoi(value)
             elif opt == "--faccess":
   	        self.criteria['first_access']=self.check(value)
             elif opt == "--laccess":
