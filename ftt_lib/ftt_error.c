@@ -149,6 +149,7 @@ static char *messages[] = {
 };
 
 extern int errno;
+static int keep_errno;
 
 int
 ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, int recoverable) {
@@ -156,6 +157,8 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
     static ftt_stat sbuf;
     char *p;
     int save1, save2;
+
+    keep_errno = errno;
 
     DEBUG3(stderr,"Entering ftt_translate_error -- opn == %d, op = %s, res=%d, what=%s recoverable=%d\n",
 	opn,op, res, what, recoverable);
@@ -166,15 +169,16 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	return -1;
     }
 
-    if (errno == 75) {	/* linux gives this when out of buffers... */
+    if (keep_errno == 75) {	/* linux gives this when out of buffers... */
 	terrno = ENOMEM;
         ftt_errno = d->errortrans[opn][terrno];
+	errno = keep_errno;
         return ftt_describe_error(d, opn, op, res, what, recoverable);
     }
-    if (errno >= MAX_TRANS_ERRNO) {
+    if (keep_errno >= MAX_TRANS_ERRNO) {
         terrno = MAX_TRANS_ERRNO - 1;
     } else {
-	terrno = errno;
+	terrno = keep_errno;
     } 
 
     ftt_errno = d->errortrans[opn][terrno];
@@ -228,7 +232,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	    /*  have verify_blank double check the report so we know it's */
 	    /*  not a mis-diagnosed error.                                */
 
-	    if (FTT_EBLANK == ftt_errno && 
+	    if (FTT_EBLANK == ftt_errno && opn == FTT_OPN_READ &&
 			d->current_file == 0 && d->current_block == 0 &&
 			(d->scsi_ops & FTT_OP_READ) == 0 && d->scsi_ops != 0 ) {
 		save1 = ftt_errno;
@@ -251,6 +255,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	ftt_errno = FTT_EIO;
     }
 
+    errno = keep_errno;
     return ftt_describe_error(d, opn, op, res, what, recoverable);
 }
 
