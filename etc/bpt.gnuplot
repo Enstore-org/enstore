@@ -11,6 +11,7 @@ set format x "%y-%m-%d"
 set logscale y
 plot 'bpt.pts' using 1:2 t '' with points
 set output 'bpt.pts.ps'
+set pointsize 2
 set nologscale y
 set yrange [0: ]
-plot 'bpt.pts' using 1:2 t '' with impulses
+plot 'bpt.pts' using 1:2 t '' w impulses, 'bytes.pts' using 1:5 t 'mean file size' w points
