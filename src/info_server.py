@@ -59,9 +59,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
 
-		self.file = edb.FileDB(host=default_host, auto_journal=0)
+		self.file = edb.FileDB(host=att['dbhost'], auto_journal=0)
 		self.db = self.file.db
-		self.volume = edb.VolumeDB(host=default_host, auto_journal=0, rdb=self.db)
+		self.volume = edb.VolumeDB(host=att['dbhost'], auto_journal=0, rdb=self.db)
 		self.sgdb = esgdb.SGDb(self.db)
 
 		# setup the communications with the event relay task
