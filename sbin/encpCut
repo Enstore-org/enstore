@@ -311,6 +311,7 @@ for try in list doit; do
               copyit $ENSTORE_DIR/src/ENCPBIN/enstore         $INSTALLDIR
               copyit $ENSTORE_DIR/volume_import/enstore_tape  $INSTALLDIR
               copyit $ENSTORE_DIR/bin/pcmd                    $INSTALLDIR
+              copyit $ENSTORE_DIR/sbin/EPS                    $INSTALLDIR
               copyit $ENSTORE_DIR/ups/encp.table              $INSTALLDIR
               copyit $ENSTORE_DIR/ups/pcfarm.table            $INSTALLDIR
               copyit $ENSTORE_DIR/ups/rip.table               $INSTALLDIR
