@@ -1241,6 +1241,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
         if mticket.has_key('returned_work') and mticket['returned_work']:
             # put this ticket back into the pending queue
+            # if work is write_to_hsm remove currently assigned volume label
+            # because later it may be different
+            d= mticket['returned_work']
+            if d['work'] == 'write_to_hsm':
+                if d['fc'].has_key('external_label'): del(d['fc']['external_label'])
+                if d['vc'].has_key('external_label'): del(d['vc']['external_label'])
+                
             Trace.trace(11, "mover_error put returned work back to pending queue %s"%
                         (mticket['returned_work'],))
             rq, status = self.pending_work.put(mticket['returned_work'])
