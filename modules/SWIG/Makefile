@@ -3,7 +3,13 @@
 # $Id$
 #
 
-SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c ../checksum_wrap.c
+SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c \
+			../derrno_wrap.c \
+			../checksum_wrap.c \
+			../socket_ext_wrap.c 
+#			../ftt_wrap.c 
+
+
 SWIG_GENERATED_PY_FILES=../aci_shadow.py
 
 all: $(SWIG_GENERATED_C_FILES)   
@@ -34,4 +40,13 @@ clean:
 	mv checksum_wrap.c ..
 
 
+../ftt_wrap.c: ftt.i
+	if [ "$(FTT_DIR)_" != _ ] ; then \
+	swig -I$(FTT_DIR)/include -python ftt.i ; \
+	mv ftt_wrap.c .. ; \
+	fi
+
+../socket_ext_wrap.c: socket_ext.i
+	swig -python socket_ext.i ; \
+	mv socket_ext_wrap.c .. ; \
 

@@ -79,3 +79,7 @@ derrno derrno_wrap.c -I$(ACI_DIR)/inc
 Ptrace Ptrace.c trace.a -lc
 
 checksum checksum_wrap.c adler32.a
+
+socket_ext socket_ext_wrap.c
+
+#ftt ftt_wrap.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt 
