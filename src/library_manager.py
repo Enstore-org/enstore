@@ -22,33 +22,9 @@ import udp_client
 
 import pprint
 
-pending_work = []       # list of read or write work tickets
+import manage_queue
 
-# here is where we setup priority for work that needs to get done
-def priority(ticket):
-#     priority set to 5 in encp for a retry
-    if ticket.has_key("priority"):
-        return ticket["priority"]
-    if ticket["work"] == "write_to_hsm":
-        #return 10
-        return 1
-    return 1
-
-
-# insert work into our queue based on its priority
-def queue_pending_work(ticket):
-    if list: 
-	print "LM: queue_pending_work"
-	pprint.pprint(ticket)
-    ticket["priority"] = priority(ticket)
-    i = 0
-    tryp = ticket["priority"]
-    for item in pending_work:
-        if tryp > item["priority"]:
-            break
-        i = i + 1
-    pending_work.insert(i, ticket)
-
+pending_work = manage_queue.Queue()       # list of read or write work tickets
 
 ##############################################################
 movers = []    # list of movers belonging to this LM
@@ -182,18 +158,17 @@ def get_work_at_movers(external_label):
             return w
     return {}
 
-
 ##############################################################
-
 # is there any work for any volume?
 def next_work_any_volume(csc):
 
     # look in pending work queue for reading or writing work
-    for w in pending_work:
-
+    w=pending_work.get_init()
+    while w:
         # if we need to read and volume is busy, check later
         if w["work"] == "read_from_hsm":
             if is_volume_busy(w["fc"]["external_label"]) :
+                w=pending_work.get_next()
                 continue
             # otherwise we have found a volume that has read work pending
             return w
@@ -205,6 +180,7 @@ def next_work_any_volume(csc):
             vol_veto_list = busy_vols_in_family(w["fc"]["file_family"])
             # only so many volumes can be written to at one time
             if len(vol_veto_list) >= w["fc"]["file_family_width"]:
+                w=pending_work.get_next()
                 continue
             # width not exceeded, ask volume clerk for a new volume.
             vc = volume_clerk_client.VolumeClerkClient(csc)
@@ -232,7 +208,7 @@ def next_work_any_volume(csc):
             print "assertion error in next_work_any_volume w="
             pprint.pprint(w)
             raise "assertion error"
-
+        w=pending_work.get_next()
     # if the pending work queue is empty, then we're done
     return {"status" : "nowork"}
 
@@ -241,7 +217,9 @@ def next_work_any_volume(csc):
 def next_work_this_volume(v):
 
     # look in pending work queue for reading or writing work
-    for w in pending_work:
+    w=pending_work.get_init()
+    while w:
+
         # writing to this volume?
         if (w["work"]                == "write_to_hsm"   and
             w["fc"]["file_family"]   == v["file_family"] and
@@ -257,7 +235,7 @@ def next_work_this_volume(v):
               w["fc"]["external_label"] == v["external_label"] ):
             # ok passed criteria, return read work ticket
             return w
-
+        w=pending_work.get_next()
     # if the pending work queue for this volume is empty, then we're done
     return {"status" : "nowork"}
 
@@ -388,7 +366,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    ticket['lm'] = lm
 	lm['address'] = self.server_address
 
-        queue_pending_work(ticket)
+        pending_work.insert_job(ticket)
 	if list: pprint.pprint(movers)
 
 	# find the next idle mover
@@ -424,7 +402,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    ticket['lm'] = lm
 	lm['address'] = self.server_address
 
-        queue_pending_work(ticket)
+        pending_work.insert_job(ticket)
 
 	# find the next idle mover
 	mv = idle_mover_next(self)
@@ -471,7 +449,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			if list: 
 			    print "Number of movers for suspect volume", \
 				  len(item['movers'])
-			pending_work.remove(w)
+			pending_work.delete_job(w)
 			w['status'] = 'Read failed'
 			send_regret(w)
 			#remove volume from suspect volume list
@@ -481,7 +459,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			if list:
 			    print "There is only one mover in the \
 			    configuration"
-			pending_work.remove(w)
+			pending_work.delete_job(w)
 			w['status'] = 'Read failed' # set it to something more specific
 			send_regret(w)
 			#remove volume from suspect volume list
@@ -498,7 +476,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
             # put it into our bind queue and take it out of pending queue
             work_awaiting_bind.append(w)
-            pending_work.remove(w)
+            pending_work.delete_job(w)
 	    mticket["external_label"] = w["fc"]["external_label"]
 	    self.have_bound_volume(mticket)
 
@@ -561,7 +539,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        mticket["mover"],
                                        w["uinfo"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks
-            pending_work.remove(w)
+            pending_work.delete_job(w)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
 	    if list: 
@@ -639,7 +617,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		print "unbind: work_awaiting_bind" 
 		pprint.pprint(w)
             work_awaiting_bind.remove(w)
-            queue_pending_work(w)
+            pending_work.insert_job(w)
 
         # else, it is the user's responsibility to retry
         w = get_work_at_movers (ticket["external_label"])
@@ -661,7 +639,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # some sort of error, like write
             # work and no volume available
             # so bounce. status is already bad...
-            pending_work.remove(w)
+            pending_work.delete_job(w)
             callback.send_to_user_callback(w)
 
 
@@ -678,7 +656,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         rticket["status"] = "ok"
         rticket["at movers"] = work_at_movers
         rticket["awaiting volume bind"] = work_awaiting_bind
-        rticket["pending_work"] = pending_work
+        rticket["pending_work"] = pending_work.get_queue()
         callback.write_tcp_socket(self.data_socket,rticket,
                                   "library_manager getwork, datasocket")
         self.data_socket.close()
