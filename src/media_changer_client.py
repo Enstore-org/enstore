@@ -34,7 +34,9 @@ class MediaChangerClient(generic_client.GenericClient):
         self.u = udp_client.UDPClient()
         self.server_address = self.get_server_address(name)
 
-
+    ##These functions should really take a named parameter list rather than "vol_ticket".  It's
+    ## not clear what keys need to be present in vol_ticket.  Looks like
+    ## at least external_label and media_type are needed
     def loadvol(self, vol_ticket, mover, drive):
 	ticket = {'work'           : 'loadvol',
                   'vol_ticket'     : vol_ticket,
