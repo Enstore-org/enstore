@@ -581,7 +581,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    lfd = t["log_file_path"]
 
         keep = ticket.get("keep", 0)
-        pts_dir = ticket.get("pts_dir", "")
+        pts_dir = ticket.get("keep_dir", "")
         
 	self.encp_plot(ticket, lfd, keep, pts_dir)
 	self.mount_plot(ticket, lfd, keep, pts_dir)

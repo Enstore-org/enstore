@@ -104,7 +104,7 @@ class Inquisitor(generic_client.GenericClient):
         if keep:
             t["keep"] = keep
         if pts_dir:
-            t["pts_dir"] = pts_dir
+            t["keep_dir"] = pts_dir
         if mcs:
             # the user  specified a device to plot the data for.
             t['mcs'] = mcs
@@ -134,7 +134,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.stop_time = ""
         self.mcs = []
         self.keep = 0
-        self.pts_dir = ""
+        self.keep_dir = ""
         generic_client.GenericClientInterface.__init__(self)
 
     #  define our specific help
@@ -160,7 +160,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	       ["refresh=", "get_refresh", "max_encp_lines="] +\
 	       ["get_max_encp_lines", "plot", "logfile_dir="] +\
 	       ["start_time=", "stop_time=", "mc=", "keep"]   +\
-               ["pts_dir="]
+               ["keep_dir="]
 
 
 if __name__ == "__main__" :
@@ -220,7 +220,7 @@ if __name__ == "__main__" :
 
     elif intf.plot:
 	ticket = iqc.plot(intf.logfile_dir, intf.start_time, intf.stop_time,
-                          intf.mcs, intf.keep, intf.pts_dir)
+                          intf.mcs, intf.keep, intf.keep_dir)
 
     else:
 	intf.print_help()

@@ -374,8 +374,8 @@ class Interface:
                 self.mcs = string.split(value, ",")
             elif opt == "--keep" :
                 self.keep = 1
-            elif opt == "--pts_dir" :
-                self.pts_dir = value
+            elif opt == "--keep_dir" :
+                self.keep_dir = value
             elif opt == "--key_value" :
                 self.key_value = str_to_tuple(value)
             elif opt == "--help" :
