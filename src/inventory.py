@@ -181,7 +181,7 @@ def read_db(dbname):
                       (count, count/delta, delta)
         
     except:
-        exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         print "DATABASE",dbname[1],"IS CORRUPT. Current count is",count
         print exc, msg
         return 1
@@ -214,7 +214,7 @@ def read_long_db(dbname, d, num):
             k,v=d.cursor('next')
         
     except:
-        exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         print "DATABASE",dbname[1],"IS CORRUPT. Current count is",count
         print exc, msg
         return 1

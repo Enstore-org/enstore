@@ -54,7 +54,7 @@ def verify_db(dbname):
     except:
             c.close()
             d.close()
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             print "Backup of DATABASE",dbname,"IS CORRUPT. Current count is",count
             print exc
             print msg
