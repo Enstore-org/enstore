@@ -532,7 +532,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_read = 0
             try:
                 bytes_read = self.buffer.stream_read(nbytes, driver)
-            except exceptions.Exception, detail:
+            except:
+                exc, detail, tb = sys.exc_info()
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
                 return
             if bytes_read <= 0:  #  The client went away!
@@ -594,7 +595,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_written = 0
             try:
                 bytes_written = self.buffer.block_write(nbytes, driver)
-            except exceptions.Exception, detail:
+            except:
+                exc, detail, tb = sys.exc_info()
                 self.transfer_failed(e_errors.WRITE_ERROR, detail)
                 break
             if bytes_written != nbytes:
@@ -645,7 +647,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_read = 0
             try:
                 bytes_read = self.buffer.block_read(nbytes, driver)
-            except exceptions.Exception, detail:
+            except:
+                exc, detail, tb = sys.exc_info()
                 self.transfer_failed(e_errors.READ_ERROR, detail)
                 break
             if bytes_read <= 0:
@@ -694,7 +697,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_written = 0
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
-            except exceptions.Exception, detail:
+            except:
+                exc, detail, tb = sys.exc_info()
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
                 break
             if bytes_written < 0:
@@ -834,7 +838,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def position_media(self, verify_label=1):
         #At this point the correct volume is loaded; now position it
         label_tape = 0
-        for retry in range(3):
+        have_tape = 0
+        for retry_open in range(3):
             Trace.trace(10, "position media")
             have_tape = self.tape_driver.open(self.device, self.mode, retry_count=10)
             self.tape_driver.set_mode(blocksize = 0)
@@ -846,7 +851,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.error("cannot open tape device for positioning")
             return
-        
         self.state = SEEK  ##XXX start a timer here
 
         eod = self.vol_info['eod_cookie']
@@ -1038,7 +1042,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket['status'] = (status, error_info)
         try:
             callback.write_tcp_obj(self.control_socket, ticket)
-        except exceptions.Exception, detail:
+        except:
+            exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
         self.control_socket.close()
         self.control_socket = None
@@ -1060,7 +1065,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(10, "connected")
             try:
                 callback.write_tcp_obj(control_socket, ticket)
-            except exceptions.Exception, detail:
+            except:
+                exc, detail, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR,"error in connect_client_done: %s" % (detail,))
             # we expect a prompt call-back here
             Trace.trace(10, "select: listening for client callback")
@@ -1142,7 +1148,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         setattr(self, thread_name, thread)
         try:
             thread.start()
-        except exceptions.Exception, detail:
+        except:
+            exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
         return 0
     
@@ -1167,7 +1174,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     v = self.vcc.inquire_vol(self.current_volume)
                     if type(v) is type({}):
                         self.vol_info.update(v)
-                except exceptions.Exception, detail:
+                except:
+                    exc, detail, tb = sys.exc_info()
                     Trace.log(e_errors.ERROR, "inquire volume for dismount: %s" % (detail,))
         if not self.vol_info.get('external_label'):
             if self.current_volume:
@@ -1226,7 +1234,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed=0
         try:
             self.tape_driver.seek(location, eot_ok) #XXX is eot_ok needed?
-        except exceptions.Exception, detail:
+        except:
+            exc, detail, tb = sys.exc_info()
             self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,))
             failed=1
         self.timer('seek_time')
