@@ -1142,13 +1142,12 @@ def calculate_rate(done_ticket, tinfo, verbose):
                  "\tmover=%s media_changer=%s   elapsed=%.02f"
         
         log_format = "  %s %s -> %s: "\
-                     "%d bytes copied %s %s at %.3g MB/S (%.3g MB/S) " \
+                     "%d bytes copied %s %s at %.3g MB/S " \
+                     "(%.3g MB/S network) (%.3g MB/S drive) " \
                      "mover=%s " \
-                     "drive_id=%s drive_sn=%s drive_venor=%s elapsed=%s.02f "\
+                     "drive_id=%s drive_sn=%s drive_venor=%s elapsed=%.05g "\
                      "{'media_changer' : '%s', 'mover_interface' : '%s', " \
                      "'driver' : '%s'}"
-                     #"%d bytes copied %s %s at %.3g MB/S " \
-                     #"(%.3g MB/S network) (%.3g MB/S drive) " \
 
         print_values = (done_ticket['infile'],
                         done_ticket['outfile'],
@@ -1173,7 +1172,7 @@ def calculate_rate(done_ticket, tinfo, verbose):
                       done_ticket["fc"]["external_label"],
                       tinfo["overall_rate_%s"%(id,)],
                       tinfo["network_rate_%s"%(id,)],
-                      #tinfo['drive_rate_%s'%(id,)],
+                      tinfo['drive_rate_%s'%(id,)],
                       done_ticket["mover"]["name"],
                       done_ticket["mover"]["product_id"],
                       done_ticket["mover"]["serial_num"],
@@ -1817,7 +1816,7 @@ def get_clerks_info(bfid, client):
     #Get the file clerk information.
     fcc = file_clerk_client.FileClient(client['csc'], bfid)
     fc_ticket = fcc.bfid_info()
-    
+    pprint.pprint(fc_ticket)
     if fc_ticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, fc_ticket)
         quit()
@@ -1825,7 +1824,7 @@ def get_clerks_info(bfid, client):
     #Get the volume clerk information.
     vcc = volume_clerk_client.VolumeClerkClient(client['csc'])
     vc_ticket = vcc.inquire_vol(fc_ticket['fc']['external_label'])
-
+    pprint.pprint(vc_ticket)
     if vc_ticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, vc_ticket)
         quit()
@@ -1834,41 +1833,38 @@ def get_clerks_info(bfid, client):
                 (fc_ticket['fc']['external_label'],))
     
     inhibit = vc_ticket['system_inhibit'][0]
-
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        if inhibit==e_errors.NOACCESS:
-            msg="Volume is marked NOACCESS"
-        else:
-            msg="Volume is marked NOTALLOWED"
-        raise inhibit, msg
+        msg = "volume is marked" + inhibit
+        vc_ticket['status'] = inhibit, msg
+        #if inhibit==e_errors.NOACCESS:
+        #    msg="Volume is marked NOACCESS"
+        #else:
+        #    msg="Volume is marked NOTALLOWED"
+        #raise inhibit, msg
         
     inhibit = vc_ticket['user_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        if inhibit==e_errors.NOACCESS:
-            msg="Volume is marked NOACCESS"
-        else:
-            msg="Volume is marked NOTALLOWED"
-        raise inhibit, msg
+        msg = "volume is marked" + inhibit
+        vc_ticket['status'] = inhibit, msg
+        #if inhibit==e_errors.NOACCESS:
+        #    msg="Volume is marked NOACCESS"
+        #else:
+        #    msg="Volume is marked NOTALLOWED"
+        #raise inhibit, msg
         
-    if fc_ticket["fc"]["deleted"] == "yes":
-    #if fc_ticket["deleted"] == "yes":
+    if fc_ticket["deleted"] == "yes":
         raise (e_errors.DELETED, "File has been deleted")
 
     #Verify that the external labels named by the file clerk and volume
     # clerk are the same.
-    if vc_ticket['external_label'] != fc_ticket['fc']['external_label']:
-    #if vc_ticket['external_label'] != fc_ticket['external_label']:
+    if vc_ticket['external_label'] != fc_ticket['external_label']:
         msg = "External labels retrieved from file and volume clerks " \
               "are not the same.\n" \
               "From file clerk: %s\n" \
               "From volume clerk: %s\n" % \
-              (fc_ticket['fc']['external_label'],
-               #(fc_ticket['external_label'],
+              (fc_ticket['external_label'],
                vc_ticket['external_label'])
         raise (e_errors.BROKEN, msg)
-        #print_data_access_layer_format(inputlist[i], outputlist[i], 0,
-        #                               {'status':(e_errors.BROKEN, msg)})
-        #quit()
 
     return fc_ticket, vc_ticket
     
