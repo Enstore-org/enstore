@@ -26,7 +26,6 @@
 #ifndef HAVE_MAJOR
 #define major(dev) (((dev) >> 8) & 0xff)
 #define minor(dev) ((dev) & 0xff)
-#define makedev(ma, mi) (((ma) << 8) | (mi))
 #endif
 #undef HAVE_MAJOR
 
