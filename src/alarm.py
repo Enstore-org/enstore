@@ -11,6 +11,7 @@ def eval(text):
 
 # enstore imports
 import enstore_functions
+import enstore_constants
 import e_errors
 import Trace
 
