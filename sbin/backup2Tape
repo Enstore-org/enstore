@@ -38,6 +38,7 @@ if [ `uname -n | grep -c d0ensrv3` -ne 0 ]; then
   ENSTORE=/diska/enstore-backup
   ENSTORELOG=/diska/enstore-log-backup
   AML2=/diska/aml2Shadow
+  TIMEONDISK=14 #days
 
 else
   echo "Do not know about node `uname -n`... fix $ENSTORE/sbin/backup2Tape script"
@@ -82,10 +83,12 @@ fi
 PNFS_TAR=$VAULT/pnfs.`date_string`.$kind.tar
 doit "tar $tar_options -cvf $PNFS_TAR $PNFS"
 doit "ls -l $PNFS_TAR"
+find $PNFS -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 ENSTORE_TAR=$VAULT/enstore.`date_string`.$kind.tar
 doit "tar $tar_options -cvf $ENSTORE_TAR $ENSTORE"
 doit "ls -l $ENSTORE_TAR"
+find $ENSTORE -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 ENSTORELOG_TAR=$VAULT/enstorelog.`date_string`.$kind.tar
 doit "tar $tar_options -cvf $ENSTORELOG_TAR $ENSTORELOG"
