@@ -339,7 +339,8 @@ ftt_open_dev(ftt_descriptor d) {
 int
 ftt_setdev(ftt_descriptor d) {
 
-    int  res = 0;
+    int  res = 0, status_res;
+
     ENTERING("ftt_setdev");
     CKNULL("ftt_descriptor",d);
 
@@ -350,6 +351,15 @@ ftt_setdev(ftt_descriptor d) {
 	    return res;
 	}
 	if (ftt_get_hwdens(d,d->devinfo[d->which_is_default].device_name) != d->devinfo[d->which_is_default].hwdens) {
+
+	    status_res = ftt_status(d,0);
+
+	    DEBUG3(stderr,"ftt_status returned %d\n", status_res);
+	    if (status_res < 0) {
+		/* should we fail here or ??? */
+		return status_res;
+	    }
+
 	    if ((status_res & FTT_ABOT)|| !(status_res & FTT_ONLINE)) {
 		DEBUG3(stderr,"setting density...\n");
 		res = ftt_set_hwdens(d, 
