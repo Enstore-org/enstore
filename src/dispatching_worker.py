@@ -153,7 +153,6 @@ class DispatchingWorker:
 
         f = self.server_fds + [self.socket.fileno()]
         r, w, x = select.select(f,[],f, self.rcv_timeout)
-        print (f,[],f, self.rcv_timeout)
         Trace.trace(20,'get_request select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
         
         if r:
