@@ -542,9 +542,12 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.INFO, "Rewinding tape %s to check VOL1 label"%(external_label,))
                 r=driver_object.rewind()
                 header_type, header_label, cookie = driver_object.check_header()
+                if debug_paranoia: print "header_type=",header_type, "label=",header_label,"cookie=",cookie
+                if not (header_type == None or header_type == 'VOL1'):
+                   header_type = "GARBAGE"    # needed for trace to not fail 
+                   header_label = "GARBAGE"   # needed for trace to not fail 
                 Trace.log(e_errors.INFO, "header_type=%s, label=%s, cookie=%s" %
                           (header_type,header_label,cookie))
-                if debug_paranoia: print "header_type=",header_type, "label=",header_label,"cookie=",cookie
                 if header_type == None:
                     ##This only happens if there was a read error, which is
                     ##OK for a brand-new tape
