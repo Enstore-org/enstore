@@ -551,6 +551,7 @@ def do_work(intf):
 	pprint.pprint(ticket)
     elif intf.check:
         ticket = vcc.inquire_vol(intf.check)
+	#print repr(ticket)
         print "%-10s  %5.2gGB %-12s  %s %s" % (ticket['external_label'],
                                                       ticket['remaining_bytes']*1./1024./1024./1024.,
                                                       ticket['at_mover'][0],
