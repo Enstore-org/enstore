@@ -22,7 +22,7 @@ class Inquisitor(generic_client.GenericClient):
 	self.server_name = MY_SERVER
         self.server_address = self.get_server_address(self.server_name)
 
-    def update (self, server=""):
+    def update (self):
 	t = {"work"       : "update" }
 	# tell the inquisitor to update the enstore system status info
 	return self.send(t)
