@@ -441,7 +441,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	             str(sys.argv)+" "+\
 	             str(sys.exc_info()[0])+" "+\
 	             str(sys.exc_info()[1])+" "+\
-	             "inquisitor serve_forever continuing"
+	             "inquisitor update system error"
 	    self.logc.send(log_client.ERROR, 1, format)
         Trace.trace(11,"}do_update ")
 
