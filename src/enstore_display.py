@@ -339,13 +339,14 @@ class Mover:
                 self.display.delete(self.state_display)
                 self.state_display = self.display.create_text(
                 x+self.state_offset.x, y+self.state_offset.y, font = self.font,
-                text=self.state, fill=self.state_color)
+                text=self.state, fill=self.state_color, anchor=Tkinter.CENTER)
             #if current state is in text and the new state is in text.
             else:
                 self.display.coords(self.state_display,
                                  x+self.state_offset.x, y+self.state_offset.y)
                 self.display.itemconfigure(self.state_display,
-                                        text=self.state, fill=self.state_color)
+                                           text=self.state, anchor=Tkinter.CENTER,
+                                           fill=self.state_color)
         #No currect state display.
         else:
             if img:
@@ -355,7 +356,8 @@ class Mover:
             else:
                 self.state_display = self.display.create_text(
                     x+self.state_offset.x, y+self.state_offset.y,
-                    font = self.font, text=self.state, fill=self.state_color)
+                    font = self.font, text=self.state, fill=self.state_color,
+                    anchor=Tkinter.CENTER)
 
     def draw_timer(self):
         if self.timer_display:
@@ -365,13 +367,19 @@ class Mover:
             self.timer_display = self.display.create_text(
                 self.x + self.timer_offset.x, self.y + self.timer_offset.y,
                 text = self.timer_string, fill = self.timer_color,
-                font = self.font)
+                font = self.font, anchor = Tkinter.SE)
 
     def draw_volume(self):
         x, y                    = self.x, self.y
 
         #Diaplay the volume.
         if self.volume:
+
+            #If necessary define the font to use.
+            if not self.volume_font:
+                self.volume_font = get_font(self.vol_height, 'arial',
+                                            fit_string=self.volume,
+                                            width_wanted=self.vol_width)
 
             #Draw the volume background.
             if self.volume_bg_display:
@@ -417,65 +425,77 @@ class Mover:
         self.percent_done = percent_done
         self.alt_percent_done = alt_percent_done
 
-        # Undraw the old progress gauge
-        if self.progress_bar:
-            self.display.delete(self.progress_bar)
-            self.progress_bar = None
-        if self.progress_alt_bar:
-            self.display.delete(self.progress_alt_bar)
-            self.progress_alt_bar = None
-        if self.progress_bar_bg:
-            self.display.delete(self.progress_bar_bg)
-            self.progress_bar_bg = None
-        if self.progress_percent_display:
-            self.display.delete(self.progress_percent_display)
-            self.progress_percent_display = None
-
+        # Redraw the old progress bg gauge.
         if self.percent_done == None and self.alt_percent_done == None:
-            #Don't display the progress gauge
+            self.undraw_progress()
             return
-
-        # Draw the new progress gauge
-        self.progress_bar_bg = self.draw_bar(100, progress_bg_color)
-        #Draw the percentage completed bars.
-        if self.percent_done != None and self.alt_percent_done != None:
-            if self.percent_done > self.alt_percent_done:
-                self.progress_bar = self.draw_bar(percent_done,
-                                                  progress_bar_color)
-                self.progress_alt_bar = self.draw_bar(alt_percent_done,
-                                                      progress_alt_bar_color)
-            else:
-                self.progress_alt_bar = self.draw_bar(alt_percent_done,
-                                                      progress_alt_bar_color)
-                self.progress_bar = self.draw_bar(percent_done,
-                                                  progress_bar_color)
-        elif self.percent_done != None:
+        elif self.progress_bar_bg:
+            self.display.coords(self.progress_bar_bg,
+                                self.get_bar_position(100))
+        else:
             #If both are not to be drawn, then this will draw the correct one.
-            self.progress_bar = self.draw_bar(percent_done, progress_bar_color)
+            self.progress_bar_bg = self.display.create_rectangle(
+                self.get_bar_position(100),
+                fill=progress_bg_color, outline="")
 
-        elif self.alt_percent_done != None:
+        # Redraw the old progress gauge.
+        if self.percent_done == None:
+            pass
+        elif self.progress_bar:
+            self.display.coords(self.progress_bar,
+                                self.get_bar_position(percent_done))
+        else:
             #If both are not to be drawn, then this will draw the correct one.
-            self.progress_alt_bar = self.draw_bar(alt_percent_done,
-                                                  progress_alt_bar_color)
+            self.progress_bar = self.display.create_rectangle(
+                self.get_bar_position(percent_done),
+                fill=progress_bar_color, outline="")
+
+        # Redraw the old alternate progress gauge.
+        if self.alt_percent_done == None:
+            pass
+        elif self.progress_alt_bar:
+            self.display.coords(self.progress_alt_bar,
+                                self.get_bar_position(alt_percent_done))
+        else:
+            #If both are not to be drawn, then this will draw the correct one.
+            self.progress_alt_bar = self.display.create_rectangle(
+                self.get_bar_position(alt_percent_done),
+                fill=progress_alt_bar_color, outline="")
+
+        if self.rate > 0:  #write transfer, make media bar on top.
+            try:
+                self.display.tag_raise(self.progress_alt_bar,
+                                       self.progress_bar)
+            except Tkinter.TclError:
+                pass #We get here if alt percentage is still None.
+        else:              #read transfer, make network bar on top.
+            try:
+                self.display.tag_raise(self.progress_bar,
+                                       self.progress_alt_bar)
+            except Tkinter.TclError:
+                pass #We get here if percentage is still None.
 
         #Draw the percent of transfer done next to progress bar.
         if self.display.width > 470:
-            self.progress_percent_display =  self.display.create_text(
-                x + self.percent_disp_offset.x, y + self.percent_disp_offset.y,
-                text = str(self.percent_done)+"%",
-                fill = percent_display_color, font = self.font)
+            if self.progress_percent_display:
+                self.display.itemconfigure(self.progress_percent_display,
+                                           text = str(self.percent_done)+"%")
+            else:
+                self.progress_percent_display =  self.display.create_text(
+                    x + self.percent_disp_offset.x,
+                    y + self.percent_disp_offset.y,
+                    text = str(self.percent_done)+"%",
+                    fill = percent_display_color, font = self.font)
 
-    def draw_bar(self, percent, color):
+    def get_bar_position(self, percent):
         offset = (self.bar_width*percent/100.0)
-        bar = self.display.create_rectangle(
-            self.x + self.progress_bar_offset1.x,
-            self.y + self.progress_bar_offset1.y,
-            self.x + self.progress_bar_offset2.x + offset,
-            self.y + self.progress_bar_offset2.y,
-            fill=color,
-            outline="")
+        bar = (self.x + self.progress_bar_offset1.x,
+               self.y + self.progress_bar_offset1.y,
+               self.x + self.progress_bar_offset2.x + offset,
+               self.y + self.progress_bar_offset2.y)
+        
         return bar
-
+    
     def draw_buffer(self, buffer_size):
         
         #### color
@@ -487,23 +507,39 @@ class Mover:
             return
 
         self.buffer_size = buffer_size
-        
-        if self.buffer_bar:
-            self.display.delete(self.buffer_bar)
-            self.buffer_bar = None
-        if self.buffer_bar_bg:
-            self.display.delete(self.buffer_bar_bg)
-            self.buffer_bar_bg = None
-
         if self.buffer_size == None:
-            #Don't display the progress gauge
+            #Don't display the buffer bar.
+            self.undraw_buffer()
             return
-
-        # Draw the new progress gauge
-        self.buffer_bar_bg = self.draw_buffer_bar(100, progress_bg_color)
-        self.buffer_bar = self.draw_buffer_bar(self.buffer_size,
-                                               progress_bar_color)
         
+        if self.buffer_bar_bg:
+            self.display.coords(self.buffer_bar_bg,
+                                self.get_buffer_position(100))
+        else:
+            #self.buffer_bar_bg = self.draw_buffer_bar(100, progress_bg_color)
+            self.buffer_bar_bg = self.display.create_rectangle(
+                self.get_buffer_position(100),
+                fill = progress_bg_color, outline = "")
+
+        if self.buffer_bar:
+            self.display.coords(self.buffer_bar,
+                                self.get_buffer_position(self.buffer_size))
+        else:
+            #self.buffer_bar = self.draw_buffer_bar(self.buffer_size,
+            #                                       progress_bar_color)
+            self.buffer_bar = self.display.create_rectangle(
+                self.get_buffer_position(self.buffer_size),
+                fill = progress_bar_color, outline = "")
+            
+    def get_buffer_position(self, bufsize):
+        offset = (self.bar_width*bufsize/100.0)
+        bar = (self.x + self.buffer_bar_offset1.x,
+               self.y + self.buffer_bar_offset1.y,
+               self.x + self.buffer_bar_offset2.x + offset,
+               self.y + self.buffer_bar_offset2.y)
+        
+        return bar
+    
     def draw_buffer_bar(self, percent, color):
         offset = (self.bar_width*percent/100.0)
         bar = self.display.create_rectangle(
@@ -517,7 +553,13 @@ class Mover:
 
     def draw_rate(self):
 
-        if self.rate_display:
+        #The rate is usualy draw when the mover is in active state.
+        # However, it can go into draining state while a transfer is in
+        # progress.  The display of the draining state and rate can not
+        # occur at the same time.  Give precdence to the state.
+        if self.state == "DRAINING":
+            self.undraw_rate()
+        elif self.rate_display:
             self.display.itemconfigure(self.rate_display,
                                        text=self.rate_string)
         elif self.rate != None:
@@ -578,9 +620,10 @@ class Mover:
             pass
 
     def undraw_progress(self):
-        try:        
-            self.display.delete(self.progress_bar_bg)
-            self.progress_bar_bg = None
+        
+        try:
+            self.display.delete(self.progress_alt_bar)
+            self.progress_alt_bar = None
         except Tkinter.TclError:
             pass
 
@@ -593,6 +636,12 @@ class Mover:
         try:
             self.display.delete(self.progress_percent_display)
             self.progress_percent_display = None
+        except Tkinter.TclError:
+            pass
+
+        try:        
+            self.display.delete(self.progress_bar_bg)
+            self.progress_bar_bg = None
         except Tkinter.TclError:
             pass
 
@@ -698,7 +747,7 @@ class Mover:
         self.rate = rate
 
         if rate != None:
-            self.rate_string = "%.3g MB/S" % (self.rate / 1048576)
+            self.rate_string = "%.2f MB/S" % (self.rate / 1048576)
             self.draw_rate()
         else:
             self.undraw_rate()
@@ -716,11 +765,16 @@ class Mover:
         self.volume = None
         self.undraw_volume()
 
-    def transfer_rate(self, num_bytes, total_bytes):
+    def transfer_rate(self, num_bytes, total_bytes, mover_time=None):
         #keeps track of last number of bytes and time; calculates rate
         # in bytes/second
         self.b1 = num_bytes
-        self.t1 = time.time()
+        if mover_time and type(mover_time) == type(0.0):
+            #Newer mover code will include its current time.  This should
+            # reduce bouncing rates from network delays, etc.
+            self.t1 = mover_time
+        else:
+            self.t1 = time.time()
         rate    = (self.b1-self.b0)/(self.t1-self.t0)
         self.b0 = self.b1
         self.t0 = self.t1
@@ -800,13 +854,18 @@ class Mover:
         self.height = ((self.display.height - 40) / 20)
         #This line assumes that their will not be 40 or more movers.
         self.width = (self.display.width/4.0)
+        #Size of the volume portion of mover display.
+        self.vol_width = (self.width)/2.5
+        self.vol_height = (self.height)/2.5
 
         #These are the new offsets
         self.volume_offset         = XY(2, 2)
         self.label_offset          = XY(self.width+5, self.height)
-        self.img_offset            = XY(self.width/2.3, self.height/8.)
-        self.state_offset          = XY(self.width/1.4, self.height/3.)
-        self.timer_offset          = XY(self.width/1.3, self.height/1.3)
+        self.img_offset            = XY(4 + self.vol_width, 0)
+        self.state_offset          = XY(
+            ((self.width - self.vol_width - 6) / 2) + (4 + self.vol_width),
+            (2 + self.vol_height) / 2.0)
+        self.timer_offset          = XY(self.width - 2, self.height - 2)
         self.percent_disp_offset   = XY(self.width/1.9, self.height/1.2)#green
         self.rate_offset           = XY(self.width - 2, 2) #green
 
@@ -821,9 +880,7 @@ class Mover:
                                      self.buffer_bar_height - self.bar_height)
         self.buffer_bar_offset2 = XY(4, self.height - 4 -
                                      self.bar_height)#magenta
-        self.vol_width = (self.width)/2.5
-        self.vol_height = (self.height)/2.5
-
+        
         #Font geometry.
         self.font = get_font(self.height/2.5, 'arial',
                              width_wanted=self.max_font_width(),
@@ -1639,6 +1696,17 @@ class Display(Tkinter.Canvas):
         mover.unload_tape()
 
     def transfer_command(self, command_list):
+        #      transfer MOVER_NAME BYTES_TRANSFERED BYTES_TO_TRANSFER \
+        #               (media | network) [BUFFER_SIZE] [CURRENT_TIME]
+        #
+        # command_list[0] = transfer
+        # command_list[1] = MOVER_NAME
+        # command_list[2] = BYTES_TRANSFERED
+        # command_list[3] = BYTES_TO_TRANSFER
+        # command_list[4] = media or network
+        # command_list[5] = BUFFER_SIZE
+        # command_list[6] = CURRENT_TIME
+        
         #print command_list
         mover = self.movers.get(command_list[1])
 
@@ -1667,11 +1735,14 @@ class Display(Tkinter.Canvas):
 
         #Skip media transfers from the network connection update.
         if mover.connection and command_list[4] == "network":
-            rate = mover.transfer_rate(num_bytes, total_bytes)
+            try:
+                rate = mover.transfer_rate(num_bytes, total_bytes,
+                                           command_list[6])
+            except IndexError:
+                rate = mover.transfer_rate(num_bytes, total_bytes)
             #Experience shows this is a good adjustment.
             mover.connection.update_rate(rate / (256*1024))
             mover.connection.client.last_activity_time = time.time()
-
             mover.update_rate(rate)
 
     def movers_command(self, command_list):
@@ -1692,6 +1763,9 @@ class Display(Tkinter.Canvas):
         #      #remove MOVER_NAME VOLUME_NAME
         #      state MOVER_NAME STATE_NAME [TIME_IN_STATE]
         #      unload MOVER_NAME VOLUME_NAME
+        #      transfer MOVER_NAME BYTES_TRANSFERED BYTES_TO_TRANSFER \
+        #               (media | network) [BUFFER_SIZE] [CURRENT_TIME]
+        #      movers MOVER_NAME_1 MOVER_NAME_2 ...MOVER_NAME_N
     comm_dict = {'quit' : {'function':quit_command, 'length':1},
                  'title' : {'function':title_command, 'length':1},
                  'client' : {'function':client_command, 'length':2},
