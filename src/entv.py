@@ -152,9 +152,15 @@ def cleanup_objects():
     if old_len == 0:
         old_len = new_len #Only set this on the first pass.
     else:
+        print new_len - old_len
         if new_len - old_len > 2:
             Trace.trace(0, "NEW COUNT DIFFERENCE: %s - %s = %s"
                         % (new_len, old_len, new_len - old_len))
+        if new_len - old_len >= 100:
+            #Only return true if 
+            return True
+
+    return None
 
 """
 def get_system(intf=None): #, system_name=None):
@@ -1287,6 +1293,7 @@ def main(intf):
     create_menubar(enstore_display.STILL, master)
     
     continue_working = 1
+    restart_entv = False
     display = None
     mover_display = None
 
@@ -1380,7 +1387,7 @@ def main(intf):
         stop_messages_threads()
         Trace.trace(1, "message thread finished")
 
-        #Determin if this is a reinitialization (True) or not (False).
+        #Determine if this is a reinitialization (True) or not (False).
         continue_working = display.attempt_reinit()
 
         mover_display = display.mover_display
@@ -1397,7 +1404,13 @@ def main(intf):
 
         #Force reclaimation of memory (and other resources) and also
         # report if leaks are occuring.
-        cleanup_objects()
+        restart_entv = cleanup_objects()
+
+        if continue_working and restart_entv:
+            #At this point a lot of objects have been unable to be freed.
+            # Thus, we should re-exec() the entv process.
+            Trace.trace(0, "Starting new entv process.")
+            os.execv(sys.argv[0], sys.argv)
 
         if continue_working:
             #As long as we are reinitializing, make sure we pick up any
