@@ -201,7 +201,8 @@ class Mover:
         self.display.delete(self.state_display) # "undraw" the prev. state message
         img = find_image(state+'.gif')
         if img:
-            self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y, anchor=NW, image=img)
+            self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y,
+                                                           anchor=Tkinter.NW, image=img)
         else:
             self.state_display = self.display.create_text(x+state_disp_offset.x, y+state_disp_offset.y, text=self.state, fill='light blue')
         now = time.time()
@@ -350,14 +351,17 @@ class Mover:
         mover_color = {'ERROR': 'red', 'OFFLINE':'grey'}.get(self.state, 'black')
         if state  in ['ERROR', 'OFFLINE']:
             self.undraw()
-            self.outline =  self.display.create_rectangle(self.x, self.y, self.x+self.width, self.y+self.height, fill=mover_color)
+            self.outline =  self.display.create_rectangle(self.x, self.y, self.x+self.width, self.y+self.height,
+                                                          fill=mover_color)
 
         self.display.delete(self.state_display) # "undraw" the prev. state message
         img = find_image(state+'.gif')
         if img:
-            self.state_display = self.display.create_image(self.x+img_offset.x, self.y+img_offset.y, anchor=NW, image=img)
+            self.state_display = self.display.create_image(self.x+img_offset.x, self.y+img_offset.y,
+                                                           anchor=Tkinter.NW, image=img)
         else:
-            self.state_display = self.display.create_text(self.x+state_disp_offset.x, self.y+state_disp_offset.y, text=self.state, fill='light blue')
+            self.state_display = self.display.create_text(self.x+state_disp_offset.x, self.y+state_disp_offset.y,
+                                                          text=self.state, fill='light blue')
         
         if self.volume:
             x, y = self.volume_position(self.volume.ejected)
@@ -584,8 +588,8 @@ class Display(Tkinter.Canvas):
 ##        self.QUIT = Button(self, text='QUIT', background='blue', height=1, command=self.quit)
 ##        self.QUIT.pack(side=BOTTOM, fill=BOTH)
 
-        self.scrollX = Tkinter.Scrollbar(self, orient=HORIZONTAL)
-        self.scrollY = Tkinter.Scrollbar(self, orient=VERTICAL)
+        self.scrollX = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
+        self.scrollY = Tkinter.Scrollbar(self, orient=Tkinter.VERTICAL)
 
        #When the canvas changes size or moves, update the scrollbars
         self['xscrollcommand']= self.scrollX.set
@@ -596,8 +600,8 @@ class Display(Tkinter.Canvas):
         self.scrollY['command'] = self.yview
 
         #pack 'em up
-        self.scrollX.pack(side=Tkinter.BOTTOM, fill=X)
-        self.scrollY.pack(side=Tkinter.RIGHT, fill=Y)
+        self.scrollX.pack(side=Tkinter.BOTTOM, fill=Tkinter.X)
+        self.scrollY.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
         self.pack(side=Tkinter.LEFT)
 
         Tkinter.Tk.title(self.master, title)
