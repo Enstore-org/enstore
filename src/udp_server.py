@@ -256,7 +256,12 @@ class UDPServer:
         self.reply_to_caller(ticket)
 
 if __name__ == "__main__":
-    udpsrv =     UDPServer(("happy",7700), receive_timeout=60.)
+
+    #This test program can be run in conjuction with the udp_client.py
+    # test program.  This test program will process any message send to
+    # the correct port (including other tests than udp_client.py).
+    
+    udpsrv = UDPServer(('', 7700), receive_timeout = 60.0)
     while 1:
         ticket = udpsrv.process_request()
         if ticket:
