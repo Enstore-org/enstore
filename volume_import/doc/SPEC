@@ -1,0 +1,36 @@
+Env. vars:
+$TAPE
+$TAPE_DB
+
+
+Database structure:
+
+$TAPE_DB
+    config
+    volumes
+        ext_label1
+            INDEX
+            file1.fileinfo 
+            file2.fileinfo
+        ext_label2
+            INDEX
+            file3.fileinfo
+
+
+
+Programs:
+
+Common arguments:  -t tape-device  (overrides $TAPE)
+
+
+init_tape [-f] [-t tape-device] volume_label
+
+add_to_tape [-t tape-device] volume-label [-p pnfs-dir] file ... 
+		[-p pnfs-dir] file ...
+
+list_tape [-t tape-device] [volume-label]
+
+get_volume_label [-t tape-device]
+
+dump_tape_db [volume] [-s|c|n]  
+
