@@ -185,9 +185,9 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         Trace.log(e_errors.INFO, "Opening local file.")
 
         #If necessary, create the file.
-        if work_ticket.get('completion_status', None) == EOD and \
-           not os.path.exists(work_ticket['outfile']):
-            encp.create_zero_length_files(work_ticket['outfile'])
+        #if work_ticket.get('completion_status', None) == EOD and \
+        #   not os.path.exists(work_ticket['outfile']):
+        #    encp.create_zero_length_files(work_ticket['outfile'])
         # Open the local file.
         done_ticket = encp.open_local_file(work_ticket['outfile'], e)
         
@@ -524,7 +524,8 @@ def set_metadata(ticket, intf):
 
     #Create the pnfs file.
     try:
-        encp.create_zero_length_files(ticket['infile'], raise_error = 1)
+        #encp.create_zero_length_files(ticket['infile'], raise_error = 1)
+        encp.create_zero_length_pnfs_files(ticket, raise_error = 1)
         Trace.log(e_errors.INFO, "Pnfs file created for %s."%ticket['infile'])
     except OSError, detail:
         msg = "Pnfs file create failed for %s: %s" % (ticket['infile'],
@@ -608,10 +609,12 @@ def next_request_update(work_ticket, file_number):
         # Update the tickets fields for the next file.
         work_ticket['infile'] = \
                     os.path.join(os.path.dirname(work_ticket['infile']), lc)
-        work_ticket['outfile'] = \
-                    os.path.join(os.path.dirname(work_ticket['outfile']), lc)
-        work_ticket['wrapper']['fullname'] = work_ticket['infile']
-        work_ticket['wrapper']['pnfsFilename'] = work_ticket['outfile']
+        work_ticket['wrapper']['pnfsFilename'] = work_ticket['infile']
+        if work_ticket['outfile'] != "/dev/null":
+            #If the outfile is /dev/null, don't change these.
+            work_ticket['outfile'] = \
+                     os.path.join(os.path.dirname(work_ticket['outfile']), lc)
+            work_ticket['wrapper']['fullname'] = work_ticket['outfile']
 
     #Update the unique id for the LM.
     #work_ticket['unique_id'] = encp.generate_unique_id()
@@ -694,7 +697,8 @@ def main(e):
     Trace.message(4, "Creating zero length output files.")
     Trace.log(e_errors.INFO, "Creating zero length output files.")
     for request in requests_per_vol[e.volume]:
-        encp.create_zero_length_files(request['outfile'])
+        #encp.create_zero_length_files(request)  #['outfile'])
+        encp.create_zero_length_local_files(request)
 
     #Only the first submission goes to the LM for volume reads.  On errors,
     # encp.handle_retries() will send the request to the LM.  Thus this
@@ -727,7 +731,7 @@ def main(e):
         Trace.log(e_errors.ERROR, str(msg))
         encp.quit(1)
     if submitted != 1:
-        msg = "Unknown failure subitting request for file %s on volume %s." % \
+        msg = "Unknown failure submitting request for file %s on volume %s." %\
               (request['infile'], e.volume)
         sys.stderr.write("%s\n" % str(msg))
         Trace.log(e_errors.ERROR, str(msg))
