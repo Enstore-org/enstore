@@ -403,8 +403,9 @@ def next_work_any_volume(self):
                 Trace.trace(11,"next_work_any_volume.CAN WRITE:%s"%(v_info['status'][0],))
 		if v_info['status'][0] == e_errors.OK:
 		    Trace.trace(11,"next_work_any_volume MV TO SUMMON %s"%(mov,))
-                    # summon this mover
-                    summon_mover(self, mov, w)
+                    if mov['state'] != 'summoned':
+                        # summon this mover
+                        summon_mover(self, mov, w)
                     # and return no work to the idle requester mover
                     return {"status" : (e_errors.NOWORK, None)}, force_summon
 		else:
