@@ -14,18 +14,19 @@ case $node in
           NODES="stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
                  stkenmvr1a: stkenmvr2a: stkenmvr3a: stkenmvr4a: stkenmvr5a: stkenmvr6a:\
                  stkenmvr1b: stkenmvr2b: stkenmvr3b: stkenmvr4b: stkenmvr5b: stkenmvr6b \
-                 rip8 rip9 rip10"
+		 stkendca3a: stkendca4b: stkendca5b: \
+                 rip8 rip9: rip10:"
           ;;
    d0en*) gang=d0en
-          NODES="d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5 \
+          NODES="d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5: \
                  d0enmvr1a: d0enmvr2a: d0enmvr3a: \
                  d0enmvr4a: d0enmvr4b: d0enmvr5a: d0enmvr5b: d0enmvr6a: d0enmvr6b: \
                  d0enmvr7a: d0enmvr7b: d0enmvr8a: d0enmvr8b: d0enmvr9a: d0enmvr9b: \
                  d0enmvr10a: d0enmvr10b: d0enmvr11a: d0enmvr11b: d0enmvr12a: d0enmvr12b: \
-                 d0enmvr13a d0enmvr13b d0enmvr14a d0enmvr14b d0enmvr15a d0enmvr15b \
-                 d0enmvr16a d0enmvr16b d0enmvr17a d0enmvr17b d0enmvr18a d0enmvr18b \
-                 d0enmvr19a d0enmvr19b d0enmvr20a d0enmvr20b \
-                 d0enmvr21a d0enmvr21b d0enmvr22a d0enmvr22b \
+                 d0enmvr13a: d0enmvr13b: d0enmvr14a: d0enmvr14b: d0enmvr15a: d0enmvr15b: \
+                 d0enmvr16a: d0enmvr16b: d0enmvr17a: d0enmvr17b: d0enmvr18a: d0enmvr18b: \
+                 d0enmvr19a: d0enmvr19b: d0enmvr20a: d0enmvr20b: \
+                 d0enmvr21a: d0enmvr21b: d0enmvr22a: d0enmvr22b: \
                  rip8"
           ;;
        *) gang=UNKNOWN
@@ -63,6 +64,10 @@ add*)
     /sbin/route add -host stkensrv2 eth0
     /sbin/route add -host stkensrv3 eth0
     /sbin/route add -host stkensrv4 eth0
+
+    /sbin/route add -host stkendca3a eth0
+    /sbin/route add -host stkendca4a eth0
+    /sbin/route add -host stkendca5a eth0
 
     x=1
     while [ $x -le 22 ]; do
@@ -126,6 +131,10 @@ del*)
     /sbin/route del stkensrv2
     /sbin/route del stkensrv3
     /sbin/route del stkensrv4
+
+    /sbin/route del stkendca3a
+    /sbin/route del stkendca4a
+    /sbin/route del stkendca5a
 
     x=1
     while [ $x -le 22 ]; do
