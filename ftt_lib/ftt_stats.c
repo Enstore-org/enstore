@@ -512,7 +512,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 *         different drives has different length of a Product Revision Number
 *
 */
-                if ((d->prod_id[1] == 'a') && (d->prod_id[3] == 'm')) {
+                if ((d->prod_id[1] == '9') && (d->prod_id[3] == '4')) {
                     set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+40);
                  } else {
                     set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
