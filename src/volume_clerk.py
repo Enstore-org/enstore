@@ -54,7 +54,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             # worry about if it is really a problem - I propose that an
             # administrator reset the system_inhibit back to none in these
             # special, and hopefully rare cases.
-            Trace.trace(17,external_label+" rejected remaining_bytes"+str(v["remaining_bytes"]))
 
             if v["system_inhibit"][1] != "full":
                 # detect a transition
@@ -180,12 +179,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
         if self.fork() != 0:
-            Trace.trace(17,'remove_deleted_vols forked parent - returning')
             return
         vols = []
         try:
-            Trace.init("REM_VOLS")
-            Trace.trace(17,"remove_deleted_vols child processing")
             self.get_user_sockets(ticket)
             ticket["status"] = (e_errors.OK, None)
             callback.write_tcp_obj(self.data_socket, ticket)
@@ -212,7 +208,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.data_socket.close()
             callback.write_tcp_obj(self.control_socket, ticket)
             self.control_socket.close()
-            Trace.trace(17,'remove_deleted_vols child exitting')
         except:
             print "EXCEPTION"
             e_errors.handle_error()
@@ -516,10 +511,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def find_matching_volume(self, library, volume_family, pool,
                              wrapper, vol_veto_list, first_found,
                              min_remaining_bytes, exact_match=1):
-        Trace.trace(16, "find_matching_volume: library=%s volume_family=%s pool=%s"
-                    " wrapper=%s veto_list=%s first_found=%s remain_bytes=%s exact_match=%s" %
-                    (library, volume_family, pool, wrapper, vol_veto_list, first_found,
-                     min_remaining_bytes, exact_match))
+
         # go through the volumes and find one we can use for this request
         vol = {}
         lc = self.dict.inx['library'].cursor()		# read only
@@ -529,25 +521,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         c = db.join(self.dict, [lc, vc])
         while 1:
             label,v = c.next()
-            if label:
-                Trace.trace(17,'next write vol '+label)
-            else:
+            if not label:
                 break
-            if v["user_inhibit"][0] != "none":
-                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"][0])
+            if v["user_inhibit"] != ("none",  "none"):
                 continue
-            if v["user_inhibit"][1] != "none":
-                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"][1])
-                continue
-            if v["system_inhibit"][0] != "none":
-                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"][0])
-                continue
-            if v["system_inhibit"][1] != "none":
-                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"][1])
-                continue
+            if v["system_inhibit"] != ("none", "none"):
+
             at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
             if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
-                Trace.trace(17,label+" rejected at_mover "+v['at_mover'][0])
                 continue
 
             # equal treatment for blank volume
@@ -555,7 +536,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 if self.is_volume_full(v,min_remaining_bytes): continue
             else:
                 if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
-                    Trace.trace(17,label+" rejected remaining_bytes"+str(v["remaining_bytes"]))
                     continue
                 
             vetoed = 0
@@ -564,7 +544,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     vetoed = 1
                     break
             if vetoed:
-                Trace.trace(17,label+"rejected - in veto list")
                 continue
 
             # supposed to return first volume found?
@@ -591,13 +570,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     
             # if not, is there an "earlier" volume that we have already found?
             if len(vol) == 0:
-                Trace.trace(17,label+" ok")
                 vol = v  
             elif v['declared'] < vol['declared']:
-                Trace.trace(17,label+' ok')
                 vol = v  
-            else:
-                Trace.trace(17,label+" rejected "+vol['external_label']+' declared eariler')
         c.close()
         return vol
         
@@ -623,7 +598,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # return what we found
         if vol and len(vol) != 0:
             vol["status"] = (e_errors.OK, None)
-            Trace.trace(16,'next_write_vol label = '+ vol['external_label'])
             self.reply_to_caller(vol)
             return
 
@@ -631,7 +605,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # given storage group.
         vf = string.split(volume_family,'.')
         pool = string.join((vf[0],'none'), '.')
-        Trace.trace(16,'next_write_vol no vols available, checking for blanks in %s'%(pool,))
         vol = self.find_matching_volume(library, volume_family, pool, wrapper_type,
                                         vol_veto_list, first_found, min_remaining_bytes,0)
 
@@ -651,7 +624,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
         # nothing was available - see if we can assign a blank one.
         pool = 'none.none'
-        Trace.trace(16,'next_write_vol no vols available, checking for blanks')
         vol = self.find_matching_volume(library, volume_family, pool, wrapper_type,
                                         vol_veto_list, first_found, min_remaining_bytes, 0)
 
@@ -1224,12 +1196,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
         if self.fork() != 0:
-            Trace.trace(17,'get_vols forked parent - returning')
             return
         try:
             import cPickle
-            Trace.init("GET_VOLS")
-            Trace.trace(17,"get_vols child processing")
             self.get_user_sockets(ticket)
             ticket["status"] = (e_errors.OK, None)
             callback.write_tcp_obj(self.data_socket, ticket)
@@ -1288,7 +1257,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
             callback.write_tcp_obj(self.control_socket, ticket)
             self.control_socket.close()
-            Trace.trace(17,'get_vols child exitting')
         except:
             exc, msg, tb = sys.exc_info()
             e_errors.handle_error(exc,msg,tb)
