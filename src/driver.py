@@ -346,7 +346,6 @@ class  FTTDriver(GenericDriver) :
 	part, block_loc, filenum = loc2int( self, eod_cookie )
 
         self.statisticsOpen = self.get_allStats(device)
-        Trace.log(e_errors.INFO,"Gathering statistics: sw_mount, length = "+repr(len(self.statisticsOpen)) )
 
 	# make cur_loc_cookie such that an ordered list can be produced
 	# (for pnfs) i.e. partition, blk offset, filemarks
