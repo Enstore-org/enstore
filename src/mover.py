@@ -166,7 +166,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
         generic_server.GenericServer.__init__(self, csc_address, name)
         Trace.init( self.log_name )
 
-        self.do_collect = 0 # Don't let dispatching_worker's loop do a waitpid, we want to catch children ourself.
         # get my (localhost) configuration from the configuration server
         self.mvr_config = self.csc.get( name )
         if self.mvr_config['status'][0] != 'ok':
@@ -259,6 +258,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	# now go on with *server* setup (i.e. respond to summon,status,etc.)
 	dispatching_worker.DispatchingWorker.__init__( self,(self.mvr_config['hostip'],
                                                              self.mvr_config['port']) )
+
+        self.do_collect = 0 # Don't let dispatching_worker's loop do a waitpid, we want to catch children ourself.
+
 	self.last_status_tick = {}
 	#print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
 	#timer_task.TimerTask.__init__( self, self.rcv_timeout )
@@ -1160,18 +1162,18 @@ class Mover(  dispatching_worker.DispatchingWorker,
             # hsm_driver_info (read: hsm_driver.position
             #                  write: position, eod, remaining_bytes)
             # recent (read) errors (part of vol_info???)
-            r=self.udpc.send_no_wait( {'work'       :'update_client_info',
-                                       'address'    :origin_addr,
-                                       'pid'        :os.getpid(),
-                                       'exit_status':m_err.index(status),
-                                       'vol_info'   :self.vol_info,
-                                       'no_xfers'   :self.no_xfers,
-                                       'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
-                                                      'remaining_bytes':self.hsm_driver.remaining_bytes,
-                                                      'vol_label'      :self.hsm_driver.vol_label,
-                                                      'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
-                                      (self.mvr_config['hostip'],self.mvr_config['port']) )
-            Trace.log(e_errors.INFO, "send_no_wait returns %s, exit %s"%(r, m_err.index(status)))
+            r=self.udpc.send( {'work'       :'update_client_info',
+                               'address'    :origin_addr,
+                               'pid'        :os.getpid(),
+                               'exit_status':m_err.index(status),
+                               'vol_info'   :self.vol_info,
+                               'no_xfers'   :self.no_xfers,
+                               'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
+                                              'remaining_bytes':self.hsm_driver.remaining_bytes,
+                                              'vol_label'      :self.hsm_driver.vol_label,
+                                              'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
+                              (self.mvr_config['hostip'],self.mvr_config['port']) )
+            Trace.log(e_errors.INFO, "send returns %s, exit %s"%(r, m_err.index(status)))
             sys.exit( m_err.index(status) )
             pass
         return self.status_to_request( status ) # return_or_update_and_exit
@@ -1403,8 +1405,11 @@ class Mover(  dispatching_worker.DispatchingWorker,
     def update_client_info( self, ticket ):
 	Trace.log( e_errors.INFO,  "update_client_info - pid: %s, ticket['pid']=%s"%
                    (self.pid,ticket['pid']))
+        self.reply_to_caller( {'status': (e_errors.OK, "None") } )
         if self.pid != ticket['pid']:
             # assume previous "No child processes" exception
+            Trace.log(e_errors.INFO, "update_client_info: self.pid=%s, ticket[pid]=%s"%(
+                self.pid, ticket['pid']))
             return
         if self.mode == 'c':     # cleaning
             if self.state != 'draining': self.state = 'idle'
