@@ -70,7 +70,7 @@ class Request:
             old_pri = self.pri
             deltas = int(now-self.queued)/60/self.agetime
             pri = pri + self.delpri*deltas
-        if pri != self.pri:
+        if pri != self.pri and self.pri > 0:
             self.pri = pri
             self.ticket['encp']['curpri'] = self.pri
         return old_pri, self.pri
@@ -245,7 +245,7 @@ class SortedList:
 
     # change priority
     def change_pri(self, record, pri):
-        if pri < 0: return None
+        if pri <= 0: return None
         self.rm(record)
         record.change_pri(pri)
         self.put(record)
