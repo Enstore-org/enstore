@@ -186,9 +186,9 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                    ticket["fc"]["file_family"],
                                    ticket["uinfo"]["uname"])
         queue_pending_work(ticket)
-	#tickle mover
+	#summon mover
 	import udp_client
-	udp_client.UDPClient().send_no_wait(  { "work":"tickle"
+	udp_client.UDPClient().send_no_wait(  { "work":"summon"
 				     ,"address":(keys['hostip'], keys['port'])}
 				  , (keys['hostip'],7523) )
 
@@ -204,9 +204,9 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                    ticket["fc"]["bfid"],
                                    ticket["uinfo"]["uname"])
         queue_pending_work(ticket)
-	#tickle mover
+	#summon mover
 	import udp_client
-	udp_client.UDPClient().send_no_wait(  { "work":"tickle"
+	udp_client.UDPClient().send_no_wait(  { "work":"summon"
 				     ,"address":(keys['hostip'], keys['port'])}
 				  , (keys['hostip'],7523) )
 
