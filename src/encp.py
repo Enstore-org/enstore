@@ -20,8 +20,7 @@ import string
 import traceback
 
 # enstore modules
-#import Trace_lite; Trace=Trace_lite
-import Trace
+import Trace_lite; Trace=Trace_lite
 import pnfs
 import callback
 import log_client
@@ -1581,7 +1580,136 @@ def print_error(errcode,errmsg) :
         pass
     sys.stdout=x
 
-##################################                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                )})
+##############################################################################
+# print statistics in data_access_layer format
+def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
+    # check if all fields in ticket present
+    try:
+	external_label = ticket["fc"]["external_label"]
+    except:
+	external_label = ''
+    try:
+	device = ticket["mover"]["device"]
+    except:
+	device = ''
+    try:
+	transfer_time = ticket["times"]["transfer_time"]
+    except:
+	transfer_time = 0
+    try:
+	seek_time = ticket["times"]["seek_time"]
+    except:
+	seek_time = 0
+    try:
+	mount_time = ticket["times"]["mount_time"]
+    except:
+	mount_time = 0
+    try:
+	in_queue = ticket["times"]["in_queue"]
+    except:
+	in_queue = 0
+    try:
+	total = time.time()-ticket["times"]["t0"]
+    except:
+	total = 0
+    try:
+	status = ticket["status"][0]
+    except:
+	status = 'Unknown'
+    print data_access_layer_format % (inputfile, outputfile, filesize, external_label,
+                                      device, transfer_time, seek_time, mount_time, in_queue,
+                                      total, status)
+    
+    try:
+        global logc
+	format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f"+\
+		 "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
+
+        Trace.log(e_errors.ERROR, format%(inputfile, outputfile, filesize, 
+					  external_label, device,
+					  transfer_time, seek_time, mount_time,
+					  in_queue, total,
+					  status) )
+    except:
+        pass
+
+
+##############################################################################
+
+# log the error to the logger, print it to the console and exit
+
+def jraise(errcode,errmsg,exit_code=1) :
+    format = "Fatal error:"+str(errcode)+str(errmsg)+" Exit code:"+\
+	     str(exit_code)
+    x=sys.stdout;sys.stdout=sys.stderr
+    print format
+    try:
+        global logc
+        Trace.log(e_errors.ERROR, format)
+    except:
+        pass
+    # this error used to be a 0
+    Trace.trace(6,"encp.jraise and exitting with code="+\
+                repr(exit_code))
+    sys.stdout=x
+    sys.exit(exit_code)
+
+##############################################################################
+
+# get the configuration client and udp client and logger client
+# return some information about who we are so it can be used in the ticket
+
+def clients(config_host,config_port,verbose):
+    # get a configuration server
+    csc = configuration_client.ConfigurationClient((config_host,config_port))
+
+    # send out an alive request - if config not working, give up
+    rcv_timeout = 20
+    alive_retries = 10
+    try:
+        stati = csc.alive(configuration_client.MY_SERVER, rcv_timeout,
+                          alive_retries)
+    except:
+        stati={}
+        stati["status"] = (e_errors.CONFIGDEAD,"Config at "+repr(config_host)+" port="+repr(config_port))
+    if stati['status'][0] != e_errors.OK:
+        print_data_access_layer_format("","",0, stati)
+        jraise(stati['status']," NO response on alive to config",1)
+    
+    # get a udp client
+    u = udp_client.UDPClient()
+
+    # get a logger client
+    global logc
+    logc = log_client.LoggerClient(csc, 'ENCP', 'log_server')
+
+    # convenient, but maybe not correct place, to hack in log message that shows how encp was called
+    Trace.trace(e_errors.INFO, '%s' % sys.argv)
+
+    uinfo = {}
+    uinfo['uid'] = os.getuid()
+    uinfo['gid'] = os.getgid()
+    try:
+        uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
+    except:
+        uinfo['gname'] = 'unknown'
+    try:
+        uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
+    except:
+        uinfo['uname'] = 'unknown'
+    uinfo['machine'] = os.uname()
+    uinfo['fullname'] = "" # will be filled in later for each transfer
+
+    return (csc,u,uinfo)
+
+##############################################################################
+
+# check if the system is still running by checking the wormhole file
+
+def system_enabled(p):                 # p is a  pnfs object
+    running = p.check_pnfs_enabled()
+    if running != pnfs.ENABLED :
+        print_data_access_layer_format("","","",{'status':("EACCESS", "Pnfs disabled")})
         jraise(errno.errorcode[errno.EACCES]," encp.system_enabled: "
                +"system disabled"+running)
     Trace.trace(10,"system_enabled running="+running)
