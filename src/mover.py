@@ -1392,7 +1392,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                             msg = "%s sending to %s"%(e_errors.TIMEDOUT, addr)
                                         self.transfer_failed(e_errors.ENCP_GONE, msg, error_source=NETWORK)
                                         if self.method and self.method == 'read_next':
-                                            self.nowork()
+                                            self.nowork({})
                                             return
                                 else:
                                     x = {'status' : (str(exc), str(msg))}
@@ -4754,7 +4754,7 @@ class DiskMover(Mover):
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
             self.unlock_state()
-            return 0
+            return
 
         self.state = SETUP
         # the following settings are needed by LM to update it's queues
