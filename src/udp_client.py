@@ -58,21 +58,22 @@ def check_len( message ):
 	raise errno.errorcode[errno.EMSGSIZE],"udp_client.check_len:message "+\
 	      "too big. Size = "+repr(len(message))+" Max = "+\
 	      repr(TRANSFER_MAX)+" "+repr(message)
+    return
 
-def empty_socket( socket ):
+def empty_socket( sock ):
     try:
-	f = socket.fileno()
+	f = sock.fileno()
 	r, w, x = select.select([f],[],[f],0)
 	if r:
-	    badsock = socket.getsockopt(socket.SOL_SOCKET,
+	    badsock = sock.getsockopt(socket.SOL_SOCKET,
 					     socket.SO_ERROR)
 	    if badsock != 0 :
 		Trace.trace(0,"send pre recv, clearout error "+\
 			    repr(errno.errorcode[badsock]))
 		print "udp_client pre recv, clearout error:",\
 		      errno.errorcode[badsock]
-	    reply , server = socket.recvfrom(TRANSFER_MAX)
-	    badsock = socket.getsockopt(socket.SOL_SOCKET,
+	    reply , server = sock.recvfrom(TRANSFER_MAX)
+	    badsock = sock.getsockopt(socket.SOL_SOCKET,
 					     socket.SO_ERROR)
 	    if badsock != 0 :
 		Trace.trace(0,"send post recv, clearout error"+\
@@ -83,7 +84,35 @@ def empty_socket( socket ):
 	Trace.trace(0,'send clearout err'+str(sys.exc_info()[0])+\
 		    str(sys.exc_info()[1]))
 	print "clearout",sys.exc_info()[0],sys.exc_info()[1]
+    return
 
+def send_socket( sock, message, address ):
+    badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
+    if badsock != 0 :
+	Trace.trace( 0, "send_socket pre send"+repr(errno.errorcode[badsock]) )
+	print "udp_client send_socket, pre-sendto error:",\
+	      errno.errorcode[badsock]
+    sent = 0
+    while sent == 0:
+	try:
+	    sock.sendto( message, address )
+	    sent = 1
+	except socket.error:
+	    Trace.trace(  0
+			, 'send_socket: Nameserver not responding add='
+			  +repr(address)+str(sys.exc_info()[0])
+			  +str(sys.exc_info()[1]) )
+	    print timeofday.tod(),\
+		  "udp_client.send_socket: Nameserver not responding\n",\
+		  message,"\n",address,"\n",\
+		  sys.exc_info()[0],"\n",sys.exc_info()[1]
+	    time.sleep(3)		# arbitrary time - don't beat on NS
+    badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+    if badsock != 0 :
+	Trace.trace( 0,"send_socket post send"+repr(errno.errorcode[badsock]) )
+	print "udp_client send_socket, post-sendto ",address," error:",\
+	      errno.errorcode[badsock]
+    return
 
 class UDPClient:
 
@@ -115,6 +144,7 @@ class UDPClient:
     # this (generally) is received/processed by dispatching worker
     def send(self, text, address, rcv_timeout=0):
         Trace.trace(20,'send add='+repr(address)+' text='+repr(text))
+
 	if rcv_timeout:
 	    once=1
 	else:
@@ -130,6 +160,7 @@ class UDPClient:
         # CRC text
         body = `(self.ident, self.number, text)`
         crc = binascii.crc_hqx(body, 0)
+
         # stringify message and check if it is too long
         message = `(body, crc)`
 	check_len( message )
@@ -140,32 +171,8 @@ class UDPClient:
         # send the udp message until we get a response that it was sent
         number = 0  # impossible number
         while number != self.number:
-            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-            if badsock != 0 :
-                Trace.trace(0,"send pre send"+ \
-                            repr(errno.errorcode[badsock]))
-                print "udp_client send, pre-sendto error:", \
-                      errno.errorcode[badsock]
-            sent = 0
-            while sent == 0:
-                try:
-                    self.socket.sendto(message, address)
-                    sent = 1
-                except socket.error:
-                    Trace.trace(0,'send: Nameserver not responding add='+\
-                                repr(address)+\
-                                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                    print timeofday.tod(),\
-                          "udp_client: Nameserver not responding\n",\
-                          message,"\n",address,"\n",\
-                          sys.exc_info()[0],"\n", sys.exc_info()[1]
-                    time.sleep(10)
-            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-            if badsock != 0 :
-                Trace.trace(0,"send post send"+ \
-                            repr(errno.errorcode[badsock]))
-                print "udp_client send, post-sendto ",address," error:", \
-                  errno.errorcode[badsock]
+
+	    send_socket( self.socket, message, address )
 
             # check for a response
             f = self.socket.fileno()
@@ -238,33 +245,9 @@ class UDPClient:
 	check_len( message )
 
         # send the udp message
-        badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0 :
-            Trace.trace(0,"send_no_wait pre sendto"+ \
-                        repr(errno.errorcode[badsock]))
-            print "udp_client send_no_wait, pre-sendto error:", \
-                  errno.errorcode[badsock]
-        sent = 0
-        while sent == 0:
-            try:
-                self.socket.sendto(message, address)
-                sent = 1
-            except socket.error:
-                Trace.trace(0,'send: Nameserver not responding add='+\
-                            repr(address)+\
-                            str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                print timeofday.tod(),\
-                      "udp_client (no wait): Nameserver not responding\n",\
-                      message,"\n",address,"\n",\
-                      sys.exc_info()[0],"\n", sys.exc_info()[1]
-                time.sleep(1)
-        badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0 :
-            Trace.trace(0,"send_no_wait post send"+ \
-                        repr(errno.errorcode[badsock]))
-            print "udp_client send_no_wait, post-sendto error:", \
-                  errno.errorcode[badsock]
-        Trace.trace(20,'}send_no_wait')
+	send_socket( self.socket, message, address )
+
+        Trace.trace( 20, '}send_no_wait' )
 
 class UDPClientInterface(interface.Interface):
 
