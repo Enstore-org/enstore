@@ -27,6 +27,5 @@ QUALIFIERS = ""
 	envSet(ENSTORE_CONFIG_PORT, 7510)
 	envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
 	sourceRequired(${UPS_PROD_DIR}/etc/defaults, NO_UPS_ENV)
-	sourceRequired(${UPS_PROD_DIR}/etc/pnfs.${UPS_SHELL}, NO_UPS_ENV)
 	envUnset(ver)
 	envUnset(PVER)
