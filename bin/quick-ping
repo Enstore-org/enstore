@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 . $ENSTORE_DIR/etc/defaults
 
-if [ -z "${1-}" ] ; then check=`uname -n`; else check=$1; fi
+if [ -z "${1-}" ] ; then check=`uname -n uname -n | cut -d. -f1`; else check=$1; fi
 
 mylib=${check}disk.library_manager
 mymed=${check}disk.media_changer
