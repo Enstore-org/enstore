@@ -58,7 +58,7 @@
 # This is for freeze to find the source of the included modules
 *shared*
 
-EXfer EXfer.c  -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt adler32.a
+EXfer EXfer.c  -D`uname` adler32.a
 
 FTT FTT.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt -lc adler32.a
 

@@ -18,7 +18,9 @@
 #include <assert.h>             /* assert */
 #include <errno.h>
 #include <signal.h>		/* sigaction() and struct sigaction */
-/*#include <alloca.h>		 alloca() - IRIX/Linux - just cast to (char *)*/
+#if defined(IRIX) || defined(IRIX64)
+# include <alloca.h>		/* alloca() */
+#endif
 
 #include "IPC.h"		/* struct s_IPCshmgetObject, IPCshmget_Type */
 
