@@ -2,6 +2,11 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+# sun nodes need an extended path in order to find all the regular unix commands
+if [ `uname` = SunOS ]; then 
+  PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/lbin:/usr/ucb:/usr/ccs/bin
+fi
+
 start=`date +"%Y-%m-%d:%H:%M:%S"`
 basename=`basename $0`
 # sbin/$RCSfile$  $Revision$
@@ -165,7 +170,7 @@ if [ $problem -ne 0 ] ; then
    echo "  -------------------- start of messages ---------------------- ">>$procMail 
    cat $procOutput >>$procMail 2>/dev/null
    echo "  -------------------- end of messages   ---------------------- ">>$procMail 
-   sendMail $procMail emegency "Enstore ecron Scheduler: $procName $* "
+   sendMail $procMail emergency "Enstore ecron Scheduler: $procName $* "
 fi
 
 quit "" 0
