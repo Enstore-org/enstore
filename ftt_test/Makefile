@@ -30,11 +30,8 @@ scripts: \
 
 exes: \
 	$(BINDIR)/ftt_test \
-	$(MAIDIR)/test \
 	$(BINDIR)/ftt_copy \
-	$(MAIDIR)/copy \
-	$(BINDIR)/ftt_random \
-	$(MAIDIR)/random 
+	$(BINDIR)/ftt_random 
 
 testlib: $(LIBDIR)/libftt_test.a
 
