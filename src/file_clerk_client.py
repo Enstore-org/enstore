@@ -290,6 +290,11 @@ class FileClient(generic_client.GenericClient,
                        "bfid"           : bfid} )
 	return r
 
+    # modify/create file record
+    def modify(self, ticket):
+        ticket['work'] = 'assign_file_record'
+        return self.send(ticket)
+
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -308,6 +313,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.set_crcs=None
 	self.all = 0
         self.list_active = None
+        self.modify = None
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -318,7 +324,8 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
             return self.client_options()+[
                 "bfid=","deleted=","list=","backup",
                 "get-crcs=","set-crcs=",
-                "restore=", "recursive", "bfids=", "ls-active="]
+                "restore=", "recursive", "bfids=", "ls-active=",
+                "modify="]
             
 def do_work(intf):
     # now get a file clerk client
@@ -391,6 +398,18 @@ def do_work(intf):
 	print "bfid",intf.restore
         # ticket = fcc.restore(intf.restore, dir)
         ticket = fcc.restore(intf.restore)
+    elif intf.modify:
+        d={}
+        for s in intf.args:
+            k,v=string.split(s,'=')
+            try:
+                v=eval(v) #numeric args
+            except:
+                pass #yuk...
+            d[k]=v
+        if intf.modify != "new":
+            d['bfid']=intf.modify # bfid
+        ticket = fcc.modify(d)
     elif intf.get_crcs:
         bfid=intf.get_crcs
         ticket = fcc.get_crcs(bfid)
