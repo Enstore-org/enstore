@@ -73,11 +73,12 @@ def get_callback() :
 
 # return a mover tcp socket
 def mover_callback_socket(ticket) :
+    host, port = ticket['mover']['callback_addr']    
     Trace.trace(16,'{mover_callback_socket host='+\
-                repr(ticket['mover_callback_host'])+" port="+\
-                repr(ticket['mover_callback_port']))
+                repr(host)+" port="+\
+                repr(port))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(ticket['mover_callback_host'], ticket['mover_callback_port'])
+    sock.connect(host, port)
     Trace.trace(16,"}mover_callback_socket sock="+repr(sock))
     return sock
 
@@ -127,22 +128,24 @@ def admin_clerk_callback_socket(ticket) :
 
 # send ticket/message on user tcp socket and return user tcp socket
 def user_callback_socket(ticket) :
+    host, port = ticket['user_info']['callback_addr']
     Trace.trace(16,'{user_callback_socket host='+\
-                repr(ticket['user_callback_host'])+" port="+\
-                repr(ticket['user_callback_port']))
+                repr(host)+" port="+\
+                repr(port))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
+    sock.connect(host, port)
     write_tcp_socket(sock,ticket,"callback user_callback_socket")
     Trace.trace(16,"}user_callback_socket sock="+repr(sock))
     return sock
 
 # send ticket/message on tcp socket
 def send_to_user_callback(ticket) :
+    host, port = ticket['user_info']['callback_addr']
     Trace.trace(16,'{send_to_user_callback host='+\
-                repr(ticket['user_callback_host'])+" port="+\
-                repr(ticket['user_callback_port']))
+                repr(host)+" port="+\
+                repr(port))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
+    sock.connect(host, port)
     write_tcp_socket(sock,ticket,"callback send_to_user_callback")
     sock.close()
     Trace.trace(16,"}send_to_user_callback")

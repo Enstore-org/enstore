@@ -182,22 +182,21 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
             # if no ticket, then this is a not a retry
             except NameError:
-                file_clerk = {}
+		file_clerk = {}
+		uinfo["callback_addr"] = (host, port)
+		uinfo["sanity_size"] = 5000
+		uinfo["size_bytes"] = file_size[i]
                 work_ticket = {"work"               : "write_to_hsm",\
                                "delayed_dismount"   : delayed_dismount,\
                                "priority"           : 1,\
                                "library"            : library[i],\
-                               "file_clerk"         : file_clerk,\
+			       "fc"                 : file_clerk,\
                                "file_family"        : file_family[i],\
                                "file_family_width"  : width[i],\
                                "orig_filename"      : inputlist[i],\
                                "pnfs_info"          : pinfo[i],\
                                "user_info"          : uinfo,\
                                "mtime"              : int(time.time()),\
-                               "size_bytes"         : file_size[i],\
-                               "sanity_size"        : 5000,\
-                               "user_callback_port" : port,\
-                               "user_callback_host" : host,\
                                "unique_id"          : unique_id[i]
                                }
 
@@ -262,8 +261,8 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
             tinfo1["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
             dt = time.time() - t1 #-------------------------------------Lap-End
             if list>1:
-                print " ",ticket["mover_callback_host"],\
-                      ticket["mover_callback_port"],\
+                print " ",ticket["mover"]["callback_addr"][0],\
+                      ticket["mover"]["callback_addr"][1],\
                       "cum:",tinfo1["tot_to_mover_callback"+repr(i)]
                 print "  dt:",dt,"   cumt=",time.time()-t0
 
@@ -335,7 +334,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
         # Check the CRC
             if chk_crc != 0:
-                if done_ticket["file_clerk"]["complete_crc"] != mycrc :
+                if done_ticket["fc"]["complete_crc"] != mycrc :
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.write_to_hsm: CRC's mismatch: "\
                            +repr(complete_crc)+" "+repr(mycrc))
@@ -352,10 +351,10 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
         Trace.trace(10,"write_to_hsm adding to pnfs "+outputlist[i])
         p=pnfs.pnfs(outputlist[i])
         # save the bfid and set the file size
-        p.set_bit_file_id(done_ticket["file_clerk"]["bfid"],file_size[i])
+        p.set_bit_file_id(done_ticket["fc"]["bfid"],file_size[i])
         # create volume map and store cross reference data
-        p.set_xreference(done_ticket["file_clerk"]["external_label"],
-                         done_ticket["file_clerk"]["bof_space_cookie"])
+        p.set_xreference(done_ticket["fc"]["external_label"],
+                         done_ticket["fc"]["bof_space_cookie"])
         # store debugging info about transfer
         done_ticket["tinfo"] = tinfo1 # store as much as we can into pnfs
         done_formatted  = pprint.pformat(done_ticket)
@@ -384,13 +383,13 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
         if list or ninput>1:
             print format %\
                   (inputlist[i], outputlist[i], fsize,\
-                   done_ticket["file_clerk"]["external_label"],\
+                   done_ticket["fc"]["external_label"],\
                    tinfo1["rate"+repr(i)], uinfo["uname"],\
                    time.time()-t0)
 
         logc.send(log_client.INFO, 2, format,
                   inputlist[i], outputlist[i], fsize,
-                  done_ticket["file_clerk"]["external_label"],
+                  done_ticket["fc"]["external_label"],
                   tinfo1["rate"+repr(i)], uinfo["uname"],
                   time.time()-t0)
 
@@ -419,6 +418,10 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     # tell library manager we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
     #u.send_no_wait({"work":"done_cleanup"}, (vticket['host'], vticket['port']))
+
+    if list > 3:
+	print "DONE TICKET"
+	pprint.pprint(done_ticket)
 
     Trace.trace(6,"}write_to_hsm "+msg)
 
@@ -539,10 +542,10 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                    +" can not get info on bfid"+repr(bfid[i]))
         Trace.trace(7,"read_from_hsm on volume="+\
-                    repr(binfo['file_clerk']['external_label']))
+                    repr(binfo['fc']['external_label']))
         vinfo.append(binfo['volume_clerk'])
-        finfo.append(binfo['file_clerk'])
-        label = binfo['file_clerk']['external_label']
+        finfo.append(binfo['fc'])
+        label = binfo['fc']['external_label']
         volume.append(label)
         try:
             vols_needed[label] = vols_needed[label]+1
@@ -550,9 +553,9 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             vols_needed[label] = 1
         tinfo['fc'+repr(i)] = time.time() - t2 #------------------------Lap--End
 
-    tinfo['file_clerk'] =  time.time() - t1 #-------------------------------End
+    tinfo['fc'] =  time.time() - t1 #-------------------------------End
     if list>1:
-        print "  dt:",tinfo["file_clerk"], "   cumt=",time.time()-t0
+        print "  dt:",tinfo["fc"], "   cumt=",time.time()-t0
 
     if list:
         print "Sending ticket to file clerk", "   cumt=",time.time()-t0
@@ -571,16 +574,16 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             if volume[i]==vol:
                 unique_id[i] = time.time()  # note that this is down to mS
                 uinfo["fullname"] = outputlist[i]
+		uinfo["callback_addr"] = (host, port)
+		uinfo["sanity_size"] = 5000
+		uinfo["size_bytes"] = file_size[i]
 
                 # generate the work ticket
                 file_clerk = {"bfid"               : bfid[i]}
                 work_ticket = {"work"               : "read_from_hsm",\
                                "user_info"          : uinfo,\
-                               "file_clerk"         : file_clerk,\
+			       "fc"                 : file_clerk,\
                                "pnfs_info"          : pinfo[i],\
-                               "sanity_size"        : 5000,\
-                               "user_callback_port" : port,\
-                               "user_callback_host" : host,\
                                "unique_id"          : unique_id[i]
                                }
 
@@ -669,8 +672,8 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             tinfo["tot_to_mover_callback"+repr(j)] = time.time() - t0 #-----Cum
             dt = time.time() - t2 #-------------------------------------Lap-End
             if list>1:
-                print " ",ticket["mover_callback_host"],\
-                      ticket["mover_callback_port"],\
+                print " ",ticket["mover"]["callback_addr"][0],\
+                      ticket["mover"]["callback_addr"][1],\
                       "cum:",tinfo["tot_to_mover_callback"+repr(j)]
                 print "  dt:",dt,"   cumt=",time.time()-t0
 
@@ -730,7 +733,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
 
             # verify that the crc's match
             if chk_crc != 0 :
-                if done_ticket["file_clerk"]["complete_crc"] != mycrc :
+                if done_ticket["fc"]["complete_crc"] != mycrc :
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.read_from_hsm: CRC's mismatch: "\
                            +repr(complete_crc)+" "+repr(mycrc))
@@ -771,13 +774,13 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             if list or ninput>1:
                 print format %\
                       (inputlist[j], outputlist[j], fsize,\
-                       done_ticket["file_clerk"]["external_label"],\
+                       done_ticket["fc"]["external_label"],\
                        tinfo["rate"+repr(j)], uinfo["uname"],\
                        time.time()-t0)
 
             logc.send(log_client.INFO, 2, format,
                       inputlist[j], outputlist[j], fsize,
-                      done_ticket["file_clerk"]["external_label"],
+                      done_ticket["fc"]["external_label"],
                       tinfo["rate"+repr(j)], uinfo["uname"],
                       time.time()-t0)
 
@@ -808,6 +811,9 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
     #u.send_no_wait({"work":"done_cleanup"}, (fticket['host'], fticket['port']))
+    if list > 3:
+	print "DONE TICKET"
+	pprint.pprint(done_ticket)
 
 ##############################################################################
 
@@ -1193,7 +1199,7 @@ class encp(generic_client_server.GenericClientServer):
 if __name__  ==  "__main__" :
     t0 = time.time()
     Trace.init("encp")
-    Trace.trace(1,"encpcalled with args "+repr(sys.argv))
+    Trace.trace(1,"encp called at "+repr(t0)+":"+repr(sys.argv))
 
     # use class to get standard way of parsing options
     e = encp()
@@ -1228,4 +1234,4 @@ if __name__  ==  "__main__" :
         Trace.trace(0,emgs)
         jraise(errno.errorcode[errno.EPROTO],emsg)
 
-    Trace.trace(1,"encp finished")
+    Trace.trace(1,"encp finished at "+repr(time.time()))
