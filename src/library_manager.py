@@ -379,12 +379,12 @@ class LibraryManagerMethods:
         if v["status"][0] != e_errors.OK:
             if v["status"][0] == e_errors.NOVOLUME:
                 if not self.process_for_bound_vol:
-                    # remove this request and send regret to the client
-                    rq.ticket['status'] = v['status']
-                    self.send_regret(rq.ticket)
-                    self.pending_work.delete(rq)
-                rq = None
-                
+                    if wr_en > rq.ticket["vc"]["file_family_width"]:
+                        # remove this request and send regret to the client
+                        rq.ticket['status'] = v['status']
+                        self.send_regret(rq.ticket)
+                        self.pending_work.delete(rq)
+                    rq = None
             else:
                 rq.ticket["status"] = v["status"]
                 rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
@@ -1044,6 +1044,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def mover_bound_volume(self, mticket):
 	Trace.trace(11, "mover_bound_volume: request: %s"%(mticket,))
         last_work = mticket['operation']
+        if not mticket['volume_family']:
+            # mover restarted with bound volume and it has not
+            # all the volume info
+            # so go get it
+            vol_info = self.vcc.inquire_vol(mticket['external_label'])
+            mticket['volume_family'] = vol_info['volume_family']
+            mticket['volume_status'] = (vol_info.get('system_inhibit',['none', 'none']),
+                                        vol_info.get('user_inhibit',['none', 'none']))
+            
+            Trace.trace(11, "mover_bound_volume: updated mover ticket: %s"%(mticket,))
         # put volume information
         # if this mover is already in volumes_at_movers
         # it will not get updated
