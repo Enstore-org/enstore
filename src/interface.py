@@ -113,6 +113,13 @@ class Interface:
     def check_host(self, host):
         self.config_host = hostaddr.name_to_address(host)
 
+    def check_port(self, port):
+        # bomb out if port isn't numeric
+        if type(port) == type('string'):
+            self.config_port = int(port)
+        else:
+            self.config_port = port
+
     def charopts(self):
         return [""]
 
@@ -156,13 +163,6 @@ class Interface:
     def help_line(self):
         return self.help_prefix()+self.parameters()+self.help_suffix()+self.format_options(
             self.options(), "\n\t\t")
-
-    def check_port(self, port):
-        # bomb out if port isn't numeric
-        if type(port) == type('string'):
-            self.config_port = int(port)
-        else:
-            self.config_port = port
 
     def print_help(self):
         sys.stderr.write("USAGE: %s\n"%(self.help_line(),))
@@ -253,8 +253,6 @@ class Interface:
                 self.parse_config_host(value)
             elif opt == "--config-port":
                 self.parse_config_port(value)
-            elif opt == "--crc":
-                self.chk_crc = 1
             elif opt == "--data-access-layer":
                 self.data_access_layer = 1
             elif opt == "--decr-file-count":
@@ -300,6 +298,8 @@ class Interface:
                 self.output_file_family=value
             elif opt == "--force":
                 self.force = 1
+            elif opt == "--get-cache":
+                self.get_cache = 1
             elif opt == "--get-crcs":
                 self.get_crcs=value
             elif opt == "--get-inq-timeout":
@@ -371,6 +371,8 @@ class Interface:
                 self.next = 1
             elif opt == "--no-access":
                 self.no_access = value
+            elif opt == "--no-crc":
+                self.chk_crc = 0
             elif opt == "--nocheck":
                 self.nocheck = 1
             elif opt == "--nooutage":
@@ -389,6 +391,8 @@ class Interface:
                 self.prefix = value
             elif opt == "--priority":
                 self.priority = int(value)
+            elif opt == "--put-cache":
+                self.put_cache = 1
             elif opt == "--raise":
                 self.alarm = 1
             elif opt == "--read-only":
@@ -423,6 +427,8 @@ class Interface:
                 self.severity = value
             elif opt == "--show":
                 self.show = 1
+            elif opt == "--storage-info":
+                self.storage_info = value
             elif opt == "--start-draining":
                 self.start_draining = value
             elif opt == "--start-time":
