@@ -38,7 +38,7 @@ rm -f $1
 if [ -n "${2-}" ]; then
   pid="`EPS returnpid $2`"
   if [ "$pid" != ""  -a "$pid" != "-1" ]; then 
-    echo ERROR $2 still lives...trying to kill $pid again
+    echo scan for lost job finds $2 ...trying to kill $pid again
     tmpfile=$ENSTORE_TMP/lost_pids
     rm -f $tmpfile
     echo "$pid">$tmpfile
