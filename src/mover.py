@@ -784,7 +784,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             # writing to "None" will discard headers, leaving stream positioned at
             # start of data
             self.buffer.stream_write(self.buffer.header_size, None)
-
+            Trace.trace(8, "write_client: discarded %s bytes of header info"%(self.buffer.header_size))
         bytes_notified = 0L
         threshold = self.notify_transfer_threshold
         if threshold * 5 > self.bytes_to_write:
@@ -869,10 +869,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
 
         self.current_work_ticket = ticket
+        self.unique_id = ticket['unique_id']
         self.control_socket, self.client_socket = self.connect_client()
+        
         Trace.trace(10, "client connect %s %s" % (self.control_socket, self.client_socket))
         if not self.client_socket:
-            ##XXX ENCP GONE
+            if self.state is HAVE_BOUND:
+                self.dismount_time = time.time() + self.default_dismount_delay
+            self.update(reset_timer=1)
             return 0
 
         self.t0 = time.time()
@@ -1249,7 +1253,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         except:
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
-        self.control_socket.close()
+        if self.control_socket:
+            self.control_socket.close()
         self.control_socket = None
         return
             
@@ -1339,13 +1344,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "status should be 2-tuple, is %s" % (status,))
             status = (status, None)
 
-        if state is IDLE:
+        if state in (IDLE, HAVE_BOUND):
             ## If we've been idle for more than 5 minutes, force the LM to clear
             ## any entry for this mover in the work_at_movers.  Yes, this is a
             ## kludge, but it keeps the system from getting completely hung up
             ## if the LM doesn't realize we've finished a transfer.
             now = time.time()
-            if time.time() - self.state_change_time > 600:
+            if time.time() - self.state_change_time > 300:
                 self.unique_id = None
                 self.state_change_time = now
                 
