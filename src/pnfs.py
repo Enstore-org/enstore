@@ -2543,14 +2543,7 @@ class File:
 		if not self.bfid:
 			return
 		if not self.consistent():
-			if self.path != self.p_path:
-                            if self.path != get_local_pnfs_path(self.p_path):
-                                d1, f1 = os.path.split(self.path)
-                                d2, f2 = os.path.split(self.p_path)
-                                if f1 != f2:
-				    raise 'DIFFERENT_PATH'
-			else:
-				raise 'INCONSISTENT'
+			raise 'INCONSISTENT'
 		if self.exists():
 			# writing layer 1
 			f = open(self.layer_file(1), 'w')
@@ -2583,7 +2576,7 @@ class File:
 			or not self.location_cookie \
 			or not self.file_family or not self.path \
 			or not self.pnfs_id or not self.bfid \
-			or not self.p_path or self.p_path != self.path:
+			or not self.p_path:
 			return 0
 		return 1
 
