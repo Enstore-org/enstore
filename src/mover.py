@@ -993,6 +993,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         if work is None:
             Trace.log(e_errors.ERROR, "state: %s work: %s" %
                       (state_name(state),work))
+        if status is None:
+            status = e_errors.OK, None
+            
+        if type(status) != type(()) or len(status)!=2:
+            Trace.log(e_errors.ERROR, "status should be 2-tuple, is %s" % (status,))
+            status = (status, None)
+            
         ticket =  {
             "mover":  self.name,
             "address": self.address,
