@@ -16,6 +16,14 @@ DEFAULT_SOURCE = "None"
 MATCH = 1
 NO_MATCH = 0
 
+PATROL_SEVERITY = { e_errors.sevdict[e_errors.ALARM] : '4',
+                    e_errors.sevdict[e_errors.ERROR] : '4',
+                    e_errors.sevdict[e_errors.USER_ERROR] : '3',
+                    e_errors.sevdict[e_errors.WARNING] : '2',
+                    e_errors.sevdict[e_errors.INFO] : '1',
+                    e_errors.sevdict[e_errors.MISC] : '1'
+                    }
+
 class GenericAlarm:
 
     def __init__(self):
@@ -43,8 +51,11 @@ class GenericAlarm:
         # mentioned above
         if self.patrol:
             host = string.split(self.host,".")
-            return string.join((host[0], "Enstore", repr(self.severity),
-                                self.short_text(), "\n"))
+            # enstore's severities must be mapped to patrols'
+            sev = PATROL_SEVERITY[self.severity]
+            return string.join((host[0], "Enstore" ,sev,
+                                "%s - %s"%(self.short_text(), self.severity),
+                                "\n"))
         else:
             return repr([self.timedate, self.host, self.pid, self.uid,
                          self.severity, self.source, self.root_error,
