@@ -110,7 +110,16 @@ def combine_dict(*dictionaries):
             raise TypeError, "Dictionary required, not %s." % \
                   type(dictionaries[i])
         for key in dictionaries[i].keys():
-            if not new.has_key(key):
+            #If both items in the dictionary are themselves dictionaries, then
+            # do this recursivly.
+            if new.get(key, None) and \
+               type(dictionaries[i][key]) == type({}) and \
+               type(new[key]) == type({}):
+                         new[key] = combine_dict(new[key],
+                                                 dictionaries[i][key])
+                         
+            #Just set the value if not a dictionary.
+            elif not new.has_key(key):
                 new[key] = dictionaries[i][key]
 
     return new
@@ -131,7 +140,6 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     mount_time = time_ticket.get('mount_time', 0)
     in_queue = time_ticket.get('in_queue', 0)
     now = time.time()
-    #t0 = time_ticket.get('encp_start_time', now) ###XXX This makes no sense...
     total = now - time_ticket.get('encp_start_time', now)
     sts =  ticket.get('status', ('Unknown', None))
     status = sts[0]
@@ -139,27 +147,30 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     if len(msg)==1:
         msg=msg[0]
         
+    if type(outputfile) == type([]) and len(outputfile) == 1:
+        outputfile = outputfile[0]
+    if type(inputfile) == type([]) and len(inputfile) == 1:
+        inputfile = inputfile[0]
+        
     if not data_access_layer_requested and status != e_errors.OK:
         out=sys.stderr
     else:
         out=sys.stdout
 
     ###String used to print data access layer.
-    data_access_layer_format = """
-    INFILE=%s
-    OUTFILE=%s
-    FILESIZE=%s
-    LABEL=%s
-    LOCATION=%s
-    DRIVE=%s
-    DRIVE_SN=%s
-    TRANSFER_TIME=%.02f
-    SEEK_TIME=%.02f
-    MOUNT_TIME=%.02f
-    QWAIT_TIME=%.02f
-    TIME2NOW=%.02f
-    STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
-
+    data_access_layer_format = """INFILE=%s
+OUTFILE=%s
+FILESIZE=%s
+LABEL=%s
+LOCATION=%s
+DRIVE=%s
+DRIVE_SN=%s
+TRANSFER_TIME=%.02f
+SEEK_TIME=%.02f
+MOUNT_TIME=%.02f
+QWAIT_TIME=%.02f
+TIME2NOW=%.02f
+STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
     
     out.write(data_access_layer_format % (inputfile, outputfile, filesize,
                                           external_label,location_cookie,
@@ -189,10 +200,13 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                        transfer_time, seek_time, mount_time,
                        in_queue, total,
                        status)
+
         if msg:
-            errmsg=errmsg+" "+msg
+            #Attach the data access layer info to the msg, but first remove
+            # the newline and tab used for readability on the terminal.
+            errmsg = errmsg + " " + string.replace(msg, "\n\t", "  ")
         Trace.log(msg_type, errmsg)
-    except:
+    except OSError:
         exc,msg,tb=sys.exc_info()
         sys.stderr.write("cannot log error message %s\n"%(errmsg,))
         sys.stderr.write("internal error %s %s"%(exc,msg))
@@ -782,6 +796,7 @@ def open_data_socket(mover_addr):
 
 def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
                     verbose):
+    global bsdfg
     ##19990723:  resubmit request after 15minute timeout.  Since the
     # unique_id is unchanged the library manager should not get
     # confused by duplicate requests.
@@ -851,9 +866,14 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         ticket['status'] = (e_errors.OK, None)
         #Include new info from mover.
         work_tickets[i] = ticket
-        
+
+        #The following three lines are usefull for testing error handling.
+        #control_socket.close()
+        #data_path_socket.close()
+        #ticket['status'] = (e_errors.NET_ERROR, "because I closed them")
+
         return control_socket, data_path_socket, ticket
-    
+
 ############################################################################
 
 def submit_one_request(ticket, verbose):
@@ -861,7 +881,8 @@ def submit_one_request(ticket, verbose):
     Trace.trace(7,"write_to_hsm q'ing: %s"%(ticket,))
 
     if ticket['retry']:
-        if verbose > 1: print "RETRY_CNT=", ticket['retry']
+        if verbose > 1:
+            print "RETRY COUNT:", ticket['retry']
 
     #Send work ticket to LM
     #Get the library manager info information.
@@ -975,7 +996,7 @@ def verify_file_size(ticket):
 ############################################################################
 
 def handle_retries(request_list, request_dictionary, error_dictionary,
-                   max_retries):
+                   max_retries, verbose):
     #request_dictionary must have 'retry' as an element.
     #error_dictionary must have 'status':(e_errors.XXX, "explanation").
 
@@ -1000,6 +1021,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #If the transfer has failed to many times, remove it from the queue.
     # Since TOO_MANY_RETRIES is non-retriable, set this here.
     if retry >= max_retries:
+        if verbose > 2:
+            print "To many retries for %s -> %s." % (infile, outfile)
         status = (e_errors.TOO_MANY_RETRIES, status)
         
     #If the error is not retriable, remove it from the request queue.
@@ -1033,7 +1056,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
 
     try:
         #Since a retriable error occured, resubmit the ticket.
-        submit_one_request(request_dictionary, verbose=3)
+        submit_one_request(request_dictionary, verbose)
     except KeyError:
         #If we get here, then the error occured while waiting for any (valid)
         # mover to call back.  Since, there was no information then the
@@ -1145,7 +1168,7 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     MB_transfered = float(bytes) / float(bytes_per_MB)
 
     done_ticket = {}
-    done_ticket["tinfo"] = tinfo
+    done_ticket['times'] = tinfo
 
     if tinfo['total']: #protect against division by zero.
         done_ticket['MB_per_S'] = MB_transfered / (tinfo['total'])
@@ -1153,14 +1176,16 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
         done_ticket['MB_per_S'] = 0.0
     
     msg = "%s transferring %s bytes in %s files in %s sec.\n" \
-          "\tOverall rate = %s MB/sec."
+          "\tOverall rate = %s MB/sec.  Exit status = %s."
     
     if exit_status:
         msg = msg % ("Error after", bytes, number_of_files,
-                     done_ticket['tinfo']['total'], done_ticket["MB_per_S"])
+                     done_ticket['times']['total'], done_ticket["MB_per_S"],
+                     exit_status)
     else:
         msg = msg % ("Completed", bytes, number_of_files,
-                     done_ticket['tinfo']['total'], done_ticket["MB_per_S"])
+                     done_ticket['times']['total'], done_ticket["MB_per_S"],
+                     exit_status)
 
     #set the final status values
     done_ticket['exit_status'] = exit_status
@@ -1274,7 +1299,7 @@ def submit_write_request(work_ticket, client, max_retry, verbose):
             pprint.pprint(ticket)
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
-                                     max_retry)
+                                     max_retry, verbose)
         if result_dict['status'] == e_errors.RETRY or \
            result_dict['status'] in e_errors.non_retriable_errors:
             continue
@@ -1294,8 +1319,9 @@ def set_pnfs_settings(ticket, client, verbose):
     p=pnfs.Pnfs(ticket['outfile'])
 
     # save the bfid and set the file size
-    p.set_bit_file_id(ticket["fc"]["bfid"], ticket['file_size'])
-
+    p.set_bit_file_id(ticket["fc"]["bfid"])    #, ticket['file_size'])
+    p.set_file_size(ticket['file_size'])
+    
     # create volume map and store cross reference data
     mover_ticket = ticket.get('mover', {})
     drive = "%s:%s" % (mover_ticket.get('device', 'Unknown'),
@@ -1336,7 +1362,7 @@ def set_pnfs_settings(ticket, client, verbose):
 def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
     #Loop around in case the file transfer needs to be retried.
-    while work_ticket.get('retry', 0) < e.max_retry:
+    while work_ticket.get('retry', 0) <= e.max_retry:
         
         encp_crc = 0 #In case there is a problem, make sure this exists.
 
@@ -1351,10 +1377,14 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
         #Handle any possible errors occured so far.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     ticket, e.max_retry)
+                                     ticket, e.max_retry, e.verbose)
+        #print "qwqwqwqwqw", result_dict['status'], result_dict['retry']
+        #print "wqwqwqwqwq", ticket['status'], ticket['retry']
+        #print "wewewewewe", work_ticket['retry']
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
+            ticket = combine_dict(result_dict, ticket)
             return ticket
 
         #This should be redundant error check.
@@ -1377,7 +1407,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             #Handle any possible errors occured so far
             status_ticket = (e_errors.IOERROR, detail)
             result_dict = handle_retries([work_ticket], work_ticket,
-                                         status_ticket, e.max_retry)
+                                         status_ticket, e.max_retry, e.verbose)
             if result_dict['status'][0] == e_errors.RETRY:
                 continue
             elif result_dict['status'][0] in e_errors.non_retriable_errors:
@@ -1400,26 +1430,12 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
                                      data_path_socket.fileno(), 
                                      work_ticket['file_size'],
                                      e.bufsize, crc_flag, 0)
+            EXfer_ticket = {'status':(e_errors.OK, None)}
         except EXfer.error, msg:
             Trace.log(e_errors.ERROR, "write_to_hsm EXfer error: %s" % (msg,))
 
-            try:
-                done_ticket = callback.read_tcp_obj(control_socket)
-            except ("TCP connection closed", socket.error), detail:
-                done_ticket = {'status':(msg.args[1], msg.args[0])}
-                #done_ticket = {'status':(e_errors.EPROTO,
-                #                         "Network problem or mover reset")}
-
-                #Handle any possible errors occured so far
-                status_ticket = (e_errors.IOERROR, detail)
+            EXfer_ticket = {'status':(msg.args[1], msg.args[0])}
             
-                result_dict = handle_retries([work_ticket], work_ticket,
-                                             status_ticket, e.max_retry)
-                if result_dict['status'][0] == e_errors.RETRY:
-                    continue
-                elif result_dict['status'][0] in e_errors.non_retriable_errors:
-                    return combine_dict(result_dict, work_ticket)
-
         tstring = '%s_elapsed_time' % work_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_time #--------------------------End
 
@@ -1435,16 +1451,18 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             control_socket.close()
             data_path_socket.close()
             in_file.close()
-            #done_ticket['fc'] = work_ticket['fc']
-            #done_ticket['status'] = (e_errors.WRITE_ERROR,
-            #                         "selective CRC check error")
         except (socket.error, OSError):
             #print "Error closeing something"
             pass
 
+        #We need to check the status.  Since, the local status has allready
+        # been logged as an error, give precidence to the status returned by
+        # the mover.
+        done_ticket = combine_dict(done_ticket, EXfer_ticket)
+
         #Verify that everything is ok.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e.max_retry)
+                                     done_ticket, e.max_retry, e.verbose)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
@@ -1468,7 +1486,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e.max_retry)
+                                     done_ticket, e.max_retry, e.verbose)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
@@ -1671,7 +1689,6 @@ def write_to_hsm(e, client, tinfo):
         # handles its own retrying when an error occurs.
         if done_ticket['status'][0] != e_errors.OK:
             exit_status = 1
-            print "exit_status", exit_status
             continue
 
         bytes = bytes + done_ticket['file_size']
@@ -1701,7 +1718,7 @@ def write_to_hsm(e, client, tinfo):
         pass
 
     #Finishing up with a few of these things.
-    done_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
+    calc_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
 
     if e.verbose:
         #If applicable print new file family.
@@ -1712,8 +1729,8 @@ def write_to_hsm(e, client, tinfo):
     if e.verbose > 4:
         print "DONE TICKET"
         pprint.pprint(done_ticket)
-    elif e.verbose:
-        print done_ticket['status'][1]
+
+    done_ticket = combine_dict(calc_ticket, done_ticket)
 
     return done_ticket
 
@@ -1916,8 +1933,6 @@ def submit_read_requests(requests, client, tinfo, verbose):
     # submit requests
     while requests_to_submit:
         for req in requests_to_submit:
-            if req['retry']:
-                if verbose > 1: print "RETRY_CNT=", req['retry']
 
             if verbose > 1:
                 print "Submitting %s read request.   time=%s" % (req['infile'],
@@ -1932,7 +1947,7 @@ def submit_read_requests(requests, client, tinfo, verbose):
                 pprint.pprint(ticket)
 
             result_dict = handle_retries(requests_to_submit, req, ticket,
-                                         max_retry)
+                                         max_retry, verbose)
             if result_dict['status'] == e_errors.RETRY or \
                result_dict['status'] in e_errors.non_retriable_errors:
                 continue
@@ -1968,6 +1983,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
     bytes = 0L
     encp_crc = 0
     mover_timeout_retries = 0 #Number of times listen/select/accept has failed.
+    failed_requests = []
 
     #for waiting in range(submitted):
     while files_left:
@@ -1986,14 +2002,14 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             e.max_retry,
             e.verbose)
 
-        if request.get('retry', 0):
-                if e.verbose > 2: print "RETRY COUNT:", request['retry']
-
-        result_dict = handle_retries(requests, request, request, e.max_retry)
+        done_ticket = request #Make sure this exists by this point.
+        result_dict = handle_retries(requests, request, request,
+                                     e.max_retry, e.verbose)
         if result_dict['status'][0]== e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
             files_left = result_dict['queue_size']
+            failed_requests.append(request)
             continue
 
         #This is a redundant check.
@@ -2035,9 +2051,10 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             # range(submitted).
             done_ticket = {'status':(e_errors.USERERROR, detail)}
             result_dict = handle_retries(requests, requests[j],
-                                        done_ticket, e.max_retry)
+                                        done_ticket, e.max_retry, e.verbose)
             if result_dict['status'] in e_errors.non_retriable_errors:
                 files_left = result_dict['queue_size']
+                failed_requests.append(request)
             control_socket.close()
             data_path_socket.close()
             continue
@@ -2089,11 +2106,11 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
                 #                         "Network problem or mover reset")}
                 
             result_dict = handle_retries(requests, requests[j],
-                                        done_ticket, e.max_retry)
+                                        done_ticket, e.max_retry, e.verbose)
 
             if result_dict['status'][0] in e_errors.non_retriable_errors:
                 files_left = result_dict['queue_size']
-            
+                failed_requests.append(request)
             try:
                 control_socket.close()
                 data_path_socket.close()
@@ -2138,11 +2155,12 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
 
         #Verfy that the final responce from the mover is that everything is ok.
         result_dict = handle_retries(requests, requests[j],
-                                     done_ticket, e.max_retry)
+                                     done_ticket, e.max_retry, e.verbose)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
             files_left = result_dict['queue_size']
+            failed_requests.append(request)
             continue
 
         if e.verbose > 1:
@@ -2162,11 +2180,12 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
 
         #Verfy that the file transfered in tacted.
         result_dict = handle_retries(requests, requests[j],
-                                     done_ticket, e.max_retry)
+                                     done_ticket, e.max_retry, e.verbose)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
             files_left = result_dict['queue_size']
+            failed_requests.append(request)
             continue
 
         #This function writes errors/warnings to the log file and puts an
@@ -2208,8 +2227,8 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
     if e.verbose > 4:
             print "DONE TICKET"
             pprint.pprint(done_ticket)
-    
-    return requests, bytes
+
+    return failed_requests, bytes, done_ticket
 
 #######################################################################
 
@@ -2324,18 +2343,15 @@ def read_from_hsm(e, client, tinfo):
             #Since request_list contains all of the entires, submitted must
             # also be passed so read_hsm_files knows how many elements of
             # request_list are valid.
-            requests_failed, brcvd = read_hsm_files(listen_socket,
-                                                    submitted,
-                                                    request_list,
-                                                    tinfo, e)
-            #.chk_crc,
-            #                                        e.max_retry,
-            #                                        e.verbose)
+            requests_failed, brcvd, data_access_layer_ticket = read_hsm_files(
+                listen_socket, submitted, request_list, tinfo, e)
+
             if e.verbose > 1:
                 print "Files read for volume %s   elapsed=%s" % \
                       (vol, time.time() - tinfo['encp_start_time'])
             
-            if len(requests_failed) > 0:
+            if len(requests_failed) > 0 or \
+               data_access_layer_ticket['status'][0] != e_errors.OK:
                 exit_status = 1 #Error, when quit() called, this is passed in.
                 if e.verbose > 2:
                     print "TRANSFERS FAILED:", len(requests_failed)
@@ -2356,12 +2372,14 @@ def read_from_hsm(e, client, tinfo):
         pass
 
     #Finishing up with a few of these things.
-    done_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
+    calc_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
+
+    done_ticket = combine_dict(calc_ticket, data_access_layer_ticket)
     
     if e.verbose > 4:
         print "DONE TICKET"
         pprint.pprint(done_ticket)
-    elif e.verbose:
+    elif e.verbose > 2:
         print done_ticket['status'][1]
 
     return done_ticket
@@ -2570,14 +2588,25 @@ def main():
         print_data_access_layer_format("","",0,{'status':("USERERROR",emsg)})
         quit()
 
+    exit_status = done_ticket.get('exit_status', 1)    
     try:
-        if e.data_access_layer or done_ticket['status'][0] != e_errors.OK:
-            print_data_access_layer_format(e.input, e.output, 0, done_ticket)
+        if e.data_access_layer and not exit_status:
+            print_data_access_layer_format(e.input, e.output,
+                                           done_ticket.get('file_size', 0),
+                                           done_ticket)
+        else:
+            if e.verbose:
+                status = done_ticket.get('status', (e_errors.UNKNOWN,
+                                                    e_errors.UNKNOWN)[1])
+                Trace.log(e_errors.INFO, string.replace(status[1],
+                                                        "\n\t", "  "))
+                print status[1]
     except ValueError:
         pass
 
     Trace.trace(10,"encp finished at %s"%(time.time(),))
-    quit(0) #Remove zero length file for transfers that failed.
+    #Quit safely by Removing any zero length file for transfers that failed.
+    quit(exit_status)
 
 if __name__ == '__main__':
 
