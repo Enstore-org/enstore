@@ -72,7 +72,17 @@ verify_file(char *pnfs_dir, char *strip, char *filename){
 	return -1;
     }
     
-    if (strip && strip_path(path, strip, filename)){
+    if (strip){
+	if (stat(strip, &sbuf)){
+	    fprintf(stderr,"%s: ", progname);
+	    perror(strip);
+	    return -1;
+	}
+	if (!S_ISDIR(sbuf.st_mode)){
+	    fprintf(stderr, "%s: %s is not a directory\n", progname, strip);
+	    return -1;
+	}
+	if(strip_path(path, strip, filename))
 	    return -1;
     }
     
@@ -142,7 +152,7 @@ int
 verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 {
     struct stat sbuf;
-    int status, x;
+    int status;
     char path[MAX_PATH_LEN];  
 
     check_volume_label_legal(); /* need to make sure '/' is not in label! */
@@ -163,7 +173,9 @@ verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 	return -1;
     } else { /* it exists */
 	if (!new) {
-	    if (read_db_i(path,"tape_full", &x)){
+	    sprintf(path,"%s/volumes/%s/tape_full", tape_db, volume_label);
+	    if (stat(path, &sbuf)==0) { 
+		/*don't use db function because we don't want a warning if file not found*/
 		fprintf(stderr, "%s: tape %s is full\n",
 			progname, volume_label);
 		return -1;
@@ -241,9 +253,7 @@ int verify_tape_volume()
 int 
 verify_volume_label()
 {
-    int x,y;
-    x = verify_db_volume(0);
-    y = verify_tape_volume();
-    return x||y;
+    return(verify_db_volume(0)
+	   ||verify_tape_volume());
 }
-    
+   
