@@ -335,6 +335,8 @@ class Interface:
                 self.html_file = value
             elif opt == "--html-gen-host":
                 self.html_gen_host = value
+            elif opt == "--idle":
+                self.stop_draining=1
             elif opt == "--import":
                 self._import = 1
             elif opt == "--input-dir":
@@ -377,6 +379,8 @@ class Interface:
                 self.nocheck = 1
             elif opt == "--nooutage":
                 self.nooutage = value
+            elif opt == "--offline":
+                self.start_draining = 1
             elif opt == "--outage":
                 self.outage = value
             elif opt == "--output":

@@ -63,7 +63,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
 	    # start draining needs a parameter because the library manager uses the same
 	    # option and it needs a parameter.  the interface is dumb enough not to know
 	    # the difference between the mover and the library manager.
-            return self.client_options()+["status", "clean-drive", "start-draining=", "stop-draining"]
+            return self.client_options()+["status", "clean-drive", "offline", "start-draining=", "stop-draining"]
 
     #  define our specific help
     def parameters(self):
