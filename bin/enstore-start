@@ -13,7 +13,7 @@ fi
 
 set -u  # force better programming and ability to use check for not set
 
-. $ENSTORE_DIR/bin/defaults
+. $ENSTORE_DIR/etc/defaults
 
 place=`pwd`
 cd $enstore_db

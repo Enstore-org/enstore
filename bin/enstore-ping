@@ -10,7 +10,7 @@ fi
 
 set -u  # force better programming and ability to use check for not set
 
-. $ENSTORE_DIR/bin/defaults
+. $ENSTORE_DIR/etc/defaults
 
 eping() { s="$1"; c="$2"; export s; export c;
          /bin/sh -c ' ( sleep $s; kill $$ ) >/dev/null 2>&1 & ans=`eval $c  2>/dev/null` ; echo $ans'; }

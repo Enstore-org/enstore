@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 set -u  # force better programming and ability to use check for not set
 
-. $ENSTORE_DIR/bin/defaults
+. $ENSTORE_DIR/etc/defaults
 
 x=0
 while [ $x -le 1000 ] ; do
