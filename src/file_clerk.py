@@ -6,7 +6,7 @@ from dict_to_a import *
 from SocketServer import *
 from configuration_client import *
 from volume_clerk_client import VolumeClerkClient
-from library_manager import LibraryManagerClient
+from library_manager_client import LibraryManagerClient
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 from udp_client import UDPClient

@@ -244,7 +244,7 @@ if __name__  ==  "__main__" :
     if len(args) < 2 :
         print "python",sys.argv[0], options, "inputfilename outputfilename"
         print "   do not forget the '--' in front of each option"
-        sys.exit(0)
+        sys.exit(1)
 
     # get a configuration server
     if config_list :

@@ -363,7 +363,7 @@ if __name__ == "__main__" :
     if len(args) < 1 :
         print "python",sys.argv[0], options, "mover_device"
         print "   do not forget the '--' in front of each option"
-        sys.exit(0)
+        sys.exit(1)
 
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port

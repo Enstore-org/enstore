@@ -10,9 +10,11 @@ ecmd start   (no options/arguments)
 ecmd stop    (no options/arguments)
 
 ecmd encp    [--config_list --list --help ] inputfilename outputfilename
+
 ecmd config  [--config_list --config_file=  --dict --load --list --help]
 ecmd fcc     [--config_list --bfids --bfid= --list --help]
 ecmd vcc     [--config_list --vols  --vol=  --list --help']
+ecmd lmc     [--config_list --printwork     --list --help'] library
 
 ecmd addvol  [--config_list --vols  --vol=  --list --help'] library file_family
              media_type  volume_name, volume_byte_capacity remaining_capacity
@@ -46,27 +48,31 @@ case $cmd in
     ;;
 
   encp)
-    python $ENSTORE_DIR/src/encp.py                  --config_host $config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/encp.py                   --config_host $config_host --config_port=$config_port $@
     stat=$?
     ;;
   config|econ)
-    python $ENSTORE_DIR/src/configuration_client.py  --config_host $config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/configuration_client.py   --config_host $config_host --config_port=$config_port $@
     stat=$?
     ;;
   fcc|bfid)
-    python $ENSTORE_DIR/src/file_clerk_client.py     --config_host $config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/file_clerk_client.py      --config_host $config_host --config_port=$config_port $@
     stat=$?
     ;;
   vcc)
-    python $ENSTORE_DIR/src/volume_clerk_client.py   --config_host $config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host $config_host --config_port=$config_port $@
+    stat=$?
+    ;;
+  lmc)
+    python $ENSTORE_DIR/src/library_manager_client.py --config_host $config_host --config_port=$config_port $@
     stat=$?
     ;;
   addvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py   --config_host $config_host --config_port=$config_port --addvol $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host $config_host --config_port=$config_port --addvol $@
     stat=$?
     ;;
   delvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py   --config_host $config_host --config_port=$config_port --delvol $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host $config_host --config_port=$config_port --delvol $@
     stat=$?
     ;;
 
