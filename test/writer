@@ -46,7 +46,7 @@ while /bin/true; do
 	  else
             crc=""
           fi
-          ecmd encp --priority $priority --delpri $delpri --agetime $agetime $crc $f $output
+          ecmd encp --pri $priority --delpri $delpri --agetime $agetime $crc $f $output
         fi
 	ec=$?
         if [ $ec -ne 0 ] ; then
