@@ -198,12 +198,12 @@ class Logger(  dispatching_worker.DispatchingWorker
 	return rtn
 
     def write_to_extra_logfile(self, message):
-	for msg_type in self.msg_type_keys:
-	    if not string.find(message, msg_type) == -1:
-		# this message has a message type of msg_type
-		self.extra_logfiles[msg_type].write(message)
-		self.extra_logfiles[msg_type].flush()
-		return
+        for msg_type in self.msg_type_keys:
+            if not string.find(message, msg_type) == -1:
+                # this message has a message type of msg_type
+                self.extra_logfiles[msg_type].write(message)
+                self.extra_logfiles[msg_type].flush()
+                return
 
     # log the message recieved from the log client
     def log_message(self, ticket) :
@@ -243,8 +243,9 @@ class Logger(  dispatching_worker.DispatchingWorker
         if not self.no_debug:
             res = self.debug_logfile.write(message)    # write log message to the file
             self.debug_logfile.flush()
-	self.write_to_extra_logfile(message)
-
+        if message_type !=  e_errors.sevdict[e_errors.MISC]:
+            self.write_to_extra_logfile(message)
+        
     def check_for_extended_files(self, filename):
         if not self.max_log_file_size == NO_MAX_LOG_FILE_SIZE:
             file_l = os.listdir(self.logfile_dir_path)
