@@ -80,9 +80,28 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record["uid"] = ticket["fc"]["uid"]
         if ticket["fc"].has_key("gid"):
             record["gid"] = ticket["fc"]["gid"]
-        
-        # get a new bit file id
-        bfid = self.unique_bit_file_id()
+
+        # does it have bfid?
+        if ticket["fc"].has_key("bifd"):
+            bfid = ticket["fc"]["bfid"]
+            # make sure the brand is right
+            if bfid[:4] != self.brand:
+                msg = "new_bit_file(): wrong brand %s (%s)"%(bfid, self.brand)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+            # make sure the bfid does not exist
+            if self.dict[bfid]:
+                msg = "new_bit_file(): %s exists"%(bfid)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+        else:
+            # get a new bit file id
+            bfid = self.unique_bit_file_id()
+
         record["bfid"] = bfid
         # record it to the database
         self.dict[bfid] = record 
@@ -804,7 +823,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # handle branding
 
         if bfid[0] in string.letters:
-            brand = bfid[:4]
             sequence = long(bfid[4:]+'L')
             while self.dict.has_key(self.brand+str(sequence)):
                 sequence = sequence + 1
