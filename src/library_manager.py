@@ -731,7 +731,7 @@ class LibraryManagerMethods:
             if rc and fun and action:
                 rq.ticket["status"] = (e_errors.OK, None)
                 if fun == 'restrict_host_access':
-                    ret = apply(getattr(self,fun), args)
+                    ret = apply(getattr(self,fun), args, rq.ticket['wrapper']['machine'][1])
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "access delayed for %s : library=%s family=%s requester:%s"
@@ -1290,14 +1290,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.udpc = udp_client.UDPClient()
         self.rcv_timeout = 10 # set receive timeout
 
-    def restrict_host_access(self, storage_group, host, max_permitted):
+    def restrict_host_access(self, storage_group, host, max_permitted, rq_host=None):
         active = 0
-        Trace.trace(30, "restrict_host_access(%s,%s,%s)"%
-                    (storage_group, host, max_permitted))
+        Trace.trace(30, "restrict_host_access(%s,%s,%s %s)"%
+                    (storage_group, host, max_permitted, rq_host))
         for w in self.work_at_movers.list:
             if (w['vc']['storage_group'] == storage_group and
                 re.search(host, w['wrapper']['machine'][1])):
-                active = active + 1
+                if rq_host:
+                    if  w['wrapper']['machine'][1] == rq_host:
+                        active = active + 1
+                else:
+                    active = active + 1
         Trace.trace(30, "restrict_host_access(%s,%s)"%
                     (active, max_permitted))
         return active >= max_permitted
@@ -1407,6 +1411,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # that's why I excplicitely remove a 3rd argument
                 del(args[2])
                 args.append(ticket)
+            elif fun == 'restrict_host_access':
+                args.append(ticket['wrapper']['machine'][1])
+            
             ret = apply(getattr(self,fun), args)
             if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, 'reject')):
                 format = "access restricted for %s : library=%s family=%s requester:%s "
@@ -1528,6 +1535,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # that's why I excplicitely remove a 3rd argument
                 del(args[2])
                 args.append(ticket)
+            elif fun == 'restrict_host_access':
+                args.append(ticket['wrapper']['machine'][1])
             ret = apply(getattr(self,fun), args)
             if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, 'reject')):
                 format = "access restricted for %s : library=%s family=%s requester:%s"
