@@ -73,8 +73,12 @@ if __name__=="__main__":
 	sys.exit(0)
 
     if os.uname()[1] in NO_IPMI_NODES:
-	    print 0
-	    print 0
+	    if sys.argv[1]=="fan":
+		    print 3000
+		    print 3000
+	    else:
+		    print 0
+		    print 0
 	    sys.exit(0)
 	
     if os.uname()[1] in NEW_IPMI_NODES:
