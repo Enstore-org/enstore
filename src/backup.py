@@ -46,6 +46,10 @@ def backup_dbase(dbHome):
 
     dbFiles=""
     filelist = map(string.strip,os.popen("db_archive -s  -h"+dbHome).readlines())
+
+    # work around db_archive bug of ignoring > 2GB file
+    if not 'file' in filelist:
+        filelist = ['file']+filelist
     
     for name in filelist:
         stmsg = ""
