@@ -35,10 +35,24 @@ def _find_command(cmd):
 
 def _getifinfo():
     global ifinfo
-    ifconfig_command = _find_command('ifconfig')
+    # use command depending on OS type
+    ostype, junk, osversion, junk, junk = os.uname()
+    if ostype == 'IRIX64' and osversion == '6.2':
+	o_s = 'IRIX6.2'
+    else:
+	o_s = 'other'
+    if o_s == 'IRIX6.2':
+	ifconfig_command = _find_command('netstat')
+	if ifconfig_command:
+	   ifconfig_command =  ifconfig_command+' -in'
+    else:
+	ifconfig_command = _find_command('ifconfig')
+	if ifconfig_command:
+	   ifconfig_command =  ifconfig_command+' -a'
+
     if not ifconfig_command:
         return None
-    p=os.popen(ifconfig_command+' -a','r')
+    p=os.popen(ifconfig_command,'r')
     text=p.readlines()
     status=p.close()
     if status:
