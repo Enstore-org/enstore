@@ -2030,7 +2030,7 @@ class File:
 					self.location_cookie,\
 					self.size, self.file_family,\
 					p_path, self.volmap,\
-					self.pnfs_id, self.pnfs_vid,
+					self.pnfs_id, self.pnfs_vid,\
 					self.bfid = finfo
 					
 				if p_path != self.path:
