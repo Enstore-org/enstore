@@ -57,9 +57,9 @@ here=`pwd`
 cd $M
 if [ "$BACKUP" = "/backup" ]; then
   mkdir -p old >/dev/null 2>/dev/null
-  mv files.err files.list files.tgz partition_table.dd old
+  mv files.err files.tgz partition_table.dd old
 else
-  rm files.err files.list files.tgz partition_table.dd
+  rm files.err files.tgz partition_table.dd
 fi
 cd $here
 
