@@ -269,6 +269,9 @@ class Queue:
         elif ticket['work'] == 'read_from_hsm':
             key = ticket['fc']['external_label']
             val = ticket['fc']['location_cookie']
+        elif ticket['work'] == "volume_assert":
+            key = ticket['vc']['external_label']
+            val = ticket['vc']['external_label']
         else:
             return None, e_errors.WRONGPARAMETER
         # create a request
@@ -321,6 +324,8 @@ class Queue:
             key = request.ticket['fc']['external_label'] 
         elif request.work == 'write_to_hsm':
             key = request.ticket['vc']['volume_family']
+        elif request.work == "volume_assert":
+            key = request.ticket['vc']['external_label']
         else: key = None
         return key
 
@@ -399,6 +404,7 @@ class Request_Queue:
     def __init__(self, aging_quantum=60, adm_pri_to=60):
         self.write_queue = Queue(aging_quantum)
         self.read_queue = Queue(aging_quantum)
+        self.assert_queue = Queue(aging_quantum)
         # sorted list of volumes for read requests
         # and volume families for write requests
         # based on this list the highest priority volume
@@ -456,9 +462,14 @@ class Request_Queue:
             ticket['vc']['volume_family'] = key
         elif ticket['work'] == 'read_from_hsm':
             key = ticket['fc']['external_label']
+        elif ticket['work'] == "volume_assert":
+            key = ticket['vc']['external_label']
         else:
             return None, e_errors.WRONGPARAMETER
 
+        if ticket['work'] == "volume_assert":
+            rq, stat = self.assert_queue.put(ticket,t_time)
+            if not rq: return rq, stat
         if ticket['encp']['adminpri'] > -1:
             # high priority request. Put into admin queue
             rq = Request(ticket['encp']['basepri'], 0, ticket, ticket['times']['t0'])
@@ -497,6 +508,9 @@ class Request_Queue:
         if record.work == 'read_from_hsm':
             label = record.ticket['fc']['external_label']
             queue = self.read_queue
+        if record.work == "volume_assert":
+            label = record.ticket['vc']['external_label']
+            queue = self.assert_queue
         queue.delete(record)
         self.tags.delete(record, label)
         if record == self.ref[label]:
@@ -575,13 +589,17 @@ class Request_Queue:
                 if rq.work == 'read_from_hsm':
                     label = rq.ticket['fc']['external_label']
                     if not location: record = self.read_queue.get(label)
+                if rq.work == "volume_assert":
+                    label = rq.ticket['vc']['external_label']
+                    record = self.write_queue.get(label)
             else: record = rq
         return record
 
     def get_queue(self):
         return (self.adm_queue.get_tickets(),
                 self.write_queue.get_queue(),
-                self.read_queue.get_queue('opt'))
+                self.read_queue.get_queue('opt'),
+                self.assert_queue.get_queue())
         
     # find record in the queue
     def find(self,id,output_file_name=None):
@@ -590,17 +608,22 @@ class Request_Queue:
             record = self.write_queue.find(id,output_file_name)
         if not record:
             record = self.read_queue.find(id,output_file_name)
+        if not record:
+            record = self.assert_queue.find(id,output_file_name)
         return record
 
     # change priority
     def change_pri(self, record, pri):
-        if record.ticket['encp']['adminpri'] > -1:
+        if record.work == "volume_assert":
+            label = record.ticket['vc']['external_label']
+            queue = self.assert_queue
+        elif record.ticket['encp']['adminpri'] > -1:
             # it must be in the admin queue
             return self.adm_queue.change_pri(record, pri)
-        if record.work == 'write_to_hsm':
+        elif record.work == 'write_to_hsm':
             label = record.ticket['vc']['volume_family']
             queue = self.write_queue
-        if record.work == 'read_from_hsm':
+        elif record.work == 'read_from_hsm':
             label = record.ticket['fc']['external_label']
             queue = self.read_queue
         ret = queue.change_pri(record, pri)
