@@ -306,9 +306,6 @@ class Interface(option.Interface):
 
 if __name__ == '__main__':
 
-	global e_count
-	global doit
-
 	# initialize file clerk client
 	intf = Interface()
 	fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
