@@ -519,7 +519,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.move_file(1, self.htmlfile_orig)
 	# Don't fear the reaper!!
 	Trace.trace(10, "exiting inquisitor due to request")
-	os._exit(exit_code)
+	sys.exit(exit_code)
 
     # update any encp information from the log files
     def update_encp(self, key, time):
