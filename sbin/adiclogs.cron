@@ -1,2 +1,0 @@
-10,25,40,55 * * * * $ENSTORE_SBIN/ecron -p adiclogs adiclogs > /dev/null 2> /dev/null
-18 * * * * $ENSTORE_SBIN/ecron -p adicmirror mirror /home/enstore/CRON/adic.mirror > /dev/null 2> /dev/null
