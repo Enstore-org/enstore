@@ -1,0 +1,22 @@
+#! /bin/sh
+#  This file (tracePrint) was created by Ron Rechenmacher <ron@fnal.gov> on
+#  Mar 31, 1999. "TERMS AND CONDITIONS" governing this file are in the README
+#  or COPYING file. If you do not have such a file, one can be obtained by
+#  contacting Ron or Fermi Lab in Batavia IL, 60510, phone: 630-840-3000.
+#  $RCSfile$
+#  $Revision$
+#  $Date$
+if [ "$1" = '-x' ];then set -x; shift; fi
+set -u
+
+USAGE="\
+usage: `basename $0` <name> on|of
+ Note: 'of' is short for 'off' ('off' is also recognized)"
+
+if [ $# != 2 ];then echo "$USAGE"; exit; fi
+
+if   [ "$2" = 'of' -o "$2" = 'off' ];then cmd=traceOff
+elif [ "$2" = 'on'                 ];then cmd=traceOn
+else echo "invalid parameter '$2'"; echo "$USAGE"; exit; fi
+
+$cmd -modes 8 $1 0 31
