@@ -1208,6 +1208,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             time_in_state = int(now - self.state_change_time)
             if not hasattr(self,'time_in_state'):
                 self.time_in_state = 0
+            Trace.trace(8, "time in state %s %s %s"%(time_in_state,self.time_in_state,self.state_change_time))
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
                 (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
                 if self.state == ACTIVE:
@@ -1514,6 +1515,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         buffer_empty_t = time.time()   #time when buffer empty has been detected
         buffer_empty_cnt = 0 # number of times buffer was cosequtively empty
         nblocks = 0L
+        # send a trigger message to the client
+        bytes_written = self.net_driver.write(self.header_labels, # write anything
+                                              0,
+                                              1) # just 1 byte
         if self.header_labels:
             t1 = time.time()
             try:
@@ -2690,6 +2695,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.need_lm_update = (1, None, 1, None)
             
     def maybe_clean(self):
+        Trace.log(e_errors.INFO, "maybe_clean")
         if self.force_clean:
              needs_cleaning = 1
              Trace.log(e_errors.INFO, "Force clean is set")
