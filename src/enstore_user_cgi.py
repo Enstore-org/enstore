@@ -2,10 +2,10 @@
 ######################################################################
 # src/$RCSfile$   $Revision$
 #
-#import genCGI
 import cgi
 import string
-#import enstore_user
+import os
+import tempfile
 
 def append_from_key(argv, value_text_key, form, alt_name=""):
     if not alt_name:
@@ -22,6 +22,13 @@ def append_from_key(argv, value_text_key, form, alt_name=""):
 def append_from_value(argv, value, server, form, alt_name=""):
     value_text_key = "%s_%s"%(server, value)
     return append_from_key(argv, value_text_key, form, alt_name)
+
+def print_keys(keys, form):
+    for key in keys:
+        try:
+            print "%s = %s"%(key, form[key].value)
+        except AttributeError:
+            print "No value for %s"%key
         
 def go():
     # first print the two lines for the header
@@ -35,11 +42,7 @@ def go():
         form = cgi.FieldStorage()
         print "<PRE>"
         keys = form.keys()
-        for key in keys:
-            try:
-                print "%s = %s"%(key, form[key].value)
-            except AttributeError:
-                print "No value for %s"%key
+        #print_keys(keys, form)
         print "</PRE>"
         an_argv = []
         if form.has_key("server"):
@@ -48,7 +51,7 @@ def go():
             # the user did not select a server
             print "ERROR: Please select a command (e.g. library)."
             raise SystemExit
-        # we will slowly construct an argv and an argc to pass to our python
+        # we will construct an argv and an argc to pass to our python
         # program 
         an_argv = ["enstore", server]
 
@@ -85,12 +88,31 @@ def go():
         if form.has_key(main_opt_text_key):
             main_opt_text = form[main_opt_text_key].value
             an_argv = an_argv + string.split(main_opt_text)
+            
+        # now that we have the argv built up, call the routines to do the real
+        # stuff
+        cmd = string.join(an_argv, " ")
+        print cmd
+        print "<BR><P><HR><P><PRE>"
+        file = tempfile.mktemp()
+        #rtn = os.system(". /usr/local/etc/setups.sh;PRODUCTS=/usr/hppc_home/berman/upsdb:$PRODUCTS;. `ups setup myen`;$ENSTORE_DIR/bin/%s > %s "%(cmd, file))
+        rtn = os.system(". /usr/local/etc/setups.sh;. `ups setup enstore`;$ENSTORE_DIR/bin/%s > %s "%(cmd, file))
+
+        # now read in the file and output the results
+        filedes = open(file)
+        while 1:
+            line = filedes.readline()
+            if not line:
+                break
+            else:
+                print line
+        filedes.close()
+        os.remove(file)
+
+        print "</PRE>"
     finally:
-        print "<BR><P><HR><P>"
-        if an_argv:
-            print "Argv of entered command -%s"%an_argv
-        else:
-            print "ERROR: Could not process command"
+        if not an_argv:
+            print "\nERROR: Could not process command"
         print "</BODY></HTML>"
 
 
