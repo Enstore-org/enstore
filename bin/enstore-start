@@ -63,7 +63,7 @@ start_db_daemons()
 	cmd="db_checkpoint -h $enstore_db  -p 5 `output $out`"
 	eval "$cmd &"
         echo $! >> $PID_DIR/`uname -n`-db_checkpoint_pids	
-	echo `EPS returnpid db_checkpoint` >> $PID_DIR/`uname -n`-db_checkpoint_pids
+	echo "`EPS returnpid db_checkpoint`" >> $PID_DIR/`uname -n`-db_checkpoint_pids
 	date >> $out  # db_checkpoint doesn't usually write to this file. send something so we don't start twice on same node
     fi
 
@@ -76,7 +76,7 @@ start_db_daemons()
         cmd="db_deadlock -h $enstore_db  -t 1 `output $out`"
         eval "$cmd &"
         echo $! >> $PID_DIR/`uname -n`-db_deadlock_pids	
-        echo `EPS returnpid db_deadlock`  >> $PID_DIR/`uname -n`-db_deadlock_pids	
+        echo "`EPS returnpid db_deadlock`"  >> $PID_DIR/`uname -n`-db_deadlock_pids	
 	date >> $out  # db_deadlock doesn't usually write to this file. send something so we don't start twice on same node
      fi
 }
@@ -155,7 +155,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" != "" \) -a $enst
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-configuration_pids
-        echo `EPS returnpid configuration_server` >> $PID_DIR/`uname -n`-configuration_pids
+        echo "`EPS returnpid configuration_server`" >> $PID_DIR/`uname -n`-configuration_pids
       fi
     fi
 
@@ -273,7 +273,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" != "" \) -a $ensto
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-log_server_pids
-        echo `EPS returnpid log_server` >> $PID_DIR/`uname -n`-log_server_pids
+        echo "`EPS returnpid log_server`" >> $PID_DIR/`uname -n`-log_server_pids
       fi
       if [ ! "${opt_async-}" ]; then check_server log_server $PID_DIR/`uname -n`-log_server_pids; fi
     
@@ -304,7 +304,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep alarm`" != "" \) -a $ens
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-alarm_server_pids
-        echo `EPS returnpid alarm_server` >> $PID_DIR/`uname -n`-alarm_server_pids
+        echo "`EPS returnpid alarm_server`" >> $PID_DIR/`uname -n`-alarm_server_pids
       fi
       if [ ! "${opt_async-}" ]; then check_server alarm_server $PID_DIR/`uname -n`-alarm_server_pids; fi
 
@@ -335,7 +335,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" != "" \) -a $ensto
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-volume_clerk_pids
-        echo `EPS returnpid volume_clerk` >> $PID_DIR/`uname -n`-volume_clerk_pids
+        echo "`EPS returnpid volume_clerk`" >> $PID_DIR/`uname -n`-volume_clerk_pids
       fi
       if [ ! "${opt_async-}" ]; then check_server volume_clerk $PID_DIR/`uname -n`-volume_clerk_pids; fi
 
@@ -369,7 +369,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" != "" \) -a $ensto
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-file_clerk_pids
-        echo `EPS returnpid file_clerk` >> $PID_DIR/`uname -n`-file_clerk_pids
+        echo "`EPS returnpid file_clerk`" >> $PID_DIR/`uname -n`-file_clerk_pids
       fi
      if [ ! "${opt_async-}" ]; then check_server file_clerk $PID_DIR/`uname -n`-file_clerk_pids; fi
 
@@ -407,7 +407,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" != "" ];then
                     eval "$cmd &"
                 fi
                 echo $! > $PID_DIR/`uname -n`-$i-library_manager_pid
-                echo `EPS returnpid $i.library_manager` > $PID_DIR/`uname -n`-$i-library_manager_pid
+                echo "`EPS returnpid $i.library_manager`" > $PID_DIR/`uname -n`-$i-library_manager_pid
             fi
   	   if [ ! "${opt_async-}" ]; then check_server $i $PID_DIR/`uname -n`-$i-library_manager_pid; fi
 
@@ -443,7 +443,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" != "" ];then
                     eval "$cmd &"
                 fi
                 echo $! >> $PID_DIR/`uname -n`-$i-media_changer_pid
-                echo `EPS returnpid $i.media_changer` >> $PID_DIR/`uname -n`-$i-media_changer_pid
+                echo "`EPS returnpid $i.media_changer`" >> $PID_DIR/`uname -n`-$i-media_changer_pid
             fi
   	    if [ ! "${opt_async-}" ]; then check_server $i $PID_DIR/`uname -n`-$i-media_changer_pid; fi
 
@@ -480,7 +480,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" != "" ];then
                     eval "$cmd &"
                 fi
                 echo $! >> $PID_DIR/`uname -n`-$i-mover_pid
-                echo `EPS returnpid $i.mover` >> $PID_DIR/`uname -n`-$i-mover_pid
+                echo "`EPS returnpid $i.mover`" >> $PID_DIR/`uname -n`-$i-mover_pid
             fi
    	    if [ ! "${opt_async-}" ]; then 
                timeout=10
@@ -523,7 +523,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" != "" \) -a $ensto
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-inquisitor_pids
-        echo `EPS returnpid inquisitor` >> $PID_DIR/`uname -n`-inquisitor_pids
+        echo "`EPS returnpid inquisitor`" >> $PID_DIR/`uname -n`-inquisitor_pids
       fi
       if [ ! "${opt_async-}" ]; then check_server inquisitor $PID_DIR/`uname -n`-inquisitor_pids; fi
 
