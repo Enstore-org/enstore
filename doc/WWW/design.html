@@ -29,7 +29,8 @@
 <li><a href="#encp_throttle">1.2.2 Throttling in <i>encp</i></a></li>
 <li><a href="#encp_list_from hsm">1.2.3 Specifying lists of files when reading from or writing to the HSM</a>
 <li><a href="#encp_queue">1.2.4 <em>Encp</em> Transfer Lists</a>
-<li><a href="#encp_client">1.2.5 <em>Encp</em> Client Installation</a>
+<li><a href="#encp_errors">1.2.5 <em>Encp</em> Return Status</a>
+<li><a href="#encp_client">1.2.6 <em>Encp</em> Client Installation</a>
 <li><a href="#servers">1.3 Enstore Servers</a>
 <li><a href="#servers_cmds">1.3.0.1 General Command Line Control of Servers</a>
 <li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
@@ -1207,8 +1208,200 @@ last field can have 2 values: "P" denotes a <u>P</u>ending transfer still
 in the library manager queues and "M"
 signifies a active transfer at a <u>M</u>over.
 
+<h3><a name="encp_errors">
+1.2.5 <em>Encp</em> Return Status 
+</h3>
+Every individual encp request returns a status allowing to identify (and in some
+cases resolve)
+occured problem, if any. <em>Encp</em> processes the status internally and ether
+rertires request (providing user with intermediateate status) request or
+terminates with appropraite status. The only successful status returned by <em>encp</em> is <b>"OK"</b> and the only successful <em>encp</em> exit code is <b>0</b>. Below is the list of statuses reuterned to user:
+<center><table BORDER COLS=2 WIDTH="80%" NOSAVE >
+<tr VALIGN=CENTER NOSAVE>
+<td NOSAVE><b>STATUS</b></td>
+<td NOSAVE><b>DESCRIPTION</b></td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>OK</td>
+<td NOSAVE>Operation Cmopleted Successfuly</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>KEYERROR</td>
+<td NOSAVE>Not existing reference key</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>DOESNOTEXIST</td>
+<td NOSAVE>Object (file name, etc.) does not exist</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>NOMOVERS</td>
+<td NOSAVE>No Movers to process request</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>MOUNTFAILED</td>
+<td NOSAVE>Mount of requred volume failed</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>DISMOUNTFAILED</td>
+<td NOSAVE>Dismount of requred volume failed</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>MEDIA_IN_ANOTHER_DEVICE</td>
+<td NOSAVE>Requested Media is in another Device</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>MEDIAERROR</td>
+<td NOSAVE>Bad Media</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>USERERROR</td>
+<td NOSAVE>User Error</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>DRIVEERROR</td>
+<td NOSAVE>Drive Error</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>UNKNOWNMEDIATYPE</td>
+<td NOSAVE>Unknown media type</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>NOVOLUME</td>
+<td NOSAVE>Volume does not exist</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>NOACCESS</td>
+<td NOSAVE>Volume marked as no access</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>CONFLICT</td>
+<td NOSAVE>Configuration conflict detected</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>WRITE_NOTAPE</td>
+<td NOSAVE>Requested volume was not found in the library</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>WRITE_TAPEBUSY</td>
+<td NOSAVE>Requested volume is in another drive.</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>WRITE_DRIVEBUSY</td>
+<td NOSAVE>A volume is already in drive.</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>WRITE_BADMOUNT</td>
+<td NOSAVE>Mount failure or load operation failed.</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>WRITE_BADSPACE</td>
+<td NOSAVE>EOD cookie does not produce EOD.</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>WRITE_ERROR</td>
+<td NOSAVE>Error writing data block or file mark</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>WRITE_EOT</td>
+<td NOSAVE>Hit EOT while writing data block or file mark</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>WRITE_NOBLANKS</td>
+<td NOSAVE>No more blank volumes</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>WRITE_MOVER_CRASH</td>
+<td NOSAVE>Mover crash during write operation</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_NOTAPE</td>
+<td NOSAVE>Requested volume was not found in the library</td>
+</tr>
+
+<<tr NOSAVE>
+td NOSAVE>READ_TAPE_BUSY</td>
+<td NOSAVE>Requested volume is in another drive</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_DRIVEBUSY</td>
+<td NOSAVE>A volume is already in drive</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_BADMOUNT</td>
+<td NOSAVE>Mount failure or load operation failed</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_BADLOCATE</td>
+<td NOSAVE>Failed space or initial CRC's don't match</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_ERROR </td>
+<td NOSAVE>Error reading data block</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_COMP_CRC</td>
+<td NOSAVE>CRC mismatch</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_EOT</td>
+<td NOSAVE>Hit EOD when reading</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_EOD</td>
+<td NOSAVE>Hit EOD when reading</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_UNLOAD</td>
+<td NOSAVE>Error unloading volume</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_UNMOUNT</td>
+<td NOSAVE>Error when unmounting volume</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>READ_MOVER_CRASH</td>
+<td NOSAVE>Mover crash during read operation</td>
+</tr>
+</table></center>
+<br>
+More detailed description of these and other statuses and how they are processed inside of the system can be found in section 4 of this document.
+
 <h3><a name="encp_client">
-1.2.5 <em>Encp</em> Client Installation
+1.2.6 <em>Encp</em> Client Installation
 </h3>
 
 <em>Encp</em> is distributed via the Fermilab UPD mechanism. It is a static
