@@ -102,6 +102,9 @@ def parse_range(s):
 
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
+        # make pychecker happy
+        self.csc = None
+        self.test_mode = None
         if self.__dict__.get("do_parse", 1):
             if host == 'localhost' :
                 self.check_host(hostaddr.gethostinfo()[0])
