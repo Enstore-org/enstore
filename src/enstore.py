@@ -192,8 +192,9 @@ class EnstoreInterface:
     # return a list of the allowed options given the command key (server)
     def get_options(self, skey):
         opts = self.server_options.get(skey, [])
-        if opts:
-            opts = opts + GenericUserOptions.get_options(self)
+        print opts
+        #if opts:
+        #    opts = opts + GenericUserOptions.get_options(self)
         return opts
 
     def get_valid_options(self, skey):
