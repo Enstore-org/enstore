@@ -1,5 +1,7 @@
 #
 # enstore import
+import setpath
+
 import string
 import calendar
 import time
@@ -7,6 +9,7 @@ import types
 import os
 import stat
 
+setpath.addpath("$HTMLGEN_DIR")
 have_htmlgen=0
 try:
     import HTMLgen
