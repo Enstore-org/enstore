@@ -20,10 +20,9 @@ elif host[:3] == "d0e":
 else:
 	cluster = "unknown"
 
-special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED', 'VOLUME_QUOTAS', 'VOLUME_SIZE', 'LAST_ACCESS']
+special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED', 'VOLUME_QUOTAS', 'VOLUME_SIZE', 'LAST_ACCESS', 'NOACCESS']
 
 if cluster == "d0en":
-	special.append('NOACCESS')
 	special.append('CLEANING')
 	special.append('AML2-VOLUMES.html')
 elif cluster == "stken":
@@ -37,13 +36,14 @@ cmd = 'ls '+cheat_dir
 
 for i in os.popen(cmd).readlines():
 	f = os.path.basename(string.strip(i))
-	# print f
-	if not f in special:
-		prefix = f[:3]
-		if catalog.has_key(prefix):
-			catalog[prefix].append(f)
-		else:
-			catalog[prefix] = [f]
+        # skipping deleted volumes
+        if f[-8:] != '.deleted':
+		if not f in special:
+			prefix = f[:3]
+			if catalog.has_key(prefix):
+				catalog[prefix].append(f)
+			else:
+				catalog[prefix] = [f]
 
 # in the beginning ...
 
