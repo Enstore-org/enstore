@@ -70,11 +70,12 @@ init_function(  PyObject	*self
 	      , PyObject	*args )
 {							/* @-Public-@ */
 	char		*name;
+	char		*keyfile="";
 
 
     /*  Parse the arguments */
-    PyArg_ParseTuple(  args, "s", &name );
-    trace_init( name, "" );
+    PyArg_ParseTuple(  args, "s|s", &name, &keyfile );
+    trace_init( name, keyfile );
     return (Py_BuildValue(""));
 }   /* init_function */
 
