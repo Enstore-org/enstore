@@ -65,9 +65,9 @@ quit() {
 #
 # $0 [[-setup product] | [-D VARIABLE=value] | [-p job_name] | [-d dir] ]* cmd
 #
-# job_name is used to identify the job. If ommitted, cmd is default
-# to ease the implementation, multiple -p are allowed, but only the
-# last one is effective
+# dir is used to specify the current directory that the cmd is executed
+# in. If ommitted, `pwd` is default. To ease the implementation,
+# multiple -d are allowed, but only the last one is effective
 
 # additional products
 
