@@ -176,11 +176,12 @@ write_tape_main(int argc, char **argv)
     }
     printf("Wrote %d file%c\n", nfiles, nfiles==1?' ':'s');
     
-    if (!err_occurred){
-	if (write_eot1_header(file_number+1)
-	    ||close_tape()
-	    ) exit(-2);
-    }
-    return 0;
+    err_occurred= (err_occurred
+		   ||write_eot1_header(file_number+1)
+		   ||close_tape());
+
+    verbage("returning %d\n", err_occurred);
+    return err_occurred;
+    
 }
 
