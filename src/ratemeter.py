@@ -235,7 +235,7 @@ class Ratemeter:
                 end_time = self.start_time + N * self.interval
                 remaining = end_time - now
 
-            r, w, x = select.select([self.sock], [], [], remaining)
+            r, w, x = select.select([self.sock], [], [], max(0,remaining))
             
             if not r:
                 continue
