@@ -191,7 +191,15 @@ class GenericClient:
             sys.stderr.write("Unknown server %s (no %s defined in config on %s)\n" %
                              ( my_server, detail, 
                                os.environ.get('ENSTORE_CONFIG_HOST','')))
-            os._exit(1)
+
+            #Stop calling os._exit().  This created a situation where
+            # code could not instantiate a client and errored out.  Thus,
+            # the calling could would not be able to process the error.
+            # This does however create the situation where the higher
+            # client code needs to check that self.server_address is not
+            # equal to None before trying to use the address.
+            #os._exit(1)
+            return None
 
         return server_address
 
