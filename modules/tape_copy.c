@@ -13,6 +13,7 @@ Include files:-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "ftt.h"
 
 #ifdef WIN32
@@ -43,11 +44,11 @@ int             nfile,nblock;		/* counters */
 char            *ftt_errstr;		/* error string */
 int             len,status;		/* statuses */
 int             bs; 
+time_t          tm;
 /* get the command line switches 
    -i for input file
    -o for output file
   ============================== */
-
 while ((opt = getopt(argc,argv,"o:i:s:")) != -1)
    {
    switch (opt) {
@@ -104,6 +105,13 @@ else
     {
 	exit(1);
     }
+len = ftt_read(ifd, data, 1);
+if (len != 0)
+  {
+    printf("something's wrong: expected EOF, len=%d\n", len);
+    exit(1);
+  }
+status = ftt_writefm(ofd);
 printf("copy data\n");
 while ((len = ftt_read(ifd,data,bs)) >= 0)
    {
@@ -114,8 +122,9 @@ while ((len = ftt_read(ifd,data,bs)) >= 0)
       }
    else
       {
+      tm = time(NULL);
       status = ftt_writefm(ofd);
-      fprintf (stderr,"file %d had %d blocks\n",nfile,nblock);
+      fprintf (stderr," %s file %d had %d blocks\n",ctime(&tm),nfile,nblock);
       nfile++; nblock = 0;
       }
    /* printf("file#=%d block#=%d length=%d\n",nfile, nblock, len); */
