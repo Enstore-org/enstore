@@ -248,6 +248,16 @@ class LibraryManagerMethods:
                 rc = w
                 break
         return rc
+    # if returned ticket has no external label use the
+    # following as an alternative to get_work_at_movers
+    def get_work_at_movers_m(self, mover):
+        rc = {}
+        if not mover: return rc
+        for w in self.work_at_movers.list:
+            if w.has_key('mover') and w['mover'] == mover:
+                rc = w
+                break
+        return rc
 
 
     def init_request_selection(self):
@@ -1331,7 +1341,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(11,"MOVER ERROR RQ %s"%(mticket,))
         self.volumes_at_movers.put(mticket)
         # get the work ticket for the volume
-        w = self.get_work_at_movers(mticket["external_label"])
+        if mticket['external_label']:
+            w = self.get_work_at_movers(mticket['external_label'])
+        else:
+            # use alternative fuction
+            w = self.get_work_at_movers_m(mticket['mover'])
         if w:
             Trace.trace(13,"mover_error: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
