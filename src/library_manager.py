@@ -1226,6 +1226,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    if w['fc']['external_label'] == label:
 			w['status'] = (e_errors.NOACCESS, None)
 			#if w['callback_addr'] != call_back_addr:
+			print "SENDING REGRET"
 			send_regret(w, self.verbose)
 			w1 = pending_work.get_next()
 			pending_work.delete_job(w)
@@ -1233,32 +1234,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		except KeyError:
 		    pass
 	else:
-	
-	    # find next mover that can do this job
-	    next_mover_found = 0
-	    for i in range(0, mover_cnt):
-		next_mover = idle_mover_next(self, ticket['external_label'])
-                self.enprint("current mover "+repr(ticket['mover'])+\
-	                     " next mover "+ repr(next_mover), \
-	                     generic_cs.DEBUG, self.verbose)
-		if (next_mover != None) and \
-		   (next_mover['mover'] != ticket['mover']):
-		    next_mover_found = 1
-		    break
-
-	    if next_mover_found:
-                self.enprint("unilateral_unbind will summon mover "+ \
-	                     repr(next_mover), generic_cs.DEBUG, self.verbose)
-		summon_mover(self, next_mover, w)
-	    else:
-		#w['status'] = (e_errors.NOMOVERS, None)
-		pending_work.delete_job(w)
-		# 01/22 do not send a regret as the mover had already
-		# sent a status to encp
-		# send_regret(w, self.verbose)
-		
-		# check if there are any pending works and remove them
-		flush_pending_jobs(self, (e_errors.NOMOVERS, None))
+	    pending_work.delete_job(w)
+	    # 01/22 do not send a regret as the mover had already
+	    # sent a status to encp
+	    # send_regret(w, self.verbose)
+	    
+	    # check if there are any pending works and remove them
+	    #flush_pending_jobs(self, (e_errors.NOMOVERS, None))
 	Trace.trace(3,"}unilateral_unbind ")
 
     # what is next on our list of work?
