@@ -31,6 +31,7 @@ import Trace
 import generic_client
 import option
 import delete_at_exit
+import host_config
 
 #4-30-2002: For reasons unknown to me the order of the imports matters a lot.
 # If the wrong order is done, then the dashed lines are not drawn.
@@ -53,8 +54,8 @@ status_thread = None
 messages_thread = None
 
 #_csc = None
-_system_csc = None
-_config_cache = None
+#_system_csc = None
+#_config_cache = None
 
 #Should we need to stop (ie. cntl-C) this is the global flag.
 stop_now = 0
@@ -93,7 +94,8 @@ def dict_eval(data):
         d = {}
     return d
 
-def get_system(intf=None):
+"""
+def get_system(intf=None): #, system_name=None):
     global _system_csc
     if _system_csc:  #used cached version.
         return _system_csc
@@ -108,76 +110,139 @@ def get_system(intf=None):
     if intf.movers_file:
         return None
     
-    config_port = enstore_functions2.default_port()
-    if len(intf.args) > 0:
-        config_host = intf.args[0]
-    else:
-        config_host = enstore_functions2.default_host()
-        #config_host = os.environ.get("ENSTORE_CONFIG_HOST")
-
     default_config_host = enstore_functions2.default_host()
     default_config_port = enstore_functions2.default_port()
 
     # get a configuration server
     csc = configuration_client.ConfigurationClient((default_config_host,
                                                     default_config_port))
+
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
     if config_servers['status'][0] == e_errors.OK:
         del config_servers['status']
+    else:
+        return None
 
-    #Based on the config file determine which config server was specified.
-    for name in config_servers.keys():
-        if len(config_host) >= len(name) and \
-           config_host[:len(name)] == name:
-            config_host = config_servers[name][0]
-            break
+    config_port = enstore_functions2.default_port()
+    if intf.args:
+        for system_name in config_servers.keys():
+            if system_name not in intf.args:
+                del config_servers[system_name]
 
+    #if system_name != None: #len(intf.args) > 0:
+    #    config_host = system_name   #intf.args[0]
+    else:
+        config_host = enstore_functions2.default_host()
+        #config_host = os.environ.get("ENSTORE_CONFIG_HOST")
+
+        #Based on the config file determine which config server was specified.
+        for name in config_servers.keys():
+            if len(config_host) >= len(name) and \
+                   config_host[:len(name)] == name:
+                #config_host = config_servers[name][0]
+                #break
+                pass
+            else:
+                del config_servers['name']
+
+    config_host = config_servers.values()[0][0]
     _system_csc = configuration_client.ConfigurationClient((config_host,
                                                             config_port))
     return _system_csc
+"""
 
-def get_config(intf):
-    global _config_cache
-    if _config_cache:
-        return _config_cache
-    csc = intf.csc
-    try:
-        _config_cache = csc.dump()
-    except errno.errorcode[errno.ETIMEDOUT]:
-        return {}
-    return _config_cache
+def get_all_systems(intf=None): #, system_name=None):
+    #global _system_csc
+    #if _system_csc:  #used cached version.
+    #    return _system_csc
 
-def get_system_name(intf):
-    
-    if intf.movers_file:
-        return "local_host"
-    
-    csc = intf.csc
-    try:
-        hostinfo = socket.gethostbyaddr(csc.server_address[0])[0]
-    except socket.error, msg:
-        sys.stderr.write(str(msg) + "/n")
+    #If intf is not given and the cached version is already known not to
+    # exist throw an error an abort.
+    if not intf:
+        sys.stderr.write("Unknown error.  Aborting\n")
         sys.exit(1)
-    event_relay_host = hostinfo
-    system_name = hostinfo
 
+    #If running on 'canned' version, don't bother with configuration server.
+    if intf.movers_file:
+        return None
+    
+    default_config_host = enstore_functions2.default_host()
+    default_config_port = enstore_functions2.default_port()
+
+    # get a configuration server
+    csc = configuration_client.ConfigurationClient((default_config_host,
+                                                    default_config_port))
+
+    #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
     if config_servers['status'][0] == e_errors.OK:
         del config_servers['status']
+    else:
+        return None
 
-    #Based on the config file determine which config server was specified.
-    for name in config_servers.keys():
-        if config_servers[name][0] == event_relay_host:
-            system_name = name
+    if intf.args:
+        for system_name in config_servers.keys():
+            if system_name not in intf.args:
+                del config_servers[system_name]
 
-    #event_relay_port = 55510
-    #This is important
-    os.environ['ENSTORE_CONFIG_HOST'] = event_relay_host
-    #event_relay_addr = (event_relay_host, event_relay_port)
+    #if system_name != None: #len(intf.args) > 0:
+    #    config_host = system_name   #intf.args[0]
+    else:
+        config_host = enstore_functions2.default_host()
+        #config_host = os.environ.get("ENSTORE_CONFIG_HOST")
 
-    #return event_relay_addr, system_name
-    return system_name
+        #Based on the config file determine which config server was specified.
+        for name in config_servers.keys():
+            if len(config_host) >= len(name) and \
+                   config_host[:len(name)] == name:
+                #config_host = config_servers[name][0]
+                #break
+                pass
+            else:
+                del config_servers[name]
+
+    #Special section for test systems that are not in their own
+    # config file's 'known_config_servers' section.
+    if not config_servers:
+        ip = socket.gethostbyname(config_host)
+        addr_info = socket.gethostbyaddr(ip)
+        config_servers[addr_info[1][0]] = (ip, default_config_port)
+        
+    return config_servers
+
+#def get_config(intf):
+#    global _config_cache
+#    if _config_cache:
+#        return _config_cache
+#    csc = intf.csc
+#    try:
+#        _config_cache = csc.dump()
+#    except errno.errorcode[errno.ETIMEDOUT]:
+#        return {}
+#    return _config_cache
+
+
+def get_system_name(intf, cscs_info):
+    
+    if intf.movers_file:
+        return "local_host"
+
+    if len(intf.args) > 1:
+        #If more than one system is specified, return default text.
+        return "Enstore: %s" % intf.args
+
+    if len(cscs_info.keys()) == 0:
+        sys.stderr.write("Config not found.\n")
+        sys.exit(1)
+
+    elif len(cscs_info.keys()) == 1:
+        return cscs_info.keys()[0]
+
+    else:
+        return "Enstore: %s" % intf.args
+        
+
 
 #########################################################################
 # .entrc file related functions
@@ -209,8 +274,28 @@ def get_entvrc(intf):
     try:
         if intf.movers_file:
             address = "localhost"
+        elif intf.args:
+            # get a configuration server
+            default_config_host = enstore_functions2.default_host()
+            default_config_port = enstore_functions2.default_port()
+            csc = configuration_client.ConfigurationClient(
+                (default_config_host, default_config_port))
+
+            config_servers = csc.get('known_config_servers', {})
+
+            #Based on the config file determine which config server was
+            # specified.
+            for name in config_servers.keys():
+                if name == intf.args[0]:
+                    address = config_servers[name][0]
+                    break
+                elif len(config_servers[name][0]) >= len(intf.args[0]) and \
+                   config_servers[name][0][len(intf.args[0]):] == intf.args[0]:
+                    address = config_servers[name][0]
+                    break
         else:
-            address = intf.csc.server_address[0]
+            #We need a default.
+            address = os.environ['ENSTORE_CONFIG_HOST']
 
         #Only need to grab this once.
         entvrc_data = get_entvrc_file()
@@ -228,7 +313,7 @@ def get_entvrc(intf):
             if not words:
                 continue
 
-            if socket.getfqdn(words[0])==socket.getfqdn(address):
+            if socket.getfqdn(words[0]) == socket.getfqdn(address):
                 try:
                     geometry = words[1]
                 except IndexError:
@@ -310,8 +395,27 @@ def set_entvrc(display, intf):
     try:
         if intf.movers_file:
             address = "localhost"
+        elif intf.args:
+            # get a configuration server
+            default_config_host = enstore_functions2.default_host()
+            default_config_port = enstore_functions2.default_port()
+            csc = configuration_client.ConfigurationClient(
+                (default_config_host, default_config_port))
+
+            config_servers = csc.get('known_config_servers', {})
+            #Based on the config file determine which config server was
+            # specified.
+            for name in config_servers.keys():
+                if name == intf.args[0]:
+                    address = config_servers[name][0]
+                    break
+                elif len(config_servers[name][0]) >= len(intf.args[0]) and \
+                   config_servers[name][0][len(intf.args[0]):] == intf.args[0]:
+                    address = config_servers[name][0]
+                    break
         else:
-            address = intf.csc.server_address[0]
+            #We need a default.
+            address = os.environ['ENSTORE_CONFIG_HOST']
         
         #Do this now to save the time to do the conversion for every line.
         csc_server_name = socket.getfqdn(address)
@@ -391,8 +495,15 @@ def set_entvrc(display, intf):
 # entv functions
 #########################################################################
 
-def get_mover_list(intf, fullnames=None):
+#The parameters fullnames and with_system determine what strings are
+# appended to each mover name.  Assume short mover name test01.  This
+# is what would be returned if fullnames and with_system are python false.
+#fullnames true -> test01.mover
+#with_system true -> test01@test01
+def get_mover_list(intf, csc, fullnames=None, with_system=None):
     movers = []
+
+    enstore_system = csc.get_enstore_system(3, 3)
 
     #If a 'canned' (aka recorded) entv is running, read the movers file
     # for the list of movers.
@@ -412,12 +523,11 @@ def get_mover_list(intf, fullnames=None):
         except (OSError, IOError), msg:
             print str(msg)
             sys.exit(1)
-    
-    csc = intf.csc
 
     lm_dict = csc.get_library_managers({})
     #If the user selected to hide some movers, remove their LM from the list.
     lm_list = lm_dict.keys()
+
     for ds_lm_name in string.split(intf.dont_show, ","):
         if ds_lm_name in lm_list:
             del lm_list[lm_list.index(ds_lm_name)]
@@ -430,7 +540,6 @@ def get_mover_list(intf, fullnames=None):
         except TypeError:
             sys.stderr.write(str(lm_dict[lm]))
             continue
-            #raise sys.exc_info()
 
         try:
             for mover in mover_list:
@@ -452,6 +561,12 @@ def get_mover_list(intf, fullnames=None):
             Trace.trace(1, "No movers found: %s" % str(msg))
 
     movers.sort()
+    if with_system:
+        #The following line is rejected by mylint.py.  This would be the
+        # preferable way to do this.
+        #movers = map(lambda m: m + "@" + enstore_system, movers)
+        for i in range(len(movers)):
+            movers[i] = movers[i] + "@" + enstore_system
     return movers
 
 def handle_status(mover, status):
@@ -479,54 +594,122 @@ def handle_status(mover, status):
 # The following functions run in their own thread.
 #########################################################################
 
-def request_mover_status(display, intf):
+def request_mover_status(display, csc, intf):
     global stop_now
     
     #If running from 'canned' version.
     if intf.movers_file:
         return
 
-    csc = intf.csc
-    #config = get_config(intf)
-    movers = get_mover_list(intf, 1)
+    #csc = configuration_client.ConfigurationClient(csc_addr)
+    enstore_system = None
+    while enstore_system == None:
+        enstore_system = csc.get_enstore_system(3, 3)
+
+        #If the user said it needs to die, then die.  Don't wait for all of
+        # the movers to be contacted.  If there is a known problem then
+        # this could possibly take a while to time out with each of the
+        # movers.
+        if stop_now or display.stopped:
+            return
+
+    #Get the list of movers that this event relay will be reporting on.
+    movers = get_mover_list(intf, csc, 1)
 
     for mover in movers:
         #Get the mover client and the mover status.
         mov = mover_client.MoverClient(csc, mover)
         status = mov.status(rcv_timeout=5, tries=1)
+
+        try:
+            #If we added a route to the mover, we should remove it.
+            # Most clients would prefer to leave such routes in place,
+            # but entv is not your normal client.  It talks to many movers
+            # that makes the routing table huge.
+            host_config.unset_route(mov.server_address[0])
+            pass
+        except (socket.error, OSError):
+            pass
+        except TypeError:
+            # mov.server_address is equal to None
+            pass
         del mov
 
         #If the user said it needs to die, then die.  Don't wait for all of
-        # the movers to be contacted.  If there is a known problem then this
-        # could possibly take a while to time out with each of the movers.
+        # the movers to be contacted.  If there is a known problem then
+        # this could possibly take a while to time out with each of the
+        # movers.
         if stop_now or display.stopped:
             break
 
         #Process the commands.
-        commands = handle_status(mover[:-6], status)
+        mover_name = mover[:-6] + "@" + enstore_system
+        commands = handle_status(mover_name, status)
         if not commands:
             continue
         for command in commands:
             #Queue the command.
             display.queue_command(command)
 
-def handle_messages(display, intf):
+#handle_messages() reads event relay messages from the specified event
+# relay.  It is called within a new thread (one for each event relay).
+#
+#display: is an instance of the enstore_display.Display class.
+#event_relay_addr is a 2-tuple of ip/hostname and port number.
+#intf is an instance of the EntvInterface class.
+def handle_messages(display, csc, intf):
     global stop_now
-
+    
     # we will get all of the info from the event relay.
     if intf.commands_file:
         commands_file = open(intf.commands_file, "r")
     else:
-        erc = event_relay_client.EventRelayClient()
+        enstore_system = None
+        while enstore_system == None:
+            enstore_system = csc.get_enstore_system(3, 3)
+
+            #If the user said it needs to die, then die.  Don't wait for all of
+            # the movers to be contacted.  If there is a known problem then
+            # this could possibly take a while to time out with each of the
+            # movers.
+            if stop_now or display.stopped:
+                return
+
+        er_dict = None
+        while er_dict == None or not e_errors.is_ok(er_dict):
+            try:
+                er_dict = csc.get('event_relay', 3, 3)
+            except SystemExit, msg:
+                raise msg
+            except:
+                pass
+
+            #If the user said it needs to die, then die.  Don't wait for all of
+            # the movers to be contacted.  If there is a known problem then
+            # this could possibly take a while to time out with each of the
+            # movers.
+            if stop_now or display.stopped:
+                return
+
+            if er_dict == None or e_errors.is_timedout(er_dict):
+                continue
+
+            if not e_errors.is_ok(er_dict):
+                time.sleep(60)
+                display.queue_command("reinit")
+                return
+
+            er_addr = (er_dict.get('hostip', None), er_dict.get('port', None))
+            erc = event_relay_client.EventRelayClient(
+                event_relay_host = er_addr[0], event_relay_port = er_addr[1])
+            erc.start([event_relay_messages.ALL])
+        
         #If the client fails to initialize then wait a minute and start over.
         # The largest known error to occur is that socket.socket() fails
         # to return a file descriptor because to many files are open.
         if stop_now or display.stopped:
-            time.sleep(60)
-            display.queue_command("reinit")
+
             return
-        erc.start([event_relay_messages.ALL])
-        #erc.subscribe()
 
     start = time.time()
     count = 0
@@ -573,7 +756,15 @@ def handle_messages(display, intf):
             msg = enstore_erc_functions.read_erc(erc)
             #Take the message from (either from file or event relay).
             if msg and not getattr(msg, "status", None):
-                command = "%s %s" % (msg.type, msg.extra_info)
+                if msg.type in ("quit", "title", "client"):
+                    command = "%s %s" % (msg.type, msg.extra_info)
+                else:
+                    #If the command contains a mover name, we need to
+                    # append the system name to it.
+                    words = string.split(msg.extra_info, " ")
+                    command = "%s %s %s" % (msg.type,
+                                            words[0] + "@" + enstore_system,
+                                            string.join(words[1:], " "))
             ##If read_erc is valid it is a EventRelayMessage instance. If
             # it gets here it is a dictionary with a status field error.
             elif getattr(msg, "status", None):
@@ -678,7 +869,7 @@ class EntvClientInterface(generic_client.GenericClientInterface):
         generic_client.GenericClientInterface.parse_options(self)
         
         #Setup the necessary cache global variables.
-        self.csc = get_system(self)
+        #self.csc = get_system(self)
 
         #Setup trace levels.
         Trace.init("ENTV")
@@ -726,13 +917,18 @@ def main(intf):
     global status_thread, messages_thread
     global stop_now
 
+    cscs_info = get_all_systems(intf)# , intf.args[i])
+    if not cscs_info:
+        sys.stderr.write("Unable to find configuration server.\n")
+        sys.exit(1)
+
     #Get the short name for the enstore system specified.
-    system_name = get_system_name(intf)
+    system_name = get_system_name(intf, cscs_info)
 
     #geometry, background, animate = get_entvrc(intf)
     entvrc_dict = get_entvrc(intf)
     entvrc_dict['title'] = system_name #For simplicity put this here.
-    
+
     #Get the main window and set it size.
     master = Tkinter.Tk()
     set_geometry(master, entvrc_dict)
@@ -746,17 +942,29 @@ def main(intf):
         #Inform the display the config server to use.  Don't do this
         # if running 'canned' entv.  Make sure this is run before the
         # movers_command is.
-        if not intf.movers_file:
-            display.handle_command("csc %s %s" % (intf.csc.server_address[0],
-                                                  intf.csc.server_address[1]))
+        #if not intf.movers_file:
+            #display.handle_command("csc %s %s" % (intf.csc.server_address[0],
+            #                                      intf.csc.server_address[1]))
 
         Trace.trace(1, "updating movers list")
-        
+
         #initalize the movers.
-        movers = get_mover_list(intf, 0)
-        movers_command = "movers " + string.join(movers, " ")
-        Trace.trace(1, "movers list: %s" % movers_command)
+        movers_command = "movers"
+        for item in cscs_info.values():
+            csc = configuration_client.ConfigurationClient(item)
+            
+            #Inform the display the config server to use.  Don't do this
+            # if running 'canned' entv.  Make sure this is run before the
+            # movers_command is.
+            display.handle_command("csc %s %s" % (csc.server_address[0],
+                                                  csc.server_address[1]))
+            #Get the list of movers and append the names to the end
+            # of the movers_command.
+            movers = get_mover_list(intf, csc, 0, 1)
+            movers_command = movers_command + " " + string.join(movers, " ")
+
         #Inform the display the names of all the movers.
+        Trace.trace(1, "movers list: %s" % movers_command)
         display.handle_command(movers_command)
 
         Trace.trace(1, "starting threads")
@@ -764,17 +972,31 @@ def main(intf):
         #On average collecting the status of all the movers takes 10-15
         # seconds.  We don't want to wait that long.  This can be done
         # in parallel to displaying live data.
-        status_thread = threading.Thread(group=None,
-                                         target=request_mover_status,
-                                         name='', args=(display,intf),
-                                         kwargs={})
-        status_thread.start() #wait for movers to sends status seperately.
+        
+        #Start a thread for each event relay we should contact.
+        status_threads = []
+        messages_threads = []
+        for csc_addr in cscs_info.values():
+            csc = configuration_client.ConfigurationClient(csc_addr)
+            #try:
+            #    er_addr = (csc.get('event_relay', None)['hostip'],
+            #               csc.get('event_relay', None)['port'])
+            #except (KeyError, AttributeError):
+            #    continue
 
-        messages_thread=threading.Thread(group=None,
-                                         target=handle_messages,
-                                         name='', args=(display,intf),
-                                         kwargs={})
-        messages_thread.start()
+            status_threads.append(threading.Thread(group=None,
+                                                   target=request_mover_status,
+                                                   name='',
+                                                   args=(display, csc, intf),
+                                                   kwargs={}))
+            status_threads[-1].start()
+
+            messages_threads.append(threading.Thread(group=None,
+                                                    target=handle_messages,
+                                                    name='',
+                                                    args=(display, csc, intf),
+                                                    kwargs={}))
+            messages_threads[-1].start()
 
         #Loop until user says don't.
         display.mainloop()
@@ -784,9 +1006,11 @@ def main(intf):
 
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
-        status_thread.join()
+        for i in range(len(status_threads)):
+            status_threads[i].join()
         Trace.trace(1, "status thread finished")
-        messages_thread.join()
+        for i in range(len(messages_threads)):
+            messages_threads[i].join()
         Trace.trace(1, "message thread finished")
 
         #Terminine if this is a reinitialization (True) or not (False).
