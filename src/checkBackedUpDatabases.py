@@ -108,12 +108,13 @@ def configure(configuration = None):
     current_dir = os.getcwd() #Remember the original directory
 
     #Return the directory the backup file is in and the directory the backup
-    # file will be ungzipped and untared to, respectively.
-    return backup_node, backup_dir, check_dir, current_dir
+    # file will be ungzipped and untared to, respectively.  Lastly, return
+    # the current directory.
+    return backup_dir, check_dir, current_dir
 
 
 
-def check_backup(backup_node, backup_dir):
+def check_backup(backup_dir):
     # backups are saved in separate files - get the most recent one
     bdirs = os.listdir(backup_dir)
     if len(bdirs) == 0:
