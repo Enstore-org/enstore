@@ -10,6 +10,25 @@ except ImportError:
     import socket
 
 dict = {}
+#
+# Purge entries older than 600 seconds. Dict is a dictionary
+#    The first entry, dict[0], is the key
+#    The second entry, dict[1], is the message, client number, ticket, and time
+#        which becomes list[0-2]
+def purge_stale_entries(dict) :
+     stale_time = time.time() - 600
+     for entry in dict.items() :
+         list = entry[1]
+         if  list[2] < stale_time :
+             del dict[entry[0]]
+
+import pdb
+def dodebug(a,b):
+    pdb.set_trace()
+
+import signal
+signal.signal(3,dodebug)
+
 
 # Generic request response server class, for multiple connections
 # This method overrides the process_request function in SocketServer.py
@@ -48,7 +67,7 @@ class DispatchingWorker:
 
         # on the very 1st request, we don't have anything to compare to
         except KeyError:
-            pass # first request, fall through
+            pass # first request or request purged by purge_stale_entries, fall through
 
         # look in the ticket and figure out what work user wants
         try :
@@ -57,6 +76,9 @@ class DispatchingWorker:
             ticket = {'status' : "cannot find requested function"}
             self.reply_to_caller(ticket)
             return
+        
+        if len(dict) > 200:
+             purge_stale_entries(dict)
 
         # finally call the user function
         exec ("self." + function + "(ticket)")
@@ -70,7 +92,7 @@ class DispatchingWorker:
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
     def reply_to_caller(self, ticket) :
-        reply = (self.client_number, ticket)
+        reply = (self.client_number, ticket, time.time())
         self.reply_with_list(reply)
 
     # keep a copy of request to check for later udp retries of same

@@ -123,7 +123,7 @@ class UDPClient:
                     print "udp_client send, post-recv error:",\
                           errno.errorcode[badsock]
                 try :
-                    exec ("number,  out  = "  + reply)
+                    exec ("number,  out, time  = "  + reply)
                 # did we read entire message (bigger than TRANSFER_MAX?)
                 except exceptions.SyntaxError :
                     print "disaster: didn't read entire message"
@@ -132,7 +132,7 @@ class UDPClient:
                     raise sys.exc_info()[0],sys.exc_info()[1]
                 # goofy test feature - need for client being echo service only
                 except exceptions.ValueError :
-                    exec ("ident, number,  out  = "  + reply)
+                    exec ("ident, number,  out, time  = "  + reply)
                 if number != self.number :
                     print "UDPClient.send: stale_number=",number, "number=", \
                           self.number,"resending to ", address, message
