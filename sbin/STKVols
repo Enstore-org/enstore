@@ -70,7 +70,7 @@ IFS="
 for silo in $silos; do 
   s=`echo $silo| sed -e 's/ //g' -e 's/,$//'`
   n="`egrep ' STK' $volfile | grep "$silo"|wc|awk '{print $1}'`"
-  echo `date` $s $n >>/tmp/"$s" 
+  echo `date` $s $n >>/tmp/STK_USED_SLOTS."$s" 
 done
 IFS="$IFSave"
 
