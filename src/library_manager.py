@@ -77,12 +77,10 @@ class SG_FF:
         if not (mover and volume and sg and vf): return
         Trace.trace(13,"SG:delete mover %s, volume %s, sg %s, vf %s" % (mover, volume, sg, vf))
         if self.sg.has_key(sg) and (mover, volume) in self.sg[sg]:
-            Trace.trace(13,"SG:delete 111111111")
             self.sg[sg].remove((mover, volume))
             if len(self.sg[sg]) == 0:
                 del(self.sg[sg])
         if self.vf.has_key(vf) and (mover, volume) in self.vf[vf]:
-            Trace.trace(13,"SG:delete 22222222222")
             self.vf[vf].remove((mover, volume))
             if len(self.vf[vf]) == 0:
                 del(self.vf[vf])
@@ -130,6 +128,8 @@ class AtMovers:
 
     def delete(self, mover_info):
         Trace.trace(13, "AtMovers delete. before: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
+        if not (mover_info['external_label'] and mover_info['volume_family'] and mover_info['mover']):
+            return
         mover = mover_info['mover']
         if self.at_movers.has_key(mover):
             Trace.trace(13, "MOVER %s" % (self.at_movers[mover],))
