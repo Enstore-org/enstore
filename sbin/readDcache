@@ -9,6 +9,8 @@ gang=`gang`
 N=`date +"%j"` #day of year
 case $gang in
   stken) namespace=/pnfs/eagle/backups
+         weak_port=24126
+	 strong_port=24127
          date_string_d() { date +"%Y/%m" --date="1 week ago" ; }
          place=$namespace/`date_string_d`
          file=`find $place -type f -print | head -n 1`
@@ -29,6 +31,8 @@ case $gang in
          do_readback=1
           ;;
   cdfen) namespace=/pnfs/cdfen/filesets
+         weak_port=25126
+	 strong_port=25127
          # new file once/day, asumming the head of directory is constant (bad assumption)
          file=`find $namespace -type f -size +0 -print | head -n $N | tail -n 1` 2>/dev/null
          f2=`echo $file | sed -e 's%/pnfs%%'`
@@ -40,8 +44,8 @@ case $gang in
 	 #dcache=orchard
          do_active=1
          do_passive=1
-         do_nonkerb_active=0
-         do_nonkerb_passive=0
+         do_nonkerb_active=1
+         do_nonkerb_passive=1
          do_kftp_write=1
          do_dccp=1
          do_double=1
@@ -85,11 +89,11 @@ ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
 # Active kerberized kftp read
 if [ $do_active = 1 ]; then
   echo "================================================================================================================================"
-  echo "`date` Active read kftpcp -p 24127 -v enstore@$dcache:$f3 /dev/null"
-                           kftpcp -p 24127 -v enstore@$dcache:$f3 /dev/null
+  echo "`date` Active read kftpcp -p $strong_port -v enstore@$dcache:$f3 /dev/null"
+                           kftpcp -p $strong_port -v enstore@$dcache:$f3 /dev/null
   stat1=$?
   if [ $stat1 -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Active read kftpcp -p 24127 -v enstore@$dcache:$f3 /dev/null  STAT=$stat1"
+     echo enstore alarm --raise --severity "A" --root-error "Active read kftpcp -p $strong_port -v enstore@$dcache:$f3 /dev/null  STAT=$stat1"
   fi
   echo
 else
@@ -101,11 +105,11 @@ if [ $do_active = 1 -a $do_kftp_write = 1 ]; then
   echo "================================================================================================================================"
   echo "rm -f $w"
         rm -f $w
-  echo "`date` Active write kftpcp -p 24127 -v $test_file enstore@$dcache:$w3"
-                            kftpcp -p 24127 -v $test_file enstore@$dcache:$w3
+  echo "`date` Active write kftpcp -p $strong_port -v $test_file enstore@$dcache:$w3"
+                            kftpcp -p $strong_port -v $test_file enstore@$dcache:$w3
   stat1a=$?
   if [ $stat1a -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Active write kftpcp -p 24127 -v $test_file enstore@$dcache:$w3 STAT=$stat1a"
+     echo enstore alarm --raise --severity "A" --root-error "Active write kftpcp -p $strong_port -v $test_file enstore@$dcache:$w3 STAT=$stat1a"
   fi
   echo
 else
@@ -117,12 +121,12 @@ if [ $do_active = 1 -a $do_kftp_write = 1 -a $do_readback = 1 ]; then
   echo "================================================================================================================================"
   echo "rm -f $read_back"
         rm -f $read_back
-  echo "`date` Active readback kftpcp -p 24127 -v enstore@$dcache:$w3 $read_back"
-                               kftpcp -p 24127 -v enstore@$dcache:$w3 $read_back
+  echo "`date` Active readback kftpcp -p $strong_port -v enstore@$dcache:$w3 $read_back"
+                               kftpcp -p $strong_port -v enstore@$dcache:$w3 $read_back
 
   stat1b=$?
   if [ $stat1b -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Active readback kftpcp -p 24127 -v $test_file enstore@$dcache:$w3 STAT=$stat1b"
+     echo enstore alarm --raise --severity "A" --root-error "Active readback kftpcp -p $strong_port -v $test_file enstore@$dcache:$w3 STAT=$stat1b"
      stat1c=0
   else
      cmp $test_file $read_back
@@ -141,11 +145,11 @@ fi
 # Passive kerberized read
 if [ $do_passive = 1 ]; then
   echo "================================================================================================================================"
-  echo "`date` Passive kftpcp -p 24127 -m p -v enstore@$dcache:$f3 /dev/null"
-                       kftpcp -p 24127 -m p -v enstore@$dcache:$f3 /dev/null
+  echo "`date` Passive kftpcp -p $strong_port -m p -v enstore@$dcache:$f3 /dev/null"
+                       kftpcp -p $strong_port -m p -v enstore@$dcache:$f3 /dev/null
   stat2=$?
   if [ $stat1 -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Passive kftpcp -p 24127 -m p -v enstore@$dcache:$f3 /dev/null  STAT=$stat2"
+     echo enstore alarm --raise --severity "A" --root-error "Passive kftpcp -p $strong_port -m p -v enstore@$dcache:$f3 /dev/null  STAT=$stat2"
   fi
   echo
 else
@@ -160,11 +164,11 @@ if [ $do_passive = 1 -a $do_kftp_write = 1 ]; then
   echo "================================================================================================================================"
   echo "rm -f $w"
         rm -f $w
-  echo "`date` Passive write kftpcp -p 24127 -m p -v $test_file enstore@$dcache:$w3"
-                             kftpcp -p 24127 -m p -v $test_file enstore@$dcache:$w3
+  echo "`date` Passive write kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$w3"
+                             kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$w3
   stat2a=$?
   if [ $stat2a -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Passive write kftpcp -p 24127 -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2a"
+     echo enstore alarm --raise --severity "A" --root-error "Passive write kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2a"
   fi
   echo
 else
@@ -177,12 +181,12 @@ if [ $do_passive = 1 -a $do_kftp_write = 1 -a $do_readback = 1 ]; then
   echo "================================================================================================================================"
   echo "rm -f $read_back"
         rm -f $read_back
-  echo "`date` Passive readback kftpcp -p 24127 -m p -v enstore@$dcache:$w3 $read_back"
-                                kftpcp -p 24127 -m p -v enstore@$dcache:$w3 $read_back
+  echo "`date` Passive readback kftpcp -p $strong_port -m p -v enstore@$dcache:$w3 $read_back"
+                                kftpcp -p $strong_port -m p -v enstore@$dcache:$w3 $read_back
 
   stat2b=$?
   if [ $stat2b -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "Passive readback kftpcp -p 24127 -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2b"
+     echo enstore alarm --raise --severity "A" --root-error "Passive readback kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2b"
      stat2c=0
   else
      cmp $test_file $read_back
@@ -207,8 +211,8 @@ fi
 # read the same file twice - Active kerberized read
 if [ $do_active = 1 -a $do_double = 1 ]; then
   echo "================================================================================================================================"
-  echo "`date` Double Active  kftpcp -p 24127 -v enstore@$dcache:$f3 /dev/null& kftpcp -p 24127 -v enstore@$dcache:$f3 /dev/null&"
-                              kftpcp -p 24127 -v enstore@$dcache:$f3 /dev/null& j1=$!; kftpcp -p 24127 -v enstore@$dcache:$f3 /dev/null& j2=$!
+  echo "`date` Double Active  kftpcp -p $strong_port -v enstore@$dcache:$f3 /dev/null& kftpcp -p $strong_port -v enstore@$dcache:$f3 /dev/null&"
+                              kftpcp -p $strong_port -v enstore@$dcache:$f3 /dev/null& j1=$!; kftpcp -p $strong_port -v enstore@$dcache:$f3 /dev/null& j2=$!
   ps axuwww | grep kftpcp | grep -v grep
   (sleep 900; echo "after 900 seconds killing $j1 and $j2"; kill $j1 $j2)& j3=$!
   echo waiting for process $j1 and $j2
@@ -222,8 +226,8 @@ fi
 # read the same file twice - Passive kerberized read
 if [ $do_passive = 1 -a $do_double = 1 ]; then
   echo "================================================================================================================================"
-  echo "`date` Double Passive kftpcp -p 24127 -m p -v enstore@$dcache:$f3 /dev/null& kftpcp -p 24127 -m p -v enstore@$dcache:$f3 /dev/null&"
-                              kftpcp -p 24127 -m p -v enstore@$dcache:$f3 /dev/null& j1=$!; kftpcp -p 24127 -m p -v enstore@$dcache:$f3 /dev/null& j2=$!
+  echo "`date` Double Passive kftpcp -p $strong_port -m p -v enstore@$dcache:$f3 /dev/null& kftpcp -p $strong_port -m p -v enstore@$dcache:$f3 /dev/null&"
+                              kftpcp -p $strong_port -m p -v enstore@$dcache:$f3 /dev/null& j1=$!; kftpcp -p $strong_port -m p -v enstore@$dcache:$f3 /dev/null& j2=$!
   ps axuwww | grep kftpcp | grep -v grep
   (sleep 900; echo after 900 seconds killing $j1 and $j2; kill $j1 $j2)&j3=$!
   echo waiting for process $j1 and $j2
@@ -248,7 +252,7 @@ def x(dum):
 from ftplib import FTP
 import sys
 ftp=FTP()
-ftp.connect("'fndca'",24126)
+ftp.connect("'$dcache'",'$weak_port')
 ftp.login("enstore-test","anon-read")
 print ftp.retrbinary("RETR '$f3'",x)
 '
