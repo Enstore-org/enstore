@@ -79,7 +79,7 @@ class  RawDiskDriver(GenericDriver) :
     def read_block(self):
                 # no file marks on a disk, so use the information
                 # in the cookie to bound the file.
-                n_to_read = min(self.iomax , self.left_to_read)
+                n_to_read = min(self.iomax, self.left_to_read)
                 if n_to_read == 0 : return ""
                 buf = self.df.read(n_to_read)
                 self.left_to_read = self.left_to_read - len(buf)
@@ -133,6 +133,9 @@ if __name__ == "__main__" :
     import socket
     import string
 
+    status = 0
+
+    # defaults
     size = 760000
     device = "./rdd-testfile.fake"
     eod_cookie = "0"
@@ -235,14 +238,25 @@ if __name__ == "__main__" :
     if list:
         print "EOD cookie:",rdd.get_eod_cookie()
         print "lower bound on bytes available:", rdd.get_eod_remaining_bytes()
-        pprint.pprint(rdd)
+        pprint.pprint(rdd.__dict__)
 
     for k in cookie.keys() :
         rdd.open_file_read(cookie[k])
         readback = rdd.read_block()
+        rlen = len(readback)
+        if rlen != 10**k and rlen != rdd.iomax :
+            print "Read error on cookie",k, cookie[k],"- not enough bytes. "\
+                  +"Read=",rlen ," should have read= ",10**k
+            status = status|1
         if list:
             print "cookie=",k," readback[0]=",readback[0]\
-                  ,"readback[end]=",readback[len(readback)-1]
+                  ,"readback[end]=",readback[rlen-1]
+        if readback[0] != repr(k) or readback[rlen-1] != repr(k) :
+            print "Read error. Should have read",k, " but "\
+                  ,"First=",readback[0],"  Last=",readback[rlen-1]
+            status = status|2
         rdd.close_file_read()
 
     rdd.unload()
+
+    sys.exit(status)
