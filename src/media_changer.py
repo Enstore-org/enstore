@@ -287,7 +287,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	           self.workQueueClosed = 1
 		   self.timeInsert = time.time()
 		   self.insertRA = ticket["ra"]
-                   Trace.log(e_errors.INFO,"RET1 %s",%( ticket["function"],))
+                   Trace.log(e_errors.INFO,"RET1 %s"%( ticket["function"],))
 		   return 
 		else:
 		   self.workQueueClosed = 0
