@@ -23,5 +23,5 @@ else
     # file name of one of the following forms, and then remove them
     #
     #  *.dcache_page_*
-    find $directory -maxdepth 0 -name "$file_name" -user enstore -mtime +1 -exec rm {} \;
+    find $directory -maxdepth 1 -name "$file_name" -user enstore -mtime +1 -exec rm {} \;
 fi
