@@ -9,6 +9,7 @@ import grp
 import socket
 import binascii
 import regsub
+import copy
 import pdb
 
 # enstore modules
@@ -128,6 +129,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
         print "  ",vticket["host"],vticket["port"]
         print "  dt:",tinfo["get_libman"], "   cumt=",time.time()-t0
 
+
     # loop on all input files sequentially
     for i in range(0,ninput):
         unique_id.append(0) # will be set later when submitted
@@ -146,6 +148,9 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
                 print "Sending ticket to",library[i]+".library_manager",\
                       "   cumt=",time.time()-t0
             t1 = time.time() #----------------------------------------Lap Start
+
+            # store timing info for each transfer in pnfs, not for all - make copy
+            tinfo1 = copy.deepcopy(tinfo)
 
             unique_id[i] = time.time()  # note that this is down to mS
             uinfo["fullname"] = outputlist[i]
@@ -176,7 +181,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
                               }
 
             # send the work ticket to the library manager
-            tinfo["tot_to_send_ticket"+repr(i)] = t1 -t0
+            tinfo1["tot_to_send_ticket"+repr(i)] = t1 -t0
             system_enabled(p) # make sure system still enabled before submitting
             ticket = u.send(work_ticket, (vticket['host'], vticket['port']))
             if ticket['status'] != "ok" :
@@ -185,12 +190,12 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
                        +vticket['host']+"/"+repr(vticket['port'])\
                        +", ticket[\"status\"]="+ticket["status"])
 
-            tinfo["send_ticket"+repr(i)] = time.time() - t1 #-----------Lap End
+            tinfo1["send_ticket"+repr(i)] = time.time() - t1 #-----------Lap End
             if list:
                 print "  Q'd:",inputlist[i], library[i],\
                       "family:",file_family[i],\
                       "bytes:", file_size[i],\
-                      "dt:",tinfo["send_ticket"+repr(i)],\
+                      "dt:",tinfo1["send_ticket"+repr(i)],\
                           "   cumt=",time.time()-t0
 
             if list>1:
@@ -225,12 +230,12 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
                        +"ticket[\"status\"]="+ticket["status"],2)
             data_path_socket = callback.mover_callback_socket(ticket)
 
-            tinfo["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
+            tinfo1["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
             dt = time.time() - t1 #-------------------------------------Lap-End
             if list>1:
                 print " ",ticket["mover_callback_host"],\
                       ticket["mover_callback_port"],\
-                      "cum:",tinfo["tot_to_mover_callback"+repr(i)]
+                      "cum:",tinfo1["tot_to_mover_callback"+repr(i)]
                 print "  dt:",dt,"   cumt=",time.time()-t0
 
             if list:
@@ -260,14 +265,14 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
         data_path_socket.close()
         in_file.close()
 
-        tinfo["sent_bytes"+repr(i)] = time.time()-t1 #------------------Lap-End
+        tinfo1["sent_bytes"+repr(i)] = time.time()-t1 #------------------Lap-End
         if list>1:
-            if tinfo["sent_bytes"+repr(i)]!=0:
-                wtrate = 1.*fsize/1024./1024./tinfo["sent_bytes"+repr(i)]
+            if tinfo1["sent_bytes"+repr(i)]!=0:
+                wtrate = 1.*fsize/1024./1024./tinfo1["sent_bytes"+repr(i)]
             else:
                 wdrate = 0.0
             print "  bytes:",fsize, " Socket Write Rate = ",wtrate," MB/s"
-            print "  dt:",tinfo["sent_bytes"+repr(i)],\
+            print "  dt:",tinfo1["sent_bytes"+repr(i)],\
                   "   cumt=",time.time()-t0
         if list>1:
             print "Waiting for final mover dialog",\
@@ -295,9 +300,9 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
                            " encp.write_to_hsm: CRC's mismatch: "\
                            +repr(complete_crc)+" "+repr(mycrc))
 
-        tinfo["final_dialog"] = time.time()-t1 #------------------------Lap End
+        tinfo1["final_dialog"] = time.time()-t1 #------------------------Lap End
         if list>1:
-            print "  dt:",tinfo["final_dialog"], "   cumt=",time.time()-t0
+            print "  dt:",tinfo1["final_dialog"], "   cumt=",time.time()-t0
 
         if list>1:
             print "Adding file to pnfs", "   cumt=",time.time()-t0
@@ -311,13 +316,13 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
         p.set_xreference(done_ticket["file_clerk"]["external_label"],
                          done_ticket["file_clerk"]["bof_space_cookie"])
         # store debugging info about transfer
-        done_ticket["tinfo"] = tinfo # store as much as we can into pnfs
+        done_ticket["tinfo"] = tinfo1 # store as much as we can into pnfs
         done_formatted  = pprint.pformat(done_ticket)
         p.set_info(done_formatted)
 
-        tinfo["pnfsupdate"] = time.time() - t1 #------------------------Lap End
+        tinfo1["pnfsupdate"+repr(i)] = time.time() - t1 #---------------Lap End
         if list>1:
-            print "  dt:",tinfo["pnfsupdate"], "   cumt=",time.time()-t0
+            print "  dt:",tinfo1["pnfsupdate"+repr(i)],"   cumt=",time.time()-t0
 
 
         # calculate some kind of rate - time from beginning to wait for
@@ -328,9 +333,9 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
         # the end of all transfers
         tnow = time.time()
         if (tnow-tMBstart)!=0:
-            tinfo['rate'+repr(i)] = 1.*fsize/1024./1024./(tnow-tMBstart)
+            tinfo1['rate'+repr(i)] = 1.*fsize/1024./1024./(tnow-tMBstart)
         else:
-            tinfo['rate'+repr(i)] = 0.0
+            tinfo1['rate'+repr(i)] = 0.0
         format = "  %s -> %s : %d bytes copied to %s at"+\
                  " %s MB/S  requestor:%s     cumt= %f"
 
@@ -338,13 +343,13 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
             print format %\
                   (inputlist[i], outputlist[i], fsize,\
                    done_ticket["external_label"],\
-                   tinfo["rate"+repr(i)], uinfo["uname"],\
+                   tinfo1["rate"+repr(i)], uinfo["uname"],\
                    time.time()-t0)
 
         logc.send(log_client.INFO, 2, format,
                   inputlist[i], outputlist[i], fsize,
                   done_ticket["external_label"],
-                  tinfo["rate"+repr(i)], uinfo["uname"],
+                  tinfo1["rate"+repr(i)], uinfo["uname"],
                   time.time()-t0)
 
 
@@ -352,8 +357,8 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
     listen_socket.close()
 
     # Calculate an overall rate: all bytes, all time
-    tf=tinfo["total"] = time.time()-t0
-    done_ticket["tinfo"] = tinfo
+    tf=tinfo1["total"] = time.time()-t0
+    done_ticket["tinfo"] = tinfo1
     total_bytes = 0
     for i in range(0,ninput):
         total_bytes = total_bytes+file_size[i]
@@ -874,6 +879,14 @@ def inputfile_check(input):
             jraise(errno.errorcode[errno.EPROTO]," encp.inputfile_check: "\
                    +input[i]+" is not a regular file")
 
+    # we can not allow 2 input files to be the same
+    # this will cause the 2nd to just overwrite the 1st
+    for i in range(0,ninput):
+        for j in range(i+1,ninput):
+            if inputlist[i] == inputlist[j]:
+                jraise(errno.errorcode[errno.EPROTO]," encp.inputfile_check: "\
+                       +inputlist[i]+" is the duplicated - not allowed")
+
     return (ninput, inputlist, file_size)
 
 ##############################################################################
@@ -964,6 +977,16 @@ def outputfile_check(ninput,inputlist,output):
             if "ok\012" != writable[0] :
                 jraise(errno.errorcode[errno.EACCES]," encp.write_to_hsm: "\
                        +" NO write access to directory"+odir)
+
+    # we can not allow 2 output files to be the same
+    # this will cause the 2nd to just overwrite the 1st
+    # In principal, this is already taken care of in the inputfile_check, but
+    #  do it again just to make sure in case someone changes protocol
+    for i in range(0,ninput):
+        for j in range(i+1,ninput):
+            if outputlist[i] == outputlist[j]:
+                jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "\
+                       +outputlist[i]+" is the duplicated - not allowed")
 
     return outputlist
 
