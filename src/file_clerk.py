@@ -306,35 +306,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,'del_bfid %s'%(ticket,))
         return
 
-    # rename volume -- server service
-    #
-    # This has been obsolete. Since file is attached to volume id,
-    # rename volume is done by volume clerk.
-
-    def rename_volume(self, ticket):
-        try:
-            old = ticket["external_label"]
-            new = ticket[ "new_external_label"]
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # This is to be backward compatible with BerkeleyDB
-        if self.dict.bdb:
-            # do not fail
-            try:
-                self.dict.rename_volume(old, new)
-            except:
-                Trace.log(e_errors.ERROR, 'rename %s --> %s failed'%(old, new))
-            
-        # Nothing needs to be done
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        return
-
     #### DONE
     # __erase_volume(self, vol) -- delete all files belonging to vol
     #
@@ -387,8 +358,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         bfids = self.get_all_bfids(vol)
         for bfid in bfids:
             record = self.dict[bfid]
-            record['deleted'] = 'yes'
-            self.dict[bfid] = record
+            if record['deleted'] != 'yes':
+                record['deleted'] = 'yes'
+                self.dict[bfid] = record
         Trace.log(e_errors.INFO, 'all files of volume %s are marked deleted'%(vol))
         return
 

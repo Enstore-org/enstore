@@ -136,11 +136,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if self.dict.has_key(new):
             return 'EEXIST', "volume %s already exists"%(new)
 
-        # backward compatible with BerkeleyDB
-        fcc = file_clerk_client.FileClient(self.csc)
-        fcc.rename_volume(old, new)
-	del fcc
-        
         try:
             record['external_label'] = new
             self.dict[old] = record
