@@ -395,7 +395,7 @@ fi
 croncheck "check_watchdog_reset.py"
 croncheck "ntpset"
 croncheck "netscan -a -q" # not so dumb, because we can run netscan manually, too
-croncheck "ekill"
+croncheck "ekill -v -9"
 
 # check that ipmisrv is running without watchdog timer
 if [ `$PS axuwww | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
