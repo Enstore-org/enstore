@@ -18,14 +18,7 @@ class Inquisitor(generic_client.GenericClient):
         # we always need to be talking to our configuration server
         self.u = udp_client.UDPClient()
 	self.server_name = MY_SERVER
-
-    def send (self, ticket, rcv_timeout=0, tries=0):
-        # who's our inquisitor server that we should send the ticket to?
-        vticket = self.csc.get(self.server_name)
-        # send user ticket and return answer back
-        Trace.trace(12,"send addr="+repr((vticket['hostip'], vticket['port'])))
-        return self.u.send(ticket, (vticket['hostip'], vticket['port']),
-                           rcv_timeout, tries )
+        self.server_address = self.get_server_address(self.server_name)
 
     def update (self, server=""):
 	t = {"work"       : "update" }
@@ -147,7 +140,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
         self.get_inq_timeout = 0
 	self.update_and_exit = 0
         generic_client.GenericClientInterface.__init__(self)
-
+        
     #  define our specific help
     def parameters(self):
         return "server"
@@ -183,7 +176,6 @@ def do_work(intf):
     # now get an inquisitor client
     iqc = Inquisitor((intf.config_host, intf.config_port))
     Trace.init(iqc.get_name(MY_NAME))
-
 
     ticket = icq.handle_generic_commands(MY_SERVER, intf)
     if ticket:
