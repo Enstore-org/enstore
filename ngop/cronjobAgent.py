@@ -162,11 +162,11 @@ class CJFunc(Worker):
     def checkcron(self, name):
         dirName = os.popen("ls %s/%s 2> /dev/null"%(CRON_DIR, name),
                            'r').readlines()
+        stateFlag = 0
         if not dirName:
             # no crontab for this name
-            return -1 
+            return stateFlag
         
-        stateFlag = 0
         filePat1 = "~%s/CRON/*ACTIVE"%(name,)
         # need the -d because the *ACTIVE files are directories
         actFiles = os.popen("ls -d %s 2> /dev/null"%(filePat1,),
