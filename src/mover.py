@@ -612,6 +612,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.unique_id = None #Unique id of last transfer, whether success or failure
         self.notify_transfer_threshold = 2*1024*1024
         self.state_change_time = 0.0
+        self.time_in_state = 0.0
+        self.in_state_to_cnt = 0 # how many times timeot for being in the same state expired
         self._state_lock = threading.Lock()
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
@@ -634,6 +636,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if val != SETUP:
                     self.tmp_vol = None
                     self.tmp_vf = None
+                self.time_in_state = 0.0
+                self.in_state_to_cnt = 0
                 self.__dict__['state_change_time'] = time.time()
         except:
             pass #don't want any errors here to stop us
@@ -909,6 +913,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.check_written_file_period = self.config.get('check_written_file', 0)
         self.files_written_cnt = 0
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
+        self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3) 
         if self.driver_type == 'NullDriver':
             self.check_written_file_period = 0 # no file check for null mover
             self.device = None
@@ -1134,7 +1139,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                             (state_name(self.state),self.current_volume))
                 self.time_in_state = time_in_state
-            
+                self.in_state_to_cnt = self.in_state_to_cnt+1
+                if self.in_state_to_cnt >= self.max_in_state_cnt:
+                    # mover is stuck. There is nothing to do as to
+                    # offline it
+                    msg = "mover is stuck in %s" % (self.return_state(),)
+                    Trace.alarm(e_errors.ERROR, msg)
+                    Trace.log(e_errors.ERROR, "marking %s noaccess" % (self.current_volume,))
+                    self.vcc.set_system_noaccess(self.current_volume)
+                    self.transfer_failed(e_errors.MOVER_STUCK, msg, error_source=TAPE)
+                    return
+                                             
         ticket = self.format_lm_ticket(state=state, error_source=error_source)
         for lib, addr in self.libraries:
             if state != self._last_state:
@@ -2116,6 +2131,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.dismount_volume(after_function=self.idle)
             return
         self.state = SEEK ##XXX start a timer here?
+        time.sleep(300)
         eod = self.vol_info['eod_cookie']
         if eod=='none':
             eod = None
@@ -2280,8 +2296,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
+        if exc == e_errors.MOVER_STUCK:
+            broken = exc
         self.need_lm_update = (1, ERROR, 1, error_source)
-
         if broken:
             self.broken(broken)
             self.tr_failed = 0
@@ -3398,6 +3415,7 @@ class DiskMover(Mover):
         self.files_written_cnt = 0
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
 
+        self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3) 
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.add_interval_func(self.update_lm, self.update_interval) #this sets the period for messages to LM.
         self.add_interval_func(self.need_update, 1) #this sets the period for checking if child thread has asked for update.
