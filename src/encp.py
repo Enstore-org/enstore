@@ -982,7 +982,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #This is here to help track down a hard to track error.  Leave this hear
     # until the error is fixed.
     try:
-        infile = request_dictionary.get('infile', '')
+        infile = request_dictionary['infile']
     except AttributeError, detail:
         print "request_dictionary:", type(request_dictionary), detail
         pprint.pprint(request_dictionary)
@@ -1034,11 +1034,15 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # request when it removes to old one.
     request_dictionary['unique_id'] = generate_unique_id()
 
-    print "Resubmitting with:"
-    pprint.pprint(request_dictionary)
-
-    #Since a retriable error occured, resubmit the ticket.
-    submit_one_request(request_dictionary, verbose=3)
+    try:
+        #Since a retriable error occured, resubmit the ticket.
+        submit_one_request(request_dictionary, verbose=3)
+    except KeyError:
+        #If we get here, then the error occured while waiting for any (valid)
+        # mover to call back.  Since, there was no information then the
+        # submitting operation failed and we should go back to the top and
+        # wait for the other transfers to commence.
+        pass
     
     result_dict = {'status':(e_errors.RETRY, None),
                    'retry':request_dictionary['retry'],
@@ -1403,7 +1407,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
             try:
                 done_ticket = callback.read_tcp_obj(control_socket)
-            except ("TCP connection error", socket.error), detail:
+            except ("TCP connection closed", socket.error), detail:
                 done_ticket = {'status':(msg.args[1], msg.args[0])}
                 #done_ticket = {'status':(e_errors.EPROTO,
                 #                         "Network problem or mover reset")}
