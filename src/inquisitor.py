@@ -7,6 +7,7 @@ import copy
 import errno
 import string
 import regsub
+import types
 import os
 
 # enstore imports
@@ -276,6 +277,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.htmlfile.flush()
         Trace.trace(12,"}flush_files")
 
+    # output a line if an update was requested of a server that we do not have
+    # a function for
+    def update_nofunc(self, server):
+	Trace.trace(12,"{update_nofunc "+server)
+	self.essfile.output_nofunc(server)
+	self.htmlfile.output_nofunc(server)
+	Trace.trace(12,"}update_nofunc ")
+
     # update the enstore system status information
     def do_update(self, ticket, list, do_all=0):
         Trace.trace(11,"{do_update ")
@@ -309,10 +318,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        # name.real_key, so we have to get the real key to find the
 	        # function to call
 	        rkeyl = string.split(key, '.')
-	        rkey = rkeyl[len(rkeyl)-1]
-	        exec("self.update_"+rkey+"(key, ctime, list)")
-	        self.last_update[key] = ctime
-	        did_some_work = 1
+	        inq_func = "update_"+rkeyl[len(rkeyl)-1]
+	        if InquisitorMethods.__dict__.has_key(inq_func):
+	            if type(InquisitorMethods.__dict__[inq_func]) == \
+	               types.FunctionType:
+	                exec("self."+inq_func+"(key, ctime, list)")
+	                self.last_update[key] = ctime
+	                did_some_work = 1
+	        else:
+	            self.update_nofunc(key)
+
 
 	# now that we are out of the above loop we can update the server dict
 	# if we were asked to
@@ -513,9 +528,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         else:
             self.rcv_timeout = timeout
 
-	# get the current time 
-	ctime = time.time()
-
 	# get the timeout for each of the servers from the configuration file.
 	self.last_update = {}
 	if keys.has_key('timeouts'):
@@ -523,15 +535,16 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	    # now we will create a dictionary, initiallizing it to the current
 	    # time. this array records the last time that the associated server
 	    # info was updated. everytime we get a particular servers' info we
-	    # will update this time  
+	    # will update this time. start out at 0 so we do an update right
+	    # away
 	    for key in self.timeouts.keys():
-	        self.last_update[key] = ctime
+	        self.last_update[key] = 0
 
 	# now we must look thru the whole config file and use the default
 	# server timeout for any servers that were not included in the
 	# 'timeouts' dict element
 	self.set_default_server_timeout(keys)
-	self.fill_in_default_timeouts(ctime)
+	self.fill_in_default_timeouts(0)
 
 	# if no alive timeout was entered on the command line, get it from the 
 	# configuration file.

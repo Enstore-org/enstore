@@ -240,11 +240,11 @@ class EnstoreStatus:
 	ctr = 0
 	for a_key in info.keys():
 	    if a_key != 'status':
-	        if ctr == 2:
+	        if ctr == 3:
 	            str = str+"\n"+prefix2
 	            ctr = 0
-	        elif ctr == 1:
-	            str = str+", "
+	        elif ctr > 0:
+	            str = str+",  "
 	        ctr = ctr+1
 	        str = str+a_key+" : "+repr(info[a_key])
 	self.text[key] = str+"\n"
@@ -268,6 +268,13 @@ class EnstoreStatus:
 	       ftime+"\n"
 	self.text[key] = str
         Trace.trace(12,"}output_etimedout")
+
+    # output a line stating that we do not support this server
+    def output_nofunc(self, key):
+        Trace.trace(12,"}output_nofunc"+key)
+	str = key+" : NOT SUPPORTED IN INQUISITOR\n"
+	self.text[key] = str
+        Trace.trace(12,"}output_nofunc")
 
     # output the library manager queues
     def output_lmqueues(self, ticket, key, list):
