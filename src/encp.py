@@ -2922,7 +2922,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         # [0] exit_status (1 or 0)
 	# [1] crc
         #The following should never be needed.
-	# [2] bytes_left_untransfered
+	# [2] bytes_left_untransfered (should be zero)
         # [3] errno
         # [4] msg
         #The read time and write time are only useful if EXfer is threaded.
@@ -2934,6 +2934,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         #encp_crc = EXfer_rtn[1]
         EXfer_ticket = {'status':(e_errors.OK, None)}
         EXfer_ticket['encp_crc'] = EXfer_rtn[1]
+        EXfer_ticket['bytes_transfered'] = request['file_size'] - EXfer_rtn[2]
         EXfer_ticket['bytes_not_transfered'] = EXfer_rtn[2]
         EXfer_ticket['read_time'] = EXfer_rtn[5]
         EXfer_ticket['write_time'] = EXfer_rtn[6]
@@ -2945,7 +2946,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         # [2] strerror
         # [3[ pid
         #It is also possible to have the following extra elements:
-        # [4] bytes left untransfered
+        # [4] bytes left untransfered (should be non-zero)
         # [5] read time
         # [6] write time
         # [7] filename of error
@@ -2962,6 +2963,8 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
                                                   msg.args[0]))}
         #If this is the longer form, add these values to the ticket.
         if len(msg.args) >= 7:
+            EXfer_ticket['bytes_transfered'] = request['file_size'] - \
+                                               EXfer_rtn[4]
             EXfer_ticket['bytes_not_transfered'] = msg.args[4]
             EXfer_ticket['read_time'] = msg.args[5]
             EXfer_ticket['write_time'] = msg.args[6]
@@ -4858,8 +4861,8 @@ def write_to_hsm(e, tinfo):
 
         #Set the value of bytes to the number of bytes transfered before the
         # error occured.
-        bytes = bytes + done_ticket['file_size']
-        bytes = bytes - done_ticket.get('bytes_not_transfered', 0)
+        exfer_ticket = done_ticket.get('exfer', {'bytes_transfered' : 0L})
+        bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
 
         #handle_retries() is not required here since write_hsm_file()
         # handles its own retrying when an error occurs.
@@ -6336,8 +6339,8 @@ def read_hsm_files(listen_socket, route_server, submitted,
             continue
 
         #Update the running bytes transfered count.
-        bytes = bytes + done_ticket['file_size']
-        bytes = bytes - done_ticket.get('bytes_not_transfered', 0)
+        exfer_ticket = done_ticket.get('exfer', {'bytes_transfered' : 0L})
+        bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
         
         check_crc(done_ticket, e, out_fd) #Check the CRC.
 
