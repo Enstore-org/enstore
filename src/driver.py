@@ -37,19 +37,6 @@ def mode_string_to_int(s, d={'r':os.O_RDONLY, 'r+':os.O_RDWR,
                              'a+':os.O_RDWR|os.O_CREAT|os.O_APPEND}):
     return d[s]
 
-def loc2int( self, loc ):
-    if loc==None or loc=='None' or loc=='none':
-	part, block_loc, filenum = 0,0,0
-    else:
-	xx = re.split( '_', loc )
-	part, block_loc, filenum = ( string.atoi(xx[0]),
-				     string.atoi(xx[1]),
-				     string.atoi(xx[2]) )
-    return [part, block_loc, filenum]
-
-def int2loc( self, ii ):
-    return self.LOC_SPEC % ii
-    
 
 
 
@@ -65,6 +52,21 @@ class GenericDriver:
     # list of the files on the device
     LOC_SPEC = '%012d'		# bytes offset (arbitary width)
 
+
+    def loc2int( self, loc ):
+        if loc==None or loc=='None' or loc=='none':
+            part, block_loc, filenum = 0,0,0
+        else:
+            xx = re.split( '_', loc )
+            part, block_loc, filenum = ( string.atoi(xx[0]),
+                                         string.atoi(xx[1]),
+                                         string.atoi(xx[2]) )
+        return [part, block_loc, filenum]
+
+    def int2loc( self, ii ):
+        return self.LOC_SPEC % ii
+
+    
     def __init__( self, sm_size ):
 	# Note, I could pass "device" here save it, but I want to pass it to
 	#       open (to make open like python builtin open) so I might as
@@ -238,7 +240,7 @@ class GenericDriver:
         return r
 
     def format_eov1_header( self, label, cookie=None ):
-        if debug_paranoia:  print "driver.format_vol1_header",label
+        if debug_paranoia:  print "driver.format_eov1_header",label
         r = "EOV1"+label
         if cookie: r=r+' '+cookie
         r = r+ (79-len(r))*' ' + '0'
@@ -322,7 +324,7 @@ class  FTTDriver(GenericDriver) :
 	    Trace.log( e_errors.INFO, "sw_mount error" )
 	    raise SWMountError
 
-	part, block_loc, filenum = loc2int( self, eod_cookie )
+	part, block_loc, filenum = self.loc2int(eod_cookie )
 
         self.statisticsOpen = self.get_allStats(device)
 
@@ -336,10 +338,10 @@ class  FTTDriver(GenericDriver) :
 		# closer to eod (could already be there
 		Trace.trace( 19, 'sw_mount going to eod bloc (%s)'%(block_loc,) )
 		FTT.locate( block_loc )
-		self.cur_loc_cookie = int2loc( self, (part,block_loc,filenum) )
+		self.cur_loc_cookie = self.int2loc( (part,block_loc,filenum) )
 	    else:
 		FTT.locate( 0 )
-		self.cur_loc_cookie = int2loc( self, (0,0,0) )
+		self.cur_loc_cookie = self.int2loc((0,0,0) )
 		pass
 	else:
             self.rewind()
@@ -348,10 +350,11 @@ class  FTTDriver(GenericDriver) :
 	return None
 
     def check_header( self ):
-        ## This sucks.
+        ## Screwing around with the blocksize like this really sucks.
         blocksize=FTT.get_blocksize()
         FTT.set_blocksize(80)
         if debug_paranoia:  print "check_header"
+        extra=0
         try:
             label=self.read(80)
             if debug_paranoia:  print "label=",label,"len(label)=", len(label)
@@ -360,9 +363,10 @@ class  FTTDriver(GenericDriver) :
             else:
                 typ, val=label[:4],label[4:]
                 if ' ' in val:
-                    val=string.split(val)[0]
-############                if typ=="NEW1": #XXXXX  for testing only!!!
-############                    typ,val=None,None
+                    words=string.split(val)
+                    if len(words)>2:
+                        extra=words[1]
+                    val=words[0]
 
         except: #XXX should be the specific I/O error
             ###This is very dangerous, but I don't know what to do
@@ -372,7 +376,7 @@ class  FTTDriver(GenericDriver) :
             typ,val = None,None
         if debug_paranoia:  print "check_header: return",typ,val
         FTT.set_blocksize(blocksize)
-        return typ, val
+        return typ, val, extra
         
         
     def get_allStats( self, device="" ):
@@ -426,14 +430,15 @@ class  FTTDriver(GenericDriver) :
 	return None
 
     def rewind(self):
-        self.cur_loc_cookie=int2loc( self, (0,0,0) )# partition, blk offset, filemarks
-        if debug_paranoia:   print "Calling ftt.rewind"
+        self.cur_loc_cookie=self.int2loc((0,0,0) )# partition, blk offset, filemarks
         r=FTT.rewind()
-        if debug_paranoia:   print "ftt.rewind returned",r
         return r
 
     def skip_fm(self, skip):
-        return FTT.skip_fm(skip)
+        p,b,f = self.loc2int(self.cur_loc_cookie)
+        FTT.skip_fm(skip) #if this fails, an exception is raised
+        f = f+skip
+        self.cur_loc_cookie = self.int2loc((p,b,f))
         
     def get_stats( self ) :
 	# Note: remaining_bytes is updated in write and
@@ -472,11 +477,11 @@ class  FTTDriver(GenericDriver) :
 	# I think for write only; kind of like a close
 	FTT.writefm()
 	self.file_marks = self.file_marks + 1
-	pp,bb,ff = loc2int( self, self.cur_loc_cookie )
+	p,b,f = self.loc2int(self.cur_loc_cookie )
 	ss = FTT.get_stats()  # update block_loc if we can
-	if ss['bloc_loc'] != None: bb = string.atoi(ss['bloc_loc'])
+	if ss['bloc_loc'] != None: b = string.atoi(ss['bloc_loc'])
 	# NOTE: I know this makes several times that FTT.get_stats is called!!!
-	self.cur_loc_cookie = int2loc( self, (pp,bb,ff+1) )
+	self.cur_loc_cookie = self.int2loc((p,b,f+1) )
 	return None
 
     def open( self, device, mode ):
@@ -504,7 +509,10 @@ class  FTTDriver(GenericDriver) :
 	return self
 
     def seek( self, loc_cookie ):
-	part, block_loc, filenum = loc2int( self, loc_cookie )
+	part, block_loc, filenum = self.loc2int(loc_cookie )
+        if debug_paranoia:
+            print "seek: part, block, file=", part, block_loc, filenum
+            print "seek: cur_loc_cookie=", self.cur_loc_cookie
 	# THE "and 0" IN THE NEXT LINE IS TO TEMPORARILY DISABLE FTT.locate
 	if block_loc and 0:
 	    xx = 2
@@ -516,7 +524,7 @@ class  FTTDriver(GenericDriver) :
 		pass
 	    if xx == 0: raise SeekError
 	    pass
-	elif filenum != loc2int(self,self.cur_loc_cookie)[2]:
+	elif filenum != self.loc2int(self.cur_loc_cookie)[2]:
 	    # NOTE: when skipping file marks, there must be a file mark to
 	    #       skip over. This is why we can not "skip" to the beginning
 	    #       of a tape; we must "rewind" to get to BOT
@@ -532,10 +540,11 @@ class  FTTDriver(GenericDriver) :
 		    pass
 		pass
 	    else:
-		skip = filenum - loc2int(self,self.cur_loc_cookie)[2]
+		skip = filenum - self.loc2int(self.cur_loc_cookie)[2]
 		if skip < 0: skip = skip - 1# if neg, make more neg
 		FTT.skip_fm( skip )
-		if skip < 0: FTT.skip_fm( 1 )
+		if skip < 0:
+                    FTT.skip_fm( 1 )
 		ss = FTT.get_stats()  # update block_loc if we can
 		if ss['bloc_loc'] != None:
 		    Trace.trace( 19, 'after seek: bloc_loc=%s'%(ss['bloc_loc'],) )
@@ -545,6 +554,7 @@ class  FTTDriver(GenericDriver) :
 		    # STATEMENT ABOVE, THE "if block_loc" CODE BELOW
 		    # IS BOGUS.
 		    if block_loc and block_loc != string.atoi(ss['bloc_loc']):
+                        if debug_paranoia: print block_loc, "!=", string.atoi(ss['bloc_loc'])
 			raise SeekError
 		    block_loc = string.atoi(ss['bloc_loc'])
 		    pass
@@ -553,21 +563,23 @@ class  FTTDriver(GenericDriver) :
 		    pass
 		pass
 	    pass
-	self.cur_loc_cookie = int2loc( self, (part,block_loc,filenum) )
+	self.cur_loc_cookie = self.int2loc((part,block_loc,filenum) )
 	return None
 
     def tell( self ):
-	pp,bb,ff = loc2int( self, self.cur_loc_cookie )
+	p,b,f = self.loc2int(self.cur_loc_cookie )
+        if debug_paranoia: print "tell: part, block, file=",p,b,f
 	ss = FTT.get_stats()  # update block_loc if we can
 	r = ss['bloc_loc']
-        if r!= None: bb = string.atoi(ss['bloc_loc'])
+        if r!= None: b = string.atoi(ss['bloc_loc'])
         else: Trace.log( e_errors.ERROR, "FTT.get_stats - returned None")
 	# NOTE: I know this makes several times that FTT.get_stats is called!!!
-	self.cur_loc_cookie = int2loc( self, (pp,bb,ff) )
+	self.cur_loc_cookie = self.int2loc((p,b,f) )
+        if debug_paranoia: print "tell: return", self.cur_loc_cookie
 	return self.cur_loc_cookie
         
     def is_bot( self, loc_cookie ):
-        part, block_loc, filenum = loc2int( self, loc_cookie )
+        part, block_loc, filenum = self.loc2int(loc_cookie )
 	if filenum == 0: return 1
 	return 0
 
@@ -588,8 +600,8 @@ class  FTTDriver(GenericDriver) :
                 # this is making an assumption and should be changed to use
                 # FTT.get_stats() (which is broken as of 2-25-99) and setting
                 # the block_loc (in addition to the file location)
-                pp,bb,ff = loc2int( self, self.cur_loc_cookie )
-                self.cur_loc_cookie = int2loc( self, (pp,bb,ff+1) )
+                p,b,f = self.loc2int(self.cur_loc_cookie )
+                self.cur_loc_cookie = self.int2loc( (p,b,f+1) )
                 pass
 	    pass
 	self.mode = ''			# indicate the the device is closed
@@ -599,8 +611,8 @@ class  FTTDriver(GenericDriver) :
 	# if loc1 greater than loc2 --> return 1
 	# if same                   --> return 0
         # otherwise                 --> return -1   (loc1 less than loc2)
-	part1, block_loc1, filenum1 = loc2int( self, loc1 )
-	part2, block_loc2, filenum2 = loc2int( self, loc2 )
+	part1, block_loc1, filenum1 = self.loc2int(loc1 )
+	part2, block_loc2, filenum2 = self.loc2int(loc2 )
 	if (part1,block_loc1,filenum1) == (part2,block_loc2,filenum2): rr = 0
 	elif part1 < part2: rr = -1
 	elif part1 > part2: rr =  1
