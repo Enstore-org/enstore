@@ -436,7 +436,7 @@ def do_real_work():
 	    num_movers=num_movers+1
 	    mvc = Mover(cs, mov, offline_d, seen_down_d, allowed_down_d)
 	    total_servers.append(mvc)
-	    bad_movers = mvc.check()		
+	    bad_movers = bad_movers + mvc.check()		
 	if bad_movers*2 > num_movers:
 	    enprint("LOW CAPACITY: Found, %s of %s not responding"%(bad_movers, num_movers))
 	    lmc.sendmail("Found LOW CAPACITY movers for %s"%(lm_name,))
