@@ -253,7 +253,7 @@ class AtMovers:
                 Trace.trace(19,"busy_volumes: rec %s" % (self.at_movers[rec[0]],))
                 Trace.trace(19,"busy_volumes: rec %s" % (self.at_movers[rec[0]]['volume_status'][0][1],))
             if self.at_movers.has_key(rec[0]):
-                if self.at_movers[rec[0]]['volume_status'][0][0] == e_errors.NOACCESS:
+                if self.at_movers[rec[0]]['volume_status'][0][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
                     continue
                 if self.at_movers[rec[0]]['volume_status'][0][1] == 'none':
                     # system inhibit
