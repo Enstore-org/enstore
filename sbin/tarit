@@ -8,11 +8,16 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 case $node in
-  stken*) gang=stken
+  stken*|rip9|rip10)
+          gang=stken
           op="-ne"
           ;;
    d0en*) gang=d0en
           op="-eq"
+          ;;
+   rip[1-8])
+          echo `date` NOT backing up rip nodes - Policy choice.
+          exit 0
           ;;
        *) gang=UNKNOWN
           ;;
@@ -38,6 +43,12 @@ else
 # d0ensrv3:/diskc  /backup nfs noauto 0 0
 # stkensrv3:/diskc /backup nfs noauto 0 0
 fi
+
+# HACK UNTIL DISKS STRAIGHTENED OUT!
+if /bin/true; then
+  BACKUP=/backup
+fi
+# END HACK
 
 mount $BACKUP
 
