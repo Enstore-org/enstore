@@ -449,6 +449,9 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 		 copyit $ENSTORE_DIR/src/SDSSCP_BIN/sdsscp        $INSTALLDIR/sdsscp
 		 copyit $ENSTORE_DIR/src/SDSSCP_BIN/chooseConfig  $INSTALLDIR/chooseConfig
 		 copyit $ENSTORE_DIR/src/SDSSCP_BIN/sdsscp.table  $INSTALLDIR/sdsscp.table
+		 copyit $ENSTORE_DIR/src/SDSSCP_BIN/enroute2      $INSTALLDIR/enroute2
+		 # So far, make setuid installation manual
+                 #chmod u+s $INSTALLDIR/enroute2
 
 		 manifest=$INSTALLDIR/.encpCut.manifest
  	     fi
