@@ -14,7 +14,6 @@ def usage():
     
 
 def check_mover(device, position, f_size):
-    import time
     import random
     import array
     
@@ -45,22 +44,22 @@ def check_mover(device, position, f_size):
     #t1 = time.time()
     t=0.
     for i in range (0,nb):
-        #print "READING",block_size/1024,"Kbytes"
+        print "READING",block_size/1024,"Kbytes"
         t1=time.time()
         FTT.read(buf, 0, block_size)
         t=time.time()-t1+t
-        #p = i*1.*100/f_size
-        #if p%10 == 0:
-        #    print "%.3g %s done"%(p,"%")
+        p = i*1.*100*block_size/f_size
+        if p%10 == 0:
+            print "%.3g %s done"%(p,"%")
         #print "READ", len(ret)
     #p=100.
-    #print "%.3g %s done"%(p,"%")
+    print "%.3g %s done"%(p,"%")
     if rest:
         t1=time.time()
         FTT.read(buf, 0, rest)
         t=time.time()-t1+t
     t2 = time.time()
-    #print block_size*f_size/1024./1024.,"Mbytes read in",t2-t1,"secs"
+    print block_size*f_size/1024./1024.,"Mbytes read in",t2-t1,"secs"
     #print "READ TIME",t2-t1,"secs"
     #read_t_r = f_size*1./1024./1024./(t2-t1)
     print "READ TIME",t,"secs"
