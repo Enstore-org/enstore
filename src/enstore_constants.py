@@ -18,6 +18,9 @@ SG = "sg"
 LOG = ".log"
 LOG_PREFIX = "LOG-"
 
+ALIVE = 1
+DEAD = 0
+
 # used by the inquisitor plot command
 MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)
 MPD_FILE = "%s%s"%(FILE_PREFIX, MPD)
@@ -149,6 +152,7 @@ WAM = "work at movers"
 WORK = "work"
 MOVERS = "movers"
 MOVER_INTERFACE = 'mover_interface'
+STORAGE_GROUP = 'storage_group'
 ID = "id"
 PORT = "port"
 CURRENT = "current"

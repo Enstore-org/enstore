@@ -143,13 +143,32 @@ def get_days_ago(date, days_ago):
     seconds_ago = float(days_ago*86400)
     return date - seconds_ago
 
+def ping(node):
+    # ping the node to see if it is up.
+    times_to_ping = 4
+    timeout = 5
+    cmd = "ping -c %s -w %s %s"%(times_to_ping, timeout, node)
+    p = os.popen(cmd, 'r').readlines()
+    for line in p:
+        if not string.find(line, "transmitted") == -1:
+            # this is the statistics line
+            stats = string.split(line)
+            if stats[0] == stats[3]:
+                # transmitted packets = received packets
+                return enstore_constants.ALIVE
+            else:
+                return enstore_constants.DEAD
+    else:
+        # we did not find the stat line
+        return enstore_constants.DEAD
+
 def get_remote_file(node, file, newfile):
     # we have to make sure that the rcp does not hang in case the remote node is goofy
     pid = os.fork()
     if pid == 0:
 	# this is the child
 	rtn = os.system("enrcp %s:%s %s"%(node, file, newfile))
-	os._exit(rtn)
+	os._exit(0)
     else:
 	# this is the parent, allow a total of 30 seconds for the child
 	for i in [0, 1, 2, 3, 4, 5]:
@@ -159,6 +178,7 @@ def get_remote_file(node, file, newfile):
 	    time.sleep(5)
 	else:
 	    # the child has not finished, be brutal. it may be hung
+	    print "killing the rcp - %s"%(pid,)
 	    os.kill(pid, signal.SIGKILL)
 	    return 1
 
