@@ -506,7 +506,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.trailer:
                 nbytes = self.buffer.trailer_size
                 bytes_read = self.buffer.stream_read(nbytes, self.trailer)
-                Trace.trace(10, "read %s bytes of  trailer" % bytes_read)
+                Trace.trace(10, "read %s bytes of  trailer" % (bytes_read,))
             self.buffer.eof_read() #pushes last partial block onto the fifo
             self.buffer.write_ok.set()
 
@@ -728,7 +728,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             self.wrapper = __import__(self.wrapper_type + '_wrapper')
         except ImportError, detail:
-            Trace.log(e_errors.ERROR, "%s"%(self.wrapper_type, detail))
+            Trace.log(e_errors.ERROR, "%s"%(detail,))
             self.wrapper = None
             
         client_filename = ticket['wrapper'].get('fullname','?')
@@ -822,7 +822,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.tape_driver.rewind()
                 vol1_label = 'VOL1'+ volume_label
                 vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
-                Trace.log(e_errors.INFO, "labeling new tape %s" % volume_label)
+                Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
                 self.tape_driver.write(vol1_label, 0, 80)
                 self.tape_driver.writefm()
                 eod = 1
@@ -1100,7 +1100,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if type(v) is type({}):
                         self.vol_info.update(v)
                 except exceptions.Exception, detail:
-                    Trace.log(e_errors.ERROR, "inquire volume for dismount: %s" % str(detail))
+                    Trace.log(e_errors.ERROR, "inquire volume for dismount: %s" % (detail,))
         if not self.vol_info.get('external_label'):
             if self.current_volume:
                 self.vol_info['external_label'] = self.current_volume
@@ -1138,7 +1138,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(10, 'mc replies %s' % (status,))
 
         if self.mount_delay:
-            Trace.trace(25, "waiting %s seconds after mount"%self.mount_delay)
+            Trace.trace(25, "waiting %s seconds after mount"%(self.mount_delay,))
             time.sleep(self.mount_delay)
 
         if status and status[0] == e_errors.OK:
