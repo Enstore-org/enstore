@@ -15,6 +15,9 @@ thepwd=`pwd`
 ##############################################################################
 # utility functions that do what their names imply
 
+# this function would be better if it actually did the command too, this
+# would allow you to say "check_status command" rather than "command; check_status $? command.."
+# Oh, well... next time
 check_status() { jstatus=${1:-0}
                  jname=${2:-unknown}
                  jstep=${Step:-unknown}
@@ -203,6 +206,7 @@ TAG=${REV}_${product}_`uname`
 # we need a place to install the cut product
 
 setrev=1
+puntUPS=0
 if [ -z "${INSTALLDIR-}" ] ; then
    Step="installdir"
    case `uname -n` in
@@ -212,6 +216,8 @@ if [ -z "${INSTALLDIR-}" ] ; then
       ripsgi*)   INSTALLDIR=/usr/products/$product;;
       rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2
                  setrev=0;;
+      do0la*)    INSTALLDIR=/home/bakken/enstore/$product #this stinks! but I don't know what else to do
+	          puntUPS=1;;
       *)         check_status 1 "Don't know where to install ups product $product on `uname -n`";;
    esac
    echo "Install directory not specified - Defaulting to install directory of $INSTALLDIR"
@@ -454,40 +460,61 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
              chmod 555 $INSTALLDIR
              check_status $? "chmod 555 $INSTALLDIR"
 
+             if [ $puntUPS -eq 1 ]; then
+	        rm -f ~/$product_$REV.tar
+		tar -cf ~/$product_$REV.tar $INSTALLDIR
+                check_status $? "tar -cf ~/$product_$REV.tar $INSTALLDIR"
+             fi
            fi
            ;;
 
        10) echo "Step $Step:  ups undeclare -f $FLAVOR $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
-              a=`$UPS_DIR/bin/ups undeclare  -f $FLAVOR $product $REV 2>&1`
-              stat=$?
-              if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
-                check_status $stat $a
+	      if [ $puntUPS -ne 1 ]; then
+                a=`$UPS_DIR/bin/ups undeclare  -f $FLAVOR $product $REV 2>&1`
+                stat=$?
+                if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
+                  check_status $stat $a
+                fi
+	      else
+                echo "PUNTING: ups undeclare  -f $FLAVOR $product $REV" 
               fi
            fi
            ;;
 
        11) echo "Step $Step:  ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
+	      if [ $puntUPS -ne 1 ]; then
                  $UPS_DIR/bin/ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
                  check_status $? "ups declare"
+	      else
+                 echo "PUNTING: ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV"
+              fi
            fi
            ;;
 
        12) echo "Step $Step:  upd delproduct -H $FLAVOR -f $FLAVOR  $product $REV   `starting`"
            if [ "$try" = "doit" ] ; then
-              a=`$UPD_DIR/bin/upd delproduct  -H $FLAVOR -f $FLAVOR $product $REV 2>&1`
-              stat=$?
-              if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
-                check_status $stat $a
+	      if [ $puntUPS -ne 1 ]; then
+                a=`$UPD_DIR/bin/upd delproduct  -H $FLAVOR -f $FLAVOR $product $REV 2>&1`
+                stat=$?
+                if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
+                  check_status $stat $a
+                fi
+              else
+ 	        echo "PUNTING: upd delproduct  -H $FLAVOR -f $FLAVOR $product $REV"
               fi
            fi
            ;;
 
-        13) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV   `starting`"
+       13) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV   `starting`"
            if [ "$try" = "doit" ] ; then
-              $UPD_DIR/bin/upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
-              check_status $? "upd addproduct"
+	      if [ $puntUPS -ne 1 ]; then
+                $UPD_DIR/bin/upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV
+                check_status $? "upd addproduct"
+	      else
+	        echo "PUNTING:upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M ${INSTALLDIR}${productUps} -m $product.table $product $REV"
+              fi 
            fi
            ;;
 
