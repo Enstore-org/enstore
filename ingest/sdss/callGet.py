@@ -83,7 +83,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         missingFiles = []
         pipeObj = popen2.Popen4(string.join(args),  0)
         if pipeObj is None:
-            print "could not fork off the process %s"%(args)
+            print "could not fork off the process %s" % (args,)
             os.remove(fname)
             return 1
 
@@ -106,7 +106,8 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
                         sys.stderr.write("%s\n" % (detail,))
             else:
                 #Get the exit status when the pipe has been closed.
-                rc = pipeObj.wait()
+                if rc == -1:
+                    rc = pipeObj.wait()
                 break
 
         rc = rc >> 8 #This needs to be shifted 8.
