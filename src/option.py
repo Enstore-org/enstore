@@ -261,6 +261,7 @@ ONLINE = "online"                            #mover
 OUTAGE = "outage"                            #inquisitor
 OUTPUT_DIR = "output-dir"                    #plotter
 OVERRIDE = "override"                        #inquisitor
+OVERRIDE_RO_MOUNT = "override-ro-mount"      #encp
 RECURSIVE = "recursive"                      #file
 REFRESH = "refresh"                          #inquisitor(c&s)
 PARENT = "parent"                            #pnfs
@@ -384,7 +385,7 @@ valid_option_list = [
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NO_CRC, NOT_ALLOWED, NO_MAIL,
     NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
-    OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
+    OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE, OVERRIDE_RO_MOUNT,
     PARENT, PATH, PLOT,
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE,
     POSITION, PREFIX, PRIORITY, PTS_DIR,
