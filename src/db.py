@@ -8,6 +8,7 @@ import time
 # enstore imports
 import journal
 import Trace
+import traceback
 import interface
 import configuration_client
 import e_errors
@@ -103,6 +104,7 @@ class Jcursor:
 			try:
 				c.close()
 			except:
+				traceback.print_exc()
 				pass
 
 	def __del__(self):
@@ -146,6 +148,7 @@ class Index:
 					self.db[(val[field], t)] = key
 					key, val = c.next()
 			except:
+                                traceback.print_exc()
 				pass
 			c.close()
 			t.commit()
@@ -392,7 +395,11 @@ class DbTable:
        v0 = self.db[key]
        for name in self.inx.keys():
           self.inx[name].delete(v0[name], key, t)
+     except KeyError:
+       # traceback.print_exc()
+       pass
      except:
+       traceback.print_exc()
        pass
 
      # take care of index
