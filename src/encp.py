@@ -1411,9 +1411,10 @@ def set_pnfs_settings(ticket, client, verbose):
         raise exc, msg, tb
     except:
         exc, msg, tb = sys.exc_info()
-        Trace.log(e_errors.INFO, "Trouble with pnfs: %s %s, "
-                  "continuing" % (exc, msg))
-        ticket['status'] = (exc, msg)
+        Trace.log(e_errors.INFO, "Trouble with pnfs: %s %s."
+                  % (str(exc), str(msg)))
+        ticket['status'] = (str(exc), str(msg))
+        return
         
     # create volume map and store cross reference data
     mover_ticket = ticket.get('mover', {})
@@ -1424,7 +1425,14 @@ def set_pnfs_settings(ticket, client, verbose):
                          ticket["fc"]["location_cookie"],
                          ticket["fc"]["size"],
                          drive)
+    except:
+        exc,msg,tb=sys.exc_info()
+        Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s."
+                  % (str(exc), str(msg)))
+        ticket['status'] = (str(exc), str(msg))
+        return
 
+    try:
         # add the pnfs ids and filenames to the file clerk ticket and store it
         fc_ticket = ticket.copy() #Make a copy so "work" isn't overridden.
         fc_ticket["fc"]["pnfsid"] = p.id
@@ -1436,9 +1444,9 @@ def set_pnfs_settings(ticket, client, verbose):
         fcc = file_clerk_client.FileClient(client['csc'], ticket["fc"]["bfid"])
         fc_reply = fcc.set_pnfsid(fc_ticket)
 
-        if fc_reply['status'][0] != e_errors.OK:
-            print_data_access_layer_format('', '', 0, fc_reply)
-            quit()
+        #if fc_reply['status'][0] != e_errors.OK:
+        #    print_data_access_layer_format('', '', 0, fc_reply)
+        #    quit()
 
         Trace.message(4, "PNFS SET")
         Trace.message(4, pprint.pformat(fc_reply))
@@ -1446,9 +1454,9 @@ def set_pnfs_settings(ticket, client, verbose):
         ticket['status'] = fc_reply['status']
     except:
         exc,msg,tb=sys.exc_info()
-        Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s, "
-                  "continuing" % (exc, msg))
-        ticket['status'] = (exc, msg)
+        Trace.log(e_errors.INFO, "Unable to send info. to file clerk. %s %s."
+                  % (str(exc), str(msg)))
+        ticket['status'] = (str(exc), str(msg))
 
 ############################################################################
 #Functions for writes.
