@@ -182,14 +182,38 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = self.filepath
 
+        #Perform only one stat() and do the checks here for performance
+        # improvements over calling python library calls for each check.
+        # get_stat() is not used here because that function may return
+        # the status of the parent directory instead, which is not what we
+        # want here.
+        pstat = os.stat(fname)
+        if not filepath:
+            self.pstat = pstat
         
-        if not os.path.exists(fname):
-            raise OSError(errno.ENOENT,
-                          os.strerror(errno.ENOENT) + ": " + fname)
+        #Using the stat, make sure that the "file" is readable.
+        if pstat[stat.ST_MODE] & stat.S_IROTH:
+            return
+        
+        elif pstat[stat.ST_MODE] & stat.S_IRUSR and \
+           pstat[stat.ST_UID] == os.geteuid():
+            return
 
-        if not os.access(fname, os.R_OK):
+        elif pstat[stat.ST_MODE] & stat.S_IRGRP and \
+           pstat[stat.ST_GID] == os.getegid():
+            return
+        
+        else:
             raise OSError(errno.EACCES,
                           os.strerror(errno.EACCES) + ": " + fname)
+
+        #if not os.path.exists(fname):
+        #    raise OSError(errno.ENOENT,
+        #                  os.strerror(errno.ENOENT) + ": " + fname)
+        #
+        #if not os.access(fname, os.R_OK):
+        #    raise OSError(errno.EACCES,
+        #                  os.strerror(errno.EACCES) + ": " + fname)
 
     ##########################################################################
 
@@ -528,18 +552,19 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def get_file_size(self, filepath=None):
 
         if filepath:
-            name = filepath
+            fname = filepath
+            #Get the file system size.
+            os_filesize = long(os.stat(fname)[stat.ST_SIZE])
         else:
-            name = self.filepath
+            fname = self.filepath
+            self.verify_existance()
+            self.pstatinfo()
+            #Get the file system size.
+            os_filesize = self.file_size
 
-        self.verify_existance()
-
-        #Get the file system size.
-        os_filesize = long(os.stat(name)[stat.ST_SIZE])
-        
         #If there is no layer 4, make sure an error occurs.
         try:
-            pnfs_filesize = long(self.get_xreference()[2].strip())
+            pnfs_filesize = long(self.get_xreference(fname)[2].strip())
         except ValueError:
             pnfs_filesize = long(-1)
             #self.file_size = os_filesize
