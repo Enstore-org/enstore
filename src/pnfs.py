@@ -569,6 +569,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             pnfs_filesize = long(-1)
             #self.file_size = os_filesize
             #return os_filesize
+
+        Trace.log(e_errors.INFO, "OS SIZE: %s    PNFS SIZE: %s" %
+                  os_filesize, pnfs_filesize)
         
         #Error checking.  However first ignore large file cases.
         if os_filesize == 1 and pnfs_filesize > long(2L**31L) - 1:
