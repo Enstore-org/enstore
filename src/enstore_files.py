@@ -11,6 +11,7 @@ import string
 import Trace
 import alarm
 import enstore_html
+import enstore_functions
 import enstore_status
 import e_errors
 
@@ -316,7 +317,7 @@ class EnMountDataFile(EnDataFile):
 
 	# parse out the file directory , a remnant from the grep in the time 
 	# field
-	enstore_status.strip_file_dir(etime)
+	enstore_functions.strip_file_dir(etime)
 
         # pull out any dictionaries from the rest of the message
         msg_dicts = enstore_status.get_dict(erest)
@@ -343,7 +344,7 @@ class EnEncpDataFile(EnDataFile):
             return []
         # the time info may contain the file directory which we must
         # strip off
-        enstore_status.strip_file_dir(einfo[ETIME])
+        enstore_functions.strip_file_dir(einfo[ETIME])
         return [einfo[ETIME], einfo[EBYTES], einfo[EDICTS], einfo[ETYPE]]
 
     # pull out the plottable data from each line

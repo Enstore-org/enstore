@@ -10,7 +10,7 @@ import calendar
 import stat
 
 # enstore imports
-import enstore_status
+import enstore_functions
 import enstore_files
 import enstore_constants
 import Trace
@@ -89,7 +89,7 @@ def convert_to_jpg(psfile, file_name):
 
 # return the time to be included in the title of the plots
 def plot_time():
-    return "(Plotted: %s)"%(enstore_status.format_time(time.time()),)
+    return "(Plotted: %s)"%(enstore_functions.format_time(time.time()),)
 
 class EnPlot(enstore_files.EnFile):
 
@@ -398,6 +398,7 @@ class BpdDataFile(EnPlot):
 	    # now find the total bytes transferred over all days and the mean
 	    # size of all transfers.
 	    total = total + ndata[key]
+	    print "%s : %s (%s)"%(key, ndata[key], total)
 	    # there may not be any transfers on a certain date, so check the key
 	    # first.  above ndata has all dates initialized to 0 so no check is
 	    # necessary.

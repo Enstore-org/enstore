@@ -10,55 +10,8 @@ import stat
 import Trace
 import alarm
 import e_errors
-
-# dictionary keys for the system status information
-STATUS = "status"
-SUSPECT_VOLS = "suspect"
-REJECT_REASON = "reject_reason"
-PENDING = "pending"
-WORK = "work"
-MOVER = "mover"
-MOVERS = "movers"
-KNOWN_MOVERS = "known_movers"
-ID = "id"
-PORT = "port"
-CURRENT = "current"
-BASE = "base"
-DELTA = "delta"
-AGETIME = "agetime"
-FILE = "file"
-BYTES = "bytes"
-MODIFICATION = "mod"
-NODE = "node"
-SUBMITTED = "submitted"
-DEQUEUED = "dequeued"
-FILE_FAMILY = "file_family"
-FILE_FAMILY_WIDTH = "ff_width"
-DEVICE = "device"
-EOD_COOKIE = "eod_cookie"
-LOCATION_COOKIE = "location_cookie"
-COMPLETED = "completed"
-CUR_READ = "cur_read"
-CUR_WRITE = "cur_write"
-STATE = "state"
-FILES = "files"
-VOLUME = "volume"
-LAST_READ = "last_read"
-LAST_WRITE = "last_write"
-WRITE = "write"
-READ = "read"
-FOUND_LM = "found_lm"
-BLOCKSIZES = "blocksizes"
-LMSTATE = "lmstate"
-
-NO_INFO = "------"
-NO_WORK = "No work at movers"
-NO_PENDING = "No pending work"
-
-# translate time.time output to a person readable format.
-# strip off the day and reorganize things a little
-def format_time(theTime, sep=" "):
-    return time.strftime("%Y-%b-%d"+sep+"%H:%M:%S", time.localtime(theTime))
+import enstore_constants
+import enstore_functions
 
 # strip off anything before the '/'
 def strip_file_dir(str):
@@ -157,7 +110,7 @@ class EnStatus:
         if vi:
 	    if not self.text.has_key(key):
 		self.text[key] = {}
-	    self.text[key][EOD_COOKIE] = vi.get("eod_cookie", "")
+	    self.text[key][enstore_constants.EOD_COOKIE] = vi.get("eod_cookie", "")
 
     # get the location cookie from the ticket
     def get_location_cookie(self, ticket, key):
@@ -165,7 +118,7 @@ class EnStatus:
         if fc:
 	    if not self.text.has_key(key):
 		self.text[key] = {}
-	    self.text[key][LOCATION_COOKIE] = fc.get("location_cookie", " ")
+	    self.text[key][enstore_constants.LOCATION_COOKIE] = fc.get("location_cookie", " ")
     
     # parse the library manager queues returned from "getwork". pull out the
     # information we want and put it in a dictionary
@@ -173,91 +126,99 @@ class EnStatus:
 	self.text[key][worktype] = []
 	for mover in work:
 	    # 'mover' not found in pending work
-	    dict = {MOVER : mover.get('mover', " ")}
+	    dict = {enstore_constants.MOVER : mover.get('mover', " ")}
 	    dict[ID] = mover['unique_id']
-	    if mover.has_key(REJECT_REASON):
-		dict[REJECT_REASON] = mover[REJECT_REASON][0]
-	    dict[PORT] = mover['callback_addr'][1]
+	    if mover.has_key(enstore_constants.REJECT_REASON):
+		dict[enstore_constants.REJECT_REASON] = mover[enstore_constants.REJECT_REASON][0]
+	    dict[enstore_constants.PORT] = mover['callback_addr'][1]
 	    if mover['work'] == 'write_to_hsm':
-		dict[WORK] = WRITE
+		dict[enstore_constants.WORK] = enstore_constants.WRITE
 	    else:
-		dict[WORK] = READ
+		dict[enstore_constants.WORK] = enstore_constants.READ
 
 	    encp = mover['encp']
-	    dict[CURRENT] = repr(encp['curpri'])
-	    dict[BASE] = repr(encp['basepri'])
-	    dict[DELTA] = repr(encp['delpri'])
-	    dict[AGETIME] = repr(encp['agetime'])
+	    dict[enstore_constants.CURRENT] = repr(encp['curpri'])
+	    dict[enstore_constants.BASE] = repr(encp['basepri'])
+	    dict[enstore_constants.DELTA] = repr(encp['delpri'])
+	    dict[enstore_constants.AGETIME] = repr(encp['agetime'])
 
 	    wrapper = mover['wrapper']
-	    dict[FILE] = wrapper['fullname']
-	    dict[BYTES] = add_commas(str(wrapper['size_bytes']))
+	    dict[enstore_constants.FILE] = wrapper['fullname']
+	    dict[enstore_constants.BYTES] = add_commas(str(wrapper['size_bytes']))
 
 	    # 'mtime' not found in reads
 	    if wrapper.has_key('mtime'):
-		dict[MODIFICATION] = format_time(wrapper['mtime'])
+		dict[enstore_constants.MODIFICATION] = enstore_functions.format_time(wrapper['mtime'])
 
 	    machine = wrapper['machine']
-	    dict[NODE] = self.unquote(machine[1])
+	    dict[enstore_constants.NODE] = self.unquote(machine[1])
 
 	    times = mover['times']
-	    dict[SUBMITTED] = format_time(times['t0'])
+	    dict[enstore_constants.SUBMITTED] = enstore_functions.format_time(times['t0'])
 	    # 'lm_dequeued' not found in pending work
 	    if times.has_key('lm_dequeued'):
-		dict[DEQUEUED] = format_time(times['lm_dequeued'])
+		dict[enstore_constants.DEQUEUED] = enstore_functions.format_time(times['lm_dequeued'])
 
 	    vc = mover['vc']
-	    dict[FILE_FAMILY] = vc['file_family']
+	    dict[enstore_constants.FILE_FAMILY] = vc['file_family']
 	    # 'file_family_width not found in reads
 	    if vc.has_key('file_family_width'):
-		dict[FILE_FAMILY_WIDTH] = repr(vc['file_family_width'])
+		dict[enstore_constants.FILE_FAMILY_WIDTH] = repr(vc['file_family_width'])
 
 	    # 'fc' not found in pending work
 	    fc = mover.get('fc', "")
 	    # 'external_label' not found in pending work
 	    if fc:
                 if fc.has_key('external_label'):
-                    dict[DEVICE] = fc['external_label']
+                    dict[enstore_constants.DEVICE] = fc['external_label']
 	    self.text[key][worktype].append(dict)
 
     # output the blocksize info
     def output_blocksizes(self, info):
-	if not self.text.has_key(BLOCKSIZES):
-	    self.text[BLOCKSIZES] = {}
+	if not self.text.has_key(enstore_constants.BLOCKSIZES):
+	    self.text[enstore_constants.BLOCKSIZES] = {}
 	for a_key in info.keys():
 	    if a_key != 'status':
-		self.text[BLOCKSIZES][a_key] = info[a_key]
+		self.text[enstore_constants.BLOCKSIZES][a_key] = info[a_key]
 
     # output the passed alive status
     def output_alive(self, host, port, state, time, key):
 	if not self.text.has_key(key):
 	    self.text[key] = {}
-	self.text[key][STATUS] = [state, self.unquote(host), repr(port), 
-				  format_time(time)]
+	self.text[key][enstore_constants.STATUS] = [state, 
+						    self.unquote(host), 
+						    repr(port), 
+						    enstore_functions.format_time(time)]
 
     # output the timeout error
     def output_etimedout(self, host, port, state, time, key, last_time=0):
 	if last_time == -1:
-	    ltime = NO_INFO
+	    ltime = enstore_constants.NO_INFO
 	else:
-	    ltime = format_time(last_time)
+	    ltime = enstore_functions.format_time(last_time)
 	if not self.text.has_key(key):
 	    self.text[key] = {}
-	self.text[key][STATUS] = [state, self.unquote(host), repr(port), 
-				  format_time(time), ltime]
+	self.text[key][enstore_constants.STATUS] = [state, self.unquote(host),
+						    repr(port), 
+						    enstore_functions.format_time(time), ltime]
 
     # output timeout error when trying to get config dict from config server
     def output_noconfigdict(self, state, time, key):
 	if not self.text.has_key(key):
 	    self.text[key] = {}
-	self.text[key][STATUS] = [ state, NO_INFO, NO_INFO, format_time(time)]
+	self.text[key][enstore_constants.STATUS] = [ state, 
+						     enstore_constants.NO_INFO,
+						     enstore_constants.NO_INFO,
+						     enstore_functions.format_time(time)]
 
     # output a line stating that we do not support this server
     def output_nofunc(self, key):
 	if not self.text.has_key(key):
 	    self.text[key] = {}
-	self.text[key][STATUS] = ["NO SUPPORT IN INQ", NO_INFO, NO_INFO, 
-				  NO_INFO]
+	self.text[key][enstore_constants.STATUS] = ["NO SUPPORT IN INQ", 
+						    enstore_constants.NO_INFO,
+						    enstore_constants.NO_INFO, 
+						    enstore_constants.NO_INFO]
 
     # output the library manager suspect volume list
     def output_suspect_vols(self, ticket, key):
@@ -265,7 +226,7 @@ class EnStatus:
 	if not self.text.has_key(key):
 	    self.text[key] = {}
 	if len(sus_vols) != 0:
-	    self.text[key][SUSPECT_VOLS] = []
+	    self.text[key][enstore_constants.SUSPECT_VOLS] = []
 	    for svol in sus_vols:
 	        str = svol['external_label']+" - "
 	        movers = svol['movers']
@@ -276,15 +237,15 @@ class EnStatus:
 	                    str=str+", "
 	                str = str+mover
 	                not_first_one = 1
-	        self.text[key][SUSPECT_VOLS].append(str)
+	        self.text[key][enstore_constants.SUSPECT_VOLS].append(str)
 	else:
-	    self.text[key][SUSPECT_VOLS] = ["None"]
+	    self.text[key][enstore_constants.SUSPECT_VOLS] = ["None"]
 
     # output the state of the library manager
     def output_lmstate(self, ticket, key):
 	if not self.text.has_key(key):
 	    self.text[key] = {}
-	self.text[key][LMSTATE] = ticket['state']
+	self.text[key][enstore_constants.LMSTATE] = ticket['state']
 
     # output the library manager queues
     def output_lmqueues(self, ticket, key):
@@ -292,88 +253,88 @@ class EnStatus:
 	if not self.text.has_key(key):
 	    self.text[key] = {}
 	if len(work) != 0:
-	    self.parse_lm_queues(work, key, WORK)
+	    self.parse_lm_queues(work, key, enstore_constants.WORK)
 	else:
-	    self.text[key][WORK] = NO_WORK
+	    self.text[key][enstore_constants.WORK] = enstore_constants.NO_WORK
 	pending_work = ticket['pending_work']
 	if len(pending_work) != 0:
-	    self.parse_lm_queues(pending_work, key, PENDING)
+	    self.parse_lm_queues(pending_work, key, enstore_constants.PENDING)
 	else:
-	    self.text[key][PENDING] = NO_PENDING
+	    self.text[key][enstore_constants.PENDING] = enstore_constants.NO_PENDING
 
     # output the mover status
     def output_moverstatus(self, ticket, key):
 	# we need to clear out the dict as keywords come and go depending on the
 	# state of the mover.  save the status which is in there first.
-	status = self.text[key][STATUS]
+	status = self.text[key][enstore_constants.STATUS]
 	self.text[key] = {}
-	self.text[key][STATUS] = status
-	self.text[key][COMPLETED] = repr(ticket["no_xfers"])
+	self.text[key][enstore_constants.STATUS] = status
+	self.text[key][enstore_constants.COMPLETED] = repr(ticket["no_xfers"])
        	if ticket["state"] == "busy":
-	    self.text[key][CUR_READ] = add_commas(str(ticket["rd_bytes"]))
-	    self.text[key][CUR_WRITE] = add_commas(str(ticket["wr_bytes"]))
+	    self.text[key][enstore_constants.CUR_READ] = add_commas(str(ticket["rd_bytes"]))
+	    self.text[key][enstore_constants.CUR_WRITE] = add_commas(str(ticket["wr_bytes"]))
 	    if ticket["mode"] == "r":
-	        self.text[key][STATE] = "%s reading %s bytes from Enstore"%\
+	        self.text[key][enstore_constants.STATE] = "%s reading %s bytes from Enstore"%\
 					(ticket["state"], 
 				     add_commas(str(ticket["bytes_to_xfer"])))
                 self.get_location_cookie(ticket, key)
-		self.text[key][FILES] = []
-		self.text[key][FILES].append("%s -->"%(ticket['files'][1],))
-		self.text[key][FILES].append(ticket['files'][0])
-		self.text[key][VOLUME] = ticket['tape']
+		self.text[key][enstore_constants.FILES] = []
+		self.text[key][enstore_constants.FILES].append("%s -->"%(ticket['files'][1],))
+		self.text[key][enstore_constants.FILES].append(ticket['files'][0])
+		self.text[key][enstore_constants.VOLUME] = ticket['tape']
 	    elif ticket["mode"] == "w":
-	        self.text[key][STATE] = "%s writing %s bytes to Enstore"%\
+	        self.text[key][enstore_constants.STATE] = "%s writing %s bytes to Enstore"%\
 					(ticket["state"], 
 				     add_commas(str(ticket["bytes_to_xfer"])))
                 self.get_eod_cookie(ticket, key)
-		self.text[key][FILES] = []
-		self.text[key][FILES].append("%s -->"%(ticket['files'][0],))
-		self.text[key][FILES].append(ticket['files'][1])
-		self.text[key][VOLUME] = ticket['tape']
+		self.text[key][enstore_constants.FILES] = []
+		self.text[key][enstore_constants.FILES].append("%s -->"%(ticket['files'][0],))
+		self.text[key][enstore_constants.FILES].append(ticket['files'][1])
+		self.text[key][enstore_constants.VOLUME] = ticket['tape']
             elif ticket["mode"] == "u":
-                self.text[key][STATE] = "%s dismounting volume %s"%\
+                self.text[key][enstore_constants.STATE] = "%s dismounting volume %s"%\
 					(ticket["state"], ticket['tape'])
             else:
-                self.text[key][STATE] = "%s??"%(ticket["state"],)
+                self.text[key][enstore_constants.STATE] = "%s??"%(ticket["state"],)
 
 	elif ticket["state"] == "idle":
-	    self.text[key][LAST_READ] = add_commas(str(ticket["rd_bytes"]))
-	    self.text[key][LAST_WRITE] = add_commas(str(ticket["wr_bytes"]))
+	    self.text[key][enstore_constants.LAST_READ] = add_commas(str(ticket["rd_bytes"]))
+	    self.text[key][enstore_constants.LAST_WRITE] = add_commas(str(ticket["wr_bytes"]))
 	    if ticket['mode'] == 'w' or ticket['mode'] == 'r':
-		self.text[key][STATE] = "idle - have bound volume"
+		self.text[key][enstore_constants.STATE] = "idle - have bound volume"
 	    else:
-		self.text[key][STATE] = "idle"
+		self.text[key][enstore_constants.STATE] = "idle"
             if ticket['no_xfers'] > 0:
                 work = ticket['work_ticket'].get('work', "")
                 if string.find(work, "read") != -1:
                     self.get_location_cookie(ticket, key)
-		    self.text[key][VOLUME] = ticket['tape']
-		    self.text[key][FILES] = []
-		    self.text[key][FILES].append("%s -->"%(ticket['files'][1],))
-		    self.text[key][FILES].append(ticket['files'][0])
+		    self.text[key][enstore_constants.VOLUME] = ticket['tape']
+		    self.text[key][enstore_constants.FILES] = []
+		    self.text[key][enstore_constants.FILES].append("%s -->"%(ticket['files'][1],))
+		    self.text[key][enstore_constants.FILES].append(ticket['files'][0])
                 elif string.find(work, "write") != -1:
                     self.get_eod_cookie(ticket, key)
-		    self.text[key][VOLUME] = ticket['tape']
-		    self.text[key][FILES] = []
-		    self.text[key][FILES].append("%s -->"%(ticket['files'][1],))
-		    self.text[key][FILES].append(ticket['files'][0])
+		    self.text[key][enstore_constants.VOLUME] = ticket['tape']
+		    self.text[key][enstore_constants.FILES] = []
+		    self.text[key][enstore_constants.FILES].append("%s -->"%(ticket['files'][1],))
+		    self.text[key][enstore_constants.FILES].append(ticket['files'][0])
         else:
-	    self.text[key][STATE] = ticket["state"]
+	    self.text[key][enstore_constants.STATE] = ticket["state"]
 
     # output the library manager mover list
     def output_lmmoverlist(self, ticket, key):
 	work = ticket['moverlist']
 	if not self.text.has_key(key):
 	    self.text[key] = {}
-	self.text[key][MOVERS] = []
-	self.text[key][KNOWN_MOVERS] = []
+	self.text[key][enstore_constants.MOVERS] = []
+	self.text[key][enstore_constants.KNOWN_MOVERS] = []
 	if len(work) != 0:
 	    for mover in work:
-		self.text[key][KNOWN_MOVERS].append([mover['mover'], 
+		self.text[key][enstore_constants.KNOWN_MOVERS].append([mover['mover'], 
 						     mover['address'][1],
 						     mover['state'], 
-					    format_time(mover['last_checked']),
+					    enstore_functions.format_time(mover['last_checked']),
 						     mover['summon_try_cnt']])
 		# keep a  separate list of the mover names so can easily
 		# find if a mover belongs to this library_manager
-		self.text[key][MOVERS].append(mover['mover'])
+		self.text[key][enstore_constants.MOVERS].append(mover['mover'])
