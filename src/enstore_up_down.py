@@ -699,8 +699,6 @@ def do_real_work():
     
     # rewrite the seen down file as we keep track of how many times something has 
     # been down
-    import pdb
-    pdb.set_trace()
     servers = summary_d.keys()
     if dfile:
 	# get rid of any servers no longer being monitored
