@@ -54,7 +54,9 @@ class GenericAlarm:
 	l = string.split(sev)
 	sev = l[0]
 	if len(l) == 2:
-	    num_times_raised = l[1]
+	    tmp = string.replace(l[1], '(', '')
+	    tmp = string.replace(tmp, ')', '')
+	    num_times_raised = string.atol(tmp)
 	else:
 	    num_times_raised = 1
 	return sev, num_times_raised
