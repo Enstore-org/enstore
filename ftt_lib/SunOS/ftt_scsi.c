@@ -40,7 +40,7 @@ ftt_scsi_open(const char *pcDevice)
 {
 	scsi_handle n;
         DEBUG2(stderr,"entering ftt_scsi_open(%s,..)\n",pcDevice);
-        n = (scsi_handle)open(pcDevice, O_RDWR, 0);
+        n = (scsi_handle)open(pcDevice, O_RDONLY|O_NDELAY|O_NONBLOCK, 0);
         DEBUG2(stderr,"filehandle == %d\n",  n );
 	return n;
 
@@ -73,7 +73,7 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
 #ifdef ARQ
         if ( 0x03 == pcCmd[0] && havesense ) {
             havesense = 0;
-            if (pcRdWr != acSensebuf) {
+            if (pcRdWr != (unsigned char*)acSensebuf) {
                 bcopy(acSensebuf, pcRdWr, nRdWr<19?nRdWr:19);
             }
             return ftt_scsi_check(fd,pcOp,0,nRdWr);

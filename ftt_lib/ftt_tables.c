@@ -763,8 +763,7 @@ static char SunOSfind_devices[] =
     esac \n";
 
 static char SunOSfind_dev[] =
-   "#s\n\
-    IFS=\" \t\n\";\
+   "IFS=\" \t\n\";\
     PATH=\"/bin:/usr/bin:/sbin:/usr/sbin\";\
     drive=%d\n\
     id=\"`ls -l /dev/rmt/${drive} | sed -e 's;.*/\\(st@[0-9]*\\).*;\\1;'`\" \n\

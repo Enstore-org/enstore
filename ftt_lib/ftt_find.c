@@ -204,7 +204,7 @@ ftt_get_driveid(char *basename,char *os) {
 	    res = 0;
 	}
     } else {
-	if ( devtable[i].drivid[1] == 's') {
+	if ( devtable[i].drividcmd[1] == 's') {
 	    sprintf(cmdbuf, devtable[i].drividcmd, s1.s, s2.n, s3.n);
 	} else {
 	    sprintf(cmdbuf, devtable[i].drividcmd, s1.n, s2.n, s3.n);
