@@ -2,7 +2,6 @@ import threading
 import time
 import  socket
 import string
-
 import sys
 Quit = "Quit"
 
@@ -45,6 +44,8 @@ class Tdb(threading.Thread) :
                 self.who(string.strip(line[3:]))
             elif toks[0] == "eval" :
                 self.eval(line[4:])
+            elif toks[0] == "exec" :
+                self.exc(line[4:])
             elif toks[0] == "help":
                 self.help()
             elif toks[0] == "modules":
@@ -63,9 +64,13 @@ class Tdb(threading.Thread) :
         d = sys.modules[m].__dict__
 	for e in d.keys() :
             self.writeln(repr(e)  + '=' + repr(d[e]))
-            
+
     def eval(self, e):
         self.writeln(eval(e))
+
+    def exc(self, e):
+        if 0 : print e #linter
+        self.writeln("not yet there")
 
     def modules(self):
 	for m in sys.modules.keys() :
