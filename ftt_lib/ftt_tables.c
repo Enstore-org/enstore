@@ -604,7 +604,7 @@ static char SunOSfind_dev[] =
 #define IRIX_MAX_BLKSIZE 131072
 #define SUN_MAX_BLKSIZE 65534
 ftt_dev_entry devtable[] = {
-    {"SunOS+5", "EXB-8900", "SCSI", FTT_FLAG_SUID_SCSI, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"SunOS+5", "EXB-8900", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
        "rmt/%d", "rmt/%d", 1, SunOSfind_dev, {
     /*   string          den mod hwd   pas fxd rewind            1st */
     /*   ======          === === ===   === === ======            === */
@@ -633,7 +633,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/%dl", 	  1,  0,  0,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { 0 },
     }},
-    {"SunOS+5", "EXB-8200", "SCSI", FTT_FLAG_SUID_SCSI, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"SunOS+5", "EXB-8200", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
        "rmt/%d", "rmt/%d", 1, SunOSfind_dev, {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
@@ -658,7 +658,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/%dl", 	  0,  0,  0,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { 0 },
     }},
-    {"SunOS+5", "EXB-85", "SCSI", FTT_FLAG_SUID_SCSI, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"SunOS+5", "EXB-85", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
        "rmt/%d", "rmt/%d", 1, SunOSfind_dev, {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
@@ -687,7 +687,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/%dl", 	  1,  0,  0,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { 0 },
     }},
-    {"SunOS+5", "DLT", "SCSI", FTT_FLAG_SUID_SCSI, FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+    {"SunOS+5", "DLT", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
        "rmt/%d", "rmt/%d", 1, SunOSfind_dev, {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
@@ -730,7 +730,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/%dl", 	  5,  0, 0x1A,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { 0 },
     }},
-    {"SunOS+5", "EXB-8200", "SCSI", FTT_FLAG_SUID_SCSI, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"SunOS+5", "EXB-8200", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
        "%[^/]/st@%d,0:", "%s/st@%d,0:", 2, SunOSfind_devices, {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
@@ -755,7 +755,7 @@ ftt_dev_entry devtable[] = {
        { "%s/st@%d,0:l", 	  0,  0,  0,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { 0 },
     }},
-    {"SunOS+5", "EXB-85", "SCSI", FTT_FLAG_SUID_SCSI, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"SunOS+5", "EXB-85", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
        "%[^/]/st@%d,0:", "%s/st@%d,0:", 2, SunOSfind_devices, {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
@@ -784,7 +784,7 @@ ftt_dev_entry devtable[] = {
        { "%s/st@%d,0:l", 	  1,  0,  0,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { 0 },
     }},
-    {"SunOS+5", "DLT", "SCSI", FTT_FLAG_SUID_SCSI, FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+    {"SunOS+5", "DLT", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
        "%[^/]/st@%d,0:", "%s/st@%d", 2, SunOSfind_devices, {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
