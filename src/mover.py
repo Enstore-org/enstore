@@ -268,7 +268,7 @@ class Mover :
         if user_send_error:
             self.vticket = vcc.set_remaining_bytes(ticket["external_label"],
                                                    remaining_bytes,
-                                                   eod_cookie,wr_err,
+                                                   eod_cookie,
                                                    wr_err,rd_err,
                                                    wr_access,rd_access)
             msg = "Expected "+repr(ticket["size_bytes"])+" bytes,"\
