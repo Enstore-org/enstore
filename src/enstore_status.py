@@ -209,6 +209,10 @@ class EnStatus:
                                                     repr(port), 
                                                     enstore_functions.format_time(time)]
 
+    # output the passed alive status
+    def output_error(self, host, port, state, time, key):
+	self.output_alive(host, port, "ERROR: %s"%(state,), time, key)
+
     # output the timeout error
     def output_etimedout(self, host, port, state, time, key, last_time=0):
         if last_time == -1:
