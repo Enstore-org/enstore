@@ -220,9 +220,6 @@ def do_work(intf):
 	intf.print_help()
         sys.exit(0)
 
-
-    del csc.u		# del now, otherwise get name exception (just for python v1.5???)
-
     csc.check_ticket(stati)
 
 if __name__ == "__main__":
