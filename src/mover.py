@@ -2370,8 +2370,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if ticket.has_key('wrapper'):
             uid = ticket['wrapper'].get('uid', None)
             gid = ticket['wrapper'].get('gid', None)
-        if uid: self.uid = uid
-        if gid: self.gid = gid
+            self.uid = uid
+            self.gid = gid
         if self.method and self.method == "read_next" and self.udp_control_address:
             self.lm_address = self.udp_control_address
             self.lm_address_saved = self.lm_address
