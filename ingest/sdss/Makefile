@@ -32,8 +32,8 @@ check:
 	$(ENSTORE_DIR)/tools/check_pct.py -w ./*.py
 
 sdsscp:
-        #Force recompile of modules.
-	(cd $(ENSTORE_DIR)/modules; make all)
+        #Force recompile of get.
+	(cd $(ENSTORE_DIR)/src; make get)
 
         #Remove any old versions.
 	- rm -rf SDSSCP_TEMP
@@ -46,7 +46,10 @@ sdsscp:
 	(cd SDSSCP_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 
         #Copy the important items and cleanup.
-	cp SDSSCP_TEMP/sdsscp $(ENSTORE_DIR)/src/GETBIN/get $(ENSTORE_DIR)/ups/chooseConfig SDSSCP_BIN
+	cp SDSSCP_TEMP/sdsscp SDSSCP_BIN
+	cp $(ENSTORE_DIR)/src/GET_BIN/get SDSSCP_BIN
+	cp $(ENSTORE_DIR)/src/GET_BIN/enroute2 SDSSCP_BIN
+	cp $(ENSTORE_DIR)/ups/chooseConfig SDSSCP_BIN
 	sed -e 's/encp/sdsscp/g' $(ENSTORE_DIR)/ups/encp.table > SDSSCP_BIN/sdsscp.table
 	- rm -rf SDSSCP_TEMP
 
