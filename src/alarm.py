@@ -68,7 +68,7 @@ class GenericAlarm:
 	if len(l) == 2:
 	    tmp = string.replace(l[1], '(', '')
 	    tmp = string.replace(tmp, ')', '')
-	    num_times_raised = string.atol(tmp)
+	    num_times_raised = long(tmp)
 	else:
 	    num_times_raised = 1
 	return sev, num_times_raised
@@ -93,15 +93,15 @@ class GenericAlarm:
             user = "MSS"
             password = "2p9u6c"
             category = "MSS"
-            type = self.type
+            aType = self.type
             item = "ALARM"
             # make sure long_message does not have embedded double
             # quotes
             l_message = "%s"%(long_message,)
             l_message = string.replace(l_message, '"', '')
             
-            print '$ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, l_message, submitter, user, password, category, type, item)
-            os.system('. /usr/local/etc/setups.sh;setup enstore; $ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, l_message, submitter, user, password, category, type, item))
+            print '$ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, l_message, submitter, user, password, category, aType, item)
+            #os.system('. /usr/local/etc/setups.sh;setup enstore; $ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, l_message, submitter, user, password, category, aType, item))
             self.ticket_generated = "YES"
             
     def seen_again(self):
@@ -129,14 +129,14 @@ class GenericAlarm:
         # ths simple string has the following format -
         #         servername on node - text string
         # where servername and node are replaced with the appropriate values
-        str = "%s on %s at %s (%s) - "%(self.source, self.host,
-					enstore_functions2.format_time(self.timedate),
-					enstore_functions2.format_time(self.timedate_last))
+        aStr = "%s on %s at %s (%s) - "%(self.source, self.host,
+                                         enstore_functions2.format_time(self.timedate),
+                                         enstore_functions2.format_time(self.timedate_last))
 
         # look in the info dict.  if there is a key "short_text", use it to get
         # the text, else use default text just signaling a problem
-        return str+self.alarm_info.get(SHORT_TEXT, "%s %s"%(self.root_error,
-                                                            self.alarm_info))
+        return aStr+self.alarm_info.get(SHORT_TEXT, "%s %s"%(self.root_error,
+                                                             self.alarm_info))
 
     # compare the passed in info to see if it the same as that of the alarm
     def compare(self, host, severity, root_error, source, alarm_info,
@@ -266,9 +266,9 @@ class LogFileAlarm(GenericAlarm):
 	# text may be only a dictionary or it may be of the following format -
 	#       root-error, {...} (severity : n)
 	if text[0] == "{":
-	    dict = eval(text)
+	    aDict = eval(text)
 	    # split up the dictionary into components
-	    self.unpack_dict(dict)
+	    self.unpack_dict(aDict)
 	else:
 	    index = string.find(text, ", {")
 	    if index == -1:
@@ -286,8 +286,8 @@ class LogFileAlarm(GenericAlarm):
 		    self.severity = e_errors.ALARM
 		    self.alarm_info = text[index:]
 		else:
-		    dict = eval(text[index:end_index+1])
-		    self.alarm_info = dict
+		    aDict = eval(text[index:end_index+1])
+		    self.alarm_info = aDict
 		    # now get the severity
 		    index = string.rfind(text, ")")
 		    if index == -1:
