@@ -1337,15 +1337,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # send the work list (at time of fork) back to client
         if self.fork() != 0:
             return
-        self.get_user_sockets(ticket)
-        rticket = {}
-        rticket["status"] = (e_errors.OK, None)
-        rticket["at movers"] = self.work_at_movers.list
-        rticket["pending_work"] = self.pending_work.get_queue()
-        callback.write_tcp_obj_new(self.data_socket,rticket)
-        self.data_socket.close()
-        callback.write_tcp_obj_new(self.control_socket,ticket)
-        self.control_socket.close()
+        try:
+            self.get_user_sockets(ticket)
+            rticket = {}
+            rticket["status"] = (e_errors.OK, None)
+            rticket["at movers"] = self.work_at_movers.list
+            rticket["pending_work"] = self.pending_work.get_queue()
+            callback.write_tcp_obj_new(self.data_socket,rticket)
+            self.data_socket.close()
+            callback.write_tcp_obj_new(self.control_socket,ticket)
+            self.control_socket.close()
+        except:
+            pass #XXX
         os._exit(0)
 
     # get list of suspected volumes 
@@ -1356,15 +1359,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # send the work list (at time of fork) back to client
         if self.fork() != 0:
             return
-        self.get_user_sockets(ticket)
-        rticket = {}
-        rticket["status"] = (e_errors.OK, None)
-        rticket["suspect_volumes"] = self.suspect_volumes.list
-        callback.write_tcp_obj_new(self.data_socket,rticket)
-        self.data_socket.close()
-        callback.write_tcp_obj_new(self.control_socket,ticket)
-        self.control_socket.close()
-        Trace.trace(13,"get_suspect_volumes ")
+        try:
+            self.get_user_sockets(ticket)
+            rticket = {}
+            rticket["status"] = (e_errors.OK, None)
+            rticket["suspect_volumes"] = self.suspect_volumes.list
+            callback.write_tcp_obj_new(self.data_socket,rticket)
+            self.data_socket.close()
+            callback.write_tcp_obj_new(self.control_socket,ticket)
+            self.control_socket.close()
+            Trace.trace(13,"get_suspect_volumes ")
+        except:
+            pass
         os._exit(0)
 
 
