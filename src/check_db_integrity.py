@@ -231,7 +231,7 @@ class DBChecker:
             if len(layer1) != 1:
                 print "wrong layer 1 length(%s) for %s. Must be 1" % (len(layer1),file['pnfs_name0'])
                 print "layer 1 entires"
-                pprintf.pprint(layer1)
+                pprint.pprint(layer1)
                 bad_layer = 1
 
             l1_bfid = layer1[0]
