@@ -826,15 +826,24 @@ recovery.
 It is readily obtainable and free.
 </ul>
 
-We are also considering using relational database in Enstore. Conceptually,
-relational databases provide the same level of data access with respect to
-any combination of data attributes used as the search key. Data lookup may
-be further optimized by creation of additional indices. Such additional
-optimization can be done at any time and does not require any modification
-of client provided the client is designed to use relational database.  For
-Enstore project, database are a modular component and switching databases
-means modifying a module only.  Python interfaces will have to be developed
-to allow the current framework to keep working.
+We don't consider the current selection of the LIBTP database to be
+necessarily the final one.  For example, it may not be necessary for
+Enstore internal needs, implementation of maintenance functionality is not
+realistically possible without having some ways to select data by some data
+attributes instead of primary database key. There are two possible ways to
+solve this problem. One way is to create additional database index
+tables. This is a straightforward extension on top of LIBTP, although
+probably not the most elegant solution. Another possible method we are
+considering is to use relational databases in Enstore.
+
+<p>
+
+For the Enstore project, databases are a modular component and switching
+databases means modifying a module only. If a new database is chosen, we
+are expecting that the database servers and clients will have to be
+redesigned to take advantage of the relational features.  Python interfaces
+will also have to be developed to allow the current framework to keep
+working.
 
 <h2><a name="admin_tools">
 2.3 Administrative Tools
