@@ -909,6 +909,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         Trace.trace(20, "next_write_volume %s %s" % (vol_fam, vol_fam))
 
         pool = vol_fam
+        # To be backward compatible
+        if not ticket.has_key('mover'):
+            ticket['mover'] = {}
         mover_type = ticket['mover'].get('mover_type','Mover')
         if mover_type == 'DiskMover':
            use_exact_match = 1
