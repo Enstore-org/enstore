@@ -1,3 +1,4 @@
+
 #!/bin/sh 
 set -u  
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
@@ -94,6 +95,8 @@ case $gang in
 	           w=$strip_dir/dcache-tests/$N.dcache_page_cms_$$
 		   wp=$strip_dir/dcache-tests/$N.dcache_page_p_cms_$$
 		   wa=$strip_dir/dcache-tests/$N.dcache_page_a_cms_$$
+		   wpc=$strip_dir/dcache-tests/$N.dcache_page_pc_cms_$$
+		   wac=$strip_dir/dcache-tests/$N.dcache_page_ac_cms_$$
 		   wg=dcache-tests/$N.dcache_page_g_$$
 		   ws=/pnfs/fnal.gov/usr/eagle/dcache-tests/$N.dcache_page_s_$$
 		   dcache=cmsdca
@@ -105,7 +108,7 @@ case $gang in
 		   #`pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
 		   #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
 		   # now test kftp with certificates
-		   #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wp $wa cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
+		   #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wpc $wac cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
 		   #pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		   ;;
 	      cmstest) strip_dir="/pnfs/cms"
@@ -127,6 +130,8 @@ case $gang in
 	           w=$strip_dir/dcache-tests/$N.dcache_page_lqcd_$$
 		   wp=$strip_dir/dcache-tests/$N.dcache_page_p_lqcd_$$
 		   wa=$strip_dir/dcache-tests/$N.dcache_page_a_lqcd_$$
+		   wpc=$strip_dir/dcache-tests/$N.dcache_page_pc_lqcd_$$
+		   wac=$strip_dir/dcache-tests/$N.dcache_page_ac_lqcd_$$
 		   ws=/pnfs/fnal.gov/usr/eagle/dcache-tests/$N.dcache_page_s_$$
 		   dcache=lqcd-cache
 		   dcache_saag="dcache_lqcd"
@@ -137,13 +142,15 @@ case $gang in
 		   #`pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
 		   #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
 		   # now test kftp with certificates
-		   #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wp $wa cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
+		   #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wpc $wac cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
 		   #pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		   ;;
 	  fndca|*) strip_dir="/pnfs/eagle"
 	           w=$strip_dir/dcache-tests/$N.dcache_page_$$
 		   wp=$strip_dir/dcache-tests/$N.dcache_page_p_$$
 		   wa=$strip_dir/dcache-tests/$N.dcache_page_a_$$
+		   wpc=$strip_dir/dcache-tests/$N.dcache_page_pc_$$
+		   wac=$strip_dir/dcache-tests/$N.dcache_page_ac_$$
 		   ws=/pnfs/fnal.gov/usr/eagle/dcache-tests/$N.dcache_page_s_$$
 		   wg=dcache-tests/$N.dcache_page_g_$$
 		   dcache=fndca
@@ -156,7 +163,7 @@ case $gang in
 		   # test kftp with kerberos tickets first
 		   pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
 		   # now test kftp with certificates
-		   pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wp $wa cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
+		   pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wpc $wac cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
 		   pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		   ;;
 	 esac
@@ -166,19 +173,21 @@ case $gang in
 	             w=$strip_dir/jon/fcdfsgi2/$N.dcache_page_$$
 		     wp=$strip_dir/jon/fcdfsgi2/$N.dcache_page_p_$$
 		     wa=$strip_dir/jon/fcdfsgi2/$N.dcache_page_a_$$
+		     wpc=$strip_dir/jon/fcdfsgi2/$N.dcache_page_pc_$$
+		     wac=$strip_dir/jon/fcdfsgi2/$N.dcache_page_ac_$$
 		     wg=jon/fcdfsgi2/$N.dcache_page_g_$$
 		     ws=/pnfs/fnal.gov/usr/cdfen/jon/fcdfsgi2/$N.dcache_page_s_$$
 		     dcache=cdfdca
 		     dcache_saag="dcache_cdf"
 		     get_ports
 		     get_ticket
-		     #`pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
-		     #`pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
+		     `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+		     `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
 		     `pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
-		     #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
+		     pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
 		     # now test kftp with certificates
-		     #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wp $wa cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
-		     #pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
+		     pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wpc $wac cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
+		     pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		     ;;
 	 esac
 	 ;;
@@ -187,6 +196,8 @@ case $gang in
 	            w=$strip_dir/archive/dcache-tests/$N.dcache_page_$$
 		    wp=$strip_dir/archive/dcache-tests/$N.dcache_page_p_$$
 		    wa=$strip_dir/archive/dcache-tests/$N.dcache_page_a_$$
+		    wpc=$strip_dir/archive/dcache-tests/$N.dcache_page_pc_$$
+		    wac=$strip_dir/archive/dcache-tests/$N.dcache_page_ac_$$
 		    wg=archive/dcache-tests/$N.dcache_page_g_$$
 		    ws=/pnfs/fnal.gov/usr/archive/dcache-tests/$N.dcache_page_s_$$
 		    dcache=d0dca
@@ -198,7 +209,7 @@ case $gang in
 		    `pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
 		    #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa kerb > $output_kftp 2>&1; echo $? > $exit_code_kftp
 		    # now test kftp with certificates
-		    #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wp $wa cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
+		    #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $cert_port $wpc $wac cert > $output_kftpCert 2>&1; echo $? > $exit_code_kftpCert
 		    #pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		    ;;
 	 esac
