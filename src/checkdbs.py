@@ -103,6 +103,8 @@ def check_volume(vol):
 		del bvol['mounts']
 
 	bvol['eod_cookie'] = str(bvol['eod_cookie'])
+	if bvol['eod_cookie'] == '\x00':
+		bvol['eod_cookie'] = ''
 
 	if ddiff(pvol, bvol):
 		if verbose:
@@ -155,6 +157,8 @@ def check_volume(vol):
 			bfile['deleted'] = 'unknown'
 		if bfile['sanity_cookie'] != (None, None):
 			bfile['sanity_cookie'] = (long(bfile['sanity_cookie'][0]), long(bfile['sanity_cookie'][1]))
+		if type(bfile['size']) == type(1):
+			bfile['size'] = long(bfile['size'])
 		if ddiff(pfile, bfile):
 			if verbose:
 				print 'pdb:', `pfile`
