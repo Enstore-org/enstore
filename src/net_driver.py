@@ -24,7 +24,7 @@ class NetDriver(driver.Driver):
         
     def fdopen(self, sock):
         self.sock = sock
-        size = 128 * 1024
+        #size = 128 * 1024
 
         #This is disabled because it seems to trigger a problem
         # when recieving data from a gigabit ethernet interface
@@ -39,9 +39,9 @@ class NetDriver(driver.Driver):
 ##                Trace.log(e_errors.ERROR, "setting tcp buffer size:  %s %s %s" % (
 ##                    opt, size, msg))
 
-        self._last_rate = 0
-        self._rate = 0
-        self._bytes_transferred = 0            
+        self._last_rate = 0L
+        self._rate = 0L
+        self._bytes_transferred = 0L            
         return self.sock
         
     def fileno(self):
