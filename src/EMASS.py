@@ -179,6 +179,7 @@ def insert(ticket, classTicket):
 	    if IOarea_name not in Iareas:
 	        status = derrno.EINVALID
                 mcSelf.workQueueClosed = 0
+                Trace.trace(e_errors.ERROR, 'EMASS bad IOarea parameter specified.')
 	        return status_table[status][0], status, status_table[status][1]
         areaList = IOarea_input
     else:
@@ -192,6 +193,8 @@ def insert(ticket, classTicket):
     robot_host = "adic2.fnal.gov"
     year, month, day, hour, minute = time.localtime(timeL1)[:5]
     outfileName = "/tmp/adicLog%02d%02d" % (day, month)
+
+    mcSelf.workQueueClosed = 0
 
     while timeL1-timeCmd>1200:   # timeout in seconds
         #get amulog from adic2
