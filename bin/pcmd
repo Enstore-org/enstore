@@ -187,12 +187,26 @@ ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
                 id=`pparent $id`
               done
               #echo $filename
-              filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
+              #filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
+	      filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr/%%' -e 's%/$%%'`
               if [ -z $filename ] ; then
                 filename="NO_SUCH_FILE"
+                echo $filename
+	      else
+	        mp=`echo $filename | cut -f2 -d/`
+  	        #echo $mp
+		cat /etc/mtab | grep pnfs | grep -v localhost | while read remote local rest; do
+		  rem=`echo $remote | sed -e 's%.*:/%%'`
+		  if [ $rem = $mp ] ; then 
+		    cmd="echo $filename | sed -e 's%/$mp%$local%'"
+		    #echo $cmd
+ 		    filename=`eval $cmd`
+		    echo $filename
+		    break
+ 		  fi
+                done
               fi
-              echo $filename
-              }
+            }
 
 pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
               for i in $1/*; do
