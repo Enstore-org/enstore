@@ -349,10 +349,12 @@ def next_work_any_volume(self, csc, verbose):
 		(vol_info['system_inhibit'] != 'none' and 
 		 w['work'] == 'write_to_hsm') or
 		((vol_info['system_inhibit'] != 'none' and
-		  vol_info['system_inhibit'] != 'readonly') and
+		  vol_info['system_inhibit'] != 'readonly' and
+		  vol_info['system_inhibit'] != 'full') and 
 		 w['work'] == 'read_from_hsm')):
 		self.enprint("work can not be done at this volume"+repr(vol_info),\
 			     generic_cs.DEBUG, self.verbose)
+		w['status'] = (e_errors.NOACCESS,None)
 		pending_work.delete_job(w)
 		send_regret(w, self.verbose)
 		Trace.trace(0,"next_work_any_volume: cannot do the work for "+\
@@ -432,7 +434,7 @@ def summon_mover(self, mover, ticket):
     if not mv:
 	# add it to the summon queue
 	self.summon_queue.append(mover)
-    mover['work_ticket'] = {}
+    #mover['work_ticket'] = {}
     mover['work_ticket'] = ticket
 	    
     summon_rq = {'work': 'summon',
@@ -1169,10 +1171,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, ticket, 'idle_mover')
+
 	if mv:
 	    try:
 		del(mv["work_ticket"])
-	    except keyError:
+	    except KeyError:
 		pass
 
 	# update list of suspected volumes
