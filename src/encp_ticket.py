@@ -34,7 +34,11 @@ def write_request_ok(ticket):
     for key in ticket_keys:
         if not ticket.has_key(key):
             return key
-    fsize_type = type(ticket['file_size']) # hack to make get happy, as it guves None for the file size
+    fsize_type = 0L
+    if type(ticket['file_size']) == type(0):  # hack to make get happy, as it guves None for the file size
+        fsize_type = 0
+    elif type(ticket['file_size']) == type(None):
+        fsize_type = None
     for key in encp_keys:
         if not ticket['encp'].has_key(key):
             return key
