@@ -663,21 +663,21 @@ class STK_MediaLoader(MediaLoaderMethods):
     def retry_function(self,function,*args):
         count = self.getNretry()
         sts=("",0,"")
+	retry_these = ( 54,          #IPC error
+                        68,          #IPC error (usually)
+			99,          #STATUS_VOLUME_IN_USE
+			91)          #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
         while count > 0 and sts[0] != e_errors.OK:
             try:
                 sts=apply(function,args)
                 if sts[1] != 0:
                    if self.logdetail:
                       Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
-                if (sts[1] == 91 or           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
-                    sts[1] == 99):            #STATUS_VOLUME_IN_USE
+                if sts[1] in retry_these and function==self.STK.mount:
                         time.sleep(60)
                         fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
-                        Trace.log(e_errors.INFO, 'Desperation STK.dismount after VOLUME_IN_DRIVE ERROR %s  fixsts[1] %s  fixsts[2] %s'%(args,fixsts[1],fixsts[2]))
-                if (sts[1] == 54 or          #IPC error
-                    sts[1] == 68 or          #IPC error (usually)
-                    sts[1] == 99 or          #STATUS_VOLUME_IN_USE
-                    sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
+                        Trace.log(e_errors.INFO, 'Tried %s %s  status=%s   Desperation STK.dismount  status %s %s'%(repr(function),args,sts[1],sts[2],fixsts[1],fixsts[2]))
+                if sts[1] in retry_these:
                         time.sleep(60)
                         count = count - 1
                 else:
