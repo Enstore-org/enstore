@@ -223,7 +223,8 @@ class FileDB(DbTable):
         		select \
                 		bfid, crc, deleted, drive, \
 				volume.label, location_cookie, pnfs_path, \
-                		pnfs_id, sanity_size, sanity_crc, size \
+                		pnfs_id, sanity_size, sanity_crc, size, \
+				uid, gid \
         		from file, volume \
         		where \
                 		file.volume = volume.id and \
@@ -274,7 +275,9 @@ class FileDB(DbTable):
 			'pnfs_name0': s['pnfs_path'],
 			'pnfsid': s['pnfs_id'],
 			'sanity_cookie': (sanity_size, sanity_crc),
-			'size': s['size']
+			'size': s['size'],
+			'uid': s['uid'],
+			'gid': s['gid']
 			}
 
 	def import_format(self, s):
@@ -312,7 +315,9 @@ class FileDB(DbTable):
 			'pnfs_id': s['pnfsid'],
 			'sanity_size': sanity_size,
 			'sanity_crc': sanity_crc,
-			'size': s['size']
+			'size': s['size'],
+			'uid': s['uid'],
+			'gid': s['gid']
 			}
 
 class VolumeDB(DbTable):
