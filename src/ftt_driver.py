@@ -49,14 +49,14 @@ class FTTDriver(driver.Driver):
                     time.sleep(5)
                 else:
                     break
-        for retry in xrange(10):
-            if retry:
-                if self.verbose: print "retrying status"
-            status = self.ftt.status(10)
-            if status & ftt.ONLINE:
-                break
-        else:
-            ftt.raise_ftt()  #this is BADSWMOUNT
+##        for retry in xrange(10):
+##            if retry:
+##                if self.verbose: print "retrying status"
+##            status = self.ftt.status(10)
+##            if status & ftt.ONLINE:
+##                break
+##        else:
+##            ftt.raise_ftt()  #this is BADSWMOUNT
             
         self._rate = self._last_rate = self._bytes_transferred = 0
         if self.verbose: print "ftt_open_dev returns", self.fd
