@@ -60,14 +60,30 @@ def library_manager_callback_socket(ticket) :
 def user_callback_socket(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+        print "callback user_callback_socket, block pre-send error:", \
+              errno.errorcode[badsock]
     sock.send(dict_to_a.dict_to_a(ticket))
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+        print "callback user_callback_socket, block post-send error:", \
+              errno.errorcode[badsock]
     return sock
 
 # send ticket/message
 def send_to_user_callback(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+        print "callback send_to_user_callback, block pre-send error:", \
+              errno.errorcode[badsock]
     sock.send(dict_to_a.dict_to_a(ticket))
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+        print "callback send_to_user_callback, block post-send error:", \
+              errno.errorcode[badsock]
     sock.close()
 
 if __name__ == "__main__" :

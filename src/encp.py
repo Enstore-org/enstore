@@ -123,7 +123,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
     if ticket['status'] != "ok" :
         raise errno.errorcode[errno.EPROTO],"encp.write_to_hsm: from "+\
-	      "u.send to " +p.library+" at "\
+              "u.send to " +p.library+" at "\
               +vticket['host']+"/"+repr(vticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
     tinfo["send_ticket"] = time.time() - t1
@@ -143,12 +143,12 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         control_socket, address = listen_socket.accept()
         badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
-            print "encp write, mover call back, pre-recv error:",\
+            print "encp write_to_hsm, mover call back, pre-recv error:",\
                   errno.errorcode[badsock]
         new_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
         badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
-            print "encp write, mover call back, post-recv error:",\
+            print "encp write_to_hsm, mover call back, post-recv error:",\
                   errno.errorcode[badsock]
         if ticket["unique_id"] == new_ticket["unique_id"] :
             listen_socket.close()
@@ -180,7 +180,17 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         buf = in_file.read(min(fsize, 65536*4))
         l = len(buf)
         if len(buf) == 0 : break
+        badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0 :
+            print "encp write_to_hsm, sending data, pre-send error:", \
+                  errno.errorcode[badsock]
         data_path_socket.send(buf)
+        badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0 :
+            print "encp write_to_hsm, sending data, post-send error:", \
+                  errno.errorcode[badsock]
     data_path_socket.close()
     in_file.close()
     t2 = time.time()
@@ -202,12 +212,12 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         print "Waiting for final mover dialog"
     badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
     if badsock != 0 :
-        print "encp write, mover final dialog, pre-recv error:",\
+        print "encp write_to_hsm, mover final dialog, pre-recv error:",\
                   errno.errorcode[badsock]
     done_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
     badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
     if badsock != 0 :
-        print "encp write, mover final dialog, post-recv error:",\
+        print "encp write_to_hsm, mover final dialog, post-recv error:",\
               errno.errorcode[badsock]
     control_socket.close()
     tinfo["final_dialog"] = time.time()-t1
@@ -346,7 +356,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     ticket = u.send(ticket, (fticket['host'], fticket['port']))
     if ticket['status'] != "ok" :
         raise errno.errorcode[errno.EPROTO],"encp.read_from_hsm: from u.send"+\
-	      "to file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
+              "to file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
     tinfo["send_ticket"] = time.time() - t1
     if list :
@@ -366,12 +376,12 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         control_socket, address = listen_socket.accept()
         badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
-            print "encp read, mover callback, pre-recv error:",\
+            print "encp read_from_hsm, mover callback, pre-recv error:",\
                   errno.errorcode[badsock]
         new_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
         badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
-            print "encp read, mover callback, post-recv error:",\
+            print "encp read_from_hsm, mover callback, post-recv error:",\
                   errno.errorcode[badsock]
         if ticket["unique_id"] == new_ticket["unique_id"] :
             listen_socket.close()
@@ -419,12 +429,12 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         print "Waiting for final mover dialog"
     badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
     if badsock != 0 :
-        print "encp read, mover final dialog, pre-recv error:",\
+        print "encp read_from_hsm, mover final dialog, pre-recv error:",\
               errno.errorcode[badsock]
     done_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
     badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
     if badsock != 0 :
-        print "encp read, mover final dialog, post-recv error:",\
+        print "encp read_from_hsm, mover final dialog, post-recv error:",\
               errno.errorcode[badsock]
     control_socket.close()
     tinfo["final_dialog"] = time.time()-t1

@@ -26,10 +26,32 @@ class Mover :
         self.u = UDPClient()
 
     def read_block(self) :
-        return self.data_socket.recv(self.driver.get_blocksize())
+        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0 :
+            print "Mover read_block, pre-recv error:", \
+                  errno.errorcode[badsock]
+        block = self.data_socket.recv(self.driver.get_blocksize())
+        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0 :
+            print "Mover read_block, post-recv error:", \
+                  errno.errorcode[badsock]
+        return block
 
     def write_block(self,buff) :
-        return self.data_socket.send(buff)
+        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0 :
+            print "Mover write_block, pre-send error:", \
+                  errno.errorcode[badsock]
+        count = self.data_socket.send(buff)
+        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0 :
+            print "Mover write_block, post-send error:", \
+                  errno.errorcode[badsock]
+        return count
 
     # primary serving loop
     def move_forever(self, name) :
@@ -59,7 +81,17 @@ class Mover :
 
     # send a message to our user
     def send_user_last(self, ticket):
+        badsock = self.control_socket.getsockopt(socket.SOL_SOCKET, 
+						 socket.SO_ERROR)
+        if badsock != 0 :
+            print "mover send_user_last,  pre-send error:", \
+                  errno.errorcode[badsock]
         self.control_socket.send(dict_to_a.dict_to_a(ticket))
+        badsock = self.control_socket.getsockopt(socket.SOL_SOCKET, 
+						 socket.SO_ERROR)
+        if badsock != 0 :
+            print "mover send_user_last,  post-send error:", \
+                  errno.errorcode[badsock]
         self.control_socket.close()
 
 

@@ -82,19 +82,19 @@ class UDPClient:
                 badsock = self.socket.getsockopt(socket.SOL_SOCKET,
                                                  socket.SO_ERROR)
                 if badsock != 0 :
-                    print "udp_client send, ", "pre-recv error:",\
+                    print "udp_client send, pre-recv error:",\
                           errno.errorcode[badsock]
                 reply , server = self.socket.recvfrom(TRANSFER_MAX)
                 badsock = self.socket.getsockopt(socket.SOL_SOCKET,
                                                  socket.SO_ERROR)
                 if badsock != 0 :
-                    print "udp_client send, ", "post-recv error:",\
+                    print "udp_client send, post-recv error:",\
                           errno.errorcode[badsock]
                 try :
                     exec ("number,  out  = "  + reply)
                 # did we read entire message (bigger than TRANSFER_MAX?)
                 except exceptions.SyntaxError :
-                    print "disaster: probably didn't read entire message"
+                    print "disaster: didn't read entire message"
                     print "reply:",reply
                     print "server:",server
                     raise sys.exc_info()[0],sys.exc_info()[1]
