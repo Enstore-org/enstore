@@ -68,6 +68,7 @@ def getinfo(v):
 	deleted = 'U'
 	crc = 'unknown'
 	pnfs_name0 = 'unknown'
+	location_cookie = 'unknown'
 	for i in range(len(fc)):
 		if fc[i] == "sS'external_label'" or \
 		   fc[i][1:] == "sS'external_label'":
