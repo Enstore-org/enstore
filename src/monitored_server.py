@@ -241,7 +241,7 @@ class MonitoredLibraryManager(MonitoredServer):
 	self.time_bad = 0
 	self.csc = csc
 	self.ff_stalled = {}
-	self.stalled_time = 1200
+	self.stalled_time = 1800
 	self.client = library_manager_client.LibraryManagerClient(self.csc, self.name)
 
     def get_stalled_key(self, node, ff):
