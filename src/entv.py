@@ -2,6 +2,9 @@
 
 # $Id$
 
+
+#This file needs a lot of work!!
+
 import os
 import sys
 import socket
@@ -16,17 +19,21 @@ def endswith(s1,s2):
 
 configdict = eval (os.popen("enstore config --show", 'r').read())
 
-movers = []
 
-for item, value in configdict.items():
-    if endswith(item, '.mover') and string.find(item, 'null')<0:
-        mover = item[:-6]
-        movers.append(mover)
-    movers.sort()
-
+def get_movers():
+    movers = []
+    for item, value in configdict.items():
+        if endswith(item, '.mover') and string.find(item, 'null')<0:
+            mover = item[:-6]
+            movers.append(mover)
+        movers.sort()
+    return movers
 
 s = None
 dst = None
+
+#This function sends a string to the enstore_display, as
+# well as printing it for debugging purposes
 def send(msg):
     print "sending",   msg
     s.sendto(msg, dst)
@@ -48,12 +55,18 @@ def main():
     dst = (target_ip, target_port)
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+    #Tell enstore_display what the movers are
+    movers = get_movers()
     send("movers "+string.join(movers))
+    
     #give it a little time to draw the movers
     time.sleep(3)
 
-    #this gets us 15 minutes worth of update messages
-    s.sendto("notify %s %s" % (target_ip, target_port), (event_relay_host, event_relay_port))
+    #Tell the event_relay that we want to hear about Enstore
+    #events.
+    #This gets us 15 minutes worth of update messages
+    s.sendto("notify %s %s" % (target_ip, target_port),
+             (event_relay_host, event_relay_port))
 
 if __name__ == "__main__":
     main()
