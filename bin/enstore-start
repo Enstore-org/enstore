@@ -385,7 +385,6 @@ fi
 
 enstore_db=`udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT 4 --work lookup --additional_ticket '"lookup":"database"' | cut -d: -f2 | cut -d, -f1 | cut -d\' -f2`
 
-echo enstore_db=$enstore_db
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
     if [ "${opt_ping-}" != 1 -a $enstore_start_admin -eq 1 ];then
         if [ -r $enstore_db/file -a -r $enstore_db/volume ] ;  then
