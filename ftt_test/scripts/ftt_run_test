@@ -17,7 +17,7 @@ script=${FTT_DIR}/ftt_test/scripts/$1
 
 if [ $1 = describe -o $1 = rate ] 
 then  
-    if [! -a $script] 
+    if [ ! -a $script ] 
     then 
 	echo "ftt_run_test: Error - file $script not found"
 	exit 0 
@@ -28,10 +28,10 @@ then
 	echo "ftt_run_test: Error - $script has wrong permition" 
 	exit 0 
     fi
-
+    
 #-------------- execute script
 
-    exec $script
+    exec $script $2 $3 $4 $5 $6 $7 $8 $9
     
 fi
 

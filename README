@@ -22,6 +22,8 @@ tape drives, on AIX, IRIX, Solaris (SunOS), and Digital Unix (OSF1).  Other
 drives are not specifically supported and receive "generic" drive support,
 which includes input, output, and positioning, but very little in the way
 of statistics collection.
+There is Windows NT support for any tape drive but with limited functionality
+(not tape drive statistics and no density setting).
 
 			      Organization
 			      ------------
@@ -34,7 +36,8 @@ The ftt package provides several pieces:
     tape drives.
 Along with a users guide and porting guide.
 
-The first two layers are in the ftt_lib directory, and build libftt.a
+The first two layers are in the ftt_lib directory, and build libftt.a 
+(ftt.lib on Windows NT).
 The second two layers are in the ftt_test directory.
 
 				People
