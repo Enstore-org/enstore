@@ -242,3 +242,5 @@ $ECHO "$N" | while read command pid rest; do
       fi
     fi
 done
+
+rm -fr $ACTIVE
