@@ -51,7 +51,7 @@ def get_inputs():
     else:
         # nothing entered on the command line, assume a default
         web_dir = "/fnal/ups/prd/www_pages/enstore"
-        cgi_url = "http://www-d0en.fnal.gof:/cgi-bin"
+        cgi_url = "http://www-d0en.fnal.gov:/cgi-bin"
 
     return(web_dir, cgi_url)
 
