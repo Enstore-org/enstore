@@ -424,6 +424,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	work = ticket["action"]
 	label = ticket["external_label"]
 	record = self.dict[label]  ## was deepcopy
+        ret_stat = (e_errors.OK,None)
 	if record["system_inhibit"][0] == e_errors.DELETED:
 	    ret_stat = (record["system_inhibit"][0],None)
 	else:
