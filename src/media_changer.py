@@ -303,7 +303,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 		        time.sleep(10)
 			rpcErrors = rpcErrors + 1
                         Trace.log(e_errors.ERROR, 'mcDoWork >>> RPC error, count= :'+repr(rpcErrors)+' '+repr(count)+' '+repr(sts[2]))
-		    else:
+		    elif sts[1] != 0:
                         Trace.log(e_errors.ERROR, 'mcDoWork >>> status returned%s, count= :%s'%(repr(sts[1]),repr(count)))
 			count = count - 1
                         time.sleep(60)
