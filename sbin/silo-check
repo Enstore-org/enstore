@@ -25,7 +25,7 @@ egrep -v "^<|CLN" /diska/tape-inventory/STK-VOLUMES.html  |grep "         0, 0,"
 done
 
 #tapes in mezzanine  silo are acs 1 & lsm 0
-if [ "`id`" != "enstore" ]; then 
+if [ "`whoami`" != "enstore" ]; then 
   # root copies file if we are enstore (kerberos protections)
  /home/enstore/enstore/sbin/enrcp d0ensrv2:/diska/tape-inventory/VOLUMES_DEFINED /tmp/d0-VOLUMES_DEFINED
 fi
