@@ -2289,12 +2289,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # bind control socket to data ip
                 control_socket.bind((host, 0))
                 u = udp_client.UDPClient()
-                Trace.trace(10, "sending IP %s to %s" % (host, ticket['callback_addr']))
+                Trace.trace(10, "sending IP %s to %s" % (host, ticket['routing_callback_addr']))
                 try:
-                    x= u.send(ticket,ticket['callback_addr'] , 15, 3)
+                    x= u.send(ticket,ticket['routing_callback_addr'] , 15, 3)
                 except errno.errorcode[errno.ETIMEDOUT]:
-                    Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
-                              (ticket['callback_addr'], os.strerror(errno.ETIMEDOUT)))
+                    Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
+                              (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
                     self.control_socket, self.client_socket = None, None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
