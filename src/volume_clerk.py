@@ -1610,6 +1610,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
+	# log it
+        Trace.log(e_errors.INFO, "start listing all volumes")
         try:
             if not self.get_user_sockets(ticket):
                 return
@@ -1678,6 +1680,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         except:
             exc, msg, tb = sys.exc_info()
             Trace.handle_error(exc,msg,tb)
+        Trace.log(e_errors.INFO, "stop listing all volumes")
         return
 
     def __get_vol_list(self):
