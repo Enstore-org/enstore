@@ -22,6 +22,7 @@ import Trace
 import generic_cs
 import traceback
 import timeofday
+import log_client
 
 class GenericServer(generic_cs.GenericCS):
 
