@@ -2,7 +2,6 @@
 import socket
 import os
 
-import dispatching_worker
 import event_relay_messages
 
 """
@@ -10,9 +9,10 @@ This class supports messages from the event relay process.  Methods are provided
 the message.
 """
 
-class EventRelayClient(dispatching_worker.DispatchingWorker):
+class EventRelayClient:
 
-    def __init__(self, function=None, event_relay_host=None, event_relay_port=None):
+    def __init__(self, server, function=None, event_relay_host=None, 
+		 event_relay_port=None):
 	# get a socket on which to talk to the event relay process
 	self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         hostname = os.uname()[1]
@@ -20,6 +20,7 @@ class EventRelayClient(dispatching_worker.DispatchingWorker):
         self.addr = self.sock.getsockname()
 	self.host = self.addr[0]
 	self.port = self.addr[1]
+	self.server = server                  # server we are part of
         self.subscribe_time = 0
 	self.function = function              # callback on socket read
 	self.notify_msg = None
@@ -44,10 +45,10 @@ class EventRelayClient(dispatching_worker.DispatchingWorker):
 	self.subscribe()
 
 	# add this socket to the select sockets upon which we wait
-	self.add_select_fd(self.sock, 0, self.function)
+	self.server.add_select_fd(self.sock, 0, self.function)
 	
 	# resubscribe ourselves to the event relay every 10 minutes
-	self.add_interval_func(self.subscribe, self.resubscribe_rate)
+	self.server.add_interval_func(self.subscribe, self.resubscribe_rate)
 
     # send the message to the event relay
     def send(self, msg):
@@ -73,4 +74,18 @@ class EventRelayClient(dispatching_worker.DispatchingWorker):
 								      self.port)
 	    self.notify_msg.encode(self.subscribe_msgs)
 	self.send(self.notify_msg)
+
+    # send the heartbeat to the event realy
+    def heartbeat(self):
+	self.send(self.heartbeat_msg)
+
+    def start_heartbeat(self, name, heartbeat_interval):
+	# we will set up a heartbeat to be sent periodically to the event relay
+	# process
+	self.heartbeat_interval = heartbeat_interval
+	self.heartbeat_msg = event_relay_messages.EventRelayAliveMsg(self.host, 
+								    self.port)
+	self.heartbeat_msg.encode(name)
+	self.server.add_interval_func(self.heartbeat, self.heartbeat_interval)
+
 
