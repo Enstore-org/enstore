@@ -617,6 +617,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.shortname = name[:-6]
         self.draining = 0
         self.log_mover_state = None
+        self.override_ro_mount = None # if set override readonly mount MC option
         
         # self.need_lm_update is used in threads to flag LM update in
         # the main thread. First element flags update if not 0,
@@ -1211,7 +1212,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         if n_thread.isAlive() and not t_thread.isAlive():
                             # we better do not drop a connection while
                             # tape thread is alive
-                            # tape thread can it self detect that
+                            # tape thread can itself detect that
                             # transfer out is slow and error out
                             # this is the case when tape thread read
                             # the data into the buffer and finished
@@ -1910,7 +1911,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         Trace.log(e_errors.INFO, "read bytes %s/%s, blocks %s header %s" %(self.bytes_read, self.bytes_to_read, nblocks, header_size))
-
+        
         if self.tr_failed:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             return
@@ -1938,6 +1939,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 return
         self.bytes_read_last = self.bytes_read
+        # if data is tranferred slowly
+        # the false "too long in state.." may be generated
+        # to aviod this just make a trick with time_in_state 
+        self.time_in_state = time.time()
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
                 
@@ -2101,6 +2106,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.tmp_vol = ticket['fc'].get('external_label', None)
         self.tmp_vf = ticket['vc'].get('volume_family', None)
         self.need_lm_update = (1, self.state, 1, None)
+        self.override_ro_mount = ticket.get('override_ro_mount', None)
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
@@ -2440,6 +2446,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ##    self.tape_driver.write(vol1_label, 0, 80)
                     ##    self.tape_driver.writefm()
 	            # END WAYNE FOO
+                
+                except e_errors.WRITE_ERROR, detail:
+                    self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                    return 0
                 except:
                     exc, detail, tb = sys.exc_info()
                     Trace.handle_error(exc, detail, tb)
@@ -3353,7 +3363,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.asc.log_start_mount(self.current_volume,self.config['product_id'])
                                  
         self.current_location = 0L
-        mcc_reply = self.mcc.loadvol(self.vol_info, self.name, self.mc_device)
+        vi = self.vol_info
+        if self.override_ro_mount:
+            vi['system_inhibit'][1] == 'none'
+            vi['user_inhibit'][1] == 'none'
+        mcc_reply = self.mcc.loadvol(vi, self.name, self.mc_device)
         self.timer('mount_time')
         status = mcc_reply.get('status')
         Trace.trace(10, 'mc replies %s' % (status,))
