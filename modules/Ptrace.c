@@ -61,31 +61,8 @@ raise_exception(  char		*method_name )
 void
 print_type( PyObject *obj )
 {
-    if      (PyCFunction_Check(obj)) printf( "type CFunction\n");
-    else if (PyCObject_Check(obj))   printf( "type CObject\n");
-    else if (PyClass_Check(obj))     printf( "type Class\n");
-    else if (PyCode_Check(obj))      printf( "type Code\n");
-    else if (PyComplex_Check(obj))   printf( "type Complex\n");
-    else if (PyDict_Check(obj))      printf( "type Dict\n");
-    else if (PyFile_Check(obj))      printf( "type File\n");
-    else if (PyFloat_Check(obj))     printf( "type Float\n");
-    else if (PyFrame_Check(obj))     printf( "type Frame\n");
-    else if (PyFunction_Check(obj))  printf( "type Function\n");
-    else if (PyInstance_Check(obj))  printf( "type Instance\n");
-    else if (PyInt_Check(obj))       printf( "type Int\n");
-    else if (PyList_Check(obj))      printf( "type List\n");
-    else if (PyLong_Check(obj))      printf( "type Long\n");
-    else if (PyMethod_Check(obj))    printf( "type Method\n");
-    else if (PyModule_Check(obj))    printf( "type Module\n");
-    else if (PyRange_Check(obj))     printf( "type Range\n");
-    else if (PySlice_Check(obj))     printf( "type Slice\n");
-    else if (PyString_Check(obj))    printf( "type String\n");
-    else if (PyTraceBack_Check(obj)) printf( "type TraceBack\n");
-    else if (PyTuple_Check(obj))     printf( "type Tuple\n");
-    else if (PyType_Check(obj))      printf( "type Type\n");
-    else if (obj == Py_None)         printf( "type None\n" );
-    else                            printf( "type unkown, error?\n" );
-}   /* print_type */
+    printf("%s\n", PyString_AsString(PyObject_Repr(PyObject_Type(obj))));
+}
 
 /******************************************************************************
  * @+Public+@
@@ -222,6 +199,7 @@ trace_function(  PyObject	*self
 		    , push[3], push[4], push[5] );
 	have_time = 1;
     }
+
     if ((trc_lvl_ip[1]&(1<<lvl)) && (trc_cntl_sp->mode&2))
     {   if (!have_time) { gettimeofday( &tt, 0 ); have_time = 1; }
 	TRC_FUNC( "func1", (float)tt.tv_sec, trc_pid
@@ -248,45 +226,54 @@ trace_function(  PyObject	*self
 }   /* trace_function */
 
 
-PyObject *
-make_str_obj( PyObject *o_o )
+
+static int
+get_depth()
 {
-	PyObject *str_o=NULL;
+    PyThreadState *state;
+    state = PyThreadState_Get();  /* gets access to interpreter state */
+    return state->recursion_depth;
+}
 
-#   if 0 /* for some reason, this does not work */
-    if (PyTuple_Check(o_o)) str_o = PyEval_CallObject( PtraceStrFunc, o_o );
-    else
-#   endif
-    {   /* make it a tuple first */
-	PyObject *tt;
-	tt = Py_BuildValue( "(O)", o_o );
-	if (tt)
-	{   str_o = PyEval_CallObject( PtraceStrFunc, tt );
-	    Py_DECREF( tt );
-	}
-	else printf( "ERROR - no tt???\n" );
-    }
-    return (str_o);
-}   /* make_str_obj */
-
-
 int
-get_depth( PyObject *arg_frame )
-{
-	int		ii=0;
-	int		depth=0;
-	PyObject	*tt[2];
+code_args_as_string(PyFrameObject *frame,
+                    PyCodeObject *code, 
+                    char *buf, int len)
+/*** XXX note that this does not pick up default args or kwargs */
+{  
+    int nargs;
+    int pos=0;
+    char *varname;
+    char *value;
+    int i,wlen;
+    
+    buf[0] = '\0';
 
-    tt[ii] = PyObject_GetAttrString( arg_frame, "f_back" );
-    while (tt[ii] != Py_None)
-    {   depth++;
-	tt[ii^1] = PyObject_GetAttrString( tt[ii], "f_back" );
-	Py_DECREF( tt[ii] );
-	ii ^= 1;
+    nargs = code->co_argcount;
+    for (i=0;i<nargs;++i){
+        varname = PyString_AsString(PyObject_Repr(
+            PyTuple_GetItem(code->co_varnames,i)));
+        value = PyString_AsString(PyObject_Repr(
+            frame->f_localsplus[i]));
+        wlen = strlen(varname)+strlen(value)+1;
+
+        if (pos)
+            wlen+=2; /* space for comma and space */
+
+        if (pos+wlen<len-3){
+            if (pos){
+                strcat(buf,", ");
+            }
+            strcat(buf,varname);
+            strcat(buf,"=");
+            strcat(buf,value);
+            pos+=wlen;
+        } else {
+	    strcat(buf,"...");
+	    break;
+	}
     }
-    Py_DECREF( tt[ii] );
-    if (depth > 31) depth = 31;
-    return (depth);
+    return nargs;
 }
 
 
@@ -295,7 +282,7 @@ get_depth( PyObject *arg_frame )
  * @+Public+@
  * ROUTINE: get_msg:  Added by ron on 30-Mar-1999
  *
- * DESCRIPTION:		stringify args and returns arg_frame for future use
+ * DESCRIPTION:		stringify args 
  *
  * RETURN VALUES:	None.
  *
@@ -304,52 +291,74 @@ get_depth( PyObject *arg_frame )
 
 int
 get_msg(  PyObject	*args
-	, char		*msg
-	, PyObject	**arg_frame )
+	  , char		*msg)
 {							/* @-Public-@ */
 	int		sts;
 	char		*arg_event;
+	PyObject        *arg_frame;
 	PyObject	*arg_arg;
-
-	PyObject	*code_o, *co_name_o;
+	PyFrameObject   *frame;
+	PyCodeObject	*code;
+	PyObject        *co_name_o;
 	PyObject	*arg_str_o=0;
 	char		*arg_s="";
+	char            *function_name;
+	char            *module_name;
+	char            *source_file;
+	int             line_no;
+	int             from_line_no;
+	char            *from_source_file;
+	char            buf[201];
+	PyObject	*tt[2];
+	int             nargs;
 
-    sts = PyArg_ParseTuple( args, "OsO", arg_frame, &arg_event, &arg_arg );
+    sts = PyArg_ParseTuple( args, "OsO", &arg_frame, &arg_event, &arg_arg );
+
     if (!sts) return (sts);
 
     /* this next block had better work (i.e. the system should give me what
        I expect -- I will not do error checking */
-    code_o = PyObject_GetAttrString( *arg_frame, "f_code" );
-    co_name_o = PyObject_GetAttrString( code_o, "co_name" );
-    Py_DECREF( code_o );
+    frame = (PyFrameObject*)arg_frame;
+    code = frame->f_code;
+    function_name = PyString_AsString(code->co_name);
+    module_name = PyString_AsString(
+	PyMapping_GetItemString(
+	    frame->f_globals,"__name__")
+	);
+
+    
+    source_file = PyString_AsString(frame->f_code->co_filename);
+    line_no = frame->f_lineno;
+
+    if (frame->f_back){
+	from_source_file = PyString_AsString(frame->f_back->f_code->co_filename);
+	from_line_no = frame->f_back->f_lineno;
+    } else {
+	from_source_file = "?";
+	from_line_no=0;
+    }
+    
 
     switch (arg_event[0])
     {
     case 'c':
-#       if 0 /* args currently 3-29-99 not working */
-	arg_str_o = make_str_obj( arg_arg );
-	if (arg_str_o) arg_s = PyString_AsString( arg_str_o );
-#       endif
-	sprintf(  msg, "call  %s %s", PyString_AsString(co_name_o), arg_s );
-	if (arg_str_o) Py_DECREF( arg_str_o );
+	nargs = code_args_as_string(frame, code, buf, 200);
+	sprintf(  msg, " call %s.%s((%d)%s) from %s:%d", /*XXX kludge alert!*/
+                  module_name,function_name, nargs, buf, from_source_file, from_line_no);
 	break;
     case 'r':
-	arg_str_o = make_str_obj( arg_arg );
-	if (arg_str_o) arg_s = PyString_AsString( arg_str_o );
-	sprintf(  msg, "retrn %s %s", PyString_AsString(co_name_o), arg_s );
-	if (arg_str_o) Py_DECREF( arg_str_o );
+	sprintf(  msg, "ret  %s.%s %s", module_name, function_name, 
+		  PyString_AsString(PyObject_Repr(arg_arg)));
 	break;
     case 'e':
-	sprintf(  msg, "excpt %s"
-		, PyString_AsString(co_name_o) );
+	sprintf(  msg, "exc  %s.%s at %s:%d"
+		, module_name, function_name, source_file,line_no );
 	break;
     default:			/* must be 'l' as in "line" */
-	sprintf(  msg, "line  %s"
-		, PyString_AsString(co_name_o) );
+	sprintf(  msg, "line %s"
+		, function_name );
 	break;
     }
-    Py_DECREF( co_name_o );
 
     return (1);
 }   /* get_msg */
@@ -370,7 +379,6 @@ static PyObject *
 profile_function(  PyObject	*self
 		 , PyObject	*args )
 {							/* @-Public-@ */
-	PyObject	*arg_frame;
 	char		 msg[20000];
 	int		 depth=0;     /* initialize to quiet gcc */
 	struct timeval	 tt;
@@ -383,16 +391,17 @@ profile_function(  PyObject	*self
 #   define LVL 31
 
     if ((trc_lvl_ip[0]&(1<<LVL)) && (trc_cntl_sp->mode&1))
-    {   if (!get_msg(args,msg,&arg_frame))
+    {   if (!get_msg(args,msg))
 	    return (raise_exception("profile_function - parse error"));
-	depth = get_depth( arg_frame );
+	depth = get_depth();
 	Ptrace_QPut( &tt, depth, msg );
 	have_time = have_mesg = have_dpth = 1;
     }
+
     if ((trc_lvl_ip[1]&(1<<LVL)) && (trc_cntl_sp->mode&2))
     {   if (!have_time) gettimeofday( &tt, 0 );
 	if (!have_mesg)
-	    if (!get_msg(args,msg,&arg_frame))
+	    if (!get_msg(args,msg))
 		return (raise_exception("profile_function - parse error"));
 	argsTuple = Py_BuildValue( "is", 31, msg );
 	TRC_FUNC( "func1", (float)tt.tv_sec, trc_pid
@@ -402,7 +411,7 @@ profile_function(  PyObject	*self
     if ((trc_lvl_ip[2]&(1<<LVL)) && (trc_cntl_sp->mode&4))
     {   if (!have_time) gettimeofday( &tt, 0 );
 	if (!have_mesg)
-	    if (!get_msg(args,msg,&arg_frame))
+	    if (!get_msg(args,msg))
 		return (raise_exception("profile_function - parse error"));
 	if (!have_argT) argsTuple = Py_BuildValue( "is", 31, msg );
 	TRC_FUNC( "func2", (float)tt.tv_sec, trc_pid
@@ -413,9 +422,9 @@ profile_function(  PyObject	*self
     {   char    traceLvlStr[33] = "                                ";
 	if (!have_time) gettimeofday( &tt, 0 );
 	if (!have_mesg)
-	    if (!get_msg(args,msg,&arg_frame))
+	    if (!get_msg(args,msg))
 		return (raise_exception("profile_function - parse error"));
-	if (!have_dpth) depth = get_depth( arg_frame );
+	if (!have_dpth) depth = get_depth();
 	/* printing is slow, but we need to make it slower by checking ??? */
 	printf( "%5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s %s%s\n"
 	       , trc_pid
@@ -424,6 +433,7 @@ profile_function(  PyObject	*self
 	       , msg );
     }
     if (have_argT) Py_DECREF( argsTuple );
+
     Py_INCREF(Py_None);
     return (Py_None);
 }   /* profile_function */
