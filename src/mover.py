@@ -987,11 +987,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(25, "maybe_clean: open device to get tape statistics")
             have_tape = self.tape_driver.open(self.device, mode=0, retry_count=1)
             stats = self.tape_driver.ftt.get_stats()
-            Trace.trace(25, "maybe_clean: got tape statistics, stats=%s, stats[CLEANING_BIT]=%s"%(
-                stats, stats and stats[ftt.CLEANING_BIT]))
+            cleaning_bit = stats and stats[ftt.CLEANING_BIT]
+            Trace.trace(25, "maybe_clean: got tape statistics, stats=%s, stats[CLEANING_BIT]=%s (%s)" % (
+                stats, cleaning_bit, type(cleaning_bit)))
 
-            needs_cleaning = stats and stats[ftt.CLEANING_BIT]
-            if needs_cleaning and needs_cleaning != '0':
+            if cleaning_bit and cleaning_bit != '0':
                 needs_cleaning = 1
 
         if needs_cleaning:
