@@ -12,7 +12,7 @@ cd $ENSTORE_DIR/etc
 # the configuration server needs to be the 1st thing started
 echo "Starting configuration server on $config_host, port $config_port, using file $config_file"
 python $ENSTORE_DIR/src/configuration_server.py --config_host=$config_host --config_port=$config_port --config_file=$config_file &
-echo $! >> configuration_pids
+echo $! >> `uname -n`-configuration_pids
 sleep 1
 
 # now check to see if it is really running
@@ -26,22 +26,22 @@ fi
 # volume clerk
 echo "Starting volume clerk"
 python $ENSTORE_DIR/src/volume_clerk.py    --config_host $config_host --config_port $config_port &
-echo $! >> volume_clerk_pids
+echo $! >> `uname -n`-volume_clerk_pids
 
 # file clerk
 echo "Starting file clerk"
 python $ENSTORE_DIR/src/file_clerk.py      --config_host $config_host --config_port $config_port &
-echo $! >> file_clerk_pids
+echo $! >> `uname -n`-file_clerk_pids
 
 # library manager
 echo "Starting library manager"
 python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port activelibrary &
-echo $! >> library_manager_pids
+echo $! >> `uname -n`-library_manager_pids
 
 # mover: raw disk mover
 echo "Starting Raw Disk Mover"
 python $ENSTORE_DIR/src/mover.py          --config_host $config_host --config_port $config_port fd0.mover &
-echo $! >> mover_pids
+echo $! >> `uname -n`-mover_pids
 
 # really need to add a check to make sure they are working
 sleep 1
