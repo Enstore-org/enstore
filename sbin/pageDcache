@@ -9,10 +9,10 @@ raise_alarm() {
     msg=$1
     item_to_override=$2
     error_code=$3
-###    enstore alarm --raise --severity "A" --root-error "$msg"
+    enstore alarm --raise --severity "A" --root-error "$msg"
     echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail bakken@fnal.gov,berman@fnal.gov
-###    enstore sched --override $item_to_override --saagstatus red --time="$msg"
-###    enstore sched --override enstore    --saagstatus red --time="$msg"
+    enstore sched --override $item_to_override --saagstatus red --time="$msg"
+    enstore sched --override enstore    --saagstatus red --time="$msg"
     exit $error_code
 }
 
@@ -301,7 +301,7 @@ echo cleanup: rm -f $test_file $read_back $write_in_progress $read_in_progress
               rm -f $test_file $read_back $write_in_progress $read_in_progress
 
 # make sure the ball is ok
-###enstore sched --nooverride %dcache_saag
+enstore sched --nooverride %dcache_saag
 
 echo `date` Finished.
 exit 0
