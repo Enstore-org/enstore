@@ -1,4 +1,10 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
 # $Id$
+#
+###############################################################################
 
 # Alternate implementation of Trace, which does not use shared memory,
 # semaphores, circular queues, or sys.setprofile.  Less powerful but more
@@ -8,6 +14,7 @@
 # trace, init, on,  mode, log, alarm,
 # set_alarm_func, set_log_func
 
+# system imports
 import sys				
 import traceback
 import os				
@@ -16,6 +23,7 @@ import time
 #import socket
 import types
 
+# enstore modules
 #import enstore_constants
 import event_relay_messages
 import event_relay_client
@@ -228,6 +236,10 @@ except:
     usr = "unknown"
 
 def default_log_func( time, pid, name, args ):
+    #Even though this implimentation of log_func() does not use the time
+    # parameter, others will.
+    __pychecker__ = "unusednames=time"
+    
     severity = args[0]
     msg = args[1]
     if severity > e_errors.MISC: severity = e_errors.MISC
@@ -240,12 +252,21 @@ set_log_func(default_log_func)
 def handle_error(exc=None, value=None, tb=None, msg_type=MSG_DEFAULT):
 
     # store traceback info
+    locally_obtained = False
     if not exc:
+        locally_obtained = True
 	exc, value, tb = sys.exc_info()
+        
     # log it
     for l in traceback.format_exception( exc, value, tb ):
 	log( e_errors.ERROR, l, msg_type, "TRACEBACK")
-    return exc, value, tb
+
+    if not locally_obtained:
+        return exc, value, tb
+    else:
+        #Avoid a cyclic reference.
+        del tb
+        return sys.exc_info()
 
 
 
