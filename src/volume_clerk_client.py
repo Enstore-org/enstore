@@ -255,9 +255,9 @@ class VolumeClerkClient(generic_client.GenericClient,
 
         if volumes.has_key("header"):        # full info
             if print_list:
-                print "%-10s  %-8s %-17s %17s %012s %-012s"%(
-                    "label","avail.", "system_inhibit","user_inhibit",
-                    "library","    volume_family")
+                print "%-10s     %-8s         %-17s          %012s     %-012s          %-012s"%(
+                    "label","avail.", "system_inhibit",
+                    "library","    volume_family", "comment")
                 for v in volumes["volumes"]:
                     print "%-10s"%(v['volume'],),
                     print capacity_str(v['remaining_bytes']),
@@ -723,7 +723,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_LABEL:"comment",
                         option.USER_LEVEL:option.ADMIN,
-                        option.EXTRA_VALUES:[{option.VALUE_NAME:"vol",
+                        option.EXTRA_VALUES:[{option.VALUE_NAME:"volume",
                                           option.VALUE_LABEL:"volume_name",
                                           option.VALUE_TYPE:option.STRING,
                                           option.VALUE_USAGE:option.REQUIRED}]},
@@ -857,7 +857,7 @@ def do_work(intf):
     elif intf.set_comment: # set comment of vol
         if len(sys.argv) != 4:
             print "Error! usage: enstore %s --set-comment <comment> <vol>"%(sys.argv[0])
-        ticket = vcc.set_comment(intf.vol, intf.set_comment)
+        ticket = vcc.set_comment(intf.volume, intf.set_comment)
     elif intf.export: # volume export
         # check for correct syntax
         if len(sys.argv) != 3:	# wrong number of arguments
