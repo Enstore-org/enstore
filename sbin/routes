@@ -245,7 +245,7 @@ test*)
     node=`uname -n| sed -e 's/.fnal.gov//'`
     if [ $gang = "d0en" ];then
       num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
-      max=18
+      max=20
     elif [ $gang = "stken" ]; then
       num=`echo $node | sed -e 's/stkenmvr//' -e 's/a//' -e 's/b//'`
       max=5
@@ -295,7 +295,7 @@ ifconfig)
       server=0
       if [ $gang = "d0en" ];then
         num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
-        max=18
+        max=20
       elif [ $gang = "stken" ]; then
         num=`echo $node | sed -e 's/stkenmvr//' -e 's/a//' -e 's/b//'`
         max=5
