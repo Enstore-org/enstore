@@ -177,6 +177,7 @@ class Buffer:
         if bytes_read == nbytes: #normal case
             self.push(space)
         elif bytes_read<=0: #error
+            Trace.log(25, "block_read: read %s" % (bytes_read,))
             pass #XXX or raise an exception?
         else: #partial block read
             Trace.trace(25, "partial block (%s/%s) read" % (bytes_read,nbytes))
