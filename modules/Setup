@@ -98,5 +98,3 @@ enroute enroute_wrap.c enroute.c
 libtpmodule libtpcursor.c libtplock.c libtpmodule.c libtptxn.c \
 	-I$(LIBTP_INCLUDE) -L$(LIBTP_LIB) -ldb
 
-# The drivestat module is not built unless DRIVESTAT_CLIENT_DIR is defined ; see Makefile
-drivestat drivestat_wrap.c api.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt 

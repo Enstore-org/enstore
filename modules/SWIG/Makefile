@@ -5,7 +5,7 @@
 
 SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c ../checksum_wrap_thread.c \
 	../socket_ext_wrap.c ../strbuffer_wrap_thread.c ../_ftt_wrap_thread.c \
-	../runon_wrap.c ../enroute_wrap.c  ../drivestat_wrap.c
+	../runon_wrap.c ../enroute_wrap.c
 
 SWIG_GENERATED_PY_FILES=../aci_shadow.py
 
@@ -62,6 +62,3 @@ clean:
 	swig -python runon.i
 	mv runon_wrap.c ..
 
-../drivestat_wrap.c: drivestat.i
-	swig -I$(DRIVESTAT_CLIENT_DIR)/src/inc -I${FTT_DIR}/include -python drivestat.i
-	mv drivestat_wrap.c ..
