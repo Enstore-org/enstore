@@ -252,7 +252,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
             fi
         fi
         echo "Checking $i Library Manager"
-        ecmd lmc --alive --list $i
+        #ecmd lmc --alive --list $i
+        udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep $i | cut -d: -f2` \
+                                         `echo "$nodeplus_servers" | grep $i | cut -d: -f3` $timeout --tries $tries
         if [ $? -ne 0 ]; then
             echo "   ...$i Library Manager not reachable..."
             exit 1
@@ -285,7 +287,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
             fi
         fi
         echo "Checking $i Media Changer"
-        ecmd mcc --alive --list $i
+        #ecmd mcc --alive --list $i
+        udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep $i | cut -d: -f2` \
+                                         `echo "$nodeplus_servers" | grep $i | cut -d: -f3` $timeout --tries $tries
         if [ $? -ne 0 ]; then
             echo "   ...$i Media Changer not reachable..."
             exit 1
