@@ -7,6 +7,7 @@ import string
 import types
 import os
 import traceback
+import pprint
 
 # enstore imports
 import dispatching_worker
@@ -15,6 +16,7 @@ import interface
 import Trace
 import e_errors
 import hostaddr
+import callback
 
 MY_NAME = "CONFIG_SERVER"
 
@@ -40,7 +42,6 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         except:
             x = sys.exc_info()
             tb=x[2]
-            msg="YO"
 
             fmt =  traceback.format_exception(x[0],x[1],x[2])[-4:]
             fmt[0] = string.replace(fmt[0], "<string>", configfile)
@@ -58,143 +59,118 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile):
-     try:
-	msg = self.read_config(configfile)
-	if msg != (e_errors.OK, None):
-	    return msg
-        self.serverlist={}
-	conflict = 0
-        for key in self.configdict.keys():
-	    if not self.configdict[key].has_key('status'):
-		self.configdict[key]['status'] = (e_errors.OK, None)
-	    for insidekey in self.configdict[key].keys():
-		if insidekey == 'host':
-		    self.configdict[key]['hostip'] = hostaddr.name_to_address(
-                        self.configdict[key]['host'])
-		    if not self.configdict[key].has_key('port'):
-			self.configdict[key]['port'] = -1
-		    # check if server is already configured
-		    for configured_key in self.serverlist.keys():
-			if (self.serverlist[configured_key][1] == 
-                            self.configdict[key]['hostip'] and 
-                            self.serverlist[configured_key][2] == 
-			    self.configdict[key]['port']):
-			    msg = "Configuration Conflict detected for "\
-				  "hostip "+\
-				  repr(self.configdict[key]['hostip'])+ \
-				  "and port "+ \
-				  repr(self.configdict[key]['port'])
-                            Trace.log(10, msg)
-			    conflict = 1
-			    break
-		    if not conflict:
-			self.serverlist[key]= (self.configdict[key]['host'],self.configdict[key]['hostip'],self.configdict[key]['port'])
-		    break
-		
-	if conflict:
-	    return(e_errors.CONFLICT, "Configuration conflict detected. "
-		   "Check configuration file")
-        return (e_errors.OK, None)
+        try:
+            msg = self.read_config(configfile)
+            if msg != (e_errors.OK, None):
+                return msg
+            self.serverlist={}
+            conflict = 0
+            for key in self.configdict.keys():
+                if not self.configdict[key].has_key('status'):
+                    self.configdict[key]['status'] = (e_errors.OK, None)
+                for insidekey in self.configdict[key].keys():
+                    if insidekey == 'host':
+                        self.configdict[key]['hostip'] = hostaddr.name_to_address(
+                            self.configdict[key]['host'])
+                        if not self.configdict[key].has_key('port'):
+                            self.configdict[key]['port'] = -1
+                        # check if server is already configured
+                        for configured_key in self.serverlist.keys():
+                            if (self.serverlist[configured_key][1] == 
+                                self.configdict[key]['hostip'] and 
+                                self.serverlist[configured_key][2] == 
+                                self.configdict[key]['port']):
+                                msg = "Configuration Conflict detected for "\
+                                      "hostip "+\
+                                      repr(self.configdict[key]['hostip'])+ \
+                                      "and port "+ \
+                                      repr(self.configdict[key]['port'])
+                                Trace.log(10, msg)
+                                conflict = 1
+                                break
+                        if not conflict:
+                            self.serverlist[key]= (self.configdict[key]['host'],self.configdict[key]['hostip'],self.configdict[key]['port'])
+                        break
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         return (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            if conflict:
+                return(e_errors.CONFLICT, "Configuration conflict detected. "
+                       "Check configuration file")
+            return (e_errors.OK, None)
+
+        # even if there is an error - respond to caller so he can process it
+        except:
+            return (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
 
 
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket):
-     try:
-        # everything is based on lookup - make sure we have this
         try:
-            key="lookup"
-            lookup = ticket[key]
-        except KeyError:
-            Trace.trace(6,"lookup "+repr(key)+" key is missing")
-            ticket["status"] = (e_errors.KEYERROR, "Configuration Server: "+key+" key is missing")
-            self.reply_to_caller(ticket)
+            # everything is based on lookup - make sure we have this
+            try:
+                key="lookup"
+                lookup = ticket[key]
+            except KeyError:
+                Trace.trace(6,"lookup "+repr(key)+" key is missing")
+                ticket["status"] = (e_errors.KEYERROR, "Configuration Server: "+key+" key is missing")
+                self.reply_to_caller(ticket)
+                return
+
+            # look up in our dictionary the lookup key
+            try:
+                out_ticket = self.configdict[lookup]
+            except KeyError:
+                Trace.trace(8,"lookup no such name"+repr(lookup))
+                out_ticket = {"status": (e_errors.KEYERROR,
+                                         "Configuration Server: no such name: "
+                                         +repr(lookup))}
+            self.reply_to_caller(out_ticket)
+            Trace.trace(6,"lookup "+repr(lookup)+"="+repr(out_ticket))
             return
 
-        # look up in our dictionary the lookup key
-        try:
-            out_ticket = self.configdict[lookup]
-        except KeyError:
-            Trace.trace(8,"lookup no such name"+repr(lookup))
-            out_ticket = {"status": (e_errors.KEYERROR,
-                                     "Configuration Server: no such name: "
-                                     +repr(lookup))}
-        self.reply_to_caller(out_ticket)
-        Trace.trace(6,"lookup "+repr(lookup)+"="+repr(out_ticket))
-        return
+        # even if there is an error - respond to caller so he can process it
+        except:
+            ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            self.reply_to_caller(ticket)
+            Trace.trace(6,"lookup "+str(sys.exc_info()[0])+
+                        str(sys.exc_info()[1]))
+            return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         self.reply_to_caller(ticket)
-         Trace.trace(6,"lookup "+str(sys.exc_info()[0])+
-                     str(sys.exc_info()[1]))
-         return
-
-    # return a dump of the dictionary back to the user
+    # return a list of the dictionary keys back to the user
     def get_keys(self, ticket):
-     try:
-        skeys = self.configdict.keys()
-	skeys.sort()
-        out_ticket = {"status" : (e_errors.OK, None), "get_keys" : (skeys)}
-        self.reply_to_caller(out_ticket)
-        return
+        try:
+            skeys = self.configdict.keys()
+            skeys.sort()
+            out_ticket = {"status" : (e_errors.OK, None), "get_keys" : (skeys)}
+            self.reply_to_caller(out_ticket)
+            return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
-         self.reply_to_caller(ticket)
-         Trace.trace(6,"get_keys "+str(sys.exc_info()[0])+
-                     str(sys.exc_info()[1]))
-         return
+        # even if there is an error - respond to caller so he can process it
+        except:
+             ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+             self.reply_to_caller(ticket)
+             Trace.trace(6,"get_keys "+str(sys.exc_info()[0])+
+                         str(sys.exc_info()[1]))
+             return
 
 
     # return a dump of the dictionary back to the user
     def dump(self, ticket):
-     try:
-        sortedkey = self.configdict.keys()
-        sortedkey.sort()
-        formatted= "configdict = {}\n"
-        for key in sortedkey:
-           formatted= formatted + "\nconfigdict['" + key + "'] = {"
-           len2 = len(key)
-           count4 = 0
-           for key2 in self.configdict[key].keys():
-              if key2 not in ('hostip', 'status'):
-                  count4 = count4+1
-           count3 = 0
-           sortedkeyinside = self.configdict[key].keys()
-           sortedkeyinside.sort()
-           for key2 in sortedkeyinside:
-              if key2 in ('hostip','status'):
-                  continue
-              count3 = count3 + 1
-              if count3 != 1:
-                 formatted= formatted + "\n"
-                 #for ks in range(len2):
-                 #   formatted= formatted + " "
-                 formatted= formatted + " "*len2
-                 formatted= formatted + "                   '" + key2 + "'  : " + repr(self.configdict[key][key2])
-              else:
-                 formatted= formatted + " '"  + key2 + "'  : " + repr(self.configdict[key][key2])
-              if count3 != count4:
-                 formatted= formatted + ","
-              else:
-                 formatted= formatted + " }\n"
-        out_ticket = {"status" : (e_errors.OK, None), "dump" : formatted}
-        self.reply_to_caller(out_ticket)
-        return
+        try:
+            ticket['status']=(e_errors.OK, None)
+            reply=ticket.copy()
+            reply["dump"] = pprint.pformat(self.configdict)
+            self.reply_to_caller(ticket)
+            callback.user_callback_socket(reply)
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
-         self.reply_to_caller(ticket)
-         Trace.trace(6,"dump "+str(sys.exc_info()[0])+
-                     str(sys.exc_info()[1]))
-         return
+        # even if there is an error - respond to caller so he can process it
+        except:
+            ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+            try:
+                self.reply_to_caller(ticket)
+            except:
+                pass
+            Trace.trace(6,"dump "+str(sys.exc_info()[0])+
+                        str(sys.exc_info()[1]))
 
 
     # reload the configuration dictionary, possibly from a new file
