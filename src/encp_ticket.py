@@ -31,10 +31,14 @@ def write_request_ok(ticket):
                'storage_group': '',
                }
 
+    inode_type = 0L
+    if type(ticket['wrapper']['inode']) == type(0):
+        inode_type = 0
+
     wrapper_keys = {'fullname': '',
                     'gid': 0,
                     'gname': '',
-                    'inode': 0,
+                    'inode': inode_type,
                     'machine': ('','','','',''),
                     'major': 0,
                     'minor': 0,
@@ -136,10 +140,14 @@ def read_request_ok(ticket):
     elif type(ticket['file_size']) == type(None):
         fsize_type = None
 
+    inode_type = 0L
+    if type(ticket['wrapper']['inode']) == type(0):
+        inode_type = 0
+
     wrapper_keys = {'fullname': '',
                     'gid': 0,
                     'gname': '',
-                    'inode': 0,
+                    'inode': inode_type,
                     'machine': ('','','','',''),
                     'major': 0,
                     'minor': 0,
