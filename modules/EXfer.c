@@ -1554,7 +1554,7 @@ static void* thread_monitor(void *monitor_info)
       read_info->crc_ui = 0;             /* Checksum */
       read_info->errno_val = EBUSY    ;  /* Errno value if error occured. */
       read_info->exit_status = 1;        /* Exit status of the thread. */
-      read_info->msg = "write() system call stuck inside kernel to long";
+      read_info->msg = "write() system call stuck inside kernel too long";
                                           /* Additional error message. */
       read_info->transfer_time = 0.0;
       read_info->line = __LINE__;
@@ -1598,7 +1598,7 @@ static void* thread_monitor(void *monitor_info)
       write_info->crc_ui = 0;             /* Checksum */
       write_info->errno_val = EBUSY;      /* Errno value if error occured. */
       write_info->exit_status = THREAD_ERROR; /* Exit status of the thread. */
-      write_info->msg = "write() system call stuck inside kernel to long";
+      write_info->msg = "write() system call stuck inside kernel too long";
                                           /* Additional error message. */
       write_info->transfer_time = 0.0;
       write_info->line = __LINE__;
