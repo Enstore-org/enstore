@@ -145,7 +145,7 @@ class Pnfs:
                 t = int(time.time())
                 os.utime(self.pnfsFilename,(t,t))
             except os.error, msg:
-                Trace.log(e_errors.INFO, "can not utime: %s %s"%(exc,msg))
+                Trace.log(e_errors.INFO, "can not utime: %s %s"%(os.error,msg))
             self.pstatinfo()
 
 
