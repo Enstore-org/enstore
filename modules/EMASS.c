@@ -14,16 +14,54 @@ static char EMASS_Doc[] =  "EMASS Robot Mount and Dismount";
 static char Mount_Doc[] =  "Mount a tape";
 static char Dismount_Doc[] =  "Dismount a tape";
 
+/*
+	Convert Acsii media type to ACI enum - page 1-8 DAS ref guide
+*/
+struct media_struct {
+  enum aci_media media_enum;
+  char *    media_string;
+}  media_table[] = {
+  ACI_VHS,	"VHS",
+  ACI_DECDLT, 	"DECDLT",
+  ACI_3480,	"3480",
+  ACI_3590,	"3590",
+  ACI_OD_THIN,	"OD_THIN",
+  ACI_OD_THICK,	"OD_THICK",
+  ACI_D2,	"D2",
+  ACI_8MM,	"8MM",
+  ACI_4MM,	"4MM",
+  ACI_DTF,	"DTF",
+  ACI_BETACAM,	"BETACAM",
+  ACI_TRAVAN,	"TRAVAN",
+  ACI_CD,	"CD",
+  ACI_AUDIO_TAPE, "AUDIO_TAPE",
+  (enum aci_media)NULL,"INVALIDMEDIA"
+};
+
+enum aci_media stoi_mediatype(char *media_type)
+{
+struct media_struct *m;
+  for (m=media_table;m->media_enum; m++) 
+  {
+    printf("%s %s\n",media_type, m->media_string);
+    if (strcmp(media_type, m->media_string) == 0) 
+      return(m->media_enum);
+  }
+  return(m->media_enum);		/* rturn "INVALID" */
+}
+
 static PyObject* Mount(PyObject *self, PyObject *args)
 {
   char *vol;
   char *drive;
+  char *media_type_s;
   enum aci_media media_type;
   int stat;
   /*
         Get the arguements
   */
-  PyArg_ParseTuple(args, "ssi", &vol, &drive, &media_type);
+  PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type_s);
+  media_type = stoi_mediatype(media_type_s);
   if  (stat = aci_mount(vol,media_type,drive))
      return(Py_BuildValue("i",d_errno));
   return(Py_BuildValue("i",stat ));
@@ -32,12 +70,15 @@ static PyObject* Mount(PyObject *self, PyObject *args)
 static PyObject* Dismount(PyObject *self, PyObject *args)
 {
   char *vol;
+  char *drive;
+  char *media_type_s;
   enum aci_media media_type;
   int stat;
   /*
         Get the arguements
   */
-  PyArg_ParseTuple(args, "ss", &vol, &media_type);
+  PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type_s);
+  media_type = stoi_mediatype(media_type_s);
   if  (stat = aci_dismount(vol,media_type))
      return(Py_BuildValue("i",d_errno));
   return(Py_BuildValue("i",stat ));
