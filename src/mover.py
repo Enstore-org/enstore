@@ -377,7 +377,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.dismount_time = time.time() + self.default_dismount_delay
             self.tape_driver.close()
             if not have_tape:
-                Trace.log(e_errrors.INFO, "performing precautionary dismount at startup")
+                Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
                 self.dismount_volume()
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
