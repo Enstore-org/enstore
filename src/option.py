@@ -530,7 +530,6 @@ class Interface:
         self.options = {}
         self.option_list = []
         self.args = []           #Contains unprocessed arguments.
-        self.parameters = []
         self.some_args = []
         #self.config_options = {} #hack for old code
         
@@ -555,6 +554,7 @@ class Interface:
         
 ############################################################################
 
+    parameters = []  #Don't put this in __init__().  It would clobber values.
 
     alive_rcv_options = {
         TIMEOUT:{HELP_STRING:"number of seconds to wait for alive response",
