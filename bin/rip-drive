@@ -92,22 +92,14 @@ dc04node=$rip1
 dc05node=$rip2
 dc06node=$rip1
 
-dm07node=$ripsgi
-dm08node=$ripsgi
-dm09node=$ripsgi
-dm10node=$ripsgi
-dm11node=$ripsgi
-dm12node=$ripsgi
 
 de13node=$d0enmvr4a
 de14node=$d0enmvr4a
 
-dc15node=$d0enmvr6a
-dc16node=$d0enmvr6a
+dc15node=$d0enmvr5a
+dc16node=$d0enmvr5a
 
-dc17node=$d0enmvr5a
-dm18node=$d0enmvr5a
-dm19node=$d0enmvr5a
+dc17node=$d0enmvr4a
 
 dc20node=$d0enmvr11a
 dc21node=$d0enmvr11a
@@ -118,16 +110,11 @@ dc23node=$d0enmvr11a
 dc24node=$d0enmvr9a
 dc25node=$d0enmvr9a
 
-dc26node=$d0enmvr8a
-dc27node=$d0enmvr8a
+dc26node=$d0enmvr9a
+dc27node=$d0enmvr9a
 
-dc28node=$d0enmvr7a
-dc29node=$d0enmvr7a
-
-dm30node=$d0enmvr15a
-dm31node=$d0enmvr15a
-dm32node=$d0enmvr15a
-dm33node=$d0enmvr15a
+dc28node=$d0enmvr5a
+dc29node=$d0enmvr5a
 
 
 ea11node=$stkenmvr1a
@@ -137,6 +124,10 @@ ea21node=$stkenmvr2a
 ea22node=$stkenmvr2a
 
 ea31node=$stkenmvr3a
+ea32node=$stkenmvr3a
+
+ea41node=$stkenmvr4a
+ea42node=$stkenmvr4a
 
 jde01node=$rip9
 jde02node=$rip9
@@ -152,47 +143,40 @@ dc03device=/dev/rmt/tps3d1n
 dc04device=/dev/rmt/tps2d2n
 dc05device=/dev/rmt/tps2d3n
 dc06device=/dev/rmt/tps3d4n
-dm07device=/dev/rmt/tps2d1nrvc
-dm08device=/dev/rmt/tps2d2nrvc
-dm09device=/dev/rmt/tps2d5nrvc
-dm10device=/dev/rmt/tps2d6nrvc
-dm11device=/dev/rmt/tps2d3nrvc
-dm12device=/dev/rmt/tps2d4nrvc
 
 de13device=/dev/rmt/tps2d4n
 de14device=/dev/rmt/tps3d3n
-dc15device=/dev/rmt/tps2d4n
-dc16device=/dev/rmt/tps3d6n
+dc15device=/dev/rmt/tps0d4n
+dc16device=/dev/rmt/tps1d6n
 dc17device=/dev/rmt/tps2d5n
-dm18device=/dev/rmt/tps3d1n
-dm19device=/dev/rmt/tps3d2n
 dc20device=/dev/rmt/tps0d1n
 dc21device=/dev/rmt/tps1d1n
 dc22device=/dev/rmt/tps4d1n
 dc23device=/dev/rmt/tps5d1n
 dc24device=/dev/rmt/tps0d1n
-dc25device=/dev/rmt/tps3d1n
-dc26device=/dev/rmt/tps0d1n
-dc27device=/dev/rmt/tps3d1n
-dc28device=/dev/rmt/tps0d1n
-dc29device=/dev/rmt/tps3d1n
-
-dm30device=/dev/rmt/tps2d1n
-dm31device=/dev/rmt/tps2d2n
-dm32device=/dev/rmt/tps0d1n
-dm33device=/dev/rmt/tps0d2n
+dc25device=/dev/rmt/tps1d1n
+dc26device=/dev/rmt/tps4d1n
+dc27device=/dev/rmt/tps5d1n
+dc28device=/dev/rmt/tps4d1n
+dc29device=/dev/rmt/tps5d1n
 
 ea11device=/dev/rmt/tps0d1n
 ea12device=/dev/rmt/tps3d1n
 ea21device=/dev/rmt/tps0d1n
 ea22device=/dev/rmt/tps3d1n
 ea31device=/dev/rmt/tps0d1n
+ea32device=/dev/rmt/tps3d1n
+ea41device=/dev/rmt/tps0d1n
+ea42device=/dev/rmt/tps3d1n
 
 EA11="0,0,10,0"
 EA12="0,0,10,1"
 EA21="0,0,10,2"
 EA22="0,0,10,3"
 EA31="0,0,10,4"
+EA32="0,0,10,5"
+EA41="0,0,10,6"
+EA42="0,0,10,7"
 
 jde01device=/dev/rmt/tps2d5n
 jde02device=/dev/rmt/tps2d4n
@@ -220,12 +204,9 @@ case $drive in
 
   de01|de02|\
   dc03|dc04|dc05|dc06|\
-  dm07|dm08|dm09|dm10|dm11|dm12|\
   de13|de14|\
   dc15|dc16|dc17|\
-  dm18|dm19|\
   dc20|dc21|dc22|dc23|dc24|dc25|dc26|dc27|dc28|dc29|\
-  dm30|dm31|dm32|dm33|\
   ea11|ea12|ea21|ea22|ea31|\
   jde01|jde02|jde03|jde04)
 
