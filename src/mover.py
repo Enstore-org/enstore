@@ -321,8 +321,8 @@ class Buffer:
                 else:
                     # compare sanity crc
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
-                        Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, sanity CRC %s" %
-                                  (self.sanity_cookie[1],self.sanity_crc)) 
+                        Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, actual (%s,%s)" %
+                                  (self.sanity_cookie, self.sanity_bytes, self.sanity_crc)) 
                         if self.sanity_cookie != (None, None): # special case to fix bfid db
                             crc_error = 1   
                 data_ptr = data_ptr + bytes_for_cs
