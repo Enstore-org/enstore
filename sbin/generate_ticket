@@ -8,7 +8,7 @@ if [ "$?" = "1" ];
 then
 	# no product found
 	setup enstore
-	enstore alarm --raise --root_error 'remedy_api product missing or not current' --severity E&
+	echo "enstore alarm --raise --root_error 'remedy_api product missing or not current' --severity E"|at now+1min
 else
 	# make sure we have enough inputs, either 4 or 10
 	if [ "$#" = "4" ];
