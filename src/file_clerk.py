@@ -554,9 +554,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # get_all_bfids(external_label) -- get all bfids of a particular volume
 
     def get_all_bfids(self, external_label):
-        q = "select bfid from file, volume\
+        q = "select bfid, location_cookie from file, volume\
              where volume.label = '%s' and \
-                   file.volume = volume.id;"%(external_label)
+                   file.volume = volume.id \
+                   order by location_cookie;"%(external_label)
         res = self.dict.db.query(q).getresult()
         bfids = []
         for i in res:
