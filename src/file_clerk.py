@@ -5,13 +5,13 @@
 #
 # system import
 import sys
+import os
 import time
 import string
-import os
+import socket
 
 # enstore imports
 import setpath
-
 import traceback
 import callback
 import volume_clerk_client

@@ -6,8 +6,10 @@ import time
 import string
 import errno
 import sys
+import socket
 
 # enstore imports
+import setpath
 import generic_client
 import backup_client
 import udp_client
