@@ -2,6 +2,8 @@ import time
 
 import enstore_constants
 import enstore_functions
+import mover_client
+import library_manager_client
 import Trace
 
 DEFAULT_ALIVE_INTERVAL = 30
@@ -195,7 +197,11 @@ class MonitoredConfigServer(MonitoredServer):
 
 class MonitoredMover(MonitoredServer):
 
-    pass
+    def __init__(self, config, name, csc):
+	MonitoredServer.__init__(self, config, name)
+	self.csc = csc
+	self.client = mover_client.MoverClient(self.csc, self.name)
+
 
 class MonitoredMediaChanger(MonitoredServer):
 
@@ -203,4 +209,7 @@ class MonitoredMediaChanger(MonitoredServer):
 
 class MonitoredLibraryManager(MonitoredServer):
 
-    pass
+    def __init__(self, config, name, csc):
+	MonitoredServer.__init__(self, config, name)
+	self.csc = csc
+	self.client = library_manager_client.LibraryManagerClient(self.csc, self.name)
