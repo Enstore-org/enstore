@@ -1537,7 +1537,8 @@ def filesystem_check(target_filesystem, inputfile):
         size = get_file_size(inputfile)
     except (OSError, IOError):
         msg = sys.exc_info()[1]
-        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
+        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR,
+                        {'infile' : inputfile})
         
     #os.pathconf likes its targets to exist.  If the target is not a directory,
     # use the parent directory.
@@ -1560,20 +1561,23 @@ def filesystem_check(target_filesystem, inputfile):
             sys.stderr.write("WARNING: %s  Continuing." % (msg2,))
             return  #Nothing to test, user needs to be carefull.
         else:
-            raise EncpError(getattr(msg,"errno",None), msg2, e_errors.OSERROR)
+            raise EncpError(getattr(msg,"errno",None), msg2, e_errors.OSERROR,
+                        {'infile' : inputfile, 'outfile' : target_filesystem})
 
     filesystem_max = 2L**(bits - 1) - 1
 
     #Normally, encp would find this an error, but "Get" may not.  Raise
     # an exception and let the caller decide.
     if size == None:
-        raise EncpError(None, "Filesize is not known.", e_errors.OSERROR)
+        raise EncpError(None, "Filesize is not known.", e_errors.OSERROR,
+                        {'infile' : inputfile, 'outfile' : target_filesystem})
     #Compare the max sizes.
     elif size > filesystem_max:
         raise EncpError(errno.EFBIG,
                         "Filesize (%s) larger than filesystem allows (%s)." \
                         % (size, filesystem_max),
-                        e_errors.USERERROR)
+                        e_errors.USERERROR,
+                        {'infile' : inputfile, 'outfile' : target_filesystem})
 
 #Make sure that the wrapper can handle the filesize.
 def wrappersize_check(target_filepath, inputfile):
@@ -1593,13 +1597,15 @@ def wrappersize_check(target_filepath, inputfile):
                                        MAX_FILE_SIZE)
     except (OSError, IOError):
         msg = sys.exc_info()[1]
-        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
+        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR,
+                        {'infile' : inputfile, 'outfile' : target_filepath})
 
     if size > wrapper_max:
         raise EncpError(errno.EFBIG,
                         "Filesize (%s) larger than wrapper (%s) allows (%s)." \
                         % (size, pout.file_family_wrapper, wrapper_max),
-                        e_errors.USERERROR)
+                        e_errors.USERERROR,
+                        {'infile' : inputfile, 'outfile' : target_filepath})
     
 #Make sure that the library can handle the filesize.
 def librarysize_check(target_filepath, inputfile):
@@ -1616,14 +1622,16 @@ def librarysize_check(target_filepath, inputfile):
         library_max = library.get('max_file_size', MAX_FILE_SIZE)
     except (OSError, IOError):
         msg = sys.exc_info()[1]
-        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
+        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR,
+                        {'infile' : inputfile, 'outfile' : target_filepath})
 
     #Compare the max sizes allowed for these various conditions.
     if size > library_max:
         raise EncpError(errno.EFBIG,
                         "Filesize (%s) larger than library (%s) allows (%s)." \
                         % (size, pout.library, library_max),
-                        e_errors.USERERROR)
+                        e_errors.USERERROR,
+                        {'infile' : inputfile, 'outfile' : target_filepath})
 
 # check the input file list for consistency
 def inputfile_check(input_files, e):
@@ -1668,11 +1676,13 @@ def inputfile_check(input_files, e):
                 else:
                     #There is a real problem with the file.  Fail the transfer.
                     raise EncpError(errno.ENOENT, inputlist[i],
-                                    e_errors.USERERROR)
+                                    e_errors.USERERROR,
+                                    {'infile' : inputlist[i]})
 
             # input files must have read permissions.
             if not access_check(inputlist[i], os.R_OK):
-                raise EncpError(errno.EACCES, inputlist[i], e_errors.USERERROR)
+                raise EncpError(errno.EACCES, inputlist[i],
+                                e_errors.USERERROR, {'infile' : inputlist[i]})
 
             #Since, the file exists, we can get its stats.
             statinfo = os.stat(inputlist[i])
@@ -1694,7 +1704,8 @@ def inputfile_check(input_files, e):
                 
                 raise EncpError(None,
                                 'Duplicate entry %s'%(inputlist[match_index],),
-                                e_errors.USERERROR)
+                                e_errors.USERERROR,
+                                {'infile' : inputlist[i]})
             except ValueError:
                 pass  #There is no error.
 
@@ -1796,10 +1807,12 @@ def outputfile_check(inputlist, outputlist, e):
                     else:
                         error = errno['EIO']
                     raise EncpError(error, "Filesystem is corrupt.",
-                                    e_errors.OSERROR)
+                                    e_errors.OSERROR,
+                                    {'outfile' : outputlist[i]})
                 else:
                     raise EncpError(errno.ENOENT, outputlist[i],
-                                    e_errors.USERERROR)
+                                    e_errors.USERERROR,
+                                    {'outfile' : outputlist[i]})
 
             #The file exits, as it should, for a dache transfer.
             elif access_check(outputlist[i], os.F_OK) and dcache:
@@ -1821,7 +1834,8 @@ def outputfile_check(inputlist, outputlist, e):
                         #The layers are not empty.
                         raise EncpError(errno.EEXIST,
                                         "Layer 1 and layer 4 are already set.",
-                                        e_errors.PNFS_ERROR)
+                                        e_errors.PNFS_ERROR,
+                                        {'outfile' : outputlist[i]})
                     else:
                         #The layers are empty.
                         outputlist.append(outputlist[i])
@@ -1844,7 +1858,8 @@ def outputfile_check(inputlist, outputlist, e):
                         raise EncpError(msg.errno,
                                         "Unable to get file size for file %s."
                                         % (outputlist[i]),
-                                        e_errors.OSERROR)
+                                        e_errors.OSERROR,
+                                        {'outfile' : outputlist[i]})
                     #Get the infile size.
                     try:
                         ifilesize = long(os.stat(inputlist[i])[stat.ST_SIZE])
@@ -1852,7 +1867,8 @@ def outputfile_check(inputlist, outputlist, e):
                         raise EncpError(msg.errno,
                                         "Unable to get file size for file %s."
                                         % (inputlist[i]),
-                                        e_errors.OSERROR)
+                                        e_errors.OSERROR,
+                                        {'outfile' : outputlist[i]})
 
                     if ofilesize == 1 and ifilesize > TWO_G:
                         #If the file is large, there is nothing to compare.
@@ -1864,7 +1880,8 @@ def outputfile_check(inputlist, outputlist, e):
                                         "Expected local file size (%s) to "
                                         "equal remote file size (%s)." %
                                         (ifilesize, ofilesize),
-                                        e_errors.FILE_MODIFIED)
+                                        e_errors.FILE_MODIFIED,
+                                        {'outfile' : outputlist[i]})
                 except (OSError, IOError), msg:
                     #Some other non-foreseen error has occured.
                     error = getattr(msg, "errno", None)
@@ -1879,7 +1896,8 @@ def outputfile_check(inputlist, outputlist, e):
             else:
                 raise EncpError(None,
                              "Failed outputfile check for: %s" % outputlist[i],
-                                e_errors.UNKNOWN)
+                                e_errors.UNKNOWN,
+                                {'outfile' : outputlist[i]})
 
             #Make sure the output file system can handle a file as big as
             # the input file.  Also, make sure that the maximum size that
@@ -1915,7 +1933,8 @@ def outputfile_check(inputlist, outputlist, e):
                 match_index = inputlist[:i].index(inputlist[i])
                 raise EncpError(None,
                                 'Duplicate entry %s'%(inputlist[match_index],),
-                                e_errors.USERERROR)
+                                e_errors.USERERROR,
+                                {'outfile' : outputlist[i]})
             except ValueError:
                 pass  #There is no error.
 
