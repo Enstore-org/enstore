@@ -278,6 +278,7 @@ PLOT = "plot"                                #plotter
 PNFS_IS_AUTOMOUNTED = "pnfs-is-automounted"  #encp
 PNFS_MOUNT_POINT = "pnfs-mount-point"        #encp
 PNFS_STATE = "pnfs-state"                    #pnfs
+PORT = "port"                                # monitor client, server
 POSITION = "position"                        #pnfs
 PREFIX = "prefix"                            #enstore_make_log_plot
 PRIORITY = "priority"                        #library, encp
@@ -404,7 +405,7 @@ valid_option_list = [
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE, OVERRIDE_RO_MOUNT,
     PARENT, PATH, PLOT,
-    PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE,
+    PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT,
     POSITION, PREFIX, PRIORITY, PROFILE, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,
     QUERY,
