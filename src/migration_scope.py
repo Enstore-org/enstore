@@ -22,6 +22,19 @@ import time
 import string
 import os
 import sys
+import Queue
+import thread
+
+input_queue = Queue.Queue(1024)
+
+# read_input
+def read_input(f):
+	l = f.readline()
+	while l:
+		ll = string.strip(l)
+		input_queue.put(ll, True)
+		l = f.readline()
+	return
 
 # InfoBox is a ScrooledText with a label as heading
 class InfoBox(Tkinter.Frame):
@@ -88,7 +101,7 @@ def show_help():
 		"Call Chih-Hao at x8076")
 
 # migration_watch() -- for "migrate.py --vol ..."
-def migration_watch(f, l1):
+def migration_watch(l1):
 
 	# root window
 	root = Tkinter.Tk()
@@ -135,9 +148,9 @@ def migration_watch(f, l1):
 	swap_metadata = InfoBox(root, h = 10, heading = "Swapping Meta Data")
 	swap_metadata.pack()
 
-	l = l1
+	command_line.printline(l1+'\n')
 	cnl = 1
-	while l:
+	while 1:
 		if quit_now:
 			sys.exit(0)
 		if paused:
@@ -147,8 +160,11 @@ def migration_watch(f, l1):
 			# still needs to process the events
 			root.update()
 			continue
-
-		l = string.strip(l)
+		if input_queue.empty():
+			time.sleep(0.1)
+			root.update()
+			continue
+		l = input_queue.get(True)
 		progress.printline(l+'\n')
 		# processing line
 		part = string.split(l)
@@ -205,11 +221,10 @@ def migration_watch(f, l1):
 			error_info.printline(l+'\n')
 		root.update()
 		# time.sleep(1)
-		l = f.readline()
 	root.mainloop()
 
 # scan_watch() -- for "migrate.py --scan-vol ..."
-def scan_watch(f, l1):
+def scan_watch(l1):
 
 	# root window
 	root = Tkinter.Tk()
@@ -245,18 +260,20 @@ def scan_watch(f, l1):
 	final_scan = InfoBox(root, h = 20, heading = "Final Scan")
 	final_scan.pack()
 
-	l = l1
-	cnl = 1
-	while l:
+	command_line.printline(l1+'\n')
+	while 1:
 		if quit_now:
 			sys.exit(0)
 		if paused:
 			time.sleep(0.1)
 			root.update()
 			continue
+		if input_queue.empty():
+			time.sleep(0.1)
+			root.update()
+			continue
+		l = input_queue.get(True)
 
-		l = string.strip(l)
-		progress.printline(l+'\n')
 		# processing line
 		part = string.split(l)
 		key = part[5]
@@ -270,11 +287,12 @@ def scan_watch(f, l1):
 					volume_status.printline(ll+'\n')
 				else:
 					final_scan.printline(ll+'\n')
+			elif part[7] == "comment":
+				ll = string.join(part[6:])
+				volume_status.printline(ll+'\n')
 		if part[-1] == "ERROR":
 			error_info.printline(l+'\n')
 		root.update()
-		# time.sleep(1)
-		l = f.readline()
 	root.mainloop()
 	
 
@@ -287,8 +305,13 @@ if __name__ == "__main__":
 	l = f.readline()
 	part = string.split(l)
 
+	pid = thread.start_new_thread(read_input, (f,))
+
 	# determine which one to call based on the command line switch
+
+	# some padding to make it prettier
 	if part[8] == "--vol":
-		migration_watch(f, l)
+		part[8] = part[8]+'    '
+		migration_watch(string.join(part[7:]))
 	elif part[8] == "--scan-vol":
-		scan_watch(f, l)
+		scan_watch(string.join(part[7:]))
