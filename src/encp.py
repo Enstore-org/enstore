@@ -284,13 +284,14 @@ def get_queue_size(request_list):
     return queue_size
 
 def update_times(input_path, output_path):
+    time_now = time.time()
     try:
-        os.utime(input_path, (time.time(), os.stat(input_path)[stat.ST_ATIME]))
+        os.utime(input_path, (time_now, os.stat(input_path)[stat.ST_MTIME]))
     except OSError:
         pass
 
     try:
-        os.utime(output_path, (os.stat(input_path)[stat.ST_MTIME],time.time()))
+        os.utime(output_path, (os.stat(input_path)[stat.ST_ATIME], time_now))
     except OSError:
         pass #This one will fail if the output file is /dev/null.
 
