@@ -276,21 +276,20 @@ class DispatchingWorker:
 
 
     def handle_error(self, request, client_address):
-	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
-	Trace.trace(6,"handle_error "+str(exc)+str(value))
+	exc, msg, tb = sys.exc_info()
+	Trace.trace(6,"handle_error %s %s"%(exc,msg))
 	mode = Trace.mode()
-	Trace.mode( mode&~1 ) # freeze circular que
+	Trace.mode( mode&~1 ) # freeze circular queue
 	Trace.log(e_errors.INFO,'-'*40)
 	Trace.log(e_errors.INFO,
-                  'Exception during request from '+str(client_address)+\
-                  ' request:'+str(request))
-	e_errors.handle_error(exc, value, tb)
+                  'Exception during request from %s, request=%s'%
+                  (client_address, request))
+	e_errors.handle_error(exc, msg, tb)
 	Trace.log(e_errors.INFO,'-'*40)
-	self.reply_to_caller( {'status':(str(exc), \
-					    str(value),'error'), \
-			       'request':request, \
-			       'exc_type':repr(exc), \
-			       'exc_value':repr(value)} )
+	self.reply_to_caller( {'status':(str(exc),str(msg), 'error'), 
+			       'request':request, 
+			       'exc_type':str(exc), 
+			       'exc_value':str(msg)} )
 
     # nothing like a heartbeat to let someone know we're alive
     def alive(self,ticket):
