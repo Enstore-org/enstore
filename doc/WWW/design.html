@@ -345,7 +345,7 @@ mover receives an error while writing to the media.
 <tr>
 <td valign=top>sum_wr_access
 <td valign=top>int (0)
-<td valign=top>Write access count; volume clerk updates this field every time 
+<td valign=top>Write access count; volume clerk updates this field every time
 the volume is mounted for write.
 <tr>
 <td valign=top>user_inhibit
@@ -450,7 +450,7 @@ It has three types of clients
      <em>pnfs</em> can only provide the bit
     file ID associated with the file. In this case, <em>encp</em> contacts the
      bit file clerk, and that
-    software ultimately contacts the appropriate library manager to 
+    software ultimately contacts the appropriate library manager to
     queue up the work.
 </dl>
 Work can be prioritized.
@@ -508,7 +508,7 @@ trouble.  This is summarized in the tables below
 <tr>
 <td valign=top>acknowledged a...<br>unilateral unbind or..<br>idle mover
 <td valign=top>idle_mover
-<td valign=top>mover is available for work, If more work available, bind a 
+<td valign=top>mover is available for work, If more work available, bind a
     volume
 <tr>
 <td valign=top>
@@ -536,27 +536,26 @@ before this can be considered functional.
 <h3><a name="mover">
 1.3.4 Mover
 </h3>
-A mover task is bound to a drive, and seeks to use that drive to service
-read and write requests.  It executes a protocol with a library manager,
-as described in the tables in the library manager section (above).
+A mover task is bound to a single drive, and seeks to use that drive to service
+read and write requests.  It communicates with the library manager in a
+defined protocol, as just described.
 <p>
-A mover is bound to a drive, and a drive may serve more than one
-virtual library, i.e.-a mover, gets a list of library managers
-to service.  This has two benefits.
+Although a  mover is bound to a drive, and a drive may serve more than one
+virtual library, i.e., the mover has a dynamic list of of library managers
+that it is supposed to service.  This has two benefits.
 First, since a library manager handles only one type of media, a drive which
 handles multiple types of media (i.e. different capacity media) can be shared
 without a static partitioning of the system.
 Second, if we are partitioning resources in a library, we can assign a library
-manager to each type of use.  For example, suppose D0 and CDF want to share
+manager to each type of use.  For example, suppose Group A and Group B want to share
 the capacity of a library.
-Suppose half the tapes belong to CDF and half to D0. We want to guarantee that
-CDF have one third of the tape drives, D0 have one third, and the last third
-be shared.  We can configure the movers to do this.  And with some slight
+Suppose half the tapes belong to Group A  and the half to Group B. We want to guarantee that
+Group A have one third of the tape drives, Group B have one third, and the last third
+be shared.  The movers can be configured to do this easily.  And with some slight
 changes, this is how we can guarantee resources to data acquisition.
 <p>
-The mover hunts for work when it is idle by
+The mover hunts library managers that have work when it is idle by
 consulting a configuration server.
-The configuration server administers a configuration set.
 A mover's configuration gives a list of library managers to hunt among
 for work.
 If there is no work at any library manager,
@@ -601,7 +600,7 @@ tape. Two tcp ports are involved.
     not be selected for subsequent writes, should we crash.
 <li>Using the eod_space_cookie, space to end of volume. Try
     to verify that we are actually at the end of volume.
-<li>Receive data from encp. (wrapper it) Write it to tape
+<li>Receive data from encp, wrapper it, and write it to tape
 <li>Close the data port.
 <li>Compute new eod_cookie and tell volume clerk that the
     volume is writable. Update remaining bytes as well.
