@@ -9,8 +9,8 @@ enstore_config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
 
 enstore_libraries_all="fndaprdisk.library_manager hppcdisk.library_manager 8500.library_manager redwood50.library_manager"
 enstore_media_changers_all="fndaprdisk.media_changer hppcdisk.media_changer FTT.media_changer STK.media_changer"
-enstore_movers_all="fndaprdisk.mover hppcdisk.mover 8500.mover stk0.mover"
- 
+enstore_movers_all="fndaprdisk.mover hppcdisk.mover 8500.mover stk0.mover stk1.mover"
+
 enstore_db=$ENSTORE_DIR/etc
 enstore_libraries=""
 enstore_media_changers=""
@@ -33,7 +33,7 @@ elif [ `uname -n | grep -c fntt1` -eq 1 ] ; then
 elif [ `uname -n | grep -c fntt2` -eq 1 ] ; then
   enstore_libraries="redwood50.library_manager"
   enstore_media_changers="STK.media_changer"
-  enstore_movers="stk0.mover"
+  enstore_movers="stk0.mover stk1.mover"
 
 elif [ `uname -n | grep -c fndapr` -eq 1 ] ; then
   enstore_libraries="fndaprdisk.library_manager"

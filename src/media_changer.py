@@ -19,7 +19,11 @@ from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
-from ETape import ET_Rewind
+try:
+    from ETape import ET_Rewind
+except  ImportError:
+    print "ETape unavailable!"
+
 import string
 
 list = 0
