@@ -59,6 +59,9 @@ class Interface:
     def alive_rcv_options(self):
 	return ["alive_rcv_timeout=","alive_retries="]
 
+    def verbose_options(self):
+	return ["verbose=","server_verbose="]
+
     def alive_options(self):
 	return ["alive"]+self.alive_rcv_options()
 
@@ -210,9 +213,13 @@ class Interface:
                     self.verbose = self.verbose | 1
                 else:
                     self.verbose = self.verbose | string.atoi(value)
+            elif opt == "--status":
+                self.status = 1
             elif opt == "--d0sam":
                 # if d0sam has been requested, just add 4096 to verbose option
                 self.verbose = self.verbose | 0x1000 
+            elif opt == "--server_verbose" :
+	        self.server_verbose = string.atoi(value)
             elif opt == "--faccess":
   	        self.criteria['first_access']=self.check(value)
             elif opt == "--laccess":

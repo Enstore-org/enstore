@@ -34,6 +34,12 @@ class MoverClient(generic_client.GenericClient):
         except:
             pass
 
+    def status(self, rcv_timeout=0, tries=0):
+	Trace.trace(12,"{status")
+	t = self.send({"work" : "status"}, rcv_timeout, tries)
+	Trace.trace(12,"}status")
+	return t
+
     def send (self, ticket, rcv_timeout=0, tries=0) :
         Trace.trace(12,"{send"+repr(ticket))
         vticket = self.csc.get(self.mover)
@@ -48,6 +54,8 @@ class MoverClientInterface(interface.Interface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.mover = ""
+	self.server_verbose = -1
+	self.status = 0
         interface.Interface.__init__(self)
 
         # parse the options
@@ -55,8 +63,8 @@ class MoverClientInterface(interface.Interface):
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() +\
-               ["verbose="] +\
+        return self.config_options() + self.verbose_options()+\
+	       ["status"] +\
                self.alive_options()+self.help_options()
 
     #  define our specific help
@@ -89,6 +97,14 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = movc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
+    elif intf.status:
+        ticket = movc.status(intf.alive_rcv_timeout,intf.alive_retries)
+	generic_cs.enprint(ticket)
+	msg_id = generic_cs.CLIENT
+    elif intf.server_verbose != -1:
+        ticket = movc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
+	                          intf.alive_retries)
+	msg_id = generic_cs.CLIENT
 
     del movc.csc.u
     del movc.u		# del now, otherwise get name exception (just for python v1.5???)

@@ -17,7 +17,7 @@ ecmd fcc     [--bfids --bfid= --verbose= --alive --backup --help ]
 ecmd vcc     [--vols  --vol=  --verbose= --alive --backup --help ']
 ecmd lmc     [--getwork     --verbose= --alive --help '] library
 ecmd mcc     [--verbose= --alive --help ']  media_changer volume drive
-ecmd mov     [--verbose= --alive --help'] mover
+ecmd mov     [--verbose= --status --alive --help'] mover
 
 ecmd bfids   [--verbose= --help']
 
