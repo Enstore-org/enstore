@@ -23,12 +23,6 @@ import e_errors
 import configuration_client
 import bfid_db
 
-##def p(*args):
-##    lev = args[0]
-##    if lev<20:
-##        print args[1:]
-##Trace.trace=p
-
 # conditional comparison
 def mycmp(cond, a, b):
     # condition may be None or some other
@@ -238,7 +232,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             callback.write_tcp_obj(self.control_socket, ticket)
             self.control_socket.close()
         except:
-            print "EXCEPTION"
             e_errors.handle_error()
         os._exit(0)
             
@@ -543,7 +536,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # go through the volumes and find one we can use for this request
         vol = {}
-        print "vf %s pool %s wrapper %s veto %s" % (volume_family, pool,wrapper, vol_veto_list)
+
+        Trace.trace(11,  "vf %s pool %s wrapper %s veto %s" %
+                    (volume_family, pool,wrapper, vol_veto_list))
+
         lc = self.dict.inx['library'].cursor()		# read only
         vc = self.dict.inx['volume_family'].cursor()
         label, v = lc.set(library)
