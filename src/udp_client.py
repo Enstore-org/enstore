@@ -193,7 +193,7 @@ class UDPClient:
                 except TypeError:
                     #If a this error occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
-                    exc, msg, tb = sys.exec_info()
+                    exc, msg, tb = sys.exc_info()
                     try:
                         message = "%s: %s: From server %s:%s" % \
                                   (exc, msg, server, reply[:100])
