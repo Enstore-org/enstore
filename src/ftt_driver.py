@@ -24,8 +24,8 @@ class FTTDriver(driver.Driver):
         self.fd = -1
         self.ftt = None
         self._bytes_transferred = 0
-        self._start_time = None
-        self._total_time = 0
+        self._start_time = 0
+        self._active_time = 0
         self._rate = self._burst_rate = 0
         self._cleaning_bit = 0
         
@@ -219,12 +219,13 @@ class FTTDriver(driver.Driver):
         if r > 0:
             now = time.time()
             t = (now - t0)
+            if self._bytes_transferred == 0:
+                self._start_time = t0
+            self._bytes_transferred = self._bytes_transferred + r
             if t!=0:
                 self._burst_rate = r / t
-                self._rate = self._active_time * self._rate + t * self._burst_rate
                 self._active_time = self._active_time + t
-                self._rate = self._rate / self._active_time
-            self._bytes_transferred = self._bytes_transferred + r
+                self._rate = self._bytes_transferred / self._active_time
         return r
     
     def write(self, buf, offset, nbytes):
@@ -241,12 +242,14 @@ class FTTDriver(driver.Driver):
         if r > 0:
             now = time.time()
             t = (now - t0)
+            if self._bytes_transferred == 0:
+                self._start_time = t0
+            self._bytes_transferred = self._bytes_transferred + r
+
             if t!=0:
                 self._burst_rate = r / t
-                self._rate = self._active_time * self._rate + t * self._burst_rate
                 self._active_time = self._active_time + t
-                self._rate = self._rate / self._active_time
-            self._bytes_transferred = self._bytes_transferred + r
+                self._rate = self._bytes_transferred / self._active_time
         return r
         
     def writefm(self):
