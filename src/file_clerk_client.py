@@ -30,7 +30,7 @@ class FileClient(generic_client.GenericClient,
 	else:                  self.servr_addr = (ticket['hostip'],ticket['port'])
 
     def send (self, ticket, rcv_timeout=0, tries=0):
-        Trace.trace( 12, 'send to volume clerk '+repr(self.servr_addr) )
+        Trace.trace( 12, 'send to volume clerk %s'%(self.servr_addr,))
         x = self.u.send( ticket, self.servr_addr, rcv_timeout, tries )
         return x
 
@@ -55,7 +55,7 @@ class FileClient(generic_client.GenericClient,
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"fcc.get_bfids: sending ticket"+repr(ticket)
+            raise errno.errorcode[errno.EPROTO],"fcc.get_bfids: sending ticket %s"%(ticket,)
 
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,
@@ -74,10 +74,7 @@ class FileClient(generic_client.GenericClient,
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
-            msg = "get_bfids: "\
-                  +"1st (pre-work-read) file clerk callback on socket "\
-                  +repr(address)+", failed to setup transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
+            msg = "get_bfids: failed to setup transfer: status="%(ticket['status'],)
             Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
         # If the system has called us back with our own  unique id, call back
@@ -98,10 +95,7 @@ class FileClient(generic_client.GenericClient,
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            msg = "get_bfids "\
-                  +"2nd (post-work-read) file clerk callback on socket "\
-                  +repr(address)+", failed to transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
+            msg = "get_bfids: failed to transfer: status=%s"%(ticket['status'],)
             Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
 
@@ -117,7 +111,7 @@ class FileClient(generic_client.GenericClient,
         # send the work ticket to the file clerk
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"fcc.tape_list: sending ticket"+repr(ticket)
+            raise errno.errorcode[errno.EPROTO],"fcc.tape_list: sending ticket %s"%(ticket,)
 
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,
@@ -136,10 +130,7 @@ class FileClient(generic_client.GenericClient,
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
-            msg = "tape_list: "\
-                  +"1st (pre-work-read) file clerk callback on socket "\
-                  +repr(address)+", failed to setup transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
+            msg = "tape_list:  failed to setup transfer: status=%s"%(ticket['status'],)
             Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
         # If the system has called us back with our own  unique id, call back
@@ -160,10 +151,7 @@ class FileClient(generic_client.GenericClient,
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            msg = "tape_list "\
-                  +"2nd (post-work-read) file clerk callback on socket "\
-                  +repr(address)+", failed to transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
+            msg = "tape_list: failed to transfer: status=%s"%(ticket[status],)
             Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
 
@@ -249,11 +237,11 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+\
-                   ["bfids","bfid=","deleted=","list=","backup",
-                    "get_crcs=","set_crcs=",
-                    "restore=", "recursive"]
-
+            return self.client_options()+[
+                "bfids","bfid=","deleted=","list=","backup",
+                "get_crcs=","set_crcs=",
+                "restore=", "recursive"]
+            
 
 def do_work(intf):
     # now get a file clerk client
@@ -274,7 +262,7 @@ def do_work(intf):
 	except AttributeError:
 	    dir = "no"
         ticket = fcc.set_deleted(intf.deleted, dir)
-        Trace.trace(13, repr(ticket))
+        Trace.trace(13, str(ticket))
 
     elif intf.bfids:
         ticket = fcc.get_bfids()
@@ -323,7 +311,7 @@ def do_work(intf):
 
 if __name__ == "__main__" :
     Trace.init(MY_NAME)
-    Trace.trace(6,"fcc called with args "+repr(sys.argv))
+    Trace.trace(6,"fcc called with args %s"%(sys.argv,))
 
     # fill in interface
     intf = FileClerkClientInterface()
