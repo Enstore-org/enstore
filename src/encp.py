@@ -509,10 +509,13 @@ def write_to_hsm(input, output,
 	    # save the bfid and set the file size
 	    p.set_bit_file_id(done_ticket["fc"]["bfid"],file_size[i])
 	    # create volume map and store cross reference data
-	    p.set_xreference(done_ticket["fc"]["external_label"],
-			     done_ticket["fc"]["location_cookie"],
-			     done_ticket["fc"]["size"])
-
+            try:
+                p.set_xreference(done_ticket["fc"]["external_label"],
+                                 done_ticket["fc"]["location_cookie"],
+                                 done_ticket["fc"]["size"])
+            except:
+                print  "Trouble with pnfs.set_xreference",\
+                      sys.exc_info()[0],sys.exc_info()[1], "continuing..."
 	    # add the pnfs id to the file clerk ticket and store it
 	    done_ticket["fc"]["pnfsid"] = p.id
 	    done_ticket["work"] = "set_pnfsid"
@@ -1748,18 +1751,3 @@ if __name__  ==  "__main__" :
         jraise(errno.errorcode[errno.EPROTO],emsg)
 
     Trace.trace(1,"encp finished at "+repr(time.time()))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
