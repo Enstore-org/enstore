@@ -18,7 +18,7 @@ egrep 'override_ro_mount' $log_file | egrep 'write protection' | awk '{print $8,
 cat $data_file | while read vol write_prot override
 do
 	if [ $override = "1" ] && [ $write_prot != "1" ];then
-	    vs=`enstore vol --vol VO4728 | grep "system_inhibit" | sed -e "s/'//g" | awk '{n=split($3,lines,"]");print lines[1]}'`
+	    vs=`enstore vol --vol $vol | grep "system_inhibit" | sed -e "s/'//g" | awk '{n=split($3,lines,"]");print lines[1]}'`
 	    if [ $vs = "full" ] || [ $vs = "readonly" ]; then
 		grep $vol $flipped_tabs > $report
 	    fi
