@@ -235,6 +235,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 if os.path.ismount(mount):
                     mount_points = [mount]
                     break
+            else:
+                mount_points = []
         elif os.getcwd()[:6] == "/pnfs/": #Determine the mount point of cwd.
             mount = "/"
             for dir in string.split(os.getcwd(), "/")[1:]:
@@ -242,6 +244,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 if os.path.ismount(mount):
                     mount_points = [mount]
                     break
+            else:
+                mount_points = []
         else: #Scan all directories in /pnfs for mountpoints.
             mount_points = []
             for directory in dirs:
