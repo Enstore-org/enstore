@@ -38,7 +38,7 @@ fi
 # get rid of all the entries that won't work (deleted, noaccess, notallowed, headers, trailers, null...)
 # get rid of all the entries that the user explicitly told us to forget ($FORGET)
 # look for all the entries that the user explicitly told us we must have
-egrep -iv "$FORGET|CLN|null|^Date|^label|DELETED|NOTALLOWED|NOACCESS|\.none\$" VOLUMES_DEFINED | egrep "$MUSTHAVE" egrep "$EXTRA" >V_D
+egrep -iv "$FORGET|CLN|null|^Date|^label|DELETED|NOTALLOWED|NOACCESS|\.none\$" VOLUMES_DEFINED | egrep "$MUSTHAVE" | egrep "$EXTRA" >V_D
 N=`wc V_D| awk '{print $1}'`
 if [ $N -eq 0 ]; then
    echo "NO files found after excluding \"$FORGET\"  and then searching for \"$MUSTHAVE\""
