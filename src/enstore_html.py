@@ -80,6 +80,7 @@ PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour (no null mvs)"],
 	     [enstore_constants.MLAT_FILE, "Mount Latency (no null mvs)"],
 	     [enstore_constants.BPD_FILE_R, "Bytes Read/Day (no null mvs)"],
 	     [enstore_constants.BPD_FILE_W, "Bytes Written/Day (no null mvs)"],
+	     [enstore_constants.BPD_FILE_D, "Bytes/Day"],
 	     [enstore_constants.BPD_FILE, "Bytes/Day (no null mvs)"], 
 	     [enstore_constants.XFERLOG_FILE, "Transfer Activity (log - no null mvs))"],
 	     [enstore_constants.XFER_FILE, "Transfer Activity (no null mvs)"],
@@ -2089,13 +2090,21 @@ class EnPlotPage(EnBaseHtmlDoc):
     def find_label(self, text):
         # compare the passed text with the files listed in PLOT_INFO. if there
         # is a match, return the associated text. else return a default string.
+	stamp_len = len(enstore_constants.STAMP)
         for file_label in PLOT_INFO:
-            if not string.find(text, file_label[0]) == -1:
+	    index = string.find(text, file_label[0])
+            if not index == -1:
                 # this is a match
 		if file_label[0] == enstore_constants.UTIL_FILE:
 		    # fix up the label
 		    type = string.split(text, "_", 1)
 		    return "%s %s"%(type[0], file_label[1])
+		elif file_label[0] == enstore_constants.BPD_FILE_D:
+		    # this is a mover specific label, pull out the mover name
+		    just_mover = string.replace(text[index:], file_label[0], "")
+		    # get rid of _stamp.jpg too
+		    index = string.find(just_mover, enstore_constants.STAMP)
+		    return "%s (%s)"%(file_label[1], just_mover[0:index])
 		else:
 		    return file_label[1]
         else:
