@@ -6,7 +6,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # declare the volumes used on the rip test system
 
-USAGE="`basename $0` <red50|red20|ait|dlt|mam|disk|samait|samdlt|sammam>"
+USAGE="`basename $0` <red50|red20|ait|dlt|mam|disk|null|samait|samdlt|sammam>"
 
 if [ -z "${1-}" ] ; then
   echo "$USAGE"
@@ -214,111 +214,17 @@ case $1 in
          #rm -fr    /pnfs/grau/mammoth/*
          #mkdir     /pnfs/grau/mammoth/volmap
 	 #chmod 777 /pnfs/grau/mammoth/volmap
-         volumes_del="
-                      CA2250
-                      CA2251
-                      CA2252
-                      CA2253
-                      CA2254
-                      CA2255
-                      CA2256
-                      CA2257
-                      CA2258
-                      CA2259
-                      CA2260
-                      CA2261
-                      CA2262
-                      CA2263
-                      CA2264
-                      CA2265
-                      CA2266
-                      CA2267
-                      CA2268
-                      CA2269
-                      CA2270
-                      CA2271
-                      CA2272
-                      CA2273
-                      CA2274
-                      CA2275
-                      CA2276
-                      CA2277
-                      CA2278
-                      CA2279
-                      CA2280
-                      CA2281
-                      CA2282
-                      CA2283
-                      CA2284
-                      CA2285
-                      CA2286
-                      CA2287
-                      CA2288
-                      CA2289
-                      CA2290
-                      CA2291
-                      CA2292
-                      CA2293
-                      CA2294
-                      CA2295
-                      CA2296
-                      CA2297
-                      CA2298
-                      CA2299
-                     "
-#                     label  lib   ff   medtype capacity    bytes left
-         volumes="
-                      CA2250 mam   none 8MM     20113227776 20113227776
-                      CA2251 mam   none 8MM     20113227776 20113227776
-                      CA2252 mam   none 8MM     20113227776 20113227776
-                      CA2253 mam   none 8MM     20113227776 20113227776
-                      CA2254 mam   none 8MM     20113227776 20113227776
-                      CA2255 mam   none 8MM     20113227776 20113227776
-                      CA2256 mam   none 8MM     20113227776 20113227776
-                      CA2257 mam   none 8MM     20113227776 20113227776
-                      CA2258 mam   none 8MM     20113227776 20113227776
-                      CA2259 mam   none 8MM     20113227776 20113227776
-                      CA2260 mam   none 8MM     20113227776 20113227776
-                      CA2261 mam   none 8MM     20113227776 20113227776
-                      CA2262 mam   none 8MM     20113227776 20113227776
-                      CA2263 mam   none 8MM     20113227776 20113227776
-                      CA2264 mam   none 8MM     20113227776 20113227776
-                      CA2265 mam   none 8MM     20113227776 20113227776
-                      CA2266 mam   none 8MM     20113227776 20113227776
-                      CA2267 mam   none 8MM     20113227776 20113227776
-                      CA2268 mam   none 8MM     20113227776 20113227776
-                      CA2269 mam   none 8MM     20113227776 20113227776
-                      CA2270 mam   none 8MM     20113227776 20113227776
-                      CA2271 mam   none 8MM     20113227776 20113227776
-                      CA2272 mam   none 8MM     20113227776 20113227776
-                      CA2273 mam   none 8MM     20113227776 20113227776
-                      CA2274 mam   none 8MM     20113227776 20113227776
-                      CA2275 mam   none 8MM     20113227776 20113227776
-                      CA2276 mam   none 8MM     20113227776 20113227776
-                      CA2277 mam   none 8MM     20113227776 20113227776
-                      CA2278 mam   none 8MM     20113227776 20113227776
-                      CA2279 mam   none 8MM     20113227776 20113227776
-                      CA2280 mam   none 8MM     20113227776 20113227776
-                      CA2281 mam   none 8MM     20113227776 20113227776
-                      CA2282 mam   none 8MM     20113227776 20113227776
-                      CA2283 mam   none 8MM     20113227776 20113227776
-                      CA2284 mam   none 8MM     20113227776 20113227776
-                      CA2285 mam   none 8MM     20113227776 20113227776
-                      CA2286 mam   none 8MM     20113227776 20113227776
-                      CA2287 mam   none 8MM     20113227776 20113227776
-                      CA2288 mam   none 8MM     20113227776 20113227776
-                      CA2289 mam   none 8MM     20113227776 20113227776
-                      CA2290 mam   none 8MM     20113227776 20113227776
-                      CA2291 mam   none 8MM     20113227776 20113227776
-                      CA2292 mam   none 8MM     20113227776 20113227776
-                      CA2293 mam   none 8MM     20113227776 20113227776
-                      CA2294 mam   none 8MM     20113227776 20113227776
-                      CA2295 mam   none 8MM     20113227776 20113227776
-                      CA2296 mam   none 8MM     20113227776 20113227776
-                      CA2297 mam   none 8MM     20113227776 20113227776
-                      CA2298 mam   none 8MM     20113227776 20113227776
-                      CA2299 mam   none 8MM     20113227776 20113227776
-                     "
+	 volumes_del=""
+	 volumes=""
+         n=2250;
+	 while [ $n -le 2299 ]; do
+		volumes_del="$volumes_del
+CA$n"
+# label lib   ff    medtype   capacity      bytes left
+		volumes="$volumes
+CA$n mam none 8MM 20113227776 20113227776"
+		n=`expr $n + 1`
+	 done
          ;;
 ## sammam)rm -fr    /pnfs/sam/mammoth/*
 ##        mkdir     /pnfs/sam/mammoth/volmap
@@ -399,189 +305,43 @@ case $1 in
                       CA2549 samdlt   none DECDLT  35520749568 35520749568
                      "
          ;;
-  disk)  
+
+  null)
          #rm -fr    /pnfs/rip6/*
          #rm -fr    /raid/rip6/*
          #mkdir     /pnfs/rip6/volmap
 	 #chmod 777 /pnfs/rip6/volmap
-         volumes_del="
-	              null7-01
-	              null7-02
-	              null7-03
-	              null7-04
-	              null7-05
-	              null7-06
-	              null7-07
-	              null7-08
-	              null7-09
-	              null7-10
-	              null7-11
-	              null7-12
-	              null7-13
-	              null7-14
-	              null7-15
-	              null7-16
-	              null7-17
-	              null7-18
-	              null7-19
-	              null7-20
-	              null1-01
-	              null1-02
-	              null1-03
-	              null1-04
-	              null1-05
-	              null1-06
-	              null1-07
-	              null1-08
-	              null1-09
-	              null1-10
-	              null1-11
-	              null1-12
-	              null1-13
-	              null1-14
-	              null1-15
-	              null1-16
-	              null1-17
-	              null1-18
-	              null1-19
-	              null1-20
-	              nullI-01
-	              nullI-02
-	              nullI-03
-	              nullI-04
-	              nullI-05
-	              nullI-06
-	              nullI-07
-	              nullI-08
-	              nullI-09
-	              nullI-10
-	              nullI-11
-	              nullI-12
-	              nullI-13
-	              nullI-14
-	              nullI-15
-	              nullI-16
-	              nullI-17
-	              nullI-18
-	              nullI-19
-	              nullI-20
-                      disk-01
-                      disk-02
-                      disk-03
-                      disk-04
-                      disk-05
-                      disk-06
-                      disk-07
-                      disk-08
-                      disk-09
-                      disk-11
-                      disk-12
-                      disk-13
-                      disk-14
-                      disk-15
-                      disk-16
-                      disk-17
-                      disk-18
-                      disk-19
-                      disk-21
-                      disk-22
-                      disk-23
-                      disk-24
-                      disk-25
-                      disk-26
-                      disk-27
-                      disk-28
-                      disk-29
-                      disk-31
-                      disk-32
-                      disk-33
-                      disk-34
-                      disk-35
-                      disk-36
-                      disk-37
-                      disk-38
-                      disk-39
-                      disk-41
-                      disk-42
-                      disk-43
-                      disk-44
-                      disk-45
-                      disk-46
-                      disk-47
-                      disk-48
-                      disk-49
-                      disk-51
-                      disk-52
-                      disk-53
-                      disk-54
-                      disk-55
-                      disk-56
-                      disk-57
-                      disk-58
-                      disk-59
-                     "
+	 volumes_del=""
+	 volumes=""
+	 for l in 1 7 I; do
+       	    n=1;
+	    while [ $n -le 20 ]; do
+		volumes_del="$volumes_del
+null${l}-$n"
+# label      lib   ff    medtype   capacity      bytes left
+		volumes="$volumes
+null${l}-$n null$l none  nullfile  2147483648000 2147483648000"
+		n=`expr $n + 1`
+	    done
+	 done
+	 ;;
+  disk)
+         #rm -fr    /pnfs/rip6/*
+         #rm -fr    /raid/rip6/*
+         #mkdir     /pnfs/rip6/volmap
+	 #chmod 777 /pnfs/rip6/volmap
+	 volumes_del=""
+	 volumes=""
+	 for l in 1 7 I; do
+       	    n=1;
+	    while [ $n -le 59 ]; do
+		volumes_del="$volumes_del
+null${l}-$n"
+		n=`expr $n + 1`
+	    done
+	 done
 #                     label    lib   ff    medtype   capacity    bytes left
          volumes="
-                      null7-01 null7 none  nullfile  2147483648000 2147483648000
-                      null7-02 null7 none  nullfile  2147483648000 2147483648000
-                      null7-03 null7 none  nullfile  2147483648000 2147483648000
-                      null7-04 null7 none  nullfile  2147483648000 2147483648000
-                      null7-05 null7 none  nullfile  2147483648000 2147483648000
-                      null7-06 null7 none  nullfile  2147483648000 2147483648000
-                      null7-07 null7 none  nullfile  2147483648000 2147483648000
-                      null7-08 null7 none  nullfile  2147483648000 2147483648000
-                      null7-09 null7 none  nullfile  2147483648000 2147483648000
-                      null7-10 null7 none  nullfile  2147483648000 2147483648000
-                      null7-11 null7 none  nullfile  2147483648000 2147483648000
-                      null7-12 null7 none  nullfile  2147483648000 2147483648000
-                      null7-13 null7 none  nullfile  2147483648000 2147483648000
-                      null7-14 null7 none  nullfile  2147483648000 2147483648000
-                      null7-15 null7 none  nullfile  2147483648000 2147483648000
-                      null7-16 null7 none  nullfile  2147483648000 2147483648000
-                      null7-17 null7 none  nullfile  2147483648000 2147483648000
-                      null7-18 null7 none  nullfile  2147483648000 2147483648000
-                      null7-19 null7 none  nullfile  2147483648000 2147483648000
-                      null7-20 null7 none  nullfile  2147483648000 2147483648000
-                      null1-01 null1 none  nullfile  2147483648000 2147483648000
-                      null1-02 null1 none  nullfile  2147483648000 2147483648000
-                      null1-03 null1 none  nullfile  2147483648000 2147483648000
-                      null1-04 null1 none  nullfile  2147483648000 2147483648000
-                      null1-05 null1 none  nullfile  2147483648000 2147483648000
-                      null1-06 null1 none  nullfile  2147483648000 2147483648000
-                      null1-07 null1 none  nullfile  2147483648000 2147483648000
-                      null1-08 null1 none  nullfile  2147483648000 2147483648000
-                      null1-09 null1 none  nullfile  2147483648000 2147483648000
-                      null1-10 null1 none  nullfile  2147483648000 2147483648000
-                      null1-11 null1 none  nullfile  2147483648000 2147483648000
-                      null1-12 null1 none  nullfile  2147483648000 2147483648000
-                      null1-13 null1 none  nullfile  2147483648000 2147483648000
-                      null1-14 null1 none  nullfile  2147483648000 2147483648000
-                      null1-15 null1 none  nullfile  2147483648000 2147483648000
-                      null1-16 null1 none  nullfile  2147483648000 2147483648000
-                      null1-17 null1 none  nullfile  2147483648000 2147483648000
-                      null1-18 null1 none  nullfile  2147483648000 2147483648000
-                      null1-19 null1 none  nullfile  2147483648000 2147483648000
-                      null1-20 null1 none  nullfile  2147483648000 2147483648000
-                      nullI-01 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-02 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-03 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-04 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-05 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-06 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-07 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-08 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-09 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-10 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-11 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-12 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-13 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-14 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-15 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-16 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-17 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-18 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-19 nullI none  nullfile  2147483648000 2147483648000
-                      nullI-20 nullI none  nullfile  2147483648000 2147483648000
                       disk-01 disk none  diskfile       140000      140000
                       disk-02 disk none  diskfile       140000      140000
                       disk-03 disk none  diskfile      1400000     1400000
