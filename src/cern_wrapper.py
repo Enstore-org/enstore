@@ -9,7 +9,12 @@ VARIABLE = 1    # index in to RECORD_FORMAT
 SEGMENTED = 2   # index in to RECORD_FORMAT
 HEADERLEN = 80
 TRAILERLEN = HEADERLEN
+FILENAMELEN1 = 17
+UHLNFILECHUNK = HEADERLEN - 4
+MAXFILENAMELEN = (26*UHLNFILECHUNK)+FILENAMELEN1
+FERMILAB = "Fermilab  "  # this string must remain 10 bytes long
 
+# exceptions that this module can raise
 UNKNOWNRECFORMAT = "UNKNOWN_RECORD_FORMAT"
 INVALIDLENGTH = "INVALID_LENGTH"
 
@@ -54,9 +59,10 @@ class Label:
 class Label1(Label):
 
     def __init__(self, file_id, file_set_id, file_section_number, 
-		 file_seq_number, gen_number, gen_ver_number, expiration_date):
+		 file_seq_number, gen_number, gen_ver_number, expiration_date,
+		 file_access):
 	Label.__init__(self)
-	self.file_id = file_id[0:17]
+	self.file_id = file_id[0:FILENAMELEN1]
 	# pad the string to be 17 bytes long
 	if len(file_id) < FILE_ID_SIZE:
 	    self.file_id = "%s%s"%(self.file_id, 
@@ -68,7 +74,7 @@ class Label1(Label):
 	self.gen_ver_number = gen_ver_number
 	self.creation_date = get_date(time.time())
 	self.expiration_date = get_date(expiration_date)
-	self.file_access = SPACE
+	self.file_access = file_access
 	self.implement_id = 13*SPACE
 	self.reserved = 7*SPACE
 	# this 1 needs to be filled in by the subclass
@@ -201,7 +207,7 @@ class UserLabel4:
 	return self.text
 
 
-class UserLabelA:
+class UserLabelN:
 
     def __init__(self, filename_chunk):
 	self.filename_chunk = filename_chunk
@@ -227,21 +233,21 @@ class VOL1:
 class HDR1(Label1):
 
     def __init__(self, file_id, file_set_id, file_section_number, 
-		 file_seq_number, gen_number, gen_ver_number, expiration_date):
+		 file_seq_number, gen_number, gen_ver_number, expiration_date,
+		 file_access):
 	Label1.__init__(self, file_id, file_set_id, file_section_number, 
 			file_seq_number, gen_number, gen_ver_number, 
-			expiration_date)
+			expiration_date, file_access)
 	self.label = "HDR1"
-	self.block_count = 6*ZERO
 
 
 class EOF1(Label1):
     def __init__(self, file_id, file_set_id, file_section_number, 
 		 file_seq_number, gen_number, gen_ver_number, expiration_date,
-		 block_count):
+		 block_count, file_access, block_count):
 	Label1.__init__(self, file_id, file_set_id, file_section_number, 
 			file_seq_number, gen_number, gen_ver_number, 
-			expiration_date)
+			expiration_date, file_access)
 	self.label = "EOF1"
 	self.block_count = block_count
 
@@ -329,7 +335,7 @@ class UTL4(UserLabel4):
 	self.label = "UTL4"
 
 
-class UHLA(UserLabelA):
+class UHLN(UserLabelN):
 
     def __init__(self, label, filename_chunk):
 	UserLabelA.__init__(self, filename_chunk)
@@ -343,56 +349,103 @@ class UTLA(UserLabelA):
 	self.label = "UTL%s"%(label,)
 
 
-class File:
-
-    def __init__(self):
-        
-
 class EnstoreFile(File):
 
     def __init__(self, ticket):
-	self.mode = ticket.get('mode', 0)                  # UHL2/UTL2
-	self.uid = ticket.get('uid', 0)                    # UHL2/UTL2
-	self.gid = ticket.get('gid', 0)                    # UHL2/UTL2
-	self.filesize = ticket.get('size_bytes', 0L)       # UHL2/UTL2
-	self.filename = ticket.get('pnfsFilename', '???')  # HDR1
-	self.filename_len = len(self.filename)
 
-	# HDR1 defaults
-	self.file_set_id = 6*SPACE
-	self.file_section_number = 4*ZERO
-	self.file_seq_number = FIXME
-	self.gen_number = "0001"
-	self.gen_ver_number = "01"
-	self.expiration_date = MINUS1
+	# LEGEND:     NU - not used
+	#             ST - set to default from Standard
+	#             FN - fermi specific setting
 
-	# HDR2 defaults
-	self.record_format = RECORDFORMAT[FIXED]
-	self.block_length = FIXME
-	self.record_length = FIXME
-	self.offset_length = FIXME
+	# HDR1/EOF1
+	self.filename = ticket.get('pnfsFilename', 
+				   '???')         # FN - file identifier
+	self.filename_len = len(self.filename)    # not in hdr, but used here
+	if self.filename_len > MAXFILENAMELEN:
+	    raise INVALIDLENGTH, "filename too long (self.filename_len)"
+	self.file_set_id = 6*SPACE                # NU - identify file set
+	self.file_section_number = 4*ZERO         # NU
+	self.file_seq_number = 4*ZERO             # NU - num of file in set
+	self.gen_number = 4*ZERO                  # NU
+	self.gen_ver_number = 2*ZERO              # NU
+	self.expiration_date = MINUS1             # NU, ST - when data obsolete
+	self.file_access = SPACE                  # FN - no access restrictions
+	self.block_count = 6*ZERO                 # FN - set in trailer
 
-	# UHL1 defaults
+	# HDR2/EOF2
+	self.record_format = RECORDFORMAT[FIXED]  # FN - fixed length records
+	self.block_length =                       # 
+	self.record_length =                      # 
+	self.offset_length = 2*ZERO               # NU
 
-	# UHL2 defaults
+	# UHL1/UTL1
+	self.file_seq_number =                    #
+	self.block_size =                         #
+	self.site = FERMILAB                      # FN
+	self.hostname = 
+	self.drive_mfg = 
+	self.drive_model = 
+	self.drive_serial_number = 
 
-	# UHL3 defaults
+	# UHL2/UTL2
+	self.file_id = 
+	self.mode = ticket.get('mode', 0)         # file access mode
+	self.uid = ticket.get('uid', 0)           # uid
+	self.gid = ticket.get('gid', 0)           # gid
+	self.filesize = ticket.get('size_bytes', 0L)   # 64 bit file size
+	self.file_checksum = 
 
-	# UHL4 defaults
+	# UHL3/UTL3
+	self.username = 
+	self.experiment = 
+	self.last_mod = 
 
+	# UHL4/UTL4
+	self.copy_num = 
+	self.segment_num = 
+	self.segment_size = 
+	self.segment_checksum = 
+	self.timestamp = 
+	self.num_of_blocks =
+
+    # assemble the extra uhlns
+    def assemble_uhlns(self, uhln_l):
+	rtn = ""
+	for uhln in uhln_l:
+	    rtn = "%s%s"%(rtn, uhln)
+	else:
+	    return rtn
 
     # assemble the headers
     def assemble_headers(self):
 	return "%s%s%s%s%s%s%s"%(self.hdr1, self.hdr2. self.uhl1. self.uhl2,
 				 self.uhl3, self.uhl4, 
-				 self.uhla(self.filename))
+				 self.assemble_uhlns(self.uhln_l))
+
+    # assemble the trailers
+    def assemble_trailers(self):
+	return "%s%s%s%s%s%s%s"%(self.eof1, self.eof2. self.utl1. self.utl2,
+				 self.utl3, self.utl4, 
+				 self.assemble_uhlns(self.utln_l))
+
+    # get filename objects
+    def get_filename_objects(self, aList, aClass):
+	if self.filename_len > FILENAMELEN1:
+	    # we need to store the rest of the file name
+	    i = 0
+	    findex = FILENAMELEN1
+	    while findex <= self.filename_len
+		aList.append(aClass(string.uppercase(i),
+				  self.filename[findex:]))
+		i = i + 1
+		findex = findex + UHLNFILECHUNK
 
     # make the headers
     def headers(self, ticket):
 	self.hdr1 = HDR1(self.filename, self.file_set_id, 
 			 self.file_section_number, self.file_seq_number,
 			 self.gen_number, self.gen_ver_number,
-			 self.expiration_date)
+			 self.expiration_date, self.file_access)
 	self.hdr2 = HDR2(self.record_format, self.block_length,
 			 self.record_length, self.offset_length)
 	self.uhl1 = UHL1(self.file_seq_number, self.block_size, self.site,
@@ -404,20 +457,35 @@ class EnstoreFile(File):
 	self.uhl4 = UHL4(self.copy_num, self.segment_num, self.segment_size,
 			 self.segment_checksum, self.timestamp, 
 			 self.num_of_blocks)
+	self.uhln_l = []
+	self.get_filename_objects(self.uhln_l, UHLN)
 
 	return self.assemble_headers()
 
-    # make the headers
+    # make the trailers
     def trailers(self):
-	self.eof1 = EOF1()
-	self.eof2 = EOF2()
-	self.utl1 = UTL1()
-	self.utl2 = UTL2()
-	self.utl3 = UTL3()
-	self.utl4 = UTL4()
+	self.eof1 = EOF1(self.filename, self.file_set_id, 
+			 self.file_section_number, self.file_seq_number,
+			 self.gen_number, self.gen_ver_number,
+			 self.expiration_date, self.file_access, self.block_count)
+	self.eof2 = EOF2(self.record_format, self.block_length,
+			 self.record_length, self.offset_length)
+	self.uhl1 = UHL1(self.file_seq_number, self.block_size, self.site,
+			 self.hostname, self.drive_mfg, self.drive_model,
+			 self.drive_serial_number)
+	self.utl1 = UTL1(self.file_seq_number, self.block_size, self.site,
+			 self.hostname, self.drive_mfg, self.drive_model,
+			 self.drive_serial_number)
+	self.utl2 = UTL2(self.file_id, self.mode, self.uid, self.gid,
+			 self.file_size, self.file_checksum)
+	self.utl3 = UTL3(self.username, self.experiment, self.last_mod)
+	self.utl4 = UTL4(self.copy_num, self.segment_num, self.segment_size,
+			 self.segment_checksum, self.timestamp, 
+			 self.num_of_blocks)
+	self.utln_l = []
+	self.get_filename_objects(self.utln_l, UTLN)
 
-	# all of these blocks are arranged into 2 pieces, the complete header
-	# and the complete trailer.
+	return self.assemble_trailers()
 
 # here starts the routines accessed via the user interface
 min_header_size = 14 * 80
