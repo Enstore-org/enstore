@@ -99,7 +99,11 @@ class LoggerClient(generic_client.GenericClient):
             str = format % args
 	    Trace.trace( severity, str )
             msg = msg + ' ' + str
-	    self.enprint(msg, generic_cs.DEBUG, self.verbose)
+	    if self.verbose & generic_cs.DEBUG:
+	        try:
+	            print add_id("", msg)
+	        except:
+	            pass
             ticket = {'work' : 'log_message',
                       'message' : msg }
             lticket = self.csc.get(self.logger)
