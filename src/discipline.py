@@ -48,7 +48,7 @@ class Restrictor:
     def match_found(self, ticket):
         self.read_config()
         if not self.exists:  # no discipline configuration info
-            return 1, None, None, None
+            return 0, None, None, None
         # make a "flat" copy of ticket
         # use deepcopy 
         flat_ticket=copy.deepcopy(ticket)
