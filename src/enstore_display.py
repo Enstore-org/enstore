@@ -102,6 +102,9 @@ display_lock = threading.Lock()
 CIRCULAR, LINEAR = range(2)
 layout = LINEAR
 
+ANIMATE = 1
+STILL = 0
+
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
     a window of size w, h"""
@@ -1522,18 +1525,18 @@ class Display(Tkinter.Canvas):
         #Options menu.
         self.option_menu = Tkinter.Menu(master=self.menubar, tearoff=0)
         #Create the animate check button and set animate accordingly.
-        self.animate = animate
-        self.option_menu.add_checkbutton(label="Animate",
-                                         indicatoron=Tkinter.TRUE,
-                                         onvalue="animate",
-                                         offvalue=0,
-                                         variable=Tkinter.FALSE,
-                                         command=self.toggle_animation)
-        #If the initial posistion is on, then invoke the command function
-        # and remember to keep the animate variable true.
-        if self.animate:
-            self.option_menu.invoke(0)
-            self.animate = 1 #keep it on
+        #self.animate = animate
+        self.animate = Tkinter.BooleanVar()
+        #By default animation is off.  If we need to turn animation, do so now.
+        if animate == ANIMATE:
+            self.animate.set(1)
+        #Add the checkbutton to the menu.
+        self.option_menu.add_checkbutton(label = "Animate",
+                                         indicatoron = Tkinter.TRUE,
+                                         onvalue = ANIMATE,
+                                         offvalue = STILL,
+                                         variable = self.animate,
+                                         )
         #Added the menus to there respective parent widgets.
         self.menubar.add_cascade(label="options", menu=self.option_menu)
         master.config(menu=self.menubar)
@@ -1566,16 +1569,6 @@ class Display(Tkinter.Canvas):
 	frame_height = int(self.winfo_toplevel().geometry().split("+")[2]) \
 		       - int(self.unframed_geometry.split("+")[2])
 	(self.frame_width, self.frame_height) = (frame_width, frame_height)
-
-    def toggle_animation(self):
-        #Toggle the animation flag variable.  (on or off)
-        if self.animate:
-            self.animate = 0
-        else:
-            self.animate = 1
-
-        if self.animate:  #If turned on, schedule the next animation.
-            self.after_animation_id = self.after(30, self.connection_animation)
 
     def clear_display(self):
         self.mover_names      = [] ## List of mover names.
@@ -1662,10 +1655,11 @@ class Display(Tkinter.Canvas):
             pass
 
     def reinitialize(self, event=None):
-        self.after_cancel(self.after_timer_id)
-        self.after_cancel(self.after_animation_id)
+        #self.after_cancel(self.after_timer_id)
+        #self.after_cancel(self.after_animation_id)
+        self.after_cancel(self.after_smooth_animation_id)
         self.after_cancel(self.after_clients_id)
-        self.after_cancel(self.after_idle_id)
+        #self.after_cancel(self.after_idle_id)
         self.after_cancel(self.after_reinitialize_id)
         self._reinit = 1
         self.quit()
@@ -1792,21 +1786,10 @@ class Display(Tkinter.Canvas):
     #########################################################################
 
     #Called from self.after().
-    def update_timers(self):
-        now = time.time()
-        #### Update all mover timers
-        #This checks to see if the timer has changed at all.  If it has,
-        # it resets the timer for new state.
-        for mover in self.movers.values():
-            mover.update_timer(now)
-
-        #self.after_timer_id = self.after(30, self.update_timers)
-        
-    #Called from self.after().
     def connection_animation(self):
 
         #If the user turned off animation, don't do it.
-        if not self.animate:
+        if not self.animate.get():
             return
         
         now = time.time()
@@ -1840,11 +1823,12 @@ class Display(Tkinter.Canvas):
 
     #Called from self.after().
     def smooth_animation(self):
+        #Always process items in the queue.
         self.process_messages()
-        #self.update_timers()
+        #If necessary, process the animation of the connections lines.
         self.connection_animation()
-        
 
+        #Schedule the next 
         self.after_smooth_animation_id = self.after(30, self.smooth_animation)
 
     #Called from self.after().
@@ -1852,7 +1836,6 @@ class Display(Tkinter.Canvas):
         now = time.time()
         #### Check for unconnected clients
         for client_name, client in self.clients.items():
-            #print client_name, client.n_connections, client.waiting, now - client.last_activity_time
             if (client.n_connections > 0 or client.waiting == 1):
                 continue
             if now - client.last_activity_time > 5: # grace period
