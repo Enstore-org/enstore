@@ -6,7 +6,7 @@ import string
 import time
 import getopt
 
-tdir = .
+tdir = '.'
 OK = 0
 FAIL = 1
 
