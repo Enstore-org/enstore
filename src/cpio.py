@@ -80,10 +80,12 @@ To extract:   cpio -idmv < archive
 
 """
 
-def hex_string_to_signed_int(s):
-    x=string.atol(s,16)
-    if x > 0x7fffffffL: x = x - 0x10000000L
-    return int(x)
+def hex_string_to_signed_int32(s):
+    if s[:2] not in ('0x','0X'):
+        s = '0x'+s
+    return eval(s)
+
+
 
 class Cpio :
 
@@ -277,7 +279,7 @@ def encrc( buffer ):
         # We have switched to 32 bit crcs.  This means that string.atoi now
         # causes an overflow when the crc value has the sign bit set.  The most
         # obvious solution of going to atol doesn't work.
-        crc = hex_string_to_signed_int(buffer[data_offset:data_offset+8])
+        crc = hex_string_to_signed_int32(buffer[data_offset:data_offset+8])
         return crc
 
 ###############################################################################

@@ -81,10 +81,10 @@ To extract:   cpio -idmv < archive
 """
 
 def hex_string_to_signed_int32(s):
-    x=string.atol(s,16)
-    if x > 0x7fffffffL:
-        x = x - 0x100000000L
-    return int(x)
+    if s[:2] not in ('0x','0X'):
+        s = '0x'+s
+    return eval(s)
+
 
 
 class Wrapper :
