@@ -74,6 +74,10 @@ class EnstoreSystemStatusFile:
     def output_lmqueues(self, ticket):
 	self.file.write(self.format_lmc_queues(ticket))
 
+    # output the library manager mover list
+    def output_lmmoverlist(self, ticket):
+	self.file.write(self.format_lmc_moverlist(ticket))
+
     # output the name of the server
     def output_name(self, name):
 	self.file.write(self.unquote(name)+" : \n")
@@ -84,6 +88,10 @@ class EnstoreSystemStatusFile:
 
     # format the library manager work queues for output
     def format_lmc_queues(self, ticket):
+	return "      "+pprint.pformat(ticket)+"\n"
+
+    # format the library manager mover list for output
+    def format_lmc_moverlist(self, ticket):
 	return "      "+pprint.pformat(ticket)+"\n"
 
     # flush everything to the file
@@ -129,6 +137,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.essfile.output_alive(ticket['host'], "      ", stat)
 	    stat = lmc.getwork(list)
 	    self.essfile.output_lmqueues(stat)
+	    stat = lmc.getmoverlist()
+	    self.essfile.output_lmmoverlist(stat)
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.essfile.output_etimedout("library manager : ")
         Trace.trace(12,"}update_library_manager ")
