@@ -143,7 +143,7 @@ def init():
 def is_copied(bfid, db):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
-		log(q)
+		log("is_copied():", q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -154,7 +154,7 @@ def is_copied(bfid, db):
 def is_swapped(bfid, db):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
-		log(q)
+		log("is_swapped():", q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -166,7 +166,7 @@ def is_swapped(bfid, db):
 def is_checked(bfid, db):
 	q = "select * from migration where dst_bfid = '%s';"%(bfid)
 	if debug:
-		log(q)
+		log("is_checked():", q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -178,7 +178,7 @@ def is_checked(bfid, db):
 def is_closed(bfid, db):
 	q = "select * from migration where dst_bfid = '%s';"%(bfid)
 	if debug:
-		log(q)
+		log("is_closed():", q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -236,7 +236,7 @@ def log_copied(bfid1, bfid2, db):
 		values ('%s', '%s', '%s');" % (bfid1, bfid2,
 		time2timestamp(time.time()))
 	if debug:
-		log(q)
+		log("log_copied():", q)
 	try:
 		db.query(q)
 	except:
@@ -250,7 +250,7 @@ def log_swapped(bfid1, bfid2, db):
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
 	if debug:
-		log(q)
+		log("log_swapped():", q)
 	try:
 		db.query(q)
 	except:
@@ -264,7 +264,7 @@ def log_checked(bfid1, bfid2, db):
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
 	if debug:
-		log(q)
+		log("log_checked():", q)
 	try:
 		db.query(q)
 	except:
@@ -278,7 +278,7 @@ def log_closed(bfid1, bfid2, db):
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
 	if debug:
-		log(q)
+		log("log_closed():", q)
 	try:
 		db.query(q)
 	except:
@@ -340,7 +340,7 @@ def copy_files(files):
 			where file.volume = volume.id and \
 				bfid = '%s';"%(bfid)
 		if debug:
-			log(q)
+			log(MY_TASK, q)
 		res = db.query(q).dictresult()
 
 		# does it exist?
@@ -350,12 +350,12 @@ def copy_files(files):
 
 		f = res[0]
 		if debug:
-			log(`f`)
+			log(MY_TASK, `f`)
 		tmp = temp_file(f['label'], f['location_cookie'])
 		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
 		if debug:
-			log("src:", src)
-			log("tmp:", tmp)
+			log(MY_TASK, "src:", src)
+			log(MY_TASK, "tmp:", tmp)
 		if not os.access(src, os.R_OK):
 			error_log(MY_TASK, "%s %s is not readable"%(bfid, src))
 			continue
@@ -401,7 +401,7 @@ def normal_file_family(ff):
 def compare_metadata(p, f, pnfsid = None):
 	if debug:
 		p.show()
-		log(`f`)
+		log("compare_metadata():", `f`)
 	if p.bfid != f['bfid']:
 		return "bfid"
 	if p.volume != f['external_label']:
@@ -506,7 +506,7 @@ def migrating():
 	job = copy_queue.get(True)
 	while job:
 		if debug:
-			log(`job`)
+			log(MY_TASK, `job`)
 		(bfid, src, tmp, ff, sg) = job
 		ff = migration_file_family(ff)
 		dst = migration_path(src)
@@ -629,11 +629,10 @@ def final_scan():
 
 # final_scan_volume(vol) -- final scan on a volume when it is closed to
 #				write
+# This is run without any other threads
 def final_scan_volume(vol):
 	MY_TASK = "FINAL_SCAN_VOLUME"
 	local_error = 0
-	# for debugging
-	count = 0
 	# get its own fcc
 	fcc = file_clerk_client.FileClient(csc)
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
@@ -644,13 +643,14 @@ def final_scan_volume(vol):
 	# get an encp
 	encp = encp_wraper.Encp()
 
-	q = "select bfid, pnfs_id, src_bfid  \
+	q = "select bfid, pnfs_id, src_bfid, location_cookie  \
 		from file, volume, migration \
 		where file.volume = volume.id and \
 			volume.label = '%s' and \
-			deleted = 'n' and dst_bfid = bfid;"%(vol)
+			deleted = 'n' and dst_bfid = bfid \
+		order by location_cookie;"%(vol)
 	query_res = db.query(q).getresult()
-	log(MY_TASK, "closing volume", vol)
+	log(MY_TASK, "verifying volume", vol)
 
 	v = vcc.inquire_vol(vol)
 	if v['status'][0] != e_errors.OK:
@@ -668,11 +668,7 @@ def final_scan_volume(vol):
 		error_log(MY_TASK, "%s is not a migration volume")
 		return 1
 	for r in query_res:
-		# for debugging
-		count = count+1
-		if count > 10:
-			return 0
-		bfid, pnfs_id, src_bfid = r
+		bfid, pnfs_id, src_bfid, location_cookie = r
 		st = is_swapped(src_bfid, db)
 		if not st:
 			error_log(MY_TASK, "%s %s has not been swapped"%(src_bfid, bfid))
@@ -689,13 +685,14 @@ def final_scan_volume(vol):
 				local_error = local_error + 1
 				continue
 
+			open_log(MY_TASK, "verifying", bfid, pnfs_path, '... ')
 			cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(pnfs_path)
 			res = encp.encp(cmd)
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
-				ok_log(MY_TASK, "closing", bfid, pnfs_path)
+				log('OK')
 			else:
-				error_log(MY_TASK, "closing", bfid, pnfs_path, "failed")
+				log("FAILED ... ERROR")
 				local_error = local_error + 1
 				continue
 
@@ -712,7 +709,7 @@ def final_scan_volume(vol):
 				else:
 					ok_log(MY_TASK, "%s has already been marked deleted"%(src_bfid))
 		else:
-			ok_log(MY_TASK, "checking", bfid, pnfs_path, "already done at", ct)
+			ok_log(MY_TASK, bfid, "is already closed at", ct)
 			# make sure the original is marked deleted
 			q = "select deleted from file where bfid = '%s';"%(src_bfid)
 			res = db.query(q).getresult()
