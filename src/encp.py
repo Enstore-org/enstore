@@ -748,7 +748,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
 
 def jraise(errcode,errmsg,exit_code=1) :
     Trace.trace(0,"Entering encp.jraise errcode=%d "+\
-                "exit_code=%d msg="+msg,errcode,exit_code)
+                "exit_code=%d msg="+errmsg,errcode,exit_code)
 
     format = "Fatal error:"+str(errcode)+str(errmsg)
     print format
