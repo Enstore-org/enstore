@@ -26,7 +26,7 @@ Makefile.modules: Setup
 
 Modules:
 	@echo "MAKING MODULES ================================"
-	cd SWIG ; make 
+	cd SWIG && make 
 	make -f Makefile.modules
 
 Trace:	
@@ -71,4 +71,4 @@ clean:
 	-rm -f  ../sbin/traceMode
 	-rm -f  ../sbin/traceOn
 	-rm -f  ../sbin/traceOff
-	cd SWIG; make clean
+	cd SWIG && make clean
