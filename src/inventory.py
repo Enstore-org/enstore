@@ -933,6 +933,9 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
     vc = vols.newCursor()
     vk, vv = vc.first()
     while vk:
+        if vk[-8:] == ".deleted":    # skip
+            vk, vv = vc.next()
+            continue
         print 'processing', vk, '...',
         if fd_output != 1:
             fd_output = os.open(output_dir + vv['external_label'],
