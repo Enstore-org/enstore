@@ -27,6 +27,10 @@ enstore/cd/stkenmvr16a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr17a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr18a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr19a.fnal.gov@FNAL.GOV
+enstore/cd/stkenmvr23a.fnal.gov@FNAL.GOV
+enstore/cd/stkenmvr25a.fnal.gov@FNAL.GOV
+enstore/cd/stkenmvr26a.fnal.gov@FNAL.GOV
+enstore/cd/stkenmvr27a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
