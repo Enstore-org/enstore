@@ -41,27 +41,31 @@ def makeTapelogFilename(run, frame, ccd):
 def makeTarlogFilename(contents, id):
     return string.lower(contents) + "." + id + ".tar"
 
-def parseFile(filename):   #, tapeLabel):
-    print "FILE",filename
+def parseFile(filename):
     filelist = []
     f = open(filename)
     line = f.readline()
     while line:
-        if not line.lower().find("tapelog"):
-            #Split tapelog lines contain tuples of the following:
-            # (tape, filemark, run, frame, ccd)
-            (unused, filemark, run, frame, ccd) = line.split()
-            filelist.append((filemark,
-                             makeTapelogFilename(run, frame, ccd)))
-        elif not line.lower().find("tarfile"):
+        if (line.lower().find("tarfile") >= 0):
             #Split TARFILE lines contain tuples of the following:
             # (tape, filemark, contents, tar_id)
-            (unused, filemark, contents, tar_id) = line.split()
-            filelist.append((int(filemark) + 1,
-                             makeTarlogFilename(contents, tar_id)))
-        #else:
-        #    sys.stderr.write("Invalid tape type found.\n")
-        #    sys.exit(50)
+            try:
+                (unused, filemark, contents, tar_id) = line.split()
+                filelist.append((int(filemark) + 1,
+                                 makeTarlogFilename(contents, tar_id)))
+            except ValueError:
+                pass
+            
+        elif line.lower().find("tapelog") >= 0:
+            #Split tapelog lines contain tuples of the following:
+            # (tape, filemark, run, frame, ccd)
+            try:
+                (unused, filemark, run, frame, ccd) = line.split()
+                filelist.append((filemark,
+                                 makeTapelogFilename(run, frame, ccd)))
+            except ValueError:
+                pass
+            
             
         line = f.readline()
 
