@@ -1519,7 +1519,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         buffer_empty_cnt = 0 # number of times buffer was cosequtively empty
         nblocks = 0L
         # send a trigger message to the client
-        bytes_written = self.net_driver.write(self.header_labels, # write anything
+        bytes_written = self.net_driver.write("B", # write anything
                                               0,
                                               1) # just 1 byte
         if self.header_labels:
@@ -3914,7 +3914,7 @@ class DiskMover(Mover):
         failed = 0
         self.media_transfer_time = 0.
         # send a trigger message to the client
-        bytes_written = self.net_driver.write(bytes_notified, # write anything
+        bytes_written = self.net_driver.write("B", # write anything
                                               0,
                                               1) # just 1 byte
 
