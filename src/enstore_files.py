@@ -294,9 +294,11 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 		pwrite_q = pend_q[enstore_constants.WRITE]
 		if pwrite_q:
 		    for pwrite_elem in pwrite_q:
+			# instead of a volume we will include a file family
+			ff = dict.get(enstore_constants.FILE_FAMILY, None)
 			self.filelist.append([pwrite_elem[enstore_constants.NODE], 
 					      pwrite_elem[enstore_constants.FILE], name, 
-					      None])
+					      ff])
 			
     # write the status info to the files
     def write(self):
