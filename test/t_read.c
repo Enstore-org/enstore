@@ -17,7 +17,7 @@
 #include <stdlib.h>		/* atoi, malloc */
 
 char	*USAGE="\
-%s <ofile> [nMB=102] [blksiz(KB)=32]\n\
+%s <ifile> [nMB=102] [blksiz(KB)=32] [ofile=]\n\
 examples:\n\
    xxxx /dev/nst0 102\n\
    xxxx test_file 102\n\
@@ -33,6 +33,8 @@ main(  int	argc
 	char	*file;
 	int	nMB=102;
 	int	sts;
+	int	ofile=0;
+	int	NumberOfReads = 0;
 
     if (argc <= 1)
     {   printf( USAGE, argv[0] );
@@ -46,6 +48,14 @@ main(  int	argc
 
     if (argc > 3)
 	nKB = atoi( argv[3] );
+
+    if (argc > 4)
+    {   ofile = open( argv[4], O_WRONLY|O_CREAT, 0666 );
+	if (ofile == -1)
+	{   printf( "error opening outputfile\n" );
+	    exit( 1 );
+	}
+    }
 
     fd = open( file, O_RDONLY );
     if (fd < 0)
@@ -63,7 +73,17 @@ main(  int	argc
 	 {   perror( "read error" );
 	     break;
 	 }
+	 if (ofile)
+	 {   NumberOfReads++;
+	     if (sts != (1024*nKB))
+		 printf( "read(%d bytes) returned %d\n", 1024*nKB, sts );
+	     write( ofile, buf_p, sts );
+	 }
     }
 
     close( fd );
+    if (ofile)
+    {   printf( "NumberOfReads=%d\n", NumberOfReads );
+	close( ofile );
+    }
 }
