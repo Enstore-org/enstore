@@ -24,6 +24,10 @@ QUALIFIERS = ""
 	# the media changer is the only server that interfaces to it
 	setupOptional("aci")
 
+	# stk is the STK tape library
+	# the media changer is the only server that interfaces to it
+	setupOptional("stk")
+
         # the setup of python is tricky
         # if user has python declared via ups, set that up and use it
         setupOptional("python")
