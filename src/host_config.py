@@ -397,6 +397,11 @@ def setup_interface(dest, interface_ip):
     if not interface_dict:
         return
 
+    #If we are already on the machine, we don't need to do set routes.
+    if socket.gethostbyaddr(socket.gethostname())[0] == \
+       socket.gethostbyaddr(dest)[0]:
+        return
+
     #Some architecures (like IRIX) attach a network card to a processor.
     # make sure the process runs on the correct cpu for the interface selected.
     for interface in interface_dict.keys():
