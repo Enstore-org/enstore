@@ -734,6 +734,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        'import an exported volume object. The file name is of the format "vol.<volume_name>.obj"',
                        option.DEFAULT_TYPE:option.STRING,
                        option.VALUE_USAGE:option.REQUIRED,
+                       option.VALUE_NAME:"_import",
                        option.VALUE_LABEL:"exported_volume_object",
                        option.USER_LEVEL:option.ADMIN},
         option.LIST:{option.HELP_STRING:"list the files in a volume",
