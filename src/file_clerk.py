@@ -144,6 +144,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 #status = (e_errors.USER_ERROR,
                 #                    "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
                 status = (e_errors.OK, None)
+                fname=record.get('pnfs_name0','pnfs_name0 is lost')
                 Trace.log(e_errors.USER_ERROR, 
                 "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
                 Trace.trace(12,'set_deleted_priv %s'%(status,))
