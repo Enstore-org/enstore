@@ -862,7 +862,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
     fc_ticket = ticket.get('fc', {})
     external_label = fc_ticket.get('external_label', '')
-    location_cookie = fc_ticket.get('location_cookie','')
+    location_cookie = fc_ticket.get('location_cookie', ticket.get('volume',''))
     mover_ticket = ticket.get('mover', {})
     device = mover_ticket.get('device', '')
     device_sn = mover_ticket.get('serial_num','')
@@ -3249,15 +3249,18 @@ def verify_write_request_consistancy(request_list):
 def set_pnfs_settings(ticket, intf_encp):
 
     # create a new pnfs object pointing to current output file
-    Trace.message(INFO_LEVEL, "Updating %s file metadata." % ticket['outfile'])
+    Trace.message(INFO_LEVEL,
+            "Updating %s file metadata." % ticket['wrapper']['pnfsFilename'])
 
     layer1_start_time = time.time() # Start time of setting pnfs layer 1.
 
     #The first piece of metadata to set is the bit file id which is placed
     # into layer 1.
     try:
-        p=pnfs.Pnfs(ticket['outfile'])
-        t=pnfs.Tag(os.path.dirname(ticket['outfile']))
+        #p=pnfs.Pnfs(ticket['outfile'])
+        #t=pnfs.Tag(os.path.dirname(ticket['outfile']))
+        p=pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
+        t=pnfs.Tag(os.path.dirname(ticket['wrapper']['pnfsFilename']))
         # save the bfid
         p.set_bit_file_id(ticket["fc"]["bfid"])
     except KeyboardInterrupt:
@@ -3357,11 +3360,12 @@ def set_pnfs_settings(ticket, intf_encp):
         if not intf_encp.put_cache:
             #If the size is already set don't set it again.  Doing so
             # would set the filesize back to zero.
-            size = long(os.stat(ticket['outfile'])[stat.ST_SIZE])
-            if size == long(ticket['file_size']) or size == 1L:
+            size = os.stat(ticket['wrapper']['pnfsFilename'])[stat.ST_SIZE]
+            if long(size) == long(ticket['file_size']) or long(size) == 1L:
                 Trace.log(e_errors.INFO,
                           "Filesize (%s) for file %s already set." %
-                          (ticket['file_size'], ticket['outfile']))
+                          (ticket['file_size'],
+                           ticket['wrapper']['pnfsFilename']))
             else:
                 # set the file size
                 p.set_file_size(ticket['file_size'])
@@ -4320,6 +4324,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #reply = fcc.list_active(e.input[0])
             #bfids_dict = fcc.get_bfids(e.input[0])
             bfids_dict = fcc.get_bfids(e.volume)
+            bfids_list = bfids_dict['bfids']
         except EncpError, msg:
             print_data_access_layer_format(
                 e.input, e.output, 0,
@@ -4345,7 +4350,6 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     {'status' : ("Unable to read list file", str(msg))})
                 quit(1)
         else:        
-            bfids_list = bfids_dict['bfids']
             number_of_files = len(bfids_dict['bfids'])
             #Always say one (for the ticket to send to the LM) when the
             # number of files is unkown.
@@ -4370,7 +4374,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 quit(1)
 
                 raise EncpError(errno.ENOENT,
-                                'e.output[0]',
+                                e.output[0],
                                 e_errors.USERERROR)
             elif e.output[0] != "/dev/null" and not os.path.isdir(e.output[0]):
                 print_data_access_layer_format(
@@ -4380,9 +4384,56 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                                            e.output[0]))})
                 quit(1)
 
+            #Get the number and filename for the next line on the file.
             number, ifilename = list_of_files[i].split()[:2]
 
+            ifilename = os.path.join(e.input[0], ifilename)
             imachine, ifullname, idir, ibasename = fullpath(ifilename)
+
+            # Check the file number on the tape to make sure everything is
+            # correct.  This mass of code obtains a bfid or determines
+            # that it is not known.
+            try:
+                tape_ticket = fcc.tape_list(e.volume)
+
+                #First check for errors.
+                if not e_errors.is_ok(tape_ticket):
+                    raise EncpError(None, "Error obtaining tape listing.",
+                                    e_errors.BROKEN)
+
+                #If everythin is okay, search the listing for the location
+                # of the file requested.
+                lc = generate_location_cookie(number)
+                for item in tape_ticket.get("tape_list", {}).values():
+                    #For each file number on the tape, compare it with
+                    # a location cookie in the list of tapes.
+                    if same_cookie(item['location_cookie'], lc):
+                        status = (e_errors.USERERROR,
+                                  "Requesting file (%s) that has been deleted."
+                                  % (lc,))
+                        #Check to make sure that this file is not marked
+                        # as deleted.  If so, print error and exit.
+                        if item['deleted'] == "yes":
+                            print_data_access_layer_format(
+                                ifullname, "", 0,
+                                {'status' : status, 'volume' : e.volume})
+                            quit(1)
+                            
+                        #If the file is already known to enstore.
+                        bfid = item['bfid']
+                        p = pnfs.Pnfs(ifullname)
+                        break
+                else:
+                    #If we get here then we don't know anything about
+                    # the file location requested.
+                    p = pnfs.Pnfs()
+                    bfid = None
+            except:
+                exc, msg = sys.exc_info()[:2]
+                print_data_access_layer_format(
+                    ifullname, "", 0,
+                    {'status' : (str(exc), str(msg)), 'volume':e.volume})
+                quit(1)
 
             file_size = None
             read_work = 'read_from_hsm'
@@ -4394,13 +4445,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                                          os.path.basename(ifullname))
                 omachine, ofullname, odir, obasename = fullpath(ofilename)
 
-            try:
-                p = pnfs.Pnfs(ifullname)
-                bfid = p.get_bit_file_id()
-            except (OSError, IOError), msg:
-                p = pnfs.Pnfs()
-                bfid = None
-
+            
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
             try:
@@ -4562,9 +4607,9 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     #If we get here then there was a problem determining
                     # the name and path of the file.  Most likely, there
                     # is an entry in pnfs but the metadata is not complete.
-                    ifullname = lc
+                    ifullname = os.path.join(e.input[0], lc)
 
-                    p = pnfs.Pnfs()
+                    p = pnfs.Pnfs(ifullname)
                     
                     if e.output[0] == "/dev/null":
                         ofullname = e.output[0]
@@ -4832,6 +4877,8 @@ def submit_read_requests(requests, tinfo, encp_intf):
     requests_to_submit = requests[:] #Don't change the original copy.
 
     for req in requests_to_submit:
+        #Clear this flag such that resubmitions will enter the while loop.
+        req['submitted'] = None
         while req.get("submitted", None) == None:
             Trace.message(TRANSFER_LEVEL, 
                      "Submitting %s read request.  elapsed=%s" % \
@@ -4855,7 +4902,7 @@ def submit_read_requests(requests, tinfo, encp_intf):
             
             #del requests_to_submit[requests_to_submit.index(req)]
             req['submitted'] = 1
-            submitted = submitted+1
+            submitted = submitted + 1
 
     return submitted, ticket
 

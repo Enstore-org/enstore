@@ -176,7 +176,8 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
 
         #Combine these tickets.  Encp would have this already done, in
         # its transfer_file() function, but not gets transfer_file() function.
-        work_ticket = encp.combine_dict({'exfer' : done_ticket}, work_ticket)
+        work_ticket = encp.combine_dict({'exfer' : done_ticket},
+                                        result_dict, work_ticket)
 
         #Get the final success/failure message from the mover.  If this side
         # has an error, don't wait for the mover in case the mover is waiting
@@ -198,16 +199,18 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
 
         if not e_errors.is_ok(mover_result_dict):
             work_ticket = encp.combine_dict(mover_result_dict,
-                                            result_dict,
                                             work_ticket)
             Trace.log(e_errors.ERROR, str(mover_result_dict['status']))
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
             return work_ticket
-            
+
+        #Combine these tickets
+        work_ticket = encp.combine_dict(mover_result_dict, work_ticket)
+        
         #Check the crc.  Note: done_ticket has any error status set to it by
         # check_crc.
-        encp.check_crc(mover_done_ticket, e, out_fd)
+        encp.check_crc(work_ticket, e, out_fd)
 
         # Close these descriptors before they are forgotten about.
         encp.close_descriptors(out_fd, data_path_socket)
@@ -228,12 +231,12 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         return work_ticket
         
 def set_metadata(ticket, intf):
-
+    pass
     #Create the pnfs file.
-    encp.create_zero_length_files(ticket['infile'])
+    #encp.create_zero_length_files(ticket['infile'])
 
     #Set the metadata for this new file.
-    encp.set_pnfs_settings(ticket, intf)
+    #encp.set_pnfs_settings(ticket, intf)
 
 def end_session(udp_socket, control_socket):
 
@@ -314,6 +317,7 @@ def main(e):
         #Only the first submition goes to the LM for volume reads.
         request['method'] = "read_tape_start" #evil hacks
         request['route_selection'] = 1 #On for Get..
+        request['submitted'] = None #Failures won't be re-sent if not None.
         Trace.message(10, "LM SUBMITION TICKET:")
         Trace.message(10, pprint.pformat(request))
         submitted, reply_ticket = encp.submit_read_requests(
@@ -337,6 +341,8 @@ def main(e):
 
             rticket, use_listen_socket = encp.open_routing_socket(
                 udp_socket, [request['unique_id']], e)
+            print "RTICKET:"
+            pprint.pprint(rticket)
             if not e_errors.is_ok(rticket):
                 sys.stderr.write("Unable to handle routing: %s\n",
                                  (rticket['status'],))
@@ -345,7 +351,7 @@ def main(e):
             Trace.message(4, "Opened routing socket.")
         except (encp.EncpError,), detail:
             sys.stderr.write("Unable to handle routing: %s\n",
-                             (rticket['status'],))
+                             (str(detail),))
             encp.quit(1)
 
         #Open the control socket.
@@ -359,8 +365,8 @@ def main(e):
                                  (ticket['status'],))
                 encp.quit(1)
         except (encp.EncpError,), detail:
-            sys.stderr.write("Unable to open control socket with mover: %s\n",
-                             (ticket['status'],))
+            sys.stderr.write("Unable to open control socket with mover: %s\n"
+                             % (str(detail),))
             encp.quit(1)
 
         Trace.message(4, "Opened control socket.")
@@ -385,9 +391,6 @@ def main(e):
             done_ticket = get_single_file(request, control_socket,
                                           udp_socket, e)
 
-            print "DONE_TICKET:"
-            pprint.pprint(done_ticket)
-
             #Everything is fine.
             if e_errors.is_ok(done_ticket):
                 #Tell the user what happend.
@@ -404,6 +407,7 @@ def main(e):
                 #set_metadata(request, e) #Under what conditions?
 
                 if request.get('bfid', None) == None:
+                    print "11111111111111111111111"
                     #The fields need to be updated for the next file
                     # on the tape to be read.
                     #Note: This will not work for the cern wrapper.  For this
@@ -412,6 +416,7 @@ def main(e):
                     file_number = file_number + 1
                     next_request_update(request, file_number)
                 else:
+                    print "22222222222222222222"
                     #Set completion status to successful.
                     request['completion_status'] = SUCCESS
 
