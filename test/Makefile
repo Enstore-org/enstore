@@ -67,6 +67,7 @@ datafiles:	jobs
 	dd if=/dev/zero of=data/null30k.dat count=60
 	ecmd random-file --size=131072  --file=data/ran128k.dat
 	ecmd random-file --size=1048576 --file=data/ran1024k.dat
+	ecmd ndup --infile=data/ran1024k.dat --outfile=data/ran10240k.dat --count=10
 	rm $$ENSTORE_DIR/test/data.in
 	find $$ENSTORE_DIR/test/data -type f -print > $$ENSTORE_DIR/test/data.in
 jobs:
