@@ -3712,14 +3712,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #Need to check if the volume has been marked NOACCESS since it
     # was checked last.  This should only apply to reads.
     if request_dictionary.get('fc', {}).has_key('external_label'):
-        # get a configuration server
-        #csc = get_csc(request_dictionary)
-        # get the volume clerk responce.
-        #vcc = volume_clerk_client.VolumeClerkClient(csc)
-        #vcc = get_vcc(request_dictionary)
-        #vc_reply = vcc.inquire_vol(request_dictionary['fc']['external_label'])
-        vc_reply = get_volume_clerk_info(request_dictionary)
-        vc_status = vc_reply['status']
+        try:
+            vc_reply = get_volume_clerk_info(request_dictionary)
+            vc_status = vc_reply['status']
+        except EncpError, msg:
+            vc_status = (msg.get('type', e_errors.UNKNOWN), str(msg))
     else:
         vc_status = (e_errors.OK, None)
 
