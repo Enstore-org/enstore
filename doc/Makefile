@@ -28,7 +28,7 @@ PS_FILES = $(WWW)/enstore.ps $(WWW)/read.ps $(WWW)/test-stand.ps \
 	$(WWW)/write.ps
 
 GIF_FILES = $(WWW)/bookshelf.gif $(WWW)/read.gif $(WWW)/write.gif \
-	$(WWW)/enstore.gif
+	$(WWW)/enstore.gif $(WWW)/test-stand.gif
 
 LOG_FILES = $(WWW)/redwoodfiber.log $(WWW)/redwoodlocal.log
 
