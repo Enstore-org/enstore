@@ -55,5 +55,5 @@ QUALIFIERS = ""
         envSet(ENSTORE_DB, $ENSTORE_DIR/etc)
 
         # controls where the trace file goes
-        execute("mkdir -p /tmp/enstore/$(whoami)", NO_UPS_ENV, JUNK)
-	envSet(TRACE_KEY, /tmp/enstore/$(whoami)"/trace.`hostname`)
+        execute("mkdir -p /tmp/enstore/$(whoami)", NO_UPS_ENV)
+	envSet(TRACE_KEY, "/tmp/enstore/$(whoami)/trace.$(hostname)")
