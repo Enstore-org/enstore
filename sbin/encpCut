@@ -128,7 +128,7 @@ check_status $? "cd $ENSTORE_DIR"
 #FLAVOR=`echo $SETUP_ENSTORE | sed -e 's/.*-f //' -e 's/ .*//'`
 #FLAVOR=`$UPS_DIR/bin/ups flavor -2`
 
-# Take care of IRIX+6.5 and Linux+2.2
+# Take care of IRIX+6.5, Linux+2.2 and Linux+2.4
 
 FLAVOR=`$UPS_DIR/bin/ups flavor -3`
 
@@ -136,6 +136,8 @@ case ${FLAVOR} in
         IRIX+6.5)
                 ;;
 	SunOS+5.7)
+		;;
+	Linux+2.4)
 		;;
         *)
                 FLAVOR=`$UPS_DIR/bin/ups flavor -2`
@@ -411,12 +413,12 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
            fi
            ;;
 
-        9) echo "Step $Step:   cvs tag $TAG    `starting`"
+        9) echo "Step $Step:   cvs tag -F $TAG    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR
               check_status $? "cd $ENSTORE_DIR"
-              cvs tag $TAG
-              check_status $? "cvs tag $TAG"
+              cvs tag -F $TAG
+              check_status $? "cvs tag -F $TAG"
            fi
            ;;
 
