@@ -203,10 +203,32 @@ class EnstoreInterface(UserOptions):
             # allowed options.
             # remove the 'enstore' name from sys.argv
             del sys.argv[0]
+            
+            #If the user opted not to add the ".mover", ".library_manager" or
+            # ".media_changer" to the end of the server, then it must be
+            # concatenated.
+            try:
+                if self.matched_server == "mover":
+                    append_string = ".mover"
+                elif self.matched_server == "library":
+                    append_string = ".library_manager"
+                elif self.matched_server == "media":
+                    append_string = ".media_changer"
+                
+                if sys.argv[-1][-len(append_string):] != append_string:
+                    sys.argv[-1] = sys.argv[-1] + append_string
+
+            except IndexError:
+                #if this exception is thrown, the mover string is to short
+                # to end in ".mover", ".library_manager" or ."media_changer"
+                # as they apply.  So it must be added.
+                sys.argv[-1] = sys.argv[-1] + append_string
+            
             # call the servers' interface, since we pass in a list of valid
             # options, we do not have to validate them, getopts does it
             self.server_intf = server_functions[self.matched_server][0](1,
                                    self.get_valid_options(self.matched_server))
+
         else:
             # we did not match anything.  if this is user_mode, check if the
             # entered server is a real one, just not a valid one.  if so, print
