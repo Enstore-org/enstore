@@ -72,8 +72,9 @@ class BfidDb:
         lines=f.readlines()
         for line in lines[:-1]:
             line=string.strip(line)
-            r.append(line)
-            csum=checksum.adler32(csum,line,len(line))
+            if line:
+                r.append(line)
+                csum=checksum.adler32(csum,line,len(line))
         summary=lines[-1]
         n_entries,file_checksum = self.parse_summary(summary,vol)
 
