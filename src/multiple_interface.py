@@ -104,8 +104,9 @@ def _parse_default(tok):
 
 def stats(interfaces):
     netstat_cmd = _find_command('netstat')
+    import multiple_interface
     try:
-        _parse = eval("_parse_"+uname())
+        _parse = getattr(multiple_interface, "_parse_"+uname())
     except:
         print "Unrecognized platform", uname()
         _parse = _parse_default()

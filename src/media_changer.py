@@ -1149,7 +1149,8 @@ if __name__ == "__main__" :
         Trace.log(e_errors.ERROR, "MC Error %s %s"%(exc,msg))
         sys.exit(1)
 
-    constructor=eval(mc_type)
+    import __main__
+    constructor=getattr(__main__, mc_type)
     mc = constructor(intf.name, intf.max_work, (intf.config_host, intf.config_port))
 
     mc.handle_generic_commands(intf)
