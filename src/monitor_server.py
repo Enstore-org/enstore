@@ -240,9 +240,13 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                  'block_size' : ticket['block_size'],
                  'block_count': ticket['block_count']}
 
-        #A little easier to read now.
-        data_ip = ticket['server_addr'][0]
-        client_addr = ticket['client_addr']
+        try:
+            #A little easier to read now.
+            data_ip = ticket['server_addr'][0]
+            client_addr = ticket['client_addr']
+        except KeyError: #backward compatibility
+            data_ip = ticket['remote_interface']
+            client_addr = ticket['callback_addr']
 
         #Get the addr to tell the client to call back to and get the listening
         # socket to listen with.
