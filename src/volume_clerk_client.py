@@ -259,12 +259,19 @@ class VolumeClerkClient(generic_client.GenericClient,
                     "label","avail.", "system_inhibit","user_inhibit",
                     "library","    volume_family")
                 for v in volumes["volumes"]:
+                    # if v['volume'] == 'huang006':
+                    #    pprint.pprint(v)
                     print "%-10s"%(v['volume'],),
                     print capacity_str(v['remaining_bytes']),
                     print " (%-08s %08s) (%-08s %08s) %-012s %012s"%(
                         v['system_inhibit'][0],v['system_inhibit'][1],
                         v['user_inhibit'][0],v['user_inhibit'][1],
-                        v['library'],v['volume_family'])
+                        v['library'],v['volume_family']),
+                    if v.has_key('si_time'):
+                        print time.strftime("%y.%m.%d %H:%M:%S", time.localtime(v['si_time'][0])),
+                        print time.strftime("%y.%m.%d %H:%M:%S", time.localtime(v['si_time'][1]))
+                    else:
+                        print
         else:
             vlist = ''
             for v in volumes.get("volumes",[]):
@@ -713,7 +720,12 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_LABEL:"library",
                             option.USER_LEVEL:option.ADMIN},
-        option.NO_ACCESS:{option.HELP_STRING:"set volume to NOACCESS",
+        option.NO_ACCESS:{option.HELP_STRING:"set volume to NOTALLOWED",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
+                          option.USER_LEVEL:option.ADMIN},
+        option.NOT_ALLOWED:{option.HELP_STRING:"set volume to NOTALLOWED",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
@@ -1076,6 +1088,8 @@ def do_work(intf):
         ticket = vcc.set_system_readonly(intf.read_only)  # name of this volume
     elif intf.no_access:
         ticket = vcc.set_system_notallowed(intf.no_access)  # name of this volume
+    elif intf.not_allowed:
+        ticket = vcc.set_system_notallowed(intf.not_allowed)  # name of this volume
     elif intf.lm_to_clear:
         ticket = vcc.clear_lm_pause(intf.lm_to_clear)
     elif intf.list:

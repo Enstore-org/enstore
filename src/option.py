@@ -210,6 +210,7 @@ NAMEOF = "nameof"                            #pnfs
 NEW_LIBRARY = "new-library"                  #volume
 NO_ACCESS = "no-access"                      #volume
 NO_MAIL = "no-mail"                          #up_down
+NOT_ALLOWED = "not-allowed"                  #volume
 NOTIFY = "notify"                            #notify
 NOOUTAGE = "nooutage"                        #inquisitor
 NOOVERRIDE = "nooverride"                    #inquisitor
@@ -304,7 +305,8 @@ valid_option_list = [
     KEEP, KEEP_DIR,
     LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
-    NAMEOF, NEW_LIBRARY, NO_ACCESS, NO_MAIL, NOTIFY, NOOUTAGE, NOOVERRIDE,
+    NAMEOF, NEW_LIBRARY, NO_ACCESS, NOT_ALLOWED, NO_MAIL, NOTIFY,
+    NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
     PARENT, PATH, PNFS_STATE, POSITION, PREFIX, PRIORITY,
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
