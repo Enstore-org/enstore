@@ -40,22 +40,22 @@ if [ -d $krbdir ]; then
    if [ "$user" = "root" ]; then
       # the user is root
       ${krbdir}/kinit -k host/${thisHost}
-      ${krbdir}/rcp $*
+      ${krbdir}/rcp "$@"
       ${krbdir}/kdestroy
 
    elif [ "$user" = "enstore" ]; then
       # the user is enstore
       ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
-      ${krbdir}/rcp $*
+      ${krbdir}/rcp "$@"
 
    else
       # this is someone else
-      ${krbdir}/rcp $*
+      ${krbdir}/rcp "$@"
    fi
 
 else
    # we are not kerberized
-   rcp $*
+   rcp "$@"
 fi
 
 if [ $debug -eq 1 ]; then set +xv; fi

@@ -7,9 +7,6 @@ if [ $# -lt 2 ]; then
    # we need at least the node name and the rsh string
    set +xv
    exit 1
-else
-   rshNode=${1}
-   shift
 fi
 
 # constants
@@ -36,25 +33,31 @@ if [ -d $krbdir ]; then
    if [ "$user" = "root" ]; then
       # the user is root
       ${krbdir}/kinit -k host/${thisHost}
-      ${krbdir}/rsh -f $rshNode $*
+      ${krbdir}/rsh -f "$@"
+      # if got an error, maybe the remote node is not kerberized and does not
+      # accept the -f flag. try rsh without it.
+      if [ $? -eq 1 ]; then ${krbdir}/rsh "$@"; fi
       ${krbdir}/kdestroy
 
    elif [ "$user" = "enstore" ]; then
       # the user is enstore
       ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
-      ${krbdir}/rsh $rshNode $*
+      ${krbdir}/rsh "$@"
 
    else
       # this is someone else
       KRB5CCNAME=/tmp/krb5cc_myjob_$$;export KRB5CCNAME
       ${krbdir}/kcron
-      ${krbdir}/rsh -f $rshNode $*
+      ${krbdir}/rsh -f "$@"
+      # if got an error, maybe the remote node is not kerberized and does not
+      # accept the -f flag. try rsh without it.
+      if [ $? -eq 1 ]; then ${krbdir}/rsh "$@"; fi
       ${krbdir}/kdestroy
    fi
 
 else
    # we are not kerberized
-   rsh $rshNode $*
+   rsh "$@"
 fi
 
 set +xv
