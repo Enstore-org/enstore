@@ -16,7 +16,6 @@ XMODE = 1
 
 def get_mode(pmode, read_bit, write_bit, execute_bit):
     mode = 0
-    print pmode, execute_bit
     if pmode & execute_bit:
         mode = XMODE
     if pmode & write_bit:
