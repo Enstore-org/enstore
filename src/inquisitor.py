@@ -360,10 +360,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def do_server_status_write(self):
 	enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
 				   "Starting write of status files")
-	self.serverfile_new.open()
-	self.serverfile_new.write()
-	self.serverfile_new.close()
-	self.serverfile_new.install()
+	if self.serverfile_new:
+	    self.serverfile_new.open()
+	    self.serverfile_new.write()
+	    self.serverfile_new.close()
+	    self.serverfile_new.install()
 
     # this is the file writing thread
     def make_server_status_html_file(self):
@@ -791,7 +792,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				   "exiting inquisitor due to request")
         self.erc.unsubscribe()
-	self.server_status_file_thread.join()
+	if self.server_status_file_thread.isAlive():
+	    self.server_status_file_thread.join()
         os._exit(exit_code)
 
     # update any encp information from the log files
