@@ -78,6 +78,7 @@ def go():
 		    msg = "Alarm with id = %s has been resolved."%(id,)
 		    print msg
 		    # log that the alarm was cancelled
+		    Trace.init("ALARM_CGI")
 		    Trace.log(e_errors.INFO, msg)
 		else:
 		    print "Could not resolve alarm with id = %s."%(id,)
