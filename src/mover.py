@@ -3311,6 +3311,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:    
                     self.state = IDLE
                 self.current_volume = None
+                self.last_error = s_status
                 return
             else:    
                 broken = "mount %s failed: %s" % (volume_label, status)
