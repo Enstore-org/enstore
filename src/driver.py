@@ -1,65 +1,94 @@
 import sys
 from errno import *
 import pprint
+import posix
+import ETape
 
-SEEK_SET = 0
-
-NoSpace = "no space for write"
-DeviceError = "bad device"
-MediaError = "Something wrong with the media"
-
-STATE_UNLOAD = 0
-STATE_LOAD = 1
-STATE_OPEN_READ = 2
-STATE_OPEN_WRITE = 3
-STATE_CLOSED = 4
-
-# all drivers should inherit from this
 class GenericDriver:
 
-    def __init__(self, device, eod_cookie, remaining_bytes):
-        # remember, this is just a guess. It is minimum number (no compression)
-        self.remaining_bytes = remaining_bytes
+    def __init__(self, device, eod_cookie,remaining_bytes):
         self.device = device
-        self.state = STATE_UNLOAD
+        self.remaining_bytes = remaining_bytes
+           # When a volume is ceated, the system sets EOD cookie to "none"
+        if eod_cookie == "none" :
+            self.eod = 0
+        else:
+            self.eod = eval(eod_cookie)
         self.wr_err = 0
         self.rd_err = 0
         self.wr_mnt = 0
         self.rd_mnt = 0
 
     def load(self):
-        self.state = STATE_LOAD
+        pass
 
     def unload(self):
-        self.state = STATE_UNLOAD
+        pass
 
-    # callers are to try to send buffers of blocksize
-    #    except for  the last buffer, which may be exact.
-    # blocksize is volume dependent
-
+    # blocksize is volume dependent 
     def set_blocksize(self,blocksize):
         self.blocksize = blocksize
 
     def get_blocksize(self) :
         return self.blocksize
 
+    def get_eod_remaining_bytes(self):
+        return self.remaining_bytes
+
+    def get_eod_cookie(self):
+        return repr(self.eod)
+
     def get_errors(self) :
         return (self.wr_err, self.rd_err,\
                 self.wr_mnt, self.rd_mnt)
 
 
+class  FTTDriver(GenericDriver) :
+    """
+     A Fermi Tape Tools driver
+    """
+    def __init__(self, device, eod_cookie, remaining_bytes):
+        GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
+        self.blocksize = 65536
+        self.set_position()
+
+    # This may be a mixin where the position is determined from the drive
+    def set_position(self):
+        self.position = 0;
+
+    def open_file_read(self, file_location_cookie) :
+        loc = eval(file_location_cookie)
+        move = loc - self.position
+        if move < 0 :
+           move = move-1
+        print "loc",loc,self.position,move
+        self.ETdesc = ETape.ET_OpenRead(self.device, move, self.blocksize)
+        self.position = loc
+
+    def close_file_read(self) :
+        self.position = self.position + 1
+        return ETape.ET_CloseRead(self.ETdesc)
+
+    def read_block(self):
+        x = ETape.ET_ReadBlock (self.ETdesc)
+        return x
+
+    def open_file_write(self):
+        self.ETdesc = ETape.ET_OpenWrite(self.device, self.eod-self.position, self.blocksize)
+
+    def close_file_write(self):
+        errcnt = ETape.ET_CloseWrite(self.ETdesc)
+        self.eod = self.eod + 1
+        self.position = self.eod
+        self.remaining_bytes = errcnt['Remain']
+        return errcnt
+
+    def write_block(self, data):
+       ETape.ET_WriteBlock(self.ETdesc, data)
 
 class  RawDiskDriver(GenericDriver) :
     """
-    I use this driver to enhance development -- I test using floppys, no
-    guarantee of good or general support....
-
-    This driver implements the eod_cookie as an ascii number which represents
-    the byte to seek to when appending to a disk file.
-
-    This driver implements the file_cookie as the python ascification of a
-    two-number list. -- The byte to seek to before doing a read, and a byte
-    just past the last byte written when we are finished
+    A driver for testing with disk files
     """
 
     def __init__(self, device, eod_cookie, remaining_bytes):
@@ -124,12 +153,6 @@ class  RawDiskDriver(GenericDriver) :
         self.state = STATE_CLOSED
         return `(first_byte, last_byte)`  # cookie describing the file
 
-    def get_eod_cookie(self):
-        return repr(self.eod)
-
-    def get_eod_remaining_bytes(self):
-        return self.remaining_bytes
-
     # write a block of data to already open file: user has to handle exceptions
     def write_block(self, data):
         if len(data) > self.remaining_bytes :
@@ -140,7 +163,6 @@ class  RawDiskDriver(GenericDriver) :
         if self.first_write_block :
             self.first_write_block = 0
             self.eod = self.df.tell() - len(data)
-
 if __name__ == "__main__" :
     import getopt
     import socket
