@@ -200,17 +200,19 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # Do the forking and call the function
     def DoWork(self, function, ticket):
 	if ticket['function'] == "mount" or ticket['function'] == "dismount":
-            Trace.log(e_errors.INFO, 'REQUESTED '+ticket['function']+ ' ' + \
-		   ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
+            Trace.log(e_errors.INFO, 'REQUESTED %s %s %s'%
+                      (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
             # if drive is doing a clean cycle, drop request
             for i in self.work_list:
 	        if i['function'] == "cleanCycle" and i['drive_id'] == ticket['drive_id']:
-                    Trace.log(e_errors.INFO, 'REQUESTED '+ticket['function']+ ' request of ' + \
-		            ticket['vol_ticket']['external_label']+ ' in ' +ticket['drive_id'] + \
-			    ' dropped, drive in cleaning cycle.')
+                    Trace.log(e_errors.INFO,
+                              'REQUESTED %s request of %s in %s  dropped, drive in cleaning cycle.'%
+                              (ticket['function'],ticket['vol_ticket']['external_label'],
+                               ticket['drive_id']))
+
                     return
         else:
-            Trace.log(e_errors.INFO, 'REQUESTED '+ticket['function'])
+            Trace.log(e_errors.INFO, 'REQUESTED  %s'%ticket['function'])
 	#put cleaningCyles on cleaning list
 	if ticket['function'] == "cleanCycle":
             ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
@@ -259,10 +261,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             if not self.fork():
                 # if in child process
 	        if ticket['function'] == "mount" or ticket['function'] == "dismount":
-                    Trace.log(e_errors.INFO, 'mcDoWork>>> forked (child) '+ticket['function']+ \
-		            ' ' +ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
+                    Trace.log(e_errors.INFO, 'mcDoWork>>> forked (child) %s %s %s'%
+                              (ticket['function'],ticket['vol_ticket']['external_label'],
+                               ticket['drive_id']))
                 else:
-                    Trace.log(e_errors.INFO, 'mcDoWork>>> '+ticket['function'])
+                    Trace.log(e_errors.INFO, 'mcDoWork>>> %s'%ticket['function'])
                 os.close(pipe[0])
 		# do the work ...
                 # ... if this is a mount, dismount first
@@ -325,10 +328,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
               break
         # report back to original client - probably a mover
 	if ticket['function'] == "mount" or ticket['function'] == "dismount":
-            Trace.log(e_errors.INFO, 'FINISHED '+ticket['function']+ ' ' +\
-		   ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
+            Trace.log(e_errors.INFO, 'FINISHED %s %s %s' %
+                      (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
         else:
-            Trace.log(e_errors.INFO, 'FINISHED '+ticket['function'])
+            Trace.log(e_errors.INFO, 'FINISHED %s'%ticket['function'])
         # reply_with_address uses the "ra" entry in the ticket
         self.reply_with_address(ticket)
 	self.robotNotAtHome = 1
