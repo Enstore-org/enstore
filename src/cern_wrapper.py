@@ -16,7 +16,7 @@ MOVERNODE = 'host'
 PNFSFILENAME = 'pnfsFilename'
 SIZEBYTES = 'size_bytes'
 UID = 'uid'
-USERNAME = 'username'
+USERNAME = 'uname'
 
 SPACE = " "
 MINUS1 = -1
@@ -680,11 +680,14 @@ def create_wrapper_dict(ticket):
     wrapper_d[MODE] = "%s"%(ticket['wrapper'][MODE],)
     wrapper_d[SIZEBYTES] = "%s"%(ticket['wrapper'][SIZEBYTES],)
     wrapper_d[BLOCKLEN] = "%s"%(ticket['vc'].get('blocksize', ""),)
+    wrapper_d[PNFSFILENAME] = "%s"%(ticket['wrapper'][PNFSFILENAME],)
+    wrapper_d[USERNAME] = "%s"%(ticket[USERNAME],)
+    wrapper_d[EXPERIMENT] = "%s"%(ticket['pnfs']['storage_group'],)
 
     ticket_mover = ticket[MOVER]
     wrapper_d[ENCPVERSION] = ticket[ENCPVERSION]
     wrapper_d[COMPRESSION] = "%s"%(ticket_mover[COMPRESSION])
-    mnode = ticket_mover[MOVERNODE]
+    wrapper_d[MOVERNODE] = ticket_mover[MOVERNODE]
     wrapper_d[DRIVEMFG] = ticket_mover[DRIVEMFG]
     wrapper_d[DRIVEMODEL] = ticket_mover[DRIVEMODEL]
     wrapper_d[DRIVESERIALNUMBER] = ticket_mover[DRIVESERIALNUMBER]
