@@ -12,6 +12,8 @@ import string
 import errno
 
 # enstore imports
+import setpath
+
 import e_errors
 import alarm_client
 import configuration_client

@@ -11,6 +11,8 @@ import sys
 import string
 
 # enstore imports
+import setpath
+
 import volume_clerk_client
 import callback
 import dispatching_worker

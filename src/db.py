@@ -6,6 +6,8 @@ import os
 import time
 
 # enstore imports
+import setpath
+
 import journal
 import Trace
 import traceback
@@ -13,6 +15,7 @@ import interface
 import configuration_client
 import e_errors
 
+setpath.addpath('$LIBTPPY_DIR/lib')
 import libtpshelve
 
 JOURNAL_LIMIT=1000

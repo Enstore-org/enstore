@@ -36,6 +36,8 @@ import string
 import glob
 
 #enstore imports
+import setpath
+
 import dispatching_worker
 import generic_server
 import e_errors

@@ -11,6 +11,8 @@ import traceback
 import pprint
 
 # enstore imports
+import setpath
+
 import dispatching_worker
 import generic_server
 import interface

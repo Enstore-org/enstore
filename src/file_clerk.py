@@ -10,6 +10,8 @@ import string
 import os
 
 # enstore imports
+import setpath
+
 import traceback
 import callback
 import volume_clerk_client

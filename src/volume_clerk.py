@@ -11,6 +11,8 @@ import errno
 import string
 
 # enstore imports
+import setpath
+
 import callback
 import dispatching_worker
 import generic_server
