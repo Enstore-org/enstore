@@ -690,8 +690,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # our client said to update the enstore system status information
     def update(self, ticket):
-        Trace.trace(enstore_constants.INQWORKDBG, "update work from user")
-        self.periodic_tasks(self, USER)
+	Trace.trace(enstore_constants.INQWORKDBG, "update work from user")
+	self.periodic_tasks(USER)
         ticket["status"] = (e_errors.OK, None)
         self.send_reply(ticket)
 
