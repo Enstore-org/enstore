@@ -10,7 +10,7 @@ import traceback
 import enstore_constants
 import Trace
 import log_client
-import interface
+import option
 import e_errors
 
 DEFAULT_PORT = enstore_constants.EVENT_RELAY_PORT
@@ -57,7 +57,7 @@ class Relay:
         self.listen_socket.bind(my_addr)
         self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
 	### debugger messages
-	csc = (interface.default_host(), interface.default_port())
+	csc = (option.default_host(), option.default_port())
 	self.logc = log_client.LoggerClient(csc, LOG_NAME, 'log_server')
 	Trace.init(LOG_NAME)
             
