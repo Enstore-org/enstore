@@ -134,7 +134,7 @@ class Mover:
         self.driver.set_blocksize(blocksize)
 
         # need a media changer to control (mount/load...) the volume
-        self.mlc = media_changer_client.MediaLoaderClient(self.csc,0,\
+        self.mlc = media_changer_client.MediaChangerClient(self.csc,0,\
                                                           self.media_changer)
 
         lmticket = self.mlc.loadvol(self.external_label, self.library_device)
@@ -164,7 +164,7 @@ class Mover:
         self.driver.unload()
 
         # we will be needing a media loader to help unmount/unload...
-        self.mlc = media_changer_client.MediaLoaderClient(self.csc, 0,\
+        self.mlc = media_changer_client.MediaChangerClient(self.csc, 0,\
                                                           self.media_changer)
 
         # now ask the media changer to unload the volume

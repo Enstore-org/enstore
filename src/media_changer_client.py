@@ -25,7 +25,7 @@ class MediaChangerClient(generic_client.GenericClient):
         configuration_client.set_csc(self, csc, host, port, list)
         self.u = udp_client.UDPClient()
 
-    # send the request to the Media Loader server and then send answer to user
+    # send the request to the Media Changer server and then send answer to user
     def send (self, ticket) :
         vticket = self.csc.get(self.media_changer)
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']))
@@ -44,7 +44,7 @@ class MediaChangerClient(generic_client.GenericClient):
                   }
         return self.send(ticket)
 
-class MediaLoaderClientInterface(interface.Interface):
+class MediaChangerClientInterface(interface.Interface):
     def __init__(self):
         self.config_list = 0
         self.config_file = ""
@@ -93,10 +93,10 @@ if __name__ == "__main__" :
     Trace.trace(1,"mcc called with args "+repr(sys.argv))
 
     # fill in the interface
-    intf = MediaLoaderClientInterface()
+    intf = MediaChangerClientInterface()
 
     # get a media changer client
-    mlc = MediaLoaderClient(0, intf.config_list, intf.media_changer, \
+    mlc = MediaChangerClient(0, intf.config_list, intf.media_changer, \
                             intf.config_host, intf.config_port)
 
     if intf.alive:
