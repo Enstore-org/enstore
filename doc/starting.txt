@@ -49,3 +49,38 @@
    Currently, the system attempts to have the user update the "lasted parked"
    info and if the file read is read-only by the user, a "Failed to update
    last parked info" message will be displayed.
+
+
+-------------------------------------------------------------------------
+details for developers/administrators:
+
+
+To get pnfs running. (pnfs depends on gdbm)
+
+   Assuming you at least have a compiled pnfs software tree, edit the
+   pnfsSetup file in the pnfs root directory.  Actually the pnfs software
+   expects this file to be in /usr/etc; you can create a link.  In this file
+   you will need to specify a database directory.
+
+   Within the database directory, the file info/databases will have variables
+   to set to the location of database files.
+
+   See Jon Bakken about initializing databases.
+
+   Once the pnfsSetup file, info/databases files, and the database files have
+   been setup, to start the pnfs demonds, execute the pnfs "tools/pnfs.server
+   start" command.
+
+
+The rest of the software is enstore.
+
+   Enstore is configured via an enstore etc/???.conf file. The config file
+   contains can contain the configuration for all the enstore servers.
+
+   Run "ecmd start" on the various nodes in the configuration.  Note that
+   currently, each node has to be specifically supported in the enstore
+   etc/defaults file.
+
+   There must be an enstore database directory.
+
+
