@@ -30,6 +30,7 @@ import enstore_functions
 import enstore_constants
 import www_server
 import safe_dict
+import volume_family
 
 server_map = {"log_server" : enstore_constants.LOGS,
 	      "alarm_server" : enstore_constants.ALARMS,
@@ -65,6 +66,9 @@ TIMEOUT=1
 ENCP_UPDATE_INTERVAL = 60
 LOG_UPDATE_INTERVAL = 300
 
+MOVER_ERROR_STATES = ['OFFLINE', 'ERROR']
+VOLUME_STATES = ['full', 'readonly']
+
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
 defaults = {'update_interval': 20,
@@ -76,6 +80,16 @@ defaults = {'update_interval': 20,
 def delkey(key, dict):
     if dict.has_key(key):
 	del dict[key]
+
+def make_node_d(nwc):
+    node_d = {}
+    keys = nwc.keys()
+    for key in keys:
+	for node in nwc[key][enstore_constants.NODES]:
+	    node_d[node] = [nwc[key][enstore_constants.ACTION],
+			    nwc[key][enstore_constants.DO_ACTION_AFTER]]
+    else:
+	return node_d
 
 # given a directory get a list of the files and their sizes
 def get_file_list(dir, prefix):
@@ -139,6 +153,14 @@ class EventRelay:
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
     
+    def get_server(self, name):
+	servers = self.server_d.keys()
+	for server in servers:
+	    if name == self.server_d[server].name:
+		return self.server_d[server]
+	else:
+	    return None
+
     # look for the hung_rcv_timeout value for the specified key in the inquisitor
     # config info.  if it does not exist, return the default
     def get_hung_to(self, key):
@@ -459,7 +481,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager work queue and output it
     def work_queue(self, lib_man, time):
 	try:
-	    state = safe_dict.SafeDict(lib_man.client.getwork())
+	    self.lm_queues[lib_man.name] = safe_dict.SafeDict(lib_man.client.getworks_sorted())
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting work queue from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
@@ -467,14 +489,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				  "get new work queue from %s"%(lib_man.name,))
-        self.serverfile.output_lmqueues(state, lib_man.name)
-        if enstore_functions.is_timedout(state):
+	lib_man.wam_queue = self.lm_queues[lib_man.name]['at movers']
+	lib_man.pend_queue = self.lm_queues[lib_man.name]['pending_work']
+        self.serverfile.output_lmqueues(self.lm_queues[lib_man.name], lib_man.name)
+        if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
             self.serverfile.output_etimedout(lib_man.host, lib_man.port,
 					     TIMED_OUT_SP, time, lib_man.name)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "work_queue - ERROR, timed out")
-        elif not enstore_functions.is_ok(state):
-            self.handle_lmc_error(lib_man, time, state)
+        elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
+            self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
 
     # get the library manager state and output it
     def lm_state(self, lib_man, time):
@@ -486,6 +510,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "get new state from %s"%(lib_man.name,))
+	lib_man.server_status = state.get(enstore_constants.STATE, "")
         self.serverfile.output_lmstate(state, lib_man.name)
         if enstore_functions.is_timedout(state):
             self.serverfile.output_etimedout(lib_man.host, lib_man.port,
@@ -507,12 +532,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the mover
     def update_mover(self, mover):
-        state = safe_dict.SafeDict(mover.client.status(self.alive_rcv_timeout, 
+        self.mover_state[mover.name] = safe_dict.SafeDict(mover.client.status(self.alive_rcv_timeout, 
 						       self.alive_retries))
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
 				   "get new state from %s"%(mover.name,))
-        self.serverfile.output_moverstatus(state, mover.name)
-        if enstore_functions.is_timedout(state):
+        self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
+	mover.server_status = self.mover_state[mover.name][enstore_constants.STATE]
+        if enstore_functions.is_timedout(self.mover_state[mover.name]):
             self.serverfile.output_etimedout(mover.host, mover.port, TIMED_OUT_SP,
 					     time.time(), mover.name)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
@@ -610,6 +636,91 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                                 'host' : self.erc.host })
                 self.sent_event_relay_alarm = 1
 
+    # check if the new information identifies bad writes as specified in the
+    # inquisitors' configuration file element 'node_write_check'
+    def check_for_bad_writes(self, server):
+	# if the new information is for a mover and the mover status is not
+	# bad, then we are done.
+	if enstore_functions.is_mover(server.name):
+	    if server.server_status not in MOVER_ERROR_STATES:
+		# there is no problem
+		return
+	    else:
+		# make a list of the library managers that we will have to 
+		# check.
+		lm = self.get_server(server.library)
+	elif enstore_functions.is_library_manager(server.name):
+	    lm = server
+	# now check the library managers' queue to make sure that -
+	#
+	#      o the file family limit has not been reached for writes/reads
+	#           coming from the specified nodes
+	#
+	node_write_check = self.inquisitor.node_write_check
+	node_d = make_node_d(node_write_check)
+	node_d_keys = node_d.keys()
+	# first check the state of the lib man.  if it is in a bad state, just
+	# return, the enstore ball will be red already and we do not really
+	# know what is happening anyway.
+	if lm.server_status in [e_errors.BROKEN]:
+	    return
+	# now parse the lm write wam queue and pull out any queue elements
+	# which have a mover in a bad state and match the criteria specified
+	# in the configuration file (currently only a node list is supported)
+	bad_movers = {}
+	for qelem in lm.wam_queue:
+	    # remove any '.fnal.gov' from the node name
+	    node = enstore_functions.strip_node(qelem['wrapper']['machine'][1])	    
+	    vc = qelem['vc']
+	    mover = self.get_server(qelem[enstore_constants.MOVER])
+	    if mover.server_status in MOVER_ERROR_STATES and \
+	       node in node_d_keys:
+		# if this is a read, we will ignore it unless the tape could
+		# be written to, i.e. not full and not read-only
+		if qelem['work'] == 'read_from_hsm':
+		    if vc['system_inhibit'][1] in VOLUME_STATES or\
+		       vc['user_inhibit'][1] in VOLUME_STATES:
+			continue
+		ff = vc.get('file_family', 
+			    volume_family.extract_file_family(vc.get('volume_family', 
+								     "")))
+		key = "%s-%s"%(node, ff)
+		if not bad_movers.has_key(key):
+		    bad_movers[key] = [[vc.get('file_family_width', None), node, ff]]
+		bad_movers[key].append(mover)
+	# now see if the number of bad node-ff combinations 
+	# is > the file_family_width
+	bad_mover_keys = bad_movers.keys()
+	for key in bad_mover_keys:
+	    # subtrace 1 for the first element which is not a bad_mover but
+	    # file_family information
+	    n = len(bad_movers[key]) - 1
+	    [ffw, node, ff] = bad_movers[key][0]
+	    if n >= ffw:
+		# we have exceeded the file_family width, check to see how long
+		# this problem has been occurring.  if longer than the specified
+		# time do the specified actions
+		time_bad = node_d[node][1]
+		now = time.time()
+		if lm.time_bad == 0:
+		    # this is the first time things are seen to be bad
+		    lm.time_bad = now
+		if now - lm.time_bad >= time_bad:
+		    action_l = node_d[node][0]
+		    for action in action_l:
+			if action == enstore_constants.ALARM:
+			    # raise an alarm
+			    mover_info = ""
+			    for mover in bad_movers[key][1:]:
+				mover_info = "%s-- %s (%s) "%(mover_info, mover.name,
+							      mover.server_status)
+			    Trace.alarm(e_errors.ERROR,"file family %s, from node %s has exceeded the file_family_width of %s %s"%(ff, node, ffw, mover_info))
+			if action == enstore_constants.RED:
+			    # set the lm ball to red, this will set the enstore ball to red
+			    self.update_schedule_file({"work":"override", 
+						       "servers":lm.name,
+						       "saagStatus":"red"}, OVERRIDE)
+
     def server_is_alive(self, name):
         now = time.time()
         server = self.server_d.get(name, None)
@@ -636,10 +747,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_alive(self.erc.event_relay_addr[0], 
                                      self.erc.event_relay_addr[1],
                                      ALIVE, now, enstore_constants.EVENT_RELAY)
-        # if this is the first time alive after the event relay was thought to be deadm then
-        # we must adjust the last alive times for all of the servers,  otherwise we will
-        # think the server is dead immediately and not allow any time to receive the
-        # alive message from it.  
+        # if this is the first time alive after the event relay was thought 
+	# to be deadm  then we must adjust the last alive times for all of
+	# the servers,  otherwise we will think the server is dead immediately
+	# and not allow any time to receive the alive message from it.  
         if not self.event_relay.is_alive():
             for server in self.server_d.keys():
                 self.server_d[server].last_alive = now
@@ -649,7 +760,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	msg = enstore_functions.read_erc(self.erc, fd)
         if msg:
             # ignore messages that originated with us
-            if msg.type == event_relay_messages.ALIVE and not msg.server == self.inquisitor.name:
+            if msg.type == event_relay_messages.ALIVE and \
+	       not msg.server == self.inquisitor.name:
                 enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 		      "received event relay message type %s (%s)"%(msg.type, 
 								   msg.server))
@@ -659,9 +771,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     # if server is a mover, we need to get some extra status
                     if enstore_functions.is_mover(msg.server):
                         self.update_mover(server)
+			self.check_for_bad_writes(server)
                     # if server is a library_manager, we need to get some extra status
                     if enstore_functions.is_library_manager(msg.server):
                         self.update_library_manager(server)
+			self.check_for_bad_writes(server)
             elif msg.type == event_relay_messages.NEWCONFIGFILE:
                 enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 			 "received event relay message type %s"%(msg.type,))
@@ -1090,6 +1204,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.lib_man_d = {}
         self.mover_d = {}
         self.media_changer_d = {}
+	self.mover_state = {}
+	self.lm_queues = {}
         for key in self.config_d.keys():
             self.add_new_mv_lm_mc(key, self.config_d)
 	
