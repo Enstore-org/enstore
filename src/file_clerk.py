@@ -207,7 +207,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"set_deleted status %s"%(ticket["status"])
+            Trace.trace(10,"set_deleted status %s"%ticket["status"])
             return
 
 	status, fc, vc = self.set_deleted_priv(bfid, deleted, restore_dir)
