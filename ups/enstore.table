@@ -53,7 +53,7 @@ QUALIFIERS = ""
         envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src:${UPS_PROD_DIR}/modules:$LIBTPPY_DIR/lib")
 
         # "control" environmental variables
-        envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/enstore.conf-default)
+        envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/pcfarm.conf)
         envSet(ENSTORE_CONFIG_PORT, 7500)
         envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
         envSet(ENSTORE_DB, $ENSTORE_DIR/etc)
