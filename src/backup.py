@@ -118,7 +118,6 @@ def archive_backup(hst_bck,hst_local,dir_bck):
  
     
 def archive_clean(ago,hst_local,hst_bck,bckHome):
-    import stat
     today=time.time()
     day=ago*24*60*60
     lastday=today-day
@@ -147,7 +146,6 @@ def archive_clean(ago,hst_local,hst_bck,bckHome):
                         logthis(e_errors.INFO, "Command %s failed"%(cmd,))
 		
 if __name__=="__main__":
-    import string
     import hostaddr
     Trace.init("BACKUP")
     Trace.trace(6,"backup called with args %s"%(sys.argv,))
