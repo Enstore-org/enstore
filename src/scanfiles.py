@@ -165,7 +165,8 @@ def check_file(f):
         if not os.path.islink(f):
             # skip volmap and .bad and .removed directory
             lc = os.path.split(f)[1]
-            if lc != 'volmap' and lc != '.bad' and lc[:8] != '.removed':
+            if lc != 'volmap' and lc != '.bad' and lc[:8] != '.removed'\
+               and lc[:3] != '.B_' and lc[:3] != '.A_':
                 if os.access(f, os.R_OK) and os.access(f, os.X_OK):
                     for i in os.listdir(f):
                         check_file(os.path.join(f,i))
