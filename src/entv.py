@@ -350,8 +350,9 @@ def get_mover_list(intf, fullnames=None):
             mover_list = csc.get_movers(lm_dict[lm]['name'])
         except TypeError:
             print lm_dict[lm]
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            continue
+            #exc, msg, tb = sys.exc_info()
+            #raise exc, msg, tb
         try:
             for mover in mover_list:
                 if not fullnames:
