@@ -899,6 +899,8 @@ def migrate_volume(vol):
 			error_log(MY_TASK, "failed to set %s migrated"%(vol))
 		# set comment
 		to_list = migrated_to(vol, db)
+		if to_list == []:
+			to_list = ['none']
 		vol_list = ""
 		for i in to_list:
 			# log history
