@@ -75,8 +75,9 @@ def find_mover(mover, mover_list):
     found = 0
     try:
 	for mv in mover_list:
-	    if ((mover['mover'] == mv['mover']) and
-		(mover['address'] == mv['address'])):
+	    # if ((mover['mover'] == mv['mover']) and
+	    # (mover['address'] == mv['address'])):
+	    if (mover['address'] == mv['address']):
 		found = 1
 		break
 	if not found:
@@ -105,6 +106,7 @@ def update_mover_list(mover, state):
 	
     # change mover state
     generic_cs.enprint("changing mover state", generic_cs.SERVER, verbose)
+    mv['mover'] = mover['mover']
     mv['state'] = state
     mv['last_checked'] = time.time()
     Trace.trace(3,"}update_mover_list " + repr(mv))
