@@ -982,8 +982,9 @@ def main(intf):
     default_config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((default_config_host,
                                                     default_config_port))
-    er_info = csc.dump_and_save().get(enstore_constants.EVENT_RELAY, {})
-    csc.new_config_obj.enable_caching((er_info['hostip'], er_info['port']))
+    csc.dump_and_save()
+    #er_info = csc.dump_and_save().get(enstore_constants.EVENT_RELAY, {})
+    csc.new_config_obj.enable_caching() #(er_info['hostip'], er_info['port']))
 
     #cscs_info contains the known_config_servers section of the configuration
     # with all unspecified systems removed.
@@ -1040,9 +1041,9 @@ def main(intf):
                     # the dump-and-saved configuration.  Once, the
                     # enable_caching() function is called the csc get()
                     # function is okay to use.
-                    er_info = config.get(enstore_constants.EVENT_RELAY)
-                    er_addr = (er_info['hostip'], er_info['port'])
-                    cscs[-1].new_config_obj.enable_caching(er_addr)
+                    #er_info = config.get(enstore_constants.EVENT_RELAY)
+                    #er_addr = (er_info['hostip'], er_info['port'])
+                    cscs[-1].new_config_obj.enable_caching()  #er_addr)
 
                     #Append the new movers to the end of the list.
                     mover_list = mover_list + get_mover_list(intf, cscs[-1],

@@ -2274,10 +2274,9 @@ class Display(Tkinter.Canvas):
         try:
             csc = configuration_client.ConfigurationClient((command_list[1],
                                                          int(command_list[2])))
-            er_info = csc.dump_and_save().get(enstore_constants.EVENT_RELAY,{})
-            csc.new_config_obj.enable_caching((er_info['hostip'],
-                                               er_info['port']))
-
+            csc.dump_and_save()
+            csc.new_config_obj.enable_caching()
+            
             #Before blindly setting the value.  Make sure that it is good.
             rtn = csc.get_enstore_system(3, 5)
             if rtn:
