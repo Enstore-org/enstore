@@ -7,7 +7,7 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 case $node in
   stken*) gang=stken
 	  mountpoint="/pnfs/eagle"
-          ndb=30
+          ndb=50
 	  lssizecmd="stkensrv1 /diska/pnfs/db"
           ;;
    d0en*) gang=d0en
