@@ -153,8 +153,8 @@ class MphGnuFile(enstore_files.EnFile):
 
 class MphDataFile(EnPlot):
 
-    def __init__(self, dir, filename=enstore_constants.MPH_FILE):
-	EnPlot.__init__(self, dir, filename)
+    def __init__(self, dir):
+	EnPlot.__init__(self, dir, enstore_constants.MPH_FILE)
 
     # do not do the actual open here, we will do it when plotting because we
     # may need to open more than one file.  
