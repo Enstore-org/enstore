@@ -1061,6 +1061,18 @@ class MoverServer(  dispatching_worker.DispatchingWorker
         os._exit(0)
 	return
 
+    def start_draining(self, ticket):		# put itself into draining state
+        self.client_obj_inst.state = 'draining'
+	out_ticket = {'status':(e_errors.OK,None)}
+	self.reply_to_caller( out_ticket )
+	return
+
+    def stop_draining(self, ticket):		# put itself into idle state
+        self.client_obj_inst.state = 'idle'
+	out_ticket = {'status':(e_errors.OK,None)}
+	self.reply_to_caller( out_ticket )
+	return
+
     def shutdown( self, ticket ):
 	del self.client_obj_inst	# clean up shm??? I should not have to!
 	# Note: 11-30-98 python v1.5 does cleans-up shm upon SIGINT (2)
@@ -1232,7 +1244,8 @@ def get_state_build_next_lm_req( self, wait, exit_status ):
 	if pid == self.client_obj_inst.pid:
 	    self.client_obj_inst.pid = 0
 	    if self.client_obj_inst.state != 'crazed':
-		self.client_obj_inst.state = 'idle'
+                if self.client_onj_inst.state != 'draining':
+		    self.client_obj_inst.state = 'idle'
 	    signal = status&0xff
 	    exit_status = status>>8
 	    next_req_to_lm = status_to_request( self.client_obj_inst,
