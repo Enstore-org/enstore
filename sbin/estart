@@ -5,4 +5,5 @@ fi
 
 source /usr/local/etc/setups.sh
 setup enstore
-enstore start
+
+enstore start $1
