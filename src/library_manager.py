@@ -99,7 +99,8 @@ def next_work_any_volume(csc) :
                                       w["file_family"], vol_veto_list,\
                                       first_found)
             t2 = time.time()-t1
-            print "next_write_volume dt=",t2
+            #print "  next_write_volume dt=",t2
+
             # If the volume clerk has no volumes and our veto list was empty,
             # then we have run out of space for this file family == error
             if (len(vol_veto_list) == 0 and v["status"] != "ok") :
