@@ -114,7 +114,10 @@ class CronPlotPage(enstore_html.EnPlotPage):
         # get rid of the .jpg ending and the url at the beginning and _stamp
 	text_lcl = text[l:-10]
 	# translate this text to more understandable english
-	return ENGLISH_TITLES.get(text_lcl, text_lcl)
+        # currently it has this format - node/cronjob. make this node/text.
+        nodeNName = string.split(text_lcl, "/")
+        text = ENGLISH_TITLES.get(nodeNName[1], nodeNName[1])
+	return "%s<BR>%s<BR>"%(text_lcl, text)
 
 class PlotPageInterface(generic_client.GenericClientInterface):
 
