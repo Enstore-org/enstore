@@ -1,0 +1,13 @@
+#!/bin/sh
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+set -u  # force better programming and ability to use check for not set
+
+# bin/html-insert  $Revision$
+# wrapper arount html-insert.py
+python html-insert.py $*
+
+
+
+
+
+
