@@ -1,0 +1,38 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+OUT=~/monitor_server.output
+
+. /usr/local/etc/setups.sh
+setup enstore
+
+command=${1:-restart}
+
+case $command in
+
+stop)
+	echo "" >>$OUT 2>&1
+	echo "`date`: Stopping monitor server (if it is running)" >>$OUT 2>&1
+	$ENSTORE_DIR/sbin/ezapit "python .*monitor_server" >>$OUT 2>&1
+	EPS | grep monitor_server  >>$OUT 2>&1
+	echo "" >>$OUT 2>&1
+	;;
+start)
+	echo "" >>$OUT 2>&1
+	echo "`date`: Starting monitor server" >>$OUT 2>&1
+	python $ENSTORE_DIR/src/monitor_server.py >>$OUT 2>&1 </dev/null &
+	sleep 2 #wait for monitor_server to start
+	EPS | grep monitor_server  >>$OUT 2>&1
+	echo "" >>$OUT 2>&1
+	;;
+restart)
+	$0 stop
+	$0 start
+	;;
+*)
+	echo "USAGE: $0 [stop|start|restart]    Do not understand option $command"
+	exit 1
+	;;
+esac
+
