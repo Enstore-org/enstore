@@ -594,7 +594,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # backward compatible
 
         if self.dict.inx.has_key('external_label'):  # use index
-            print "tape_list(): using index"
             # now get a cursor so we can loop on the database quickly:
             c = self.dict.inx['external_label'].cursor()
             key, pkey = c.set(external_label)
@@ -616,7 +615,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 key,pkey = c.nextDup()
             c.close()
         else:  # use bfid_db
-            print "tape_list(): using bfid_db"
             try:
                 bfid_list = self.bfid_db.get_all_bfids(external_label)
             except:
