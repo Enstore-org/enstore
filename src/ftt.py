@@ -83,8 +83,9 @@ def check(r, e=-1):
 
 class FTT:
 
-    def __init__(self, descriptor):
+    def __init__(self, descriptor,name=None):
         self.d = descriptor
+        self.name = name
 
     def __del__(self):
         try:
@@ -92,6 +93,9 @@ class FTT:
         except:
             pass
 
+    def __repr__(self):
+        return "<FTT: %s>" % self.name or id(self)
+    
     def open_dev(self):
         return check(_ftt.ftt_open_dev(self.d))
     def close(self):
@@ -169,10 +173,10 @@ class FTT:
 def open(basename, rdonly):
     desc = _ftt.ftt_open(basename, rdonly)
     #XXX check return!
-    return FTT(desc)
+    return FTT(desc, name=basename)
 
 def open_logical (basename, os, driveid, rdonly):
     desc = _ftt.ftt_open_logical(basename, rdonly)
     #XXX check return!
-    return FTT(desc)
+    return FTT(desc, name=basename)
 
