@@ -455,7 +455,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
             count = count + 1
             if keys[0] in libraries and \
                 volume_quotas[keys][1] == "none":
-                formated_storage_group = "none: <font color=#ff0000>emergency</font>"
+                formated_storage_group = "none: emergency"
             else:
                 formated_storage_group = volume_quotas[keys][1]
             formated_tuple = (count, volume_quotas[keys][0],) + \
