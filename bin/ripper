@@ -25,12 +25,10 @@ case `uname -n` in
     cmd="python /home/bakken/enstore/src/configuration_server.py  --config_file=/home/bakken/enstore/etc/rip.conf &"; doit
     cmd="python /home/bakken/enstore/src/log_server.py &"; doit
     cmd="python /home/bakken/enstore/src/alarm_server.py &"; doit
-    cmd="python /home/bakken/enstore/src/media_changer.py adicr1.media_changer &"; doit
     cmd="python /home/bakken/enstore/src/inquisitor.py &"; doit
     (sleep 2;ecmd cc  --alive;                      if [ $? -ne 0 ]; then echo CONFIG DEAD;               else echo config alive;               fi) &
     (sleep 2;ecmd lc  --alive;                      if [ $? -ne 0 ]; then echo LOG DEAD;                  else echo log alive;                  fi) &
-    (sleep 2;ecmd ac  --alive;                      if [ $? -ne 0 ]; then echo ALARM DEAD;                else echo alarm alive;                fi) &
-    (sleep 2;ecmd mcc --alive adicr1.media_changer; if [ $? -ne 0 ]; then echo ADICR1.MEDIA_CHANGER DEAD; else echo adicr1.media_changer alive; fi) &
+    (sleep 4;ecmd ac  --alive;                      if [ $? -ne 0 ]; then echo ALARM DEAD;                else echo alarm alive;                fi) &
     (sleep 2;ecmd ic  --alive;                      if [ $? -ne 0 ]; then echo INQUISITOR DEAD;           else echo inquisitor alive;           fi) &
     ;;
 
@@ -71,9 +69,11 @@ case `uname -n` in
     cmd="python /home/bakken/enstore/src/library_manager.py ait.library_manager &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py mam.library_manager &"; doit
     cmd="python /home/bakken/enstore/src/library_manager.py dlt.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py adicr1.media_changer &"; doit
     (sleep 2;ecmd lmc --alive ait.library_manager; if [ $? -ne 0 ]; then echo AIT.LIBRARY_MANAGER DEAD; else echo ait.library_manager alive; fi) &
     (sleep 2;ecmd lmc --alive dlt.library_manager; if [ $? -ne 0 ]; then echo DLT.LIBRARY_MANAGER DEAD; else echo dlt.library_manager alive; fi) &
     (sleep 2;ecmd lmc --alive mam.library_manager; if [ $? -ne 0 ]; then echo MAM.LIBRARY_MANAGER DEAD; else echo mam.library_manager alive; fi) &
+    (sleep 2;ecmd mcc --alive adicr1.media_changer; if [ $? -ne 0 ]; then echo ADICR1.MEDIA_CHANGER DEAD; else echo adicr1.media_changer alive; fi) &
     ;;
 
    rip1*)
