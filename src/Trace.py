@@ -85,7 +85,7 @@ def dont_log(levels):
         levels = [levels]
     for level in levels:
         if level<5:
-            raise "Not allowed"
+            pass
         if log_levels.has_key(level):
             del log_levels[level]
 
