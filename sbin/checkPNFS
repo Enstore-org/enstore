@@ -54,7 +54,7 @@ if [ "$correct_MR" != "$MR" -o "$correct_NR" != "$NR" ]; then
           current=0
        fi
 else
-        echo $msg1 >>checkPNFS.output   # where ever it is running
+        echo $msg1   # where ever it is running
 	current=0
         rc=0
 fi
