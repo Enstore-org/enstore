@@ -5,7 +5,6 @@ import socket
 import select
 import time
 import string
-import traceback
 
 import enstore_constants
 
@@ -78,7 +77,6 @@ class Relay:
                     self.clients[(ip, port)] = (now, filter_d)
                 except:
                     print "cannot handle request", msg
-		    traceback.print_exc()
 
             elif tok[0] == UNSUBSCRIBE:
                 try:
@@ -103,7 +101,7 @@ class Relay:
                         self.send_socket.sendto(msg, addr)
                     except:
                         print "send failed", addr
-			traceback.print_exc()
+
                 
 if __name__ == '__main__':
     R = Relay()

@@ -470,7 +470,7 @@ def do_real_work():
 	    else:
 		continue
 
-	msg = enstore_functions.read_erc(erc)
+	msg = erc.read()
 	if msg and msg.server in total_servers_names:
 	    total_servers_names.remove(msg.server)
 	    got_one = 1
