@@ -26,6 +26,7 @@ import setpath
 import e_errors
 import enstore_functions2
 import udp_client
+import Trace
 
 import alarm_client
 import configuration_client
@@ -41,6 +42,7 @@ import volume_clerk_client
 import ratekeeper_client
 import event_relay_client
 
+MY_NAME = "ENSTORE_STOP"
 
 def get_csc():
     # get a configuration server
@@ -213,13 +215,18 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
 
 
 def do_work(intf):
+    Trace.init(MY_NAME)
 
     csc = get_csc()
-
     if csc == None:
         print "No configuration server running."
         sys.exit(1)
-    
+
+    #If the log server is still running, send log messages there.
+    if e_errors.is_ok(csc.alive("log_server", 3, 3)):
+        logc = log_client.LoggerClient(csc, MY_NAME, 'log_server')
+        Trace.set_log_func(logc.log_func)
+
     #Get the library names.
     libraries = csc.get_library_managers({}).keys()
     libraries = map((lambda l: l + ".library_manager"), libraries)

@@ -21,6 +21,9 @@ import pwd
 import generic_client
 import option
 import enstore_start
+import Trace
+
+MY_NAME = "ENSTORE_RESTART"
 
 class EnstoreRestartInterface(generic_client.GenericClientInterface):
 
@@ -87,14 +90,19 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
 
 def do_work(intf):
 
+    Trace.init("ENSTORE_RESTART")
+
     enstore_start.check_user()
 
+    start = "python %s/src/enstore_start.py" % (os.environ['ENSTORE_DIR'],)
+    stop = "python %s/src/enstore_stop.py" % (os.environ['ENSTORE_DIR'],)
+
     if intf.just:
-        os.system("enstore stop --just %s" % intf.just)
-        os.system("enstore start --nocheck --just %s" % intf.just)
+        os.system("%s --just %s" % (stop, intf.just))
+        os.system("%s --nocheck --just %s" % (start, intf.just))
     else:
-        os.system("enstore stop")
-        os.system("enstore start --nocheck")
+        os.system("%s" % (stop,))
+        os.system("%s --nocheck" % (start,))
 
 
 if __name__ == '__main__':

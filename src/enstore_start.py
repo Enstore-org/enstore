@@ -28,6 +28,7 @@ import enstore_functions2
 import udp_client
 import generic_client
 import option
+import Trace
 
 import alarm_client
 import configuration_client
@@ -44,6 +45,8 @@ import ratekeeper_client
 import event_relay_client
 
 OUTPUT_DIR_BASE = "/tmp/enstore/"
+
+MY_NAME = "ENSTORE_START"
 
 def get_csc():
     # get a configuration server
@@ -341,11 +344,18 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
         }
 
 def do_work(intf):
-
-    check_user()
+    Trace.init(MY_NAME)
 
     csc = get_csc()
-    
+
+    #If the log server is already running, send log messages there.
+    if e_errors.is_ok(csc.alive("log_server", 3, 3)):
+        logc = log_client.LoggerClient(csc, MY_NAME, 'log_server')
+        Trace.set_log_func(logc.log_func)
+
+    #Check if the user is enstore or root on a production node.  
+    check_user()
+
     if intf.should_start("configuration_server"):
         check_csc(csc, intf,
                   "python $ENSTORE_DIR/src/configuration_server.py "\
@@ -357,7 +367,7 @@ def do_work(intf):
         #If the configuration server was not specifically specified.
         print "Configuration server not running."
         sys.exit(1)
-            
+    
     # We know the config server is up.  Get the database info.
     db_dir = csc.get('database', {}).get('db_dir', None)
     if not db_dir:
