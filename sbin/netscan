@@ -284,7 +284,6 @@ right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
 right_file /home/enstore/enstore/etc/enstore.bashrc /home/enstore/.bashrc
 right_file /home/enstore/enstore/etc/enstore.bash_profile /home/enstore/.bash_profile
 right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
-fi
 
 
 
