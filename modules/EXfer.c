@@ -2971,7 +2971,7 @@ int main(int argc, char **argv)
 
   if (writes.exit_status != 0 && writes.errno_val != ECANCELED)
   {
-     printf("Write error [ errno %d ]: %s:  File: %s  Line: %d\n",
+     printf("Write error [ errno %d ]: %s: %s  File: %s  Line: %d\n",
 	    writes.errno_val, strerror(writes.errno_val), writes.msg,
 	    writes.filename, writes.line);
      return 1;
