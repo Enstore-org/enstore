@@ -371,10 +371,9 @@ def outputfile_check(inputlist, output, dcache):
     # loop over all input files and generate full output file names
     for i in range(nfiles):
         outputlist.append(output[0])
-
         if outputlist[i] == '/dev/null':
             continue
-        
+
         try:
             imachine, ifullname, idir, ibasename = fullpath(inputlist[i])
             omachine, ofullname, odir, obasename = fullpath(outputlist[i])
@@ -400,7 +399,10 @@ def outputfile_check(inputlist, output, dcache):
                 #Output is not a directory.  If one level up (odir) is a
                 # valid directory and the number of input files is 1, then
                 # the full name is the valid name of a one file transfer.
-                outputlist[i] = ofullname
+                if not os.path.isdir(ofullname):
+                    outputlist[i] = ofullname
+                else:
+                    outputlist[i] = os.path.join(outputlist[i], ibasename)
             else:
                 #only error conditions left
 
@@ -438,8 +440,18 @@ def outputfile_check(inputlist, output, dcache):
                                                {'status':(exc, msg)})
                 quit()
             else: #dache
-                return outputlist
-                
+                #Since, the file exists, we can get its file size.
+                statinfo = os.stat(outputlist[i])
+                if statinfo[stat.ST_SIZE]:
+                    msg = "disk cache requires zero length file"
+                    print_data_access_layer_format(ifullname,
+                                                   ofullname,
+                                                   statinfo[stat.ST_SIZE],
+                                                   {'status':(e_errors.EEXIST,
+                                                              msg)})
+                    quit()
+                else:
+                    return outputlist
 
     if outputlist[0] == "/dev/null":
         return outputlist
@@ -699,18 +711,22 @@ def check_load_balance(mode, dest):
 ############################################################################
 
 def open_control_socket(listen_socket, mover_timeout, verbose):
-    
+
+    start_time = time.time()
     read_fds,write_fds,exc_fds=select.select([listen_socket], [],
                                              [listen_socket],
                                              mover_timeout)
+    end_time = time.time()
+
     if not read_fds:
         #timed out!
-        msg = "open_control_socket: timeout on mover callback"
+        msg = "open_control_socket: timeout on mover callback (%s sec)" % \
+              (end_time - start_time,)
         if verbose > 3:
             print msg
         Trace.log(e_errors.NET_ERROR, msg)
         raise e_errors.NET_ERROR, (e_errors.NET_ERROR, msg)
-
+    
     control_socket, address = listen_socket.accept()
 
     if not hostaddr.allow(address):
@@ -814,12 +830,20 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         try:
             control_socket, mover_address, ticket = open_control_socket(
                 listen_socket, mover_timeout, verbose)
-        except (socket.error, e_errors.NET_ERROR), detail:
+        except (socket.error,), detail:
+            exc, msg, tb = sys.exc_info()
+            ticket = {'status':(exc, msg)}
+            message = exc + ":", msg
+            Trace.log(e_errors.INFO, "Investigating malformed bug: mover_handshake: except control_socket: socket.error")
+            Trace.log(e_errors.INFO, message)
+            #Since an error occured, just return it.
+            return None, None, ticket
+
+        except (e_errors.NET_ERROR,), detail:
             exc, msg, tb = sys.exc_info()
             ticket = {'status':(exc, msg)}
             message = exc + ":", msg
             Trace.log(e_errors.INFO, message)
-
             #Since an error occured, just return it.
             return None, None, ticket
 
@@ -864,10 +888,21 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
             if not data_path_socket:
                 raise socket.error,(errno.ENOTCONN,os.strerror(errno.ENOTCONN))
 
-        except (socket.error, e_errors.NET_ERROR), detail:
+        except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
-            ticket['status'] = (exc, msg)
-
+            ticket = {'status':(exc, msg)}
+            message = exc + ":", msg
+            Trace.log(e_errors.INFO, "Investigating malformed bug: mover_handshake: except data_path_socket: socket.error")
+            Trace.log(e_errors.INFO, message)
+            
+            #Since an error occured, just return it.
+            return None, None, ticket
+        except (e_errors.NET_ERROR,), detail:
+            exc, msg, tb = sys.exc_info()
+            ticket = {'status':(exc, msg)}
+            message = exc + ":", msg
+            Trace.log(e_errors.INFO, message)
+            
             #Since an error occured, just return it.
             return None, None, ticket
 
@@ -1392,9 +1427,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         #Handle any possible errors occured so far.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      ticket, e.max_retry, e.verbose)
-        #print "qwqwqwqwqw", result_dict['status'], result_dict['retry']
-        #print "wqwqwqwqwq", ticket['status'], ticket['retry']
-        #print "wewewewewe", work_ticket['retry']
+
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
@@ -1508,6 +1541,14 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         
         set_outfile_permissions(done_ticket) #Writes errors to log file.
         ###What kind of check should be done here?
+        #This error should result in the file being left where it is, but it
+        # is still considered a failed transfer (aka. exit code = 1 and
+        # data access layer is still printed).
+        if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
+            print_data_access_layer_format(done_ticket['infile'],
+                                           done_ticket['outfile'],
+                                           done_ticket['file_size'],
+                                           done_ticket)
 
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
@@ -2156,7 +2197,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             t2 = time.time() - tinfo['encp_start_time']
             print "File", requests[j]['infile'], "transfered.  elapsed=", t2
         if e.verbose > 4:
-            print "DONE READING TICKET"
+            print "FINAL DIALOG"
             pprint.pprint(done_ticket)
         
         try:
@@ -2176,13 +2217,6 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             files_left = result_dict['queue_size']
             failed_requests.append(request)
             continue
-
-        if e.verbose > 1:
-            print "File %s transfered.  elapsed=%s" % \
-                  (done_ticket['infile'],time.time()-tinfo['encp_start_time'])
-        if e.verbose > 4:
-            print "FINAL DIALOG"
-            pprint.pprint(done_ticket)
 
         #Combine the request and done_ticket into one ticket for simplicity.
         done_ticket = combine_dict(done_ticket, requests[j])
@@ -2206,7 +2240,15 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         # error status in the ticket.
         set_outfile_permissions(done_ticket) #Writes errors to log file.
         ###What kind of check should be done here?
-
+        #This error should result in the file being left where it is, but it
+        # is still considered a failed transfer (aka. exit code = 1 and
+        # data access layer is still printed).
+        if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
+            print_data_access_layer_format(done_ticket['infile'],
+                                           done_ticket['outfile'],
+                                           done_ticket['file_size'],
+                                           done_ticket)
+            
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
         delete_at_exit.unregister(done_ticket['outfile']) #localname
@@ -2420,8 +2462,6 @@ def read_from_hsm(e, client, tinfo):
     if e.verbose > 4:
         print "DONE TICKET"
         pprint.pprint(done_ticket)
-    elif e.verbose > 2:
-        print done_ticket['status'][1]
 
     return done_ticket
 
