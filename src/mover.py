@@ -35,7 +35,6 @@ import string_driver
 
 import Trace
 
-
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
         exceptions.Exception.__init__(self,arg)
@@ -208,7 +207,7 @@ class Buffer:
             self._read_ptr = 0
         return bytes_read
 
-    def read_eof(self):
+    def eof_read(self):
         if self._reading_block and self._read_ptr:
             data = self._reading_block[:self._read_ptr]
             self.push(data)
@@ -504,7 +503,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 nbytes = self.buffer.trailer_size
                 bytes_read = self.buffer.stream_read(nbytes, self.trailer)
                 Trace.trace(10, "read %s bytes of  trailer" % bytes_read)
-            self.buffer.read_eof() #pushes last partial block onto the fifo
+            self.buffer.eof_read() #pushes last partial block onto the fifo
             self.buffer.write_ok.set()
 
             
