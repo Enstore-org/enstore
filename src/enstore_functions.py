@@ -135,8 +135,8 @@ except ImportError:
     threading = None
 
 if threading:    
-    def run_in_thread(self, thread_name, function, args=(), after_function=None):
-        thread = getattr(self, thread_name, None)
+    def run_in_thread(obj, thread_name, function, args=(), after_function=None):
+        thread = getattr(obj, thread_name, None)
         for wait in range(5):
             if thread and thread.isAlive():
                 Trace.trace(20, "thread %s is already running, waiting %s" % (thread_name, wait))
@@ -148,7 +148,7 @@ if threading:
             args = args + (after_function,)
         thread = threading.Thread(group=None, target=function,
                                   name=thread_name, args=args, kwargs={})
-        setattr(self, thread_name, thread)
+        setattr(obj, thread_name, thread)
         try:
             thread.start()
         except exceptions.Exception, detail:
