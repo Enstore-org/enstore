@@ -8,6 +8,7 @@ import pprint
 import types
 import os
 import string
+import socket
 
 #enstore imports
 import setpath
@@ -58,15 +59,17 @@ class GenericClientInterface(option.Interface):
 
 class GenericClient:
 
-    def __init__(self, csc, name, server_address=None, flags=0, logc=None, alarmc=None):
-        self.server_address = server_address
+    def __init__(self, csc, name, server_address=None, flags=0, logc=None,
+                 alarmc=None, rcv_timeout=0, rcv_tries=0, server_name=None):
+
 	if not flags & enstore_constants.NO_UDP and not self.__dict__.get('u', 0):
 	    self.u = udp_client.UDPClient()
 
         if self.__dict__.get('is_config', 0):
             # this is the configuration client, we don't need this other stuff
-            return
-        
+            self.csc = self
+            #return
+
 	# get the configuration client
 	if not flags & enstore_constants.NO_CSC:
 	    import configuration_client
@@ -75,8 +78,8 @@ class GenericClient:
 		if type(csc) == type(()):
 		    self.csc = configuration_client.ConfigurationClient(csc)
 		else:
-		    # it is not a tuple of address and port, so we assume that it
-		    # is a configuration client object
+		    # it is not a tuple of address and port, so we assume that
+		    # it is a configuration client object
 		    self.csc = csc
 	    else:
 		# it is None or 0 (the default value from i.e. log_client)
@@ -84,6 +87,12 @@ class GenericClient:
 			    string.atoi(os.environ['ENSTORE_CONFIG_PORT']))
 		self.csc = configuration_client.ConfigurationClient( def_addr )
 
+        if server_address:    
+            self.server_address = server_address
+        else:
+            self.server_address = self.get_server_address(
+                server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
+                
         # try to find the logname for this object in the config dict.  use
         # the lowercase version of the name as the server key.  if this
         # object is not defined in the config dict, then just use the
@@ -98,7 +107,10 @@ class GenericClient:
 		import log_client
 		self.logc = log_client.LoggerClient(self.csc, self.log_name,
 						    'log_server', 
-			      flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG)
+		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
+                                                    rcv_timeout=rcv_timeout,
+                                                    rcv_tries=rcv_tries)
+
 	# get the alarm client
 	if alarmc:
 	    # we were given one, use it
@@ -107,11 +119,31 @@ class GenericClient:
 	    if not flags & enstore_constants.NO_ALARM:
 		import alarm_client
 		self.alarmc = alarm_client.AlarmClient(self.csc, 
-			      flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG)
+		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
+                                                       rcv_timeout=rcv_timeout,
+                                                       rcv_tries=rcv_tries)
 
     def get_server_address(self, MY_SERVER,  rcv_timeout=0, tries=0):
-        ticket = self.csc.get(MY_SERVER, rcv_timeout, tries)
+        #If the server address requested is the configuration server,
+        # do something different.
+        #if self.__dict__.get('is_config', 0):
+        if MY_SERVER == enstore_constants.CONFIGURATION_SERVER:
+            host = os.environ.get("ENSTORE_CONFIG_HOST",'localhost')
+            hostip = socket.gethostbyname(host)
+            port = int(os.environ.get("ENSTORE_CONFIG_PORT",'localhost'))
+            ticket = {'host':host, 'hostip':hostip, 'port':port,
+                      'status':(e_errors.OK, None)}
+        elif MY_SERVER == enstore_constants.MONITOR_SERVER:
+            host = socket.gethostname()
+            hostip = socket.gethostbyname(host)
+            port = enstore_constants.MONITOR_PORT
+            ticket = {'host':host, 'hostip':hostip, 'port':port,
+                      'status':(e_errors.OK, None)}
+        #For a normal server.
+        else:
+            ticket = self.csc.get(MY_SERVER, rcv_timeout, tries)
 
+        #Check for errors.
         if ticket['status'][0] != e_errors.OK:
             return None
         
@@ -141,12 +173,17 @@ class GenericClient:
 
     # check on alive status
     def alive(self, server, rcv_timeout=0, tries=0):
+        #Get the address information from config server.
         t = self.csc.get(server, rcv_timeout, tries)
+        
+        #Check for errors.
         if t['status'] == (e_errors.TIMEDOUT, None):
             Trace.trace(14,"alive - ERROR, config server get timed out")
-            return {'status' : (e_errors.TIMEDOUT, None)}
+            return {'status' : (e_errors.CONFIGDEAD, None)}
         elif t['status'] != (e_errors.OK, None):
             return {'status':t['status']}
+        
+        #Send and recieve the alive message.
         try:
             x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
                             rcv_timeout, tries)
@@ -203,8 +240,6 @@ class GenericClient:
             sys.exit(0)
         else:
             print "BAD STATUS", ticket['status']
-##
-            
             Trace.trace(14, " BAD STATUS - "+repr(ticket['status']))
             sys.exit(1)
         return None

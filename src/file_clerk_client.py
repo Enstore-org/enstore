@@ -35,12 +35,24 @@ RCV_TRIES = 5
 class FileClient(generic_client.GenericClient, 
                       backup_client.BackupClient):
 
-    def __init__( self, csc, bfid=0, server_address=None, timeout=RCV_TIMEOUT, tries=RCV_TRIES):
-        generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address)
+    def __init__( self, csc, bfid=0, server_address=None,
+                  rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES,
+                  #Timeout and tries are for backward compatibility.
+                  timeout=None, tries=None):
+        ###For backward compatibility.
+        if timeout != None:
+            rcv_timeout = timeout
+        if tries != None:
+            rcv_tries = tries
+        ###
+            
+        generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
+                                              rcv_timeout=rcv_timeout,
+                                              rcv_tries=rcv_tries)
 	self.bfid = bfid
 	if self.server_address == None:
-            self.server_address = self.get_server_address(MY_SERVER,
-                                                          timeout, tries)
+            self.server_address = self.get_server_address(
+                MY_SERVER, rcv_timeout, rcv_tries)
 
     def new_bit_file(self, ticket):
         ticket['work'] = "new_bit_file"

@@ -42,12 +42,17 @@ class AlarmClient(generic_client.GenericClient):
         # need the following definition so the generic client init does not
         # get another alarm client
 	flags = flags | enstore_constants.NO_ALARM
-        generic_client.GenericClient.__init__(self, csc, name, flags=flags)
+
+        generic_client.GenericClient.__init__(self, csc, MY_NAME, flags=flags,
+                                              rcv_timeout=rcv_timeout,
+                                              rcv_tries=rcv_tries)
+
         try:
             self.uid = pwd.getpwuid(os.getuid())[0]
         except:
             self.uid = "unknown"
-        self.server_address = self.get_server_address(MY_SERVER, 10, 1)
+        self.server_address = self.get_server_address(MY_SERVER, rcv_timeout,
+                                                      rcv_tries)
 
         self.rcv_timeout = rcv_timeout
         self.rcv_tries = rcv_tries

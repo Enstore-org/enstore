@@ -29,7 +29,7 @@ import enstore_functions2
 import log_client
 
 MY_NAME = "MNTR_CLI"
-MY_SERVER = "monitor"
+MY_SERVER = enstore_constants.MONITOR_SERVER
 
 SEND_TO_SERVER = "send_to_server"
 SEND_FROM_SERVER = "send_from_server"
@@ -586,7 +586,7 @@ def get_all_ips(config_host, config_port, csc):
 #config: return val from a configuration_client.get() function
 #csc: configuration client instance.
 def get_host_list(csc, config_host, config_port, hostip=None):
-    config = csc.get('monitor')
+    config = csc.get(enstore_constants.CONFIGURATION_SERVER)
     
     vetos = Vetos(config.get('veto_nodes', {}))
     host_list = []
@@ -622,15 +622,17 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
                  hostip=None):
     
     csc = configuration_client.ConfigurationClient((config_host, config_port))
-    config = csc.get('monitor')
+    config = csc.get(enstore_constants.MONITOR_SERVER)
 
     if config['status'][0] != 'ok':
 
-        summary_d = {'monitor' : " not found in config dictionary."}
+        summary_d = {"%s" % enstore_constants.MONITOR_SERVER : \
+                     " not found in config dictionary."}
         if summary:
             return summary_d
         else:
-            print "Item 'monitor' not found in config dictionary."
+            print "Item \'%s\' not found in config dictionary." % \
+                  enstore_constants.MONITOR_SERVER
             return
 
     #Get a list of hosts, and a class instance of host to avoid.

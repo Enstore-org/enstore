@@ -180,10 +180,13 @@ def extract_volume(v):    # v is a string
 class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
 
-    def __init__( self, csc, server_address=None, timeout=RCV_TIMEOUT, retry=RCV_TRIES ):
-        generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address)
+    def __init__( self, csc, server_address=None, rcv_timeout = RCV_TIMEOUT,
+		rcv_tries = RCV_TRIES):
+        generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
+                                  rcv_timeout=rcv_timeout, rcv_tries=rcv_tries)
         if self.server_address == None:
-            self.server_address = self.get_server_address(MY_SERVER, rcv_timeout=timeout, tries=retry)
+            self.server_address = self.get_server_address(
+                MY_SERVER, rcv_timeout=rcv_timeout, tries=rcv_tries)
 
     # add a volume to the stockpile
     def add(self,

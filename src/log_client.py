@@ -301,11 +301,15 @@ class LoggerClient(generic_client.GenericClient):
                                              # try to make it capital letters
                                              # not more than 8 characters long
                  servername = MY_SERVER,     # log server name
-		 flags=0):
+		 flags=0,
+                 rcv_timeout=0,
+                 rcv_tries=0):
         # need the following definition so the generic client init does not
         # get another logger client
 	flags = flags | enstore_constants.NO_LOG
-        generic_client.GenericClient.__init__(self, csc, i_am_a, flags=flags)
+        generic_client.GenericClient.__init__(self, csc, i_am_a, flags=flags,
+                                              rcv_timeout=rcv_timeout,
+                                              rcv_tries=rcv_tries)
         self.log_name = i_am_a
         try:
             self.uname = pwd.getpwuid(os.getuid())[0]

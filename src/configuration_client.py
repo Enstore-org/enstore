@@ -22,11 +22,13 @@ import hostaddr
 import option
 
 MY_NAME = "CONFIG_CLIENT"
-MY_SERVER = "configuration_server"
+#MY_SERVER = "configuration_server"
+MY_SERVER = enstore_constants.CONFIGURATION_SERVER
 
 class ConfigurationClient(generic_client.GenericClient):
 
     def __init__(self, address=None):
+        self.is_config = 1 #needed by generic client to handle csc
         if address is None:
             address = (os.environ.get("ENSTORE_CONFIG_HOST", 'localhost'),
                        int(os.environ.get("ENSTORE_CONFIG_PORT", 7500)))
@@ -61,8 +63,11 @@ class ConfigurationClient(generic_client.GenericClient):
     def get(self, key, timeout=0, retry=0):
         self.timeout = timeout #Remember this.
         self.retry = retry     #Remember this.
-        if key=='configuration_server':
-            ret = {'hostip':self.server_address[0], 'port':self.server_address[1]}
+        if key == 'configuration_server' or key == MY_SERVER or \
+           key == enstore_constants.CONFIGURATION_SERVER:
+            ret = {'hostip':self.server_address[0],
+                   'port':self.server_address[1],
+                   'status':(e_errors.OK, None)}
         else:
 	    # if we have a new_config_obj, then only go to the config server if we
 	    # have received a message saying a new one was loaded.
@@ -81,6 +86,16 @@ class ConfigurationClient(generic_client.GenericClient):
 		    ret = self.saved_dict[key]
 		else:
 		    ret = self.do_lookup(key, timeout, retry)
+
+        ##HACK:
+        #Do a hack for the monitor server.  Since, it runs on all enstore
+        # machines we need to add this information before continuing.
+        if e_errors.is_ok(ret) and key == enstore_constants.MONITOR_SERVER:
+            ret['host'] = socket.gethostname()
+            ret['hostip'] = socket.gethostbyname(ret['host'])
+            ret['port'] = enstore_constants.MONITOR_PORT
+        ##END HACK.
+
         return ret
 
     # dump the configuration dictionary
@@ -119,8 +134,8 @@ class ConfigurationClient(generic_client.GenericClient):
         x = self.send(request, timeout, retry)
         return x
 
-    def alive(self, server, rcv_timeout=0, tries=0):
-        return self.send({'work':'alive'}, rcv_timeout, tries)
+    #def alive(self, server, rcv_timeout=0, tries=0):
+    #    return self.send({'work':'alive'}, rcv_timeout, tries)
 
     # get list of the Library manager movers
     def get_movers(self, library_manager, timeout=0, retry=0):
@@ -207,8 +222,6 @@ def do_work(intf):
     if intf.alive:
         if result['status'] == (e_errors.OK, None):
             print "Server configuration found at %s." % (result['address'],)
-        else:
-            print result
     if result:
         pass
     elif intf.show:
