@@ -100,13 +100,22 @@ quit() {
 # in. If ommitted, `pwd` is default. To ease the implementation,
 # multiple -d are allowed, but only the last one is effective
 
+# Sep 5, 2003 Modified again to add -c option
+# 
+# $0 [[-setup product] | [-D VARIABLE=value] | [-p job_name] | [-d dir] | [-c error_count ]* cmd
+#
+# -c error_count will not sent out e-mail alert until contigous number
+# of errors happened, as specified by error_count.
+# if -c is omitted, -c 1 is assumed
+
 # additional products
 
 products=
 job=
 cwd=`pwd`
+cntlimit=1
 
-while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ]
+while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ]
 do
 	case $1 in
 	-setup)
@@ -132,8 +141,13 @@ do
 		cwd=$2
 		shift
 		;;
+	-c)
+		cntlimit=$2
+		shift
+		;;
 	-l)
 		logit=1
+                ;;
 	esac
 	shift
 done
@@ -157,6 +171,14 @@ procMail=${procInfos}-mail
 noMail=${procInfos}NOMAIL
 noNeg=${procInfos}NONEG
 genAlarm=${procInfos}GENALARM
+cntFile=${procInfos}.cnt
+errcnt=0
+
+#read err count, if any
+if [ -r $cntFile ]
+then
+	errcnt=`cat $cntFile`
+fi
 
 echo "$start 10" >> $histogram
 
@@ -219,23 +241,31 @@ if [ $problem -gt 5 -o $problem -lt -5 ] ; then
 fi
 
 if [ $problem -ne 0 ] ; then
-   echo "" >$procMail
-   echo "  RC = $problem">>$procMail
-   echo "  The Enstore ecron Scheduler found a problem running task !!! $procName $* !!! " >>$procMail
-   echo "  Uname      :" `uname -a`  >>$procMail
-   echo "  Date       :" `date`      >>$procMail
-   echo "  Path       : $procName $* "  >>$procMail
-   echo "  ReturnCode : $problem "   >>$procMail
-   echo "  Working dir: $cwd "   >>$procMail
-   echo "  Output and error messages ... " >>$procMail
-   echo "  -------------------- start of messages ---------------------- ">>$procMail
-   cat $procOutput >>$procMail 2>/dev/null
-   echo "  -------------------- end of messages   ---------------------- ">>$procMail
-   sendMail $procMail emergency "ecron rc=$problem: $procName $* "
-# save the error output. we get python and ENSTORE_DIR from the enstore setup
-# the second parameter tells the script how many output files to keep.  the default
-# is 5
+    let errcnt++
+    echo "" >$procMail
+    echo "  RC = $problem">>$procMail
+    echo "  The Enstore ecron Scheduler found a problem running task !!! $procName $* !!! " >>$procMail
+    echo "  Uname      :" `uname -a`  >>$procMail
+    echo "  Date       :" `date`      >>$procMail
+    echo "  Path       : $procName $* "  >>$procMail
+    echo "  ReturnCode : $problem "   >>$procMail
+    echo "  Working dir: $cwd "   >>$procMail
+    echo "  Error count: $errcnt " >>$procMail
+    echo "  Output and error messages ... " >>$procMail
+    echo "  -------------------- start of messages ---------------------- ">>$procMail
+    cat $procOutput >>$procMail 2>/dev/null
+    echo "  -------------------- end of messages   ---------------------- ">>$procMail
+    if [ $errcnt -ge $cntlimit ]
+    then
+        sendMail $procMail emergency "ecron rc=$problem: $procName $* "
+    fi
+    # save the error output. we get python and ENSTORE_DIR from the enstore setup
+    # the second parameter tells the script how many output files to keep.  the default
+    # is 5
     python $ENSTORE_DIR/sbin/save_cron_output.py $procOutput 5
+    echo $errcnt > $cntFile
+else
+    /bin/rm -rf $cntFile
 fi
 
 quit "" $problem
