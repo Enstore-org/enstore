@@ -53,7 +53,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         dispatching_worker.DispatchingWorker.__init__(self, \
 	                 (self.mc_config['hostip'], self.mc_config['port']))
         self.idleTimeLimit = 600  # default idle time in seconds
-	self.insertNewLibName = "robot"  # default-default name
+	#self.insertNewLibName = "robot"  # default-default name
         self.lastWorkTime = time.time()
 	self.robotNotAtHome = 1
         self.timeInsert = time.time()
@@ -89,7 +89,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def insertvol(self, ticket):
         ticket["function"] = "insert"
 	if not ticket.has_key("newlib"):
-	    ticket["newlib"] = self.insertNewLibName
+	    ticket["status"] = (e_errors.WRONGPARAMETER, 1, "new library name not specified")
+            Trace.log(e_errors.ERROR, "ERROR:insertvol new library name not specified")
+	    return
         return self.DoWork( self.insert, ticket)
 
     # wrapper method for client - server communication
@@ -238,18 +240,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                 sts=("",0,"")
 		while count > 0 and sts[0] != e_errors.OK:
 		    if ticket['function'] == 'insert':
-			classTicket = { 'mcSelf' : self }
-	                ticket['timeOfCmd'] = time.time()
-			sts = function(ticket, classTicket)
-			#ticket['mcSelf'] = self  #this wold be cleaner but eval(ticket) gets sick
-			#sts = function(ticket)
+			sts = function(ticket)
 		    elif ticket['function'] == 'eject':
-			classTicket = { 'mcSelf' : self }
-			sts = function(ticket, classTicket)
+			sts = function(ticket)
 		    elif ticket['function'] == 'homeAndRestart':
-			classTicket = { 'mcSelf' : self }
-			ticket = { 'robotArm' : 'R1' }
-			sts = function(ticket, classTicket)
+			sts = function(ticket)
 		    else:
 		        sts = function(
 			    ticket['vol_ticket']['external_label'],
@@ -301,27 +296,54 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 class EMASS_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self, medch, maxwork, csc)
-	self.robotArm = 'R1'  # chioces are 'R1', 'R2' or 'Both'
-	if self.mc_config.has_key('RobotArm'):
+	# robot choices are 'R1', 'R2' or 'Both'
+	if self.mc_config.has_key('RobotArm'):   # error if robot not in config
 	    self.robotArm = string.strip(self.mc_config['RobotArm'])
+	else:
+	    self.robotArm = "R1"
+            Trace.log(e_errors.ERROR, "ERROR:EMASS no robot arm key in configuration")
+	    return
+	if self.mc_config.has_key('IOBoxMedia'):   # error if IO box media assignments not in config
+	    self.mediaIOassign = (self.mc_config['IOBoxMedia'])
+	else:
+	    self.mediaIOassign = {'ACI_8MM':['E02','E03','E04'],'ACI_DECDLT':['E01']}
+            Trace.log(e_errors.ERROR, "ERROR:EMASS no IO box media assignments in configuration")
+	    return
 	if self.mc_config.has_key('IdleHomeTime'):
-	    self.idleTimeLimit = int(string.strip(self.mc_config['IdleHomeTime']))
-	if self.mc_config.has_key('NewLibName'):
-	    self.insertNewLibName = int(string.strip(self.mc_config['NewLibName']))
+	    self.idleTimeLimit = int(string.strip(self.mc_config['IdleTimeHome']))
         import EMASS
         self.load=EMASS.mount
         self.unload=EMASS.dismount
-        self.insert=EMASS.insert
-        self.eject=EMASS.eject
         self.prepare=EMASS.dismount
         self.robotHome=EMASS.robotHome
         self.robotStatus=EMASS.robotStatus
         self.robotStart=EMASS.robotStart
-        self.robotHomeAndRestart=EMASS.robotHomeAndRestart
 
+    def insert(self, ticket):
+        import EMASS
+        classTicket = { 'mcSelf' : self }
+	ticket['timeOfCmd'] = time.time()
+	ticket['medIOassign'] = self.mediaIOassign
+	rt = EMASS.insert(ticket, classTicket)
+        return rt
+	
+    def eject(self, ticket):
+        import EMASS
+        classTicket = { 'mcSelf' : self }
+	ticket['medIOassign'] = self.mediaIOassign
+	rt = EMASS.eject(ticket, classTicket)
+        return rt
+
+    def robotHomeAndRestart(self, ticket):
+        import EMASS
+        classTicket = { 'mcSelf' : self }
+	ticket['robotArm'] = self.robotArm
+	rt = EMASS.robotHomeAndRestart(ticket, classTicket)
+        return rt
+    
     # view - to replace below tgj1
     #def view(self, external_label, drive, media_type):
-    def view(self, external_label, media_type): # todo: put this view code into EMASS.py
+    def view(self, external_label, media_type): #leave view's code body alone
 	"get current state of the tape"
         import EMASS
 	rt = EMASS.view(external_label, media_type)
@@ -346,9 +368,8 @@ class EMASS_MediaLoader(MediaLoaderMethods):
         """ do regularily scheduled internal checks"""
 	if self.robotNotAtHome and (time.time()-self.lastWorkTime) > self.idleTimeLimit:
 	    self.robotNotAtHome = 0
-            classTicket = { 'mcSelf' : self }
             ticket = { 'function' : 'homeAndRestart', 'robotArm' : self.robotArm }
-	    sts = self.robotHomeAndRestart(ticket, classTicket)
+	    sts = self.robotHomeAndRestart(ticket)
 	    self.lastWorkTime = time.time()
 	timer_task.msg_add(29, self.checkMyself) # recheck time in seconds
 

@@ -11,6 +11,7 @@
 #system imports
 import sys
 import string
+import types
 
 #enstore imports
 import udp_client
@@ -81,10 +82,16 @@ class MediaChangerClient(generic_client.GenericClient):
 
     def insertvol(self, IOarea, inNewLib):
         ticket = {'work'         : 'insertvol',
-	          'IOarea_name'  : IOarea
+	          'IOarea_name'  : IOarea,
+		  'newlib'       : inNewLib
 		 }
-	if inNewLib != "" :
-	    ticket['newlib'] = inNewLib
+        if type(IOarea) != types.ListType:
+            Trace.log(e_errors.ERROR, "ERROR:insertvol IOarea must be a list")
+	    rt = {'status':(e_errors.WRONGPARAMETER, 1, "IOarea must be a list")}
+	    return rt
+	zz = raw_input('Insert volumes into I/O area. Do not mix media types.\nWhen I/O door is closed hit return:')
+	if zz == "FakeOpenIODoor":
+	    ticket["FakeIOOpen"] = 'yes'
 	rt = self.send(ticket)
         return rt
 
@@ -93,6 +100,10 @@ class MediaChangerClient(generic_client.GenericClient):
 	          'volList'      : volumeList,
 	          'media_type'   : media_type
                   }
+        if type(volumeList) != types.ListType:
+            Trace.log(e_errors.ERROR, "ERROR:ejectvol volumeList must be a list")
+	    rt = {'status':(e_errors.WRONGPARAMETER, 1, "volumeList must be a list")}
+	    return rt
 	rt = self.send(ticket)
         return rt
 
@@ -117,7 +128,6 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.volume = 0
 	self.view = 0
 	self.insertvol = 0
-	self.insertNewLib = ""
 	self.ejectvol = 0
 	self.viewattrib = 0
         self.drive = 0
@@ -126,9 +136,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["max_work=","view=","get_work","insertvol",
-	        "ejectvol","insertlib="]
-
+               ["maxwork=","view=","get_work","insertvol",
+	        "ejectvol"]
     #  define our specific help
     def parameters(self):
         if 0: print self.keys() #lint fix
@@ -138,16 +147,17 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     def parse_options(self):
         interface.Interface.parse_options(self)
 	if self.insertvol:
-            if len(self.args) < 1:
+            if len(self.args) < 2:
 	        self.missing_parameter("media_changer")
                 self.print_help()
                 sys.exit(1)
             else:
                 self.media_changer = self.args[0]
-		if len(self.args) == 2:
-		    self.ioarea = self.args[1]
-		else:
-		    self.ioarea = None
+                self.insertNewLib = self.args[1]
+		self.ioarea = []
+		if len(self.args) > 2:
+		    for pos in range(2,len(self.args)):
+		        self.ioarea.append(self.args[pos])
 	elif self.ejectvol:
             if len(self.args) < 3:
 	        self.missing_parameter("media_changer/media_type/volumeList")
@@ -156,7 +166,9 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
             else:
                 self.media_changer = self.args[0]
                 self.media_type = self.args[1]
-                self.volumeList = self.args[2]
+		self.volumeList = []
+		for pos in range(2,len(self.args)):
+		    self.volumeList.append(self.args[pos])
 	else:
             if len(self.args) < 1 :
 	        self.missing_parameter("media_changer")

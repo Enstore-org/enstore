@@ -65,17 +65,15 @@ status_table = (
     ("ERROR",   "vcc.new_library error(s)"),                            #38
     )
     
-Iareas = ("I01","I02","I03","I04","I05","I06","I07","I08")
-Oareas = ("E01","E02","E03","E04","E05","E06","E07","E08")
-robotArms = ("R1","R2")
+tmpIareas = ("I01","I02","I03","I04","I05","I06","I07","I08")
 # R1 IObox
-mediaIOassign = { "ACI_8MM"     : 
+tmpMediaIOassign = { "ACI_8MM"     :     # ....put into config file
                  ["E02","E03","E04"],
 		  "ACI_DECDLT"  :
 		 ["E01"] }
 
 # R2 IObox
-#mediaIOassign = { "ACI_8MM"     : 
+#mediaIOassign = { "ACI_8MM"     :     # ....implement these
 #                 ["E06","E07","E08"],
 #		  "ACI_DECDLT"  :
 #		 ["E05"] }
@@ -132,14 +130,23 @@ def robotHomeAndRestart(ticket, classTicket):
     if arm=='R1' or arm=='Both':
         st1,status,st2 = robotHome('R1')
         if not status:
-            Trace.trace(e_errors.INFO, 'EMASS robotHomeAndRestart failed on R1')
-            st1,status3,st2 = robotStart('R1')
+            st1,status,st2 = robotStart('R1')
+	    if status:
+                Trace.trace(e_errors.INFO, 'EMASS robotHomeAndRestart Start failed on R1')
+                return status_table[status][0], status, status_table[status][1]
+	else:
+            Trace.trace(e_errors.INFO, 'EMASS robotHomeAndRestart Home failed on R1')
+            return status_table[status][0], status, status_table[status][1]
     if arm=='R2' or arm=='Both':
-        st1,status2,st2 = robotHome('R2')
-        if not status2:
-	    status = status2
-            Trace.trace(e_errors.INFO, 'EMASS robotHomeAndRestart failed on R2')
-            st1,status3,st2 = robotStart('R2')
+        st1,status,st2 = robotHome('R2')
+        if not status:
+            st1,status,st2 = robotStart('R2')
+	    if status:
+                Trace.trace(e_errors.INFO, 'EMASS robotHomeAndRestart Start failed on R2')
+                return status_table[status][0], status, status_table[status][1]
+	else:
+            Trace.trace(e_errors.INFO, 'EMASS robotHomeAndRestart Home failed on R2')
+            return status_table[status][0], status, status_table[status][1]
     return status_table[status][0], status, status_table[status][1]
 
 def view(volume, media_type):
@@ -170,16 +177,23 @@ def insert(ticket, classTicket):
         status = 37
         mcSelf.workQueueClosed = 0
         Trace.trace(e_errors.ERROR, 'EMASS no mcSelf field found in ticket.')
-        return status_table[status][0], status, status_table[status][1]
+        return status_table[status][0], status, 'EMASS no mcSelf field found in ticket.'
     
+    mediaAssgn = ticket['medIOassign']
+    Iareas = []
+    for media in mediaAssgn.keys():
+        for box in mediaAssgn[media]:
+            Iareas.append("I"+box[1:])
+
     status = 0
-    if ticket.has_key("IOarea_name") and ticket["IOarea_name"] is not None:
-        IOarea_name = ticket["IOarea_name"]
-	if IOarea_name not in Iareas:
-	    status = derrno.EINVALID
-            mcSelf.workQueueClosed = 0
-	    return status_table[status][0], status, status_table[status][1]
-        areaList = [IOarea_name]
+    if ticket.has_key("IOarea_name") and len(ticket["IOarea_name"])>0:
+        IOarea_input = ticket["IOarea_name"]
+	for IOarea_name in IOarea_input:
+	    if IOarea_name not in Iareas:
+	        status = derrno.EINVALID
+                mcSelf.workQueueClosed = 0
+	        return status_table[status][0], status, status_table[status][1]
+        areaList = IOarea_input
     else:
         areaList = list(Iareas)
 
@@ -192,11 +206,15 @@ def insert(ticket, classTicket):
     year, month, day, hour, minute = time.localtime(timeL1)[:5]
     outfileName = "/tmp/adicLog%02d%02d" % (day, month)
 
-    invtNotDone = 1
-    while invtNotDone or timeL1-timeCmd>1200:   # timeout in seconds
+    while timeL1-timeCmd>1200:   # timeout in seconds
         #get amulog from adic2
         Trace.trace(e_errors.INFO, 'EMASS fetching log...')
         emass_log.fetch_log_file(robot_host, month, day, outfileName)
+
+	if ticket.has_key('FakeIOOpen'):
+	    time.sleep(5)
+            Trace.trace(e_errors.INFO, 'EMASS: Fake IO Door Open')
+	    break
 
         # examine the log - get INVT records
         ofile = open(outfileName,'r')
@@ -213,7 +231,7 @@ def insert(ticket, classTicket):
             status = 37
             mcSelf.workQueueClosed = 0
             Trace.trace(e_errors.ERROR, 'EMASS no INVT records found.')
-            return status_table[status][0], status, status_table[status][1]
+            return status_table[status][0], status, 'EMASS no INVT records found.'
 
 	ESrecord = yankList(Irecord, 3, "INVT of E")
 	EFrecord = []
@@ -221,7 +239,7 @@ def insert(ticket, classTicket):
 	    look4 = record[3][5:9]+" "+record[3][:4]
 	    EFrecord = EFrecord+yankList(Irecord, 3, look4)
 	if len(ESrecord) == len(EFrecord):
-	    invtNotDone = 0
+	    break
 	timeL1 = time.time()
 
     # do insert command...
@@ -240,27 +258,39 @@ def insert(ticket, classTicket):
             status = aci.cvar.d_errno
             if status > len(status_table):  #invalid error code
                 status = derrno.EDASINT
+            Trace.trace(e_errors.ERROR, 'EMASS insert failed %s' % status_table[status][1])
 	for strList in volser_ranges:
 	    pieces = string.split(strList,', ')
-	    for xxx in pieces:
-	        if len(xxx)>0:
-	            bigVolList.append(xxx)
+	    for vol_label in pieces:
+	        if len(vol_label)>0:
+		    info = vol_label, res
+	            bigVolList.append(info)
 
     # set library name to ticket["newlib"]
     vcc = volume_clerk_client.VolumeClerkClient(mcSelf.csc)
-    for vol_label in bigVolList:
-        ret = vcc.new_library(vol_label,ticket["newlib"])
-	if ret['status'][0] != 'ok':
-            Trace.trace(e_errors.ERROR, 'EMASS NewLib-InsertVol failed %s' % vol_label)
-            status = 38
-	else:
-            Trace.trace(e_errors.INFO, 'EMASS NewLib-InsertVol sucessful %s' % vol_label)
+    for info in bigVolList:
+        if not info[1]:
+            ret = vcc.new_library(info[0],ticket["newlib"])
+	    if ret['status'][0] != 'ok':
+                Trace.trace(e_errors.ERROR, 'EMASS NewLib-InsertVol failed %s' % vol_label)
+                status = 38
+	    else:
+                Trace.trace(e_errors.INFO, 'EMASS NewLib-InsertVol sucessful %s' % vol_label)
 
     return status_table[status][0], status, status_table[status][1]
 
 def eject(ticket, classTicket):
     """eject(ticket, classTicket)"""
 
+    if classTicket.has_key("mcSelf"):
+        mcSelf = classTicket["mcSelf"]
+    else:
+        status = 37
+        mcSelf.workQueueClosed = 0
+        Trace.trace(e_errors.ERROR, 'EMASS no mcSelf field found in ticket.')
+        return status_table[status][0], status, 'EMASS no mcSelf field found in ticket.'
+
+    mediaAssgn = ticket['medIOassign']
     status = 0
     if ticket.has_key("media_type"):
         media_type = ticket["media_type"]
@@ -274,26 +304,29 @@ def eject(ticket, classTicket):
 	
     if ticket.has_key("IOarea_name"):
         IOarea_name = ticket["IOarea_name"]
-	if IOarea_name not in Oareas:
+	if IOarea_name not in mediaAssgn["ACI_"+media_type]:
 	    status = derrno.EINVALID
 	    return status_table[status][0], status, status_table[status][1]
     else:
-        box = whrandom.randint(0,len(mediaIOassign["ACI_"+media_type])-1)
-        IOarea_name = mediaIOassign["ACI_"+media_type][box]
+        box = whrandom.randint(0,len(mediaAssgn["ACI_"+media_type])-1)
+        IOarea_name = mediaAssgn["ACI_"+media_type][box]
     
     if ticket.has_key("volList"):
-        volser_range = ticket["volList"]
+        volumeList = ticket['volList']
     else:
 	status = derrno.EINVALID
 	return status_table[status][0], status, status_table[status][1]
+    Trace.trace(e_errors.INFO, 'EMASS aci_eject: %s %i' % (IOarea_name,media_code))
 
-    Trace.trace(e_errors.INFO, 'EMASS aci_eject: %s %s %i' % (IOarea_name,volser_range,media_code))
-    res = aci.aci_eject(IOarea_name, volser_range, media_code)
-    if res:
-        Trace.trace(e_errors.ERROR, 'EMASS aci_eject: %i' % res)
-        status = aci.cvar.d_errno
-        if status > len(status_table):  #invalid error code
-            status = derrno.EDASINT
+    for volser_range in volumeList:
+        Trace.trace(e_errors.INFO, 'EMASS aci_eject: %s' % (volser_range))
+        res = aci.aci_eject(IOarea_name, volser_range, media_code)
+        if res:
+            Trace.trace(e_errors.ERROR, 'EMASS aci_eject: %i' % res)
+            status = aci.cvar.d_errno
+            if status > len(status_table):  #invalid error code
+                status = derrno.EDASINT
+            return status_table[status][0], status, status_table[status][1]
     
     return status_table[status][0], status, status_table[status][1]
     
