@@ -244,6 +244,13 @@ class EnDataFile(EnFile):
             while i < max_lines:
                 l = self.filedes.readline()
                 if l:
+		    # THIS IS A KLUDGE - do not use any error lines which have a status=ok in 
+		    # them.  remove the following if block and this comment to get rid of the
+		    # kludge.
+		    if not string.find(l, " E ENCP ") == -1 and \
+		       not string.find(l, "STATUS=ok") == -1:
+			continue
+		    #
                     self.lines.append(l)
                     i = i + 1
                 else:
