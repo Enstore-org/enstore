@@ -18,10 +18,11 @@ import sys
 
 # various files to ignore
 ignoreEnds = ["\.pyc$", "\.o$", "\.so$", "\.a$", "\.ps$", "\.gif$", "\.kil$",
-	      "\.jou$"]
+	      "\.jou$", "~$", "\.in$"]
 ignoreDirs = ["CVS", "WWW_new"]
-ignoreFiles = ["laundry", ".cvsignore", "trace_delta", "traceShow"]
-ignoreStarts = ["^LOG-.*", "^__db.*", "^\.#.*"]
+ignoreFiles = ["laundry", ".cvsignore", "trace_delta", "traceShow", "pending_queue", 
+	       "work_at_movers"]
+ignoreStarts = ["^LOG-.*", "^__db.*", "^\.#.*", "^dirt.txt.*", "^log.00000000.*"]
 ignoreStartsPatterns = []
 ignoreEndsPatterns = []
 
@@ -71,6 +72,7 @@ class Laundry:
     currentDir = "."
     dirtFile = "dirt.txt"
     defaultDirt = ["bakken", "fnal", "d0"]
+    #defaultDirt = ["jon", "rip", "131"]
     dirt = defaultDirt
 
 
@@ -81,6 +83,7 @@ class Laundry:
 	    optlist, args = getopt.getopt(sys.argv[1:], "", options)
 	except getopt.error, detail:
 	    print "error: ", detail
+	    print "Usage: laundry [--dirt=[\"str1\", \"str2\"...]"
 	    sys.exit(1)
 	    
 	if not len(optlist) == 0:
@@ -91,8 +94,9 @@ class Laundry:
 
 	# write the header to the output file
 	df = open(self.dirtFile, 'w')
-	df.write("Laundry done on %s at %s\n\n"%(os.uname()[1], 
+	df.write("Laundry done on %s at %s\n"%(os.uname()[1], 
 					   time.ctime(time.time())))
+	df.write("    looking for %s\n\n"%(repr(self.dirt),))
 	df.close()
 
 	# compile the patters
