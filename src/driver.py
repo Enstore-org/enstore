@@ -81,7 +81,7 @@ class GenericDriver:
             offset2 = 0
         else:
             offset2 = offset        
-        s="%s"%offset2
+        s="%s"%(offset2,)
         if s[-1]=='L':
             s=s[:-1]
         len_s=len(s)
