@@ -3,9 +3,9 @@
 
 Instance: 		v1_8
 Database: 		/usr/products/src1/devel_database
-Flavor : 		IRIX+6
-Home_dir:		/usr/products/src2/ftt/IRIX+6.d
-Declared date:		3-7-97
+Flavor : 		AIX+4
+Home_dir:		/usr/products/src2/ftt/AIX+4.d
+Declared date:		4-16-97
 Declarer:		mengel
 Master Source:		Source not available
 Distribution:		Unrestricted
