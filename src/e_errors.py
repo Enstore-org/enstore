@@ -99,6 +99,7 @@ EOV1_ERROR = "EOV1_ERROR"
 # common for read or write
 UNMOUNT         = 'UNMOUNT'
 
+
 #---------------------------------------
 
 #Other Errors:
@@ -107,6 +108,10 @@ TCP_HUNG        = 'TCP_HUNG'
 MOVER_CRASH     = 'MOVER_CRASH'
 BELOW_THRESHOLD = 'BELOW_THRESHOLD'
 ABOVE_THRESHOLD = 'ABOVE_THRESHOLD'
+
+
+#V2 additions:
+MOVER_BUSY = 'MOVER_BUSY'
 
 
 
