@@ -814,3 +814,55 @@ class EnLogPage(EnBaseHtmlDoc):
 	    table.append(HTMLgen.TR(HTMLgen.TD(log_table)))
 	    table.append(self.empty_row())
 	self.append(table)							 
+
+class EnAlarmPage(EnBaseHtmlDoc):
+
+    def __init__(self, refresh=600):
+	EnBaseHtmlDoc.__init__(self, refresh)
+	self.title = "ENSTORE Alarms"
+	self.script_title_gif = "en_alarms.gif"
+	self.description = "List of the currently raised alarms.  This page is created by the Alarm Server."
+
+    def alarm_table(self, alarms):
+	tr = HTMLgen.TR()
+	for hdr in ["Key", "Time", "Node", "PID", "User", "Severity", 
+		    "Process", "Error", "Additional Information"]:
+	    tr.append(HTMLgen.TH(HTMLgen.Font(hdr, size="+2", color=BRICKRED)))
+	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5, 
+				  cellpadding=CELLP, align="LEFT", bgcolor=AQUA)
+	i = 0
+	akeys = alarms.keys()
+	akeys.sort()
+	for akey in akeys:
+	    alarm = alarms[akey].list_alarm()
+	    td = HTMLgen.TD(HTMLgen.Input(type="radio", name="alarm%s"%(i,),
+						     value=alarm[0]),
+			    html_escape='OFF')
+	    td.append("%s%s"%(NBSP*3, alarm[0]))
+	    tr = HTMLgen.TR(td)
+	    tr.append(HTMLgen.TD(enstore_status.format_time(float(alarm[0]))))
+	    for item in alarm[1:]:
+		tr.append(HTMLgen.TD(item))
+	    table.append(tr)
+	    i = i + 1
+	return table
+
+    def body(self, alarms):
+	table = self.table_top()
+	# now the data
+	exe = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Execute", type="submit")))
+	rst = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Reset", type="reset")))
+	form = HTMLgen.Form(onSubmit="http://rip8:/cgi-bin/enstore/enstore_alarm_cgi.py")
+	# get rid of the default submit button, we will add our own below
+	form.submit = ''
+	form.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
+	form.append(self.empty_row())
+	form.append(self.empty_row())
+	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Execute", 
+						 type="submit")))
+	tr.append(HTMLgen.TD(HTMLgen.Input(value="Reset", type="reset")))
+	tr.append(HTMLgen.TD("Alarms may be cancelled by selecting the alarm(s), pressing the %s button and then reloading the page."%(str(HTMLgen.Bold("Execute")),), html_escape='OFF'))
+	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
+							    width="100%"))))
+	table.append(form)
+	self.append(table)

@@ -46,6 +46,11 @@ class GenericAlarm:
         self.patrol = 0
         return alarm
 
+    # return the a list of the alarm pieces we need to output
+    def list_alarm(self):
+	return [self.timedate, self.host, self.pid, self.uid, self.severity, 
+		self.source, self.root_error, self.alarm_info]
+
     # output the alarm
     def __repr__(self):
         # format ourselves to be a straight ascii line of the same format as
@@ -57,9 +62,7 @@ class GenericAlarm:
             return string.join((host[0], "Enstore" , sev, self.short_text(),
                                 "\n"))
         else:
-            return repr([self.timedate, self.host, self.pid, self.uid,
-                         self.severity, self.source, self.root_error,
-                         self.alarm_info])
+            return repr(self.list_alarm())
 
     # format the alarm as a simple, short text string to use to signal
     # that there is something wrong that needs further looking in to

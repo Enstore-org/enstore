@@ -25,6 +25,7 @@ MY_NAME = "alarm_server"
 DEFAULT_FILE_NAME = "/enstore_alarms.txt"
 DEFAULT_PATROL_FILE_NAME = "/enstore_patrol.txt"
 DEFAULT_SUSP_VOLS_THRESH = 3
+DEFAULT_HTML_ALARM_FILE = "/enstore_alarms.html"
 
 ALARM = "alarm"
 
@@ -101,10 +102,12 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                                    source, alarm_info)
             # save it in memory for us now
             self.alarms[theAlarm.get_id()] = theAlarm
-            # write it to the persistent file
+            # write it to the persistent alarm file
             self.write_alarm_file(theAlarm)
             # write it out to the patrol file
             self.write_patrol_file()
+	    # write it to the web page
+	    self.write_html_file()
         return theAlarm
 
     def find_alarm(self, host, severity, root_error, source, alarm_info):
@@ -121,15 +124,16 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     def resolve(self, id):
         # an alarm is being resolved, we must do the following -
         #      remove it from our alarm dictionary
-        #      rewrite the entire enstore_alarm file
+        #      rewrite the entire enstore_alarm file (txt and html)
         #      rewrite the enstore patrol file
         #      log this fact
         if self.alarms.has_key(id):
             del self.alarms[id]
             self.write_alarm_file()
             self.write_patrol_file()
-            #Trace.log(e_errors.INFO,
-            #          "Alarm with id = "+repr(id)+" has been resolved")
+	    self.write_html_file()
+            Trace.log(e_errors.INFO,
+                      "Alarm with id = "+repr(id)+" has been resolved")
             return (e_errors.OK, None)
         else:
             # don't know anything about this alarm
@@ -142,6 +146,14 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
         # send the reply to the client
         ticket['status'] = status
+        self.send_reply(ticket)
+        
+    def dump(self, ticket):
+	# dump our brains
+	for key in self.alarms.keys():
+	    print self.alarms[key]
+        # send the reply to the client
+        ticket['status'] = (e_errors.OK, None)
         self.send_reply(ticket)
         
     def write_alarm_file(self, alarm=None):
@@ -173,9 +185,19 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             # need to delete it
             self.patrol_file.remove()
 
+    # create the web page that contains the list of raised alarms
+    def write_html_file(self):
+	self.alarmhtmlfile.open()
+	self.alarmhtmlfile.write(self.alarms)
+	self.alarmhtmlfile.close()
+
     def get_log_path(self):
         log = self.csc.get("log_server")
         return log.get("log_file_path", ".")
+        
+    def get_www_path(self):
+        inq = self.csc.get("inquisitor")
+        return inq.get("html_file", ".")
         
     # read the persistent alarm file if it exists.  this reads in all the
     # alarms that have not been resolved.
@@ -228,6 +250,13 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
         # get the patrol file name and location and write any current alarms
         # out to it.
         self.get_patrol_file()
+
+	# initialize the html alarm file
+	self.alarmhtmlfile = enstore_files.HtmlAlarmFile("%s%s"%( \
+	    self.get_www_path(),DEFAULT_HTML_ALARM_FILE))
+
+	# write the current alarms to it
+	self.write_html_file()
 
 class AlarmServerInterface(interface.Interface):
 

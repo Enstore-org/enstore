@@ -107,6 +107,7 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
         self.alive_retries = RCV_TRIES
         self.alarm = 0
         self.resolve = 0
+        self.dump = 0
         self.severity = e_errors.DEFAULT_SEVERITY
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
         self.get_patrol_file = 0
@@ -120,7 +121,7 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
         else:
             return self.client_options() +\
                    ["raise", "severity=", "root_error=", "get_patrol_file",
-                    "resolve="]
+                    "resolve=", "dump"]
 
 def do_work(intf):
     # now get an alarm client
