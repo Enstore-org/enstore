@@ -150,16 +150,30 @@ while [ $done -gt 0 ]; do
     echo First  file = $file1 
     echo Last   file = $filel
     echo 
-    for f in $thefiles; do
-      #List the number of active volumes.  This will give more meaningful
-      # output for the administrators.
-      library=`enstore vol --vol $tape | grep library | cut -d' ' -f3`
-      library=`echo $library | tr ",'" "  " | sed "s/ //"`
-      cmd="enstore lib --vols $library"
-      echo $cmd
-      eval $cmd
 
-      cmd="encp --verbose=3  --max-resubmit=7 --delayed-dismount=1 $f /dev/null"
+    #List the number of active volumes.  This will give more meaningful
+    # output for the administrators.
+    library=`enstore vol --vol $tape | grep library | cut -d' ' -f3`
+    library=`echo $library | tr ",'" "  " | sed "s/ //"`
+    cmd="enstore lib --vols $library"
+    echo $cmd
+    vols_at_movers=`eval $cmd`
+    echo $vols_at_movers
+    #If the system is busy, don't start encp.
+    busy_movers=`echo $vols_at_movers | wc -l`
+    #Subract the title line of output.
+    busy_movers=`expr $busy_movers - 1`
+    #This test should compare this number to the number of drives in the
+    # library.  I don't know of a good way from bash to get the number of
+    # drives in a library, so for now using the value 6.
+    if [ $busy_movers -gt 6 ]; then
+      #5 seems like a good number. Its greater than 3 indicating 3 failures.
+      #  It is not -1, -2, 0, 10 or 7 which have special meaning in the plots.
+      exit 5
+    fi
+
+    for f in $thefiles; do
+      cmd="encp --verbose=3 --max-resubmit=7 --delayed-dismount=1 $f /dev/null"
       echo $cmd
       eval $cmd
       rc=$?
