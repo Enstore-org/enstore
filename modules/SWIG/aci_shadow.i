@@ -126,7 +126,7 @@ extern int aci_clientstatus (char *clientname, struct aci_client_entry *client);
 extern int aci_dismount (char *, enum aci_media);
 extern int aci_driveaccess (char *, char *, enum aci_drive_status);
 extern int aci_drivestatus (char *, struct aci_drive_entry *[ACI_MAX_DRIVE_ENTRIES]);
-extern int aci_drivestatus2 (char *, struct aci_drive_entry *[ACI_MAX_DRIVE_ENTRIES]);
+extern int aci_drivestatus2 (char *, struct aci_drive_entry *[ACI_MAX_DRIVE_ENTRIES2]);
 extern int aci_eject (char *, char *, enum aci_media);
 extern int aci_eject_complete( char *, char *, enum aci_media );
 extern int aci_force (char *);
