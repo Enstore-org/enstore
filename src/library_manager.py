@@ -36,6 +36,10 @@ import priority_selector
 import mover_constants
 import charset
 
+KB=1L<<10
+MB=1L<<20
+GB=1L<<30
+
 def convert_version(version):
     dig=0
     for ch in version:
@@ -74,7 +78,7 @@ class SG_FF:
         self.vf = {}
 
     def delete(self, mover, volume, sg, vf):
-        if not (mover and volume and sg and vf): return
+        #if not (mover and volume and sg and vf): return
         Trace.trace(13,"SG:delete mover %s, volume %s, sg %s, vf %s" % (mover, volume, sg, vf))
         if self.sg.has_key(sg) and (mover, volume) in self.sg[sg]:
             self.sg[sg].remove((mover, volume))
@@ -135,13 +139,18 @@ class AtMovers:
                 vol_family = mover_info['volume_family']
             else:
                 vol_family = self.at_movers[mover]['volume_family']
-            storage_group = volume_family.extract_storage_group(vol_family)
+            
             if mover_info.has_key('external_label') and mover_info['external_label']:
                 label = mover_info['external_label']
             else:
                 label = self.at_movers[mover]['external_label']
+                # due to the mover bug mticket['volume_family'] may not be a None
+                # when mticket['external_label'] is None
+                # the following fixes this
+                vol_family = self.at_movers[mover]['volume_family']
             #vol_family = self.at_movers[mover]['volume_family']
             #self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family) 
+            storage_group = volume_family.extract_storage_group(vol_family)
             self.sg_vf.delete(mover, label, storage_group, vol_family) 
             del(self.at_movers[mover])
         Trace.trace(13,"AtMovers delete: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
@@ -954,10 +963,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # setup a start up delay
         # this delay is needed to update state of the movers
-        if self.keys.has_key('startup_delay'):
-            self.startup_delay = self.keys['startup_delay']
-        else:
-            self.startup_delay = 32  # set it to 32 sec.
+        self.startup_delay = self.keys.get('startup_delay', 32)
+        # add this to file size when requesting
+        # a tape for writes to avoid FTT_ENOSPC at the end of the tape
+        # due to inaccurate REMAINING_BYTES
+        min_file_size = self.keys.get('min_file_size',0L)
+        # maximal file size
+        sel.max_file_size = self.keys.get('max_file_size', 2*GB - 2*KB)
         self.time_started = time.time()
         self.startup_flag = 1   # this flag means that LM is in the startup state
 
@@ -973,10 +985,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         v = self.keys.get('legal_encp_version','')
         self.legal_encp_version = (v, convert_version(v))
         self.suspect_vol_expiration_to = self.keys.get('suspect_volume_expiration_time',None)
-        # add this to file size when requesting
-        # a tape for writes to avoid FTT_ENOSPC at the end of the tape
-        # due to inaccurate REMAINING_BYTES
-        min_file_size = self.keys.get('min_file_size',0L)
         
         LibraryManagerMethods.__init__(self, self.name,
                                        self.csc,
