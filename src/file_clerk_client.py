@@ -19,7 +19,7 @@ import e_errors
 MY_NAME = "FILE_C_CLIENT"
 MY_SERVER = "file_clerk"
 
-class FileClient(generic_client.GenericClient, \
+class FileClient(generic_client.GenericClient, 
                       backup_client.BackupClient):
 
     def __init__( self, csc, bfid=0, servr_addr=None ):
@@ -172,7 +172,7 @@ class FileClient(generic_client.GenericClient, \
 
 
     def bfid_info(self):
-        r = self.send({"work" : "bfid_info",\
+        r = self.send({"work" : "bfid_info",
                        "bfid" : self.bfid } )
         return r
 
@@ -203,13 +203,13 @@ class FileClient(generic_client.GenericClient, \
 
     # get volume map name for given bfid
     def get_volmap_name(self):
-        r = self.send({"work"           : "get_volmap_name",\
+        r = self.send({"work"           : "get_volmap_name",
                        "bfid"           : self.bfid} )
 	return r
 
     # delete bitfile
     def del_bfid(self):
-        r = self.send({"work"           : "del_bfid",\
+        r = self.send({"work"           : "del_bfid",
                        "bfid"           : self.bfid} )
 	return r
 
