@@ -55,33 +55,6 @@ raise_exception( method_name, ETdesc, va_alist )
 }   /* raise_exception */
 
 
-
-void
-enstore_trace_init( const char *name)
-{
-	char		*ENSTORE_DB;
-	char		buf[200]; /* arbitrary size, big enough for path? */
-
-    /* get the enstore trace directory -
-       ENSTORE_DB (or . if not set) */
-    ENSTORE_DB = getenv( "ENSTORE_DB" );
-    if (ENSTORE_DB == NULL)
-    {   ENSTORE_DB = getenv( "ENSTORE_DIR" );
-	if (ENSTORE_DB == NULL)
-	    ENSTORE_DB = "/tmp";
-	else
-	{   strcpy( buf, ENSTORE_DB );
-	    if (buf[strlen(buf)-1] == '/')
-		buf[strlen(buf)-1] = '\0';	/* strip trailing / */
-	    strcat( buf, "/etc" );
-	    ENSTORE_DB = buf;
-	}
-    }
-    trace_init( name, ENSTORE_DB );
-    return;
-}
-
-
 /******************************************************************************
  * @+Public+@
  * ROUTINE: init_function:  Added by ron on 01-May-1998
@@ -101,7 +74,7 @@ init_function(  PyObject	*self
 
     /*  Parse the arguments */
     PyArg_ParseTuple(  args, "s", &name );
-    enstore_trace_init( name );
+    trace_init( name, "" );
     return (Py_BuildValue(""));
 }   /* init_function */
 
@@ -192,6 +165,140 @@ mode_function(  PyObject	*self
 }   /* mode_function */
 
 
+static int
+OnOff( int on, char *id_s, unsigned lvl1, unsigned lvl2 )
+{
+	unsigned	id_i, new_msk=0;
+	char		*end_p;
+	unsigned	old_lvl;
+
+    if (lvl1 > 31) lvl1 = 31;
+    if (lvl2 > 31) lvl2 = 31;
+
+    if (lvl1 > lvl2) new_msk = (1<<lvl1) | (1<<lvl2);
+    else for (; (lvl1<=lvl2); lvl1++) new_msk |= (1<<lvl1);
+
+    id_i = strtol(id_s,&end_p,10);
+    if (end_p != (id_s+strlen(id_s)))	/* check if conversion worked */
+    {   /* did not work - id_s must not have a pure number -
+	   check for name */
+	int	i;
+
+	/* first check special case */
+	if (  (strcmp(id_s,"global")==0)
+	    ||(strcmp(id_s,"Global")==0)
+	    ||(strcmp(id_s,"GLOBAL")==0))
+	{
+	    for (id_i=(TRC_MAX_PIDS+TRC_MAX_PROCS); id_i--; )
+	    {   old_lvl = trc_cntl_sp->lvl_a[id_i];
+		if (on)
+		    trc_cntl_sp->lvl_a[id_i] |=  new_msk;
+		else
+		{   trc_cntl_sp->lvl_a[id_i] &= ~new_msk;
+		}
+	    }
+	    return (0);
+	}
+	if (  (strcmp(id_s,"initial")==0)
+	    ||(strcmp(id_s,"Initial")==0)
+	    ||(strcmp(id_s,"INITIAL")==0))
+	{   old_lvl = trc_cntl_sp->intl_lvl;
+	    if (on)
+		trc_cntl_sp->intl_lvl |=  new_msk;
+	    else
+	    {   trc_cntl_sp->intl_lvl &= ~new_msk;
+	    }
+	    return (old_lvl);
+	}
+	if (  (strcmp(id_s,"tty")==0)
+	    ||(strcmp(id_s,"Tty")==0)
+	    ||(strcmp(id_s,"TTy")==0))
+	{   old_lvl = trc_cntl_sp->tty_lvl;
+	    if (on)
+		trc_cntl_sp->tty_lvl |=  new_msk;
+	    else
+	    {   trc_cntl_sp->tty_lvl &= ~new_msk;
+	    }
+	    return (old_lvl);
+	}
+
+	for (i=TRC_MAX_PROCS; i--; )
+	{
+	    if (strcmp(trc_cntl_sp->t_name_a[i],id_s) == 0)
+		break;
+	}
+	if (i == -1)
+	    return (1);
+	id_i = i + TRC_MAX_PIDS;
+    }
+
+    /* at this point, either id_s was a number or it was a name that was
+       converted to a number */
+
+    if (id_i > (TRC_MAX_PIDS+TRC_MAX_PROCS-1))
+	id_i = (TRC_MAX_PIDS+TRC_MAX_PROCS-1);
+
+    old_lvl = trc_cntl_sp->lvl_a[id_i];
+    if (on)
+	trc_cntl_sp->lvl_a[id_i] |=  new_msk;
+    else
+	trc_cntl_sp->lvl_a[id_i] &= ~new_msk;
+
+    return (old_lvl);
+}
+
+/******************************************************************************
+ * @+Public+@
+ * ROUTINE: on_function:  Added by ron on 01-May-1998
+ *
+ * DESCRIPTION:		write to trace buffer
+ *
+ ******************************************************************************/
+
+static char on_function_Doc[] = "turn trace levels on";
+
+static PyObject *
+on_function(  PyObject	*self
+	    , PyObject	*args )
+{							/* @-Public-@ */
+	int		sts;
+	char		*id_s;
+	unsigned	lvl1, lvl2;
+
+    sts = PyArg_ParseTuple(  args, "sii", &id_s, &lvl1, &lvl2 );
+    if (!sts)
+	printf( "PyArg_ParseTuple error\n" );
+
+    return (Py_BuildValue("i",OnOff(1,id_s,lvl1,lvl2)));
+}   /* on_function */
+
+
+/******************************************************************************
+ * @+Public+@
+ * ROUTINE: off_function:  Added by ron on 01-May-1998
+ *
+ * DESCRIPTION:		write to trace buffer
+ *
+ ******************************************************************************/
+
+static char off_function_Doc[] = "turn trace levels off";
+
+static PyObject *
+off_function(  PyObject	*self
+	    , PyObject	*args )
+{							/* @-Public-@ */
+	int		sts;
+	char		*id_s;
+	unsigned	lvl1, lvl2;
+
+    sts = PyArg_ParseTuple(  args, "sii", &id_s, &lvl1, &lvl2 );
+    if (!sts)
+	printf( "PyArg_ParseTuple error\n" );
+
+    return (Py_BuildValue("i",OnOff(0,id_s,lvl1,lvl2)));
+}   /* off_function */
+
+
 /* = = = = = = = = = = = = = = -  Python Module Definitions = = = = = = = = = = = = = = - */
 
 /*  Module Methods table. 
@@ -208,6 +315,8 @@ static PyMethodDef Trace_Functions[] = {
     { "init",  init_function,  1, init_function_Doc},
     { "trace",  trace_function,  1, trace_function_Doc},
     { "mode",  mode_function,  1, mode_function_Doc},
+    { "on",  on_function,  1, on_function_Doc},
+    { "off",  off_function,  1, off_function_Doc},
     { 0, 0}        /* Sentinel */
 };
 
@@ -241,6 +350,6 @@ initTrace()
     if (TraceErrObject != NULL)
 	PyDict_SetItemString(d,"error",TraceErrObject);
 
-    enstore_trace_init( "enstore" );
+    trace_init( "python", "" );
 }
 
