@@ -980,7 +980,7 @@ def do_work(intf):
             ticket['last_access'] = time.ctime(ticket['last_access'])
             if ticket.has_key('si_time'):
                 ticket['si_time'] = (time.ctime(ticket['si_time'][0]),
-                                 time.ctime(ticket['si_time'][1]))
+                                     time.ctime(ticket['si_time'][1]))
             pprint.pprint(ticket)
             ticket['status'] = status
     elif intf.check:
