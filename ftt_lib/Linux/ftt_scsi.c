@@ -163,23 +163,16 @@ ftt_scsi_command(
 	        sg_hd->sense_buffer[0] = 0;
 		res = read(n, buffer, sizeof(buffer));
                 DEBUG2(stderr,"read() returned %d\n", res);
-		if (res < 0 || sg_hd->result || sg_hd->sense_buffer[0]) {
-                    fprintf(stderr, "scsi passthru read result = 0x%x cmd=0x%x\n",
-                             sg_hd->result, buffer[SCSI_OFF]);
-		    if (sg_hd->result == 0x10)
-			fprintf( stderr, "sg_hd->result == 0x10 cmd=0x%x!!!\n", *pcCmd );
-                    fprintf(stderr, "scsi passthru sense "
-                     "%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x \n",
-                       sg_hd->sense_buffer[0], sg_hd->sense_buffer[1],
-                       sg_hd->sense_buffer[2], sg_hd->sense_buffer[3],
-                       sg_hd->sense_buffer[4], sg_hd->sense_buffer[5],
-                       sg_hd->sense_buffer[6], sg_hd->sense_buffer[7],
-                       sg_hd->sense_buffer[8], sg_hd->sense_buffer[9],
-                       sg_hd->sense_buffer[10], sg_hd->sense_buffer[11],
-                       sg_hd->sense_buffer[12], sg_hd->sense_buffer[13],
-                       sg_hd->sense_buffer[14], sg_hd->sense_buffer[15]);
+		/* 
+		** it *looks* like you want to check sg_hd->result
+		** here, but you don't, you just put it in scsistat,
+		** and hand it to ftt_scsi_check, and if he doesn't
+		** like it, he'll complain, look at request sense data,
+		** etc.
+		*/
+		if (res < 0) {
 		    scsistat = 255;
-		    gotstatus = 1;
+		    gotstatus = 0;
 		} else {
 		        if (!writeflag)
 			{   res = res-SCSI_OFF;
@@ -188,6 +181,7 @@ ftt_scsi_command(
 			}
 
 			scsistat = sg_hd->result;
+			gotstatus = (scsistat != 0);
 		}
 	}
 
