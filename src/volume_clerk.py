@@ -969,6 +969,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                             record["media_type"])
 
         record['at_mover']=tuple(ll)
+        # if volume is unmounted system_inhibit cannot be writing
+        if (record['at_mover'][0] == 'unmounted' and
+            record['system_inhibit'] == 'writing'):
+            record['system_inhibit'] = 'none'
         dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
