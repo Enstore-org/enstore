@@ -185,7 +185,7 @@ class UDPClient:
                 if not reply: # receive timed out
                     break #resend
                 rcvd_txn_id, out, t = self._eval_reply(reply)
-                if out.has_key('status') and out['status'][0] == e_errors.MALFORMED:
+                if type(out) == type({}) and out.has_key('status') and out['status'][0] == e_errors.MALFORMED:
                     return out
             else: # we got a good reply
                 return out
