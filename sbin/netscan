@@ -176,7 +176,7 @@ ALLOW_SRV1="$ALLOW_BASE
 # Allowing swapped out java's is not good, but I don't know what else to do right now.
 ALLOW_DCA="$ALLOW_BASE
        LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
-       LISTEN,java,:,TCP,/home/enstore/dcache/run/diskCache|[java]
+       LISTEN,java,:,TCP,/home/enstore/dcache/run/diskCache|[java]|java
 "
 
 ALLOW_MVR="$ALLOW_BASE
