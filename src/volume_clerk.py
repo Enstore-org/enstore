@@ -345,7 +345,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
         record['blocksize'] = msize
         if record['media_type']=='null':
-            record['file_family_wrapper']='null'
+            record['wrapper']='null'
         # write the ticket out to the database
         self.dict[external_label] = record
         ticket["status"] = (e_errors.OK, None)
