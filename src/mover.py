@@ -305,7 +305,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.default_dismount_delay < 0:
             self.default_dismount_delay = 31536000 #1 year
 
-        self.mc_device = self.config.get('mc_device', 0)
+        self.mc_device = self.config.get('mc_device', 'UNDEFINED')
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
