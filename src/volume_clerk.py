@@ -80,14 +80,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                            v["remaining_bytes"],waste))
                 
                 if self.dict.cursor_open:
-                    print "WILL UPDATE"
                     t = self.dict.db.txn()
                     self.dict.db[(label,t)] = v
                     t.commit()
                 else:
-                    print "WILL ASSIGN"
                     self.dict[external_label] = v  ## was deepcopy
-                print "DONE"
             else: ret = e_errors.NOSPACE
         return ret
 
