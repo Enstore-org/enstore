@@ -493,7 +493,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	tr.append(HTMLgen.TD(qelem[enstore_constants.ID], colspan=3))
 	return tr
 
-    def reject_reason_row(self, qelem, table):
+    def reject_reason_row(self, qelem):
 	tr = HTMLgen.TR(self.spacer_data("Reason%sfor%sPending"%(NBSP,NBSP)))
 	tr.append(HTMLgen.TD(qelem[enstore_constants.REJECT_REASON], colspan=5))
 	return tr
