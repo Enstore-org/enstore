@@ -454,6 +454,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = IDLE
         self.mode = None
         self.volume_status = (['none', 'none'], ['none','none'])
+        self.last_error = (e_errors.OK, None)
         self.vol_info = {}
         self.update() 
 
@@ -781,7 +782,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                after_function=self.position_media)
 
     def error(self, msg, err=e_errors.ERROR):
-        self.status = (str(err), str(msg))
+        self.last_error = (str(err), str(msg))
         Trace.log(e_errors.ERROR, msg+ " state=ERROR")
         self.state = ERROR
         
@@ -869,7 +870,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
 
         ### XXX translate this to an e_errors code?
-        self.last_error = exc, msg
+        self.last_error = str(exc), str(msg)
 
         if self.state == ERROR:
             Trace.log(e_errors.ERROR, "Mover already in ERROR state %s, state=ERROR" % (msg,))
@@ -1195,7 +1196,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
     def status(self, ticket):
         now = time.time()
-        tick = { 'status'       : (e_errors.OK,None),
+        tick = { 'status'       : self.last_error,
                  'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
                  'drive_id'     : self.config['product_id'],
@@ -1276,11 +1277,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             out_ticket = {'status':("EPROTO","Not in draining state")}
             self.reply_to_caller(out_ticket)
             return
-        self.state = IDLE
         out_ticket = {'status':(e_errors.OK,None)}
         self.reply_to_caller(out_ticket)
         self.remove_lockfile()
-
+        self.idle()
+        
     def clean_drive(self, ticket):
         save_state = self.state
         if self.state not in (IDLE, OFFLINE):
