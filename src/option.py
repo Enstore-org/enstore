@@ -171,7 +171,7 @@ FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs
 FILES = "files"                              #pnfs
 FILESIZE = "filesize"                        #pnfs
 FORCE = "force"                              #volume
-FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups"   #volume
+FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups" #volume
 FORGET_IGNORED_STORAGE_GROUP = "forget-ignored-storage-group"   #volume
 GET_CRCS = "get-crcs"                        #file
 GET_LAST_LOGFILE_NAME = "get-last-logfile-name"  #log
@@ -299,8 +299,8 @@ valid_option_list = [
     DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESCRIPTION, DESTROY,
     DISMOUNT,
-    DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
-    DUMP, DUPLICATE,
+    DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
+    DOWN, DUMP, DUPLICATE,
     ECHO, ENCP, ENSTORE_STATE, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FILESIZE,
     FORCE,
@@ -319,9 +319,10 @@ valid_option_list = [
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
     PARENT, PATH, PNFS_STATE, POSITION, PREFIX, PRIORITY,
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
-    RESTORE, RESTORE_ALL, RETRIES, RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
-    SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG, SHOW, SHOWID, SIZE,
-    SHOW_IGNORED_STORAGE_GROUPS, SKIP_PNFS,
+    RESTORE, RESTORE_ALL, RETRIES,
+    RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
+    SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG,
+    SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SIZE, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE,
@@ -408,7 +409,6 @@ class Interface:
 	else:            
 	    self.check_host(self.config_host)
 
-
         if getattr(self, "help") and self.help:
             ret = self.print_help()
         if getattr(self, "usage") and self.usage:
@@ -421,8 +421,7 @@ class Interface:
     args = []
     parameters = []
     some_args = []
-    some_args[:] = sys.argv[1:] #Used to find the next extra value.
-    
+
     alive_rcv_options = {
         TIMEOUT:{HELP_STRING:"number of seconds to wait for alive response",
                  VALUE_NAME:"alive_rcv_timeout",
@@ -649,7 +648,7 @@ class Interface:
             
             for line in lines_of_text:
                 print line
-        #sys.exit(0)
+        sys.exit(0)
 
     def get_usage_line(self, opts=None): #The opts is legacy from interface.py.
 
@@ -770,7 +769,11 @@ class Interface:
 
         #If an argument uses an = for a value seperate it into two entries.
         self.split_on_equals(self.argv)
-        argv = self.argv[1:]
+        if self.argv[0] == "enstore": #just in case things change...
+            argv = self.argv[2:]
+        else:
+            argv = self.argv[1:]
+        self.some_args = argv #This is a second copy for next arg finding.
 
         #For backward compatibility, convert options with underscores to
         # dashes.  This must be done before the getopt since the getopt breaks
@@ -964,11 +967,13 @@ class Interface:
     #some_args is used to avoid problems with duplicate arguments on the
     # command line.
     def next_argument(self, argument):
+
         if len(self.some_args) > 1:
             rtn = self.some_args[1]
         else:
             rtn = None
         return rtn
+    
         #Get a copy of the command line with values specified with equal
         # signs seperated.
         self.split_on_equals(self.some_args)
@@ -993,7 +998,7 @@ class Interface:
                 compare_opt = "-" + argument
             else:
                 compare_opt = argument
-            print compare_arg, compare_opt
+
             #Look for the current argument in the list.
             # compare_opt is the current index to find
             # compare_arg comes from the list of arguments.
@@ -1156,34 +1161,44 @@ class Interface:
                 return value
     
     def get_value_type(self, opt_dict, value):
-        if opt_dict.get(VALUE_TYPE, STRING) == INTEGER:
-            return int(value)
-        elif opt_dict.get(VALUE_TYPE, STRING) == FLOAT:
-            return float(value)
-        elif opt_dict.get(VALUE_TYPE, STRING) == RANGE:
-            return self.parse_range(value)
-        elif opt_dict.get(VALUE_TYPE, STRING) == STRING:
-            return str(value)
-        else:
-            return value
+        try:
+            if opt_dict.get(VALUE_TYPE, STRING) == INTEGER:
+                return int(value)
+            elif opt_dict.get(VALUE_TYPE, STRING) == FLOAT:
+                return float(value)
+            elif opt_dict.get(VALUE_TYPE, STRING) == RANGE:
+                return self.parse_range(value)
+            elif opt_dict.get(VALUE_TYPE, STRING) == STRING:
+                return str(value)
+            else:
+                return value
+        except ValueError, detail:
+            msg = "option %s requires type %s" % \
+                  (opt_dict.get('option', ""),opt_dict.get(VALUE_TYPE, STRING))
+            self.print_usage(msg)
 
     def get_default_type(self, opt_dict, value):
-        if opt_dict.get(DEFAULT_TYPE, STRING) == INTEGER:
-            return int(value)
-        elif opt_dict.get(DEFAULT_TYPE, STRING) == FLOAT:
-            return float(value)
-        elif opt_dict.get(DEFAULT_TYPE, STRING) == RANGE:
-            return self.parse_range(value)
-        elif opt_dict.get(DEFAULT_TYPE, STRING) == STRING:
-            return str(value)
-        else:
-            return value
+        try:
+            if opt_dict.get(DEFAULT_TYPE, STRING) == INTEGER:
+                return int(value)
+            elif opt_dict.get(DEFAULT_TYPE, STRING) == FLOAT:
+                return float(value)
+            elif opt_dict.get(DEFAULT_TYPE, STRING) == RANGE:
+                return self.parse_range(value)
+            elif opt_dict.get(DEFAULT_TYPE, STRING) == STRING:
+                return str(value)
+            else:
+                return value
+        except ValueError, detail:
+            msg = "option %s requires type %s" % \
+                  (opt_dict.get('option', ""),opt_dict.get(VALUE_TYPE, STRING))
+            self.print_usage(msg)
 
 ############################################################################
     #Thse options set the values in the interface class.  set_value() is
     # the function that calls the others.  set_from_dcitionary() takes the
     # specific dictionary (which is important when multiple arguments for
-    # a single option exist) and sets the interface variables.  The last
+    # a singlge option exist) and sets the interface variables.  The last
     # function, set_extra_values(), handles when more than one argument
     # is parsed for an option.
        
@@ -1201,6 +1216,9 @@ class Interface:
 
     def set_from_dictionary(self, opt_dict, long_opt, value):
 
+        #place this inside for some error reporting...
+        opt_dict['option'] = "--" + long_opt
+
         #Set value for required situations.
         if value == None and opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED,):
             msg = "option %s requires a value" % (long_opt,)
@@ -1210,18 +1228,23 @@ class Interface:
             try:
                 #Get the name to set.
                 opt_name = self.get_value_name(opt_dict, long_opt)
-
                 #Get the value in the correct type to set.
                 opt_typed_value = self.get_value_type(opt_dict, value)
-            except ValueError, detail:
-                msg = "option %s requires type %s" % \
-                      (long_opt, opt_dict.get(VALUE_TYPE, STRING))
-                self.print_usage(msg)
+            except SystemExit, msg:
+                raise msg
+            except:
+                exc, msg, tb = sys.exc_info()
+                self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
 
             #keep this list up to date for finding the next argument.
-            if opt_dict.get(EXTRA_VALUES, None):
+            if opt_dict.get(EXTRA_VALUES, None) and len(self.some_args) >= 3:
+                self.some_args = self.some_args[1:]
+            elif len(self.some_args) < 3:
+                self.some_args = self.some_args[2:]
+            elif opt_dict.get(EXTRA_VALUES, None) and \
+                 not self.is_option(self.some_args[2]):
                 self.some_args = self.some_args[2:]
             else:
                 self.some_args = self.some_args[1:]
@@ -1232,15 +1255,15 @@ class Interface:
             try:
                 #Get the name to set.
                 opt_name = self.get_value_name(opt_dict, long_opt)
-                #Get the name to set.
+                #Get the value to set.
                 value = self.get_default_value(opt_dict, value)
                 #Get the value in the correct type to set.
                 opt_typed_value = self.get_default_type(opt_dict, value)
-            except ValueError, detail:
-                msg = "option %s requires type %s" % \
-                      (long_opt,
-                       opt_dict.get(VALUE_TYPE, STRING))
-                self.print_usage(msg)
+            except SystemExit, msg:
+                raise msg
+            except:
+                exc, msg, tb = sys.exc_info()
+                self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
             
@@ -1251,23 +1274,42 @@ class Interface:
         elif value == None \
              and opt_dict.get(VALUE_USAGE, IGNORED) in (IGNORED,) \
              or opt_dict.get(FORCE_SET_DEFAULT, None):
-            #Get the name to set.
-            opt_name = self.get_default_name(opt_dict, long_opt)
 
-            #Get the value in the correct type to set.
             try:
+                #Get the name to set.
+                opt_name = self.get_default_name(opt_dict, long_opt)
+                #Get the value in the correct type to set.
                 opt_value = self.get_default_value(opt_dict, value)
+                #Get the value in the correct type to set.
                 opt_typed_value = self.get_default_type(opt_dict, opt_value)
-            except ValueError, detail:
-                msg = "option %s requires type %s" % \
-                      (long_opt,
-                       opt_dict.get(DEFAULT_TYPE, STRING))
-                self.print_usage(msg)
+            except SystemExit, msg:
+                raise msg
+            except:
+                exc, msg, tb = sys.exc_info()
+                self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
 
             #keep this list up to date for finding the next argument.
             self.some_args = self.some_args[1:]
+
+        #For the cases where this needs to be set also.
+        if opt_dict.get(FORCE_SET_DEFAULT, None):
+            try:
+                #Get the name to set.
+                opt_name = self.get_default_name(opt_dict, long_opt)
+                #Get the value in the correct type to set.
+                opt_value = self.get_default_value(opt_dict, value)
+                #Get the value in the correct type to set.
+                opt_typed_value = self.get_default_type(opt_dict, opt_value)
+            except SystemExit, msg:
+                raise msg
+            except:
+                exc, msg, tb = sys.exc_info()
+                self.print_usage(str(msg))
+
+            setattr(self, opt_name, opt_typed_value)
+
 
     def set_extra_values(self, opt, value):
         if self.is_short_option(opt):
