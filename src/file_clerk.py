@@ -296,7 +296,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     # restore specified file
-    def restore_file(self, ticket):
+    def restore_file_obsolete(self, ticket):
         try:
             fname = ticket["file_name"]
             restore_dir = ticket["restore_dir"]
@@ -525,7 +525,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     # return volume map name for given bfid
-    def get_volmap_name(self, ticket):
+    def get_volmap_name_obsolete(self, ticket):
         try:
             bfid = ticket["bfid"]
         except KeyError, detail:
@@ -588,6 +588,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     #
     # Renaming does involve renaming the volmap path in /pnfs.
     # If it fails, nothing would be done further.
+    #
+    # 12/04/2001 volmap is obsolete!
 
     def __rename_volume(self, old, new):
         Trace.log(e_errors.INFO, 'renaming volume %s -> %s'%(old, new))
@@ -596,30 +598,30 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # deal with volmap directory
         # if volmap directory can not be renamed, singal a error and stop
 
-	if len(bfids):
-            volmap = self.dict[bfids[0]]["pnfs_mapname"]
-            p1, f = os.path.split(volmap)
-            p, f1 = os.path.split(p1)
-            if old != f1:
-                Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1))
-                return e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1)
-            new_volmap = os.path.join(p, new)
-            # can I modify it?
-            if not os.access(p, os.W_OK):
-		return e_errors.ERROR, 'can not rename %s to %s'%(p1, new_volmap)
-            try:
-                os.rename(p1, new_volmap)
-            except:
-                return e_errors.ERROR, 'failed to rename %s to %s'%(p1, new_volmap)
+	# if len(bfids):
+        #     volmap = self.dict[bfids[0]]["pnfs_mapname"]
+        #     p1, f = os.path.split(volmap)
+        #     p, f1 = os.path.split(p1)
+        #     if old != f1:
+        #         Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1))
+        #         return e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1)
+        #     new_volmap = os.path.join(p, new)
+        #     # can I modify it?
+        #     if not os.access(p, os.W_OK):
+        #         return e_errors.ERROR, 'can not rename %s to %s'%(p1, new_volmap)
+        #     try:
+        #         os.rename(p1, new_volmap)
+        #     except:
+        #         return e_errors.ERROR, 'failed to rename %s to %s'%(p1, new_volmap)
         
         for bfid in bfids:
             record = self.dict[bfid] 
             # replace old volume name with new one
-            p1, f = os.path.split(record["pnfs_mapname"])
-            p, f1 = os.path.split(p1)
-            if old != f1:
-                Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for"%s" but found "%s". Changed anyway.'%(old, f1))
-            record["pnfs_mapname"] = os.path.join(p, new, f)
+            # p1, f = os.path.split(record["pnfs_mapname"])
+            # p, f1 = os.path.split(p1)
+            # if old != f1:
+            #     Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for"%s" but found "%s". Changed anyway.'%(old, f1))
+            # record["pnfs_mapname"] = os.path.join(p, new, f)
             record["external_label"] = new
             self.dict[bfid] = record 
  
@@ -662,50 +664,50 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, 'erasing files of volume %s'%(vol))
         bfids = self.get_all_bfids(vol)
 
-        # check to see if volmap can be deleted
-        volmap_dir = None
-        for bfid in bfids:
-            record = self.dict[bfid]
-            if record.has_key('pnfs_mapname'):
-                if not volmap_dir:
-                    volmap_dir, f = os.path.split(record["pnfs_mapname"])
-                if not os.access(record["pnfs_mapname"], os.W_OK):
-                    error_msg = "no write permission to %s"%(record["pnfs_mapname"])
-                    Trace.log(e_errors.ERROR, error_msg)
-                    return 'EACCESS', error_msg
+        # # check to see if volmap can be deleted
+        # volmap_dir = None
+        # for bfid in bfids:
+        #     record = self.dict[bfid]
+        #     if record.has_key('pnfs_mapname'):
+        #         if not volmap_dir:
+        #             volmap_dir, f = os.path.split(record["pnfs_mapname"])
+        #         if not os.access(record["pnfs_mapname"], os.W_OK):
+        #             error_msg = "no write permission to %s"%(record["pnfs_mapname"])
+        #             Trace.log(e_errors.ERROR, error_msg)
+        #             return 'EACCESS', error_msg
 
-        # check to see if volmap directory can be deleted
-        if volmap_dir:
-            if not os.access(volmap_dir, os.W_OK):
-                error_msg = "no write permission to %s"%(volmap_dir)
-                Trace.log(e_errors.ERROR, error_msg)
-                return 'EACCESS', error_msg
-            p, f = os.path.split(volmap_dir)
-            if not os.access(p, os.W_OK):
-                error_msg = "no write permission to %s"%(p)
-                Trace.log(e_errors.ERROR, error_msg)
-                return 'EACCESS', error_msg
+        # # check to see if volmap directory can be deleted
+        # if volmap_dir:
+        #     if not os.access(volmap_dir, os.W_OK):
+        #         error_msg = "no write permission to %s"%(volmap_dir)
+        #         Trace.log(e_errors.ERROR, error_msg)
+        #         return 'EACCESS', error_msg
+        #     p, f = os.path.split(volmap_dir)
+        #     if not os.access(p, os.W_OK):
+        #         error_msg = "no write permission to %s"%(p)
+        #         Trace.log(e_errors.ERROR, error_msg)
+        #         return 'EACCESS', error_msg
 
         # remove file record
         for bfid in bfids:
-            record = self.dict[bfid]
-            if record.has_key('pnfs_mapname'):
-                try:
-                    os.remove(record['pnfs_mapname'])
-                except:
-                    error_msg = "fail to remove %s"%(record['pnfs_mapname'])
-                    Trace.log(e_errors.ERROR, error_msg)
-                    return 'EACCESS', error_msg
+        #     record = self.dict[bfid]
+        #     if record.has_key('pnfs_mapname'):
+        #         try:
+        #             os.remove(record['pnfs_mapname'])
+        #         except:
+        #             error_msg = "fail to remove %s"%(record['pnfs_mapname'])
+        #             Trace.log(e_errors.ERROR, error_msg)
+        #             return 'EACCESS', error_msg
             del self.dict[bfid]
 
         # remove volmap directory
-        if volmap_dir:
-            try:
-                os.rmdir(volmap_dir)
-            except:
-                error_msg = "fail to remove directory %s"%(volmap_dir)
-                Trace.log(e_errors.ERROR, error_msg)
-                return 'EACCESS', error_msg
+        # if volmap_dir:
+        #     try:
+        #         os.rmdir(volmap_dir)
+        #     except:
+        #         error_msg = "fail to remove directory %s"%(volmap_dir)
+        #         Trace.log(e_errors.ERROR, error_msg)
+        #         return 'EACCESS', error_msg
 
         Trace.log(e_errors.INFO, 'files of volume %s are erased'%(vol))
         return e_errors.OK, None
@@ -1168,10 +1170,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             drive = ticket['drive']
             external_label = ticket['external_label']
             location_cookie = ticket['location_cookie']
-            pnfs_mapname = ticket['pnfs_mapname']
+            pnfs_mapname = ticket.get('pnfs_mapname')
             pnfs_name0 = ticket['pnfs_name0']
             pnfsid = ticket['pnfsid']
-            pnfsvid = ticket['pnfsvid']
+            pnfsvid = ticket.get('pnfsvid')
             sanity_cookie = ticket['sanity_cookie']
             size = ticket['size']
         except KeyError, detail:
@@ -1188,10 +1190,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record['drive'] = drive
         record['external_label'] = external_label
         record['location_cookie'] = location_cookie
-        record['pnfs_mapname'] = pnfs_mapname
+        if pnfs_mapname:
+            record['pnfs_mapname'] = pnfs_mapname
         record['pnfs_name0'] = pnfs_name0
         record['pnfsid'] = pnfsid
-        record['pnfsvid'] = pnfsvid
+        if pnfsvid:
+            record['pnfsvid'] = pnfsvid
         record['sanity_cookie'] = sanity_cookie
         record['size'] = size
 
