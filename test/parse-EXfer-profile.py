@@ -21,7 +21,7 @@ for kind in "rsel","read","wsel","write":
     first  = "7:"
     second = "8:"
 
-thefile="T"
+ thefile="T"
  f = open(thefile,"r")
  o = open(thefile+kind,"w")
 
