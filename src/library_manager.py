@@ -1362,6 +1362,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 if d['fc'].has_key('external_label'): del(d['fc']['external_label'])
                 if d['vc'].has_key('external_label'): del(d['vc']['external_label'])
                 
+            del(mticket['returned_work']['mover'])
             Trace.trace(11, "mover_error put returned work back to pending queue %s"%
                         (mticket['returned_work'],))
             rq, status = self.pending_work.put(mticket['returned_work'])
