@@ -656,8 +656,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 
     # flag the database that we are now writing the system
-    def clr_system_inhibit(self, ticket):
-     Trace.trace(10,'{clr_system_inhibit '+repr(ticket))
+    def update_mc_state(self, ticket):
+     Trace.trace(10,'{vc.update_mc_state '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -668,7 +668,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 				"Volume Clerk: "+key+" key is missing")
 	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
-            Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
+            Trace.trace(0,"}vc.update_mc_state "+repr(ticket["status"]))
             return
 
         # get the current entry for the volume
@@ -680,16 +680,18 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                +" no such volume")
 	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
             self.reply_to_caller(ticket)
-            Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
+            Trace.trace(0,"}vc.update_mc_state "+repr(ticket["status"]))
             return
 
         # update the fields that have changed
-        record ["system_inhibit"] = "none"
-        record ["at_mover"] = ('unmounted','none')
+	ll = list(record['at_mover'])
+	ll[0]= self.get_media_changer_state(record["library"],
+	                          record["external_label"], record["media_type"])
+	record['at_mover']=tuple(ll)
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
-        Trace.trace(10,'}clr_system_inhibit '+repr(record))
+        Trace.trace(10,'}vc.update_mc_state '+repr(record))
         return
 
      # even if there is an error - respond to caller so he can process it
@@ -697,8 +699,93 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
 	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
-         Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
+         Trace.trace(0,"}vc.update_mc_state "+repr(ticket["status"]))
          return
+
+
+    # flag the database that we are now writing the system
+    def clr_system_inhibit(self, ticket):
+     Trace.trace(10,'{vc.clr_system_inhibit '+repr(ticket))
+     try:
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}vc.clr_system_inhibit "+repr(ticket["status"]))
+            return
+
+        # get the current entry for the volume
+        try:
+            record = copy.deepcopy(dict[external_label])
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}vc.clr_system_inhibit "+repr(ticket["status"]))
+            return
+
+        # update the fields that have changed
+        record ["system_inhibit"] = "none"
+	ll = list(record['at_mover'])
+	ll[0]= self.get_media_changer_state(record["library"],
+	                          record["external_label"], record["media_type"])
+	record['at_mover']=tuple(ll)
+        dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
+        record["status"] = (e_errors.OK, None)
+        self.reply_to_caller(record)
+        Trace.trace(10,'}vc.clr_system_inhibit '+repr(record))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"}vc.clr_system_inhibit "+repr(ticket["status"]))
+         return
+
+	 
+    # get the actual state of the media changer
+    def get_media_changer_state(self, libMgr, volume, m_type):
+     Trace.trace(11,'{vc.get_media_changer_state '+repr(volume))
+     import library_manager_client
+     lmc = library_manager_client.LibraryManagerClient(self.csc, 0,
+        	           libMgr+".library_manager", 0, 0)
+     mchgr = lmc.get_mc()      # return media changer
+     del lmc
+     if None != mchgr :
+         import media_changer_client
+         mcc = media_changer_client.MediaChangerClient(self.csc, 0, mchgr )
+	 del mchgr
+         vol_ticket = {'external_label' : volume,
+                       'media_type' : m_type
+                      }
+         mc_ticket = {'work' : 'viewvol',
+                      'vol_ticket' : vol_ticket
+                     }
+         stat = mcc.viewvol(mc_ticket)["status"][3]
+	 del mcc
+         if 'O' == stat :
+           state = 'unmounted'
+         elif 'M' == stat :
+           state = 'mounted'
+         else :
+           state = stat
+     else :
+         #print "vc.get_media_changer_state: ERROR: no media changer found" \
+	 #       +repr(volume) 
+         Trace.trace(0," }vc.get_media_changer_state: ERROR: no media changer found "
+	             +repr(volume))
+         return 'unknown'
+     return state
+
 
     # for the backward compatibility D0_TEMP
     # flag the database that we are now writing the system
