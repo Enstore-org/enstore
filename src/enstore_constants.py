@@ -1,5 +1,7 @@
 # this file contains constants used in several enstore modules
 
+DEFAULT_CONF_FILE = "/pnfs/enstore/.(config)(flags)/enstore.conf"
+
 NETWORKFILE = "active_monitor.html"
 
 FILE_PREFIX = "enplot_"
