@@ -406,7 +406,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         ret = self.get_media_changer_state(record["library"],
                                             record["external_label"],
                                             record["media_type"])
-        # the following code is robot type dependant!!!!!
+        # the following code is robot type dependent!!!!!
         if not force and ret != 'unmounted' and ret != '' and ret != 'E':
            ticket["status"] = (e_errors.CONFLICT,"volume state must be unmounted or '' or 'E'")
            self.reply_to_caller(ticket)
