@@ -1367,7 +1367,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	bad_servers = []
 	server_l = string.split(ticket["servers"], ',')
         sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
-	if sfile.opened != 0:
+	if (sfile.opened != 0) or (sfile.exists() == 0):
 	    for key in server_l:
 		# map the entered name to the name in the outage dictionary
 		num, server = self.find_server_match(key)
