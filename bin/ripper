@@ -1,21 +1,21 @@
 #!/bin/sh
-set -u  # force better programming and ability to use check for not set
+#set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 if [ -n "${1-}" ]; then opt=$1; else opt=""; fi
 
-doit() { echo "$cmd"
+doit() { if [ -z "${1-}" ]; then echo "$cmd"; fi
          eval "$cmd"
        }
 
-stopit() { cmd="ezapit -s 15 python        >/dev/null 2>&1"; doit
-           cmd="ezapit -s 15 db_checkpoint >/dev/null 2>&1"; doit
-           cmd="ezapit -s 15 db_deadlock   >/dev/null 2>&1"; doit
+stopit() { cmd="ezapit -s 15 python        >/dev/null 2>&1"; doit quiet
+           cmd="ezapit -s 15 db_checkpoint >/dev/null 2>&1"; doit quiet
+           cmd="ezapit -s 15 db_deadlock   >/dev/null 2>&1"; doit quiet
            if [ "$opt" = "stop" ]; then exit 0; fi
          }
 
-starttrc() { cmd="traceMode 7"; doit
-             cmd="traceReset"; doit
+starttrc() { cmd="traceMode 7 >/dev/null"; doit quiet
+             cmd="traceReset  >/dev/null"; doit quiet
            }
 
 case `uname -n` in
