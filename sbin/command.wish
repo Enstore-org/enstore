@@ -665,7 +665,7 @@ proc DE14QRun_done { name element op } {
     } else {
         $butde14 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
-    if {$more == 1} { DC15QRun }
+    if {$more == 1} { DE15QRun }
 }
 
 ############################################################################################################################################
@@ -736,36 +736,36 @@ proc DE16QRun_done { name element op } {
 }
 
 ############################################################################################################################################
-# skt1 mover
+# stk1 mover
 frame .l -bg darkcyan -fg yellow
 pack .l -side top -fill x
 
-frame .l.skt1 -bg darkcyan -fg yellow
-pack .l.skt1 -side left -fill x
-label .l.skt1.l -text "SKT1 Redwood mover:" -width 25 -bg darkcyan -fg white
-pack .l.skt1.l -side left
-button .l.skt1.q -text "Query" -command SKT1QRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .l.skt1.q -side left
-set butskt1 [button .l.skt1.s -text "????" -command SKT1SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .l.skt1.s -side left
-proc SKT1QRun {} {
-    global command butskt1 env alive done
+frame .l.stk1 -bg darkcyan -fg yellow
+pack .l.stk1 -side left -fill x
+label .l.stk1.l -text "STK1 Redwood mover:" -width 25 -bg darkcyan -fg white
+pack .l.stk1.l -side left
+button .l.stk1.q -text "Query" -command STK1QRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .l.stk1.q -side left
+set butstk1 [button .l.stk1.s -text "????" -command STK1SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .l.stk1.s -side left
+proc STK1QRun {} {
+    global command butstk1 env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7536 10"
     set alive "dead"
     set done ""
-    catch {trace vdelete done w SKT1QRun_done}
-    trace variable done w SKT1QRun_done
+    catch {trace vdelete done w STK1QRun_done}
+    trace variable done w STK1QRun_done
     #puts [trace vinfo done]
-    $butskt1 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    $butstk1 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
-proc SKT1QRun_done { name element op } {
-    global alive butskt1 done more
-    trace vdelete done w SKT1QRun_done
+proc STK1QRun_done { name element op } {
+    global alive butstk1 done more
+    trace vdelete done w STK1QRun_done
     if {$alive == "alive"} {
-        $butskt1 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
+        $butstk1 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butskt1 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
+        $butstk1 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
     if {$more == 1} { STK2QRun }
 }
@@ -856,4 +856,4 @@ proc query {} {
     CQRun
 }
 
-#query
+query
