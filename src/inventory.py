@@ -50,7 +50,10 @@ def create_clean_dirs(*dirs):
         #An empty output directory would be nice.
         if string.find(dir, "/dev/stdout") == -1:
             os.system("rm -rf " + dir) #clear/remove the directory
-            os.mkdir(dir, 0755)
+            try:
+                os.mkdir(dir, 0755)
+            except OSError:
+                pass
 
 #Takes an arbitrary number of arguments which contain directories and deletes
 # them and their contents.
@@ -89,9 +92,8 @@ def read_db(dbname):
             k,v=d.cursor('next')
             if count % 1000 == 0:
                 delta = time.time()-t0
-                print "Read through line %d rate is %.1f keys/S." % \
-                      (count, count/delta)
-                print "Read time %s." % (delta,)
+                print "%d lines read in at %.1f keys/S in %s." % \
+                      (count, count/delta, delta)
         
     except:
         exc, msg, tb = sys.exc_info()
@@ -280,15 +282,28 @@ def print_data(volume, fd_temp, fd_data):
 # out the expected volume sizes.
 def print_volume_size_stats(volume_sums, volume_list, output_file):
     usage_file = open(output_file, "w")
-    usage_file.write("%10s %13s  %12s\n" % ("Label", "Actual Size",
-                                         "Expected Size"))
+    usage_file.write("%10s %9s %9s %11s %9s %9s %9s\n" % ("Label",
+                                                               "Actual",
+                                                               "Deleted",
+                                                               "Non-deleted",
+                                                               "Capacity",
+                                                               "Remaining",
+                                                               "Expected"))
     volume_list.sort(el_sort)
     for volume in volume_list:
         key = volume['external_label']
-        format_tuple = (key,) + format_storage_size(volume_sums[key]) + \
-                        format_storage_size(volume['capacity_bytes'] -
-                                            volume['remaining_bytes'])
-        usage_file.write("%10s %11.2f%-2s %6.2f%s\n" % format_tuple)
+        format_tuple = (key,) + \
+                       format_storage_size(volume_sums[key][0]) + \
+                       format_storage_size(volume_sums[key][1]) + \
+                       format_storage_size(volume_sums[key][2]) + \
+                       format_storage_size(volume['capacity_bytes']) + \
+                       format_storage_size(volume['remaining_bytes']) + \
+                       format_storage_size(volume['capacity_bytes'] -
+                                           volume['remaining_bytes'])
+        format_string = \
+           "%10s %7.2f%-2s %7.2f%-2s %9.2f%-2s %7.2f%-2s %7.2f%-2s %7.2f%-2s\n"
+        
+        usage_file.write(format_string % format_tuple)
 
 #Print the last access info to the output file LAST_ACCESS.
 def print_last_access_status(volume_list, output_file):
@@ -347,7 +362,7 @@ def print_volume_quotas_status(volume_quotas, output_file):
 def print_total_bytes_on_tape(volume_sums, output_file):
     sum = 0
     for line in volume_sums.keys():
-        sum = volume_sums[line] + sum
+        sum = volume_sums[line][0] + sum
 
     tbot_file = open(output_file, "w")
 
@@ -395,7 +410,6 @@ def process_out_string(short_list, fd):
                           vol['location_cookie'],
                           vol['deleted'],
                           vol['pnfs_name0'])
-            
         #there is a possibility that the last two options (deleted and
         # pnfs_name0) are not present.  Print 'unknown' in their place.
         except KeyError:
@@ -437,22 +451,35 @@ def parse_time(seconds):
     return out_string
 
 
-def verify_volume_sizes(volume_data, volume, volume_sizes):
+def verify_volume_sizes(this_volume_data, volume, volume_sizes):
     sum_size = 0
+    deleted_size = 0
+    non_deleted_size = 0
     #Keep some statistical analysis going:
-    # Count the sum of all the file sizes on a given volume.
     try:
-        for line in volume_data:
-            some_string = string.split(line)[2]
-            if some_string[-1] == "L":
-                some_string = some_string[0:-1] #remove appending 'L'
-            sum_size = sum_size + long(some_string)
+        for line in this_volume_data:
+            split_string = string.split(line)
+
+            #Count the sum of all the file sizes on a given volume.
+            if split_string[2][-1] == "L":
+                split_string[2] = split_string[2][0:-1] #remove appending 'L'
+            sum_size = sum_size + long(split_string[2])
+
+            #Count the sum of all the file sizes of deleted and non-deleted
+            # file seperately.
+            if split_string[4] == "yes":
+                deleted_size = deleted_size + long(split_string[2])
+            elif split_string[4] == "no":
+                non_deleted_size = non_deleted_size + long(split_string[2])
     except IndexError:
-        sum_size = 0 #This exception occurs on empty files. So, this is zero.
+        sum_size = 0 #This exception occurs on empty files. So, these are zero.
+        deleted_size = 0
+        non_deleted_string = 0
 
-    volume_sizes[volume['external_label']] = sum_size
+    volume_sizes[volume['external_label']] = (sum_size, deleted_size,
+                                              non_deleted_size)
 
-
+#Process the volume data and send the output to file.
 def verify_volume_quotas(volume_data, volume, volume_quotas):
     storage_group = string.split(volume['volume_family'], ".")[0]
     library = volume['library']
@@ -528,11 +555,6 @@ def sort_inventory(data_file, volume_list, tmp_dir):
             #Determine the full file name path for the output.
             file_string = tmp_dir + volume['external_label']
 
-            #
-            #file_stats = os.stat(file_string)
-            #if file_stats[8] < volume['last_access']:
-            #    print "The file", volume['last_access'], "needs to be updated."
-
             #It may seam that always opening a file is a waste.  But, this
             # way there will always be a file for a volume (even empty
             # volumes).
@@ -560,10 +582,10 @@ def sort_inventory(data_file, volume_list, tmp_dir):
         # generate some running performace statistics.
         delta = time.time()-t0
         count_metadata = count_metadata + len(data_list)
-        print "Read through line %d rate is %.1f keys/S. Read time is %s." % \
+        print "%d lines read in at %.1f keys/S in %s." % \
               (count_metadata, count_metadata/delta, parse_time(delta))
 
-#        break #usefull for debugging
+        break #usefull for debugging
 
     return count_metadata
 
