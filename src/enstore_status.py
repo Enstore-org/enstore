@@ -6,6 +6,11 @@ import string
 import os
 import stat
 
+
+import rexec
+def eval(stuff):
+    return rexec.RExec().r_eval(stuff)
+
 # enstore imports
 import Trace
 import alarm
@@ -13,6 +18,8 @@ import e_errors
 import enstore_constants
 import enstore_functions
 import mover_constants
+
+
 
 # locate and pull out the dictionaries in the text message. assume that if
 # there is more than one dict, they are of the form -

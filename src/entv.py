@@ -9,6 +9,11 @@ import select
 import string
 import time
 
+import rexec
+
+def eval(stuff):
+    return rexec.RExec().r_eval(stuff)
+
 import setpath
 import udp_client
 
