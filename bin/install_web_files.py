@@ -16,8 +16,11 @@
 #           (e.g. wsrvd0en))
 #
 #     o make an enstore subdirectory in the cgi-bin area
+#     o make an enstore/log subdirectory in the cgi-bin area
 #     o copy $ENSTORE_DIR/src/enstore_*_cgi.py to the cgi-bin/enstore area
 #     o copy $ENSTORE_DIR/src/enstore.htaccess to cgi-bin/enstore/.htaccess
+#     o copy cgi-bin/enstore/enstore_utils_cgi.py to log subdirectory in cgi-bin area
+#     o move cgi-bin/enstore/enstore_log_file_search_cgi.py to log subdirectory in cgi-bin area
 #     o inform the user that they may need to edit the .htaccess file appropriately
 #
 #     o warn the user that there may need to be a link to the python executable in /usr/local/bin
@@ -72,6 +75,12 @@ def get_inputs():
 def copy_files(files, dir):
     # copy 'files' to 'dir'
     os.system("cp %s %s"%(files, dir))
+
+def copy_cgi_files(files, dir):
+    # copy 'files' to 'dir'
+    copy_files(files, dir)
+    os.system("cp %s/enstore_utils_cgi.py %s/log"%(dir, dir))
+    os.system("mv %s/enstore_log_file_search_cgi.py %s/log"%(dir, dir))
 
 def fix_cgi_url(web_dir, file, url):
     # edit the named file and change the url for the cgi script to the value in 'url'
@@ -131,10 +140,12 @@ if __name__ == "__main__" :
 	if cgi_dir:
 	    enstore_cgi = "%s/enstore"%(cgi_dir,)
 	    make_subdir(enstore_cgi)
+	    enstore_log_cgi = "%s/log"%(enstore_cgi,)
+	    make_subdir(enstore_log_cgi)
 
 	    # copy the cgi scripts to the enstore cgi area
 	    print "Copying the cgi scripts to %s"%(enstore_cgi,)
-	    copy_files("$ENSTORE_DIR/src/enstore_*_cgi.py", enstore_cgi)
+	    copy_cgi_files("$ENSTORE_DIR/src/enstore_*_cgi.py", enstore_cgi)
 
 	    # copy the .htaccess file
 	    print "Copying the htaccess file to %s"%(enstore_cgi,)
