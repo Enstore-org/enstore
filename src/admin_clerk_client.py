@@ -10,6 +10,7 @@ import dict_to_a
 import configuration_client
 import udp_client
 import Trace
+import e_errors
 
 import interface
 import generic_client
