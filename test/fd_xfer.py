@@ -61,6 +61,18 @@ bytes = statinfo[stat.ST_SIZE]
 hsm_driver = driver.FTTDriver()
 #hsm_driver = driver.NullDriver()
 
+
+# REMEMBER x=3 will only do 2 tries!
+def rsh_das( node, das_cmd ):
+    cmd = "rsh %s '. /usr/local/etc/setups.sh;setup enstore;x=3;\
+while x=`expr $x - 1`; do \
+    if dasadmin %s;then break;\
+    else sleep 5;fi;\
+done'"%(node,das_cmd)
+    os.system( cmd )
+
+
+
 loop = 1
 while loop <= loops:
     print '%s: start loop %s'%(tt(),loop)
@@ -69,9 +81,9 @@ while loop <= loops:
 	print "%s:         ejecting... "%tt(),;sys.stdout.flush()
         hsm_driver.offline( tapedev )
 	print "\n%s:         dismounting... "%tt(),;sys.stdout.flush()
-	os.system( 'rsh %s ". /usr/local/etc/setups.sh;setup enstore;dasadmin dismount -d %s"'%(dasnod,drvdesig) )
+	rsh_das( dasnod, 'dismount -d %s'%drvdesig )
 	print "%s:         mounting... "%tt(),;sys.stdout.flush()
-	os.system( 'rsh %s ". /usr/local/etc/setups.sh;setup enstore;dasadmin mount -t %s %s %s"'%(dasnod,drvtype,volume,drvdesig) )
+	rsh_das( dasnod, 'mount -t %s %s %s'%(drvtype,volume,drvdesig) )
     else:
 	print "%s:         rewinding... "%tt(),;sys.stdout.flush()
 	os.system( "mt -f %s rewind"%tapedev )
@@ -79,7 +91,7 @@ while loop <= loops:
 
     fo = open( infile, 'r' )
 
-    # THE BIND ##################################################################
+    #########################################################################
     print "%s:         sw_mount... "%tt(),; sys.stdout.flush()
     hsm_driver.sw_mount( tapedev, 102400, 30520749568L, external_label, eod_cookie )
     driver_obj = hsm_driver.open( tapedev, 'a+' )
