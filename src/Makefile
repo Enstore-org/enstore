@@ -71,6 +71,7 @@ fileinfo:
 	- rm -rf FILEINFO_TEMP
 
 get:
+	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf GET_TEMP
 	mkdir GET_TEMP
 	- rm -rf GETBIN
@@ -82,6 +83,7 @@ get:
 	- rm -rf GET_TEMP
 
 entv:
+	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf ENTV_TEMP
 	mkdir ENTV_TEMP
 	- rm -rf ENTVBIN
@@ -90,6 +92,8 @@ entv:
 	(cd ENTV_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENTV_TEMP/entv ../ups/chooseConfig ENTVBIN
 	cp -r $(ENSTORE_DIR)/etc/TclTk/tcl8.3  $(ENSTORE_DIR)/etc/TclTk/tk8.3 $(ENSTORE_DIR)/etc/Images ENTVBIN
+	cp $(ENSTORE_DIR)/modules/autologinenstore ENTVBIN
+	cp $(ENSTORE_DIR)/modules/mouse_move ENTVBIN
 	sed -e 's/encp/entv/g' $(ENSTORE_DIR)/ups/encp.table > ENTVBIN/entv.table
 	- rm -rf ENTV_TEMP
 
