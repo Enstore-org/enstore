@@ -13,8 +13,6 @@
 #
 # 
 
-import os
-import string
 import regex
 import sys
 
@@ -49,6 +47,15 @@ def numeric_list(nbr) :
 # subroutine to format the command.
 ########################################################################
 
+
+cmd_txt={} #forward declaration for the linter.
+
+# print_nothing()
+def print_nothing(hexlist) : 
+	hexlist = hexlist # this will quiet the linter.
+	return
+
+
 def print_cmd(hexlist) :
 	try:
 		(name, details) = cmd_txt[hexlist[0]]
@@ -59,9 +66,7 @@ def print_cmd(hexlist) :
 	print name, hexlist
 	details(hexlist)
 
-# print_nothing()
-def print_nothing(hexlist) :
-	return
+
 
 # print details of WRITE FILEMARKS
 def print_write_filemarks(hexlist) :
@@ -117,6 +122,8 @@ def print_modesense(hexlist) :
 	allocation_length = "0x%x" % (numlist[4])
 	print " allocation_length=%s" % (allocation_length)
 
+
+
 cmd_txt = {
 '19' : ('erase', print_nothing), 
 '12' : ('inquiry', print_inquiry),
@@ -147,43 +154,9 @@ cmd_txt = {
 '10' : ('write filemarks', print_write_filemarks)
 }
 
-
 ###################################
 # Print sensea and senseb data
 ###################################
-
-def print_sensea(hexlist):
-	numlist = numeric_list(hexlist)
-        valid = ["not-residual", "residual"] [numlist[0] >> 7]
-	error_code = "%x" % (numlist[0] & 127)
-	print " byte 0: %x %s Error-code=%s" % (
-			numlist[0], valid, error_code)
-	print " byte 1: segment_number=%x" % (numlist[1])
-	b2 = numlist[2]
-	file_mark=["no-file-mark","file-mark"] [b2>>7]
-	eom=      ["no-eom", "eom"] [(b2 >> 6) & 1]
-	ili=      ["no-ili", "ili"] [(b2 >> 5) & 1]
-	reserved= ["", "RESERVED-IS-NOT-0"] [(b2 >> 5) & 1]
-	sense_key= "sense-key=%s" % sense_key_dict[b2 & (1+2+4+8)]
-	print " byte 2: %x %s %s %s %s %s" % (b2, 
-			file_mark, eom, ili, reserved, sense_key)
-	print " bytes 3-6: Information-bytes=0x%x 0x%x 0x%x 0x%x" % (
-		numlist[3], numlist[4], numlist[5], numlist[6])
-	print " byte 7: additional-length=0x%x" % (numlist[7])
-	return
-
-def print_senseb(hexlist) :
-	numlist = numeric_list(hexlist)
-	print " bytes 8-11: Command-specific-information=" + \
-		"0x%x 0x%x 0x%x 0x%x" % (
-		numlist[0], numlist[1], numlist[2], numlist[3])
-	try:
-		additional_code_text = additional_code_dict[
-		  (numlist[4], numlist[5])]
-	except:
-		additional_code_text = "0x%x 0x%x" % (numlist[4], numlist[5])
-	print " bytes 12-13: %s" % (additional_code_text)
-	return
 
 sense_key_dict = {
 0x00 : 'NO-SENSE',
@@ -264,6 +237,42 @@ additional_code_dict = {
 (0x4e, 0x00) : 'OVERLAPPED-COMMANDS-ATTEMPED',
 (0x00, 0x02) : 'END-OF-PARTITION/MEDIUM-DETECTED'
 }
+
+
+def print_sensea(hexlist):
+	numlist = numeric_list(hexlist)
+        valid = ["not-residual", "residual"] [numlist[0] >> 7]
+	error_code = "%x" % (numlist[0] & 127)
+	print " byte 0: %x %s Error-code=%s" % (
+			numlist[0], valid, error_code)
+	print " byte 1: segment_number=%x" % (numlist[1])
+	b2 = numlist[2]
+	file_mark=["no-file-mark","file-mark"] [b2>>7]
+	eom=      ["no-eom", "eom"] [(b2 >> 6) & 1]
+	ili=      ["no-ili", "ili"] [(b2 >> 5) & 1]
+	reserved= ["", "RESERVED-IS-NOT-0"] [(b2 >> 5) & 1]
+	sense_key= "sense-key=%s" % sense_key_dict[b2 & (1+2+4+8)]
+	print " byte 2: %x %s %s %s %s %s" % (b2, 
+			file_mark, eom, ili, reserved, sense_key)
+	print " bytes 3-6: Information-bytes=0x%x 0x%x 0x%x 0x%x" % (
+		numlist[3], numlist[4], numlist[5], numlist[6])
+	print " byte 7: additional-length=0x%x" % (numlist[7])
+	return
+
+def print_senseb(hexlist) :
+	numlist = numeric_list(hexlist)
+	print " bytes 8-11: Command-specific-information=" + \
+		"0x%x 0x%x 0x%x 0x%x" % (
+		numlist[0], numlist[1], numlist[2], numlist[3])
+	try:
+		additional_code_text = additional_code_dict[
+		  (numlist[4], numlist[5])]
+	except:
+		additional_code_text = "0x%x 0x%x" % (numlist[4], numlist[5])
+	print " bytes 12-13: %s" % (additional_code_text)
+	return
+
+
 
 # Time -- trace prints out processor ticks.
 
