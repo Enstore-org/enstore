@@ -302,9 +302,9 @@ class FTTDriver(driver.Driver):
         
         buf=80*' '
         try:
-            Trace.log(25, "rewinding tape to check volume label")
-            
-            self.rewind()
+            Trace.trace(25, "rewinding tape to check volume label")
+            r=self.rewind()
+            Trace.trace(25, "rewind returned %s"%(r,))
             self.set_mode(compression = 0, blocksize = 0)
 
             if self.fd is None:
