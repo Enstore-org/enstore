@@ -185,12 +185,15 @@ class SortedList:
         return ret
 
     def get_next(self):
-        if not self.sorted_list: return None    # list is empty
+        if not self.sorted_list:
+            self.start_index = self.current_index
+            return None    # list is empty
         old_current_index = self.current_index
         self.current_index = self.current_index + 1
         if self.current_index >= len(self.sorted_list):
             self.current_index = 0
         if old_current_index == self.current_index: # only one element in the list
+            self.start_index = self.current_index
             return None
         if self.current_index == self.start_index: return None  # came back to where it started
         return self.sorted_list[self.current_index]
