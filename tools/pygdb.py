@@ -106,7 +106,7 @@ class PyGdb(Gdb):
             return -1
 
     def c_string_expr(self, expr):
-        response = self.gdb_command("print PyString_AsString(%s)"%expr)
+        response = self.gdb_command("print (char*)( ( (PyStringObject*) %s)->ob_sval)" % expr)
         r = string.split(response[0])
         return string.join(r[3:])[1:-1]
 
