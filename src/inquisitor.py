@@ -58,8 +58,8 @@ class EnstoreSystemStatusFile:
 	return "("+self.unquote(host)+", "+repr(address[1])+")"
 
     # output the timeout error
-    def output_etimedout(self, tag):
-	stat = tag + "timed out\n"
+    def output_etimedout(self, address, tag):
+	stat = tag + "timed out at "+self.unquote(repr(address))+"\n"
 	self.file.write(stat)
 
     # get the current time and output it
@@ -115,12 +115,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the configuration server
     def update_config(self):
         Trace.trace(12,"{update_config "+repr(self.essfile.file_name))
+	address = self.csc.get_address()
 	try:
 	    stat = self.csc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    address = stat['address']
 	    self.essfile.output_alive(address[0], "config server   : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout("config server   : ")
+	    self.essfile.output_etimedout(address, "config server   : ")
         Trace.trace(12,"}update_config ")
 
     # get the information from the library manager(s)
@@ -130,17 +130,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	t = self.csc.get_uncached(key)
 	# get a client and then check if the server is alive
 	lmc = library_manager_client.LibraryManagerClient(self.csc, 0, key, t['host'], t['port'])
+	ticket = self.csc.get(key)
 	try:
 	    stat = lmc.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_name(key)
-	    ticket = self.csc.get(key)
 	    self.essfile.output_alive(ticket['host'], "      ", stat)
 	    stat = lmc.getwork(list)
 	    self.essfile.output_lmqueues(stat)
 	    stat = lmc.getmoverlist()
 	    self.essfile.output_lmmoverlist(stat)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.essfile.output_etimedout("library manager : ")
+	    self.essfile.output_etimedout((ticket['host'], ticket['port']), "library manager : ")
         Trace.trace(12,"}update_library_manager ")
 
     # get the information from the movers
@@ -150,34 +150,34 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the admin clerk
     def update_admin_clerk(self, key):
         Trace.trace(12,"{update_admin_clerk "+repr(self.essfile.file_name))
+	ticket = self.csc.get(key)
 	try:
 	    stat = self.acc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    ticket = self.csc.get(key)
 	    self.essfile.output_alive(ticket['host'], "admin clerk     : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout("admin clerk     : ")
+	    self.essfile.output_etimedout((ticket['host'], ticket['port']), "admin clerk     : ")
         Trace.trace(12,"}update_admin_clerk ")
 
     # get the information from the file clerk
     def update_file_clerk(self, key):
         Trace.trace(12,"{update_file_clerk "+repr(self.essfile.file_name))
+	ticket = self.csc.get(key)
 	try:
 	    stat = self.fcc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    ticket = self.csc.get(key)
 	    self.essfile.output_alive(ticket['host'], "file clerk      : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout("file clerk      : ")
+	    self.essfile.output_etimedout((ticket['host'], ticket['port']), "file clerk      : ")
         Trace.trace(12,"}update_file_clerk ")
 
     # get the information from the log server
     def update_log_server(self, key):
         Trace.trace(12,"{update_log_server "+repr(self.essfile.file_name))
+	ticket = self.csc.get(key)
 	try:
 	    stat = self.logc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    ticket = self.csc.get(key)
 	    self.essfile.output_alive(ticket['host'], "log server      : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout("log server      : ")
+	    self.essfile.output_etimedout((ticket['host'], ticket['port']), "log server      : ")
         Trace.trace(12,"}update_log_server ")
 
     # get the information from the media changer(s)
@@ -187,24 +187,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	t = self.csc.get_uncached(key)
 	# get a client and then check if the server is alive
 	mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, t['host'], t['port'])
+	ticket = self.csc.get(key)
 	try:
 	    stat = mcc.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_name(key)
-	    ticket = self.csc.get(key)
 	    self.essfile.output_alive(ticket['host'], "      ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout("media changer   : ")
+	    self.essfile.output_etimedout((ticket['host'], ticket['port']), "media changer   : ")
         Trace.trace(12,"}update_media_changer ")
 
     # get the information from the volume clerk server
     def update_volume_clerk(self, key):
         Trace.trace(12,"{update_volume_clerk "+repr(self.essfile.file_name))
+	ticket = self.csc.get(key)
 	try:
 	    stat = self.vcc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    ticket = self.csc.get(key)
 	    self.essfile.output_alive(ticket['host'], "volume clerk    : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout("volume clerk    : ")
+	    self.essfile.output_etimedout((ticket['host'], ticket['port']), "volume clerk    : ")
         Trace.trace(12,"}update_volume_clerk ")
 
     # update the enstore system status information
