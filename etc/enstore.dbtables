@@ -26,7 +26,8 @@ create table volume (
 	storage_group	varchar,
 	file_family	varchar,
 	wrapper		varchar,
-	comment		varchar
+	comment		varchar,
+	last_update	timestamp without time zone default now()
 );
 create index volume_library_idx on volume(library);
 create index volume_media_type_idx on volume(media_type);
@@ -36,6 +37,21 @@ create index volume_storage_group_idx on volume(storage_group);
 create index volume_file_family_idx on volume(file_family);
 create index volume_wrapper_idx on volume(wrapper);
 create index volume_remaining_bytes_idx on volume(remaining_bytes);
+
+create function last_update () returns trigger as '
+	begin
+		if new.system_inhibit_0 != old.system_inhibit_0 then
+			new.si_time_0 = now();
+		end if;
+		if new.system_inhibit_1 != old.system_inhibit_1 then
+			new.si_time_1 = now();
+		end if;
+		new.last_update = now();
+		return new;
+	end;
+' language 'plpgsql';
+
+create trigger volume_last_update before update on volume for each row execute procedure last_update();
 
 create table file (
 	bfid		varchar primary key,
@@ -144,3 +160,103 @@ create table migration_history (
 create index migration_history_src_idx on migration_history(src);
 create index migration_history_dst_idx on migration_history(dst);
 
+create table media_capacity (
+	type		varchar,
+	capacity	bigint,
+	primary key (type)
+);
+
+insert into media_capacity values('9840', 21474836480);
+insert into media_capacity values('9940', 64424509440);
+insert into media_capacity values('9940B', 214748364800);
+insert into media_capacity values('DECDLT', 21474836480);
+insert into media_capacity values('null', 214748364800);
+
+create table tc (
+media_type varchar,
+library varchar,
+storage_group varchar,
+volumes numeric);
+
+create function tape_consumption(interval, char) returns setof tc as '
+select media_type, library, storage_group, sum(volumes)
+from
+	(select media_type, library, storage_group, file_family,
+		sum(size),
+		case
+			when $2 = \'r\' then
+				round(sum(size)/media_capacity.capacity, 5)
+			else
+				trunc((sum(size)-1)/media_capacity.capacity)+1
+		end as volumes
+	from file, volume, media_capacity
+	where
+		file.volume = volume.id and
+		media_capacity.type = volume.media_type and
+		volume.media_type != \'null\' and
+		bfid > \'CDMS\' || to_char(trunc(date_part(\'epoch\', now() - $1)), \'FM99999999999999\') || \'00000\' and
+		bfid < \'CDMS\' || to_char(trunc(date_part(\'epoch\', now() + interval \'1 day\')), \'FM99999999999999\') || \'00000\'
+		group by media_type, library, storage_group,
+			file_family, capacity) as foo
+group by media_type, library, storage_group;
+' language sql;
+
+create table qa (
+	media_type	varchar,
+	library		varchar,
+	storage_group	varchar,
+	monthly		numeric,
+	weekly		numeric,
+	daily		numeric,
+	projected_daily	numeric,
+	quota		int,
+	allocated	int,
+	days_surviving	numeric,
+	alert		varchar
+);
+
+create function quota_alert () returns setof qa as '
+select *,
+	case
+		when m1.days_surviving < 3 then \'less than 3 days\'
+		when m1.days_surviving < 7 then \'less than 1 week\'
+	end :: varchar as alert
+	from
+	(select *,
+		trunc((m.quota - m.allocated)/(
+			case
+				when m.projected_daily = 0 then null
+				else m.projected_daily
+			end)) as days_surviving
+	from
+		(select
+			u.media_type, u.library, u.storage_group, u.monthly,
+			u.weekly, u.daily,
+			case
+				when u.weekly/7 > u.daily or u.daily is null
+					then round(u.weekly/7, 5)
+				else u.daily
+			end as projected_daily,
+			quota.quota, sg_count.count as allocated
+		from quota, sg_count,
+			(select monthly.media_type, monthly.library,
+				monthly.storage_group, monthly.volumes as monthly,
+				dw.weekly, dw.daily
+			from
+				tape_consumption(\'1 month\', \'n\') as monthly
+				full outer join
+				(select weekly.media_type, weekly.storage_group, daily.volumes as daily , weekly.volumes as weekly
+				from
+					tape_consumption(\'1 day\', \'r\') as daily
+					full outer join
+					tape_consumption(\'1 week\', \'y\') as weekly
+					on (daily.media_type = weekly.media_type and daily.storage_group = weekly.storage_group)) as dw
+				on (monthly.media_type = dw.media_type and monthly.storage_group = dw.storage_group)
+			order by media_type, storage_group) as u
+		where
+			u.library = quota.library and
+			u.storage_group = quota.storage_group and
+			sg_count.library = u.library and
+			sg_count.storage_group = u.storage_group) as m
+	) as m1;
+' language sql;
