@@ -1351,13 +1351,23 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                     else:            crc_flag = 0
                     mycrc = EXfer.fd_xfer( data_path_socket.fileno(), _f_.fileno(),
                                            requests[j]['file_size'], bufsize, crc_flag )
-                except (EXfer.error), err_msg:
+                except: 
+                    exc, err_msg, tb = sys.exc_info()
+
                     # this error used to be a 0
                     Trace.trace(6,"read_from_hsm EXfer error:"+
                                 str(sys.argv)+" "+
                                 str(sys.exc_info()[0])+" "+
                                 str(sys.exc_info()[1]))
                     if verbose > 1: traceback.print_exc()
+
+                    if err_msg.args[0] == 'fd_xfer - write' and err_msg.args[1]==errno.ENOSPC:
+                        print "No space on device"
+                        print_data_access_layer_format(
+                            requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
+                            {'status':("ENOSPC", "No space left on device")})
+                        jraise("ENOSPC", "no space left on device");
+                        
                     if err_msg.args[0] == "fd_xfer - read EOF unexpected":
                         error = 1
                         data_path_socket.close()
