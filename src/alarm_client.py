@@ -44,13 +44,15 @@ class AlarmClient(generic_client.GenericClient):
         except:
             self.uid = "unknown"
         self.u = udp_client.UDPClient()
-        ticket = self.csc.get(MY_SERVER)
-        self.server_address = (ticket['hostip'], ticket['port'])
+        self.server_address = self.get_server_address(MY_SERVER)
+
         self.rcv_timeout = rcv_timeout
         self.rcv_tries = rcv_tries
 	Trace.set_alarm_func( self.alarm_func )
 	self.alarm_func_lock = Lock() 
 
+
+        
     def alarm_func(self, time, pid, name, args):
 	# prevent infinite recursion (i.e if some function call by this
 	# function does a trace and the alarm bit is set
@@ -123,7 +125,12 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
                    ["raise", "severity=", "root_error=", "get_patrol_file",
                     "resolve=", "dump"]
 
-def do_work(intf):
+
+if __name__ == "__main__" :
+    Trace.init(MY_NAME)
+    Trace.trace(6,"alrmc called with args "+repr(sys.argv))
+    # fill in interface
+    intf = AlarmClientInterface()
     # now get an alarm client
     alc = AlarmClient((intf.config_host, intf.config_port),
                       intf.alive_rcv_timeout, intf.alive_retries)
@@ -150,17 +157,5 @@ def do_work(intf):
     else:
 	intf.print_help()
         sys.exit(0)
-
-    del alc.csc.u
-    del alc.u           # del now, otherwise get name exception (just for python v1.5???)
-
     alc.check_ticket(ticket)
 
-if __name__ == "__main__" :
-    Trace.init(MY_NAME)
-    Trace.trace(6,"alrmc called with args "+repr(sys.argv))
-
-    # fill in interface
-    intf = AlarmClientInterface()
-
-    do_work(intf)
