@@ -500,11 +500,11 @@ def is_volume_suspect(self, external_label):
     return
 
 # send a regret
-def send_regret(ticket, verbose):
+def send_regret(self, ticket, verbose):
     Trace.trace(3,"}send_regret " + repr(ticket['status']))
     # fork off the regret sender
     generic_cs.enprint("FORKING REGRET SENDER",generic_cs.DEBUG, verbose)
-    ret = os.fork()
+    ret = self.fork()
     if ret == 0:
 	try:
 	    generic_cs.enprint("SENDING REGRET "+repr(ticket), generic_cs.DEBUG, \
@@ -618,7 +618,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				Trace.trace(3,"handle_timeout: no movers left")
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				pending_work.delete_job(mv["work_ticket"])
-				send_regret(mv["work_ticket"], self.verbose)
+				send_regret(self, mv["work_ticket"], self.verbose)
 
 				# flush pending jobs
 				flush_pending_jobs(self, 
@@ -656,7 +656,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				Trace.trace(3,"handle_timeout: no movers left")
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				pending_work.delete_job(mv["work_ticket"])
-				send_regret(mv["work_ticket"], self.verbose)
+				send_regret(self, mv["work_ticket"], self.verbose)
 				# flush pending jobs
 				flush_pending_jobs(self,
 						   (e_errors.NOMOVERS, None))
@@ -916,7 +916,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			self.suspect_volumes.remove(item)
 
 			pending_work.delete_job(w)
-			send_regret(w, self.verbose)
+			send_regret(self, w, self.verbose)
 			Trace.trace(3,"}idle_mover: failed on more than "\
 			 + repr(self.max_suspect_movers)+ " for " + repr(item))
 			return
@@ -925,7 +925,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                             generic_cs.DEBUG, self.verbose)
 			pending_work.delete_job(w)
 			w['status'] = (e_errors.NOMOVERS, 'Read failed') # set it to something more specific
-			send_regret(w, self.verbose)
+			send_regret(self, w, self.verbose)
 			# check if there are any pending works and remove them
 			flush_pending_jobs(self, 
 					   (e_errors.NOMOVERS, 'Read failed'))
@@ -1024,11 +1024,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, mticket, state)
-	if mv:
-	    try:
-		del(mv["work_ticket"])
-	    except keyError:
-		pass
 
 
         # just did some work, delete it from queue
@@ -1038,6 +1033,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                 generic_cs.SERVER, self.verbose)
 	    delayed_dismount = w['encp']['delayed_dismount']
 	    work_at_movers.remove(w)
+	    mv = find_mover(mticket, movers, self.verbose)
+	    if mv:
+		try:
+		    del(mv["work_ticket"])
+		except keyError:
+		    pass
+
 	else: delayed_dismount = 0
 	# check if mover can accept another request
 	if state != 'idle_mover':
@@ -1172,12 +1174,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, ticket, 'idle_mover')
 
-	if mv:
-	    try:
-		del(mv["work_ticket"])
-	    except KeyError:
-		pass
-
 	# update list of suspected volumes
         self.enprint("SUSPECT VOLUME LIST BEFORE", generic_cs.SERVER, \
 	             self.verbose)
@@ -1211,6 +1207,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.enprint(w, generic_cs.DEBUG|generic_cs.PRETTY_PRINT, \
 	                 self.verbose)
             work_at_movers.remove(w)
+	    mv = find_mover(ticket, movers, self.verbose)
+	    if mv:
+		try:
+		    del(mv["work_ticket"])
+		except keyError:
+		    pass
 
 
 	    if ticket['state'] != 'offline':
@@ -1256,7 +1258,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    # 01/22 do not send a regret as the mover had already
 	    # sent a status to encp
 	    call_back_addr = w['callback_addr']
-	    send_regret(w, self.verbose)
+	    send_regret(self, w, self.verbose)
 	    # send regret to all clients requested this volume and remove
 	    # requests from a queue
 	    w = pending_work.get_init()
@@ -1266,7 +1268,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			w['status'] = (e_errors.NOACCESS, None)
 			#if w['callback_addr'] != call_back_addr:
 			print "SENDING REGRET"
-			send_regret(w, self.verbose)
+			send_regret(self, w, self.verbose)
 			w1 = pending_work.get_next()
 			pending_work.delete_job(w)
 			w = w1
@@ -1276,7 +1278,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    pending_work.delete_job(w)
 	    # 01/22 do not send a regret as the mover had already
 	    # sent a status to encp
-	    # send_regret(w, self.verbose)
+	    # send_regret(self, w, self.verbose)
 	    
 	    # check if there are any pending works and remove them
 	    #flush_pending_jobs(self, (e_errors.NOMOVERS, None))
@@ -1295,7 +1297,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # work and no volume available
             # so bounce. status is already bad...
             pending_work.delete_job(w)
-	    send_regret(w, self.verbose)
+	    send_regret(self, w, self.verbose)
 	    Trace.trace(3,"}schedule: Error detected " + repr(w))
             #callback.send_to_user_callback(w)
 
@@ -1316,7 +1318,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
-        if os.fork() != 0:
+        if self.fork() != 0:
             return
         self.get_user_sockets(ticket)
         rticket = {}
@@ -1341,7 +1343,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
-        if os.fork() != 0:
+        if self.fork() != 0:
             return
         self.get_user_sockets(ticket)
         rticket = {}
@@ -1375,7 +1377,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
-        if os.fork() != 0:
+        if self.fork() != 0:
             return
         self.get_user_sockets(ticket)
         rticket = {}
@@ -1400,7 +1402,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
-        if os.fork() != 0:
+        if self.fork() != 0:
             return
         self.get_user_sockets(ticket)
         rticket = {}
