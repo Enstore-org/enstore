@@ -109,7 +109,7 @@ class Inquisitor(generic_client.GenericClient):
             # the user  specified a device to plot the data for.
             t['mcs'] = mcs
 	# wait a really long time as plotting takes awhile.
-	return self.send(t, 1000)
+	return self.send(t, 3000)
 
 
 class InquisitorClientInterface(generic_client.GenericClientInterface):
