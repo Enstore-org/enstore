@@ -91,7 +91,6 @@ class configuration_client :
 
 if __name__ == "__main__" :
     import getopt
-    import socket
 
     # defaults
     #config_host = "localhost"

@@ -5,8 +5,6 @@ import string
 import regsub
 import pprint
 import copy
-from SocketServer import *
-from dict_to_a import *
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 

@@ -1,7 +1,10 @@
-from SocketServer import *
-from lockfile import *
-from time import *
-from dict_to_a import *
+import lockfile
+import dict_to_a
+# Import SOCKS module if it exists, else standard socket module socket
+try:
+    import SOCKS; socket = SOCKS
+except ImportError:
+    import socket
 
 # see if we can bind to the selected host/port
 def try_a_port(host, port) :
@@ -16,7 +19,7 @@ def try_a_port(host, port) :
 # get an unused port for communication
 def get_callback() :
     #host = 'localhost'
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    (host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
 
     # First acquire the hunt lock.  Once we have it, we have the exlusive right
     # to hunt for a port.  Hunt lock will (I hope) properly serlialze the
@@ -24,18 +27,18 @@ def get_callback() :
     # Because we use file locks instead of semaphores, the system will
     # properly clean up, even on kill -9s.
     lockf = open ("/var/lock/hsm/lockfile", "w")
-    writelock(lockf)  #holding write lock means the right to hunt for a port.
+    lockfile.writelock(lockf)  #holding write lock = right to hunt for a port.
 
     # now check for a port we can use
     while  1:
         # remember, only person with lock is pounding  hard on this
         for port in range (7600, 7650) :
-            success, socket = try_a_port (host, port)
+            success, mysocket = try_a_port (host, port)
             # if we got a lock, give up the hunt lock and return port
             if success :
-                unlock(lockf)
+                lockfile.unlock(lockf)
                 lockf.close()
-                return host, port, socket
+                return host, port, mysocket
         #  otherwise, we tried all ports, try later.
         sleep (1)
 
@@ -50,21 +53,21 @@ def mover_callback_socket(ticket) :
 def library_manager_callback_socket(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['library_manager_callback_host'], \
-		 ticket['library_manager_callback_port'])
+                 ticket['library_manager_callback_port'])
     return sock
 
 # send ticket/message on user socket and return user socket
 def user_callback_socket(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
-    sock.send(dict_to_a(ticket))
+    sock.send(dict_to_a.dict_to_a(ticket))
     return sock
 
 # send ticket/message
 def send_to_user_callback(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
-    sock.send(dict_to_a(ticket))
+    sock.send(dict_to_a.dict_to_a(ticket))
     sock.close()
 
 if __name__ == "__main__" :

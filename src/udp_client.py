@@ -4,7 +4,7 @@ import select
 import os
 import errno
 import exceptions
-from errno import *
+import errno
 import sys
 
 TRANSFER_MAX=16384
@@ -49,8 +49,9 @@ class UDPClient:
         # stringify message and check if it is too long
         message = `(self.ident, self.number, text)`
         if len(message) > TRANSFER_MAX :
-            raise errorcode[EMSGSIZE],"UDPClient.send:message too big.Size = "\
-                  +repr(len(message))+" Max = "+repr(TRANSFER_MAX)+" ",message
+            raise errno.errorcode[EMSGSIZE],"UDPClient.send:message too "+\
+                  "big. Size = ",+repr(len(message))+" Max = "+\
+                  repr(TRANSFER_MAX)+" ",message
 
         # send the udp message until we get a response that it was sent
         number = 0  # impossible number
@@ -58,7 +59,7 @@ class UDPClient:
             badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             if badsock != 0 :
                 print "udp_client send, pre-sendto error:", \
-		      errno.errorcode[badsock]
+                      errno.errorcode[badsock]
             self.socket.sendto (message, address)
             badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             if badsock != 0 :
@@ -71,8 +72,8 @@ class UDPClient:
 
             # exception mean trouble
             if x :
-                raise errorcode[ESHUTDOWN],"UDPClient.send: exception on "\
-                      +"select after send to "+repr(address)+" peer exitted"
+                raise errno.errorcode[ESHUTDOWN],"UDPClient.send: exception "\
+                      "on select after send to "+repr(address)+" peer exitted"
 
             # something there - read it and see if we have response that
             # matches the number we sent out
@@ -81,13 +82,13 @@ class UDPClient:
                                                  socket.SO_ERROR)
                 if badsock != 0 :
                     print "udp_client send, ", "pre-recv error:",\
-			  errno.errorcode[badsock]
+                          errno.errorcode[badsock]
                 reply , server = self.socket.recvfrom(TRANSFER_MAX)
                 badsock = self.socket.getsockopt(socket.SOL_SOCKET,
                                                  socket.SO_ERROR)
                 if badsock != 0 :
                     print "udp_client send, ", "post-recv error:",\
-			  errno.errorcode[badsock]
+                          errno.errorcode[badsock]
                 try :
                     exec ("number,  out  = "  + reply)
                 # did we read entire message (bigger than TRANSFER_MAX?)
