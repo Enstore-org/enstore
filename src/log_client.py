@@ -39,68 +39,70 @@ def logit(logc, message="HELLO", logname="LOGIT"):
 
     return {"status" : (e_errors.OK, None)}
 
-class LoggerLock:
-    def __init__(self):
-	self.locked = 0
-    def unlock(self):
-	self.locked = 0
-    def test_and_set(self):
-	s = self.locked
-	self.locked=1
-	return s
+#################################################################################
+# NAME        : FERMI LABS - RICHARD KENNA
+# DATE        : JUNE 24, 1999
+# DESCRIPTION : THIS FUNCTION TAKES A LINE INPUT AND RETURNS A USABLE DICTIONARY
+#             : WITH THE FOLLOWING VALUES. THE COMMANDS ARE:
+#             : TIME, SYS_NAME, PID, USR_NAME, SEVERITY, DEV_NAME,
+#             : MSG, MSG_DICT AND MSG_TYPE
+#             : TO USE: a = log.parse(lineIn)  - IT WILL RETURN THE DICTIONARY
+#             : THEN TO SEE DIFFERENT VALUES, TYPE: a['time']
+#             : IT WILL RESPOND WITH: '12:02:12' - OR THE TIME IN THE MESSAGE
+#################################################################################
+def parse(lineIn):
 
-class LoggerClient(generic_client.GenericClient):
+    tmpLine = string.split(lineIn)
+    time = tmpLine[0]
+    host = tmpLine[1]
+    pid = tmpLine[2]
+    user = tmpLine[3]
+    severity = tmpLine[4]
+    server = tmpLine[5]
 
-    def __init__(self,
-                 csc = 0,                    # get our own configuration client
-                 i_am_a = MY_NAME,           # Abbreviated client instance name
-                                             # try to make it capital letters
-                                             # not more than 8 characters long
-                 servername = MY_SERVER):    # log server name
-        # need the following definition so the generic client init does not
-        # get another logger client
-        self.is_logger = 1
-        generic_client.GenericClient.__init__(self, csc, i_am_a)
-        self.log_name = i_am_a
-        try:
-            self.uname = pwd.getpwuid(os.getuid())[0]
-        except:
-            self.uname = 'unknown'
-        self.log_priority = 7
-	lticket = self.csc.get( servername )
-	self.logger_address = (lticket['hostip'], lticket['port'])
-        self.log_dir = lticket.get("log_file_path", "")
-        self.u = udp_client.UDPClient()
-	Trace.set_log_func( self.log_func )
-	self.lock = LoggerLock() 
+    lineDict = { 'time' : time, 'host' : host, 'pid' : pid,
+                 'user' : user, 'severity' : severity,
+                 'server' : server }
 
-    def log_func( self, time, pid, name, args ):
-	#prevent log func from calling itself recursively
-	if self.lock.test_and_set():
-            return
+    mNum = string.find(lineIn, server) + len(server) + 1
+    dNum = string.find(lineIn, "MSG_DICT:")
+    tNum = string.find(lineIn, "MSG_TYPE=")
 
-	severity = args[0]
-	msg      = args[1]
-        if self.log_name:
-            ln = self.log_name
-        else:
-            ln = name
-	if severity > e_errors.MISC: severity = e_errors.MISC
+    if tNum < 0:
+        tNum = len(lineIn)
+    else:
+        msg_type = []
+        num = tNum
+        while num < len(lineIn):
+            msg_type.append(lineIn[num])
+            num = num + 1
+        msg_type = string.joinfields(msg_type, "")
+        msg_type = string.split(msg_type, "=")
+        msg_type = msg_type[1]
+        lineDict['msg_type'] = msg_type
+    if dNum < 0:
+        dNum = tNum;
+    else:
+        msg_dict = []
+        num = dNum
+        while num < tNum:
+            msg_dict.append(lineIn[num])
+            num = num + 1
+        msg_dict = string.joinfields(msg_dict, "")
+        msg_dict = string.split(msg_dict, ":")
+        msg_dict = msg_dict[1]
+        msg_dict = cPickle.loads(base64.decodestring(msg_dict))
+        lineDict['msg_dict'] = msg_dict
+    if mNum < dNum:
+        msg = []
+        num = mNum
+        while num < dNum:
+            msg.append(lineIn[num])
+            num = num + 1
+        msg = string.joinfields(msg, "")
+        lineDict['msg'] = msg
 
-        if string.find(msg, "MSG_TYPE") < 0:
-            msg_type = genMsgType(msg, ln, e_errors.sevdict[severity])
-            msg = "%s %s" % (msg, msg_type)
-
-	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
-				       e_errors.sevdict[severity],name,msg)
-	ticket = {'work':'log_message', 'message':msg}
-	self.u.send_no_wait( ticket, self.logger_address )
-	return 	self.lock.unlock()
-
-    def send( self, severity, priority, format, *args ):
-	if args != (): format = format%args
-	Trace.log( severity, format )
-	return {"status" : (e_errors.OK, None)}
+    return lineDict
 
 #############################################################################################
 # AUTHOR        : FERMI-LABS
@@ -361,70 +363,68 @@ def genMsgType(msg, ln, severity):
         
     return  "MSG_TYPE=%s%s%s" % (functMsg, sevMsg, clientMsg)
 
-#################################################################################
-# NAME        : FERMI LABS - RICHARD KENNA
-# DATE        : JUNE 24, 1999
-# DESCRIPTION : THIS FUNCTION TAKES A LINE INPUT AND RETURNS A USABLE DICTIONARY
-#             : WITH THE FOLLOWING VALUES. THE COMMANDS ARE:
-#             : TIME, SYS_NAME, PID, USR_NAME, SEVERITY, DEV_NAME,
-#             : MSG, MSG_DICT AND MSG_TYPE
-#             : TO USE: a = log.parse(lineIn)  - IT WILL RETURN THE DICTIONARY
-#             : THEN TO SEE DIFFERENT VALUES, TYPE: a['time']
-#             : IT WILL RESPOND WITH: '12:02:12' - OR THE TIME IN THE MESSAGE
-#################################################################################
-def parse(lineIn):
+class LoggerLock:
+    def __init__(self):
+	self.locked = 0
+    def unlock(self):
+	self.locked = 0
+    def test_and_set(self):
+	s = self.locked
+	self.locked=1
+	return s
 
-    tmpLine = string.split(lineIn)
-    time = tmpLine[0]
-    host = tmpLine[1]
-    pid = tmpLine[2]
-    user = tmpLine[3]
-    severity = tmpLine[4]
-    server = tmpLine[5]
+class LoggerClient(generic_client.GenericClient):
 
-    lineDict = { 'time' : time, 'host' : host, 'pid' : pid,
-                 'user' : user, 'severity' : severity,
-                 'server' : server }
+    def __init__(self,
+                 csc = 0,                    # get our own configuration client
+                 i_am_a = MY_NAME,           # Abbreviated client instance name
+                                             # try to make it capital letters
+                                             # not more than 8 characters long
+                 servername = MY_SERVER):    # log server name
+        # need the following definition so the generic client init does not
+        # get another logger client
+        self.is_logger = 1
+        generic_client.GenericClient.__init__(self, csc, i_am_a)
+        self.log_name = i_am_a
+        try:
+            self.uname = pwd.getpwuid(os.getuid())[0]
+        except:
+            self.uname = 'unknown'
+        self.log_priority = 7
+	lticket = self.csc.get( servername )
+	self.logger_address = (lticket['hostip'], lticket['port'])
+        self.log_dir = lticket.get("log_file_path", "")
+        self.u = udp_client.UDPClient()
+	Trace.set_log_func( self.log_func )
+	self.lock = LoggerLock() 
 
-    mNum = string.find(lineIn, server) + len(server) + 1
-    dNum = string.find(lineIn, "MSG_DICT:")
-    tNum = string.find(lineIn, "MSG_TYPE=")
+    def log_func( self, time, pid, name, args ):
+	#prevent log func from calling itself recursively
+	if self.lock.test_and_set():
+            return
 
-    if tNum < 0:
-        tNum = len(lineIn)
-    else:
-        msg_type = []
-        num = tNum
-        while num < len(lineIn):
-            msg_type.append(lineIn[num])
-            num = num + 1
-        msg_type = string.joinfields(msg_type, "")
-        msg_type = string.split(msg_type, "=")
-        msg_type = msg_type[1]
-        lineDict['msg_type'] = msg_type
-    if dNum < 0:
-        dNum = tNum;
-    else:
-        msg_dict = []
-        num = dNum
-        while num < tNum:
-            msg_dict.append(lineIn[num])
-            num = num + 1
-        msg_dict = string.joinfields(msg_dict, "")
-        msg_dict = string.split(msg_dict, ":")
-        msg_dict = msg_dict[1]
-        msg_dict = cPickle.loads(base64.decodestring(msg_dict))
-        lineDict['msg_dict'] = msg_dict
-    if mNum < dNum:
-        msg = []
-        num = mNum
-        while num < dNum:
-            msg.append(lineIn[num])
-            num = num + 1
-        msg = string.joinfields(msg, "")
-        lineDict['msg'] = msg
+	severity = args[0]
+	msg      = args[1]
+        if self.log_name:
+            ln = self.log_name
+        else:
+            ln = name
+	if severity > e_errors.MISC: severity = e_errors.MISC
 
-    return lineDict
+        if string.find(msg, "MSG_TYPE") < 0:
+            msg_type = genMsgType(msg, ln, e_errors.sevdict[severity])
+            msg = "%s %s" % (msg, msg_type)
+
+	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
+				       e_errors.sevdict[severity],name,msg)
+	ticket = {'work':'log_message', 'message':msg}
+	self.u.send_no_wait( ticket, self.logger_address )
+	return 	self.lock.unlock()
+
+    def send( self, severity, priority, format, *args ):
+	if args != (): format = format%args
+	Trace.log( severity, format )
+	return {"status" : (e_errors.OK, None)}
 
 #
 # priorty allows turning logging on and off in a server.
