@@ -120,3 +120,5 @@ create table option (
 	key		varchar,
 	value		varchar
 );
+
+insert into option (key, value) values ('quota', 'disabled');
