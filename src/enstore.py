@@ -369,10 +369,9 @@ class Enstore:
 		if thisgang == gang:
 		    return 1
 		# rip9 and rip10 are special cases
-                # NOT ANYMORE 3/26/03
-		#if thisgang == 'stk':
-		#    if node[0:4] == 'rip9' or node[0:5] == 'rip10':
-		#	return 1
+		if thisgang == 'stk':
+		    if node[0:4] == 'rip9' or node[0:5] == 'rip10':
+			return 1
 		# need to confirm if user really wanted to do this
 		print "You want to execute a command on",node,"but you are running on",thisnode
 		print "This doesn't seem right."

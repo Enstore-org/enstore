@@ -49,8 +49,6 @@ import ratekeeper_client
 import event_relay_client
 
 MY_NAME = "ENSTORE_STOP"
-SEND_TO = 3
-SEND_TM = 1
 
 def get_csc():
     # get a configuration server
@@ -58,7 +56,7 @@ def get_csc():
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
 
-    rtn = csc.alive(configuration_client.MY_SERVER, SEND_TO, SEND_TM)
+    rtn = csc.alive(configuration_client.MY_SERVER, 3, 3)
 
     if e_errors.is_ok(rtn):
         return csc
@@ -112,7 +110,7 @@ def find_servers_by_type(csc, type):
     # from file.
     try:
         if csc:
-            config_dict = csc.dump(timeout=SEND_TO, retry=SEND_TM)
+            config_dict = csc.dump(timeout=3, retry=3)
             if e_errors.is_ok(config_dict) and config_dict.has_key("dump"):
                 #The configuration dictionary is originaly in a sub-ticket.
                 # Change this, but remember the status.
@@ -188,13 +186,18 @@ def quit_process(gc):
 
     u = udp_client.UDPClient()
 
+    #Get the information if possible.
+    try:
+        rtn = u.send({'work':"alive"}, gc.server_address, 3, 3)
+    except errno.errorcode[errno.ETIMEDOUT]:
+        rtn = {'status':(e_errors.TIMEDOUT, None)}
     #Send the quit message.
     try:
-        rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
+        rtn2 = u.send({'work':"quit"}, gc.server_address, 3, 3)
     except errno.errorcode[errno.ETIMEDOUT]:
         rtn = {'status':(e_errors.TIMEDOUT, None)}
 
-    if e_errors.is_ok(rtn):
+    if e_errors.is_ok(rtn) and e_errors.is_ok(rtn2):
         time.sleep(1)
         return detect_process(rtn['pid'])
     else:
@@ -207,7 +210,7 @@ def stop_server(gc, servername):
                                   gc.server_address[1])
 
     #Get this information for the pid.
-    rtn = gc.alive(servername, SEND_TO, SEND_TM)
+    rtn = gc.alive(servername, 3, 3)
 
     #Try to kill the process nicely.
     if not quit_process(gc):
@@ -249,23 +252,21 @@ def stop_server_from_pid_file(servername):
     
     #Determine if there is a process with the id.
     for item in data:
-        #split pid and time
-        pid, date, time = item.split(" ")
-        pid = int(pid.strip())
-        if detect_process(pid):
+        item = int(item.strip())
+        if detect_process(item):
             if os.uname()[0] == "Linux":
                 #If we get here it is becuase the process is still there and
                 # we are on a linux node.  Proceed with checking the /proc
                 # filesystem for confirmation.
-                file = open("/proc/%s/cmdline" % pid, "r")
+                file = open("/proc/%s/cmdline" % item, "r")
                 data = file.readline()
                 file.close()
                 if(data.find(servername) > 0):
                     #If we get here, then we know that the process is the
                     # enstore server in question.
                     print "The %s process is running with pid %s.  Killing." \
-                          % (servername, pid)
-                    rtn2 = kill_process(int(pid))
+                          % (servername, item)
+                    rtn2 = kill_process(int(item))
                     if rtn2:
                         print "Enstore server, %s, remains." % (servername,)
                         return 1
@@ -298,7 +299,7 @@ def check_db(csc, name):
 
     # Get the address and port of the server.
     if csc != None:
-        info = csc.get(use_name, SEND_TO, SEND_TM)
+        info = csc.get(use_name, 3, 3)
     if csc == None or not e_errors.is_ok(info):
         info = enstore_functions.get_dict_from_config_file(use_name,None)
 
@@ -329,7 +330,7 @@ def check_event_relay(csc):
 
     # Get the address and port of the server.
     if csc != None:
-        info = csc.get(name, SEND_TO, SEND_TM)
+        info = csc.get(name, 3, 3)
     if csc == None or not e_errors.is_ok(info):
         info = enstore_functions.get_dict_from_config_file(name,None)
 
@@ -384,7 +385,7 @@ def check_server(csc, name):
 
     # Get the address and port of the server.
     if csc != None:
-        info = csc.get(name, SEND_TO, SEND_TM)
+        info = csc.get(name, 3, 3)
     if csc == None or not e_errors.is_ok(info):
         info = enstore_functions.get_dict_from_config_file(name,None)
 
@@ -407,8 +408,7 @@ def check_server(csc, name):
         return
 
     gc = generic_client.GenericClient(csc, name,
-                                      flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM,
-                                      rcv_timeout=SEND_TO, rcv_tries=SEND_TM, 
+                 flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM,
                                       server_address=(info['hostip'],
                                                       info['port']))
 
@@ -459,11 +459,10 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
 
         return 0
 
-    non_default_names = ["monitor_server"]
+    non_default_names = ["accounting_server", "monitor_server"]
 
     complete_names = [
         "accounting_server",
-        "drivestat_server",
         "configuration_server",
         "event_relay",
         "log_server",
@@ -505,12 +504,15 @@ def is_there(name):
 
 def do_work(intf):
     Trace.init(MY_NAME)
+
     csc = get_csc()
+
     #If the log server is still running, send log messages there.
     if csc and e_errors.is_ok(csc.alive(enstore_constants.LOG_SERVER, 2, 2)):
         logc = log_client.LoggerClient(csc, MY_NAME,
                                        enstore_constants.LOG_SERVER)
         Trace.set_log_func(logc.log_func)
+
     #Begin stopping enstore.
 
     #Movers.
@@ -553,7 +555,6 @@ def do_work(intf):
     #Stop the servers.
     for server in [ enstore_constants.LOG_SERVER,
                     enstore_constants.ACCOUNTING_SERVER,
-                    enstore_constants.DRIVESTAT_SERVER,
                     enstore_constants.ALARM_SERVER,
                     enstore_constants.FILE_CLERK,
                     enstore_constants.VOLUME_CLERK,

@@ -32,8 +32,6 @@ MY_NAME = "LOG_CLIENT"
 MY_SERVER = "log_server"
 YESTERDAY = "yesterday"
 VALID_PERIODS = {"today":1, YESTERDAY:2, "week":7, "month":30, "all":-1}
-RCV_TIMEOUT = 3
-RCV_TRIES = 1
 
 
 #############################################################################################
@@ -304,8 +302,8 @@ class LoggerClient(generic_client.GenericClient):
                                              # not more than 8 characters long
                  servername = MY_SERVER,     # log server name
 		 flags=0,
-                 rcv_timeout=RCV_TIMEOUT,
-                 rcv_tries=RCV_TRIES):
+                 rcv_timeout=0,
+                 rcv_tries=0):
         # need the following definition so the generic client init does not
         # get another logger client
 	flags = flags | enstore_constants.NO_LOG
@@ -318,8 +316,8 @@ class LoggerClient(generic_client.GenericClient):
         except:
             self.uname = 'unknown'
         self.log_priority = 7
-	self.logger_address = self.get_server_address(servername, rcv_timeout, rcv_tries)
-        lticket = self.csc.get( servername, rcv_timeout, rcv_tries)
+	self.logger_address = self.get_server_address(servername, 10, 1)
+        lticket = self.csc.get( servername, 10, 1 )
         self.log_dir = lticket.get("log_file_path", "")
 	Trace.set_log_func( self.log_func )
 
@@ -475,8 +473,8 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
         #self.do_parse = flag
         #self.restricted_opts = opts
         self.message = ""
-        self.alive_rcv_timeout = RCV_TIMEOUT
-        self.alive_retries = RCV_TRIES
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
 	self.get_logfile_name = 0
 	self.get_logfiles = ""
 	self.get_last_logfile_name = 0
