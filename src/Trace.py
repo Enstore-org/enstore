@@ -144,7 +144,7 @@ def trace(severity, msg):
     msg = trunc(msg)
     if print_levels.has_key(severity):
         try:
-            print severity, msg
+            print severity, time.ctime(time.time()), msg
             sys.stdout.flush()
         except:
             pass
