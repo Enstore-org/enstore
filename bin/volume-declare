@@ -142,10 +142,12 @@ case $1 in
                       samait   none 8MM     CA2949 26016563200 26016563200
                      "
          ;;
-  mam)   rm -fr    /pnfs/grau/mammoth/*
-         mkdir     /pnfs/grau/mammoth/volmap
-	 chmod 777 /pnfs/grau/mammoth/volmap
+  mam)
+         #rm -fr    /pnfs/grau/mammoth/*
+         #mkdir     /pnfs/grau/mammoth/volmap
+	 #chmod 777 /pnfs/grau/mammoth/volmap
          volumes_del="
+                      CA2250
                       CA2251
                       CA2252
                       CA2253
@@ -162,9 +164,43 @@ case $1 in
                       CA2264
                       CA2265
                       CA2266
+                      CA2267
+                      CA2268
+                      CA2269
+                      CA2270
+                      CA2271
+                      CA2272
+                      CA2273
+                      CA2274
+                      CA2275
+                      CA2276
+                      CA2277
+                      CA2278
+                      CA2279
+                      CA2280
+                      CA2281
+                      CA2282
+                      CA2283
+                      CA2284
+                      CA2285
+                      CA2286
+                      CA2287
+                      CA2288
+                      CA2289
+                      CA2290
+                      CA2291
+                      CA2292
+                      CA2293
+                      CA2294
+                      CA2295
+                      CA2296
+                      CA2297
+                      CA2298
+                      CA2299
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
+                      mam   none 8MM     CA2250 20113227776 20113227776
                       mam   none 8MM     CA2251 20113227776 20113227776
                       mam   none 8MM     CA2252 20113227776 20113227776
                       mam   none 8MM     CA2253 20113227776 20113227776
@@ -181,27 +217,60 @@ case $1 in
                       mam   none 8MM     CA2264 20113227776 20113227776
                       mam   none 8MM     CA2265 20113227776 20113227776
                       mam   none 8MM     CA2266 20113227776 20113227776
+                      mam   none 8MM     CA2267 20113227776 20113227776
+                      mam   none 8MM     CA2268 20113227776 20113227776
+                      mam   none 8MM     CA2269 20113227776 20113227776
+                      mam   none 8MM     CA2270 20113227776 20113227776
+                      mam   none 8MM     CA2271 20113227776 20113227776
+                      mam   none 8MM     CA2272 20113227776 20113227776
+                      mam   none 8MM     CA2273 20113227776 20113227776
+                      mam   none 8MM     CA2274 20113227776 20113227776
+                      mam   none 8MM     CA2275 20113227776 20113227776
+                      mam   none 8MM     CA2276 20113227776 20113227776
+                      mam   none 8MM     CA2277 20113227776 20113227776
+                      mam   none 8MM     CA2278 20113227776 20113227776
+                      mam   none 8MM     CA2279 20113227776 20113227776
+                      mam   none 8MM     CA2280 20113227776 20113227776
+                      mam   none 8MM     CA2281 20113227776 20113227776
+                      mam   none 8MM     CA2282 20113227776 20113227776
+                      mam   none 8MM     CA2283 20113227776 20113227776
+                      mam   none 8MM     CA2284 20113227776 20113227776
+                      mam   none 8MM     CA2285 20113227776 20113227776
+                      mam   none 8MM     CA2286 20113227776 20113227776
+                      mam   none 8MM     CA2287 20113227776 20113227776
+                      mam   none 8MM     CA2288 20113227776 20113227776
+                      mam   none 8MM     CA2289 20113227776 20113227776
+                      mam   none 8MM     CA2290 20113227776 20113227776
+                      mam   none 8MM     CA2291 20113227776 20113227776
+                      mam   none 8MM     CA2292 20113227776 20113227776
+                      mam   none 8MM     CA2293 20113227776 20113227776
+                      mam   none 8MM     CA2294 20113227776 20113227776
+                      mam   none 8MM     CA2295 20113227776 20113227776
+                      mam   none 8MM     CA2296 20113227776 20113227776
+                      mam   none 8MM     CA2297 20113227776 20113227776
+                      mam   none 8MM     CA2298 20113227776 20113227776
+                      mam   none 8MM     CA2299 20113227776 20113227776
                      "
          ;;
-  sammam)rm -fr    /pnfs/sam/mammoth/*
-         mkdir     /pnfs/sam/mammoth/volmap
-	 chmod 777 /pnfs/sam/mammoth/volmap
-         volumes_del="
-                      CA2270
-                      CA2271
-                      CA2272
-                      CA2273
-                      CA2274
-                     "
+## sammam)rm -fr    /pnfs/sam/mammoth/*
+##        mkdir     /pnfs/sam/mammoth/volmap
+##	 chmod 777 /pnfs/sam/mammoth/volmap
+##         volumes_del="
+##                      CA2270
+##                      CA2271
+##                      CA2272
+##                      CA2273
+##                      CA2274
+##                     "
 #                     lib   ff   medtype label  capacity    bytes left
-         volumes="
-                      sammam   none 8MM     CA2270 20113227776 20113227776
-                      sammam   none 8MM     CA2271 20113227776 20113227776
-                      sammam   none 8MM     CA2272 20113227776 20113227776
-                      sammam   none 8MM     CA2273 20113227776 20113227776
-                      sammam   none 8MM     CA2274 20113227776 20113227776
-                     "
-         ;;
+##         volumes="
+##                      sammam   none 8MM     CA2270 20113227776 20113227776
+##                      sammam   none 8MM     CA2271 20113227776 20113227776
+##                      sammam   none 8MM     CA2272 20113227776 20113227776
+##                      sammam   none 8MM     CA2273 20113227776 20113227776
+##                      sammam   none 8MM     CA2274 20113227776 20113227776
+##                     "
+##         ;;
   dlt)   rm -fr    /pnfs/grau/dlt/*
          mkdir     /pnfs/grau/dlt/volmap
 	 chmod 777 /pnfs/grau/dlt/volmap
