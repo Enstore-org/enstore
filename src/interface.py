@@ -169,12 +169,12 @@ class Interface:
                 self.update = 1
             elif opt == "--ascii_file" :
                 self.ascii_file = value
-            elif opt == "--max_ascii_size" :
-                self.max_ascii_size = value
             elif opt == "--timestamp" :
                 self.timestamp = 1
-            elif opt == "--set_max_ascii_size" :
-                self.set_max_ascii_size = string.atoi(value)
+            elif opt == "--max_ascii_size" :
+                self.max_ascii_size = string.atoi(value)
+            elif opt == "--get_max_ascii_size" :
+                self.get_max_ascii_size = 1
             elif opt == "--html_file" :
                 self.html_file = value
             elif opt == "--nocrc":

@@ -144,6 +144,10 @@ class EnstoreStatus:
     def set_max_ascii_size(self, value):
 	self.max_ascii_size = value
 
+    # get the timestamp value
+    def get_max_ascii_size(self):
+	return self.max_ascii_size
+
     # translate time.time output to a person readable format.
     # strip off the day and reorganize things a little
     def format_time(self, theTime):

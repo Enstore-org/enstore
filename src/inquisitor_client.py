@@ -55,13 +55,20 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(16,"}timestamp")
 	return s
 
-    def set_max_ascii_size (self, value):
-	Trace.trace(16,"{set_max_ascii_size")
+    def max_ascii_size (self, value):
+	Trace.trace(16,"{max_ascii_size")
 	# tell the inquisitor to set the value for the timestamp for the ascii
 	# file
 	s = self.send({"work"       : "set_maxi_size" ,\
 	               "max_ascii_size"  : value })
-        Trace.trace(16,"}set_max_ascii_size")
+        Trace.trace(16,"}max_ascii_size")
+	return s
+
+    def get_max_ascii_size (self):
+	Trace.trace(16,"{get_max_ascii_size")
+	# tell the inquisitor to return the maximum allowed ascii file size
+	s = self.send({"work"       : "get_maxi_size" } )
+        Trace.trace(16,"}get_max_ascii_size")
 	return s
 
     def get_timeout (self):
@@ -84,7 +91,8 @@ class InquisitorClientInterface(interface.Interface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.timestamp = 0
-	self.set_max_ascii_size = 0
+	self.max_ascii_size = 0
+	self.get_max_ascii_size = 0
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -97,7 +105,7 @@ class InquisitorClientInterface(interface.Interface):
         return self.config_options()+self.list_options()  +\
 	       self.alive_options() +\
                ["config_list","timeout=","get_timeout", "update", ""] +\
-	       ["timestamp", "set_max_ascii_size="] +\
+	       ["timestamp", "max_ascii_size=", "get_max_ascii_size"] +\
                self.help_options()
 
 
@@ -130,8 +138,11 @@ if __name__ == "__main__" :
     elif intf.timestamp:
         ticket = iqc.timestamp()
 
-    elif intf.set_max_ascii_size:
-        ticket = iqc.set_max_ascii_size(intf.set_max_ascii_size)
+    elif intf.max_ascii_size:
+        ticket = iqc.max_ascii_size(intf.max_ascii_size)
+
+    elif intf.get_max_ascii_size:
+        ticket = iqc.get_max_ascii_size()
 
     del iqc.csc.u
     del iqc.u           # del now, otherwise get name exception (just for python v1.5???)

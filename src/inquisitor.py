@@ -190,7 +190,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	# check the ascii file and see if it has gotten too big and needs to be
 	# backed up and opened fresh.
-	self.check_ascii_file()
+	self.essfile.timestamp()
 
 	# open the html file and output the header to it
 	self.htmlfile.doopen()
@@ -246,12 +246,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,"}update")
         return
 
-    # check the ascii file.  if it is too big, move it to fileName.timestamp
-    # and open a new one.  also check to make sure the file has not been
-    # moved out from under us.
-    def check_ascii_file(self):
-	self.essfile.timestamp()
-
     # set a new timeout value
     def set_timeout(self,ticket):
         Trace.trace(10,"{set_timeout "+repr(ticket))
@@ -300,11 +294,26 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,"}do_timestamp")
         return
 
-
     # get the current timeout value
     def get_timeout(self, ticket):
         Trace.trace(10,"{get_timeout "+repr(ticket))
-	ret_ticket = { 'timeout' : self.rcv_timeout,
+	ret_ticket = { 'timeout' : self.rcv_timeout,\
+	               'status'  : (e_errors.OK, None) }
+        try:
+           self.reply_to_caller(ret_ticket)
+        # even if there is an error - respond to caller so he can process it
+        except:
+           ret_t["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+           self.reply_to_caller(ret_t)
+           Trace.trace(0,"}get_maxi_size "+repr(ret_t["status"]))
+           return
+        Trace.trace(10,"}get_maxi_size")
+        return
+
+    # get the current timeout value
+    def get_maxi_size(self, ticket):
+        Trace.trace(10,"{get_maxi_size "+repr(ticket))
+	ret_ticket = { 'max_ascii_size' : self.essfile.get_max_ascii_size(),\
 	               'status'  : (e_errors.OK, None) }
         try:
            self.reply_to_caller(ret_ticket)
