@@ -4815,9 +4815,13 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
             if e.shortcut:
                 ifullname = os.path.join(e.pnfs_mount_point,
-                                     ".(access)(%s)" % pnfsid)
+                                         ".(access)(%s)" % pnfsid)
             else:
-                ifullname = p.get_path()
+                try:
+                    ifullname = p.get_path()
+                except (OSError, IOError):
+                    ifullname = os.path.join(e.pnfs_mount_point,
+                                             ".(access)(%s)" % pnfsid)
 
             if e.output[0] == "/dev/null":
                 ofullname = e.output[0]
