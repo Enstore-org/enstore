@@ -11,6 +11,7 @@ import binascii
 import regsub
 import copy
 import pdb
+import string
 
 # enstore modules
 import pnfs
@@ -19,11 +20,13 @@ import log_client
 import configuration_client
 import udp_client
 import EXfer
+import base_defaults
 
 ##############################################################################
 
-def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
-    t0 = time.time()
+def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
+    if t0==0:
+        t0 = time.time()
     tinfo = {}
     tinfo["abs_start"] = t0
 
@@ -54,7 +57,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
     # check the input unix files. if files don't exits, we bomb out to the user
     (ninput, inputlist, file_size) = inputfile_check(input)
     if ninput>1:
-        delayed_dismount = 30
+        delayed_dismount = 1
     else:
         delayed_dismount = 0
 
@@ -129,7 +132,6 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
         print "  ",vticket["host"],vticket["port"]
         print "  dt:",tinfo["get_libman"], "   cumt=",time.time()-t0
 
-
     # loop on all input files sequentially
     for i in range(0,ninput):
         unique_id.append(0) # will be set later when submitted
@@ -149,7 +151,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
                       "   cumt=",time.time()-t0
             t1 = time.time() #----------------------------------------Lap Start
 
-            # store timing info for each transfer in pnfs, not for all - make copy
+            # store timing info for each transfer in pnfs, not for all
             tinfo1 = copy.deepcopy(tinfo)
 
             unique_id[i] = time.time()  # note that this is down to mS
@@ -164,21 +166,21 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
             # if no ticket, then this is a not a retry
             except NameError:
                 work_ticket = {"work"               : "write_to_hsm",\
-                              "delayed_dismount"   : delayed_dismount,\
-                              "priority"           : 1,\
-                              "library"            : library[i],\
-                              "file_family"        : file_family[i],\
-                              "file_family_width"  : width[i],\
-                              "orig_filename"      : inputlist[i],\
-                              "pnfs_info"          : pinfo[i],\
-                              "user_info"          : uinfo,\
-                              "mtime"              : int(time.time()),\
-                              "size_bytes"         : file_size[i],\
-                              "sanity_size"        : 5000,\
-                              "user_callback_port" : port,\
-                              "user_callback_host" : host,\
-                              "unique_id"          : unique_id[i]
-                              }
+                               "delayed_dismount"   : delayed_dismount,\
+                               "priority"           : 1,\
+                               "library"            : library[i],\
+                               "file_family"        : file_family[i],\
+                               "file_family_width"  : width[i],\
+                               "orig_filename"      : inputlist[i],\
+                               "pnfs_info"          : pinfo[i],\
+                               "user_info"          : uinfo,\
+                               "mtime"              : int(time.time()),\
+                               "size_bytes"         : file_size[i],\
+                               "sanity_size"        : 5000,\
+                               "user_callback_port" : port,\
+                               "user_callback_host" : host,\
+                               "unique_id"          : unique_id[i]
+                               }
 
             # send the work ticket to the library manager
             tinfo1["tot_to_send_ticket"+repr(i)] = t1 -t0
@@ -379,8 +381,9 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc) :
 
 ##############################################################################
 
-def read_from_hsm(input, output, config_host, config_port,list, chk_crc) :
-    t0 = time.time()
+def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
+    if t0==0:
+        t0 = time.time()
     tinfo = {}
     tinfo["abs_start"] = t0
 
@@ -992,96 +995,106 @@ def outputfile_check(ninput,inputlist,output):
 
 ##############################################################################
 
+class encp(base_defaults.BaseDefaults):
+
+    # define the command line options that are valid
+    def options(self):
+        return base_defaults.BaseDefaults.config_options(self) + \
+               base_defaults.BaseDefaults.list_options(self)   + \
+               ["nocrc"] +\
+               base_defaults.BaseDefaults.options(self)
+
+    #  define our specific help
+    def help_line(self):
+        return base_defaults.BaseDefaults.help_line(self)+\
+               " inputfilename outputfilename \n  or\n"+\
+               base_defaults.BaseDefaults.help_line(self)+\
+               " inputfilename1 ... inputfilenameN outputdirectory"
+
+    # parse the options
+    def parse_options(self):
+
+        # normal parsing of options
+        base_defaults.BaseDefaults.parse_options(self)
+
+        # bomb out if we don't have an input and an output
+        arglen = len(self.args)
+        if arglen < 2 :
+            print "ERROR: not enough arguments specified"
+            self.print_help()
+            sys.exit(1)
+
+        # get fullpaths to the files
+        p = []
+        for i in range(0,arglen):
+            (machine, fullname, dir, basename) = fullpath(self.args[i])
+            self.args[i] = dir+'/'+basename
+            p.append(string.find(dir,"/pnfs"))
+
+        # all files on the hsm system have /pnfs/ as 1st part of their name
+        # scan input files for /pnfs - all have to be the same
+        self.p1 = p[0]
+        self.p2 = p[arglen-1]
+        self.input = [self.args[0]]
+        self.output = [self.args[arglen-1]]
+        for i in range(1,len(self.args)-1):
+            if p[i]!=self.p1:
+                if p1:
+                    print "ERROR: Not all input files are /pnfs/... files"
+                else:
+                    print "ERROR: Not all input files are unix files"
+                sys.exit(1)
+            else:
+                self.input.append(self.args[i])
+        if self.p1 == 0:
+            self.p1="hsmfile"
+        else:
+            self.p1="unixfile"
+        if self.p2 == 0:
+            self.p2="hsmfile"
+        else:
+            self.p2="unixfile"
+
+
+##############################################################################
+
 if __name__  ==  "__main__" :
-    import getopt
-    import string
+    t0 = time.time()
+
+    # use class to get standard way of parsing options
+    e = encp()
 
     # defaults
-    #config_host = "localhost"
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_port = "7500"
-    config_list = 0
-    list = 0
-    chk_crc = 1
+    e.chk_crc = 1
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list",\
-               "nocrc","list","verbose=","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
-            config_host = value
-        elif opt == "--config_port" :
-            config_port = value
-        elif opt == "--config_list" :
-            config_list = 1
-        elif opt == "--nocrc":
-            chk_crc = 0
-        elif opt == "--list":
-            list = 1
-        elif opt == "--verbose":
-            list = string.atoi(value)
-        elif opt == "--help" :
-            print "python", sys.argv[0], options, "inputfilename outputfilename"
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
-
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    # bomb out if we don't have an input and an output
-    arglen = len(args)
-    if arglen < 2 :
-        print "python",sys.argv[0], options, "inputfilename outputfilename"
-        print "-or-"
-        print "python",sys.argv[0], options, "inputfilename1 ... inputfilenameN outputdirectory"
-        print "   do not forget the '--' in front of each option"
-        sys.exit(1)
-
-    # get fullpaths to the files
-    p = []
-    for i in range(0,arglen):
-        (machine, fullname, dir, basename) = fullpath(args[i])
-        args[i] = dir+'/'+basename
-        p.append(string.find(dir,"/pnfs/"))
-
-    # all files on the hsm system have /pnfs/ as the 1st part of their name
-    # scan input files for /pnfs - all have to be the same
-    p1 = p[0]
-    p2 = p[arglen-1]
-    input = [args[0]]
-    output = [args[arglen-1]]
-    for i in range(1,len(args)-1):
-        if p[i]!=p1:
-            if p1:
-                print "ERROR: Not all input files are /pnfs/... files"
-            else:
-                print "ERROR: Not all input files are unix files"
-            sys.exit(1)
-        else:
-            input.append(args[i])
+    e.parse_options()
 
     # have we been called "encp unixfile hsmfile" ?
-    if p1==-1 and p2==0 :
-        write_to_hsm(input,  output, config_host, config_port, list, chk_crc)
+    if e.p1=="unixfile" and e.p2=="hsmfile" :
+        write_to_hsm(e.input,  e.output,\
+                     e.config_host, e.config_port,\
+                     e.dolist, e.chk_crc, t0)
 
     # have we been called "encp hsmfile unixfile" ?
-    elif p1==0 and p2==-1 :
-        read_from_hsm(input, output, config_host, config_port, list, chk_crc)
+    elif e.p1=="hsmfile" and e.p2=="unixfile" :
+        read_from_hsm(e.input, e.output,\
+                      e.config_host, e.config_port,\
+                      e.dolist, e.chk_crc, t0)
 
     # have we been called "encp unixfile unixfile" ?
-    elif p1==-1 and p2==-1 :
+    elif e.p1=="unixfile" and e.p2=="unixfile" :
         print "encp copies to/from hsm. It is not involved in copying "\
               +input," to ",output
 
     # have we been called "encp hsmfile hsmfile?
-    elif p1==0 and p2==0 :
+    elif e.p1=="hsmfile" and e.p2=="hsmfile" :
         print "encp hsm to hsm is not functional. "\
               +"copy hsmfile to local disk and them back to hsm"
 
     else:
-        print "ERROR: Can not process arguments "+args
+        print "ERROR: Can not process arguments "+e.args
+
+
+
 
