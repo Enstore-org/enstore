@@ -759,6 +759,12 @@ def inventory(output_dir, cache_dir):
 
     for vk in vols.keys():
         vv = vols[vk]
+        if not vv: # vk is gone
+            vv = vols[vk+'.deleted']
+            if not vv:
+                print "%s is missing"%(vk)
+                sys.exit(1)
+
         # skipping deleted volumes
         try:
             if vk[-8:] == ".deleted" or vv['external_label'][-8:] == ".deleted":    # skip
