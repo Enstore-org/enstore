@@ -76,9 +76,15 @@ while 1==1:
       blocksize=102400
       if wr_rate*1.05 < '$rate':
         if left2write>blocksize:
-          condition = "TAPE SLOW"
+          if dt < 4.75:
+            condition = "TAPE TLOW"
+          else:
+            condition = "TAPE SLOW"
         elif left2write!=0:
-          condition = "USER SLOW"
+          if dt < 4.75:
+            condition = "USER TLOW"
+          else:
+            condition = "USER SLOW"
         else:
           condition = "         "
       else:
