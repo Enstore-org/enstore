@@ -85,6 +85,8 @@ LOG_PREFIX = "LOG-"
 START_TIME = "start_time"
 STOP_TIME = "stop_time"
 
+DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     trailer = " : "
@@ -845,7 +847,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    pass
 	return matched_lines
 
-    # make the bytes transferred per unit of time plot
+    # make the total transfers per unit of time and the bytes moved per day
+    # plot
     def plot_bpt(self, ticket):
         Trace.trace(10,"{plot_bpt "+repr(ticket))
 	# find out where the log files are located
@@ -878,8 +881,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        data.append([string.replace(einfo[enstore_status.ETIME], \
 	                     LOG_PREFIX, ""), einfo[enstore_status.EBYTES]])
 	pts_file = lfd+"/bpt.pts"
-	self.make_plot_file(pts_file, data)
+	bpd_file = lfd+"/bytes.pts"
+	self.make_xfer_plot_file(pts_file, data)
 	self.gnuplot(lfd, lfd+"/bpt.gnuplot", pts_file, self.html_dir)
+	self.make_bytes_per_day_plot_file(bpd_file, data)
+	self.gnuplot(lfd, lfd+"/bytes.gnuplot", bpd_file, self.html_dir)
 	ret_ticket = { 'plot_bpt' : len(lines), \
 	               'status'   : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
@@ -891,8 +897,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	          output_dir)
 
     # make the file with the plot points in them
-    def make_plot_file(self, filename, data):
-	Trace.trace(11,"{do_plot_bpt ")
+    def make_xfer_plot_file(self, filename, data):
+	Trace.trace(11,"{make_xfer_plot_file ")
 	# open the file and write out the data points
 	pfile = open(filename, 'w')
 	if len(data[0]) == 2:
@@ -902,8 +908,54 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    for [xpt, ypt, zpt] in data:
 	        pfile.write(xpt+" "+ypt+" "+zpt+"\n")
 	pfile.close()
-	Trace.trace(11,"}do_plot_bpt ")
+	Trace.trace(11,"}make_xfer_plot_file ")
 
+    # make the file with the bytes per day format, first we must sum the data
+    # that we have based on the day
+    def make_bytes_per_day_plot_file(self, filename, data):
+	Trace.trace(11,"{make_bytes_per_day_plot_file ")
+	# initialize the new data hash
+	ndata = self.init_date_hash(data[0][0], data[len(data)-1][0])
+	# sum the data together based on day boundaries
+	for [xpt, ypt] in data:
+	    adate = xpt[0:10]
+	    ndata[adate] = ndata[adate] + string.atof(ypt)
+	# open the file and write out the data points
+	pfile = open(filename, 'w')
+	keys = ndata.keys()
+	keys.sort()
+	for key in keys:
+	    pfile.write(key+" "+repr(ndata[key])+"\n")
+	pfile.close()
+	Trace.trace(11,"}make_bytes_per_day_plot_file ")
+
+    # init the following hash from the first date given to the last date
+    def init_date_hash(self, sdate, edate):
+	Trace.trace(12,"{init_date_hash "+sdate+" "+edate)
+	ndate = {}
+	ndate[sdate[0:10]] = 0.0
+	ndate[edate[0:10]] = 0.0
+	imon = string.atoi(sdate[5:7])
+	iday = string.atoi(sdate[8:10])
+	iyr = string.atoi(sdate[0:4])
+	emon = string.atoi(edate[5:7])
+	eday = string.atoi(edate[8:10])
+	while 1:
+	    if (imon == emon) and (iday == eday):
+	        break
+	    iday = iday + 1
+	    if iday <= DAYS_IN_MONTH[imon-1]:
+	        tmp = "%i-%02i-%02i" % (iyr, imon, iday)
+	        ndate[tmp] = 0.0
+	        continue
+	    else:
+	        imon = imon + 1
+	        iday = 0
+	        if imon > 12:
+	            imon = 1
+	            iyr = iyr + 1
+	Trace.trace(12,"}init_date_hash ")
+	return ndate
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
