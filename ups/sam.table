@@ -9,4 +9,4 @@ QUALIFIERS = ""
         # "control" environmental variables
         envSet(ENSTORE_CONFIG_FILE, "${UPS_PROD_DIR}/etc/sam.conf")
         envSet(ENSTORE_CONFIG_PORT, 7500)
-        envSet(ENSTORE_CONFIG_HOST, samson.fnal.gov)
+        envSet(ENSTORE_CONFIG_HOST, d0ensrv2.fnal.gov)
