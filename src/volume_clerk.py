@@ -340,14 +340,32 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.log(e_errors.ERROR, error_msg)
             return e_errors.ERROR, error_msg
 
-        fcc = file_clerk_client.FileClient(self.csc)
+        q = "select id from volume where label = '%s';"%(vol)
+        res = self.dict.db.query(q).get_result()
+        if not res:
+            msg = 'volume "%s" does not exist'%(vol)
+            Trace.log(e_errors.ERROR, msg)
+            return e_errors.ERROR, msg
 
-        # erase file record
-        status = fcc.erase_volume(vol)['status']
-        del fcc
-        if status[0] != e_errors.OK:
-            Trace.log(e_errors.ERROR, 'erasing volume "%s" failed'%(vol))
-            return status
+        id = res[0][0]
+
+        q = "delete from file where volume = %d;"%(id)
+        try:
+            res = self.dict.db.query(q)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = '__erase_volume(): '+str(exc_type)+' '+str(exc_value)+' '+ q
+            Trace.log(e_errors.ERROR, msg)
+            return e_errors.ERROR, msg
+
+        # fcc = file_clerk_client.FileClient(self.csc)
+        #
+        # # erase file record
+        # status = fcc.erase_volume(vol)['status']
+        # del fcc
+        # if status[0] != e_errors.OK:
+        #    Trace.log(e_errors.ERROR, 'erasing volume "%s" failed'%(vol))
+        #    return status
         # erase volume record
         del self.dict[vol]
         Trace.log(e_errors.INFO, 'volume "%s" has been erased'%(vol))
