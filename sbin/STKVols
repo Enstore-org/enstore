@@ -6,8 +6,10 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 case $gang in
   stken) robot="PowderHorn 9310"
+	 silo_node=fntt
           ;;
   cdfen) robot="PowderHorn 9310"
+	 silo_node=fntt2
           ;;
    d0en*) robot="UNKNOWN"
           ;;
@@ -35,7 +37,7 @@ EOF
 
 rm -f $volfile
 
-/usr/bin/rsh fntt -l acsss "echo query vol all |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garbx" < /dev/null >>$volfile
+/usr/bin/rsh $silo_node -l acsss "echo query vol all |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garbx" < /dev/null >>$volfile
 
 cat << EOF >>$output
 <h1><center>$robot Volume Fetch Done : `date`</center><h1>
