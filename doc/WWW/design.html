@@ -1006,7 +1006,7 @@ extension to <em>encp</em>.
 <tr NOSAVE>
 <td NOSAVE>perform CRC check on the local user machine</td>
 <td NOSAVE>--crc</td>
-<td NOSAVE>CRC checks is only performed on the mover computers</td>
+<td NOSAVE>CRC check is only performed on the mover computers</td>
 </tr>
 
 <tr NOSAVE>
@@ -1103,41 +1103,41 @@ since at most 15 will be active in the system at any time.
 <em>Encp</em> duplicates unix cp's behaviour when one tries to read or write
 multiple input files from the HSM: <br> ecmd <em>encp</em> [options]
 source... directory<br> That is, the final item has to be a directory when
-specifying an input list.  There is 1 caveat when specifying multiple files
-using a single <em>encp</em> command: there is at most 1 mover processing your
-request list at a time. If you want more than 1 mover active, you should use
+specifying an input list.  There is one caveat when specifying multiple files
+using a single <em>encp</em> command: there is at most one mover processing your
+request list at a time. If you want more than one mover active, you should use
 multiple <em>encp</em> commands when you are reading lists of files from more than
 one volume.  The reason <em>encp</em> uses just one mover is to keep the system
 simple (if you want to use multiple movers, then use many <em>encp</em>
 commands).
 <p>
 
-On reads from the HSM, <em>encp</em> scans all your files and groups them according
-to which volume they are on, orders them according location on a tape and then submits all the file requests that are
-on one specific volume, reads all the files for that volume from the hsm
+On reads from the HSM, <em>encp</em> scans all specified files and groups them according
+to which volume they are on, orders them according location on a tape, and then submits all the file requests that are
+on one specific volume, reads all the files for that volume from the hsm,
 and then proceeds to the next volume.  <em>Encp</em> processes the volumes in any
 order it chooses.
 <p>
 
 On writes to the HSM, <em>encp</em> processes each input file sequentially. Since
-the user must specify a single output directory, all input files belong to
+the user must specify a single output directory, all input files must belong to
 the same file family, and hence could all go to the same tape (if
 possible). <em>Encp</em> sets a flag,"don't dismount the volume too quickly -
 there's more files coming for the same family", that the mover uses to
-postpone the dismount and thereby bypass the extra times involved in the
+postpone the dismount and thereby avoid the extra times involved in the
 volume manipulations.  Please note that there is no guarantee that all the
 files will go to one tape (there might not be room) or that they will be
 grouped together on the tape (there may be other writes to the same family
 that get intermixed).
 <p>
 
-Consider the following example (P=/pnfs/enstore/airedale) for reading from
+Consider the following example (P=/pnfs/enstore/airedale) reading from
 the HSM:
 <p>
 
-There are the following files on flop301: ran-1, ran-2 ran-3, ran-4<br>
-There are the following files on flop302: ran-5, ran-6 ran-7, ran-8<br>
-There are the following files on flop302: ran-9, ran-10 ran-11, ran-12<br>
+The following files on flop301: ran-1, ran-2 ran-3, ran-4<br>
+The following files on flop302: ran-5, ran-6 ran-7, ran-8<br>
+The following files on flop302: ran-9, ran-10 ran-11, ran-12<br>
 <p>
 
 <em>Encp</em> submits the requests for all files on flop301 and reads back those
@@ -1170,8 +1170,8 @@ $ ecmd encp $P/ran-1       $P/ran-2        $P/ran-3        $P/ran-4 \
 
 One of the requests of the Fermilab Farms group was the ability to query
 Enstore to determine what transfers were in progress and pending on a
-certain node. They will need to take a farm node out of service and they
-want to know what transfers are active for the node before it is taken
+certain node. If they need to take a farm node out of service and they
+want to know what transfers are active on the node before it is taken
 down.  [Some users submit jobs even when they know the node is going to be
 down and then complain when their jobs fail. This feature will allow the
 farms group to send and automated message saying that the node was taken
@@ -1248,9 +1248,9 @@ informational: ups declare succeeded
 informational: ups declare succeeded
 </pre>
 
-And the entire product basically consists of the <em>encp</em> binary, pcmd (a <em>pnfs</em> script
+The entire product consists of the <em>encp</em> binary, pcmd (a <em>pnfs</em> script
 described in the <em>pnfs</em> section), and some UPS tables.  The <em>encp</em> binary is
-quite large since it is statically linked.
+large since it is statically linked.
 <pre>
 $ ls
      179 Nov 24 09:49 .manifest.encp
@@ -1264,7 +1264,7 @@ $ ls
 
 Two environmental variables, ENSTORE_CONFIG_PORT, and ENSTORE_CONFIG_HOST,
 control which Enstore system the <em>encp</em> requests go to. In order to
-allow a user allow a user to override the default control environmental
+allow a user to override the default control environmental
 variables distributed with the product, the <em>encp</em> product uses the
 UPS concept of "virtual" products.  The basic idea is that everything in
 the <em>encp</em> table file is general, and everything in the virtual
@@ -1274,10 +1274,10 @@ Finally, when <em>encp</em> is setup, it creates a directory in the /tmp
 area where it stores debugging information and other non-user
 information. The user can ignore the files in the /tmp area. 
 <p>
-As an aside, it should be noted that since development of Enstore is still
-rapid, no versions are cut.  The complete UPS product structure is
-finished.  For new installations, typically we CVS check code and issue one
-make command and the entire product is ready to be used.  We expect to cut
+As an aside, it should be noted that since Enstore is still
+in development, no versions are cut.  The complete UPS product structure is
+finished.  For new installations, typically we CVS checkout code, issue one
+make command, and the product is ready to be used.  We expect to cut
 versions of Enstore when it is appropriate. These versions will not be
 frozen, <it>i.e.</it>, they will need Python and the other dependent products.
 
