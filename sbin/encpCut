@@ -146,7 +146,9 @@ case ${FLAVOR} in
 esac
 
 if [ -d CVS ] ; then
-   Cvs_Module=`expr "\`cat CVS/Repository\`" : ".*/\([^/]*\)"`
+   # who cares any way?
+   # Cvs_Module=`expr "\`cat CVS/Repository\`" : ".*/\([^/]*\)"`
+   Cvs_Module=`cat CVS/Repository`
 fi
 if [ "${Cvs_Module:-}" = "" ];then
    check_status 1 "You need to be in a cvs working directory to use $productCut"
