@@ -1,0 +1,7 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$   $Revision$
+me=`whoami`
+echo "/tmp/enstore/$me"
