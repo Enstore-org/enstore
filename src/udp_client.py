@@ -39,9 +39,10 @@ def wait_rsp( sock, address, rcv_timeout ):
         reply , server = sock.recvfrom( TRANSFER_MAX, rcv_timeout)
 
     elif x or w :
-        exc,msg,tb=sys.exc_info()
-        Trace.log(e_errors.INFO, "UDPClient.send: exception on select after send to %s %s: %s %s"%
-                  (address,x,exc,msg))
+        exc, msg = sys.exc_info()[:2]
+        Trace.log(e_errors.INFO,
+              "UDPClient.send: exception on select after send to %s %s: %s %s"%
+                  (address, x, exc, msg))
         raise UDPError, "impossible to get these set w/out [r]"
     return reply, server, rcv_timeout
 
@@ -116,14 +117,14 @@ class UDPClient:
             number, out, t = r_eval(reply) #XXX
             # catch any error and keep going. server needs to be robust
         except:
-            exc,msg,tb=sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             logmsg="udpClient.eval_reply %s %s"%(exc, msg)
             if exc == exceptions.SyntaxError: #msg size> max datagram size?
                 logmsg=logmsg+"Truncated message?"
             elif exc == exceptions.TypeError:
                 logmsg = logmsg + ": " + reply
             Trace.log(e_errors.ERROR, logmsg)
-            raise exc, msg, tb
+            raise sys.exc_info()
         return number, out, t
 
 
@@ -192,7 +193,7 @@ class UDPClient:
                 except TypeError:
                     #If a this error occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
-                    exc, msg, tb = sys.exc_info()
+                    exc, msg = sys.exc_info()[:2]
                     try:
                         message = "%s: %s: From server %s:%s" % \
                                   (exc, msg, server, reply[:100])
@@ -269,7 +270,7 @@ class UDPClient:
                 except TypeError:
                     #If a this error occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
-                    exc, msg, tb = sys.exc_info()
+                    exc, msg = sys.exc_info()[:2]
                     try:
                         message = "%s: %s: From server %s:%s" % \
                                   (exc, msg, server, reply[:100])
