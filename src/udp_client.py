@@ -164,6 +164,11 @@ class UDPClient:
         # keep track of whom we need to send a "done_cleanup" to
         tsd.send_done[dst] = 1
 
+        #If the ip to send to is localhost there is something wrong.
+        if tsd.host == "127.0.0.1":
+            return {'status':(e_errors.NET_ERROR,
+                    "Default ip address is localhost.")}
+
         #set up the static route before sending.
 	# outgoing interface_ip is tsg.host and destination is dst[0].
         if not host_config.is_route_in_table(dst[0]):
