@@ -61,7 +61,7 @@ class Restrictor:
         if flat_ticket['vc'].has_key('wrapper'): del(flat_ticket['vc']['wrapper'])
         callback = flat_ticket.get('callback_addr', None)
         if callback:
-            flat_ticket['host'] = hostaddr.address_to_name(callback)
+            flat_ticket['host'] = hostaddr.address_to_name(callback[0])
         else:
             flat_ticket['host'] = None 
         for key in flat_ticket.keys():

@@ -1508,7 +1508,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         for w in self.work_at_movers.list:
             callback = w.get('callback_addr', None)
             if callback:
-                host_from_ticket = hostaddr.address_to_name(callback)
+                host_from_ticket = hostaddr.address_to_name(callback[0])
             else:
                 host_from_ticket = w['wrapper']['machine']
             
