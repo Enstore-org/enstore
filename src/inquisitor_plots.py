@@ -15,7 +15,7 @@ import enstore_plots
 import enstore_functions
 import enstore_functions2
 import enstore_constants
-import acc_temp
+import accounting_query
 
 LOGFILE_DIR = "logfile_dir"
 
@@ -61,14 +61,15 @@ class InquisitorPlots:
     # if start_time and stop_time are specified :
     #                           do start_time -> stop_time
     def make_time_query(self, column):
-        time_q = "%s to_char(%s, 'YYYY-MM-DD') %s"%(acc_temp.WHERE, column, acc_temp.GREATER)
+        time_q = "%s to_char(%s, 'YYYY-MM-DD') %s"%(accounting_query.WHERE, column,
+                                                    accounting_query.GREATER)
         if not self.start_time:
             # only use the last 30 days
             self.start_time = self.acc_db.days_ago(30)
         time_q = "%s '%s'"%(time_q, self.start_time)
 
         if self.stop_time:
-            time_q = "%s %s %s '%s'"%(acc_temp.AND, column, acc_temp.LESS, self.stop_time)
+            time_q = "%s %s %s '%s'"%(accounting_query.AND, column, accounting_query.LESS, self.stop_time)
         return time_q
 
     # make the mount plots (mounts per hour and mount latency)
@@ -91,7 +92,7 @@ class InquisitorPlots:
         time_q = self.make_time_query(start_col)
 
         # only need mount requests
-        time_q = "%s %s state%s'M'"%(time_q, acc_temp.AND, acc_temp.EQUALS)
+        time_q = "%s %s state%s'M'"%(time_q, accounting_query.AND, accounting_query.EQUALS)
 
         # get the total mounts/day.  the results are in a list
         # where each element looks like -
@@ -102,8 +103,11 @@ class InquisitorPlots:
         # get the mount latencies  the results are in a list
         # where each element looks like -
         #  {'start': '2003-03-27 00:05:55', 'latency': '00:00:25'}
-        query = "select %s, to_char(%s-%s, 'HH24:MI:SS') as latency from %s %s order by %s"%(start_col, finish_col, start_col,
-                                                                      table, time_q, start_col)
+        query = "select %s, to_char(%s-%s, 'HH24:MI:SS') as latency from %s %s order by %s"%(start_col,
+                                                                                             finish_col,
+                                                                                             start_col,
+                                                                                             table, time_q,
+                                                                                             start_col)
         latencys = self.acc_db.query(query)
 
         # get the mounts for each drive type.  first get a list of the drive
@@ -118,7 +122,8 @@ class InquisitorPlots:
         for type_d in drive_types.dictresult():
             aType = type_d[type_col]
             query = "select to_char(start , 'YYYY-MM-DD') as %s, count(*) as total from %s %s %s %s='%s' group by to_char(start, 'YYYY-MM-DD') order by to_char(start, 'YYYY-MM-DD')"%(start_col, table, time_q,
-                                                                           acc_temp.AND, type_col, aType)
+                                                                           accounting_query.AND, type_col,
+                                                                           aType)
             total_mounts_type[aType] = self.acc_db.query(query).dictresult()
         
         # only do the plotting if we have some data
@@ -318,7 +323,7 @@ class InquisitorPlots:
         # open a connection to the accounting db, the data is there
         acc = self.config_d.get(enstore_constants.ACCOUNTING_SERVER, {})
         if acc:
-            self.acc_db = acc_temp.accDB(acc.get('dbhost', ""), acc.get('dbname', ""))
+            self.acc_db = accounting_query.accountingQuery(acc.get('dbhost', ""), acc.get('dbname', ""))
 
 	if encp:
 	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
