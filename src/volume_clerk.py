@@ -432,7 +432,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # Get the next volume that satisfy criteria
 
-    def next_write_volume (self, ticket):
+    def next_write_volume_1 (self, ticket):
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
@@ -646,7 +646,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # A quick fix is applied
     # There should be a permenat fix in the future
 
-    def next_write_volume2 (self, ticket):
+    def next_write_volume (self, ticket):
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
