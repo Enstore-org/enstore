@@ -58,7 +58,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # input ticket is a file clerk part of the main ticket
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
-        record = {'pnfsid':'','drive':'','pnfs_name0':'','deleted':'no'}
+        record = {'pnfsid':'','drive':'','pnfs_name0':'','deleted':'unknown'}
 
         record["external_label"]   = ticket["fc"]["external_label"]
         record["location_cookie"]  = ticket["fc"]["location_cookie"]
