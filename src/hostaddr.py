@@ -65,6 +65,7 @@ def get_interface_file_name(verbose=0):
     trydirs = []
     for envvar in "ENSTORE_DIR", "ENCP_DIR":
         if envvar in os.environ.keys():
+            trydirs.append(os.environ[envvar])
             trydirs.append(os.path.join(os.environ[envvar], "etc"))
     trydirs.append("/etc") # fallback
     for trydir in trydirs:
