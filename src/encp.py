@@ -1876,6 +1876,8 @@ class encp(interface.Interface):
         self.data_access_layer = 0 # no special listings
         self.verbose = 0           # no output yet
 	self.delayed_dismount = 0  # delayed dismount time is set to 0
+	self.output_file_family = '' # initial set for use with --ephemeral or
+	                             # or --file_family
 
         host = 'localhost'
         port = 0
