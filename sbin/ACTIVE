@@ -17,9 +17,9 @@ esac
 
 if [ "${1:-x}" = "local" ]; then gang=$node; fi
 
-rgang -nn $gang "ls -ld /root/CRON/*ACTIVE         2>&1 |grep -v 'No such'
-                 ls -ld /home/enstore/CRON/*ACTIVE 2>&1 |grep -v 'No such'
-                 ls -ld /home/enstore/MISC/*ACTIVE 2>&1 |grep -v 'No such'
+rgang -nn $gang "ls -ld /root/CRON/*ACTIVE         2>&1 |egrep -v 'No such|Permission denied'
+                 ls -ld /home/enstore/CRON/*ACTIVE 2>&1 |egrep -v 'No such|Permission denied'
+                 ls -ld /home/enstore/MISC/*ACTIVE 2>&1 |egrep -v 'No such|Permission denied'
                  echo
                 "
 
