@@ -13,6 +13,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <limits.h>
+
+#include <sys/socket.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+
 #include "enrouteError.h"
 
 /* errstr(errno) -- return error message for the errno */
@@ -181,6 +186,47 @@ static int route(char *cmd, char *dest, char *gw, char *if_name)
 	return(OK);
 }
 
+static int arp(char *cmd, char *dest, char *hwaddr)
+{
+	char path[PATH_MAX + 1];
+	int pid, child;
+	char key[64];
+	int status;
+
+	if (getexecpath(path) == NULL)
+	{
+		return (NoEnroute2);
+	}
+
+	if ((pid = fork()) == 0)	/* child */
+	{
+		(void) keygen(key);	/* generate a key */
+		if(execl(path, "phantom-encp", key,
+			 cmd, dest, hwaddr, NULL) < 0)
+		{
+			return(FailedExecution);
+		}
+	}
+	else
+	{
+		child = wait(&status);
+	}
+
+	if (WIFEXITED(status))
+	{
+		return(WEXITSTATUS(status));
+	}
+	if (WIFSIGNALED(status))
+	{
+		fprintf(stderr, "Killed by signal: %d\n", WTERMSIG(status));
+		return(FailedExecution);
+	}
+
+	/* This should not happen since enroute2 always calls exit */
+
+	return(OK);
+}
+
 int routeAdd(char *dest, char *gw, char *if_name)
 {
 	return route("add", dest, gw, if_name);
@@ -195,3 +241,9 @@ int routeChange(char *dest, char *gw, char *if_name)
 {
 	return route("change", dest, gw, if_name);
 }
+
+int arpAdd(char *dest, char *dest_hwaddr)
+{
+	return arp("arp", dest, dest_hwaddr);
+}
+

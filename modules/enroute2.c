@@ -51,6 +51,11 @@ static char *signature = "Enstore \nSignature: \n2nst4r2 \n2etuorne ";
 #include <errno.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include <sys/wait.h>
+//#include <setjmp.h>
+//#include <signal.h>
+//#include <fcntl.h>
+#include <sys/ioctl.h>
 
 #define SEQ 1
 
@@ -61,8 +66,63 @@ static int is_exe(char *path);
 static char *getexecpath(char *path);
 static int force_arp_update(char *dest_addr, char *local_intf);
 
+static int do_routing(char *cmd, char *dest, char *gw, char *if_name);
+static int do_arping(char *cmd, char *dest, char *dest_hwaddr);
+
+//static jmp_buf alarm_jump;
+
+main(argc, argv)
+int argc;
+char **argv;
+{
+  /* handle simple syntax and security check */
+  if ((argc < 4) || (argc > 6))
+  {
+     (void) fprintf(stderr, "syntax error\n");
+     exit(SyntaxError);
+  }
+  
+  if (!valid_key(argv[1]))
+  {
+     (void) fprintf(stderr,
+		    "can only be launched by enstore/encp\n");
+     exit(IllegalExecution);
+  }
+
+  (void) setuid(0);	/* to show who the boss is */
+  if (getuid())
+  {
+     /* do not have enough privilege */
+
+     exit(NoPrivilege);
+  }
+
+  if(!strcmp(argv[2], "add") || !strcmp(argv[2], "del") ||
+     !strcmp(argv[2], "change"))
+  {
+     if(argc == 4)
+	return do_routing(argv[2], argv[3], NULL, NULL);
+     if(argc == 5)
+	return do_routing(argv[2], argv[3], argv[4], NULL);
+     if(argc == 6)
+	return do_routing(argv[2], argv[3], argv[4], argv[5]);
+
+     return(SyntaxError);
+  }
+  else if(!strcmp(argv[2], "arp"))
+  {
+     if(argc == 5)
+	return do_arping(argv[2], argv[3], argv[4]);
+
+     return(SyntaxError);
+  }
+
+  return(FailedExecution);
+}
+
 
 #ifdef __linux__
+
 /*
  * For now, Linux is an exception and main() returns 5
  * future implementation depends on whether route(7) will be implemented
@@ -71,63 +131,33 @@ static int force_arp_update(char *dest_addr, char *local_intf);
  * Update: It is now implimented in ioctl(2).
  */
 
-#include <sys/ioctl.h>
-
-main(argc, argv)
-int argc;
-char **argv;
+static do_routing(char *cmd, char *dest, char *gw, char *if_name)
 {
   struct rtentry rt_msg, rt_change_msg;
   struct hostent *host;
   struct sockaddr_in addr;
   int rs;   /*routing socket*/
-  int rtn;
-  struct arpreq arp_msg;
-  
-  /* handle simple syntax and security check */
-
-  if ((argc < 4) || (argc > 6))
-  {
-     (void) fprintf(stderr, "syntax error\n");
-     exit(SyntaxError);
-  }
-
-  if (!valid_key(argv[1]))
-  {
-     (void) fprintf(stderr,
-		    "can only be launched by enstore/encp\n");
-     exit(IllegalExecution);
-  }
-	
-  (void) setuid(0);	/* to show who the boss is */
-  if (getuid())
-  {
-     /* do not have enough privilege */
-
-     exit(NoPrivilege);
-  }
-  
+   
   /*routing socket*/
   rs = socket(PF_INET, SOCK_DGRAM, 0);
 
   /*clear these stuctures*/
   memset(&addr, 0, sizeof(struct sockaddr_in));
   memset(&rt_msg, 0, sizeof(struct rtentry));
-  memset(&arp_msg, 0, sizeof(struct arpreq));
 
   /*Set the flags*/
   rt_msg.rt_flags = RTF_UP | RTF_HOST;
 
   /* destination */
-  host = gethostbyname(argv[3]);
+  host = gethostbyname(dest);
   addr.sin_family = AF_INET;
   addr.sin_addr = *((struct in_addr*) host->h_addr_list[0]);
   memcpy(&(rt_msg.rt_dst), &addr, sizeof(addr));
 
   /* gateway */
-  if (argc > 4)
+  if (gw != NULL)
   {
-    host = gethostbyname(argv[4]);
+    host = gethostbyname(gw);
     addr.sin_family = AF_INET;
     addr.sin_addr = *((struct in_addr*) host->h_addr_list[0]);
     memcpy(&(rt_msg.rt_gateway), &addr, sizeof(addr));
@@ -135,8 +165,7 @@ char **argv;
     rt_msg.rt_flags |= RTF_GATEWAY;
   }
 
-
-  if(!strcmp(argv[2], "add"))
+  if(!strcmp(cmd, "add"))
   {
     /*
      * The rt_dev field allows us to specify the actuall interface to be used.
@@ -145,10 +174,10 @@ char **argv;
      * Only set this field when adding.  If this field is set for a route
      * deletion we would get errno 19 (No such device).
      */
-    rt_msg.rt_dev = argv[5];
+    rt_msg.rt_dev = if_name;
 
     /* Add the new route to the routing table. */
-    if((rtn = ioctl(rs, SIOCADDRT, &rt_msg)) < 0)
+    if(ioctl(rs, SIOCADDRT, &rt_msg) < 0)
     {
        if(errno != EEXIST)
        {
@@ -159,29 +188,10 @@ char **argv;
        }
     }
 
-    /* Set the arp struct. */
-    memcpy(&(arp_msg.arp_pa), &addr, sizeof(addr));
-
-    /* Remove from the arp table the old entry. */
-    if((argc > 5) && ((rtn = ioctl(rs, SIOCDARP, &arp_msg)) < 0))
-    {
-       fprintf(stderr,
-	    "add enroute2(SIOCDARP): errno %d: %s\n", errno, strerror(errno));
-       exit(RSOpenFailure);
-    }
-
-    /*
-     * The remaining problem is that the other end may decide
-     * to use the wrong interface to send to.  By forcing an
-     * arp update using the correct interface (the system
-     * defaults to the first one it finds) we can avoid this
-     * problem when interfaces are on the same subnet.
-     */
-    (void) force_arp_update(argv[3], argv[5]);    
   }
-  else if(!strcmp(argv[2], "del"))
+  else if(!strcmp(cmd, "del"))
   {
-    if((rtn = ioctl(rs, SIOCDELRT, &rt_msg)) < 0)
+    if(ioctl(rs, SIOCDELRT, &rt_msg) < 0)
     {
        /*
 	* It is not an error if the route we want to delete already
@@ -196,21 +206,13 @@ char **argv;
 	  exit(RSOpenFailure);
        }
     }
-#if 0
-    if((rtn = ioctl(rs, SIOCDARP, &arp_msg)) < 0)
-    {
-       fprintf(stderr,
-	       "enroute2(SIOCDARP): errno %d: %s\n", errno, strerror(errno));
-       exit(RSOpenFailure);
-    }
-#endif
   }
-  else if(!strcmp(argv[2], "change"))
+  else if(!strcmp(cmd, "change"))
   {
     /* Do not use the gateway when deleting a route; it will not match. */
     memcpy(&rt_change_msg, &rt_msg, sizeof(rt_msg));
     memset(&(rt_msg.rt_gateway), 0, sizeof(addr));
-    if((rtn = ioctl(rs, SIOCDELRT, &rt_change_msg)) < 0)
+    if(ioctl(rs, SIOCDELRT, &rt_change_msg) < 0)
     {
        if(errno != ESRCH)
        {
@@ -220,7 +222,7 @@ char **argv;
 	  exit(RSOpenFailure);
        }
     }
-    if((rtn = ioctl(rs, SIOCADDRT, &rt_msg)) < 0)
+    if(ioctl(rs, SIOCADDRT, &rt_msg) < 0)
     {
        if(errno != EEXIST)
        {
@@ -230,30 +232,25 @@ char **argv;
 	  exit(RSOpenFailure);
        }
     }
-
-    /*
-     * The remaining problem is that the other end may decide
-     * to use the wrong interface to send to.  By forcing an
-     * arp update using the correct interface (the system
-     * defaults to the first one it finds) we can avoid this
-     * problem when interfaces are on the same subnet.
-     */
-    (void) force_arp_update(argv[3], argv[5]);
   }
 
   close(rs);
   exit(0);
 }
 
+
 #else
 
-main(argc, argv)
-int argc;
-char **argv;
-{
-	int rs;		/* routing socket */
-	struct hostent *host;
+/*
+ * This section of code is for OSes that support BSD routing sockets.
+ */
 
+int do_routing(char *cmd, char *dest, char *gw, char *if_name)
+{
+	struct rtentry rt_msg;
+	struct hostent *host;
+	struct sockaddr_in addr;
+	int rs;   /*routing socket*/
 	char buf[512];	/* no memory allocation, no memory leak */
 
 	/* define pointers to access its parts */
@@ -261,30 +258,7 @@ char **argv;
 	struct rt_msghdr *rtm = (struct rt_msghdr *) buf;
 	struct sockaddr_in *addr1 = (struct sockaddr_in *) (rtm + 1);
 	struct sockaddr_in *addr2 = (struct sockaddr_in *) (addr1 + 1);
-
-	/* handle simple syntax and security check */
-
-	if ((argc < 4) || (argc > 6))
-	{
-		(void) fprintf(stderr, "syntax error\n");
-		exit(SyntaxError);
-	}
-
-	if (!valid_key(argv[1]))
-	{
-		(void) fprintf(stderr,
-			       "can only be launched by enstore/encp\n");
-		exit(IllegalExecution);
-	}
 	
-	(void) setuid(0);	/* to show who the boss is */
-	if (getuid())
-	{
-		/* do not have enough privilege */
-
-		exit(NoPrivilege);
-	}
-
 	/* open the routing socket */
 	
 	if ((rs = socket(PF_ROUTE, SOCK_RAW, 0)) < 0)
@@ -306,55 +280,55 @@ char **argv;
 
 	/* destination */
 
-	host = gethostbyname(argv[3]);
+	host = gethostbyname(dest);
 	addr1->sin_family = AF_INET;
 	addr1->sin_addr = *((struct in_addr*) host->h_addr_list[0]);
 
 	/* gateway, if any */
 
-	if (argc > 4)
+	if (gw != NULL)
 	{
-		host = gethostbyname(argv[4]);
+		host = gethostbyname(gw);
 		addr2->sin_family = AF_INET;
 		addr2->sin_addr = *((struct in_addr*) host->h_addr_list[0]);
 	}
 
 	/* routing message type specific information */
 
-	if (!strcmp(argv[2], "add"))
+	if (!strcmp(cmd, "add"))
 	{
 		rtm->rtm_msglen = sizeof(struct rt_msghdr) + 2 * sizeof(struct sockaddr);
 		rtm->rtm_type = RTM_ADD;
 		rtm->rtm_addrs = RTA_DST | RTA_GATEWAY;
-		if (argc > 5)
+		if (if_name != NULL)
 		{
 			/*
 			 * Force the interface that is to be used.  This
 			 * might allow for different interfaces to be on the
 			 * same subnet and still route as we want.
 			 */
-			rtm->rtm_index = if_nametoindex(argv[5]);
+			rtm->rtm_index = if_nametoindex(if_name);
 		}
 	}
-	else if (!strcmp(argv[2], "del"))
+	else if (!strcmp(cmd, "del"))
 	{
 		rtm->rtm_msglen = sizeof(struct rt_msghdr) + sizeof(struct sockaddr);
 		rtm->rtm_type = RTM_DELETE;
 		rtm->rtm_addrs = RTA_DST;
 	}
-	else if (!strcmp(argv[2], "change"))
+	else if (!strcmp(cmd, "change"))
 	{
 		rtm->rtm_msglen = sizeof(struct rt_msghdr) + 2 * sizeof(struct sockaddr);
 		rtm->rtm_type = RTM_CHANGE;
 		rtm->rtm_addrs = RTA_DST | RTA_GATEWAY;
-		if (argc > 5)
+		if (if_name != NULL)
 		{
 			/*
 			 * Force the interface that is to be used.  This
 			 * might allow for different interfaces to be on the
 			 * same subnet and still route as we want.
 			 */
-			rtm->rtm_index = if_nametoindex(argv[5]);
+			rtm->rtm_index = if_nametoindex(if_name);
 		}
 	}
 	else
@@ -367,23 +341,66 @@ char **argv;
 	(void) write(rs, rtm, rtm->rtm_msglen);
 
 	(void) close(rs);
-
-	if (!strcmp(argv[2], "add") || (!strcmp(argv[2], "change")))
-	{
-	        /*
-		 * The remaining problem is that the other end may decide
-		 * to use the wrong interface to send to.  By forcing an
-		 * arp update using the correct interface (the system
-		 * defaults to the first one it finds) we can avoid this
-		 * problem when interfaces are on the same subnet.
-		 */
-	        (void) force_arp_update(argv[3], argv[5]);
-	}
-	
 	exit(0);
 }
 
 #endif
+
+static int do_arping(char *cmd, char *dest, char *dest_hwaddr)
+{
+   struct arpreq arp_msg;
+   struct hostent *host;
+   struct sockaddr_in addr;
+   struct sockaddr hwaddr;
+   char dummy[32]; /*holder for the hardware addr*/
+   int rs;   /*routing socket*/
+   int i, j=0;
+   unsigned char *a_ptr;  /*array pointer*/
+   
+   /*routing socket*/
+   rs = socket(PF_INET, SOCK_DGRAM, 0);
+
+   memset(&arp_msg, 0, sizeof(struct arpreq));
+   memset(dummy, 0 , 32);   
+
+   /*destination ip addr*/
+   host = gethostbyname(dest);
+   addr.sin_family = AF_INET;
+   addr.sin_addr = *((struct in_addr*) host->h_addr_list[0]);
+   memcpy(&(arp_msg.arp_pa), &addr, sizeof(addr));
+
+   /*destination hardware addr*/
+   for(i = 0; i < strlen(dest_hwaddr) && j < 32; i++)
+   {
+      if(isxdigit(dest_hwaddr[i]))
+      {
+	 dummy[j] = dest_hwaddr[i];
+	 j++;
+      }
+   }
+   a_ptr = (void*)&(hwaddr.sa_data);
+   sscanf(dummy, "%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx",
+	  a_ptr, (a_ptr + 1), (a_ptr + 2),
+	  (a_ptr + 3), (a_ptr + 4), (a_ptr + 5));
+   
+   /*
+    * Set the address family for the hardware address.  Stevens says that
+    * this should be AF_UNSPEC, however Linux needs ARPHRD_ETHER instead.
+    */
+#ifdef __linux__
+   arp_msg.arp_ha.sa_family = ARPHRD_ETHER;
+#else
+   arp_msg.arp_ha.sa_family = AF_UNSPEC;
+#endif
+   
+   if(ioctl(rs, SIOCSARP, &arp_msg) < 0)
+    {
+       fprintf(stderr,
+	       "add enroute2(SIOCSARP): errno %d: %s\n",
+	       errno, strerror(errno));
+       exit(RSOpenFailure);
+    }
+}
 
 static int valid_key(key)
 char *key;
@@ -416,108 +433,3 @@ char *key;
 }
 
 
-/*
- *  is_exe(path) -- check if path is an executable
- */
-
-static int is_exe(char *path)
-{
-        struct stat stbuf;
-
-        if (stat(path, &stbuf))
-        {
-                return(0);
-        }
-
-	
-        if(stbuf.st_uid == 0) /* Shortcut for root. */
-	       return (stbuf.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH));
-	else if(stbuf.st_mode & S_IXOTH) /* all executable */
-	       return (stbuf.st_mode & S_IXOTH);
-	else if(stbuf.st_uid == geteuid()) /* user privledge */
-	       return (stbuf.st_mode & S_IXUSR);
-	else if(stbuf.st_gid == getegid()) /* group privledge */
-	       return (stbuf.st_mode & S_IXGRP);
-
-	return(0);
-}
-
-/*
- *  getexecpath(path) -- set path for arping, which will be at either
- *		/sbin/arping or /usr/local/bin/arping
- *
- *	path is a buffer supplied by caller
- *	getexecpath() returns path or NULL, if none is found
- */
-
-static char *getexecpath(char *path)
-{
-	char *p;
-
-	/* try ARPING first so that user may override defaults */
-
-	if ((p = getenv("ARPING")) != NULL)
-	{
-		(void) strcpy(path, p);
-		if (is_exe(path))
-		{
-			return(path);
-		}
-	}
-
-	/* try /usr/local/sbin/arping */
-
-	(void) strcpy(path, "/usr/local/sbin/arping");
-	if (is_exe(path))
-	{
-		return(path);
-	}
-	
-	/* try /usr/local/bin/arping */
-
-	(void) strcpy(path, "/usr/local/bin/arping");
-	if (is_exe(path))
-	{
-		return(path);
-	}
-
-	/* try /sbin/arping */
-
-	(void) strcpy(path, "/sbin/arping");
-	if (is_exe(path))
-	{
-		return(path);
-	}
-
-	return(NULL);
-}
-
-/*
- * force_arp_update() takes two arguments:
- * 1) the destination ip address/hostname of the remote host
- * 2) the interface name on the local host to use
- *
- * If the arping program is installed on the local system, the arp tables
- * should be set correctly on both nodes.  If it is not there, then
- * nothing will happen and the transfer will continue as best luck
- * will provide.
- */
-static int force_arp_update(char *dest_addr, char *local_intf)
-{
-	char path[PATH_MAX + 1];
-	char arping[PATH_MAX + 512 + 1];
-
-	if (getexecpath(path) == NULL)
-	{
-		return(NoPrivilege);
-	}
-   
-	sprintf(arping, "%s -q -I %s -c 1 %s", path, local_intf, dest_addr);
-	if(system(arping))
-	{
-		fprintf(stderr, "ARP update failed.\n");
-		return(FailedExecution);
-	}
-
-	return(0);
-}
