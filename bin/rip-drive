@@ -124,6 +124,12 @@ dc27node=$d0enmvr8a
 dc28node=$d0enmvr7a
 dc29node=$d0enmvr7a
 
+dm30node=$d0enmvr15a
+dm31node=$d0enmvr15a
+dm32node=$d0enmvr15a
+dm33node=$d0enmvr15a
+
+
 ea11node=$stkenmvr1a
 ea12node=$stkenmvr1a
 
@@ -171,6 +177,11 @@ dc27device=/dev/rmt/tps3d1n
 dc28device=/dev/rmt/tps0d1n
 dc29device=/dev/rmt/tps3d1n
 
+dm30device=/dev/rmt/tps3d1n
+dm31device=/dev/rmt/tps3d2n
+dm32device=/dev/rmt/tps0d1n
+dm33device=/dev/rmt/tps0d2n
+
 ea11device=/dev/rmt/tps0d1n
 ea12device=/dev/rmt/tps3d1n
 ea21device=/dev/rmt/tps0d1n
@@ -214,6 +225,7 @@ case $drive in
   dc15|dc16|dc17|\
   dm18|dm19|\
   dc20|dc21|dc22|dc23|dc24|dc25|dc26|dc27|dc28|dc29|\
+  dm30|dm31|dm32|dm33|\
   ea11|ea12|ea21|ea22|ea31|\
   jde01|jde02|jde03|jde04)
 

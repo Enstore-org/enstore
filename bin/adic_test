@@ -68,6 +68,10 @@ defaults="DE01-CA2502:CA2513:CA2524:CA2503:CA2547:CA2557:CA2568:CA2579:CA2590:-a
           DC27-CA2270-aml2r2.media_changer-d0ensrv2.fnal.gov \
           DC28-CA2271-aml2r2.media_changer-d0ensrv2.fnal.gov \
           DC29-CA2272-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DM30-000060:000061-aml2r1.media_changer-rip7.fnal.gov \
+          DM31-000062:000063-aml2r1.media_changer-rip7.fnal.gov \
+          DM32-000064:000065-aml2r1.media_changer-rip7.fnal.gov \
+          DM33-000066:000067-aml2r1.media_changer-rip7.fnal.gov \
           JDE01-CA2530:CA2531-amlj.media_changer-stkensrv2.fnal.gov \
           JDE02-CA2532:CA2533-amlj.media_changer-stkensrv2.fnal.gov \
           JDE03-CA2534:CA2535-amlj.media_changer-stkensrv2.fnal.gov \
