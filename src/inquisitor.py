@@ -40,9 +40,10 @@ USER = 0
 TIMEOUT=1
 
 ENCP_UPDATE_INTERVAL = 60
+LOG_UPDATE_INTERVAL = 300
 
 def default_update_interval():
-    return 10
+    return 20
 
 def default_alive_rcv_timeout():
     return 5
@@ -586,8 +587,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     #      o process any servers that have not reported in recently
     #      o generate a new server status web page
     def periodic_tasks(self, reason_called=TIMEOUT):
-        # update the web page that lists all the current log files
-        self.make_log_html_file()
 	# just output the inquisitor alive info, if we are doing this, we are alive.
 	self.server_is_alive(self.inquisitor.name)
 	# see if there are any servers in cardiac arrest (no heartbeat)
@@ -597,13 +596,21 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.make_server_status_html_file()
 
     def encp_periodic_tasks(self, reason_called=TIMEOUT):
+	# the encp web page is updated when notice of an encp transfer is received, but
+	# not more than 1/ minute.  thus if notice of 1 trnasfer arrives, the page is
+	# updated and then another notice comes almost immediately, the page will not have
+	# been updated to include this one. so here we
 	# see if there has been notice of an encp transfer which happened too soon after
-	# a previous transfer to trigger the web page to be updated.  if no transfer
-	# occurred after this one, then we must hand trigger the web page update
+	# a previous transfer to trigger the web page to be updated.
+	# if so then we must hand trigger the web page update
 	if self.encp_xfer_but_no_update:
 	    now = time.time()
 	    if now - self.encp_xfer_but_no_update > ENCP_UPDATE_INTERVAL:
 		self.make_encp_html_file(now)
+
+    def log_periodic_tasks(self, reason_called=TIMEOUT):
+        # update the web page that lists all the current log files
+        self.make_log_html_file()
 
     # our client said to update the enstore system status information
     def update(self, ticket):
@@ -820,6 +827,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# set an interval timer to periodically update the web pages
 	self.add_interval_func(self.periodic_tasks, self.update_interval)
 	self.add_interval_func(self.encp_periodic_tasks, ENCP_UPDATE_INTERVAL)
+	self.add_interval_func(self.log_periodic_tasks, LOG_UPDATE_INTERVAL)
 
 	self.event_relay_msg = event_relay_messages.EventRelayAliveMsg(self.inquisitor.host,
 								       self.inquisitor.port)
