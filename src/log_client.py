@@ -71,7 +71,6 @@ class LoggerClient(generic_client.GenericClient):
 
 	self.print_id = "LOGC"
         self.i_am = i_am_a
-        self.pid = os.getpid()
         self.uname = pwd.getpwuid(os.getuid())[0]
         self.log_priority = 7
         self.debug = verbose
@@ -90,7 +89,7 @@ class LoggerClient(generic_client.GenericClient):
 	severity = args[0]
 	msg      = args[1]
 	if severity > e_errors.MISC: severity = e_errors.MISC
-	msg = '%.6d %.8s %s %s  %s' % (self.pid,self.uname,
+	msg = '%.6d %.8s %s %s  %s' % (os.getpid(),self.uname,
 				       e_errors.sevdict[severity],name,msg)
 	ticket = {'work':'log_message', 'message':msg}
 	self.u.send_no_wait( ticket, self.logger_address )
