@@ -595,9 +595,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             if attr == 'state':
                 if val != getattr(self, 'state', None):
                     Trace.notify("state %s %s" % (self.shortname, state_name(val)))
-                if val != SETUP:
-                    self.tmp_vol = None
-                    self.tmp_vf = None
                 self.__dict__['state_change_time'] = time.time()
         except:
             pass #don't want any errors here to stop us
@@ -1743,10 +1740,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return 0
 
         self.state = SETUP
-        # the following settings are needed by LM to update it's queues
-        self.tmp_vol = ticket['fc'].get('external_label', None)
-        self.tmp_vf = ticket['vc'].get('volume_family', None)
-        self.need_lm_update = (1, self.state, 1, None)
+        #self.update_lm()        
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
@@ -2493,24 +2487,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         if state is None:
             state = self.state
         Trace.trace(20,"format_lm_ticket: state %s"%(state,))
-        volume_label = self.current_volume
-        if self.current_volume:
-            volume_family = self.volume_family
-        else:
-            volume_family = None
-
         if state is IDLE:
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
         elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT):
             work = "mover_busy"
-            if state == SETUP:
-                try:
-                    volume_label = self.tmp_vol
-                    volume_family = self.tmp_vf
-                except AttributeError:
-                    pass
             if error_info:
                 status = error_info
         elif state in (ERROR, OFFLINE):
@@ -2544,12 +2526,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             volume_status = (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                              self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
+        if self.current_volume:
+            volume_family = self.volume_family
+        else:
+            volume_family = None
         if self.transfer_deficiency < 1.:
             self.transfer_deficiency = 1.
         ticket =  {
             "mover":  self.name,
             "address": self.address,
-            "external_label":  volume_label,
+            "external_label":  self.current_volume,
             "current_location": loc_to_cookie(self.current_location),
             "read_only" : 0, ###XXX todo: multiple drives on one scsi bus, write locking
             'mover_type': self.mover_type,
@@ -2925,7 +2911,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'rate of tape': self.tape_driver.rates()[0],
                  'default_dismount_delay': self.default_dismount_delay,
                  'max_dismount_delay': self.max_dismount_delay,
-                 'client': self.client_hostname,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
@@ -3562,10 +3547,7 @@ class DiskMover(Mover):
             return 0
 
         self.state = SETUP
-        # the following settings are needed by LM to update it's queues
-        self.tmp_vol = ticket['fc'].get('external_label', None)
-        self.tmp_vf = ticket['vc'].get('volume_family', None)
-        self.need_lm_update = (1, self.state, 1, None)
+        #self.update_lm()
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
@@ -3943,25 +3925,12 @@ class DiskMover(Mover):
         if state is None:
             state = self.state
         Trace.trace(20,"format_lm_ticket: state %s"%(state,))
-        volume_label = self.current_volume
-        if self.current_volume:
-            volume_family = self.volume_family
-        else:
-            volume_family = None
-
         if state is IDLE:
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
         elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT):
             work = "mover_busy"
-            if state == SETUP:
-                try:
-                    volume_label = self.tmp_vol
-                    volume_family = self.tmp_vf
-                except AttributeError:
-                    volume_label = None
-                    
             if error_info:
                 status = error_info
         elif state in (ERROR, OFFLINE):
@@ -3990,12 +3959,16 @@ class DiskMover(Mover):
                 self.unique_id = None
 
         volume_status = (['none', 'none'], ['none','none'])
+        if self.current_volume:
+            volume_family = self.volume_family
+        else:
+            volume_family = None
         if self.transfer_deficiency < 1.:
             self.transfer_deficiency = 1.
         ticket =  {
             "mover":  self.name,
             "address": self.address,
-            "external_label":  volume_label,
+            "external_label":  self.current_volume,
             "current_location": loc_to_cookie(0),
             'mover_type': self.mover_type,
             'ip_map' : self.ip_map,
@@ -4074,7 +4047,6 @@ class DiskMover(Mover):
                  'rate of tape': self.tape_driver.rates()[0],
                  'default_dismount_delay': self.default_dismount_delay,
                  'max_dismount_delay': self.max_dismount_delay,
-                 'client': self.client_hostname,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
