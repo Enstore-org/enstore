@@ -48,7 +48,6 @@ encp:
 	cp ENSTORE_USER_BIN_TEMP/enstore_user      ENCPBIN/enstore
 	rm -rf ENSTORE_USER_BIN_TEMP
 
-        # if [ $(OSV) = "IRIX64 6.2" ] ; then echo $(OSV)
 	(cd $(ENSTORE_DIR)/modules; make all; rm EXfer.o; make -f Makefile.modules EXFER_THREADED=THREADED EXfer.so)
 	- rm -rf ENCPBIN_TEMP
 	mkdir ENCPBIN_TEMP
