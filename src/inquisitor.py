@@ -68,11 +68,23 @@ class EventRelay:
 	self.last_alive = enstore_constants.NEVER_ALIVE
 	self.interval = interval
 	self.sent_own_alive = 0
+	self.state = enstore_constants.NEVER_ALIVE
 	self.start = time.time()
 
     def alive(self, now):
 	self.last_alive = now
 	self.sent_own_alive = 0
+	self.state = ALIVE
+
+    def dead(self):
+	self.state = DEAD
+
+    def is_alive(self):
+	if self.state == ALIVE:
+	    rtn = 1
+	else:
+	    rtn = 0
+	return rtn
 
     # should the event relay process be contacted.  in other words, has it been awhile
     # since it talked to us.
@@ -152,14 +164,18 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 			      "%s: Aborting restart attempt of %s"%(prefix, 
 								    server.name))
 		    break
-		Trace.trace(7, "%s: Server restart: try %s"%(prefix, i))
-		os.system('enstore Estop %s "--just %s"'%(node[0], server.name))
-		j = 0
-		while j < 15:
-		    time.sleep(1)
-		    j = j + 1
+		# do not do the stop and start if the event relay is not alive.  wait
+		# awhile and see if the event relay comes back up.
+		if self.event_relay.is_alive():
+		    Trace.trace(7, "%s: Server restart: try %s"%(prefix, i))
+		    os.system('enstore Estop %s "--just %s"'%(node[0], server.name))
+		    j = 0
+		    while j < 15:
+			time.sleep(1)
+			j = j + 1
 
-		os.system('enstore Estart %s "--just %s"'%(node[0], server.name))
+		    os.system('enstore Estart %s "--just %s"'%(node[0], server.name))
+
 		# check if now alive - to do this, wait the equivalent of hung_interval
 		# for this server and then see if an event relay message has arrived
 		j = 0
@@ -195,7 +211,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    # if we raise an alarm we need to include the following info.
 	    alarm_info = {'server' : server.name}
 	    # first see if the server is supposed to be restarted.
-	    if server.norestart or server.restart_failed:
+	    if (server.norestart or server.restart_failed) and not server.did_restart_alarm:
 		# do not restart, raise an alarm that the
 		# server is dead.
 		if not server.name == enstore_constants.ALARM_SERVER:
@@ -203,6 +219,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 		else:
 		    Trace.log(e_errors.ERROR,
 			      "%s died and will not be restarted"%(server.name,))
+		server.did_restart_alarm = 1
 	    else:
 		# we must keep track of the fact that we created a thread for this 
 		# client so the next time we find the server dead we do not create 
@@ -444,6 +461,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    # we have sent several alive messages to the event relay and have gotten
 	    # nothing back.  mark it as dead
 	    self.mark_event_relay(DEAD)
+	    self.event_relay.dead()
 
 	# whoops have not seen anything for awhile, try to send ourselves our own 
 	# alive, if this does not work, then the event relay process is not running
