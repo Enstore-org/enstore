@@ -93,13 +93,13 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
     # load volume into the drive
     def load(self, external_label, tape_drive) :
         # form mount command to be executed
-        stk_mount_command = "rsh " + keys['acls_host'] + " -l " + \
-                            keys['acls_uname'] + " 'echo mount " + \
+        stk_mount_command = "rsh " + mc_config['acls_host'] + " -l " + \
+                            mc_config['acls_uname'] + " 'echo mount " + \
                             external_label + " " + tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-        stk_query_command = "rsh " + keys['acls_host'] + " -l " + \
-                            keys['acls_uname'] + " 'echo query drive " + \
+        stk_query_command = "rsh " + mc_config['acls_host'] + " -l " + \
+                            mc_config['acls_uname'] + " 'echo query drive " + \
                             tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
         # call mount command
@@ -132,13 +132,13 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
     def unload(self, external_label, tape_drive) :
 
         # form dismount command to be executed
-        stk_mount_command = "rsh " + keys['acls_host'] + " -l " +\
-                            keys['acls_uname'] + " 'echo dismount " +\
+        stk_mount_command = "rsh " + mc_config['acls_host'] + " -l " +\
+                            mc_config['acls_uname'] + " 'echo dismount " +\
                             external_label + " " + tape_drive + " force" +\
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-        stk_query_command = "rsh " + keys['acls_host'] + " -l " + \
-                            keys['acls_uname'] + " 'echo query drive " + \
+        stk_query_command = "rsh " + mc_config['acls_host'] + " -l " + \
+                            mc_config['acls_uname'] + " 'echo query drive " + \
                             tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
