@@ -2019,6 +2019,167 @@ class PnfsInterface(option.Interface):
             self.print_usage()
 
 ##############################################################################
+
+# This is a cleaner interface to access the file, as well as its
+# metadata, in /pnfs
+
+class File:
+	# the file could be a simple name, or a dictionary of file attributes
+	def __init__(self, file):
+		if type(file) == type({}):	# a dictionary
+			self.volume = file['external_label']
+			self.location_cookie = file['location_cookie']
+			self.size = file['size']
+			if file.has_key('file_family'):
+				self.file_family = file['file_family']
+			else:
+				self.file_family = "unknown"
+			self.volmap = file['pnfs_mapname']
+			self.pnfs_id = file['pnfsid']
+			self.pnfs_vid = file['pnfsvid']
+			self.bfid = file['bfid']
+			self.drive = file['drive']
+			self.path = file['pnfs_name0']
+		else:
+			self.path = os.path.abspath(file)
+			# does it exist?
+			if os.access(self.path, os.F_OK):
+				f = open(self.layer_file(4))
+				self.volume, self.location_cookie, self.size,\
+				self.file_family, self.volmap,\
+				self.pnfs_id, self.pnfs_vid, self.bfid,\
+				self.drive = map(string.strip, f.readlines())
+				f.close()
+			else:
+				self.volume = None
+				self.location_cookie = None
+				self.size = None
+				self.file_family = None
+				self.volmap = None
+				self.pnfs_id = None
+				self.pnfs_vid = None
+				self.bfid = None
+				self.drive = None
+				self.pnfsid_consistent = 0
+		return
+
+	# layer_file(i) -- compose the layer file name
+	def layer_file(self, i):
+		return os.path.join(self.dir(), '.(use)(%d)(%s)'%(i, self.file()))
+
+	# id_file() -- compose the id file name
+	def id_file(self):
+		return os.path.join(self.dir(), '.(id)(%s)'%(self.file()))
+
+	# dir() -- get the directory of this file
+	def dir(self):
+		return os.path.dirname(self.path)
+
+	# file() -- get the basename of this file
+	def file(self):
+		return os.path.basename(self.path)
+
+	# get_pnfs_id() -- get pnfs id from pnfs id file
+	def get_pnfs_id(self):
+		f = open(self.id_file())
+		id = string.strip(f.read())
+		f.close()
+		return id
+
+	def show(self):
+		print "           file =", self.path
+		print "         volume =", self.volume
+		print "location_cookie =", self.location_cookie
+		print "           size =", self.size
+		print "    file_family =", self.file_family
+		print "         volmap =", self.volmap
+		print "        pnfs_id =", self.pnfs_id
+		print "       pnfs_vid =", self.pnfs_vid
+		print "           bfid =", self.bfid
+		print "          drive =", self.drive
+		return
+
+	# update() -- write out to pnfs files
+	def update(self):
+		if not self.bfid:
+			return
+		if self.exists():
+			# writing layer 1
+			f = open(self.layer_file(1), 'w')
+			f.write(self.bfid)
+			f.close()
+			# writing layer 4
+			f = open(self.layer_file(4), 'w')
+			f.write(self.volume+'\n')
+			f.write(self.location_cookie+'\n')
+			f.write(str(self.size)+'\n')
+			f.write(self.file_family+'\n')
+			f.write(self.volmap+'\n')
+			# always use real pnfs id
+			f.write(self.get_pnfs_id()+'\n')
+			f.write(self.pnfs_vid+'\n')
+			f.write(self.bfid+'\n')
+			f.write(self.drive+'\n')
+			f.close()
+		return
+
+	# exists() -- to see if the file exists in /pnfs area
+	def exists(self):
+		return os.access(self.path, os.F_OK)
+
+	# create() -- create the file
+	def create(self):
+		if not self.exists():
+			f = open(self.path, 'w')
+			f.close()
+			self.update()
+
+	# update_bfid(bfid) -- change the bfid
+	def update_bfid(self, bfid):
+		if bfid != self.bfid:
+			self.bfid = bfid
+			self.update()
+
+	# set() -- set values
+	def set(self, file):
+		changed = 0
+		res = None
+		if file.has_key('external_label'):
+			self.volume = file['external_label']
+			changed = 1
+		if file.has_key('location_cookie'):
+			self.location_cookie = file['location_cookie']
+			changed = 1
+		if file.has_key('size'):
+			self.size = file['size']
+			changed = 1
+		if file.has_key('file_family'):
+			self.file_family = file['file_family']
+			changed = 1
+		if file.has_key('pnfs_mapname'):
+			self.volmap = file['pnfs_mapname']
+			changed = 1
+		if file.has_key('pnfsid'):
+			self.pnfs_id = file['pnfsid']
+			changed = 1
+		if file.has_key('pnfsvid'):
+			self.pnfs_vid = file['pnfsvid']
+			changed = 1
+		if file.has_key('bfid'):
+			self.bfid = file['bfid']
+			changed = 1
+		if file.has_key('drive'):
+			self.drive = file['drive']
+			changed = 1
+		if file.has_key('pnfs_name0'):
+			self.path = file['pnfs_name0']
+			changed = 1
+		if changed:
+			res = self.update()
+		return res
+
+
+##############################################################################
 def do_work(intf):
 
     p=Pnfs(intf.file, intf.directory, intf.pnfs_id, 1, 1)
