@@ -517,8 +517,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         count = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
 
-            if  (nbytes > self.buffer.nbytes()
-                 or  self.bytes_read < self.bytes_to_read and self.buffer.low()):
+            if self.bytes_read < self.bytes_to_read and self.buffer.low()):
                 Trace.trace(15,"write_tape: buffer low %s/%s"%
                             ( self.buffer.nbytes(), self.buffer.min_bytes))
                 self.buffer.write_ok.clear()
