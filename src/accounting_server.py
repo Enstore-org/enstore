@@ -15,7 +15,10 @@ import dispatching_worker
 import generic_server
 import Trace
 import e_errors
+import enstore_constants
 import accounting
+import monitored_server
+import event_relay_messages
 
 MY_NAME = "accounting_server"
 
@@ -36,12 +39,25 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	def __init__(self, csc):
 		generic_server.GenericServer.__init__(self, csc, MY_NAME)
 		Trace.init(self.log_name)
+		self.keys = self.csc.get(MY_NAME)
+
+		self.alive_interval = monitored_server.get_alive_interval(self.csc,
+                                                                  MY_NAME,
+                                                                  self.keys)
+
 		att = self.csc.get(MY_NAME)
 		self.hostip = att['hostip']
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
 		self.accDB = accounting.accDB(att['dbhost'],
 						att['dbname'])
+		# setup the communications with the event relay task
+		self.resubscribe_rate = 300
+		self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
+
+		# start our heartbeat to the event relay process
+		self.erc.start_heartbeat(enstore_constants.ACCOUNTING_SERVER, 
+                                 self.alive_interval)
 		return
 
 	# The following are local methods
@@ -71,10 +87,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	def log_start_mount(self, ticket):
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
+			type = ticket['type']
+			if not type:
+				type = 'unknown'
 			self.accDB.log_start_mount(
 				ticket['node'],
 				ticket['volume'],
-				ticket['type'],
+				type,
 				ticket['logname'],
 				ticket['start'])
 		except:
