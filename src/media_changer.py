@@ -655,13 +655,12 @@ class STK_MediaLoader(MediaLoaderMethods):
             try:
                 sts=apply(function,args)
                 if sts[1] != 0:
-                   Trace.log(e_errors.ERROR, 'function %s error %s'%(repr(function),sts[2])) 
+                   Trace.log(e_errors.ERROR, 'function %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),sts[1],sts[2],count)) 
                 if (sts[1] == 54 or          #IPC error
                     sts[1] == 68 or          #IPC error (usually)
                     sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
-                    time.sleep(10)
+                    time.sleep(60)
                     count = count - 1
-                    time.sleep(20)
                 else:
                     break
             except:
