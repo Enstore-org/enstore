@@ -181,15 +181,17 @@ if __name__=="__main__":
         wrapper = vol["format"]
         blocksize = string.atoi(vol["blocksize"])
         system_inhibit = ["none","readonly"]
+        storage_group="imported"
+        drive="imported"
         
         if verbose: print "addvol", vol_name
         ## addvol, set file family to remote hostname (from metadata)
         done_ticket = vcc.add( library,      
-                               file_family,       
+                               file_family,
+                               storage_group,
                                media_type,        
                                vol_name,
                                capacity_bytes,    
-                               remaining_bytes,   
                                eod_cookie,
                                user_inhibit,
                                error_inhibit,
@@ -261,7 +263,7 @@ if __name__=="__main__":
                 print vol_name,loc_cookie,size
             
             # create volume map and store cross reference data
-            p.set_xreference(vol_name, loc_cookie, size)
+            p.set_xreference(vol_name, loc_cookie, size,drive)
             
             ticket["work"] = "set_pnfsid"
             ticket["fc"].update({
