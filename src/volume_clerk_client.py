@@ -190,7 +190,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         return self.send(ticket)
 
     # delete a volume from the stockpile
-    def delete(self, external_label,force=0):
+    def delete_obsolete(self, external_label,force=0):
         ticket= { 'work'           : 'delvol',
                   'external_label' : external_label,
                   'force'          : force }
@@ -527,7 +527,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.delete = ""
         self.restore = ""
         self.all = 0
-        self.force  = 0
         self.new_library = ""
         self.read_only = ""
         self.no_access = ""
@@ -555,7 +554,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
             return self.client_options()+[
                 "clear=", "backup", "vols","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
-                "no-access=", "decr-file-count=","force",
+                "no-access=", "decr-file-count=",
                 "restore=", "all","destroy=", "modify=","VOL1OK",
                 "reset-lib=", "list=", "ls-active=", "recycle=",
                 "export=", "import=", "ignore-storage-group=",
@@ -619,7 +618,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.delete = ""
         self.restore = ""
         self.all = 0
-        self.force  = 0
         self.new_library = ""
         self.read_only = ""
         self.no_access = ""
@@ -721,12 +719,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        option.DEFAULT_TYPE:option.STRING,
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_LABEL:"volume_name",
-                       option.USER_LEVEL:option.ADMIN},
-        option.FORCE:{option.HELP_STRING:
-                       "used with --delete to force the action",
-                       option.DEFAULT_VALUE:option.DEFAULT,
-                       option.DEFAULT_TYPE:option.INTEGER,
-                       option.VALUE_USAGE:option.IGNORED,
                        option.USER_LEVEL:option.ADMIN},
         option.IMPORT:{option.HELP_STRING:
                        "import an exported volume onject",
