@@ -456,9 +456,9 @@ class  DelayDriver(RawDiskDriver) :
 
 class NullDriver( GenericDriver):
 
-    def fd_xfer( self, fd, siz_bytes, crc_fun=None, crc=0 ):
+    def fd_xfer( self, fd, siz_bytes, crc_flag=0, crc=0 ):
 	# returns (crc); throws exception if wrong no_bytes xferred
-	# no crc if crc_fun is 0
+	# no crc if crc_flag is 0; adler32 if crc_flag==1
 	# For disk, blocksize is used, but there are no partial blocks
 	# recreating the sem and msg insures that they are cleared
 	self.sem = IPC.semget( IPC.IPC_PRIVATE, 1, IPC.IPC_CREAT|0x1ff )
@@ -470,11 +470,11 @@ class NullDriver( GenericDriver):
 	    if self.mode == 'r':		# relative to this driver = "from hsm"
 		__fd__ = os.open( '/dev/zero', mode_string_to_int(self.mode) )
 		crc = EXfer.fd_xfer( __fd__, fd, siz_bytes, 
-				     self.blocksize, 1, 0, self.shm )
+				     self.blocksize, crc_flag, crc, self.shm )
 	    else:
                 __fd__ = os.open( '/dev/null', mode_string_to_int(self.mode) )
 		crc = EXfer.fd_xfer( fd, __fd__, siz_bytes,
-				     self.blocksize, 1, 0, self.shm )
+				     self.blocksize, crc_flag, crc, self.shm )
 		self.remaining_bytes = self.remaining_bytes - siz_bytes
                 pass
             pass
