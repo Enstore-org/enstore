@@ -151,11 +151,17 @@ class EnstoreServer:
 	elif ticket['status'][0] == e_errors.OK:
 	    self.is_alive()
 	else:
-	    enprint("%s  BAD STATUS %s"%(self.format_name, ticket['status']))
-	    self.set_status(enstore_constants.DOWN)
-	    self.sendmail("%s  BAD STATUS %s (config node - %s)"%(self.format_name,
-								  ticket['status'],
-								  self.config_host))
+	    if ticket['status'][0] == e_errors.TIMEDOUT:
+		enprint("%s NOT RESPONDING"%(self.format_name,))
+		self.set_status(enstore_constants.DOWN)
+		self.sendmail("%s is not alive (config node - %s)"%(self.format_name, 
+								    self.config_host))
+	    else:
+		enprint("%s  BAD STATUS %s"%(self.format_name, ticket['status']))
+		self.set_status(enstore_constants.DOWN)
+		self.sendmail("%s  BAD STATUS %s (config node - %s)"%(self.format_name,
+								      ticket['status'],
+								      self.config_host))
 
     def known_down(self):
 	self.status = enstore_constants.DOWN
