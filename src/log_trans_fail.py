@@ -21,7 +21,7 @@ def cmd(command):
 
 def get_failures(log,grepv='DC|GONE|MISMATCH',grep=""):
     # just force the directory.
-    failed = cmd('cd /diska/enstore-log; grep "transfer failed" %s | egrep -v "%s" | egrep "%s"' %(log,grepv,grep))
+    failed = cmd('cd /diska/enstore-log; grep "transfer failed" %s /dev/null| egrep -v "%s" | egrep "%s"' %(log,grepv,grep))
     return failed
 
 def parse_failures(failed):
@@ -31,10 +31,12 @@ def parse_failures(failed):
         token = string.split(l,' ')
         size = len(token)
         thetime = token[0]
+        thetime = string.replace(thetime,'LOG-','')
         node = token[1]
         drive = token[5]
         location = token[size-1]
         volume = token[size-2]
+        volume = string.replace(volume,'volume=','')
         reason = string.join(token[6:size-2])
         error = [thetime, node, drive, location, volume, reason]
         if Vol.has_key(volume):
@@ -55,7 +57,7 @@ def print_vols(Vol):
         info = Vol[v]
         for err in range(0,len(info)):
             error = info[err]
-            print "   ",error[3],error[2],error[0],error[5]
+            print "   %-13s %-10s %20s %s" % (error[3],error[2],error[0],error[5])
 
 def print_drv(Drv):
     keys = Drv.keys()
@@ -65,13 +67,13 @@ def print_drv(Drv):
         info = Drv[d]
         for err in range(0,len(info)):
             error = info[err]
-            print "   ",error[4],error[3],error[0],error[5]
+            print "   %-13s %-10s %20s %s" % (error[3],error[4],error[0],error[5])
 
 def logname(t):
     t_tup=time.localtime(t)
     return "LOG-%4.4i-%2.2i-%2.2i" %(t_tup[0],t_tup[1],t_tup[2])
-    
-    
+
+
 
 if __name__ == "__main__":
     now = time.time()
@@ -80,22 +82,22 @@ if __name__ == "__main__":
         choice = sys.argv[1]
     else:
         choice = "today"
-                                
+
     if choice == "today":
         logfile = logname(now)
     elif choice == "week":
         logfile = ""
-        for day in range(1,7):
+        for day in range(0,7):
             logfile=logfile+" "+logname(now-day*86400)
     else:
         logfile = choice
-        
-        
-    print today
+
+
+    print time.ctime(now)
 
     f=get_failures(logfile)
     Vol,Drv = parse_failures(f)
-    
+
     print
     print '--------------------------------------------------------------------------------------------------'
     print
