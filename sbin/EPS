@@ -54,7 +54,6 @@ else
     pid=`echo $psline | cut -f2 -d' '` # no quotes arounds $psline removes spaces
     if [ "$pid" != "" ]; then 
       echo $pid
-      echo $psline >> /home/enstore/xx1
       echoed=1
     fi
     IFS="$newIFS"
