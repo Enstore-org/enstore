@@ -98,10 +98,34 @@ def is_pnfs_path(pathname, check_name_only = None):
     # not point to a pnfs directory.
     return 0
 
+def is_pnfsid(pnfsid):
+    #This is an attempt to deterime if a string is a pnfsid.
+    # 1) Is it a string?
+    # 2) Is it 24 characters long?
+    # 3) Does the string as a filepath not exist?
+    # 4) All characters are in the capital hex character set.
+    #Note: Does it need to be capital set of hex characters???
+    if type(pnfsid) == types.StringType and len(pnfsid) == 24 and \
+       not os.path.exists(pnfsid):
+        allowable_characters = string.upper(string.hexdigits)
+        for c in pnfsid:
+            if c not in allowable_characters:
+                return 0
+        else: #success
+            return 1
+    return 0
+
+
 ##############################################################################
 
 class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # initialize - we will be needing all these things soon, get them now
+    #
+    #pnfsFilename: The filename of a file in pnfs.  This may also be the
+    #              pnfs id of a file in pnfs.
+    #mount_point: The mount point that the file should be under when
+    #             pnfsFilename is really a pnfsid or pnfsFilename does
+    #             not contain an absolute path.
     def __init__(self, pnfsFilename="", mount_point=""):
 
                  #get_details=1, get_pinfo=0, timeit=0, mount_point=""):
@@ -119,7 +143,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 self.dir = ""
 
         #Test if the filename passed in is really a pnfs id.
-        if self.is_pnfsid(pnfsFilename):
+        if is_pnfsid(pnfsFilename):
             self.id = pnfsFilename
             try:
                 pnfsFilename = self.get_path(self.id)
@@ -139,8 +163,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if pnfsFilename:
             (self.machine, self.filepath, self.directory, self.filename) = \
                            fullpath(pnfsFilename)
-            #self.pstatinfo(update=1)
-            self.get_stat()
+            self.pstatinfo()
 
         try:
             self.pnfsFilename = self.filepath
@@ -149,23 +172,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             pass
 
     ##########################################################################
-
-    def is_pnfsid(self, pnfsid):
-        #This is an attempt to deterime if a string is a pnfsid.
-        # 1) Is it a string?
-        # 2) Is it 24 characters long?
-        # 3) Does the string as a filepath not exist?
-        # 4) All characters are in the capital hex character set.
-        #Note: Does it need to be capital set of hex characters???
-        if type(pnfsid) == types.StringType and len(pnfsid) == 24 and \
-           not os.path.exists(pnfsid):
-            allowable_characters = string.upper(string.hexdigits)
-            for c in pnfsid:
-                if c not in allowable_characters:
-                    return 0
-            else: #success
-                return 1
-        return 0
 
     # list what is in the current object
     def dump(self):
@@ -558,7 +564,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = self.filepath
             self.verify_existance()
-            self.pstatinfo()
+            self.pstatinfo(update=0) #verify_existance does the os.stat().
             #Get the file system size.
             os_filesize = long(self.file_size)
 
@@ -828,7 +834,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             if real_file:    #os.path.exists(self.filepath):
                 self.file_size = self.pstat[stat.ST_SIZE]
                 if self.file_size == 1L:
-                    self.file_size = self.get_xreference()[2] #[2] = size
+                    self.file_size = long(self.get_xreference()[2]) #[2] = size
             else:
                 try:
                     del self.file_size
@@ -856,9 +862,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #Get the major and minor device codes for the device the file
         # resides on.
         try:
-            code_dict = Devcodes.MajMin(self.pnfsFilename)
-            self.major = code_dict["Major"]
-            self.minor = code_dict["Minor"]
+            #code_dict = Devcodes.MajMin(self.pnfsFilename)
+            #self.major = code_dict["Major"]
+            #self.minor = code_dict["Minor"]
+            
+            #The following math logic was taken from
+            # $ENSTORE_DIR/modules/Devcodes.c.  For performance reasons,
+            # this was done in python.  It turns out to be slower to wait
+            # for another stat() call in the C implimentation of Devcodes
+            # than using the existing stat info implemented in python.
+            # This is largly due to pnfs responce delays.
+            self.major = int(((self.pstat[stat.ST_DEV]) >> 8) & 0xff)
+            self.minor = int((self.pstat[stat.ST_DEV]) & 0xff)
         except KeyboardInterrupt:
             raise sys.exc_info()
         except:
@@ -891,7 +906,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     pcat = player
     
     #Snag the cross reference of the file inside self.file.
-    #***LAYER 4***
+    #***LAYER 4**
     def pxref(self):  #, intf):
         names = ["volume", "location_cookie", "size", "file_family",
                  "original_name", "map_file", "pnfsid_file", "pnfsid_map",
