@@ -172,7 +172,7 @@ if __name__ == "__main__" :
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list",
                "vols","vol=","addvol","delvol","list",
-               "clr_system_inhibit","alive","help"]
+               "clrvol","alive","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -189,7 +189,7 @@ if __name__ == "__main__" :
             addvol = 1
         elif opt == "--delvol" :
             delvol = 1
-        elif opt == "--clr_system_inhibit" :
+        elif opt == "--clrvol" :
             clrvol = 1
         elif opt == "--alive" :
             alive = 1
