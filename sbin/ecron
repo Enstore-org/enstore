@@ -140,6 +140,7 @@ histogram=${procInfos}HISTOGRAM
 procOutput=${procInfos}-output
 procMail=${procInfos}-mail
 noMail=${procInfos}NOMAIL
+noNeg=${procInfos}NONEG
 
 rm -f $procOutput
 rm -f $procMail
@@ -151,12 +152,18 @@ if [ ! -f ${procInfos}OK ] ; then quit ""  -1 ; fi
 
 #  check if a similar proc is already active
 mkdir $activeFlag 1>/dev/null 2>/dev/null
-if [ $? -ne 0 ] ; then quit "" -2 "keepactive"; fi
+if [ $? -ne 0 ] ; then 
+   if [ ! -f $noNeg ] ; then 
+      quit "" -2 "keepactive"
+   else
+      exit 0
+   fi
+fi
 
 if [ $# -eq 0 ] ; then quit "USAGE: $basename <enstoreName> <args ... >" -3; fi
 
 setup=/usr/local/etc/setups.sh
-if [ ! -f $setup ] ; then quit "$setup not found" -44; fi
+if [ ! -f $setup ] ; then quit "$setup not found" -4; fi
 . $setup
 # should check that enstore was setup properly as well
 setup enstore
