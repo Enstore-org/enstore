@@ -168,7 +168,7 @@ class DbTable:
 			
 
 	def keys(self):
-		res = self.db.query('select %s from %s;'%(self.pkey, self.table)).getresult()
+		res = self.db.query('select %s from %s order by %s;'%(self.pkey, self.table, self.pkey)).getresult()
 		keys = []
 		for i in res:
 			keys.append(i[0])
