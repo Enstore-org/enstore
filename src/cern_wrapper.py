@@ -208,6 +208,9 @@ class UserLabel2(Label):
 	self.checksum_algorithm = checksum_algorithm
 	self.file_checksum = file_checksum
 
+    def update_checksum(self, file_checksum):
+	self.file_checksum = file_checksum
+
     def __repr__(self):
 	# format ourselves to be a string of length 80
 	self.text = "%s%s%s%s%s%s%s%s"%(self.label, self.file_id, 
@@ -383,7 +386,6 @@ class UTL2(UserLabel2):
 	UserLabel2.__init__(self, file_id, absolute_mode, uid, gid, file_size, 
 			    checksum_algorithm, file_checksum)
 	self.label = "UTL2"
-
 
 class UHL3(UserLabel3):
 
@@ -607,14 +609,30 @@ class EnstoreLargeFileWrapper:
 
 	return self.assemble_trailers()
 
+    # update the trailers with the checksum value
+    def update_trailers(self, file_checksum):
+	self.file_checksum = file_checksum
+	self.file_checksum = add_l_padding(self.file_checksum, 10, ZERO)
+	self.utl2.update_checksum(self.file_checksum)
+	return self.assemble_trailers()
+
 # here starts the routines accessed via the user interface
 min_header_size = 14 * 80
 
 # construct the headers and trailers
 def headers(ticket):
+    global efile
     efile = EnstoreLargeFileWrapper(ticket)
     return efile.headers(), efile.trailers()
 
 # return the size of the headers
 def header_size(hdr):
     pass
+
+# add the new checksum to the trailers
+def update_trailers(checksum):
+    global efile
+    if efile:
+	return efile.update_trailers(checksum)
+    else:
+	return None
