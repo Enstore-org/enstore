@@ -4,7 +4,7 @@ static char rcsid[] = "@(#)$Id$";
  */
 #include <unistd.h>
 #include <stdio.h>
-#include <strings.h>
+#include <string.h>
 
 #ifdef FILENAME_MAX     /* defined in stdio.h only in SYSV systems */
 #define SYSV
@@ -82,7 +82,7 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
         if ( 0x03 == pcCmd[0] && havesense ) {
             havesense = 0;
             if (pcRdWr != (unsigned char*)acSensebuf) {
-                bcopy(acSensebuf, pcRdWr, nRdWr<19?nRdWr:19);
+                memcpy(pcRdWr, acSensebuf, nRdWr<19?nRdWr:19);
             }
             return ftt_scsi_check(fd,pcOp,0,nRdWr);
         }
