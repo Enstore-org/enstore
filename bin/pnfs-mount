@@ -1,5 +1,5 @@
 #!/bin/sh
-#  Edit-Time-stamp: <98/03/09 13:12:58 bakken>
+#  Edit-Time-stamp: <98/03/16 10:09:40 bakken>
 
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
@@ -10,14 +10,16 @@ if [ `uname -n | grep -c $pnfsNode` -ne 0 ] ; then
   exit 1
 fi
 
-case `uname` in
-    IRIX*)
-        options="hard,intr,rw,noac"
-        ;;
-    *)
-        options="hard,intr,rw"
-        ;;
-esac
+options="hard,intr,rw"
+
+#case `uname` in
+#    IRIX*)
+#        options="hard,intr,rw,noac"
+#        ;;
+#    *)
+#        options="hard,intr,rw"
+#        ;;
+#esac
 
 mp="enstore"
 
