@@ -593,14 +593,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             return
 
 	try:
-	    filesize = self.readlayer(enstore_constants.FILESIZE_LAYER)
-	    filesize = long(string.replace(filesize[0], "\n", ""))
+	    filesize = self.readlayer(enstore_constants.XREF_LAYER)
+	    filesize = long(filesize[2].strip())
 	except KeyboardInterrupt:
 	    exc, msg, tb = sys.exc_info()
 	    raise exc, msg, tb
 	except:
 	    filesize = self.file_size
-	
+
 	self.file_size = filesize
 	
 
@@ -1263,12 +1263,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #Prints out the bfid value for the specified file.
     #***LAYER 1***
     def pfilesize(self, intf):
-        data = self.readlayer(enstore_constants.FILESIZE_LAYER)
-        try:
-            filesize = data[0]
-        except IndexError:
-            filesize = self.file_size
-        print filesize
+        self.get_file_size()
+        print self.file_size
 
     #If dupl is empty, then show the duplicate data for the file
     # (in self.file).  If dupl is there then set the duplicate for the file
