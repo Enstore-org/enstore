@@ -83,11 +83,12 @@ if uname[0] == 'Linux':
 	pass
     pass
 elif uname[0] == 'IRIX64':
+    tape_drv = 'IRIX64'
     pass
 else:
     pass
 print 'tape driver:', tape_drv
-print 'version:', version
+print 'driver versions:', version
 
 
 import FTT
@@ -131,16 +132,77 @@ def initial_check( tape_dev ):
 ###############################################################################
 def online_test( tape_dev ):
     FTT.open( tape_dev, 'r' )
-    sts = FTT.get_stats()
-    print 'get_stats returned:'
-    pprint.pprint( sts )
+    #sts = FTT.get_statsAll()
+    #print 'get_stats returned:'
+    #pprint.pprint( sts )
     # test locate to invalid block
     # test locate to valid block
     FTT.locate( 0 )
     # check locate
     sts = FTT.get_stats()
+    if sts['bloc_loc'] != '0': raise 'unexpected bloc_loc'
+    mode = FTT.get_mode()
+    print 'FTT.get_mode() returned:',mode
+    if mode['blocksize'] != 0: raise 'unexpected blocksize'
+    dev_name = FTT.set_mode( mode['density'],
+			     mode['compression'],
+			     mode['blocksize'] )
+    print 'FTT.set_mode(%s,%s,%s) returned: %s'%(mode['density'],
+						mode['compression'],
+						mode['blocksize'],
+						dev_name)
     FTT.close()
-    return
+
+    if uname[0] == 'Linux':
+	no_except_blksz = (512,65536,102400)
+	except_blksz = (262144,)
+    else:
+	no_except_blksz = (512,65536,262144,102400)
+	except_blksz = ()
+	pass
+	
+    for blksiz in no_except_blksz:
+	print 'checking write/read of 80 bytes with blksize %s'%blksiz
+	FTT.open( tape_dev, 'a+' )
+	FTT.set_blocksize( blksiz )
+	FTT.write( ' '*80 )
+	FTT.writefm()			# need to do this?
+	FTT.rewind()
+	FTT.close()
+	FTT.open( tape_dev, 'r' )
+	FTT.set_blocksize( blksiz )
+	ss = FTT.read( 80 )
+	FTT.rewind()
+	FTT.close()
+	if ss != ' '*80:
+	    print 'read of 80 bytes returned %s bytes (data not checked)'%len(ss)
+	    raise 'unexpected FTT.read return value'
+	pass
+    for blksiz in except_blksz:
+	print 'checking write/read of 80 bytes with blksize %s'%blksiz
+	FTT.open( tape_dev, 'a+' )
+	FTT.set_blocksize( blksiz )
+	FTT.write( ' '*80 )
+	FTT.writefm()			# need to do this?
+	FTT.rewind()
+	FTT.close()
+	FTT.open( tape_dev, 'r' )
+	FTT.set_blocksize( blksiz )
+	try:
+	    ss = FTT.read( 80 )
+	    print '*UNANTICIPATED*: no exception occurred on this particular platform'
+	except:
+	    print 'an *anticipated* exception has occurred'
+	    pass
+	FTT.rewind()
+	FTT.close()
+	if ss != ' '*80:
+	    print 'read of 80 bytes returned %s bytes (data not checked)'%len(ss)
+	    raise 'unexpected FTT.read return value'
+	pass
+
+    print 'Online test complete.'
+    return				# from online_test
 
 
 ###############################################################################
@@ -154,37 +216,30 @@ def offline_test( tape_dev ):
     try:
 	print 'offline unload'
 	sts = FTT.unload()
-	print 'No exception occurred on this particular platform'
-    except:
+	print '*UNANTICIPATED*: no exception occurred on this particular platform'
+    except FTT.error, value:
 	print
-	print 'an *anticipated* exception has occurred - the exception information follows:'
-	print
-	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
-	for l in traceback.format_exception( exc, value, tb ):
-	    print l[0:len(l)-1]
+	print 'an *anticipated* exception has occurred'
+	if tape_drv == 'ncr53c8xx' and value.args[4] == FTT.FTT_EBLANK:
+	    print 'ftt return EBLANK when running no top of the ncr53c8xx driver'
 	    pass
+	else:
+	    print 'ftt return %s when running no top of the %s driver'%(value.args[4],tape_drv)
+	    pass
+	print
 	pass
 
-    try:
-	print 'offline get_stats'
-	sts = FTT.get_stats()
-	print 'No exception occurred on this particular platform'
-    except:
-	print
-	print 'an *anticipated* exception has occurred - the exception information follows:'
-	print
-	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
-	for l in traceback.format_exception( exc, value, tb ):
-	    print l[0:len(l)-1]
-	    pass
-	pass
+    print 'offline get_stats'
+    sts = FTT.get_stats()
     
     FTT.close()
-    return
+    print 'Offline tests complete.'
+    return				# from offline_test
 
 
 ###############################################################################
 def off_to_online_test( tape_dev ):
+    print 'Transition to online tests (loading a tape).'
     sts = {'ONLINE':0}
     while sts['ONLINE'] == 0:
 	FTT.open( tape_dev, 'r' )
@@ -192,11 +247,13 @@ def off_to_online_test( tape_dev ):
 	FTT.close()
 	pass
     if sts['ONLINE'] != 1: raise "unexpected 'ONLINE' value %s"%sts['ONLINE']
-    return
+    print 'Status now indicates the tape is online.'
+    return				# from off_to_online_test
 
 
 ###############################################################################
 def on_to_offline_test( tape_dev ):
+    print 'Transition to offline tests (unloading tape).'
     FTT.open( tape_dev, 'r' )
     FTT.unload()
     FTT.close()
@@ -209,7 +266,8 @@ def on_to_offline_test( tape_dev ):
 	FTT.close()
 	pass
     if sts['ONLINE'] != 0: raise "unexpected 'ONLINE' value %s"%sts['ONLINE']
-    return
+    print 'Status now indicates the tape is offline.'
+    return				# from on_to_offline_test
 
 
 ###############################################################################
@@ -225,58 +283,46 @@ try:
 	print 'Initial check indicates a tape is in the drive.'
 	print 'Preceeding with "online" test first.'
 	online_test( tape_dev )
-	print 'Online test complete.'
-	print 'Transition to offline tests (unloading tape).'
 	on_to_offline_test( tape_dev )
-	print 'Status now indicates the tape is offline.'
 	print 'Proceeding with "offline" tests.'
 	offline_test( tape_dev )
-	print 'Offline tests complete.'
 	print
 	print 'Please insert a tape into the tape drive.'
 	print 'This can be done, for example, by:'
 	print '    dasadmin dismount -d DE01'
 	print '    dasadmin mount -t DECDLT CA2502 DE01'
 	off_to_online_test( tape_dev )
-	print 'Status now indicates the tape is online.'
-	print
-	print 'Testing complete.'
-	pass
     elif ret['ONLINE'] == 0:
 	print 'Initial check indicates no tape is in the drive.'
 	print 'Preceeding with "offline" test first.'
 	offline_test( tape_dev )
-	print 'Offline testing complete.'
 	print
 	print 'Please insert a tape into the tape drive.'
 	print 'This can be done, for example, by:'
 	print '    dasadmin dismount -d DE01'
 	print '    dasadmin mount -t DECDLT CA2502 DE01'
 	off_to_online_test( tape_dev )
-	print 'Status now indicates the tape is online.'
 	print 'Proceeding with "online" tests.'
 	online_test( tape_dev )
-	print 'Online test complete.'
-	print 'Transition to offline tests (unloading tape).'
 	on_to_offline_test( tape_dev )
-	print 'Status now indicates the tape is offline.'
-	print
-	print 'Testing complete.'
-	pass
     else:
 	print "ERROR - FTT.status['ONLINE'] should be 1 or 0"
 	exit_status = 1
 	pass
+    print
+    print 'Testing completed OK.'
+    pass
     exit_status = 0
 except:
     print
-    print 'an unanticipated exception has occurred - the exception information follows:'
+    print 'an *UNANTICIPATED* exception has occurred - the exception information follows:'
     print
-    exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
+    exc, value, tb = sys.exc_info()
     for l in traceback.format_exception( exc, value, tb ):
 	print l[0:len(l)-1]
 	pass
     exit_status = 1
+    FTT.close()				# OK if already closed
     pass
 
 sys.exit( exit_status )
