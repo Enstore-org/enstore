@@ -186,7 +186,8 @@ class DispatchingWorker:
                 Trace.trace(0,"DispatchingWorker get_request post-recvfrom error "+\
                      repr(errno.errorcode[badsock]))
                 Trace.trace(5,"}get_request"+repr(req))
-            exec("request, inCRC="+req[0])
+            #exec("request, inCRC="+req[0])
+            request,inCRC = eval(req[0])
             # calculate CRC
             crc = ECRC.ECRC(request, 0)
             if (crc != inCRC) :
@@ -222,7 +223,7 @@ class DispatchingWorker:
 
 	# ref udp_client.py (i.e. we may wish to have a udp_client method
 	# to get this information)
-        exec ( "idn, number, ticket = " + request)
+        idn, number, ticket = eval(request)
         self.reply_address = client_address
         self.client_number = number
         self.current_id = idn
@@ -235,7 +236,7 @@ class DispatchingWorker:
             # UDPClient resends messages if it doesn't get a response
             # from us, see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
-            exec ("list = " + repr(request_dict[idn]))
+            list = eval(repr(request_dict[idn]))
             if list[0] == number:
                 Trace.trace(5,"}process_request "+repr(idn)+" already handled")
                 self.reply_with_list(list)
