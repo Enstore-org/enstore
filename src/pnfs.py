@@ -2011,9 +2011,15 @@ class File:
 				self.file_family = file['file_family']
 			else:
 				self.file_family = "unknown"
-			self.volmap = file['pnfs_mapname']
+                        if file.has_key('pnfs_mapname'):
+			    self.volmap = file['pnfs_mapname']
+                        else:
+                            self.volmap = ''
 			self.pnfs_id = file['pnfsid']
-			self.pnfs_vid = file['pnfsvid']
+                        if file.has_key('pnfsvid'):
+			    self.pnfs_vid = file['pnfsvid']
+                        else:
+			    self.pnfs_vid = ''
 			self.bfid = file['bfid']
 			self.drive = file['drive']
 			self.path = file['pnfs_name0']
