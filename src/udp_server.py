@@ -84,8 +84,9 @@ class UDPServer:
         self.rexec = rexec.RExec()
         
         # set this socket to be closed in case of an exec
-        fcntl.fcntl(self.server_socket.fileno(), fcntl.F_SETFD,
-                    fcntl.FD_CLOEXEC)
+        if self.server_socket != None:
+            fcntl.fcntl(self.server_socket.fileno(), fcntl.F_SETFD,
+                        fcntl.FD_CLOEXEC)
 
     def __del__(self):
         self.server_socket.close()
