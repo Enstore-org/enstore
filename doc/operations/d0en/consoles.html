@@ -1,13 +1,13 @@
 <html> <head>
 
-<title> Consoles </title>
+<title> Console Servers </title>
 
 </head>
 
 <body BGCOLOR=#FFFFFF>
 
 <font size=7><b><i>
-<center>Consoles</center>
+<center>Console Servers</center>
 </i></b></font>
 <br><p>
 
@@ -182,8 +182,8 @@ Cron jobs executing on d0ensrv3:
 <ul>
 
 <li> user enstore - aml2mirror.  If this fails, the most likely reason
-is that the adic2 OS/2 computer is not working or the connection to it
-is unavailable.
+is that the adic2 OS/2 computer is not working or the network
+connection to it is unavailable.
 
 <br>
 <li> user enstore - backup2Tape. If this fails, the most likely reason
@@ -210,13 +210,13 @@ set and needs to be cleaned.
      </ul>
 
 
-<br>
 <li> user root - perm.  If this fails, look in /diska/pnfs-backup for
 "peculiar" things.  Report it to a developer.
 
 <br>
 <li> user root - tarit. If this fails, the most likely reason is
-because rip8 (the backup node for the ide system disk) is down.
+because either rip8 (the backup node for the ide system disk) or the
+network connection to rip8 is down.
 
 </ul>
 
@@ -293,6 +293,10 @@ system disk.
 <li> The console server nodes can be booted without affecting normal
 enstore operations. You might get some errors from the cron jobs when
 you boot the node.
+
+<li> The xscreensaver (http://www.jwz.org/xscreensaver) software is
+running in the background in the background to help identify which the
+console server on its monitor.
 
 </ul>
 
