@@ -152,3 +152,4 @@ if __name__ == "__main__" :
     # fill in interface
     intf = AlarmClientInterface()
 
+    do_work(intf)
