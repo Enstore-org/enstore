@@ -1321,9 +1321,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         rticket["status"] = (e_errors.OK, None)
         rticket["at movers"] = self.work_at_movers.list
         rticket["pending_work"] = self.pending_work.get_queue()
-        callback.write_tcp_obj(self.data_socket,rticket)
+        callback.write_tcp_obj_new(self.data_socket,rticket)
         self.data_socket.close()
-        callback.write_tcp_obj(self.control_socket,ticket)
+        callback.write_tcp_obj_new(self.control_socket,ticket)
         self.control_socket.close()
         os._exit(0)
 
@@ -1339,9 +1339,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         rticket = {}
         rticket["status"] = (e_errors.OK, None)
         rticket["suspect_volumes"] = self.suspect_volumes.list
-        callback.write_tcp_obj(self.data_socket,rticket)
+        callback.write_tcp_obj_new(self.data_socket,rticket)
         self.data_socket.close()
-        callback.write_tcp_obj(self.control_socket,ticket)
+        callback.write_tcp_obj_new(self.control_socket,ticket)
         self.control_socket.close()
         Trace.trace(13,"get_suspect_volumes ")
         os._exit(0)
@@ -1356,7 +1356,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ticket["library_manager_callback_addr"] = (library_manager_host, library_manager_port)
         self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.control_socket.connect(ticket['callback_addr'])
-        callback.write_tcp_obj(self.control_socket, ticket)
+        callback.write_tcp_obj_new(self.control_socket, ticket)
         data_socket, address = listen_socket.accept()
         self.data_socket = data_socket
         listen_socket.close()
