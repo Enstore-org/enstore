@@ -766,7 +766,10 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	    pass
 	# Exceptions are caught (except block) in dispatching_worker.py.
 	# The reply is the command (i.e the network is the computer).
-	client_function = rsp_ticket['work']
+	try: client_function = rsp_ticket['work']
+	except:
+	    print 'ronDBG - complete rsp_ticket is:';pprint.pprint(rsp_ticket)
+	    raise sys.exc_info()[0], sys.exc_info()[1]
 	method = MoverClient.__dict__[client_function]
 	next_req_to_lm = method( self.client_obj_inst, rsp_ticket )
 	pass
