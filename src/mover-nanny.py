@@ -122,7 +122,7 @@ def get_sched():
     return sched_dict
 
 def get_status(mover):    
-    p = os.popen("enstore mov --status --retries=1 %s" % mover)
+    p = os.popen("enstore mov --status --timeout=60 --retries=1 %s" % mover)
     r = p.read()
     s = p.close()
     l = string.split(r,'\n')
