@@ -126,10 +126,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def load_mover_list(self):
 	return self.send({"work":"load_mover_list"})
 
-    def summon_mover(self, mover):
-        if mover == 'all': mover=None
-	return self.send({"work":"summon", "mover":mover})
-
     def poll(self):
 	 return self.send({"work":"poll"})
 
@@ -184,6 +180,16 @@ class LibraryManagerClient(generic_client.GenericClient) :
                   +"ticket[\"status\"]="+ticket["status"]
         return worklist
 
+    # get active volume known to LM
+    def get_active_volumes(self):
+        ticket = self.send({"work":"get_active_volumes"})
+        format = "%s %s %s"
+        for mover in ticket['movers']:
+            print format % (mover['external_label'], mover['mover'], mover['volume_family'])
+        return ticket
+            
+
+
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self, flag=1, opts=[]) :
         # this flag if 1, means do everything, if 0, do no option parsing
@@ -200,13 +206,14 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.delete_work = 0
 	self.priority = -1
 	self.load_mover_list = 0
-	self.summon = 0
 	self.poll = 0
         self.queue_list = 0
         self.host = 0
         self.start_draining = 0
         self.stop_draining = 0
         self.status = 0
+        self.active_volumes = 0
+        
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -217,8 +224,8 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             return self.client_options()+\
                    ["get_work", "get_mover_list", "get_suspect_vols",
                     "get_delayed_dismount","delete_work=","priority=",
-                    "load_movers", "summon=", "poll", "get_queue","host=",
-                    "start_draining=", "stop_draining", "status"]
+                    "load_movers", "poll", "get_queue","host=",
+                    "start_draining=", "stop_draining", "status", "active_volumes"]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -281,11 +288,11 @@ def do_work(intf):
     elif intf.load_mover_list:
 	ticket = lmc.load_mover_list()
 	print repr(ticket)
-    elif intf.summon:
-	ticket = lmc.summon_mover(intf.summon)
-	print repr(ticket)
     elif intf.poll:
 	ticket = lmc.poll()
+	print repr(ticket)
+    elif intf.active_volumes:
+	ticket = lmc.get_active_volumes()
 	print repr(ticket)
     elif intf.queue_list:
         if len(intf.args) >= 1:

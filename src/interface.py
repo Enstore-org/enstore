@@ -234,6 +234,8 @@ class Interface:
                 self.change_priority = 1
             elif opt == "--poll" :
                 self.poll = 1
+            elif opt == "--active_volumes" :
+                self.active_volumes = 1
             elif opt == "--load_movers" :
                 self.load_mover_list = 1
             elif opt == "--load" :
