@@ -141,7 +141,17 @@ class EventRelayClient:
         self.function = function
         self.event_relay_host = event_relay_host
         self.event_relay_port = event_relay_port
+        self.do_interval = 1
+        self.do_select_fd = 1
         self.setup()
+
+    # set value to not register interval functions with dispatching worker
+    def no_interval(self):
+        self.do_interval = 0
+
+    # set value to not register fds with dispatching worker
+    def no_select_fd(self):
+        self.do_select_fd = 0
 
     # this method must be called if we want to have the event relay forward 
     # messages to us.
@@ -161,11 +171,13 @@ class EventRelayClient:
 
         # add this socket to the select sockets upon which we wait
 	if self.server is not None:
-	    self.server.add_select_fd(self.sock, 0, self.function)
+            if self.do_select_fd:
+                self.server.add_select_fd(self.sock, 0, self.function)
         
 	    # resubscribe ourselves to the event relay every 10 minutes
-	    self.server.add_interval_func(self.subscribe, 
-					  self.resubscribe_rate)
+            if self.do_interval:
+                self.server.add_interval_func(self.subscribe, 
+                                              self.resubscribe_rate)
         return self.SUCCESS
 
     # send the message to the event relay
@@ -211,7 +223,7 @@ class EventRelayClient:
             self.unsubscribe_msg.encode()
         return self.send(self.unsubscribe_msg)
 
-    # send the heartbeat to the event realy
+    # send the heartbeat to the event relay
     def heartbeat(self):
 	opt_string = ""
 	if self.function is not None:
@@ -228,7 +240,8 @@ class EventRelayClient:
             self.name = name
             self.heartbeat_msg = event_relay_messages.EventRelayAliveMsg(self.host, 
                                                                         self.port)
-            self.server.add_interval_func(self.heartbeat, self.heartbeat_interval)
+            if self.do_interval:
+                self.server.add_interval_func(self.heartbeat, self.heartbeat_interval)
             return self.SUCCESS
         else:
             return self.ERROR
