@@ -705,7 +705,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # what is going on
     def getwork(self,ticket):
-	print "getwork", ticket
+	if list: print "getwork", ticket
 	Trace.trace(3,"{getwork ")
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
@@ -729,6 +729,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # what is going on
 
     def getmoverlist(self,ticket):
+	if list: print "getmoverlist", ticket
 	Trace.trace(3,"{getmoverlist ")
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
