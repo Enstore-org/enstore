@@ -1009,7 +1009,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
         if self.lm_lock in ('locked', 'ignore', 'pause', 'nowrite', e_errors.BROKEN):
             #if self.lm_lock in  ('locked', 'nowrite'):
-            if self.lm_lock in  ('locked'):
+            if self.lm_lock in  ('locked',):
                 ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
             else:
                 ticket["status"] = (e_errors.OK, None)
@@ -1091,7 +1091,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
         if self.lm_lock in ('locked', 'ignore', 'pause', 'noread', e_errors.BROKEN):
             #if self.lm_lock in ('locked', 'noread'):
-            if self.lm_lock in ('locked'):
+            if self.lm_lock in ('locked',):
                 ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
             else:
                 ticket["status"] = (e_errors.OK, None)
