@@ -1862,7 +1862,8 @@ class PnfsInterface(option.Interface):
                                          option.VALUE_LABEL:"layer",
                                          }]
               },
-        option.NAMEOF:{option.HELP_STRING:"prints the filename of the pnfs id",
+        option.NAMEOF:{option.HELP_STRING:"prints the filename of the pnfs id"\
+                       " (CWD must be under /pnfs)",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_NAME:"nameof",
                        option.DEFAULT_TYPE:option.INTEGER,
@@ -1873,7 +1874,7 @@ class PnfsInterface(option.Interface):
                        option.USER_LEVEL:option.ADMIN,
                        },
         option.PARENT:{option.HELP_STRING:"prints the pnfs id of the parent " \
-                                          "directory",
+                       "directory (CWD must be under /pnfs)",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_NAME:"parent",
                        option.DEFAULT_TYPE:option.INTEGER,
@@ -1883,7 +1884,8 @@ class PnfsInterface(option.Interface):
                        option.FORCE_SET_DEFAULT:option.FORCE,
                        option.USER_LEVEL:option.ADMIN,
                        },
-        option.PATH:{option.HELP_STRING:"prints the file path of the pnfs id",
+        option.PATH:{option.HELP_STRING:"prints the file path of the pnfs id"\
+                                        " (CWD must be under /pnfs)",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_NAME:"path",
                      option.DEFAULT_TYPE:option.INTEGER,
