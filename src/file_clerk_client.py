@@ -41,14 +41,18 @@ class FileClient(generic_client.GenericClient,
             self.server_address = self.get_server_address(MY_SERVER)
 
     def new_bit_file(self, ticket):
+        ticket['work'] = "new_bit_file"
         r = self.send(ticket)
         return r
 
     def set_pnfsid(self, ticket):
+        ticket['work'] = "set_pnfsid"
         r = self.send(ticket)
         return r
 
     def set_delete(self, ticket):
+        #Is this really set_deleted or set_delete?
+        ticket['work'] = "set_deleted"
         r = self.send(ticket)
         return r
 
