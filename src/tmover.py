@@ -733,8 +733,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.wrapper_type = self.vol_info.get('wrapper')
         if self.wrapper_type is None:
             ##XXX hack - why is wrapper not coming in on the vc ticket?
-            ff = self.vol_info['file_family']
-            self.wrapper_type = string.split(ff,'.')[-1]
+            fam = (self.vol_info.get("volume_family") or
+                   self.vol_info.get("file_family"))
+            
+            self.wrapper_type = string.split(fam,'.')[-1]
+            
             
         try:
             self.wrapper = __import__(self.wrapper_type + '_wrapper')
@@ -848,7 +851,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ##  HACK:  store 0 to database if mover is NULL
         if self.config['driver']=='NullDriver':
             fc_ticket['complete_crc']=0L
-            fc_ticket['sanity_cookie']=(self.sanity_bytes,0L)
+            fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
 
         if verbose: print "sending", fc_ticket, "to file clerk"
         fcc_reply = self.fcc.new_bit_file( {'work':"new_bit_file",
@@ -969,9 +972,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 location = eod
             if location != eod:
                 return 0# Can only write at end of tape
-        
+
         location = cookie_to_long(location)
-        self.seek_to_location(location, location==eod)
+        self.seek_to_location(location, iomode==WRITE and location==eod)
         self.last_seek = self.current_location
         return 1
     
@@ -1028,7 +1031,9 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dismount_volume(self):
         self.dismount_time = None
         if self.do_eject:
+            self.tape_driver.open(self.device, mode=0, retry_count=2)
             self.tape_driver.eject()
+            self.tape_driver.close()
         self.state = DISMOUNT_WAIT
         vol_info = self.vol_info.copy()
         vcc = self.vcc
@@ -1078,9 +1083,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_volume = volume_label
         return
     
-    def seek_to_location(self, location, eod_ok=0):
+    def seek_to_location(self, location, eot_ok=0):
         if verbose: print "seek to", location
-        self.tape_driver.seek(location, eod_ok)
+        self.tape_driver.seek(location, eot_ok)
         self.timer('seek_time')
         self.current_location = self.tape_driver.tell()
         
@@ -1091,11 +1096,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             ticket = self.current_work_ticket
             data_ip=self.config.get("data_ip",None)
-            host, port, listen_socket = callback.get_data_callback(fixed_ip=data_ip)
+            host, port, listen_socket = callback.get_callback(fixed_ip=data_ip)
             listen_socket.listen(4)
             ticket['mover']['callback_addr'] = (host,port) #client expects this
-            # ticket must have 'callback_addr' set for the following to work
-            control_socket = callback.user_callback_socket( ticket)
+            
+            
+            control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            control_socket.connect(ticket['callback_addr'])
+            callback.write_tcp_obj(control_socket, ticket)
             if verbose: print "ctrl = ", control_socket
             # we expect a prompt call-back here
             
@@ -1198,6 +1206,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.reply_to_caller( out_ticket )
         self.remove_lockfile()
 
+    def clean_drive(self, ticket):
+        save_state = self.state
+        if self.state not in (IDLE, OFFLINE):
+            pass #ZZZ
+        ret = self.mcc.doCleaningCycle(self.config)
+        
+        
         
 class MoverInterface(generic_server.GenericServerInterface):
 
