@@ -44,6 +44,9 @@ class GenericDriver:
     # list of the files on the device
     LOC_SPEC = '%012d'		# bytes offset (arbitary width)
 
+    self.statisticsOpen = {}
+    self.statisticsClose = {}
+
     def __init__( self ):
 	# Note, I could pass "device" here save it, but I want to pass it to
 	#       open (to make open like python builtin open) so I might as
@@ -263,11 +266,6 @@ class  FTTDriver(GenericDriver) :
     """
      A Fermi Tape Tools driver
     """
-    def __init__( self ):
-        GenericDriver.__init__(self)
-        self.statisticsOpen = {}
-        self.statisticsClose = {}
-
     def sw_mount( self, device, blocksize, remaining_bytes, vol_label,
 		  eod_cookie ):
 	# Get the position from the drive.
