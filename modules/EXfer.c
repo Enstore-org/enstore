@@ -337,22 +337,39 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
 
 #if defined( O_DIRECT ) && defined( F_DIOINFO )
   /* If xfs direct i/o is available make sure the memory is aligned. */
-  if((buffer = memalign(memalign_val.d_mem, ARRAY_SIZE * blk_size)) == NULL)
-    printf("memalign failed %d\n", errno);
+  errno = 0;
+  if((buffer = memalign(memalign_val.d_miniosz, ARRAY_SIZE * blk_size)) == NULL)
+     return *pack_return_values(0, errno, THREAD_ERROR, bytes,
+                                "memalign failed", 0.0, 0.0,
+                                __FILE__, __LINE__);
   memset(buffer, 0, ARRAY_SIZE * blk_size);
 #elif defined( O_DIRECT )
   /* If xfs direct i/o is available make sure the memory is aligned.  If
    this code is compiled use best guess alignment size. */
   errno = 0;
   if((buffer = memalign(sysconf(_SC_PAGE_SIZE), ARRAY_SIZE * blk_size)) == NULL)
-    printf("memalign failed %d\n", errno);
+       return *pack_return_values(0, errno, THREAD_ERROR, bytes,
+                                "memalign failed", 0.0, 0.0,
+                                __FILE__, __LINE__);
   memset(buffer, 0, ARRAY_SIZE * blk_size);
 #else
   /*allocate (and initalize) memory for the global pointers*/
-  buffer = calloc(ARRAY_SIZE, blk_size);
+  errno = 0;
+  if((buffer = calloc(ARRAY_SIZE, blk_size)) == NULL)
+      return *pack_return_values(0, errno, THREAD_ERROR, bytes,
+                                "calloc failed", 0.0, 0.0,
+                                __FILE__, __LINE__);
 #endif
-  stored = calloc(ARRAY_SIZE, sizeof(int));
-  buffer_lock = calloc(ARRAY_SIZE, sizeof(pthread_mutex_t));
+  errno = 0;
+  if((stored = calloc(ARRAY_SIZE, sizeof(int))) ==  NULL)
+       return *pack_return_values(0, errno, THREAD_ERROR, bytes,
+                                "calloc failed", 0.0, 0.0,
+                                __FILE__, __LINE__);
+  errno = 0;
+  if((buffer_lock = calloc(ARRAY_SIZE, sizeof(pthread_mutex_t))) == NULL)
+       return *pack_return_values(0, errno, THREAD_ERROR, bytes,
+                                "calloc failed", 0.0, 0.0,
+                                __FILE__, __LINE__);
 
   /* initalize the conditional variable signaled when a thread has finished. */
   pthread_cond_init(&done_cond, NULL);
