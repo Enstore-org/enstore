@@ -46,7 +46,7 @@ ftt_scsi_open(const char *pc)
 {
 	register int fd;
 
-	fd = open(pc, O_RDWR);
+	fd = open(pc, O_RDWR); 
 	return fd;
 }
 

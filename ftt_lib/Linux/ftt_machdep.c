@@ -63,7 +63,10 @@ ftt_set_compression(ftt_descriptor d, int compression) {
 
 int
 ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-   /* ignore hwdens, 'cause we opened the right device node */
+   static struct mtop buf;
+   buf->mt_op = MTSETDENSITY;
+   buf->mt_count = hwdens;
+   res = ioctl(d->file_descriptor,MTIOCTOP,&buf);
    return 0;
 }
 
@@ -73,31 +76,18 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     static int recursing = 0;
     int res;
 
-    if (recursing) {
-	/* 
-	** we need the device open before we do this, so we call
-	** ftt_open_dev. of course, it is going to call *us* again.
-	** so we have this recursive call bail-out. 
-	*/
-	return 0;
-    }
     DEBUG1(stderr,"entering ftt_set_hwdens_blocksize %d\n", blocksize);
-    recursing = 1;
-    if (0 > (res = ftt_open_dev(d))) { 
-	return res;
-    }
-    recursing = 0;
     if (blocksize != 0) {
 	/* 
 	** the silly program won't let us set the blocksize to zero,
 	** but since that gives us a different device node in 
 	** ftt_open_logical, it ends up getting set to zero anyhow.
 	*/
-	buf.mt_op = MTSCSI_SETFIXED;
+	buf.mt_op = MTSCSI_SETBLK;
 	buf.mt_count = blocksize;
-	res = ioctl(d->file_descriptor, MTSPECOP, &buf);
+	res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
 	res = ftt_translate_error(d,FTT_OPN_STATUS,
-				"an MTSPECOP/MTSCSI_SETFIXED ioctl()", res,
+				"an MTIOCTOP/MTSCSI_SETBLK ioctl()", res,
 				"an ftt_open_dev",1);
     }
     return res;
@@ -106,7 +96,15 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 int
 ftt_get_hwdens(ftt_descriptor d, char *devname) {
     int res;
+    static struct mtget buf;
 
-    res = d->devinfo[d->which_is_default].hwdens;
-    return res;
+    res = ioctl(d->file_descriptor,MTIOCGET,&buf);
+    if (res < 0) {
+        res = ftt_translate_error(d,FTT_OPN_OPEN,
+				"an MTIOCGET ioctl()", res,
+				"an ftt_open_dev",1);
+   } else {
+        res = (buf.mt_dsreg & MT_ST_DENSITY_MASK)>> MT_ST_DENSITY_SHIFT;
+   }
+   return res;
 }
