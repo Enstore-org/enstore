@@ -77,7 +77,8 @@ class InquisitorClientInterface(interface.Interface):
     def options(self):
         Trace.trace(16,"{}options")
         return self.config_options()+self.list_options()  +\
-               ["config_list","timeout=","get_timeout", "update","alive","alive_rcv_timeout=","alive_retries=",""] +\
+	       self.alive_options() +\
+               ["config_list","timeout=","get_timeout", "update", ""] +\
                self.help_options()
 
 

@@ -4,6 +4,7 @@ import sys
 import time
 import pprint
 import copy
+import errno
 
 # enstore imports
 import timeofday
@@ -39,65 +40,108 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the configuration server
     def update_config(self, file):
-	stat = self.csc.alive()
-	self.output_alive("config server   : ", stat, file)
+        Trace.trace(12,"{update_config "+repr(file))
+	try:
+	    stat = self.csc.alive(self.alive_rcv_timeout, self.alive_retries)
+	    self.output_alive("config server   : ", stat, file)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.output_etimedout("config server   : ", file)
+        Trace.trace(12,"}update_config ")
 
     # get the information from the library manager(s)
-    def update_library_manager(self, file, key):
+    def update_library_manager(self, file, key, list):
+        Trace.trace(12,"{update_library_manager "+repr(file)+" "+repr(key))
 	# get info on this library_manager
 	t = self.csc.get_uncached(key)
 	# get a client and then check if the server is alive
 	lmc = library_manager_client.LibraryManagerClient(self.csc, 0, key, t['host'], t['port'])
-	stat = lmc.alive()
-	self.output_alive("library manager : ", stat, file)
-	pass
+	try:
+	    stat = lmc.alive(self.alive_rcv_timeout, self.alive_retries)
+	    self.output_alive("library manager : ", stat, file)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.output_etimedout("library manager : ", file)
+	#stat = lmc.getwork(list)
+	#file.write(repr(stat))
+        Trace.trace(12,"}update_library_manager ")
 
     # get the information from the movers
     def update_mover(self, file, key):
 	pass
 
-    # get the information from the admin server
+    # get the information from the admin clerk
     def update_admin_clerk(self, file):
-	stat = self.acc.alive()
-	self.output_alive("admin server    : ", stat, file)
+        Trace.trace(12,"{update_admin_clerk "+repr(file))
+	try:
+	    stat = self.acc.alive(self.alive_rcv_timeout, self.alive_retries)
+	    self.output_alive("admin clerk     : ", stat, file)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.output_etimedout("admin clerk     : ", file)
+        Trace.trace(12,"}update_admin_clerk ")
 
     # get the information from the file clerk
     def update_file_clerk(self, file):
-	stat = self.fcc.alive()
-	self.output_alive("file clerk      : ", stat, file)
+        Trace.trace(12,"{update_file_clerk "+repr(file))
+	try:
+	    stat = self.fcc.alive(self.alive_rcv_timeout, self.alive_retries)
+	    self.output_alive("file clerk      : ", stat, file)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.output_etimedout("file clerk      : ", file)
+        Trace.trace(12,"}update_file_clerk ")
 
     # get the information from the log server
     def update_log_server(self, file):
-	stat = self.logc.alive()
-	self.output_alive("log server      : ", stat, file)
+        Trace.trace(12,"{update_log_server "+repr(file))
+	try:
+	    stat = self.logc.alive(self.alive_rcv_timeout, self.alive_retries)
+	    self.output_alive("log server      : ", stat, file)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.output_etimedout("log server      : ", file)
+        Trace.trace(12,"}update_log_server ")
 
     # get the information from the media changer(s)
     def update_media_changer(self, file, key):
+        Trace.trace(12,"{update_media_changer "+repr(file)+" "+repr(key))
 	# get info on this media changer
 	t = self.csc.get_uncached(key)
 	# get a client and then check if the server is alive
 	mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, t['host'], t['port'])
-	stat = mcc.alive()
-	self.output_alive("media changer   : ", stat, file)
+	try:
+	    stat = mcc.alive(self.alive_rcv_timeout, self.alive_retries)
+	    self.output_alive("media changer   : ", stat, file)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.output_etimedout("media changer   : ", file)
+        Trace.trace(12,"}update_media_changer ")
 
     # get the information from the volume clerk server
     def update_volume_clerk(self, file):
-	stat = self.vcc.alive()
-	self.output_alive("volume clerk    : ", stat, file)
+        Trace.trace(12,"{update_volume_clerk "+repr(file))
+	try:
+	    stat = self.vcc.alive(self.alive_rcv_timeout, self.alive_retries)
+	    self.output_alive("volume clerk    : ", stat, file)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.output_etimedout("volume clerk    : ", file)
+        Trace.trace(12,"}update_volume_clerk ")
 
     # output the passed alive status
     def output_alive(self, tag, status, file):
 	stat = tag + repr(status['work']) + ", at " + repr(status['address']) + ", is " + repr(status['status']) + "\n"
 	file.write(stat)
 
+    # output the timeout error
+    def output_etimedout(self, tag, file):
+	stat = tag + "timed out\n"
+	file.write(stat)
+
     # get the current time and output it
     def update_time(self, file):
+        Trace.trace(12,"{update_time "+repr(file))
 	tm = time.localtime(time.time())
 	atm = "ENSTORE SYSTEM STATUS at %04d-%02d-%02d %02d:%02d:%02d\n" % (tm[0], tm[1], tm[2], tm[3], tm[4], tm[5])
  	file.write(atm)
+        Trace.trace(12,"}update_time ")
 
     # update the enstore system status information
-    def do_update(self):
+    def do_update(self, list):
         Trace.trace(11,"{do_update ")
 	# get local time and output it to the file
 	self.update_time(self.statusfile)
@@ -118,11 +162,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    elif string.find(key, ".media_changer") != -1:
 	        self.update_media_changer(self.statusfile, key)
 	    elif string.find(key, ".library_manager") != -1:
-	        self.update_library_manager(self.statusfile, key)
+	        self.update_library_manager(self.statusfile, key, list)
 	self.statusfile.flush()
         Trace.trace(11,"}do_update ")
 
     def open_statusfile(self, statusfile_name, list) :
+        Trace.trace(11,"{open_statusfile "+repr(statusfile_name))
         # try to open status file for append
         if list :
             print "opening " + statusfile_name
@@ -130,15 +175,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             self.statusfile = open(statusfile_name, 'a')
             if list :
                 print "opened for append"
-        except :
+        except:
             self.statusfile = open(statusfile_name, 'w')
             if list :
                 print "opened for write"
+        Trace.trace(11,"}open_statusfile ")
 
     # our client said to update the enstore system status information
-    def update(self, ticket):
+    def update(self, ticket, list=0):
         Trace.trace(10,"{update "+repr(ticket))
-	self.do_update()
+	self.do_update(list)
         ticket["status"] = (e_errors.OK, None)
         try:
            self.reply_to_caller(ticket)
@@ -183,14 +229,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,"}get_timeout")
         return
 
-    # loop here forever doing what inquisitors do best
-    def serve_forever(self, statusfile_dir_path, timeout, list) :  # overrides 
-                                                                # UDPServer one
+    # loop here forever doing what inquisitors do best (overrides UDP one)
+    def serve_forever(self, statusfile_dir_path, timeout, list, alive_to, alive_tries) :
+	Trace.trace(4,"{serve_forever "+repr(timeout))
 	self.rcv_timeout = timeout
 	fn = "enstore_system_status.txt"
         self.statusfile_name = statusfile_dir_path + "/" + fn
         # open status file
         self.open_statusfile(self.statusfile_name, list)
+
+	self.alive_rcv_timeout = alive_to
+	self.alive_retries = alive_tries
 
 	# get a file clerk client, volume clerk client, admin clerk client,
 	# library manager client(s), media changer client(s) and a connection
@@ -204,9 +253,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         while 1:
             self.handle_request()
+	Trace.trace(4,"}serve_forever ")
 
     def handle_timeout(self):
-	self.do_update()
+	self.do_update(0)
 	return
 
 
@@ -256,6 +306,10 @@ if __name__ == "__main__":
             file_dir = value
         elif opt == "--rcv_timeout":
             timeout = value
+        elif opt == "--alive_rcv_timeout":
+            alive_rcv_timeout = value
+        elif opt == "--alive_retry":
+            alive_retry = value
         elif opt == "--list":
             list = 1
         elif opt == "--help":
@@ -287,6 +341,20 @@ if __name__ == "__main__":
     except:
         timeout = 120
 
+    # if no alive timeout was entered on the command line, get it from the 
+    # configuration file.
+    try:
+        alive_rcv_timeout = keys["alive_rcv_timeout"]
+    except:
+        alive_rcv_timeout = 15
+
+    # if no alive retry # was entered on the command line, get it from the 
+    # configuration file.
+    try:
+        alive_retries = keys["alive_retries"]
+    except:
+        alive_retries = 4
+
     # get the directory where the files we create will go.  this should
     # be in the configuration file.
     try:
@@ -302,7 +370,7 @@ if __name__ == "__main__":
         try:
             Trace.trace(1,'Inquisitor (re)starting')
             logc.send(log_client.INFO, 1, "Inquisitor (re)starting")
-            iq.serve_forever(file_dir, timeout, list)
+            iq.serve_forever(file_dir, timeout, list, alive_rcv_timeout, alive_retries)
         except:
             traceback.print_exc()
             format = timeofday.tod()+" "+\
@@ -315,3 +383,5 @@ if __name__ == "__main__":
             Trace.trace(0,format)
             continue
     Trace.trace(1,"Inquisitor finished (impossible)")
+
+
