@@ -1,0 +1,39 @@
+#!/bin/sh
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+usage="USAGE: $0 base_write_dir_path write_file_list"
+
+if [ -n "${1-}" ] ; then
+    base=$1
+else
+    echo "$usage"
+    exit 1
+fi
+
+if [ -n "${2-}" ] ; then
+    write_list=$2
+else
+    echo "$usage"
+    exit 2
+fi
+
+set -u  # force better programming and ability to use check for not set
+
+rm -f writer.pids
+echo $$ > writer.pids
+p=`echo $$``uname -n`
+
+while /bin/true; do
+    cat $write_list | while read f; do
+        rm -f writerWC.pids
+        echo $! > writerWC.pids
+        fb=`basename $f`
+        output=$base/$fb`date +"%b%d%H%M%S"`$p
+        ecmd encp $f $output
+        if [ $? -eq 2 ] ; then
+            echo "FINISHED $base"
+            exit 2
+        fi
+    done
+    exit 2
+done

@@ -55,7 +55,7 @@ olddbs:
 	@ echo "Tests are running. Do a	   killall -9 longtest	  to stop"
 	@ echo "   It takes a bit for them to die off"
 
-data:
+datafiles:
 	if [ ! -d data ] ; then mkdir data ; fi
 	touch data/null0.dat
 	echo short > data/short1.dat
