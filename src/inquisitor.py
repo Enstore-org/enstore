@@ -640,6 +640,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # check if the new information identifies bad writes as specified in the
     # inquisitors' configuration file element 'node_write_check'
     def check_for_bad_writes(self, server):
+	node_write_check = self.inquisitor.node_write_check
+	if not node_write_check:
+	    # no nodes listed to check
+	    return
 	# if the new information is for a mover and the mover status is not
 	# bad, then we are done.
 	if enstore_functions.is_mover(server.name):
@@ -657,10 +661,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	#      o the file family limit has not been reached for writes/reads
 	#           coming from the specified nodes
 	#
-	node_write_check = self.inquisitor.node_write_check
-	if not node_write_check:
-	    # no nodes listed to check
-	    return
 	node_d = make_node_d(node_write_check)
 	node_d_keys = node_d.keys()
 	# first check the state of the lib man.  if it is in a bad state, just
