@@ -239,7 +239,6 @@ class ConfigurationServer(ConfigurationDict,\
 
 if __name__ == "__main__":
     Trace.init("configsrvr")
-    Trace.mode(0xffff)
     Trace.trace(1,"{ called args="+repr(sys.argv))
     import os
     import sys
