@@ -35,13 +35,11 @@ import string_driver
 
 import Trace
 
-
 def print_args(*args):
     print args
 
-verbose=2
+verbose=0
     
-Trace.trace = print_args
 
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
@@ -588,7 +586,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.bytes_written = self.bytes_written + bytes_written
             if self.bytes_written == self.bytes_to_write:
                 self.tape_driver.writefm()
-                print "FLUSH" #REMOVE
                 self.tape_driver.flush()
                 if self.update_after_writing():
                     self.transfer_completed()
@@ -798,7 +795,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = HAVE_BOUND
 
 
-        ##self.tape_driver.flush() # moved to write_tape REMOVE
         self.net_driver.close()
 
         self.current_location = self.tape_driver.tell()
@@ -936,10 +932,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.mount_volume(volume_label)
         
-        print "Opening tape driver"
         self.tape_driver.open(self.device, iomode)
         self.tape_driver.set_mode(compression = 0, blocksize = 0)            
-        print "tape driver", self.tape_driver.fileno()
 
         if iomode is WRITE:
             status = self.vcc.set_writing(volume_label)  #XXX is this neccessary?
@@ -1236,7 +1230,6 @@ if __name__ == '__main__':
         try:
             mover.serve_forever()
         except:
-            raise #REMOVE XXX CGW
             try:
                 exc, msg, tb = sys.exc_info()
                 print exc, msg, "restarting"
