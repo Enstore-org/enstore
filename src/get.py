@@ -10,6 +10,7 @@ import pprint
 import select
 import socket
 import errno
+import copy
 
 import encp
 import pnfs
@@ -92,27 +93,6 @@ def transfer_file(in_fd, out_fd):
     return {'status' : (e_errors.BROKEN, "Reached unreachable code."),
             'bytes' : bytes, 'encp_crc' : crc}
 
-#Update the ticket so that next file can be read.
-def next_request_update(work_ticket, file_number):
-    lc = "0000_000000000_%07d" % file_number
-
-    #Update the fields with the new location cookie.
-    work_ticket['fc']['location_cookie'] = lc
-
-    #Only update these fields if a filename is not known already.
-    #This could be a problem if a file is the same name as its location cookie.
-    if encp.is_location_cookie(os.path.basename(work_ticket['infile'])):
-        # Update the tickets fields for the next file.
-        work_ticket['infile'] = \
-                    os.path.join(os.path.dirname(work_ticket['infile']), lc)
-        work_ticket['outfile'] = \
-                    os.path.join(os.path.dirname(work_ticket['outfile']), lc)
-        work_ticket['wrapper']['fullname'] = work_ticket['infile']
-        work_ticket['wrapper']['pnfsFilename'] = work_ticket['outfile']
-
-    #Update the unique id for the LM.
-    work_ticket['unique_id'] = encp.generate_unique_id()
-
 
 def get_single_file(work_ticket, control_socket, udp_socket, e):
 
@@ -181,8 +161,8 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
 
         Trace.message(5, "Completed reading from tape.")
-        Trace.message(10, "DONE_TICKET:")
-        Trace.message(10, pprint.pformat(done_ticket))
+        Trace.message(1, "DONE_TICKET:")
+        Trace.message(1, pprint.pformat(done_ticket))
 
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
@@ -238,7 +218,7 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         #Combine these tickets.
         work_ticket = encp.combine_dict(mover_done_ticket, mover_result_dict,
                                         work_ticket)
-        
+
         #Check the crc.  Note: done_ticket has any error status set to it by
         # check_crc.
         encp.check_crc(work_ticket, e, out_fd)
@@ -314,12 +294,61 @@ def requests_outstanding(request_list):
 
     return files_left
 
-#Return the next uncompleted transfer.
-def get_next_request(request_list):
+#Update the ticket so that next file can be read.
+def next_request_update(work_ticket, file_number):
 
+    #Update the fields with the new location cookie.
+    lc = "0000_000000000_%07d" % file_number
+    work_ticket['fc']['location_cookie'] = lc
+
+    #Clear this file information.
+    work_ticket['fc']['bfid'] = None
+    work_ticket['fc']['complete_crc'] = None
+    work_ticket['fc']['deleted'] = None
+    work_ticket['fc']['drive'] = None
+    work_ticket['fc']['pnfs_mapname'] = None
+    work_ticket['fc']['pnfs_name0'] = None
+    work_ticket['fc']['pnfsid'] = None
+    work_ticket['fc']['pnfsvid'] = None
+    work_ticket['fc']['sanity_cookie'] = None
+    work_ticket['fc']['size'] = None
+    #Clear this information too.
+    work_ticket['file_size'] = None
+    work_ticket['bfid'] = None
+    #If 'exfer' not deleted; it clobbers new data when returned from the mover.
+    del work_ticket['exfer']
+
+    #Only update these fields if a filename is not known already.
+    #This could be a problem if a file is the same name as its location cookie.
+    if encp.is_location_cookie(os.path.basename(work_ticket['infile'])):
+        # Update the tickets fields for the next file.
+        work_ticket['infile'] = \
+                    os.path.join(os.path.dirname(work_ticket['infile']), lc)
+        work_ticket['outfile'] = \
+                    os.path.join(os.path.dirname(work_ticket['outfile']), lc)
+        work_ticket['wrapper']['fullname'] = work_ticket['infile']
+        work_ticket['wrapper']['pnfsFilename'] = work_ticket['outfile']
+
+    #Update the unique id for the LM.
+    work_ticket['unique_id'] = encp.generate_unique_id()
+
+    return work_ticket
+
+#Return the next uncompleted transfer.
+def get_next_request(request_list, filenumber = None):
+
+    #If we know nothing about this tape.  (i.e. not metadata and --list was
+    # not used.)
+    if request_list[0].get('completion_status', None) == EOD and \
+       filenumber != None:
+        request = next_request_update(copy.deepcopy(request_list[0]),
+                                      filenumber)
+        request_list.append(request)
+        return request, (len(request_list) - 1)
+
+    #For all cases were metadata is known.
     for i in range(len(request_list)):
         completion_status = request_list[i].get('completion_status', None)
-        print "completion_status", completion_status, i
         if completion_status == None or completion_status == EOD: 
             return request_list[i], i
 
@@ -434,6 +463,8 @@ def main(e):
             request['completion_status'] = EOD
             #Store these changes back into the master list.
             requests_per_vol[e.volume][index] = request
+        else:
+            file_number = None
 
         # Keep looping until the READ_EOD error occurs.
         while requests_outstanding(requests_per_vol[e.volume]):
@@ -449,6 +480,7 @@ def main(e):
             done_ticket = get_single_file(request, control_socket,
                                           udp_socket, e)
 
+            #Print out the final ticket.
             Trace.message(1, "DONE_TICKET (get_single_file):")
             Trace.message(1, pprint.pformat(done_ticket))
 
@@ -484,7 +516,7 @@ def main(e):
                     # wrapper the header and trailer consume a 'file' on
                     # the tape.
                     file_number = file_number + 1
-                    next_request_update(request, file_number)
+                    #next_request_update(request, file_number)
                 else:
                     #Set completion status to successful.
                     request['completion_status'] = SUCCESS
@@ -492,9 +524,8 @@ def main(e):
                 #Store these changes back into the master list.
                 requests_per_vol[e.volume][index] = request
                 #Get the next request before continueing.
-                request, index = get_next_request(requests_per_vol[e.volume])
-                print "GET_NEXT_REQUEST:"
-                pprint.pprint(request)
+                request, index = get_next_request(requests_per_vol[e.volume],
+                                                  file_number)
                 continue
             #The requested file does not exist on the tape.  (i.e. the
             # tape has only 6 files and the seventh file was requested.)
