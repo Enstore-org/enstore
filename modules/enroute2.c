@@ -2,7 +2,7 @@
  *
  * This is meant to be a setuid command and should only be run from encp
  *
- * usage: enroute key add|del destination [gateway]
+ * usage: enroute key add|del|change destination [gateway]
  *
  *	where key is an encoded key from encp and the reset is the same
  *	as defined in route (1M).
@@ -51,6 +51,8 @@ static char *signature = "Enstore \nSignature: \n2nst4r2 \n2etuorne ";
 
 #include "enrouteError.h"
 
+static int valid_key(char *key);
+
 #ifdef __linux__
 /* for now, Linux is an exception and main() returns 5
  * future implementation depends on whether route(7) will be implemented
@@ -85,25 +87,26 @@ char **argv;
 
 	if ((argc < 4) || (argc > 5))
 	{
-		fprintf(stderr, "syntax error\n");
+		(void) fprintf(stderr, "syntax error\n");
 		exit(SyntaxError);
 	}
 
 	if (!valid_key(argv[1]))
 	{
-		fprintf(stderr, "can only be launched by enstore/encp\n");
+		(void) fprintf(stderr,
+			       "can only be launched by enstore/encp\n");
 		exit(IllegalExecution);
 	}
 
 	if ((rs = socket(PF_ROUTE, SOCK_RAW, 0)) < 0)
 	{
-		fprintf(stderr, "can not open routing socket\n");
+		(void) fprintf(stderr, "can not open routing socket\n");
 		exit(RSOpenFailure);
 	}
 
 	/* pre-fill rtm, mostly standard stuff */
 
-	bzero((char *) buf, sizeof(buf));
+	(void) memset((char *) buf, 0, sizeof(buf));
 
 	rtm->rtm_version = RTM_VERSION;
 	rtm->rtm_pid = getpid();
@@ -127,7 +130,7 @@ char **argv;
 		addr2->sin_addr = *((struct in_addr*) host->h_addr_list[0]);
 	}
 	
-	setuid(0);	/* to show who the boss is */
+	(void) setuid(0);	/* to show who the boss is */
 	if (getuid())
 	{
 		/* do not have enough privilege */
@@ -137,7 +140,7 @@ char **argv;
 
 	if (!strcmp(argv[2], "add"))
 	{
-		rtm->rtm_msglen = sizeof(struct rt_msghdr) + 2 * sizeof(struct sockaddr);
+	        rtm->rtm_msglen = sizeof(struct rt_msghdr) + 2 * sizeof(struct sockaddr);
 		rtm->rtm_type = RTM_ADD;
 		rtm->rtm_addrs = RTA_DST | RTA_GATEWAY;
 		if (argc < 5)
@@ -151,22 +154,32 @@ char **argv;
 		rtm->rtm_type = RTM_DELETE;
 		rtm->rtm_addrs = RTA_DST;
 	}
+	else if (!strcmp(argv[2], "change"))
+	{
+	        rtm->rtm_msglen = sizeof(struct rt_msghdr) + 2 * sizeof(struct sockaddr);
+		rtm->rtm_type = RTM_CHANGE;
+		rtm->rtm_addrs = RTA_DST | RTA_GATEWAY;
+		if (argc < 5)
+		{
+		        exit(SyntaxError);
+		}
+	}
 	else
 	{
-		exit(SyntaxError);
+	        exit(SyntaxError);
 	}
 
 	/* can not check the error, if any */
 
-	write(rs, rtm, rtm->rtm_msglen);
+	(void) write(rs, rtm, rtm->rtm_msglen);
 
-	close(rs);
+	(void) close(rs);
 	exit(0);
 }
 
 #endif
 
-int valid_key(key)
+static int valid_key(key)
 char *key;
 {
 	int pid;

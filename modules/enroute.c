@@ -2,6 +2,7 @@
  *
  *    routeAdd(destination, gateway) -- add destination through gateway
  *    routeDel(destination) -- delate destination
+ *    routeChange(destination) -- modify existing destination
  */
 
 #include <stdio.h>
@@ -25,6 +26,7 @@ char *errstr(int errno)
 	case NoPrivilege: return("not enough privilege to change route");
 	case SyntaxError: return("syntax error");
 	case NoEnroute2: return("no enroute2");
+	case FailedExecution: return("unable to run enroute2");
 	}
 	return("unknown error");
 }
@@ -61,7 +63,7 @@ static char *getexecpath(char *path)
 
 	if ((p = getenv("ENROUTE2")) != NULL)
 	{
-		strcpy(path, p);
+		(void) strcpy(path, p);
 		if (is_root_setuid_exe(path))
 		{
 			return(path);
@@ -72,8 +74,8 @@ static char *getexecpath(char *path)
 
 	if ((p = getenv("ENCP_DIR")) != NULL)
 	{
-		strcpy(path, p);
-		strcat(path, "/enroute2");
+		(void) strcpy(path, p);
+		(void) strcat(path, "/enroute2");
 		if (is_root_setuid_exe(path))
 		{
 			return(path);
@@ -84,8 +86,8 @@ static char *getexecpath(char *path)
 
 	if ((p = getenv("ENSTORE_DIR")) != NULL)
 	{
-		strcpy(path, p);
-		strcat(path, "/sbin/enroute2");
+		(void) strcpy(path, p);
+		(void) strcat(path, "/sbin/enroute2");
 		if (is_root_setuid_exe(path))
 		{
 			return(path);
@@ -94,7 +96,7 @@ static char *getexecpath(char *path)
 
 	/* try /usr/local/bin/enroute2 */
 
-	strcpy(path, "/usr/local/bin/enroute2");
+	(void) strcpy(path, "/usr/local/bin/enroute2");
 	if (is_root_setuid_exe(path))
 	{
 		return(path);
@@ -102,7 +104,7 @@ static char *getexecpath(char *path)
 
 	/* try /etc/enroute2 */
 
-	strcpy(path, "/etc/enroute2");
+	(void) strcpy(path, "/etc/enroute2");
 	if (is_root_setuid_exe(path))
 	{
 		return(path);
@@ -123,7 +125,7 @@ static char *keygen(char *key)
 	int i, l, m;
 	char c;
 
-	sprintf(key, "%d", getpid());
+	(void) sprintf(key, "%d", getpid());
 
 	l = strlen(key);	/* length of the key */
 	m = l / 2;		/* middle position in key */
@@ -157,7 +159,10 @@ static int route(char *cmd, char *dest, char *gw)
 	if ((pid = fork()) == 0)	/* child */
 	{
 		(void) keygen(key);	/* generate a key */
-		execl(path, "phantom-encp", key, cmd, dest, gw, NULL);
+		if(execl(path, "phantom-encp", key, cmd, dest, gw, NULL) < 0)
+		{
+			return(FailedExecution);
+		}
 	}
 	else
 	{
@@ -182,4 +187,9 @@ int routeAdd(char *dest, char *gw)
 int routeDel(char *dest)
 {
 	return route("del", dest, NULL);
+}
+
+int routeChange(char *dest, char *gw)
+{
+	return route("change", dest, gw);
 }
