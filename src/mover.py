@@ -464,7 +464,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver.close()
             if not have_tape:
                 Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
-                self.dismount_volume(after_function=self.idle)
+                vol_ticket = { "external_label": "Unknown",
+                               "media_type":self.media_type}
+                mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
 
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
