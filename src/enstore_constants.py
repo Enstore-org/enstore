@@ -47,6 +47,7 @@ VOLC = "Volume Clerk"
 # server names used in config file
 LOG_SERVER = "log_server"
 ALARM_SERVER = "alarm_server"
+EVENT_RELAY = "event_relay"
 FILE_CLERK = "file_clerk"
 VOLUME_CLERK = "volume_clerk"
 INQUISITOR = "inquisitor"
@@ -115,9 +116,10 @@ LMSTATE = "lmstate"
 NO_INFO = "------"
 NO_WORK = "No work at movers"
 NO_PENDING = "No pending work"
+NEVER_ALIVE = -1
 
 LIBRARY_MANAGER = "library_manager"
 MOVER = "mover"
 MEDIA_CHANGER = "media_changer"
-GENERIC_SERVERS = [ ALARM_SERVER, CONFIG_SERVER, FILE_CLERK, INQUISITOR,
+GENERIC_SERVERS = [ ALARM_SERVER, CONFIG_SERVER, EVENT_RELAY, FILE_CLERK, INQUISITOR,
 		    LOG_SERVER, VOLUME_CLERK]
