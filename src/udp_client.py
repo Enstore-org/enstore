@@ -66,8 +66,9 @@ def empty_socket( sock ):
             rcount = rcount+1
             if rcount%rcountalert == 0:
                 Trace.trace(4,"empty_socket: r from select - count="+repr(rcount))
-                reply , server = sock.recvfrom(TRANSFER_MAX)
-                Trace.trace(10,"empty_socket read from "+repr(server)+":"+repr(reply))
+		pass
+	    reply , server = sock.recvfrom(TRANSFER_MAX)
+	    Trace.trace(10,"empty_socket read from "+repr(server)+":"+repr(reply))
 	elif x or w :
 	    raise "imposible to get these set w/out [r]"
         else:
