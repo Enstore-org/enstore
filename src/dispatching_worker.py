@@ -172,7 +172,7 @@ class DispatchingWorker:
                     return request
             # else the input is on the udp socket
             # req is (string,address) where string has CRC
-            req = self.socket.recvfrom(self.max_packet_size)
+            req = self.socket.recvfrom(self.max_packet_size, self.rcv_timeout)
             request,inCRC = eval(req[0])
                 
             # calculate CRC
