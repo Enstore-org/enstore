@@ -37,7 +37,7 @@ class configuration_client :
                     time.sleep(delay)
                 else :
                     raise sys.exc_info()[0],sys.exc_info()[1]
-                return self.cache[key]
+        return self.cache[key]
 
     # return cached (or get from server) value for requested item
     def get(self, key, ns_host = 'localhost', ns_port = 7500):
@@ -48,11 +48,11 @@ class configuration_client :
             return self.get_uncached(key, ns_host, ns_port)
 
     # dump the configuration dictionary
-    def config(self, ns_host = 'localhost', ns_port = 7500):
-        request = {'work' : 'config_dump' }
+    def list(self, ns_host = 'localhost', ns_port = 7500):
+        request = {'work' : 'list' }
         while 1 :
             try:
-                self.config_dump = self.u.send(request, (ns_host, ns_port) )
+                self.config_list = self.u.send(request, (ns_host, ns_port) )
                 break
             except socket.error :
                 if sys.exc_info()[1][0] == errno.CONNREFUSED :
@@ -62,13 +62,43 @@ class configuration_client :
                     time.sleep(delay)
                 else :
                     raise sys.exc_info()[0],sys.exc_info()[1]
-        pprint.pprint(self.config_dump)
 
+    # reload a new  configuration dictionary
+    def load(self, configfile, ns_host = 'localhost', ns_port = 7500):
+        request = {'work' : 'load' ,  'configfile' : configfile }
+        while 1 :
+            try:
+                return self.u.send(request, (ns_host, ns_port) )
+            except socket.error :
+                if sys.exc_info()[1][0] == errno.CONNREFUSED :
+                    delay = 3
+                    print sys.exc_info()[1][0], "socket error. configuration "\
+                          +"server down?  retrying in ",delay," seconds"
+                    time.sleep(delay)
+                else :
+                    raise sys.exc_info()[0],sys.exc_info()[1]
 
 if __name__ == "__main__" :
+
     csc = configuration_client()
-    csc.config()
-    if csc.config_dump['status'] == 'ok' :
+
+    try :
+        if sys.argv[1] == "list" :
+            csc.list()
+            pprint.pprint(csc.config_list)
+            stat = csc.config_list['status']
+        elif sys.argv[1] == "load" :
+            stati= csc.load(sys.argv[2])
+            print stati
+	    stat=stati['status']
+        else :
+            csc.list()
+            stat = csc.config_list['status']
+    except :
+        csc.list()
+        stat = csc.config_list['status']
+
+    if stat == 'ok' :
         exit(0)
     else :
         exit(1)
