@@ -110,14 +110,11 @@ def protocolize( self, text ):
     message = `(body, crc)`
 
     if len(message) > TRANSFER_MAX:
-        print "DEBUG: send: len(message)=%d, message=%s"%(len(message),message)
-	Trace.trace(6,"send:message "+\
-		    "too big. Size = "+repr(len(message))+" Max = "+\
-		    repr(TRANSFER_MAX)+" "+repr(message))
-	raise errno.errorcode[errno.EMSGSIZE],"udp_client.check_len:message "+\
-	      "too big. Size = "+repr(len(message))+" Max = "+\
-	      repr(TRANSFER_MAX)+" "+repr(message)
-
+        errmsg="send:message too big, size=%d, max=%d" %(len(message),TRANSFER_MAX)
+        print "DEBUG", errmsg #XXXXX
+	Trace.log(e_error.ERROR,errmsg)
+	raise errno.errorcode[errno.EMSGSIZE],errmsg
+    
     return message, lcl_number
 
 
@@ -195,8 +192,6 @@ class UDPClient:
 		    Trace.log(e_errors.ERROR,
                               "send disaster: didn't read entire message: server=%s, reply=%s, error=%s %s"%
                               (server,reply,exc,msg))
-                    print "DEBUG: send disaster: didn't read entire message: server=%s, reply=%s, error=%s, msg=%s"%(
-                        server,reply,exc,msg)
                     raise exc,msg
 		# goofy test feature - need for client being echo service only
 		except exceptions.ValueError :
