@@ -6,8 +6,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # This script creates the links, locks... needed for an initial install of encp
 
 # Needs to be run by su
-if [ $(whoami) != "root" ]; then
-  echo "$(basename $0) needs to be run by root"
+if [ "`whoami`" != "root" ]; then
+  echo "`basename $0` needs to be run by root"
   exit 1
 fi
 
