@@ -41,16 +41,22 @@ enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1,  `enstore/cd/cmsdcdr1.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `enstore/cd/cmsdcdr2.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `enstore/cd/cmsdcmon1.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, stkensrv1, `enstore/cd/stkendca2a.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, stkensrv1, `enstore/cd/stkendca3a.fnal.gov@FNAL.GOV', `dnl')
 aik@FNAL.GOV
-alcorn@FNAL.GOV
 baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
 djholm@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `fagan@FNAL.GOV', `dnl')
 genser@FNAL.GOV
 george@FNAL.GOV
 huangch@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `ifisk@FNAL.GOV', `dnl')
 ivm@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1, `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
@@ -65,6 +71,6 @@ ron@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1, `stiehr@FNAL.GOV', `dnl')
 timur@FNAL.GOV
 tlevshin@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `tmesser@FNAL.GOV', `dnl')
 vsergeev@FNAL.GOV
-wellner@FNAL.GOV
 zalokar@FNAL.GOV

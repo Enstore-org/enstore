@@ -148,39 +148,39 @@ host/cdfenmvr25a.fnal.gov@FNAL.GOV
 host/cdfenmvr26a.fnal.gov@FNAL.GOV
 host/cdfenmvr27a.fnal.gov@FNAL.GOV
 host/cdfenmvr28a.fnal.gov@FNAL.GOV
-ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcdr1.fnal.gov@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcdr2.fnal.gov@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcmon1.fnal.gov@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, stkensrv1, `enstore/cd/stkendca2a.fnal.gov@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, stkensrv1, `enstore/cd/stkendca3a.fnal.gov@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cdfensrv1, `enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cdfensrv1, `enstore/cd/fcdfdcache4.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `host/cmsdcdr1.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `host/cmsdcdr2.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `host/cmsdcmon1.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, stkensrv1, `host/stkendca2a.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, stkensrv1, `host/stkendca3a.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cdfensrv1, `host/fcdfdcache1.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cdfensrv1, `host/fcdfdcache4.fnal.gov@FNAL.GOV', `dnl')
 aik@FNAL.GOV
-alcorn@FNAL.GOV
 baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
 djholm@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1,  `fagan@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
 genser@FNAL.GOV
 george@FNAL.GOV
 huangch@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1,  `ifisk@FNAL.GOV', `dnl')
 ivm@FNAL.GOV
-ifelse(HOSTNAME, cmspnfs1, `jlkaiser@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
-ifelse(HOSTNAME, cmspnfs1, `lisa@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `lisa@FNAL.GOV', `dnl')
 moibenko@FNAL.GOV
 neilsen@FNAL.GOV
 oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
 ron@FNAL.GOV
-ifelse(HOSTNAME, cmspnfs1, `stiehr@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `stiehr@FNAL.GOV', `dnl')
 timur@FNAL.GOV
 tlevshin@FNAL.GOV
-ifelse(HOSTNAME, cmspnfs1, `tmesser@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `tmesser@FNAL.GOV', `dnl')
 vsergeev@FNAL.GOV
-wellner@FNAL.GOV
 zalokar@FNAL.GOV
