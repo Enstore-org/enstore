@@ -520,8 +520,9 @@ class LibraryManagerMethods:
                         return  None, (e_errors.NOWORK, None)
                     Trace.trace(11,"work can not be done at this volume %s"%(ret,))
                     w['status'] = ret['status']
-                    self.pending_work.delete(rq)
-                    self.send_regret(w)
+                    if ret['status'][0] != e_errors.VOL_SET_TO_FULL:
+                        self.pending_work.delete(rq)
+                        self.send_regret(w)
                     Trace.log(e_errors.ERROR,
                               "next_work_any_volume: cannot do the work for %s status:%s" % 
                               (rq.ticket['fc']['external_label'], rq.ticket['status'][0]))
