@@ -116,12 +116,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}suspect_vols - ERROR, timed out")
 	    return
-        try:
-            # send the new info to the alarm server
-            self.alc.ens_status({"suspect_volumes" : stat['suspect_volumes']},
-                                key)
-	except errno.errorcode[errno.ETIMEDOUT]:
-            Trace.trace(14, "Could not contact the alarm server")
         Trace.trace(13,"}suspect_vols")
 
     # get the library manager work queue and output it
