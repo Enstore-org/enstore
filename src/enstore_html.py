@@ -873,7 +873,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 							     NBSP, NBSP), html_escape='OFF'),
 						color=BRICKRED, size="+1")))
 	vols = self.data_dict[enstore_constants.SUSPECT_VOLS]
-	if vols == ['None']:
+	if vols == ['None'] or vols == {}:
 	    tr.append(empty_data(4))
 	else:
 	    for vol in vols:
