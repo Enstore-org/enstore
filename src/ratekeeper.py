@@ -20,6 +20,8 @@ import enstore_constants
 import monitored_server
 import event_relay_client
 import event_relay_messages
+import Trace
+import e_errors
 
 
 MY_NAME = "Ratekeeper"
@@ -94,10 +96,16 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
         #The generic server __init__ function creates self.erc, but it
         # needs some additional paramaters.
+        #start() allows the ratekeeper to recieve message from the ER.
         self.erc.start([event_relay_messages.ALL,])
-        self.erc.subscribe()                                         
+        #start_heartbeat() allows the ratekeeper to send alive messages to ER.
         self.erc.start_heartbeat(enstore_constants.RATEKEEPER, 
                                  self.alive_interval)
+        #The event relay client start() function sets up the erc socket to be
+        # monitored by the dispatching worker layer.  We do not want this
+        # in the ratekeeper.  It monitors this socket on its own, so it
+        # must be removed from the list.  
+        self.remove_select_fd(self.erc.sock)
         
     def subscribe(self):
         self.erc.subscribe()
@@ -264,9 +272,9 @@ if __name__ == "__main__":
         except SystemExit, exit_code:
             sys.exit(exit_code)
         except:
-            exc, msg = sys.exc_info()[:2]
-            format = "%s %s %s %s %s: serve_forever continuing" % \
-                     (timeofday.tod(),sys.argv,exc,msg,MY_NAME)
+            Trace.handle_error()
+            rk.serve_forever_error("ratekeeper")
             continue
 
+    Trace.log(e_errors.ERROR,"Ratekeeper finished (impossible)")
 
