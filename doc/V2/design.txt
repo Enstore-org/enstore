@@ -11,9 +11,15 @@ $Id$
 
   Enstore "V2" is a project to improve the reliability, performance
   and maintainability of the Library Manager (LM) and Mover modules,
-  two of the key pieces of Enstore.  The time frame for completion of
-  this project is 4-6 weeks, beginning end of January 2000 and ending
-  sometime around the middle of March.
+  two of the key pieces of Enstore.  
+  
+  While the primary goal is for better D0 robustness and performance,
+  another important goal is to add features that are needed for the
+  lab-wide deployment of Enstore.
+
+  The time frame for completion of this project is 4-6 weeks,
+  beginning end of January 2000 and ending sometime around the middle
+  of March.
 
   There are plenty of redesign/re-engineering issues which are *not*
   being addressed in this project, in the interest of keeping within
@@ -42,11 +48,15 @@ $Id$
 
     We wish to avoid assumptions about how the system will be used,
     what types of drives and media will be used for what purposes;
+    
     inasmuch as it does not conflict with the previous goal of
     simplicity, strive for the most general solutions to problems
-    rather than a lot of special cases.  In particular, consider
-    allowing a Mover to serve more than one LM and a Library to
-    consist of more than one media type.
+    rather than a lot of special cases.  Lab-wide deployment of
+    Enstore requires this, as well as ensuring cross-platform
+    compatibility.
+
+    In particular, we will consider allowing a Mover to serve more
+    than one LM and a Library to consist of more than one media type.
 
   Robustness
 
@@ -70,10 +80,12 @@ $Id$
     are doing.  In the V2 system, messages from the Movers to the LM
     will drive the flow of execution.
 
-    Eliminate the library manager databases.  The LM should have the
-    minimum possible "history", that is, just its "pending work"
+    Eliminate the library manager databases.  The LM should not attempt
+    to keep track of "history", and furthermore the LM should have the
+    minimum possible state, that is, just its "pending work"
     queue, the "work at movers list", and the "suspect
-    volumes"/"suspect movers" lists.
+    volumes"/"suspect movers" lists.  [See section ###, "Library Manager
+    Data Structures"]
 
     All retrying of failed requests will be driven by the encp client
     rather than the LM.
@@ -319,3 +331,10 @@ width=1, and another write is already in progress for this file
 family?  In this case, do we ignore the file family width?
 
 
+9.4  Jon says:
+
+   Experience (outside of enstore) indicates that as tape drives age,
+   sometimes you can't write with them anymore but they are fine for
+   reading.  Is it a good idea to take this i
+
+9.5  Drive reservation/quotas
