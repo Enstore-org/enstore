@@ -56,6 +56,5 @@ d0enmvr42a	d0enmvr-a	d0en-alla	d0en-all
 d0enmvr43a	d0enmvr-a	d0en-alla	d0en-all
 d0enmvr44a	d0enmvr-a	d0en-alla	d0en-all
 d0enmvr45a	d0enmvr-a	d0en-alla	d0en-all
-REMOVE		d0enout
-d0enout1a	d0enout		d0en-alla	d0en-all
+REMOVE		d0enout*
 d0enout2a	d0enout		d0en-alla	d0en-all
