@@ -1072,6 +1072,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket):
+        print "TICKET", ticket
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
@@ -1089,7 +1090,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             dict.cursor("open")
             key,value=dict.cursor("first")
             while key:
-                callback.write_tcp_raw(self.data_socket,repr(key))
+                if ticket.has_key("in_state") and ticket["in_state"] != None:
+                    if value["system_inhibit"] == ticket["in_state"]:
+                        callback.write_tcp_raw(self.data_socket,repr(key))
+                else:
+                    callback.write_tcp_raw(self.data_socket,repr(key))
                 key,value=dict.cursor("next")
             callback.write_tcp_raw(self.data_socket,"")
             dict.cursor("close")
