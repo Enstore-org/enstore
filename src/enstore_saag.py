@@ -57,6 +57,21 @@ def do_work(intf):
     # no media status yet.
     medstat = {}
 
+    config = enstore_functions.get_config_dict()
+
+    # set the dcache status balls.  either they are overridden in the sched
+    # file or they are green
+    other_saag_links = config.configdict.get('other_saag_links', {})
+    if other_saag_links.has_key('status'):
+        del other_saag_links['status']
+    dlinks = other_saag_links.keys()
+    dlinks.sort()
+    for dlink in dlinks:
+        if dlink in override_d_keys:
+            other_saag_links[dlink].append(enstore_functions2.override_to_status(override_d[dlink]))
+        else:
+            other_saag_links[dlink].append(enstore_constants.UP)
+
     # get the name and location of the alarm file so we can determine if there are any
     # alarms in it.  if yes, the alarm button goes red.
     log_file_dir = enstore_functions.get_from_config_file("log_server", "log_file_path", ".")
@@ -69,7 +84,7 @@ def do_work(intf):
     except OSError:
 	# there was no file, thus no alarms, everything is peachy keen
 	alarms = {enstore_constants.ANYALARMS : enstore_constants.UP}
-    # add the alarm html file so a link can be created to it on the main page.
+    # add the alarm html file so a link can be created to it on main page.
     alarms[enstore_constants.URL] = alarm_server.DEFAULT_HTML_ALARM_FILE
 
     # check if the alarm status should be overridden
@@ -82,7 +97,6 @@ def do_work(intf):
 							www_server.SYSTEM_TAG_DEFAULT)
 
     # get the host associated with each server
-    config = enstore_functions.get_config_dict()
     nodes = {}
     # pull out the node information and create another dictionary with it. each element
     # of this second dictionary will be a list of servers on the node, which is the key.
@@ -110,7 +124,7 @@ def do_work(intf):
     filename = "%s/%s"%(html_dir, enstore_constants.SAAGHTMLFILE)
     saag_file = enstore_files.HtmlSaagFile(filename, system_tag)
     saag_file.open()
-    saag_file.write(enstat, medstat, alarms, nodes, outage_d, offline_d, 
+    saag_file.write(enstat, other_saag_links, medstat, alarms, nodes, outage_d, offline_d, 
 		    enstore_files.status_html_file_name())
     saag_file.close()
     saag_file.install()

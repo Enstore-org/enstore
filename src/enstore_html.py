@@ -2434,15 +2434,15 @@ class EnSaagPage(EnBaseHtmlDoc):
     def add_to_row(self, tr, val, dict, outage_d, offline_d):
 	tr.append(self.get_color_ball(dict, val, "RIGHT"))
 	txt = HTMLgen.Font(val, size="+2")
-	if dict.has_key(enstore_constants.URL):
+	if dict.has_key(enstore_constants.URL) and dict[enstore_constants.URL]:
 	    txt = HTMLgen.Href(dict[enstore_constants.URL], txt)
 	tr.append(self.get_element(dict, val, outage_d, offline_d, txt))
 
-    def make_overall_table(self, enstat_d, medstat_d, alarms_d, outage_d, 
+    def make_overall_table(self, enstat_d, other_d, medstat_d, alarms_d, outage_d, 
 			   offline_d):
 	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
 				    align="CENTER", width="90%")
-	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Overall Status"), 
+	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Overall Status"), 
 						    size="+3", color=BRICKRED)))
 	entable.append(empty_row(6))
 	# first get a list of the media tags we will have (1 per row)
@@ -2461,6 +2461,33 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    self.add_to_row(tr, item.keys()[0], item, outage_d, offline_d)
 	    tr.append(empty_data(4)) # cover for no network & alarm elements
 	    entable.append(tr)
+
+        # add any other information we need
+        if other_d:
+            cols = 8
+            num = 0
+            entable.append(empty_row(cols))
+            elems = other_d.keys()
+            elems.sort()
+            tr = HTMLgen.TR()
+            for elem in elems:
+                #fix up dict in order to use already existing function
+                d = {other_d[elem][0] : other_d[elem][2],
+                     enstore_constants.URL : other_d[elem][1]}
+                self.add_to_row(tr, other_d[elem][0], d, outage_d, offline_d)
+                # added ball and link
+                num = num + 2
+                if num == cols:
+                    entable.append(tr)
+                    tr = HTMLgen.TR()
+                    num = 0
+            else:
+                # fix up the end of the row
+                if num > 0:
+                    cols_left = cols - num
+                    tr.append(empty_data(cols_left))
+                    entable.append(tr)
+
 	return entable
 
     def get_time_row(self, dict):
@@ -2592,7 +2619,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    entable.append(tr)
 	return entable
 
-    def body(self, enstat_d, medstat_d, alarms, nodes, outage_d, 
+    def body(self, enstat_d, other_d, medstat_d, alarms, nodes, outage_d, 
 	     offline_d, media_tag, status_file_name):
 	# name of file that we will create links to
 	self.status_file_name = status_file_name
@@ -2609,7 +2636,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    else:
 		medstat_d[mtag] = [enstore_constants.UP, media_tag[mtag]]
 	self.check_for_red(enstat_d, table)
-	table.append(HTMLgen.TR(HTMLgen.TD(self.make_overall_table(enstat_d, 
+	table.append(HTMLgen.TR(HTMLgen.TD(self.make_overall_table(enstat_d, other_d,
 								   medstat_d, alarms,
 								   outage_d, 
 								   offline_d))))

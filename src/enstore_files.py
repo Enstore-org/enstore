@@ -735,12 +735,12 @@ class HtmlSaagFile(EnFile):
         self.real_file_name = name
 	self.enstore_ball = ""
 
-    def write(self, enstore_contents, media_contents, alarm_contents, 
+    def write(self, enstore_contents, other_contents, media_contents, alarm_contents, 
 	      node_contents, outage, offline, status_file_name):
         if self.openfile:
             doc = enstore_html.EnSaagPage(system_tag=self.system_tag)
             media = enstore_functions.get_media()
-            doc.body(enstore_contents, media_contents, alarm_contents, 
+            doc.body(enstore_contents, other_contents, media_contents, alarm_contents, 
 		     node_contents, outage, offline, media, status_file_name)
 	    # save the status of the enstore ball
 	    self.enstore_ball = enstore_contents[enstore_constants.ENSTORE]
