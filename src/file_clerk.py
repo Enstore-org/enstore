@@ -77,6 +77,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         pnfs_name0 = ticket["fc"].get("pnfs_name0")
         pnfs_mapname = ticket["fc"].get("pnfs_mapname")
 
+        # start (10/18/00) adding which drive we used to write the file
+        drive = ticket["fc"].get("drive","unknown:unknown")
+
         # look up in our dictionary the request bit field id
         try:
             record = self.dict[bfid] 
@@ -89,6 +92,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # add the pnfsid
         record["pnfsid"] = pnfsid
+        record["drive"] = drive
         # temporary workaround - see above
         if pnfsvid != None:
             record["pnfsvid"] = pnfsvid
