@@ -639,12 +639,6 @@ def do_real_work():
     else:
 	summary_d[enstore_constants.EV_RLY] = enstore_constants.DOWN
 
-    # rewrite the seen down file as we keep track of how many times something has 
-    # been down
-    if dfile:
-        # write it with updated seen_down_d
-	dfile.write(seen_down_d)
-
     # now figure out the state of enstore based on the state of the servers
     estate = enstore_constants.UP
     reason = []
@@ -690,6 +684,27 @@ def do_real_work():
 	os.system("/usr/bin/Mail -s \"%s\" $ENSTORE_MAIL < %s"%(subject, summary_file))
     os.system("rm %s"%(summary_file,))
     
+    # rewrite the seen down file as we keep track of how many times something has 
+    # been down
+    servers = summary_d.keys()
+    if dfile:
+	# get rid of any servers no longer being monitored
+	for srvr in seen_down_d.keys():
+	    for server in servers:
+		if enstore_constants.SERVER_NAMES.has_key(server):
+		    # get the real name of the server
+		    server = enstore_constants.SERVER_NAMES[server]
+		if srvr == server:
+		    # this is a legitimate server in seen_down_d
+		    break
+	    else:
+		# we did not find a match for the server listed in seen_down_d with
+		# the servers that we know about.  assume this is an old one and
+		# remove it from the the seen_down_d
+		del seen_down_d[srvr]
+        # write it with updated seen_down_d
+	dfile.write(seen_down_d)
+
     enprint("Finished checking Enstore... system is defined to be %s"%(stat,))
     return (rtn, summary_d)
 
