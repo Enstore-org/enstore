@@ -336,7 +336,8 @@ ftt_open_dev(ftt_descriptor d) {
         DEBUG2(stderr,"Actually opening\n");
 	d->file_descriptor = open(
 		d->devinfo[d->which_is_default].device_name,
-		(d->readonly?O_RDONLY:O_RDWR)|FNONBLOCK|O_EXCL,
+		/* XXX was (d->readonly?O_RDONLY:O_RDWR)|FNONBLOCK|O_EXCL, */
+		(d->readonly?O_RDONLY:O_RDWR)|FNONBLOCK,
 		0);
 	DEBUG3(stderr,"open returned %d\n", d->file_descriptor);
 	if ( d->file_descriptor < 0 ) {

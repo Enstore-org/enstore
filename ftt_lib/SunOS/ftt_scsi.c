@@ -76,7 +76,7 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
             if (pcRdWr != acSensebuf) {
                 bcopy(acSensebuf, pcRdWr, nRdWr<19?nRdWr:19);
             }
-            return ftt_scsi_check(fd,pcOp,0,0);
+            return ftt_scsi_check(fd,pcOp,0,nRdWr);
         }
 #endif
 
@@ -100,17 +100,18 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
 
         res = ioctl(fd, USCSICMD, &cmd);
 	DEBUG3(stderr, "USCSICMD ioctl returned %d, errno %d\n", res, errno);
+	scsistat = cmd.uscsi_status;
+#ifdef ARQ
+        havesense = (scsistat != 0);
+#endif
 	if (-1 == res && errno != 5 ) {
                 res = ftt_scsi_check(fd,pcOp, 255, nRdWr);
         } else {
-                res = ftt_scsi_check(fd,pcOp,cmd.uscsi_status, nRdWr);
+                res = ftt_scsi_check(fd,pcOp, scsistat, nRdWr);
 	}
         if (pcRdWr != 0 && nRdWr != 0) {
                 DEBUG4(stderr,"got back:\n");
                 DEBUGDUMP4(pcRdWr,nRdWr);
         }
-#ifdef ARQ
-        havesense = (cmd.uscsi_status == 0);
-#endif
 	return res;
 }

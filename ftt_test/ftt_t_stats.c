@@ -8,6 +8,7 @@ e-mail:         "votava@fnal.gov"
 Revision history:-
 =================
 17-Oct-1995 MEV created	Wrapping routine for test commands 
+24-Jan-1997 MEV	fixed bug in extract_stat
  
 Include files:-
 ===============
@@ -106,7 +107,7 @@ for (i = 0; i < FTT_MAX_STAT; i++)
       }
    }
 
-if (!(*match))
+if (!match)
    {
    fprintf (stderr,"%s is not a valid statistic name.\n",stat_name);
    return 1;

@@ -43,6 +43,7 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 	     ftt_set_transfer_length(cdb,n);
 	}
 	res = ftt_do_scsi_command(d,what,cdb, 6, 0, 0, 120, 0);
+	res = ftt_describe_error(d,opn,"a SCSI pass-through call", res, what, 0);
     } else {
 	DEBUG2(stderr,"System Call\n");
 

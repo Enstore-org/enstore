@@ -163,6 +163,7 @@ extern ftt_stat_entry ftt_stat_op_tab[];
 #define FTT_DO_MS_Px10     	0x00002000 /* do a ModeSense p.0x10 */
 #define FTT_DO_MS_Px20_EXB	0x00004000 /* do a ModeSense p.0x20(EXB) */
 #define FTT_DO_EXB82FUDGE       0x00008000 /* fudge read/write counts with remain tape */
+#define FTT_DO_MS_Px0f     	0x00010000 /* do a ModeSense p.0x0f to set density */
 
 extern int ftt_write_fm_if_needed(ftt_descriptor);
 extern int ftt_matches(char*, char*);

@@ -137,9 +137,10 @@ static char *messages[] = {
     0
 };
 
+extern int errno;
+
 int
 ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, int recoverable) {
-    extern int errno;
     int terrno;
     static ftt_stat sbuf;
     char *p;
@@ -210,11 +211,16 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	}
     }
 
+    return ftt_describe_error(d, opn, op, res, what, recoverable);
+}
+
+int
+ftt_describe_error(ftt_descriptor d, int opn, char *op, int res, char *what, int recoverable) {
+
     if (0 <= res) {
 	ftt_errno = FTT_SUCCESS;
 	return res;
     }
-
     ftt_eprintf( "\
 %s: doing %s on %s returned %d,\n\
 	errno %d, => ftt error %s(%d), meaning \n\

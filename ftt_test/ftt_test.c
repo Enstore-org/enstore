@@ -74,6 +74,7 @@ int opt;
    ------------------------------------------------------------------ */
 ftt_t_cmd_table_t ftt_t_my_cmds[] = {
 	"ftt_all_scsi",		ftt_t_all_scsi,
+	"ftt_clear_unrecovered",ftt_t_clear_unrecovered,
 	"ftt_date",		ftt_t_date,
 	"ftt_echo", 		ftt_t_echo,
 	"ftt_debug",		ftt_t_debug_level,
