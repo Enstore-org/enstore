@@ -130,8 +130,8 @@ static int
 do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_flag, unsigned long *crc_p)
 {
   /*setup local variables*/
-  struct transfer reads = {rd_fd, no_bytes, blk_size, crc_flag};
-  struct transfer writes = {wr_fd, no_bytes, blk_size, crc_flag};
+  struct transfer reads;
+  struct transfer writes;
   /*is this necessary???*/
   struct return_values **read_val = 
     (struct return_values**)alloca(sizeof(struct return_values*));
@@ -139,6 +139,18 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
     (struct return_values**)alloca(sizeof(struct return_values*));
   pthread_t read_tid, write_tid;
   int exit_status;
+
+  /*Place the values into the struct.  Some compilers complained when this
+    information was placed into the struct inline at initalization.  So it
+    was moved here.*/
+  reads.fd = rd_fd;
+  reads.size = no_bytes;
+  reads.block_size = blk_size;
+  reads.crc_flag = crc_flag;
+  writes.fd = wr_fd;
+  writes.size = no_bytes;
+  writes.block_size = blk_size;
+  writes.crc_flag = crc_flag;
 
   read_done = write_done = 0; /*don't forget to reset this again!*/
 
