@@ -231,10 +231,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         return
 
     # has_undeleted_file(vol) -- check if vol has undeleted file
-    # this is served by file_clerk
 
     def has_undeleted_file(self, vol):
-        q = "select * from file, volume where volume.label = '%s' and volume.id = file.volume;"%(vol)
+        q = "select * from file, volume where volume.label = '%s' and volume.id = file.volume and file.deleted <> 'y';"%(vol)
         res = self.dict.db.query(q)
         return res.ntuples()
 
