@@ -10,8 +10,8 @@ def do_work():
     mode = 0
 
     en = enstore.Enstore(mode)
-    en.do_work()
+    return en.do_work()
 
 if __name__ == "__main__" :
 
-    do_work()
+    sys.exit(do_work())
