@@ -379,6 +379,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not have_tape:
                 Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
                 self.dismount_volume()
+                self.state = IDLE #XXX hack, if the above dismount fails we don't want
+                                  ## this to be a fatal error.
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
