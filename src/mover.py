@@ -640,7 +640,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         self.config['device'] = os.path.expandvars(self.config['device'])
         self.state = IDLE
-        self.force_clean = 1
+        self.force_clean = 0
         # check if device exists
         if not os.path.exists(self.config['device']):
             Trace.alarm(e_errors.ERROR, "Cannot start. Device %s does not exist"%(self.config['device'],))
