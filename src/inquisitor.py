@@ -175,7 +175,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                                             prefix, time, key)
                                     if ret == DID_IT:
                                         Trace.log(e_errors.INFO,
-                                                  "Restarted %s"%i)
+                                                  "Restarted %s"%key)
                                         break
                                     else:
                                         i = i + 1
