@@ -3975,9 +3975,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #If the transfer is a write from dcache, we need to clear any information
     # that resides in layer 1 and/or layer 4.
     elif is_write(encp_intf) and encp_intf.put_cache:
-        p = pnfs.Pnfs(outfile)
-        p.writelayer(1, "")
-        p.writelayer(4, "")
+        try:
+            p = pnfs.Pnfs(outfile)
+            p.writelayer(1, "")
+            p.writelayer(4, "")
+        except (IOError, OSError):
+            #Something is very wrong, deal with it later.
+            pass
 
     #If the mover doesn't call back after max_submits number of times, give up.
     # If the error is already non-retriable, skip this step.
