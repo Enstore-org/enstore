@@ -83,7 +83,6 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	  e_errors.WRITE_ERROR,
 	  e_errors.WRITE_EOT,		# special (not freeze_tape_in_drive, offline_drive, or freeze_tape)
 	  e_errors.WRITE_UNLOAD,
-	  e_errors.WRITE_UNMOUNT,
 	  e_errors.WRITE_NOBLANKS,	# not handled by mover
 	  e_errors.READ_NOTAPE,
 	  e_errors.READ_TAPEBUSY,
@@ -94,7 +93,7 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	  e_errors.READ_EOT,
 	  e_errors.READ_EOD,
 	  e_errors.READ_UNLOAD,
-	  e_errors.READ_UNMOUNT,
+	  e_errors.UNMOUNT,
 	  e_errors.ENCP_GONE,
 	  e_errors.TCP_HUNG,
 	  e_errors.MOVER_CRASH ]	# obviously can not handle this one
@@ -304,7 +303,7 @@ class MoverClient:
 			    self.vol_vcc[self.vol_info['external_label']] )
 	logc.send(e_errors.INFO,2,"Media changer unload status"+str(rr['status']))
 	if rr['status'][0] != "ok":
-	    return freeze_tape_in_drive( self, errors.WRITE_UNMOUNT )
+	    return freeze_tape_in_drive( self, e_errors.UNMOUNT )
 	    raise "media loader cannot unload my volume"
 
 	del self.vol_vcc[self.vol_info['external_label']]
@@ -1123,14 +1122,13 @@ def status_to_request( client_obj_inst, exit_status ):
     elif m_err[exit_status] in [e_errors.WRITE_BADMOUNT,
 				e_errors.WRITE_BADSPACE,
 				e_errors.WRITE_UNLOAD,
-				e_errors.WRITE_UNMOUNT,
 				e_errors.READ_BADMOUNT,
 				e_errors.READ_BADLOCATE,
 				e_errors.READ_COMPCRC,
 				e_errors.READ_EOT,
 				e_errors.READ_EOD,
 				e_errors.READ_UNLOAD,
-				e_errors.READ_UNMOUNT]:
+				e_errors.UNMOUNT]:
 	next_req_to_lm = freeze_tape_in_drive( client_obj_inst, m_err[exit_status] )
     else:
 	# new error
