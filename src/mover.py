@@ -544,6 +544,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             if bytes_read <= 0:  #  The client went away!
                 Trace.log(e_errors.ERROR, "read_client: dropped connection")
+                self.state = HAVE_BOUND
                 self.transfer_failed(e_errors.ENCP_GONE, None)
                 return
             self.bytes_read = self.bytes_read + bytes_read
