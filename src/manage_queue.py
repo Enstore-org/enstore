@@ -1,6 +1,6 @@
 # manage the pending work queue
 import time
-import string
+#import string
 
 import generic_cs
 
@@ -10,6 +10,7 @@ class Queue:
 
    # return the priority of a ticket
    def priority(self,ticket):
+      if 0: print self.keys() # lint fix
       if ticket["encp"]["adminpri"] >= 0:
 	  return ticket["encp"]["adminpri"]
       p = ticket["encp"]["basepri"]
@@ -27,6 +28,7 @@ class Queue:
    
    # A call back for sort, highest priority should be first.
    def compare_priority(self,t1,t2):
+      if 0: print self.keys() # lint fix
       if t1["encp"]["curpri"] < t2["encp"]["curpri"]:
          return 1
       if t1["encp"]["curpri"] > t2["encp"]["curpri"]:
@@ -38,6 +40,7 @@ class Queue:
    
    # A call back for sort, highest file location should be first.
    def compare_location(self,t1,t2):
+       if 0: print self.keys() # lint fix
        if t1["fc"]["external_label"] == t2["fc"]["external_label"]:
 	   if t1["fc"]["location_cookie"] > t2["fc"]["location_cookie"]:
 	       return 1
@@ -55,12 +58,12 @@ class Queue:
    def delete_job(self,ticket):
       for w in self.queue:
          if w["unique_id"] == ticket["unique_id"]:
-	    if ticket['times'].has_key('job_queued'):
-	    	ticket['times']['in_queue'] = time.time() - \
-					      ticket['times']['job_queued']
-	        del(ticket['times']['job_queued'])
-	    else:
-		ticket['times']['in_queue'] = 0
+            if ticket['times'].has_key('job_queued'):
+                ticket['times']['in_queue'] = time.time() - \
+                                              ticket['times']['job_queued']
+                del(ticket['times']['job_queued'])
+            else:
+                ticket['times']['in_queue'] = 0
             self.queue.remove(w)
             return
 
