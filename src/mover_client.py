@@ -98,11 +98,9 @@ def do_work(intf):
         ticket = movc.local_mover(intf.enable, intf.alive_rcv_timeout,
                                   intf.alive_retries)
     elif intf.start_draining:
-        ticket = movc.start_draining(intf.mover, intf.alive_rcv_timeout,
-                                     intf.alive_retries)
+        ticket = movc.start_draining(intf.alive_rcv_timeout, intf.alive_retries)
     elif intf.stop_draining:
-        ticket = movc.stop_draining(intf.mover, intf.alive_rcv_timeout,
-                                     intf.alive_retries)
+        ticket = movc.stop_draining(intf.alive_rcv_timeout, intf.alive_retries)
     else:
 	intf.print_help()
         sys.exit(0)
