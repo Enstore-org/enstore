@@ -182,9 +182,6 @@ fi
 
 echo "$start 10" >> $histogram
 
-#  check whether this proc is enabled
-if [ ! -f ${procInfos}OK ] ; then quit ""  -1 ; fi
-
 #  check if a similar proc is already active
 mkdir $activeFlag 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ] ; then 
