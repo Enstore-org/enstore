@@ -26,7 +26,7 @@ if ENSTORE_DIR:
 else:
     IMAGE_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','Images'))
 
-#print "IMAGE_DIR=", IMAGE_DIR
+##print "IMAGE_DIR=", IMAGE_DIR
     
 import Tkinter
 import tkFont
@@ -42,6 +42,7 @@ def scale_to_display(x, y, w, h):
     return int((x+1)*(w/2)), int((1-y)*(h/2))
 
 def HMS(s):
+    """Convert the number of seconds to H:M:S"""
     h = s / 3600
     s = s - (h*3600)
     m = s / 60
@@ -65,6 +66,33 @@ def rgbtohex(r,g,b):
         b='0'+b
     return "#"+r+g+b
 
+color_dict = {
+    #client colors
+    'client_wait_color' : rgbtohex(100, 100, 100),  # grey
+    'client_active_color' : rgbtohex(0, 255, 0), # green
+    #mover colors
+    'mover_color':        rgbtohex(0, 0, 0), # black
+    'mover_error_color':      rgbtohex(255, 0, 0), # red
+     'mover_offline_color':        rgbtohex(169, 169, 169), # grey
+    'mover_stable_color':        rgbtohex(0, 0, 0), # black
+    'percent_color':        rgbtohex(0, 255, 0), # green
+    'progress_bar_color':        rgbtohex(255, 255, 0), # yellow
+    'progress_bg_color':        rgbtohex(255, 0, 255), # magenta
+    'state_color':        rgbtohex(191, 239, 255), # lightblue
+    'timer_color':        rgbtohex(255, 255, 255), # white
+    #volume colors
+    'label_offline_color':        rgbtohex(0, 0, 0), # black (tape)
+    'label_stable_color':         rgbtohex(255, 255, 255), # white (tape)
+    'tape_offline_color':        rgbtohex(169, 169, 169), # grey
+    'tape_stable_color':        rgbtohex(255, 165, 0), # orange
+}
+
+    
+def colors(what_color): # function that controls colors
+    return color_dict.get(what_color, rgbtohex(0,0,0))
+
+
+   
 def strip_domain(hostname):
     parts = string.split(hostname, '.')
     if parts[-1]=='gov' and parts[-2]=='fnal':
@@ -127,73 +155,96 @@ class XY:
 
 class Mover:
     def __init__(self, name, display, index=0,N=0):
-        self.name = name
-        self.display = display
-        self.index = index
-        self.N=N
-        self.width = 125
-        self.height = 30
-        self.state = "Unknown"
-        self.color = None
-        now = time.time()
-        self.timer_started = now
-        self.timer_seconds = 0
-        self.timer_string = '00:00:00'
-        self.last_activity_time = now
-        self.connection = None
-        self.rate = 0.0
-        self.t0 = 0
-        self.b0 = 0
-        self.x, self.y = 0, 0 # Not placed yet
-        self.volume = None
+        self.color                     = None
+        self.connection           = None         
+        self.display                  = display
+        self.height                    = 30
+        self.index                     = index
+        self.name                      = name
+        self.N                             =N
+        self.width                     = 125
+        self.x, self.y                  = 0, 0 # Not placed yet             
+        self.x, self.y                  = self.position(N)     
+        
         #These 3 pieces make up the progress gauge display
-        self.progress_bar = None
-        self.progress_bar_bg = None
+        self.progress_bar                       = None
+        self.progress_bar_bg                 = None
         self.progress_percent_display = None
         # This is the numeric value.  "None" means don't show the progress bar.
         self.percent_done = None
-        self.x, self.y = self.position(N)
+        
+        # Other characteristics of a mover
+        self.state                  = "Unknown"
+        self.volume               = None
+
+
+        # Anything that deals with time
+        self.b0                          = 0
+        now                               = time.time()
+        self.last_activity_time = now
+        self.rate                         = 0.0
+        self.t0                            = 0
+        self.timer_seconds      = 0
+        self.timer_started        = now
+        self.timer_string           = '00:00:00'
+        
         self.draw()
 
  
     def draw(self):
-        x, y = self.x, self.y
-        label_offset = XY(60, 40)
-        img_offset  =  XY(90, 2)
-        percent_disp_offset = XY(60, 22)
-        state_offset = XY(90, 8)
-        timer_offset = XY(100, 22)
-        
-        self.outline =  self.display.create_rectangle(x, y, x+self.width, y+self.height, fill='black')
+        x, y                                       = self.x, self.y
+        bar_width                           = 38
+        img_offset                           =  XY(90, 2)
+        label_offset                        = XY(60, 40)
+        percent_disp_offset          = XY(60, 22)
+        progress_bar_offset          = XY(6, 22)
+        progress_bar_bg_offset1 = XY(5, 17)
+        progress_bar_bg_offset2 = XY(6, 26)
+        state_offset                         = XY(90, 8)
+        timer_offset                         = XY(100, 22)
+
+        # create color names
+        mover_color              = colors('mover_color')
+        percent_color           =  colors('percent_color')
+        progress_bar_color =  colors('progress_bar_color')
+        progress_bg_color   = colors('progress_bg_color')
+        state_color                 = colors('state_color') 
+        timer_color                = colors('timer_color')
+       
+        self.outline =  self.display.create_rectangle(x, y, x+self.width, y+self.height, fill = mover_color)
         self.label = self.display.create_text(x+label_offset.x,  y+label_offset.y,  text=self.name)
         img = find_image(self.state + '.gif')
         if img:
             self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y,
                                                            anchor=Tkinter.NW, image=img)
         else:
-            self.state_display = self.display.create_text(x+state_offset.x, y+state_offset.y, text=self.state, fill='light blue')
-        self.timer_display = self.display.create_text(x+timer_offset.x, y+timer_offset.y, text='00:00:00',fill='white')
+            self.state_display = self.display.create_text(x+state_offset.x, y+state_offset.y, text=self.state, fill = state_color)
+        self.timer_display = self.display.create_text(x+timer_offset.x, y+timer_offset.y, text='00:00:00', fill = timer_color)
         if self.percent_done != None:
-            bar_width = 38
-            #XXXX  offset variable
-            self.progress_bar_bg = self.display.create_rectangle(x+5,y+17,x+6+bar_width,y+26,fill='magenta')
-            self.progress_bar = self.display.create_line(x+5,y+17,
-                                                         x+6+(bar_width*self.percent_done/100.0), y+22,
-                                                         fill='yellow', width=8)
+            self.progress_bar_bg = self.display.create_rectangle( x+progress_bar_bg_offset1.x, y+progress_bar_bg_offset1.y,
+                                                                                                             x+progress_bar_bg_offset2.x+bar_width, y+progress_bar_bg_offset2.y, fill = progress_bg_color)
+            self.progress_bar = self.display.create_line( x+progress_bar_offset.x, y+progress_bar_offset.y,
+                                                                                            x+progress_bar_offset.x+(bar_width*self.percent_done/100.0), y+progress_bar_offset.y, fill = progress_bar_color, width=8)
             
             self.progress_percent_display =  self.display.create_text(x+percent_disp_offset.x, y+percent_disp_offset.y,
                                                               text = str(self.percent_done)+"%",
-                                                              fill = 'green') #,font=8)
+                                                              fill = percent_color)
 
     def update_state(self, state, time_in_state=0):
-        img_offset=XY(90, 2)
+        img_offset            =XY(90, 2)
         state_disp_offset=XY(90, 8)
-        
+
+        #different mover colors
+        mover_error_color = colors('mover_error_color')
+        mover_offline_color = colors('mover_offline_color')
+        mover_stable_color = colors('mover_stable_color')
+        state_color = colors('state_color')
         mover_color=None
+        
         if state == self.state:
             return
         self.state = state
-        mover_color = {'ERROR': 'red', 'OFFLINE':'grey'}.get(self.state, 'black')
+        mover_color = {'ERROR': mover_error_color, 'OFFLINE':mover_offline_color}.get(self.state, mover_stable_color)
         if mover_color != self.color:
             self.display.itemconfigure(self.outline, fill=mover_color)
             self.color = mover_color
@@ -204,7 +255,7 @@ class Mover:
             self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y,
                                                            anchor=Tkinter.NW, image=img)
         else:
-            self.state_display = self.display.create_text(x+state_disp_offset.x, y+state_disp_offset.y, text=self.state, fill='light blue')
+            self.state_display = self.display.create_text(x+state_disp_offset.x, y+state_disp_offset.y, text=self.state, fill=state_color)
         now = time.time()
         self.timer_started = now - time_in_state
         if state != 'ACTIVE':
@@ -213,12 +264,14 @@ class Mover:
         
     def update_timer(self, seconds):
         timer_offset = XY(100, 22)
+        #timer color
+        timer_color = colors('timer_color')
         
         x, y = self.x, self.y
         self.timer_seconds = seconds
         self.timer_string = HMS(seconds)
         self.display.delete(self.timer_display)
-        self.timer_display = self.display.create_text(x+ timer_offset.x, y+ timer_offset.y, text=self.timer_string,fill='white')
+        self.timer_display = self.display.create_text(x+ timer_offset.x, y+ timer_offset.y, text=self.timer_string,fill = timer_color)
 
     def load_tape(self, volume, load_state):
         self.volume = volume
@@ -256,8 +309,15 @@ class Mover:
 
 
     def show_progress(self, percent_done):
-        progress_bar_offset = XY(6, 22)
         perc_disp_offset = XY(60, 22)
+        progress_bar_bg_offset1 = XY(5, 17)
+        progress_bar_bg_offset2 = XY(6, 26)
+        progress_bar_offset = XY(6, 22)
+
+        #### color
+        progress_bg_color = colors('progress_bg_color')
+        progress_bar_color = colors('progress_bar_color')
+        percent_display_color = colors('percent_color')
         
         x,y=self.x,self.y
         bar_width = 38
@@ -283,13 +343,13 @@ class Mover:
             return
 
         # Draw the new progress gauge
-        self.progress_bar_bg = self.display.create_rectangle(x+5,y+17,x+6+bar_width,y+26,fill='magenta')    #XXXXX  need to create variable for offset
+        self.progress_bar_bg = self.display.create_rectangle(x+progress_bar_bg_offset1.x, y+progress_bar_bg_offset1.y,
+                                                                                                        x+progress_bar_bg_offset2.x+bar_width, y+progress_bar_bg_offset2.y,fill=progress_bg_color)  
         self.progress_bar = self.display.create_line(x+progress_bar_offset.x, y+progress_bar_offset.y,
-                                                     x+progress_bar_offset.x+bar_width*(self.percent_done/100.0),y+progress_bar_offset.y,
-                                                     fill='yellow', width=8)
+                                                                                       x+progress_bar_offset.x+(bar_width*self.percent_done/100.0), y+progress_bar_offset.y, fill=progress_bar_color, width=8)
         self.progress_percent_display =  self.display.create_text(x+perc_disp_offset.x, y+perc_disp_offset.y,
                                                                   text = str(self.percent_done)+"%",
-                                                                  fill = 'green') #,font=8)
+                                                                  fill = percent_display_color)
 
     def transfer_rate(self, num_bytes, total_bytes):
         #keeps track of last number of bytes and time; calculates rate in bytes/second
@@ -342,13 +402,19 @@ class Mover:
     def reposition(self, N, state=None):
         img_offset=XY(90, 2)
         state_disp_offset=XY(90, 8)
+
+        ### color
+        mover_error_color = colors('mover_error_color')
+        mover_offline_color = colors('mover_offline_color')
+        mover_stable_color = colors('mover_stable_color')
+        state_color = colors('state_color')
         
         self.undraw()
         self.x, self.y = self.position(N)
         self.draw()
         #XXXXXXX
         state = self.state
-        mover_color = {'ERROR': 'red', 'OFFLINE':'grey'}.get(self.state, 'black')
+        mover_color = {'ERROR': mover_error_color, 'OFFLINE':mover_offline_color}.get(self.state, mover_stable_color)
         if state  in ['ERROR', 'OFFLINE']:
             self.undraw()
             self.outline =  self.display.create_rectangle(self.x, self.y, self.x+self.width, self.y+self.height,
@@ -360,8 +426,8 @@ class Mover:
             self.state_display = self.display.create_image(self.x+img_offset.x, self.y+img_offset.y,
                                                            anchor=Tkinter.NW, image=img)
         else:
-            self.state_display = self.display.create_text(self.x+state_disp_offset.x, self.y+state_disp_offset.y,
-                                                          text=self.state, fill='light blue')
+            self.state_display = self.display.create_text(self.x+state_disp_offset.x, self.y+state_disp_offset.y, text=self.state, fill=state_color)
+
         
         if self.volume:
             x, y = self.volume_position(self.volume.ejected)
@@ -386,26 +452,40 @@ class Volume:
         self.ejected = ejected
         self.x, self.y = x, y
         self.draw()
-        
+
     def __setattr__(self, attr, value):
+
+        ### color
+        tape_stable_color = colors('tape_stable_color')
+        label_stable_color = colors('label_stable_color')
+        tape_offline_color = colors('tape_offline_color')
+        label_offline_color = colors('label_offline_color')
+        
         if attr == 'loaded':
             if self.outline:
                 if value:
-                    tape_color, label_color = 'orange', 'white'
+                    tape_color, label_color = tape_stable_color, label_stable_color
                 else:
-                    tape_color, label_color = 'grey', 'black'
+                    tape_color, label_color = tape_offline_color, label_offline_color
                 self.display.itemconfigure(self.outline, fill=tape_color)
                 self.display.itemconfigure(self.label, fill=label_color)
         self.__dict__[attr] = value
         
     def draw(self):
+
+        ### color
+        tape_stable_color = colors('tape_stable_color')
+        label_stable_color = colors('label_stable_color')
+        tape_offline_color = colors('tape_offline_color')
+        label_offline_color = colors('label_offline_color')
+        
         x, y = self.x, self.y
         if x is None or y is None:
             return
         if self.loaded:
-            tape_color, label_color = 'orange', 'white'
+            tape_color, label_color =  tape_stable_color, label_stable_color
         else:
-            tape_color, label_color = 'grey', 'black'
+            tape_color, label_color =  tape_offline_color, label_offline_color
         if self.outline or self.label:
             self.undraw()
         self.outline = self.display.create_rectangle(x, y, x+self.width, y+self.height, fill=tape_color)
@@ -438,6 +518,7 @@ class Client:
         self.n_connections = 0
         self.waiting = 0
         i = 0
+        
         ## Step through possible positions in order 0, 1, -1, 2, -2, 3, -3, ...
         while display.client_positions.has_key(i):
             if i == 0:
@@ -451,11 +532,15 @@ class Client:
         self.x, self.y = scale_to_display(-0.9, i/10., display.width, display.height)
 
     def draw(self):
+        ###color
+        client_wait_color = colors('client_wait_color')
+        client_active_color = colors('client_active_color')
+        
         x, y = self.x, self.y
         if self.waiting:
-            color = rgbtohex(100,100,100)
+            color = client_wait_color
         else:
-            color = 'green'
+            color = client_active_color
         self.outline =  self.display.create_oval(x, y, x+self.width, y+self.height, fill=color)
         self.label = self.display.create_text(x+self.width/2, y+self.height/2, text=self.name)
         
@@ -464,10 +549,15 @@ class Client:
         self.display.delete(self.label)
 
     def update_state(self):
+
+        ### color
+        client_wait_color = colors('client_wait_color')
+        client_active_color = colors('client_active_color')
+        
         if self.waiting:
-            color = rgbtohex(100,100,100)
+            color = client_wait_color 
         else:
-            color = 'green'
+            color =  client_active_color
         self.display.itemconfigure(self.outline, fill = color) 
         
     def reposition(self):
@@ -611,6 +701,7 @@ class Display(Tkinter.Canvas):
         self.width =  int(self['width'])
         self.height = int(self['height'])
         
+        
         self.movers = {} ## This is a dictionary keyed by mover name,
                       ##value is an instance of class Mover
         self.clients = {} ## dictionary, key = client name, value is instance of class Client
@@ -698,7 +789,7 @@ class Display(Tkinter.Canvas):
             client_name = strip_domain(words[1])
             ##XXX we are working around a bug in the library manager.
             # Remove this code once library manager sends correct message
-            if client_name[0] == '(':
+            if client_name[0] == '(':                   
                 client_name = client_name[2:-2]
                 try:
                     client_name = socket.gethostbyaddr(client_name)[0]
@@ -707,7 +798,7 @@ class Display(Tkinter.Canvas):
                     print "Can't resolve address", client_name
             #XXX end hack
             client = self.clients.get(client_name) 
-            if client is None: #new client
+            if client is None: #it's a new client
                 client = Client(client_name, self)
                 self.clients[client_name] = client
                 client.waiting = 1
@@ -772,7 +863,7 @@ class Display(Tkinter.Canvas):
             #print "disconnecting with ", client_name, sys.getrefcount(client)-1, "references"
 
             if not client: ## this client is not displayed
-                print "not displayed"
+                print client_name, " not displayed"
                 return
             if mover.connection:
                 mover.connection.client = None
@@ -820,7 +911,6 @@ class Display(Tkinter.Canvas):
                 mover.connection.client.last_activity_time = time.time()
          
 
-            
     def mainloop(self):
         # Our mainloop is different from the normal Tk mainloop in that we have
         # (A) an interval timer to control animations and
@@ -862,9 +952,10 @@ class Display(Tkinter.Canvas):
 
             #### Check for unconnected clients
             for client_name, client in self.clients.items():
-                if client.n_connections > 0:
+                if (client.n_connections > 0 or client.waiting == 1):
                     continue
                 if now - client.last_activity_time >  5: # grace period
+                    print "It's been longer than 5 seconds, ", client_name," client must be deleted"
                     #print "destroying client : ", client_name, "with", sys.getrefcount(client)-1, "references"
                     client.destroy()
                     client.undraw() #XXX This is wrong, wrong, wrong, but works for now!
