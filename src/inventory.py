@@ -36,6 +36,7 @@ def get_vol_filenames(output_dir):
         volume_quotas_file = "/dev/stdout"
 	volume_quotas_format_file = "/dev/stdout"
         total_bytes_file = "/dev/stdout"
+        declaration_error = "/dev/stdout"
     else:
         last_access_file = output_dir + "LAST_ACCESS"
         volume_size_file = output_dir + "VOLUME_SIZE"
@@ -44,9 +45,11 @@ def get_vol_filenames(output_dir):
         volume_quotas_file = output_dir + "VOLUME_QUOTAS"
 	volume_quotas_format_file = get_vq_format_file(output_dir)
         total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
+        declaration_error = output_dir + "DECLARATION_ERROR"
     return last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
-		      total_bytes_file, volumes_too_many_mounts_file
+		      total_bytes_file, volumes_too_many_mounts_file, \
+                      declaration_error
 
 #This is the "magic" class to use when filtering out elements that have the
 # same external label in a list.
@@ -893,7 +896,8 @@ def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
 
     last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
-		      total_bytes_file, volumes_too_many_mounts_file \
+		      total_bytes_file, volumes_too_many_mounts_file, \
+                      declaration_error \
                       = get_vol_filenames(output_dir)
 
     #Create files that hold statistical data.
@@ -918,7 +922,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     # determine the output path
     last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
-		      total_bytes_file, volumes_too_many_mounts_file \
+		      total_bytes_file, volumes_too_many_mounts_file, \
+                      declaration_error \
                       = get_vol_filenames(output_dir)
 
     # open volume_summary_cache
@@ -952,6 +957,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     vs_file = open(volume_size_file, "w")
     vd_file = open(volumes_defined_file, "w")
     tm_file = open(volumes_too_many_mounts_file, "w")
+    de_file = open(declaration_error, "w")
 
     vs_file.write("%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n" % ("Label",
         "Actual", "Deleted", "Non-deleted", "Capacity", "Remaining",
@@ -967,6 +973,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         ("label", "avail.", "system_inhibit", "user_inhibit",
          "library", "mounts",  "volume_family"))
 
+    de_file.write("%s\t%12s\t%12s\t%16s\t%16s\n\n"%("volume", "total size", "capacity", "library", "media type"))
     #Process the tapes authorized file for the VOLUME_QUATAS page.
     authorized_tapes = get_authorized_tapes()
 
@@ -1087,6 +1094,15 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             vol_sum[vk] = vsum
             n_changed = n_changed + 1
 
+        # check if the volume is declared right
+        if vv['media_type'] == '9940':
+            if total_size > 80*1048576*1024 or vv['library'][-5:] == '9940B':
+                de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, total_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+        elif vv['media_type'] == '9940B':
+            if total_size < 100*1048576*1024 or vv['library'][-5:] != '9940B' or vv['capacity_bytes'] < 100*1048576*1024:
+                de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, total_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+        elif vv['library'][-5:] == '9940B' and vv['media_type'] != '9940B':
+                de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, total_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
 
         # volume_sums[vk] = {'active':active, 'deleted':deleted,
         #                    'active_size':active_size,
@@ -1220,6 +1236,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     vd_file.write("</pre></html>\n")
     vd_file.close()
     tm_file.close()
+    de_file.close()
     # make a html copy
     os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
     os.system('sed -e "s/<font color=#FF0000>//g; s/<\/font>//g; s/<blink>//g; s/<\/blink>//g" '+volumes_defined_file+'.html > '+volumes_defined_file)
