@@ -7,29 +7,35 @@ enstore_config_host=localhost
 enstore_config_port=7500
 enstore_config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
 
-enstore_libraries="activelibrary.library_manager red50library.library_manager"
-enstore_media_changers="STK.media_changer RDD.media_changer"
-enstore_movers="fd0.mover stk0.mover"
-
 enstore_db=$ENSTORE_DIR/etc
+enstore_libraries=""
+enstore_media_changers=""
+enstore_movers=""
 enstore_start_config=0
 enstore_start_fileclerk=0
 enstore_start_volumeclerk=0
 
 if [ `uname -n | grep -c pcfarm4` -eq 1 ] ; then
   enstore_db=/bakken/bakken/enstore_db
-  enstore_libraries=""
-  enstore_media_changers=""
-  enstore_movers=""
   enstore_start_config=1
   enstore_start_fileclerk=1
   enstore_start_volumeclerk=1
-fi
 
-if [ `uname -n | grep -c fntt1` -eq 1 ] ; then
-  enstore_libraries="8500library.library_manager"
-  enstore_media_changers=""
+elif [ `uname -n | grep -c fntt1` -eq 1 ] ; then
+  enstore_libraries="8500.library_manager"
+  enstore_media_changers="8500.media_changer"
   enstore_movers="exa0.mover"
+
+elif [ `uname -n | grep -c fndapr` -eq 1 ] ; then
+  enstore_libraries="fndaprdisk.library_manager"
+  enstore_media_changers="fndaprdisk.media_changer"
+  enstore_movers="fndaprdisk.mover"
+
+elif [ `uname -n | grep -c hppc` -eq 1 ] ; then
+  enstore_libraries="hppcdisk.library_manager redwood50.library_manager"
+  enstore_media_changers="hppcdisk.media_changer STK.media_changer"
+  enstore_movers="hppcdisk.mover stk0.mover"
+
 fi
 
 # if the user has environmental variable set, use them - or else use the defaults
