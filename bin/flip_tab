@@ -47,7 +47,6 @@ for i in $work/*; do
   echo
   echo
   left=`ls -1 $work|wc|awk '{print $1}'`
-  left=`expr $left - 1 `
   /bin/echo -n "There are $left groups left to do.  Another [yn]? "
   read ans
   if [ $? -eq 0 ] &&  expr "$ans" : '[Yy]' >/dev/null ; then
