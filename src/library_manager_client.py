@@ -7,6 +7,7 @@ import errno
 import sys
 import string
 import socket
+import select
 
 #enstore imports
 import callback
