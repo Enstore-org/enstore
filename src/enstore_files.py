@@ -269,11 +269,27 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	# we may have gotten an error while trying to get the info, 
 	# so check for a piece of it first
 	if lm.has_key(enstore_constants.LMSTATE):
-	    vol = lm.get(enstore_constants.DEVICE, None)
-	    if vol:
-		self.filelist.append([lm[enstore_constants.NODE], 
-				      lm[enstore_constants.FILE], name, vol])
-
+	    wam_q = lm.get(enstore_constants.WORK, None)
+	    if not wam_q is enstore_constants.NO_WORK:
+		for wam_elem in wam_q:
+		    self.filelist.append([wam_elem[enstore_constants.NODE], 
+					  wam_elem[enstore_constants.FILE], name, 
+					  wam_elem[enstore_constants.DEVICE]])		
+	    pend_q = lm.get(enstore_constants.PENDING, None)
+	    if pend_q:
+		pread_q = pend_q[enstore_constants.READ]
+		if pread_q:
+		    for pread_elem in pread_q:
+			self.filelist.append([pread_elem[enstore_constants.NODE], 
+					      pread_elem[enstore_constants.FILE], name, 
+					      pread_elem[enstore_constants.DEVICE]])
+		pwrite_q = pend_q[enstore_constants.WRITE]
+		if pwrite_q:
+		    for pwrite_elem in pwrite_q:
+			self.filelist.append([pwrite_elem[enstore_constants.NODE], 
+					      pwrite_elem[enstore_constants.FILE], name, 
+					      None])
+			
     # write the status info to the files
     def write(self, max_lm_rows={}):
         if self.openfile:
@@ -286,6 +302,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 
 	    # now make the individual library manager pages
 	    status_keys = self.text.keys()
+	    self.filelist = []
 	    for key in status_keys:
 		if enstore_functions.is_library_manager(key) and \
 		   not self.text[key][enstore_constants.STATUS] == \
@@ -307,9 +324,6 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 		    doc = enstore_html.EnLmStatusPage(key, self.refresh, 
 						      self.system_tag, max_lm_rows)
 		    doc.body(self.text[key])
-		    #import q
-		    #q.d[enstore_constants.SUSPECT_VOLS] = ['None']
-		    #doc.body(q.d)
 		    lm_file = HTMLLmStatusFile("%s/%s.html"%(self.html_dir, key), 
 					       self.refresh, self.system_tag)
 		    lm_file.open()
