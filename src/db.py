@@ -5,12 +5,14 @@
 import os
 import time
 import copy
+import string
 
 # enstore imports
 import log_client
 import journal
 import table
 import Trace
+import interface
 import configuration_client
 import generic_cs
 
@@ -35,11 +37,13 @@ class MyIndex(table.Index):
 class DbTable:
   def __init__(self,dbname,logc,indlst=[]):
     try:
-	dbHome=os.environ['ENSTORE_DB']
+	self.dbHome=configuration_client.ConfigurationClient(\
+		interface.default_host(),\
+		string.atoi(interface.default_port()), 3).get('database')['db_dir']
     except:
-	dbHome=os.environ['ENSTORE_DIR']
+	self.dbHome=os.environ['ENSTORE_DIR']
     dbEnvSet={'create':1,'init_mpool':1, 'init_lock':1, 'init_txn':1}
-    dbEnv=libtpshelve.env(dbHome,dbEnvSet)
+    dbEnv=libtpshelve.env(self.dbHome,dbEnvSet)
     self.db=libtpshelve.open(dbEnv,dbname,type='btree')
     self.dbindex=libtpshelve.open(dbEnv,"index",type='btree')
     self.inx={}
@@ -198,8 +202,8 @@ class DbTable:
      import time
      del self.jou
      self.logc.send(log_client.INFO, 1, "Start checkpoint for "+self.name+" journal")
-     cmd="mv " + os.environ['ENSTORE_DB'] +"/"+self.name+".jou " + \
-                        os.environ['ENSTORE_DB'] +"/"+self.name+".jou."+ \
+     cmd="mv " + self.dbHome +"/"+self.name+".jou " + \
+                        self.dbHome +"/"+self.name+".jou."+ \
                         repr(time.time())
      os.system(cmd)
      self.jou = journal.JournalDict({},self.name+".jou")
@@ -222,7 +226,13 @@ def do_backup(name):
     	   import socket
 
      cwd=os.getcwd()
-     os.chdir(os.environ['ENSTORE_DB'])
+     try:
+         dbHome = configuration_client.ConfigurationClient(\
+		interface.default_host(),\
+		string.atoi(interface.default_port()), 3).get('database')['db_dir']
+     except:
+         dbHome = os.environ['ENSTORE_DIR']
+     os.chdir(dbHome)
      cmd="tar cvf "+name+".tar "+name+" "+name+".jou.*"
      generic_cs.enprint(cmd)
      os.system(cmd)

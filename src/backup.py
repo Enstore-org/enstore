@@ -104,11 +104,13 @@ if __name__=="__main__":
 	ago=10
 
     try:
-	dbHome=os.environ['ENSTORE_DB']
+	dbHome = configuration_client.ConfigurationClient(\
+			interface.default_host(),\
+			string.atoi(interface.default_port()), 3).get('database')['db_dir']
     except:
 	dbHome=os.environ['ENSTORE_DIR']
     try:
-    	os.chdir(os.environ['ENSTORE_DB'])
+    	os.chdir(dbHome)
     except os.error:
 	generic_cs.enprint("Error: "+cmd+" "+str(sys.exc_info()[1][1]))
         Trace.trace(0,"backup Error - "+repr(cmd)+str(sys.exc_info()[0])+\
