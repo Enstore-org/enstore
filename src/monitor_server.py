@@ -92,7 +92,7 @@ class MonitorError(Exception):
 class MonitorServer(dispatching_worker.DispatchingWorker,
                     generic_server.GenericServer):
 
-    def __init__(self, csc):
+    def __init__(self, csc, port=enstore_constants.MONITOR_PORT):
         self.timeout = 10
 	self.running = 0
 	self.print_id = MY_NAME
@@ -101,7 +101,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
 
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         dispatching_worker.DispatchingWorker.__init__(self,
-                                         ('', enstore_constants.MONITOR_PORT))
+                                         ('', port))
 
 	self.running = 1
 
@@ -404,9 +404,14 @@ class MonitorServerInterface(generic_server.GenericServerInterface):
 if __name__ == "__main__":
     Trace.init(MY_NAME)
 
+    if len(sys.argv) == 2:
+        port = int(sys.argv[1])
+    else:
+        port = enstore_constants.MONITOR_PORT
+
     intf = MonitorServerInterface()
 
-    ms = MonitorServer((intf.config_host, intf.config_port))
+    ms = MonitorServer((intf.config_host, intf.config_port), port)
 
     #This is a server and therfore must handle things like --alive requests.
     ms.handle_generic_commands(intf)
