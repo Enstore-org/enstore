@@ -566,7 +566,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # second - state
         # third -  reset timer
         # fourth - error source
-        self.need_lm_update = (0, None, 0, None) 
+        self.need_lm_update = (0, None, 0, None)
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -1593,7 +1593,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             ## Connecting to client failed
             if self.state is HAVE_BOUND:
                 self.dismount_time = time.time() + self.default_dismount_delay
-            self.update_lm(reset_timer=1)
+            self.need_lm_update = (1, self.state, 1, None)
+            #self.update_lm(reset_timer=1)
             return 0
 
         self.t0 = time.time()
