@@ -1744,7 +1744,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         return
 
     # The following are for the sgdb
-    def __rebuild_sg_counts(self):
+    def __rebuild_sg_count(self):
         self.sgdb.clear()
         c = self.dict.newCursor()
         k, v = c.first()
@@ -1758,7 +1758,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         c.close()
 
     def rebuild_sg_count(self, ticket):
-        self.__rebuild_sg_counts()
+        self.__rebuild_sg_count()
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
@@ -2060,7 +2060,9 @@ class VolumeClerk(VolumeClerkMethods):
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
 
         self.sgdb = sgdb.SGDb(dbHome)
-
+        # rebuild it if it was not loaded
+        if len(self.sgdb.dict) == 0:
+            self.sgdb.__rebuild_sg_count()
         self.noaccess_cnt = 0
         self.max_noaccess_cnt = self.keys.get('max_noaccess_cnt', 2)
         self.noaccess_to = self.keys.get('noaccess_to', 300.)
