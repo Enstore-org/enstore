@@ -242,7 +242,30 @@ class UDPClient:
                     reply, server = tsd.socket.recvfrom(TRANSFER_MAX, timeout)
                 if not reply: # receive or select timed out
                     break
-                rcvd_txn_id, out, t = self._eval_reply(reply)
+
+                try:
+                    rcvd_txn_id, out, t = self._eval_reply(reply)
+                    if type(out) == type({}) and out.has_key('status') \
+                       and out['status'][0] == e_errors.MALFORMED:
+                        return out
+                except TypeError:
+                    #If a this error occurs, keep retrying.  Most likely it is
+                    # an "expected string without null bytes".
+                    exc, msg, tb = sys.exec_info()
+                    try:
+                        message = "%s: %s: From server %s:%s" % \
+                                  (exc, msg, server, reply[:100])
+                    except IndexError:
+                        message = "%s: %s: From server %s: %s" % \
+                                  (exc, msg, server, reply)
+                    Trace.log(e_errors.INFO, message)
+
+                    #Set this to none.  Since it is invalid, don't add it
+                    # to the queue and instead skip the following if and
+                    # go right back to the top of the loop.
+                    rcvd_txn_id=None
+                    continue
+                
                 if rcvd_txn_id != txn_id: #Queue it up, somebody else wants it
                     tsd.reply_queue[rcvd_txn_id] = out
             else: # we got a good reply
