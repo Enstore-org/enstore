@@ -90,7 +90,7 @@ scan_queue = Queue.Queue(1024)
 
 # migration log file
 LOG_DIR = SPOOL_DIR
-LOG_FILE = "MigrationLog+"+`os.getpid()`+"@"+time.strftime("%Y-%m-%d.%H:%M:%S", time.localtime(time.time()))
+LOG_FILE = "MigrationLog+"+"@"+time.strftime("%Y-%m-%d.%H:%M:%S", time.localtime(time.time()))+'#'+`os.getpid()`
 log_f = None
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
