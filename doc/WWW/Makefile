@@ -66,7 +66,7 @@ PIC_PS_FILES = \
 #
 # TARGETS
 #
-all: pics www_new
+all: pics www_new bytes_file
 
 pics: PS_pics GIF_pics
 
@@ -80,6 +80,9 @@ www_new: pics
 	@- cp ../operations/d0en/d0ensrv1.html ./d0en_d0ensrv1.html
 	@- cp ../operations/d0en/d0ensrv2.html ./d0en_d0ensrv2.html
 	../moveAndAddButton.pl $(WWW_NEW) `justfiles`
+
+bytes_file:	
+	@- cp ./*.bytes $(WWW_NEW)
 
 PS_pics: $(PIC_PS_FILES)
 
