@@ -588,12 +588,18 @@ class EnMountDataFile(EnDataFile):
     def parse_line(self, line):
 	try:
             field_l = string.split(line, None)
-            if len(field_l) == 9:
+            l = len(field_l)
+            if l == 9:
                 # old format
                 [etime, enode, epid, euser, estatus, mover, type, request, volume] = field_l
                 drive_id = ""
-            else:
+            elif l == 10:
                 [etime, enode, epid, euser, estatus, mover, type, request, volume, drive_id] = field_l
+            elif l == 11:
+                [etime, enode, epid, euser, estatus, mover, type, request, volume,
+                 drive_id, dummy] = field_l
+            else:
+                return []
 	except ValueError:
 	    # this line has a bad syntax, ignore it
 	    Trace.trace(enstore_constants.INQPLOTDBG, "Plot line has evil syntax (%s)"%(line,))
