@@ -18,14 +18,6 @@
 #include "trace.h"		/* trace... */
 
 
-/*
- *  Module description:
- *      Two methods:
- *	    1)  (dat_byts,dat_CRC,san_CRC) = obj.to_HSM(  frmDriverObj, to_DriverObj
- *						         , crc_fun, sanity_byts, header )
- *	    2)  (dataCRC,sanitySts) = obj.frmHSM(  frmDriverObj, to_DriverObj
- *						 , dataSz, sanitySz, sanityCRC )
- */
 static char	Ptrace_Doc[] = "Ptrace is a module which interfaces to a global trace buffer";
 static PyObject	*PtraceModuleDict;  /* used to get "trc_fun{1,2}" -- they
 				       probably cannot be fetch just once (they
