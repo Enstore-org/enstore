@@ -75,7 +75,6 @@ class StatusBar(Tkinter.Frame):
 
 # for event loop
 quit_now = 0
-paused = 0
 
 # set_quit() -- callback for Exit
 def set_quit():
@@ -83,22 +82,29 @@ def set_quit():
 	quit_now = 1
 	sys.exit(0)
 
-# set_pause() -- callback for Pause
-def set_pause():
-	global paused
-	paused = 1
-
-# set_resume() -- callback for Resume
-def set_resume():
-	global paused
-	paused = 0
-
 # show_help() -- callback for Help
 def show_help():
 	# God helps those who help themselves
 	tkMessageBox.showinfo(
 		"God helps those who help themselves",
 		"Call Chih-Hao at x8076")
+
+# StateButton
+
+class StatusButton(Tkinter.Button):
+	def __init__(self, root, states, **arg):
+		self.state = states
+		self.state_id = 0
+		next_state = (self.state_id + 1) % len(self.state)
+		Tkinter.Button.__init__(self, root, text=states[next_state], command = self.change_state, **arg)
+
+	def get_state(self):
+		return self.state[self.state_id]
+
+	def change_state(self):
+		self.state_id = (self.state_id + 1) % len(self.state)
+		next_state = (self.state_id + 1) % len(self.state)
+		self.config(text=self.state[next_state])
 
 # migration_watch() -- for "migrate.py --vol ..."
 def migration_watch(l1):
@@ -114,13 +120,19 @@ def migration_watch(l1):
 	filemenu = Tkinter.Menu(menu)
 	menu.add_cascade(label="File", menu=filemenu)
 	filemenu.add_command(label="Exit", command = set_quit)
-	action_menu = Tkinter.Menu(menu)
-	menu.add_cascade(label="Action", menu=action_menu)
-	action_menu.add_command(label="Pause", command = set_pause)
-	action_menu.add_command(label="Resume", command = set_resume)
 	helpmenu = Tkinter.Menu(menu)
 	menu.add_cascade(label="Help", menu=helpmenu)
 	helpmenu.add_command(label="Help me!", command = show_help)
+
+	# create tool bar
+	tool_frame = Tkinter.Frame(root)
+	quick_button = Tkinter.Button(tool_frame, width=10, text='Exit', command = set_quit)
+	quick_button.pack(side=Tkinter.LEFT)
+	action_button = StatusButton(tool_frame, ["Resume", "Pause"], width=10)
+	action_button.pack(side = Tkinter.LEFT)
+	help_button = Tkinter.Button(tool_frame, width=10, text='Help', command = show_help)
+	help_button.pack(side=Tkinter.LEFT)
+	tool_frame.pack()
 
 	# pack command_line and volume_status in the same frame
 	frame1 = Tkinter.Frame(root)
@@ -153,7 +165,8 @@ def migration_watch(l1):
 	while 1:
 		if quit_now:
 			sys.exit(0)
-		if paused:
+		# if paused:
+		if action_button.get_state() == "Pause":
 			# sleep so that it won't consume too much cpu
 			# while being paused
 			time.sleep(0.1)
@@ -237,13 +250,19 @@ def scan_watch(l1):
 	filemenu = Tkinter.Menu(menu)
 	menu.add_cascade(label="File", menu=filemenu)
 	filemenu.add_command(label="Exit", command = set_quit)
-	action_menu = Tkinter.Menu(menu)
-	menu.add_cascade(label="Action", menu=action_menu)
-	action_menu.add_command(label="Pause", command = set_pause)
-	action_menu.add_command(label="Resume", command = set_resume)
 	helpmenu = Tkinter.Menu(menu)
 	menu.add_cascade(label="Help", menu=helpmenu)
 	helpmenu.add_command(label="Help me!", command = show_help)
+
+	# create tool bar
+	tool_frame = Tkinter.Frame(root)
+	quick_button = Tkinter.Button(tool_frame, width=10, text='Exit', command = set_quit)
+	quick_button.pack(side=Tkinter.LEFT)
+	action_button = StatusButton(tool_frame, ["Resume", "Pause"], width=10)
+	action_button.pack(side = Tkinter.LEFT)
+	help_button = Tkinter.Button(tool_frame, width=10, text='Help', command = show_help)
+	help_button.pack(side=Tkinter.LEFT)
+	tool_frame.pack()
 
 	# pack command_line and volume_status in the same frame
 	frame1 = Tkinter.Frame(root)
@@ -264,7 +283,7 @@ def scan_watch(l1):
 	while 1:
 		if quit_now:
 			sys.exit(0)
-		if paused:
+		if action_button.get_state() == "Pause":
 			time.sleep(0.1)
 			root.update()
 			continue
