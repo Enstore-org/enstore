@@ -43,16 +43,13 @@ def check_mover(device, test_tape, f_size=250):
 
     # check if correct tape has been mounted
     try:
-        try:
-            print "READING LABEL"
-            label = 80*' '
-            nb = FTT.read(label, 0, 80)
-            print "NB", nb
-            print "LB",label
-        except:
-            raise
-            print "EXPT"
-            label = ""
+
+        print "READING LABEL"
+        label = 80*' '
+        nb = FTT.read(label, 0, 80)
+        print "NB", nb
+        print "LB",label
+
         if len(label)!=80:
             print "WRITING LABEL"
             hdr = "VOL1"+test_tape
@@ -157,7 +154,7 @@ def check_mover(device, test_tape, f_size=250):
     #FTT.unload()
     #ticket['work'] = 'unloadvol'
     #rt = u.send(ticket,(mcticket['hostip'], mcticket['port']),300,10)
-    print "Transfer rates: device %s write %.3g MB/S read %.3g MB/S"%(drive,write_t_r,read_t_r)
+    print "Transfer rates: device %s write %.3g MB/S read %.3g MB/S"%(device,write_t_r,read_t_r)
     return None
         
     
@@ -169,12 +166,12 @@ if __name__ == "__main__":
     if len(args) < 2:
         usage()
         sys.exit(-1)
-    drive,tape=args[0],args[1]
+    device,tape=args[0],args[1]
     if len(args) == 3:
         f_size = string.atoi(args[2])
     else:
         f_size = 250 # default 250 MB
     print "FSIZE WILL BE ",f_size,"MB"
     
-    check_mover(drive, tape, f_size)
+    check_mover(device, tape, f_size)
     sys.exit(0)
