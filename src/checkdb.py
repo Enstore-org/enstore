@@ -8,6 +8,7 @@ import time
 import shutil
 import traceback
 import socket
+import signal
 
 import e_errors
 import timeofday
@@ -16,7 +17,7 @@ import configuration_client
 import verify_db
 
 # path to database
-db_path = "/diskc/check_database"
+db_path = "/diskc/check-database"
 
 def print_usage():
     print "Usage:", sys.argv[0], "[--help]"
@@ -143,10 +144,11 @@ def check_backup(backup_dir, backup_node):
 
 # start postmaster
 def start_postmaster():
-	pid = os.popen("ps -axw| grep postmaster | grep %s | awk '{print $1}'"%(db_path)).readline()
+	cmd = "ps -axw| grep postmaster | grep %s | grep -v grep | awk '{print $1}'"%(db_path)
+	pid = os.popen(cmd).readline()
 	pid = string.strip(pid)
 	if pid:
-		print timeofday.tod(), "postmaster has already been started"
+		print timeofday.tod(), "postmaster has already been started -- pid =", pid
 	else:
 		print timeofday.tod(), "Starting postmaster ..."
 		# take care of left over pid info, if any
@@ -161,11 +163,11 @@ def start_postmaster():
 
 #stop postmaster
 def stop_postmaster():
-	pid = os.popen("ps -axw| grep postmaster | grep %s | awk '{print $1}'"%(db_path)).readline()
+	pid = os.popen("ps -axw| grep postmaster | grep %s | grep -v grep | awk '{print $1}'"%(db_path)).readline()
 	pid = string.strip(pid)
 	if pid:
 		print timeofday.tod(), "Stopping postmaster"
-		os.kill(int(pid))
+		os.kill(int(pid), signal.SIGTERM)
 	else:
 		print timeofday.tod(), "postmaster is not running"
     
