@@ -178,7 +178,6 @@ GET_WORK = "get-work"                        #library, media
 GET_WORK_SORTED = "get-work-sorted"          #library
 HELP = "help"
 HOST = "host"                                #monitor
-HTML = "html"                                #up_down
 HTML_DIR = "html-dir"                        #monitor(server)
 HTML_FILE = "html-file"                      #inquisitor(server)
 HTML_GEN_HOST = "html-gen-host"              #monitor, system
@@ -196,6 +195,7 @@ KEEP_DIR = "keep-dir"                        #plotter
 LOGFILE_DIR = "logfile-dir"                  #plotter
 LS = "ls"                                    #pnfs
 LS_ACTIVE = "ls-active"                      #volume, file
+MAKE_HTML = "make-html"                      #up_down
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
 MAX_WORK = "max-work"                        #media(c&s)
 MESSAGE = "message"                          #log
@@ -293,11 +293,11 @@ valid_option_list = [
     GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME, GET_LOGFILES,
     GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
-    HELP, HOST, HTML, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
+    HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, IO,
     KEEP, KEEP_DIR,
     LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
-    MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
+    MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NO_MAIL, NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
     PARENT, PATH, PNFS_STATE, POSITION, PREFIX, PRIORITY,

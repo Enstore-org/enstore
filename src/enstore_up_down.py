@@ -423,18 +423,18 @@ class UpDownInterface(generic_client.GenericClientInterface):
         #self.restricted_opts = opts
 	self.summary = do_output
 	self.no_mail = 0
-	self.html = 0
+	self.make_html = 0
 	generic_client.GenericClientInterface.__init__(self)
 
     def valid_dictionaries(self):
         return (self.help_options, self.updown_options)
 
     updown_options = {
-        option.HTML:{option.HELP_STRING:"format output as html",
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.DEFAULT_VALUE:option.DEFAULT,
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.USER_LEVEL:option.ADMIN,
+        option.MAKE_HTML:{option.HELP_STRING:"format output as html",
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN,
                               },
         option.NO_MAIL:{option.HELP_STRING:
                         "do net send e-mail in case of errors",
@@ -678,7 +678,7 @@ def do_work(intf):
     global prefix, do_output, no_mail
 
     # see if we are supposed to output well-formed html or not
-    if intf.html:
+    if intf.make_html:
 	prefix = "<LI>"
 
     do_output = intf.summary
