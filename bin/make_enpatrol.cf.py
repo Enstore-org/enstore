@@ -83,7 +83,7 @@ ENLINE_SUFFIX = "       =1        envars()\n"+ \
                 "                                                      =2        envars(),write($ensstartfail)\n"
 
 server_start_order = ("config_server", \
-                      "logserver", \
+                      "log_server", \
                       "volume_clerk", \
                       "file_clerk", \
                       "*library_manager", \
