@@ -1267,6 +1267,35 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not hasattr(self,'_last_state'):
             self._last_state = None
 
+        ## it may happen so that for some unknown yet reason
+        ## the net thread hangs after connection was broken by mover
+        ## as the consequence the data transfers can not be done
+        ## until hung net thread is gone. This thread can hang forever
+        ## to deal with this situation do the following here:
+        ## check for the presence of the net and tape thread in the
+        ## IDLE or HAVE_BOUND state. They should not be running.
+        ## If net thread is running restart the mover.
+        ## It is a radical measure, but documents do not recommend
+        ## killing thread with not closed or hung socket.
+        ## If tape thread is running put mover offline.
+        t_thread = getattr(self, 'tape_thread', None)
+        n_thread = getattr(self, 'net_thread', None)
+        if self.state in (IDLE, HAVE_BOUND):
+            if n_thread and n_thread.isAlive():
+                Trace.alarm(e_errors.ALARM,
+                            "Net thread is running in the state %s. Will restart the mover"%
+                            (state_name(self.state),))
+                if self.state == HAVE_BOUND:
+                    self.dismount_volume(after_function=self.restart)
+                else:
+                    self.restart()
+            elif t_thread and t_thread.isAlive():
+                Trace.alarm(e_errors.ALARM,
+                            "Tape thread is running in the state %s. Will offline the mover"%
+                            (state_name(self.state),))
+                self.offline()
+                return
+                
         now = time.time()
 
         if reset_timer:
@@ -1283,8 +1312,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.state == ACTIVE:
                     self.too_long_in_state_sent = 0 # set this to avoid sending a false alarm
                     transfer_stuck = 0 
-                    t_thread = getattr(self, 'tape_thread', None)
-                    n_thread = getattr(self, 'net_thread', None)
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
                     if self.bytes_read_last == self.bytes_read:
                         # Trace.trace(8, "net thread %s tape thread %s"%(n_thread.isAlive(),t_thread.isAlive())) 
@@ -3014,9 +3041,9 @@ class Mover(dispatching_worker.DispatchingWorker,
     def transfer_completed(self):
         # simple synchonizatin between tape and network threads.
         # without this not updated file info is transferred to get
-        for i in range(3):
+        for i in range(10):
             if self.lock_file_info:
-                time.sleep(1)
+                time.sleep(.3)
             else:
                 break
         else:
