@@ -20,7 +20,7 @@
 
 D0EnSrv2 is the node that runs the "base" Enstore servers, namely, the
 Configuration Server, the Logger, the Alarm Server, and the
-Inquisitor.  It is also the central D0En patrol monitoring node as
+Inquisitor.  It is also the central D0En Patrol monitoring node as
 well as the primary web server.
 <p>
 <p>
@@ -60,7 +60,7 @@ before you do this.) can be loaded by
        <li> type "python &lt new_config_file &gt" and verify there are
        no errors.
 
-       <li> Type " enstore config --load --config-file= &lt
+       <li> Type " enstore config --load --config_file= &lt
        new_config_file &gt"
     </ul>
 
@@ -89,7 +89,11 @@ logs are backed up to d0ensrv3 every 15 minutes.
 <li> The <a href="http://www-d0en.fnal.gov/enstore/enstore_logs.html">
 Enstore Logs </a> are available on the web.  They are current when you
 load the page, but you need to hit the "reload" button to keep them
-current.
+current. 
+
+<p> <li> One nice feature about the web interface is that you can <a
+href="http://www-d0en.fnal.gov/enstore/enstore_log_file_search.html">
+search </a> a subset of log files.
 
 <p>
 <li> You can also check the log out directly by looking at the log
@@ -121,6 +125,10 @@ administrator since enstore attempts error recovery whenever
 possible. Any alarms will need human intervention to correct the
 problem.
 
+<p> <li> There is more <a
+href="http://www-hppc/enstore/d0en_check.html"> Information </a>
+available on watching alarms.
+
 </ul>
 
 <br>
@@ -136,22 +144,23 @@ Detailed Information </a> on the Inqusitor server is available from
 the <a href="http://www-hppc.fnal.gov/enstore/design.html"> Enstore
 Technical Document.</a> Command details are covered there.
 
-<li> The inquistor is <it>the source</it> for <a
+<li> The Inquistor is <it>the source</it> for <a
 href="http://www-d0en:/enstore/enstore_system.html"> Information </a>
 about what is happening in Enstore.  It queries and checks everything
-possible. There is no reason for user's to do check anything else.
+possible. There is no reason for user's to perform any other checks
+themselves.
 
-<li> To reduce load and traffic, the inquisitor performs its checks
+<li> To reduce load and traffic, the Inquisitor performs its checks
 periodically. These values are tunable.  Information on the web pages
 may be several minutes old and not represent exactly what is
 happening.
 
-<li> If the inquisitor discovers that a Enstore component is not
+<li> If the Inquisitor discovers that an Enstore component is not
 responding to pings, it will try to restart it.  If it can't it will
 generate an alarm.
 
 <p>
-<li> There are several actions done on d0ensrv2 because the inquisitor
+<li> There are several actions done on d0ensrv2 because the Inquisitor
 is running and it needs local files to present the data:
  <ul>
 
@@ -160,7 +169,9 @@ is running and it needs local files to present the data:
    /diska/tape-inventory.
 
    <li> The <a href="http://d0ensrv2.fnal.gov:/enstore/aml2log.html">
-   AML/2 Log </a> files are fetched every 15 minutes.
+   AML/2 Log </a> files are fetched every 15 minutes. The Inquisitor
+   <a href="http://www-d0en:/enstore/enstore_logs.html"> Organizes
+   </a> these and other log files for the user.
 
    <li> A whole series of <a
    href="http://d0ensrv2/enstore/misc_enstore_system.html">
@@ -198,11 +209,11 @@ Web Server
 
 <ul>
 
-<li> The standard apache web server, from KITS, is user to provide
+<li> The standard apache web server, from KITS, is used to provide
 Enstore's web pages.
 
 <p>
-<li> The web server must be running on the same node as the inqusitor runs.
+<li> The web server must be running on the same node as the Inqusitor runs.
 
 <p>
 <li> The web page should be accessed by using the alias www-d0en and
@@ -221,7 +232,8 @@ log at /local/ups/prd/www_pages/logs and/var/adm/www/d0en
 <br>
 <br>
 <br>
-Cron jobs executing on d0ensrv1:
+<a href="http://www-d0en.fnal.gov/enstore/cron_pics.html"> Cron jobs
+</a>. executing on d0ensrv1:
 <ul>
 
 <li> user enstore - log-stash. If this fails, ?
@@ -230,7 +242,7 @@ Cron jobs executing on d0ensrv1:
 file and/or the volume clerk are not working.
 
 <li> user enstore - inqPlotUpdate. If this fails, mostly likely the
-inqusitor is not working.
+Inqusitor is not working.
 
 <li> user enstore - aml2logs.  If this fails, most likely the AML/2
 OS/2 node, adic2, or its network connection is not working.
@@ -250,9 +262,6 @@ network connection to rip8 is down.
 
 <li> user root - chkcrons. If this fails, the most likely reason is
 because one of the d0en nodes, or its network connection, is down.
-
-
-0 4 * * * /local/ups/prd/httpd/admin/monthlystats >/dev/null 2>/dev/null
 
 </ul>
 

@@ -29,7 +29,7 @@ adding "append="console=ttyS0,19200 console=tty0 ..." to the kernel
 stanza.
 
 <p>
-<li> The barracuda 9 GB hard drives needs to have several options
+<li> The barracuda 9 GB hard drives need to have several options
 enabled to operate efficiently.  Do this by adding a line to each
 stanza of lilo.conf: append=".... console=tty0
 ncr53c8xx=tags:4,sync:10,ultra:y"
@@ -40,8 +40,9 @@ flow control, and ???.  Also lilo needs to have the following line
 once, ahead of all stanzas, "serial=0,19200n8".
 
 <p>
-<li> Gettys need to be running on in order to open a tty session. The
-/etc/inittab has to have "c:12345:respawn:/sbin/mingetty ttyS0" line.
+<li> Gettys need to be running on the nodes in order to open a tty
+session. The /etc/inittab has to have "c:12345:respawn:/sbin/mingetty
+ttyS0" line.
 
 <p>
 <li> A backup of the system ide disk is made once per day to
