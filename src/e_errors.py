@@ -113,6 +113,20 @@ def is_retriable(e):
         return 0
     return 1
 
+# log traceback info
+def handle_error(exc=None, value=None, tb=None):
+    import Trace
+    import traceback
+    # store Trace back info
+    if not exc:
+	import sys
+	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
+    # log it
+    for l in traceback.format_exception( exc, value, tb ):
+	#print l[0:len(l)-1]
+	Trace.log( ERROR, l[0:len(l)-1] )
+    return exc, value, tb
+
 
 
 

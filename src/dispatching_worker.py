@@ -288,17 +288,14 @@ class DispatchingWorker:
 	Trace.log(e_errors.INFO,
                   'Exception during request from '+str(client_address)+\
                   ' request:'+str(request))
-	import traceback
-	for l in traceback.format_exception( exc, value, tb ):
-	    Trace.log( e_errors.INFO, l[0:len(l)-1] )
+	e_errors.handle_error(exc, value, tb)
 	Trace.log(e_errors.INFO,'-'*40)
-	self.reply_to_caller( {'status':(str(sys.exc_info()[0]), \
-					    str(sys.exc_info()[1]),'error'), \
+	self.reply_to_caller( {'status':(str(exc), \
+					    str(value),'error'), \
 			       'request':request, \
 			       'exc_type':repr(exc), \
 			       'exc_value':repr(value)} )
-	Trace.trace(6,"handle_error "+str(sys.exc_info()[0])+\
-		    str(sys.exc_info()[1]))
+	Trace.trace(6,"handle_error "+str(exc)+str(value))
 
     # nothing like a heartbeat to let someone know we're alive
     def alive(self,ticket):

@@ -725,24 +725,32 @@ class Pnfs:
         else:
             self.volume_file = UNKNOWN
 
+    # create a directory
+    def make_dir(self, dir_path, mod):
+      try:	
+	if os.path.exists(dir_path) == 0:
+	    dir = ""
+	    dir_elements = string.split(dir_path,'/')
+	    for element in dir_elements:
+		dir=dir+'/'+element
+		#Trace.log(e_errors.INFO, dir)
+		if os.path.exists(dir) == 0:
+		    # try to make the directory - just bomb out if we fail
+		    #   since we probably require user intervention to fix
+		    dir = string.replace(dir,"//","/")
+		    Trace.trace(11,'dir='+repr(dir)+" path="+repr(dir_path))
+		    os.mkdir(dir)
+		    os.chmod(dir,mod)
+		    return e_errors.OK, None
+	else: return e_errors.OK, None
+      except:
+	  exc, val, tb = e_errors.handle_error()
+	  return str(exc), str(val)
+
     # create a duplicate entry in pnfs that is ordered by file number on tape
     def make_volmap_file(self):
         if self.volume_file!=UNKNOWN:
-            if os.path.exists(self.voldir) == 0:
-                dir = ""
-                dir_elements = string.split(self.voldir,'/')
-                for element in dir_elements:
-                    dir=dir+'/'+element
-                    #Trace.log(e_errors.INFO, dir)
-                    if os.path.exists(dir) == 0:
-                        # try to make the directory - just bomb out if we fail
-                        #   since we probably require user intervention to fix
-                        dir = string.replace(dir,"//","/")
-                        Trace.trace(11,'dir='+repr(dir)+" voldir="+repr(self.voldir))
-                        os.mkdir(dir)
-                        # we already written to the user's file space, let everyone write to directory
-                        # later the actual file will be given to root and there will be no access
-                        os.chmod(dir,0777)
+	    self.make_dir(self.voldir, 0777)
 
             # create the volume map file and set its size the same as main file
             self.volume_fileP = Pnfs(self.volume_file)
@@ -767,29 +775,6 @@ class Pnfs:
             Trace.trace(11,'changing to roor.root ownership')
             os.chown(self.volume_file,0,0)   # make the owner root.root
 
-    # create a directory
-    def make_dir(self, dir_path):
-      try:	
-	if os.path.exists(dir_path) == 0:
-	    dir = ""
-	    dir_elements = string.split(dir_path,'/')
-	    for element in dir_elements:
-		dir=dir+'/'+element
-		#Trace.log(e_errors.INFO, dir)
-		if os.path.exists(dir) == 0:
-		    # try to make the directory - just bomb out if we fail
-		    #   since we probably require user intervention to fix
-		    dir = string.replace(dir,"//","/")
-		    Trace.trace(11,'dir='+repr(dir)+" path="+repr(dir_path))
-		    os.mkdir(dir)
-		    os.chmod(dir,0755)
-		    return e_errors.OK, None
-      except:
-	  return str(sys.exc_info()[0]), str(sys.exc_info()[1])
-
-
-
-
 
     # retore the original entry based on info from the duplicate
     def restore_from_volmap(self, restore_dir):
@@ -798,7 +783,7 @@ class Pnfs:
 	(dir,file) = os.path.split(self.origname)
 	if os.path.exists(dir) == 0:  # directory does not exist
 	    if restore_dir == "yes":
-		status = self.make_dir(dir)
+		status = self.make_dir(dir, 0755)
 	    else:
 		status = "ENOENT", None
 	    if status[0] != e_errors.OK:
@@ -822,11 +807,8 @@ class Pnfs:
 		  "file %s restored from volmap"%self.origname)
 	return e_errors.OK, None
       except:
-	  Trace.log(e_errors.ERROR,
-		    "restore_from_volmap failed for %s with %s %s"%\
-		    (self.origname, str(sys.exc_info()[0]), str(sys.exc_info()[1])))
-	  return str(sys.exc_info()[0]), str(sys.exc_info()[1])
-
+	  exc, val, tb = e_errors.handle_error()
+	  return str(exc), str(val)
 
 ##############################################################################
 

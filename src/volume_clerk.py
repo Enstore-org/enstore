@@ -89,8 +89,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
      except:
-         Trace.log(e_errors.ERROR,str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-         return str(sys.exc_info()[0]), str(sys.exc_info()[1])
+	 exc, val, tb = e_errors.handle_error()
+         return str(exc), str(val)
      
     # remove deleted volume and all information about it
     def remove_deleted_volume(self, external_label):
@@ -121,15 +121,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	     return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
      except:
-         Trace.log(e_errors.INFO,str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-         return str(sys.exc_info()[0]), str(sys.exc_info()[1])
-     
-	 
+	 exc, val, tb = e_errors.handle_error()
+         return str(exc), str(val)
 	 
     # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
-     try:
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
         record={}
@@ -216,16 +213,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,'addvol ok '+repr(external_label)+" "+repr(record))
         return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         return
-
     # delete a volume from the database
     def delvol(self, ticket):
-     try:
         # everything is based on external label - make sure we have this
         key="external_label"
         try:
@@ -288,18 +277,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         Trace.trace(8,"delvol "+str(sys.exc_info()[0])+\
-                     str(sys.exc_info()[1]))
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         return
-
     # restore a volume
     def restorevol(self, ticket):
-     try:
         try:
 	    # everything is based on external label - make sure we have this
 	    key="external_label"
@@ -342,66 +321,48 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         Trace.trace(8,"restorevol "+str(sys.exc_info()[0])+\
-                     str(sys.exc_info()[1]))
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         return
-
-
     # Check if volume is available
     def is_vol_available(self, ticket):
-     try:
-	 work = ticket["action"]
-	 label = ticket["external_label"]
-	 record = dict[label]  ## was deepcopy
-	 if record["system_inhibit"] == e_errors.DELETED:
+	work = ticket["action"]
+	label = ticket["external_label"]
+	record = dict[label]  ## was deepcopy
+	if record["system_inhibit"] == e_errors.DELETED:
 	    ret_stat = (record["system_inhibit"],None)
-	 else:
-	     if work == 'read_from_hsm':
-		 # if system_inhibit is NOT in one of the following 
-		 # states it is NOT available for reading
-		 if (record['system_inhibit'] != 'none' and 
-		     record['system_inhibit'] != 'readonly' and
-		     record['system_inhibit'] != 'full'):
-		     ret_stat = (record['system_inhibit'], None)
-		 # if user_inhibit is NOT in one of the following 
-		 # states it is NOT available for reading
-		 elif (record['user_inhibit'] != 'none' and
-		       record['user_inhibit'] != 'readonly' and
-		       record['user_inhibit'] != 'full'):
-		     ret_stat = (record['system_inhibit'], None)
-		     ticket['status'] = (e_errors.OK,None)
-		 else:
-		     ret_stat = (e_errors.OK,None)
-	     elif work == 'write_to_hsm':
-
-		 if record['system_inhibit'] != 'none':
-		     ret_stat = (record['system_inhibit'], None)
-		 elif record['user_inhibit'] != 'none':
-		     ret_stat = (record['user_inhibit'], None)
-		 else:
-		     if (ticket['file_family'] == record['file_family'] and
-			 ticket['file_size'] <= record['remaining_bytes']):
-			 ret_stat = (e_errors.OK,None)
-		     else:
-			 ret_stat = (e_errors.NOACCESS,None)
-	     else:
-		 ret_stat = (e_errors.UNKNOWN,None)
-     except:
-         ret_stat = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.ERROR,"is_vol_available "+repr(ret_stat))
-     ticket['status'] = ret_stat
-     self.reply_to_caller(ticket)
-		
-
+	else:
+	    if work == 'read_from_hsm':
+		# if system_inhibit is NOT in one of the following 
+		# states it is NOT available for reading
+		if (record['system_inhibit'] != 'none' and 
+		    record['system_inhibit'] != 'readonly' and
+		    record['system_inhibit'] != 'full'):
+		    ret_stat = (record['system_inhibit'], None)
+		# if user_inhibit is NOT in one of the following 
+		# states it is NOT available for reading
+		elif (record['user_inhibit'] != 'none' and
+		      record['user_inhibit'] != 'readonly' and
+		      record['user_inhibit'] != 'full'):
+		    ret_stat = (record['system_inhibit'], None)
+		    ticket['status'] = (e_errors.OK,None)
+		else:
+		    ret_stat = (e_errors.OK,None)
+	    elif work == 'write_to_hsm':
+		if record['system_inhibit'] != 'none':
+		    ret_stat = (record['system_inhibit'], None)
+		elif record['user_inhibit'] != 'none':
+		    ret_stat = (record['user_inhibit'], None)
+		else:
+		    if (ticket['file_family'] == record['file_family'] and
+			ticket['file_size'] <= record['remaining_bytes']):
+			ret_stat = (e_errors.OK,None)
+		    else:
+			ret_stat = (e_errors.NOACCESS,None)
+	    else:
+		ret_stat = (e_errors.UNKNOWN,None)
+	ticket['status'] = ret_stat
+	self.reply_to_caller(ticket)
 
     # Get the next volume that satisfy criteria
     def next_write_volume (self, ticket):
-     try:
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
@@ -582,13 +543,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.ERROR,"next_write_vol "+repr(ticket["status"]))
-         self.reply_to_caller(ticket)
-         return
-
     # check if specific volume can be used for write
     def can_write_volume (self, ticket):
      # get the criteria for the volume from the user's ticket
@@ -667,7 +621,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # update the database entry for this volume
     def set_remaining_bytes(self, ticket):
-     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -746,18 +699,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,'set_remaining_bytes '+repr(record))
         return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         Trace.trace(8,"set_remaining_bytes "+repr(ticket["status"]))
-         return
-
-
     # decrement the file count on the volume
     def decr_file_count(self, ticket):
-     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -793,18 +736,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,'decr_file_count '+repr(record))
         return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         Trace.trace(8,"decr_file_count "+repr(ticket["status"]))
-         return
-
-
     # update the database entry for this volume
     def update_counts(self, ticket):
-     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -864,18 +797,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,'update_counts ok '+repr(record))
         return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         Trace.trace(8,"update_counts "+repr(ticket["status"]))
-         return
-
-
     # get the current database volume about a specific entry
     def inquire_vol(self, ticket):
-     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -904,18 +827,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(8,"inquire_vol "+repr(ticket["status"]))
             return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         Trace.trace(8,"inquire_vol "+repr(ticket["status"]))
-         return
-
-
     # flag the database that we are now writing the system
     def update_mc_state(self, ticket):
-     try:
         # everything is based on external label - make sure we have this
         try:
 	    key = "external_label"
@@ -955,18 +868,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,'vc.update_mc_state '+repr(record))
         return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         Trace.trace(8,"vc.update_mc_state "+repr(ticket["status"]))
-         return
-
-
     # flag the database that we are now writing the system
     def clr_system_inhibit(self, ticket):
-     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -1008,15 +911,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(record)
         Trace.trace(10,'vc.clr_system_inhibit '+repr(record))
         return
-
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         Trace.trace(8,"vc.clr_system_inhibit "+repr(ticket["status"]))
-         return
-
 
     # get the actual state of the media changer
     def get_media_changer_state(self, libMgr, volume, m_type, m_changer=None):
@@ -1060,7 +954,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # for the backward compatibility D0_TEMP
     # flag the database that we are now writing the system
     def add_at_mover(self, ticket):
-     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -1101,63 +994,36 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,'add_at_mover '+repr(record))
         return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
-         self.reply_to_caller(ticket)
-         Trace.trace(8,"add_at_mover "+repr(ticket["status"]))
-         return
-    # END D0_TEMP
-
-
     # move a volume to a new library
     def new_library(self, ticket):
-        try:
-            external_label = ticket["external_label"]
-            new_library = ticket["new_library"]
+	external_label = ticket["external_label"]
+	new_library = ticket["new_library"]
 
-            # get the current entry for the volume
-            record = dict[external_label]  ## was deepcopy
-
-            # update the library field with the new library
-            record ["library"] = new_library
-            dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
-            record["status"] = (e_errors.OK, None)
-            self.reply_to_caller(record)
-            Trace.trace(16,external_label+" moved to library "+new_library)
-            return
-
-        # even if there is an error - respond to caller so he can process it
-        except:
-            ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"new_library "+repr(ticket["status"]))
-            self.reply_to_caller(ticket)
-            return
-
+	# get the current entry for the volume
+	record = dict[external_label]  ## was deepcopy
+	
+	# update the library field with the new library
+	record ["library"] = new_library
+	dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	record["status"] = (e_errors.OK, None)
+	self.reply_to_caller(record)
+	Trace.trace(16,external_label+" moved to library "+new_library)
+	return
 
     # set system_inhibit flag
     def set_system_inhibit(self, ticket, flag):
-        try:
-            external_label = ticket["external_label"]
-
-            # get the current entry for the volume
-            record = dict[external_label]  ## was deepcopy
-
-            # update the fields that have changed
-            record ["system_inhibit"] = flag
-            dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
-            record["status"] = (e_errors.OK, None)
-            Trace.trace(16,external_label+" system inhibit set to "+flag)
-            self.reply_to_caller(record)
-            return
-
-        # even if there is an error - respond to caller so he can process it
-        except:
-            ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"set_system_inhibit "+repr(ticket["status"]))
-            self.reply_to_caller(ticket)
-            return
+	external_label = ticket["external_label"]
+	
+	# get the current entry for the volume
+	record = dict[external_label]  ## was deepcopy
+	
+	# update the fields that have changed
+	record ["system_inhibit"] = flag
+	dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	record["status"] = (e_errors.OK, None)
+	Trace.trace(16,external_label+" system inhibit set to "+flag)
+	self.reply_to_caller(record)
+	return
 
     # set system_inhibit flag, flag the database that we are now writing the system
     def set_writing(self, ticket):
@@ -1173,65 +1039,48 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # device is broken - what to do, what to do ===================================FIXME======================================
     def set_hung(self,ticket):
-        try:
-            Trace.trace(16,'set_hung')
-            self.reply_to_caller({"status" : (e_errors.OK, None)})
-            return
-
-        # even if there is an error - respond to caller so he can process it
-        except:
-            ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"set_system_readonly "+repr(ticket["status"]))
-            self.reply_to_caller(ticket)
-            return
-
+	Trace.trace(16,'set_hung')
+	self.reply_to_caller({"status" : (e_errors.OK, None)})
+	return
 
     # set at_mover flag
     def set_at_mover(self, ticket):
-        try:
-            external_label = ticket["external_label"]
-            record = dict[external_label]  ## was deepcopy
-            at_mover = record.get('at_mover',('unmounted','none'))
+	external_label = ticket["external_label"]
+	record = dict[external_label]  ## was deepcopy
+	at_mover = record.get('at_mover',('unmounted','none'))
+	
+	# update the fields that have changed
+	if ticket['force']:
+	    wrong_state = 0
+	else:
+	    wrong_state = 1
+	    if (ticket['at_mover'][0] == 'mounting' and
+		record['at_mover'][0] != 'unmounted'):
+		pass
+	    elif (ticket['at_mover'][0] == 'mounted' and
+		  record['at_mover'][0] != 'mounting'):
+		pass
+	    elif (ticket['at_mover'][0] == 'unmounting' and
+		  record['at_mover'][0] != 'mounted'):
+		pass
+	    elif (ticket['at_mover'][0] == 'unmounted' and
+		  record['at_mover'][0] != 'unmounting'):
+		pass
+	    else:
+		wrong_state = 0
 
-            # update the fields that have changed
-            if ticket['force']:
-                wrong_state = 0
-            else:
-                wrong_state = 1
-                if (ticket['at_mover'][0] == 'mounting' and
-                    record['at_mover'][0] != 'unmounted'):
-                    pass
-                elif (ticket['at_mover'][0] == 'mounted' and
-                      record['at_mover'][0] != 'mounting'):
-                    pass
-                elif (ticket['at_mover'][0] == 'unmounting' and
-                      record['at_mover'][0] != 'mounted'):
-                    pass
-                elif (ticket['at_mover'][0] == 'unmounted' and
-                      record['at_mover'][0] != 'unmounting'):
-                    pass
-                else:
-                    wrong_state = 0
-
-            if wrong_state:
-                record["status"] = (e_errors.CONFLICT, "volume "+
-                                    repr(external_label)+ " state "+
-                                    repr(record['at_mover'][0])+" req. state "+
-                                    repr(ticket['at_mover'][0]))
-            else:
-                record ['at_mover'] = ticket['at_mover']
-                dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
-                record["status"] = (e_errors.OK, None)
-            self.reply_to_caller(record)
-            Trace.trace(16,external_label+" state now "+str(ticket['at_mover']))
-            return
-
-        # even if there is an error - respond to caller so he can process it
-        except:
-            ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"set_at_mover "+repr(ticket["status"]))
-            self.reply_to_caller(ticket)
-            return
+	if wrong_state:
+	    record["status"] = (e_errors.CONFLICT, "volume "+
+				repr(external_label)+ " state "+
+				repr(record['at_mover'][0])+" req. state "+
+				repr(ticket['at_mover'][0]))
+	else:
+	    record ['at_mover'] = ticket['at_mover']
+	    dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	    record["status"] = (e_errors.OK, None)
+	self.reply_to_caller(record)
+	Trace.trace(16,external_label+" state now "+str(ticket['at_mover']))
+	return
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket):
