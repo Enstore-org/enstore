@@ -163,7 +163,7 @@ def flush_pending_jobs(self, status, *jobtype):
 	    # delete no matter what work it is
 	   delete_this_job = 1
 	w['status'] = status
-	send_regret(w, self.verbose)
+	send_regret(self, w, self.verbose)
 	pending_work.delete_job(w)
 	w1 = pending_work.get_next()
 	w = w1
@@ -364,7 +364,7 @@ def next_work_any_volume(self, csc, verbose):
 			     generic_cs.DEBUG, self.verbose)
 		w['status'] = (e_errors.NOACCESS,None)
 		pending_work.delete_job(w)
-		send_regret(w, self.verbose)
+		send_regret(self, w, self.verbose)
 		Trace.trace(0,"next_work_any_volume: cannot do the work for "+\
 			    repr(w['fc']['external_label'])+ " status:" + \
 			    repr(vol_info['system_inhibit']))
