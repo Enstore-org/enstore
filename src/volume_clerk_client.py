@@ -597,12 +597,17 @@ def do_work(intf):
                                                ticket['user_inhibit'])
     elif intf.add:
         print repr(intf.args)
+        if intf.args[2]=='null':
+            wrapper="null"
+        else:
+            wrapper="cpio_odc"
         ticket = vcc.add(intf.args[0],              # library
                          intf.args[1],              # file family
                          intf.args[2],              # media type
                          intf.add,                  # name of this volume
                          string.atol(intf.args[3]), # cap'y of vol (bytes)
-                         string.atol(intf.args[4])) # rem cap'y of volume
+                         string.atol(intf.args[4]),
+                         wrapper=wrapper)           # rem cap'y of volume
     elif intf.new_library:
         ticket = vcc.new_library(intf.args[0],         # volume name
                                  intf.new_library)     # new library name
