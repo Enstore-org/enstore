@@ -168,7 +168,8 @@ COMMON:
                 # note in the following line, the sort allows multiple python versions,
                 #      the highest is used because of the reverse sort
 	        #      go through a file since otherwise multiple lines will give us trouble
-                execute("rm -f /tmp/choosepy; /bin/ls -d $PYTHON_DIR/lib/python*| sort -r>/tmp/choosepy; head -n1 /tmp/choosepy; rm -f /tmp/choosepy", NO_UPS_ENV, ver)
+		#execute("rm -f /tmp/choosepy; /bin/ls -d $PYTHON_DIR/lib/python*| sort -r>/tmp/choosepy; head -n1 /tmp/choosepy; rm -f /tmp/choosepy", NO_UPS_ENV, ver)
+		execute("/bin/ls -d $PYTHON_DIR/lib/python* | sort -r | head -n1", NO_UPS_ENV, ver)
                 execute("basename $ver", NO_UPS_ENV, PVER)
                 envSet(PYTHONINC, $PYTHON_DIR/include/$PVER)
                 envSet(PYTHONLIB, $PYTHON_DIR/lib/$PVER)
