@@ -1169,7 +1169,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # flag that the current volume is marked as noaccess
     def set_system_noaccess(self, ticket):
         Trace.alarm(e_errors.WARNING, e_errors.NOACCESS,{"label":ticket["external_label"]}) 
-        return self.set_system_inhibit(ticket, e_errors.NOACCESS)
+        #        return self.set_system_inhibit(ticket, e_errors.NOACCESS)
+        # setting volume to NOACCESS has proven to be disastrous
+        # it is better to let 1 volume fail than give out all remaining tapes
+        # in cases like media changer failure
+        return self.set_system_inhibit(ticket, "none")
 
     # flag that the current volume is marked as not allowed
     def set_system_notallowed(self, ticket):
