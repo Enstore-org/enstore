@@ -160,6 +160,8 @@ fi
 
 if [ "${opt_just-}" = "" ];then
     turnoff_s "$PID_DIR/`uname -n`-db_*_pids"          "databases"
+    /bin/rm -f $PID_DIR/db_checkpoint # nothing in this file - delete or else db_checkpoint won't start again
+    /bin/rm -f $PID_DIR/db_deadlock   # nothing in this file - delete or else db_deadlock   won't start again
 fi
 
 #   turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
