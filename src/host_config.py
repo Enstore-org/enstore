@@ -300,6 +300,24 @@ def is_route_in_table(dest):
             return 1
     return 0
 
+#Return a dictionary where the keys are the intefaces and the values are
+# the number of occurances in the netstat -r output.
+def connections():
+    #mode should be 0 or 1 for "read" or "write"
+    config = get_config()
+
+    interface_dict = config.get('interface')
+    
+    interfaces = interface_dict.keys()
+
+    ret = {}
+    for item in get_netstat_r():
+        if item['Iface'] in interfaces:
+            #Add one to the number of connection to one interface.
+            ret[item['Iface']] = ret.get(item['Iface'], 0) + 1
+
+    return ret
+
 ##############################################################################
 # The following function selects which CPU to run the process on.
 ##############################################################################
@@ -410,26 +428,50 @@ def check_load_balance(mode = None):
 
     #Trace.log(e_errors.INFO, "probing network to select interface")
     rate_dict = multiple_interface.rates(interfaces)
+    connections_dict = connections()
     #Trace.log(e_errors.INFO, "interface rates: %s" % (rate_dict,))
+    
     choose = []
     for interface in interfaces:
+
+        #Get the weight of the interface.
         weight = interface_dict[interface].get('weight', 1.0)
+
+        #Get the rates of the current interface.
         try: 
             recv_rate, send_rate = rate_dict[interface]
+            total_rate = (recv_rate + send_rate)
         except KeyError:
             continue
+
+        #MWZ 12-5-2003:  Why would we do this?  What does this gain us?
         recv_rate = recv_rate/weight
         send_rate = send_rate/weight
 	total_rate = (recv_rate + send_rate)/weight
+
+        #Get the number of connections (static routes) for the interface.
+        try:
+            conn_in_progress = connections_dict[interface]
+        except KeyError:
+            continue
+
+        #Assemble the load balancing criteria.
         if mode==1: #writing
             #If rates are equal on different interfaces, randomize!
-            choose.append((send_rate, -weight, random.random(), interface))
+            choose.append((conn_in_progress, send_rate, -weight,
+                           random.random(), interface))
 	elif mode==0: #reading
-	    choose.append((recv_rate, -weight, random.random(), interface))
+	    choose.append((conn_in_progress, recv_rate, -weight,
+                           random.random(), interface))
         else:
-            choose.append((total_rate, -weight, random.random(), interface))
+            choose.append((conn_in_progress, total_rate, -weight,
+                           random.random(), interface))
+
+    #By the magic of python, the first item in the list will be the
+    # best choice for load balancing.
     choose.sort()
-    junk, junk, junk, interface = choose[0]
+    junk, junk, junk, junk, interface = choose[0]
+
     return get_interface_info(interface)
 
 ##############################################################################
@@ -465,3 +507,7 @@ def setup_interface(dest, interface_ip):
 
     #Since the routing table just changed, the cached version needs updating.
     update_cached_routes()
+
+if __name__ == '__main__':
+
+    pprint.pprint(connections())
