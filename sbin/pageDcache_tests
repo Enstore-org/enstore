@@ -418,7 +418,7 @@ shift
 
 case $test_to_do in
     dccp) # get the specific parameters first
-	  if [ $# -ne 1 ];
+	  if [ $# -ne 3 ];
 	  then
 	      not_enough_parameters dccp
 	  fi
