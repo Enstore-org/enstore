@@ -2140,12 +2140,12 @@ def get_pinfo(p):
                     "pnfsFilename" : None,
                     }
     
-    try:
-        p.pstatinfo()
-    except AttributeError:
-        #This error can occur for volume reads with incomplete
-        # metadata available.
-        return default_pinf
+    #try:
+    #    p.pstatinfo(update=0)
+    #except AttributeError:
+    #    #This error can occur for volume reads with incomplete
+    #    # metadata available.
+    #    return default_pinf
     
     try:
         # get some debugging info for the ticket
@@ -2184,10 +2184,11 @@ def get_uinfo():
 
     return uinfo
 
-def get_finfo(inputfile, outputfile, e):
+def get_finfo(inputfile, outputfile, e, p = None):
     finfo = {}
 
-    if e.outtype == "hsmfile": #writes
+    #if e.outtype == "hsmfile": #writes
+    if is_write(e):
         remote_file = outputfile
         local_file = inputfile
     else: #reads
@@ -2195,14 +2196,26 @@ def get_finfo(inputfile, outputfile, e):
         remote_file = inputfile
 
     #These exist for reads and writes.
-    finfo["fullname"] = local_file
-    finfo["sanity_size"] = 65536
-    finfo["size_bytes"] = get_file_size(inputfile)
+    finfo['fullname'] = local_file
+    finfo['sanity_size'] = 65536
+    if is_read(e) and isinstance(p, pnfs.Pnfs):
+        #finfo['size_bytes'] = p.get_file_size()
+
+        #Don't use get_file_size() or p.get_file_size().  Save time
+        # by avoiding a stat() call.
+        #p.pstatinfo(update=0)
+        try:
+            finfo['size_bytes'] = p.file_size
+        except AttributeError:
+            finfo['size_bytes'] = None
+    else:
+        finfo['size_bytes'] = get_file_size(inputfile)
 
     #Append these for writes.
-    if e.outtype == "hsmfile": #writes
+    #if e.outtype == "hsmfile": #writes
+    if is_write(e):
         t = pnfs.Tag(os.path.dirname(remote_file))
-        finfo["type"] = t.get_file_family_wrapper()
+        finfo['type'] = t.get_file_family_wrapper()
         finfo['mode'] = os.stat(local_file)[stat.ST_MODE]
         finfo['mtime'] = int(time.time())
         
@@ -5340,13 +5353,14 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             # e.input[0] to none.  A read by "get" will set e.input[0] to
             # the pnfs directory.
             if e.input[0] == None:
-                
-                input_dir_list = []
+                pass
+                #input_dir_list = []
             else:
-                Trace.message(TRANSFER_LEVEL, "Obtaining directory listing.")
-                sys.stdout.flush()
+                pass
+                #Trace.message(TRANSFER_LEVEL, "Obtaining directory listing.")
+                #sys.stdout.flush()
                 
-                input_dir_list = os.listdir(e.input[0])
+                #input_dir_list = os.listdir(e.input[0])
         except OSError, msg:
             rest = {'volume':e.volume}
             raise EncpError(getattr(msg, "errno", None),
@@ -5507,6 +5521,13 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                               "Preparing file number %s (%s) for transfer." %
                               (number, filename))
 
+            #The database/file_clerk seems to return the stringified
+            # None values rathur than an actual None value.  Fix them.
+            if fc_reply.get('pnfs_name0', None) == "None":
+                fc_reply['pnfs_name0'] = None
+            if fc_reply.get('pnfsid', None) == "None":
+                fc_reply['pnfs_id'] = None
+
             #Check to make sure that this file is not marked
             # as deleted.  If so, print error and exit.
             if fc_reply.get('deleted', None) == "yes":
@@ -5526,18 +5547,15 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             # Assuming this would make coding easier, but there is the case
             # were set_pnfs_metadata fails leaving the pnfs_name0 (and pnfsid)
             # field None while other values have been updated.
-            
-            if pnfs_name0 != None and \
-               os.path.basename(pnfs_name0) in input_dir_list:
-                #If we get here, then we have the file's metadata and
-                # the file does exist.
-                
-                #Determine the inupt filename.
-                ifullname = pnfs_name0
 
-                #Get the pnfs interface class instance.
-                p = pnfs.Pnfs(ifullname)
-            elif pnfsid != None and pnfs_name0 != None:
+            ifullname = None
+            if pnfs_name0 != None:
+                p = pnfs.Pnfs(pnfs_name0)
+                #p.pstatinfo(update=0)
+                if stat.S_ISREG(p.pstat[stat.ST_MODE]):
+                    ifullname = pnfs_name0
+
+            if ifullname == None and pnfsid != None:
                 try:
                     #Using the original directory as a starting point, try
                     # and determine the new file name/path/location.
@@ -5555,11 +5573,16 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
                     #Get the pnfs interface class instance.
                     p = pnfs.Pnfs(ifullname)
+                    
+            if ifullname == None and pnfs_name0 == None:
+                #Determine the inupt filename.
+                ifullname = os.path.join(e.input[0], lc)
+                
+                #Get the pnfs interface class instance.
+                p = pnfs.Pnfs(ifullname)
             else:
-                if pnfs_name0 == None:
-                    ifullname = os.path.join(e.input[0], lc)
-                else:
-                    ifullname = pnfs_name0
+                #Determine the inupt filename.
+                ifullname = pnfs_name0
 
                 #Get the pnfs interface class instance.
                 p = pnfs.Pnfs(ifullname)
@@ -5572,8 +5595,12 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #Determine the filesize.  None if non-existant.
             #file_size = get_file_size(ifullname)
             try:
-                file_size = p.get_file_size()
-            except OSError:
+                #file_size = p.get_file_size()
+
+                #Don't use p.get_file_size() to avoid a slow os.stat() call.
+                #p.pstatinfo(update=0)
+                file_size = p.file_size
+            except AttributeError:
                 file_size = None
 
             #Determine the output filename.
@@ -5809,7 +5836,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         #try:
         #Snag the three pieces of information needed for the wrapper.
         uinfo = get_uinfo()
-        finfo = get_finfo(ifullname, ofullname, e)
+        finfo = get_finfo(ifullname, ofullname, e, p)
         pinfo = get_pinfo(p)
         
         #Combine the data into the wrapper sub-ticket.
