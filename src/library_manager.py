@@ -667,6 +667,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					       self.verbose)
 				Trace.trace(3,"handle_timeout: no movers left")
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
+				# to catch rare key error
+				format = "NO Movers:%s "
+				self.logc.send(e_errors.ERROR, 2, format,
+					       repr(mv))
 				pending_work.delete_job(mv["work_ticket"])
 				send_regret(self, mv["work_ticket"], self.verbose)
 				# flush pending jobs
