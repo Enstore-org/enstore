@@ -405,12 +405,13 @@ def next_work_any_volume(self):
                 vol_veto_list =  write_file_fams[key]['vol_veto_list']
                 work_movers = write_file_fams[key]['work_movers']
                 wr_en = write_file_fams[key]['wr_en']
+            cont = 0
             # only so many volumes can be written to at one time
             if wr_en >= w["vc"]["file_family_width"]:
                 w["reject_reason"] = ("VOLS_IN_WORK","")
                 force_summon = 0 # disable force summon
-                w=self.pending_work.get_next()
-                continue
+                #w=self.pending_work.get_next()
+                cont = 1
 
 	    # check if mover that already has mounted volume can do the
 	    # work and, if yes, summon it
@@ -433,13 +434,16 @@ def next_work_any_volume(self):
                     # and return no work to the idle requester mover
                     #continue
                     mover_summoned = 1
-                    break
+                    #break
                     #return {"status" : (e_errors.NOWORK, None)}, force_summon
 		else:
                     w["reject_reason"] = (v_info['status'][0],v_info['status'][1])
 		    Trace.trace(11,"next_work_any_volume:can_write_volume returned %s" %
                                 (v_info['status'],))
 
+            if cont:
+                w=self.pending_work.get_next()
+                continue
             if not mover_summoned:
                 Trace.trace(11,"next_work_any_volume: request next write volume for %s.%s"%(w["vc"]["file_family"],w["vc"]["wrapper"]))
                 # width not exceeded, ask volume clerk for a new volume.
