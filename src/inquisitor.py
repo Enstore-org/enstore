@@ -904,7 +904,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	print ""
 	import pprint
 	pprint.pprint(self.htmlfile.text)
-	
+	print ""
+
 	self.send_reply(ticket)
 
     # set the select timeout
