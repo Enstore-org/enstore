@@ -26,7 +26,6 @@ import time
 import select
 
 import e_errors
-
 def Select (R, W, X, timeout) :
 
 ## we have an error under linux where we get an error, and
@@ -62,7 +61,7 @@ class cleanUDP :
 
         def __init__(self, protocol, kind) :
                 if kind != socket.SOCK_DGRAM :
-                        raise "mis-use of class cleanUDP"
+                        raise e_errors.CLEANUDP_EXCEPTION
                 self.socket = socket.socket(protocol, kind)
                 return
         

@@ -69,6 +69,18 @@ sevdict = { ALARM      : 'A',
 DEFAULT_SEVERITY = sevdict[WARNING]
 DEFAULT_ROOT_ERROR = UNKNOWN
 
+# Exceptions that are raised
+#-------------------------------------
+TCP_EXCEPTION = "TCP connection closed"
+NOT_ALWD_EXCEPTION = "Not allowed"
+CLEANUDP_EXCEPTION = "mis-use of class cleanUDP"
+VM_PNFS_EXCEPTION = "Pnfs error"
+VM_ENSTORE_EXCEPTION = "enstore error"
+VM_CONF_EXCEPTION = "conf.sh failed"
+NO_FC_EXCEPTION = "can't find file clerk in conf.sh"
+NO_PNFS_EXCEPTION = "Not a full path "
+POSIT_EXCEPTION = "XXX Positioning error"
+
 
 # Tape Errors:
 #--------------------------------------

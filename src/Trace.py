@@ -19,7 +19,7 @@ import types
 
 import event_relay_messages
 import event_relay_client
-import enstore_constants
+import e_errors
 
 if __name__== '__main__':
     print "No unit test, sorry"
@@ -100,7 +100,7 @@ def dont_alarm(levels):
         levels = [levels]
     for level in levels:
         if level==0:
-            raise "Not allowed"
+            raise e_errors.NOT_ALWD_EXCEPTION
         if alarm_levels.has_key(level):
             del alarm_levels[level]
 

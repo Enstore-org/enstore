@@ -22,7 +22,6 @@ import e_errors
 import checksum
 import hostaddr
 import host_config
-import enstore_constants
 
 def hex8(x):
     s=hex(x)[2:]  #kill the 0x
@@ -120,13 +119,13 @@ def read_tcp_raw(sock):
 def read_tcp_obj(sock) :
     s=read_tcp_raw(sock)
     if not s:
-        raise enstore_constants.TCP_EXCEPTION
+        raise e_errors.TCP_EXCEPTION
     return eval(s)
 
 def read_tcp_obj_new(sock) :
     s=read_tcp_raw(sock)
     if not s:
-	raise enstore_constants.TCP_EXCEPTION
+	raise e_errors.TCP_EXCEPTION
     return cPickle.loads(s)
 
 

@@ -172,7 +172,7 @@ class FTTDriver(driver.Driver):
         Trace.trace(25,"seek2: current=%s target=%s" % (current, target))
         if current != target:
             Trace.log(e_errors.ERROR, "ftt_driver:seek: Positioning error %s %s" % (current, target))
-            raise "XXX Positioning error", (current, target)
+            raise e_errors.POSIT_EXCEPTION, (current, target)
 
     def skipfm(self, n):
         return self.ftt.skip_fm(n)

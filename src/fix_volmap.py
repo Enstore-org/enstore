@@ -14,7 +14,7 @@ def eval(stuff):
     return _rexec.r_eval(stuff)
 
 import udp_client
-
+import e_errors
 import pnfs
 
 
@@ -26,7 +26,7 @@ def get_bfid(name):
     ret = p.readlines()
     status = p.close()
     if status:
-        raise "Pnfs error"
+        raise e_errors.VM_PNFS_EXCEPTION
     return ret[0]
 
 def get_fileinfo(bfid):
@@ -34,7 +34,7 @@ def get_fileinfo(bfid):
     ret = p.readlines()
     status = p.close()
     if status:
-        raise "enstore error"
+        raise e_errors.VM_ENSTORE_EXCEPTION
     s = string.strip(ret[0])
     return eval(s)
 
@@ -42,18 +42,19 @@ def get_fc_address():
     p = os.popen('conf.sh', 'r')
     lines = p.readlines()
     if p.close():
-        raise "conf.sh failed"
+        raise e_errors.VM_CONF_EXCEPTION
     x = 'file_clerk'
     for line in lines:
         tok = string.split(line,':')
         if tok[0]==x:
             return tok[1], int(tok[2])
-    raise "can't find file clerk in conf.sh"
+    raise e_errors.NO_FC_EXCEPTION
         
 
 def fix_volmap(pnfsname):
     if pnfsname[:5] != '/pnfs':
-        raise "Not a full path "+pnfsname
+	a = "%s%s"%(e_errors.NO_PNFS_EXCEPTION, pnfsname)
+        raise a
 
     fc_address = get_fc_address()
     u = udp_client.UDPClient()

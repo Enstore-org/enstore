@@ -2,8 +2,6 @@
 
 NETWORKFILE = "active_monitor.html"
 
-TCP_EXCEPTION = "TCP connection closed"
-
 FILE_PREFIX = "enplot_"
 BPD = "bpd"
 XFER = "xfer"
