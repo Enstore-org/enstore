@@ -973,9 +973,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             threshold = self.bytes_to_read/100
             
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
-            if bytes_notified==0 or self.bytes_read - bytes_notified > threshold:
-                bytes_notified = self.bytes_read
-                Trace.notify("transfer %s %s %s" % (self.shortname, self.bytes_read, self.bytes_to_read))
             if self.buffer.full():
                 Trace.trace(9, "read_client: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
@@ -1003,6 +1000,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.low():
                 self.buffer.write_ok.set()
+
+            if bytes_notified==0 or self.bytes_read - bytes_notified > threshold:
+                bytes_notified = self.bytes_read
+                Trace.notify("transfer %s %s %s network" % (self.shortname, self.bytes_read, self.bytes_to_read))
                 
         if self.bytes_read == self.bytes_to_read:
             if self.trailer:
@@ -1079,7 +1080,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
-        Trace.notify("transfer %s %s %s" % (self.shortname, self.bytes_written, self.bytes_to_write))
+        Trace.notify("transfer %s %s %s media" % (self.shortname, self.bytes_written, self.bytes_to_write))
         Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
 
         if failed: return
@@ -1254,7 +1255,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.CRC_ERROR, None)
                 return
 
-        Trace.notify("transfer %s %s %s" %
+        Trace.notify("transfer %s %s %s media" %
                      (self.shortname, -self.bytes_read, self.bytes_to_read))            
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
@@ -1289,11 +1290,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed = 0
            
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
-            if bytes_notified==0 or self.bytes_written - bytes_notified > threshold:
-                bytes_notified = self.bytes_written
-                #negative byte-count to indicate direction
-                Trace.notify("transfer %s %s %s" % (self.shortname, -self.bytes_written, self.bytes_to_write))
-
             if self.buffer.empty():
                 Trace.trace(9, "write_client: buffer empty, wrote %s/%s" %
                             (self.bytes_written, self.bytes_to_write))
@@ -1329,7 +1325,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
-            
+
+            if bytes_notified==0 or self.bytes_written - bytes_notified > threshold:
+                bytes_notified = self.bytes_written
+                #negative byte-count to indicate direction
+                Trace.notify("transfer %s %s %s network" % (self.shortname, -self.bytes_written, self.bytes_to_write))
+
         Trace.trace(8, "write_client exiting: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
         if failed: return
   
