@@ -47,13 +47,14 @@ Don't use these unless you can interpret the results:
    pcmd showid    id
    pcmd const     file
    pcmd nameof    id
+   pcmd path      id
    pcmd parent    id
    pcmd counters  file
    pcmd counterN  dbnum (must have cwd in pnfs)
    pcmd cursor    file
    pcmd position  file
    pcmd database  file
-   pcmd databaseN dbnum (must have cwd in pnfs)
+   pcmd databaseN dbnum
 "
               echo "$usage"; }
 
@@ -139,26 +140,47 @@ pid()       { uj="Usage:  pid file"
               if [ -z "${1-}" ] ; then echo $uj; return; fi
               eval cat  `p_cmd $1 ".(id)"` ; }
 
-pshowid()   { u_n="Usage: pshowid id"
-              if [ -z "${1-}" ] ; then echo $u_n; return; fi
-              eval cat  "\".(showid)($1)\"" ; }
-
 pconst()    { uj="Usage:  pid file"
               if [ -z "${1-}" ] ; then echo $uj; return; fi
               eval cat   `p_cmd $1 ".(const)"` ; }
 
+#internal routine only
+# For routines that use an id, I either need to have my cwd in pnfs, or I
+#  I need to specify a (fake) path that begins with /pnfs.  Look at mounted
+#  file system and return 1st pnfs filesystem - this works for both cases
+p_pnfs()    { df | grep  /pnfs/ | sed -e 's%.*/pnfs/%/pnfs/%' -e 's%$%/%' | cut -d"
+" -f1; }
+
+pshowid()   { u_n="Usage: pshowid id"
+              if [ -z "${1-}" ] ; then echo $u_n; return; fi
+              eval cat  "\"`p_pnfs`.(showid)($1)\"" ; }
+
 pnameof()   { u_n="Usage: pnameof id"
               if [ -z "${1-}" ] ; then echo $u_n; return; fi
-              eval cat  "\".(nameof)($1)\"" ; }
+              eval cat  "\"`p_pnfs`.(nameof)($1)\"" ; }
 
 pparent()   { u_p="Usage: pnameof id"
               if [ -z "${1-}" ] ; then echo $u_p; return; fi
-              eval cat  "\".(parent)($1)\"" ; }
+              eval cat  "\"`p_pnfs`.(parent)($1)\"" ; }
+
+ppath()     { u_p="Usage: ppath id"
+              if [ -z "${1-}" ] ; then echo $u_p; return; fi
+              filename=""
+              id=$1
+              while /bin/true;  do
+                filename=`pnameof $id 2>/dev/null`/$filename
+                if [ $? -ne 0 ] ; then break; fi
+                id=`pparent $id`
+              done
+              filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
+              echo $filename
+              }
 
 pcounters() { u_p="Usage: pcounters file"
               if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               eval cat  "\"`dirname $dir`/.(get)(counters)\"" ; }
 
+# this doesn't seem right - check it
 pcountersN() { u_p="Usage: pcounters file"
               eval cat  "\".(get)(counters)($1)\"" ; }
 
@@ -171,7 +193,7 @@ pdatabase() { u_p="Usage: pdatabase file"
               eval cat  "\"`dirname $dir`/.(get)(database)\"" ; }
 
 pdatabaseN() { u_p="Usage: pdatabase dbnum"
-              eval cat  "\".(get)(database)($1)\"" ; }
+              eval cat  "\"`p_pnfs`.(get)(database)($1)\"" ; }
 
 pposition() { u_p="Usage: pposition file"
               if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
