@@ -71,6 +71,7 @@ class UDPClient:
         self.tsd[pid] = tsd
         tsd.host, tsd.port, tsd.socket = get_client()
         tsd.txn_counter = 0L
+        tsd.reply_queue = {}
         tsd.ident = self._mkident(tsd.host, tsd.port, pid)
         tsd.send_done = {}
         if thread_support:
@@ -189,6 +190,43 @@ class UDPClient:
         message, txn_id = self.protocolize( data )
         return tsd.socket.sendto( message, address )
 
+    # send message, return an ID that can be used in the recv_deferred function
+    def send_deferred(self, data, address) :
+        tsd = self.get_tsd()
+        tsd.send_done[address] = 1
+        message, txn_id = self.protocolize( data )
+        bytes_sent = tsd.socket.sendto( message, address )
+        if bytes_sent < 0:
+            return -1
+        return txn_id
+
+    # Recieve a reply, timeout has the same meaning as in select
+    def recv_deferred(self, txn_id, timeout):
+        tsd = self.get_tsd()
+        if tsd.reply_queue.has_key(txn_id):
+            reply = tsd.reply_queue[txn_id]
+            del  tsd.reply_queue[txn_id]
+            return reply
+        else:
+            rcvd_txn_id=None
+            while rcvd_txn_id != txn_id: #look for reply
+                reply = None
+                r, w, x, timeout = cleanUDP.Select( [tsd.socket], [], [], timeout)
+                if r:
+                    reply, server = tsd.socket.recvfrom(TRANSFER_MAX, timeout)
+                if not reply: # receive or select timed out
+                    break
+                rcvd_txn_id, out, t = self._eval_reply(reply)
+                if rcvd_txn_id != txn_id: #Queue it up, somebody else wants it
+                    tsd.reply_queue[rcvd_txn_id] = out
+            else: # we got a good reply
+                return out
+
+        ##if we got here, it's because we didn't receive a response to the message we sent.
+        raise errno.errorcode[errno.ETIMEDOUT]
+
+        
+    
         
 if __name__ == "__main__" :
 
