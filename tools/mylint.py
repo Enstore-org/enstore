@@ -48,11 +48,15 @@ ignore_list = map(re.compile, ignore_patterns)
 
 verbose=0
 args = sys.argv[1:]
+
 if args and args[0]=='-v':
     verbose=1
     args=args[1:]
 
-for filename in sys.argv[1:]:
+lno_at_beginning=re.compile("^[0-9]+:")
+lno_anywhere=re.compile("at ([0-9]+) ")
+
+for filename in args:
     (pyg, context) = kjpylint.setup()
     context.complain=complain
     exit_status = 0
@@ -85,8 +89,13 @@ for filename in sys.argv[1:]:
                 break
         else:
             exit_status=1
+            if not lno_at_beginning.match(err):
+                lno = lno_anywhere.search(err)
+                if lno:
+                    err=lno.group(1)+":"+err
             print filename+":"+err
-                
+            
+print "Exiting with %s"%exit_status                
 sys.exit(exit_status)
     
 
