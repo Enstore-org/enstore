@@ -7,23 +7,40 @@ import copy
 import errno
 import regsub
 import string
+import os
+import stat
 
 # enstore imports
 import traceback
 import Trace
 import e_errors
 
-def default_file():
-    return "./"
+# define file types
+ascii_file = 0
+html_file = 1
+force = 1
+
+html_header = "<title>Inquisitor</title>\n"+\
+              "<meta http-equiv=\"Refresh\" content=\"10\">\n"+\
+              "<body bgcolor=\"FFFFFF\">\n<pre>"
 
 class EnstoreStatus:
 
-    def __init__(self, dir=default_file(), list=0):
-        Trace.trace(10,'{__init__ essfile '+dir)
-	if dir == "":
-	    dir = default_file()
-        self.file_name = dir 
-        if list :
+    def __init__(self, file, fileType, hname, max_ascii_size, list=0):
+        Trace.trace(10,'{__init__ essfile '+file+"  "+repr(fileType))
+        self.file_name = file 
+	self.file_type = fileType
+	self.max_ascii_size = max_ascii_size
+	self.header = html_header
+        Trace.trace(10,'}__init__')
+
+    # write the header to the file
+    def write_header(self):
+	self.file.write(self.header)
+
+    # open the file
+    def doopen(self, list=0):
+	if list :
             print "opening " + self.file_name
         # try to open status file for append
         try:
@@ -34,12 +51,21 @@ class EnstoreStatus:
             self.file = open(self.file_name, 'w')
             if list :
                 print "opened for write"
-        Trace.trace(10,'}__init__')
+
+    # close the file
+    def doclose(self):
+	if self.file_type == html_file:
+	    self.file.write("</pre>\n")
+	self.file.close()
 
     # output the passed alive status
     def output_alive(self, host, tag, status):
         Trace.trace(12,"{output_alive "+repr(tag)+" "+repr(host))
-	str = tag+self.unquote(status['work'])+" at "+self.format_ip_address(host, status['address'])+" is "+self.format_status(status['status'])+"\n"
+	str = self.unquote(tag)+self.unquote(status['work'])+" at "+\
+	      self.format_ip_address(host, status['address'])+" is "+\
+	      self.format_status(status['status'])+"\n"
+	if self.file_type == html_file:
+	    pass
 	self.file.write(str)
         Trace.trace(12,"}output_alive")
 
@@ -59,6 +85,8 @@ class EnstoreStatus:
     def output_etimedout(self, address, tag):
         Trace.trace(12,"{output_etimedout "+repr(tag)+" "+repr(address))
 	stat = tag + "timed out at "+self.unquote(repr(address))+"\n"
+	if self.file_type == html_file:
+	    pass
 	self.file.write(stat)
         Trace.trace(12,"}output_etimedout")
 
@@ -67,32 +95,54 @@ class EnstoreStatus:
         Trace.trace(12,"{output_time "+repr(self.file_name))
 	tm = time.localtime(time.time())
 	atm = "\nENSTORE SYSTEM STATUS at %04d-%02d-%02d %02d:%02d:%02d\n" % (tm[0], tm[1], tm[2], tm[3], tm[4], tm[5])
+	if self.file_type == html_file:
+	    pass
  	self.file.write(atm)
         Trace.trace(12,"}output_time ")
 
     # output the library manager queues
-    def output_lmqueues(self, ticket):
+    def output_lmqueues(self, ticket, list):
         Trace.trace(12,"{output_lmqueues "+repr(ticket))
-	self.file.write(self.format_lm_queues(ticket))
+	fq = self.format_lm_queues(ticket)
+	if list:
+	  pprint.pprint(fq)
+	if self.file_type == html_file:
+	    pass
+	self.file.write(fq)
         Trace.trace(12,"}output_lmqueues ")
 
     # output the library manager mover list
-    def output_lmmoverlist(self, ticket):
+    def output_lmmoverlist(self, ticket, list):
         Trace.trace(12,"{output_lmmoverlist "+repr(ticket))
-	self.file.write(self.format_lm_moverlist(ticket))
+	fq = self.format_lm_moverlist(ticket)
+	if list:
+	  pprint.pprint(fq)
+	if self.file_type == html_file:
+	    pass
+	self.file.write(fq)
         Trace.trace(12,"}output_lmmoverlist ")
-
-    # output the name of the server
-    def output_name(self, name):
-        Trace.trace(12,"{output_name "+repr(name))
-	self.file.write(self.unquote(name))
-        Trace.trace(12,"}output_name ")
 
     # remove all single quotes
     def unquote(self, string):
         Trace.trace(12,"{unquote "+repr(string))
 	return regsub.gsub("\'", "", string)
         Trace.trace(12,"}unquote ")
+
+    # move the file to a timestamped backup copy
+    def timestamp(self, really=0):
+	Trace.trace(11,"{timestamp "+self.file_name)
+	s = os.stat(self.file_name)
+	if (self.max_ascii_size > 0) or (really == 1):
+	    if (s[stat.ST_SIZE] >= self.max_ascii_size) or (really == 1):
+	        self.doclose()
+	        ts = regsub.gsub(" ", "_", self.format_time(time.time()))
+	        os.system("mv "+self.file_name+" "+self.file_name+"."+ts)
+	        self.doopen()
+        Trace.trace(11,"}timestamp ")
+
+    # set a new timestamp value
+    def set_max_ascii_size(self, value):
+	self.max_ascii_size = value
 
     # translate time.time output to a person readable format.
     # strip off the day and reorganize things a little
