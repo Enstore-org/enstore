@@ -912,6 +912,11 @@ def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
 
     return len(volume_list), count_metadata
 
+def is_b_library(lib):
+    if lib == 'eval-b' or lib[-5:] == '9940B' or lib[-9:] == 'Migration':
+        return 1
+    return 0
+
 #Proccess the inventory of the files specified.  This is the main source
 # function where all of the magic starts.
 #Takes the full filepath name to the volume file in the first parameter.
@@ -973,7 +978,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         ("label", "avail.", "system_inhibit", "user_inhibit",
          "library", "mounts",  "volume_family"))
 
-    de_file.write("%s\t%12s\t%12s\t%16s\t%16s\n\n"%("volume", "total size", "capacity", "library", "media type"))
+    de_file.write("%12s\t%12s\t%12s\t%16s\t%16s\n\n"%("volume", "actual size", "capacity", "library", "media type"))
     #Process the tapes authorized file for the VOLUME_QUATAS page.
     authorized_tapes = get_authorized_tapes()
 
@@ -1098,13 +1103,13 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         if vk[:3] != 'CLN':
             actual_size = total_size+vv['remaining_bytes']
             if vv['media_type'] == '9940':
-                if actual_size > 80*1048576*1024 or vv['library'][-5:] == '9940B':
-                    de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+                if actual_size > 80*1048576*1024 or is_b_library(vv['library']):
+                    de_file.write("%12s\t%12d\t%12d\t%16s\t%16s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
             elif vv['media_type'] == '9940B':
-                if total_size and (actual_size < 100*1048576*1024 or (vv['library'][-5:] != '9940B' and vv['library'][-9:] != 'Migration') or vv['capacity_bytes'] < 180*1048576*1024):
-                    de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
-            elif (vv['library'][-5:] == '9940B' or vv['library'][-9:] == 'Migration') and vv['media_type'] != '9940B':
-                    de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+                if actual_size and (actual_size < 100*1048576*1024 or not is_b_library(vv['library']) or vv['capacity_bytes'] < 180*1048576*1024):
+                    de_file.write("%12s\t%12d\t%12d\t%16s\t%16s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+            elif is_b_library(vv['library']) and vv['media_type'] != '9940B':
+                    de_file.write("%12s\t%12d\t%12d\t%16s\t%16s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
 
         # volume_sums[vk] = {'active':active, 'deleted':deleted,
         #                    'active_size':active_size,
