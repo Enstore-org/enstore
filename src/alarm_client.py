@@ -126,7 +126,7 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
                 self.alarm_options)
 
     alarm_options = {
-        option.CLIENT_NAME:{option.HELP_STRING:"set log client name",
+        option.CLIENT_NAME:{option.HELP_STRING:"set alarm client name",
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_LABEL:"client_name",
@@ -139,6 +139,12 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.ADMIN,
                               },
+        option.MESSAGE:{option.HELP_STRING:"message along with raise option",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"message",
+                        option.USER_LEVEL:option.ADMIN,
+                        },
         option.RAISE:{option.HELP_STRING:"raise an alarm",
                       option.DEFAULT_TYPE:option.INTEGER,
                       option.DEFAULT_VALUE:option.DEFAULT,
@@ -192,7 +198,7 @@ def do_work(intf):
         ticket = alc.dump()
 
     elif intf.alarm:
-        alc.alarm(intf.severity, intf.root_error)
+        alc.alarm(intf.severity, intf.root_error, {'msg':intf.message})
         ticket = {}
 
     else:
