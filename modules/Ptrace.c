@@ -123,7 +123,7 @@ do\
 	result_o = PyEval_CallObject( func_o, arg_o );\
 	Py_DECREF( arg_o );\
 	if (result_o) Py_DECREF( result_o );\
-	else return (raise_exception("trace - " func " error"));\
+	else return NULL; /*let exception from func_o propagate back up */ \
     }\
     else return (raise_exception("trace - " func " not set"));\
 }\
