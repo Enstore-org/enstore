@@ -135,10 +135,10 @@ if __name__ == "__main__":
     for option in options:
         if '-q' in option:
             interactive = 0
-    sys.exit(0)
-    if len(sys.argv) != 2:
+    if len(args) != 1:
         usage()
         sys.exit(-1)
+    print args
     # this program must run on the node where pnfs is mounted and as root
     if os.getuid():
         print "You must be root to run this this program"
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     csc = configuration_client.ConfigurationClient((host,port))
 
     fcc = file_clerk_client.FileClient(csc)
-    bfinfo = fcc.bfid_info(sys.argv[1])
+    bfinfo = fcc.bfid_info(args[0])
     # check if file exists
     try:
         os.stat(bfinfo['pnfs_name0'])
