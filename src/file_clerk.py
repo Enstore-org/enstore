@@ -1178,9 +1178,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller({"status"       : status,
                                   "backup"  : 'no' })
 
-    # add_file_record() -- create or modify file record
+    # add_file_record() -- create a file record
     #
     # This is very dangerous!
+    #
+    # The bfid must be None or one that has not already existed
 
     def add_file_record(self, ticket):
 
@@ -1237,6 +1239,47 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # assigning it to database
         self.dict[bfid] = record
         Trace.log(e_errors.INFO, 'assigned: '+`record`)
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
+    # modify_file_record() -- modify file record
+    #
+    # This is very dangerous!
+    #
+    # bfid must exist
+
+    def modify_file_record(self, ticket):
+
+        if ticket.has_key('bfid'):
+            bfid = ticket['bfid']
+            # to see if the bfid exists
+            try:
+                record = self.dict[bfid]
+            except: # this is an error
+                msg = 'modify_file_record(): bfid "%s" does not exist'%(bfid)
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+        else:
+            msg = 'modify_file_record(): no bfid specified'
+            ticket['status'] = (e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # better log this
+        Trace.log(e_errors.INFO, "start modifying "+`record`)
+
+        # modify the values
+        for k in ticket.keys():
+            # can not change bfid!
+            if k != 'bfid' and record.has_key(k):
+                record[k] = ticket[k]
+
+        # assigning it to database
+        self.dict[bfid] = record
+        Trace.log(e_errors.INFO, 'modified to '+`record`)
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
