@@ -66,8 +66,6 @@ class ConfigurationClient(generic_client.GenericClient):
         else:
 	    # if we have a new_config_obj, then only go to the config server if we
 	    # have received a message saying a new one was loaded.
-	    if self.new_config_obj: 
-		print "new config - %s"%(self.new_config_obj.have_new_config(),)
 	    if not self.new_config_obj or self.new_config_obj.have_new_config():
 		# clear out the cached copies
 		self.saved_dict = {}
