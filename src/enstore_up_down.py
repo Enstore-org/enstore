@@ -21,7 +21,7 @@ config_port = string.atoi(os.environ.get('ENSTORE_CONFIG_PORT', 7500))
 config_host = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
 config=(config_host,config_port)
 
-timeout=5
+timeout=15
 tries=1
 
 print timeofday.tod(), 'Checking Enstore on',config,'with timeout of',timeout,'and tries of',tries
