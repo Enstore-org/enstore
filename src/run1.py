@@ -104,7 +104,6 @@ class DiskDriver:
         return self._file_.write(buffer)
 
 if __name__ == "__main__" :
-    import sys
     import getopt
     import Devcodes
     import FTT				# needed for FTT.error

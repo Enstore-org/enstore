@@ -291,8 +291,6 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
 if __name__ == "__main__":
     Trace.init(MY_NAME)
 
-    import sys
-
     # get the interface
     intf = ConfigurationServerInterface()
 
