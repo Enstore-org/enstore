@@ -165,8 +165,8 @@ class LM_Queue:
 	else:
 	    # no match has been found, return first for this volume
 	    for w in self.queue:
-                if w['vc'].has_key('external_label'):
-                    if ['vc']['external_label'] == v["external_label"]):
+                if (w['vc'].has_key('external_label') and
+                    w['vc']['external_label'] == v["external_label"]):
                         w['at_the_top'] = w['at_the_top']+1
                         w['status'] = v['status']
                         break
