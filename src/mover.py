@@ -49,11 +49,11 @@ import os
 #setting this to 1 turns on printouts related to "paranoid"
 # checking of VOL1 and EOV1 headers.
 #once this is all working, the printout code can be stripped out
-debug_paranoia=0
+debug_paranoia=1
 if os.environ.get('DEBUG_PARANOIA'):
     debug_paranoia=1
 vol1_paranoia=1 #check VOL1 headers (robot grabbed wrong tape)
-eov1_paranoia=0 #write and check EOV1 headers (spacing error)
+eov1_paranoia=1 #write and check EOV1 headers (spacing error)
 #If you have any problems with the eov1 checking, just set the above variable to 0 to disable this feature.
 
 
@@ -1435,6 +1435,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             pass        
         Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
         for lm in self.mvr_config['library']:# should be libraries
+            Trace.log( e_errors.INFO, 'Mover starting - contacting libman %s'% (lm,))
             address = (self.libm_config_dict[lm]['hostip'],self.libm_config_dict[lm]['port'])
             next_req_to_lm = self.idle_mover_next()
             self.do_next_req_to_lm(next_req_to_lm, address )
@@ -1700,11 +1701,13 @@ intf = MoverInterface()
 mvr_srvr =  Mover( (intf.config_host, intf.config_port), intf.name )
 del intf
 
+Trace.log( e_errors.INFO, 'Mover entering init2 function')
 mvr_srvr.init2()
 
+Trace.log( e_errors.INFO, 'Mover entering serve_forever function/loop')
 mvr_srvr.serve_forever()
 
-Trace.log(e_errors.INFO, 'ERROR?')
+Trace.log(e_errors.INFO, 'ERROR? returned from serve_forever')
 
 
 
