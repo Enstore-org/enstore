@@ -346,7 +346,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			pid2 = self.fork()        # getting the second child
 			if not pid2:
 			    # we are the second child #######################
-			    os.system("$ENSTORE_DIR/bin/run_misc_command \"%s > %s/%s\" 2>&1"%(self.cmds_to_do[hfile],
+			    os.system("$ENSTORE_DIR/bin/run_misc_command \"%s\" 1>%s/%s 2>&1"%(self.cmds_to_do[hfile],
 							 self.html_dir, hfile))
 			    os._exit(0)   # second child
 			    # end of the second child ##################################
