@@ -212,8 +212,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              return r['status']
 
          self.bfid_db.rename_volume(old_label,new_label)
-         Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old_label,
-                                                           new_label))
+         Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old, new))
          return e_errors.OK, None
 
     # rename_volume() -- server version of __rename_volume()
