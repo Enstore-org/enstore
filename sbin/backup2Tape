@@ -6,34 +6,146 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # script to backup databases to a standalone tape drive 
 
+# tapes have to be initialized with the commands:
+#  TAPE=/dev/rmt/tps0d4n;         export TAPE
+#  TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
+#  TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
+#  $ENSTORE_DIR/volume_import/enstore_tape --init --erase --volume_label=LABEL
+
+# you can store the LABEL name in $VAULT/CURRENT_TAPE and this script
+#   will use that if you don't specify one on the command line
+
+LABEL=${1:-NOLABL}
+
 # function to return date so it can be used in filename
 date_string() { date +"%Y-%m-%d.%H.%M" }
 
-LABEL=${1:-NOLABL}
+#function to list command, execute it and list status
+doit() { echo "$1"
+         eval "nice -n 20 $1"
+         status=$?
+	 echo "Status= $status"
+	 if [ $status -ne 0 ]; then exit $status; fi
+         echo "" 
+       }
+
 if [ `uname -n | grep -c d0ensrv3` -ne 0 ]; then
   TAPE=/dev/rmt/tps0d4n;         export TAPE
-  TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
   TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
-  VAULT=/diska/BackupToTape;     export VAULT
-  PNFS=/diska/pnfs-backup;       export PNFS
-  ENSTORE=/diska/enstore-backup; export ENSTORE
-  STRIP=/diska;                  export STRIP
-  AML2=/diska/aml2Shadow;        export AML2
+  VAULT=/diska/BackupToTape
+  PNFS=/diska/pnfs-backup
+  ENSTORE=/diska/enstore-backup
+  AML2=/diska/aml2Shadow
+
 else
-  echo "Do not know about node `uname -n`... fix script"
+  echo "Do not know about node `uname -n`... fix $ENSTORE/sbin/backup2Tape script"
   exit 1
 fi
 
+if [ "$LABEL" = "NOLABL" ]; then
+   if [ -r $VAULT/CURRENT_TAPE ]; then
+      LABEL=`cat $VAULT/CURRENT_TAPE`
+      LABEL=`echo $LABEL|cut -c0-6` # the echo gets rid of spaces, etc
+   fi
+fi
+
+AML2_BACKUP_DAY=Thu
+AML2_BACKUP_FLAG=$VAULT/aml2_needs_backup
+ERRORS_TO="bakken@fnal.gov petravick@fnal.gov enstore-admin@fnal.gov"
+
+TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
+STRIP=$VAULT
+
+
+############################################################################
+# create the tar files that we will be copying to tape
+
 PNFS_TAR=$VAULT/pnfs.`date_string`.tar
-tar -cvf $PNFS_TAR $PNFS
+doit "tar -cvf $PNFS_TAR $PNFS"
+doit "ls -l $PNFS_TAR"
 
 ENSTORE_TAR=$VAULT/enstore.`date_string`.tar
-tar -cvf $ENSTORE_TAR $ENSTORE
+doit "tar -cvf $ENSTORE_TAR $ENSTORE"
+doit "ls -l $ENSTORE_TAR"
 
-enstore_tape --write --verbose --volume-label=$LABEL \
-             --pnfs-dir=path /pnfs/backups --strip-path=$STRIP\
-             $PNFS_TAR $ENSTORE_TAR
+if [ "`date +'%a'`" = "$AML2_BACKUP_DAY" -a -r $AML2_BACKUP_FLAG ]; then
+   AML2_TAR=$VAULT/aml2.`date_string`.tar
+   doit "tar -cvf $AML2_TAR $AML2"
+   doit "ls -l $AML2_TAR"
+   doit "rm $AML2_BACKUP_FLAG"
+elif [ "`date +'%a'`" != "$AML2_BACKUP_DAY" ]; then
+   doit "touch $AML2_BACKUP_FLAG"
+fi
 
-rm -f $PNFS_TAR $ENSTORE_TAR
+############################################################################
+# copy the files to tape using an enstore compatible format
+
+doit "$ENSTORE_DIR/volume_import/enstore_tape \
+              --write --volume-label=$LABEL \
+              --pnfs-dir=/pnfs/backups --strip-path=$STRIP \
+              $PNFS_TAR $ENSTORE_TAR ${AML2_TAR:-}"
+
+doit "rm -f $PNFS_TAR $ENSTORE_TAR ${AML2_TAR:-}"
+
+
+############################################################################
+# get the tape stats and check for dirty drives or out of space conditions
+
+stats="`doit "$ENSTORE_DIR/sbin/ftt_stats $TAPE"`"
+
+min_remaining_KB_before_warn=`expr 1024 \* 1024 / 4 ` 
+remaining_KB=`echo  "$stats" | grep FTT_REMAIN_TAPE  | cut -f3 -d' '`
+if [ $remaining_KB -le $min_remaining_KB_before_warn ]; then
+   echo Running out of room on Backup tape $LABEL on `uname -n` tape drive $TAPE; echo ""
+   /usr/bin/Mail -s "Running out of room on backup tape $LABEL on `uname -n` tape drive $TAPE" $ERRORS_TO <<EOF
+
+Running out of room on Backup tape $LABEL on `uname -n` tape drive $TAPE
+
+Tape left =  $remaining_KB kilobytes
+Minimum space before warning = $min_remaining_KB_before_warn kilobytes
+
+Please replace tape $LABEL soon
+
+Insert a new tape into the drive and initialize it:
+  TAPE=/dev/rmt/tps0d4n;         export TAPE
+  TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
+  TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
+  setup enstore
+  $ENSTORE_DIR/volume_import/enstore_tape --init --erase --volume_label=<NEW_LABEL>
+
+Edit $VAULT/CURRENT_TAPE 
+ and enter the label of the replacement tape
+
+Thanks,
+Enstore Backup 
+
+$stats
+
+EOF
+else
+  echo `expr $remaining_KB / 1024` MB left on $LABEL in $TAPE on `uname -n`
+fi
+
+cleaning_needed=`echo "$stats" | grep FTT_CLEANING_BIT | cut -f3 -d' '`
+if [ $cleaning_needed -ne 0 ]; then
+   echo Dirty tape drive $TAPE on `uname -n`; echo ""
+   /usr/bin/Mail -s "Dirty tape drive $TAPE on `uname -n`" $ERRORS_TO <<EOF
+
+Dirty tape drive $TAPE on `uname -n`
+
+Please clean soon or else backups will fail.
+
+Thanks,
+Enstore Backup 
+
+$stats
+
+EOF
+else
+  echo $TAPE on `uname -n` not reporting dirty
+fi
+
+echo "$stats"
+echo
 
 exit 0
