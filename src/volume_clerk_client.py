@@ -182,7 +182,7 @@ class VolumeClerkClient(generic_client.GenericClient,
     def __init__( self, csc, server_address=None ):
         generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address)
         if self.server_address == None:
-            self.server_address = self.get_server_address(MY_SERVER, rcv_timeout=10, tries=1)
+            self.server_address = self.get_server_address(MY_SERVER, rcv_timeout=60, tries=10)
 
     # add a volume to the stockpile
     def add(self,
@@ -212,7 +212,8 @@ class VolumeClerkClient(generic_client.GenericClient,
             non_del_files = 0,     # non-deleted files
             system_inhibit = ["none","none"], # 0:"none" | "writing??" | "NOACCESS", "DELETED
                                              # 1:"none" | "readonly" | "full"
-            remaining_bytes = None
+            remaining_bytes = None,
+            timeout=60, retry=1
             ):
         Trace.log(e_errors.INFO, 'add label=%s'%(external_label,))
         if storage_group == 'none':
@@ -251,27 +252,27 @@ class VolumeClerkClient(generic_client.GenericClient,
                 print "No '.' allowed in %s"%(item,)
                 break
         else:
-            return self.send(ticket,30,1)
+            return self.send(ticket,timeout,retry)
         return {'status':(e_errors.NOTALLOWED, "No '.' allowed in %s"%(item,))}
 
-    def modify(self,ticket):
+    def modify(self,ticket, timeout=60, retry=5):
         ticket['work']='modifyvol'
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # remove a volume entry in volume database
-    def rmvolent(self, external_label):
+    def rmvolent(self, external_label, timeout=60, retry=1):
         ticket= { 'work'           : 'rmvolent',
                   'external_label' : external_label}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # delete a volume from the stockpile
-    def restore(self, external_label, restore=0):
+    def restore(self, external_label, restore=0, timeout=60, retry=1):
         if restore: restore_vm = "yes"
         else: restore_vm = "no"
         ticket= { 'work'           : 'restorevol',
                   'external_label' : external_label,
                   "restore"         : restore_vm}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # get a list of all volumes
     def get_vols(self, key=None,state=None, not_cond=None, print_list=1):
@@ -285,7 +286,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   "not"           : not_cond}
 
         # send the work ticket to the library manager
-        ticket = self.send(ticket,30,1)
+        ticket = self.send(ticket,60,1)
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
                        'vcc.get_vols: sending ticket: %s'%(ticket,) )
@@ -359,23 +360,23 @@ class VolumeClerkClient(generic_client.GenericClient,
         return ticket
 
     # rebuild sg scounts
-    def rebuild_sg_count(self):
-        return(self.send({'work':'rebuild_sg_count'}))
+    def rebuild_sg_count(self, timeout=60, retry=1):
+        return(self.send({'work':'rebuild_sg_count'},timeout,retry))
 
     # set sg count
-    def set_sg_count(self, lib, sg, count=0):
+    def set_sg_count(self, lib, sg, count=0, timeout=60, retry=1):
         ticket = {'work':'set_sg_count',
                   'library': lib,
                   'storage_group': sg,
                   'count': count}
-        return(self.send(ticket))
+        return(self.send(ticket,timeout,retry))
 
     # get sg count
-    def get_sg_count(self, lib, sg):
+    def get_sg_count(self, lib, sg, timeout=60, retry=10):
         ticket = {'work':'get_sg_count',
                   'library': lib,
                   'storage_group': sg}
-        return(self.send(ticket))
+        return(self.send(ticket,timeout,retry))
 
     # list all sg counts
     def list_sg_count(self):
@@ -385,7 +386,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         ticket = {"work"          : "list_sg_count",
                   "callback_addr" : (host, port)}
 
-        ticket = self.send(ticket,30,1)
+        ticket = self.send(ticket,60,1)
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
                        'vcc.list_sg_count: sending ticket: %s'%(ticket,) )
@@ -433,7 +434,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   "callback_addr" : (host, port)}
 
         # send the work ticket to the library manager
-        ticket = self.send(ticket,30,1)
+        ticket = self.send(ticket,60,1)
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
                        'vcc.get_vol_list: sending ticket: %s'%(ticket,) )
@@ -473,110 +474,110 @@ class VolumeClerkClient(generic_client.GenericClient,
         return ticket
 
     # what is the current status of a specified volume?
-    def inquire_vol(self, external_label):
+    def inquire_vol(self, external_label,timeout=60, retry=1):
         ticket= { 'work'           : 'inquire_vol',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # update the last_access time
-    def touch(self, external_label):
+    def touch(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'touch',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # trim obsolete fields if necessary
-    def check_record(self, external_label):
+    def check_record(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'check_record',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout, retry)
 
     # show_quota() -- show quota
-    def show_quota(self):
+    def show_quota(self, timeout=60, retry=1):
         ticket = {'work': 'show_quota'}
-	return self.send(ticket,30,1)
+	return self.send(ticket, timeout, retry)
 
     # move a volume to a new library
-    def new_library(self, external_label,new_library):
+    def new_library(self, external_label,new_library, timeout=60, retry=10):
         ticket= { 'work'           : 'new_library',
                   'external_label' : external_label,
                   'new_library'    : new_library}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # we are using the volume
-    def set_writing(self, external_label):
+    def set_writing(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_writing',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # we are using the volume
-    def set_system_readonly(self, external_label):
+    def set_system_readonly(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_readonly',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # mark volume as not allowed 
-    def set_system_notallowed(self, external_label):
+    def set_system_notallowed(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_notallowed',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # mark volume as noaccess
-    def set_system_noaccess(self, external_label):
+    def set_system_noaccess(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_noaccess',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # mark volume as migrated
-    def set_system_migrated(self, external_label):
+    def set_system_migrated(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_migrated',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # set system inhibit to none
-    def set_system_none(self, external_label):
+    def set_system_none(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_none',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # clear any inhibits on the volume
-    def clr_system_inhibit(self,external_label,what=None, pos=0):
+    def clr_system_inhibit(self,external_label,what=None, pos=0, timeout=60, retry=10):
         ticket= { 'work'           : 'clr_system_inhibit',
                   'external_label' : external_label,
                   'inhibit'        : what,
                   'position'       : pos}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # decrement the file count on a tape
-    def decr_file_count(self,external_label, count=1):
+    def decr_file_count(self,external_label, count=1, timeout=60, retry=1):
         ticket= { 'work'           : 'decr_file_count',
                   'external_label' : external_label,
                   'count'          : count }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # we are using the volume
-    def set_hung(self, external_label):
+    def set_hung(self, external_label, timeout=60, retry=1):
         ticket= { 'work'           : 'set_hung',
                   'external_label' : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # this many bytes left - read the database
-    def get_remaining_bytes(self, external_label):
+    def get_remaining_bytes(self, external_label, timeout=60, retry=10):
         ticket= { 'work'            : 'get_remaining_bytes',
                   'external_label'  : external_label }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # this many bytes left - update database
-    def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,bfid=None):
+    def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,bfid=None, timeout=0, retry=0):
         # Note - bfid should be set if we added a new file
         ticket= { 'work'            : 'set_remaining_bytes',
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
                   'eod_cookie'      : eod_cookie,
                   'bfid'            : bfid }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # update the counts in the database
-    def update_counts(self, external_label, wr_err=0, rd_err=0,wr_access=0,rd_access=0,mounts=0):
+    def update_counts(self, external_label, wr_err=0, rd_err=0,wr_access=0,rd_access=0,mounts=0, timeout=60, retry=1):
         ticket= { 'work'            : 'update_counts',
                   'external_label'  : external_label,
                   'wr_err'          : wr_err,
@@ -585,22 +586,22 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'rd_access'       : rd_access,
                   'mounts'          : mounts
                   }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # Check if volume is available
-    def is_vol_available(self, work, external_label, family=None, size=0):
+    def is_vol_available(self, work, external_label, family=None, size=0, timeout=60, retry=10):
         ticket = { 'work'                : 'is_vol_available',
                    'action'              : work,
                    'volume_family'       : family,
                    'file_size'           : size,
                    'external_label'      : external_label
                    }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
         
         
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
-                           volume_family, vol_veto_list,first_found, mover={}, exact_match=0):
+                           volume_family, vol_veto_list,first_found, mover={}, exact_match=0, timeout=120, retry=1):
         if not mover:
              mover_type = 'Mover'
         else:
@@ -616,81 +617,81 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'mover'               : mover,
                    'use_exact_match'     : exact_match}
 
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # check if specific volume can be used for write
     def can_write_volume (self, library, min_remaining_bytes,
-                           volume_family, external_label):
+                           volume_family, external_label, timeout=60, retry=1):
         ticket = { 'work'                : 'can_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
                    'volume_family'         : volume_family,
                    'external_label'       : external_label }
 
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
     # clear the pause flag for the LM and all LMs that relate to the Media Changer
-    def clear_lm_pause(self, library_manager):
+    def clear_lm_pause(self, library_manager, timeout=60, retry=1):
         ticket = { 'work'    :'clear_lm_pause',
                    'library' : library_manager
                    }
-        return  self.send(ticket,30,1)
+        return  self.send(ticket,timeout,retry)
 
-    def rename_volume(self, old, new):
+    def rename_volume(self, old, new, timeout=60, retry=1):
         ticket = {'work': 'rename_volume',
                   'old' : old,
                   'new' : new }
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
         
-    def delete_volume(self, vol):
+    def delete_volume(self, vol, timeout=60, retry=1):
         ticket = {'work': 'delete_volume',
                   'external_label': vol}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
-    def erase_volume(self, vol):
+    def erase_volume(self, vol, timeout=60, retry=1):
         ticket = {'work': 'erase_volume',
                   'external_label': vol}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
-    def restore_volume(self, vol):
+    def restore_volume(self, vol, timeout=60, retry=1):
         ticket = {'work': 'restore_volume',
                   'external_label': vol}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
-    def recycle_volume(self, vol):
+    def recycle_volume(self, vol, timeout=60, retry=1):
         ticket = {'work': 'recycle_volume',
                   'external_label': vol}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
-    def set_ignored_sg(self, sg):
+    def set_ignored_sg(self, sg, timeout=60, retry=1):
         ticket = {'work': 'set_ignored_sg',
                   'sg': sg}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
-    def clear_ignored_sg(self, sg):
+    def clear_ignored_sg(self, sg, timeout=60, retry=1):
         ticket = {'work': 'clear_ignored_sg',
                   'sg': sg}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
-    def clear_all_ignored_sg(self):
+    def clear_all_ignored_sg(self, timeout=60, retry=1):
         ticket = {'work': 'clear_all_ignored_sg'}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
-    def list_ignored_sg(self):
+    def list_ignored_sg(self, timeout=60, retry=1):
         ticket = {'work': 'list_ignored_sg'}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
-    def set_comment(self, vol, comment):
+    def set_comment(self, vol, comment, timeout=60, retry=1):
         ticket = {'work': 'set_comment',
                   'vol': vol,
                   'comment': comment}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
-    def assign_sg(self, vol, sg):
+    def assign_sg(self, vol, sg, timeout=60, retry=1):
         ticket = {'work': 'reassign_sg',
                   'external_label': vol,
                   'storage_group': sg}
-        return self.send(ticket,30,1)
+        return self.send(ticket,timeout,retry)
 
 
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
