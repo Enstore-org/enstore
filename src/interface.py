@@ -250,8 +250,8 @@ class Interface:
                 self.load = 1
             elif opt == "--vols" :
                 self.vols = 1
-            elif opt == "--remove_vol" :
-                self.rmvol = 1
+            elif opt == "--destroy" :
+                self.rmvol = value
 	    # D0_TEMP
             elif opt == "--atmover" :
                 self.atmover = 1

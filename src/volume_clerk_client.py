@@ -447,7 +447,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                    ["clear=", "backup", "vols","next","vol=","check=","add=",
                     "update=", "delete=","new_library=","read_only=",
                     "no_access=", "atmover","decr_file_count=","force",
-                    "restore=", "all","remove_vol"]
+                    "restore=", "all","destroy="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -506,9 +506,8 @@ def do_work(intf):
         print ticket['volumes']
     elif intf.rmvol:
         # optional argument
-        if len(intf.args): vol=intf.args[0]
-        else: vol = None 
-        ticket = vcc.remove_deleted_vols(vol)
+        if intf.rmvol == 'all': intf.rmvol = None
+        ticket = vcc.remove_deleted_vols(intf.vol)
         print ticket['volumes']
     elif intf.next:
         ticket = vcc.next_write_volume(intf.args[0], #library
