@@ -473,14 +473,6 @@ def do_work(intf):
                           "%s $ENSTORE_DIR/src/event_relay.py" %
                           (python_binary,))
 
-    #Start the Berkley DB dameons.
-    if intf.should_start("db_checkpoint"):
-        check_db(csc, "db_checkpoint", intf,
-                 "db_checkpoint -h %s  -p 5 &" % db_dir)
-    if intf.should_start("db_deadlock"):
-        check_db(csc, "db_deadlock", intf,
-                 "db_deadlock -h %s  -t 1 &" % db_dir)
-
     #Start the servers.
     for server in [ enstore_constants.LOG_SERVER,
                     enstore_constants.ACCOUNTING_SERVER,
@@ -493,6 +485,14 @@ def do_work(intf):
         if intf.should_start(server):
             check_server(csc, server, intf,
                          "%s $ENSTORE_DIR/src/%s.py" % (python_binary,server,))
+
+    #Start the Berkley DB dameons.
+    if intf.should_start("db_checkpoint"):
+        check_db(csc, "db_checkpoint", intf,
+                 "db_checkpoint -h %s  -p 5 &" % db_dir)
+    if intf.should_start("db_deadlock"):
+        check_db(csc, "db_deadlock", intf,
+                 "db_deadlock -h %s  -t 1 &" % db_dir)
 
     #Get the library names.
     libraries = csc.get_library_managers({}).keys()
