@@ -498,4 +498,4 @@ class Interface:
             elif opt == "--skip-pnfs": # for super_remove
                 self.skip_pnfs = 1
             elif opt == "--dont-ask":  # for super_remove
-                self.dont_ask =1
+                self.dont_ask = 1
