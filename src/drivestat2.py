@@ -48,7 +48,8 @@ class dsDB:
 		write_errors,
 		track_retries,
 		underrun,
-		mount_count):
+		mount_count,
+		wp = 0):
 
 		if type(time2) != type(""):
 			time2 = time2timestamp(time2)
@@ -73,7 +74,8 @@ class dsDB:
 			"write_errors": write_errors,
 			"track_retries": track_retries,
 			"underrun": underrun,
-			"mount_count": mount_count
+			"mount_count": mount_count,
+			"wp": wp
 			}
 
 		self.insert('status', values)

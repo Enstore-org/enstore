@@ -59,7 +59,8 @@ class dsClient(generic_client.GenericClient):
 		write_errors,
 		track_retries,
 		underrun,
-		mount_count):
+		mount_count,
+		wp = 0):
 		
 		ticket = {
 			"work": "log_stat",
@@ -82,7 +83,8 @@ class dsClient(generic_client.GenericClient):
 			"write_errors": write_errors,
 			"track_retries": track_retries,
 			"underrun": underrun,
-			"mount_count": mount_count}
+			"mount_count": mount_count,
+			"wp": wp}
 
 		self.send2(ticket)
 
@@ -107,7 +109,8 @@ class dsClient(generic_client.GenericClient):
 		11,
 		100,
 		10,
-		1999)
+		1999,
+		0)
 
 if __name__ == '__main__':
 	intf = option.Interface()
