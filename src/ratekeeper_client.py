@@ -1,7 +1,8 @@
-#ystem imports
-
+#system imports
+import sys
 
 #enstore imports
+import Trace
 import generic_client
 import configuration_client
 import udp_client
