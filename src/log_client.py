@@ -358,6 +358,39 @@ class LoggerClient(generic_client.GenericClient):
 	Trace.log( severity, format )
 	return {"status" : (e_errors.OK, None)}
 
+#
+# priorty allows turning logging on and off in a server.
+#  Coventions - setting log_priority to 0 should turn off all logging.
+#             - default priority on send is 1 so the default is to log a message
+#             - the default log_priority to test against is 10 so a priority
+#                     send with priorty < 10 will normally be logged
+#             - a brief trace message (1 per file per server should be priority 10
+#             - file/server trace messages should 10> <20
+#             - debugging should be > 20
+    def set_logpriority(self, priority):
+        self.log_priority = priority
+
+    def get_logpriority(self):
+        return self.log_priority
+
+    # get the current log file name
+    def get_logfile_name(self, rcv_timeout=0, tries=0):
+        x = self.u.send( {'work':'get_logfile_name'}, self.logger_address,
+			 rcv_timeout, tries )
+        return x
+
+    # get the last n log file names
+    def get_logfiles(self, period, rcv_timeout=0, tries=0):
+	x = self.u.send( {'work':'get_logfiles', 'period':period}, 
+			 self.logger_address, rcv_timeout, tries )
+        return x
+
+    # get the last log file name
+    def get_last_logfile_name(self, rcv_timeout=0, tries=0):
+        x = self.u.send( {'work':'get_last_logfile_name'}, self.logger_address,
+	                 rcv_timeout, tries )
+        return x
+
 
 # stand alone function to send a log message
 def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
@@ -448,39 +481,6 @@ def parse(lineIn):
         lineDict['msg'] = msg
 
     return lineDict
-
-#
-# priorty allows turning logging on and off in a server.
-#  Coventions - setting log_priority to 0 should turn off all logging.
-#             - default priority on send is 1 so the default is to log a message
-#             - the default log_priority to test against is 10 so a priority
-#                     send with priorty < 10 will normally be logged
-#             - a brief trace message (1 per file per server should be priority 10
-#             - file/server trace messages should 10> <20
-#             - debugging should be > 20
-    def set_logpriority(self, priority):
-        self.log_priority = priority
-
-    def get_logpriority(self):
-        return self.log_priority
-
-    # get the current log file name
-    def get_logfile_name(self, rcv_timeout=0, tries=0):
-        x = self.u.send( {'work':'get_logfile_name'}, self.logger_address,
-			 rcv_timeout, tries )
-        return x
-
-    # get the last n log file names
-    def get_logfiles(self, period, rcv_timeout=0, tries=0):
-	x = self.u.send( {'work':'get_logfiles', 'period':period}, 
-			 self.logger_address, rcv_timeout, tries )
-        return x
-
-    # get the last log file name
-    def get_last_logfile_name(self, rcv_timeout=0, tries=0):
-        x = self.u.send( {'work':'get_last_logfile_name'}, self.logger_address,
-	                 rcv_timeout, tries )
-        return x
 
 class LoggerClientInterface(generic_client.GenericClientInterface):
 
