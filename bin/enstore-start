@@ -190,14 +190,10 @@ if [ $ping_only -eq 0 ] ; then
       python $ENSTORE_DIR/src/admin_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
       echo $! >> $enstore_db/`uname -n`-admin_pids
       sleep 1
-      ecmd acc --alive
-      if [ $? -ne 0 ]; then
-        echo "   ...DB Admin  Server not reachable..."
-        exit 1
-      fi
 
     else
       echo "ERROR: file and volume database are not present - can't start db tools"
+      exit 1
     fi
   fi
 
