@@ -76,7 +76,7 @@ def get_codelines(filename):
     return ['']+string.split(code,'\n')
     
 def check_pct(filename, warn=0):
-
+    err=0
     ast=get_ast(filename)
     codelines=get_codelines(filename)
 
@@ -127,12 +127,16 @@ def check_pct(filename, warn=0):
             if narg>=0 and npct!=narg or narg==-1 and npct!=1:
                 print "%s:%d: format string %s has %d %% signs, arg tuple has length %d" % \
                       (filename,line,fmt_string, npct,narg)
+                err=1
             elif warn and npct==1 and narg==-1:
                 print "%s:%d: format string %s: possible mismatch (arg may be a tuple)" %\
                       (filename,line,fmt_string)
-
+                err=1
+    return err
+    
 if __name__ == "__main__":
     args=sys.argv[1:]
+    err=0
     warn = 0
     if not args:
         print "Usage: %s [-w] file.py [...]" % sys.argv[0]
@@ -141,10 +145,14 @@ if __name__ == "__main__":
         warn=1
         args=args[1:]
     for fname in args:
-#        try:
-            check_pct(fname,warn)
-#        except:
-#            print "Fatal error checking", fname
+        try:
+            if check_pct(fname,warn):
+                err=1
+        except:
+            print "Fatal error checking", fname
+            err=1
+    sys.exit(err)
+    
             
 
 
