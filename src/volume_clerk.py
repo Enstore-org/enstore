@@ -27,6 +27,7 @@ import volume_family
 import sg_db
 import enstore_constants
 import monitored_server
+import file_clerk_client
 
 def hack_match(a,b): #XXX clean this up
     a = string.split(a, '.')
@@ -147,7 +148,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                  restore_dir = "yes"
 
              
-         import file_clerk_client
          fcc = file_clerk_client.FileClient(self.csc)
          # get volume map name
          bfid_list = self.bfid_db.get_all_bfids(old_label)
@@ -198,7 +198,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          ## and delete original
          else:
              # remove all bfids for this volume
-             import file_clerk_client
              fcc = file_clerk_client.FileClient(self.csc)
              bfid_list = self.bfid_db.get_all_bfids(external_label)
              vm_dir = ''
