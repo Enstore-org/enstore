@@ -128,6 +128,8 @@ class Buffer:
         self.sanity_bytes = 0L
         self.header_size = None
         self.trailer_size = 0L
+        self.file_size = 0L
+        self.bytes_written = 0L
 
         self.read_ok = threading.Event()
         self.write_ok = threading.Event()
@@ -140,8 +142,13 @@ class Buffer:
         self._writing_block = None
         self._read_ptr = 0
         self._write_ptr = 0
+        self.wrapper = None
+        self.first_block = 1
+        
+    def set_wrapper(self, wrapper):
+        self.wrapper = wrapper
 
-    def reset(self):
+    def reset(self, sanity_cookie, client_crc_on):
         self._lock.acquire()
         self.read_ok.set()
         self.write_ok.clear()
@@ -157,8 +164,14 @@ class Buffer:
         self.sanity_crc = 0L
         self.sanity_bytes = 0L
         self.header_size = None
-        self.trailer_size = 0
+        self.trailer_size = 0L
+        self.file_size = 0L
+        self.bytes_written = 0L
         self._lock.release()
+        self.sanity_cookie = sanity_cookie
+        self.client_crc_on = client_crc_on
+        self.wrapper = None
+        self.first_block = 1
         
     def nbytes(self):
         return self._buf_bytes
@@ -214,34 +227,144 @@ class Buffer:
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
     def block_read(self, nbytes, driver):
+        Trace.trace(22, "block_read CRC check is %s" % (self.client_crc_on,))
+        if self.client_crc_on:
+            # calculate checksum when reading from
+            # tape (see comment in setup_transfer)
+            do_crc = 1
+        else:
+            do_crc = 0
+        data = None
+        partial = None
         space = self._getspace()
         bytes_read = driver.read(space, 0, nbytes)
         if bytes_read == nbytes: #normal case
-            self.push(space)
+            data = space
         elif bytes_read<=0: #error
             Trace.log(25, "block_read: read %s" % (bytes_read,))
             pass #XXX or raise an exception?
         else: #partial block read
             Trace.trace(25, "partial block (%s/%s) read" % (bytes_read,nbytes))
-            partial=space[:bytes_read]
-            self.push(partial)
-            self._freespace(space)
+            data = space[:bytes_read]
+            partial = 1
+
+        data_ptr = 0
+        bytes_for_cs = bytes_read
+
+        if self.first_block: #Handle variable-sized cpio header
+            self.first_block = 0
+            ##if len(self.buffer._buf) != 1:
+            ##        Trace.log(e_errors.ERROR,
+            ##                  "block_read: error skipping over cpio header, len(buf)=%s"%(len(self.buffer._buf)))
+            if len(data) >= self.wrapper.min_header_size:
+                try:
+                    header_size = self.wrapper.header_size(data)
+                except (TypeError, ValueError), msg:
+                    Trace.log(e_errors.ERROR,"Invalid header %s" %(data[:self.wrapper.min_header_size]))
+                    raise "WRAPPER_ERROR"
+                data_ptr = header_size
+                bytes_for_cs = bytes_read - header_size
+        if do_crc:
+            try:
+                Trace.trace(22,"block_read: data_ptr: %s, bytes_for_cs %s" % (data_ptr, bytes_for_cs))
+
+                self.complete_crc = checksum.adler32_o(self.complete_crc,
+                                                       data,
+                                                       data_ptr, bytes_for_cs)
+                if self.first_block and self.sanity_bytes < SANITY_SIZE:
+		    self.first_block = 0
+                    nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
+                    self.sanity_crc = checksum.adler32_o(self.sanity_crc,
+                                                         data,
+                                                         data_ptr, nbytes)
+                    Trace.trace(22, "block_read: sanity cookie %s sanity_crc %s sanity_bytes %s" %
+                                (self.sanity_cookie, self.sanity_crc,
+                                 self.sanity_bytes))
+                    # compare sanity crc
+                    if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
+                        Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, sanity CRC %s" %
+                                  (self.buffer.sanity_cookie[1],self.buffer.sanity_crc)) 
+                        raise "CRC_ERROR"
+                data_ptr = data_ptr + bytes_for_cs
+            except:
+                raise "CRC_ERROR"
+
 ##        Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
+        if data:
+            self.push(data)
+            if partial:
+                self._freespace(space)
+                
         return bytes_read
-        
+
     def block_write(self, nbytes, driver):
+        Trace.trace(22,"block_write: bytes %s"%(nbytes,))
+        
+        if self.client_crc_on:
+            # calculate checksum when reading from
+            # tape (see comment in setup_transfer)
+            do_crc = 1
+        else:
+            do_crc = 0
+        Trace.trace(22,"block_write: header size %s"%(self.header_size,))
         data = self.pull() 
         if len(data)!=nbytes:
             raise ValueError, "asked to write %s bytes, buffer has %s" % (nbytes, len(data))
         bytes_written = driver.write(data, 0, nbytes)
         if bytes_written == nbytes: #normal case
+            self.bytes_written = self.bytes_written + bytes_written
+            Trace.trace(22, "block_write: bytes written %s" % (self.bytes_written))
+            if do_crc:
+                data_ptr = 0  # where data for CRC starts
+                bytes_for_cs = bytes_written
+                if self.first_block: #Handle variable-sized cpio header
+                    #skip over the header
+                    data_ptr = data_ptr + self.header_size
+                    bytes_for_cs = bytes_for_cs - self.header_size
+                    if len(data) <= self.header_size:
+                        raise "WRAPPER_ERROR"
+                if self.bytes_written == self.file_size:
+                    # last block
+                    bytes_for_cs = bytes_for_cs - self.trailer_size
+                Trace.trace(22, "nbytes %s, bytes written %s, bytes for cs %s trailer size %s"%
+                            (nbytes, bytes_written, bytes_for_cs,self.trailer_size))
+                try:
+                    Trace.trace(22,"block_write: data_ptr: %s, bytes_for_cs %s" %
+                                (data_ptr, bytes_for_cs))
+                    Trace.trace(22,"complete crc %s"%(self.complete_crc,))
+                    self.complete_crc = checksum.adler32_o(self.complete_crc,
+                                                           data,
+                                                           data_ptr, bytes_for_cs)
+                    Trace.trace(22,"complete crc1 %s"%(self.complete_crc,))
+                    
+                    if self.first_block and self.sanity_bytes < SANITY_SIZE:
+                        self.first_block = 0
+                        nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
+                        self.sanity_crc = checksum.adler32_o(self.sanity_crc,
+                                                             data,
+                                                             data_ptr, nbytes)
+                        self.sanity_bytes = self.sanity_bytes + nbytes
+                        Trace.trace(22, "block_write: sanity_crc %s sanity_bytes %s" %
+                                    (self.sanity_crc, self.sanity_bytes))
+                except:
+                    raise "CRC_ERROR"
             self._freespace(data)
+            
         else: #XXX raise an exception?
+            Trace.trace(22,"actually written %s" % (bytes_written,))
             self._freespace(data)
         return bytes_written
+
         
     def stream_read(self, nbytes, driver):
-        do_crc = 1
+        if not self.client_crc_on:
+            # calculate checksum when reading from
+            # the network (see comment in setup_transfer)
+            # CRC when receiving from the network if client does not CRC
+            do_crc = 1
+        else:
+            do_crc = 0
+            
         if type(driver) is type (""):
             driver = string_driver.StringDriver(driver)
         if isinstance(driver, string_driver.StringDriver):
@@ -252,6 +375,8 @@ class Buffer:
         bytes_to_read = min(self.blocksize - self._read_ptr, nbytes)
         bytes_read = driver.read(self._reading_block, self._read_ptr, bytes_to_read)
         if do_crc:
+            Trace.trace(22,"nbytes %s, bytes_to_read %s, bytes_read %s" %
+                        (nbytes, bytes_to_read, bytes_read))
             self.complete_crc = checksum.adler32_o(self.complete_crc, self._reading_block,
                                                    self._read_ptr, bytes_read)
             if self.sanity_bytes < SANITY_SIZE:
@@ -275,6 +400,13 @@ class Buffer:
             self._read_ptr = None
     
     def stream_write(self, nbytes, driver):
+        if not self.client_crc_on:
+            # calculate checksum when writing to
+            # the network (see comment in setup_transfer)
+            # CRC when sending to the network if client does not CRC
+            do_crc = 1
+        else:
+            do_crc = 0
         if not self._writing_block:
             if self.empty():
                 Trace.trace(10, "stream_write: buffer empty")
@@ -284,13 +416,23 @@ class Buffer:
         bytes_to_write = min(len(self._writing_block)-self._write_ptr, nbytes)
         if driver:
             bytes_written = driver.write(self._writing_block, self._write_ptr, bytes_to_write)
-            self.complete_crc = checksum.adler32_o(self.complete_crc, self._writing_block,
-                                                   self._write_ptr, bytes_written)
-            if self.sanity_bytes < SANITY_SIZE:
-                nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_written)
-                self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._writing_block,
-                                                     self._write_ptr, nbytes)
-                self.sanity_bytes = self.sanity_bytes + nbytes
+            if do_crc:
+                self.complete_crc = checksum.adler32_o(self.complete_crc,
+                                                       self._writing_block,
+                                                       self._write_ptr, bytes_written)
+                if self.sanity_bytes < SANITY_SIZE:
+                    nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_written)
+                    self.sanity_crc = checksum.adler32_o(self.sanity_crc,
+                                                         self._writing_block,
+                                                         self._write_ptr, nbytes)
+                    self.sanity_bytes = self.sanity_bytes + nbytes
+
+                    Trace.trace(22, "stream_write: sanity cookie %s sanity_crc %s sanity_bytes %s" %
+                                (self.sanity_cookie, self.sanity_crc,self.sanity_bytes))
+                    # compare sanity crc
+                    if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
+                        Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, sanity CRC %s" % (self.sanity_cookie[1],self.sanity_crc)) 
+                        raise "CRC_ERROR"
         else:
             bytes_written = bytes_to_write #discarding header stuff
         self._write_ptr = self._write_ptr + bytes_written
@@ -364,10 +506,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
         self.draining = 0
+        
         # self.need_lm_update is used in threads to flag LM update in
-        # the main thread. First element flags update if not 0, second flags
-        # reset timer in update_lm()
-        self.need_lm_update = (0,0) 
+        # the main thread. First element flags update if not 0,
+        # second - state
+        # third -  reset timer
+        # fourth - error source
+        self.need_lm_update = (0, None, 0, None) 
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -491,6 +636,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.failure_interval = 3600
         self.current_work_ticket = {}
         self.vol_info = {}
+        self.file_info = {}
         self.dismount_time = None
         self.delay = 0
         self.fcc = None
@@ -625,7 +771,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
-        self.need_lm_update = (0, 0)
+        self.need_lm_update = (0, None, 0, None)
         if state is None:
             state = self.state
         
@@ -692,7 +838,9 @@ class Mover(dispatching_worker.DispatchingWorker,
     def need_update(self):
         if self.need_lm_update[0]:
             Trace.trace(20," need_update calling update_lm") 
-            self.update_lm(reset_timer=self.need_lm_update[1])
+            self.update_lm(state = self.need_lm_update[1],
+                           reset_timer=self.need_lm_update[2],
+                           error_source=self.need_lm_update[3])
             
     def _do_delayed_update_lm(self):
         for x in xrange(3):
@@ -722,6 +870,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = IDLE
         self.mode = None
         self.vol_info = {}
+        self.file_info = {}
         thread = threading.currentThread()
         if thread:
             thread_name = thread.getName()
@@ -731,15 +880,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         if thread_name is 'MainThread':
             self.update_lm() 
         else: # else just set the update flag
-            self.need_lm_update = (1, 0)
+            self.need_lm_update = (1, None, 0, None)
 
     def offline(self):
         self.state = OFFLINE
         self.update_lm()
 
-    def reset(self):
+    def reset(self, sanity_cookie, client_crc_on):
         self.current_work_ticket = None
-        self.buffer.reset()
+        self.buffer.reset(sanity_cookie, client_crc_on)
         self.bytes_read = 0L
         self.bytes_written = 0L
 
@@ -790,6 +939,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_read = self.buffer.stream_read(nbytes, driver)
             except:
                 exc, detail, tb = sys.exc_info()
+                Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
                 return
             if bytes_read <= 0:  #  The client went away!
@@ -862,6 +1012,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_written = self.buffer.block_write(nbytes, driver)
             except:
                 exc, detail, tb = sys.exc_info()
+                Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 break
             if bytes_written != nbytes:
@@ -900,6 +1051,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def read_tape(self):
         Trace.trace(8, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
+        if self.buffer.client_crc_on:
+            # calculate checksum when reading from
+            # tape (see comment in setup_transfer)
+            do_crc = 1
+        else:
+            do_crc = 0
         driver = self.tape_driver
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             if self.buffer.full():
@@ -917,8 +1074,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_read = 0
             try:
                 bytes_read = self.buffer.block_read(nbytes, driver)
+            except "CRC_ERROR":
+                self.transfer_failed(e_errors.CRC_ERROR, None)
+                break
             except:
                 exc, detail, tb = sys.exc_info()
+                Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                 break
             if bytes_read <= 0:
@@ -947,11 +1108,27 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
-        Trace.notify("transfer %s %s %s" % (self.shortname, -self.bytes_read, self.bytes_to_read))            
-        Trace.trace(8, "read_tape exiting, read %s/%s bytes" % (self.bytes_read, self.bytes_to_read))
+        if do_crc:
+            Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
+                        (self.buffer.complete_crc, self.file_info['complete_crc']))
+            if self.buffer.complete_crc != self.file_info['complete_crc']:
+                self.transfer_failed(e_errors.CRC_ERROR, None)
+                return
+
+        Trace.notify("transfer %s %s %s" %
+                     (self.shortname, -self.bytes_read, self.bytes_to_read))            
+        Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
+                    (self.bytes_read, self.bytes_to_read))
                 
     def write_client(self):
         Trace.trace(8, "write_client starting, bytes_to_write=%s" % (self.bytes_to_write,))
+        if not self.buffer.client_crc_on:
+            # calculate checksum when writing to
+            # the network (see comment in setup_transfer)
+            # CRC when sending to the network if client does not CRC
+            do_crc = 1
+        else:
+            do_crc = 0
         driver = self.net_driver
         #be careful about 0-length files
         if self.bytes_to_write > 0 and self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
@@ -987,8 +1164,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_written = 0
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
+            except "CRC_ERROR":
+                self.transfer_failed(e_errors.CRC_ERROR, None)
+                break
             except:
                 exc, detail, tb = sys.exc_info()
+                Trace.handle_error(exc, detail, tb)
                 self.state = HAVE_BOUND
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
                 break
@@ -1006,6 +1187,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(8, "write_client exiting: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
   
         if self.bytes_written == self.bytes_to_write:
+            # check crc
+            if do_crc:
+                Trace.trace(22,"write_client: calculated CRC %s File DB CRC %s"%
+                            (self.buffer.complete_crc, self.file_info['complete_crc']))
+                if self.buffer.complete_crc != self.file_info['complete_crc']:
+                    self.transfer_failed(e_errors.CRC_ERROR, None)
+                    return
+                
             self.transfer_completed()
 
         
@@ -1059,7 +1248,24 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
                 self.state = save_state
                 return 0
-        self.reset()
+        if ticket['work'] == 'read_from_hsm':
+            sanity_cookie = ticket['fc']['sanity_cookie']
+        else:
+            sanity_cookie = None
+        
+        if ticket.has_key('client_crc'):
+            client_crc_on = ticket['client_crc']
+        else:
+            client_crc_on = 1 # assume that client does CRC
+        
+        # if client_crc is ON:
+        #    write requests -- calculate CRC when writing from memory to tape
+        #    read requetsts -- calculate CRC when reading from tape to memory
+        # if client_crc is OFF:
+        #    write requests -- calculate CRC when writing to memory
+        #    read requetsts -- calculate CRC when reading memory
+
+        self.reset(sanity_cookie, client_crc_on)
 
         ticket['mover']={}
         ticket['mover'].update(self.config)
@@ -1083,6 +1289,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         fc = ticket['fc']
         vc = ticket['vc']
         self.vol_info.update(vc)
+        self.file_info.update(fc)
         self.volume_family=vc['volume_family']
         delay = 0
         if ticket['encp'].has_key('delayed_dismount'):
@@ -1126,6 +1333,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = save_state
             return 0
         
+        self.buffer.set_wrapper(self.wrapper)
         client_filename = ticket['wrapper'].get('fullname','?')
         pnfs_filename = ticket['wrapper'].get('pnfsFilename', '?')
 
@@ -1157,6 +1365,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.header_size = len(self.header)
             self.buffer.trailer_size = len(self.trailer)
             self.bytes_to_write = self.bytes_to_write + len(self.header) + len(self.trailer)
+            self.buffer.file_size = self.bytes_to_write
             self.target_location = None        
 
         if volume_label == self.current_volume: #no mount needed
@@ -1298,7 +1507,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if exc not in (e_errors.ENCP_GONE, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG):
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
-                broken =  "max_consecutive_failures (%d) reached" %(self.max_consecutive_errors)
+                broken =  "max_consecutive_failures (%d) reached" %(self.max_consecutive_failures)
             now = time.time()
             self.error_times.append(now)
             while self.error_times and now - self.error_times[0] > self.failure_interval:
@@ -1333,7 +1542,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
-        self.update_lm(state=ERROR, error_source=error_source, reset_timer=1)
+        self.need_lm_update = (1, ERROR, 1, error_source)    
 
         if broken:
             self.broken(broken)
@@ -1348,10 +1557,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.maybe_clean()
             self.idle()
             
-        
         #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
         #self.update_lm()
-    
+        #self.need_lm_update = (1, 0, None)    
         
     def transfer_completed(self):
         self.consecutive_failures = 0
@@ -1381,7 +1589,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = HAVE_BOUND
             if self.maybe_clean():
                 self.state = IDLE
-        self.need_lm_update = (1, 1)
+        self.need_lm_update = (1, None, 1, None)
         ######### AM 01/30/01
         ### do not update lm in child a thread
         #if self.state == HAVE_BOUND:
@@ -1659,6 +1867,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dismount_time = None
         save_state = self.state
         if not self.do_eject:
+            ### AM I do not know if this is correct but it does what it supposed to
+            ### Do not eject if specified
+            Trace.log(e_errors.INFO, "Do not eject specified")
+            return
             self.current_volume = None
             self.volume_family = None
             if after_function:
