@@ -1124,6 +1124,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def reset(self, sanity_cookie, client_crc_on):
         self.current_work_ticket = None
+        del(self.buffer)
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.buffer.reset(sanity_cookie, client_crc_on)
         self.bytes_read = 0L
@@ -1991,7 +1992,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
         del(self.buffer)
-        self.buffer = None
+        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.timer('transfer_time')
         if self.tr_failed:
             return          ## this function has been alredy called in the other thread
@@ -2103,7 +2104,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def transfer_completed(self):
         del(self.buffer)
-        self.buffer = None
+        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.consecutive_failures = 0
         self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
@@ -3662,7 +3663,7 @@ class DiskMover(Mover):
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
         del(self.buffer)
-        self.buffer = None
+        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.timer('transfer_time')
         self.tape_driver.close()
         if self.mode == WRITE:
@@ -3757,7 +3758,7 @@ class DiskMover(Mover):
         
     def transfer_completed(self):
         del(self.buffer)
-        self.buffer = None
+        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.consecutive_failures = 0
         self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
