@@ -202,11 +202,11 @@ $ECHO "$N" | while read command pid rest; do
       allow LISTEN
     elif [ `$ECHO $rest | $EGREP -c "UDP"` -ne 0 ]; then
       if [ $QUIET -ne 1 ]; then
-         $ECHO Ignoring open UDP connections...
+         $ECHO Ignoring open UDP connections $command $pid $rest ...
       fi
     elif [ `$ECHO $rest | $EGREP -c "TCP"` -ne 0 ]; then
       if [ $QUIET -ne 1 ]; then
-         $ECHO Ignoring open TCP connections...
+         $ECHO Ignoring open TCP connections $command $pid $rest ...
       fi
     fi
 done
