@@ -121,14 +121,19 @@ class AtMovers:
             sg = self.sg_vf.sg[storage_group]
         else: sg = []
         return sg
+
+    def get_active_movers(self):
+        list = []
+        for key in self.at_movers.keys():
+            list.append(self.at_movers[key])
+        return list
     
     # check if a particular volume with given label is busy
     # for read requests
     def is_vol_busy(self, external_label):
         rc = 0
         # see if this volume is in voulemes_at movers list
-        keys = self.at_movers.keys()
-        for key in keys:
+        for key in self.at_movers.keys():
             if external_label == self.at_movers[key]['external_label']:
                 Trace.log(e_errors.INFO, "volume %s is active. Mover=%s"%\
                           (external_label, key))
@@ -169,7 +174,7 @@ class LibraryManagerMethods:
         ret = self.fork()
         if ret == 0:
             try:
-                Trace.trace(13,"send_regret "+repr(ticket))
+                Trace.trace(11,"send_regret %s" % (ticket,))
                 callback.send_to_user_callback(ticket)
                 Trace.trace(13,"send_regret ")
             except:
@@ -212,75 +217,6 @@ class LibraryManagerMethods:
             self.pending_work.delete(w)
             w = self.pending_work.get(external_label)
         # this is just for test
-
-    # return a list of busy volumes for a given file family
-    def busy_vols_in_family (self, family_name):
-        Trace.trace(12,"busy_vols_in_family family: %s"%(family_name,))
-        vols = []
-        write_enabled = 0
-        # look in the list of work_at_movers
-        for w in self.work_at_movers.list:
-            Trace.trace(12,"busy_vols_in_family work family: %s"%(w["vc"]["file_family"],))
-            if w["vc"]["file_family"] == family_name:
-                vols.append(w["fc"]["external_label"])
-                vol_info = self.vcc.inquire_vol(w["fc"]["external_label"])
-                Trace.trace(12,"busy_vols_in_family: system inhibit: %s"%(vol_info['system_inhibit'][1],))
-                if vol_info['system_inhibit'][1] == 'none':
-                    # if volume can be potentially written increase number
-                    # of write enabled volumes that are currently at work
-                    # further comparison of this number with file family width
-                    # tells if write work can be given out
-                    write_enabled = write_enabled + 1
-
-        return vols, write_enabled
-
-    # check if a particular volume with given label is busy
-    # for read requests
-    def is_volume_busy(self, external_label, requestor):
-        rc = 0
-        recover_vol_state = 0
-        check_after_recovery = 0
-        # check volume state
-        vol_info = self.vcc.inquire_vol(external_label)
-        if vol_info['at_mover'][0] == 'mounted':
-            if requestor == vol_info['at_mover'][1]:
-                # volume can not be mounted on idle mover : recover its state
-                recover_vol_state = 1
-                # check volume after recovery
-                check_after_recovery = 1
-            else:
-                # volumes is being reported as mounted on snother mover
-                # it is not available for this mover
-                rc = 1
-                
-        elif vol_info['at_mover'][0] == 'unmounted':
-            # check if volume is in work at movers queue
-            for w in self.work_at_movers.list:
-                if w["fc"]["external_label"] == external_label:
-                    # for work at movers volume cannot be in unmounted state
-                    Trace.log(e_errors.ERROR, "volume %s is in work_at_movers. Mover=%s,requestor=%s"%\
-                              (external_label,vol_info['at_mover'][1],requestor))
-                    rc = 1
-                    recover_vol_state = 1
-                    break
-            if rc:
-                self.work_at_movers.remove(w)
-                Trace.log(e_errors.INFO, "removed work_at_movers entry %s"%(w,))
-        else:
-            # volume can be only in mounted or unmounted state
-            # perhaps it is ejected: try to recover its state
-            recover_vol_state = 1
-            rc = 1
-        if recover_vol_state:
-            # restore volume state
-            mcstate =  self.vcc.update_mc_state(external_label)
-            format = "vol:%s state recovered to %s"
-            Trace.log(e_errors.INFO,format%(external_label,mcstate["at_mover"][0]))
-            if check_after_recovery:
-                if mcstate["at_mover"][0] != 'unmounted': rc = 1
-                    
-        return rc
-
 
     # return ticket if given labeled volume is in mover queue
     # only one work can be in the work_at_movers for
@@ -377,7 +313,10 @@ class LibraryManagerMethods:
         if self.tmp_rq:
             tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
             tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
-            if sg_limit != 0: self.tmp_rq = rq  # replace tmp_rq if rq SG limit is not 0
+            if sg_limit != 0:     # replace tmp_rq if rq SG limit is not 0
+                # replace tmp_rq based on priority
+                if rq.pri > self.tmp_rq.pri:
+                    self.tmp_rq = rq
         else: self.tmp_rq = rq
         key_to_check = self.fair_share(rq)
         if key_to_check:
@@ -415,8 +354,16 @@ class LibraryManagerMethods:
         # volume clerk returned error
         Trace.trace(11,"process_write_request: next write volume returned %s" % (v,))
         if v["status"][0] != e_errors.OK:
-            rq.ticket["status"] = v["status"]
-            rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
+            if v["status"][0] == e_errors.NOVOLUME:
+                # remove this request and send regret to the client
+                rq.ticket['status'] = v['status']
+                self.send_regret(rq.ticket)
+                self.pending_work.delete(rq)
+                rq = None
+                
+            else:
+                rq.ticket["status"] = v["status"]
+                rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
             self.continue_scan = 1
             return rq, None
 		
@@ -438,7 +385,10 @@ class LibraryManagerMethods:
         if self.tmp_rq:
             tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
             tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
-            if sg_limit != 0: self.tmp_rq = rq  # replace tmp_rq if rq SG limit is not 0
+            if sg_limit != 0:     # replace tmp_rq if rq SG limit is not 0
+                # replace tmp_rq based on priority
+                if rq.pri > self.tmp_rq.pri:
+                    self.tmp_rq = rq
         else: self.tmp_rq = rq
         
         key_to_check = self.fair_share(rq)
@@ -519,6 +469,7 @@ class LibraryManagerMethods:
             Trace.trace(11,"schedule: Error detected %s" % (rq.ticket,))
 
     def check_write_request(self, external_label, rq):
+        Trace.trace(11, "check_write_request %s %s"%(external_label, rq.ticket))
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(rq.ticket['vc']['volume_family'])
         if wr_en >= rq.ticket["vc"]["file_family_width"]:
             if not external_label in vol_veto_list:
@@ -526,6 +477,7 @@ class LibraryManagerMethods:
                 Trace.trace(12, "check_write_request: request for volume %s rejected %s"%
                                 (external_label, rq.ticket["reject_reason"]))
                 rq.ticket['status'] = e_errors.INPROGRESS
+                Trace.trace(11,"11111")
                 return rq, rq.ticket['status'] 
             
         ret = self.vcc.is_vol_available(rq.work,  external_label,
@@ -537,21 +489,28 @@ class LibraryManagerMethods:
             rq.ticket['status'] = ret['status']
             rq.ticket["fc"]["size"] = rq.ticket["wrapper"]["size_bytes"]
             rq.ticket['fc']['external_label'] = external_label
+            Trace.trace(11,"2222222")
             return rq, ret['status'] 
         else:
             rq.ticket['reject_reason'] = (ret['status'][0], ret['status'][1])
             # if work is write_to_hsm and volume has just been set to full
             # return this status for the immediate dismount
             if (rq.work == "write_to_hsm" and
-                ret['status'][0] == e_errors.VOL_SET_TO_FULL):
+                (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
+                 ret['status'][0] == 'full')):
+                Trace.trace(11,"3333333")
                 return None, ret['status']
+        Trace.trace(11,"444444444")
+        return rq, ret['status']
+            
 
 
     # is there any work for this volume??  v is a volume info
     # last_work is a last work for this volume
     # corrent location is a current position of the volume
     def next_work_this_volume(self, external_label, vol_family, last_work, requestor, current_location):
-        Trace.trace(11, "next_work_this_volume for %s" % (external_label,)) 
+        Trace.trace(11, "next_work_this_volume for %s" % (external_label,))
+        status = None
         self.init_request_selection()
         #self.pending_work.wprint()
         # first see if there are any HiPri requests
@@ -633,7 +592,7 @@ class LibraryManagerMethods:
                 # or request for the same volume
                 if exc_limit_rq is not rq:
                     if rq.work == 'write_to_hsm':
-                        if rq.ticket['volume_family'] == vol_family:
+                        if rq.ticket['vc']['volume_family'] == vol_family:
                             # same volume family
                             rq = exc_limit_rq
                     else:
@@ -646,21 +605,28 @@ class LibraryManagerMethods:
                 
             if rq.work == 'write_to_hsm':
                 while rq:
+                    Trace.trace(11,"LABEL %s RQQQQQQQ %s" % (external_label, rq))
                     rq, status = self.check_write_request(external_label, rq)
+                    Trace.trace(11,"RQ1 %s STAT %s" %(rq,status))
+                    if rq: Trace.trace(11,"TICK %s" %(rq.ticket,))
                     if rq and status[0] == e_errors.OK:
                         return rq, status
-                    self.pending_work.get(vol_family, next=1, use_admin_queue=0)
+                    if not rq: break
+                    rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0)
             # return read work
-            rq.ticket['status'] = (e_errors.OK, None)
-            return rq, rq.ticket['status'] 
+            if rq:
+                rq.ticket['status'] = (e_errors.OK, None)
+                return rq, rq.ticket['status'] 
         
         # try from the beginning
         rq = self.pending_work.get(external_label)
         if rq:
             # return work
             rq.ticket['status'] = (e_errors.OK, None)
-            return rq, rq.ticket['status'] 
-        return None, (e_errors.NOWORK, None)
+            return (rq, rq.ticket['status'])
+        if status:
+            return (None, status)
+        return (None, (e_errors.NOWORK, None))
                 
                     
     # check if volume is in the suspect volume list
@@ -981,16 +947,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.work_at_movers.remove(wt)
 	    format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
 	    Trace.log(e_errors.INFO, format%(wt,mticket))
-	    # tape must be in unmounted state
-	    vol_info = self.vcc.inquire_vol(wt['fc']['external_label'])
-            # recover volume state if not unmounted
-	    if (vol_info['at_mover'][0] != 'unmounted' and
-                vol_info['at_mover'][1] == self.requestor):
-                mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'])
-		format = "vol:%s state recovered to %s. mover:%s"
-		Trace.log(e_errors.INFO, format%(wt['fc']['external_label'],
-						 mcstate["at_mover"][0], 
-						 wt['mover']))
         rq, status = self.schedule(mticket['mover'])
         Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
         # no work means we're done
@@ -1066,10 +1022,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # file family may be changed by VC during the volume
             # assignment. Set file family to what VC has returned
             if mticket['external_label']:
-                vol_info = self.vcc.inquire_vol(mticket['external_label'])
-                w['vc']['volume_family'] = vol_info['volume_family']
-                w['vc']['file_family'] = volume_family.extract_file_family(vol_info['volume_family'])
-                Trace.trace(11, "FILE_FAMILY=%s" % (w['vc']['file_family'],))  # REMOVE
+                w['vc']['volume_family'] = mticket['volume_family']
+                Trace.trace(11, "FILE_FAMILY=%s" % (w['vc']['volume_family'],))  # REMOVE
 	    self.work_at_movers.remove(w)
 
         # see if this volume will do for any other work pending
@@ -1086,8 +1040,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					     w["wrapper"]["uname"]))
 	    w['times']['lm_dequeued'] = time.time()
             if w.has_key('reject_reason'): del(w['reject_reason'])
-            Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s %s to mover %s %s"%
-                      (w['work'],w['wrapper']['pnfsFilename'], mticket['mover'], mticket['address']))
+            Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s %s to mover %s %s DEL_DISM %s"%
+                      (w['work'],w['wrapper']['pnfsFilename'], mticket['mover'], mticket['address'], w['encp']['delayed_dismount']))
             self.udpc.send_no_wait(w, mticket['address']) 
             self.pending_work.delete(rq)
             w['mover'] = mticket['mover']
@@ -1105,14 +1059,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                                   mticket['volume_family']))
         
             self.volumes_at_movers.put(mticket)
-            
-
 
         # if the pending work queue is empty, then we're done
         elif  (status[0] == e_errors.NOWORK or
-               status[0] == e_errors.VOL_SET_TO_FULL):
-
+               status[0] == e_errors.VOL_SET_TO_FULL or
+               status[0] == 'full'):
             # do not dismount
+            return
+        elif (w['work'] == 'write_to_hsm' and status[0] == 'full'):
             return
 
         # alas
@@ -1257,6 +1211,22 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	self.reply_to_caller(ticket)
 
 
+    # get active volume known to LM
+    def get_active_volumes(self, ticket):
+        movers = self.volumes_at_movers.get_active_movers()
+        Trace.log(e_errors.INFO,"MVRS %s" % (movers,))
+        ticket['movers'] = []
+        for mover in movers:
+            print "MOVER",mover
+            ticket['movers'].append({'mover'          : mover['mover'],
+                                     'external_label' : mover['external_label'],
+                                     'volume_family'  : mover['volume_family'],
+                                     'operation'      : mover['operation'],
+                                     'volume_status'  : mover['volume_status']
+                                     })
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
