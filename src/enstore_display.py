@@ -403,8 +403,9 @@ class Mover:
         if N == 1:
             y = self.display.height / 2.
         else:
-            y = (k*2.5)*(self.display.height  / (N+1))#(k+0.5) * 
-        x = self.display.width - 200
+            y = (k*2.5)*(self.display.height  / (N+1))
+        x = self.display.width - 200 #offset of 200
+            
         return int(x), int(y)
     
     def position(self, N):
@@ -778,139 +779,137 @@ class Display(Tkinter.Canvas):
         #      movers M1 M2 M3 ...
     
         
+        comm_dict = {'quit' : 1, 'client' : 1, 'connect' : 1, 'disconnect' : 1, 'loading' : 1, 'title' : 1,
+                                'loaded' : 1, 'state' : 1, 'unload': 1, 'transfer' : 1, 'movers' : 1}
+
         now = time.time()
         command = string.strip(command) #get rid of extra blanks and newlines
         words = string.split(command)
         if not words: #input was blank, nothing to do!
             return
-        
-        if words[0]=='quit':
-            self.stopped = 1
-            return
 
-        if words[0]=='encp_xfer':
+        if words[0] not in comm_dict.keys():
             print "just passing"
-            return
-
-        # command does not require a mover name, will only put clients in a queue
-        if words[0]=='client':
-            client_name = normalize_name(words[1])
-            client = self.clients.get(client_name) 
-            if client is None: #it's a new client
-                client = Client(client_name, self)
-                self.clients[client_name] = client
-                client.waiting = 1
-                client.draw()
-            return
-
-        if words[0]=='title':
-            title = command[6:]
-            title=string.replace(title, '\\n', '\n')
-            self.title_animation = Title(title, self)
-            return
-
-    
-        # command needs (N) words
-        if words[0]=='movers':
-            self.create_movers(words[1:])
-            return
-            
-        #########################################################################
-        #                                                                                                                                              #
-        #              all following commands have the name of the mover in the 2nd field               #
-        #                                                                                                                                              #
-        #########################################################################
-        mover_name = words[1]
-        mover = self.movers.get(mover_name)
-        if not mover:#This is an error, a message from a mover we never heard of
-            return
-        # command requires 2 words
-        if words[0]=='delete':
-            del self.movers[mover_name]
-            return
-
-
-        if words[0]=='disconnect': #Ignore the passed-in client name, disconnect from
-                               ## any currently connected client
-
-            if not mover.connection:
-                print "Mover is not connected"
+        else:
+            if words[0]=='quit':
+                self.stopped = 1
                 return
-            mover.connection = None
-            mover.t0 = time.time()
-            mover.b0 = 0
-            mover.show_progress(None)
 
-            return
+            if words[0]=='title':
+                title = command[6:]
+                title=string.replace (title, '\\n', '\n')
+                self.title_animation = Title(title, self)
+                return
 
-        # command requires 3 words
-        if len(words) < 3:
-            print "Error, bad command", command
-            return
-
-        if words[0]=='state':
-            what_state = words[2]
-            time_in_state = 0
-            if len(words) > 3:
-                try:
-                    time_in_state = int(float(words[3]))
-                except:
-                    print "bad numeric value", words[3]
+            # command needs (N) words
+            if words[0]=='movers':
+                self.create_movers(words[1:])
+                return
             
-            mover.update_state(what_state, time_in_state)
-            return
-        
-        if words[0]== 'connect':
-            client_name = normalize_name(words[2])
-            #print "connecting with ",  client_name
-            client = self.clients.get(client_name)
-            if not client: ## New client, we must add it
-                client = Client(client_name, self)
-                self.clients[client_name] = client
-                client.draw()
-            client.waiting = 0
-            client.update_state() #change fill color if needed
-            client.last_activity_time = now
-            connection = Connection(mover, client, self)
-            mover.t0 = now
-            mover.b0 = 0
-            connection.update_rate(0)
-            connection.draw()
-            mover.connection = connection
-            return
+            # command does not require a mover name, will only put clients in a queue
+            if words[0]=='client':
+                client_name = normalize_name(words[1])
+                client = self.clients.get(client_name) 
+                if client is None: #it's a new client
+                    client = Client(client_name, self)
+                    self.clients[client_name] = client
+                    client.waiting = 1
+                    client.draw()
+                return
 
-        if words[0] in ['loading', 'loaded']:
-            load_state = words[0]=='loaded'
-            what_volume = words[2]
-            volume=self.volumes.get(what_volume)
-            if volume is None:
-                volume=Volume(what_volume, self, loaded=load_state)
-            self.volumes[what_volume]=volume
-            mover.load_tape(volume, load_state)
-            return
-        
-        if words[0]=='unload': # Ignore the passed-in volume name, unload
-                           ## any currently loaded volume
-            mover.unload_tape()
-            return
+            #########################################################################
+            #                                                                                                                                              #
+            #              all following commands have the name of the mover in the 2nd field               #
+            #                                                                                                                                              #
+            #########################################################################
+            mover_name = words[1]
+            mover = self.movers.get(mover_name)
+            if not mover:#This is an error, a message from a mover we never heard of
+                print "Don't recognize mover, continueing ...."
+                return
 
-        # command requires 4 words
-        if len(words)<4: 
-            print "Error, bad command", command
-            return
+
+            if words[0]=='disconnect': #Ignore the passed-in client name, disconnect from
+                                                                   ## any currently connected client
+
+                if not mover.connection:
+                    print "Mover is not connected"
+                    return
+                mover.connection = None
+                mover.t0 = time.time()
+                mover.b0 = 0
+                mover.show_progress(None)
+                return
+
+            # command requires 3 words
+            if len(words) < 3:
+                print "Error, bad command", command
+                return
+
+            if words[0]=='state':
+                what_state = words[2]
+                time_in_state = 0
+                if len(words) > 3:
+                    try:
+                        time_in_state = int(float(words[3]))
+                    except:
+                        print "bad numeric value", words[3]            
+                mover.update_state(what_state, time_in_state)
+                return
         
-        if words[0]=='transfer':
-            num_bytes = my_atof(words[2])
-            total_bytes = my_atof(words[3])
-            if total_bytes==0:
-                percent_done = 100
-            else:
-                percent_done = abs(int(100 * num_bytes/total_bytes))
-            mover.show_progress(percent_done)
-            rate = mover.transfer_rate(num_bytes, total_bytes) / (256*1024)
-            if mover.connection:
-                mover.connection.update_rate(rate)
-                mover.connection.client.last_activity_time = time.time()
+            if words[0]== 'connect':
+                client_name = normalize_name(words[2])
+                #print "connecting with ",  client_name
+                client = self.clients.get(client_name)
+                if not client: ## New client, we must add it
+                    client = Client(client_name, self)
+                    self.clients[client_name] = client
+                    client.draw()
+                client.waiting = 0
+                client.update_state() #change fill color if needed
+                client.last_activity_time = now
+                connection = Connection(mover, client, self)
+                mover.t0 = now
+                mover.b0 = 0
+                connection.update_rate(0)
+                connection.draw()
+                mover.connection = connection
+                return
+
+            if words[0] in ['loading', 'loaded']:
+                load_state = words[0]=='loaded'
+                what_volume = words[2]
+                volume=self.volumes.get(what_volume)
+                if volume is None:
+                    volume=Volume(what_volume, self, loaded=load_state)
+                self.volumes[what_volume]=volume
+                mover.load_tape(volume, load_state)
+                return
+        
+            if words[0]=='unload': # Ignore the passed-in volume name, unload
+                                                          ## any currently loaded volume
+                mover.unload_tape()
+                return
+
+            # command requires 4 words
+            if len(words)<4: 
+                print "Error, bad command", command
+                return
+        
+            if words[0]=='transfer':
+                num_bytes = my_atof(words[2])
+                total_bytes = my_atof(words[3])
+                if total_bytes==0:
+                    percent_done = 100
+                else:
+                    percent_done = abs(int(100 * num_bytes/total_bytes))
+                mover.show_progress(percent_done)
+                rate = mover.transfer_rate(num_bytes, total_bytes) / (256*1024)
+                if mover.connection:
+                    mover.connection.update_rate(rate)
+                    mover.connection.client.last_activity_time = time.time()
+                return
+
          
 
     def mainloop(self):
