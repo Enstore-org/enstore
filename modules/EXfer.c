@@ -2434,11 +2434,11 @@ EXfd_ecrc(PyObject *self, PyObject *args)
   
   /*Get the current file descriptor flags.*/
   if((rtn = fcntl(fd, F_GETFL, 0)) < 0)
-    return(raise_exception("fd_ecrc - file fcntl failed"));
-  sts = (rtn & O_DIRECT) ? (rtn ^ O_DIRECT) : rtn;  /* turn off O_DIRECT */
+    return(raise_exception("fd_ecrc - file fcntl(F_GETFL) failed"));
+  sts = rtn & (~O_DIRECT);  /* turn off O_DIRECT */
   /*Set the new file descriptor flags.*/
   if(fcntl(fd, F_SETFL, sts) < 0)
-    return(raise_exception("fd_ecrc - file fcntl failed"));
+    return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));
 #endif
 
   /*Read in the file in 'buf_size' sized blocks and calculate CRC.*/
@@ -2460,6 +2460,10 @@ EXfd_ecrc(PyObject *self, PyObject *args)
 
     crc = adler32(crc, buffer, rest);  /* calc. the crc */
   }
+
+  /*Set the original file descriptor flags.*/
+  if(fcntl(fd, F_SETFL, rtn) < 0)
+    return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));
 
   return PyLong_FromUnsignedLong((unsigned long)crc);
 }
