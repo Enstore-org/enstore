@@ -315,8 +315,6 @@ class DispatchingWorker:
     def handle_error(self, request, client_address):
 	exc, msg, tb = sys.exc_info()
 	Trace.trace(6,"handle_error %s %s"%(exc,msg))
-	mode = Trace.mode()
-	Trace.mode( mode&~1 ) # freeze circular queue
 	Trace.log(e_errors.INFO,'-'*40)
 	Trace.log(e_errors.INFO,
                   'Exception during request from %s, request=%s'%
@@ -337,6 +335,44 @@ class DispatchingWorker:
         ticket['pid'] = os.getpid()
         self.reply_to_caller(ticket)
 
+
+    def do_print(self, ticket):
+        for level in ticket['levels']:
+            Trace.do_print(level)
+        ticket['status']=(e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+    def dont_print(self, ticket):
+        for level in ticket['levels']:
+            Trace.dont_print(level)
+        ticket['status']=(e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+    def do_log(self, ticket):
+        for level in ticket['levels']:
+            Trace.do_log(level)
+        ticket['status']=(e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        
+    def dont_log(self, ticket):
+        for level in ticket['levels']:
+            Trace.dont_log(level)
+        ticket['status']=(e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+    def do_alarm(self, ticket):
+        for level in ticket['levels']:
+            Trace.do_alarm(level)
+        ticket['status']=(e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        
+    def dont_alarm(self, ticket):
+        for level in ticket['levels']:
+            Trace.dont_alarm(level)
+        ticket['status']=(e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        
+        
     # quit instead of being killed
     def quit(self,ticket):
         Trace.trace(10,"quit address="+repr(self.server_address))
@@ -373,8 +409,8 @@ class DispatchingWorker:
                                                           self.current_id))
         request_dict[self.current_id] = copy.deepcopy(list)
         self.server_socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
-
-    # for requests that are not handled serialy reply_address, current_id, and client_number
+        
+    # for requests that are not handled serially reply_address, current_id, and client_number
     # number must be reset.  In the forking media changer these are in the forked child
     # and passed back to us
     def reply_with_address(self,ticket):

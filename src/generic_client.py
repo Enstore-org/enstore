@@ -20,11 +20,19 @@ class GenericClientInterface(interface.Interface):
     def __init__(self):
 	self.dump = 0
 	self.alive = 0
+        self.do_print = []
+        self.dont_print = []
+        self.do_log = []
+        self.dont_log = []
+        self.do_alarm = []
+        self.dont_alarm = []
 	interface.Interface.__init__(self)
 
     def client_options(self):
-	return self.config_options() + \
-	       self.alive_options()  + self.help_options()
+	return (self.config_options() + 
+	       self.alive_options()  + 
+               self.trace_options() + 
+               self.help_options() )
     
 init_done = 0
 
@@ -89,6 +97,43 @@ class GenericClient:
             sys.exit(-1)
         return x
 
+
+    def trace_levels(self, server, work, levels):
+        try:
+            t = self.csc.get(server)
+        except errno.errorcode[errno.ETIMEDOUT]:
+	    return {'status' : (e_errors.TIMEDOUT, None)}
+	try:
+            x = self.u.send({'work': work,
+                             'levels':levels}, (t['hostip'], t['port']))
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    x = {'status' : (e_errors.TIMEDOUT, None)}
+        except KeyError, detail:
+            print "Unknown server", server
+            sys.exit(-1)
+        return x
+    
+    
+    def handle_generic_commands(self, server, intf):
+        if intf.alive:
+            ret = self.alive(server, intf.alive_rcv_timeout,intf.alive_retries)
+        elif intf.do_print:
+            ret = self.trace_levels(server, 'do_print', intf.do_print)
+        elif intf.dont_print:
+            ret = self.trace_levels(server, 'dont_print', intf.dont_print)
+        elif intf.do_log:
+            ret = self.trace_levels(server, 'do_log', intf.do_log)
+        elif intf.dont_log:
+            ret = self.trace_levels(server, 'dont_log', intf.dont_log)
+        elif intf.do_alarm:
+            ret = self.trace_levels(server, 'do_alarm', intf.do_alarm)
+        elif intf.dont_alarm:
+            ret = self.trace_levels(server, 'dont_alarm', intf.dont_alarm)
+        else:
+            return None
+
+        return ret
+            
     # examine the final ticket to check for any errors
     def check_ticket(self, ticket):
 	if not 'status' in ticket.keys(): return None
@@ -103,7 +148,8 @@ class GenericClient:
             sys.exit(1)
 	return None
 
-    # tell the server to spill it's guts
+    # tell the server to spill its guts
     def dump(self, rcv_timeout=0, tries=0):
         x = self.send({'work':'dump'}, rcv_timeout, tries)
         return x
+
