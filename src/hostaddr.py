@@ -30,6 +30,18 @@ def gethostinfo(verbose=0):
         hostinfo=socket.gethostbyaddr(hostname)
     return hostinfo
 
+known_ips = {}
+def address_to_name(addr):
+    ## this will return the address if it can't be resolved into a hostname
+    if addr in known_ips.keys():
+        return known_ips[addr]
+    try:
+        name = socket.gethostbyaddr(addr)[0]
+    except socket.error:
+        name = addr
+    known_ips[addr] = name
+    return name
+    
 
 def get_interface_file_name():
     hostname, junk, junk = gethostinfo()
@@ -82,6 +94,10 @@ if __name__ == "__main__":
     print gethostinfo(1)
     print get_multiple_interfaces()
     print get_multiple_interfaces()
+    print address_to_name('127.0.0.1')
+    print address_to_name('1.1.1.1')
+    print address_to_name('131.225.84.156')
+
     
     
 
