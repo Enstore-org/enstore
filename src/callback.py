@@ -94,12 +94,19 @@ def get_data_callback():
 
 #send a message, with bytecount and rudimentary security
 def write_tcp_raw(sock,msg):
+    max_pkt_size=16384
     try:
+        l = len(msg)
+        ptr=0
         sock.send("%08d"%len(msg))
         salt=random.randint(11,99)
         sock.send("ENSTOR%s"%salt)
-        sock.send(msg)
-        sock.send(hex8(checksum.adler32(salt,msg,len(msg))))
+        while ptr<l:
+            nwritten=sock.send(msg[ptr:ptr+max_pkt_size])
+            if nwritten<=0:
+                break
+            ptr = ptr+nwritten
+        sock.send(hex8(checksum.adler32(salt,msg,l)))
     except socket.error, detail:
         Trace.trace(6,"write_tcp_raw: socket.error %s"%detail)
         ##XXX Further sends will fail, our peer will notice incomplete message
@@ -121,7 +128,7 @@ def read_tcp_raw(sock):
         return ""
     tmp = sock.recv(8) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
-        Trace.trace(6,"read_tcp_raw: wrong signature %s"%tmp)
+        Trace.trace(6,"read_tcp_raw: invalid signature %s"%tmp)
         return ""
     salt=string.atoi(tmp[6:])
     msg = ""
@@ -137,7 +144,7 @@ def read_tcp_raw(sock):
     crc = string.atol(tmp, 16)
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
-        Trace.trace(6,"read_tcp_raw: checmsum mismatch %s != %s"%(mycrc, crc))
+        Trace.trace(6,"read_tcp_raw: checksum mismatch %s != %s"%(mycrc, crc))
         return ""
     return msg
 
