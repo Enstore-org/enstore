@@ -43,13 +43,13 @@ href="http://miscomp.fnal.gov/misweb/cgi/misweb.pl\
 
 
 for cmd in \
-           'wget -O drivestat.html "%s"' % (href,),\
-           'wget -O cdfen.volumes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-           'wget -O d0en.volumes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-           'wget -O stken.volumes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-           'wget -O cdfen.quotas  "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
-           'wget -O d0en.quotas   "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
-           'wget -O stken.quotas  "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"':
+           '$ENSTORE_DIR/bin/Linux/wget -O drivestat.html "%s"' % (href,),\
+           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.volumes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
+           '$ENSTORE_DIR/bin/Linux/wget -O d0en.volumes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
+           '$ENSTORE_DIR/bin/Linux/wget -O stken.volumes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
+           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.quotas  "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
+           '$ENSTORE_DIR/bin/Linux/wget -O d0en.quotas   "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
+           '$ENSTORE_DIR/bin/Linux/wget -O stken.quotas  "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"':
     print cmd
     os.system(cmd)
 
@@ -168,13 +168,13 @@ for g in group_fd.keys():
     else:
         print 'What group is this',g
         (wv,bv,su) = ('?','?','?')
-    cmd = "./tapes-plot-sg.py %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su)
+    cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su)
     print cmd
     os.system(cmd)
     print
 
 
-cmd = 'rcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/burn-rate/'
+cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/burn-rate/'
 print cmd
 os.system(cmd)
 
