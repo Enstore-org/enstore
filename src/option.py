@@ -888,7 +888,11 @@ class Interface:
             print message
 
         print self.get_usage_line()
-        sys.exit(0)
+
+        if message == None:
+            sys.exit(0)  #No error message was passed in.
+        else:
+            sys.exit(1)  #An error is known, exit as such.
 
     def missing_parameter(self, param):
         sys.stderr.write("ERROR: missing parameter %s\n"%(param,))
