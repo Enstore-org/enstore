@@ -4562,12 +4562,14 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                             'status' : (e_errors.OK, None)
                             }
 
-            try:
-                #Determine the inupt filename.  If necessary, get the current
-                # filename by using the pnfs id.
-                ifilename = os.path.join(e.input[0], filename)
-                imachine, ifullname, idir, ibasename = fullpath(ifilename)
-                if ifullname != fc_reply.get('pnfs_name0', None):
+            #If the filename from the --list file and the path from the
+            # command line do not match the name in the file database,
+            # using the pnfs in the database determine the current name
+            # of the file.
+            if (fc_reply.get('pnfs_name0', None) != None) and \
+               (fullpath(os.path.join(e.input[0], filename))[1]
+                 != fc_reply.get('pnfs_name0', None)):
+                try:
                     #If we fall into here, then there is not a file with
                     # the original name.  It may not exists, in which case
                     # we will fall into the execpt clause.  If the file
@@ -4580,7 +4582,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                         lc = fc_reply['location_cookie']
                     except KeyError:
                         print_data_access_layer_format(
-                            ifullname, "", 0,
+                            filename, "", 0,
                             {'status':(e_errors.CONFLICT,
                                        'No location cookie found.'),
                              'volume':e.volume})
@@ -4597,7 +4599,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                         pnfsid = None
                         sys.stdout.write("Location %s is active, but the "
                                          "pnfs id is unknown.\n" % lc)
-                
+
                     #Using the original directory, try and determine
                     # the new file name.
                     orignal_directory = os.path.dirname(fc_reply['pnfs_name0'])
@@ -4605,50 +4607,62 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     # file currently has.
                     p = pnfs.Pnfs(pnfsid, orignal_directory)
                     ifullname = p.get_path() #pnfsid, orignal_directory)
-                else:
+
+                    #Determine the filesize.
+                    file_size = get_file_size(ifullname)
+                
+                except (OSError, KeyError, AttributeError):
+                    #If we get here then there was a problem determining
+                    # the name and path of the file.  Most likely, there
+                    # is an entry in pnfs but the metadata is not complete.
+
+                    #Attempt to get the location cookie.  This should NEVER
+                    # fail.
+                    try:
+                        lc = fc_reply['location_cookie']
+                    except KeyError:
+                        print_data_access_layer_format(
+                            ifullname, "", 0,
+                            {'status':(e_errors.CONFLICT,
+                                       'No location cookie found.'),
+                             'volume':e.volume})
+                        quit(1)
+
+                    ifullname = os.path.join(e.input[0], filename)
+
                     p = pnfs.Pnfs(ifullname)
 
-                #Determine the output filename.
-                if e.output[0] == "/dev/null":
-                    ofullname = e.output[0]
-                else:
-                    ofullname = os.path.join(e.output[0],
-                                             os.path.basename(ifullname))
+                    try:
+                        file_size = long(fc_reply['size'])
+                    except (KeyError, TypeError):
+                        file_size = None #Not known.
+                        
+                    sys.stdout.write("Location %s is active, but the "
+                                     "file has been deleted.\n" % lc)
+
+            #Case1:
+            #This is the case where no previous information is known
+            # about the filename of the file at the requested posistion
+            # on the tape.  Thus, just use what is in the list.
+            #Case2:
+            #The original filename and path in the database matches
+            # the filename and path that was passed to get.
+            else:
+                #Determine the inupt filename.  If necessary, get the
+                # current filename by using the pnfs id.
+                ifilename = os.path.join(e.input[0], filename)
+                imachine, ifullname, idir, ibasename = fullpath(ifilename)
+
+                p = pnfs.Pnfs(ifullname)
 
                 #Determine the filesize.
                 file_size = get_file_size(ifullname)
-                
-            except (OSError, KeyError, AttributeError):
-                #If we get here then there was a problem determining
-                # the name and path of the file.  Most likely, there
-                # is an entry in pnfs but the metadata is not complete.
 
-                #Attempt to get the location cookie.  This should NEVER
-                # fail.
-                try:
-                    lc = fc_reply['location_cookie']
-                except KeyError:
-                    print_data_access_layer_format(
-                        ifullname, "", 0,
-                        {'status':(e_errors.CONFLICT,
-                                   'No location cookie found.'),
-                         'volume':e.volume})
-                    quit(1)
-                
-                ifullname = os.path.join(e.input[0], lc)
-                
-                p = pnfs.Pnfs(ifullname)
-                
-                if e.output[0] == "/dev/null":
-                    ofullname = e.output[0]
-                else:
-                    ofullname = os.path.join(e.output[0], lc)
-                    
-                file_size = None #Not known.
-                    
-                #sys.stdout.write("Location %s is active, but the "
-                #                 "file has been deleted.\n" % lc)
-                #continue
+            #Determine the output filename.
+            if e.output[0] == "/dev/null":
+                ofullname = e.output[0]
+            else:
+                ofullname = os.path.join(e.output[0], filename)
 
             read_work = 'read_from_hsm' #'read_tape'
             
