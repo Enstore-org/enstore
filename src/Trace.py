@@ -1,95 +1,108 @@
-#  This file (Trace.py) was created by Ron Rechenmacher <ron@fnal.gov> on
-#  Mar 23, 1999. "TERMS AND CONDITIONS" governing this file are in the README
-#  or COPYING file. If you do not have such a file, one can be obtained by
-#  contacting Ron or Fermi Lab in Batavia IL, 60510, phone: 630-840-3000.
-#  $RCSfile$
-#  $Revision$
-#  $Date$
+# $Id$
 
-import sys				# setprofile
-import e_errors				# required for default logging, ???
-import os				# required for default logging, ???
-import pwd				# required for default logging, ???
-import Ptrace				# basis for this work    
-import base64                           # to send pickled dictionary as  string
-import cPickle                          # to preserve dictionaries and lists
-import cStringIO		# to make freeze happy
-import copy_reg			# to make freeze happy
-import types
-import string
+# Alternate implementation of Trace, which does not use shared memory,
+# semaphores, circular queues, or sys.setprofile.  Less powerful but more
+# foolproof.
+
+#Implements the functions:
+# trace, init, on,  mode, log, alarm,
+# set_alarm_func, set_log_func
+
+
+import sys				
+import e_errors				
+import os				
+import pwd				
+import time
+
+if __name__== '__main__':
+    print "No unit test, sorry"
+    sys.exit(-1)
+
 
 # message types.  a message type will be appended to every message so that
 # identifying which message is which will be easier.  messages logged without
 # a message type will have MSG_DEFAULT appended.
-MSG_DICT_DFLT = {}
-MSG_DICT = "MSG_DICT:"
-MSG_TYPE_DFLT = ""
 MSG_TYPE = "MSG_TYPE="
-
+MSG_DEFAULT = ""
 MSG_ENCP_XFER = "%sENCP_XFER "%(MSG_TYPE,)
 MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%(MSG_TYPE,)
 MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%(MSG_TYPE,)
 
-# define some short-cuts, for efficiency.  (I may wish to use
-# "from Ptrace import *)
-trace  = Ptrace.trace
-init   = Ptrace.init
-on     = Ptrace.on
-off    = Ptrace.off
-mode   = Ptrace.mode
+logname = ""
+alarm_func = None
+log_func = None
+
+print_levels = {}
+log_levels = {}
+alarm_levels = {}
+
+def do_print(level):
+    print_levels[level]=1
+
+def dont_print(level):
+    if print_levels.has_key(level):
+        del print_levels[level]
+
+def do_log(level):
+    log_levels[level]=1
+
+def dont_log(level):
+    if level<5:
+        raise "Not allowed"
+    if log_levels.has_key(level):
+        del log_levels[level]
+
+def do_alarm(level):
+    log_levels[level]=1
+    
+def dont_alarm(level):
+    if level==0:
+        raise "Not allowed"
+    if alarm_levels.has_key(level):
+        del alarm_levels[level]
 
 
+def init(name):
+    global logname
+    logname=name
 
-# USER FUNCTIONS
-def log( severity, msg, msg_dict = MSG_DICT_DFLT, msg_type = MSG_TYPE_DFLT ):
-    # check to see if there is a valid dictionary. if there is,
-    # base64(cpickle) it and attach to end of message.
-    if len(msg_dict) > 0:
-        tmp_dict = base64.encodestring(cPickle.dumps(msg_dict))
-        tmp_dict = string.split(tmp_dict, "\n")
-        tmp_dict = string.joinfields(tmp_dict, "")
-        msg_dict = "%s%s" % (MSG_DICT, tmp_dict)
-    else:
-        msg_dict = ""
+def trace(severity, msg):
+    if print_levels.has_key(severity):
+        print severity, msg
+        sys.stdout.flush()
+    if log_levels.has_key(severity):
+        log(severity, msg, doprint=0)
+    if alarm_levels.has_key(severity):
+        alarm(severity, msg)
 
-    # see if user entered his own 'msg_type' message. if he did,
-    # attach to end of message.
-    if len(msg_type) > 0:
-        msg_type = "%s%s" % (MSG_TYPE, msg_type)
-
-    msg = "%s %s %s" % (msg, msg_dict, msg_type)
-    trace( severity, msg)
-    return None
-
+def log( severity, msg, msg_type=MSG_DEFAULT, doprint=1 ):
+    if  log_func:
+        log_func( time.time(), os.getpid(), logname, (severity,msg_type+msg))
+    if doprint and print_levels.has_key(severity):
+        print msg
+        sys.stdout.flush()
+        
 def alarm( severity, root_error, rest={} ):
-    # make sure it is a valid severity
-    if type(severity) == types.StringType:
-	skeys = e_errors.sevdict.keys()
-	for skey in skeys:
-	    if severity == e_errors.sevdict[skey]:
-		rest['severity'] = severity
-		break
-	else:
-	    rest['severity'] = e_errors.sevdict[e_errors.MISC]
-    else:
-	# severity was an int
-	rest['severity'] = e_errors.sevdict.get(severity, 
-						e_errors.sevdict[e_errors.MISC])
+    rest['severity'] = severity
     rest['root_error'] = root_error
-    trace( e_errors.ALARM, "%s"%(rest,), rest )
-    return None
+    log(severity, root_error)
+    if alarm_func:
+        alarm_func(
+            time.time, os.getpid(), logname, ("root_error:%s"%(rest['root_error'],), rest ))
+    if print_levels.has_key(severity):
+        print root_error
+        sys.stdout.flush()
 
 def set_alarm_func( func ):
-    Ptrace.func1_set( func )
-    return None
-def set_log_func( func ):
-    Ptrace.func2_set( func )
-    return None
+    global alarm_func
+    alarm_func=func
 
-##############################################################################
-##############################################################################
+def set_log_func( func ):
+    global log_func
+    log_func = func
+
 # defaults (templates) -- called from trace
-#
 
 def default_alarm_func( time, pid, name, args ):
     lvl = args[0]
@@ -98,11 +111,13 @@ def default_alarm_func( time, pid, name, args ):
     return None
 set_alarm_func( default_alarm_func )
 
+
 pid = os.getpid()
 try:
     usr = pwd.getpwuid(os.getuid())[0]
 except:
     usr = "unknown"
+
 def default_log_func( time, pid, name, args ):
     severity = args[0]
     msg = args[1]
@@ -112,6 +127,4 @@ def default_log_func( time, pid, name, args ):
 
 set_log_func( default_log_func )
 
-
-# let user turn this on manully...sys.setprofile(Ptrace.profile)
 
