@@ -708,8 +708,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         #Strip off whitespace from each line.
         xinfo = map(string.strip, xinfo[:11])
-        #Make sure there are 10 elements.  Early versions only contain 9.
-        # This prevents problems.
+        #Make sure there are 11 elements.  Early versions only contain 9.
+        # Some contain 10.  This prevents problems.
         xinfo = xinfo + ([UNKNOWN] * (11 - len(xinfo)))
 
         #If the class member value was used, store the values seperatly.
