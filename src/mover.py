@@ -22,8 +22,8 @@ import fcntl, FCNTL
 
 import setpath
 import generic_server
-#import event_relay_client
-#import monitored_server
+import event_relay_client
+import monitored_server
 import enstore_constants
 import interface
 import dispatching_worker
@@ -47,20 +47,20 @@ import Trace
 Mover:
 
   Any single mount or dismount failure ==> state=BROKEN, vol=NOACCESS
-	(At some point, we'll want single failures to be 2-3 failures)
+        (At some point, we'll want single failures to be 2-3 failures)
 
   Any single eject failure ==> state=BROKEN, vol=NOACCESS, no dismount
-				  attempt, tape stays in drive.
+                                  attempt, tape stays in drive.
 
   Two consecutive transfer failures ==> state=BROKEN
-	Exclude obvious failures like encp_gone.
+        Exclude obvious failures like encp_gone.
 
   Any 3 transfer failures within an hour ==> state=BROKEN
 
 
   By BROKEN, I mean the normal ERROR state plus:
-	a. Alarm is raised.
-	b. Nanny doesn't fix it.   (enstore sched --down xxx   stops nanny)
+        a. Alarm is raised.
+        b. Nanny doesn't fix it.   (enstore sched --down xxx   stops nanny)
         c. It's sticky across mover process restarts.
         d. Admin has to investigate and take drive out of BROKEN state.
 
@@ -378,7 +378,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.__dict__[attr] = val
 
     def return_state(self):
-	return state_name(self.state)
+        return state_name(self.state)
 
     def lock_state(self):
         self._state_lock.acquire()
@@ -442,11 +442,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.init(logname)
         Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
-	# how often to send an alive heartbeat to the event relay
-	##self.alive_interval = monitored_server.get_alive_interval(self.csc,
-##								  name,
-##								  self.config)
-
+        #how often to send an alive heartbeat to the event relay
+        self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
         self.address = (self.config['hostip'], self.config['port'])
 
         self.do_eject = 1
@@ -598,8 +595,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.add_interval_func(self.update, self.update_interval) #this sets the period for messages to LM.
         self.set_error_handler(self.handle_mover_error)
-	# start our heartbeat to the event relay process
-	##self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
+        start our heartbeat to the event relay process
+        self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
         ##end of __init__
 
     def nowork(self, ticket):
