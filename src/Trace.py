@@ -23,6 +23,10 @@ MSG_DICT = "MSG_DICT:"
 MSG_TYPE_DFLT = ""
 MSG_TYPE = "MSG_TYPE="
 
+MSG_ENCP_XFER = "%sENCP_XFER "%MSG_TYPE
+MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%MSG_TYPE
+MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%MSG_TYPE
+
 # define some short-cuts, for efficiency.  (I may wish to use
 # "from Ptrace import *)
 trace  = Ptrace.trace
