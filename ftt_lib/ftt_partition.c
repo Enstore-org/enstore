@@ -126,7 +126,7 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 	** pipe, saving the original stdin in "save"...
         */
         pipe(pd);
-	fflush(stdin);	/* make pipe stdin */
+        fseek(stdin,0L,SEEK_CUR);
         save = dup(0);
 	close(0);
 	dup2(pd[0],0);
@@ -144,6 +144,7 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 	case 0:  /* child */
 		/*
 		** since stdin is already redirected, we need do nothing...
+                ** ... except flush it...
                 */
 		if (ftt_debug) {
 		    execlp("ftt_suid", "ftt_suid", "-x",  "-u", d->basename, 0);
