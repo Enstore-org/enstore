@@ -116,9 +116,19 @@ class MonitorServerClient(generic_client.GenericClient):
             sock_write_list = []
     
         while bytes_transfered < bytes_to_transfer:
-            r,w,ex = select.select(sock_read_list, sock_write_list,
-                                   [data_sock], self.timeout)
+            #Determine how much time is needed to pass before timming out.
+            # This amount to time spent inside select should be the value
+            # of self.timeout.  However, it has been observed that a
+            # sleep/select call specifed to wait 1 sec actually on average
+            # waits 0.9997 seconds (On Linux and SUN, IRIX waits the full
+            # second).  This way we can wait the entire time without the
+            # possiblity of loosing connections.  The .000001 is one micro-
+            # second, the smallest resolution the API specifies.
+            wait_time = self.timeout - (time.time() - t1) + .000001
             
+            r,w,ex = select.select(sock_read_list, sock_write_list,
+                                   [data_sock], wait_time)
+
             if w or r or ex:
                 #if necessary make the send string the correct (smaller) size.
                 bytes_left = bytes_to_transfer - bytes_transfered
@@ -158,11 +168,7 @@ class MonitorServerClient(generic_client.GenericClient):
 
             #If there hasn't been any traffic in the last timeout number of
             # seconds, then timeout the connection.
-            #Note: The "timeout - 1" is used because it has been observered
-            # that the select when told to block for example 10 seconds,
-            # actually blocks for 9.9973 seconds.  When comaring the two, 10
-            # is always greater so the timeout would not actually be caught.
-            elif time.time() - t1 > self.timeout - 1:
+            elif time.time() - t1 > self.timeout:
                 data_sock.close()
                 raise SERVER_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
 
