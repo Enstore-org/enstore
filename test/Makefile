@@ -63,4 +63,4 @@ clean:
 	rm -f *.jou
 	rm -f *.fake
 	rm -f files.in
-	rm -f longtest_pid
+	rm -f longtest_pids

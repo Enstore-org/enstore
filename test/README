@@ -7,7 +7,7 @@ To run the tests:
 
         setup -r <CHECKED_OUT_ENSTORE_DIR> enstore
 
-        cd $ENSTORE_DIR/test>
+        cd $ENSTORE_DIR/test
 
 Starting from scratch:
 

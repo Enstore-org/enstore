@@ -8,7 +8,7 @@ config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
 
 # ok, this is terrible - but let's start always start up in the test area so files are created there
 place=`pwd`
-cd $ENSTORE_DIR/test
+cd $ENSTORE_DIR/etc
 
 # the configuration server needs to be the 1st thing started
 python $ENSTORE_DIR/src/configuration_server.py --config_host=$config_host --config_port=$config_port --config_file=$config_file &
