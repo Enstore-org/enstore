@@ -120,13 +120,15 @@ class EnFile:
     def cleanup(self, keep, pts_dir):
         if not keep:
             # delete the data file
-            os.remove(self.file_name)
+	    if os.path.exists(self.file_name):
+		os.remove(self.file_name)
         else:
             if pts_dir:
                 # move these files somewhere, do a copy and remove in case we
                 # are moving across disks
-                os.system("cp %s %s"%(self.file_name, pts_dir))
-                os.remove(self.file_name)
+		if os.path.exists(self.file_name):
+		    os.system("cp %s %s"%(self.file_name, pts_dir))
+		    os.remove(self.file_name)
 
 class EnStatusFile(EnFile):
 
@@ -475,7 +477,7 @@ class EnPatrolFile(EnFile):
     def remove(self):
         try:
             if self.real_file_name and os.path.exists(self.real_file_name):
-                os.remove(self.real_file_name)
+		os.remove(self.real_file_name)
         except IOError:
             # file does not exist
             pass
