@@ -3393,8 +3393,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         vi = self.vol_info
         Trace.trace(12, "override_ro_mount %s"%(self.override_ro_mount,))
         if self.override_ro_mount:
-            vi['system_inhibit'][1] == 'none'
-            vi['user_inhibit'][1] == 'none'
+            vi['system_inhibit'][1] = 'none'
+            vi['user_inhibit'][1] = 'none'
         mcc_reply = self.mcc.loadvol(vi, self.name, self.mc_device)
         self.timer('mount_time')
         status = mcc_reply.get('status')
