@@ -34,6 +34,7 @@ DARKBLUE = "#000066"
 LIGHTBLUE = "#0000FF"
 TIMED_OUT_COLOR = "#FF9966"
 SERVER_ERROR_COLOR = "#FFFF00"
+FILE_ERROR_COLOR = "#FF0000"
 NOT_MONITORING_COLOR = "#B9B9B9"
 INFOTXT = "files"
 
@@ -1748,6 +1749,12 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	self.append(en_table)
 	# now make the table with the file information
 	en_table = HTMLgen.TableLite()
+	en_table.append(empty_row(2))
+	if num_successes > 0:
+	    tr = HTMLgen.TR(empty_data())
+	    tr.append(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold("Files Transferred"),
+					      size="+2")))
+	    en_table.append(tr)
 	for i in range(num_successes):
 	    si = "%s"%(i+1,)
 	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(si), 
@@ -1761,14 +1768,21 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 
 	# now make the table with the error information
 	en_table = HTMLgen.TableLite()
+	if num_errors > 0:
+	    tr = HTMLgen.TR(empty_data())
+	    tr.append(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold("ERRORS"),
+					      size="+2", color=FILE_ERROR_COLOR)))
+	    en_table.append(tr)
 	for i in range(num_errors):
 	    si = "%s"%(i+1,)
 	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(si), 
-						    size="+2")))
-	    tr.append(HTMLgen.TD(HTMLgen.Name(si, errors[i])))
+						    size="+2",
+						    color=FILE_ERROR_COLOR)))
+	    tr.append(HTMLgen.TD(HTMLgen.Name(si, HTMLgen.Font(errors[i],
+							color=FILE_ERROR_COLOR))))
 	    en_table.append(tr)
 	    en_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR(), colspan=2)))
-	self.trailer(en_table)
+	self.trailer(en_table, 2)
 	self.append(en_table)
 
 class EnConfigurationPage(EnBaseHtmlDoc):
