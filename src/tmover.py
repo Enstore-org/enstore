@@ -294,7 +294,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.config['do_eject'][0] in ('n','N'):
                 self.do_eject = 0
 
-        self.default_dismount_delay = self.config.get('dismount_delay', 30)
+        self.default_dismount_delay = self.config.get('dismount_delay', 60)
         if self.default_dismount_delay < 0:
             self.default_dismount_delay = 31536000 #1 year
 
@@ -391,6 +391,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if buf[:4]=='VOL1':
                     volname=buf[4:]
                     self.current_volume = volname
+                    self.state = HAVE_BOUND
                     if verbose: print "have vol %s at startup" % (self.current_volume,)
             except (e_errors.READ_ERROR, ftt.FTTError), detail:
                 if verbose:
@@ -1026,7 +1027,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def dismount_volume(self):
         self.dismount_time = None
-        self.tape_driver.eject()
+        if self.do_eject:
+            self.tape_driver.eject()
         self.state = DISMOUNT_WAIT
         vol_info = self.vol_info.copy()
         vcc = self.vcc
