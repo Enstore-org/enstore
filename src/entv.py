@@ -2,6 +2,8 @@
 
 # $Id$
 
+#4-30-2002: For reasons unknown to me the order of the imports matters a lot.
+# If the wrong order is done, then the dashed lines are not drawn.
 import os
 import sys
 import socket
@@ -23,6 +25,7 @@ import rexec
 import signal
 import errno
 import Tkinter
+import Trace
 
 _rexec = rexec.RExec()
 def eval(stuff):
@@ -155,8 +158,12 @@ def get_mover_list():
     lm_dict = csc.get_library_managers({})
     for lm in lm_dict.keys():
         mover_list = csc.get_movers(lm_dict[lm]['name'])
-        for mover in mover_list:
-            movers = movers + [mover['mover']]
+        try:
+            for mover in mover_list:
+                movers = movers + [mover['mover']]
+        except:
+            exc, msg, tb = sys.exc_info()
+            print "here:", str(exc), str(msg), mover_list
     movers.sort()
 
     return movers
@@ -201,7 +208,6 @@ def request_mover_status(display):
     movers = get_mover_list()
 
     for mover in movers:
-
         mov = mover_client.MoverClient(csc, mover)
         status = mov.status(rcv_timeout=5, tries=1)
         commands = handle_status(mover[:-6], status)
@@ -275,7 +281,7 @@ def handle_messages(display):
             if msg.args[0] == errno.EINTR:
                 erc.unsubscribe()
                 erc.sock.close()
-                print "Exiting early"
+                sys.stderr.write("Exiting early.\n")
                 return
 
         #If nothing received for 60 seconds, resubscribe.
@@ -292,13 +298,13 @@ def handle_messages(display):
                 # move along, no more to see here
                 erc.unsubscribe()
                 erc.sock.close()
-                print "Exiting early"
+                sys.stderr.write("Exiting early.\n")
                 return
             else:
                 msg = enstore_functions.read_erc(erc)
                 if msg:
-                    print time.ctime(now), msg.type, msg.extra_info
                     command="%s %s" % (msg.type, msg.extra_info)
+                    Trace.trace(1, command)
                     display_lock.acquire()
                     if display.stopped or stop_now:
                         display_lock.release()
@@ -374,14 +380,18 @@ def main():
         #Loop until user says don't.
         display.mainloop()
 
-        if debug: print "waiting for threads to stop"
+        Trace.trace(1, "waiting for threads to stop")
         status_thread.join()
-        if debug: print "status thread finished"
+        Trace.trace(1, "status thread finished")
         periodic_thread.join()
-        if debug: print "periodic thread finished"
+        Trace.trace(1, "periodic thread finished")
         messages_thread.join()
-        if debug: print "message thread finished"
-
+        Trace.trace(1, "message thread finished")
 
 if __name__ == "__main__":
+    if "--debug" in sys.argv or "-d" in sys.argv:
+        Trace.init("ENTV")
+        for x in xrange(0, 10):
+            Trace.do_print(x)
+    
     main()

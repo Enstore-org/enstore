@@ -13,6 +13,7 @@ import stat
 import event_relay_client
 import event_relay_messages
 import enstore_functions
+import Trace
 # from Tkinter import *
 # import tkFont
 
@@ -39,7 +40,6 @@ if IMAGE_DIR is None or not os.path.exists(IMAGE_DIR):
 import Tkinter
 import tkFont
 
-debug = 1 
 
 CIRCULAR, LINEAR = range(2)
 layout = LINEAR
@@ -153,7 +153,7 @@ def normalize_name(hostname):
         try:
             hostname = socket.gethostbyaddr(hostname)[0]
         except:
-            print "Can't resolve address", hostname
+            Trace.trace(1, "Can't resolve address %s." % (hostname,))
 
     ## If it ends with .fnal.gov, cut that part out
     if endswith(hostname, '.fnal.gov'):
@@ -217,15 +217,16 @@ class XY:
 #########################################################################
 class Mover:
     def __init__(self, name, display, index=0,N=0):
-        self.color         = None
-        self.connection    = None         
+        #self.color         = None
         self.display       = display
         self.index         = index
         self.name          = name
-        self.timer_display = None
         self.N             = N
         self.column        = 0 #Movers may be laid out in multiple columns
         self.state         = None
+
+        #Classes that are used.
+        self.connection    = None         
         self.volume        = None
 
         #Set geometry of mover.
@@ -238,6 +239,14 @@ class Mover:
         self.progress_percent_display = None
         # This is the numeric value.  "None" means don't show the progress bar.
         self.percent_done = None
+
+        #These are other display items.
+        self.outline            = None
+        self.label              = None
+        self.timer_display      = None
+        self.state_display      = None
+        self.volume_display     = None
+        self.volume_bg_display  = None
         
         # Anything that deals with time
         self.b0                 = 0
@@ -249,164 +258,126 @@ class Mover:
         self.timer_started      = now
         self.timer_string       = '00:00:00'
 
-        #Attributes of draw()
-        self.bar_width               = 10
-        self.img_offset              = XY(90, 2)
-        self.label_offset            = XY(200, 18)
-        self.percent_disp_offset     = XY(85, 22)
-        self.progress_bar_offset1    = XY(5, 22)#yellow
-        self.progress_bar_offset2    = XY(6, 30)#yellow
-        self.progress_bar_bg_offset1 = XY(5, 22) #pink
-        self.progress_bar_bg_offset2 = XY(6, 30) #pink
-        self.state_offset            = XY(124, 6)
-        self.timer_offset            = XY(124, 18)
-        self.tape_offset = (5, 2)
-
         self.update_state("Unknown")
         
         self.draw()
-    
+
+    def __del__(self):
+        if self.connection:
+            self.connection = None
+        try:
+            self.undraw()
+        except Tkinter.TclError:
+            pass #internal Tcl problems.
+
+#########################################################################
+
     def draw(self):
         x, y                    = self.x, self.y
 
         #Display the mover rectangle.
-        self.outline = self.display.create_rectangle(x, y, x+self.width,
-                                                     y+self.height,
-                                                     fill = self.mover_color)
-
+        if self.outline:
+            self.display.coords(self.outline, x, y,
+                                x+self.width, y+self.height)
+            self.display.itemconfigure(self.outline, fill=self.mover_color)
+        else:
+            self.outline = self.display.create_rectangle(x, y, x+self.width,
+                                                         y+self.height,
+                                                         fill=self.mover_color)
         #Display the mover name label.
-        self.label   = self.display.create_text(x+self.label_offset.x,
-                                                y+self.label_offset.y,
-                                                text=self.name,
-                                                anchor=Tkinter.SW,
-                                                font = self.label_font)
+        if self.label:
+            self.display.coords(self.label, x+self.label_offset.x,
+                                y+self.label_offset.y)
+        else:
+            self.label   = self.display.create_text(x+self.label_offset.x,
+                                                    y+self.label_offset.y,
+                                                    text=self.name,
+                                                    anchor=Tkinter.SW,
+                                                    font = self.label_font)
 
         #Display the current state.
         img          = find_image(self.state + '.gif')
-        if img:
-            self.state_display = self.display.create_image(
-                x+self.img_offset.x, y+self.img_offset.y,
-                anchor=Tkinter.NW, image=img)
+        if self.state_display:
+            #If current state is an image and the new state is an image.
+            if img and self.display.type(self.state_display) == "image":
+                self.display.coords(self.state_display,
+                                    x+self.img_offset.x, y+self.img_offset.y)
+                self.display.itemconfigure(self.state_display, image=img)
+            #If currect state is in text and new state is an image.
+            elif img and self.display.type(self.state_display) == "text":
+                self.display.delete(self.state_display)
+                self.state_display = self.display.create_image(
+                    x+self.img_offset.x, y+self.img_offset.y,
+                    anchor=Tkinter.NW, image=img)
+            #If current state is an image and new state is in text.
+            elif self.display.type(self.state_display) == "image":
+                self.display.delete(self.state_display)
+                self.state_display = self.display.create_text(
+                x+self.state_offset.x, y+self.state_offset.y, font = self.font,
+                text=self.state, fill=self.state_color)
+            #if current state is in text and the new state is in text.
+            else:
+                self.display.coords(self.state_display,
+                                 x+self.state_offset.x, y+self.state_offset.y)
+                self.display.itemconfigure(self.state_display,
+                                        text=self.state, fill=self.state_color)
+        #No currect state display.
         else:
-            self.state_display = self.display.create_text(
-                x+self.state_offset.x, y+self.state_offset.y, text=self.state,
-                fill = self.state_color, font = self.font)
+            if img:
+                self.state_display = self.display.create_image(
+                    x+self.img_offset.x, y+self.img_offset.y,
+                    anchor=Tkinter.NW, image=img)
+            else:
+                self.state_display = self.display.create_text(
+                    x+self.state_offset.x, y+self.state_offset.y,
+                    font = self.font, text=self.state, fill=self.state_color)
 
         #Display the timer.
-        self.timer_display = self.display.create_text(
-            x+self.timer_offset.x, y+self.timer_offset.y, text='00:00:00',
-            fill = self.timer_color, font = self.font)
+        if self.timer_display:
+            self.display.coords(self.timer_display,
+                                x+self.timer_offset.x, y+self.timer_offset.y)
+        else:
+            self.timer_display = self.display.create_text(
+                x+self.timer_offset.x, y+self.timer_offset.y, text='00:00:00',
+                fill = self.timer_color, font = self.font)
 
         #Display the progress bar and percent done.
         self.show_progress(self.percent_done)
 
+        #Draw the volume background.
+        if self.volume_bg_display:
+            self.display.coords(
+                self.volume_bg_display, self.x + self.volume_offset.x,
+                self.y + self.volume_offset.y,
+                self.x + self.volume_offset.x + self.vol_width,
+                self.y + self.volume_offset.y + self.vol_height)
+        else:
+            self.volume_bg_display = self.display.create_rectangle(
+                self.x + self.volume_offset.x, self.y + self.volume_offset.y,
+                self.x + self.volume_offset.x + self.vol_width,
+                self.y + self.volume_offset.y + self.vol_height,
+                fill = self.volume_bg_color)
+            
+        
         #Diaplay the volume.
         if self.volume:
-            self.volume.resize()
-            x, y = self.volume_position()
-            self.volume.moveto(x,y)
-            self.volume.draw()
+            if self.volume_display:
+                self.display.coords(self.volume_display,
+                                x+self.volume_offset.x+(self.vol_width / 2.0),
+                                y+self.volume_offset.y+(self.vol_height / 2.0))
+            else:
+                self.volume_display = self.display.create_text(
+                    self.x + self.volume_offset.x + (self.vol_width / 2.0),
+                    self.y + self.volume_offset.y + (self.vol_height / 2.0),
+                    text = self.volume, fill = self.volume_font_color,
+                    font = self.volume_font, width = self.vol_width,)
+            
 
         #Display the connection.
         if self.connection:
             self.connection.draw()
 
         self.display.update()
-        
-    def update_state(self, state, time_in_state=0):
-        if state == self.state:
-            return
-        self.state = state
-
-        #different mover colors
-        mover_error_color   = colors('mover_error_color')
-        mover_offline_color = colors('mover_offline_color')
-        mover_stable_color  = colors('mover_stable_color')
-        state_error_color   = colors('state_error_color')
-        state_offline_color = colors('state_offline_color')
-        state_stable_color  = colors('state_stable_color')
-        state_idle_color    = colors('state_idle_color')
-
-        #These mover colors stick around.
-        self.percent_color      =  colors('percent_color')
-        self.progress_bar_color = colors('progress_bar_color')
-        self.progress_bg_color  = colors('progress_bg_color')
-        self.state_color        = colors('state_color') 
-        self.timer_color        = colors('timer_color')
-        self.mover_color = {'ERROR': mover_error_color,
-                            'OFFLINE':mover_offline_color}.get(self.state,
-                                                           mover_stable_color)
-        self.state_color = {'ERROR': state_error_color,
-                            'OFFLINE':state_offline_color,
-                            'Unknown':state_idle_color,
-                            'IDLE':state_idle_color}.get(self.state,
-                                                         state_stable_color)
-
-        #Update the time in state counter for the mover.
-        now = time.time()
-        self.timer_started = now - time_in_state
-        self.update_timer(now)
-        
-    def update_timer(self, now):
-        seconds = int(now - self.timer_started)
-        if seconds == self.timer_seconds:
-            return
-
-        self.timer_seconds = seconds
-        print "Seconds:", seconds
-        self.timer_string = HMS(seconds)
-
-        if self.timer_display:
-            self.display.itemconfigure(self.timer_display,
-                                       text=self.timer_string)
-        else:
-            #timer color
-            self.timer_color = colors('timer_color')
-            self.timer_display = self.display.create_text(
-                self.x + self.timer_offset.x, self.y + self.timer_offset.y,
-                text = self.timer_string, fill = self.timer_color,
-                font = self.font)
-
-    def load_tape(self, volume_name, load_state):
-        if self.volume:  #If this mover already has a volume.
-            self.volume.undraw()
-            x, y = self.volume_position(ejected=0)
-            self.volume.reinit(volume_name, self.display, x=x, y=y,
-                               loaded=load_state)
-            self.volume.draw()
-
-        else: #If this mover needs a volume.
-            x, y = self.volume_position(ejected=0)
-            self.volume = Volume(volume_name, self.display, x=x, y=y,
-                                 loaded=load_state)
-            self.volume.draw()
-
-    def unload_tape(self):
-        if not self.volume:
-            print "Mover ",self.name," has no volume"
-            return
-            
-        self.volume.unload()
-        self.volume.draw()
-
-    def volume_position(self, ejected=0):
-        if layout==CIRCULAR:
-            k=self.index
-            N=self.N
-            angle=math.pi/(N-1)
-            i=(0+1J)
-            coord=.75+.5*cmath.exp(i*(math.pi/2 + angle*k))
-            x, y = scale_to_display(coord.real, coord.imag,
-                                    self.display.width, self.display.height)
-        else:
-            if ejected:
-                #x, y = self.x*2.2, self.y +1
-                x, y = self.x+self.width+5, self.y
-            else:
-                x, y = self.x + 2, self.y +1
-                
-        return x, y
-
 
     def show_progress(self, percent_done):
 
@@ -453,6 +424,152 @@ class Mover:
                 text = str(self.percent_done)+"%",
                 fill = percent_display_color, font = self.font)
 
+    def undraw(self):
+        try:        
+            self.display.delete(self.label)
+            self.label = None
+        except Tkinter.TclError:
+            pass
+
+        try:
+            self.display.delete(self.timer_display)
+            self.timer_display = None
+        except Tkinter.TclError:
+            pass
+
+        try:
+            self.display.delete(self.state_display)
+            self.state_display = None
+        except Tkinter.TclError:
+            pass
+
+        try:        
+            self.display.delete(self.progress_bar_bg)
+            self.progress_bar_bg = None
+        except Tkinter.TclError:
+            pass
+
+        try:
+            self.display.delete(self.progress_bar)
+            self.progress_bar = None
+        except Tkinter.TclError:
+            pass
+
+        try:
+            self.display.delete(self.progress_percent_display)
+            self.progress_percent_display = None
+        except Tkinter.TclError:
+            pass
+
+        try:
+            self.display.delete(self.volume_display)
+            self.volume_display = None
+        except Tkinter.TclError:
+            pass
+
+        try:
+            self.display.delete(self.volume_bg_display)
+            self.volume_bg_display = None
+        except Tkinter.TclError:
+            pass
+
+        try:
+            self.display.delete(self.outline)
+            self.outline = None
+        except Tkinter.TclError:
+            pass
+
+        #if self.volume:
+        #    self.volume.undraw()
+        #    #self.volume = None
+        #if self.connection:
+        #    self.connection.undraw()
+        #    #self.connection = None
+
+#########################################################################
+        
+    def update_state(self, state, time_in_state=0):
+        if state == self.state:
+            return
+        self.state = state
+
+        #different mover colors
+        mover_error_color   = colors('mover_error_color')
+        mover_offline_color = colors('mover_offline_color')
+        mover_stable_color  = colors('mover_stable_color')
+        state_error_color   = colors('state_error_color')
+        state_offline_color = colors('state_offline_color')
+        state_stable_color  = colors('state_stable_color')
+        state_idle_color    = colors('state_idle_color')
+        #tape_stable_color   = colors('tape_stable_color')
+        #label_stable_color  = colors('label_stable_color')
+        #tape_offline_color  = colors('tape_offline_color')
+        #label_offline_color = colors('label_offline_color')
+
+        #These mover colors stick around.
+        self.percent_color       =  colors('percent_color')
+        self.progress_bar_color  = colors('progress_bar_color')
+        self.progress_bg_color   = colors('progress_bg_color')
+        #self.state_color         = colors('state_color') 
+        self.timer_color         = colors('timer_color')
+        self.volume_font_color = colors('label_stable_color')
+        self.volume_bg_color = colors('tape_stable_color')
+        self.mover_color = {'ERROR': mover_error_color,
+                            'OFFLINE':mover_offline_color}.get(self.state,
+                                                           mover_stable_color)
+        self.state_color = {'ERROR': state_error_color,
+                            'OFFLINE':state_offline_color,
+                            'Unknown':state_idle_color,
+                            'IDLE':state_idle_color}.get(self.state,
+                                                         state_stable_color)
+        
+        #Update the time in state counter for the mover.
+        now = time.time()
+        self.timer_started = now - time_in_state
+        self.update_timer(now)
+        
+    def update_timer(self, now):
+        seconds = int(now - self.timer_started)
+        if seconds == self.timer_seconds:
+            return
+
+        self.timer_seconds = seconds
+        self.timer_string = HMS(seconds)
+
+        if self.timer_display:
+            self.display.itemconfigure(self.timer_display,
+                                       text=self.timer_string)
+        else:
+            #timer color
+            #self.timer_color = colors('timer_color')
+            self.timer_display = self.display.create_text(
+                self.x + self.timer_offset.x, self.y + self.timer_offset.y,
+                text = self.timer_string, fill = self.timer_color,
+                font = self.font)
+
+    def load_tape(self, volume_name, load_state):
+        self.volume = volume_name
+        if self.volume_display:
+            self.display.itemconfig(self.volume_display, text = self.volume)
+        else:
+            self.volume_display = self.display.create_text(
+                self.x + self.volume_offset.x + (self.vol_width / 2.0),
+                self.y + self.volume_offset.y + (self.vol_height / 2.0),
+                text = self.volume, fill = self.volume_font_color,
+                font = self.volume_font, width = self.vol_width,)
+            
+    def unload_tape(self):
+        if not self.volume:
+            Trace.trace(1, "Mover %s has no volume." % (self.name,))
+            return
+
+        try:
+            self.display.delete(self.volume_display)
+            self.volume_display = None
+            self.volume = None
+        except Tkinter.TclError:
+            pass
+
     def transfer_rate(self, num_bytes, total_bytes):
         #keeps track of last number of bytes and time; calculates rate
         # in bytes/second
@@ -463,19 +580,8 @@ class Mover:
         self.t0 = self.t1
         return rate
 
-    def undraw(self):
-        self.display.delete(self.timer_display)
-        self.display.delete(self.outline)
-        self.display.delete(self.label)
-        self.display.delete(self.state_display)
-        self.display.delete(self.progress_bar_bg)
-        self.display.delete(self.progress_bar)
-        self.display.delete(self.progress_percent_display)
-        if self.volume:
-            self.volume.undraw()
-        if self.connection:
-            self.connection.undraw()
-    
+#########################################################################
+
     def position_circular(self, N):
         k = self.index
         if N == 1: ## special positioning for a single mover.
@@ -541,15 +647,16 @@ class Mover:
         elif layout==LINEAR:
             return self.position_linear(N)
         else:
-            print "Unknown layout", layout
+            Trace.trace(1, "Unknown layout %s." % (layout,))
             sys.exit(-1)
 
     def resize(self, N):
         self.height = ((self.display.height - 40) / 20)
-        #This line assumes that their will not be 30 or more movers.
+        #This line assumes that their will not be 40 or more movers.
         self.width = (self.display.width/4.0)
 
         #These are the new offsets
+        self.volume_offset         = XY(2, 2)
         self.label_offset          = XY(self.width+5, self.height)
         self.img_offset            = XY(self.width/2.3, self.height/8.)
         self.state_offset          = XY(self.width/1.4, self.height/3.)
@@ -562,6 +669,8 @@ class Mover:
         self.progress_bar_bg_offset2 = \
                                  XY(self.width/25., self.height/1.2)#magenta
         self.bar_width             = self.width/2.5 #(how long bar should be)
+        self.vol_width = (self.width)/2.5
+        self.vol_height = (self.height)/2.5
 
         #Font geometry.
         self.font = get_font(self.height/2.5, 'arial',
@@ -570,6 +679,12 @@ class Mover:
         self.label_font = get_font(self.height/2.5, 'arial',
                                    width_wanted=self.max_label_font_width(),
                                    fit_string=self.name)
+        if self.volume:
+            self.volume_font = get_font(self.vol_height, 'arial',
+                                        fit_string=self.volume,
+                                        width_wanted=self.vol_width)
+        else:
+            self.volume_font = None
 
     def max_font_width(self):
         return (self.width - self.width/3.0) - 10
@@ -604,102 +719,6 @@ class Mover:
         self.x, self.y = self.position(N)
 
         self.draw()
-
-    def __del__(self):
-        if self.volume:
-            self.volume.undraw()
-            self.volume = None
-        try:
-            self.undraw()
-        except Tkinter.TclError:
-            pass #internal Tcl problems.
-
-class Volume:
-    def __init__(self, name, display, x=None, y=None, loaded=0, ejected=0):
-        self.reinit(name, display, x, y, loaded, ejected)
-
-    def reinit(self, name, display, x=None, y=None, loaded=0, ejected=0):
-        self.name      = name
-        self.display   = display
-        self.outline   = None
-        self.label     = None
-        self.font      = None
-        self.loaded    = loaded
-        self.ejected   = ejected
-        self.moveto(x, y)
-        self.resize()
-
-        self.draw()
-
-
-
-    def __setattr__(self, attr, value):
-
-        ### color
-        tape_stable_color   = colors('tape_stable_color')
-        label_stable_color  = colors('label_stable_color')
-        tape_offline_color  = colors('tape_offline_color')
-        label_offline_color = colors('label_offline_color')
-        
-        if attr == 'loaded':
-            if self.outline:
-                if value:
-                    tape_color, label_color = tape_stable_color, label_stable_color
-                else:
-                    tape_color, label_color = tape_offline_color, label_offline_color
-                self.display.itemconfigure(self.outline, fill=tape_color)
-                self.display.itemconfigure(self.label, fill=label_color)
-        self.__dict__[attr] = value
-        
-    def draw(self):
-
-        ### color
-        tape_stable_color   = colors('tape_stable_color')
-        label_stable_color  = colors('label_stable_color')
-        tape_offline_color  = colors('tape_offline_color')
-        label_offline_color = colors('label_offline_color')
-        x, y = self.x, self.y
-        #self.font  = get_font(self.vol_height/1.5, 'arial')
-        if x is None or y is None:
-            return
-        if self.loaded:
-            tape_color, label_color =  tape_stable_color, label_stable_color
-        else:
-            tape_color, label_color =  tape_offline_color, label_offline_color
-        if self.outline or self.label:
-            self.undraw()
-        self.outline = self.display.create_rectangle(
-            x, y, x+self.vol_width, y+self.vol_height, fill=tape_color)
-        self.label = self.display.create_text(
-            x+self.vol_width/2, 1+y+self.vol_height/2, text=self.name,
-            fill=label_color, font = self.font)
-
-    def resize(self):
-        #self.undraw()
-        self.vol_width = (self.display.movers.values()[0].width)/2.5
-        self.vol_height = (self.display.movers.values()[0].height)/2.5
-        #self.draw()
-        self.font = get_font(self.vol_height, 'arial', fit_string=self.name,
-                              width_wanted=self.vol_width)
-        
-    def moveto(self, x, y):
-        #self.undraw()
-        self.x, self.y = x, y
-        #self.draw()
-
-    def unload(self):
-        self.loaded = 0
-        self.ejected = 1
-
-    def undraw(self):
-        self.display.delete(self.outline)
-        self.display.delete(self.label)
-        self.outline =  self.label = None
-        self.x = self.y = None
-        
-    def __del__(self):
-        self.undraw()
-
     
     
 class Client:
@@ -707,15 +726,14 @@ class Client:
     def __init__(self, name, display):
         self.name               = name
         self.display            = display
-        self.last_activity_time = 0.0 
+        self.last_activity_time = time.time()
         self.n_connections      = 0
         self.waiting            = 0
         i                       = 0
         self.label              = None
         self.outline            = None
-        self.font = get_font(12, 'arial')
+        #self.font = get_font(12, 'arial')
 
-        
         ## Step through possible positions in order 0, 1, -1, 2, -2, 3, -3, ...
         while display.client_positions.has_key(i):
             if i == 0:
@@ -726,32 +744,42 @@ class Client:
                 i = 1 - i
         self.index = i
         display.client_positions[i] = name
-        self.x, self.y = scale_to_display(-0.9, i/10.,
-                                          display.width, display.height)
+
+        self.resize()
+        self.position()
+        self.update_state()
+        self.draw()
 
     def draw(self):
-        ###color
-        client_wait_color   = colors('client_wait_color')
-        client_active_color = colors('client_active_color')
-        
         x, y = self.x, self.y
-        self.width = self.display.width/12
-        self.height =  self.display.height/28
-        self.font = get_font(self.height/2.5, 'arial')
-        if self.waiting:
-            color = client_wait_color
-        else:
-            color    = client_active_color
-        self.outline = self.display.create_oval(x, y, x+self.width,
-                                                y+self.height, fill=color)
-        self.label = self.display.create_text(x+self.width/2, y+self.height/2,
-                                              text=self.name, font=self.font)
         
-    def undraw(self):
         if self.outline:
-            self.display.delete(self.outline)
+            self.display.coords(self.outline, x,y, x+self.width,y+self.height)
+            #self.display.itenconfigure(self.outline, fill=self.color)
+        else:
+            self.outline = self.display.create_oval(x, y, x+self.width,
+                                               y+self.height, fill=self.color)
         if self.label:
+            self.display.coords(self.outline, x+self.width/2, y+self.height/2)
+            self.display.itemconfigure(self.outline, font = self.font)
+        else:
+            self.label = self.display.create_text(x+self.width/2,
+                                                  y+self.height/2,
+                                                  text=self.name,
+                                                  font=self.font)
+            
+    def undraw(self):
+        try:
+            self.display.delete(self.outline)
+            self.outline = None
+        except Tkinter.TclError:
+            pass
+
+        try:
             self.display.delete(self.label)
+            self.label = None
+        except Tkinter.TclError:
+            pass
 
     def update_state(self):
 
@@ -760,23 +788,36 @@ class Client:
         client_active_color = colors('client_active_color')
         
         if self.waiting:
-            color = client_wait_color 
+            self.color = client_wait_color 
         else:
-            color =  client_active_color
+            self.color =  client_active_color
+
         if self.outline:
-            self.display.itemconfigure(self.outline, fill = color) 
+            self.display.itemconfigure(self.outline, fill = self.color) 
+
+    def resize(self):
+        self.width = self.display.width/12
+        self.height =  self.display.height/28
+        self.font = get_font(self.height/2.5, 'arial')
+
+    def position(self):
+        self.x, self.y = scale_to_display(-0.9, self.index/10.,
+                                          self.display.width,
+                                          self.display.height)        
         
     def reposition(self):
         self.undraw()
-        self.font = get_font(self.height/2.5, 'arial')
-        self.x, self.y = scale_to_display(-0.9, self.index/10.,
-                                          self.display.width,
-                                          self.display.height)
+        self.resize()
+        self.position()
         self.draw()
 
     def __del__(self):
-         ##Mark this spot as unoccupied
-        del self.display.client_positions[self.index]
+        ##Mark this spot as unoccupied
+        try:
+            del self.display.client_positions[self.index]
+        except KeyError:
+            pass
+
         self.undraw()
         
 class Connection:
@@ -794,13 +835,12 @@ class Connection:
         self.line               = None
         
     def draw(self):
-        #print self.mover.name, " connecting to ", self.client.name
-
         path = []
+
         # middle of left side of mover
         mx,my = self.mover.x, self.mover.y + self.mover.height/2.0
         path.extend([mx,my])
-                   
+        # if multiple columns are used, go in between.           
         if self.mover.column == 1:
             mx = self.display.mover_columns[0]
             path.extend([mx,my])
@@ -810,14 +850,23 @@ class Connection:
                   self.client.y + self.client.height/2.0)
         x_distance = mx - cx
         path.extend([mx-x_distance/3., my, cx+x_distance/3., cy, cx, cy])
-        self.line = self.display.create_line(path,
-                                             dash='...-',width=2,
-                                             dashoffset = self.dashoffset,
-                                             smooth=1)
-   
-    def undraw(self):
-        self.display.delete(self.line)
 
+        #Draw or update the line.
+        if self.line:
+            self.display.coords(self.line, tuple(path))
+            self.display.itemconfigure(self.line, dashoffset = self.dashoffset)
+        else:
+            self.line = self.display.create_line(path,
+                                                 dash='...-',width=2,
+                                                 dashoffset = self.dashoffset,
+                                                 smooth=1)
+
+    def undraw(self):
+        try:
+            self.display.delete(self.line)
+            self.line = None
+        except Tkinter.TclError:
+            pass
 
     def __del__(self):
         self.client.n_connections = self.client.n_connections - 1
@@ -841,7 +890,7 @@ class Connection:
     
         if new_offset != self.dashoffset:  #we need to redraw the line
             self.dashoffset = new_offset
-            self.display.itemconfigure(self.line,dashoffset=new_offset)
+            self.display.itemconfigure(self.line, dashoffset=new_offset)
 
         
 class Title:
@@ -936,8 +985,9 @@ class Display(Tkinter.Canvas):
                                    ##value is instance of class Client
         self.client_positions = {} ##key is position index (0,1,-1,2,-2) and
                                    ##value is Client
-        self.volumes          = {}
-        self.title_animation  = None
+        self.connections      = {} ##dict. of connections.
+        #self.volumes          = {}
+        #self.title_animation  = None
 
         self.bind('<Button-1>', self.action)
         self.bind('<Button-3>', self.reinititalize)
@@ -947,12 +997,20 @@ class Display(Tkinter.Canvas):
         self.update()
         self.width, self.height = self.winfo_width(), self.winfo_height()
 
-    def cleanup(self):
-        for mover in self.movers.values():
-            if mover.connection:
-                mover.connection = None
+    def __del__(self):
+        self.connections = {}        
         self.movers = {}
         self.clients = {}
+        self.client_positions = {}
+        
+    def undraw(self):
+        for connection in self.connections.values():
+            connection.undraw()
+        for mover in self.movers.values():
+            mover.undraw()
+        for client in self.clients.values():
+            client.undraw()
+
         self.update()
         
     def action(self, event):
@@ -987,8 +1045,6 @@ class Display(Tkinter.Canvas):
         for k in range(N):
             mover_name = mover_names[k]
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
-            self.movers[mover_name].reposition(N)
-            #self.reposition_movers(N)
 
     def has_canvas_changed(self):
         try:
@@ -1017,7 +1073,7 @@ class Display(Tkinter.Canvas):
         except:
             self.stopped = 1
             return
-            
+
         if size != (self.width, self.height):
             # size has changed
             self.width, self.height = size
@@ -1025,7 +1081,7 @@ class Display(Tkinter.Canvas):
                 self.reposition_clients()
             if self.movers:
                 self.reposition_movers()
-                    
+        
     def reposition_movers(self, number_of_movers=None):
         items = self.movers.items()
         if number_of_movers:
@@ -1064,8 +1120,9 @@ class Display(Tkinter.Canvas):
             if (client.n_connections > 0 or client.waiting == 1):
                 continue
             if now - client.last_activity_time > 5: # grace period
-                print "It's been longer than 5 seconds, ",
-                print client_name," client must be deleted"
+                Trace.trace(1, "It's been longer than 5 seconds, %s " \
+                            " client must be deleted" % (client_name,))
+                print "Undawing client from timeout", now, client.last_activity_time
                 client.undraw()
                 del self.clients[client_name]
 
@@ -1121,7 +1178,8 @@ class Display(Tkinter.Canvas):
             return
 
         if words[0] not in comm_dict.keys():
-            print "just passing"
+            pass
+            #print "just passing"
         else:
             if words[0]=='quit':
                 self.stopped = 1
@@ -1165,16 +1223,16 @@ class Display(Tkinter.Canvas):
             mover = self.movers.get(mover_name)
             if not mover:
                 #This is an error, a message from a mover we never heard of
-                print "Don't recognize mover, continueing ...."
+                Trace.trace(1, "Don't recognize mover, continueing ....")
                 return
-
 
             if words[0]=='disconnect':
                 #Ignore the passed-in client name, disconnect from
                 ## any currently connected client
                 if not mover.connection:
-                    print "Mover is not connected"
+                    Trace.trace(1, "Mover is not connected")
                     return
+                Trace.trace(1, "mover %s is disconnecting" % (mover_name,))
                 mover.connection = None
                 mover.t0 = time.time()
                 mover.b0 = 0
@@ -1183,7 +1241,7 @@ class Display(Tkinter.Canvas):
 
             # command requires 3 words
             if len(words) < 3:
-                print "Error, bad command", command
+                Trace.trace(1, "Bad command: %s" % (command,))
                 return
             
             if words[0]=='state':
@@ -1193,30 +1251,31 @@ class Display(Tkinter.Canvas):
                 except:
                     time_in_state = 0
                 mover.update_state(what_state, time_in_state)
-                mover.undraw()
+                #mover.undraw()
                 mover.draw()
                 if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
-                    print "Need to disconnect because mover state ",
-                    print "changed to : ", what_state
+                    msg="Need to disconnect because mover state changed to: %s"
+                    Trace.trace(1, msg % (what_state,))
                     if mover.connection: #no connection with mover object
                         mover.connection=None
                 return
         
             if words[0]== 'connect':
                 if mover.state in ['ERROR', 'IDLE', 'OFFLINE']:
-                    print "Cannot connect to mover that is ", mover.state
+                    Trace.trace(1,
+                        "Cannot connect to mover that is %s." % (mover.state,))
                     return
                 client_name = normalize_name(words[2])
-                #print "connecting with ",  client_name
                 client = self.clients.get(client_name)
                 if not client: ## New client, we must add it
                     client = Client(client_name, self)
                     self.clients[client_name] = client
+                else:
+                    client.waiting = 0
+                    client.update_state() #change fill color if needed
                     client.draw()
-                client.waiting = 0
-                client.update_state() #change fill color if needed
-                client.last_activity_time = now
                 connection = Connection(mover, client, self)
+                self.connections[mover.name] = connection
                 mover.t0 = now
                 mover.b0 = 0
                 connection.update_rate(0)
@@ -1226,7 +1285,7 @@ class Display(Tkinter.Canvas):
 
             if words[0] in ['loading', 'loaded']:
                 if mover.state in ['IDLE']:
-                    print "An idle mover cannot have tape...ignore"
+                    Trace.trace(1, "An idle mover cannot have tape...ignore")
                     return
                 load_state = words[0] #=='loaded'
                 what_volume = words[2]
@@ -1244,7 +1303,7 @@ class Display(Tkinter.Canvas):
 
             # command requires 4 words
             if len(words)<4: 
-                print "Error, bad command", command
+                Trace.trace(1, "Bad command: %s" % (command,))
                 return
         
             if words[0]=='transfer':
@@ -1267,12 +1326,12 @@ class Display(Tkinter.Canvas):
             if Tkinter.Tk.winfo_exists(self):
                 Tkinter.Tk.update(self)
         except Tkinter.TclError:
-            print "TclError...ignore"
+            Trace.trace(1, "TclError...ignore")
 
 
     def mainloop(self):
         Tkinter.Tk.mainloop(self)
-        self.cleanup()
+        self.undraw()
         self.stopped = 1
 
 
