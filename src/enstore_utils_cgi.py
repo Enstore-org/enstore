@@ -36,7 +36,7 @@ def find_gnuplot():
     return gnuplot_dir
 
 def find_enstore():
-    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;echo $SETUP_HTMLGEN;echo $SETUP_LIBTPPY; echo $PATH").readlines()
+    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;echo $PATH").readlines()
 #    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore -q efb efb;ups list -K @PROD_DIR enstore -q efb efb;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;echo $SETUP_HTMLGEN;echo $SETUP_LIBTPPY").readlines()
     enstore_dir = string.strip(enstore_info[0])
     enstore_dir = string.replace(enstore_dir, "\"", "")
@@ -44,11 +44,15 @@ def find_enstore():
     enstore_modules = "%s/modules"%(enstore_dir,)
     htmlgen_dir = "%s/HTMLgen"%(enstore_dir,)
     libtppy_dir = "%s/BerkeleyDB"%(enstore_dir,)
-    os.environ['PATH'] = string.strip(enstore_info[5])
     sys.path.append(enstore_src)
     sys.path.append(enstore_modules)
     sys.path.append(htmlgen_dir)
     sys.path.append(libtppy_dir)
+
+    # set command path
+    os.environ['PATH'] = enstore_info[3]
+    # set PYTHONPATH
+    os.environ['PYTHONPATH'] = string.join(sys.path, ':')
 
     # fix up the config host and port to give to the command
     config_host = string.strip(enstore_info[2])
