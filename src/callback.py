@@ -3,7 +3,7 @@
 #
 # system imports
 import time
-import sys
+import sys, os
 import string
 import random
 
@@ -13,6 +13,7 @@ import Trace
 import e_errors
 import checksum
 import hostaddr
+import access
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -26,7 +27,9 @@ except ImportError:
     import socket
 
 
-HUNT_PORT_LOCK = "/tmp/enstore/hunt_port_lock"
+HUNT_PORT_LOCK_DIR = "/tmp/enstore"
+HUNT_PORT_LOCK_FILE="hunt_port_lock"
+HUNT_PORT_LOCK=os.path.join(HUNT_PORT_LOCK_DIR, HUNT_PORT_LOCK_FILE)
 
 # see if we can bind to the selected tcp host/port
 def try_a_port(host, port) :
@@ -58,6 +61,8 @@ def get_callback_port(start,end,use_multiple=0):
     # Because we use file locks instead of semaphores, the system will
     # properly clean up, even on kill -9s.
     #lockf = open ("/var/lock/hsm/lockfile", "w")
+    if not access.access(HUNT_PORT_LOCK_DIR,access.W_OK):
+        os.mkdir(HUNT_PORT_LOCK_DIR)
     lockf = open (HUNT_PORT_LOCK, "w")
     Trace.trace(20,"get_callback_port - trying to get lock on node %s %s"%(host_name,ca))
     lockfile.writelock(lockf)  #holding write lock = right to hunt for a port.
