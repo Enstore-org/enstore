@@ -65,7 +65,7 @@ cvs status $config
 echo
 
 # edit the file allowing the user to make changes
-echo "DISPLAY=$DISPLAY, about to edit with command $edcmd $config"
+echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $config"
 $edcmd $config
 if [ $? -ne 0 ]; then abort "Something wrong with editting. Investigate"; fi
 echo "success"
