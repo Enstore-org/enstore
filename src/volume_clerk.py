@@ -365,6 +365,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         if recycle:
             record['external_label'] = vol
             record['remaining_bytes'] = record['capacity_bytes']
+            record['declared'] = time.time()
             record['eod_cookie'] = '0000_000000000_0000001'
             record['last_access'] = -1
             record['first_access'] = -1
