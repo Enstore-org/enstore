@@ -221,22 +221,28 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # Do the forking and call the function
     def DoWork(self, function, ticket):
         if not ticket.has_key("function"):
-	   Trace.log(e_errors.ERROR, "MISSING FUNCTION KEY")
-	   return
+	   e = 'MISSING FUNCTION KEY'
+	   Trace.log(e_errors.ERROR, "%s"%(e,))
+	   ticket['status'] = e
+	   return e
 		
         if ticket['function'] in ("mount", "dismount"):
             if not ticket.has_key("vol_ticket"):
-	       Trace.log(e_errors.ERROR, "MISSING VOL_TICKET %s"%(ticket['function'],))
-	       print "MISSING VOL_TICKET", ticket      ### XXX What is going on?
-	       return
-            if not ticket['vol_ticket'].has_key("external_label"):
-	       Trace.log(e_errors.ERROR, "MISSING EXTERNAL LABEL %s"%(ticket['function'],))
-	       print "MISSING EXTERNAL_LABEL", ticket  ### XXX What is going on?
-	       return
+	       e = 'MISSING VOL_TICKET'
+	       Trace.log(e_errors.ERROR, "%s"%(e,))
+	       ticket['status'] = e
+	       return e
 	    if not ticket.has_key("drive_id"):
-	       Trace.log(e_errors.ERROR, "MISSING DRIVE_ID %s"%(ticket['function'],))
-	       print "MISSING DRIVE_ID", ticket        ### XXX What is going on?
-	       return
+	       e = 'MISSING DRIVE_ID'
+  	       Trace.log(e_errors.ERROR, "%s"%(e,))
+	       ticket['status'] = e
+	       return e
+            if not ticket['vol_ticket'].has_key("external_label"):
+	       print "MISSING EXTERNAL_LABEL", ticket  ### XXX What is going on?
+	       e = "MISSING EXTERNAL LABEL for %s %s"%(ticket["function"],ticket["drive_id"])
+	       Trace.log(e_errors.ERROR, "%s"%(e,))
+	       ticket['status'] = e
+	       return e
             Trace.log(e_errors.INFO, 'REQUESTED %s %s %s'%
                       (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
             # if drive is doing a clean cycle, drop request
