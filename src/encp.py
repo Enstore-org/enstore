@@ -433,7 +433,10 @@ def write_to_hsm(input, output, output_file_family='',
 
 	    fsize = file_size[i]
 
-	    if not ticket['mover']['local_mover']:
+	    if ticket['mover']['local_mover']:
+		# option is not applicable -- make sure it is disabled
+		chk_crc = 0
+	    else:
 		# Call back mover on mover's port and send file on that port
 		data_path_socket = callback.mover_callback_socket(ticket)
 		in_file = open(inputlist[i], "r")
@@ -1307,7 +1310,10 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
 
 	tempname = requests[j]['outfile']+'.'+requests[j]['unique_id']
-	if not ticket['mover']['local_mover']:
+	if ticket['mover']['local_mover']:
+	    # option is not applicable -- make sure it is disabled
+	    chk_crc = 0
+	else:
 	    t2 = time.time() #----------------------------------------Lap-Start
 
 	    l = 0
