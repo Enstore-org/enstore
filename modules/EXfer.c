@@ -208,7 +208,14 @@ do_read(  int 		rd_fd
 	{   PyObject	*rr;
 	    rr = PyObject_CallFunction(  crc_obj_tp, "s#i", g_shmaddr_p+shm_off
 				       , sts, crc_i );
-	    crc_i = PyInt_AsLong( rr );
+	    if (PyLong_Check(rr))
+		crc_i = PyLong_AsLong(rr);
+	    else if (PyInt_Check(rr))
+		crc_i = PyInt_AsLong( rr );
+	    else {
+		crc_i = 0; /*XXX how to report this error? */
+		printf("Return value from CRC is neither int nor long\n"); 
+	    }
 	}
 
 	no_bytes -= sts;
@@ -302,6 +309,7 @@ EXfd_xfer(  PyObject	*self
 			   , &blk_size, &crc_obj_tp, &crc_tp, &shm_obj_tp );
     if (!sts) return (NULL);
     if      (crc_tp == Py_None)   crc_i = 0;
+    else if (PyLong_Check(crc_tp)) crc_i = PyLong_AsLong(crc_tp);
     else if (PyInt_Check(crc_tp)) crc_i = PyInt_AsLong( crc_tp );
     else return(raise_exception("fd_xfer - invalid crc param"));
 
