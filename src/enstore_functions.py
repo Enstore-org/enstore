@@ -146,8 +146,10 @@ def get_days_ago(date, days_ago):
 def ping(node):
     # ping the node to see if it is up.
     times_to_ping = 4
+    # the timeout parameter does not work on d0ensrv2.
     timeout = 5
-    cmd = "ping -c %s -w %s %s"%(times_to_ping, timeout, node)
+    #cmd = "ping -c %s -w %s %s"%(times_to_ping, timeout, node)
+    cmd = "ping -c %s %s"%(times_to_ping, timeout, node)
     p = os.popen(cmd, 'r').readlines()
     for line in p:
         if not string.find(line, "transmitted") == -1:
