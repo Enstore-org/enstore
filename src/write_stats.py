@@ -12,12 +12,14 @@ import os
 import sys
 import string
 import types
+import string
 
 #enstore imports
 import FTT
 import Trace
 import e_errors
 import interface
+import hostaddr
 
 import generic_client
 import udp_client
@@ -29,82 +31,50 @@ class WriteStats:
         self.log_name = "C_"+string.upper(string.replace(name,
                                            ".write_stats", MY_NAME))
 
-    def writem(self, device, fd, param=[]):
-        #FTT.initFTT()
+    def writem(self, device, fn, param=[]):
 	FTT.open( device, 'r' )
         ss = FTT.get_stats()  
-        print ss
+	fd = open(fn,'w')
+	fd.write("device = "+device+'\n')
+	result = hostaddr.gethostinfo()
+	fd.write("hostname = "+result[0]+'\n')
 	for skey in ss.keys():
-	    buf = repr(skey)+' '+repr(ss[skey])+'\n'
+	    buf = repr(skey)+' = '+repr(ss[skey])+'\n'
             fd.write(buf)
+	fd.close()
 	FTT.close( )
 
-    def writeAll(self, device, fd, param=[]):
-        #FTT.initFTT()
+    def writeAll(self, device, fn, param=[]):
 	FTT.open( device, 'r' )
         ss = FTT.get_statsAll()  
-        print ss
+	fd = open(fn,'w')
+	fd.write("device = "+device+'\n')
+	result = hostaddr.gethostinfo()
+	fd.write("hostname = "+result[0]+'\n')
 	for skey in ss.keys():
-	    buf = repr(skey)+' '+repr(ss[skey])+'\n'
+	    s1 = string.replace(repr(skey),"'","")
+	    s2 = string.replace(repr(ss[skey]),"'","")
+	    buf = s1+' = '+s2+'\n'
             fd.write(buf)
+	fd.close()
 	FTT.close( )
 
     def dumpem(self, device, fn, param=[]):
-        #FTT.initFTT()
 	FTT.open( device, 'r' )
-	print fn
 	fd = open(fn,'w')
         stat = FTT.dump_stats(fd)  
-        print stat
 	fd.close()
 	FTT.close( )
 
         
 ###############################################################################
 
-# shamelessly stolen from python's posixfile.py
-class DiskDriver:
-    states = ['open', 'closed']
-
-    # Internal routine
-    def __del__(self):
-        self._file_.close()
-
-    # Initialization routines
-    def open(self, name, mode='r', bufsize=-1):
-        import __builtin__
-        return self.fileopen(__builtin__.open(name, mode, bufsize))
-
-    # Initialization routines
-    def fileopen(self, file):
-        if type(file) != types.FileType:
-            raise TypeError, 'DiskDriver.fileopen() arg must be file object'
-        self._file_  = file
-        # Copy basic file methods
-        for method in file.__methods__:
-            setattr(self, method, getattr(file, method))
-        return self
-    #
-    # New methods
-    #
-
-    # this is the name of the function that the wrapper uses to read
-    def read(self,size):
-        return self._file_.read(size)
-
-    # this is the name of the function that the wrapper uses to write
-    def write(self,buffer):
-        return self._file_.write(buffer)
-
-
 if __name__ == "__main__" :
     import sys
     import getopt
-    import Devcodes
 
     Trace.init("WRITE_STATS")
     Trace.trace(6,"WriteStats called with args "+repr(sys.argv))
-
 
     options = ["fttGetStats", "fttDump", "fttGetAllStats"]
     try:
@@ -116,19 +86,12 @@ if __name__ == "__main__" :
     w_stats = WriteStats()
 	
     if opt == "--fttGetStats":
-        fout = DiskDriver()
-        fout.open(args[1],"w")
-        w_stats.writem(args[0], fout)
-        fout.close()
+        w_stats.writem(args[0], args[1])
 
     elif opt == "--fttDump":
         w_stats.dumpem(args[0], args[1])
 
     elif opt == "--fttGetAllStats":
-        fout = DiskDriver()
-        fout.open(args[1],"w")
-        w_stats.writeAll(args[0], fout)
-        fout.close()
-
+        w_stats.writeAll(args[0], args[1])
 
 
