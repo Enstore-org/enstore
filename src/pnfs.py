@@ -2516,7 +2516,7 @@ class File:
 		if not self.exists():
 			# do nothing if it doesn't exist
 			return
-		if long(self.size) > 2147483647:
+		if long(self.size) > 2147483647L:
 			size2 = 1
 		else:
 			size2 = self.size
