@@ -452,7 +452,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
                       sts[1] == 24):         # requested volume in use
                     count = count - 1
                     time.sleep(20)
-                elif (sts[1] == 9999):       # tape not in home position
+                elif (sts[1] == e_errors.MC_NOTHOME): # tape not in home position
                     count = count - 1
                     time.sleep(120)
                 else:
@@ -618,110 +618,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
             self.lastWorkTime = time.time()
 
 # STK robot loader server
-class STK_MediaLoader(MediaLoaderMethods):
-
-    def __init__(self, medch, max_work=1, csc=None):
-        import STK
-        self.STK = STK
-        ###max_work=1 # VERY BAD, BUT THIS IS ALL THAT CAN BE HANDLED CORRECTLY FOR NOW. JAB 2/16/00
-        MediaLoaderMethods.__init__(self,medch,max_work,csc)
-        self.prepare = self.unload
-        self.SEQ_LOCK_DIR = "/tmp/enstore"
-        self.SEQ_LOCK_FILE="stk_seq_lock"
-        self.SEQ_LOCK=os.path.join(self.SEQ_LOCK_DIR, self.SEQ_LOCK_FILE)
-        if not os.access(self.SEQ_LOCK_DIR,os.W_OK):
-            os.mkdir(self.SEQ_LOCK_DIR)
-        lockf = open (self.SEQ_LOCK, "w")
-        writelock(lockf)  #holding write lock = right to bump sequence
-        lockf.write("0")
-        unlock(lockf)
-        lockf.close()
-
-        print "STK MediaLoader initialized"
-
-    def next_seq(self):
-        # First acquire the seq lock.  Once we have it, we have the exclusive right
-        # to bump the sequence.  Lock will (I hope) properly serlialze the
-        # waiters so that they will be services in the order of arrival.
-        # Because we use file locks instead of semaphores, the system will
-        # properly clean up, even on kill -9s.
-        lockf = open (self.SEQ_LOCK, "r+")
-        writelock(lockf)  #holding write lock = right to bump sequence
-        sequence = lockf.readline()
-        try:
-            seq=string.atoi(sequence)
-        except:
-            exc,val,tb = Trace.handle_error()
-            seq=0
-        seq = seq + 1
-        if seq > 0xFFFE:
-            seq = 1
-        lockf.seek(0)
-        lockf.write("%5.5d\n"%(seq,))
-        unlock(lockf)
-        lockf.close()
-        return seq
-
-    # retry function call
-    def retry_function(self,function,*args):
-        count = self.getNretry()
-        sts=("",0,"")
-        retry_these = ( 54,          #IPC error
-                        68,          #IPC error (usually)
-                        99,          #STATUS_VOLUME_IN_USE
-                        91)          #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
-        while count > 0 and sts[0] != e_errors.OK:
-            try:
-                sts=apply(function,args)
-                if sts[1] != 0:
-                   if self.logdetail:
-                       Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count))
-                   if sts[1] in retry_these and function==self.STK.mount:
-                       time.sleep(60)
-                       fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
-                       Trace.log(e_errors.INFO, 'Tried %s %s  status=%s %s  Desperation STK.dismount  status %s %s'%(repr(function),args,sts[1],sts[2],fixsts[1],fixsts[2]))
-                   if sts[1] in retry_these:
-                       time.sleep(60)
-                       count = count - 1
-                else:
-                    break
-            except:
-                exc,val,tb = Trace.handle_error()
-                return str(exc),0,""
-        return sts
-
-    # load volume into the drive;
-    def load(self,
-             external_label,    # volume external label
-             drive,             # drive id
-             media_type):       # media type
-        seq=self.next_seq()
-        return self.retry_function(self.STK.mount,external_label,drive,media_type,seq)
-
-    # unload volume from the drive
-    def unload(self,
-               external_label,  # volume external label
-               drive,           # drive id
-               media_type):     # media type
-        seq=self.next_seq()
-        return self.retry_function(self.STK.dismount,external_label,drive,media_type,seq)
-
-    def getVolState(self, ticket):
-        external_label = ticket['external_label']
-        media_type = ticket['media_type']
-        seq=self.next_seq()
-        rt = self.retry_function(self.STK.query_volume,external_label,media_type,seq)
-        Trace.trace(11, "getVolState returned %s"%(rt,))
-        if rt[3] == '\000':
-            state=''
-        else :
-            state = rt[3]
-            if not state and rt[2]:  # volumes not in the robot
-                state = rt[2]
-        return (rt[0], rt[1], rt[2], state)
-
-
-# STK robot loader server
 class stk_MediaLoader(MediaLoaderMethods):
 
     def __init__(self, medch, max_work=7, csc=None):
@@ -769,7 +665,7 @@ class stk_MediaLoader(MediaLoaderMethods):
         return self.retry_function(self.dismount,external_label,drive,media_type)
 
 
-    #FIXME - what the hell is this?
+    #FIXME - what the devil is this?
     def getVolState(self, ticket):
         external_label = ticket['external_label']
         media_type = ticket['media_type']
@@ -995,12 +891,12 @@ class stk_MediaLoader(MediaLoaderMethods):
             status,stat,response,attrib,com_sent = self.query(volume, media_type)
 
             if stat!=0:
-                E=8
+                E=e_errors.MC_FAILCHKVOL
                 msg = "MOUNT %i: %s => %i,%s" % (E,command,stat,response)
                 Trace.log(e_errors.ERROR, msg)
                 return ("ERROR", E, response, '', msg)
             if attrib != "O": # look for tape in tower (occupied="O")
-                E=9
+                E=e_errors.MC_VOLNOTHOME
                 msg = "MOUNT %i: Tape is not in home position. %s => %s,%s" % (E,command,status,response)
                 Trace.log(e_errors.ERROR, msg)
                 return ("ERROR", E, response, '', msg)
@@ -1008,12 +904,12 @@ class stk_MediaLoader(MediaLoaderMethods):
         # check if any tape is mounted in this drive
             status,stat,response,volser,com_sent = self.query_drive(drive)
             if stat!=0:
-                E=10
+                E=e_errors.MC_FAILCHKDRV
                 msg = "MOUNT %i: %s => %i,%s" % (E,command,stat,response)
                 Trace.log(e_errors.ERROR, msg)
                 return ("ERROR", E, response, '', msg)
             if volser != "": # look for any tape mounted in this drive
-                E=11
+                E=e_errors.MC_DRVNOTEMPTY
                 msg = "MOUNT %i: Drive %s is not empty =>. %s => %s,%s" % (E,drive,command,status,response)
                 Trace.log(e_errors.ERROR, msg)
                 return ("ERROR", E, response, '', msg)
@@ -1048,7 +944,7 @@ class stk_MediaLoader(MediaLoaderMethods):
         if view_first:
             status,stat,response,volser,com_sent = self.query_drive(drive)
             if stat!=0:
-                E=13
+                E=e_errors.MC_FAILCHKDRV
                 msg = "DISMOUNT %i: %s => %i,%s" % (E,command,stat,response)
                 Trace.log(e_errors.ERROR, msg)
                 return ("ERROR", E, response, '', msg)

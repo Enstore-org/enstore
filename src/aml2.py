@@ -115,32 +115,32 @@ def mount(volume, drive, media_type,view_first=1):
 
     media_code = aci.__dict__.get("ACI_"+media_type)
     if media_code is None:
-        return 'BAD',9997,'Media code is None. media_type= %s'%(media_type,)
+        return 'BAD',e_errors.MC_NONE,'Media code is None. media_type= %s'%(media_type,)
     
     # check if tape is in the storage location or somewhere else
     if view_first:
         stat,volstate = view(volume,media_type)
         if stat!=0:
-            return 'BAD', stat, 'aci_view return code'
+            return 'BAD', e_errors.MC_FAILCHKVOL, 'aci_view return code=%d'%(stat,)
         if volstate == None:
-            return 'BAD', stat, 'volume %s not found'%(volume,)
+            return 'BAD', e_errors.MC_VOLNOTFOUND, 'volume %s not found = %d'%(volume,stat)
         if volstate.attrib != "O": # look for tape in tower (occupied="O")
-            return 'BAD',9999,'Tape %s is not in home position in tower. location=%s'%(volume,volstate.attrib,)
+            return 'BAD',e_errors.MC_VOLNOTHOME,'Tape %s is not in home position in tower. location=%s'%(volume,volstate.attrib,)
         
     # check if any tape is mounted in this drive
         stat,drvstate = drive_state(drive,"")
         if stat!=0:
-            return 'BAD', stat, 'aci_drivestatus2 return code'
+            return 'BAD', e_errors.MC_FAILCHKDRV, 'aci_drivestatus2 return code = %d' %(stat,)
         if drvstate == None:
-            return 'BAD', stat, 'drive %s not found'%(drive,)
+            return 'BAD', e_errors.MC_DRVNOTFOUND, 'drive %s not found = %d '%(drive,stat)
         if drvstate.volser != "": # look for any tape mounted in this drive
-            return 'BAD',9998,'Drive %s is not empty. Found volume %s'%(drive,drvstate.volser)
+            return 'BAD',e_errors.MC_DRVNOTEMPTY,'Drive %s is not empty. Found volume %s'%(drive,drvstate.volser)
 
     stat = aci.aci_mount(volume,media_code,drive)
     if stat==0:
         status = aci.cvar.d_errno
         if status > len(status_table):  #invalid error code
-            return 'BAD', status, 'MOUNT UNKNOWN CODE'
+            return 'BAD', status, 'MOUNT UNKNOWN CODE %d'%(status,)
         return status_table[status][0], status, status_table[status][1]    
     else:
         return 'BAD',stat,'MOUNT COMMAND FAILED'
@@ -154,12 +154,11 @@ def dismount(volume, drive, media_type,view_first=1):
     if view_first:
         stat,drvstate = drive_state(drive,"")
         if stat!=0:
-            return 'BAD', stat, 'aci_drivestatus2 return code'
+            return 'BAD', e_errors.MC_FAILCHKDRV, 'aci_drivestatus2 return code = %d'
         if drvstate == None:
-            return 'BAD', stat, 'drive %s not found'%(drive,)
+            return 'BAD', e_errors.MC_DRVNOTFOUND, 'drive %s not found = %d'%(drive,stat)
         if drvstate.volser == "": # look for any tape mounted in this drive
             if volume!="Unknown":
-                #return 'BAD',8888,'Drive %s is empty. Thought volume %s was there.'%(drive,volume)
                 return 'ok',0,'Drive %s is empty. Thought volume %s was there.'%(drive,volume)  #FIXME: mover calling with tape when there is none in drive. Return OK for now
             else: #don't know the volume on startup
                 status=0

@@ -108,6 +108,17 @@ EOV1_ERROR = "EOV1_ERROR"
 
 #---------------------------------------
 
+#Media changer errors:
+MC_VOLNOTHOME = 9999   # not in home position in tower
+MC_DRVNOTEMPTY = 9998  # drive already has volume mounted in it
+MC_NONE =  9997        # code is None - very bad - CHECK ROBOT
+MC_FAILCHKVOL = 9996   # check of volume failed
+MC_VOLNOTFOUND = 9995  # volume not found
+MC_FAILCHKDRV = 9994   # check of volume failed
+MC_DRVNOTFOUND = 9993  # volume not found
+
+#---------------------------------------
+
 #Other Errors:
 ENCP_GONE       = 'ENCP_GONE'
 TCP_HUNG        = 'TCP_HUNG'
