@@ -98,16 +98,17 @@ start_db_daemons(){
         echo "Starting database checkpoint daemon  on `hostname`"
 	cmd="db_checkpoint -h $enstore_db  -p 5 `output $out`"
 	eval "$cmd &"
-        echo $! >> $PID_DIR/`uname -n`-db_check_pids	
+        echo $! >> $PID_DIR/`uname -n`-db_daemons_pids	
     fi
 
 
     out=$PID_DIR/db_deadlock
     if [ ! -e $out ] ; then
-            echo "Starting database deadlock daemon  on `hostname`"
-            cmd="db_deadlock -h $enstore_db  -t 1 `output $out`"
-	    eval "$cmd &"
-    fi
+        echo "Starting database deadlock daemon  on `hostname`"
+        cmd="db_deadlock -h $enstore_db  -t 1 `output $out`"
+        eval "$cmd &"
+        echo $! >> $PID_DIR/`uname -n`-db_daemons_pids	
+     fi
 }
 
 ###################################################################################################################################
