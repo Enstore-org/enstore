@@ -140,7 +140,7 @@ ALLOW_BASE="
        TCP,klogind,:eklogin,TCP,x
        TCP,xemacs,:6000,TCP,x
        TCP,rsh,:kshell,TCP,x
-       TCP,rsh,,TCP,/usr/krb5/bin/rsh
+       TCP,rsh,:,TCP,/usr/krb5/bin/rsh
        TCP,kshd,:kshell,TCP,x
        TCP,kshd,:,TCP,kshd kshd -5c
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
@@ -282,7 +282,7 @@ if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
       fi
     fi
     touch $TIME_NOT_SYNCD
-    $XNTP restart >>$LOG 2>&1
+    #NOT SO AGGRESSIVE  $XNTP restart >>$LOG 2>&1
 else
   rm -f $TIME_NOT_SYNCD
   if [ $QUIET -ne 1 ]; then
