@@ -42,7 +42,34 @@ import delete_at_exit
 import runon
 import enroute
 
+<<<<<<< encp.py
+
+def signal_handler(sig, frame):
+    try:
+        sys.stderr.write("Caught signal %s, exiting\n" % (sig,))
+        sys.stderr.flush()
+    except:
+        pass
+    quit(1)
+
+for sig in range(signal.NSIG):
+    if sig not in (signal.SIGTSTP, signal.SIGCONT, signal.SIGCHLD, signal.SIGWINCH):
+        try:
+            signal.signal(sig, signal_handler)
+        except:
+            pass
+    
+def encp_client_version():
+    ##this gets changed automatically in {enstore,encp}Cut
+    ##You can edit it manually, but do not change the syntax
+    version_string = "v2_6  CVS $Revision$ "
+    file = globals().get('__file__', "")
+    if file: version_string = version_string + file
+    return version_string
+
+=======
 #############################################################################
+>>>>>>> 1.344
 #seconds to wait for mover to call back, before resubmitting req. to lib. mgr.
 mover_timeout = 15*60  #15 minutes
 
@@ -91,7 +118,7 @@ def signal_handler(sig, frame):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "x2_6_a  CVS $Revision$ "
+    version_string = "v2_6  CVS $Revision$ "
     file = globals().get('__file__', "")
     if file: version_string = version_string + file
     return version_string
