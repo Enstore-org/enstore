@@ -80,7 +80,7 @@ def get_movers(config_client, lm_name):
 
     
 # update mover list
-def update_mover_list(self, mover, state):
+def update_mover_list(mover, state):
     # find mover in the list of known movers
     mv = find_mover(mover, movers)
     if not mv:
@@ -100,7 +100,7 @@ def update_mover_list(self, mover, state):
 
 # remove mover from summon list and update the mover state
 def remove_from_summon_list(self, mover, state):
-    update_mover_list(self, mover, state)
+    update_mover_list(mover, state)
     mv = find_mover(mover, self.summon_queue)
     if mv:
 	mv['tr_error'] = 'ok'
@@ -237,7 +237,7 @@ def get_work_at_movers(self, external_label):
 
 ##############################################################
 # is there any work for any volume?
-def next_work_any_volume(self, csc):
+def next_work_any_volume(self):
 
     # look in pending work queue for reading or writing work
     w=self.pending_work.get_init()
@@ -293,15 +293,12 @@ def next_work_any_volume(self, csc):
 		
             # width not exceeded, ask volume clerk for a new volume.
             first_found = 0
-            t1 = time.time()
             v = self.vcc.next_write_volume (w["vc"]["library"],
                                       w["wrapper"]["size_bytes"],
                                       w["vc"]["file_family"], 
 				      w["vc"]["wrapper"],
 				      vol_veto_list,
                                       first_found)
-            t2 = time.time()-t1
-
             # If the volume clerk returned error - return
 	    if v["status"][0] != e_errors.OK:
 		w["status"] = v["status"]
@@ -643,7 +640,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    mv["work_ticket"]['status'] = (e_errors.NOMOVERS, 
 							   None)
 			    # to catch rare key error
-			    format = "NO Movers:%s "
 			    self.pending_work.delete_job(mv["work_ticket"])
 			    Trace.log(e_errors.ERROR, "NO Movers:%s "%mv)
 			    send_regret(self, mv["work_ticket"])
@@ -917,7 +913,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.reply_to_caller(w) # reply now to avoid deadlocks
             w['mover'] = mticket['mover']
             self.work_at_movers.append(w)
-	    mv = update_mover_list(self, mticket, 'work_at_mover')
+	    mv = update_mover_list(mticket, 'work_at_mover')
 	    mv['external_label'] = w['fc']['external_label']
 	    mv["file_family"] = w["vc"]["file_family"]
 	    #sys.exit(0)
@@ -971,7 +967,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.reply_to_caller(w) # reply now to avoid deadlocks
 	    delayed_dismount = w['encp']['delayed_dismount']
 	    state = 'work_at_mover'
-	    update_mover_list(self, mticket, state)
+	    update_mover_list(mticket, state)
             w['mover'] = mticket['mover']
             self.work_at_movers.append(w)
             return
@@ -1161,7 +1157,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # what is next on our list of work?
     def schedule(self):
         while 1:
-            w = next_work_any_volume(self, self.csc)
+            w = next_work_any_volume(self)
 	    self.force_summon()
             if w["status"][0] == e_errors.OK or \
 	       w["status"][0] == e_errors.NOWORK:

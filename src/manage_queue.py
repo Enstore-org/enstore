@@ -1,17 +1,11 @@
 # manage the pending Library Managerwork queue
 import time
-import restore
 import db
-#import Trace
-import e_errors
 
 class LM_Queue:
 
     def __init__(self, db_dir):
-	#Trace.log(e_errors.INFO,"opening pending_queue database using DbTable")
-	# temporary fix: touch the file
 	self.dict = db.DbTable("pending_queue", db_dir, None, None, 0)
-	#Trace.log(e_errors.INFO,"pending_queue database is open")
 	self.queue=[]
 	self.queue_ptr=0
 
