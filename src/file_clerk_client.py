@@ -269,14 +269,6 @@ class FileClient(generic_client.GenericClient,
                        "complete_crc": complete_crc})
         return r
         
-    # rename a volume
-
-    def rename_volume(self, old, new):
-        r = self.send({"work"           : "rename_volume",
-		       "external_label" : old,
-		       "new_external_label" : new } )
-	return r
-
     # delete a volume
 
     def delete_volume(self, vol):
