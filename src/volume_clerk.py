@@ -577,7 +577,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         # This is a restricted service
-        status = self.restricted_access()
+        # but not for a disk media type
+        media = ticket.get('media_type', None)
+        if media and media == 'disk':
+            status = None
+        else:
+            status = self.restricted_access()
         if status:
             msg = "attempt to add volume %s from %s"%(external_label, self.reply_address[0])
             Trace.log(e_errors.ERROR, msg)
