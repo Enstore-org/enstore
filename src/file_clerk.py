@@ -319,6 +319,56 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     # restore specified file
+    #
+    # This is a newer version
+
+    def __restore_file(self, bfid):
+
+        try:
+            record = self.dict[bfid]
+        except:
+            msg = "File %s not found"%(bfid)
+            Trace.log(e_errors.ERROR, msg)
+            return "ENOENT", msg
+
+        if record.has_key('pnfs_name0'):
+            if os.access(record['pnfs_name0'], os.F_OK): # file exists
+                msg = "%s exists"%(record['pnfs_name0'])
+                Trace.log(e_errors.ERROR, msg)
+                return "EFEXIST", msg
+        else:
+            msg = "no pnfs entry for file %s"%(bfid)
+            Trace.log(e_errors.ERROR, msg)
+            return "ENOPNFSNAME", msg
+
+        if record["external_label"][-8:] == '.deleted':
+            msg = "volume %s is deleted"%(record["external_label"])
+            Trace.log(e_errors.ERROR, msg)
+            return "EACCES", msg
+
+        if record.has_key('deleted'):
+            if record['deleted'] != 'yes':
+                msg = "File %s is not deleted"%(bfid)
+                Trace.log(e_errors.ERROR, msg)
+                return "ENOTDELETED", msg
+
+        if record.has_key('pnfs_mapname'):
+            map = pnfs.Pnfs(record['pnfs_mapname'])
+            status = map.restore_from_volmap('no')
+            if status[0] == e_errors.OK:
+                # clear the deleted status
+                record['deleted'] = 'no'
+                self.dict[bfid] = record
+                Trace.log(e_errors.INFO, "file %s has been restored"%(bfid))
+        else:
+            status = (e_errors.ERROR, "file %d does not have volmap entry"%(bfid))
+
+        return status
+
+    # restore specified file
+    #
+    # This is a newer version
+
     def restore_file2(self, ticket):
         try:
             bfid = ticket["bfid"]
@@ -329,54 +379,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        try:
-            record = self.dict[bfid]
-        except:
-            ticket["status"] = "ENOENT", "File %s not found"%(bfid,)
-            Trace.log(e_errors.INFO, "%s"%(ticket,))
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file %s"%(ticket["status"],))
-            return
-
-        if record.has_key('pnfs_name0'):
-            if os.access(record['pnfs_name0'], os.F_OK): # file exists
-                ticket["status"] = "EFEXIST", "%s exists"%(record['pnfs_name0'])
-                self.reply_to_caller(ticket)
-                Trace.trace(10,"restore_file %s"%(ticket["status"],))
-                return
-        else:
-            ticket["status"] = "ENOPNFSNAME", "no pnfs entry for file %s"%(bfid)
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file %s"%(ticket["status"],))
-            return
-
-        if len(record["external_label"]) >= 8 \
-           and record["external_label"][-8:] == '.deleted':
-            ticket["status"] = "EACCES", "volume %s is deleted"%(record["external_label"],)
-            Trace.log(e_errors.INFO, "%s"%(ticket,))
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file %s"%(ticket["status"],))
-
-        if record.has_key('deleted'):
-            if record['deleted'] != 'yes':
-                ticket["status"] = "ENOTDELETED", "File %s is not deleted"%(bfid)
-                Trace.log(e_errors.INFO, "%s"%(ticket))
-                self.reply_to_caller(ticket)
-                Trace.trace(10,"restore_file %s"%(ticket["status"],))
-
-        if record.has_key('pnfs_mapname'):
-            map = pnfs.Pnfs(record['pnfs_mapname'])
-            status = map.restore_from_volmap('no')
-            if status[0] == e_errors.OK:
-                # clear the deleted status
-                record['deleted'] = 'no'
-                self.dict[bfid] = record
-        else:
-            status = (e_errors.ERROR, "file %d does not have volmap entry"%(bfid))
-
-        ticket["status"] = status
+        ticket['status'] = self.__restore_file(bfid)
         self.reply_to_caller(ticket)
-        Trace.trace(12,'restore_file %s'%(ticket,))
         return
 
     def get_user_sockets(self, ticket):
@@ -531,6 +535,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # rename volume and volume map
     def rename_volume(self, ticket):
         try:
+            bfid = ticket["bfid"]
             label = ticket["external_label"]
             set_deleted = ticket[ "set_deleted"]
             restore_volmap = ticket["restore"]
@@ -571,6 +576,15 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # rename volume and volume map
     # this version rename volume for all files in it
+    #
+    # This only renames the file records. A complete volume renaming
+    # requires volume clerk to rename the volume information.
+    #
+    # Renaming a volume, as far as a file's concern, renames the
+    # 'external_label' and 'pnfs_mapname' accordingly.
+    #
+    # Renaming does involve renaming the volmap path in /pnfs.
+    # If it fails, nothing would be done further.
 
     def __rename_volume(self, old, new):
         Trace.log(e_errors.INFO, 'renaming volume %s -> %s'%(old, new))
@@ -610,6 +624,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return e_errors.OK, None
 
     # rename volume -- server service
+    #
+    # This is the newer version
 
     def rename_volume2(self, ticket):
         try:
@@ -632,6 +648,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     # __erase_volume(self, vol) -- delete all files belonging to vol
+    #
+    # This is only the file clerk portion of erasing a volume.
+    # A complete erasing needs to erase volume information too.
+    #
+    # This involves removing volmap directory in /pnfs.
+    # If it fails, nothing would be done further.
 
     def __erase_volume(self, vol):
         Trace.log(e_errors.INFO, 'erasing files of volume %s'%(vol))
@@ -708,6 +730,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     # __delete_volume(self, vol) -- mark all files belonging to vol as deleted
+    #
+    # Note: this is NOT the counter part of __delete_volume() in
+    #       volume clerk, which is simply a renaming to *.deleted
 
     def __delete_volume(self, vol):
         Trace.log(e_errors.INFO, 'marking files of volume %s as deleted'%(vol))
@@ -748,8 +773,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         bfids = self.get_all_bfids(vol)
         for bfid in bfids:
             record = self.dict[bfid]
-            if record['deleted'] == 'no':
-                return 1
+            if record.has_key('deleted'):
+                if record['deleted'] == 'no':
+                    return 1
+            else:
+                # This could happen for very old records
+                # record the fact and move on
+                Trace.log(e_errors.ERROR, "%s has no 'deleted' field"%(bfid))
         return 0
 
     # has_undeleted_file -- server service
@@ -780,12 +810,15 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def __restore_volume(self, vol):
         Trace.log(e_errors.INFO, 'restoring files for vol %s'%(vol))
         bfids = self.get_all_bfids(vol)
+        msg = ""
         for bfid in bfids:
-            record = self.dict[bfid]
-            map = pnfs.Pnfs(record["pnfs_mapname"])
-            status = map.restore_from_volmap("no")
-        Trace.log(e_errors.INFO, 'all files of volume %s are restored'%(vol))
-        return
+            status = self.__restore_file(bfid)
+            if status[1]:
+                msg = msg + '\n' + status[1]
+        if msg:
+            return e_errors.ERROR, msg
+        else:
+            return e_errors.OK, None
 
     # restore_volume -- server service
 
@@ -802,7 +835,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         # catch any failure
         try:
-            self.__restore_volume(vol)
+            ticket['status'] = self.__restore_volume(vol)
         except:
             ticket["status"] = (e_errors.ERROR, "restore failed")
         # and return to the caller
