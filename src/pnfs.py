@@ -8,6 +8,7 @@ import grp
 import string
 import time
 import fcntl
+import regsub
 
 enabled = "enabled"
 disabled = "disabled"
@@ -47,6 +48,8 @@ class pnfs :
     # simple test configuration
     def jon1(self) :
         if self.valid == valid :
+	    self.touch()
+            self.statinfo()
             self.set_bit_file_id("1234567890987654321",123)
             self.statinfo()
         else:
@@ -55,8 +58,7 @@ class pnfs :
     # simple test configuration
     def jon2(self) :
         if self.valid == valid :
-            self.set_file_size(45678)
-            self.set_bit_file_id("1234567890987654321")
+            self.set_bit_file_id("1234567890987654321",45678)
             self.set_library("active")
             self.set_file_family("raw")
             self.set_file_family_width(2)
@@ -115,16 +117,16 @@ class pnfs :
                 except :
                     # if we can not open the file, we can't set the times either
                     return
-                try :
+                #try :
                     # I can't find these in python - got them from /usr/include/sys/file.h
                     # LOCK_EX 2    /* Exclusive lock.  */
                     # LOCK_UN 8    /* Unlock.  */
                     # LOCK_NB 4    /* Don't block when locking.  */
-                    fcntl.flock(f.fileno(),2+4)
-                    fcntl.flock(f.fileno(),8)
-                    print "locked/unlocked"
-                except :
-                    print "Could not lock or unlock ",self.pnfsFilename,sys.exc_info()[1]
+                    #fcntl.flock(f.fileno(),2+4)
+                    #fcntl.flock(f.fileno(),8)
+                    #print "locked/unlocked"
+                #except :
+                    #print "Could not lock or unlock ",self.pnfsFilename,sys.exc_info()[1]
                 f.close()
             t=int(time.time())
             try :
@@ -210,9 +212,31 @@ class pnfs :
     # you can't change the file size once you set it
     def set_file_size(self,size) :
         if self.valid == valid and self.exists == exists :
+	    self.utime()
+	    idf=open(self.dir+'/.(id)('+self.file+')','r')
+	    i=idf.readlines()
+	    idf.close()
+	    id=regsub.sub("\012","",i[0])
+	    sidf=open(self.dir+'/.(showid)('+id+')','r')
+	    sid=sidf.readlines()
+	    sidf.close()
             if self.file_size != 0 :
-                open(self.dir+'/.(fset)('+self.file+')(size)(0)','w').close()
+                try :
+                    os.remove(self.dir+'/.(fset)('+self.file+')(size)')
+                except os.error :
+                    if sys.exc_info()[1][0] == errno.ENOENT :
+			print "failed to remove size attribute"
+                        pass
+                    else :
+                        raise sys.exc_info()[0],sys.exc_info()[1]
+	    sidf=open(self.dir+'/.(showid)('+id+')','r')
+	    sid=sidf.readlines()
+	    sidf.close()
             open(self.dir+'/.(fset)('+self.file+')(size)('+repr(size)+')','w').close()
+	    sidf=open(self.dir+'/.(showid)('+id+')','r')
+	    sid=sidf.readlines()
+	    sidf.close()
+	    self.utime()
             self.statinfo()
 
     # get the size of the file from the stat member
