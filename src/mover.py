@@ -479,8 +479,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
-            if self.buffer.full():
+            while self.buffer.full():
                 time.sleep(1) #ZZZ
+                
+##            self.buffer.read_ok.acquire()
+##            while self.buffer.full():
+##                self.buffer.read_ok.wait(1)
+##                if self.buffer.full():
+##                    Trace.log(e_errors.INFO, "read_client: buffer too full %s" %
+##                              (self.buffer.nbytes(),))
+##            self.buffer.read_ok.release()
             
         if self.bytes_read == self.bytes_to_read:
             if self.trailer:
@@ -990,8 +998,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.last_volume = self.current_volume
         self.last_location = self.current_location
 
-        if not self.current_volume:
-            ##precautionary dismount
+        if not vol_info.get('external_label'):
             vol_info['external_label'] = 'Unknown'
 
         mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
