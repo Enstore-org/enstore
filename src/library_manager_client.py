@@ -122,6 +122,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
 
     def load_mover_list(self):
 	return self.send({"work":"load_mover_list"})
+
+    def get_mc(self):
+	return self.send({"work":"get_mc"})
 	
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self) :

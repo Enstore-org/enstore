@@ -1376,6 +1376,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	Trace.trace(3,"}getmoverlist ")
         os._exit(0)
 
+    # get Media Changer serving this LM
+    def get_mc(self, ticket):
+	mticket = self.csc.get(movers[0]["mover"])
+	if mticket.has_key('media_changer'):
+	    return_ticket = {'mc': mticket['media_changer']}
+	else:
+	    return_ticket = {}
+	
+	self.reply_to_caller(return_ticket)
+	
+
     # get list of suspected volumes 
     def get_suspect_volumes(self,ticket):
 	Trace.trace(3,"{get_suspect_volumes ")
