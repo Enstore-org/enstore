@@ -300,7 +300,13 @@ ftt_locate_part(ftt_descriptor d, int blockno, int part) {
 	locate_cmd[8] = part;
 
 	res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
+
 	res = ftt_describe_error(d,0,"a SCSI pass-through call", res,res,"Locate", 0);
+        if (res < 0 && blockno == 0 && part == 0 && ftt_errno == FTT_EBLANK)  {
+             res = 0;
+             ftt_errno = 0;
+             ftt_eprintf("Ok");
+        }
 
     }
     return res;
