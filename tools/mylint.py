@@ -65,7 +65,7 @@ for filename in sys.argv[1:]:
         exit_status = 1
         print "Fatal errors occurred during parsing of", filename
         for err in parse_errors:
-            print err
+            print " ", err
         print "Please resolve these and repeat check"
         continue
     for err in error_list:
