@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+#
+#     This script will check all files under the current directory
+#     to see if they need to be laundered.  Suspicious files will have
+#     the following keywords in them -
+#
+#	bakken
+#	fnal
+#	d0
+#
+
+import os
+import re
+
+class Laundry:
+
+    dir = "."
+    dirt = ["bakken", "fnal", "d0"]
+
+    ignoreThese = ["pyc", "o", "so", "a", "pyc*", "c*", "so*", "a*"]
+    laundryFile = "laundry.txt"
+
+    def __init__(self):
+	# get a list of the files to check
+	os.system("ls -CFR1 > %s"%(self.laundryFile,))
+	fd = open(self.laundryFile, 'r')
+	lines = re.split("\n", fd.read(), 0)
+	for line in lines:
+	    if line == '':
+		# this was a blank line
+		continue
+	    elif line[0] == ".":
+		# this is a new directory, remove the last letter which is a
+		# ':'
+		self.dir = line[0:-1]
+		continue
+	    elif line[-1] == "/":
+		# this is a directory within the current directory
+		continue
+	    elif line[-1] == "@":
+		# this is a symoblic link
+		continue
+	    elif len(line) > 2 and line[0:3] == "CVS":
+		# this is a CVS directory, ignore all the files in it
+		continue
+	    elif line == self.laundryFile:
+		# this is the file we are reading, skip it
+		continue
+	    else:
+		# aha!! a file, make sure it is not one to ignore
+		file = re.split("\.", line, 0)
+		if len(file) >= 2 and file[-1] in self.ignoreThese:
+		    continue
+		else:
+		    # check this file for the dirt
+		    print "FILE: %s -"%(line,)
+		    for d in self.dirt:
+			os.system("fgrep -i %s %s/%s"%(d, self.dir, line))
+
+if __name__ == "__main__" :
+
+    lf = Laundry()
+
