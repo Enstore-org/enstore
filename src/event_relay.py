@@ -57,6 +57,7 @@ class Relay:
 	self.timeouts = {} # key is (host,port), value is num times error in send
         self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	self.send_socket.setblocking(YES)
         my_addr = ("", my_port)
         self.listen_socket.bind(my_addr)
         self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
@@ -164,8 +165,9 @@ class Relay:
 
     def send_message(self, msg, msg_type, now):
         """Send the message to all clients who care about it"""
+	self.ev_print("%s %s"%(time.ctime(now), msg_type))
         for addr, (t0, filter_d) in self.clients.items():
-	    self.ev_print("%s %s %s"%(time.ctime(now), addr, filter_d))
+	    self.ev_print("    %s %s"%(addr, filter_d))
             if now - t0 > self.client_timeout:
 		self.ev_print("    cleaning up %s"%(addr,))
 		self.cleanup(addr, YES)
@@ -174,13 +176,16 @@ class Relay:
                 # the filter contains the message type in its dict.
                 if (not filter_d) or filter_d.has_key(msg_type):
                     try:
-			self.ev_print("    sending %s to %s"%(msg, addr))
-                        self.send_socket.sendto(msg, addr)
+			self.ev_print("    sending '%s' to %s"%(msg, addr,))
+                        l = self.send_socket.sendto(msg, addr)
+			self.ev_print("    sendto return = %s"%(l,))
 		    except socket.error, detail:
 			extra = "%s"%(detail,)
+			self.ev_print("    sendto return = %s"%(l,))
 			self.ev_print("    ERROR: %s"%(detail,))
 			self.handle_error(addr, msg, extra)
                     except:
+			self.ev_print("    sendto return = %s"%(l,))
 			self.ev_print("    ERROR: unknown")
 			self.handle_error(addr, msg)
 if __name__ == '__main__':
