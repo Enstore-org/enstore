@@ -19,3 +19,9 @@ data
 *_pids
 random.file
 trace.key
+netperf
+netperf.tar
+swig
+ftt
+setup-enstore
+python
