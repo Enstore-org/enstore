@@ -203,9 +203,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         pstat = os.stat(fname)
         if not filepath:
             self.pstat = pstat
+
+        #As long as the file exists root can read it.  What about writes?
+        if os.geteuid() == 0:
+            return
         
         #Using the stat, make sure that the "file" is readable.
-        if pstat[stat.ST_MODE] & stat.S_IROTH:
+        elif pstat[stat.ST_MODE] & stat.S_IROTH:
             return
         
         elif pstat[stat.ST_MODE] & stat.S_IRUSR and \
