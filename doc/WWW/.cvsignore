@@ -23,3 +23,10 @@ test-stand.gif
 undercon.gif
 write.ps
 write.gif
+any_unmount.gif
+write_error.gif
+write_notape.gif
+write_badmount.gif
+write_tapebusy.gif
+write_drivebusy.gif
+read_error.gif
