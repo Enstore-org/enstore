@@ -559,7 +559,7 @@ def write_to_hsm(input, output,
 	    else:
 		tinfo1['rate'+repr(i)] = 0.0
 	    format = "  %s -> %s : %d bytes copied to %s at"+\
-		     " %s MB/S  requestor:%s     cumt= %f"
+		     " %s MB/S  requester:%s     cumt= %f"
 
 	    if verbose:
 		print format %\
@@ -1222,7 +1222,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         else:
             tinfo['rate'+repr(j)] = 0.0
         format = "  %s -> %s : %d bytes copied from %s at"+\
-                 " %s MB/S  requestor:%s     cumt= %f"
+                 " %s MB/S  requester:%s     cumt= %f"
 
         if verbose:
             print format %\

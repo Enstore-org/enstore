@@ -549,7 +549,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    Trace.trace(3,"}write_to_hsm: No movers available")
 	    return
 
-        format = "write Q'd %s -> %s : library=%s family=%s requestor:%s"
+        format = "write Q'd %s -> %s : library=%s family=%s requester:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
                                    repr(ticket["wrapper"]["fullname"]),
                                    ticket["wrapper"]["pnfsFilename"],
@@ -615,7 +615,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    Trace.trace(3,"}read_from_hsm: No movers available")
 	    return
 
-        format = "read Q'd %s -> %s : vol=%s bfid=%s requestor:%s"
+        format = "read Q'd %s -> %s : vol=%s bfid=%s requester:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
                                    ticket["wrapper"]["pnfsFilename"],
                                    repr(ticket["wrapper"]["fullname"]),
@@ -734,7 +734,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			return
 
             # reply now to avoid deadlocks
-            format = "%s work on vol=%s mover=%s requestor:%s"
+            format = "%s work on vol=%s mover=%s requester:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
                                        w["work"],
                                        w["fc"]["external_label"],
@@ -811,7 +811,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.enprint("next_work_this_volume "+repr(w), generic_cs.SERVER, \
 	             self.verbose)
         if w["status"][0] == e_errors.OK:
-            format = "%s next work on vol=%s mover=%s requestor:%s"
+            format = "%s next work on vol=%s mover=%s requester:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
                                        w["work"],
                                        w["fc"]["external_label"],
