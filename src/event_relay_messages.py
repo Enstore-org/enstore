@@ -47,8 +47,8 @@ class EventRelayNotifyMsg(EventRelayMsg):
 
     def decode(self, msg):
 	self.type, self.extra_info = decode_type(msg)
-	host, port, self.msg_types = string.split(self.extra_info, 
-						  MSG_FIELD_SEPARATOR, 2)
+	self.host, self.port, self.msg_types = string.split(self.extra_info, 
+							    MSG_FIELD_SEPARATOR, 2)
 	
 """
 Message format:   alive (host, port) server_name 
@@ -59,7 +59,8 @@ class EventRelayAliveMsg(EventRelayMsg):
 
     def decode(self, msg):
 	self.type, self.extra_info = decode_type(msg)
-	host, port, self.server = string.split(self.extra_info, MSG_FIELD_SEPARATOR, 2)
+	self.host, self.port, self.server = string.split(self.extra_info, 
+							 MSG_FIELD_SEPARATOR, 2)
 
     def encode(self, name):
 	self.type = ALIVE
@@ -75,7 +76,8 @@ class EventRelayNewConfigFileMsg(EventRelayMsg):
 
     def decode(self, msg):
 	self.type, self.extra_info = decode_type(msg)
-	host, port = string.split(self.extra_info, MSG_FIELD_SEPARATOR, 1)
+	self.host, self.port = string.split(self.extra_info, 
+					    MSG_FIELD_SEPARATOR, 1)
 
     def encode(self):
 	self.type = NEWCONFIGFILE
