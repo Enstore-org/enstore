@@ -639,6 +639,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.new_library = ""
         self.read_only = ""
         self.no_access = ""
+        self.not_allowed = None
         self.decr_file_count = 0
         self.rmvol = 0
         self.vol1ok = 0
