@@ -97,42 +97,19 @@ def print_error(errcode,errmsg,fatal=0) :
     
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
-    try:
-        external_label = ticket["fc"]["external_label"]
-    except:
-        external_label = ''
-    try:
-        device = ticket["mover"]["device"]
-    except:
-        device = ''
-    try:
-        transfer_time = ticket["times"]["transfer_time"]
-    except:
-        transfer_time = 0
-    try:
-        seek_time = ticket["times"]["seek_time"]
-    except:
-        seek_time = 0
-    try:
-        mount_time = ticket["times"]["mount_time"]
-    except:
-        mount_time = 0
-    try:
-        in_queue = ticket["times"]["in_queue"]
-    except:
-        in_queue = 0
-    try:
-        total = time.time()-ticket["times"]["t0"]
-    except:
-        total = 0
-    try:
-        status = ticket["status"][0]
-    except:
-        status = 'Unknown'
-    try:
-        msg = ticket["status"][1]
-    except:
-        msg = None
+    fc_ticket = ticket.get('fc', {})
+    external_label = fc_ticket.get('external_label', '')
+    mover_ticket = ticket.get('mover', {})
+    device = mover_ticket.get('device', '')
+    time_ticket = ticket.get('times', {})
+    transfer_time = time_ticket.get('transfer_time', 0)
+    seek_time = time_ticket.get('seek_time', 0)
+    mount_time = time_ticket.get('mount_time', 0)
+    in_queue = time_ticket.get('in_queue', 0)
+    now = time.time()
+    t0 = time_ticket.get('t0', now)
+    total = now - t0
+    status, msg = ticket.get('status', ('Unknown', None))
         
     if not data_access_layer_requested and status != e_errors.OK:
         out=sys.stderr
@@ -1064,10 +1041,11 @@ def write_to_hsm(input_files, output, output_file_family='',
                        done_ticket["mover"]["vendor_id"],
                        time.time()-t0)
             if data_access_layer_requested:
-                print data_access_layer_format % \
-                      (inputlist[i],
-                       outputlist[i],
-                       fsize,
+                print_data_access_layer_format(  inputlist[i],
+                                                 outputlist[i],
+                                                 fsize,
+                                                 done_ticket)
+                
                        done_ticket["fc"]["external_label"],
                        done_ticket["mover"]["device"],
                        done_ticket["times"]["transfer_time"],
