@@ -8,10 +8,7 @@ olddbs:
 
 	rm -f $$ENSTORE_DIR/test/longtest_pids
 	for d in 1 2 3 4 5 6 7 8 9 ; do \
-		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
-		( cd $$d; rm -f *; \
-			cp $$ENSTORE_DIR/bin/longtest . ; \
-			$$ENSTORE_DIR/test/kickoff & ); \
+		( cd $$d; $$ENSTORE_DIR/test/kickoff & ); \
 	done
 
 	echo "Tests are running. Do a    killall -9 longtest    to stop"
@@ -52,7 +49,7 @@ newdbs:
 	for d in 1 2 3 4 5 6 7 8 9 ; do \
 		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
 		( cd $$d; rm -f *; \
-			cp $$ENSTORE_DIR/bin/longtest . ; \
+			cp $$ENSTORE_DIR/test/longtest . ; \
 			$$ENSTORE_DIR/test/kickoff & ); \
 	done
 
