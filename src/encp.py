@@ -9,6 +9,8 @@ import stat
 import time
 from errno import *
 import pprint
+import pwd
+import grp
 
 # Import SOCKS module if it exists, else standard socket module socket
 try:
@@ -37,10 +39,32 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     p = pnfs.pnfs(pnfsfile)
     if p.valid != pnfs.valid :
         raise errorcode[EINVAL],"encp.write_to_hsm: "\
-              +pnfsfile+" is an invalid pnfs filename"
+              +pnfsfile+" is an invalid pnfs filename "\
+              " or maybe NO read access to file"
     if p.exists == pnfs.exists :
         raise errorcode[EEXIST],"encp.write_to_hsm: "\
               +pnfsfile+" already exists"
+    if p.writable != pnfs.enabled :
+        raise errorcode[EACCES],"encp.write_to_hsm: "\
+              +pnfsfile+", NO write access to directory"
+
+    # make the pnfs dictionary that will be part of the ticket
+    pinfo = {}
+    for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',\
+               'major','minor','rmajor','rminor',\
+               'mode','stat' ] :
+        exec("pinfo["+repr(k)+"] = p."+k)
+
+    # let's save who's talking to us
+    uinfo = {}
+    uinfo['uid'] = os.getuid()
+    uinfo['euid'] = os.geteuid()
+    uinfo['gid'] = os.getgid()
+    uinfo['egid'] = os.getegid()
+    uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
+    uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
+    uinfo['machine'] = os.uname()
+    #uinfo['node'] = socket.gethostbyaddr(socket.gethostname())
 
     # get a port to talk on and listen for connections
     host, port, listen_socket = get_callback()
@@ -51,19 +75,11 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               "library"            : p.library,
               "file_family"        : p.file_family,
               "file_family_width"  : p.file_family_width,
-              "filename"           : unixfile,
-              "inode"              : statinfo[stat.ST_INO],
-              "uid"                : p.uid,
-              "uname"              : p.uname,
-              "gid"                : p.gid,
-              "gname"              : p.uname,
-              "protection"         : p.mode,
+              "orig_filename"      : unixfile,
+              "pnfsfile_info"      : pinfo,
+              "user_info"          : uinfo,
               "mtime"              : int(time.time()),
               "size_bytes"         : fsize,
-              "major"              : major,
-              "minor"              : minor,
-              "rmajor"             : rmajor,
-              "rminor"             : rminor,
               "user_callback_port" : port,
               "user_callback_host" : host,
               "unique_id"          : time.time()
@@ -148,7 +164,31 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
 
     # Make sure we can open the unixfile. If we can't, we bomb out to user
     # Note that the unix file remains open
+    dir,file = os.path.split(outfile)
+    command="if test -w "+dir+"; then echo -n ok; else echo -n no; fi"
+    writable = os.popen(command,'r').readlines()
+    if "ok" != writable[0] :
+        raise errorcode[EACCES],"encp.read_from__hsm: "\
+              +outfile+", NO write access to directory"
     f = open(outfile,"w")
+
+    # make the pnfs dictionary that will be part of the ticket
+    pinfo = {}
+    for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',\
+               'major','minor','rmajor','rminor',\
+               'mode','stat' ] :
+        exec("pinfo["+repr(k)+"] = p."+k)
+
+    # let's save who's talking to us
+    uinfo = {}
+    uinfo['uid'] = os.getuid()
+    uinfo['euid'] = os.geteuid()
+    uinfo['gid'] = os.getgid()
+    uinfo['egid'] = os.getegid()
+    uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
+    uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
+    uinfo['machine'] = os.uname()
+    #uinfo['node'] = socket.gethostbyaddr(socket.gethostname())
 
     # get a port to talk on and listen for connections
     host, port, listen_socket = get_callback()
@@ -156,6 +196,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
 
     # generate the work ticket
     ticket = {"work"               : "read_from_hsm",
+              "pnfs_info"          : pinfo,
               "bfid"               : p.bit_file_id,
               "user_callback_port" : port,
               "user_callback_host" : host,

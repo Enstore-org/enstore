@@ -11,6 +11,7 @@ import fcntl
 import lockfile
 import regsub
 import pprint
+import Devcodes # this is a compiled enstore module
 
 enabled = "enabled"
 disabled = "disabled"
@@ -25,12 +26,14 @@ class pnfs :
     # initialize - we will be needing all these things soon, get them now
     def __init__(self,pnfsFilename,all=0) :
         self.pnfsFilename = pnfsFilename
-        (dir,file) =os.path.split(pnfsFilename)
+        (dir,file) = os.path.split(pnfsFilename)
         self.dir = dir
         self.file = file
         self.exists = unknown
         self.check_valid_pnfsFilename()
         self.statinfo()
+        self.rmajor = 0
+        self.rminor = 0
         self.get_bit_file_id()
         self.get_library()
         self.get_file_family()
@@ -303,21 +306,28 @@ class pnfs :
                 self.utime()
                 self.stat = os.stat(self.pnfsFilename)
                 self.exists = exists
-                #print "stat-file: ",self.pnfsFilename,": ",self.stat
+                code_dict = Devcodes.MajMin(self.pnfsFilename)
+                self.major = code_dict["Major"]
+                self.minor = code_dict["Minor"]
             except os.error :
                 if sys.exc_info()[1][0] == ENOENT :
                     try :
                         self.stat = os.stat(self.dir)
                         self.exists = direxists
-                        #print "stat-dir: ",self.dir,": ",self.stat
+                        code_dict = Devcodes.MajMin(self.dir)
+                        self.major = code_dict["Major"]
+                        self.minor = code_dict["Minor"]
                     except :
                         self.stat = (error,repr(sys.exc_info()[1])\
                                      ,"directory: "+self.dir)
                         self.exists = invalid
+                        self.major,self.minor = (0,0)
+
                 else :
                     self.stat = (error,repr(sys.exc_info()[1])\
                                  ,"file: "+self.pnfsFilename)
                     self.exists = invalid
+                    self.major,self.minor = (0,0)
 
         else :
             self.stat = (error,invalid)
@@ -499,6 +509,12 @@ class pnfs :
         self.get_gname()
         self.get_mode()
         self.get_file_size()
+        command="if test -w "+self.dir+"; then echo -n ok; else echo -n no; fi"
+        writable = os.popen(command,'r').readlines()
+        if "ok" == writable[0] :
+            self.writable = enabled
+        else :
+            self.writable = disabled
 
     ##########################################################################
 
