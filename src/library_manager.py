@@ -1018,9 +1018,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		break
 	if found:
             # check if it is a backed up request
-            now = time.time()
-            if now - wt['times']['lm_dequeued'] < 30.:
-                Trace.trace(15,"found backed up mover %s ts now %s updated at %s" % (mticket['mover'], now, wt['times']['lm_dequeued']))
+            if mticket['unique_id'] and mticket['unique_id'] != wt['unique_id']:
+                Trace.trace(15,"found backed up mover %s" % (mticket['mover'],))
                 return
 	    self.work_at_movers.remove(wt)
 	    format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
@@ -1124,9 +1123,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w = self.get_work_at_movers(mticket['external_label'])
         if w:
             # check if it is a backed up request
-            now = time.time()
-            if now - w['times']['lm_dequeued'] < 30.:
-                Trace.trace(15,"found backed up mover %s ts now %s updated at %s" % (mticket['mover'], now, w['times']['lm_dequeued']))
+            if mticket['unique_id'] and mticket['unique_id'] != w['unique_id']:
+                Trace.trace(15,"found backed up mover %s " % (mticket['mover'], ))
                 return
             Trace.trace(13,"removing %s  from the queue"%(w,))
             # file family may be changed by VC during the volume
