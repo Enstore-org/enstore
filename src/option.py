@@ -301,6 +301,7 @@ RM_SUSPECT_VOL = "rm-suspect-vol"            #library
 ROOT_ERROR = "root-error"                    #alarm
 SAAG_STATUS = "saagstatus"                   #inquisitor
 SENDTO = "sendto"                            #mover
+SEQUENTIAL_FILENAMES = "sequential-filenames"  #get
 SET_CRCS = "set-crcs"                        #file
 SET_COMMENT = "set-comment"                  #volume
 SET_SG_COUNT = "set-sg-count"                #volume
@@ -407,7 +408,8 @@ valid_option_list = [
     REMEDY_TYPE, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
-    SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG,
+    SAAG_STATUS, SENDTO, SEQUENTIAL_FILENAMES,
+    SET_CRCS, SET_COMMENT, SEVERITY, SG,
     SHORTCUT, SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA,
     SHOW_BAD, SIZE, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,

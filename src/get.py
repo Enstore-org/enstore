@@ -49,7 +49,13 @@ encp.EncpInterface.encp_options[option.LIST] = {
     option.VALUE_USAGE:option.REQUIRED,
     option.VALUE_TYPE:option.STRING,
     option.VALUE_LABEL:"name_of_list_file",
-    option.USER_LEVEL:option.ADMIN,}
+    option.USER_LEVEL:option.USER,}
+encp.EncpInterface.encp_options[option.SEQUENTIAL_FILENAMES] = {
+    option.HELP_STRING: "Override known filenames and use sequentially "
+                        "numbered filenames.",
+    option.VALUE_USAGE:option.IGNORED,
+    option.VALUE_TYPE:option.INTEGER,
+    option.USER_LEVEL:option.USER,}
 
 def error_output(request):
     #Get the info.
@@ -1321,7 +1327,7 @@ if __name__ == '__main__':
 
     #First handle an incorrect command line.
     if len(sys.argv) < 4:
-        intf = encp.EncpInterface(sys.argv)
+        intf = encp.EncpInterface(sys.argv, 1) #one = user
         intf.print_usage()
 
     intf = encp.EncpInterface(sys.argv[:-3] + sys.argv[-2:], 0) #zero = admin
