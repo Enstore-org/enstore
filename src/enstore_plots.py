@@ -444,7 +444,8 @@ class MpdMonthDataFile(EnPlot):
 	# now create the gnuplot command file
 	gnucmds = MpdGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label, self.lw)
+	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label,
+                      self.lw)
 	gnucmds.close()
 
 
