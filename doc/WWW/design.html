@@ -1078,7 +1078,7 @@ multiple input files from the HSM: <br> ecmd <em>encp</em> [options]
 source... directory<br> That is, the final item has to be a directory when
 specifying an input list.  There is 1 caveat when specifying multiple files
 using a single <em>encp</em> command: there is at most 1 mover processing your
-request list at a time. If you want more than mover active, you should use
+request list at a time. If you want more than 1 mover active, you should use
 multiple <em>encp</em> commands when you are reading lists of files from more than
 one volume.  The reason <em>encp</em> uses just one mover is to keep the system
 simple (if you want to use multiple movers, then use many <em>encp</em>
@@ -1086,7 +1086,7 @@ commands).
 <p>
 
 On reads from the HSM, <em>encp</em> scans all your files and groups them according
-to which volume they are on and then submits all the file requests that are
+to which volume they are on, orders them according location on a tape and then submits all the file requests that are
 on one specific volume, reads all the files for that volume from the hsm
 and then proceeds to the next volume.  <em>Encp</em> processes the volumes in any
 order it chooses.
