@@ -16,7 +16,7 @@ import e_errors
 import checksum
 import hostaddr
 import host_config
-import socket_ext
+
 
 def hex8(x):
     s=hex(x)[2:]  #kill the 0x
@@ -27,24 +27,16 @@ def hex8(x):
     return '0'*(8-l)+s
 
 # get an unused tcp port for control communication
-def get_callback(fixed_ip=None,verbose=0):
+def get_callback(verbose=0):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    if fixed_ip:
-        s.bind((fixed_ip, 0))
-        interface=hostaddr.interface_name(fixed_ip)
-        if interface:
-            status=socket_ext.bindtodev(s.fileno(),interface)
-            if status:
-                Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
-    else:
-        config = host_config.get_config()
-        ip = None
-        if config:
-            ip = config.get('hostip')
-        if not ip:
-            hostname, junk, ips = hostaddr.gethostinfo()
-            ip = ips[0]
-        s.bind((ip, 0))
+    config = host_config.get_config()
+    ip = None
+    if config:
+        ip = config.get('hostip')
+    if not ip:
+        hostname, junk, ips = hostaddr.gethostinfo()
+        ip = ips[0]
+    s.bind((ip, 0))
     host, port = s.getsockname()
     return host, port, s
                 
