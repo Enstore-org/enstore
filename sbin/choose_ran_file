@@ -158,15 +158,18 @@ while [ $done -gt 0 ]; do
     cmd="enstore lib --vols $library"
     echo $cmd
     vols_at_movers=`eval $cmd`
-    echo $vols_at_movers
+    echo "$vols_at_movers"
     #If the system is busy, don't start encp.
-    busy_movers=`echo $vols_at_movers | wc -l`
+    busy_movers=`echo "$vols_at_movers" | wc -l`
     #Subract the title line of output.
     busy_movers=`expr $busy_movers - 1`
     #This test should compare this number to the number of drives in the
     # library.  I don't know of a good way from bash to get the number of
     # drives in a library, so for now using the value 6.
     if [ $busy_movers -gt 6 ]; then
+      echo
+      echo "Aborting early from high mover usage."
+      echo
       #5 seems like a good number. Its greater than 3 indicating 3 failures.
       #  It is not -1, -2, 0, 10 or 7 which have special meaning in the plots.
       exit 5
