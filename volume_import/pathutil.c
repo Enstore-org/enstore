@@ -7,8 +7,8 @@
 int
 join_path(char *dest, char *a, char *b)
 {
-    int l1, l2;
-    char result[MAX_PATH_LEN];
+    char tmp[MAX_PATH_LEN];
+    char *cp1, *cp2;
 
     if (!a || !b || !dest){
 	fprintf(stderr,"%s: NULL pointer error in join_path\n", 
@@ -16,31 +16,20 @@ join_path(char *dest, char *a, char *b)
 	return -1;
     }
 
-    l1=strlen(a);
-    l2=strlen(b);
-    
-    /*special cases*/
-    if (l1==0){
-	strcpy(dest,b);
-	return 0;
-    } else if (l2==0){
-	strcpy(dest,a);
-	return 0;
-    }
-
-    if (l1+l2>MAX_PATH_LEN){
+    if (strlen(a)+strlen(b)>MAX_PATH_LEN){
 	fprintf(stderr, "%s: path too long: %s/%s\n",
 		progname, a, b);
 	return -1;
     }
     
-    strcpy(result, a);
-    if (result[l1-1] != '/')
-	result[l1++]= '/';
-    if (*b=='/') 
-	++b;
-    strcpy(result+l1, b);
-    strcpy(dest, result);
+    sprintf(tmp, "%s/%s", a, b);
+    
+    for (cp1=tmp, cp2=dest; *cp1; ++cp1){
+	if (cp1!=tmp && *cp1=='/' && *cp1==*(cp1-1)) /* repeated /'s */
+	    continue;
+	*cp2++=*cp1;
+    }
+    *cp2='\0';
     return 0;
 }
 
