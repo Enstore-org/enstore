@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # src/$RCSfile$   $Revision$
 #
 #########################################################################
@@ -31,22 +33,21 @@ import generic_server
 import interface
 import Trace
 import e_errors
-import timer_task
 import volume_clerk_client
 
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
-	                 generic_server.GenericServer,
-			 timer_task.TimerTask):
+                         generic_server.GenericServer):
+
     work_list = []
     work_cleaning_list = []
 
-    def __init__(self, medch, maxwork, csc):
+    def __init__(self, medch, max_work, csc):
         self.name = medch
         self.name_ext = "MC"
         generic_server.GenericServer.__init__(self, csc, medch)
         Trace.init(self.log_name)
-        self.MaxWork = maxwork
+        self.max_work = max_work
 	self.workQueueClosed = 0
         self.insertRA = None
         #   pretend that we are the test system
@@ -60,16 +61,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.lastWorkTime = time.time()
 	self.robotNotAtHome = 1
         self.timeInsert = time.time()
-	timer_task.TimerTask.__init__(self, 10)
-	timer_task.msg_add(180, self.checkMyself) # initial check time in seconds
         
     # retry function call
     def retry_function(self,function,*args):
         return apply(function,args)
     
-    def checkMyself(self):
-        pass
-	#timer_task.msg_add(180, self.checkMyself) # recheck time in seconds
 	
     # wrapper method for client - server communication
     def loadvol(self, ticket):        
@@ -114,15 +110,17 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         ticket["function"] = "cleanCycle"
         return self.DoWork( self.cleanCycle, ticket)
 
-    def maxwork(self,ticket):
-        self.MaxWork = ticket["maxwork"]
+    def max_work(self,ticket):
+        self.max_work = ticket["max_work"]
         self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
 
     def getwork(self,ticket):
         result = []
         for i in self.work_list:
             result.append((i['function'], i['vol_ticket']['external_label'], i['drive_id']))
-        self.reply_to_caller({'status' : (e_errors.OK, 0, None),'worklist':result})
+        self.reply_to_caller({'status' : (e_errors.OK, 0, None),
+                              'max_work':self.max_work,
+                              'worklist':result})
 
     # load volume into the drive;  default, overridden for other media changers
     def load(self,
@@ -216,7 +214,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
     # Do the forking and call the function
     def DoWork(self, function, ticket):
-	if ticket['function'] == "mount" or ticket['function'] == "dismount":
+        if ticket['function'] in ("mount", "dismount"):
             Trace.log(e_errors.INFO, 'REQUESTED %s %s %s'%
                       (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
             # if drive is doing a clean cycle, drop request
@@ -243,97 +241,97 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    self.work_cleaning_list.append(todo)
 	
         #if we have max number of working children, assume client will resend
-	# let work list length exceed MaxWork for cleaningCycle
-        if len(self.work_list) >= self.MaxWork:
-            Trace.log(e_errors.INFO,
-                      "MC Overflow: "+ repr(self.MaxWork) + " " +\
-		      ticket['function'])
-        #elif work queue is temporarily closed, assume client will resend
-        elif self.workQueueClosed and len(self.work_list)>0:
-            Trace.log(e_errors.INFO,
-                      "MC Queue Closed: " + ticket['function'] + " " + repr(len(self.work_list)))
+	# let work list length exceed max_work for cleaningCycle
+        if ticket["function"] != "getVolState":
+            if len(self.work_list) >= self.max_work:
+                Trace.log(e_errors.INFO,
+                          "MC Overflow: "+ repr(self.max_work) + " " +\
+                          ticket['function'])
+                return
+              ##elif work queue is temporarily closed, assume client will resend
+            elif  self.workQueueClosed and len(self.work_list)>0:
+                Trace.log(e_errors.INFO,
+                          "MC Queue Closed: " + ticket['function'] + " " + repr(len(self.work_list)))
+                return
+            
         # otherwise, we can process work
-        else:
-            #Trace.log(e_errors.INFO, "DOWORK "+repr(ticket))
-            # set the reply address - note this could be a general thing in dispatching worker
-            ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
-            # bump other requests for cleaning
-	    if len(self.work_cleaning_list) > 0:
-	        if ticket['function'] != "waitingCleanCycle":
-	            Trace.log(e_errors.INFO,
-                      "MC: "+ ticket['function'] + " bumped for cleaning")
-	        ticket = self.work_cleaning_list[0][0]
-	        function = self.work_cleaning_list[0][1]
-	        self.work_cleaning_list.remove((ticket,function))
-                Trace.log(e_errors.INFO, 'REPLACEMENT '+ticket['function'])
-            # if this a duplicate request, drop it
-            for i in self.work_list:
-                if i["ra"] == ticket["ra"]:
-                    Trace.log(e_errors.INFO,"duplicate request, drop it %s %s"%(repr(i["ra"]),repr(ticket["ra"])))
-                    return
-	    # if function is insert and queue not empty, close work queue
-            if ticket["function"] == "insert":
-	        if len(self.work_list)>0:
-	           self.workQueueClosed = 1
-		   self.timeInsert = time.time()
-		   self.insertRA = ticket["ra"]
-                   Trace.log(e_errors.INFO,"RET1 %s"%( ticket["function"],))
-		   return 
-		else:
-		   self.workQueueClosed = 0
-            # if not duplicate, fork the work
-            pipe = os.pipe()
-            if not self.fork():
-                # if in child process
-	        if ticket['function'] == "mount" or ticket['function'] == "dismount":
-                    msg="%s %s %s" % (ticket['function'],ticket['vol_ticket']['external_label'], ticket['drive_id'])
-                else:
-                    msg="%s" % (ticket['function'],)
-                Trace.log(e_errors.INFO, 'mcDoWork> child begin %s '%(msg,))
-                os.close(pipe[0])
-		# do the work ...
-                # ... if this is a mount, dismount first
-                if ticket['function'] == "mount":
-                    Trace.log(e_errors.INFO, 'mcDoWork> child prepare dismount for %s'%(msg,))
-		    sts=self.prepare(
-                        ticket['vol_ticket']['external_label'],
-                        ticket['drive_id'],
-                        ticket['vol_ticket']['media_type'])
-                    Trace.log(e_errors.INFO,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts))
-                if (ticket['function'] == 'insert' or
-                    ticket['function'] == 'eject' or
-                    ticket['function'] == 'homeAndRestart' or
-                    ticket['function'] == 'cleanCycle' or
-                    ticket['function'] == 'getVolState'):
-                    Trace.log(e_errors.INFO, 'mcDoWork> child doing %s'%(msg,))
-                    sts = function(ticket)
-                    Trace.log(e_errors.INFO,'mcDoWork> child %s returned %s'%(msg,sts))
-                else:
-                    Trace.log(e_errors.INFO, 'mcDoWork> child doing %s'%(msg,))
-                    sts = function(
-                        ticket['vol_ticket']['external_label'],
-                        ticket['drive_id'],
-                        ticket['vol_ticket']['media_type'])
-                    Trace.log(e_errors.INFO,'mcDoWork> child %s returned %s'%(msg,sts))
 
-                # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
-                Trace.trace(10, 'mcDoWork< sts'+repr(sts))
-                ticket["work"]="WorkDone"	# so dispatching_worker calls WorkDone
-                ticket["status"]=sts
-                msg = repr(('0','0',ticket))
-                bytecount = "%08d" % (len(msg),)
-                os.write(pipe[1], bytecount)
-                os.write(pipe[1], msg)
-                os.close(pipe[1])
-                os._exit(0)
-
-            # else, this is the parent
+        #Trace.log(e_errors.INFO, "DOWORK "+repr(ticket))
+        # set the reply address - note this could be a general thing in dispatching worker
+        ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
+        # bump other requests for cleaning
+        if len(self.work_cleaning_list) > 0:
+            if ticket['function'] != "waitingCleanCycle":
+                Trace.log(e_errors.INFO,
+                  "MC: "+ ticket['function'] + " bumped for cleaning")
+            ticket = self.work_cleaning_list[0][0]
+            function = self.work_cleaning_list[0][1]
+            self.work_cleaning_list.remove((ticket,function))
+            Trace.log(e_errors.INFO, 'REPLACEMENT '+ticket['function'])
+        # if this a duplicate request, drop it
+        for i in self.work_list:
+            if i["ra"] == ticket["ra"]:
+                Trace.log(e_errors.INFO,"duplicate request, drop it %s %s"%(repr(i["ra"]),repr(ticket["ra"])))
+                return
+        # if function is insert and queue not empty, close work queue
+        if ticket["function"] == "insert":
+            if len(self.work_list)>0:
+               self.workQueueClosed = 1
+               self.timeInsert = time.time()
+               self.insertRA = ticket["ra"]
+               Trace.log(e_errors.INFO,"RET1 %s"%( ticket["function"],))
+               return 
             else:
-                self.add_select_fd(pipe[0])
-                os.close(pipe[1])
-                # add entry to outstanding work 
-                self.work_list.append(ticket)
-                Trace.trace(10, 'mcDoWork< Parent')
+               self.workQueueClosed = 0
+        # if not duplicate, fork the work
+        pipe = os.pipe()
+        if self.fork(): #parent
+            self.add_select_fd(pipe[0])
+            os.close(pipe[1])
+            # add entry to outstanding work 
+            self.work_list.append(ticket)
+            Trace.trace(10, 'mcDoWork< Parent')
+            return
+
+        #  in child process
+        if ticket['function'] in ("mount", "dismount"):
+            msg="%s %s %s" % (ticket['function'],ticket['vol_ticket']['external_label'], ticket['drive_id'])
+        else:
+            msg="%s" % (ticket['function'],)
+        Trace.log(e_errors.INFO, 'mcDoWork> child begin %s '%(msg,))
+        os.close(pipe[0])
+        # do the work ...
+        # ... if this is a mount, dismount first
+        if ticket['function'] == "mount":
+            Trace.log(e_errors.INFO, 'mcDoWork> child prepare dismount for %s'%(msg,))
+            sts=self.prepare(
+                ticket['vol_ticket']['external_label'],
+                ticket['drive_id'],
+                ticket['vol_ticket']['media_type'])
+            Trace.log(e_errors.INFO,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts))
+        if ticket['function'] in ('insert','eject','homeAndRestart','cleanCycle','getVolState'):
+            Trace.log(e_errors.INFO, 'mcDoWork> child doing %s'%(msg,))
+            sts = function(ticket)
+            Trace.log(e_errors.INFO,'mcDoWork> child %s returned %s'%(msg,sts))
+        else:
+            Trace.log(e_errors.INFO, 'mcDoWork> child doing %s'%(msg,))
+            sts = function(
+                ticket['vol_ticket']['external_label'],
+                ticket['drive_id'],
+                ticket['vol_ticket']['media_type'])
+            Trace.log(e_errors.INFO,'mcDoWork> child %s returned %s'%(msg,sts))
+
+        # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
+        Trace.trace(10, 'mcDoWork< sts'+repr(sts))
+        ticket["work"]="WorkDone"	# so dispatching_worker calls WorkDone
+        ticket["status"]=sts
+        msg = repr(('0','0',ticket))
+        bytecount = "%08d" % (len(msg),)
+        os.write(pipe[1], bytecount)
+        os.write(pipe[1], msg)
+        os.close(pipe[1])
+        os._exit(0)
+
     
     def WorkDone(self, ticket):
         # dispatching_worker sends "WorkDone" ticket here and we reply_to_caller
@@ -348,7 +346,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             level = e_errors.INFO
         else:
             level = e_errors.ERROR
-	if ticket['function'] == "mount" or ticket['function'] == "dismount":
+	if ticket['function'] in ("mount","dismount"):
             Trace.log(level, 'FINISHED %s %s %s  returned %s' %
                       (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id'],fstat))
         else:
@@ -358,7 +356,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	self.robotNotAtHome = 1
         self.lastWorkTime = time.time()
 	# check for cleaning jobs
-	if len(self.work_list) < self.MaxWork and len(self.work_cleaning_list) > 0:
+	if len(self.work_list) < self.max_work and len(self.work_cleaning_list) > 0:
             sts = self.doWaitingCleaningCycles(ticket)
  	# if work queue is closed and work_list is empty, do insert
 	sts = self.doWaitingInserts()
@@ -366,8 +364,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 # aml2 robot loader server
 class AML2_MediaLoader(MediaLoaderMethods):
 
-    def __init__(self, medch, maxwork=7, csc=None):
-        MediaLoaderMethods.__init__(self, medch, maxwork, csc)
+    def __init__(self, medch, max_work=7, csc=None):
+        MediaLoaderMethods.__init__(self, medch, max_work, csc)
 
 	# robot choices are 'R1', 'R2' or 'Both'
 	if self.mc_config.has_key('RobotArm'):   # error if robot not in config
@@ -581,16 +579,15 @@ class AML2_MediaLoader(MediaLoaderMethods):
             ticket = { 'function' : 'homeAndRestart', 'robotArm' : self.robotArm }
 	    sts = self.robotHomeAndRestart(ticket)
 	    self.lastWorkTime = time.time()
-	timer_task.msg_add(29, self.checkMyself) # recheck time in seconds
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods):
 
-    def __init__(self, medch, maxwork=1, csc=None):
+    def __init__(self, medch, max_work=1, csc=None):
         import STK
         import lockfile
-        ###maxwork=1 # VERY BAD, BUT THIS IS ALL THAT CAN BE HANDLED CORRECTLY FOR NOW. JAB 2/16/00
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
+        ###max_work=1 # VERY BAD, BUT THIS IS ALL THAT CAN BE HANDLED CORRECTLY FOR NOW. JAB 2/16/00
+        MediaLoaderMethods.__init__(self,medch,max_work,csc)
         self.prepare = self.unload
         self.SEQ_LOCK_DIR = "/tmp/enstore"
         self.SEQ_LOCK_FILE="stk_seq_lock"
@@ -684,8 +681,8 @@ class STK_MediaLoader(MediaLoaderMethods):
 
 # manual media changer
 class Manual_MediaLoader(MediaLoaderMethods):
-    def __init__(self, medch, maxwork=10, csc=None):
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
+    def __init__(self, medch, max_work=10, csc=None):
+        MediaLoaderMethods.__init__(self,medch,max_work,csc)
     def loadvol(self, ticket):
         if ticket['vol_ticket']['external_label']:
             os.system("mc_popup 'Please load %s'"%(ticket['vol_ticket']['external_label'],))
@@ -698,8 +695,8 @@ class Manual_MediaLoader(MediaLoaderMethods):
     
 # Raw Disk and stand alone tape media server
 class RDD_MediaLoader(MediaLoaderMethods):
-    def __init__(self, medch, maxwork=1, csc=None):
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
+    def __init__(self, medch, max_work=1, csc=None):
+        MediaLoaderMethods.__init__(self,medch,max_work,csc)
 
 
 # "Shelf" manual media server - interfaces with OCS
@@ -750,8 +747,8 @@ class Shelf_MediaLoader(MediaLoaderMethods):
             return e_errors.ERROR
 
         
-    def __init__(self, medch, maxwork=1, csc=None): #Note: maxwork may need to be changed, tgj
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
+    def __init__(self, medch, max_work=1, csc=None): #Note: max_work may need to be changed, tgj
+        MediaLoaderMethods.__init__(self,medch,max_work,csc)
 	self.prepare=self.unload #override prepare with dismount and deallocate
 	
 	fnstatusO = self.getOCSHost()
@@ -1001,13 +998,13 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         # fill in the defaults for possible options
-        self.maxwork=7
+        self.max_work=7
         generic_server.GenericServerInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+\
-	       ["log=","maxwork="]
+	       ["log=","max_work="]
 
     #  define our specific help
     def parameters(self):
@@ -1047,9 +1044,10 @@ if __name__ == "__main__" :
     # and create an object of that class based on the value of args[0]
     # for now there is just one possibility
 
-    mc = eval(mc_type+"("+repr(intf.name)+","+repr(intf.maxwork)+",("+\
-              repr(intf.config_host)+","+repr(intf.config_port)+"))")
-              ##XXX There must be a better way! 
+    constructor=eval(mc_type)
+    print "Calling", constructor,"args=", intf.name, intf.max_work, (intf.config_host, intf.config_port)
+    mc = constructor(intf.name, intf.max_work, (intf.config_host, intf.config_port))
+
     
     while 1:
         try:
