@@ -437,16 +437,19 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # get the information from the library manager(s)
     def update_library_manager(self, lib_man):
+	self.update_lm_function(lib_man)
+	return
+        # delete the following lines after the above works not in a thread.
 	# need to get other infor from library manager
-	if lib_man.no_status_thread():
+	#if lib_man.no_status_thread():
 	    # we must keep track of the fact that we created a thread for this 
 	    # server so the next time we do not create  another one.
-	    lib_man.status_thread = threading.Thread(group=None,
-						     target=self.update_lm_function,
-						     name="STATUS_%s"%(lib_man.name,),
-						     args=(lib_man,))
-	    lib_man.status_thread.setDaemon(1)
-	    lib_man.status_thread.start()
+	    #lib_man.status_thread = threading.Thread(group=None,
+						     #target=self.update_lm_function,
+						     #name="STATUS_%s"%(lib_man.name,),
+						     #args=(lib_man,))
+	    #lib_man.status_thread.setDaemon(1)
+	    #lib_man.status_thread.start()
 
     # get the movers' status
     def mover_status(self, movc, (host, port), key, time):

@@ -45,7 +45,7 @@ class MonitoredServer:
 	self.last_alive = enstore_constants.NEVER_ALIVE  # last time server was alive
 	self.output_last_alive = enstore_constants.NEVER_ALIVE  # last time server was alive
 	self.restart_thread = None          # thread id if trying to restart server
-	self.status_thread = None           # thread id if getting status from server
+	#self.status_thread = None           # thread id if getting status from server
 	self.config = config                # config file dictionary for this server
 	if hung_interval is None:
 	    hung_interval = DEFAULT_HUNG_INTERVAL
@@ -99,8 +99,8 @@ class MonitoredServer:
     def delete_me(self):
 	self.delete = 1
 
-    def no_status_thread(self):
-	return not (self.status_thread and self.status_thread.isAlive())
+    #def no_status_thread(self):
+	#return not (self.status_thread and self.status_thread.isAlive())
 
     def no_thread(self):
 	return not (self.restart_thread and self.restart_thread.isAlive())
