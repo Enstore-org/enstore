@@ -638,7 +638,7 @@ def forked_read_from_hsm( self, ticket ):
 	    # create the wrapper instance (could be different for different tapes)
             wrapper=wrapper_selector.select_wrapper(self.vol_info['wrapper'])
 	    if wrapper == None:
-		wrapper=wrapper_selector.select_wrapper("cpio_custom")
+		wrapper=wrapper_selector.select_wrapper("cpio_odc")
 		if wrapper == None:
 		    raise errno.errorcode[errno.EINVAL], "Invalid wrapper"
 

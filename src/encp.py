@@ -1748,7 +1748,7 @@ def pnfs_information(filelist,nfiles):
 	try:
 	    ff_wrapper.append(p.file_family_wrapper)  # get the file family wrapper
 	except:
-	    ff_wrapper.append("cpio_custom")  # default
+	    ff_wrapper.append("cpio_odc")  # default
         width.append(p.file_family_width)  # get the width
 
         # get some debugging info for the ticket

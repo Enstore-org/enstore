@@ -92,7 +92,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         record['sum_rd_err'] = ticket.get('sum_rd_err', 0)
         record['sum_wr_access'] = ticket.get('sum_wr_access', 0)
         record['sum_rd_access'] = ticket.get('sum_rd_access', 0)
-        record['wrapper'] = ticket.get('wrapper', "cpio_custom")
+        record['wrapper'] = ticket.get('wrapper', "cpio_odc")
         record['non_del_files'] = ticket.get('non_del_files', 0)
         record['blocksize'] = ticket.get('blocksize', -1)
         if record['blocksize'] == -1:
