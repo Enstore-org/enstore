@@ -1660,6 +1660,76 @@ def check_crc(done_ticket, chk_crc):
             done_ticket['status'] = (e_errors.CRC_ERROR, msg)
 
 ############################################################################
+            
+def verify_file_size(ticket):
+    #Don't worry about checking when outfile is /dev/null.
+    if ticket['outfile'] == '/dev/null':
+        return
+
+    #Get the stat info for each file.
+    try:
+        full_stat = os.stat(ticket['wrapper']['fullname'])
+        full_filesize = full_stat[stat.ST_SIZE]
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
+    
+    try:
+        pnfs_stat = os.stat(ticket['wrapper']['pnfsFilename'])
+        pnfs_filesize = pnfs_stat[stat.ST_SIZE]
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
+
+    try:
+        in_stat = os.stat(ticket['infile'])
+        in_filesize = in_stat[stat.ST_SIZE]
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
+    
+    try:
+        out_stat = os.stat(ticket['outfile'])
+        out_filesize = out_stat[stat.ST_SIZE]
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
+    
+    #Until pnfs supports NFS version 3 (for large file support) make sure
+    # we are using the correct file_size for the pnfs side.
+    try:
+        p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
+        p.get_file_size()
+        pnfs_real_size = p.file_size
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
+
+    #Handle large files.
+    if pnfs_filesize == 1:
+        if ticket['file_size'] != out_filesize:
+            msg = "Expected file size (%s) equal to actuall file size " \
+                  "(%s) for file %s." % \
+                  (ticket['file_size'], out_filesize, ticket['outfile'])
+            ticket['status'] = (e_errors.EPROTO, msg)
+        elif full_filesize != pnfs_real_size:
+            msg = "Expected local file size (%s) to equal remote file " \
+                  " size (%s) for file %s." \
+                  % (full_filesize, pnfs_real_size, ticket['outfile'])
+            ticket['status'] = (e_errors.EPROTO, msg)
+    #Test if the sizes are correct.
+    elif ticket['file_size'] != out_filesize:
+        msg = "Expected file size (%s) equal to actuall file size " \
+              "(%s) for file %s." % \
+              (ticket['file_size'], out_filesize, ticket['outfile'])
+        ticket['status'] = (e_errors.EPROTO, msg)
+    elif full_filesize != pnfs_filesize:
+        msg = "Expected local file size (%s) to equal remote file " \
+              " size (%s) for file %s." \
+              % (full_filesize, pnfs_filesize, ticket['outfile'])
+        ticket['status'] = (e_errors.EPROTO, msg)
+    
+############################################################################
 
 def set_outfile_permissions(ticket):
     #Attempt to get the input files permissions and set the output file to
@@ -3023,76 +3093,6 @@ def get_clerks_info(vcc, fcc, bfid):
 
     return vc_ticket, fc_ticket
 
-############################################################################
-
-def verify_file_size(ticket):
-    #Don't worry about checking when outfile is /dev/null.
-    if ticket['outfile'] == '/dev/null':
-        return
-
-    #Get the stat info for each file.
-    try:
-        full_stat = os.stat(ticket['wrapper']['fullname'])
-        full_filesize = full_stat[stat.ST_SIZE]
-    except (OSError, IOError), detail:
-        ticket['status'] = (e_errors.OSERROR, str(detail))
-        return
-    
-    try:
-        pnfs_stat = os.stat(ticket['wrapper']['pnfsFilename'])
-        pnfs_filesize = pnfs_stat[stat.ST_SIZE]
-    except (OSError, IOError), detail:
-        ticket['status'] = (e_errors.OSERROR, str(detail))
-        return
-
-    try:
-        in_stat = os.stat(ticket['infile'])
-        in_filesize = in_stat[stat.ST_SIZE]
-    except (OSError, IOError), detail:
-        ticket['status'] = (e_errors.OSERROR, str(detail))
-        return
-    
-    try:
-        out_stat = os.stat(ticket['outfile'])
-        out_filesize = out_stat[stat.ST_SIZE]
-    except (OSError, IOError), detail:
-        ticket['status'] = (e_errors.OSERROR, str(detail))
-        return
-    
-    #Until pnfs supports NFS version 3 (for large file support) make sure
-    # we are using the correct file_size for the pnfs side.
-    try:
-        p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
-        p.get_file_size()
-        pnfs_real_size = p.file_size
-    except (OSError, IOError), detail:
-        ticket['status'] = (e_errors.OSERROR, str(detail))
-        return
-
-    #Handle large files.
-    if pnfs_filesize == 1:
-        if ticket['file_size'] != out_filesize:
-            msg = "Expected file size (%s) equal to actuall file size " \
-                  "(%s) for file %s." % \
-                  (ticket['file_size'], out_filesize, ticket['outfile'])
-            ticket['status'] = (e_errors.EPROTO, msg)
-        elif full_filesize != pnfs_real_size:
-            msg = "Expected local file size (%s) to equal remote file " \
-                  " size (%s) for file %s." \
-                  % (full_filesize, pnfs_real_size, ticket['outfile'])
-            ticket['status'] = (e_errors.EPROTO, msg)
-    #Test if the sizes are correct.
-    elif ticket['file_size'] != out_filesize:
-        msg = "Expected file size (%s) equal to actuall file size " \
-              "(%s) for file %s." % \
-              (ticket['file_size'], out_filesize, ticket['outfile'])
-        ticket['status'] = (e_errors.EPROTO, msg)
-    elif full_filesize != pnfs_filesize:
-        msg = "Expected local file size (%s) to equal remote file " \
-              " size (%s) for file %s." \
-              % (full_filesize, pnfs_filesize, ticket['outfile'])
-        ticket['status'] = (e_errors.EPROTO, msg)
-    
 #######################################################################
 #Functions for reads.
 #######################################################################
