@@ -167,8 +167,8 @@ class Interface:
     def print_help(self):
         sys.stderr.write("USAGE: %s\n"%(self.help_line(),))
 
-    def print_usage_line(self, opts=[]):
-        if not opts:
+    def print_usage_line(self, opts=None):
+        if opts == None:
             opts = self.options()
         sys.stderr.write("["+self.format_options(opts, " ")+"] "+self.parameters()+"\n")
 
@@ -450,6 +450,16 @@ class Interface:
 		self.html_gen_host = value
 	    elif opt == "--html":
 		self.html = 1
+	    elif opt == "--up":
+		self.up = value
+	    elif opt == "--down":
+		self.down = value
+	    elif opt == "--outage":
+		self.outage = value
+	    elif opt == "--nooutage":
+		self.nooutage = value
+	    elif opt == "--time":
+		self.time = value
 	    elif opt == "--input_dir":
 		self.input_dir = value
 	    elif opt == "--url":
