@@ -176,7 +176,7 @@ EXto_HSM(  PyObject	*self
 	    fd_a[idx] = (int)((struct s_ETdesc *)fd_a[idx])->ftt_desc;
 	    filesize_p[idx] = &((struct s_ETdesc *)fd_a[idx])->filesize;
 	}
-	else if (strcmp(str,"RawDiskDriver") == 0)
+	else if (strcmp(str,"RawDiskDriver") == 0 ||  strcmp(str,"DelayDriver") == 0 )
 	{   attrObj1_p = PyObject_GetAttrString( obj_pa[idx], "df" );
 	    fp_a[idx] = PyFile_AsFile( attrObj1_p );
 	    Py_DECREF( attrObj1_p );
