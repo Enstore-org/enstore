@@ -5,6 +5,8 @@ import calendar
 import time
 import HTMLgen
 import types
+import os
+import stat
 
 import enstore_status
 import enstore_constants
@@ -802,10 +804,32 @@ class EnMiscPage(EnBaseHtmlDoc):
     # create the body of the page, the incoming data is a list of strings
     def body(self, data_list):
 	table = self.table_top()
-	# now the data
-	data_list.sort()
-	for item in data_list:
-	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Href(item, item), size="+2"))))
+	if data_list:
+	    # now the data
+	    data_list.sort()
+	    for item in data_list:
+		table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Href(item, item), 
+								size="+2"))))
+	# output on the same page a list of the files indicating misc jobs are active
+	# this may aid in diagnosing problems with hung misc jobs.
+	table.append(empty_row())
+	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR())))
+	table.append(empty_row())
+	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold("Directories Created For Currently Running Miscellaneous Processes"), size="+4"))))
+	table.append(empty_row())
+	home = "%s/MISC"%(os.environ['HOME'],)
+	dirs = os.listdir(home)
+	tr = HTMLgen.TR(self.make_th("Directory"))
+	tr.append(self.make_th("Creation Date"))
+	dirs_table = HTMLgen.TableLite(tr, border=1, cellspacing=5, cellpadding=CELLP,
+				       align="LEFT", bgcolor=AQUA)
+	for dir in dirs:
+	    file = "%s/%s"%(home, dir)
+	    tr = HTMLgen.TR(HTMLgen.TD(file))
+	    # get the creation date of the directory too
+	    tr.append(HTMLgen.TD(enstore_status.format_time(os.stat(file)[stat.ST_MTIME])))
+	    dirs_table.append(tr)
+	table.append(HTMLgen.TR(HTMLgen.TD(dirs_table)))
 	self.append(table)
 
 class EnLogPage(EnBaseHtmlDoc):
