@@ -371,7 +371,7 @@ static PyObject* dismount(PyObject *self, PyObject *args)
   DRIVEID stkdrv;
   int seqNo;
   SEQ_NO seq;
-  int stat;
+  int stat, stat2;
 
   if(!PyArg_ParseTuple(args, "sssi", &vol, &drive, &media_type, &seqNo)) {
       printf("\nDISMOUNT - invalid arguments\n");
@@ -382,7 +382,11 @@ static PyObject* dismount(PyObject *self, PyObject *args)
 
   asc2STKdrv(drive, &stkdrv);
   stat = STKdismount(seq, vol, stkdrv, NO_LOCK_ID);
-  return(Py_BuildValue("sis", status_class(stat), stat, cl_status(stat)));
+  stat2 = stat;
+  /* Sometimes the ACS reports "drive available" instead of success on dismounts.
+     This seems to happen when there are retries.  Just make it success for now */
+  if (stat2==STATUS_DRIVE_AVAILABLE) {stat2=STATUS_SUCCESS;}
+  return(Py_BuildValue("sis", status_class(stat2), stat2, cl_status(stat)));
 }
 
 static PyObject* query_volume(PyObject *self, PyObject *args)

@@ -92,6 +92,9 @@ check_existance(backup_dir,0)
 
 # backups are saved in separate files - get the most recent one
 bdirs = os.listdir(backup_dir)
+if len(bdirs) == 0:
+    print timeofday.tod(),"ERROR NO Backups found on ",backup_node," directory", backup_dir, " Are the backups running?"
+    sys.exit(1)
 bdirs.sort()
 current_backup_dir = bdirs[-1:][0]
 

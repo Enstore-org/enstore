@@ -18,7 +18,7 @@
 #include <assert.h>             /* assert */
 #include <errno.h>
 #include <signal.h>		/* sigaction() and struct sigaction */
-#if defined(IRIX) || defined(IRIX64)
+#if defined(IRIX) || defined(IRIX64) || defined(sun)
 # include <alloca.h>		/* alloca() */
 #endif
 
