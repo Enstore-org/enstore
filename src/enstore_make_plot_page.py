@@ -25,7 +25,7 @@ def find_jpg_files((jpgs, stamps, pss, input_dir, url), dirname, names):
     for file in tstamps:
         stamps.append(("%s%s/%s"%(url, dir, file[0]), file[1]))
     for file in tpss:
-        pss.append(("%s%s/%s"%(url, dir, file), file[1]))
+        pss.append(("%s%s/%s"%(url, dir, file[0]), file[1]))
 
 def do_the_walk(input_dir, url):
     # walk the directory tree structure and return a list of all jpg, stamp
