@@ -272,11 +272,11 @@ SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
 
 
 def decode(msg):
-    dec_msg = decode_type(msg)
-    msg_class = SUPPORTED_MESSAGES.get(dec_msg[0], None)
-    if msg_class:
-	decoded_msg = msg_class()
-	decoded_msg.decode(msg)
-    else:
-	decoded_msg = None
+    decoded_msg = None
+    if msg:
+	dec_msg = decode_type(msg)
+	msg_class = SUPPORTED_MESSAGES.get(dec_msg[0], None)
+	if msg_class:
+	    decoded_msg = msg_class()
+	    decoded_msg.decode(msg)
     return decoded_msg
