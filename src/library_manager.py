@@ -780,7 +780,7 @@ class LibraryManagerMethods:
             # cleanup suspect volume list
             if expired_vols:
                 for vol in expired_vols:
-                    Trace.log(e_errors.INFO,"%s has been removed from suspect volume list due to TO expiration",%
+                    Trace.log(e_errors.INFO,"%s has been removed from suspect volume list due to TO expiration"%
                               (vol['external_label'],))
                     self.suspect_volumes.remove(vol)
                    
