@@ -73,7 +73,7 @@ export file_users
 rm -f $file_users
 users=""
 ls -1 /home | while read user; do if [ "$user" != "enstore" ]; then
-   users="$users --exclude=\'/home/$user/*\'" ; fi; rm -f $file_users; echo "$users" > $file_users; done
+   users="$users --exclude='/home/$user/*'" ; fi; rm -f $file_users; echo "$users" > $file_users; done
 users=`cat $file_users`
 rm -f $file_users
 cmd=""
