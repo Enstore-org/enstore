@@ -96,15 +96,17 @@ if __name__ == "__main__" :
     intf = MediaChangerClientInterface()
 
     # get a media changer client
-    mlc = MediaChangerClient(0, intf.config_list, intf.media_changer, \
+    mcc = MediaChangerClient(0, intf.config_list, intf.media_changer, \
                             intf.config_host, intf.config_port)
 
     if intf.alive:
-        ticket = mlc.alive()
+        ticket = mcc.alive()
     else:
-        ticket = mlc.unloadvol(intf.volume, intf.drive)
+        ticket = mcc.unloadvol(intf.volume, intf.drive)
         print 'unload returned:' + ticket['status']
 
+    del mcc.csc.u
+    del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
     if ticket['status'] == 'ok' :
         if intf.list:
             pprint.pprint(ticket)

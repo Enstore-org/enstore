@@ -138,7 +138,8 @@ if __name__ == "__main__" :
     elif  intf.getwork:
         ticket = lmc.getwork(intf.list)
 
-
+    del lmc.csc.u
+    del lmc.u		# del now, otherwise get name exception (just for python v1.5???)
     if ticket['status'] == 'ok' :
         if intf.list:
             pprint.pprint(ticket)
