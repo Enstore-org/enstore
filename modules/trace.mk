@@ -8,9 +8,12 @@
 
 WARN=  `if [ \`uname\` = Linux ];then echo "-Wall"; fi`
 
-all:		traceShow lib
+all:		traceShow lib trace_delta
 
 lib:		trace.a
+
+trace_delta:	trace_delta.c
+		cc -g -o trace_delta trace_delta.c
 
 trace.a:	trace.o
 		ar r trace.a trace.o
