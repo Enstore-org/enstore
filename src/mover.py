@@ -461,6 +461,7 @@ def forked_write_to_hsm( self, ticket ):
             logc.send(log_client.INFO,2,"WRAPPER.WRITE")
 	    t0 = time.time()
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
+	    wrapper.blocksize = self.vol_info['blocksize']
 	    wrapper.write_pre_data( do, ticket['wrapper'] )
 	    Trace.trace( 11, 'done with pre_data' )
 

@@ -76,9 +76,13 @@ class Wrapper :
 
     def write_post_data( self, driver, crc ):
 
+	try:
+	    blocksize = self.blocksize
+	except:
+	    blocksize = 512
 	size = self.header_size + self.filesize
 
-        driver.write( trailers(size,self.trailer) )
+        driver.write( trailers(blocksize, size,self.trailer) )
         return
 
 
@@ -190,11 +194,11 @@ def headers( inode, mode, uid, gid, nlink, mtime, filesize,
         return head, trailer
 
 # generate the enstore cpio "trailers"
-def trailers( siz, trailer ):
+def trailers(blocksize, siz, trailer):
         size = siz
 
         size = size + len(trailer)
-        padt = (512-(size%512)) % 512
+        padt = (blocksize-(siz%blocksize)) % blocksize
 
         # ok, send it back to so he can write it out
         return(trailer + "\0"*padt )
