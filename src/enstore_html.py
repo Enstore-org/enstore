@@ -499,10 +499,11 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	       not moverd[enstore_status.STATUS][4] == enstore_status.NO_INFO:
 		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Completed Transfers",
 							color=BRICKRED)))
-		if not moverd.has_key(enstore_status.COMPLETED):
+		try:
+		    tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
+					 align="LEFT"))
+		except KeyError:
 		    print moverd
-		tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
-				     align="LEFT"))
 		mv_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
 					     align="LEFT", bgcolor=YELLOW)
 		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current State",
