@@ -12,6 +12,8 @@ import select
 import pprint
 import time
 import errno
+import re
+import time
 
 # enstore imports
 import configuration_client
@@ -66,8 +68,15 @@ def get_routing_callback_addr(udps=None):
 def parse_file(filename):
     file=open(filename, "r")
     data=map(string.strip, file.readlines())
+    tmp = []
+    for item in data:
+	try:
+	    tmp.append(string.split(item)[0])
+	except IndexError:
+	    continue #This happens for blank lines
+
     file.close()
-    return data
+    return tmp
 
 def get_vcc_list():
     #Determine the entire valid list of configuration servers.
@@ -219,11 +228,26 @@ def main():
 
     unique_id_list = []
     for vol in vol_list:
+	e_msg = None #clear this error variable.
         for i in range(len(vcc_list)):
             vc = vcc_list[i].inquire_vol(vol)
-            if vc['status'] != (e_errors.OK, None):
-                continue
 
+	    #If the volume has a bad state, skip it.
+            if vc['status'] != (e_errors.OK, None):
+		if e_msg: #If error is already set, skip it.
+		    continue
+		e_msg = "Volume %s has state %s and unassertable." % \
+			(vol, vc['status'])
+                continue
+	    #If the volume is not a tape, skip it.
+	    if vc['media_type'] == "null" or vc['media_type'] == "disk":
+		if e_msg: #If error is already set, skip it.
+		    continue
+		e_msg = "Volume %s is a %s volume and unassertable." % \
+			(vol, vc['media_type'])
+		continue
+
+	    #Create the ticket to submit to the library manager.
             ticket = {}
             ticket['unique_id'] = generate_unique_id()
             ticket['callback_addr'] = callback_addr
@@ -231,16 +255,34 @@ def main():
 	    ticket['route_selection'] = route_selection
             ticket['vc'] = vc
             ticket['vc']['address'] = vcc_list[i].server_address  #vcc instance
-            ticket['fc'] = {} #easier to do this than modify the mover.
+            #easier to do this than modify the mover.
+	    ticket['fc'] = {}
+	    ticket['times'] = {}
+	    ticket['times']['t0'] = time.time()
+	    ticket['encp'] = {}
+	    ticket['encp']['adminpri'] = -1
+	    ticket['encp']['basepri'] = 1
+
+	    print "Submitting assert request for %s volume %s." % \
+		  (ticket['vc']['media_type'], vol)
 
             lmc = library_manager_client.LibraryManagerClient(
                 csc_list[i], ticket['vc']['library'] + ".library_manager")
-            lmc.volume_assert(ticket, 10, 1)
-            unique_id_list.append(ticket['unique_id'])
+            responce_ticket = lmc.volume_assert(ticket, 10, 1)
+
+	    if responce_ticket['status'] != (e_errors.OK, None):
+		print "Submittion for %s failed: %s" % \
+		      (vol, responce_ticket['status'])
+		continue
+
+	    unique_id_list.append(ticket['unique_id'])
 
             break #When the correct vcc is found skip the rest.
+	
+	else:
+	    print e_msg
 
-    for vol in vol_list:
+    for i in range(len(unique_id_list)):
         if route_selection == 1:
 	    #There is no need to do this on a non-multihomed machine.
             route_ticket, listen_socket = open_routing_socket(
