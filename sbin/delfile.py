@@ -3,12 +3,11 @@
 This is a replacement for $ENSTORE_DIR/sbin/delfile
 '''
 
+import option
 import file_clerk_client
 import volume_clerk_client
-import option
 import os
 import string
-import generic_client
 import e_errors
 
 vols = []
@@ -38,8 +37,7 @@ def get_bfid(mf):
 if __name__ == '__main__':
     intf = option.Interface()
     fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
-    generic_client.init_done = 0
-    vcc = volume_clerk_client.VolumeClerkClient((intf.config_host, intf.config_port))
+    vcc = volume_clerk_client.VolumeClerkClient(fcc.csc)
     trash = get_trash()
     # print trash
     files = os.listdir(trash)
