@@ -575,20 +575,21 @@ class LibraryManagerMethods:
         self.process_for_bound_vol = 1
         # for tape positioning optimization check what was
         # a last work for this volume
-        if last_work == 'READ':
-            # see if there is another work for this volume
-            # disable retrival of HiPri requests as they were
-            # already treated above
-            rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
-            if not rq:
-               rq = self.pending_work.get(vol_family, use_admin_queue=0) 
-        elif last_work == 'WRITE':
+        if last_work == 'WRITE':
             # see if there is another work for this volume family
             # disable retrival of HiPri requests as they were
             # already treated above
             rq = self.pending_work.get(vol_family, use_admin_queue=0)
             if not rq:
                rq = self.pending_work.get(external_label, current_location, use_admin_queue=0) 
+
+        else:
+            # see if there is another work for this volume
+            # disable retrival of HiPri requests as they were
+            # already treated above
+            rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
+            if not rq:
+               rq = self.pending_work.get(vol_family, use_admin_queue=0) 
 
         exc_limit_rq = None
         if rq:
