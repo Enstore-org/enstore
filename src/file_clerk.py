@@ -129,10 +129,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
 
         # get the library manager
         Trace.trace(10,"write_to_hsm calling config server to find "+\
-                    library[0]+".library_manager")
+                    library+".library_manager")
         vmticket = csc.get(library+".library_manager")
-        Trace.trace(10,"write_to_hsm."+ library[0]+".library_manager at host="+\
-                    repr(vticket["host"])+" port="+repr(vticket["port"]))
+        Trace.trace(10,"write_to_hsm."+ library+".library_manager at host="+\
+                    repr(vmticket["host"])+" port="+repr(vmticket["port"]))
         if vmticket["status"] != "ok" :
             pprint.pprint(ticket)
             self.reply_to_caller(vmticket)
