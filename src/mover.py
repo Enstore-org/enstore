@@ -827,10 +827,12 @@ def get_state_build_next_lm_req( self, wait ):
 	try: pid, status = posix.waitpid( self.client_obj_inst.pid, wait )
 	except:
 	    traceback.print_exc()
-	    logc.send( log_client.ERROR, 1, "waitpid-"+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
-	    os.system( 'ps alx' )
+	    logc.send( log_client.ERROR, 1,
+		       "waitpid-for pid:"+str(self.client_obj_inst.pid)+":"+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
+	    os.system( 'ps alxwww' )
 	    #raise sys.exc_info()[0], sys.exc_info()[1]
 	    # assume success???
+	    status = m_err.index(e_errors.OK)<<8
 	    pid = self.client_obj_inst.pid
 	if pid == self.client_obj_inst.pid:
 	    self.client_obj_inst.pid = 0
