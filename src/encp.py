@@ -552,6 +552,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
 
 def jraise(errcode,errmsg,exit_code=1) :
     format = "Fatal error:"+str(errcode)+str(errmsg)
+    print format
     logc.send(log_client.ERROR, 1, format)
     sys.exit(exit_code)
 

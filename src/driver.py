@@ -139,7 +139,7 @@ class  RawDiskDriver(GenericDriver) :
         self.left_to_read = self.pastbyte - self.firstbyte
 
     def close_file_read(self) :
-        pass
+        self.df.close()
 
     def read_block(self):
         # no file marks on a disk, so use the information
@@ -176,6 +176,7 @@ class  RawDiskDriver(GenericDriver) :
         else:
             self.eod = last_byte
 
+        self.df.close()
         return `(first_byte, last_byte)`  # cookie describing the file
 
     # write a block of data to already open file: user has to handle exceptions

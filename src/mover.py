@@ -213,6 +213,7 @@ class Mover :
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm(self, ticket) :
 
+        self.logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
         # double check that we are talking about the same volume
         if ticket["external_label"] != self.external_label :
             raise "volume manager and I disagree on volume"
@@ -238,14 +239,19 @@ class Mover :
         inode = 0
 
         # call the user and announce that your her mover
+        self.logc.send(log_client.INFO,2,"GETTING USER SOCKETS")
         self.get_user_sockets(ticket)
+
+        self.logc.send(log_client.INFO,2,"OPEN_FILE_WRITE")
         # open the hsm file for writing
         try:
             self.driver.open_file_write()
         # create the wrapper instance
+            self.logc.send(log_client.INFO,2,"CPIO")
             self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx)
 
         # now write the file
+            self.logc.send(log_client.INFO,2,"WRAPPER.WRITE")
             (wr_size, complete_crc, sanity_cookie) = self.wrapper.write(
                 inode, pnfs["mode"], pnfs["uid"], pnfs["gid"], ticket["mtime"],
                 ticket["size_bytes"], pnfs["major"], pnfs["minor"],
