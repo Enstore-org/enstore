@@ -51,11 +51,11 @@ def add_mover(name, address):
 def get_movers(config_client, lm_name):
     Trace.trace(3, "{get_movers for " + repr(lm_name))
     generic_cs.enprint("get_movers", generic_cs.SERVER, verbose,\
-	               generic_cs.ENNONE, lm_name)
+	               generic_cs.ENNONE, generic_cs.ENNONE, lm_name)
     movers_list = config_client.get_movers(lm_name)
     generic_cs.enprint(movers_list, \
 	               generic_cs.SERVER|generic_cs.PRETTY_PRINT, verbose,\
-	               generic_cs.ENNONE, lm_name)
+	               generic_cs.ENNONE, generic_cs.ENNONE, lm_name)
     if movers_list:
 	for item in movers_list:
 	    if (item.has_key('mover') and
@@ -64,7 +64,7 @@ def get_movers(config_client, lm_name):
     Trace.trace(3, "}get_movers " + repr(movers))
     if movers:
 	generic_cs.enprint(movers, generic_cs.SERVER, verbose,\
-	                   generic_cs.ENNONE, lm_name)
+	                   generic_cs.ENNONE, generic_cs.ENNONE, lm_name)
     else:
 	generic_cs.enprint("no movers defined in the configuration for this LM",\
 	                  generic_cs.SERVER, verbose, generic_cs.ENNONE,\
