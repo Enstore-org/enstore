@@ -60,7 +60,7 @@ import os
 import sys
 import string
 import e_errors
-import encp
+import encp_wraper
 import volume_family
 import pg
 import time
@@ -88,7 +88,6 @@ f_n = len(f_p)
 MIGRATION_FILE_FAMILY_SUFFIX = "-MIGRATION"
 lomffs = len(MIGRATION_FILE_FAMILY_SUFFIX)
 
-db = None
 csc = None
 
 io_lock = thread.allocate_lock()
@@ -134,8 +133,6 @@ def init():
 
 	errors = 0
 
-	db = pg.DB(host=db_info['db_host'] , port=db_info['db_port'],
-		dbname=db_info['dbname'])
 	log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 	return
 
@@ -323,10 +320,13 @@ def temp_file(vol, location_cookie):
 # copy_files(files) -- copy a list of files to disk and mark the status
 # through copy_queue
 def copy_files(files):
-	# get a db connection
-	db = pg.DB(host=dbhost, port=dbport,dbname=dbname)
-
 	MY_TASK = "COPYING_TO_DISK"
+	# get a db connection
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+
+	# get an encp
+	encp = encp_wraper.Encp()
+
 	# if files is not a list, make a list for it
 	if type(files) != type([]):
 		files = [files]
@@ -370,7 +370,8 @@ def copy_files(files):
 			if os.access(tmp, os.F_OK):
 				log(MY_TASK, "tmp file %s exists, remove it first"%(tmp))
 				os.remove(tmp)
-			res = run_encp(['--ecrc', src, tmp])
+			cmd = "encp --priority 0 --ignore-fair-share --ecrc %s %s"%(src, tmp)
+			res = encp.encp(cmd)
 			if res == 0:
 				ok_log(MY_TASK, "%s %s to %s"%(bfid, src, tmp))
 			else:
@@ -495,7 +496,11 @@ def swap_metadata(bfid1, src, bfid2, dst):
 def migrating():
 	MY_TASK = "COPYING_TO_TAPE"
 	# get a database connection
-	db = pg.DB(host=dbhost, port=dbport,dbname=dbname)
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+
+	# get an encp
+	encp = encp_wraper.Encp()
+
 	if debug:
 		log(MY_TASK, "migrating() starts")
 	job = copy_queue.get(True)
@@ -532,8 +537,8 @@ def migrating():
 		# check if it has already been copied
 		bfid2 = is_copied(bfid, db)
 		if not bfid2:
-			res = run_encp(['--library', DEFAULT_LIBRARY, '--storage-group', sg,
-				'--file-family', ff, tmp, dst])
+			cmd = "encp --priority 0 --ignore-fair-share --library %s --storage-group %s --file-family %s %s %s"%(DEFAULT_LIBRARY, sg, ff, tmp, dst)
+			res = encp.encp(cmd)
 			if res:
 				error_log(MY_TASK, "failed to copy %s %s %s"%(bfid, src, tmp))
 				job = copy_queue.get(True)
@@ -582,18 +587,24 @@ def migrating():
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
 def final_scan():
+	MY_TASK = "FINAL_SCAN"
 	# get its own file clerk client
 	fcc = file_clerk_client.FileClient(csc)
+
 	#get a database connection
-	db = pg.DB(host=dbhost, port=dbport,dbname=dbname)
-	MY_TASK = "FINAL_SCAN"
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+
+	# get an encp
+	encp = encp_wraper.Encp()
+
 	job = scan_queue.get(True)
 	while job:
 		(bfid, bfid2, src) = job
 		log(MY_TASK, "start checking %s %s"%(bfid2, src))
 		ct = is_checked(bfid2, db)
 		if not ct:
-			res = run_encp([src, '/dev/null'])
+			cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(src)
+			res = encp.encp(cmd)
 			if res == 0:
 				log_checked(bfid, bfid2, db)
 				ok_log(MY_TASK, bfid2, src)
@@ -619,11 +630,15 @@ def final_scan():
 # final_scan_volume(vol) -- final scan on a volume when it is closed to
 #				write
 def final_scan_volume(vol):
+	MY_TASK = "FINAL_SCAN_VOLUME"
 	local_error = 0
 	# get its own fcc
 	fcc = file_clerk_client.FileClient(csc)
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
-	MY_TASK = "FINAL_SCAN_VOLUME"
+
+	# get an encp
+	encp = encp_wraper.Encp()
+
 	q = "select bfid, pnfs_id, src_bfid  \
 		from file, volume, migration \
 		where file.volume = volume.id and \
@@ -665,7 +680,8 @@ def final_scan_volume(vol):
 				local_error = local_error + 1
 				continue
 
-			res = run_encp([pnfs_path, '/dev/null'])
+			cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(pnfs_path)
+			res = encp.encp(cmd)
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
 				ok_log(MY_TASK, "closing", bfid, pnfs_path)
@@ -796,6 +812,7 @@ def restore(bfids):
 # restore_volume(vol) -- restore all deleted files on vol
 def restore_volume(vol):
 	MY_TASK = "RESTORE_VOLUME"
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 	log(MY_TASK, "restoring", vol, "...")
 	q = "select bfid from file, volume where \
 		file.volume = volume.id and label = '%s' and \
