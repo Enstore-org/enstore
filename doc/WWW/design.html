@@ -608,9 +608,9 @@ The Configuration server maintains the crucial information about
 system configuration, such as the location and status of each server.
 The first thing that each server does when it starts up is to
 ask the configuration server for information (e.g. the location
-of any other server with which to communicate).
-<br>
-<blink><font color=#ff0000>Need more content</font></blink>
+of any other server with which to communicate).  New configurations can be
+loaded into the Configuration server without disturbing the current running
+system.
 <h3><a name="log_server">
 1.3.6 Log Server
 </h3>
@@ -620,13 +620,15 @@ Basically, these messages are transactional records.
 Log files are labeled by dates.
 At midnight each day, the currently opened log file gets closed and another
 one is opened.
-<blink><font color=#ff0000>Need more content</font></blink>
+<p>
+Additionally it is expected that a trace server will be developed.
 <h3><a name="media_changer">
 1.3.7 Media Changer
 </h3>
 The Media Changer mounts and dismounts the media into and from the drive
-according to a request from the mover.
-<blink><font color=#ff0000>Need more content</font></blink>
+according to a request from the mover.  one media changer can serve multiple
+drives and libraries.  When the drives are in the robot, the media changer
+is the interface to the robotic software.
 <h2><a name="db">
 2 Databases in Enstore
 </h2>
@@ -1169,9 +1171,8 @@ the system falls below a threshold.
 <td valign=top><b>READ_TAPE_BUSY</b>
 <td valign=top>"The media changer says that the tape is in another drive"
     Enstore has a bug, or some other system has mounted the tape or
-    the library micro put the tape somewhere else.
+    the robotic software put the tape somewhere else.
     Mover shall freeze the tape.
-    <font color=#ff0000><blink>What is a "library micro"?</blink></font>
 <tr>
 <td valign=top><b>READ_BADMOUNT</b>
 <td valign=top>Other Mount failure on read, or load operation failed.
