@@ -220,7 +220,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
             raise exc,msg
 
         driver_object = self.hsm_driver.open( self.mvr_config['device'], 'r' )
-        ss = driver_object.get_stats()
+        try:
+            ss = driver_object.get_stats()
+        except FTT.error, detail:
+            print "device=",self.mvr_config['device']
+            raise
+        
+        
         if ss['serial_num'] != None: self.hsm_drive_sn = ss['serial_num']
         self.mvr_config['serial_num'] = ss['serial_num']
         self.mvr_config['product_id'] = ss['product_id']
@@ -606,6 +612,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 driver_object = self.hsm_driver.open( self.mvr_config['device'], open_flag)
                 r=driver_object.rewind()
                 x=driver_object.tell()
+                Trace.log(e_errors.ERROR, "CGWDEBUG tell %s"%(x,))
                 if debug_paranoia: print "tell", x
             ##end of paranoid checks    
             else:

@@ -547,6 +547,9 @@ class  FTTDriver(GenericDriver) :
 	    else:
 		skip = filenum - self.loc2int(self.cur_loc_cookie)[2]
 		if skip < 0: skip = skip - 1# if neg, make more neg
+                msg =  "CGWDEBUG filenum=%s skip=%s cur_loc=%s"%( filenum, skip, self.cur_loc_cookie)
+                Trace.log( e_errors.ERROR,msg)
+
 		FTT.skip_fm( skip )
 		if skip < 0:
                     FTT.skip_fm( 1 )
