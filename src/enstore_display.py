@@ -966,7 +966,12 @@ class Mover:
 
         #Only draw the background if it does not exist.
         if not self.progress_bar_bg:
-            self.draw_background_progress()
+            #It turns out to work best if the entire progress bar area
+            # is drawn in this situation.
+            self.percent_done = percent_done
+            self.alt_percent_done = alt_percent_done
+            self.draw_progress()
+            return
         
         if percent_done != self.percent_done:
             self.percent_done = percent_done
