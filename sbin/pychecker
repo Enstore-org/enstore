@@ -1,7 +1,0 @@
-#!/bin/sh
-#
-#Important note:  The checker.py function must be called
-#                 with its full path in order for it to work.
-#           See checker.py setupNamespace definition
-#
-python $ENSTORE_DIR/tools/pychecker/checker.py  -s -i -l -t -v -n -L 100000 -B 100000 -R 100000 $@
