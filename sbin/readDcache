@@ -31,14 +31,20 @@ KRB5CCNAME=/tmp/krb5cc_enstore_$$
 export KRB5CCNAME
 echo "`date` ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}"
              ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
-${krbdir}/klist -fea
-
 
 # transfer the file via the dcache's kerberized door
-echo "`date` kftpcp -p 24127 -m p -v enstore@fndca:$f3 /dev/null"
-             kftpcp -p 24127 -m p -v enstore@fndca:$f3 /dev/null
-stat1=$?
-echo "`date`: Kerberized door check finished. stat = $stat1"
+# there is some chance that the java gss will fail (ivm) - so retry
+try=1
+maxtry=10
+stat1=10
+while [ $stat1 -ne 0 -a $try -le $maxtry ]; do
+  ${krbdir}/klist -fea
+  echo "$try of $maxtry `date` kftpcp -p 24127 -m p -v enstore@fndca:$f3 /dev/null"
+                               kftpcp -p 24127 -m p -v enstore@fndca:$f3 /dev/null
+  stat1=$?
+  echo "`date`: Kerberized door check finished. stat = $stat1"
+  try=`expr $try + 1`
+done
 
 echo "`date` ${krbdir}/kdestroy"
              ${krbdir}/kdestroy
@@ -50,8 +56,12 @@ if [ $stat1 -ne 0 ]; then
 fi
 
 # transfer the same file via the dcache's non-kerberized door (anonymous read)
-echo "`date` anonymous ftp read enstore-test@fndca:$f3 /dev/null"
-python -c '
+try=1
+maxtry=10
+stat2=10
+while [ $stat2 -ne 0 -a $try -le $maxtry ]; do
+  echo "`date` anonymous ftp read enstore-test@fndca:$f3 /dev/null"
+  python -c '
 def x(dum):
  return
 from ftplib import FTP
@@ -61,8 +71,10 @@ ftp.connect("fndca",24126)
 ftp.login("enstore-test","anon-read")
 print ftp.retrbinary("RETR '$f3'",x)
 '
-stat2=$?
-echo "`date`: Non-kerberized door check finished. stat = $stat2"
+  stat2=$?
+  echo "`date`: Non-kerberized door check finished. stat = $stat2"
+  try=`expr $try + 1`
+done
 
 if [ $stat2 -ne 0 ]; then
  echo enstore alarm --raise --severity "A" --root-error "anonymous ftp read enstore-test@fndca:$f3 /dev/null.  STAT=$stat2"
