@@ -104,10 +104,10 @@ class UDPClient:
                     self.send_no_wait({"work":"done_cleanup"}, server)
                 except:
                     pass
-                try:
-                    tsd.socket.close()
-                except:
-                    pass
+            try:
+                tsd.socket.close()
+            except:
+                pass
         except:
             pass
         
