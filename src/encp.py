@@ -1002,11 +1002,6 @@ def open_data_socket(mover_addr, mode):
     if interface:
         ip = interface.get('ip')
         if ip:
-	    try:
-		#This is were the interface selection magic occurs.
-		host_config.setup_interface(mover_addr[0], ip)
-	    except socket.error, msg:
-		Trace.log(e_errors.ERROR, "setup interface: %s %s" % (ip, msg))
             try:
                 data_path_socket.bind((ip, 0))
                 Trace.log(e_errors.INFO, "bind %s" % (ip,))

@@ -32,8 +32,14 @@ TRANSFER_MAX=16384
 
 # try to get a port from a range of possibilities
 def get_client() :
+    #(hostname,ha,hi) = hostaddr.gethostinfo()
+    #host = hi[0]
     #Pick an interface based on the current load of the system.
-    host = host_config.check_load_balance()['ip']
+    #host = host_config.check_load_balance()['ip']
+    #host = host_config.choose_interface()['ip']
+    #Pick an interface.
+    host = host_config.get_default_interface_ip()
+
     sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((host, 0))
     host, port = sock.getsockname()
@@ -175,8 +181,8 @@ class UDPClient:
         tsd.send_done[dst] = 1
 
         #set up the static route before sending.
-	# outgoing interface_ip is tsg.host and destination is address[0].
-	host_config.setup_interface(dst[0], tsd.host)
+        if host_config.UDP_fixed_route:
+            host_config.set_route(host_config.get_default_interface_ip(), dst[0])
 
         n_sent = 0
         while max_send==0 or n_sent<max_send:
@@ -216,11 +222,9 @@ class UDPClient:
     def send_no_wait(self, data, address) :
         tsd = self.get_tsd()
         message, txn_id = self.protocolize( data )
-        
         #set up the static route before sending.
-	# outgoing interface_ip is tsg.host and destination is address[0].
-	host_config.setup_interface(address[0], tsd.host)
-
+        if host_config.UDP_fixed_route:
+            host_config.set_route(host_config.get_default_interface_ip(), address[0])
         return tsd.socket.sendto( message, address )
 
     # send message, return an ID that can be used in the recv_deferred function
@@ -228,11 +232,9 @@ class UDPClient:
         tsd = self.get_tsd()
         tsd.send_done[address] = 1
         message, txn_id = self.protocolize( data )
-        
         #set up the static route before sending.
-	# outgoing interface_ip is tsg.host and destination is address[0].
-	host_config.setup_interface(address[0], tsd.host)
-
+        if host_config.UDP_fixed_route:
+            host_config.set_route(host_config.get_default_interface_ip(), address[0])
         bytes_sent = tsd.socket.sendto( message, address )
         if bytes_sent < 0:
             return -1
