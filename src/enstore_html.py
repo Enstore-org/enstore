@@ -706,14 +706,14 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
 class EnEncpStatusPage(EnBaseHtmlDoc):
 
-    error_text = {"USER ERROR"                               : "STATUS=USERERROR",
-                  "USER ERROR-No Local Read Access"          : "STATUS=EACCES",
-                  "USER ERROR No Local Read Access"          : "Fatal error:EACCES",
-                  "HARDWARE FAILURE-Mount"                   : "STATUS=WRITE_BADSWMOUNT",
-                  "HARDWARE FAILURE Mount"                   : "STATUS=READ_BADSWMOUNT",
-                  "DROPPED CONNECTION-User probably aborted" : "STATUS=BROKENPIPE",
-                  "USER ERROR-No Local Disk Space"           : "STATUS=ENOSPC",
-                  "USER ERROR No Local Disk Space"           : "Fatal error:ENOSPC"
+    error_text = {"USER ERROR"                                : "USERERROR",
+                  "USER ERROR, No Local Read Access"          : "EACCES",
+                  "USER ERROR, No access"                     : "NOACCESS",
+                  "HARDWARE FAILURE, Drive didn't go online"  : "BADSWMOUNT",
+                  "HARDWARE FAILURE, Read Error"              : "READ_ERROR",
+                  "HARDWARE FAILURE, Write Error"             : "WRITE_ERROR",
+                  "DROPPED CONNECTION, User probably aborted" : "BROKENPIPE",
+                  "USER ERROR, No Local Disk Space"           : "ENOSPC"
                   }
 
     def __init__(self, refresh = 120):
