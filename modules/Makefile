@@ -1,28 +1,77 @@
+# Generic Makefile for dynamically linked extension modules.
+#
+# Digital Creations, info@digicool.com
+# Copied from the oracledb module and modified by kurt for ETape
 
-all:	 Trace Makefile.modules Modules 
+# Uncomment and modify these lines if you want to fix the location of
+# the PYTHON installation and the python version.  Otherwise, set the
+# environment variables before using this Makefile.
+PYTHONHOME= $(PYTHON_DIR)
+PYTHONVERSION=	1.5
 
-# The target Makefile.modules generates a file Makefile.modules
-# which builds dynamic load modules (.so files) for each of the .c files
-# listed in the Setup file.   The file Makefile.pre.in knows how to make
-# dll files on the platform and "make -f Makefile.pre.in boot" generates
-# an appropriate Makefile (in a subdirectory) .   We copy it to
-# ../Makefile.modules for the Modules: target
+SHELL =         /bin/sh
 
-Makefile.modules: Setup $(PYTHON_DIR)/Python*/Misc/Makefile.pre.in
-	@echo "MAKING MODULE Makefile  ================================"
-	if [ ! -d mksetup ] ; then  mkdir mksetup; fi
-	cd mksetup/   ; \
-	cp ../Setup . ; \
-	cp $(PYTHON_DIR)/Python*/Misc/Makefile.pre.in . ; \
-	make -f Makefile.pre.in boot ; \
-        cp Makefile ../Makefile.modules
+# The following lines should be left as is:
+VERSION=	$(PYTHONVERSION)
+pyinstalldir=	$(PYTHONHOME)
+installdir=	$(PYTHONHOME)
+exec_installdir=$(pyinstalldir)
+INCLUDEPY=	$(PYTHONINC)
+LIBP=		$(PYTHONLIB)
+LIBPL=		$(LIBP)/config
+SRCDIR=		$(PYTHONHOME)/Python-$(PYTHONVERSION)/Modules
+PYMAKE=		make -f $(LIBPL)/Makefile
 
-Modules:
-	@echo "MAKING MODULES ================================"
-	make -f Makefile.modules
+# LIBSO is the location of platform-dependent dynamically linked
+# extension libraries.  This can be handy when you need to build
+# shared libraries that are not extensions but want to store them
+# with other extensions and need to know where they are.
+# Leave this line as it is.
+LIBSO=		`$(PYMAKE) -s echodestshared`
 
-Trace:	
-	@echo "MAKING TRACE =================================="
+# Put the object files for your module here:
+
+WARN=  `if [ \`uname\` = Linux ];then echo -Wall; fi`
+CFLAGS=-g $(WARN) -D`uname` -I./ -I$(FTT_DIR)/include -lc
+
+MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
+                ASHAREDMODULE=$$MODULE \
+                ASHAREDMODULESOBS="$$OBS" \
+                ASHAREDMODULESEXTRA="$$YOURLIBS" \
+                OPT="$(CFLAGS)" \
+                srcdir=$(SRCDIR) \
+                asharedmodule
+
+
+
+# The libraries to use
+YOURLIBS="$(OLIB)/libftt.a `cat $(FTT_DIR)/lib/libs`"
+YOURLIBS=$(OLIB)/libftt.a
+
+# If you have any Python modules, include them here, so that they
+# can get installed.
+PYMODULES=
+
+all:	EXfer ETape Devcodes Trace ECRC
+
+ETape:
+	MODULE=ETape; \
+	YOURLIBS="$(FTT_DIR)/lib/libftt.a -lc `cat $(FTT_DIR)/lib/libs`"; \
+	OBS=ETape.o ; \
+	$(MAKEIT)
+
+EXfer:
+	MODULE=EXfer; \
+	YOURLIBS="$(FTT_DIR)/lib/libftt.a -lc `cat $(FTT_DIR)/lib/libs`"; \
+	OBS=EXfer.o ; \
+	$(MAKEIT)
+
+Trace:	trace_1st Trace.so
+# do not use default rule
+	@echo done with Trace 
+
+trace_1st:
+# add all and mv traceShow to sbin for now
 	make -f trace.mk trace.a all 
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
 	@mv traceShow trace_delta ../sbin
@@ -33,8 +82,29 @@ Trace:
 	ln -fs traceShow traceOn;\
 	ln -fs traceShow traceOff;
 
+Trace.so: trace.a Trace.c
+# must force relink as $(LIBPL)/Makefile does not
+# check agains YOURLIBS
+	rm -f Trace.so	
+	MODULE=Trace; \
+	YOURLIBS="$(ENSTORE_DIR)/modules/trace.a -lc"; \
+	OBS=Trace.o ; \
+	$(MAKEIT)
+
+Devcodes:
+	MODULE=Devcodes; \
+	YOURLIBS=;\
+	OBS=Devcodes.o; \
+	$(MAKEIT)
+
+ECRC:
+	MODULE=ECRC; \
+	YOURLIBS=;\
+	OBS=ECRC.o; \
+	$(MAKEIT)
+
 # Normally we don't install .py files:
-install: installpyc
+install: installso installpyc
 
 # But sometimes we may want to:
 installpy: install
@@ -43,6 +113,13 @@ installpy: install
 	    cp $$m.py $(installdir)/lib/python$(VERSION)/; \
 	  fi; \
 	done
+
+
+installso: build
+	if [ "$(MODULE)" != your-module ]; then \
+	  $(PYMAKE) exec_prefix=$(installdir) \
+		ASHAREDMODULE=$(MODULE) asharedinstall; \
+	fi
 
 installpyc:
 	for m in $(PYMODULES) the-end; do \
@@ -53,7 +130,5 @@ installpyc:
 	done
 
 clean:
-	-rm Makefile.modules
-	-rm -f *.o *.so *~ *# so_locations sedscript
-	-rm -rf mksetup
+	-rm -f *.o *.so *~ *# so_locations
 	-make -f trace.mk clean
