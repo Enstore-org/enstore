@@ -173,7 +173,12 @@ class DispatchingWorker:
                    if fd in r:                              #        and see if there is any input
                        msg = os.read(fd, 8)
                        bytecount = string.atoi(msg)
-                       msg = os.read(fd, bytecount)
+                       msg = ""
+                       while len(msg)<bytecount:
+                           tmp = os.read(fd, bytecount - len(msg))
+                           if not tmp:
+                               break
+                           msg = msg+tmp
                        request= (msg,())                    #             if so read it
                        os.close(fd)
                        self.server_fds.remove(fd)
