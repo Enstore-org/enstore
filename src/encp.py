@@ -473,7 +473,7 @@ def write_to_hsm(input, output, output_file_family='',
 		    in_file.close()
 
 		    #if str(err_msg) =="(32, 'fd_xfer - write - Broken pipe')":
-		    if err_msg[0] == errno.EPIPE:
+		    if err_msg.args[1] == errno.EPIPE:
 			# could be network or could be mover closing socket...
 			# try to get done_ticket
 			try:
