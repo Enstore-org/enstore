@@ -6,6 +6,8 @@ import os
 import time
 import timeofday
 import traceback
+import sys
+import errno
 
 # enstore imports
 import log_client
@@ -16,6 +18,7 @@ import callback
 import dispatching_worker
 import generic_server
 import Trace
+import udp_client
 
 import pprint
 
@@ -34,8 +37,9 @@ def priority(ticket):
 
 # insert work into our queue based on its priority
 def queue_pending_work(ticket):
-    if list: print "LM: queue_pending_work"
-    if list: pprint.pprint(ticket)
+    if list: 
+	print "LM: queue_pending_work"
+	pprint.pprint(ticket)
     ticket["priority"] = priority(ticket)
     i = 0
     tryp = ticket["priority"]
@@ -45,6 +49,94 @@ def queue_pending_work(ticket):
         i = i + 1
     pending_work.insert(i, ticket)
 
+
+##############################################################
+movers = []    # list of movers belonging to this LM
+mover_cnt = 0  # number of movers in the queue
+
+# add mover to the movers list
+def add_mover(name, address):
+    global mover_cnt
+    Trace.trace(3, "{add_mover " + repr(name) + " " + repr(address))
+    mover = {}
+    mover['mover'] = name
+    mover['address'] = address
+    mover['state'] = 'idle_mover'
+    mover['last_checked'] = time.time()
+    mover['summon_try_cnt'] = 0
+    movers.append(mover)
+    mover_cnt = mover_cnt + 1
+    Trace.trace(3, "}add_mover " + repr(mover) + "mover count=" + \
+		repr(mover_cnt))
+    
+
+# get list of assigned movers from the configuration list
+def get_movers(config_client, lm_name):
+    Trace.trace(3, "{get_movers for " + repr(lm_name))
+    if list: print "get_movers"
+    movers_list = config_client.get_movers(lm_name)
+    if list: pprint.pprint(movers_list)
+    if movers_list:
+	if (movers_list.has_key('mover') and
+	    movers_list.has_key('address')):
+	    add_mover(movers_list['mover'], movers_list['address'])
+    Trace.trace(3, "}get_movers " + repr(movers))
+    if list:
+	if movers:
+	    pprint.pprint(movers)
+	else:
+	    print "no movers defined in the cofiguration for this LM"
+
+# find mover in the list
+def find_mover(mover, mover_list):
+    Trace.trace(3,"{find_mover " + repr(mover) + "in " + repr(mover_list))
+    found = 0
+    try:
+	for mv in mover_list:
+	    if ((mover['mover'] == mv['mover']) and
+		(mover['address'] == mv['address'])):
+		found = 1
+		break
+	if not found:
+	    mv = {}
+	Trace.trace(3,"}find_mover "+repr(mv))
+	return mv
+    except KeyError:
+	if list: 
+	    print "keyerror"
+	    pprint.pprint(mover)
+	    print "find_mover "+repr(mover)
+	Trace.trace(0,"find_mover "+repr(mover))
+
+    
+# update mover list
+def update_mover_list(mover):
+    mv = find_mover(mover, movers)
+    if mv == None:
+	return
+    if not mv:
+	add_mover(mover['mover'], mover['address'])
+    else:
+	if mover.has_key('work'):
+	    # change mover state
+	    if list: print "changing mover state"
+	    mv['state'] = mover['work']
+	    mv['last_checked'] = time.time()
+    if list: 
+	print "MOVER_LIST"
+	pprint.pprint(movers)
+
+# remove mover from list
+def remove_mover(mover, mover_list):
+    Trace.trace(3,"{remove_mover " + repr(mover) + "from " + repr(mover_list))
+    mv = find_mover(mover, mover_list)
+    if mv == None:
+	return
+    if mv:
+	mover_list.remove(mv)
+	Trace.trace(3,"}remove_mover " + repr(mv))
+	
+	
 
 ##############################################################
 
@@ -171,13 +263,119 @@ def next_work_this_volume(v):
 
 ##############################################################
 
+def summon_mover(self, mover):
+    if not summon: return
+    mover['last_checked'] = time.time()
+    mover['state'] = 'summoned'
+    mover['summon_try_cnt'] = mover['summon_try_cnt'] + 1
+    mv = find_mover(mover, self.summon_queue)
+    if list: print "MV=", mv
+    if not mv:
+	self.summon_queue.append(mover)
+	    
+    summon_rq = {'work': 'summon',
+		 'address': self.server_address }
+    if list: print 'summon_rq', summon_rq
+    mover['tr_error'] = self.udpc.send_no_wait(summon_rq, mover['address'])
+    if list: 
+	print "summon_queue"
+	pprint.pprint(self.summon_queue)
 
-# methods that can be inherited by any library manager
-class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
 
+# find the next idle mover
+def idle_mover_next(self):
+    idle_mover_found = 0
+    for i in range(self.summon_queue_index, mover_cnt):
+	if movers[i]['state'] == 'idle_mover':
+	    idle_mover_found = 1
+	    self.summon_queue_index = i
+	    break
+	else:
+	    continue
+    if idle_mover_found:
+	mv = movers[i]
+    else:
+	mv = None
+    return mv
+
+# send a regret
+def send_regret(ticket):
+    # fork off the regret sender
+    print "FORKING REGRET SENDER"
+    ret = os.fork()
+    if ret == 0:
+	callback.send_to_user_callback(ticket)
+	os._exit(0)
+    else:
+	print "CHILD ID=", ret
+
+
+class LibraryManager(dispatching_worker.DispatchingWorker,
+		     generic_server.GenericServer,
+                     SocketServer.UDPServer):
+
+    summon_queue = []   # list of movers being summoned
+    max_summon_attempts = 3
+    summon_queue_index = 0
+    suspect_volumes = [] # list of suspected volumes
+
+    def set_udp_client(self):
+	self.udpc = udp_client.UDPClient()
+	self.rcv_timeout = 10 # set receive timeout
+
+    # overrides timeout handler from SocketServer
+    def handle_timeout(self):
+	global mover_cnt
+	if list: 
+	    print "PROCESSING TO"
+	    print "summon queue"
+	    pprint.pprint(self.summon_queue)
+	t = time.time()
+	"""
+	if mover state did not change from being summoned then
+	it means that it did not "respond" during timeout period.
+	If number of attempts is less than max_summon_attempts,
+	summon this mover again. Else remove this mover from the 
+	list of known movers as well as from the list of movers 
+	being summoned
+	"""
+	for mv in self.summon_queue:
+	    if mv['state'] == 'summoned':
+		if (t - mv['last_checked']) > self.rcv_timeout:
+
+		    if mv['summon_try_cnt'] < self.max_summon_attempts:
+			# retry summon
+			self.summon_mover(mv)
+		    else:
+			# mover is dead. Remove it from all lists
+			movers.remove(mv)
+			self.summon_queue.remove(mv)
+			if mover_cnt > 0:
+			    mover_cnt = mover_cnt - 1
+
+	if list: 
+	    print "movers queue after processing TO"
+	    pprint.pprint(movers)
+	    print "summon queue after processing TO"
+	    pprint.pprint(self.summon_queue)
+
+	
     def write_to_hsm(self, ticket):
-        ticket["status"] = "ok"
+	"""
+	call handle_timeout to avoid the situation when due to
+	requests from another encp clients TO did not work even if
+	movers being summoned did not "respond"
+	"""
+	self.handle_timeout()
+	if movers:
+	    ticket["status"] = "ok"
+	else:
+	    ticket["status"] = "No movers"
+	    
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
+	if not movers:
+	    return
+
         format = "write Q'd %s -> %s : library=%s family=%s requestor:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
                                    repr(ticket["uinfo"]["fullname"]),
@@ -185,17 +383,35 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                    ticket["fc"]["library"],
                                    ticket["fc"]["file_family"],
                                    ticket["uinfo"]["uname"])
-        queue_pending_work(ticket)
-	#summon mover
-	import udp_client
-	udp_client.UDPClient().send_no_wait(  { "work":"summon"
-				     ,"address":(keys['hostip'], keys['port'])}
-				  , (keys['hostip'],7523) )
+	if not ticket.has_key('lm'):
+	    lm = {}
+	    ticket['lm'] = lm
+	lm['address'] = self.server_address
 
+        queue_pending_work(ticket)
+	if list: pprint.pprint(movers)
+
+	# find the next idle mover
+	mv = idle_mover_next(self)
+	if mv != None:
+	    # summon this mover
+	    summon_mover(self, mv)
 
     def read_from_hsm(self, ticket):
-        ticket["status"] = "ok"
+	"""
+	call handle_timeout to avoid the situation when due to
+	requests from another encp clients TO did not work even if
+	movers being summoned did not respond
+	"""
+	self.handle_timeout()
+	if movers:
+	    ticket["status"] = "ok"
+	else:
+	    ticket["status"] = "No movers"
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
+	if not movers:
+	    return
+
         format = "read Q'd %s -> %s : vol=%s bfid=%s requestor:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
                                    ticket["pinfo"]["pnfsFilename"],
@@ -203,18 +419,38 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                    ticket["fc"]["external_label"],
                                    ticket["fc"]["bfid"],
                                    ticket["uinfo"]["uname"])
-        queue_pending_work(ticket)
-	#summon mover
-	import udp_client
-	udp_client.UDPClient().send_no_wait(  { "work":"summon"
-				     ,"address":(keys['hostip'], keys['port'])}
-				  , (keys['hostip'],7523) )
+	if not ticket.has_key('lm'):
+	    lm = {}
+	    ticket['lm'] = lm
+	lm['address'] = self.server_address
 
+        queue_pending_work(ticket)
+
+	# find the next idle mover
+	mv = idle_mover_next(self)
+	if mv != None:
+	    # summon this mover
+	    summon_mover(self, mv)
+
+	
 
     # mover is idle - see what we can do
     def idle_mover(self, mticket):
-        # check our schedule
+	global mover_cnt
+
+	if list: print "IDLE MOVER"
+	update_mover_list(mticket)
+	# remove the mover from the list of movers being summoned
+	mv = find_mover(mticket, self.summon_queue)
+	if ((mv != None) and mv):
+	    mv['tr_error'] = 'ok'
+	    mv['summon_try_cnt'] = 0
+	    self.summon_queue.remove(mv)
+
         w = self.schedule()
+	if list: 
+	    print "SHEDULE RETURNED"
+	    pprint.pprint(w)
 
         # no work means we're done
         if w["status"] == "nowork":
@@ -222,6 +458,36 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
 
         # ok, we have some work - bind the volume
         elif w["status"] == "ok":
+	    # check if the volume for this work had failed on this mover
+	    for item in self.suspect_volumes:
+		if (w['fc']['external_label'] == item['external_label']):
+		    if list: print "FOUND volume ", item['external_label']
+		    for i in item['movers']:
+			if i == mticket['mover']:
+			    if list: print "FOUND mover ", i
+			    # skip this mover
+			    self.reply_to_caller({"work" : "nowork"})
+		    if len(item['movers']) > 1:
+			if list: 
+			    print "Number of movers for suspect volume", \
+				  len(item['movers'])
+			pending_work.remove(w)
+			w['status'] = 'Read failed'
+			send_regret(w)
+			#remove volume from suspect volume list
+			self.suspect_volumes.remove(item)
+			return
+		    elif mover_cnt == 1:
+			if list:
+			    print "There is only one mover in the \
+			    configuration"
+			pending_work.remove(w)
+			w['status'] = 'Read failed' # set it to something more specific
+			send_regret(w)
+			#remove volume from suspect volume list
+			self.suspect_volumes.remove(item)
+			return
+
             # reply now to avoid deadlocks
             format = "bind vol=%s work=%s mover=%s requestor:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
@@ -229,11 +495,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                        w["work"],
                                        mticket["mover"],
                                        w["uinfo"]["uname"])
-	    """
-            self.reply_to_caller({"work"           : "bind_volume",
-                                  "external_label" : w["fc"]\
-                                  ["external_label"] })
-	    """
+
             # put it into our bind queue and take it out of pending queue
             work_awaiting_bind.append(w)
             pending_work.remove(w)
@@ -242,16 +504,26 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
 
         # alas
         else:
-            #import pprint
-            print "assertion error in idle_mover w=, mticket="
-            pprint.pprint(w)
-            pprint.pprint(mticket)
+	    if list: 
+		print "assertion error in idle_mover w=, mticket="
+		pprint.pprint(w)
+		pprint.pprint(mticket)
             raise "assertion error"
 
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
-	if list: print "LM:have_bound_volume"
-	if list: pprint.pprint(mticket)
+	if list: 
+	    print "LM:have_bound_volume"
+	    pprint.pprint(mticket)
+	# update mover list. If mover is in the list - update its state
+	update_mover_list(mticket)
+	# remove the mover from the list of movers being summoned
+	mv = find_mover(mticket, self.summon_queue)
+	if ((mv != None) and mv):
+	    mv['tr_error'] = 'ok'
+	    mv['summon_try_cnt'] = 0
+	    self.summon_queue.remove(mv)
+
         # just did some work, delete it from queue
         w = get_work_at_movers (mticket["external_label"])
         if w:
@@ -268,9 +540,15 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                        mticket["mover"],
                                        w["uinfo"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks
+	    if list:
+		print "MOVER WORK:"
+		pprint.pprint(w)
             work_awaiting_bind.remove(w)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
+	    if list: 
+		print "Work awaiting bind"
+		pprint.pprint(w)
             return
 
         # otherwise, see if this volume will do for any other work pending
@@ -286,6 +564,10 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
             pending_work.remove(w)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
+	    if list: 
+		print "Pending Work"
+		pprint.pprint(w)
+            return
 
 
         # if the pending work queue is empty, then we're done
@@ -299,9 +581,10 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
         # alas
         else:
             #import pprint
-            print "assertion error in have_bound_volume w=, mticket="
-            pprint.pprint(w)
-            pprint.pprint(mticket)
+	    if list: 
+		print "assertion error in have_bound_volume w=, mticket="
+		pprint.pprint(w)
+		pprint.pprint(mticket)
             raise "assertion error"
 
 
@@ -311,14 +594,59 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
     # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
     def unilateral_unbind(self, ticket):
         # get the work ticket for the volume
+	if list: 
+	    print "unilateral_unbind"
+	    pprint.pprint(ticket)
         w = get_awaiting_work(ticket["external_label"])
+
+	# update mover list. If mover is in the list - update its state
+	update_mover_list(ticket)
+
+	# remove the mover from the list of movers being summoned
+	mv = find_mover(ticket, self.summon_queue)
+	if ((mv != None) and mv):
+	    mv['tr_error'] = 'ok'
+	    mv['summon_try_cnt'] = 0
+	    self.summon_queue.remove(mv)
+
+	# update list of suspected volumes
+	if list: 
+	    print "SUSPECT VOLUME LIST BEFORE"
+	    pprint.pprint(self.suspect_volumes)
+	vol_found = 0
+	for item in self.suspect_volumes:
+	    if ticket['fc']['external_label'] == item['external_label']:
+		vol_found = 1
+		break
+	if not vol_found:
+	    item = {}
+	    item['external_label'] = ticket['external_label']
+	    item['movers'] = []
+	mv_found = 0
+	for mv in item['movers']:
+	    if ticket['mover'] == mv:
+		mv_found = 1
+	if not mv_found:
+	    item['movers'].append(ticket['mover'])
+	if not vol_found:
+	    self.suspect_volumes.append(item)
+	if list: 
+	    print "SUSPECT VOLUME LIST AFTER"
+	    pprint.pprint(self.suspect_volumes)
+
         if w:
+	    if list: 
+		print "unbind: work_awaiting_bind" 
+		pprint.pprint(w)
             work_awaiting_bind.remove(w)
             queue_pending_work(w)
 
         # else, it is the user's responsibility to retry
         w = get_work_at_movers (ticket["external_label"])
         if w:
+	    if list: 
+		print "unbind: work_at movers" 
+		pprint.pprint(w)
             work_at_movers.remove(w)
 
         self.reply_to_caller({"work" : "nowork"})
@@ -372,12 +700,8 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
         data_socket, address = listen_socket.accept()
         self.data_socket = data_socket
         listen_socket.close()
-
-
-class LibraryManager(LibraryManagerMethods,\
-                     generic_server.GenericServer,\
-                     SocketServer.UDPServer):
-    pass
+    
+    #pass
 
 if __name__ == "__main__":
     import sys
@@ -402,9 +726,10 @@ if __name__ == "__main__":
     config_port = "7500"
     config_list = 0
     list = 0
+    summon = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list","list","help"]
+    options = ["config_host=","config_port=","config_list","list","summon","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist:
         if opt == "--config_host":
@@ -414,6 +739,10 @@ if __name__ == "__main__":
         elif opt == "--config_list":
             config_list = 1
         elif opt == "--list":
+	    print "setting list"
+            list = 1
+        elif opt == "--summon":
+	    print "setting summon"
             list = 1
         elif opt == "--help":
             print "python ",sys.argv[0], options, "library"
@@ -437,14 +766,22 @@ if __name__ == "__main__":
 
     keys = csc.get(args[0])
 
+
     #  set ourself up on that port and start serving
-    methods =  LibraryManagerMethods()
-    lm =  LibraryManager( (keys['hostip'], keys['port']), methods)
+    #methods =  LibraryManagerMethods()
+    #lm =  LibraryManager( (keys['hostip'], keys['port']), methods)
+    lm =  LibraryManager( (keys['hostip'], keys['port']), 'unused param')
     lm.set_csc(csc)
+    
+    """ get initial list of movers potentially belonging to this
+    library manager from the configuration server
+    """
+    get_movers(lm.csc, args[0])
 
     # get a logger
     logc = log_client.LoggerClient(csc, keys["logname"],  'logserver', 0)
     lm.set_logc(logc)
+    lm.set_udp_client()
 
     while 1:
         try:
@@ -452,13 +789,16 @@ if __name__ == "__main__":
             logc.send(log_client.INFO, 1, "Library Manager"+args[0]+"(re)starting")
             lm.serve_forever()
         except:
-            traceback.print_exc()
-            format = timeofday.tod()+" "+\
-                     str(sys.argv)+" "+\
-                     str(sys.exc_info()[0])+" "+\
-                     str(sys.exc_info()[1])+" "+\
-                     "library manager serve_forever continuing"
-            logc.send(log_client.ERROR, 1, format)
-            Trace.trace(0,format)
-            continue
+	    if SystemExit:
+		sys.exit(0)
+	    else:
+		traceback.print_exc()
+		format = timeofday.tod()+" "+\
+			 str(sys.argv)+" "+\
+			 str(sys.exc_info()[0])+" "+\
+			 str(sys.exc_info()[1])+" "+\
+			 "library manager serve_forever continuing"
+		logc.send(log_client.ERROR, 1, format)
+		Trace.trace(0,format)
+		continue
     Trace.trace(1,"Library Manager finished (impossible)")
