@@ -55,7 +55,7 @@ def _open2(pathname,mode=0666):
         if hasattr(msg, "errno") and msg.errno == errno.EEXIST:
             fd_tmp = os.open(tmpname, os.O_RDWR)
         else:
-            raise sys.exc_info()
+            raise OSError, msg
 
     ok = 0
     s = None #initalize
