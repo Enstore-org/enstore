@@ -14,6 +14,7 @@ import string
 import fcntl
 import FCNTL
 import copy
+import types
 
 #enstore imports
 import cleanUDP
@@ -329,15 +330,17 @@ class DispatchingWorker:
                     " id ="+repr(self.current_id))
 
         # There is some path that causes bfids to be in the ticket -- delete it XXX FIXME
-        has_bfids = ticket.has_key("bfids")  # XXX FIXME
-        if has_bfids:                        # XXX FIXME
-            bfids=ticket["bfids"]            # XXX FIXME
-            del ticket["bfids"]              # XXX FIXME
+        has_bfids = 0                            # XXX FIXME
+        if type(ticket) is types.DictionaryType: # XXX FIXME
+            has_bfids = ticket.has_key("bfids")  # XXX FIXME
+            if has_bfids:                        # XXX FIXME
+                bfids=ticket["bfids"]            # XXX FIXME
+                del ticket["bfids"]              # XXX FIXME
         reply = (self.client_number, ticket, time.time()) 
         self.reply_with_list(reply)          
         Trace.trace(18,"reply_to_caller number="+repr(self.client_number))
-        if has_bfids:                        # XXX FIXME
-            ticket["bfids"]=bfids            # XXX FIXME
+        if has_bfids:                            # XXX FIXME
+            ticket["bfids"]=bfids                # XXX FIXME
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
