@@ -132,10 +132,7 @@ class MonitorServerClient(generic_client.GenericClient):
 
         t0 = time.time() #Grab the current time.
         t1 = t0 #Reset counter to current time (aka zero).
-        cnt = 0
         while bytes_transfered < bytes_to_transfer:
-            print cnt
-            cnt = cnt +1
             #Determine how much time is needed to pass before timming out.
             # This amount to time spent inside select should be the value
             # of self.timeout.  However, it has been observed that a
