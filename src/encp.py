@@ -848,7 +848,7 @@ def system_enabled(p):                 # p is a  pnfs object
 # and an open pnfs object so you can check if  the system is enabled.
 
 def pnfs_information(filelist,nfiles):
-    Trace.trace(16,'{ pnfs_information filelist='+repr(filelist)+\
+    Trace.trace(16,'{pnfs_information filelist='+repr(filelist)+\
                 " nfiles="+repr(nfiles))
     bfid = []
     pinfo = []
@@ -881,7 +881,7 @@ def pnfs_information(filelist,nfiles):
 # generate the full path name to the file
 
 def fullpath(filename):
-    Trace.trace(16,'{ fullpath filename='+filename)
+    Trace.trace(16,'{fullpath filename='+filename)
 
     machine = socket.gethostbyaddr(socket.gethostname())[0]
     dir, file = os.path.split(filename)
