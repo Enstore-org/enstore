@@ -1993,35 +1993,36 @@ class N:
         except (OSError, IOError), detail:
             print str(detail)
 
+_mtab = None
+
 # get_mtab() -- read /etc/mtab, for local/remote pnfs translation
 
 def get_mtab():
-    mtab = {}
-    try:
-        f = open('/etc/mtab')
-        l = f.readline()
-        while l:
-            lc = string.split(l)
-            if lc[1][:5] == '/pnfs':
-                c1 = string.split(lc[0], ':')
-                if len(c1) > 1:
-                    mtab[lc[1]] = (c1[1], c1[0])
-                else:
-                    mtab[lc[1]] = (c1[0], None)
+    global _mtab
+    if _mtab == None:
+        _mtab = {}
+        try:
+            f = open('/etc/mtab')
             l = f.readline()
-    except:
-        return {}
-    f.close()
-    return mtab
+            while l:
+                lc = string.split(l)
+                if lc[1][:5] == '/pnfs':
+                    c1 = string.split(lc[0], ':')
+                    if len(c1) > 1:
+                        _mtab[lc[1]] = (c1[1], c1[0])
+                    else:
+                        _mtab[lc[1]] = (c1[0], None)
+                l = f.readline()
+            f.close()
+        except:
+            _mtab = {}
+            f.close()
+    return _mtab
 
-# get_local_pnfs_path(p, mtab) -- find local pnfs path
+# get_local_pnfs_path(p) -- find local pnfs path
 
-def get_local_pnfs_path(p, m={}):
-    if not m:
-        mtab = get_mtab()
-    else:
-        mtab = m
-
+def get_local_pnfs_path(p):
+    mtab = get_mtab()
     for i in mtab.keys():
         if string.find(p, i) == 0 and \
            string.split(os.uname()[1], '.')[0] == mtab[i][1]:
@@ -2163,11 +2164,12 @@ class File:
 		return
 
 	# update() -- write out to pnfs files
-	def update(self, forced=0):
+	def update(self):
 		if not self.bfid:
 			return
-		if not forced and not self.consistent():
-			if self.path != self.p_path:
+		if not self.consistent():
+			if self.path != self.p_path and \
+                           self.path != get_local_pnfs_path(self.p_path):
 				raise 'DIFFERENT_PATH'
 			else:
 				raise 'INCONSISTENT'
