@@ -74,7 +74,7 @@ dccp_test() {
     do_transfer "dccp $test_file $w" $w $write_in_progress
  
     if [ -r $write_in_progress ]; then
-	raise_alarm "Ball Red: $dcache dcache write failed." $dcache_saag 6
+	raise_alarm "$dcache dcache write failed." $dcache_saag 6
     fi
 
 # dccp readback
@@ -83,14 +83,14 @@ dccp_test() {
     do_transfer "dccp $w $read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
-	raise_alarm "Ball Red: $dcache dcache read failed" $dcache_saag 4
+	raise_alarm "$dcache dcache read failed" $dcache_saag 4
     fi
 
 # file comparison
 
     cmp $test_file $read_back
     if [ $? -ne 0 ]; then
-	raise_alarm "Ball Red: $dcache dcache cmp failed" $dcache_saag 3
+	raise_alarm "$dcache dcache cmp failed" $dcache_saag 3
     fi
 }
 #######################################################################
@@ -103,7 +103,7 @@ kftp_test() {
     do_transfer "kftpcp -p $strong_port -m -p -v $test_file enstore@$dcache:$wp1" $wp $write_in_progress
 
     if [ -r $write_in_progress ]; then
-	raise_alarm "Ball Red: $dcache dcache passive kftp write failed." $dcache_saag 6
+	raise_alarm "$dcache dcache passive kftp write failed." $dcache_saag 6
     fi
 
 # kftp passive readback
@@ -113,13 +113,13 @@ kftp_test() {
     do_transfer "kftpcp -p $strong_port -m -p -v enstore@$dcache:$wp1 $read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
-	raise_alarm "Ball Red: $dcache dcache passive kftp read failed" $dcache_saag 4
+	raise_alarm "$dcache dcache passive kftp read failed" $dcache_saag 4
     fi
 
 # kftp passive readback file comparison
     cmp $test_file $read_back
     if [ $? -ne 0 ]; then
-	raise_alarm "Ball Red: $dcache dcache passive kftp cmp failed" $dcache_saag 3
+	raise_alarm "$dcache dcache passive kftp cmp failed" $dcache_saag 3
     fi
 
 # kftp active write
@@ -129,7 +129,7 @@ kftp_test() {
     do_transfer "kftpcp -p $strong_port -v $test_file enstore@$dcache:$wa1" $wa $write_in_progress
  
     if [ -r $write_in_progress ]; then
-	raise_alarm "Ball Red: $dcache dcache write failed." $dcache_saag 6
+	raise_alarm "$dcache dcache write failed." $dcache_saag 6
     fi
 
 # kftp active readback
@@ -139,14 +139,14 @@ kftp_test() {
     do_transfer "kftpcp -p $strong_port -v enstore@$dcache:$wa1 $read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
-	raise_alarm "Ball Red: $dcache dcache read failed" $dcache_saag 4
+	raise_alarm "$dcache dcache read failed" $dcache_saag 4
     fi
 
 # kftp active readback file comparison
 
     cmp $test_file $read_back
     if [ $? -ne 0 ]; then
-	raise_alarm "Ball Red: $dcache dcache kftp active cmp failed" $dcache_saag 3
+	raise_alarm "$dcache dcache kftp active cmp failed" $dcache_saag 3
     fi
 }
 #######################################################################
@@ -179,14 +179,14 @@ ftp.quit()
     done
 
     if [ -r $read_in_progress ]; then
-	raise_alarm "Ball Red: $dcache dcache ftp read failed" $dcache_saag 4
+	raise_alarm "$dcache dcache ftp read failed" $dcache_saag 4
     fi
 
 # ftp readback file comparison
 
     cmp $test_file $read_back
     if [ $? -ne 0 ]; then
-	raise_alarm "Ball Red: $dcache dcache ftp cmp failed" $dcache_saag 3
+	raise_alarm "$dcache dcache ftp cmp failed" $dcache_saag 3
     fi
 }
 #######################################################################
