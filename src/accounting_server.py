@@ -240,9 +240,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	# log_encp_error(....)
 	def log_encp_error(self, ticket):
 		st = time.time()
-		if not ticket.has_key('file_family'):
+		if not ticket.has_key('file_family') and \
+			ticket.has_key('volume'):
 			v = vcc.inquire_vol(ticket['volume'])
 			sg, ticket['file_family'], ticket['wrapper'] = string.split(v['volume_family'], ".")
+		else:
+			ticket['file_family'] = None
+			ticket['wrapper'] = None
 
 		if not ticket.has_key('mover'):
 			ticket['mover'] = None
