@@ -2332,10 +2332,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     max_submits = encp_intf.max_resubmit
     verbose = encp_intf.verbose
 
-    #request_dictionary must have 'retry' as an element.
     #error_dictionary must have 'status':(e_errors.XXX, "explanation").
+    dict_status = error_dictionary.get('status', (e_errors.OK, None))
 
-    #These fields need to be retrieved in this fashion.  If the transfer
+    #These fields need to be retrieved with possible defaults.  If the transfer
     # failed before encp could determine which transfer failed (aka failed
     # opening/reading the/from contol socket) then only the 'status' field
     # of both the request_dictionary and error_dictionary are guarenteed to
@@ -2344,21 +2344,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     outfile = request_dictionary.get('outfile', '')
     file_size = request_dictionary.get('file_size', 0)
     retry = request_dictionary.get('retry', 0)
-    
     resubmits = request_dictionary.get('resubmits', 0)
-    #The following is 
-    try:
-        resubmits = request_list[0].get('resubmits', 0)
-    except:
-        exc, msg, tb = sys.exc_info()
-        sys.stderr.write("Warning: %s %s\n" % str(exc), str(msg))
-        sys.stderr.write("Using %s for resubmits value.\n" % resubmits)
-        Trace.log(e_errors.ERROR, "Warning: %s %s" % str(exc), str(msg))
-        Trace.log(e_errors.ERROR, "Using %s for resubmits value."%resubmits)
-        Trace.log(e_errors.ERROR, "request_list: %s" % str(request_list))
-        Trace.log(e_errors.ERROR, traceback.format_exception(exc, msg, tb))
-    
-    dict_status = error_dictionary.get('status', (e_errors.OK, None))
 
     #Get volume info from the volume clerk.
     #Need to check if the volume has been marked NOACCESS since it
