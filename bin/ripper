@@ -20,59 +20,63 @@ starttrc() { cmd="traceMode 7"; doit
 
 case `uname -n` in
 
+   rip10*)
+    stopit; starttrc
+    cmd="python /home/bakken/enstore/src/configuration_server.py --config_host=rip10.fnal.gov --config_port=7500 --config_file=/home/bakken/enstore/etc/rip.conf &"; doit
+    cmd="python /home/bakken/enstore/src/log_server.py           --config_host=rip10.fnal.gov --config_port=7500 &"; doit
+    cmd="python /home/bakken/enstore/src/alarm_server.py         --config_host=rip10.fnal.gov --config_port=7500 &"; doit
+    ;;
+
    rip6*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/configuration_server.py --config_host=rip6.fnal.gov --config_port=7500 --config_file=/home/bakken/enstore/etc/rip.conf &"; doit
-    cmd="python /home/bakken/enstore/src/log_server.py           --config_host=rip6.fnal.gov --config_port=7500 &"; doit
-    cmd="python /home/bakken/enstore/src/alarm_server.py         --config_host=rip6.fnal.gov --config_port=7500 &"; doit
-    cmd="python /home/bakken/enstore/src/volume_clerk.py         --config_host=rip6.fnal.gov --config_port=7500 &"; doit
-    cmd="python /home/bakken/enstore/src/file_clerk.py           --config_host=rip6.fnal.gov --config_port=7500 &"; doit
-    cmd="db_checkpoint -h /rip6a/enstore/db -p 5 &"; doit
-    cmd="db_deadlock   -h /rip6a/enstore/db -t 1 &"; doit
+    cmd="python /home/bakken/enstore/src/volume_clerk.py         --config_host=rip10.fnal.gov --config_port=7500 &"; doit
+    cmd="python /home/bakken/enstore/src/file_clerk.py           --config_host=rip10.fnal.gov --config_port=7500 &"; doit
+    cmd="db_checkpoint -h /raid/enstore/db -p 5 &"; doit
+    cmd="db_deadlock   -h /raid/enstore/db -t 1 &"; doit
     ;;
 
    rip5*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 ait.library_manager   &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 mam.library_manager   &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 dlt.library_manager   &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov --config_port=7500 ait.library_manager   &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov --config_port=7500 mam.library_manager   &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov --config_port=7500 dlt.library_manager   &"; doit
     ;;
 
    rip1*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 grau.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip10.fnal.gov --config_port=7500 grau.media_changer &"; doit
     ;;
 
    rip2*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DE13DLT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DE15DLT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 DC11MAM.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov --config_port=7500 DE13DLT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov --config_port=7500 DE15DLT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov --config_port=7500 DC11MAM.mover &"; doit
     ;;
 
    rip7*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 disk.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 null.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 disk.media_changer &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 disk.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 null.mover &"; doit
-    cmd="python /home/bakken/enstore/src/inquisitor.py           --config_host=rip6.fnal.gov --config_port=7500 &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov --config_port=7500 disk.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov --config_port=7500 null.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip10.fnal.gov --config_port=7500 disk.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov --config_port=7500 disk.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov --config_port=7500 null.mover &"; doit
+    cmd="python /home/bakken/enstore/src/inquisitor.py           --config_host=rip10.fnal.gov --config_port=7500 &"; doit
     ;;
 
    rip9*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 STK.media_changer &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red50.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red20.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk1.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 stk2.mover &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip10.fnal.gov --config_port=7500 STK.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov --config_port=7500 red50.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov --config_port=7500 red20.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov --config_port=7500 stk1.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov --config_port=7500 stk2.mover &"; doit
     ;;
 
    fntt*)
     stopit; starttrc
-    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM05AIT.mover &"; doit
-    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM07AIT.mover &"; doit
+    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip10.fnal.gov --config_port=7500 DM05AIT.mover &"; doit
+    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip10.fnal.gov --config_port=7500 DM07AIT.mover &"; doit
     ;;
 
    samson*)
