@@ -486,6 +486,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 								   detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return
+	except errno.errorcode[errno.ETIMEDOUT], detail:
+	    msg = "Timeout while getting suspect vols from %s (%s)"%(lib_man.name, detail)
+	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    return
 
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 		 "get new suspect vol list from %s"%(lib_man.name,))
@@ -612,6 +616,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    msg = "Error while getting sorted work queue from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return
+	except errno.errorcode[errno.ETIMEDOUT], detail:
+	    msg = "Timeout while getting sorted work queue from %s (%s)"%(lib_man.name, detail)
+	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    return
 
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				  "get new work queue from %s"%(lib_man.name,))
@@ -635,6 +643,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    msg = "Error while getting active volumes from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return
+	except errno.errorcode[errno.ETIMEDOUT], detail:
+	    msg = "Timeout while getting active volumes from %s (%s)"%(lib_man.name, detail)
+	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    return
 
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				  "get new active volumes from %s"%(lib_man.name,))
@@ -656,6 +668,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    msg = "Error while getting state from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return
+	except errno.errorcode[errno.ETIMEDOUT], detail:
+	    msg = "Timeout while getting state from %s (%s)"%(lib_man.name, detail)
+	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    return
+
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "get new state from %s"%(lib_man.name,))
 	lib_man.server_status = state.get(enstore_constants.STATE, "")
