@@ -11,9 +11,9 @@
     <I>Enstore System Status</I> shows the most recent known state of the Enstore system.
 Each server, mover, library manager and media changer is represented.  Since there may be
 many entries in the status table, a shortcut table is listed at the top.  This page will
-automatically refresh, based on the value listed in the inquisitor section of the 
-configuration file.  It is created by the inquisitor, and include the time/date when it was
-last updated in the upper right hand corner.
+automatically refresh, based on the value listed in the <A HREF="config_enstore_system.html#inquisitor">inquisitor section</A> of the 
+configuration file.  It is created by the inquisitor, and includes the time/date when it was
+last updated in its upper right hand corner.
 
     <h1>Shortcuts</h1>
 There are four types of entries in the shortcut table -
@@ -32,18 +32,19 @@ There are four types of entries in the shortcut table -
 <DD>Each library manager will have a separate entry in the shortcut table.</DD>
 <DT><B>Media Changers</B><DT>
 <DD>This link points to the section which lists all of the media_changers (in alphabetical
-order</DD>
+order)</DD>
 <DT><B>Movers</B></DT>
 <DD>This link points to the section which lists all of the movers (in alphabetical
-order</DD>
+order)</DD>
 </DL>
 
     <h1>Status Table</h1>
 The status table shows the last known status of the servers, library managers, movers and
 media changers.  In the following discussion the term <I>element</I> will be used to refer
-to any of these.  Each element displays a <B>Status</B>. The library managers and movers
+to any of these.  Each element displays a <B>Status</B>. This is the first row of information
+associated with each element.  The library managers and movers
 display this <B>Status</B> and additional information.  The color of the background for the
-name of an element, represents a visual cue to the status of the element.
+name of an element (first column), represents a visual cue to the status of the element.
 <BR><BR>
 <CENTER><TABLE BORDER>
 <TR><TD bgcolor="#DFF0FF">Everything is OK</TD></TR>
@@ -53,30 +54,76 @@ name of an element, represents a visual cue to the status of the element.
 		  <LI>DRAINING</LI>
 		  <LI>ERROR</LI>
 	      </UL></TD></TR>
-<TR><TD bgcolor="#FF9966">The element was unreachable (the communications timed out)</TD>
-</TR>
+<TR><TD bgcolor="#FF9966">
+	    <UL>
+		<LI>The element does not appear to be alive</LI>
+	        <LI>The element is not being monitored</LI>
+	    </UL></TD></TR>
 <TR><TD bgcolor="#FFFF00">An error occurred while getting the elements status</TD></TR>
 </TABLE></CENTER>
 <BR><BR>
 
-    
+    <h2>Status Information</h2>
+    The status row contains the following information -
+<BR><BR>
+<TABLE align="CENTER" cellpadding="3" cellspacing="5" border="2" width="100%" bgcolor="#DFF0FF">
+<TR><TH BGCOLOR="#FFFFF0">Name</TH><TH BGCOLOR="#FFFFF0">Status</TH><TH BGCOLOR="#FFFFF0">Host</TH><TH BGCOLOR="#FFFFF0">Port</TH><TH BGCOLOR="#FFFFF0">Date/Time</TH><TH BGCOLOR="#FFFFF0">Last Time Alive</TH></TR>
+<TR><TD>Server Name</TD><TD>
+	    <UL>
+	      <LI><B>alive</B> - the server is alive
+	      <LI><B>dead</B> - the server is presumed dead
+	      <LI><B>timed out</B> - the server has sent a heartbeat for awhile
+	      <LI><B>no info yet</B> - the inquisitor has recently been restarted and is still collecting the state of the server
+	      <LI><B>not monitoring</B> - this server is not being monitored.
+	    </UL></TD>
+<TD>host on which the server is running</TD><TD>port on which the server listens for connections</TD>
+<TD>last time this server information was obtained</TD>
+	  <TD><UL>
+	      <LI>"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" - the server is currently alive
+	      <LI>--------  - the server has never been alive since the inquisitor restarted
+	      <LI>date/time - the last time the server was seen alive
+	    </UL>
+</TD></TR>
+</TABLE>
+<BR><BR>
+<h2>Library Manager Additional Information</h2>
+The additional Library Manager information includes the following -
+<BR>
+<TABLE NOBORDER>
+<TR><TD><B>State</B></TD><TD>Internal state of the library manager</TD></TR>
+<TR><TD><B>Suspect Volume</B></TD><TD>List of Suspect Volumes and the Mover which reported them as suspect</TD></TR>
+<TR><TD><B>Ongoing Transfers</B></TD><TD>Number of transfers currently assigned to Movers</TD></TR>
+<TR><TD><B>Pending Transfers</B></TD><TD>Number of transfers not yet assigned to a Mover</TD></TR>
+<TR><TD><B>Work At Movers Queue</B></TD><TD>Details on the work assigned to a Mover, including a link to that Mover</TD></TR>
+<TR><TD><B>Pending Queue</B></TD><TD>Details on the work not yet assigned to a Mover</TD></TR>
+</TABLE>
+<BR>
+Only a configurable number of queue elements will be displayed on this page.  If the
+total number of queue elements is larger than this value, the rest of the elements
+will be displayed on a separate page and a link to this page will be included at the
+end of the queue with which it is associated (<I>Extra Queue Rows (n)</I>, n is the
+number of elements on the additional page).
 
-
-    <h2>Server Status</h2>
-
-
-    <h2>Library Manager Status</h2>
-
-    <h2>Media Changer Status</h2>
-
-    <h2>Mover Status</h2>
-
+<h2>Mover Additional Information</h2>
+The additional Mover information includes the following -
+<TABLE NOBORDER>
+<TR><TD><B>Completed Transfers</B></TD><TD>Number of transfers this Mover has completed since the last restart</TD></TR>
+<TR><TD><B>Failed Transfers</B></TD><TD>Number of failed transfers this Mover has encountered since the last restart</TD></TR>
+<TR><TD><B>Current State</B></TD><TD>One of the legal Mover states</TD></TR>
+<TR><TD><B>Current/Last Read (bytes)</B></TD><TD>How many bytes are/have been read in the current/last transfer</TD></TR>
+<TR><TD><B>Volume</B></TD><TD>The volume that is being read from or written to</TD></TR>
+<TR><TD><B>Current/Last Write (bytes)</B></TD><TD>How many bytes are/have been written in the current/last transfer</TD></TR>
+<TR><TD><B>Location Cookie</B></TD><TD>The location of the file on the tape</TD></TR>
+<TR><TD><B>Source File</B></TD><TD>The name of the file that is being read</TD></TR>
+<TR><TD><B>Destination File</B></TD><TD>The name of the file that is being written</TD></TR>
+</TABLE>
+<BR>
 
 <HR><a href="http://www.fnal.gov/pub/disclaim.html">Legal Notices</a>
     <hr>
 <!-- Created: Tue Jul 11 15:54:31 CDT 2000 -->
 <!-- hhmts start -->
-Last modified: Tue Aug  1 08:58:07 CDT 2000
+Last modified: Tue Feb  6 09:31:16 CST 2001
 <!-- hhmts end -->
   </body>
 </html>
