@@ -24,4 +24,5 @@ ftt_skip_rec -10
 ftt_verify_position 0 0
 ftt_verify_tblock -nblock 1
 ftt_close
+quit
 EOD

@@ -17,4 +17,5 @@ ftt_rewind
 ftt_verify_modes
 ftt_rewind
 ftt_close
+quit
 EOD

@@ -37,4 +37,5 @@ ftt_verify_vol_label -label fttes -type FTT_ANSI_HEADER -status FTT_EWRONGVOL
 ftt_verify_vol_label -label fttestt -type FTT_ANSI_HEADER -status FTT_EWRONGVOL
 ftt_verify_vol_label -type FTT_ANSI_HEADER -status FTT_EFAULT
 ftt_close
+quit
 EOD

@@ -29,4 +29,5 @@ ftt_verify_tblock -nblock 100
 ftt_echo "reading byte aligned"
 ftt_verify_tblock -nblock 100 
 ftt_close
+quit
 EOD

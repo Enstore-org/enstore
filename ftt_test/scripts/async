@@ -43,4 +43,5 @@ ftt_wait -status FTT_ELEADER
 ftt_rewind
 ftt_wait -status FTT_ENXIO
 ftt_close
+quit
 EOD

@@ -45,4 +45,5 @@ ftt_write_tblock -nblock 100 -bsize 2048
 ftt_close_dev
 ftt_update_stats -part_display
 ftt_close
+quit
 EOD

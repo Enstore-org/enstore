@@ -17,4 +17,5 @@ ftt_open
 ftt_verify_exist
 ftt_chall votava products 777
 ftt_close
+quit
 EOD

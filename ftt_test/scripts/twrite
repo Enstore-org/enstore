@@ -20,4 +20,5 @@ ftt_write_tblock -nblock 2000 -bsize 8000 -delta 2000
 ftt_writefm 
 ftt_write_tblock -nblock 3000 -bsize 16000 -delta 3000
 ftt_close
+quit
 EOD

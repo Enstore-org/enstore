@@ -21,4 +21,5 @@ ftt_rewind
 ftt_verify_tblock -nblock 1000 -delay 5
 ftt_rewind
 ftt_close
+quit
 EOD

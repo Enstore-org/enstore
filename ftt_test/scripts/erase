@@ -18,4 +18,5 @@ ftt_rewind
 ftt_erase
 ftt_verify_vol_label -label fttest -type FTT_BLANK_HEADER
 ftt_close
+quit
 EOD

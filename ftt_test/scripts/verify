@@ -25,4 +25,5 @@ ftt_verify_tblock -filemark
 ftt_verify_tblock -filemark
 ftt_verify_tblock -status FTT_EBLANK
 ftt_close
+quit
 EOD

@@ -20,5 +20,6 @@ ftt_write_vol_label -label junk -status FTT_EROFS
 ftt_write_tblock -nblock 1 -bsize 100 -status FTT_EROFS
 ftt_writefm -status FTT_EROFS
 ftt_close
+quit
 EOD
 

@@ -89,4 +89,5 @@ ftt_echo "look at output. next line should say File no: 5 block no: 0"
 ftt_get_position
 ftt_rewind
 ftt_close
+quit
 EOD
