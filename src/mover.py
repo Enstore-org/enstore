@@ -1262,44 +1262,47 @@ class Mover(dispatching_worker.DispatchingWorker,
                             return
                         
         ticket = self.format_lm_ticket(state=state, error_source=error_source)
-        for lib, addr in self.libraries:
-            if state != self._last_state:
-                Trace.trace(10, "update_lm: %s to %s" % (ticket, addr))
-            self._last_state = self.state
-            # only main thread is allowed to send messages to LM
-            # exception is a mover_busy and mover_error works
-            if ((thread_name is 'MainThread') and
-                (ticket['work'] is not 'mover_busy')
-                and (ticket['work'] is not 'mover_error')):
-                Trace.trace(20,"update_lm: send with wait %s"%(ticket['work'],))
-                ## XXX Sasha - this is an experiment - not sure this is a good idea!
-                try:
-                    request_from_lm = self.udpc.send(ticket, addr)
-                except:
-                    exc, msg, tb = sys.exc_info()
-                    if exc == errno.errorcode[errno.ETIMEDOUT]:
-                        x = {'status' : (e_errors.TIMEDOUT, msg)}
-                    else:
-                        x = {'status' : (str(exc), str(msg))}
-                    Trace.trace(10, "update_lm: got %s" %(x,))
-                    continue
-                work = request_from_lm.get('work')
-                if not work or work=='nowork':
-                    continue
-                method = getattr(self, work, None)
-                if method:
+        # send offline only once
+        if not ((self.state == self._last_state) and
+            self.state == OFFLINE):
+            for lib, addr in self.libraries:
+                if state != self._last_state:
+                    Trace.trace(10, "update_lm: %s to %s" % (ticket, addr))
+                self._last_state = self.state
+                # only main thread is allowed to send messages to LM
+                # exception is a mover_busy and mover_error works
+                if ((thread_name is 'MainThread') and
+                    (ticket['work'] is not 'mover_busy')
+                    and (ticket['work'] is not 'mover_error')):
+                    Trace.trace(20,"update_lm: send with wait %s"%(ticket['work'],))
+                    ## XXX Sasha - this is an experiment - not sure this is a good idea!
                     try:
-                        method(request_from_lm)
+                        request_from_lm = self.udpc.send(ticket, addr)
                     except:
-                        exc, detail, tb = sys.exc_info()
-                        Trace.handle_error(exc, detail, tb)
-                        Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
-                                  (method,request_from_lm)) 
-            # if work is mover_busy of mover_error
-            # send no_wait message
-            if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
-                Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
-                self.udpc.send_no_wait(ticket, addr)
+                        exc, msg, tb = sys.exc_info()
+                        if exc == errno.errorcode[errno.ETIMEDOUT]:
+                            x = {'status' : (e_errors.TIMEDOUT, msg)}
+                        else:
+                            x = {'status' : (str(exc), str(msg))}
+                        Trace.trace(10, "update_lm: got %s" %(x,))
+                        continue
+                    work = request_from_lm.get('work')
+                    if not work or work=='nowork':
+                        continue
+                    method = getattr(self, work, None)
+                    if method:
+                        try:
+                            method(request_from_lm)
+                        except:
+                            exc, detail, tb = sys.exc_info()
+                            Trace.handle_error(exc, detail, tb)
+                            Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
+                                      (method,request_from_lm)) 
+                # if work is mover_busy of mover_error
+                # send no_wait message
+                if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
+                    Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
+                    self.udpc.send_no_wait(ticket, addr)
                         
         self.check_dismount_timer()
 
