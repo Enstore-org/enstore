@@ -1166,7 +1166,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
                         self.vcc.set_system_noaccess(volume_label)
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
-                        self.dismount_volume(after_function=self.idle)
                         return 0
 
                 self.tape_driver.rewind()
@@ -1221,7 +1220,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
 
         self.timer('transfer_time')
-        if exc != e_errors.ENCP_GONE:
+        if exc not in (e_errors.ENCP_GONE, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG):
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
                 broken =  "max_consecutive_failures (%d) reached" %(self.max_consecutive_errors)
