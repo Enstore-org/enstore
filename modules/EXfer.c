@@ -917,7 +917,7 @@ static int setup_mmap_io(struct transfer *info)
      /* IRIX does not support use of MADV_SEQUENTIAL.  This error sets
 	errno to EINVAL. */
 
-     if(errno != ENOSYS) /* A real error occured. */
+     if(errno != ENOSYS && errno != EINVAL) /* A real error occured. */
      {
 	/* Clear the memory mapped information. */
 	if(munmap(info->mmap_ptr, info->mmap_len) < 0)
@@ -931,9 +931,9 @@ static int setup_mmap_io(struct transfer *info)
 	if(info->transfer_direction > 0)  /* If true, it is a write. */
 	{
 	   /* If madvise() failed on the write half of the transfer, set
-	      the filesize back to the original size.  On writes we don't,
-	      care about any file corruption (yet) because we have not written
-	      anything out.
+	      the filesize back to the original size.  On writes to local
+	      disk we don't, care about any file corruption (yet) because
+	      we have not written anything out.
 	      
 	      There is a good reason why it is set back to the original size.
 	      The original filesize on a user initiated transfer is 0 bytes.
@@ -1033,7 +1033,8 @@ static int reinit_mmap_io(struct transfer *info)
        if(madvise(info->mmap_ptr, info->mmap_len, advise_holder) < 0)
 #endif /* _POSIX_ADVISORY_INFO */
     {
-       if(errno != ENOSYS) /* If madvise is not implimented, don't fail. */
+       /* If madvise is not implimented, don't fail. */
+       if(errno != ENOSYS && errno != EINVAL)
        {
 	  /* Clear the memory mapped information. */
 	  if(munmap(info->mmap_ptr, info->mmap_len) < 0)
