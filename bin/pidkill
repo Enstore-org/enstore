@@ -9,9 +9,9 @@ if [ ! -r $1 ] ; then exit; fi
 echo Stopping `basename $1 | sed -e 's/_pids$//'`
 
 cat $1 | while read pid; do
-    if [ `ps $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
+    if [ `ps -p $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
       kill -9 $pid
-      if [ `ps $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
+      if [ `ps -p $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
         echo "ERROR: Process $pid STILL LIVES" 
       fi
     fi
