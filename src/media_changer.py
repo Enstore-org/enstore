@@ -1057,13 +1057,13 @@ if __name__ == "__main__" :
 	Trace.log(e_errors.ERROR, "MC Error %s %s"%(exc,msg))
 	sys.exit(1)
 
-    del(csc)
+
     # here we need to define what is the class of the media changer
     # and create an object of that class based on the value of args[0]
     # for now there is just one possibility
 
     constructor=eval(mc_type)
-    print "Calling", constructor,"args=", intf.name, intf.max_work, (intf.config_host, intf.config_port)
+
     mc = constructor(intf.name, intf.max_work, (intf.config_host, intf.config_port))
 
     
