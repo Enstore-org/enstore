@@ -70,7 +70,7 @@ import sys
 import string
 import pprint
 import getopt
-import fcntl
+#import fcntl
 import types
 
 #enstore imports
