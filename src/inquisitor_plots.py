@@ -21,6 +21,18 @@ LOGFILE_DIR = "logfile_dir"
 
 class InquisitorPlots:
 
+
+    def open_db_connection(self):
+        if not self.acc_db:
+            # open a connection to the accounting db, the data is there
+            acc = self.config_d.get(enstore_constants.ACCOUNTING_SERVER, {})
+            if acc:
+                self.acc_db = accounting_query.accountingQuery(acc.get('dbhost', ""), acc.get('dbname', ""))
+
+    def close_db_connection(self):
+        if self.acc_db:
+            self.acc_db.close()
+
     # create the html file with the inquisitor plot information
     def	make_plot_html_page(self):
 	for plotfile_t  in self.plotfile_l:
@@ -59,6 +71,8 @@ class InquisitorPlots:
 
     # make the mount plots (mounts per hour and mount latency)
     def mount_plot(self, prefix):
+        self.open_db_connection()
+
 	# get the config file so we can not plot null mover data
 	config = enstore_functions.get_config_dict()
 	if config:
@@ -136,11 +150,16 @@ class InquisitorPlots:
             mmpdfile.close()
             mmpdfile.install(self.html_dir)
 	    mmpdfile.cleanup(self.keep, self.keep_dir)
+        # close db connection
+        self.close_db_connection()
 
     # make the total transfers per unit of time and the bytes moved per day
     # plot
     def encp_plot(self, prefix):
 	ofn = self.output_dir+"/bytes_moved.txt"
+
+        # open connection to db.
+        self.open_db_connection()
 
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
@@ -183,10 +202,15 @@ class InquisitorPlots:
 	    bpdfile.cleanup(self.keep, self.keep_dir)
 	    mbpdfile.cleanup(self.keep, self.keep_dir)
             xferfile.cleanup(self.keep, self.keep_dir)
+        # close db connection
+        self.close_db_connection()
 
     # make the plot showing queue movement for different storage groups plot
     def sg_plot(self, prefix):
 	ofn = self.output_dir+"/sg_lmq.txt"
+
+        # open connection to db.
+        self.open_db_connection()
 
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
@@ -214,6 +238,8 @@ class InquisitorPlots:
             # delete any extraneous files. do it here because the xfer file
             # plotting needs the bpd data file
             sgplot.cleanup(self.keep, self.keep_dir)
+        # close db connection
+        self.close_db_connection()
 
     def get_bpd_files(self):
 	nodes_l = string.split(self.pts_nodes, ",")
@@ -291,6 +317,7 @@ class InquisitorPlots:
     #  make all the plots
     def plot(self, encp, mount, sg, total_bytes):
 	ld = {}
+        self.acc_db = None
 	# find out where the log files are located
 	if self.logfile_dir is None:
 	    ld = self.config_d.get("log_server")
@@ -304,11 +331,6 @@ class InquisitorPlots:
 	if not ld:
 	    ld = self.config_d.get("log_server")
 	alt_logs = ld.get("msg_type_logs", {})
-
-        # open a connection to the accounting db, the data is there
-        acc = self.config_d.get(enstore_constants.ACCOUNTING_SERVER, {})
-        if acc:
-            self.acc_db = accounting_query.accountingQuery(acc.get('dbhost', ""), acc.get('dbname', ""))
 
 	if encp:
 	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
