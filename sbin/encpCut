@@ -302,12 +302,12 @@ for try in list doit; do
         2) echo "Step $Step:   lint the python source   `starting`"
            if [ "$try" = "doit" ] ; then
               pyfiles=/tmp/$productCut.pyfiles
-              find $ENSTORE_DIR -name "*.py" >$pyfiles
+              find $ENSTORE_DIR/src -name "*.py" >$pyfiles
               cat $pyfiles | while read pfile; do
                  $ENSTORE_DIR/tools/mylint.py $pfile
-                 check status $? "$ENSTORE_DIR/tools/mylint.py $pfile"
+                 check_status $? "$ENSTORE_DIR/tools/mylint.py $pfile"
 		 $ENSTORE_DIR/tools/check_pct.py -w $pfile
-                 check status $? "$ENSTORE_DIR/tools/check_pct.py -w $pfile"
+                 check_status $? "$ENSTORE_DIR/tools/check_pct.py -w $pfile"
               done
               rm $pyfiles
            fi
