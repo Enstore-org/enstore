@@ -694,7 +694,7 @@ class Interface:
         #If an argument uses an = for a value seperate it into two entries.
         self.split_on_equals(self.argv)
         argv = self.argv[1:]
-
+        print argv
         #For backward compatibility, convert options with underscores to
         # dashes.  This must be done before the getopt since the getopt breaks
         # with dashes.  It should be noted that the use of underscores is
@@ -824,12 +824,22 @@ class Interface:
     #Options can be entered like "--option value" or "--option=value".
     # Parse the argv passed in and split the "=" values into spaced value.
     def split_on_equals(self, argv):
+        args = []
+        offset = 0
+        #Write the values into a different list to avoid the problem of
+        # putting extra options in the argv list that range() will miss.
         for i in range(len(argv)):
             #Make sure it is a switch.
             #Note: the replace operation is necessary to suport _s.
             if self.is_option(argv[i].split("=")[0].replace("_", "-")):
                 list = string.split(argv[i], "=")
-                argv[i:i + 1] = list
+                args[i + offset:i + offset + 1] = list
+                offset = offset + 1
+            else:
+                args[i] = argv[i + offset]
+
+        #Set the temprary list to be the real list.
+        argv[:] = args
 
     def convert_underscores(self, argv):
         for i in range(0, len(argv)):
