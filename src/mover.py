@@ -177,18 +177,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.set_interval_func(self.update_lm, 1)
 
 
-    def read_tape(self, fd):
-        pass
-
-    def write_tape(self, fd):
-        pass
-
-    def read_user(self, fd):
-        pass
-
-    def write_user(self, fd):
-        pass
-        
     def update_lm(self):
         status = e_errors.OK, None
         if self.state is IDLE:
@@ -221,6 +209,18 @@ class Mover(  dispatching_worker.DispatchingWorker,
     def nowork( self, ticket ):
 	return {}
 
+    def read_tape(self, fd):
+        pass
+
+    def write_tape(self, fd):
+        pass
+
+    def read_user(self, fd):
+        pass
+
+    def write_user(self, fd):
+        pass
+        
     def unbind_volume( self, ticket ):
 
 	Trace.log(e_errors.INFO,'UNBIND  %s start'%(ticket,))
