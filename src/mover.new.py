@@ -149,6 +149,7 @@ class MoverClient:
 	self.pid = 0
 	self.vol_info = {'external_label':''}
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
+	self.san_func = ECRC.ECRC
 
 	if config['device'][0] == '$':
 	    dev_rest=config['device'][string.find(config['device'],'/'):]
@@ -326,16 +327,16 @@ def forked_write_to_hsm( self, ticket ):
 	    san_bytes = ticket["wrapper"]["sanity_size"]
 	    if file_bytes < san_bytes: san_bytes = file_bytes
 	    san_crc = do.fd_xfer( self.usr_driver.fileno(),
-					       san_bytes, ECRC.ECRC, 0 )
+				  san_bytes, self.san_func, 0 )
 	    Trace.trace( 11, 'done with sanity' )
 	    sanity_cookie = (san_bytes, san_crc)
 	    if file_bytes > san_bytes:
 		file_crc = do.fd_xfer( self.usr_driver.fileno(),
-						    file_bytes - san_bytes,
-						    ECRC.ECRC, san_crc )
-	    else:
-		file_crc = san_crc
-
+				       file_bytes-san_bytes, self.san_func,
+				       san_crc )
+	    else: file_crc = san_crc
+	    if self.san_fun == None: file_crc = 0; san_src = 0
+	    
 	    Trace.trace( 11, 'done with rest' )
 	    wrapper.write_post_data( do, file_crc )
 	    Trace.trace( 11, 'done with post_data' )
