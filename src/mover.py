@@ -353,7 +353,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.default_dismount_delay = self.config.get('dismount_delay', 60)
         if self.default_dismount_delay < 0:
             self.default_dismount_delay = 31536000 #1 year
-            
+        self.max_dismount_delay = self.config.get('max_dismount_delay', 600)
         if self.driver_type == 'NullDriver':
             self.device = None
             import null_driver
@@ -713,6 +713,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             delay = 60 * int(ticket['encp']['delayed_dismount']) #XXX is this right? minutes?
                                                                   ##what does the flag really mean?
         self.delay = max(delay, self.default_dismount_delay)
+        self.delay = min(delay, self.max_dismount_delay)
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
