@@ -326,7 +326,10 @@ def print_volumes_defind_status(volume_list, output_file):
     
 def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quotas):
 
-    order = quotas.get('order', {})
+    if quotas:
+        order = quotas.get('order', {})
+    else:
+        order = {}
     vq_file = open(output_file, "w")
 
     vq_file.write("Date this listing was generated: %s\n" % \
