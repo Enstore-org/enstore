@@ -272,6 +272,7 @@ ALLOW_SRV1="$ALLOW_BASE
 ALLOW_SRV0="$ALLOW_BASE
        LISTEN,postmaste,:5432,TCP,x
        LISTEN,postmaste,:8076,TCP,x
+       LISTEN,postmaste,:postgres,TCP,x
 "
 
 # Extra for stkensrv4
