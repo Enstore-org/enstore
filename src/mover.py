@@ -1122,7 +1122,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   (self.current_volume, remaining, capacity))
                         ret = self.vcc.set_remaining_bytes(self.current_volume, 0, None, None)
                         if ret['status'][0] != e_errors.OK:
-                            self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE) ### XXX trasfer failed called inside of transfer_failed : NONCENCE.
+                            Trace.alarm(e_errors.ERROR, "set_remaining_bytes_failed", ret)
                             return
 
                 except:
@@ -1256,8 +1256,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_work_ticket['fc'] = fc_ticket
         Trace.log(e_errors.INFO,"set remaining: %s %s %s" %(self.current_volume, remaining, eod))
         reply = self.vcc.set_remaining_bytes(self.current_volume, remaining, eod, bfid)
-        if ret['status'][0] != e_errors.OK:
-            self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
+        if reply['status'][0] != e_errors.OK:
+            self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
             return 0
         self.vol_info.update(reply)
         if self.current_volume:
@@ -1474,7 +1474,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         ###XXX aml-specific hack! Media changer should provide a layer of abstraction
         ### on top of media changer error returns, but it doesn't  :-(
-        elif status[-1] == "the drive did not contain an unloaded volume" and not have_tape:
+        elif status[-1] == "the drive did not contain an unloaded volume":
             self.idle()
         else:
             self.error(status[-1], status[0])
