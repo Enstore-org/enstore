@@ -6,6 +6,9 @@ import os
 import sys
 import time
 
+# enstore imports
+import Trace
+
 def backup_dbase():
 
     dbFile=""
@@ -84,6 +87,9 @@ def archive_clean(ago):
 		
 if __name__=="__main__":
     import string
+    Trace.init("backup")
+    Trace.trace(1,"backup called with args "+repr(sys.argv))
+
     try:
 	import SOCKS; socket = SOCKS
     except ImportError:
@@ -101,6 +107,8 @@ if __name__=="__main__":
     	os.chdir(os.environ['ENSTORE_DB'])
     except os.error:
 	print "Error:",cmd,sys.exc_info()[1][1]
+        Trace.trace(0,"backup Error - "+repr(cmd)+str(sys.exc_info()[0])+\
+                     str(sys.exc_info()[1]))
 	sys.exit(1)
     try:
 	bckHome=os.environ['ENSTORE_DB_BACKUP']
@@ -113,6 +121,8 @@ if __name__=="__main__":
 		pass
 	    else :
 		print "Error: ",sys.exc_info()[1][1]
+                Trace.trace(0,"backup Error - "+repr(cmd)+\
+                            str(sys.exc_info()[0])+str(sys.exc_info()[1]))
 		sys.exit(1)
     dir_bck=bckHome+"/dbase."+repr(time.time())
     hst_local=socket.gethostname()
@@ -135,16 +145,5 @@ if __name__=="__main__":
     print "Start cleanup archive"
     archive_clean(ago)
     print "End  cleanup archive"
+    Trace.trace(1,"backup exit ok")
     sys.exit(0)
-
-
-
-
-
-
-
-
-
-
-
-

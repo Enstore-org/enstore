@@ -144,13 +144,15 @@ class AdminClerk(AdminClerkMethods, generic_server.GenericServer,
                  SocketServer.UDPServer) :
 	pass
 if __name__=="__main__":
-   Trace.init("adminclerk")
    import getopt 
    import string
    try:
      import SOCKS; socket = SOCKS
    except ImportError:
      import socket
+   Trace.init("AdminClerk")
+   Trace.trace(1,"Admin Clerk called with args "+repr(sys.argv))
+
    # defaults
    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
    config_port = "7500"
@@ -203,5 +205,7 @@ if __name__=="__main__":
                      "admin clerk serve_forever continuing"
             print format
             logc.send(log_client.ERROR, 1, format)
-            Trace.trace(0,"admin clerk error"+format)
+            Trace.trace(0,"Admin Clerk error"+format)
             continue
+
+   Trace.trace(1,"Admin Clerk finished") # impossible

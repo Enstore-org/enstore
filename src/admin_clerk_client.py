@@ -156,9 +156,10 @@ class AdminClerkClient(generic_client_server.GenericClientServer, \
         print "f(file_family),m(media_type),v(volume name for file table)"
 
 if __name__ == "__main__" :
-    Trace.init("admin cli")
     import sys
     import pprint
+    Trace.init("admin cli")
+    Trace.trace(1,"acc called with args "+repr(sys.argv))
 
     # fill in defaults
     acc = AdminClerkClient()
@@ -178,6 +179,8 @@ if __name__ == "__main__" :
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']
        	pprint.pprint(ticket)
+        Trace.trace(0,"acc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)
     else :
         pprint.pprint(ticket)
+        Trace.trace(1,"acc exit ok")

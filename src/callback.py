@@ -237,4 +237,11 @@ def read_tcp_socket(sock,errmsg="") :
         raise IOError,"Error handling message"+repr(workmsg)
 
 if __name__ == "__main__" :
-    print get_callback()
+    import sys
+    Trace.init("callback")
+    Trace.trace(1,"callback called with args "+repr(sys.argv))
+
+    c = get_callback()
+    print c
+    Trace.trace(1,"callback exit ok callback="+repr(c))
+
