@@ -69,6 +69,7 @@ MOVERS = "Movers"
 UNMONITORED_SERVERS = "Unmonitored Servers"
 THE_INQUISITOR = "The Inquisitor"
 THE_ALARM_SERVER = "The Alarm Server"
+THE_ENSTORE = "Enstore"
 
 RESOLVEALL = "Resolve All"
 RESOLVESELECTED = "Resolve Selected"
@@ -2341,7 +2342,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 			       system_tag=system_tag)
 	self.title = title
 	self.script_title_gif = gif
-	self.source_server = "SPAM"
+	self.source_server = THE_ENSTORE
 	self.description = ""
 
     def get_gif(self, dict, key):
@@ -2666,7 +2667,7 @@ class EnSaagNetworkPage(EnSaagPage):
 			       system_tag=system_tag)
 	self.title = title
 	self.script_title_gif = gif
-	self.source_server = "SPAM"
+	self.source_server = THE_ENSTORE
 	self.description = ""
 
     def make_network_table(self, dict, out_dict, offline_dict):
@@ -2725,7 +2726,7 @@ class EnStatusOnlyPage(EnSaagPage):
         EnBaseHtmlDoc.__init__(self, refresh=370, background="enstore_background.gif")
         self.title = title
         self.script_title_gif = gif
-        self.source_server = "SPAM"
+        self.source_server = THE_ENSTORE
         self.description = ""
 
     def table_top(self, cols=1):
