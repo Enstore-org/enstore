@@ -263,7 +263,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	if pdir:
 	    msg = (pdir, "Patrol")
 	else:
-	    msg = "No patrol_dir key found in inquisitor part of config file."
+	    msg = "No patrol_file key found in inquisitor part of config file."
 	self.patrolhtmlfile.write(msg)
 	self.patrolhtmlfile.close()
 
