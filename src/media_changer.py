@@ -145,7 +145,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                     return
             # if not duplicate, fork the work
             pipe = os.pipe()
-            if not os.fork() :
+            if not self.fork() :
                 # if in child process
                 Trace.trace(10, 'mcDoWork>forked')
                 #Trace.log(e_errors.INFO, "FORKED "+repr(ticket))
