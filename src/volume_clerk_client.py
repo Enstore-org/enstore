@@ -182,7 +182,7 @@ class VolumeClerkClient(generic_client.GenericClient,
     def __init__( self, csc, server_address=None ):
         generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address)
         if self.server_address == None:
-            self.server_address = self.get_server_address(MY_SERVER)
+            self.server_address = self.get_server_address(MY_SERVER, rcv_timeout=10, tries=1)
 
     # add a volume to the stockpile
     def add(self,

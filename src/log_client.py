@@ -310,8 +310,8 @@ class LoggerClient(generic_client.GenericClient):
         except:
             self.uname = 'unknown'
         self.log_priority = 7
-	self.logger_address = self.get_server_address(servername)
-        lticket = self.csc.get( servername )
+	self.logger_address = self.get_server_address(servername, 10, 1)
+        lticket = self.csc.get( servername, 10, 1 )
         self.log_dir = lticket.get("log_file_path", "")
 	Trace.set_log_func( self.log_func )
 

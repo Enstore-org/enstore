@@ -43,7 +43,7 @@ class AlarmClient(generic_client.GenericClient):
             self.uid = pwd.getpwuid(os.getuid())[0]
         except:
             self.uid = "unknown"
-        self.server_address = self.get_server_address(MY_SERVER)
+        self.server_address = self.get_server_address(MY_SERVER, 10, 1)
 
         self.rcv_timeout = rcv_timeout
         self.rcv_tries = rcv_tries

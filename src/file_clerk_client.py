@@ -33,7 +33,7 @@ MY_SERVER = "file_clerk"
 class FileClient(generic_client.GenericClient, 
                       backup_client.BackupClient):
 
-    def __init__( self, csc, bfid=0, server_address=None, timeout=0, tries=0):
+    def __init__( self, csc, bfid=0, server_address=None, timeout=10, tries=1):
         generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address)
 	self.bfid = bfid
 	if self.server_address == None:
