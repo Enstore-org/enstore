@@ -35,8 +35,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             Trace.log( e_errors.ERROR, msg[1] )
             return msg
         code = string.join(f.readlines(),'')
-        Trace.trace(9, "Configuration Server read_config: "
-                     "loading enstore configuration from %s"%configfile)
+        Trace.trace(9, "Configuration Server read_config: loading enstore configuration from %s"%
+                    configfile)
         configdict={};
         del configdict # Lint hack, otherwise lint can't see where configdict is defined.
         try:
