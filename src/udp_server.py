@@ -189,16 +189,26 @@ class UDPServer:
         reply = (self.client_number, ticket, time.time()) 
         self.reply_with_list(reply)          
 
+    # if a different interface is needed to send the reply on then use it.
+    def reply_to_caller_using_interface_ip(self, ticket, interface_ip):
+        reply = (self.client_number, ticket, time.time()) 
+	self.request_dict[self.current_id] = copy.deepcopy(reply)
+	ip, port, send_socket = udp_common.get_callback(interface_ip)
+        send_socket.sendto(repr(self.request_dict[self.current_id]),
+			   self.reply_address)
+	del send_socket
+
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
         self.request_dict[self.current_id] = copy.deepcopy(list)
-        self.server_socket.sendto(repr(self.request_dict[self.current_id]), self.reply_address)
-        Trace.trace(6,"dispatching worker: request_dict %s"%(self.request_dict,))
+        self.server_socket.sendto(repr(self.request_dict[self.current_id]),
+				  self.reply_address)
+        Trace.trace(6,"udp_server: request_dict %s"%(self.request_dict,))
         
-    # for requests that are not handled serially reply_address, current_id, and client_number
-    # number must be reset.  In the forking media changer these are in the forked child
-    # and passed back to us
+    # for requests that are not handled serially reply_address, current_id,
+    # and client_number number must be reset.  In the forking media changer
+    # these are in the forked child and passed back to us
     def reply_with_address(self,ticket):
         self.reply_address = ticket["ra"][0] 
         self.client_number = ticket["ra"][1]

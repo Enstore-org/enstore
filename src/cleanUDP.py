@@ -6,7 +6,7 @@
 """
         The purpose of this module is to provide a clean datagram
         interface for Enstore. By "clean" we mean that we try to
-                  provide a uniform interface on all platforms by masking specific
+	provide a uniform interface on all platforms by masking specific
         errors.
 
         Specific errors that are masked:
@@ -64,6 +64,9 @@ class cleanUDP :
                         raise e_errors.CLEANUDP_EXCEPTION
                 self.socket = socket.socket(protocol, kind)
                 return
+
+	def __del__(self):
+	        self.socket.close()
         
         def scrub(self) :
                 self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)

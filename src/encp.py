@@ -606,10 +606,10 @@ def clients(config_host,config_port):
 
 ##############################################################################
 
-def get_callback_addr(encp_intf):
+def get_callback_addr(encp_intf, ip=None):
     # get a port to talk on and listen for connections
     (host, port, listen_socket) = callback.get_callback(
-        verbose=encp_intf.verbose)
+        verbose=encp_intf.verbose, ip=ip)
     callback_addr = (host, port)
     listen_socket.listen(4)
 
@@ -1158,7 +1158,7 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
     else:
         raise EncpError(errno.ETIMEDOUT,
                         "Mover did not call back.", e_errors.TIMEDOUT)
-        
+
     #Determine if reading or writing.  This only has importance on
     # mulithomed machines were an interface needs to be choosen based
     # on reading and writing usages/rates of the interfaces.
@@ -1178,50 +1178,37 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
             except (OSError, IOError, socket.error), msg:
                 raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
 
-    route_server.reply_to_caller(route_ticket)
-    return route_ticket
+    (route_ticket['callback_addr'], listen_socket) = \
+				    get_callback_addr(encp_intf, ip=ip)
+    route_server.reply_to_caller_using_interface_ip(route_ticket, ip)
+    #route_server.reply_to_caller(route_ticket)
+
+    return route_ticket, listen_socket
 
 ##############################################################################
 
 def open_control_socket(listen_socket, mover_timeout):
 
-    read_fds,write_fds,exc_fds=select.select([listen_socket], [],
-                                             [listen_socket], mover_timeout)
+    read_fds,write_fds,exc_fds=select.select([listen_socket], [], [],
+                                             mover_timeout)
 
     #If there are no successful connected sockets, then select timedout.
     if not read_fds:
         raise EncpError(errno.ETIMEDOUT,
                         "Mover did not call back.", e_errors.TIMEDOUT)
-        #msg = os.strerror(errno.ETIMEDOUT)
-        #Trace.message(ERROR_LEVEL, msg)
-        #raise socket.error, (errno.ETIMEDOUT, msg)
-    
+
     control_socket, address = listen_socket.accept()
 
     if not hostaddr.allow(address):
         control_socket.close()
         raise EncpError(errno.EPERM, "host %s not allowed" % address[0],
                         e_errors.NOT_ALWD_EXCEPTION)
-        #msg = "host %s not allowed" % address[0]
-        #Trace.message(ERROR_LEVEL, msg)
-        #raise socket.error, (errno.EACCES, msg)
 
     try:
         ticket = callback.read_tcp_obj(control_socket)
     except e_errors.TCP_EXCEPTION:
         raise EncpError(errno.EPROTO, "Unable to obtain mover responce",
                         e_errors.TCP_EXCEPTION)
-        #msg = e_errors.TCP_EXCEPTION
-        #Trace.message(ERROR_LEVEL, msg)
-        #raise socket.error, (e_errors.NET_ERROR, msg)
-
-    #try:
-    #    a = ticket['mover']['callback_addr']
-    #except KeyError:
-    #    msg = "mover did not return mover info.  " + \
-    #          str(ticket.get("status", None))
-    #    Trace.message(ERROR_LEVEL, msg)
-    #    raise socket.error, (errno.EPROTO, msg )
 
     return control_socket, address, ticket
     
@@ -1292,6 +1279,7 @@ def open_data_socket(mover_addr, interface_ip):
 # (control_socket, 
 
 def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
+    use_listen_socket = listen_socket
     unique_id_list = []
     for work_ticket in work_tickets:
         unique_id_list.append(work_ticket['unique_id'])
@@ -1306,8 +1294,8 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         try:
             #There is no need to do this on a non-multihomed machine.
             if host_config.get_config():
-                ticket = open_routing_socket(route_server, unique_id_list,
-                                             encp_intf)
+                ticket, use_listen_socket = open_routing_socket(
+		    route_server, unique_id_list, encp_intf)
         except (EncpError,), detail:
             exc, msg, tb = sys.exc_info()
             if msg.errno == errno.ETIMEDOUT:
@@ -1325,9 +1313,12 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 
         #Attempt to get the control socket connected with the mover.
         try:
+	    #The listen socket used depends on if route selection is
+	    # enabled or disabled.  If enabled, then the listening socket
+	    # returned from open_routing_socket is used.  Otherwise, the
+	    # original routing socket opened and the beginning is used.
             control_socket, mover_address, ticket = open_control_socket(
-                listen_socket, encp_intf.mover_timeout)
-
+                use_listen_socket, encp_intf.mover_timeout)
         except (socket.error, EncpError):
             exc, msg, tb = sys.exc_info()
             if msg.errno == errno.ETIMEDOUT:
