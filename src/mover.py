@@ -1305,8 +1305,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	
     def update_client_info( self, ticket ):
         if self.mode == 'c':     # cleaning
-            print "!!!!!!!!!!!!!!!!!!!!"
             self.state = 'idle'
+            # cleaning returned
+            # tell all known library managers that mover is idle
+            for lm in self.mvr_config['library']:# should be libraries
+                address = (self.libm_config_dict[lm]['hostip'],self.libm_config_dict[lm]['port'])
+                next_req_to_lm = self.idle_mover_next()
+                self.do_next_req_to_lm(next_req_to_lm, address )
             return
 	self.vol_info = ticket['vol_info']
 	self.no_xfers = ticket['no_xfers']
@@ -1377,22 +1382,22 @@ class Mover(  dispatching_worker.DispatchingWorker,
     def init2( self ):
         # now get my library manager's config ---- COULD HAVE MULTIPLE???
         # get info asssociated with our volume manager
-        libm_config_dict = {}
+        self.libm_config_dict = {}
         if type(self.mvr_config['library']) == types.ListType:
             for lib in  self.mvr_config['library']:
-                libm_config_dict[lib] = {'startup_polled':'not_yet'}
-                libm_config_dict[lib].update( self.csc.get_uncached(lib) )
+                self.libm_config_dict[lib] = {'startup_polled':'not_yet'}
+                self.libm_config_dict[lib].update( self.csc.get_uncached(lib) )
                 pass
             pass
         else:
             lib = self.mvr_config['library']
             self.mvr_config['library'] = [lib]	# make it a list
-            libm_config_dict[lib] = {'startup_polled':'not_yet'}
-            libm_config_dict[lib].update( self.csc.get_uncached(lib) )
+            self.libm_config_dict[lib] = {'startup_polled':'not_yet'}
+            self.libm_config_dict[lib].update( self.csc.get_uncached(lib) )
             pass        
         Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
         for lm in self.mvr_config['library']:# should be libraries
-            address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
+            address = (self.libm_config_dict[lm]['hostip'],self.libm_config_dict[lm]['port'])
             next_req_to_lm = self.idle_mover_next()
             self.do_next_req_to_lm(next_req_to_lm, address )
             pass
