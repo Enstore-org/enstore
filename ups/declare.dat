@@ -1,11 +1,11 @@
 
           Verbose versions of ftt:
 
-Instance: 		v1_0
+Instance: 		v1_1
 Database: 		/afs/fnal/products/ups_database/declared
-Flavor : 		IRIX+5
-Home_dir:		/afs/.fnal.gov/products/IRIX+5/ftt/v1_0
-Declared date:		4-23-96
+Flavor : 		OSF1+V3
+Home_dir:		/afs/.fnal.gov/products/OSF1/ftt/v1_1
+Declared date:		8-15-96
 Declarer:		mengel
 Master Source:		Source not available
 Distribution:		Unrestricted

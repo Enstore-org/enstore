@@ -47,6 +47,7 @@ extern int		ftt_read(ftt_descriptor, char*, int);
 extern int		ftt_report(ftt_descriptor);
 extern int		ftt_retension(ftt_descriptor);
 extern int		ftt_rewind(ftt_descriptor);
+extern int		ftt_set_data_direction(ftt_descriptor, int);
 extern char * 		ftt_set_mode(ftt_descriptor, int density, int,  int );
 extern int 		ftt_set_mode_dev(ftt_descriptor, char *, int );
 extern int		ftt_skip_fm(ftt_descriptor, int);
@@ -64,3 +65,4 @@ extern int 		ftt_write_vol_label(ftt_descriptor,int,char*);
 extern int		ftt_writefm(ftt_descriptor);
 extern int		ftt_write2fm(ftt_descriptor);
 
+extern int		ftt_close_scsi_dev(ftt_descriptor);

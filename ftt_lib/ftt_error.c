@@ -214,8 +214,10 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	res, errno, ftt_ascii_error[ftt_errno], ftt_errno,
 	messages[ftt_errno], recoverable ? "": messages[FTT_EUNRECOVERED] );
 
+    DEBUG2(stderr, "ftt_translate_error -- message is:\n%s", ftt_eprint_buf);
+
     if (!recoverable) {
-	d->unrecovered_error = 1;
+	d->unrecovered_error = opn < FTT_OPN_WRITEFM ? 1 : 2;
 	d->current_valid = 0;
     }
 

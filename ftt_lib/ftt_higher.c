@@ -64,6 +64,9 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 			errno);
 	    return -1;
 	}
+	if (type == FTT_ANSI_HEADER) {
+	    ftt_to_upper(vollabel);
+	}
 	memset(buf,0,blocksize);
 	res = ftt_read(d,buf,blocksize); 	/* errors to guess_label */
 	res = ftt_guess_label(buf,res,&pname, &len);if(res < 0) return res;
@@ -97,7 +100,7 @@ ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel) {
     static char buf[10240]; /* biggest blocksize of any label we support */
     int blocksize = 10240;
 
-    CKOK(d,"ftt_write_vol_label",1,1);
+    CKOK(d,"ftt_write_vol_label",1,2);
     CKNULL("ftt_descriptor", d);
     CKNULL("volume label", vollabel);
 
@@ -146,17 +149,18 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
 	if (0 == strcmp(d->devinfo[i].device_name, dev)) {
 	    if (d->devinfo[i].passthru) {
 	        fprintf(pf, "%s SCSI pass-thru ", starter);
-	    } 
-	    fprintf(pf, "%s %s mode(%d), %s, (0x%x), %s",
+	    } else {
+	        fprintf(pf, "%s %s mode(%d), %s, (0x%x), %s",
 		    starter,
 		    dname,
 		    d->devinfo[i].density, 
 		    d->devinfo[i].mode? "compressed":"uncompressed",
 		    d->devinfo[i].hwdens,
 		    d->devinfo[i].fixed? "fixed":"variable");
-	    for (j = 0; ftt_ascii_rewindflags[j] != 0; j++) {
-		if (d->devinfo[i].rewind & (1<<j)) {
-		    fprintf(pf, ", %s", ftt_ascii_rewindflags[j]);
+		for (j = 0; ftt_ascii_rewindflags[j] != 0; j++) {
+		    if (d->devinfo[i].rewind & (1<<j)) {
+			fprintf(pf, ", %s", ftt_ascii_rewindflags[j]);
+		    }
 		}
 	    }
 	    starter = " and\n\t";
@@ -286,7 +290,10 @@ char *ftt_stat_names[] = {
  /* FTT_TNP		45 */ "FTT_TNP",
  /* FTT_SENSE_KEY	46 */ "FTT_SENSE_KEY",
  /* FTT_TRANS_SENSE_KEY	47 */ "FTT_TRANS_SENSE_KEY",
- /* FTT_MAX_STAT	48 */ "FTT_MAX_STAT",
+ /* FTT_RETRIES		48 */ "FTT_RETRIES",
+ /* FTT_FAIL_RETRIES	49 */ "FTT_FAIL_RETRIES",
+ /* FTT_RESETS		50 */ "FTT_RESETS",
+ /* FTT_MAX_STAT	51 */ "FTT_MAX_STAT",
  0
 };
 
@@ -353,7 +360,10 @@ ftt_next_supported(int *pi) {
 	if(devtable[*pi].os == 0) {
 		return 0;
 	}
-	sprintf(namebuf, devtable[*pi].baseconv_out, 0, 0, "");
+	/* gratuitous sprintf workaround... */
+	if (strcmp(devtable[*pi].baseconv_out,"%3$s") != 0) {
+	    sprintf(namebuf, devtable[*pi].baseconv_out, 0, 0, "");
+	}
 	res = ftt_open_logical(namebuf,devtable[*pi].os,devtable[*pi].drivid,0);
 	(*pi)++;
 	return res;
@@ -403,19 +413,21 @@ ftt_list_supported(FILE *pf) {
 	    }
 
 	    /* only print controller if different */
-	    if (0 != strcmp(last_controller, d->controller) || 0 != strcmp(last_os,d->os)) {
+	    if (0 != d->controller && 0 != strcmp(last_controller, d->controller) || 0 != strcmp(last_os,d->os)) {
 	        fprintf(pf,"%s\t", d->controller);
 	    } else {
 		fprintf(pf, "\t");
 	    }
 
 	    /* only print prod_id if different */
-	    if (0 != strcmp(last_prod_id, d->prod_id) || 0 != strcmp(last_controller,d->controller) 
+	    if (0 != d->prod_id && 0 != strcmp(last_prod_id, d->prod_id) || 0 != strcmp(last_controller,d->controller) 
 			|| 0 != strcmp(last_os,d->os)) {
 		if( strlen(d->prod_id) > 7 ) {
 		    fprintf(pf, "%s\t", d->prod_id);
-		} else {
+		} else if (strlen(d->prod_id) > 0 ) {
 		    fprintf(pf, "%s\t\t", d->prod_id);
+		} else {
+		    fprintf(pf, "(unknown)\t", d->prod_id);
 		}
 		free(last_os);
 		free(last_prod_id);
@@ -448,4 +460,33 @@ ftt_list_supported(FILE *pf) {
 	}
 	ftt_close(d);
     }
+    return 0;
+}
+
+int
+ftt_retry( ftt_descriptor d, int  n, int (*op)(ftt_descriptor, char *, int),
+		char *buf, int len) {
+    int curfile, curblock;
+    int res;
+
+    ENTERING("ftt_retry");
+    CKNULL("ftt_descriptor", d);
+    CKNULL("operation", op);
+
+    res = ftt_get_position(d, &curfile, &curblock); 	if (res<0) return res;
+
+    res = (*op)(d, buf, len);
+    while( res < 0 && n-- > 0 ) {
+	d->nretries++;
+	/* recover position -- skip back over filemark and forward again */
+ 	res = ftt_skip_fm(d, -1);   			if (res<0) return res;
+ 	res = ftt_skip_fm(d, 1);    			if (res<0) return res;
+	res = ftt_skip_rec(d, curblock); 		if (res<0) return res;
+
+        res = (*op)(d, buf, len);
+    }
+    if (res < 0) {
+	d->nfailretries++;
+    }
+    return res;
 }

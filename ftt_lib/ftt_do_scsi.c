@@ -35,7 +35,7 @@ ftt_open_scsi_dev(ftt_descriptor d) {
     /* UNLESS the device we have default is also passthru... */
 
     if (!d->devinfo[d->which_is_default].passthru) {
-	ftt_close_dev(d);
+	ftt_close_io_dev(d);
 
 	if (d->scsi_descriptor < 0) {
 	    devname = ftt_get_scsi_devname(d);
@@ -55,6 +55,7 @@ ftt_open_scsi_dev(ftt_descriptor d) {
 int
 ftt_close_scsi_dev(ftt_descriptor d) {
     int res;
+    extern int errno;
 
     DEBUG3(stderr,"Entering close_scsi_dev\n");
     /* check if we're using the regular device */
@@ -62,7 +63,9 @@ ftt_close_scsi_dev(ftt_descriptor d) {
 	d->scsi_descriptor = -1;
     }
     if(d->scsi_descriptor > 0 ) {
+	DEBUG1(stderr,"Actually closing scsi device\n");
         res = ftt_scsi_close(d->scsi_descriptor);
+	DEBUG2(stderr,"close returned %d, errno %d\n", res, errno);
 	d->scsi_descriptor = -1;
 	return res;
     }
@@ -82,7 +85,7 @@ request sense data: \n\
     static unsigned char acReqSense[]={ 0x03, 0x00, 0x00, 0x00, 
 				     sizeof(acSensebuf), 0x00 };
 
-    DEBUG2(stderr, "ftt_scsi_check called with status %d\n", stat);
+    DEBUG2(stderr, "ftt_scsi_check called with status %d len %d\n", stat, len);
 
     if (0 != n) {
 	switch(stat){

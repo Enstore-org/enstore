@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <ftt_private.h>
+#include <sys/wait.h>
 
 
 static int
@@ -21,7 +22,7 @@ extract_logical(ftt_descriptor d, char *what) {
     res = -1;
     if (0 != logical) {
 	logical++;
-	sprintf(cmd, "lsattr -E -l %s", logical);
+	sprintf(cmd, "/usr/sbin/lsattr -E -l %s", logical);
 	DEBUG3(stderr, "starting %s", cmd);
 	pf = popen(cmd, "r");
 	if (0 != pf) {
@@ -31,6 +32,7 @@ extract_logical(ftt_descriptor d, char *what) {
 		if (0 == strcmp(what, f1)) {
 		    ftt_eprintf("Ok");
 		    ftt_errno = FTT_SUCCESS;
+		    DEBUG3(stderr,"ftt_extract_logical: got value of %s\n", f2);
 		    res = atoi(f2);
 		}
 	    }
@@ -41,7 +43,7 @@ extract_logical(ftt_descriptor d, char *what) {
 	    return -1;
 	}
     } else {
-	ftt_eprintf("ftt_set_hwdens: unable to find logical device name in %s\n",
+	ftt_eprintf("ftt_extract_logical: unable to find logical device name in %s\n",
 			    d->basename);
 	ftt_errno = FTT_ENOTSUPPORTED;
 	res = -1;
@@ -99,10 +101,15 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 	DEBUG3(stderr,"Looking for last / in %s, found %s\n", d->basename, logical);
 	if (logical != 0) {
 	    logical++;
-	    sprintf(cmd, "chdev -l %s -a density_set_2=%d >/dev/null 2>&1\n", 
+	    sprintf(cmd, "/usr/sbin/chdev -l %s -a density_set_2=%d >/dev/null\n", 
 			logical,  hwdens);
 	    DEBUG3(stderr,"Running \"%s\" to change density\n", cmd);
-	    res = -system(cmd);
+	    res = system(cmd);
+	    if ( res != -1 && WIFEXITED(res) ) {
+		res = -WEXITSTATUS(res);
+	    } else {
+		res = -1;
+	    }
 	    if (res < 0){
 		ftt_errno = FTT_ENOEXEC;
 		ftt_eprintf("ftt_set_hwdens: \"%s\" exited with code %d\n", 
@@ -116,19 +123,27 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 	}
     } else {
         ftt_close_dev(d);
-        ftt_close_scsi_dev(d);
+
 	switch(ftt_fork(d)){
 	static char s1[10];
 
 	case -1:
-		return -1;
+		res = -1;
 
 	case 0:  /* child */
 		fflush(stdout);	/* make async_pf stdout */
 		close(1);
 		dup2(fileno(d->async_pf_parent),1);
 		sprintf(s1, "%d", hwdens);
-		execlp("ftt_suid", "ftt_suid", "-d", s1, d->basename, 0);
+		if (ftt_debug) {
+		 execlp("ftt_suid", "ftt_suid", "-x", "-d", s1, d->basename, 0);
+		} else {
+		 execlp("ftt_suid", "ftt_suid", "-d", s1, d->basename, 0);
+		}
+
+		ftt_eprintf("ftt_set_hwdens: exec of ftt_suid failed");
+		ftt_errno=FTT_ENOEXEC;
+		ftt_report(d);
 
 	default: /* parent */
 		res = ftt_wait(d);
@@ -144,12 +159,16 @@ ftt_set_compression(ftt_descriptor d, int compression) {
 	        buf [28];
     int res;
 
+    ENTERING("ftt_set_compression");
+    CKNULL("ftt_descriptor", d);
     DEBUG2(stderr, "Entering ftt_set_compression\n");
     if (0 == geteuid()) {
 	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_MS_Px10) {
 	    DEBUG3(stderr, "Using SCSI Mode sense 0x10 page to set compression\n");
-	    ftt_open_scsi_dev(d);
-	    ftt_do_scsi_command(d, "Mode sense", mod_sen, 6, buf, 28, 5, 0);
+	    res = ftt_open_scsi_dev(d);        
+	    if(res < 0) return res;
+	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen, 6, buf, 28, 5, 0);
+	    if(res < 0) return res;
 	    buf[0] = 0;
 	    /* we shouldn't be changing density here but it shouldn't hurt */
 	    /* yes it will! the setuid program doesn't know which density */
@@ -157,12 +176,15 @@ ftt_set_compression(ftt_descriptor d, int compression) {
 	    /* buf[4] = d->devinfo[d->which_is_default].hwdens; */
 	    buf[4 + 8 + 14] = compression;
 	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel, 6, buf, 28, 5, 1);
-	    ftt_close_scsi_dev(d);
+	    if(res < 0) return res;
+	    res = ftt_close_scsi_dev(d);
+	    if(res < 0) return res;
 	}
     } else {
         ftt_close_dev(d);
         ftt_close_scsi_dev(d);
 	switch(ftt_fork(d)){
+
 	static char s1[10];
 
 	case -1:
@@ -173,7 +195,14 @@ ftt_set_compression(ftt_descriptor d, int compression) {
 		close(1);
 		dup2(fileno(d->async_pf_parent),1);
 		sprintf(s1, "%d", compression);
-		execlp("ftt_suid", "ftt_suid", "-C", s1, d->basename, 0);
+		if (ftt_debug) {
+		 execlp("ftt_suid", "ftt_suid", "-x", "-C", s1, d->basename, 0);
+		} else {
+		 execlp("ftt_suid", "ftt_suid", "-C", s1, d->basename, 0);
+		}
+		ftt_eprintf("ftt_set_compression: exec of ftt_suid failed");
+		ftt_errno=FTT_ENOEXEC;
+		ftt_report(d);
 
 	default: /* parent */
 		res = ftt_wait(d);
@@ -188,7 +217,8 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     int res;
     FILE *pf;
 
-    DEBUG2(stderr,"Entering ftt_set_blocksize\n");
+    ENTERING("ftt_set_blocksize");
+    CKNULL("ftt_descriptor", d);
     if (0 == geteuid()) {
 	logical = strrchr(d->basename, '/');
 	DEBUG3(stderr,"Looking for last / in %s, found %s\n", d->basename, logical);
@@ -200,19 +230,27 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 		return 0;
 	    }
 
-	    sprintf(cmd, "chdev -l %s -a block_size=%d >/dev/null 2>&1\n", 
+	    sprintf(cmd, "/usr/sbin/chdev -l %s -a block_size=%d >/dev/null\n", 
 			logical, blocksize);
 	    DEBUG3(stderr,"Running \"%s\" to change blocksize\n", cmd);
-	    res = -system(cmd);
+	    res = system(cmd);
+	    if ( res != -1 && WIFEXITED(res) ) {
+		res = -WEXITSTATUS(res);
+	    } else {
+		res = -1;
+	    }
 	    if (res < 0){
 		ftt_errno = FTT_ENOEXEC;
 		ftt_eprintf("ftt_set_blocksize: \"%s\" exited with code %d\n", 
-				cmd, -res);
+				cmd, res);
+		return res;
 	    }
+	} else {
+	    /* punt -- the drive isn't a /dev/rmt drive, so just return */
+	    return 0;
 	}
     } else {
         ftt_close_dev(d);
-        ftt_close_scsi_dev(d);
 	switch(ftt_fork(d)){
 	static char s1[10];
 
@@ -226,6 +264,10 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 		sprintf(s1, "%d", blocksize);
 		execlp("ftt_suid", "ftt_suid", "-b", s1, d->basename, 0);
 
+		ftt_eprintf("ftt_set_blocksize: exec of ftt_suid failed");
+		ftt_errno=FTT_ENOEXEC;
+		ftt_report(d);
+
 	default: /* parent */
 		res = ftt_wait(d);
 	}
@@ -234,6 +276,14 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 }
 
 int
-ftt_get_hwdens(ftt_descriptor d) {
-    return extract_logical(d, "density_set_2");
+ftt_get_hwdens(ftt_descriptor d, char *devname) {
+    int m, n = 0;
+
+    sscanf(devname, "/dev/rmt%d.%d", &m, &n);
+    DEBUG3(stderr,"ftt_get_hwdens: m, n are %d, %d\n", m, n);
+    if (n < 4) {
+        return extract_logical(d, "density_set_1");
+    } else {
+        return extract_logical(d, "density_set_2");
+    }
 }

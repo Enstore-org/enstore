@@ -35,6 +35,14 @@
 	return;							\
     }
 
+/*
+** recovers can now be 0..2, for:
+** 0) doesn't recover from errors
+** 1) recovers from write/read errors
+** 2) recovers from bad position errors
+** -- mengel
+*/
+
 #define CKOK(d,name,writes,recovers) 					\
     char *_name = name;							\
 									\
@@ -43,7 +51,7 @@
 	ftt_errno = FTT_EFAULT;						\
 	ftt_eprintf("%s: called with closed ftt descriptor",_name);	\
     }									\
-    if ( d && d->unrecovered_error && !recovers )  {			\
+    if ( d && d->unrecovered_error != 0 && recovers < d->unrecovered_error) {\
 	ftt_errno = FTT_EUNRECOVERED;					\
 	return -1;							\
     }									\

@@ -43,6 +43,7 @@ int ftt_t_skip_rec(int, char **); 	int ftt_t_skip_fm(int, char **);
 int ftt_t_skip_to_double_fm(int, char **); int ftt_t_rewind(int, char **);
 int ftt_t_retension(int, char **); 	int ftt_t_erase(int, char **);
 int ftt_t_unload(int, char **); 	int ftt_t_writefm(int, char **);
+int ftt_t_write2fm(int, char **);
 int ftt_t_write_tblock(int, char **); 	int ftt_t_verify_tblock(int, char **);
 int ftt_t_dump(int, char **);         	int ftt_t_undump(int, char **);
 int ftt_t_get_basename(int, char **); 	int ftt_t_list_all(int, char **);
@@ -90,6 +91,7 @@ ftt_t_cmd_table_t ftt_t_my_cmds[] = {
 	"ftt_retension",	ftt_t_retension,
 	"ftt_erase",		ftt_t_erase,
 	"ftt_unload",		ftt_t_unload,
+	"ftt_write2fm",		ftt_t_write2fm,
 	"ftt_writefm",		ftt_t_writefm,
 	"ftt_write_tblock",	ftt_t_write_tblock,
 	"ftt_verify_tblock",	ftt_t_verify_tblock,

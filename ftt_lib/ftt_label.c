@@ -74,6 +74,15 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
     return FTT_UNKNOWN_HEADER;
 }
 
+void
+ftt_to_upper( char *p ) {
+   int i = 0;
+   while( p[i] ) {
+	p[i] = p[i] >= 'a' && p[i] <= 'z' ? p[i]-'a'+'A' : p[i];
+	i++;
+   }
+}
+
 int
 ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 
@@ -92,6 +101,7 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 
     switch(type) {
     case FTT_ANSI_HEADER:
+	ftt_to_upper(volbuf);
 	if (length >= 80) {
 	    sprintf(buf, "VOL1%-6.6s%-1.1s%-13.13s%-13.13s%-14.14s%-28.28s%-1.1s", 
 				volbuf, " ", " ", "ftt", " ", " " , "4");

@@ -149,6 +149,6 @@ for (i = 0; i < FTT_MAXPOSITION; i++)
    }
 fprintf(fd,"ftt_close\n");
 fprintf(fd,"EOD\n");
-close(fd);
+fclose(fd);
 exit(0);
 }

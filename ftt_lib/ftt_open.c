@@ -54,7 +54,7 @@ ftt_open(const char *name, int rdonly) {
 int
 ftt_matches( char *s1, char *s2 ) {
     DEBUG3(stderr, "Matching '%s' against '%s'\n", s1, s2);
-    while( 0 != *s1 && 0 != *s2 && *s1 == *s2){
+    while( 0 != *s1 && 0 != *s2 && tolower(*s1) == tolower(*s2)){
         s1++;
         s2++;
     }
@@ -74,6 +74,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     int n1, n2;
     int i,j;
     ftt_descriptor pd;
+    char *lastpart;
 
     /* find device type and os in table */
 
@@ -90,9 +91,9 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     }
 
     /* look up in table, note that table order counts! */
-    i = ftt_findslot(basename, os, drivid, &n1, &n2, string);
+    i = ftt_findslot(basename, os, drivid, string, &n1);
 
-    DEBUG3(stderr, "Picked entry %d numbers %d %d\n", i, n1, n2);
+    DEBUG3(stderr, "Picked entry %d number %d\n", i, n1);
 
     /* if it wasn't found, it's not supported */
 
@@ -119,19 +120,38 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     d.prod_id = strdup(drivid);
     d.os = devtable[i].os;
     d.last_pos = -1;
+    d.nretries = 0;
+    d.nfailretries = 0;
+    d.nresets = 0;
+
     if( 0 == d.prod_id ) {
 	ftt_eprintf("ftt_open_logical: out of memory allocating string for \"%s\" errno %d" , drivid, errno);
 	ftt_errno = FTT_ENOMEM;
 	return 0;
     }
 
+    /*
+    ** the tables only deal with the last 2 components of the path
+    ** (that is the last directory and the filename compnent)
+    ** [The last 2 components 'cause we turn /dev/rmt/xxx into /dev/scsi/xxx
+    ** sometimes.]
+    */
+    strcpy(buf, basename);
+    lastpart = ftt_find_last_part(buf);
+
     for( j = 0; devtable[i].devs[j].device_name != 0; j++ ) {
-	if (0 == strcmp(devtable[i].devs[j].device_name,"%3$s")) {
-            sprintf(buf, "%s", string);
+	/*
+	** first item in the format can be either a string or a digit;
+	** check for strings -- "%s..."
+	*/
+	if ( devtable[i].devs[j].device_name[1] == 's') {
+            sprintf(lastpart, devtable[i].devs[j].device_name, string, n1);
 	} else {
-            sprintf(buf, devtable[i].devs[j].device_name, n1, n2, string);
+            sprintf(lastpart, devtable[i].devs[j].device_name,*(int*)string,n1);
 	}
+
 	d.devinfo[j].device_name = strdup(buf);
+
 	if( 0 == d.devinfo[j].device_name ) {
 	    ftt_eprintf("fft_open_logical: out of memory allocating string for \"%s\" errno %d" , buf, errno);
 	    ftt_errno = FTT_ENOMEM;
@@ -180,8 +200,7 @@ ftt_close(ftt_descriptor d){
 	ftt_eprintf("ftt_close: called twice on the same descriptor!\n");
 	return -1;
     }
-    res = ftt_close_scsi_dev(d);
-    res2 = ftt_close_dev(d);
+    res = ftt_close_dev(d);
     for(j = 0; 0 != d->devinfo[j].device_name ; j++ ) {
 	free(d->devinfo[j].device_name);
 	d->devinfo[j].device_name = 0;
@@ -262,7 +281,6 @@ ftt_open_dev(ftt_descriptor d) {
 
 	    /* close dev and scsi dev in case ftt_status used them... */
 	    ftt_close_dev(d);
-            ftt_close_scsi_dev(d);
 
 	    /* put back readonly flag */
 	    d->readonly = FTT_RDWR;
@@ -274,8 +292,11 @@ ftt_open_dev(ftt_descriptor d) {
 		return -1;
 	    }
 	    if (!d->density_is_set) {
-	        ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
-		if (ftt_get_hwdens(d) != d->devinfo[d->which_is_default].hwdens) {
+	        res = ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
+		if (res < 0) {
+		    return res;
+		}
+		if (ftt_get_hwdens(d,d->devinfo[d->which_is_default].device_name) != d->devinfo[d->which_is_default].hwdens) {
 		    if (status_res & FTT_ABOT) {
 			DEBUG3(stderr,"setting density...\n");
 			res = ftt_set_hwdens(d, 
@@ -293,7 +314,6 @@ ftt_open_dev(ftt_descriptor d) {
 		    d->density_is_set = 1;
 		}
 	    }
-
 	}
 
         if (-1 != d->default_blocksize &&
@@ -340,15 +360,27 @@ ftt_open_dev(ftt_descriptor d) {
 
 int
 ftt_close_dev(ftt_descriptor d) {
-    int res = 0;
+    int res;
 
-    ENTERING("ftt_close_dev");
+    res = ftt_close_io_dev(d);     
+    if (res < 0) return res;
+    res = ftt_close_scsi_dev(d);
+    return res;
+}
+
+int
+ftt_close_io_dev(ftt_descriptor d) {
+    int res = 0;
+    extern int errno;
+
+    ENTERING("ftt_close_io_dev");
     CKNULL("ftt_descriptor", d);
 
     if ( d->which_is_open >= 0 ){
 	ftt_write_fm_if_needed(d);
         DEBUG1(stderr,"Actually closing\n");
 	res = close(d->file_descriptor);
+	DEBUG2(stderr,"close returns %d errno %d\n", res, errno);
 	d->which_is_open = -1;
 	d->file_descriptor = -1;
     }

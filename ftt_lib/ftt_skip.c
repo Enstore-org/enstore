@@ -81,7 +81,7 @@ int
 ftt_skip_fm(ftt_descriptor d, int n) {
     int res, res2;
 
-    CKOK(d,"ftt_skip_fm",0,0)
+    CKOK(d,"ftt_skip_fm",0,1);
     CKNULL("ftt_descriptor", d);
 
     if ( n < 0 ) {
@@ -95,13 +95,13 @@ ftt_skip_fm(ftt_descriptor d, int n) {
     DEBUG3(stderr, "ftt_status returns %d after skip\n", res2);
 
     if (res2 > 0 && (res2 & FTT_ABOT)) {
-	d->unrecovered_error = 1;
+	d->unrecovered_error = 2;
 	ftt_errno = FTT_ELEADER;
 	ftt_eprintf("ftt_skip_fm: At BOT after doing a skip filemark");
 	res =  -1;
     }
     if (res > 0 && (res2 & FTT_AEOT)) {
-	d->unrecovered_error = 1;
+	d->unrecovered_error = 2;
 	ftt_errno = FTT_EBLANK;
 	ftt_eprintf("ftt_skip_fm: At EOT after doing a skip filemark");
 	res = -1;
@@ -146,7 +146,7 @@ int
 ftt_rewind(ftt_descriptor d){
     int res, res2;
 
-    CKOK(d,"ftt_rewind",0,1);
+    CKOK(d,"ftt_rewind",0,2);
     CKNULL("ftt_descriptor", d);
 
     res = ftt_write_fm_if_needed(d);
@@ -168,7 +168,7 @@ ftt_rewind(ftt_descriptor d){
 
     /* we cleared unrecoverable errors if we succesfully rewound */
     /* and we're hosed if we didn't */
-    d->unrecovered_error = (res2 < 0);
+    d->unrecovered_error = (res2 < 0) ? 2 : 0;
     return res < 0 ? res : res2;
 }
 
@@ -176,7 +176,7 @@ int
 ftt_retension(ftt_descriptor d) {
     int res, res2;
 
-    CKOK(d,"ftt_retension",0,1);
+    CKOK(d,"ftt_retension",0,2);
     CKNULL("ftt_descriptor", d);
 
     res = ftt_write_fm_if_needed(d);
@@ -189,7 +189,7 @@ ftt_retension(ftt_descriptor d) {
 
     /* we cleared unrecoverable errors if we succesfully retensioned */
     /* and we're hosed if we didn't */
-    d->unrecovered_error = (res2 < 0);
+    d->unrecovered_error = (res2 < 0) ? 2 : 0;
     return res < 0 ? res : res2;
 }
 
@@ -197,7 +197,7 @@ int
 ftt_unload(ftt_descriptor d){
     int res, res2;
 
-    CKOK(d,"ftt_unload",0,1);
+    CKOK(d,"ftt_unload",0,2);
     CKNULL("ftt_descriptor", d);
 
     d->data_direction = FTT_DIR_READING;
@@ -210,7 +210,7 @@ ftt_unload(ftt_descriptor d){
 
     /* we cleared unrecoverable errors if we succesfully unloaded  */
     /* and we're hosed if we didn't */
-    d->unrecovered_error = (res2 < 0);
+    d->unrecovered_error = (res2 < 0) ? 2 : 0;
     return res < 0 ? res : res2;
 }
 
@@ -219,7 +219,7 @@ ftt_erase(ftt_descriptor d) {
     int res;
 
 
-    CKOK(d,"ftt_erase",0,1);
+    CKOK(d,"ftt_erase",0,2);
     CKNULL("ftt_descriptor", d);
 
     /* currently erase hoses up on most platforms on most drives,
@@ -256,7 +256,7 @@ ftt_erase(ftt_descriptor d) {
 
     /* we cleared unrecoverable errors if we succesfully erased  */
     /* and we're hosed if we didn't */
-    d->unrecovered_error = (res < 0);
+    d->unrecovered_error = (res < 0) ? 2 : 0;
     return res;
 }
 
@@ -286,7 +286,8 @@ ftt_writefm(ftt_descriptor d) {
 "ftt_writefm: supposed to be at file number %d block number %d, actually at BOT\n\
 	indicating that there was a SCSI reset or other error which rewound\n\
 	the tape behind our back.", d->current_file, d->current_block );
-	    d->unrecovered_error = 1;
+	    d->unrecovered_error = 2;
+	    d->nresets++;
 	    return -1;
 	}
     }
@@ -379,7 +380,7 @@ ftt_write2fm(ftt_descriptor d) {
 "ftt_write2fm: supposed to be at file number %d block number %d, actually at BOT\n\
 	indicating that there was a SCSI reset or other error which rewound\n\
 	the tape behind our back.", d->current_file, d->current_block );
-	    d->unrecovered_error = 1;
+	    d->unrecovered_error = 2;
 	    return -1;
 	}
     }

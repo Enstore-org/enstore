@@ -185,7 +185,7 @@ ftt_get_mode_dev(ftt_descriptor d, char *devname, int *density,
     ENTERING("ftt_get_mode_dev");
     CKNULL("ftt_descriptor", d);
     
-    hwdens = ftt_get_hwdens(d);
+    hwdens = ftt_get_hwdens(d,devname);
     for( i = 0; d->devinfo[i].device_name != 0; i++ ) {
 	if (0 == strcmp(d->devinfo[i].device_name, devname)){
 	    found = 1;
@@ -259,4 +259,16 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int force) {
 	devname, d->basename);
     ftt_errno = FTT_ENODEV;
     return -1;
+}
+
+ftt_set_data_direction( ftt_descriptor d, int value ) {
+    ENTERING("ftt_set_data_direction");
+    CKNULL("ftt_descriptor", d);
+    if (value != FTT_DIR_READING && value != FTT_DIR_WRITING ) {
+	ftt_errno = FTT_ENXIO;
+	ftt_eprintf("ftt_set_data_direction: an invalid value of %d was given for the data direction.", value);
+	return -1;
+    }
+    d->data_direction = value;
+    return 0;
 }

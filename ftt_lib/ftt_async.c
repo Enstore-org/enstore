@@ -133,6 +133,7 @@ ftt_report(ftt_descriptor d) {
 
     if (d->async_pf_parent) {
 	p = ftt_get_error(&e);
+	p = strdup(p); /* don't lose messages! */
 	ftt_close_dev(d);
 	DEBUG3(stderr,"Writing ftt_errno %d  message %s to pipe\n", e, p);
 	fprintf(d->async_pf_parent, "%d\n%s", e, p);

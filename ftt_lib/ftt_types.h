@@ -56,11 +56,9 @@ typedef struct {
 	scsi_handle     scsi_descriptor;	/* descriptor feild */
 	int 		last_pos;		/* have we moved data */
 	char *		os;			/* operating system */
+	int		nretries, nfailretries;	/* retried reads/writes */
+	int		nresets;		/* unexpected BOT's */
 } ftt_descriptor_buf, *ftt_descriptor;
-
-/* data directions */
-#define FTT_DIR_READING 0
-#define FTT_DIR_WRITING 1
 
 
 /* operation flags for last_operation, scsi_ops */
@@ -161,6 +159,7 @@ extern ftt_stat_entry ftt_stat_op_tab[];
 #define FTT_DO_RP_SOMETIMES 	0x00001000 /* do a read position,okay if fails*/
 #define FTT_DO_MS_Px10     	0x00002000 /* do a ModeSense p.0x10 */
 #define FTT_DO_MS_Px20_EXB	0x00004000 /* do a ModeSense p.0x20(EXB) */
+#define FTT_DO_EXB82FUDGE       0x00008000 /* fudge read/write counts with remain tape */
 
 extern int ftt_write_fm_if_needed(ftt_descriptor);
 extern int ftt_matches(char*, char*);
@@ -169,10 +168,11 @@ extern int ftt_do_scsi_command(ftt_descriptor, char *,unsigned char *,
 extern int ftt_set_hwdens(ftt_descriptor, int); 
 extern int ftt_set_compression(ftt_descriptor, int); 
 extern int ftt_set_blocksize(ftt_descriptor, int); 
-extern int ftt_get_hwdens(ftt_descriptor); 
-extern int ftt_findslot(char*, char*, char*, int*, int*, char *);
+extern int ftt_get_hwdens(ftt_descriptor, char*); 
+extern int ftt_findslot(char*, char*, char*, char*, int*);
 extern void ftt_set_transfer_length(unsigned char *, int);
 extern int ftt_skip_fm_internal(ftt_descriptor, int);
 extern int ftt_open_scsi_dev(ftt_descriptor d);
 extern int ftt_close_scsi_dev(ftt_descriptor d);
+extern char *ftt_find_last_part(char*);
 

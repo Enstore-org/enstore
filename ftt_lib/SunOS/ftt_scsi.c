@@ -96,7 +96,8 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
 	if (-1 == res ) {
 		res = -255;
         } else {
-                res = ftt_scsi_check(fd,pcOp,cmd.uscsi_status,cmd.uscsi_resid);
+                res = ftt_scsi_check(fd,pcOp,cmd.uscsi_status,
+				cmd.uscsi_buflen - cmd.uscsi_resid);
 	}
         if (pcRdWr != 0 && nRdWr != 0) {
                 DEBUG2(stderr,"got back:\n");

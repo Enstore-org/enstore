@@ -133,6 +133,9 @@ int ftt_numeric_tab[FTT_MAX_STAT] = {
     /*  FTT_N_WRITES		44 */ 1,
     /*  FTT_TNP			45 */ 0,
     /*  FTT_TRANS_SENSE_KEY	45 */ 0,
+    /*  FTT_RETRIES		48 */ 1,
+    /*  FTT_FAIL_RETRIES	49 */ 1,
+    /*  FTT_RESETS		50 */ 1,
 };
 
 void
@@ -183,9 +186,9 @@ ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 ** bit  -- return the nth bit of a byte
 */
 #define pack(a,b,c,d) \
-     (((long)(a)<<24) + ((long)(b)<<16) + ((long)(c)<<8) + (long)(d))
+     (((unsigned long)(a)<<24) + ((long)(b)<<16) + ((long)(c)<<8) + (long)(d))
 
-#define bit(n,byte) (long)(((byte)>>(n))&1)
+#define bit(n,byte) (unsigned long)(((byte)>>(n))&1)
 
 /*
 ** unpack_ls does the error and total kb for read and write data
@@ -242,13 +245,16 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     int failures = 0;
     int i;
     unsigned char buf[512];
-    int tape_size, remain_tape, error_count;
+    long int tape_size, remain_tape, error_count, data_count;
     int n_blocks, block_length;
     int stat_ops;
 
     CKOK(d,"ftt_get_stats",0,0);
     CKNULL("ftt_descriptor", d);
     CKNULL("statistics buffer pointer", b);
+
+
+    memset(b,0,sizeof(ftt_stat));
 
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
 	ftt_close_dev(d);
@@ -262,9 +268,17 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		close(1);
 		dup2(fileno(d->async_pf_parent),1);
 		if (d->data_direction == FTT_DIR_WRITING) {
-		     execlp("ftt_suid", "ftt_suid", "-w", "-s", d->basename, 0);
+		     if (ftt_debug) {
+		         execlp("ftt_suid", "ftt_suid", "-x",  "-w", "-s", d->basename, 0);
+		     } else {
+		          execlp("ftt_suid", "ftt_suid", "-w", "-s", d->basename, 0);
+		     }
 		} else {
-		     execlp("ftt_suid", "ftt_suid", "-s", d->basename, 0);
+		     if (ftt_debug) {
+		         execlp("ftt_suid", "ftt_suid", "-x", "-s", d->basename, 0);
+		     } else {
+		         execlp("ftt_suid", "ftt_suid", "-s", d->basename, 0);
+		     }
 		}
 
 	default: /* parent */
@@ -274,10 +288,15 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     }
 
     /* Things we know without asking, and the suid program won't know */
+    set_stat(b,FTT_FILE_NUMBER, itoa((long)d->current_file), 0);
+    set_stat(b,FTT_BLOCK_NUMBER, itoa((long)d->current_block), 0);
     set_stat(b,FTT_USER_READ,itoa((long)d->readkb), 0);
     set_stat(b,FTT_USER_WRITE,itoa((long)d->writekb), 0);
     set_stat(b,FTT_N_READS,itoa((long)d->nreads), 0);
     set_stat(b,FTT_N_WRITES,itoa((long)d->nwrites), 0);
+    set_stat(b,FTT_RETRIES,itoa((long)d->nretries), 0);
+    set_stat(b,FTT_FAIL_RETRIES,itoa((long)d->nfailretries), 0);
+    set_stat(b,FTT_RESETS,itoa((long)d->nresets), 0);
 
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
 	return res;
@@ -298,10 +317,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     stat_ops = ftt_get_stat_ops(d->prod_id);
 
     if (stat_ops & FTT_DO_RS) {
-	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   30, 0x00};
+	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   32, 0x00};
 
 	/* request sense data */
-	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 30, 10, 0);
+	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 32, 10, 0);
 	if(res < 0){
 	    failures++;
 	} else {
@@ -373,6 +392,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    if (stat_ops & FTT_DO_DLTRS) {
 		set_stat(b,FTT_MOTION_HOURS,itoa(pack(0,0,buf[19],buf[20])),0);
 		set_stat(b,FTT_POWER_HOURS, itoa(pack(buf[21],buf[22],buf[23],buf[24])),0);
+		set_stat(b,FTT_REMAIN_TAPE, itoa(pack(buf[25],buf[26],buf[27],buf[28])*4),0); 
 	    }
 	}
     }
@@ -454,16 +474,19 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		** tape thats shows as the difference between tape size
 		** and remaining tape on an EXB-8200 when rewound
 		*/
-#define 	EXB_FUDGE_FACTOR 1279
+#define 	EXB_8200_FUDGE_FACTOR 1279
 		error_count = pack(0,buf[16],buf[17],buf[18]);
 		
+		if (stat_ops & FTT_DO_EXB82FUDGE) {
+			data_count = tape_size - remain_tape - EXB_8200_FUDGE_FACTOR;
+		} else {
+			data_count = tape_size - remain_tape;
+		}
 		if (d->data_direction ==  FTT_DIR_READING) {
-		    set_stat(b,FTT_READ_COUNT,itoa(
-			tape_size - remain_tape - EXB_FUDGE_FACTOR),0);
+		    set_stat(b,FTT_READ_COUNT,itoa(data_count),0);
 		    set_stat(b,FTT_WRITE_COUNT,"0",0);
 		} else {
-		    set_stat(b,FTT_WRITE_COUNT,itoa(
-			tape_size - remain_tape - EXB_FUDGE_FACTOR),0);
+		    set_stat(b,FTT_WRITE_COUNT,itoa(data_count),0);
 		    set_stat(b,FTT_READ_COUNT,"0",0);
 		}
 	        set_stat(b,FTT_READ_ERRORS,itoa(error_count),0);

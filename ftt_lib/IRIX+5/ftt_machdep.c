@@ -101,7 +101,7 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 }
 
 int
-ftt_get_hwdens(ftt_descriptor d) {
+ftt_get_hwdens(ftt_descriptor d, char *devname) {
     int res;
 
     res = d->devinfo[d->which_is_default].hwdens;

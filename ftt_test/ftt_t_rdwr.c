@@ -62,6 +62,36 @@ return 0;
 
 /* ============================================================================
 
+ROUTINE: ftt_t_write2fm
+ 	
+	call ftt_write2fm using the global file descriptor
+==============================================================================*/
+int	ftt_t_write2fm (int argc, char **argv)
+{
+int 		status;				/* status */
+int		estatus = 0;			/* expected error */
+static char	*estatus_str;			/* expected status string */
+ftt_t_argt	argt[] = {
+ 	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = 0;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+status = ftt_write2fm(ftt_t_fd);
+FTT_T_CHECK_CALL (status,estatus);
+return 0;
+
+}
+
+
+/* ============================================================================
+
 ROUTINE: ftt_t_write_tblock
  	
 	call writes a test data block to the global file descriptor
@@ -167,7 +197,7 @@ char		rdata[FTT_T_MAXDSIZE];		/* read data */
 int 		status;				/* status */
 int 		estatus = 0;			/* expected status */
 int		i;				/* counter */
-int 		bsize = FTT_T_MAXDSIZE;		/* block size */
+static int 	bsize;				/* block size */
 static int	nblock;				/* number to read */
 static int 	oddbyte;			/* read odd number of bytes */
 static int 	ndelay;				/* delay between writes */
@@ -179,12 +209,14 @@ ftt_t_argt	argt[] = {
  	{"-delay",	FTT_T_ARGV_INT,		NULL,		&ndelay},
  	{"-oddbyte",	FTT_T_ARGV_CONSTANT,	(char *)TRUE,	&oddbyte},
  	{"-filemark",	FTT_T_ARGV_CONSTANT,	(char *)TRUE,	&filemark},
+ 	{"-maxbytes",	FTT_T_ARGV_INT,		NULL,		&bsize},
  	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
 
 /* parse command line
    ------------------ */
 
 estatus_str = 0; nblock = 1; oddbyte = FALSE; ndelay = 0; filemark = FALSE;
+bsize = FTT_T_MAXDSIZE;
 status = ftt_t_parse (&argc, argv, argt);
 FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
 FTT_T_CHECK_ESTATUS (estatus_str, estatus);	/* check expected status opt */
@@ -192,6 +224,11 @@ if (oddbyte)
    bsize = bsize & 1 ? bsize : bsize - 1;	/* make odd read */
 else
    bsize = bsize & 1 ? bsize - 1 : bsize;	/* make even read */
+if (bsize > FTT_T_MAXDSIZE)
+   {
+   fprintf (stderr, "maxbytes cannot be greater than %d\n",FTT_T_MAXDSIZE);
+   return (1); 
+   }
 
 /* do the read(s)
    --------------- */

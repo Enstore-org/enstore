@@ -21,17 +21,28 @@ ftt_make_os_name(char *sys, char *release , char *version) {
 }
 
 int
-ftt_findslot (char *basename,char *os, char *drivid, int *bus, int *id, char
-*string) {
+ftt_findslot (char *basename,char *os, char *drivid,  char *string, int *num) {
     int i;
+    char *lastpart;
 
     DEBUG2(stderr,"Entering ftt_findslot %s %s %s\n", basename, os, drivid );
+
+    /* tables now only deal with the last directory and file 
+    ** component of the pathname 
+    */ 
+
+    lastpart = ftt_find_last_part(basename);
+
+    DEBUG2(stderr,"looking at '%s' part of name\n", lastpart);
+
     for( i = 0; devtable[i].os !=0 ; i++ ) {
 	if (ftt_matches(os, devtable[i].os) && 
 		ftt_matches(drivid, devtable[i].drivid)) {
 	   DEBUG3(stderr,"trying format \"%s\"\n", devtable[i].baseconv_in);
+
+
 	   if (devtable[i].nconv == 
-		     sscanf(basename,devtable[i].baseconv_in,bus,id,string)) {
+		     sscanf(lastpart,devtable[i].baseconv_in,string,num)) {
 		     DEBUG3(stderr, "format Matches!\n");
 		     return i;
 	   }
@@ -44,22 +55,80 @@ ftt_findslot (char *basename,char *os, char *drivid, int *bus, int *id, char
 extern char *
 ftt_strip_to_basename(const char *basename,char *os) {
     static char buf[512];
+    static char buf2[512];
     static char string[512];
     int bus,id;
-    int i;
+    int i, res;
+    int maxlinks=512;
+    char *lastpart;
+    char *p;
 
     DEBUG2(stderr, "Entering ftt_strip_to_basename\n");
-    i = ftt_findslot((char *)basename, os, "", &bus, &id ,string);
+    memset(buf,0, 512);
+    memset(buf2,0, 512);
+    memset(string,0, 512);
+
+    strncpy(buf, basename, 512);
+#ifdef DO_SKIP_SYMLINKS
+    while( 0 <  readlink(buf, buf2, 512) && maxlinks-- >0 ) {
+	if( buf2[0] == '/' ) {
+	    /* absolute pathname, replace the whole buffer */
+	    strncpy(buf,buf2,512);
+	} else {
+	    /* relative pathname, replace after last /, if any */
+	    if ( 0 == (p = strrchr(buf,'/'))) {
+	       p = buf;
+	    } else {
+	       p++;
+	    }
+	    strncpy(p, buf2, 512 - (p - buf));
+	}
+    }
+#endif
+
+    i = ftt_findslot(buf, os, "", string, &id);
     if (i < 0) {
 	return 0;
     }
-    if (0 == strcmp(devtable[i].baseconv_out,"%3$s")) {
-	/* Solaris dies here, don't know why */
-	sprintf(buf, "%s", string);
+    /* tables now only deal with the last directory and file component of 
+    ** the pathname 
+    */
+    lastpart = ftt_find_last_part(buf);
+
+    /*
+    ** first item in the format can be either a string or a digit;
+    ** check for strings
+    */
+    if ( devtable[i].baseconv_out[1] == 's') {
+	sprintf(lastpart, devtable[i].baseconv_out, string, id);
     } else {
-        sprintf(buf,devtable[i].baseconv_out, bus, id,string);
+	sprintf(lastpart, devtable[i].baseconv_out,*(int*)string, id);
     }
     return strdup(buf);
+}
+
+/*
+** search for last 2 slashes in pathname,
+** and return the pointer to the character after the next to last one.
+** if there isn't one, return the pointer to the original string
+*/
+char *
+ftt_find_last_part( char *p ) {
+    char *s, *s1 = 0, *s2 = 0;
+
+    s = p;
+    while( s && *s ) {
+	if( *s == '/' ) {
+	    s2 = s1;
+	    s1 = s;
+	}
+	s++;
+    }
+    if( s2 ) {
+	return s2+1;
+    } else {
+	return p;
+    }
 }
 
 
@@ -79,11 +148,15 @@ ftt_get_driveid(char *basename,char *os) {
     int i;
 
     DEBUG2(stderr, "Entering ftt_get_driveid\n");
-    i = ftt_findslot(basename, os, "",  &bus, &id, string);
+    i = ftt_findslot(basename, os, "",  string, &id);
     if (i < 0) {
 	return 0;
     }
-    sprintf(cmdbuf,devtable[i].drividcmd, bus, id, string);
+    if ( devtable[i].drivid[1] == 's') {
+	sprintf(cmdbuf, devtable[i].drividcmd, string, id);
+    } else {
+	sprintf(cmdbuf, devtable[i].drividcmd,*(int*)string, id);
+    }
     DEBUG3(stderr,"Running \"%s\" to get drivid\n", cmdbuf);
     pf = popen(cmdbuf, "r");
     if (pf) {

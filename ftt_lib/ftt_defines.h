@@ -64,7 +64,10 @@ extern int ftt_numeric_tab[];	/* table for ftt_{add,sub}_stats */
 #define FTT_TNP			45
 #define FTT_SENSE_KEY		46
 #define FTT_TRANS_SENSE_KEY	47
-#define FTT_MAX_STAT		48
+#define FTT_RETRIES		48
+#define FTT_FAIL_RETRIES	49
+#define FTT_RESETS		50
+#define FTT_MAX_STAT		51
 
 extern int ftt_errno;
 extern int ftt_debug;
@@ -171,3 +174,8 @@ extern char *ftt_label_type_names[];
 */
 #define FTT_UNCOMPRESSED 0
 #define FTT_COMPRESSED   1
+
+/* data directions
+*/
+#define FTT_DIR_READING 0
+#define FTT_DIR_WRITING 1
