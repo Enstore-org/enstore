@@ -65,7 +65,15 @@ family=`grep volume_family $volume | cut -f2 -d.`
 
 for chk in 1 2; do
   inhibit=`grep system_inhibit $volume | cut -f6 -d\' `
-  if [ $inhibit = 'full' -o $inhibit = 'readonly' ]; then
+
+  if [ $inhibit = 'migrated'  ]; then
+      echo `date` ERROR $tape already migrated +++++++++MIGRATION ERROR +++++++++++
+      echo
+      echo `date` check /tmp/finalscanXXX  on `uname -n` for errors | /usr/bin/Mail -s "$tape +++++++++MIGRATION ERROR +++++++++++" enstore-admin@fnal.gov 
+      touch ${status:-/data1/status}/HALT
+      touch ${status:-/data/1/status}/$tape.stop
+      exit 1
+  elif [ $inhibit = 'full' -o $inhibit = 'readonly' ]; then
      #echo `date` $tape has inhibit $inhibit
      break
   else
