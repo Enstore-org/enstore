@@ -86,7 +86,7 @@ def mount(volume, drive, media_type,view_first=1):
         if stat!=0:
             return 'BAD', stat, 'aci_view return code'
         if volstate == None:
-            return 'BAD', stat, 'volume not found'
+            return 'BAD', stat, 'volume %s not found'%(volume,)
         if volstate.attrib != "O": # look for tape in tower (occupied="O")
             return 'BAD',9999,'Tape %s is not in home position in tower. location=%s'%(volume,volstate.attrib,)
         
@@ -95,7 +95,7 @@ def mount(volume, drive, media_type,view_first=1):
         if stat!=0:
             return 'BAD', stat, 'aci_drivestatus2 return code'
         if drvstate == None:
-            return 'BAD', stat, 'drive not found'
+            return 'BAD', stat, 'drive %s not found'%(drive,)
         if drvstate.volser != "": # look for any tape mounted in this drive
             return 'BAD',9998,'Drive %s is not empty.'%(drive,)
 
@@ -109,6 +109,30 @@ def mount(volume, drive, media_type,view_first=1):
         return 'BAD',stat,'MOUNT COMMAND FAILED'
 
     
+# this is a forced dismount. get rid of whatever has been ejected from the drive   
+def dismount(volume, drive, media_type,view_first=1):
+    print 'dismount called', volume, drive, media_type, view_first
+
+    # check if any tape is mounted in this drive
+    if view_first:
+        stat,drvstate = drive_state(drive,"")
+        if stat!=0:
+            return 'BAD', stat, 'aci_drivestatus2 return code'
+        if drvstate == None:
+            return 'BAD', stat, 'drive %s not found'%(drive,)
+        if drvstate.volser == "": # look for any tape mounted in this drive
+            return 'BAD',8888,'Drive %s is empty.'%(drive,)
+
+    stat = aci.aci_force(drive)
+    if stat==0:
+        status=aci.cvar.d_errno
+        if status > len(status_table):
+            return 'BAD', status, 'FORCE DISMOUNT UNKNOWN CODE'
+        return status_table[status][0], status, status_table[status][1]    
+    else:
+        return 'BAD',stat,'FORCE DISMOUNT COMMAND FAILED'
+
+
 def view(volume, media_type):
     media_code = aci.__dict__.get("ACI_"+media_type)
     if media_code is None:
@@ -126,29 +150,6 @@ def view(volume, media_type):
 
     return stat,volstate
 
-# this is a forced dismount. get rid of whatever has been ejected from the drive   
-def dismount(volume, drive, media_type,view_first=1):
-    print 'dismount called', volume, drive, media_type, view_first
-
-    # check if any tape is mounted in this drive
-    if view_first:
-        stat,drvstate = drive_state(drive,"")
-        if stat!=0:
-            return 'BAD', stat, 'aci_drivestatus2 return code'
-        if drvstate == None:
-            return 'BAD', stat, 'drive not found'
-        if drvstate.volser == "": # look for any tape mounted in this drive
-            return 'BAD',8888,'Drive %s is empty.'%(drive,)
-
-    stat = aci.aci_force(drive)
-    if stat==0:
-        status=aci.cvar.d_errno
-        if status > len(status_table):
-            return 'BAD', status, 'FORCE DISMOUNT UNKNOWN CODE'
-        return status_table[status][0], status, status_table[status][1]    
-    else:
-        return 'BAD',stat,'FORCE DISMOUNT COMMAND FAILED'
-
 
 def drive_state(drive,client=""):
     stat,drives = aci.aci_drivestatus2(client)
@@ -156,6 +157,7 @@ def drive_state(drive,client=""):
         Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
         return stat,None
     for d in range(0,len(drives)):
+        #print d,drives[d].drive_name, drive
         if drives[d].drive_name == "":
             break
         if drives[d].drive_name == drive:
