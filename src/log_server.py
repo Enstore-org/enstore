@@ -91,9 +91,13 @@ class Logger(  dispatching_worker.DispatchingWorker
             if not os.path.exists(dirname):
                 os.mkdir(dirname)
             self.logfile = open(logfile_name, 'a')
+            debug_file = "DEBUG%s" % (file,)
+            debug_file_name = os.path.join(dirname,debug_file)
+            self.debug_logfile = open(debug_file_name, 'a')
         except :
 	    try:
 		self.logfile = open(logfile_name, 'w')
+                self.debug_logfile = open(debug_file_name, 'a')
 	    except:
                 print  "cannot open log %s"%(logfile_name,)
                 sys.stderr.write("cannot open log %s\n"%(logfile_name,))
@@ -144,25 +148,32 @@ class Logger(  dispatching_worker.DispatchingWorker
             return
         host = hostaddr.address_to_name(self.reply_address[0])
                   ## XXX take care of case where we can't figure out the host name
+        # determine what type of message is it
+        message_type = string.split(ticket['message'])[2]
         message = "%-8s %s"%(host,ticket['message'])
         tm = time.localtime(time.time()) # get the local time
         if message == self.last_message:
             self.repeat_count=self.repeat_count+1
             return
         elif self.repeat_count:
-            self.logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
-                               (tm[3],tm[4],tm[5], self.repeat_count))
-            self.logfile.flush()
+            if message_type != e_errors.sevdict[e_errors.MISC]:
+                self.logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
+                                   (tm[3],tm[4],tm[5], self.repeat_count))
+                self.logfile.flush()
+            self.debug_logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
+                                     (tm[3],tm[4],tm[5], self.repeat_count))
+            self.debug_logfile.flush()
             self.repeat_count=0
         self.last_message=message
 
-
-
         # format log message
         message = "%.2d:%.2d:%.2d %s\n" %  (tm[3], tm[4], tm[5], message)
-        
-        res = self.logfile.write(message)    # write log message to the file
-        self.logfile.flush()
+
+        if message_type !=  e_errors.sevdict[e_errors.MISC]:
+            res = self.logfile.write(message)    # write log message to the file
+            self.logfile.flush()
+        res = self.debug_logfile.write(message)    # write log message to the file
+        self.debug_logfile.flush()
 
     def serve_forever(self):                      # overrides UDPServer method
         self.repeat_count=0
@@ -186,7 +197,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                                                ## log_message()
             # get local time
             tm = time.localtime(time.time())
-            day = tm[2];
+            day = tm[2]
             if self.test :
                 min = tm[4]
             # if test flag is not set reopen log file at midnight
@@ -195,11 +206,11 @@ class Logger(  dispatching_worker.DispatchingWorker
                 if day != current_day :
                     # day changed: close the current log file
                     self.logfile.close()
+                    self.debug_logfile.close()
 	            self.last_logfile_name = self.logfile_name
                     current_day = day;
                     # and open the new one
-                    fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], 
-					       tm[2])
+                    fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], tm[2])
                     self.logfile_name = self.logfile_dir_path + "/" + fn
                     self.open_logfile(self.logfile_name)
             else :
@@ -207,6 +218,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                 if min != current_min :
                     # minute changed: close the current log file
                     self.logfile.close()
+                    self.debug_logfile.close()
                     current_min = min;
                     # and open the new one
                     fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], 
