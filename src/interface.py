@@ -320,6 +320,8 @@ class Interface:
                 self.get_susp_vols = 1
             elif opt == "--get-work":
                 self.get_work = 1
+            elif opt == "--get-work-sorted":
+                self.get_work_sorted = 1
             elif opt == "--help":
                 self.print_help()
                 sys.exit(0)
@@ -379,6 +381,8 @@ class Interface:
                 self.nooutage = value
             elif opt == "--offline":
                 self.start_draining = 1
+            elif opt == "--down":
+                self.start_draining = 1
             elif opt == "--outage":
                 self.outage = value
             elif opt == "--output":
@@ -432,6 +436,10 @@ class Interface:
             elif opt == "--status":
                 self.status = 1
             elif opt == "--stop-draining":
+                self.stop_draining = 1
+            elif opt == "--online":
+                self.stop_draining = 1
+            elif opt == "--up":
                 self.stop_draining = 1
             elif opt == "--stop-time":
                 self.stop_time = value

@@ -42,6 +42,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def getwork(self) :
         return self.getlist("getwork")
 
+    def getworks_sorted(self) :
+        return self.getlist("getworks_sorted")
+
     def get_queue(self, node=None, lm=None):
         if not lm: lmname = "library_manager"
         else: lmname = lm
@@ -239,6 +242,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.restricted_opts = opts
         self.name = ""
         self.get_work = 0
+        self.get_work_sorted = 0
         self.alive_rcv_timeout = 0
         self.get_susp_vols = 0
         self.get_susp_vols = 0
@@ -260,7 +264,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             return self.restricted_opts
         else:
             return self.client_options()+[
-                "get-work", "get-suspect-vols",
+                "get-work", "get-work-sorted", "get-suspect-vols",
                 "delete-work=","priority=",
                 "get-queue=",
                 "start-draining=", "stop-draining", "status", "vols",
@@ -311,6 +315,11 @@ def do_work(intf):
         ticket = lmc.getwork()
         if enstore_functions.is_ok(ticket):
             print ticket['pending_work']
+            print ticket['at movers']
+    elif  intf.get_work_sorted:
+        ticket = lmc.getworks_sorted()
+        if enstore_functions.is_ok(ticket):
+            print ticket['pending_works']
             print ticket['at movers']
     elif  intf.get_susp_vols:
         ticket = lmc.get_suspect_volumes()

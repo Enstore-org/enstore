@@ -574,9 +574,9 @@ class Request_Queue:
         return record
 
     def get_queue(self):
-        return self.adm_queue.get_tickets() + \
-               self.write_queue.get_queue() + \
-               self.read_queue.get_queue()
+        return (self.adm_queue.get_tickets(),
+                self.write_queue.get_queue(),
+                self.read_queue.get_queue())
         
     # find record in the queue
     def find(self,id,output_file_name=None):

@@ -1384,7 +1384,37 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rticket = {}
             rticket["status"] = (e_errors.OK, None)
             rticket["at movers"] = self.work_at_movers.list
-            rticket["pending_work"] = self.pending_work.get_queue()
+            adm_queue, write_queue, read_queue = self.pending_work.get_queue()
+            rticket["pending_work"] = adm_queue + write_queue + read_queue
+            callback.write_tcp_obj_new(self.data_socket,rticket)
+            self.data_socket.close()
+            callback.write_tcp_obj_new(self.control_socket,ticket)
+            self.control_socket.close()
+        except:
+            pass #XXX
+        os._exit(0)
+    # what is going on
+
+    # return sorted queus as they appear in the pendung queue +
+    # work at movers
+    def getworks_sorted(self,ticket):
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        # this could tie things up for awhile - fork and let child
+        # send the work list (at time of fork) back to client
+        if self.fork() != 0:
+            return
+        try:
+            if not self.get_user_sockets(ticket):
+                return
+            rticket = {}
+            rticket["status"] = (e_errors.OK, None)
+            rticket["at movers"] = self.work_at_movers.list
+            adm_queue, write_queue, read_queue = self.pending_work.get_queue()
+            rticket["pending_works"] = {'admin_queue': adm_queue,
+                                        'write_queue': write_queue,
+                                        'read_queue':  read_queue
+                                        }
             callback.write_tcp_obj_new(self.data_socket,rticket)
             self.data_socket.close()
             callback.write_tcp_obj_new(self.control_socket,ticket)
