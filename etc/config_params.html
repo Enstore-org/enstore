@@ -141,12 +141,138 @@ state. Default - do not restart</td></tr>
 <tr><td><a NAME="DriveCleanTime">DriveCleanTime</a></td><td>if presents specifes the type of media, time until cleaning tape gets dismounted and number of cleaning cycles to clean a tape drive</td></tr>
 </table>
 
+<h2>Volume Clerk Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
 
+<tr><td><a NAME="max_noaccess_cnt">max_noaccess_cnt</a></td><td>if number of volumes consecutively set to NOACCES reaches this number, the corresponding library will be paused (default - 2)</td></tr>
+</table>
+
+<h2>File Clerk Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="brand">brand</a></td><td>brand for bit file id to distinguish between systems</td></tr>
+</table>
+
+<h2>Info Server Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="dbhost">dbhost</a></td><td>enstore database host</td></tr>
+<tr><td><a NAME="dbname">dbname</a></td><td>enstore data base name</td></tr>
+</table>
+
+<h2>Database Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+<tr><td><a NAME="db_dir">db_dir</a></td><td>enstore database directory</td></tr>
+<tr><td><a NAME="jou_dir">jou_dir</a></td><td>enstore database journal directory</td></tr>
+<tr><td><a NAME="db_host">db_host</a></td><td>enstore database host</td></tr>
+<tr><td><a NAME="dbname">dbname</a></td><td>enstore database name
+<tr><td><a NAME="db_port">db_port</a></td><td>enstore database port</td></tr>
+</table>
+
+<h2>Accounting Server Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="dbhost">dbhost</a></td><td>accounting data base host machine</td></tr>
+
+<tr><td><a NAME="dbname">dbname</a></td><td>accounting data base name</td></tr>
+</table>
+
+
+<h2>Drivestat Server Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="dbhost">dbhost</a></td><td>drivestat database host</td></tr>
+<tr><td><a NAME="dbport">dbport</a></td><td>drivestat database port</td></tr>
+<tr><td><a NAME="dbname">dbname</a></td><td>drivestat data base name</td></tr>
+</table>
+
+<h2>Inquisitor Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="alive_rcv_timeout">alive_rcv_timeout</a></td><td>amount of time to wait when doing a tcp transfer</td></tr>
+
+<tr><td><a NAME="alive_retries">alive_retries</a></td><td>number of times to retry a failed tcp transfer</td></tr>
+
+<tr><td><a NAME="default_alive_interval">default_alive_interval</a></td><td>number of seconds expected between alive messages from the event_relay</td></tr>
+
+<tr><td><a NAME="default_hung_interval">default_hung_interval</a></td><td>number of seconds after which if no alive message is received, the server is marked as dead</td></tr>
+
+<tr><td><a NAME="html_file">html_file</a></td><td>directory location of the html web area</td></tr>
+
+<tr><td><a NAME="http_log_file_path">http_log_file_path</a></td><td>path to log files in the as used in a url</td></tr>
+
+<tr><td><a NAME="max_encp_lines">max_encp_lines</a></td><td>maximum number of encps reported on the encp history page</td></tr>
+
+<tr><td><a NAME="refresh">refresh</a></td><td>automatic refresh rate for the web pages</td></tr>
+
+<tr><td><a NAME="user_log_dirs"></a></td><td>dictionary specifying additional links that should be added to the log file web page under user log dirs</td></tr>
+
+<tr><td><a NAME="www_host">www_host</a></td><td>url description of the web host</td></tr>
+</table>
+
+
+
+<h2>Alarm Server Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="alarm_actions">alarm_actions</a></td><td>dictionary describing actions to be taken when the specified alarms are received.  the format is as follows - [severity_string:[[action1, action_parameters, action_parameters], ...], ...}.supported actions are - send email; params = [action_name, 1|*, optional_params...]; if 1, only send mail the first time the alarm is seen, * -  always send mail when get this alarm or add the alarm to the web page only</td></tr>
+</table>
+
+<h2>System Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="allowed_down">allowed_down</a></td><td>dictionary defining how many times a server is allowed down before it is marked with a red ball by the 'enstore system' command.  each server has a list associated with it that has the followinw format -  [number of consecutive times when checked and no alive message rcvd, timeout]</td></tr>
+</table>
 
 <p>  
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Fri May  7 09:59:29 CDT 2004
+Last modified: Fri May  7 16:55:24 CDT 2004
 <!-- hhmts end -->
   </body>
 </html>
