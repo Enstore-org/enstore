@@ -292,13 +292,19 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 					      ff])
 	    pend_q = lm.get(enstore_constants.PENDING, None)
 	    if pend_q:
-		pread_q = pend_q[enstore_constants.READ]
+		if type(pend_q) == types.DictionaryType:
+		    pread_q = pend_q[enstore_constants.READ]
+		else:
+		    pread_q = []
 		if pread_q:
 		    for pread_elem in pread_q:
 			self.filelist.append([pread_elem[enstore_constants.NODE], 
 					      pread_elem[enstore_constants.FILE], name, 
 					      pread_elem[enstore_constants.DEVICE]])
-		pwrite_q = pend_q[enstore_constants.WRITE]
+		if type(pwrite_q) == types.DictionaryType:
+		    pwrite_q = pend_q[enstore_constants.WRITE]
+		else:
+		    pwrite_q = []
 		if pwrite_q:
 		    for pwrite_elem in pwrite_q:
 			# instead of a volume we will include a file family
