@@ -1,0 +1,3 @@
+cat 1| while read tape; do echo $tape; /data1/CDF_migrate1 $tape;done
+cat 1| while read tape; do echo $tape; /data1/CDF_migrate2 $tape;done
+ls -1 /tmp/*.done | sed -e 's#/tmp/##' -e 's#.done##'|while read t; do echo $t;/data1/mg2 -d $t;done

@@ -1,0 +1,41 @@
+#!/bin/sh
+
+set -u
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+if [ -z "${1:-}" ] ; then echo `date` Usage $0 volume; exit 1; fi
+
+tape=$1
+log=/tmp/$tape.migrate
+status=/data1/status
+copy=$status/$tape.copy2b
+done=$status/$tape.done
+stop=$status/$tape.stop
+halt=$status/HALT
+
+if [ -r $halt ]; then echo `date` ERROR: $halt exists ... trouble; exit 0; fi
+
+sp=0
+snooze=60
+while [ ! -r $copy ]; do
+    if [ -r $done ]; then echo `date` $tape already finished; exit 0; fi
+    if [ $sp -eq 0 ]; then 
+      echo `date` Waiting for $tape to be ready to copy.
+      sp=1
+    fi
+    sleep $snooze
+done
+if [ -r $done ]; then echo `date` $tape already finished; exit 0; fi
+
+echo `date` Starting copy to B tape for $tape
+/data1/migrate_tape -b $tape >> $log 2>&1
+/data1/migrate_tape -V $tape >> $log 2>&1
+/data1/migrate_tape -m $tape >> $log 2>&1
+rc=$?
+if [ $rc -eq 0 ]; then
+   /data1/migrate_tape -d $tape >> $log 2>&1
+   touch $done
+else
+    touch $stop
+    touch $halt
+fi
