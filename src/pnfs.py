@@ -413,8 +413,6 @@ class Pnfs:
     def set_xreference(self,volume,cookie):
         self.volmap_filename(volume,cookie)
         self.make_volmap_file()
-        print "self.dump"
-        self.dump()
         value=volume+'\012' + \
                cookie+'\012'+ \
                self.file_family+'\012' + \
@@ -666,8 +664,6 @@ class Pnfs:
             self.volume_fileP = Pnfs(self.volume_file)
             self.volume_fileP.touch()
             self.volume_fileP.set_file_size(self.file_size)
-            print "self.volume_fileP.dump"
-            self.volume_fileP.dump()
 
 
     # file in the already existing volume map file
