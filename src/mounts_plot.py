@@ -61,6 +61,9 @@ if __name__ == '__main__':
 	hist_keys.append(k)
 	mtsh[k] = 0
 
+	print `mtsh.keys()`
+	print `hist_keys`
+
 	f = open(vf_file)
 	l = f.readline()
 	while l:
