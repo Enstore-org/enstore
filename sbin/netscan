@@ -10,8 +10,8 @@ setup enstore
 # . Correct configuration files
 # . Correct ntp time sync (allow * and ~ on 1st line)
 # . Check for open LISTEN sockets
-# . two processors
-# . less than 90% full on mounted disks.
+# . Check that two processors are active
+# . Check that less than 90% full on mounted disks.
 
 # Known vunerabilities:
 # . I know I don't check everything!
