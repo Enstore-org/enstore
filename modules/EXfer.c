@@ -34,7 +34,7 @@ raise_exception(char *msg)
     return NULL;
 }
 static int
-do_read_write(int rd_fd, int wr_fd, int no_bytes, int blk_size, int crc_flag, unsigned long *crc_p)
+do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_flag, unsigned long *crc_p)
 {
 	char	*buffer;
 	char	*b_p;
