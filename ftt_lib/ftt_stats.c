@@ -247,7 +247,7 @@ ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 ** and the page code and statistic number for each.
 */
 static double
-decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
+decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, double divide) {
     static char printbuf[128];
     unsigned char *page;
     int thisparam, thislength;
@@ -749,6 +749,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
             switch( do_page ) {
 	       	case 0x02:
 		case 0x03:
+		case 0x2e:
+		case 0x30:
 	       	case 0x31: 
 		case 0x32:
 	       	case 0x39:
@@ -761,14 +763,33 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		    	failures++;
 		    } else { 
 		        switch( do_page ) {
+
 		        case 0x02:
-			    (void)decrypt_ls(b,buf,3,FTT_WRITE_ERRORS,1);
-			    (void)decrypt_ls(b,buf,5,FTT_WRITE_COUNT,1024);
+			    (void)decrypt_ls(b,buf,3,FTT_WRITE_ERRORS,1.0);
+			    (void)decrypt_ls(b,buf,5,FTT_WRITE_COUNT,1024.0);
 			    break;
+
 		        case 0x03:
-			    (void)decrypt_ls(b,buf,3,FTT_READ_ERRORS,1);
-			    (void)decrypt_ls(b,buf,5,FTT_READ_COUNT,1024);
+			    (void)decrypt_ls(b,buf,3,FTT_READ_ERRORS,1.0);
+			    (void)decrypt_ls(b,buf,5,FTT_READ_COUNT,1024.0);
 			    break;
+
+			case 0x2e:
+			    /* stk Tape Alert page */
+			    (void)decrypt_ls(b,buf,0x15,FTT_CLEANING_BIT,1.0);
+			    break;
+
+			case 0x30:
+			    /* stk 9840 vendor unique */
+			    if (0 == strncmp(d->prod_id,"9840",4)) {
+			    (void)decrypt_ls(b,buf,0x17,FTT_REMAIN_TAPE,0.25);
+			    (void)decrypt_ls(b,buf,0x0f,FTT_UNC_READ,1.0);
+			    (void)decrypt_ls(b,buf,0x11,FTT_UNC_WRITE,1.0);
+			    (void)decrypt_ls(b,buf,0x10,FTT_CMP_READ,1.0);
+			    (void)decrypt_ls(b,buf,0x12,FTT_CMP_WRITE,1.0);
+                            }
+			    break;
+
 		        case 0x31:
 			    /* 
 			    ** we want the remaining tape of the
@@ -810,23 +831,25 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    if( b->value[FTT_REMAIN_TAPE] == 0) {
 			      slot = ((current_partition & 0x7f) << 1) |
 				      (current_partition & 0x01);
-			      (void)decrypt_ls(b,buf,slot+1,FTT_REMAIN_TAPE,1);
+			      (void)decrypt_ls(b,buf,slot+1,FTT_REMAIN_TAPE,1.0);
 			    }
 			    break;
+
 		        case 0x32:
-			    (void)decrypt_ls(b,buf,0,FTT_READ_COMP,1);
-			    (void)decrypt_ls(b,buf,1,FTT_WRITE_COMP,1);
-			    (void)decrypt_ls(b,buf,3,FTT_UNC_READ,1);
-			    (void)decrypt_ls(b,buf,5,FTT_CMP_READ,1);
-			    (void)decrypt_ls(b,buf,7,FTT_UNC_WRITE,1);
-			    (void)decrypt_ls(b,buf,9,FTT_CMP_WRITE,1);
+			    (void)decrypt_ls(b,buf,0,FTT_READ_COMP,1.0);
+			    (void)decrypt_ls(b,buf,1,FTT_WRITE_COMP,1.0);
+			    (void)decrypt_ls(b,buf,3,FTT_UNC_READ,1.0);
+			    (void)decrypt_ls(b,buf,5,FTT_CMP_READ,1.0);
+			    (void)decrypt_ls(b,buf,7,FTT_UNC_WRITE,1.0);
+			    (void)decrypt_ls(b,buf,9,FTT_CMP_WRITE,1.0);
                             break;
+
 		        case 0x39: {
 			    double uw, ur, cw, cr;
-			    uw = decrypt_ls(b,buf,5,FTT_UNC_WRITE,1024);
-			    ur = decrypt_ls(b,buf,6,FTT_UNC_READ,1024);
-			    cw = decrypt_ls(b,buf,7,FTT_CMP_WRITE,1024);
-			    cr = decrypt_ls(b,buf,8,FTT_CMP_READ,1024);
+			    uw = decrypt_ls(b,buf,5,FTT_UNC_WRITE,1024.0);
+			    ur = decrypt_ls(b,buf,6,FTT_UNC_READ,1024.0);
+			    cw = decrypt_ls(b,buf,7,FTT_CMP_WRITE,1024.0);
+			    cr = decrypt_ls(b,buf,8,FTT_CMP_READ,1024.0);
                             if (ur != 0.0) {
 			       set_stat(b,FTT_READ_COMP,  ftt_itoa((long)(100.0*cr/ur)), 0);
 			    } else {
@@ -839,13 +862,14 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    }
 			    }
                             break;
+
 			case 0x3c:
+			    /* mammoth vendor unique info we want */
 			    if (0 == strncmp(d->prod_id,"EXB-89",6) ||
 			        0 == strncmp(d->prod_id,"Mammoth",7) ) {
-				/* mammoth specific info we want */
 			
-			       decrypt_ls(b,buf,8,FTT_POWER_HOURS,60);
-			       decrypt_ls(b,buf,9,FTT_MOTION_HOURS,60);
+			       decrypt_ls(b,buf,8,FTT_POWER_HOURS,60.0);
+			       decrypt_ls(b,buf,9,FTT_MOTION_HOURS,60.0);
                             }
 			    break;
 		        }
