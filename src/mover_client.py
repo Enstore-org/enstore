@@ -29,83 +29,8 @@ class MoverClient(generic_client.GenericClient):
     def status(self, rcv_timeout=0, tries=0):
 	return self.send({"work" : "status"}, rcv_timeout, tries)
 
-    def local_mover(self, enable, rcv_timeout=0, tries=0):
-	return self.send({"work" : "local_mover",
-                          "enable" : enable}, rcv_timeout, tries)
-
-    def getlist(self, work,timeout=20, tries=2):
-        # Import SOCKS module if it exists, else standard socket module socket
-        # This is a python module that works just like the socket module, but uses the
-        # SOCKS protocol to make connections through a firewall machine.
-        # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-        # goto www.python.org and search for "import SOCKS"
-        try:
-            import SOCKS
-            socket = SOCKS
-        except ImportError:
-            import socket
-        import callback
-        import e_errors
-        import errno
-        import time
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"         : work,
-                  "callback_addr" : (host, port),
-                  "unique_id"    : time.time() }
-
-        # send the work ticket to the library manager
-        ticket = self.send(ticket, timeout,tries)
-        if ticket['status'][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"mvc."+work+": sending ticket"\
-                  +repr(ticket)
-
-        # We have placed our request in the system and now we have to wait.
-        # All we  need to do is wait for the system to call us back,
-        # and make sure that is it calling _us_ back, and not some sort of old
-        # call-back to this very same port. It is dicey to time out, as it
-        # is probably legitimate to wait for hours....
-        while 1 :
-            control_socket, address = listen_socket.accept()
-            new_ticket = callback.read_tcp_obj(control_socket)
-            if ticket["unique_id"] == new_ticket["unique_id"] :
-                listen_socket.close()
-                break
-            else:
-                Trace.trace(9,"mvc.%s: imposter called us back, trying again"
-                            %(work,))
-                control_socket.close()
-        ticket = new_ticket
-        if ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"mvc."+work+": "\
-                  +"1st (pre-work-read) mover callback on socket "\
-                  +repr(address)+", failed to setup transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
-
-        # If the system has called us back with our own  unique id, call back
-        # the library manager on the library manager's port and read the
-        # work queues on that port.
-        data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_sock.connect(ticket['callback_host'], \
-                     ticket['callback_port'])
-        
-        worklist = callback.read_tcp_obj(data_sock)
-        data_sock.close()
-
-        # Work has been read - wait for final dialog with library manager.
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"lmc."+work+": "\
-                  +"2nd (post-work-read) mover callback on socket "\
-                  +repr(address)+", failed to transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
-        return worklist
-
-
     def clean_drive(self, rcv_timeout=0, tries=0):
-	return self.getlist("clean_drive")
+        return self.send({"work":"clean_drive"}, rcv_timeout, tries)
 
     def start_draining(self, rcv_timeout=0, tries=0):
 	return self.send({"work" : "start_draining"}, rcv_timeout, tries)
@@ -115,8 +40,8 @@ class MoverClient(generic_client.GenericClient):
 
     def send (self, ticket, rcv_timeout=0, tries=0) :
         vticket = self.csc.get(self.mover)
-        return self.u.send(ticket, (vticket['hostip'], vticket['port']), \
-	                rcv_timeout, tries)
+        return self.u.send(ticket, (vticket['hostip'], vticket['port']),
+                           rcv_timeout, tries)
 
 class MoverClientInterface(generic_client.GenericClientInterface):
     def __init__(self, flag=1, opts=[]):
@@ -168,9 +93,10 @@ def do_work(intf):
     ticket = {}
     msg_id = None
 
-    if intf.alive:
-        ticket = movc.alive(intf.mover, intf.alive_rcv_timeout,
-                            intf.alive_retries)
+    ticket = movc.handle_generic_commands(intf.mover, intf)
+    if ticket:
+        pass
+
     elif intf.status:
         ticket = movc.status(intf.alive_rcv_timeout,intf.alive_retries)
 	pprint.pprint(ticket)
@@ -187,9 +113,6 @@ def do_work(intf):
     else:
 	intf.print_help()
         sys.exit(0)
-
-    del movc.csc.u
-    del movc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     movc.check_ticket(ticket)
 
