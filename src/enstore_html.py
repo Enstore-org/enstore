@@ -1997,7 +1997,12 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	self.title = "ENSTORE Alarms"
 	self.script_title_gif = "en_act_alarms.gif"
 	self.source_server = THE_ALARM_SERVER
-	self.description = "%s may also be displayed."%(str(HTMLgen.Bold(HTMLgen.Href('enstore_alarm_search.html', 'Previous alarms'))),)
+	self.description = "%s may also be displayed.%s%s are available.  %s   %s"%(str(HTMLgen.Bold(HTMLgen.Href('enstore_alarm_search.html', 'Previous alarms'))), 
+								  str(HTMLgen.BR()),
+		  str(HTMLgen.Bold(HTMLgen.Href('FARenstore-opens-forISAgroup.html',
+						'Open Enstore tickets'))),
+		  str(HTMLgen.Href('FARenstore-opens-forISAgroup.text', '(text version)')),
+                  str(HTMLgen.Href('FARenstore-opens-forISAgroup.rtf', '(rtf version)')))
 
     def alarm_table(self, alarms):
 	tr = HTMLgen.TR()
