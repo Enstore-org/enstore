@@ -30,6 +30,7 @@ import mover_client
 import dispatching_worker
 import interface
 import generic_server
+import generic_cs
 import udp_client
 import Trace
 import e_errors
@@ -503,6 +504,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # send back our response
     def send_reply(self, t):
 	Trace.trace(11,"{send_reply "+repr(t))
+	self.enprint(t, generic_cs.SERVER, self.verbose, self.logc,\
+	             log_client.WARNING)
         try:
            self.reply_to_caller(t)
         # even if there is an error - respond to caller so he can process it
