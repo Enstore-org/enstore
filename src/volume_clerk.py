@@ -960,22 +960,24 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	except KeyError:
 	    record['at_mover'] = ('unmounted','none')
         # update the fields that have changed
-
-	wrong_state = 1
-	if (ticket['at_mover'][0] == 'mounting' and
-	    record['at_mover'][0] != 'unmounted'):
-	    pass
-	elif (ticket['at_mover'][0] == 'mounted' and
-	      record['at_mover'][0] != 'mounting'):
-	    pass
-	elif (ticket['at_mover'][0] == 'unmounting' and
-	      record['at_mover'][0] != 'mounted'):
-	    pass
-	elif (ticket['at_mover'][0] == 'unmounted' and
-	      record['at_mover'][0] != 'unmounting'):
-	    pass
-	else:
+	if ticket['force']:
 	    wrong_state = 0
+	else:
+	    wrong_state = 1
+	    if (ticket['at_mover'][0] == 'mounting' and
+		record['at_mover'][0] != 'unmounted'):
+		pass
+	    elif (ticket['at_mover'][0] == 'mounted' and
+		  record['at_mover'][0] != 'mounting'):
+		pass
+	    elif (ticket['at_mover'][0] == 'unmounting' and
+		  record['at_mover'][0] != 'mounted'):
+		pass
+	    elif (ticket['at_mover'][0] == 'unmounted' and
+		  record['at_mover'][0] != 'unmounting'):
+		pass
+	    else:
+		wrong_state = 0
 
 	if wrong_state:
 	    record["status"] = (e_errors.CONFLICT, "volume "+\

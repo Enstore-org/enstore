@@ -232,12 +232,15 @@ class VolumeClerkClient(generic_client.GenericClient,\
         return x
 
     # mark volume as noaccess
-    def set_at_mover(self, external_label, flag, mover):
+    def set_at_mover(self, external_label, flag, mover, *force):
         Trace.trace(10,'set_at_mover label='+str(external_label)+\
 		    ' flag='+str(flag)+' mover='+str(mover))
+	if force: f = 1
+	else: f = 0
         ticket= { 'work'           : 'set_at_mover',
                   'external_label' : external_label,
-		  'at_mover' : (flag, mover)}
+		  'at_mover' : (flag, mover),
+		  'force'    : f}
         x = self.send(ticket)
 	"""
 	generic_cs.enprint("set_at_mover:VCC returned "+\

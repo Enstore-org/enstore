@@ -140,15 +140,12 @@ def update_mover_list(self, mover, state):
 def remove_from_summon_list(self, ticket, state):
     update_mover_list(self, ticket, state)
     mv = find_mover(ticket, self.summon_queue, self.verbose)
-    if ((mv != None) and mv):
+    if mv:
 	mv['tr_error'] = 'ok'
 	mv['summon_try_cnt'] = 0
-	try:
-	    del(mv["work_ticket"])
-	except:
-	    pass
+    
 	self.summon_queue.remove(mv)
-
+    return mv
 	
 # remove all pending works
 def flush_pending_jobs(self, status, *jobtype):
@@ -638,7 +635,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				self.enprint("current mover "+repr(mv)+\
 					     " next mover "+repr(next_mover),
 					     generic_cs.DEBUG, self.verbose)
-				if (next_mover != None) and \
+				if (next_mover) and \
 				   (next_mover['mover'] != mv['mover']):
 				    next_mover_found = 1
 				    break
@@ -722,7 +719,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	except:
 	    label = None
 	mv = idle_mover_next(self, label)
-	if mv != None:
+	if mv:
 	    # summon this mover
 	    summon_mover(self, mv, ticket)
 	Trace.trace(3,"}write_to_hsm")
@@ -813,7 +810,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		# find the next idle mover
 		mv = idle_mover_next(self, ticket["fc"]["external_label"])
 	    else: print "mover found"
-	    if mv != None:
+	    if mv:
 		# summon this mover
 		self.enprint("read_from_hsm will summon mover "+repr(mv), \
 			     generic_cs.DEBUG, self.verbose)
@@ -831,8 +828,33 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	             self.verbose)
 
 	# remove the mover from the list of movers being summoned
-	remove_from_summon_list(self, mticket, mticket['work'])
+	mv = remove_from_summon_list(self, mticket, mticket['work'])
 
+	# check if there is a work for this mover in work_at_movers list
+	# it should not happen in a normal operations but it may when for 
+	# intance mover detects that encp is gone and return idle or
+	# mover crashes and then restarts
+	mv = find_mover(mticket, movers, self.verbose)
+	if mv:
+	    try:
+		vc = volume_clerk_client.VolumeClerkClient(self.csc)
+		vol_info = vc.inquire_vol(mv['work_ticket']['fc']['external_label'])
+		if vol_info['at_mover'][0] == 'mounting':
+		    v = vc.set_at_mover(mv['work_ticket']['fc']['external_label'], 'unmounted', 
+					mticket["mover"], 1)
+		    format = "mover idle with tape in mounting state."\
+			     " Removing work from work at movers queue. Work:%s mover:%s"
+		    logticket = self.logc.send(log_client.INFO, 2, format,
+					       repr(mv['work_ticket']),
+					       repr(mv))
+		
+		    work_at_movers.remove(mv['work_ticket'])
+		    del(mv["work_ticket"])
+	    except (KeyError, ValueError):
+		pass
+	    except:
+		traceback.print_exc()
+	
         w = self.schedule()
 
         self.enprint("SCHEDULE RETURNED "+repr(w), generic_cs.DEBUG, \
@@ -914,7 +936,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    self.enprint("current mover "+repr(mticket['mover'])+\
 					 " next mover "+ repr(next_mover), \
 					 generic_cs.DEBUG, self.verbose)
-			    if (next_mover != None) and \
+			    if (next_mover) and \
 			       (next_mover['mover'] != mticket['mover']):
 				next_mover_found = 1
 				break
@@ -996,7 +1018,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    state = mticket['state']
 
 	# remove the mover from the list of movers being summoned
-	remove_from_summon_list(self, mticket, state)
+	mv = remove_from_summon_list(self, mticket, state)
+	if mv:
+	    try:
+		del(mv["work_ticket"])
+	    except keyError:
+		pass
+
 
         # just did some work, delete it from queue
         w = get_work_at_movers (mticket['vc']["external_label"])
@@ -1049,7 +1077,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    if len(self.del_dismount_list) != 0:
 		# find mover in the delayed dismount list
 		mvr = find_mover(mticket,self.del_dismount_list,self.verbose)
-		if (mvr != None) and mvr: 
+		if mvr: 
 		    mvr_found = 1
 	    try:
 		if (delayed_dismount):
@@ -1137,7 +1165,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w = get_work_at_movers(ticket["external_label"])
 
 	# remove the mover from the list of movers being summoned
-	remove_from_summon_list(self, ticket, 'idle_mover')
+	mv = remove_from_summon_list(self, ticket, 'idle_mover')
+	if mv:
+	    try:
+		del(mv["work_ticket"])
+	    except keyError:
+		pass
 
 	# update list of suspected volumes
         self.enprint("SUSPECT VOLUME LIST BEFORE", generic_cs.SERVER, \
