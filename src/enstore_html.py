@@ -1095,9 +1095,10 @@ class EnLogPage(EnBaseHtmlDoc):
 	             "User Specified Log Files"), size="+2", color=BRICKRED)),
 				      width="50%", cellspacing=5, cellpadding=CELLP, 
 				      align="LEFT")
-	ul_keys = sort_keys(user_logs)
-	for ul_key in ul_keys:
-	    log_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(user_logs[ul_key], 
+	if user_logs:
+	    ul_keys = sort_keys(user_logs)
+	    for ul_key in ul_keys:
+		log_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(user_logs[ul_key], 
 							       str(HTMLgen.Bold(ul_key))))))
 	table.append(HTMLgen.TR(HTMLgen.TD(log_table)))
 	log_table.append(empty_row())
