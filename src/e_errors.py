@@ -4,9 +4,9 @@
 
 import sys
 
+OK         = 'ok'
 TIMEDOUT = 'TIMEDOUT'
 KEYERROR = 'KEYERROR'
-OK         = 'ok'
 CONFIGDEAD = 'CONFIGDEAD'
 DOESNOTEXIST = 'DOESNOTEXIST'
 WRONGPARAMETER = 'WRONGPARAMETER'
@@ -30,11 +30,14 @@ SERVERDIED = 'SERVERDIED'
 CANTRESTART = 'CANTRESTART'
 DELETED = 'DELETED'
 NOSPACE = 'NOSPACE'
-BROKENPIPE = 'BROKENPIPE'
 INPROGRESS = 'INPROGRESS'
 VOL_SET_TO_FULL = 'VOLISSETTOFULL'
 RECYCLE='RECYCLE_VOLUME'
 QUOTAEXCEEDED='STORAGE_QUOTA_EXCEEDED'
+CRC_ERROR='CRC MISMATCH'
+NET_ERROR="NETWORK ERROR"
+RETRY="RETRY"
+TOO_MANY_RETRIES="TOO MANY RETRIES"
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
@@ -70,8 +73,8 @@ WRITE_BADSWMOUNT = 'WRITE_BADSWMOUNT'
 WRITE_BADSPACE  = 'WRITE_BADSPACE'
 WRITE_ERROR     = 'WRITE_ERROR'
 WRITE_EOT       = 'WRITE_EOT'
-WRITE_UNLOAD    = 'WRITE_UNLOAD'
-WRITE_NOBLANKS  = 'WRITE_NOBLANKS'
+
+
 
 
 # Read Errors:
@@ -81,10 +84,8 @@ READ_BADMOUNT   = 'READ_BADMOUNT'
 READ_BADSWMOUNT = 'READ_BADSWMOUNT'
 READ_BADLOCATE  = 'READ_BADLOCATE'
 READ_ERROR      = 'READ_ERROR'
-READ_COMPCRC    = 'READ_COMPCRC'
 READ_EOT        = 'READ_EOT'
 READ_EOD        = 'READ_EOD'
-READ_UNLOAD     = 'READ_UNLOAD'
 
 ## Volume label errors
 # read error trying to check VOL1 header, reading/writing hsm
@@ -97,9 +98,6 @@ WRITE_VOL1_MISSING = "WRITE_VOL1_MISSING"
 READ_VOL1_WRONG = "READ_VOL1_WRONG"
 WRITE_VOL1_WRONG = "WRITE_VOL1_WRONG"
 EOV1_ERROR = "EOV1_ERROR"
-
-# common for read or write
-UNMOUNT         = 'UNMOUNT'
 
 
 #---------------------------------------
@@ -116,15 +114,17 @@ ABOVE_THRESHOLD = 'ABOVE_THRESHOLD'
 MOVER_BUSY = 'MOVER_BUSY'
 
 
+## Retry policy:
+## 3 strikes and you're out.  Also, locally-caught errors (permissions, no such file) are not retried.
+non_retriable_errors = ( NOACCESS, # set by enstore
+                         NOTALLOWED, #set by admin
+                         USERERROR,
+                         UNKNOWNMEDIA, # comes from volume clerk - unknown type
+                         NOVOLUME, #unknown volume
+                         DELETED,
+                         QUOTAEXCEEDED,
+                         TOO_MANY_RETRIES)
 
-non_retriable_errors = (NOMOVERS, NOACCESS, NOTALLOWED,
-                        WRONGPARAMETER, MOUNTFAILED, DISMOUNTFAILED,
-                        USERERROR, UNKNOWNMEDIA, NOVOLUME,
-                        WRITE_NOTAPE, WRITE_NOBLANKS,
-                        READ_NOTAPE, READ_BADMOUNT,
-                        READ_BADLOCATE, READ_UNLOAD,
-                        UNMOUNT, DELETED, NOSPACE, BROKENPIPE,
-                        READ_VOL1_MISSING, READ_VOL1_WRONG, INPROGRESS, QUOTAEXCEEDED)
 
 # CLIENT PORTION OF 'MESS_TYPE' MESSAGE
 ctypedict = {  "checkpoint"      : "CP",
@@ -272,7 +272,7 @@ def is_retriable(e):
 def handle_error(exc=None, value=None, tb=None):
     import Trace
     import traceback
-    # store Trace back info
+    # store traceback info
     if not exc:
 	exc, value, tb = sys.exc_info()
     # log it
