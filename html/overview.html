@@ -1,0 +1,165 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>HTMLgen 2.2.2 Online Documentation</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<IMG src="../image/HTMLgen_banner.jpg" alt="HTMLgen_banner.jpg" border="0"><BR>
+<span style="width: 60px"></span> 
+<A HREF="document.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<A HREF="overview.html"><IMG src="../image/top.gif" height="22" width="66" alt="Top of Manual" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>HTMLgen 2.2.2 Online Documentation</H3>
+<H2>Overview</H2>
+<HR>
+
+
+<h3>WHAT'S IT FOR?</h3>
+
+      <P>HTMLgen is a class library for the generation of HTML documents
+      with Python scripts. It's used when you want to create HTML
+      pages containing information which changes from time to
+      time. For example, you might want to have a page which provides
+      an overall system summary of data collected nightly. Or maybe
+      you have a catalog of data and images that you would like formed
+      into a spiffy set of web pages for the world to browse. Python
+      is a great scripting language for these tasks and with HTMLgen
+      it's very straightforward to construct objects which are rendered
+      out into consistently structured web pages. Of course, CGI
+      scripts written in Python can take advantage of these classes as
+      well. 
+
+<h3>ABOUT THIS RELEASE</h3>
+      
+      <P>This is a minor release with a new module called NavLinks.py
+      and several bug fixes and modifications to allow HTMLgen to be
+      used with <a
+      href="http://www.python.org/jpython/">JPython</a>. <B>Note: This
+      version of HTMLgen REQUIRES Python 1.5 or later.</B>
+      
+      <P>The NavLinks module provides tools by which a series of HTML 
+      documents can be annotated with navigation links which page the
+      user through the files. Several styles of navigation aids are
+      included and new ones can be easily derived from the class
+      framework. 
+      
+      <P>The TemplateDocument scheme has been rewritten with the
+      addition of a new base class StringTemplate with
+      TemplateDocument and new classes AutoTemplateDocument and
+      AutoStringTemplate inheriting from it. The TemplateDocument
+      class provides a simple way of generating web pages based on a
+      template containing tags which are replaced at run time with
+      text of your choice. It uses a dictionary to provide the
+      substitution mapping. This class is only available with Python
+      1.5 or newer as it makes use of the re module and the new get
+      method on dictionaries. 
+
+
+      <P>The release can be <a
+      href="http://starship.python.net/crew/friedrich/HTMLgen.tgz">downloaded</a>
+      from the Starship Web site.
+      
+
+<h3>ARCHITECTURE</h3>
+
+      <P>HTMLgen uses a simple model of having a separate class for each
+      HTML element type.  Each class instance supports an __str__
+      method to emit itself as HTML text markup.  A SimpleDocument class
+      provides the general container object which the user populates
+      with objects from the markup classes.  The SeriesDocument class also
+      provides a general style template for page generation based on
+      Patrick Lynch's <a
+      href="http://info.med.yale.edu/caim/manual/contents.html"> Web
+      Page Style Manual</a> at the Yale Center for Advanced
+      Instructional Media.  See that page for more insights into the
+      design of good web pages.
+
+<h3>NOTES ON NAMING</h3>
+
+      <P>The names I've selected for the classes in this module may need
+      some explaining. There is a class for each of the common HTML
+      elements and all classes use initial upper case for their
+      name. All functions are lower case. I did not choose to use all
+      caps for the classes that correspond to elements as A) HTML
+      markup isn't case sensitive anyway and B) I hate typing things
+      in all caps and C) I tend to use all-caps names to signify
+      constants. I also modified the class names to make them more
+      descriptive than the HTML standard. For example, I use Image
+      rather than IMG in hopes that the longer names will be easier
+      for the user to remember while coding the Python scripts. Also
+      there is no A class. I use the Href class to specify hyper-
+      references, (mostly because it's easier for me to remember). A
+      little odd case is the Paragraph vs. P classes. The former class
+      is used as a normal paragraph text container and uses the /P
+      token while the latter is simply used to insert a &lt;P&gt;
+      break in the output stream. Even though the class names might be
+      'Emphasis' rather than 'EM', I have provided aliases for these
+      classes so that if you insist, you can use the HTML names as the
+      class names.
+
+<h3>DISTRIBUTION</h3>
+
+      <P>This release comes with a mini-web of pages generated with
+      the tool.  The HTMLtest.py is the script used to build several
+      pages in the html subdirectory. It functions both as a test case
+      as well as usage examples. The reference manual output from
+      gendoc-0.6 is there as well.  Input data is read from the data
+      directory and images used are all in the image directory.  Once
+      untaring the files simply run the test function:
+
+<pre>
+>>> import HTMLtest
+>>> HTMLtest.test()
+wrote: "./html/overview.html"
+wrote: "./html/document.html"
+wrote: "./html/lists.html"
+wrote: "./html/top-frames.html"
+wrote: "./html/frames.html"
+wrote: "./html/tables.html"
+wrote: "./html/forms.html"
+wrote: "./html/imagesmaps.html"
+wrote: "./html/scripts.html"
+wrote: "./html/independence.html"
+wrote: "./html/parrot.html"
+wrote: "./html/colorcube.html"
+</pre>
+
+      <P>This should print the html files it generates as
+      above. Browse them (well you <em>ARE</em> browsing them now I
+      guess) to be sure things aren't hosed. The navigation buttons
+      should work, etc.  After you are satisfied just place
+      HTMLgen.py* and HTMLcolors.py* into your PYTHONPATH (and any of
+      the other modules you want to use) and have fun.
+
+      <p>Comments are most welcome. <br> I've added a simple script
+      called <strong>colorcube.py</strong> which generates a 
+      <a href="./colorcube.html">web-safe color table</a> useful for
+      selecting colors for your pages. Two additional sample pages are
+      available as well. They are accessed by clicking the "Next"
+      button on the last on-line doc page (Scripts). If you want to
+      jump to them directly you can click <A
+      HREF="./independence.html">here</a>.
+
+<font size=-1>If you're curious about the insect at the bottom of each
+page, that's my alma mater's mascot.</font>
+
+
+
+
+<P><HR>
+<span style="width: 60px"></span> 
+<A HREF="document.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<A HREF="overview.html"><IMG src="../image/top.gif" height="22" width="66" alt="Top of Manual" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 1996-7 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;r&#105;e&#100;r&#105;c&#104;@&#112;y&#116;h&#111;n&#112;r&#111;s&#46;c&#111;m">friedrich@pythonpros.com</A><br>
+Generated: Thu Aug 5, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

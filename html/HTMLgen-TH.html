@@ -1,0 +1,171 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class TH</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="HTMLgen-TD.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-TR.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class TH</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLgen</PRE>
+
+<PRE>class TH(AbstractTag)
+  string __module__ = 'HTMLgen'
+  dictionary attr_dict = {'id': '', 'nowrap': '', ' ...
+  string attr_template = '%(class)s%(id)s%(style)s% ...
+  tuple attrs = ('class', 'id', 'style', ' ...
+  string tagname = 'TH'
+  string attr_template = ''
+
+  # Methods inherited by TH from AbstractTag
+  <A HREF="#def __add__(self, other)">def __add__(self, other)</A>
+  <A HREF="#def __call__(self, text)">def __call__(self, text)</A>
+  def __init__(self, *contents, **kw)
+  <A HREF="#def __len__(self)">def __len__(self)</A>
+  <A HREF="#def __setattr__(self, name, value)">def __setattr__(self, name, value)</A>
+  <A HREF="#def __str__(self)">def __str__(self)</A>
+  <A HREF="#def append(self, *items)">def append(self, *items)</A>
+  <A HREF="#def copy(self)">def copy(self)</A>
+  <A HREF="#def empty(self)">def empty(self)</A>
+  <A HREF="#def last(self)">def last(self)</A>
+  <A HREF="#def markup(self, rex=None, marker=None, **kw)">def markup(self, rex=None, marker=None, **kw)</A>
+  <A HREF="#def prepend(self, *items)">def prepend(self, *items)</A>
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Define a table header cell.
+</P>
+
+<H3><A NAME="def __add__(self, other)">def __add__(self, other)</A></H3>
+
+
+<P>Support self + list
+</P>
+
+<H3><A NAME="def __call__(self, text)">def __call__(self, text)</A></H3>
+
+
+<P>Enable instances to be callable as text processing functions.</P>
+
+<H4>For Example:</H4>
+
+<PRE>  &gt;&gt;&gt; S = HTMLgen.Strong()
+  &gt;&gt;&gt; print S('Hi!')
+  &gt;&gt;&gt; &lt;STRONG&gt;Hi!&lt;/STRONG&gt;
+</PRE>
+
+<H3><A NAME="def __len__(self)">def __len__(self)</A></H3>
+
+
+<P>Return the integer length of the container list.
+</P>
+
+<H3><A NAME="def __setattr__(self, name, value)">def __setattr__(self, name, value)</A></H3>
+
+
+<P>Intercept attribute assignments.</P>
+
+
+<P>If the attribute is a legal HTML tag attribute add it to the
+dict used for substitution in __str__, otherwise just set it as
+an instance attribute.
+</P>
+
+<H3><A NAME="def __str__(self)">def __str__(self)</A></H3>
+
+
+<P>Generate an HTML formatted string for this object.
+</P>
+
+<H3><A NAME="def append(self, *items)">def append(self, *items)</A></H3>
+
+
+<P>Append one or more items to the end of the container.
+</P>
+
+<H3><A NAME="def copy(self)">def copy(self)</A></H3>
+
+
+<P>Return a full copy of the object.
+</P>
+
+<H3><A NAME="def empty(self)">def empty(self)</A></H3>
+
+
+<P>Empty the contents of the container.
+</P>
+
+<H3><A NAME="def last(self)">def last(self)</A></H3>
+
+
+<P>Return a reference to the last item in the container.
+</P>
+
+<H3><A NAME="def markup(self, rex=None, marker=None, **kw)">def markup(self, rex=None, marker=None, **kw)</A></H3>
+
+
+<P>Markup the contained text matching a regular expression with
+a tag class instance or function. </P>
+
+<H4>Arguments</H4>
+
+<DL>
+<DT><B>    rex</B><DD>a regular expression object or pattern which will be used
+        to match all text patterns in the Paragraph body. Must have a single
+        group defined. Group 1 is the matching text that will be marked.
+        Default to all parenthetical text.
+<DT><B>    marker</B><DD>an HTMLgen class instance to which the found text will
+        be sent for wrapping (using its __call__ method). Default is Emphasis.
+</DL>
+
+<H4>Keywords</H4>
+
+<DL>
+<DT><B>    collapse</B><DD>When set to 1 removes the non-grouped matching text
+        from the output. Default 0.
+</DL>
+
+
+<P>Returns the number of matching text groups.
+</P>
+
+<H3><A NAME="def prepend(self, *items)">def prepend(self, *items)</A></H3>
+
+
+<P>Prepend one or more items to the top of the container.
+</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLgen_overview.html">HTMLgen</A></P>
+
+
+<P><A HREF="HTMLgen-AbstractTag.html">AbstractTag</A></P>
+
+
+<P><HR>
+<A HREF="HTMLgen-TD.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-TR.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;r&#105;e&#100;r&#105;c&#104;@&#112;y&#116;h&#111;n&#112;r&#111;s&#46;c&#111;m">friedrich@pythonpros.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

@@ -1,0 +1,101 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class StickyForm</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="StickyForm-FormState.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-escape.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class StickyForm</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import StickyForm</PRE>
+
+<PRE>class StickyForm(Form)
+  def __init__(self, cgi = None, state=None,**kw)
+  string __module__ = 'StickyForm'
+  def __str__(self)
+  def restore(self,filename)
+  def save(self,filename)
+  <A HREF="#def with_state(self,input)">def with_state(self,input)</A>
+
+  # Methods inherited by StickyForm from Form
+  <A HREF="#def append(self, *items)">def append(self, *items)</A>
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Works like a Form with the addition of a state attribute, a
+save method and a restore method.  A form's state is a FormState
+instance which holds the default values for all form elements.</P>
+
+
+<P>save tells the FormState instance to save itself to a file.</P>
+
+
+<P>restore tells the FormState instance to restore itself from a file.</P>
+
+<H3><A NAME="def append(self, *items)">def append(self, *items)</A></H3>
+
+
+<P>Append any number of items to the form container.
+</P>
+
+<H3><A NAME="def with_state(self,input)">def with_state(self,input)</A></H3>
+
+
+<P>Here's where the actual work gets done. Each Input, Select
+and Textarea object in the form is modified to reflect it's
+value as defined in the form's state.  </P>
+
+<H2>You can initalize the state 3 ways, with a:</H2>
+
+<DL>
+<DT><B>    filename</B><DD>this loads the state of the form from a file
+<DT><B>    FieldStorage</B><DD>this sets the state of the form from the
+                    information in the FieldStorage
+<DT><B>    FormState</B><DD>this sets the state to the FormState instance
+</DL>
+
+<H2>For example:</H2>
+
+<PRE>   form=StickyForm(state="/tmp/form.txt")</PRE>
+
+<PRE>   fs=cgi.FieldStorage()
+   form=StickyForm(state=fs)</PRE>
+
+<PRE>   fs=FormState()
+   form=StickyForm(state=fs)
+</PRE>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="StickyForm_overview.html">StickyForm</A></P>
+
+
+<P><A HREF="HTMLgen-Form.html">Form</A></P>
+
+
+<P><HR>
+<A HREF="StickyForm-FormState.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-escape.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Amos Latteier<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#97;m&#111;s&#64;a&#114;a&#99;n&#101;t&#46;c&#111;m">amos@aracnet.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

@@ -1,0 +1,19 @@
+
+<h3>FEATURES</h3>
+
+      <P>Both client and server side imagemaps are supported. The test
+      area below uses client side imagemaps. One starts with an image
+      and identifies the areas which are to be linked to URLs. This is
+      done with Area class instances which are then assigned to a Map
+      object. That Map object is then grouped with the image via a
+      normal Image class. A minimal example:
+<pre>
+    a1 = Area(coords='0,0,50,50', href='a1.html')
+    a2 = Area(coords='0,50,50,100', href='a2.html')
+    csmap = Map(name='rect', areas=(a1,a2))
+    csimage = Image('../image/csmap_rect.gif', usemap='#rect')
+</pre>
+      <P>Note that the name tag must be referenced with the #name
+      syntax for this to work. Also, both the Map object and the Image
+      object must, of course, be included in the document file for
+      client side maps to work.

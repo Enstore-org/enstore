@@ -1,0 +1,48 @@
+
+<H3>FEATURES</H3>
+
+      <P>The List class and it's children have been structured to
+      allow full nesting of either regular Python data types, (e.g.,
+      lists of lists of strings) or HTMLgen objects. For example, an
+      OrderedList class can contain an instance of the List class,
+      ImageBulletList class and DefinitionList class. Added in version
+      2.0.6 is the capability to render the list into multiple
+      columns. Just set the <code>columns</code> attribute to a number
+      greater than one and it will use that many columns. Also added
+      is the ability to assign a background color through the use of
+      the <code>bgcolor</code> attribute.
+
+        <UL>
+        <LI><STRONG>List</STRONG> class uses the UL markup and 
+          is the base class for:
+          <UL>
+            <LI><strong>OrderedList</strong>, which uses the OL markup.
+            <LI><strong>DefinitionList</strong>, which uses the DL markup.
+            <LI><strong>ImageBulletList</strong>, which uses the UL markup and just
+              provides a simple <em>object object BR</em> style for 
+              each list item.
+            <LI><strong>NonBulletList</strong>, which uses the UL markup and just
+              provides a simple indented list without prepending a
+              bullet (or anything else).
+          </UL>
+        </UL>
+
+      <P>The Netscape Navigator extension <code>type</code> tag is
+      supported as an attribute of the List and OrderedList classes
+      and can be set as keyword parameters (although they have
+      different meanings).  In List instances you can set the
+      <code>type='disk' | 'circle' | 'square'</code> to hardwire the
+      style of bullet used. In OrderedList instances you can set
+      <code>type='A' | 'a' | 'I' | 'i'</code> to alter the numbering from
+      Arabic to respectively: capital letters, small letters, Roman
+      numerals, small Roman numerals.
+
+      <P>Normal list operations apply to all the classes in this family
+      as the base class inherits from the UserList class provided in
+      the core distribution.
+
+      <P>The rendered HTML output should also exhibit indentation
+      proportional to the level of list nesting.
+
+      <P>Below is some example output. See the HTMLtest.py script for the
+      source code which generated it.

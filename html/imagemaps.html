@@ -1,0 +1,66 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>HTMLgen 2.2.2 Online Documentation</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<IMG src="../image/imapbanner.gif" height="40" width="472" alt="imapbanner.gif" border="0"><BR>
+<A HREF="forms.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="scripts.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<A HREF="overview.html"><IMG src="../image/top.gif" height="22" width="66" alt="Top of Manual" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>HTMLgen 2.2.2 Online Documentation</H3>
+<H2>Imagemaps</H2>
+<HR>
+
+
+<h3>FEATURES</h3>
+
+      <P>Both client and server side imagemaps are supported. The test
+      area below uses client side imagemaps. One starts with an image
+      and identifies the areas which are to be linked to URLs. This is
+      done with Area class instances which are then assigned to a Map
+      object. That Map object is then grouped with the image via a
+      normal Image class. A minimal example:
+<pre>
+    a1 = Area(coords='0,0,50,50', href='a1.html')
+    a2 = Area(coords='0,50,50,100', href='a2.html')
+    csmap = Map(name='rect', areas=(a1,a2))
+    csimage = Image('../image/csmap_rect.gif', usemap='#rect')
+</pre>
+      <P>Note that the name tag must be referenced with the #name
+      syntax for this to work. Also, both the Map object and the Image
+      object must, of course, be included in the document file for
+      client side maps to work.
+
+<HR>
+<H3>Moving the mouse pointer over the numbered areas should    make Netscape show a URL name numbered accordingly.</H3>
+
+<IMG src="../image/csmap_rect.gif" alt="csmap_rect.gif" usemap="#rect">
+
+<MAP NAME="rect">
+<AREA coords="0,0,50,50" href="a1.html"><AREA coords="0,50,50,100" href="a2.html"><AREA coords="0,100,50,150" href="a3.html"><AREA coords="0,150,50,200" href="a4.html"><AREA coords="0,200,50,250" href="a5.html"></MAP>
+
+<IMG src="../image/csmap_circle.gif" alt="csmap_circle.gif" align="top" usemap="#circle">
+
+<MAP NAME="circle">
+<AREA coords="50,25,25" href="a1.html" shape="circle"><AREA coords="100,25,25" href="a2.html" shape="circle"><AREA coords="150,25,25" href="a3.html" shape="circle"><AREA coords="200,25,25" href="a4.html" shape="circle"><AREA coords="250,25,25" href="a5.html" shape="circle"></MAP>
+
+
+<P><HR>
+<A HREF="forms.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="scripts.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<A HREF="overview.html"><IMG src="../image/top.gif" height="22" width="66" alt="Top of Manual" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 1996-7 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;ri&#101;dr&#105;ch&#64;py&#116;ho&#110;pr&#111;s.&#99;om">friedrich@pythonpros.com</A><br>
+Generated: Thu Aug 5, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

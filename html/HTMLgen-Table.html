@@ -1,0 +1,111 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class Table - Construct a Table with Python lists.</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="HTMLgen-TT.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-TableLite.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class Table - Construct a Table with Python lists.</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLgen</PRE>
+
+<PRE>class Table
+  <A HREF="#def __init__(self, tabletitle='', **kw)">def __init__(self, tabletitle='', **kw)</A>
+  string __module__ = 'HTMLgen'
+  <A HREF="#def __str__(self)">def __str__(self)</A>
+  <A HREF="#def get_body_color(self, colors, i)">def get_body_color(self, colors, i)</A>
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Instantiate with a string argument for the table's name (caption).
+Set object.heading to a list of strings representing the column headings.
+Set object.body to a list of lists representing rows. <STRONG>WARNING:</STRONG> the body
+attribute will be edited to conform to html. If you don't want your
+data changed make a copy of this list and use that with the table object.</P>
+
+<H3><A NAME="def __init__(self, tabletitle='', **kw)">def __init__(self, tabletitle='', **kw)</A></H3>
+
+
+<P>Arg1 is a string title for the table caption, optional keyword
+arguments follow.
+</P>
+
+<H3><A NAME="def __str__(self)">def __str__(self)</A></H3>
+
+
+<P>Generates the html for the entire table.
+</P>
+
+<H3><A NAME="def get_body_color(self, colors, i)">def get_body_color(self, colors, i)</A></H3>
+
+
+<P>Return bgcolor argument for column number i
+</P>
+
+<H2>Keyword Parameters</H2>
+
+
+<P>    Defaults in (parenthesis).  Keyword parameters may be set as attributes of the
+    instantiated table object as well.</P>
+
+<DL>
+<DT><B>    caption_align</B><DD>'top'|'bottom'  specifies the location of the table title ('top')
+<DT><B>    border</B><DD>the width in pixels of the bevel effect around the table (2)
+<DT><B>    cell_padding</B><DD>the distance between cell text and the cell boundary (4)
+<DT><B>    cell_spacing</B><DD>the width of the cell borders themselves (1)
+<DT><B>    width</B><DD>the width of the entire table wrt the current window width ('100%')
+<DT><B>    colspan</B><DD>a list specifying the number of columns spanned by that heading
+           index. e.g. t.colspan = [2,2] will place 2 headings spanning
+           2 columns each (assuming the body has 4 columns).
+<DT><B>    heading</B><DD>list of strings, the length of which determine the number of
+               columns.  ( ['&amp;nbsp']*3 )
+<DT><B>    heading_align</B><DD>'center'|'left'|'right'
+                    horizontally align text in the header row ('center')
+<DT><B>    heading_valign</B><DD>'middle' |'top'|'bottom'
+                    vertically align text in the header row ('middle')
+<DT><B>    body_color</B><DD>a list of colors, for each column (None)
+<DT><B>    heading_color</B><DD>a list of color for each column heading (None)
+         For both these the index used is i%len(..._color) so
+         the color cycles through the columns
+<DT><B>    body</B><DD>a list of lists in row major order containing strings or objects
+           to populate the body of the table. ( [['&amp;nbsp']*3] )
+<DT><B>    column1_align</B><DD>'left'|'right'|'center'  text alignment of the first column
+<DT><B>    cell_align</B><DD>'left'|'right'|'center'  text alignment for all other cells
+<DT><B>    cell_line_breaks</B><DD>1|0  flag to determine if newline char in body text will be
+              converted to &lt;br&gt; symbols; 1 they will, 0 they won't. (1)
+</DL>
+
+
+<P></P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLgen_overview.html">HTMLgen</A></P>
+
+
+<P><HR>
+<A HREF="HTMLgen-TT.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-TableLite.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;rie&#100;ric&#104;@py&#116;hon&#112;ros&#46;com">friedrich@pythonpros.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

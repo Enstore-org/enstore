@@ -1,0 +1,72 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Function store_image_inventory - Save a dictionary listing all image objects to a file.</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="HTMLgen-relpath.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Function store_image_inventory - Save a dictionary listing all image objects to a file.</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLutil</PRE>
+
+<PRE>def store_image_inventory(directory=os.curdir, file='images.pkl', prefix=None)</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>The dictionary containing all Image objects derived from a
+given directory can be saved either as a pickle file to preserve
+the Image objects or as string HTML representations savable in a
+marshaled form for performance.  Which form happens is a function
+of the file suffix given as the second argument. If it ends in ".mar"
+then the Image objects are flattened into plain strings and saved
+as a marshal file. Any other suffix, including the default ".pkl"
+will save the dictionary of objects as a pickle file. Note: the
+marshal form is about two orders of magnitude faster when fetching
+this dictionary.</P>
+
+<H3>Arguments</H3>
+
+<DL>
+<DT><B>   directory</B><DD>Directory to generate Image objects from and
+                store the resulting dictionary into.
+<DT><B>   file</B><DD>Optional name of file to save into. default is "images.pkl"
+           If the file suffix is '.mar' the Image objects will be
+           flattened into regular strings and saved as a marshalled
+           file, (a performance route when you know the SRC prefix
+           ahead of time).
+<DT><B>   prefix</B><DD>Optional specification of the Image prefix. Typically
+             used when you what to specify a known URL path for
+             your image repository, eg. http:/www.phunni.com/image.
+
+</DL>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLutil_overview.html">HTMLutil</A></P>
+
+
+<P><HR>
+<A HREF="HTMLgen-relpath.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 1996-9 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;rie&#100;ric&#104;@py&#116;hon&#112;ros&#46;com">friedrich@pythonpros.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

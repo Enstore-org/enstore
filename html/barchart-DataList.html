@@ -1,0 +1,180 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class DataList - Class supporting tabular storage and access of data.</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="barchart-BarChart.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="barchart-StackedBarChart.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class DataList - Class supporting tabular storage and access of data.</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import barchart</PRE>
+
+<PRE>class DataList(UserList)
+  def __init__(self, list = None)
+  string __module__ = 'barchart'
+  <A HREF="#def __str__(self)">def __str__(self)</A>
+  <A HREF="#def add_column(self, name, pairs)">def add_column(self, name, pairs)</A>
+  <A HREF="#def cache_labels(self)">def cache_labels(self)</A>
+  def decreasing(self, a, b)
+  def increasing(self, a, b)
+  <A HREF="#def index(self, label)">def index(self, label)</A>
+  <A HREF="#def load_tuple(self, t)">def load_tuple(self, t)</A>
+  <A HREF="#def load_tuples(self, tt)">def load_tuples(self, tt)</A>
+  <A HREF="#def max(self, key='value')">def max(self, key='value')</A>
+  <A HREF="#def mean(self, key='value')">def mean(self, key='value')</A>
+  <A HREF="#def min(self, key='value')">def min(self, key='value')</A>
+  tuple segment_names = ('value',)
+  <A HREF="#def sort(self, key='label', direction='increasing')">def sort(self, key='label', direction='increasing')</A>
+  <A HREF="#def sum(self, key='value')">def sum(self, key='value')</A>
+  <A HREF="#def sum_totals(self)">def sum_totals(self)</A>
+
+  # Methods inherited by DataList from UserList
+  def __add__(self, list)
+  def __cmp__(self, list)
+  def __delitem__(self, i)
+  def __delslice__(self, i, j)
+  def __getitem__(self, i)
+  def __getslice__(self, i, j)
+  def __len__(self)
+  def __mul__(self, n)
+  def __mul__(self, n)
+  def __radd__(self, list)
+  def __repr__(self)
+  def __setitem__(self, i, item)
+  def __setslice__(self, i, j, list)
+  def append(self, item)
+  def count(self, item)
+  def insert(self, i, item)
+  def pop(self, i=-1)
+  def remove(self, item)
+  def reverse(self)
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Used by BarChart classes. Takes a list of sequences and loads
+them into a list of dictionaries using the first item from the
+sequence as a label key. The column names are from the
+<EM>segment_names</EM> attribute and <EM>must be set</EM> prior to loading
+multidimensional data. </P>
+
+
+<P>Supports some simple data processing methods.
+</P>
+
+<H3><A NAME="def __str__(self)">def __str__(self)</A></H3>
+
+
+<P>Return tabular string representation of internal data.
+</P>
+
+<H3><A NAME="def add_column(self, name, pairs)">def add_column(self, name, pairs)</A></H3>
+
+
+<P>Take list of (label,value) pairs and add the data as a
+new column named <EM>name</EM>.
+</P>
+
+<H3><A NAME="def cache_labels(self)">def cache_labels(self)</A></H3>
+
+
+<P>Create cache of indexes corresponding to the labels
+to speed calles to index method.
+</P>
+
+<H3><A NAME="def index(self, label)">def index(self, label)</A></H3>
+
+
+<P>return dictionary corresponding to <EM>label</EM> string.
+</P>
+
+<H3><A NAME="def load_tuple(self, t)">def load_tuple(self, t)</A></H3>
+
+
+<P>Load individual record of data into new dictionary.</P>
+
+
+<P>Use first item in given sequence as label key and assigns
+remaining items with keys from <EM>segment_names</EM> in order.
+</P>
+
+<H3><A NAME="def load_tuples(self, tt)">def load_tuples(self, tt)</A></H3>
+
+
+<P>Load each item from the given sequence of sequences.
+</P>
+
+<H3><A NAME="def max(self, key='value')">def max(self, key='value')</A></H3>
+
+
+<P>return maximum value in column key
+</P>
+
+<H3><A NAME="def mean(self, key='value')">def mean(self, key='value')</A></H3>
+
+
+<P>return mean (average) of values in column key
+</P>
+
+<H3><A NAME="def min(self, key='value')">def min(self, key='value')</A></H3>
+
+
+<P>return minimum value in column key
+</P>
+
+<H3><A NAME="def sort(self, key='label', direction='increasing')">def sort(self, key='label', direction='increasing')</A></H3>
+
+
+<P>Sort list according to key in direction.</P>
+
+
+<P>Example: DLobject.sort(<CODE>height</CODE>
+, 'decreasing')
+</P>
+
+<H3><A NAME="def sum(self, key='value')">def sum(self, key='value')</A></H3>
+
+
+<P>return sum of values in column key
+</P>
+
+<H3><A NAME="def sum_totals(self)">def sum_totals(self)</A></H3>
+
+
+<P>add new key <CODE>total</CODE>
+ to each dictionary
+</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="barchart_overview.html">barchart</A></P>
+
+
+<P><A HREF="UserList-UserList.html">UserList</A></P>
+
+
+<P><HR>
+<A HREF="barchart-BarChart.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="barchart-StackedBarChart.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#100;ev@&#110;ull">dev@null</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

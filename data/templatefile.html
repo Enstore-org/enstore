@@ -1,0 +1,29 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.03 [en] (X11; I; Linux 2.0.30 i586) [Netscape]">
+</HEAD>
+<BODY TEXT="#000000" BGCOLOR="#FFFFFF" LINK="#CF0000" VLINK="#610000" ALINK="#FF0000">
+
+<H2>
+A Sample Template File</H2>
+
+<HR WIDTH="100%">A template file is simply an HTML file (or any text file
+for that matter), which contains symbols which mark where substitutions
+will be made.&nbsp; The symbols are always delimited by curly braces {like_this}.&nbsp;
+The name between the braces is a valid python symbolic name, i.e. alphanumeric
+or underscore characters.&nbsp; The idea is that for each occurence of
+these symbols a dictionary will be consulted using that key and the found
+value is substituted in its place. Anything with a string representation
+can be used as the substituted value, including other complex HTMLgen objects
+such as tables, lists, etc.
+<HR WIDTH="100%">
+<BR>The {TemplateDocument} class is instantiated with a template file and
+then a dictionary, or an object which acts like a dictionary (has a get()
+method) like UserDict, is assigned to the {substitutions} attribute. At
+that point the instance can be written to a file and all substitutions
+will be performed.&nbsp;&nbsp;
+<HR WIDTH="100%">
+<BR>{std_disclaimer}
+</BODY>
+</HTML>
