@@ -33,7 +33,6 @@ Trace:
 	ln -fs traceShow ../sbin/traceMode
 	ln -fs traceShow ../sbin/traceOn
 	ln -fs traceShow ../sbin/traceOff
-	@cd ../modules
 
 # Normally we don't install .py files:
 install: installpyc
