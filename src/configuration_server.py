@@ -1,8 +1,11 @@
+# system imports
 import sys
 import string
 import regsub
 import pprint
 import copy
+
+# enstore imports
 import dispatching_worker
 import generic_server
 import SocketServer
@@ -12,7 +15,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile,list=1):
-     Trace.trace(16,"{load_config configfile="+repr(configfile))
+     Trace.trace(6,"{load_config configfile="+repr(configfile))
      try:
         try:
             f = open(configfile)
@@ -63,7 +66,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                      self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
                      break
 
-        Trace.trace(16,"}load_config ok")
+        Trace.trace(6,"}load_config ok")
         return "ok"
 
      # even if there is an error - respond to caller so he can process it
@@ -76,7 +79,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # does the configuration dictionary exist?
     def config_exists(self):
-     Trace.trace(16,"{config_exists")
+     Trace.trace(20,"{config_exists")
      try:
         need = 0
         try:
@@ -91,7 +94,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             print msg
             Trace(0,"config_exists "+msg)
             self.load_config(configfile)
-        Trace.trace(16,"}config_exists")
+        Trace.trace(20,"}config_exists")
         return
 
      # even if there is an error - respond to caller so he can process it
@@ -104,7 +107,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket):
-     Trace.trace(16,"{lookup ")
+     Trace.trace(6,"{lookup ")
      try:
         self.config_exists()
         # everything is based on lookup - make sure we have this
@@ -116,7 +119,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             ticket["status"] = "Configuration Server: "+key+" key is missing"
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(16,"}lookup")
+            Trace.trace(6,"}lookup")
             return
 
         # look up in our dictionary the lookup key
@@ -128,7 +131,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                           +repr(lookup)}
             pprint.pprint(out_ticket)
         self.reply_to_caller(out_ticket)
-        Trace.trace(16,"}lookup "+repr(lookup)+"="+repr(out_ticket))
+        Trace.trace(6,"}lookup "+repr(lookup)+"="+repr(out_ticket))
         return
 
      # even if there is an error - respond to caller so he can process it
@@ -142,7 +145,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # return a dump of the dictionary back to the user
     def list(self, ticket):
-     Trace.trace(16,"{list")
+     Trace.trace(6,"{list")
      try:
         self.config_exists()
         sortedkey = self.configdict.keys()
@@ -175,7 +178,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         #print formatted
         out_ticket = {"status" : "ok", "list" : formatted}
         self.reply_to_caller(out_ticket)
-        Trace.trace(16,"}list")
+        Trace.trace(6,"}list")
         return
 
      # even if there is an error - respond to caller so he can process it
@@ -190,7 +193,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):
-     Trace.trace(16,"{load")
+     Trace.trace(6,"{load")
      try:
         try:
             configfile = ticket["configfile"]
@@ -200,7 +203,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             out_ticket = {"status" : "Configuration Server: no such name"}
 
         self.reply_to_caller(out_ticket)
-        Trace.trace(16,"}load"+repr(out_ticket))
+        Trace.trace(6,"}load"+repr(out_ticket))
         return
 
      # even if there is an error - respond to caller so he can process it
@@ -218,7 +221,7 @@ class ConfigurationServer(ConfigurationDict,\
     def __init__(self, server_address \
                  ,configfile="/pnfs/enstore/.(config)(flags)/enstore.conf"\
                  ,list=0):
-        Trace.trace(10,"{ConfigurationServer address="+repr(server_address)+\
+        Trace.trace(3,"{ConfigurationServer address="+repr(server_address)+\
                     " configfile="+repr(configfile)+" list="+repr(list))
 
         # make a configuration dictionary
