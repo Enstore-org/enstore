@@ -120,7 +120,8 @@ def fill_out_row(num_tds_so_far, tr):
 class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     def set_meta(self):
-	self.meta = HTMLgen.Meta(equiv="Refresh", content=self.refresh)
+	if not self.refresh == -1:
+	    self.meta = HTMLgen.Meta(equiv="Refresh", content=self.refresh)
 
     # this is the base class for all of the html generated enstore documents
     def __init__(self, refresh=0, background="enstore.gif", help_file="", system_tag=""):
