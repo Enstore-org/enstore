@@ -1,15 +1,24 @@
 #!/usr/bin/env bash
 set -u  # force better programming and ability to use check for not set
 
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
 
 # this is cheap argument processing. Must be in this order when checking.
-if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
-if [ "${1:-}" = "-q" ] ; then QUIET=1; shift; else QUIET=0; fi
-if [ "${1:-}" = "-i" ] ; then IPMI=0; shift; else IPMI=1; fi
+if [ "${1:-}" = "-a" ]; then ALARM=1; shift; else ALARM=0; fi
+if [ "${1:-}" = "-q" ]; then QUIET=1; shift; else QUIET=0; fi
+if [ "${1:-}" = "-i" ]; then IPMI=0; shift; else IPMI=1; fi
 
-# once a day, override quiet mode and log verbose information
-[ $((RANDOM % 97)) -eq 0 ] && QUIET=0
+# did we just reboot? assumes we're scheduled to run every 15 minutes
+
+if [ `cut -d. -f1 /proc/uptime` -lt 900 ]
+then
+  REBOOT=1
+else
+  REBOOT=0
+fi
+
+# once a day, or after reboot, override quiet mode and log verbose information
+[ $((RANDOM % 97)) -eq 0 -o $REBOOT -eq 1 ] && QUIET=0
 
 set +u
 . /usr/local/etc/setups.sh
@@ -19,23 +28,25 @@ set -u
 # Things checked:
 # . Correct configuration files
 # . Correct authorization files
-# . Correct ntp time sync (allow * and ~ on 1st line)
-# . Check for open LISTEN sockets
-## . Check that two processors are active
-## . Check that less than 90% full on mounted disks
+# . Check enstore scripts in /etc/rc.d/init.d
 # . Check that eth1 is working (if present)
-# . Check that the farmlets directory matches the base farmlet
-## . Check that /etc/cron.* directories match the base farmlet
-# . Check that root's crontab has reset of watchdog, ntpset and netscan running
+# . Correct ntp time sync (allow * and ~ on 1st line)
+## . Check that two processors are active
+## . Check that mounted disks are less than 90% full
+# . Check that root crontab includes reset of watchdog, netscan, and ntpset
+# . Check that rc.local contains boot_cleanup
+# . Check that enstore and root .forward files contain enstore-admin@fnal.gov
 # . Check that ipmisrv is running and has NO_DOG option
 # . Check that watchdog timer action is to do nothing
 # . Check that there are less than N processes running on the node
+# . Check for correct number of daemons running on pnfs servers
 # . If file or volume clerk are running, then db_checkpoint and db_deadlock are running, too
 # . Check that web servers are running on right nodes and not elsewhere
 # . Check cgi scripts on web server nodes
-# . Check enstore scripts in /etc/rc.d/init.d
-# . Check that rc.local contains boot_cleanup
 # . Check the /etc/krb5.keytab and /local/ups/kt/enstorekt files for legal values
+# . Check for open LISTEN sockets
+# . Check that the farmlets directory matches the base farmlet
+## . Check that /etc/cron.* directories match the base farmlet
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -60,6 +71,7 @@ UNAME="/bin/uname"
 PS="/bin/ps"
 CMP="/usr/bin/cmp"
 ECHO="/bin/echo"
+OCTAL="printf 0%o"
 if [ -x /usr/local/bin/lsof ]
 then
     LSOF="/usr/local/bin/lsof"
@@ -91,19 +103,19 @@ MKDIR="/bin/mkdir"
 FARMLETS="$ENSTORE/sbin/farmlets"
 KEYTAB_CHECK="$ENSTORE/sbin/keytab_check"
 
-node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
+node=`hostname -s`
 gang=`$ENSTORE/sbin/gang`
-RELAX=0
 
-# we need to report errors on devel machines to a production place that is watched
-if [ `echo $node | egrep -c ^rip[1-8]` -ne 0 ]; then
-    ENSTORE_CONFIG_HOST=d0ensrv2
-    RELAX=1
-fi
-if [ `echo $node | egrep -c ^cachen`   -ne 0 ]; then
-    ENSTORE_CONFIG_HOST=stkensrv2
-    RELAX=1
-fi
+#RELAX=0
+## we need to report errors on devel machines to a production place that is watched
+#if [ `echo $node | egrep -c ^rip[1-8]` -ne 0 ]; then
+#    ENSTORE_CONFIG_HOST=d0ensrv2
+#    RELAX=1
+#fi
+#if [ `echo $node | egrep -c ^cachen`	-ne 0 ]; then
+#    ENSTORE_CONFIG_HOST=stkensrv2
+#    RELAX=1
+#fi
 
 LOG=/tmp/netscan.log
 ACTIVE=/root/CRON/netscanACTIVE
@@ -120,7 +132,7 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
 getfilemode() { set `stat -t $1 2>/dev/null`
 		if [ $# -eq 15 ]; then
 		   # 0x8000 => regular file
-		   $ECHO "0x$4"
+		   $OCTAL $((0x$4 & 0777))
 		else
 		   # probably an older stat, w/o -t option
 		   $ECHO "$9" | $CUT -f2 -d\( | $CUT -f1 -d/
@@ -136,7 +148,7 @@ check_mode() { if [ ! -r $1 ]; then
 		 fi
 	       else
 		 fmode=`getfilemode $1`
-		 if [ $((fmode & 0777)) -ne $(($2)) ]; then
+		 if [ $((fmode)) -ne $(($2)) ]; then
 		    [ -e /PRODUCTION ] && chmod $2 $1
 		    msg1="BAD CONFIGURATION: Changing $1 mode ($fmode to $2)"
 		    logit "$msg1"
@@ -175,8 +187,8 @@ check_owner() { theUsr=${2:-enstore}
 
 # function to compare files and complain if they are not the same
 #
-# Also check file mode against 3rd argument, if present, and
-# confirm that files under /etc or /root are owned by root.
+# Also confirm that files under /etc or /root are owned by
+# root, and check file mode against 3rd argument, if present.
 # Note that the 3rd argument, if specified, must be in octal,
 # with a leading 0 (for example, 0755).
 right_file() { if [ ! -r $1 -o ! -r $2 ]; then
@@ -205,21 +217,34 @@ right_file() { if [ ! -r $1 -o ! -r $2 ]; then
 	     }
 
 # function to check for a string within a file
-check_file() { thefile=${2:-/var/spool/cron/root}
-	       if [ ! -r $thefile ]; then
-		  msg1="$thefile is missing"
+#
+# Also confirm that files under /etc or /root are owned by
+# root, and check file mode against 3rd argument, if present.
+# Note that the 3rd argument, if specified, must be in octal,
+# with a leading 0 (for example, 0755).
+check_file() { theFile=${2:-/var/spool/cron/root}
+	       if [ ! -r $theFile ]; then
+		  msg1="BAD CONFIGURATION: $theFile is missing"
 		  logit "$msg1"
 		  if [ $ALARM -eq 1 ]; then
 		     enstore alarm --raise --severity "A" --root-error "$msg1"
 		  fi
-	       elif [ `$EGREP -c "$1" $thefile` -ne 1 ]; then
-		  msg1="$thefile is missing $1 or it is misconfigured"
+	       elif [ `$EGREP -c "$1" $theFile` -ne 1 ]; then
+		  msg1="BAD CONFIGURATION: $theFile is missing $1"
 		  logit "$msg1"
 		  if [ $ALARM -eq 1 ]; then
 		     enstore alarm --raise --severity "A" --root-error "$msg1"
 		  fi
-	       elif [ $QUIET -ne 1 ]; then
-		  logit "$1 in $thefile, ok"
+	       else
+		  if [ $QUIET -ne 1 ]; then
+		     logit "$1 in $theFile, ok"
+		  fi
+		  if $ECHO $theFile | $EGREP '^/(etc|root)' 1>/dev/null; then
+		     check_owner $theFile root
+		  fi
+		  if [ $# -eq 3 ]; then
+		     check_mode $theFile $3
+		  fi
 	       fi
 	     }
 
@@ -356,6 +381,7 @@ ALLOW_ADIC="$ALLOW_BASE
 # Extra for d0ensrv4 - makes stk and adic calls
 ALLOW_DSRV4="$ALLOW_ADIC
 	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
+	LISTEN,rsh,:,TCP,-l#acsss#fntt#echo\n
 "
 
 # Extra for d0ensrv3
@@ -371,6 +397,7 @@ ALLOW_DSRV2="$ALLOW_SRV2
 # Extra for stkensrv4 - makes stk and adic calls
 ALLOW_SSRV4="$ALLOW_ADIC
 	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
+	LISTEN,rsh,:,TCP,-l#acsss#fntt#echo\n
 "
 
 # Extra for stkensrv2 - nfs server
@@ -384,6 +411,7 @@ ALLOW_SSRV2="$ALLOW_SRV2
 # Extra for cdfensrv4 - makes stk calls
 ALLOW_CSRV4="$ALLOW_BASE
 	LISTEN,rsh,:,TCP,fntt2#-l#acsss#echo\n
+	LISTEN,rsh,:,TCP,-l#acsss#fntt2#echo\n
 "
 
 # Extra for movers
@@ -470,11 +498,23 @@ right_file $ENSTORE/etc/sudoers			/etc/sudoers				0440
 right_file $ENSTORE/etc/krb5.conf		/etc/krb5.conf				0644
 right_file $ENSTORE/etc/xserverrc		/etc/X11/xinit/xserverrc		0755
 right_file $ENSTORE/bin/enstore-boot		/etc/rc.d/init.d/enstore-boot		0755
+right_file $ENSTORE/bin/monitor_server-boot	/etc/rc.d/init.d/monitor_server-boot	0755
 
 check_mode /etc/rc.d/rc.sysinit	0755
 check_mode /etc/rc.d/rc.local	0755
-check_mode /dev/console		0622
 check_mode /PRODUCTION		0644
+check_mode /local/ups/.k5login	0644
+
+# it seems we almost always change the mode of /dev/console after reboot, so don't alarm then
+if [ $REBOOT -eq 1 ]
+then
+ (
+  ALARM=0
+  check_mode /dev/console	0622
+ )
+else
+  check_mode /dev/console	0622
+fi
 
 # there needs to be more logic for xinetd or inetd files
 if [ "$INETD" = unknown ]; then
@@ -608,7 +648,10 @@ check_file "enstore-admin@fnal.gov"	/home/enstore/.forward
 # verify ownership of enstore keytab file
 check_owner /local/ups/kt
 check_owner /local/ups/kt/enstorekt
+
+# verify ownership of log files
 check_owner ~enstore/`hostname`.startup
+check_owner /`hostname`.monitor_server.output
 
 
 if [ $IPMI -eq 1 ]; then
@@ -661,25 +704,27 @@ fi
 
 # count the number of pnfsd processes running on srv1 nodes
 case $node in
-  d0ensrv1|stkensrv1)
+  *ensrv?)
+    case $node in
+      d0ensrv1)
+	npnfsd=5
+	;;
+      stkensrv1)
+	npnfsd=4
+	;;
+      cdfensrv1)
+	npnfsd=7
+	;;
+      *)
+	npnfsd=0
+	;;
+    esac
     NPROC=`$PS --no-headers -C pnfsd | wc -l`
-    if [ $NPROC -gt 0 -a $NPROC -lt 5 ]; then
-      msg="$NPROC pnfsd processes running. Should be 5"
+    if [ $NPROC -ne 0 -a $NPROC -ne $npnfsd ]; then
+      msg="$NPROC pnfsd processes running. Should be $npnfsd"
       logit "$msg"
       if [ $ALARM -eq 1 ]; then
-	enstore alarm --raise --severity "A" --root-error "$msg"
-      fi
-    elif [ $QUIET -ne 1 ]; then
-      logit "$NPROC pnfsd processes, ok"
-    fi
-    ;;
-  cdfensrv1)
-    NPROC=`$PS --no-headers -C pnfsd | wc -l`
-    if [ $NPROC -gt 0 -a $NPROC -lt 7 ]; then
-      msg="$NPROC pnfsd processes running. Should be 7"
-      logit "$msg"
-      if [ $ALARM -eq 1 ]; then
-	enstore alarm --raise --severity "A" --root-error "$msg"
+	enstore alarm --raise --severity "W" --root-error "$msg"
       fi
     elif [ $QUIET -ne 1 ]; then
       logit "$NPROC pnfsd processes, ok"
@@ -689,21 +734,21 @@ esac
 
 
 # check that db_deadlock and db_checkpoint are running if file or vol clerk running:
-if [ `$PS axuwww|$EGREP python|$EGREP -v 'grep'|$EGREP -c 'file_clerk.py|volume_clerk.py'` -ge 1 ]; then
-   for need in db_checkpoint db_deadlock; do
-     if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP -c $need` -ne 1 ]; then
-       msg="$need not running (or more than 1 running) and file/volume clerk are running."
-       logit "$msg"
-       if [ $ALARM -eq 1 ]; then
-	 enstore alarm --raise --severity "A" --root-error "$msg"
-       fi
-     elif [ $QUIET -ne 1 ]; then
-       logit "$need running, ok"
-     fi
-   done
-elif [ $QUIET -ne 1 ]; then
-  logit "file/volume clerk not running, no db_deadlock or db_checkpoint check, ok"
-fi
+#if [ `$PS axuwww|$EGREP python|$EGREP -v 'grep'|$EGREP -c 'file_clerk.py|volume_clerk.py'` -ge 1 ]; then
+#   for need in db_checkpoint db_deadlock; do
+#     if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP -c $need` -ne 1 ]; then
+#	msg="$need not running (or more than 1 running) and file/volume clerk are running."
+#	logit "$msg"
+#	if [ $ALARM -eq 1 ]; then
+#	  enstore alarm --raise --severity "A" --root-error "$msg"
+#	fi
+#     elif [ $QUIET -ne 1 ]; then
+#	logit "$need running, ok"
+#     fi
+#   done
+#elif [ $QUIET -ne 1 ]; then
+#  logit "file/volume clerk not running, no db_deadlock or db_checkpoint check, ok"
+#fi
 
 # check for web servers
 case $node in
