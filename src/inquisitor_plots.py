@@ -32,6 +32,7 @@ class InquisitorPlots:
     def close_db_connection(self):
         if self.acc_db:
             self.acc_db.close()
+            self.acc_db = None
 
     # create the html file with the inquisitor plot information
     def	make_plot_html_page(self):
