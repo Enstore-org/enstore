@@ -433,6 +433,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                      deleted = " active"
              else:
                  deleted = "unknown"
+             if not value.has_key('pnfs_name0'):
+                 value['pnfs_name0'] = "unknown"
              msg=msg+ "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
                                                       value['size'],value['location_cookie'],
                                                       deleted,value['pnfs_name0'])
