@@ -1120,7 +1120,6 @@ class Display(Tkinter.Canvas):
 
     #Called from entv.handle_periodic_actions().
     def disconnect_clients(self):
-        return
         now = time.time()
         #### Check for unconnected clients
         for client_name, client in self.clients.items():

@@ -253,7 +253,7 @@ def handle_periodic_actions(display):
         try:
             display.disconnect_clients()
         except Tkinter.TclError:
-                pass
+            pass
         display_lock.release()
         
         time.sleep(0.03) #Without this sleep, the thread uses a lot of CPU.
