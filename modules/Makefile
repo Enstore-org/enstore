@@ -19,15 +19,25 @@ Makefile.modules: Setup
 	cp ../Setup . ; \
 	if  [ "$(ACI_DIR)"x = x ];  then grep -v ACI Setup > x; mv x Setup; fi ;\
 	if  [ "$(DRIVESTAT_CLIENT_DIR)"x = x ];  then grep -v DRIVESTAT_CLIENT Setup > x; mv x Setup; fi ;\
-	cp $(PYTHONLIB)/config/Makefile.pre.in . ; \
-	make -f Makefile.pre.in boot                    ; \
+	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" ]; then \
+		cp $(PYTHONLIB)/config/Makefile.pre.in . ; \
+		make -f Makefile.pre.in boot                    ; \
+	else \
+		cp $(PYTHON_DIR)/Python-*/Makefile.pre . ; \
+		cp $(PYTHONLIB)/config/makesetup . ;\
+		./makesetup -c - ; \
+	fi; \
 	cp Makefile ../Makefile.modules
 
 Modules:
 	@echo "MAKING MODULES ================================"
 	cd SWIG && make 
 	@echo "in $$PWD"
-	make -f Makefile.modules
+	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" ]; then \
+		make -f Makefile.modules ; \
+	else \
+		make -f Makefile.modules oldsharedmods; \
+	fi
 
 adler32.a: adler32.c
 	$(CC) -c adler32.c
