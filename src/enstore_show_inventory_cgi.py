@@ -23,12 +23,12 @@ special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED.html', 'VOLUMES_TO
 
 if cluster == "d0en":
 	special.append('AML2-VOLUMES.html')
+	special.append('STK-VOLUMES.html')
 elif cluster == "stken":
 	special.append('VOLUME_QUOTAS_UPDATE')
-	special.append('AMLJ-VOLUMES.html')
+	special.append('AML2-VOLUMES.html')
 	special.append('STK-VOLUMES.html')
 elif cluster == "cdfen":
-	special.append('VOLUME_QUOTAS_UPDATE')
 	special.append('STK-VOLUMES.html')
 
 catalog = {}
