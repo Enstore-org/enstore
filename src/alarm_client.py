@@ -46,9 +46,12 @@ class AlarmClient(generic_client.GenericClient):
             # we were called from someplace like Trace.trace and we only
             # have a text string for an argument
             ticket['text'] = args[1]
-        s = self.u.send(ticket, self.server_address, 0, 0 )
-	return s
+        return self.u.send(ticket, self.server_address, 0, 0 )
 
+    def send(self, ticket, rcv_timeout=0, tries=0):
+        # need this for the alive function
+        return self.u.send(ticket, self.server_address, rcv_timeout, tries)
+        
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
               root_error=e_errors.DEFAULT_ROOT_ERROR,
               alarm_info={}, rcv_timeout=0, tries=0):
@@ -117,6 +120,7 @@ if __name__ == "__main__" :
 
     if intf.alive:
         ticket = alc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        print repr(ticket)
 	msg_id = generic_cs.ALIVE
 
     elif intf.resolve:
