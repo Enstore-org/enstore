@@ -194,6 +194,7 @@ class FTTDriver(driver.Driver):
 
     def close(self):
         Trace.trace(25, "closing %s" % (self.ftt,))
+        r = -1
         if self.ftt:
             try:
                 r = self.ftt.close()
