@@ -194,21 +194,31 @@ class UDPClient:
             #Cleanup all of the other thread specific data related to threads
             # that should no longer exist.
             self.cleanup_tsd()
-            #Since, this object should go away (in the last surviving thread)
-            # we also need to cleanup this tsd too, even though the thread
-            # is still alive.
-            tsd = self.get_tsd()
-            tid = tsd.tid
-            for server in tsd.send_done.keys():
-                try:
-                    self.send_no_wait({"work" : "done_cleanup"}, server)
-                except:
-                    pass
 
-            #Cleanup system resources now.
-            self.tsd[tid].socket.close()
-            del self.tsd[tid]
-        except:
+            #Since, this UDPClient object should go away (in the last
+            # surviving thread) we also need to cleanup this tsd too, even
+            # though the thread is still alive.
+            #Note: Don't use get_tsd(), to return the tsd for this thread.
+            #      If this thread hasn't used this UDPClient object before
+            #      then there is nothing to clean up.  get_tsd() will
+            #      unecessarily create a UDPClient object to destroy.
+            if thread_support:
+                tid = thread.get_ident() #Obtain unique identifier.
+            else:
+                tid = 1
+            tsd = self.tsd.get(tid)
+            if tsd:
+                #Send any final messages for this threads socket.
+                for server in tsd.send_done.keys():
+                    try:
+                        self.send_no_wait({"work" : "done_cleanup"}, server)
+                    except:
+                        pass
+
+                #Cleanup system resources now.
+                self.tsd[tid].socket.close()
+                del self.tsd[tid]
+        except Exception, msg:
             exc, msg = sys.exc_info()[:2]
             print exc, msg
             pass
