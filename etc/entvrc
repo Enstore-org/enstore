@@ -788,13 +788,16 @@ client_color d0cs400        #ff00ff
 
 #CMS clients #########
 
-client_color chutney        #00ff00
-client_color ketchup        #00ff00
-client_color mayo           #00ff00
-client_color mustard        #00ff00
-client_color pesto          #00ff00
-client_color cmsstore01     #00ff00
-#client_color cmsstore02     #00ff00
-#client_color cmsstore03     #00ff00
-#client_color cmsstore04     #00ff00
-client_color cmsstore05     #00ff00
+client_color chutney        #ff9900
+client_color ketchup        #ff9900
+client_color mayo           #ff9900
+client_color mustard        #ff9900
+client_color pesto          #ff9900
+client_color cmsstore01     #ff9900
+#client_color cmsstore02     #ff9900
+#client_color cmsstore03     #ff9900
+#client_color cmsstore04     #ff9900
+client_color cmsstore05     #ff9900
+
+#entv generated information
+
