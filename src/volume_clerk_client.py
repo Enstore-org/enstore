@@ -613,7 +613,6 @@ def do_work(intf):
                          remaining,
                          wrapper=wrapper)           # rem cap'y of volume
     elif intf.modify:
-        print repr(intf.args)
         d={}
         for s in intf.args:
             k,v=string.split(s,'=')
@@ -623,7 +622,6 @@ def do_work(intf):
                 pass #yuk...
             d[k]=v
         d['external_label']=intf.modify # name of this volume
-        print d
         ticket = vcc.modify(d)
 
         
