@@ -332,7 +332,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
       else
         echo "Starting Inquisitor"
         cmd="python $ENSTORE_DIR/src/inquisitor.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT"
-        if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|fil' >/dev/null; then
+        if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|inq' >/dev/null; then
             title="Enstore Inquisitor"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
