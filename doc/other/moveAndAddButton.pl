@@ -1,0 +1,33 @@
+#!/usr/local/bin/perl 
+
+# move all specified files from the source directory to the target directory.
+# during the move add the top button onto the top of the file if it was not
+# already done.
+#
+#   calling format:
+#                   moveAndAddButton.pl <sourceDir> <targetDir> <files>
+#
+# first get the contents of the header text to add.  this way we can pick out
+# the top line.  if this line is the first line in a source file than just
+# copy the file.  if it is not, then add the header to the file and coy it to
+# the target directory.
+#
+$hfile = "header.html";
+$header = `cat $hfile`;
+@lines = split /\n/, $header;
+
+$source = @ARGV[0];
+$target = @ARGV[1];
+
+foreach $i (2 .. $#ARGV) {
+  $sfile = "$source/@ARGV[$i]";
+  $tfile = "$target/@ARGV[$i]";
+
+  $rtn = `fgrep -l "@lines[0]" $sfile`;  # is string in file
+  chop($rtn);                           # remove the <CR>
+  if ("$rtn" ne "$sfile") {              # string is not in file
+    $rtn = `cat $hfile $sfile>$tfile`;
+  } else {                              # string already in file
+    $rtn = `cp $sfile $tfile`;
+  }
+}
