@@ -21,8 +21,8 @@ ftt_get_position(ftt_descriptor d, int *file, int *block) {
    } else {
        ftt_errno = FTT_ELOST;
        ftt_eprintf(
-"error: the ftt library is unable to determine the current tape position,\n\
-	until you do an ftt_rewind, ftt_status, or ftt_get_stats call.\n");
+"ftt_get_position: unable to determine the current tape position,\n\
+	until you do an ftt_rewind, or ftt_status or ftt_get_stats call at BOT.\n");
        return -1;
    }
 }
@@ -58,7 +58,7 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 	}
 	res = read(d->file_descriptor, buf, length);
 	d->last_operation = FTT_OP_READ;
-	res = ftt_translate_error(d, FTT_OPN_READ, "an ftt_read", res, "a read system call",1);
+	res = ftt_translate_error(d, FTT_OPN_READ, "ftt_read", res, "a read system call",1);
 	if (res == FTT_EBLANK) {
 	    /* we read past end of tape, prevent further confusion on AIX */
 	    d->unrecovered_error = 1;
@@ -116,7 +116,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	}
 	res = write(d->file_descriptor, buf, length);
 	d->last_operation = FTT_OP_WRITE;
-	res = ftt_translate_error(d, FTT_OPN_WRITE, "an ftt_write", res, "a write() system call",1);
+	res = ftt_translate_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write() system call",1);
     }
     if (res > 0) {
 	d->writelo += res;

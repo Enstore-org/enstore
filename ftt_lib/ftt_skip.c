@@ -94,7 +94,7 @@ ftt_skip_fm_internal(ftt_descriptor d, int n) {
     d->current_file += n;
     d->current_block = 0;
     return ftt_mtop(d, n,  FTT_TAPE_FSF, (n > 0 ? FTT_OPN_SKIPFM:FTT_OPN_RSKIPFM), 
-			"an ftt_skip_fm", ftt_cdb_skipfm);
+			"ftt_skip_fm", ftt_cdb_skipfm);
 }
 
 int
@@ -109,7 +109,7 @@ ftt_skip_rec(ftt_descriptor d, int n){
     }
     d->current_block += n;
     return ftt_mtop(d, n, FTT_TAPE_FSR, (n > 0 ? FTT_OPN_SKIPREC:FTT_OPN_RSKIPREC),
-			"an ftt_skip_rec", ftt_cdb_skipbl);
+			"ftt_skip_rec", ftt_cdb_skipbl);
 }
 
 int
@@ -131,9 +131,9 @@ ftt_rewind(ftt_descriptor d){
     ** Also, rewinding twice doesn't hurt...
     */
     (void) ftt_mtop(d, 0, FTT_TAPE_REW, FTT_OPN_REWIND,
-		"an ftt_rewind", ftt_cdb_rewind);
+		"ftt_rewind", ftt_cdb_rewind);
     res2 = ftt_mtop(d, 0, FTT_TAPE_REW, FTT_OPN_REWIND,
-	"an ftt_rewind", ftt_cdb_rewind);
+	"ftt_rewind", ftt_cdb_rewind);
 
     /* we cleared unrecoverable errors if we succesfully rewound */
     /* and we're hosed if we didn't */
@@ -154,7 +154,7 @@ ftt_retension(ftt_descriptor d) {
     d->current_file = 0;
     d->current_valid = 1;
     res2 = ftt_mtop(d, 0, FTT_TAPE_RETEN, FTT_OPN_RETENSION,
-		"an ftt_retension", ftt_cdb_retension);
+		"ftt_retension", ftt_cdb_retension);
 
     /* we cleared unrecoverable errors if we succesfully retensioned */
     /* and we're hosed if we didn't */
@@ -175,7 +175,7 @@ ftt_unload(ftt_descriptor d){
     d->current_file = 0;
     d->current_valid = 1;
     res2 =  ftt_mtop(d, 0, FTT_TAPE_UNLOAD, FTT_OPN_UNLOAD,
-			"an ftt_unload", ftt_cdb_unload);
+			"ftt_unload", ftt_cdb_unload);
 
     /* we cleared unrecoverable errors if we succesfully unloaded  */
     /* and we're hosed if we didn't */
@@ -194,7 +194,7 @@ ftt_erase(ftt_descriptor d) {
     d->current_file = 0;
     d->current_valid = 1;
     res =  ftt_mtop(d, 0, FTT_TAPE_ERASE, FTT_OPN_ERASE,
-		"an ftt_erase", ftt_cdb_erase);
+		"ftt_erase", ftt_cdb_erase);
 
     /* we cleared unrecoverable errors if we succesfully erased  */
     /* and we're hosed if we didn't */
@@ -221,8 +221,8 @@ ftt_writefm(ftt_descriptor d) {
 	if ((d->current_file != 0 || d->current_block > 2) &&
 		(ftt_status(d,0) & FTT_ABOT)) {
 	    ftt_errno = FTT_EUNRECOVERED;
-	    ftt_eprintf("\tBefore writing a filemark, when we were supposed\n\
-	to be at file number %d block number %d, we found ourselves at BOT\n\
+	    ftt_eprintf(
+"ftt_writefm: supposed to be at file number %d block number %d, actually at BOT\n\
 	indicating that there was a SCSI reset or other error which rewound\n\
 	the tape behind our back.");
 	    d->unrecovered_error = 1;
@@ -233,7 +233,7 @@ ftt_writefm(ftt_descriptor d) {
     d->current_block = 0;
     d->current_file++;
     return ftt_mtop(d, 1, FTT_TAPE_WEOF, FTT_OPN_WRITEFM,
-		"an ftt_writefm", ftt_cdb_writefm);
+		"ftt_writefm", ftt_cdb_writefm);
 }
 
 int
@@ -249,7 +249,7 @@ ftt_skip_to_double_fm(ftt_descriptor d) {
     buf = (char *)malloc(blocksize);
     if (buf == 0) {
 	ftt_errno = FTT_ENOMEM;
-	ftt_eprintf("unable to allocate %d byte read buffer in ftt_skip_to_double_fm, errno %d", blocksize, errno);
+	ftt_eprintf("ftt_skip_to_double_fm: unable to allocate %d byte read buffer, errno %d", blocksize, errno);
 	return -1;
     }
 	

@@ -39,6 +39,10 @@
     char *_name = name;							\
 									\
     DEBUG1(stderr, "Entering %s\n", _name);	 			\
+    if ( d && d->which_is_open == -3 )  {				\
+	ftt_errno = FTT_EFAULT;						\
+	ftt_eprintf("%s: called with closed ftt descriptor",_name);	\
+    }									\
     if ( d && d->unrecovered_error && !recovers )  {			\
 	ftt_errno = FTT_EUNRECOVERED;					\
 	return -1;							\
@@ -47,7 +51,7 @@
 	d->unrecovered_error = 0;					\
     }									\
     if ( d && d->readonly && writes ) {					\
-	ftt_eprintf("%s called on read only ftt descriptor",_name);	\
+	ftt_eprintf("%s: called on read only ftt descriptor",_name);	\
 	ftt_errno = FTT_EROFS;						\
 	return -1;							\
     }									\

@@ -109,8 +109,8 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 		/* we already have mode sense data, so fake it */
 		memcpy(pcRdWr, 
 		      ((struct context *) dp->ds_private)->dsc_sense, nRdWr);
-		return 0;
 		gotstatus = 0;
+		return ftt_scsi_check(n,pcOp, 0);
 	}
 	dp->ds_cmdlen=nCmd;
 	dp->ds_cmdbuf=(char *)pcCmd;

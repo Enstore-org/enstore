@@ -19,7 +19,7 @@ ftt_open(const char *name, int rdonly) {
     os=ftt_get_os();
     DEBUG2(stderr,"os is %s\n", os);
     if( 0 == os ){
-	ftt_eprintf("Unable to determine operating system type.\n");
+	ftt_eprintf("ftt_open: unable to determine operating system type");
 	ftt_errno=FTT_ENOTSUPPORTED;
 	return 0;
     }
@@ -27,7 +27,7 @@ ftt_open(const char *name, int rdonly) {
     basename=ftt_strip_to_basename(name, os);
     DEBUG2(stderr,"basename is %s\n", basename);
     if ( basename == 0 ) {
-	ftt_eprintf("Unable to determine drive basename.\n");
+	ftt_eprintf("ftt_open: unable to determine drive basename.\n");
 	ftt_errno=FTT_ENOTSUPPORTED;
 	return 0;
     }
@@ -35,7 +35,7 @@ ftt_open(const char *name, int rdonly) {
     drivid=ftt_get_driveid(basename, os);
     DEBUG2(stderr,"drivid is %s\n", drivid);
     if( 0 == drivid ){
-	ftt_eprintf("Unable to determine tape drive type.\n");
+	ftt_eprintf("ftt_open: unable to determine tape drive type.\n");
 	ftt_errno=FTT_ENODEV;
 	return 0;
     }
@@ -81,7 +81,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
 
     basename = ftt_strip_to_basename(name, os);
     if ( basename == 0 ) {
-	ftt_eprintf("Unable to determine drive basename.\n");
+	ftt_eprintf("ftt_open_logical: unable to determine drive basename.\n");
 	ftt_errno=FTT_ENOTSUPPORTED;
 	return 0;
     }
@@ -95,7 +95,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
 
     if ( i < 0 ) {
         DEBUG3(stderr, "Unsupported...\n");
-	ftt_eprintf("Device type %s on platform %s unsupported\n", drivid, os);
+	ftt_eprintf("ftt_open_logical: device type %s on platform %s unsupported\n", drivid, os);
 	ftt_errno=FTT_ENOTSUPPORTED;
 	return 0;
     }
@@ -103,6 +103,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     /* string together device names and flags into our descriptor */
 
     d.controller = devtable[i].controller;
+    d.which_is_default = 0;
     d.which_is_open = -1;
     d.scsi_descriptor = -1;
     d.readonly = rdonly;
@@ -113,7 +114,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     d.basename = basename;
     d.prod_id = strdup(drivid);
     if( 0 == d.prod_id ) {
-	ftt_eprintf("out of memory allocating string for \"%s\" in ftt_open_logical, errno %d" , drivid, errno);
+	ftt_eprintf("ftt_open_logical: out of memory allocating string for \"%s\" errno %d" , drivid, errno);
 	ftt_errno = FTT_ENOMEM;
 	return 0;
     }
@@ -122,7 +123,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
         sprintf(buf, devtable[i].devs[j].device_name, n1, n2, string);
 	d.devinfo[j].device_name = strdup(buf);
 	if( 0 == d.devinfo[j].device_name ) {
-	    ftt_eprintf("out of memory allocating string for \"%s\" in ftt_open_logical, errno %d" , buf, errno);
+	    ftt_eprintf("fft_open_logical: out of memory allocating string for \"%s\" errno %d" , buf, errno);
 	    ftt_errno = FTT_ENOMEM;
 	    return 0;
 	}
@@ -139,7 +140,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
 
     pd = malloc(sizeof(ftt_descriptor_buf));
     if (pd == 0) {
-	ftt_eprintf("out of memory allocating descriptor in ftt_open_logical errno %d", errno);
+	ftt_eprintf("ftt_open_logical: out of memory allocating descriptor, errno %d", errno);
 	ftt_errno = FTT_ENOMEM;
 	return 0;
     }
@@ -166,7 +167,7 @@ ftt_close(ftt_descriptor d){
     */
     if (d->which_is_open == -3) {
 	ftt_errno = FTT_EFAULT;
-	ftt_eprintf("ftt_close called twice on the same descriptor!\n");
+	ftt_eprintf("ftt_close: called twice on the same descriptor!\n");
 	return -1;
     }
     d->which_is_open = -3;
@@ -193,12 +194,18 @@ ftt_open_dev(ftt_descriptor d) {
 
     ENTERING("ftt_open_dev");
     CKNULL("ftt_descriptor" , d);
-    
-   
-   /* can't have scsi passthru and regular device open at the same time */
+
+    if (d->which_is_default < 0 ) {
+	ftt_errno = FTT_EFAULT;
+	ftt_eprintf("ftt_open_dev: called with invalid (closed?) ftt descriptor");
+	return -1;
+    }
+
+    /* can't have scsi passthru and regular device open at the same time */
     ftt_close_scsi_dev(d);
 
     if (d->which_is_open < 0) {
+	DEBUG3(stderr,"setting density...\n");
 	res = ftt_set_hwdens_blocksize(d, 
 		d->devinfo[d->which_is_default].hwdens, 
 		d->default_blocksize);
@@ -207,40 +214,67 @@ ftt_open_dev(ftt_descriptor d) {
 	}
     }
     if (d->which_is_open < 0) {
-	d->which_is_open = d->which_is_default;
-        DEBUG1(stderr,"Actually opening\n");
-
 	/*
-	** it looks like we should do a readonly open if we're a readonly,
-	** descriptor and a read/write open if we're read/write descriptor.  
+	** it looks like we should just do a readonly open if we're a 
+	** read-only, descriptor and a read/write open if we're read/write 
+	** descriptor.  
+	**
 	** Unfortunately on some platforms a read/write open on a write 
 	** protected tape will fail.  So to make it behave the same 
-	** everywhere, we first open it readonly, check for write protection 
-	** if we are read/write, and finally reopen it read/write if we are
-	** a read/write desciptor.
+	** everywhere, if we are opening read/write, we first make it 
+	** readonly, and check for write protection.  We let ftt_status
+	** call us recursively if it needs the device open; we won't
+	** recurse infinitely 'cause the recursive call will be readonly.
+	** we dont go ahead and open it readonly 'cause status may need
+	** the scsi device open instead.
 	*/
-	d->file_descriptor = open(d->devinfo[d->which_is_default].device_name,
-				  O_RDONLY|FNONBLOCK|O_EXCL, 0);
+	if (d->readonly == FTT_RDWR ) {
+
+	    d->readonly = FTT_RDONLY;
+
+	    /* note that this will lead to either a 1-deep recursive call
+	       (which can't get here 'cause it is now read-only) to open 
+	       the regular device, *or* a scsi open to get status that way */
+
+	    res = ftt_status(d,0);
+
+	    DEBUG3(stderr,"ftt_status returned %d\n", res);
+	    if (res < 0) {
+		/* should we fail here or ??? */
+		return res;
+	    }
+
+	    /* close dev and scsi dev in case ftt_status used them... */
+	    ftt_close_dev(d);
+            ftt_close_scsi_dev(d);
+
+	    /* put back readonly flag */
+	    d->readonly = FTT_RDWR;
+
+	    /* coimplain if neccesary */
+	    if (res & FTT_PROT) {
+		ftt_errno = FTT_EROFS;
+		ftt_eprintf("ftt_open_dev: called with a read/write ftt_descriptor and a write protected tape.");
+		return -1;
+	    }
+	}
+
+	/* 
+	** now we've checked for the ugly read-write with write protected
+	** tape error, we can go on and open the device with the appropriate
+	** flags.
+	*/
+	d->which_is_open = d->which_is_default;
+        DEBUG2(stderr,"Actually opening\n");
+	d->file_descriptor = open(
+		d->devinfo[d->which_is_default].device_name,
+		(d->readonly?O_RDONLY:O_RDWR)|FNONBLOCK|O_EXCL,
+		0);
+	DEBUG3(stderr,"open returned %d\n", d->file_descriptor);
 	if ( d->file_descriptor < 0 ) {
 	    d->file_descriptor = ftt_translate_error(d,FTT_OPN_OPEN, "an open() system call",
-	    		d->file_descriptor, "an ftt_open_dev()",1);
+			d->file_descriptor, "ftt_open_dev",1);
 	    d->which_is_open = -1;
-	}
-	if (d->readonly == FTT_RDWR && (ftt_status(d,0) & FTT_PROT)) {
-	     ftt_errno = FTT_EROFS;
-	     ftt_eprintf("ftt_open_dev was called with a read/write ftt_descriptor and a write protected tape.");
-	     return -1;
-	}
-	if (d->readonly == FTT_RDWR ) {
-	    close(d->file_descriptor);
-	    d->file_descriptor = open(
-		d->devinfo[d->which_is_default].device_name,
-	        O_RDWR|FNONBLOCK|O_EXCL,0);
-	    if ( d->file_descriptor < 0 ) {
-		d->file_descriptor = ftt_translate_error(d,FTT_OPN_OPEN, "an open() system call",
-			    d->file_descriptor, "an ftt_open_dev()",1);
-		d->which_is_open = -1;
-	    }
 	}
     }
     DEBUG2(stderr,"Returing %ld\n", d->file_descriptor);

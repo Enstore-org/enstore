@@ -25,7 +25,7 @@ ftt_density_to_name(ftt_descriptor d, int density){
     if (res == 0) {
 	ftt_errno = FTT_ENODEV;
 	ftt_eprintf(
-	   "ftt_density_to_name density %d is not appropriate for device %s\n",
+	   "ftt_density_to_name: density %d is not appropriate for device %s\n",
 	   density,
 	   d->basename );
     }
@@ -120,8 +120,7 @@ ftt_avail_mode(ftt_descriptor d, int density, int mode, int fixedblock){
 	    return d->devinfo[i].device_name;
 	}
     }
-    ftt_eprintf("\tThe combination mode %d density %d %s is not\n\
-	avaliable on device %s", mode, density, 
+    ftt_eprintf("ftt_avail_mode: mode %d density %d %s is not avaliable on device %s", mode, density, 
 		fixedblock?"fixed block" : "variable block", d->basename);
     ftt_errno = FTT_ENODEV;
     return 0;
@@ -157,8 +156,8 @@ ftt_set_mode(ftt_descriptor d, int density, int mode, int blocksize) {
 	    return d->devinfo[i].device_name;
 	}
     }
-    ftt_eprintf("\tThe combination mode %d density %d blocksize %d is not\n\
-	avaliable on device %s", mode, density, blocksize, d->basename);
+    ftt_eprintf("ftt_set_mode: mode %d density %d blocksize %d is not avaliable on device %s", 
+		mode, density, blocksize, d->basename);
     ftt_errno = FTT_ENODEV;
     return 0;
 }
@@ -180,8 +179,7 @@ ftt_get_mode_dev(ftt_descriptor d, char *devname, int *density,
 	    return 0;
 	}
     }
-    ftt_eprintf("ftt_get_mode_dev was called  on device name %s\n\
-	which was not found in the ftt tables for basename %s\n",
+    ftt_eprintf("ftt_get_mode_dev: device name %s was not found in the ftt tables for basename %s\n",
 	devname, d->basename);
     ftt_errno = FTT_ENODEV;
     return -1;
@@ -209,8 +207,7 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int blocksize, int force) {
 	    /* there isn't room in the table for it */
 
 	    ftt_errno = FTT_ENOMEM;
-	    ftt_eprintf("an ftt_set_mode_dev tried to add a new device entry\
-	to the table when there was not room for it");
+	    ftt_eprintf("ftt_set_mode_dev: tried to add a new device entry to the table when there was not room for it");
 	    return -1;
 	}
 	/* so add it to the table */
@@ -228,9 +225,7 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int blocksize, int force) {
 
 	return 0;
     }
-    ftt_eprintf("ftt_set_mode_dev was called  on device name %s\n\
-	which was not found in the ftt tables for basename %s\n\
-	and the force bit was not set.\n",
+    ftt_eprintf("ftt_set_mode_dev: device name %s was not found in the ftt tables for basename %s and the force bit was not set.",
 	devname, d->basename);
     ftt_errno = FTT_ENODEV;
     return -1;

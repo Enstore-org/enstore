@@ -19,7 +19,7 @@ SRC= ftt_open.c ftt_tables.c ftt_skip.c ftt_stats.c ftt_info.c \
 	$(SCSISRC) $(MACHDEPSRC) 
 
 HDR= ftt_private.h ftt_common.h ftt_macros.h local/ftt_mtio.h \
-	ftt_scsi.h ftt_types.h ftt.h ftt_voidtypes.h
+	ftt_scsi.h ftt_types.h ftt.h ftt_voidtypes.h ftt_defines.h
 
 OBJ= $(SYSOBJ) ftt_do_scsi.o ftt_error.o ftt_debug.o ftt_global.o \
 	ftt_open.o ftt_rdwr.o ftt_tables.o ftt_skip.o ftt_stats.o ftt_info.o \
@@ -47,7 +47,8 @@ slides.ps: $(PRINTEM)
 
 install: all
 	cp libftt.a $(FTT_DIR)/lib
-	cp ftt.h ftt_common.h ftt_scsi.h ftt_voidtypes.h $(FTT_DIR)/include
+	cp ftt.h ftt_common.h ftt_scsi.h ftt_voidtypes.h ftt_defines.h \
+		$(FTT_DIR)/include
 
 local:
 	rm -f local ;\

@@ -15,7 +15,7 @@ ftt_alloc_stat() {
 	memset(res,0,sizeof(ftt_stat));
 	return res;
     } else {
-	ftt_eprintf("Unable to allocate statistics buffer errno %d\n", errno);
+	ftt_eprintf("ftt_alloc_stat: unable to allocate statistics buffer, errno %d\n", errno);
 	ftt_errno = FTT_ENOMEM;
 	return res;
     }

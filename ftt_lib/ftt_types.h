@@ -15,13 +15,13 @@ extern char ftt_eprint_buf[];
 
 typedef struct {		
 	char *device_name;	/* pathname for device 		*/
-	char density;		/* density code  		*/
-	char mode;		/* compression, etc.		*/
-	char hwdens;		/* hardware density code for (density,mode) */
-	char passthru;		/* scsi passthru device	        */
-	char fixed;		/* fixed blocksize */
-	char rewind;		/* rewind on close, ret on open */
-	char first;		/* first time this name appears in table */
+	short int density;	/* density code  		*/
+	short int mode;		/* compression, etc.		*/
+	short int hwdens;	/* hardware density code for (density,mode) */
+	short int passthru;	/* scsi passthru device	        */
+	short int fixed;	/* fixed blocksize */
+	short int rewind;	/* rewind on close, ret on open */
+	short int first;	/* first time this name appears in table */
 	int  max_blocksize;	/* maximum blocksize allowed in this mode */
 } ftt_devinfo;
 

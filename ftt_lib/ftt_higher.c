@@ -20,7 +20,7 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 
     if (type >= FTT_MAX_HEADER || type < 0) {
 	ftt_errno = FTT_ENOTSUPPORTED;
-	ftt_eprintf("ftt_verify_vol_label called with type %d", type);
+	ftt_eprintf("ftt_verify_vol_label: unsupported type number %d", type);
 	return -1;
     }
 
@@ -28,24 +28,24 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 
     if (0 == (res & FTT_ONLINE)) {
 	ftt_errno = FTT_ENOTAPE;
-	ftt_eprintf("Unable to verify volume label because the drive is empty");
+	ftt_eprintf("ftt_verify_vol_label: the drive is empty");
 	return -1;
     }
 
     if (0 != (res & FTT_BUSY)) {
 	ftt_errno = FTT_EBUSY;
-	ftt_eprintf("Unable to verify volume label because the drive is busy");
+	ftt_eprintf("ftt_verify_vol_label: the drive is busy");
 	return -1;
     }
 
     if (0 != (res & FTT_PROT) && rdonly == FTT_RDWR) {
-	ftt_eprintf("ftt_verify_vol_label found unexpected write protection\n");
+	ftt_eprintf("ftt_verify_vol_label: unexpected write protection");
 	ftt_errno = FTT_EROFS;
 	return -1;
     }
 
     if (0 == (res & FTT_PROT) && rdonly == FTT_RDONLY) {
-	ftt_eprintf("ftt_verify_vol_label did not find expected write protection\n");
+	ftt_eprintf("ftt_verify_vol_label: missing expected write protection");
 	ftt_errno = FTT_ERWFS;
 	return -1;
     }
@@ -60,7 +60,7 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 	if (buf == 0) {
 	    extern int errno;
 	    ftt_errno = FTT_ENOMEM;
-	    ftt_eprintf("Unable to allocate block to read header, errno %d",
+	    ftt_eprintf("ftt_verify_vol_label: Unable to allocate block to read header, errno %d",
 			errno);
 	    return -1;
 	}
@@ -75,12 +75,12 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 	strncpy(label_buf,pname,len);
 	label_buf[len] = 0;
 	if (type == res) {
-	    ftt_eprintf("ftt_verify_vol_label expected vol '%s', but got '%s'.",
+	    ftt_eprintf("ftt_verify_vol_label: expected vol '%s', but got '%s'.",
 			vollabel, label_buf);
 	    ftt_errno = FTT_EWRONGVOL;
 	    res = -1;
 	} else {
-	ftt_eprintf("ftt_verify_vol_label expected %s header, but got %s", 
+	ftt_eprintf("ftt_verify_vol_label: expected %s header, but got %s", 
 		ftt_label_type_names[type], ftt_label_type_names[res]);
 	    ftt_errno = FTT_EWRONGVOLTYP;
 	    res = -1;
@@ -128,6 +128,7 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
     int j;
     int found;
     char *starter;
+    char *dname;
 
     ENTERING("ftt_describe_dev");
     CKNULL("ftt_descriptor", d);
@@ -137,14 +138,22 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
     found = 0;
     starter = dev;
     for (i = 0; d->devinfo[i].device_name !=0; i++) {
+	dname = d->densitytrans[d->devinfo[i].density+1];
+	if (dname == 0) {
+	    dname = "unknown";
+	}
 	if (0 == strcmp(d->devinfo[i].device_name, dev)) {
-	    fprintf(pf, "%s %s mode(%d), %s, (Density Code 0x%x), %s",
+	    if (d->devinfo[i].passthru) {
+	        fprintf(pf, "%s SCSI pass-thru", starter);
+	    } else {
+	        fprintf(pf, "%s %s mode(%d), %s, (Density Code 0x%x), %s",
 			starter,
-			d->densitytrans[d->devinfo[i].density+1], 
-			d->devinfo[i].density+1, 
+			dname,
+			d->devinfo[i].density, 
 			d->devinfo[i].mode? "compressed":"uncompressed",
 			d->devinfo[i].hwdens,
 			d->devinfo[i].fixed? "fixed block":"variable block");
+	   }
 	    for (j = 0; ftt_ascii_rewindflags[j] != 0; j++) {
 		if (d->devinfo[i].rewind & (1<<j)) {
 		    fprintf(pf, ", %s", ftt_ascii_rewindflags[j]);
@@ -156,8 +165,8 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
 	}
     }
     if (found == 0) {
+	ftt_eprintf("ftt_describe_dev: device name not associated with ftt descriptor");
 	ftt_errno = FTT_ENOENT;
-	ftt_eprintf("ftt_describe_dev was given a device name not associated with the device.");
 	return -1;
     }
     return 0;

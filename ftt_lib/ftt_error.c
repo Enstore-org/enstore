@@ -150,18 +150,14 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
         ftt_errno = d->errortrans[opn][errno];
     }
     ftt_eprintf( "\
-error:	doing %s, returned %d,\n\
-	errno %d, => ftt error %s(%d), \n\
-	in %s on %s, \n\
-	meaning %s\n%s\
-			Sincerely,\n\
-			The ftt library\n",
-			
-	op, res, 
-	errno, ftt_ascii_error[ftt_errno], ftt_errno,
-	what,  (d->which_is_open >= 0 ? 
+%s: doing %s on %s returned %d,\n\
+	errno %d, => ftt error %s(%d), meaning \n\
+	%s\n%s",
+
+	what, op,  (d->which_is_open >= 0 ? 
 				d->devinfo[d->which_is_open].device_name :
 				d->basename),
+	res, errno, ftt_ascii_error[ftt_errno], ftt_errno,
 	messages[ftt_errno], recoverable ? "": messages[FTT_EUNRECOVERED] );
 
     if (!recoverable) {

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <ftt_private.h>
 #include <ftt_mtio.h>
 #include <string.h>
@@ -72,7 +72,7 @@ ftt_check(ftt_descriptor d) {
 
     DEBUG3(stderr,"looking for pid %d\n", d->async_pid);
     if (d->async_pid != 0 && 0 == kill(d->async_pid, 0)) {
-	ftt_eprintf("ftt_check called with background process still running\n");
+	ftt_eprintf("ftt_check: background process still running\n");
 	ftt_errno = FTT_EBUSY;
 	return -1;
     } else {
@@ -89,7 +89,7 @@ ftt_wait(ftt_descriptor d) {
 
     DEBUG3(stderr,"async_pid is %d", d->async_pid );
     DEBUG3(stderr,"async_pf is %lx\n", (long)d->async_pf );
-    ftt_eprintf("unable to rondezvous with background process pid %d\n",
+    ftt_eprintf("ftt_wait: unable to rendezvous with background process %d",
 		d->async_pid);
     ftt_errno = FTT_ENXIO;
     if (0 != d->async_pid ) {

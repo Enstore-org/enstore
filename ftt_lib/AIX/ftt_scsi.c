@@ -117,7 +117,7 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 		res = -255;
 	} else {
 		scsistat = scBuf.scsi_bus_status;
-		res = ftt_scsi_check(n,pcOp,scsistat);
+	        res = ftt_scsi_check(n,pcOp,scsistat);
 	}
 	if (pcRdWr != 0 && nRdWr != 0){
 		DEBUG2(stderr,"got back:\n");

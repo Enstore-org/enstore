@@ -39,7 +39,7 @@ ftt_open_scsi_dev(ftt_descriptor d) {
 	d->scsi_descriptor = ftt_scsi_open(devname);
 	if (d->scsi_descriptor < 0) {
 	    return ftt_translate_error(d,FTT_OPN_PASSTHRU,"a SCSI open",
-				d->scsi_descriptor,"an ftt_scsi_open",1);
+				d->scsi_descriptor,"ftt_scsi_open",1);
 	}
     }
     return d->scsi_descriptor;
@@ -48,6 +48,8 @@ ftt_open_scsi_dev(ftt_descriptor d) {
 int
 ftt_close_scsi_dev(ftt_descriptor d) {
     int res;
+
+    DEBUG3(stderr,"Entering close_scsi_dev\n");
     if(d->scsi_descriptor > 0) {
         res = ftt_scsi_close(d->scsi_descriptor);
 	d->scsi_descriptor = -1;
@@ -61,9 +63,8 @@ ftt_scsi_check(scsi_handle n,char *pcOp, int stat) {
     int res;
     static int recursive = 0;
     static char *errmsg =
-	"while performing a scsi passthru %s command, I received a\n\
-	 SCSI status of %d, so I did a request sense which gave me the \n\
-	 data: \n\
+	"ftt_scsi_command: %s command returned  a %d, \n\
+	request sense data: \n\
 	 %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x";
     static unsigned char acSensebuf[19];
 

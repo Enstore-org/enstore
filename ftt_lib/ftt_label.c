@@ -50,8 +50,9 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 	if (vol)  *vol = buf + 0156;
 	if (vlen) *vlen = strlen(*vol);
 	return FTT_CPIO_HEADER;
+    }
 
-    case pack('u','s','t','a'):
+    if (pack('u','s','t','a')==pack(buf[0401],buf[0402],buf[0403],buf[0404])) {
 	if (vol) *vol = buf;
 	if (vlen) *vlen = strlen(*vol);
 	return FTT_TAR_HEADER;
@@ -80,7 +81,7 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 	    return 80;
 	 } else {
 	    ftt_errno = FTT_EBLKSIZE;
-	    ftt_eprintf("the buffer size of %d is too small for the indicated header type.");
+	    ftt_eprintf("ftt_format_label: the buffer size of %d is too small for the indicated header type.");
 	    return -1;
 	}
 	break;
@@ -91,7 +92,7 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 	    return 2048;
 	 } else {
 	    ftt_errno = FTT_EBLKSIZE;
-	    ftt_eprintf("the buffer size of %d is too small for the indicated header type.");
+	    ftt_eprintf("ftt_format_label: the buffer size of %d is too small for the indicated header type.");
 	    return -1;
 	}
 	break;
@@ -102,7 +103,7 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 	     return 512;
 	 } else {
 	    ftt_errno = FTT_EBLKSIZE;
-	    ftt_eprintf("the buffer size of %d is too small for the indicated header type.");
+	    ftt_eprintf("ftt_format_label: the buffer size of %d is too small for the indicated header type.");
 	    return -1;
 	 }
 	 break;
@@ -120,16 +121,16 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 	     return 10240;
 	 } else {
 	    ftt_errno = FTT_EBLKSIZE;
-	    ftt_eprintf("the buffer size of %d is too small for the indicated header type.");
+	    ftt_eprintf("ftt_format_label: the buffer size of %d is too small for the indicated header type.");
 	    return -1;
 	 }
     }
     ftt_errno = FTT_ENOTSUPPORTED;
     if ( type < FTT_MAX_HEADER ) {
-      ftt_eprintf("ftt_format_label called with an unsupported label type %s\n",
+      ftt_eprintf("ftt_format_label: unsupported label type %s\n",
 		ftt_label_type_names[type]);
     } else{
-      ftt_eprintf("ftt_format_label called with an unsupported label type %d\n",
+      ftt_eprintf("ftt_format_label: unsupported label type %d\n",
 		type);
     }
     return -1;

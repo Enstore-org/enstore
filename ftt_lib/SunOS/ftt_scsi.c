@@ -66,7 +66,7 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
 
         scsistat = ioctl(fd, USCSICMD, &cmd);
 	if (-1 == scsistat || 5 == errno )
-                res = UNIX_ERRNO(errno);
+                res = -255;
         else
                 res = ftt_scsi_check(fd,pcOp,cmd.uscsi_status);
         if (pcRdWr != 0 && nRdWr != 0){
