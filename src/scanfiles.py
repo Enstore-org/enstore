@@ -117,7 +117,8 @@ def check(f):
     try:
         if fr.has_key('drive'):	# some do not have this field
             if pf.drive != fr['drive']:
-                if pf.drive != 'imported' or fr['drive'] != 'unknown:unknown':
+                if pf.drive != 'imported' and pf.drive != "missing" \
+                    and fr['drive'] != 'unknown:unknown':
                     msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
     except:
         msg.append('no or corrupted drive')
