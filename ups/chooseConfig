@@ -14,6 +14,7 @@ d0en=d0ensrv2.fnal.gov
 rip=rip7.fnal.gov
 buffalo=buffalo.fnal.gov
 happy=happy.fnal.gov
+water=water.fnal.gov
 airedale=airedale.fnal.gov
 sirius=sirius
 
@@ -45,6 +46,10 @@ case $node in
             ;;
   happy)    ENSTORE_CONFIG_HOST=$happy
 	    ENSTORE_CONFIG_FILE=happy.conf
+            complain=0
+            ;;
+  water)    ENSTORE_CONFIG_HOST=$water
+	    ENSTORE_CONFIG_FILE=water.conf
             complain=0
             ;;
   airedale) ENSTORE_CONFIG_HOST=$airedale

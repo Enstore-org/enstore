@@ -43,6 +43,12 @@ QUALIFIERS=happy
                 envSet(ENSTORE_CONFIG_HOST, happy.fnal.gov)
 		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/happy.conf)
                 exeActionRequired(COMMON_SETUP)
+FLAVOR=ANY
+QUALIFIERS=water
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, water.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/water.conf)
+                exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
 QUALIFIERS=airedale
