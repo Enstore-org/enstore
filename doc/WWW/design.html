@@ -2721,13 +2721,32 @@ Media Changer.</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>device</TD>
-<TD NOSAVE>device name used as parameter to certain driver function calls.</TD>
+<TD NOSAVE>device name used for driver device access. **</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>'/dev/rmt/tps2d2n' (make sure this is a no-rewind device)</TD>
 </TR>
 </TABLE></center>
+<p>
+** The mover process must have read and write access to the tape pseudo devices.
+<p>
+Linux tape devices are called /dev/nstX by default where X is Xth
+serial device found on the system.  X can change if devices are added or removed
+on the bus.   A script in the FTT product etc/mkscsidev.Linux creates
+the files /dev/rmt/tpsNdMn where N is the bus number and M is the scsi
+id of the device.  N and M do not change if the bus changes  (unless
+scsi ids or controllers are changed) and so the enstore
+configuration files do not need to change.  $FTT_DIR/etc/mkscsidev.Linux   
+should be run at boot time; normally via /etc/rc.d/rc.local.
+A sample rc.local:
+<pre>
+echo "Making scsi tape devices"
+. /usr/local/etc/setups.sh
+setup ftt
+$FTT_DIR/etc/mkscsidev.Linux
 
-
+chmod 0666 /dev/rmt/*
+chmod 0666 /dev/sc/*
+</pre>
 <p>
 <hr>
 <h3><a name="config_server">
