@@ -416,6 +416,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.remove_key(key)
         Trace.trace(12,"}update_blocksizes")
 
+    # we do not need to report these
+    def update_database(self, key, time):
+	pass
+    def update_backup(self, key, time):
+	pass
+
     # get the keys from the inquisitor part of the config file ready for use
     def prepare_keys(self):
         Trace.trace(12,"{prepare_keys")
