@@ -400,7 +400,8 @@ def get_entvrc(csc, intf):
 def set_entvrc(display, csc, intf):
     
     #If there isn't geometry don't do anything.
-    if not hasattr(display, "geometry") or display.geometry == None:
+    master_geometry = getattr(display, "master_geometry", None)
+    if master_geometry == None:
         return
 
     try:
@@ -478,8 +479,8 @@ def set_entvrc(display, csc, intf):
                     animate = str("animate")
                 #Write the new geometry to the .entvrc file.
                 tmp_file.write("%-25s %-20s %-10s %-7s\n" %
-                               (csc_server_name, display.geometry, background,
-                                animate))
+                               (csc_server_name, master_geometry,
+                                background, animate))
 
                 new_line_written = 1
             else:
@@ -488,7 +489,7 @@ def set_entvrc(display, csc, intf):
         #If the enstore system entv display is not found, add it at the end.
         if not new_line_written:
             tmp_file.write("%-25s %-20s %-10s\n" %
-                         (csc_server_name, display.geometry, DEFAULT_BG_COLOR))
+                         (csc_server_name, master_geometry, DEFAULT_BG_COLOR))
             
         tmp_file.close()
 
@@ -666,7 +667,6 @@ def request_mover_status(display, csc, intf):
     if intf.movers_file:
         return
 
-    #csc = configuration_client.ConfigurationClient(csc_addr)
     enstore_system = None
     while enstore_system == None:
         enstore_system = csc.get_enstore_system(3, 3)
@@ -681,6 +681,12 @@ def request_mover_status(display, csc, intf):
     #Get the list of movers that this event relay will be reporting on.
     movers = get_mover_list(intf, csc, 1)
 
+    #While still starting up, we don't need the main thread contacting the
+    # movers too.  Grabing this lock will help with performace during startup.
+    # Remeber this; don't put any returns in the following loop, otherwise
+    # the lock will never get released.
+    enstore_display.startup_lock.acquire()
+    
     for mover in movers:
         #Get the mover client and the mover status.
         mov = mover_client.MoverClient(csc, mover,
@@ -716,6 +722,9 @@ def request_mover_status(display, csc, intf):
         for command in commands:
             #Queue the command.
             display.queue_command(command)
+
+    #Never forget to release a lock.
+    enstore_display.startup_lock.release()
 
 #handle_messages() reads event relay messages from the specified event
 # relay.  It is called within a new thread (one for each event relay).
@@ -779,7 +788,6 @@ def handle_messages(display, csc, intf):
         # The largest known error to occur is that socket.socket() fails
         # to return a file descriptor because to many files are open.
         if stop_now or display.stopped:
-
             return
 
     start = time.time()
@@ -911,8 +919,6 @@ def handle_messages(display, csc, intf):
     #End nicely.
     if not intf.messages_file:
         erc.unsubscribe()
-        #erc.sock.close()
-        #del erc
 
 #########################################################################
 # The following function sets the window geometry.
@@ -1204,7 +1210,8 @@ def main(intf):
 
         #Force garbage collection while the display is off while awaiting
         # initialization.
-        uncollectable_count = gc.collect()
+        gc.collect()
+        uncollectable_count = len(gc.garbage)
         del gc.garbage[:]
         if uncollectable_count > 0:
             Trace.trace(0, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)

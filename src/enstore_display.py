@@ -97,6 +97,7 @@ import tkFont
 
 #A lock to allow only one thread at a time access the display class instance.
 display_lock = threading.Lock()
+startup_lock = threading.Lock()
 
 CIRCULAR, LINEAR = range(2)
 layout = LINEAR
@@ -1667,7 +1668,7 @@ class Display(Tkinter.Canvas):
         self.master = master
         geometry = entvrc_info.get('geometry', "1200x1600+0+0")
         title = entvrc_info.get('title', "Enstore")
-        animate = int(entvrc_info.get('animate', 1))#Python true for animation.
+        self.animate = int(entvrc_info.get('animate', 1))
         self.library_colors = entvrc_info.get('library_colors', {})
         self.client_colors = entvrc_info.get('client_colors', {})
 
@@ -1676,6 +1677,7 @@ class Display(Tkinter.Canvas):
         self.unframed_geometry = geometry
         #Set the geometry of the master window the canvas will be inside of.
         self.master.geometry(geometry)
+        self.master_geometry = self.master.geometry()
         Tkinter.Canvas.__init__(self, master=master)
 
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
@@ -1714,16 +1716,24 @@ class Display(Tkinter.Canvas):
         #Options menu.
         self.option_menu = Tkinter.Menu(master=self.menubar, tearoff=0)
         #Create the animate check button and set animate accordingly.
-        self.animate = Tkinter.BooleanVar()
+        self.do_animation = Tkinter.BooleanVar()
         #By default animation is off.  If we need to turn animation, do so now.
-        if animate == ANIMATE:
-            self.animate.set(1)
+        if self.animate == ANIMATE:
+            self.do_animation.set(ANIMATE)
         #Add the checkbutton to the menu.
+        ## Note: There is no way to obtain the actual checkbutton object.
+        ## This would make accessing it internally do-able.
+        ## 
+        ## The only way to have the check in the checkbutton turned on
+        ## by default is to have the BooleanVar variable be a member
+        ## of the class.  Having it as a local variable does not want to
+        ## work (though I don't know why that would be).
         self.option_menu.add_checkbutton(label = "Animate",
                                          indicatoron = Tkinter.TRUE,
                                          onvalue = ANIMATE,
                                          offvalue = STILL,
-                                         variable = self.animate,
+                                         variable = self.do_animation,
+                                         command = self.toggle_animation,
                                          )
         #Added the menus to there respective parent widgets.
         self.menubar.add_cascade(label="options", menu=self.option_menu)
@@ -1761,6 +1771,12 @@ class Display(Tkinter.Canvas):
 		       - int(self.unframed_geometry.split("+")[2])
 	(self.frame_width, self.frame_height) = (frame_width, frame_height)
 
+    def toggle_animation(self):
+        if self.animate:
+            self.animate = STILL
+        else:
+            self.animate = ANIMATE
+
     def clear_display(self):
         self.mover_names      = [] ## List of mover names.
         self.movers           = {} ## This is a dictionary keyed by mover name,
@@ -1774,8 +1790,6 @@ class Display(Tkinter.Canvas):
         self.connections      = {} ##dict. of connections.
 
         self.command_queue    = [] #List of notify commands to process.
-
-        self.csc              = None #Avoid cyclic references.
 
     def attempt_reinit(self):
         return self._reinit
@@ -1822,6 +1836,7 @@ class Display(Tkinter.Canvas):
         __pychecker__ = "no-argsused"
         
         Trace.trace(1, "New dimensions: %s" % self.master.wm_geometry())
+        self.master_geometry = self.master.geometry()
 
         try:
             self.after_cancel(self.after_smooth_animation_id)
@@ -1852,6 +1867,8 @@ class Display(Tkinter.Canvas):
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
+
+        self.master_geometry = self.master.geometry()
         
         self.after_cancel(self.after_smooth_animation_id)
         self.after_cancel(self.after_clients_id)
@@ -1873,56 +1890,14 @@ class Display(Tkinter.Canvas):
         
         self.stopped = 1
 
-        if self.framed_geometry == None:
-            #In __inin__ the widow was killed between the update() and
-            # winfo_toplevel().geometry() function calls.  Thus, without
-            # self.framed_geometry set continuing is not recommended.
-            self.geometry = None
-            return
-
-        new_position = self.unframed_geometry.split("+", 1)[1]
-        new_size = self.unframed_geometry.split("+")[0]
-
-        geometry = self.winfo_toplevel().geometry()
-        size = geometry.split("+")[0]
-        position = geometry.split("+", 1)[1]
-
-        initial_framed_size = self.framed_geometry.split("+")[0]
-        initial_framed_position = self.framed_geometry.split("+", 1)[1]
-        
-        ###If the user never repositioned the window then the value returned
-        ### from self.winfo_toplevel().geometry() points to the top left of the
-        ### canvas (aka top left of framed window).
-
-        ###If the user moved the window, then the value returned from
-        ### self.winfo_toplevel().geometry() contains the unframed window
-        ### geometry.  If this is different than the initial framed geometry
-        ### then we know the user moved the window and to set self.geometry
-        ### to tell the calling code (aka entv.py) to save the geometry.
-        if position != initial_framed_position:
-            new_position = position
-
-        ###The size doesn't seem to change with respect to the window being
-        ### framed or unframed...
-        if size != initial_framed_size:
-            new_size = size
-
-        #By setting this everytime, this will force entv to rewrite the
-        # .entvrc file everytime.  This will also help correct errors in
-        # the .entvrc file.
-        self.geometry = "%s+%s" % (new_size, new_position)
+        self.master_geometry = self.master.geometry()
 
     def visibility (self, event):
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
-        
-        #The current framed geometry.
-        geometry = self.winfo_toplevel().geometry()
 
-        ###The following records the initial framed geometry of the window.
-        if not hasattr(self, "framed_geometry"):
-            self.framed_geometry = geometry
+        self.master_geometry = self.master.geometry()
         
     #########################################################################
 
@@ -1968,13 +1943,65 @@ class Display(Tkinter.Canvas):
     def connection_animation(self):
 
         #If the user turned off animation, don't do it.
-        if self.animate and not self.animate.get():
+        if not self.animate:
             return
         
         now = time.time()
         #### Update all connections.
         for connection in self.connections.values():
             connection.animate(now)
+
+    #Called from process_messages().  Remember; process_messages()
+    # grabs the display_lock, so don't take to long or other threads
+    # will hang.
+    def get_up_to_date(self, command):
+
+        result = startup_lock.acquire(False)
+        if result:
+        
+            words = self.command_queue[0].split(" ")
+
+            if words and words[0] in ["state"]:
+                status = None
+                
+                try:
+                    mover = self.movers[words[1]]
+                except:
+                    mover = None
+
+                if mover and mover.volume == None and words[2] in \
+                   ["HAVE_BOUND", "SEEK", "ACTIVE", "CLEANING", "DRAINING"]:
+                    
+                    try:
+                        status = mover.get_status()
+                    except KeyError:
+                        pass
+
+                    if e_errors.is_ok(status):
+                        volume = status['current_volume']
+                        words2 = ['state', mover.name, "MOUNT_WAIT"]
+                        self.handle_command(string.join(words2, " "))
+                        if volume:
+                            words3 = ['loaded', mover.name, volume]
+                            self.handle_command(string.join(words3, " "))
+                        
+                
+                if mover and self.connections.get(mover.name, None) == None \
+                       and words[2] in ["ACTIVE", "DRAINING", "SEEK",
+                                        "MOUNT_WAIT"]:
+
+                    try:
+                        if not e_errors.is_ok(status): #Don't repeat.
+                            status = mover.get_status()
+                    except KeyError:
+                        pass
+                    
+                    client = status['client']
+                    words2 = ['connect', mover.name, client]
+                    self.handle_command(string.join(words2, " "))
+
+            startup_lock.release()
+                        
 
     #Called from self.after().
     def process_messages(self):
@@ -1986,41 +2013,11 @@ class Display(Tkinter.Canvas):
         number = len(self.command_queue)
 
         while number > 0:
-            words = self.command_queue[0].split(" ")
-            if words and words[0] in ["state"]:
+
+            #If a datagram gets dropped, attempt to recover the lost
+            # information by asking for it.
+            self.get_up_to_date(self.command_queue[0])
             
-                try:
-                    mover = self.movers[words[1]]
-                except:
-                    mover = None
-
-                status = None
-                if mover and \
-                       (mover.volume == None or \
-                        self.connections.get(mover.name, None) == None):
-                    try:
-                        status = mover.get_status()
-                    except KeyError:
-                        pass
-
-                if status:
-
-                    if mover.volume == None and words[2] not in ["MOUNT_WAIT",
-                                                                 "DISMOUNT_WAIT"]:
-                        volume = status['current_volume']
-                        words2 = ['state', mover.name, "MOUNT_WAIT"]
-                        self.handle_command(string.join(words2, " "))
-                        if volume:
-                            words3 = ['loaded', mover.name, volume]
-                            self.handle_command(string.join(words3, " "))
-
-                    if self.connections.get(mover.name, None) == None and \
-                           words[2] in ["ACTIVE", "DRAINING", "SEEK",
-                                        "MOUNT_WAIT"]:
-                        client = status['client']
-                        words2 = ['connect', mover.name, client]
-                        self.handle_command(string.join(words2, " "))
-                        
             #Process the next item in the queue.
             self.handle_command(self.command_queue[0])
             del self.command_queue[0]
@@ -2725,6 +2722,11 @@ class Display(Tkinter.Canvas):
     #overloaded
     def destroy(self):
         self.clear_display()
+        try:
+            #When a reinitialization occurs, there is a resource leak.
+            del self.do_animation
+        except AttributeError:
+            pass
         Tkinter.Canvas.destroy(self)
     
     #overloaded 
