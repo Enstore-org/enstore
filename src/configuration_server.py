@@ -56,7 +56,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                 continue
             # ok, we have a complete line - execute it
             try:
-		#print line
+		if verbose:
+		    print line
                 exec ("x"+line)
             except:
                 f.close()
@@ -78,6 +79,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 	    for insidekey in self.configdict[key].keys():
 		if insidekey == 'host':
 		    self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
+		    if not self.configdict[key].has_key('port'):
+			self.configdict[key]['port'] = -1
 		    self.serverlist[key]= (self.configdict[key]['host'],self.configdict[key]['hostip'],self.configdict[key]['port'])
 		    break
 		
