@@ -639,6 +639,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
         self.prepare = self.unload
         self.DEBUG = 0
+	self.driveCleanTime = self.mc_config.get('DriveCleanTime',{'9840':[60,1],'9940':[60,1]})
         print "STK MediaLoader initialized"
 
     # retry function call
@@ -700,6 +701,78 @@ class STK_MediaLoader(MediaLoaderMethods):
                 state = rt[2]
         return (rt[0], rt[1], rt[2], state)
 
+
+    def cleanCycle(self, inTicket):
+        #do drive cleaning cycle
+        Trace.log(e_errors.INFO, 'mc:ticket='+repr(inTicket))
+        classTicket = { 'mcSelf' : self }
+        try:
+            drive = inTicket['moverConfig']['mc_device']
+        except KeyError:
+            Trace.log(e_errors.ERROR, 'mc:no device field found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no device field found in ticket"
+
+        driveType = drive[:2]  # ... need device type, not actual device
+        try:
+            if self.driveCleanTime:
+                cleanTime = self.driveCleanTime[driveType][0]  # clean time in seconds
+                driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
+            else:
+                cleanTime = 60
+                driveCleanCycles = 1
+        except KeyError:
+            cleanTime = 60
+            driveCleanCycles = 1
+
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        min_remaining_bytes = 1
+        vol_veto_list = []
+        first_found = 0
+        libraryManagers = inTicket['moverConfig']['library']
+        if type(libraryManagers) == types.StringType:
+            lm = libraryManagers
+            library = string.split(libraryManagers,".")[0]
+        elif type(libraryManagers) == types.ListType:
+            lm = libraryManagers[0]
+            library = string.split(libraryManagers[0],".")[0]
+        else:
+            Trace.log(e_errors.ERROR, 'mc: library_manager field not found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
+        lm_info = self.csc.get(lm)
+        if not lm_info.has_key('CleanTapeVolumeFamily'):
+            Trace.log(e_errors.ERROR, 'mc: no CleanTapeVolumeFamily field found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no CleanTapeVolumeFamily field found in ticket"
+        cleanTapeVolumeFamily = lm_info['CleanTapeVolumeFamily']
+        v = vcc.next_write_volume(library,
+                                  min_remaining_bytes, cleanTapeVolumeFamily,
+                                  vol_veto_list, first_found, exact_match=1)  # get which volume to use
+        if v["status"][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%
+                      (v["status"][0],v["status"][1]))
+            status = 37
+            return v["status"][0], 0, v["status"][1]
+
+        for i in range(driveCleanCycles):
+            Trace.log(e_errors.INFO, "STK clean drive %s, vol. %s"%(drive,v['external_label']))
+            rt = self.load(v['external_label'], drive, v['media_type'])
+            status = rt[0]
+            if status != e_errors.OK:      # mount returned error
+                return status
+
+            time.sleep(cleanTime)  # wait cleanTime seconds
+            rt = self.unload(v['external_label'], drive, v['media_type'])
+            status = rt[0]
+            if status != 0:      # dismount returned error
+                return status
+            Trace.log(e_errors.INFO,"STK Clean returned %s"%(rt,))
+
+        retTicket = vcc.get_remaining_bytes(v['external_label'])
+        remaining_bytes = retTicket['remaining_bytes']-1
+        vcc.set_remaining_bytes(v['external_label'],remaining_bytes,'\0', None)
+        return (e_errors.OK, 0, None)
 
     # simple elapsed timer
     def delta_t(self,begin):
