@@ -37,7 +37,8 @@ class UDPServer:
 
         try:
             #If an address was not specified.
-            if type(server_address) != type(()) and len(server_address) != 2:
+            if type(server_address) != type(()) or \
+               (type(server_address) != type(()) and len(server_address) != 2):
                 ip,port,self.server_socket = udp_common.get_default_callback()
                 self.server_address = (ip, port)
 	    #If an address was specified.                
