@@ -1,4 +1,3 @@
-t
 #!/bin/sh 
 set -u  
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
