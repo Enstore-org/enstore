@@ -95,19 +95,19 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT LIBRARY MANAGER CAN RSP UNBIND??
     vcc.set_system_readonly( self.vol_info['external_label'] )
 
-    logc.send( log_client.ERROR, 0, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
+    logc.send( log_client.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
 
     return unilateral_unbind_next( self, error_info )
 
 def freeze_tape_in_drive( self, error_info ):
     vcc.set_system_readonly( self.vol_info['external_label'] )
 
-    logc.send( log_client.ERROR, 0, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
+    logc.send( log_client.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
 
     return offline_drive( self, error_info )
 
 def offline_drive( self, error_info ):	# call directly for READ_ERROR
-    logc.send( log_client.ERROR, 0, "MOVER OFFLINE"+str(error_info) )
+    logc.send( log_client.ERROR, 1, "MOVER OFFLINE"+str(error_info) )
 
     if error_info == e_errors.READ_ERROR:
 	if self.read_error[1]:
@@ -121,7 +121,7 @@ def offline_drive( self, error_info ):	# call directly for READ_ERROR
 
 
 def fatal_enstore( self, error_info, ticket ):
-    logc.send( log_client.ERROR, 0, "FATAL ERROR - MOVER - "+str(error_info) )
+    logc.send( log_client.ERROR, 1, "FATAL ERROR - MOVER - "+str(error_info) )
     rsp = udpc.send( {'work':"unilateral_unbind",'status':error_info}, ticket['address'] )
     while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
     return
@@ -383,7 +383,7 @@ def forked_write_to_hsm( self, ticket ):
 					 'external_label':self.vol_info['external_label'],
 					 'complete_crc':file_crc}} )
 	if rsp['status'][0] != e_errors.OK:
-	    logc.send( log_client.ERROR, 0,
+	    logc.send( log_client.ERROR, 1,
 		       "XXXXXXXXXXXenstore software error" )
 	    pass
 	ticket['fc'] = rsp['fc']
@@ -523,7 +523,7 @@ def forked_read_from_hsm( self, ticket ):
     return
 
 def return_or_update_and_exit( self, origin_addr, status ):
-    if status != e_errors.OK: logc.send( log_client.ERROR, 0, str(status) )
+    if status != e_errors.OK: logc.send( log_client.ERROR, 1, str(status) )
     if mvr_config['do_fork']:
 	# need to send info to update parent: vol_info and
 	# hsm_driver_info (read: hsm_driver.position
@@ -666,12 +666,12 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	if next_req_to_lm['work'] == "unilateral_unbind":
 	    # FOR SOME ERRORS I FREEZE
 	    #if next_req_to_lm['status'] in [ ]:
-	 	#logc.send( log_client.ERROR, 0, "MOVER FREEZE - told busy mover to do work" )
+	 	#logc.send( log_client.ERROR, 1, "MOVER FREEZE - told busy mover to do work" )
 		#while 1: time.sleep( 1 )# freeze
 		#pass
 	    pass
 	if self.client_obj_inst.state == 'busy' and rsp_ticket['work'] != 'nowork':
-	    logc.send( log_client.ERROR, 0, "FATAL ENSTORE - libman told busy mover to do work" )
+	    logc.send( log_client.ERROR, 1, "FATAL ENSTORE - libman told busy mover to do work" )
 	    while 1: time.sleep( 1 )	# freeze
 	    pass
 	# Exceptions are caught (except block) in dispatching_worker.py.
@@ -741,7 +741,7 @@ def status_to_request( client_obj_inst, exit_status ):
 	next_req_to_lm = freeze_tape_in_drive( client_obj_inst, m_err[exit_status] )
     else:
 	# new error
-	logc.send( log_client.ERROR, 0, "FATAL ERROR - MOVER - unknown transfer status - fix me now" )
+	logc.send( log_client.ERROR, 1, "FATAL ERROR - MOVER - unknown transfer status - fix me now" )
 	while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
 	pass
     return next_req_to_lm
