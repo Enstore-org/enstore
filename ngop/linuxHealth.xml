@@ -9,68 +9,50 @@
           <MonitoredElement Name="cpuLoad" Host="localhost" Type="sysUsage">
           <ConditionSet>
         	<fn Name="plug_ins" Arg="uptime|/bin/sed s/.*load.*average://|awk -F',' '{print $3}'" RetVal="float:cpuLoad"/>
-   	        <Condition State="1" SevLevel="5" Description="Average cpu load during last 15 min exceeds 8">
+   	  <Condition State="1" SevLevel="6" Description="Average cpu load during last 15 min exceeds 4">
     		<apply>
-       		<gt/>
+       		<geq/>
          	<ci>cpuLoad</ci>
-         	<cn>8.0</cn>
+         	<cn>4.0</cn>
     		</apply>
        	  </Condition>
-          	<Condition State="1" SevLevel="4" Description="Average cpu load is between 4 and 8 during last 15 min">
+          <Condition State="1" SevLevel="5" Description="Average cpu load is between 3 and 4 during last 15 min">
                 <apply>
 		<and/>
 		<apply>
-                  <gt/>
+                  <geq/>
                   <ci>cpuLoad</ci>
-                  <cn>5.0</cn>
+                  <cn>3.0</cn>
                 </apply>
                 <apply>
-                  <leq/>
+                  <lt/>
                   <ci>cpuLoad</ci>
-                  <cn>8.0</cn>
+                  <cn>4.0</cn>
                 </apply>
 		</apply>
-                </Condition>
+          </Condition>
+          <Condition State="1" SevLevel="4" Description="Average cpu load is between 2 and 3 during last 15 min">
+                <apply>
+		<and/>
+		<apply>
+                  <geq/>
+                  <ci>cpuLoad</ci>
+                  <cn>2.0</cn>
+                </apply>
+                <apply>
+                  <lt/>
+                  <ci>cpuLoad</ci>
+                  <cn>3.0</cn>
+                </apply>
+		</apply>
+          </Condition>
          </ConditionSet>
     </MonitoredElement>
     
         <MonitoredElement Name="Memory" Host="localhost" Type="sysUsage">
            <ConditionSet>
 		<fn Name="plug_ins" Arg="free -o|grep Mem:|awk '{print $2} {print $3} {print $6} {print $7}' " RetVal="float:total,float:used,float:buffers,float:cached"/>
-                <Condition State="1" SevLevel="4" Description="Memory utilization is between 80% and  95%">
-    		<apply>
-                <and/>
-                <apply>
-       		  <leq/>
-		  <apply>
-	  	   <divide/>
-	  	   <apply>
-	   		<minus/>
-	   		<ci>used</ci>
-	   		<ci>cached</ci>
-           		<ci>buffers</ci>
-	          </apply>
-	          <ci>total</ci>
-                 </apply>
-         	 <cn>0.95</cn>
-    		</apply>
-                <apply>
-       		  <gt/>
-		  <apply>
-	  	   <divide/>
-	  	   <apply>
-	   		<minus/>
-	   		<ci>used</ci>
-	   		<ci>cached</ci>
-           		<ci>buffers</ci>
-	          </apply>
-	          <ci>total</ci>
-                 </apply>
-         	 <cn>0.85</cn>
-    		</apply>
-                </apply>
-    		</Condition>
-   		<Condition State="1" SevLevel="5" Description="Memory utilization exceeds 95%">
+   		<Condition State="1" SevLevel="5" Description="Memory utilization exceeds 99%">
     		<apply>	
        		  <gt/>
 		  <apply>
@@ -83,7 +65,7 @@
 	          </apply>
 	          <ci>total</ci>
                  </apply>
-         	 <cn>0.95</cn>
+         	 <cn>0.99</cn>
     		</apply>
     		</Condition>
 	   </ConditionSet>
@@ -91,7 +73,7 @@
   	<MonitoredElement Name="Swap" Host="localhost" Type="sysUsage">
             <ConditionSet>
         	<fn Name="plug_ins" Arg="free -o|grep Swap:|awk '{print $2} {print $3} '" RetVal="float:total,float:used"/>
-   		<Condition State="0" SevLevel="5" Description="Swap utilization exceeds 95%">
+   		<Condition State="0" SevLevel="6" Description="Swap utilization exceeds 30%">
     		<apply>
        		<gt/>
         	   <apply>
@@ -99,29 +81,52 @@
            		<ci>used</ci>
            		<ci>total</ci>
         	   </apply>
-         	   <cn>0.95</cn>
+         	   <cn>0.30</cn>
     		</apply>
     		</Condition>
-   		<Condition State="1" SevLevel="4" Description="Swap utilization between 80 and 95%">
+   		<Condition State="1" SevLevel="5" Description="Swap utilization between 20 and 30%">
     		<apply>
 		<and/>
 		 <apply>
-       		 <gt/>
+       		 <geq/>
         	   <apply>
                   	<divide/>
            		<ci>used</ci>
            		<ci>total</ci>
         	   </apply>
-         	   <cn>0.80</cn>
+         	   <cn>0.20</cn>
     		 </apply>
 		 <apply>
-       		 <leq/>
+       		 <lt/>
         	   <apply>
                   	<divide/>
            		<ci>used</ci>
            		<ci>total</ci>
         	   </apply>
-         	   <cn>0.95</cn>
+         	   <cn>0.30</cn>
+    		 </apply>
+		</apply>
+    		</Condition>
+   		<Condition State="1" SevLevel="4" Description="Swap utilization between 10 and 20%">
+    		<apply>
+		<and/>
+		 <apply>
+       		 <geq/>
+        	   <apply>
+                  	<divide/>
+           		<ci>used</ci>
+           		<ci>total</ci>
+        	   </apply>
+         	   <cn>0.10</cn>
+    		 </apply>
+		 <apply>
+       		 <lt/>
+        	   <apply>
+                  	<divide/>
+           		<ci>used</ci>
+           		<ci>total</ci>
+        	   </apply>
+         	   <cn>0.20</cn>
     		 </apply>
 		</apply>
     		</Condition>
@@ -130,25 +135,109 @@
  	   <MonitoredElement Name="/home" Host="localhost" Type="FileSystem">
 		<ConditionSet>
 		   <fn Name="plug_ins" Arg="df /dev/hda | grep -v Filesystem|awk '{print $5}'|sed s/\\%//" RetVal="int:size"/>
-		   <Condition State="1" SevLevel="4" Description="/home between 85 and 95%">	
+		   <Condition State="1" SevLevel="5" Description="/home between 85 and 95%">	
     		    <apply>
 
 		     <and/>
 		     <apply>
-                      <gt/>
+                      <geq/>
                       <ci>size</ci>
                       <cn>85</cn>
                      </apply>
 		     <apply>
-                      <leq/>
+                      <lt/>
                       <ci>size</ci>
                       <cn>95</cn>
                      </apply>
 		    </apply>		
    		   </Condition>	
-		   <Condition State="1" SevLevel="5" Description="/home size exceeds 95%">	
+		   <Condition State="1" SevLevel="6" Description="/home size exceeds 95%">	
     		    <apply>
-                      <gt/>
+                      <geq/>
+                      <ci>size</ci>
+                      <cn>95</cn>
+		    </apply>
+   		   </Condition>
+	 	</ConditionSet>
+    	    </MonitoredElement>   
+ 	   <MonitoredElement Name="/home" Host="localhost" Type="FileSystem">
+		<ConditionSet>
+		   <fn Name="plug_ins" Arg="df /diska 2> /dev/null| grep -v Filesystem|awk '{print $5}'|sed s/\\%//" RetVal="int:size"/>
+		   <Condition State="1" SevLevel="5" Description="/diska between 85 and 95%">	
+    		    <apply>
+
+		     <and/>
+		     <apply>
+                      <geq/>
+                      <ci>size</ci>
+                      <cn>85</cn>
+                     </apply>
+		     <apply>
+                      <lt/>
+                      <ci>size</ci>
+                      <cn>95</cn>
+                     </apply>
+		    </apply>		
+   		   </Condition>	
+		   <Condition State="1" SevLevel="6" Description="/diska size exceeds 95%">	
+    		    <apply>
+                      <geq/>
+                      <ci>size</ci>
+                      <cn>95</cn>
+		    </apply>
+   		   </Condition>
+	 	</ConditionSet>
+    	    </MonitoredElement>   
+ 	   <MonitoredElement Name="/home" Host="localhost" Type="FileSystem">
+		<ConditionSet>
+		   <fn Name="plug_ins" Arg="df /diskb 2> /dev/null| grep -v Filesystem|awk '{print $5}'|sed s/\\%//" RetVal="int:size"/>
+		   <Condition State="1" SevLevel="5" Description="/diskb between 85 and 95%">	
+    		    <apply>
+
+		     <and/>
+		     <apply>
+                      <geq/>
+                      <ci>size</ci>
+                      <cn>85</cn>
+                     </apply>
+		     <apply>
+                      <lt/>
+                      <ci>size</ci>
+                      <cn>95</cn>
+                     </apply>
+		    </apply>		
+   		   </Condition>	
+		   <Condition State="1" SevLevel="6" Description="/diskb size exceeds 95%">	
+    		    <apply>
+                      <geq/>
+                      <ci>size</ci>
+                      <cn>95</cn>
+		    </apply>
+   		   </Condition>
+	 	</ConditionSet>
+    	    </MonitoredElement>   
+ 	   <MonitoredElement Name="/home" Host="localhost" Type="FileSystem">
+		<ConditionSet>
+		   <fn Name="plug_ins" Arg="df /diskc 2> /dev/null| grep -v Filesystem|awk '{print $5}'|sed s/\\%//" RetVal="int:size"/>
+		   <Condition State="1" SevLevel="5" Description="/diskc between 85 and 95%">	
+    		    <apply>
+
+		     <and/>
+		     <apply>
+                      <geq/>
+                      <ci>size</ci>
+                      <cn>85</cn>
+                     </apply>
+		     <apply>
+                      <lt/>
+                      <ci>size</ci>
+                      <cn>95</cn>
+                     </apply>
+		    </apply>		
+   		   </Condition>	
+		   <Condition State="1" SevLevel="6" Description="/diskc size exceeds 95%">	
+    		    <apply>
+                      <geq/>
                       <ci>size</ci>
                       <cn>95</cn>
 		    </apply>
@@ -179,7 +268,7 @@
          <cn>0</cn>
     	</apply>
     	</Condition>
-    	<Condition State="0" SevLevel="0" Description="Time is not syncronized">
+    	<Condition State="1" SevLevel="6" Description="Time is not syncronized (> 3 seconds off)">
     	<apply>
         <and/>
         <apply>
@@ -188,10 +277,30 @@
          <cn>1</cn>
     	</apply>
         <apply>
-       	<eq/>
+       	<geq/>
          <ci>disp</ci>
-         <cn>""</cn>
+         <cn>3.0</cn>
     	</apply>
+        </apply>
+    	</Condition>       
+    	<Condition State="1" SevLevel="5" Description="Time is not syncronized (inbetween 1 and 3 seconds off)">
+    	<apply>
+        <and/>
+        <apply>
+       	<eq/>
+         <ci>alive</ci>
+         <cn>1</cn>
+    	</apply>
+        <apply>
+       	<geq/>
+         <ci>disp</ci>
+         <cn>1.0</cn>
+    	</apply>
+	<apply>
+	<lt/>
+	  <ci>disp</ci>
+	  <cn>3.0</cn>
+	</apply>
         </apply>
     	</Condition>       
 	</ConditionSet>
@@ -237,7 +346,7 @@
             </apply>
             </apply>
 	</Condition>
-          <Condition State="1" SevLevel="6" Description="Temperature is nearingwarning level">
+          <Condition State="1" SevLevel="6" Description="Temperature is nearing warning level">
             <apply>
              <or/>
              <apply>
