@@ -199,16 +199,17 @@ class MonitorServerClient(generic_client.GenericClient):
                         bytes_received=bytes_received+len(data)
                     except socket.error, detail:
                         raise SERVER_CLOSED_CONNECTION, detail[1]
-            print "recieved:", bytes_received
+                print "recieved:", bytes_received
             reply['elapsed']=time.time()-t0
 
         #When sending, the time isn't important.
         elif ticket['transfer'] == SEND_TO_SERVER:
             bytes_sent = 0
             sendstr = "S"*ticket['block_size']
+            t0=time.time()
             while bytes_sent < bytes_to_transfer:
                 r,w,ex = select.select([], [data_socket], [data_socket],
-                               self.timeout)
+                                       self.timeout)
                 if w:
                     bytes_left = bytes_to_transfer - bytes_sent
                     if bytes_left < ticket['block_size']:
@@ -216,9 +217,14 @@ class MonitorServerClient(generic_client.GenericClient):
                     try:
                         num_sent=data_socket.send(sendstr, socket.MSG_DONTWAIT)
                         bytes_sent = bytes_sent + num_sent
+                        t0 = time.time() #t0 is now current time
                     except socket.error, detail:
+                        print "alsdj", detail[1]
                         raise SERVER_CLOSED_CONNECTION, detail[1]
-            print "sent:", bytes_sent
+                elif time.time() - t0 > self.timeout:
+                    raise SERVER_CLOSED_CONNECTION, errno.errorcode[errno.ETIMEDOUT]
+                
+                print "sent:", bytes_sent
             reply['elapsed'] = -1
 
         #If we get here, the status is ok.

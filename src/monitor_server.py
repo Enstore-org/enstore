@@ -197,7 +197,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                                self.timeout)
                 if r:
                     try:
-                        data = data_socket.recv(ticket['block_size'])
+                        data = data_sock.recv(ticket['block_size'])
                         bytes_received=bytes_received+len(data)
                     except socket.error, detail:
                         reply['status'] = (CLIENT_CLOSED_CONNECTION, detail[1])
