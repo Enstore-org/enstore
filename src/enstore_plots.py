@@ -9,6 +9,7 @@ import time
 
 # enstore imports
 import enstore_status
+import enstore_files
 import Trace
 
 # file extensions
@@ -22,11 +23,11 @@ HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
                 "09", "10", "11", "12", "13", "14", "15", "16", \
                 "17", "18", "19", "20", "21", "22", "23"]
 
-class EnPlot(enstore_status.EnFile):
+class EnPlot(enstore_files.EnFile):
 
     def __init__(self, dir, name):
 	self.plot_dir = dir
-	enstore_status.EnFile.__init__(self, dir+"/"+name)
+	enstore_files.EnFile.__init__(self, dir+"/"+name)
 	self.ptsfile = self.file_name+PTS
 	self.psfile = self.file_name+PS
 	self.gnufile = self.file_name+GNU
@@ -49,7 +50,7 @@ class EnPlot(enstore_status.EnFile):
                 os.system("mv %s %s;mv %s* %s"%(self.gnufile, pts_dir,
                                                 self.ptsfile, pts_dir))
 
-class MphGnuFile(enstore_status.EnFile):
+class MphGnuFile(enstore_files.EnFile):
 
     def write(self, outfile, gnuinfo):
 	self.filedes.write("set output '"+outfile+ \
@@ -116,7 +117,7 @@ class MphDataFile(EnPlot):
 	    gnucmds.write(self.psfile, gnuinfo)
 	    gnucmds.close()
 
-class MlatGnuFile(enstore_status.EnFile):
+class MlatGnuFile(enstore_files.EnFile):
 
     def write(self, outfile, ptsfile):
 	self.filedes.write("set output '"+outfile+"\n"+ \
@@ -186,7 +187,7 @@ class MlatDataFile(EnPlot):
 	      string.atoi(time2[14:16]), string.atoi(time2[17:]), 0, 0, -1)
 	return (time.mktime(t2) - time.mktime(t1))
 
-class XferGnuFile(enstore_status.EnFile):
+class XferGnuFile(enstore_files.EnFile):
 
     def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
 	self.filedes.write("set output '"+outfile2+"'\n"+ \
@@ -237,7 +238,7 @@ class XferDataFile(EnPlot):
         EnPlot.install(self, dir)
 	os.system("cp %s %s"%(self.logfile, dir))
 
-class BpdGnuFile(enstore_status.EnFile):
+class BpdGnuFile(enstore_files.EnFile):
 
     def write(self, outfile, ptsfile):
 	self.filedes.write("set output '"+outfile+"'\n"+ \

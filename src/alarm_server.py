@@ -7,7 +7,7 @@ import string
 # enstore imports
 import dispatching_worker
 import interface
-import enstore_status
+import enstore_files
 import generic_server
 import Trace
 import alarm
@@ -181,7 +181,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     # alarms that have not been resolved.
     def get_alarm_file(self):
         # the alarm file lives in the same directory as the log file
-        self.alarm_file = enstore_status.EnAlarmFile(self.get_log_path()+ \
+        self.alarm_file = enstore_files.EnAlarmFile(self.get_log_path()+ \
                                                      DEFAULT_FILE_NAME)
         self.alarm_file.open('r')
         self.alarms = self.alarm_file.read()
@@ -191,7 +191,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     # alarms to it
     def get_patrol_file(self):
         # the patrol file lives in the same directory as the log file
-        self.patrol_file = enstore_status.EnPatrolFile(self.get_log_path()+ \
+        self.patrol_file = enstore_files.EnPatrolFile(self.get_log_path()+ \
                                                       DEFAULT_PATROL_FILE_NAME)
         self.write_patrol_file()
 
@@ -257,6 +257,8 @@ if __name__ == "__main__":
         try:
             Trace.log(e_errors.INFO, "Alarm Server (re)starting")
             als.serve_forever()
+	except SystemExit, exit_code:
+	    sys.exit(exit_code)
         except:
 	    als.serve_forever_error(als.log_name)
             continue
