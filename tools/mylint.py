@@ -33,6 +33,9 @@ def fixindent(line):
 
 import kjpylint
 
+#initialize
+exit_status = 1
+
 #collect errors in a list rather than printing them
 error_list=[]
 
@@ -95,7 +98,7 @@ for filename in args:
                     err=lno.group(1)+":"+err
             print filename+":"+err
             
-print "Exiting with %s"%exit_status                
+print "Exiting with %s"%(exit_status,)
 sys.exit(exit_status)
     
 
