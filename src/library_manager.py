@@ -54,9 +54,10 @@ def get_movers(config_client, lm_name):
     movers_list = config_client.get_movers(lm_name)
     if list: pprint.pprint(movers_list)
     if movers_list:
-	if (movers_list.has_key('mover') and
-	    movers_list.has_key('address')):
-	    add_mover(movers_list['mover'], movers_list['address'])
+	for item in movers_list:
+	    if (item.has_key('mover') and
+		item.has_key('address')):
+		add_mover(item['mover'], item['address'])
     Trace.trace(3, "}get_movers " + repr(movers))
     if list:
 	if movers:

@@ -250,7 +250,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
     # get list of the Library manager movers
     def get_movers(self, ticket):
 	Trace.trace(6,"{get_movers")
-	ret = {}
+	ret = []
 	#pprint.pprint(self.configdict)
 	if ticket.has_key('library'):
 	    # search for the appearance of this library manager
@@ -262,13 +262,19 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 			if type(item['library']) == types.ListType:
 			    for i in item['library']:
 				if i == ticket['library']:
-				    ret['mover'] = key
-				    ret['address'] = (item['hostip'], \
+				    mv = {'mover' : key,\
+					  'address' : (item['hostip'], \
 						      item['port'])
+					  }
+				    ret.append(mv)
 			else:
 			    if item['library'] == ticket['library']:
-				ret['mover'] = key
-				ret['address'] = (item['hostip'], item['port'])
+				mv = {'mover' : key,\
+				      'address' : (item['hostip'], \
+						   item['port'])
+				      }
+				ret.append(mv)
+
 	self.reply_to_caller(ret)
 	Trace.trace(6,"}get_movers"+repr(ret))
 
