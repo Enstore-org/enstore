@@ -1716,7 +1716,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     key = 'label'
 
                 if cond == None:
-                    q = q + "where %s == %s"%(key, val)
+                    q = q + "where %s = %s"%(key, val)
                 else:
                     q = q + "where %s %s %s"%(key, cond, val)
         elif state:
