@@ -80,14 +80,13 @@ config_port = string.atoi(os.environ.get("ENSTORE_CONFIG_PORT", "7500"))
 if __name__=="__main__":
     longopts =  ["config-host=", "config-port=","verbose", "media-type="]
     verbose=0
-    arglist = []
+    arglist = sys.argv[1:]
     ##be friendly about '_' vs '-'
-    for arg in sys.argv[1:]:
-        arglist.append(string.replace(arg,'_','-'))
     opts, args = getopt.getopt(arglist, "", longopts)
     media_type = None
     for opt,val in opts:
-        if opt=="--config-host":
+        opt=string.replace('_','-')
+        if opt == "--config-host":
             config_host=val
         elif opt=="--config-port":
             config_port=string.atoi(val)
