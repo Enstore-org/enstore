@@ -101,6 +101,7 @@ tar -czf \$F \\
   /etc/hosts.* \\
   /etc/HOSTNAME \\
   /etc/ntp.conf \\
+  /etc/ntp \\
   /fnal/ups/kt/*  \\
   /etc/krb5.keytab \\
   /etc/krb5.conf \\
