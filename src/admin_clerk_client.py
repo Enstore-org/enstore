@@ -22,11 +22,6 @@ class AdminClerkClient(generic_client.GenericClient) :
                  port=interface.default_port()):
 	self.print_id = "ADMINC"
         configuration_client.set_csc(self, csc, host, port, verbose)
-	try:
-	    keys = self.csc.get("admin_clerk")
-	    self.print_id = keys['logname']
-	except:
-	    pass
         self.u = udp_client.UDPClient()
 	self.verbose = verbose
 
