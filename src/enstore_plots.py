@@ -30,6 +30,7 @@ SMALLEST = "smallest"
 
 # file extensions
 PTS = ".pts"
+TMP = ".tmp"
 GNU = ".gnuplot"
 
 HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
@@ -46,6 +47,14 @@ DRIVE_IDS = { "ULT3580-TD1" : LTO,
 	      "EXB-89008E000112" : MAMMOTH,
 	      "EXB-8900" : MAMMOTH
 	      }
+
+# write out the mount data
+def write_mount_data(openfile, data):
+    total = 0
+    for mount_d in data:
+        openfile.write("%s %s\n"%(mount_d['start'], mount_d['total']))
+        total = total + int(mount_d['total'])
+    return total
 
 # there may be several different drive ids that correspond to one type of drive.
 def translate_drive_id(drive_id):
@@ -181,6 +190,7 @@ class EnPlot(enstore_files.EnFile):
 	self.name = name
 	self.dir = dir
 	self.ptsfile = self.file_name+PTS
+	self.tmpptsfile = self.file_name+TMP+PTS
 	self.psfile = self.file_name+enstore_constants.PS
 	self.gnufile = self.file_name+GNU
 
@@ -206,140 +216,6 @@ class EnPlot(enstore_files.EnFile):
                 # move these files somewhere
                 os.system("mv %s %s;mv %s* %s"%(self.gnufile, pts_dir,
                                                 self.ptsfile, pts_dir))
-
-class MphGnuFile(enstore_files.EnFile):
-
-    def write(self, gnuinfo, mount_label, lw=20):
-	if mount_label is None:
-	    mount_label = ""
-	self.openfile.write("set terminal postscript color solid\n"+ \
-	                   "set xlabel 'Hour'\nset yrange [0 : ]\n"+ \
-	                   "set xrange [ : ]\nset ylabel 'Mounts'\nset grid\n")
-	for info in gnuinfo:
-	    self.openfile.write("set output '"+info[3]+ \
-			       "'\nset title '%s Mount Count For "%(mount_label,)+ \
-				info[0]+ \
-	                       " (Total = "+info[1]+") "+plot_time()+"'\nplot '"+ \
-				info[2]+ \
-	                       "' using 1:2 t '' with impulses lw "+repr(lw)+"\n")
-
-class MphDataFile(EnPlot):
-
-    def __init__(self, dir, filename=enstore_constants.MPH_FILE, mount_label=None):
-	EnPlot.__init__(self, dir, filename)
-	self.mount_label = mount_label
-
-    # do not do the actual open here, we will do it when plotting because we
-    # may need to open more than one file.  
-    def open(self):
-	pass
-
-    # same for close as open. all files are already closed.
-    def close(self):
-	pass
-
-    def install(self, dir):
-        Trace.trace(enstore_constants.PLOTTING,
-                    "installing %s in %s"%(self.name, dir,))
-        # create the ps file, copy it to the users dir
-	os.system("gnuplot %s;"%(self.gnufile,))
-	# now copy each created ps file and make a jpg version of each of 
-	# the file including a postage stamp sized one
-	for (psfile, day) in self.psfiles:
-	    os.system("cp %s %s;"%(psfile, dir))
-	    convert_to_jpg(psfile, "%s/%s.%s"%(dir, self.name, day))
-
-    # make the mounts per hour plot file
-    def plot(self, data):
-        # mount data (mount requests and the actual mounting) are not 
-	# necessarily time ordered when read from the files.  2 or more 
-	# mount requests may occur before any actual volume has been mounted.
-	# also, since log files are closed/opened on day boundaries with no
-	# respect as to whats going on in the system, a log file may begin
-	# with several mount satisfied messages which have no matching 
-	# requests in the file.  also the file may end with several requests
-	# that are not satisfied until the next day or the next log file.
-	# to make things simpler for us to plot, the data will be ordered 
-	# so that each mount request is immediately followed by the actual
-        # mount satisfied message.
-	# sum the data together based on hour boundaries. we will only plot 1
-	# day per plot though.
-	date_only = {}
-	ndata = {}
-	dict = {}
-	gnuinfo = []
-	self.psfiles = []
-	self.total_mounts = {}
-	self.latency = {}
-        self.drive_type_d = {}
-	for [mover, pid, volume, mtime, work, drive_type] in data:
-            aKey = "%s_%s_%s"%(volume, mover, pid)
-            if work == enstore_files.MREQUEST:
-                # this is the mount request
-                dict[aKey] = mtime
-            else:
-	        # this was the record of the mount having been done, it is only valid
-		# if we have a record of the mount request
-                if dict.has_key(aKey):
-                    # we have a record of the mount request 
-                    adate = mtime[0:13]
-                    if ndata.has_key(adate):
-                        ndata[adate] = ndata[adate] + 1
-                        date_only[mtime[0:10]] = 0
-                    else:
-                        ndata[adate] = 1
-                        date_only[mtime[0:10]] = 0
-                    # save the latency values too
-                    if self.latency.has_key(adate):
-                        self.latency[adate].append((dict[aKey], mtime))
-		    else:
-			self.latency[adate] = [(dict[aKey], mtime)]
-                    # save the mounts per drive type
-                    drive_type = translate_drive_id(drive_type)
-                    # strip off the hour
-                    only_day = adate[:-3]
-                    if drive_type:
-                        if self.drive_type_d.has_key(drive_type):
-                            if self.drive_type_d[drive_type].has_key(only_day):
-                                self.drive_type_d[drive_type][only_day] = self.drive_type_d[drive_type][only_day] + 1
-                            else:
-                                self.drive_type_d[drive_type][only_day] = 1
-                        else:
-                            self.drive_type_d[drive_type] = {only_day : 1}
-        # since we no longer use the mph plots, skip creating the files
-	# open the file for each day and write out the data points
-	days = date_only.keys()
-	days.sort()
-	for day in days:
-	    fn = self.ptsfile+"."+day
-	    #pfile = open(fn, 'w')
-	    total = 0
-	    for hour in HOURS_IN_DAY:
-	        tm = day+":"+hour
-	        try:
-	            #pfile.write(hour+" "+repr(ndata[tm])+"\n")
-	            total = total + ndata[tm]
-	        except:
-                    pass
-	            #pfile.write(hour+" 0\n")
-	    else:
-	        # now we must save info for the gnuplot file
-		#self.psfile =  "%s.%s%s"%(self.file_name, day, enstore_constants.PS)
-	        #gnuinfo.append([day, repr(total), fn, self.psfile])
-		#self.psfiles.append((self.psfile, day))
-                #pfile.close()
-
-		# save the info in order to use it to update the file containing the
-		# information on total mounts/day that have been done up to this 
-		# day.
-		self.total_mounts[day] = total
-	else:
-	    # we must create our gnu plot command file too
-	    #gnucmds = MphGnuFile(self.gnufile)
-	    #gnucmds.open('w')
-	    #gnucmds.write(gnuinfo, self.mount_label)
-	    #gnucmds.close()
-            pass
 
 
 class MpdGnuFile(enstore_files.EnFile):
@@ -371,19 +247,17 @@ class MpdDriveTypeDataFile(EnPlot):
 	self.lw = 10
 
     # make the mounts per day per drive type plot file
-    def plot(self, drive_type_d):
-	# the data passed to us is a dict of total mount counts per day 
-        total = 0
-        for day in drive_type_d.keys():
-            self.openfile.write("%s %s\n"%(day, drive_type_d[day]))
-            total = total + drive_type_d[day]
-        else:
-            self.openfile.close()
-            gnucmds = MpdGnuFile(self.gnufile)
-            gnucmds.open('w')
-            gnucmds.write(self.psfile, self.ptsfile, repr(total), self.drive_type, self.lw)
-            gnucmds.close()
+    def plot(self, total_mounts):
+	# the data passed is of the form -
+        # {'start': '2003-03-27', 'total': '345'}
+        total = write_mount_data(self.openfile, total_mounts)
 
+        self.openfile.close()
+        gnucmds = MpdGnuFile(self.gnufile)
+        gnucmds.open('w')
+        gnucmds.write(self.psfile, self.ptsfile, repr(total), self.drive_type, self.lw)
+        gnucmds.close()
+            
 
 class MpdDataFile(EnPlot):
 
@@ -392,51 +266,62 @@ class MpdDataFile(EnPlot):
 	self.mount_label = mount_label
 	self.lw = 10
 
-    def get_all_mounts(self, new_mounts_d):
+    def get_all_mounts(self, new_mounts_l):
 	mounts_l = []
-	new_mounts_l = []
+	updated_mounts_l = []
 	total_mounts = 0
+        # we can more easily use a dict of totals with the date as the key
+        new_mounts_d = {}
+        for new_mount in new_mounts_l:
+            new_mounts_d[new_mount['start']] = int(new_mount['total'])
 	if self.openfile:
 	    mounts_l = self.openfile.readlines()
 	    for line in mounts_l:
 		[day, count] = string.split(string.strip(line))
-		if new_mounts_d.has_key(day):
-		    # replace the old count with the new value
-		    new_mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
+                if new_mounts_d.has_key(day):
+                    # replace the old count with the new value
+                    updated_mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
                     total_mounts = total_mounts + new_mounts_d[day]
-		    del new_mounts_d[day]
-		else:
-		    new_mounts_l.append(line)
-		    total_mounts = total_mounts + string.atoi(count)
+                    del new_mounts_d[day]
+                else:
+                    updated_mounts_l.append(line)
+                    total_mounts = total_mounts + int(count)
 
-	# now add to list any of the new days that were not present in the old list
+	# now add to list any of the new days that were not present in the
+        # old list
 	days = new_mounts_d.keys()
 	days.sort()
 	for day in days:
-	    new_mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
+	    updated_mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
 	    total_mounts = total_mounts + new_mounts_d[day]
-	return new_mounts_l, total_mounts
+	return updated_mounts_l, total_mounts
 
     def open(self):
 	if os.path.isfile(self.ptsfile):
 	    EnPlot.open(self, 'r')
 
     # make the mounts per day plot file
-    def plot(self, new_mounts_d, drive_type_d):
-	# the data passed to us is a dict of total mount counts for the
-        # days that were just plotted.  in effect this is new data that
+    def plot(self, new_mounts_l):
+	# the data passed to us is a list where each element is -
+        # {'start': '2003-03-27', 'total': '345'}
+        # in effect this is new data that
         # must be merged with the data currently in the total mount count
         # file.  will read in current data and overrite any old data with
         # the data that we have which is more recent.
-	mounts_l, total_mounts = self.get_all_mounts(new_mounts_d)
+        # NOTE: by default, the new data is for only 30 days.  if this saved
+        # data has not been updated in longer than that, then there will be
+        # incomplete/missing days.
+	mounts_l, total_mounts = self.get_all_mounts(new_mounts_l)
 	if self.openfile:
 	    self.openfile.close()
-	self.openfile = open(self.ptsfile, 'w')
+	self.openfile = open(self.tmpptsfile, 'w')
 	mounts_l.sort()
 	for line in mounts_l:
 	    self.openfile.write(line)
         else:
             self.openfile.close()
+            # now move the temp file to the real one
+            os.system("mv %s %s"%(self.tmpptsfile, self.ptsfile))
 
 	# now create the gnuplot command file
 	gnucmds = MpdGnuFile(self.gnufile)
@@ -445,18 +330,6 @@ class MpdDataFile(EnPlot):
 		      self.lw)
 	gnucmds.close()
 
-        # now create the mounts/day/drive type plots
-        self.files_to_install = {}
-        for drive_type in drive_type_d.keys():
-            self.files_to_install[drive_type] = MpdDriveTypeDataFile(self.dir, drive_type)
-            self.files_to_install[drive_type].open()
-            self.files_to_install[drive_type].plot(drive_type_d[drive_type])
-            self.files_to_install[drive_type].close()
-
-    def install(self, html_dir):
-        EnPlot.install(self, html_dir)
-        for file in self.files_to_install.keys():
-            self.files_to_install[file].install(html_dir)
 
 class MpdMonthDataFile(EnPlot):
 
@@ -468,43 +341,34 @@ class MpdMonthDataFile(EnPlot):
 	if os.path.isfile(self.ptsfile):
 	    EnPlot.open(self, 'r')
 
-    def get_30_mounts(self):
-	mpdfile = MpdDataFile(self.dir)
-	mpdfile.open()
-	lines_l = mpdfile.openfile.readlines()
-	mpdfile.openfile.close()
-	mounts_l = []
-	for line in lines_l:
-	    [day, count] = string.split(string.strip(line))
-	    mounts_l.append("%s %s\n"%(day, count))
-	else:
-	    mounts_l.sort()
-	return mounts_l[-30:]
-
-    def get_total_mounts(self, mounts_l):
-	total_mounts = 0
-	for mount in mounts_l:
-	    (day, count) = string.split(string.strip(mount))
-	    total_mounts = total_mounts + string.atoi(count)
-	return total_mounts
-
     # make the mounts per day plot file
-    def plot(self):
-	# we must plot the last 30 days of  data in the total mounts file
-	mounts_l = self.get_30_mounts()
-	total_mounts = self.get_total_mounts(mounts_l)
+    def plot(self, total_mounts, total_mounts_type):
+        # total_mounts has really only 30 days, or what the user asked
+        # for mounts
 	if self.openfile:
 	    self.openfile.close()
 	self.openfile = open(self.ptsfile, 'w')
-	for line in mounts_l:
-	    self.openfile.write(line)
+        total = write_mount_data(self.openfile, total_mounts)
 	# don't need to close the file as it is closed by the caller
 
 	# now create the gnuplot command file
 	gnucmds = MpdGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label)
+	gnucmds.write(self.psfile, self.ptsfile, repr(total), self.mount_label)
 	gnucmds.close()
+
+        # now create the mounts/day/drive type plots
+        self.files_to_install = {}
+        for drive_type in total_mounts_type.keys():
+            self.files_to_install[drive_type] = MpdDriveTypeDataFile(self.dir, drive_type)
+            self.files_to_install[drive_type].open()
+            self.files_to_install[drive_type].plot(total_mounts_type[drive_type])
+            self.files_to_install[drive_type].close()
+
+    def install(self, html_dir):
+        EnPlot.install(self, html_dir)
+        for file in self.files_to_install.keys():
+            self.files_to_install[file].install(html_dir)
 
 
 class MlatGnuFile(enstore_files.EnFile):
@@ -532,15 +396,17 @@ class MlatDataFile(EnPlot):
 	EnPlot.__init__(self, dir, enstore_constants.MLAT_FILE)
 	self.mount_label = mount_label
 
-    # make the mount latency plot file
-    def plot(self, data_d):
+    # make the mount latency plot file.  we assume data_l is of
+    # the form [ {'start': '2003-03-27 00:05:55', 'latency': '00:00:25'},
+    #            {'start': '2003-03-27 00:05:56', 'latency': '00:00:25'}...]
+    def plot(self, data_l):
 	last_mount_req = ""
 	# write out the data points
-        days = data_d.keys()
-        for day in days:
-	    for mount in data_d[day]:
-		ltnc = self.latency(mount[0], mount[1])
-		self.openfile.write("%s %s\n"%(mount[1], ltnc))
+        for data in data_l:
+            day = string.replace(data['start']," ", ":")
+            hour,minute,sec = string.split(data['latency'], ":")
+            ltnc = int(hour)*3600.0 + int(minute)*60.0 + int(sec)
+            self.openfile.write("%s %s\n"%(day, ltnc))
 
 	# we must create our gnu plot command file too
 	gnucmds = MlatGnuFile(self.gnufile)
@@ -548,19 +414,6 @@ class MlatDataFile(EnPlot):
 	gnucmds.write(self.psfile, self.ptsfile, self.mount_label)
 	gnucmds.close()
 
-    # subtract two times and return their difference
-    def latency(self, time1, time2):
-	# first convert each time into a tuple of the form -
-	#  (year, month, day, hour, minutes, seconds, 0, 0, -1)
-	# then convert the tuple into a seconds value and subtract the
-	# two to get the latency in seconds
-        t1 = (string.atoi(time1[0:4]), string.atoi(time1[5:7]), \
-              string.atoi(time1[8:10]), string.atoi(time1[11:13]), \
-              string.atoi(time1[14:16]), string.atoi(time1[17:]), 0, 0, -1)
-	t2 = (string.atoi(time2[0:4]), string.atoi(time2[5:7]), \
-	      string.atoi(time2[8:10]), string.atoi(time2[11:13]), \
-	      string.atoi(time2[14:16]), string.atoi(time2[17:]), 0, 0, -1)
-	return (time.mktime(t2) - time.mktime(t1))
 
 class XferGnuFile(enstore_files.EnFile):
 

@@ -15,8 +15,25 @@ import enstore_plots
 import enstore_functions
 import enstore_functions2
 import enstore_constants
+import acc_temp
 
 LOGFILE_DIR = "logfile_dir"
+
+def list_days(sdate, edate):
+    date_l = []
+    start_date = enstore_date.Date(sdate)
+    end_date = enstore_date.Date(edate)
+    if start_date.lessthanequalto(end_date):
+        date_l.append(start_date.formatted())
+        while 1:
+            new_date = enstore_date.Date(start_date.tomorrow())
+            if new_date.lessthanequalto(end_date):
+                date_l.append(new_date.formatted())
+            else:
+                break
+            start_date = new_date
+    return date_l
+
 
 class InquisitorPlots:
 
@@ -38,7 +55,23 @@ class InquisitorPlots:
 	    plotfile.close()
 	    plotfile.install()
 
-    # make the mount plots (mounts per hour and mount latency
+    # figure out how much information to get out of the db
+    # if start_time specified : do start_time -> latest
+    # if stop_time specified  : do 30 days ago -> stop_time
+    # if start_time and stop_time are specified :
+    #                           do start_time -> stop_time
+    def make_time_query(self, column):
+        time_q = "%s to_char(%s, 'YYYY-MM-DD') %s"%(acc_temp.WHERE, column, acc_temp.GREATER)
+        if not self.start_time:
+            # only use the last 30 days
+            self.start_time = self.acc_db.days_ago(30)
+        time_q = "%s '%s'"%(time_q, self.start_time)
+
+        if self.stop_time:
+            time_q = "%s %s %s '%s'"%(acc_temp.AND, column, acc_temp.LESS, self.stop_time)
+        return time_q
+
+    # make the mount plots (mounts per hour and mount latency)
     def mount_plot(self, prefix):
 	# get the config file so we can not plot null mover data
 	config = enstore_functions.get_config_dict()
@@ -47,59 +80,69 @@ class InquisitorPlots:
 	else:
 	    config = {}
 
-	ofn = self.output_dir+"/mount_lines.txt"
+        # get the mount information out of the accounting db. it is in
+        # the tape_mounts table
+        db_table = "tape_mounts"
+        start_col = "start"
+        finish_col = "finish"
+        type_col = "type"
+        table = "tape_mounts"
 
-        # parse the log files to get the media changer mount/dismount
-        # information, put this info in a separate file
-        # always add /dev/null to the end of the list of files to search thru 
-        # so that grep always has > 1 file and will always print the name of 
-        # the file at the beginning of the line.
-        mountfile = enstore_files.EnMountDataFile("%s* /dev/null"%(prefix,), ofn, 
-                                        "-e %s -e %s"%(Trace.MSG_MC_LOAD_REQ,
-                                                       Trace.MSG_MC_LOAD_DONE),
-                                                   self.logfile_dir, "", config)
+        time_q = self.make_time_query(start_col)
 
-	# only extract the information from the newly created file that is
-	# within the requested timeframe.
-	mountfile.open('r')
-	mountfile.timed_read(self.start_time, self.stop_time, prefix)
-	# now pull out the info we are going to plot from the lines
-	mountfile.parse_data(self.media_changer, prefix)
-        mountfile.close()
-        mountfile.cleanup(self.keep, self.keep_dir)
+        # only need mount requests
+        time_q = "%s %s state%s'M'"%(time_q, acc_temp.AND, acc_temp.EQUALS)
 
+        # get the total mounts/day.  the results are in a list
+        # where each element looks like -
+        #  {'start': '2003-03-27', 'total': '345'}
+        query = "select to_char(start , 'YYYY-MM-DD') as %s, count(*) as total from %s %s group by to_char(start, 'YYYY-MM-DD') order by to_char(start, 'YYYY-MM-DD')"%(start_col, table, time_q)
+        total_mounts = self.acc_db.query(query)
+
+        # get the mount latencies  the results are in a list
+        # where each element looks like -
+        #  {'start': '2003-03-27 00:05:55', 'latency': '00:00:25'}
+        query = "select %s, to_char(%s-%s, 'HH24:MI:SS') as latency from %s %s order by %s"%(start_col, finish_col, start_col,
+                                                                      table, time_q, start_col)
+        latencys = self.acc_db.query(query)
+
+        # get the mounts for each drive type.  first get a list of the drive
+        # types
+        query = "select distinct %s from %s"%(type_col, table)
+        drive_types = self.acc_db.query(query)
+        total_mounts_type = {}
+        # for each drive type get a list of the mounts/day
+        # the results are in a dict which holds a list where each element
+        # looks like -
+        #  {'start': '2003-03-27 00:05:55', 'latency': '00:00:25'}
+        for type_d in drive_types.dictresult():
+            aType = type_d[type_col]
+            query = "select to_char(start , 'YYYY-MM-DD') as %s, count(*) as total from %s %s %s %s='%s' group by to_char(start, 'YYYY-MM-DD') order by to_char(start, 'YYYY-MM-DD')"%(start_col, table, time_q,
+                                                                           acc_temp.AND, type_col, aType)
+            total_mounts_type[aType] = self.acc_db.query(query).dictresult()
+        
         # only do the plotting if we have some data
-        if mountfile.data:
-            # create the data files
-            mphfile = enstore_plots.MphDataFile(dir=self.output_dir, 
-						mount_label=self.mount_label)
-            mphfile.open()
-            # we need to do this because this is where the latency is
-            # calculated
-            mphfile.plot(mountfile.data)
-            mphfile.close()
-	    # we aren't using these plots, so do not create them.
-            #mphfile.install(self.html_dir)
-            mphfile.cleanup(self.keep, self.keep_dir)
-
+        if total_mounts:
+            # create the total mount latency data files
             mlatfile = enstore_plots.MlatDataFile(self.output_dir, self.mount_label)
             mlatfile.open()
-            mlatfile.plot(mphfile.latency)
+            mlatfile.plot(latencys.dictresult())
             mlatfile.close()
             mlatfile.install(self.html_dir)
             mlatfile.cleanup(self.keep, self.keep_dir)
 
-	    # now save any new mount count data for the continuing total count. and create the
-	    # overall total mount plot
+	    # now save any new mount count data for the continuing total
+            # count. and create the overall total mount plot
 	    mpdfile = enstore_plots.MpdDataFile(self.output_dir, self.mount_label)
             mpdfile.open()
-            mpdfile.plot(mphfile.total_mounts, mphfile.drive_type_d)
+            total_mounts_l = total_mounts.dictresult()
+            mpdfile.plot(total_mounts_l)
             mpdfile.close()
             mpdfile.install(self.html_dir)
 
 	    mmpdfile = enstore_plots.MpdMonthDataFile(self.output_dir, self.mount_label)
             mmpdfile.open()
-            mmpdfile.plot()
+            mmpdfile.plot(total_mounts_l, total_mounts_type)
             mmpdfile.close()
             mmpdfile.install(self.html_dir)
 	    mmpdfile.cleanup(self.keep, self.keep_dir)
@@ -271,6 +314,11 @@ class InquisitorPlots:
 	if not ld:
 	    ld = self.config_d.get("log_server")
 	alt_logs = ld.get("msg_type_logs", {})
+
+        # open a connection to the accounting db, the data is there
+        acc = self.config_d.get(enstore_constants.ACCOUNTING_SERVER, {})
+        if acc:
+            self.acc_db = acc_temp.accDB(acc.get('dbhost', ""), acc.get('dbname', ""))
 
 	if encp:
 	    enstore_functions.inqTrace(enstore_constants.PLOTTING,

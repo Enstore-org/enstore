@@ -37,6 +37,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	self.pts_nodes = pts_nodes
 	self.no_plot_html = no_plot_html
         self.startup_state = e_errors.OK
+        self.acc_db = None
 
         config_d = self.csc.dump(rcv_timeout, rcv_retry)
         if enstore_functions.is_timedout(config_d):
@@ -70,16 +71,13 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 
 	bpd_dir = enstore_functions2.get_bpd_subdir(self.html_dir)
 
-        self.system_tag = self.www_server.get(www_server.SYSTEM_TAG, 
-                                              www_server.SYSTEM_TAG_DEFAULT)
-
         # these are the files to which we will write, they are html files
 	self.plotfile_l = []
 	links_to_add = []
         plotfile1 = enstore_files.HTMLPlotFile(plot_file, self.system_tag)
+        # if the bpd_dir is the same as self.html_dir, then the page above
+        # already contains these plots, so skip this in that case
 	if not bpd_dir == self.html_dir:
-	    # if the bpd_dir is the same as self.html_dir, then the page above
-	    # already contains these plots, so skip this in that case
 	    plot_file = "%s/%s"%(bpd_dir, enstore_files.plot_html_file_name())
 	    plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
 						   self.system_tag, "../")
