@@ -1091,7 +1091,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return {}
 
     # check if quota is enabled in the configuration #### DONE
-    def quota_enabled(self, library, storage_group):
+    def quota_enabled2(self, library, storage_group):
         q_dict = self.csc.get('quotas')
         if q_dict['status'][0] == e_errors.KEYERROR:
             # no quota defined in the configuration
@@ -1105,6 +1105,32 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return None
         else:
             return q_dict
+
+    # it is backward compatible with old quota_enabled()
+    def quota_enabled(self, library, storage_group):
+        q = "select value from option where key = 'quota';"
+        state = self.dict.db.query(q).getresult()[0][0]
+        if state != "enabled":
+            return None
+        q = "select library, storage_group, quota, significance from quota;"
+        res = self.db.query(q).dictresult()
+        libraries = {}
+        order = {'bottom':[], 'top':[]}
+        for i in res:
+            if not libraries.has_key(i['library']):
+                libraries[i['library']] = {}
+            libraries[i['library']][i['storage_group']] = i['quota']
+            if i['significance'] == 'y':
+                order['top'].append((i['library'], i['storage_group']))
+            else:
+                order['bottom'].append((i['library'], i['storage_group']))
+        q_dict = {
+            'enabled': 'yes',
+            'libraries': libraries,
+            'order': order
+        }
+
+        return q_dict
 
     # check quota #### DONE
     def check_quota(self, quotas, library, storage_group):
