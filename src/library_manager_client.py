@@ -8,45 +8,18 @@ import errno
 #enstore imports
 import configuration_client
 import callback
-import generic_client_server
+import interface
 import generic_client
 import udp_client
 import Trace
 
-class LibraryManagerClient(generic_client_server.GenericClientServer, \
-                           generic_client.GenericClient) :
-    def __init__(self, csc=[], \
-                 host=generic_client_server.default_host(), \
-                 port=generic_client_server.default_port()) :
+class LibraryManagerClient(generic_client.GenericClient) :
+    def __init__(self, csc=0, list=0, name="", host=interface.default_host(), \
+                 port=interface.default_port()):
+        self.name=name
         # we always need to be talking to our configuration server
-        self.name = ""
-        self.config_list = 0
-        self.dolist = 0
-        self.dogetwork = 0
-        self.doalive = 0
-        configuration_client.set_csc(self, csc, host, port)
+        configuration_client.set_csc(self, csc, host, port, list)
         self.u = udp_client.UDPClient()
-
-    # define the command line options that are valid
-    def options(self):
-        return generic_client_server.GenericClientServer.config_options(self)+\
-      	       generic_client_server.GenericClientServer.list_options(self) +\
-	       ["config_list", "getwork", "alive"] +\
-	       generic_client_server.GenericClientServer.options(self)
-
-    #  define our specific help
-    def help_line(self):
-        return generic_client_server.GenericClientServer.help_line(self)+" library"
-
-    # parse the options like normal but make sure we have a library manager
-    def parse_options(self):
-        generic_client_server.GenericClientServer.parse_options(self)
-        # bomb out if we don't have a library
-        if len(self.args) < 1 :
-            self.print_help(),
-            sys.exit(1)
-        else:
-            self.name = self.args[0]
 
     def send (self, ticket) :
         # who's our library manager that we should send the ticket to?
@@ -54,20 +27,17 @@ class LibraryManagerClient(generic_client_server.GenericClientServer, \
         # send user ticket and return answer back
         return self.u.send(ticket, (lticket['host'], lticket['port']) )
 
-
     def write_to_hsm(self, ticket) :
         return self.send(ticket)
 
-
     def read_from_hsm(self, ticket) :
         return self.send(ticket)
-
 
     def getwork(self,list) :
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-	uinfo = {"callback_addr" : (host, port)}
+        uinfo = {"callback_addr" : (host, port)}
         ticket = {"work"               : "getwork",
                   "user_info"          : uinfo,
                   "unique_id"          : time.time() }
@@ -118,29 +88,59 @@ class LibraryManagerClient(generic_client_server.GenericClientServer, \
                   +"ticket[\"status\"]="+ticket["status"]
         return worklist
 
+class LibraryManagerClientInterface(interface.Interface) :
+    def __init__(self) :
+        self.name = ""
+        self.config_list = 0
+        self.getwork = 0
+        self.alive = 0
+        interface.Interface.__init__(self)
+
+	# parse the options
+        self.parse_options()
+
+    # define the command line options that are valid
+    def options(self):
+        return self.config_options()+self.list_options() +\
+	       ["config_list", "getwork", "alive"] +\
+	       self.help_options()
+
+    #  define our specific help
+    def help_line(self):
+        return interface.Interface.help_line(self)+" library"
+
+    # parse the options like normal but make sure we have a library manager
+    def parse_options(self):
+        interface.Interface.parse_options(self)
+        # bomb out if we don't have a library
+        if len(self.args) < 1 :
+            self.print_help(),
+            sys.exit(1)
+        else:
+            self.name = self.args[0]
+
 if __name__ == "__main__" :
     Trace.init("libm cli")
     import sys
     import pprint
 
-    # fill in defaults
-    lmc = LibraryManagerClient()
+    # fill in the interface
+    intf = LibraryManagerClientInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    lmc.parse_options()
-    lmc.csc.connect()
+    # get a library manager client
+    lmc = LibraryManagerClient(0, intf.config_list, intf.name,
+                               intf.config_host, intf.config_port)
 
-    if lmc.doalive:
+    if intf.alive:
         ticket = lmc.alive()
-    elif  lmc.dogetwork:
-        ticket = lmc.getwork(list)
+    elif  intf.getwork:
+        ticket = lmc.getwork(intf.list)
 
 
     if ticket['status'] == 'ok' :
-        if lmc.dolist:
+        if intf.list:
             pprint.pprint(ticket)
         sys.exit(0)
-
     else :
         print "BAD STATUS:",ticket['status']
         pprint.pprint(ticket)
