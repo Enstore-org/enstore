@@ -44,6 +44,7 @@ sys.stderr = sys.stdout
 def sendmail(subject, reason):
     # I know the hardware doesn't work.  Disable all mail till it does.
     # disable all mail 11/16/00 J Bakken
+    print time.ctime(time.time()), subject, reason
     return
     mail_cmd = '/bin/mail -s "%s" %s'%(subject,mail_victims)
     p=os.popen(mail_cmd, 'w')
