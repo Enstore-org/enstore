@@ -100,6 +100,7 @@ static struct return_values* pack_return_values(unsigned int crc_ui,
 						char *filename, int line);
 static double elapsed_time(struct timeval* start_time,
 			   struct timeval* end_time);
+static long long get_fsync_threshold(long long bytes, int blk_size);
 #ifdef PROFILE
 void update_profile(int whereami, int sts, int sock,
 		    struct profile *profile_data, long *profile_count);
@@ -199,6 +200,17 @@ static double elapsed_time(struct timeval* start_time,
     (end_time->tv_usec - start_time->tv_usec) / 1000000.0;
 
   return elapsed_time;
+}
+
+static long long get_fsync_threshold(long long bytes, int blk_size)
+{
+  long long temp_value;
+
+  /* Find out what one percent of the file size is. */
+  temp_value = (long long)(bytes / (double)100.0);
+
+  /* Return the larger of the block size and 1 percent of the file size. */
+  return (temp_value > blk_size) ? temp_value : blk_size;
 }
 
 #ifdef THREADED
@@ -588,10 +600,30 @@ static void* thread_write(void *info)
   double wait_time = 0.0;       /* Time waiting for condition variable. */
   double corrected_time = 0.0;
   int skipped_first_pass = 0;   /* Skips first buffer in timing rates. */
+  long long fsync_threshold = 0;/* Number of bytes to wait between fsync()s. */
+  long long last_fsync = bytes; /* Number of bytes done though last fsync(). */
+  struct stat file_info;        /* Information about the file to write to. */
+  int do_threshold = 0;         /* Holds boolean true when using fsync(). */
 
   /* Initialize these values in case of error there difference will be zero. */
   memset(&start_time, 0, sizeof(struct timeval));
   memset(&end_time, 0, sizeof(struct timeval));
+
+  /* Determine if the file descriptor supports fsync(). */
+  if(fstat(wr_fd, &file_info))
+  {
+    fprintf(stderr, "fstat: %s\n", strerror(errno));
+  }
+  else
+  {
+    if(S_ISREG(file_info.st_mode))
+    {
+      /* Get the number of bytes to transfer between fsync() calls. */
+      fsync_threshold = get_fsync_threshold(bytes, block_size);
+      /* Set this boolean true. */
+      do_threshold = 1;
+    }
+  }
 
   while(bytes > 0)
   {
@@ -746,10 +778,24 @@ static void* thread_write(void *info)
 				"mutex unlock failed", 0.0, corrected_time,
 				__FILE__, __LINE__);
     }
+
     /* Determine where to get the data. */
     bin = (bin + 1) % ARRAY_SIZE;
     /* Determine the number of bytes left to transfer. */
     bytes -= bytes_transfered;
+
+    /* If the difference is great enough flush the write buffer.  Also,
+       flush the buffer if it is the end of the file. */
+    if(do_threshold && 
+       (((last_fsync - bytes) > fsync_threshold) || (bytes == 0)))
+    {
+      last_fsync = bytes;
+      
+      if(fsync(wr_fd))
+      {
+	fprintf(stderr, "fsync: %s\n", strerror(errno));
+      }
+    }
   }
 
   /* Get the time that the thread finished to work on reading. */
@@ -796,12 +842,32 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
   struct timeval start_time;    /* Start of time the thread is active. */
   struct timeval end_time;      /* End of time the thread is active. */
   double time_elapsed;          /* Difference between start and end time. */
-  
+  long long fsync_threshold = 0;/* Number of bytes to wait between fsync()s. */
+  long long last_fsync = bytes; /* Number of bytes done though last fsync(). */
+  struct stat file_info;        /* Information about the file to write to. */
+  int do_threshold = 0;         /* Holds boolean true when using fsync(). */
+
   buffer = (char *)alloca(blk_size);
 
   /* Get the time that the thread started to work on transfering data. */
   gettimeofday(&start_time, NULL);
   memcpy(&end_time, &start_time, sizeof(struct timeval));
+
+  /* Determine if the file descriptor supports fsync(). */
+  if(fstat(wr_fd, &file_info))
+  {
+    fprintf(stderr, "fstat: %s\n", strerror(errno));
+  }
+  else
+  {
+    if(S_ISREG(file_info.st_mode))
+    {
+      /* Get the number of bytes to transfer between fsync() calls. */
+      fsync_threshold = get_fsync_threshold(bytes, blk_size);
+      /* Set this boolean true. */
+      do_threshold = 1;
+    }
+  }
 
   while(bytes > 0)
   {
@@ -952,7 +1018,22 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
       bytes_to_xfer -= sts;
       b_p += sts;
       bytes -= sts;
-    } while (bytes_to_xfer);	
+    } while (bytes_to_xfer);
+
+    /* If the difference is great enough flush the write buffer.  Also,
+       flush the buffer if it is the end of the file. */
+    if(do_threshold && 
+       (((last_fsync - bytes) > fsync_threshold) || (bytes == 0)))
+    {
+      printf("adsf %lld\n", (last_fsync - bytes));
+      last_fsync = bytes;
+      
+      if(fsync(wr_fd))
+      {
+	fprintf(stderr, "fsync: %s\n", strerror(errno));
+      }
+    }
+
   }
 
   /* Get the time that the thread finished to work on transfering data. */
