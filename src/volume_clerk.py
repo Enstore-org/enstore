@@ -466,6 +466,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                             ret_stat = (e_errors.OK,None)
                         else:
                             ret_stat = (ret, None)
+                    else: ret_stat = (e_errors.NOACCESS,None)
 	    else:
 		ret_stat = (e_errors.UNKNOWN,None)
 	ticket['status'] = ret_stat
@@ -1298,6 +1299,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # set system_inhibit flag, flag the database that we are now writing the system
     def set_writing(self, ticket):
         return self.set_system_inhibit(ticket, "writing")
+
+    # set system_inhibit flag to none
+    def set_system_none(self, ticket):
+        return self.set_system_inhibit(ticket, "none")
 
     # flag that the current volume is readonly
     def set_system_readonly(self, ticket):
