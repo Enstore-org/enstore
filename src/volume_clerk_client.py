@@ -17,7 +17,7 @@ import pprint
 import rexec
 
 _rexec = rexec.RExec()
-def eval(stuff):
+def veval(stuff):
     return _rexec.r_eval(stuff)
 
 # enstore imports
@@ -682,7 +682,7 @@ class VolumeClerkClient(generic_client.GenericClient,
              mover_type = 'Mover'
         else:
             mover_type = mover.get('mover_type','Mover')
-        if mover_type is 'DiskMover':
+        if mover_type == 'DiskMover':
             exact_match = 1
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
@@ -1300,16 +1300,16 @@ def do_work(intf):
         ticket = ifc.show_history(intf.history)
         if ticket['status'][0] == e_errors.OK and len(ticket['history']):
             for state in ticket['history']:
-                type = state['type']
+                stype = state['type']
                 if state['type'] == 'system_inhibit_0':
-                    type = 'system_inhibit[0]'
+                    stype = 'system_inhibit[0]'
                 elif state['type'] == 'system_inhibit_1':
-                    type = 'system_inhibit[1]'
+                    stype = 'system_inhibit[1]'
                 elif state['type'] == 'user_inhibit_0':
-                    type = 'user_inhibit[0]'
+                    stype = 'user_inhibit[0]'
                 elif state['type'] == 'user_inhibit_1':
-                    type = 'user_inhibit[1]'
-                print "%-28s %-20s %s"%(state['time'], type, state['value'])
+                    stype = 'user_inhibit[1]'
+                print "%-28s %-20s %s"%(state['time'], stype, state['value'])
     elif intf.write_protect_on:
         ticket = vcc.write_protect_on(intf.write_protect_on)
     elif intf.write_protect_off:
@@ -1537,7 +1537,7 @@ def do_work(intf):
         for s in intf.args:
             k,v=string.split(s,'=')
             try:
-                v=eval(v) #numeric args
+                v=veval(v) #numeric args
             except:
                 pass #yuk...
             d[k]=v
