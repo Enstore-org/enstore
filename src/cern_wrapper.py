@@ -778,10 +778,11 @@ def create_wrapper_dict(ticket):
     
     return wrapper_d
 
-def vol_labels(ticket, own_id=OWNER):
-    vol1 = VOL1(volume_id=ticket[VOLUME], owner_id=own_id)
+def vol_labels(vol_label, ticket={}, own_id=OWNER):
+    vol1 = VOL1(volume_id=vol_label, owner_id=own_id)
     uvl1 = UVL1()
-    uvl2 = UVL2(ticket[DECLARATION_DATE], ticket[VOLUME_FAMILY])
+    uvl2 = UVL2(ticket.get(DECLARATION_DATE, " "),
+                ticket.get(VOLUME_FAMILY, " "))
     return "%s%s%s"%(vol1, uvl1, uvl2)
 
 
@@ -850,7 +851,7 @@ if __name__ == '__main__':
               'status': ('ok', None)}
 
     wrapper_d = create_wrapper_dict(ticket)
-    vol_l = vol_labels(wrapper_d)
+    vol_l = vol_labels(wrapper_d[VOLUME], wrapper_d)
     hdr_l = hdr_labels(wrapper_d)
     eof_l = eof_labels(123456789L)
     print "%s%s%s"%(vol_l, hdr_l, eof_l)
