@@ -367,24 +367,60 @@ def print_volumes_defind_status(volume_list, output_file):
     vd_file.close()
     
 def print_volume_quotas_status(volume_quotas, output_file):
+    csc = configuration_client.ConfigurationClient()
+    quotas = csc.get('quotas',timeout=15,retry=3)
+    order = quotas.get('order', {})
+
     vq_file = open(output_file, "w")
 
     vq_file.write("Date this listing was generated: %s\n" % \
                   time.asctime(time.localtime(time.time())))
     
-    vq_file.write("%-10s %-13s %-6s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
-          ("Library", "Storage Group", "Quota",
+    vq_file.write("%-10s %-13s %-9s %-6s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
+          ("Library", "Storage Group", "Allocated", "Quota",
            "Blank Vols", "Written Vols", "Deleted", "Space Used",
            "Active Files", "Deleted Files", "Unknown Files"))
 
     quotas = volume_quotas.keys()
-    quotas.sort()
+    
+    top = []
+    bottom = []
     for keys in quotas:
-        formated_tuple = volume_quotas[keys][0:6] + \
-                         format_storage_size(volume_quotas[keys][6]) + \
-                         volume_quotas[keys][7:]
-        vq_file.write("%-10s %-13s %-6d %-10d %-12d %-7d %7.2f%-3s %-12d %-13d %d\n"
-                      % formated_tuple)
+        b_order = order.get('bottom', [])
+        t_order = order.get('top', [])
+        
+        if keys in b_order:
+            bottom.append(keys)
+        elif keys in t_order:
+            top.append(keys)
+        else:
+            for t_order in order.get('top', []):
+                if t_order[0] == None and t_order[1] == volume_quotas[keys][1]:
+                    bottom.append(keys)
+                elif t_order[1] == None and \
+                     t_order[0] == volume_quotas[keys][0]:
+                    bottom.append(keys)
+        
+            for b_order in order.get('bottom', []):
+                if b_order[0] == None and b_order[1] == volume_quotas[keys][1]:
+                    bottom.append(keys)
+                elif b_order[1] == None and \
+                     b_order[0] == volume_quotas[keys][0]:
+                    bottom.append(keys)
+    middle = []
+    for keys in quotas:
+        if keys not in top + bottom:
+            middle.append(keys)
+
+    #quotas.sort()
+    for quotas in (top, middle, bottom):
+        for keys in quotas:
+            formated_tuple = volume_quotas[keys][0:7] + \
+                             format_storage_size(volume_quotas[keys][6]) + \
+                             volume_quotas[keys][8:]
+            vq_file.write("%-10s %-13s %-9d %-6s %-10d %-12d %-7d %7.2f%-3s %-12d %-13d %d\n"
+                          % formated_tuple)
+        vq_file.write("\n") #insert newline between sections
     vq_file.close()
 
 def print_total_bytes_on_tape(volume_sums, output_file):
@@ -500,7 +536,15 @@ def verify_volume_sizes(this_volume_data, volume, volume_sizes):
                                               non_deleted_size)
 
 #Process the volume data and send the output to file.
-def verify_volume_quotas(volume_data, volume, volume_quotas):
+def verify_volume_quotas(volume_data, volume, volumes_allocated):
+    csc = configuration_client.ConfigurationClient()
+    quotas = csc.get('quotas',timeout=15,retry=3)
+
+    try:
+        quota = quotas['libraries']['storage_group']
+    except KeyError:
+        quota = "N/A"
+    
     storage_group = string.split(volume['volume_family'], ".")[0]
     library = volume['library']
 
@@ -541,31 +585,33 @@ def verify_volume_quotas(volume_data, volume, volume_quotas):
     # that it is the first volume of a storage group that has been found.
     # Therefore act accordingly with initalization.
     try:
-        quota = volume_quotas[(library, storage_group)]
+        v_info = volumes_allocated[(library, storage_group)]
 
-        volume_quotas[(library, storage_group)] =\
-                                (library,
-                                 storage_group,
-                                 quota[2] + 1,
-                                 quota[3] + blank_vols,
-                                 quota[4] + written_vols,
-                                 quota[5] + deleted,
-                                 quota[6] + space_used,
-                                 quota[7] + num_active_files,
-                                 quota[8] + num_deleted_files,
-                                 quota[9] + num_unknown_files)
+        volumes_allocated[(library, storage_group)] =\
+                                   (library,
+                                    storage_group,
+                                    v_info[2] + 1, #volume allocated
+                                    v_info[3],     #quota
+                                    v_info[4] + blank_vols,
+                                    v_info[5] + written_vols,
+                                    v_info[6] + deleted,
+                                    v_info[7] + space_used,
+                                    v_info[8] + num_active_files,
+                                    v_info[9] + num_deleted_files,
+                                    v_info[10] + num_unknown_files)
 
     except KeyError:
-        volume_quotas[(library, storage_group)] = (library,
-                                                   storage_group,
-                                                   1, #quota
-                                                   blank_vols,
-                                                   written_vols,
-                                                   deleted,
-                                                   space_used,
-                                                   num_active_files,
-                                                   num_deleted_files,
-                                                   num_unknown_files)
+        volumes_allocated[(library, storage_group)] = (library,
+                                                       storage_group,
+                                                       1, #volumes allocated
+                                                       quota, #quota
+                                                       blank_vols,
+                                                       written_vols,
+                                                       deleted,
+                                                       space_used,
+                                                       num_active_files,
+                                                       num_deleted_files,
+                                                       num_unknown_files)
         
     
 
@@ -643,7 +689,7 @@ def sort_inventory(data_file, volume_list, tmp_dir):
 # If output_dir is set to /dev/stdout/ then everything is sent to standard out.
 def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
     volume_sums = {}   #The summation of all of the file sizes on a volume.
-    volume_quotas = {} #Stats on usage of storage groups.
+    volumes_allocated = {} #Stats on usage of storage groups.
 
     volume_list = read_db(os.path.split(volume_file))
     if volume_list == 1:
@@ -688,9 +734,10 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
         verify_volume_sizes(file_data, volume, volume_sums)
         
         #Verifies the amount of data stored in storage groups.  Each call to
-        # this function adds an entry into volume_quotas.  The data generated
-        # will be outputed by the print_volume_quotas_stats() funciton.
-        verify_volume_quotas(file_data, volume, volume_quotas)
+        # this function adds an entry into volumes_allocated.  The data
+        # generated will be outputed by the print_volume_quotas_stats()
+        # funciton.
+        verify_volume_quotas(file_data, volume, volumes_allocated)
 
     if string.find(output_dir, "/dev/stdout") != -1: 
         last_access_file = "/dev/stdout"
@@ -708,7 +755,7 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
     print_last_access_status(volume_list, last_access_file)
     print_volume_size_stats(volume_sums, volume_list, volume_size_file)
     print_volumes_defind_status(volume_list, volumes_defind_file)
-    print_volume_quotas_status(volume_quotas, volume_quotas_file)
+    print_volume_quotas_status(volumes_allocated, volume_quotas_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     return len(volume_list), count_metadata
