@@ -1454,6 +1454,7 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
 			  struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
+  struct stat stats; 
 #if defined ( O_DIRECT ) && defined ( F_DIOINFO )
   int rtn_fcntl;
   struct dioattr direct_io_info;
@@ -1507,7 +1508,12 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
   }
   if (sts == 0)
   {
-    pack_return_values(info, 0, ENOTCONN, TIMEOUT_ERROR,
+    if(fstat(info->fd, &stats) == 0)
+       if(S_ISSOCK(stats.st_mode))
+	  /* If the connection is closed, give better error. */
+	  errno = ENOTCONN;
+     
+    pack_return_values(info, 0, errno, TIMEOUT_ERROR,
 		       "fd read timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
@@ -1520,6 +1526,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 			   struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
+  struct stat stats; 
 #if defined ( O_DIRECT ) && defined ( F_DIOINFO )
   int rtn_fcntl;
   struct dioattr direct_io_info;
@@ -1574,7 +1581,12 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
   }
   if (sts == 0)
   {
-    pack_return_values(info, 0, ENOTCONN, TIMEOUT_ERROR,
+    if(fstat(info->fd, &stats) == 0)
+      if(S_ISSOCK(stats.st_mode))
+	/* If the connection is closed, give better error. */
+	errno = ENOTCONN;
+    
+    pack_return_values(info, 0, errno, TIMEOUT_ERROR,
 		       "fd write timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
