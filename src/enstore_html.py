@@ -83,7 +83,8 @@ PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour (no null mvs)"],
 	     [enstore_constants.XFER_FILE, "Transfer Activity (no null mvs)"],
              [enstore_constants.NULL_RATES, "Null Terabytes/Day"],
 	     [enstore_constants.REAL_RATES, "Real Terabytes/Day (no null mvs)"],
-	     [enstore_constants.UTIL_FILE, "Drive Utilization"]
+	     [enstore_constants.UTIL_FILE, "Drive Utilization"],
+	     [enstore_constants.SG_FILE, "Storage Group Activity"]
 	     ]
 
 DEFAULT_LABEL = "UNKNOWN INQ PLOT"
