@@ -36,7 +36,7 @@ clean:
 	mv checksum_wrap.c ..
 
 
-../ftt_low_wrap.c: ftt.i
+../ftt_low_wrap.c: ftt_low.i
 	if [ "$(FTT_DIR)_" != _ ] ; then \
 	swig -I$(FTT_DIR)/include -python ftt_low.i ; \
 	mv ftt_low_wrap.c .. ; \
