@@ -53,7 +53,7 @@ debug_paranoia=0
 if os.environ.get('DEBUG_PARANOIA'):
     debug_paranoia=1
 vol1_paranoia=1 #check VOL1 headers (robot grabbed wrong tape)
-eov1_paranoia=1 #write and check EOV1 headers (spacing error)
+eov1_paranoia=0 #write and check EOV1 headers (spacing error)
 #If you have any problems with the eov1 checking, just set the above variable to 0 to disable this feature.
 
 
@@ -272,6 +272,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	    driver_object.write( ll )
 	    driver_object.writefm()
             driver_object.close()
+        self.inhibit_eov=0
 	if self.vol_info['external_label'] == '': return self.idle_mover_next()
 	if self.mvr_config['do_fork']:
             self.do_fork( ticket, 'u' )
@@ -584,7 +585,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 r=driver_object.rewind()
                 if debug_paranoia:
                     print "post check-label rewind complete, returned",r
-                if debug_paranoia: print "tell", driver_object.tell()
+                x=driver_object.tell()
+                if debug_paranoia: print "tell", x
             ##end of paranoid checks    
             else:
                 driver_object = self.hsm_driver.open( self.mvr_config['device'], open_flag)
