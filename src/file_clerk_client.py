@@ -313,7 +313,9 @@ def do_work(intf):
                         deleted = 'deleted'
                     else:
                         deleted = 'active'
-                print "%10s %s %10i %22s %7s %s\n" % (intf.list,
+                #else:
+                #    print `record`
+                print "%10s %s %10i %22s %7s %s" % (intf.list,
                     record['bfid'], record['size'],
                     record['location_cookie'], deleted,
                     record['pnfs_name0'])
