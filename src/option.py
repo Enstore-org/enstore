@@ -532,7 +532,7 @@ class Interface:
         self.args = []           #Contains unprocessed arguments.
         self.parameters = []
         self.some_args = []
-        self.config_options = {} #hack for old code
+        #self.config_options = {} #hack for old code
         
         apply(self.compile_options_dict, self.valid_dictionaries())
         
