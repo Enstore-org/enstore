@@ -156,20 +156,23 @@ class XY:
 # Most of the functions will be handled by the mover.
 # its  functions include:
 #     draw() - draws most features on the movers
-#     update_state() - as the state of the movers change, display for state will be updated
+#     update_state() - as the state of the movers change, display
+#                                  for state will be updated
 #     update_timer() - timer associated w/state, will update for each state
 #     load_tape() - tape gets loaded onto mover:
 #                                  gray indicates robot recognizes tape and loaded it
 #                                  orange indicates when mover actually recognizes tape     
-#     unload_tape() - will unload tape to side of each mover, ready for robot to remove f/screen
-#     show_progress() - indicates progress of each data transfer; is it almost complete?
+#     unload_tape() - will unload tape to side of each mover, ready for
+#                                 robot to remove f/screen
+#     show_progress() - indicates progress of each data transfer;
+#                                     is it almost complete?
 #     transfer_rate() - rate at which transfer being sent; calculates a rate
 #     undraw() - undraws the features fromthe movers
 #     position() - calculates the position for each mover
 #     reposition() - reposition each feature after screen has been moved
 #     __del__() - calls undraw() module and deletes features
 #
-######################################################################################
+#########################################################################
 
 class Mover:
     def __init__(self, name, display, index=0,N=0):
@@ -240,9 +243,11 @@ class Mover:
         self.timer_display = self.display.create_text(x+timer_offset.x, y+timer_offset.y, text='00:00:00', fill = timer_color)
         if self.percent_done != None:
             self.progress_bar_bg = self.display.create_rectangle( x+progress_bar_bg_offset1.x, y+progress_bar_bg_offset1.y,
-                                                                                                             x+progress_bar_bg_offset2.x+bar_width, y+progress_bar_bg_offset2.y, fill = progress_bg_color)
+                                                                                                             x+progress_bar_bg_offset2.x+bar_width, y+progress_bar_bg_offset2.y,
+                                                                                                             fill = progress_bg_color)
             self.progress_bar = self.display.create_line( x+progress_bar_offset.x, y+progress_bar_offset.y,
-                                                                                            x+progress_bar_offset.x+(bar_width*self.percent_done/100.0), y+progress_bar_offset.y, fill = progress_bar_color, width=8)
+                                                                                            x+progress_bar_offset.x+(bar_width*self.percent_done/100.0), y+progress_bar_offset.y,
+                                                                                            fill = progress_bar_color, width=8)
             
             self.progress_percent_display =  self.display.create_text(x+percent_disp_offset.x, y+percent_disp_offset.y,
                                                               text = str(self.percent_done)+"%",
@@ -370,9 +375,11 @@ class Mover:
 
         # Draw the new progress gauge
         self.progress_bar_bg = self.display.create_rectangle(x+progress_bar_bg_offset1.x, y+progress_bar_bg_offset1.y,
-                                                                                                        x+progress_bar_bg_offset2.x+bar_width, y+progress_bar_bg_offset2.y,fill=progress_bg_color)  
+                                                                                                        x+progress_bar_bg_offset2.x+bar_width, y+progress_bar_bg_offset2.y,
+                                                                                                        fill=progress_bg_color)  
         self.progress_bar = self.display.create_line(x+progress_bar_offset.x, y+progress_bar_offset.y,
-                                                                                       x+progress_bar_offset.x+(bar_width*self.percent_done/100.0), y+progress_bar_offset.y, fill=progress_bar_color, width=8)
+                                                                                       x+progress_bar_offset.x+(bar_width*self.percent_done/100.0), y+progress_bar_offset.y,
+                                                                                       fill=progress_bar_color, width=8)
         self.progress_percent_display =  self.display.create_text(x+perc_disp_offset.x, y+perc_disp_offset.y,
                                                                   text = str(self.percent_done)+"%",
                                                                   fill = percent_display_color)
@@ -698,23 +705,23 @@ class Display(Tkinter.Canvas):
             canvas_height = window_height
         ##** means "variable number of keyword arguments" (passed as a dictionary)
         Tkinter.Canvas.__init__(self, master,width=window_width, height=window_height, scrollregion=(0, 0, canvas_width, canvas_height))
-#XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
-        self.scrollX = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
-        self.scrollY = Tkinter.Scrollbar(self, orient=Tkinter.VERTICAL)
+###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
+##        self.scrollX = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
+##        self.scrollY = Tkinter.Scrollbar(self, orient=Tkinter.VERTICAL)
 
-       #When the canvas changes size or moves, update the scrollbars
-        self['xscrollcommand']= self.scrollX.set
-        self['yscrollcommand'] = self.scrollY.set
+##       #When the canvas changes size or moves, update the scrollbars
+##        self['xscrollcommand']= self.scrollX.set
+##        self['yscrollcommand'] = self.scrollY.set
 
-        #When scrollbar clicked on, move the canvas
-        self.scrollX['command'] = self.xview
-        self.scrollY['command'] = self.yview
+##        #When scrollbar clicked on, move the canvas
+##        self.scrollX['command'] = self.xview
+##        self.scrollY['command'] = self.yview
 
-        #pack 'em up
-        self.scrollX.pack(side=Tkinter.BOTTOM, fill=Tkinter.X)
-        self.scrollY.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-        self.pack(side=Tkinter.LEFT)
-#XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
+##        #pack 'em up
+##        self.scrollX.pack(side=Tkinter.BOTTOM, fill=Tkinter.X)
+##        self.scrollY.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
+##        self.pack(side=Tkinter.LEFT)
+###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
         Tkinter.Tk.title(self.master, title)
         self.configure(attributes)
         self.pack(expand=1, fill=Tkinter.BOTH)
