@@ -168,7 +168,6 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.get_keys = 0
-        self.key_value=()
         generic_client.GenericClientInterface.__init__(self)
 
         # if we are using the default host and port, warn the user
@@ -177,7 +176,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-	       ["config_file=","get_keys","dict","load","key_value="]
+	       ["config_file=","get_keys","dict","load"]
 
 if __name__ == "__main__":
     import sys
@@ -205,11 +204,6 @@ if __name__ == "__main__":
     elif intf.get_keys:
         stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
 	pprint.pprint(stati['get_keys'])
-
-    elif intf.key_value:
-        stati= csc.get_dict_entry(intf.key_value, intf.alive_rcv_timeout,
-                                  intf.alive_retries)
-	pprint.pprint(stati['servers']) #XXX ?
 
     else:
 	intf.print_help()

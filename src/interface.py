@@ -382,8 +382,6 @@ class Interface:
                 self.keep_dir = value
             elif opt == "--out_dir" :
                 self.out_dir = value
-            elif opt == "--key_value" :
-                self.key_value = str_to_tuple(value)
             elif opt == "--help" :
                 self.print_help()
                 sys.exit(0)
