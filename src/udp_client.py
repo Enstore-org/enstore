@@ -48,6 +48,7 @@ class UDPClient:
 
         # stringify message and check if it is too long
         message = `(self.ident, self.number, text)`
+	##print message
         if len(message) > TRANSFER_MAX :
             raise errno.errorcode[errno.EMSGSIZE],"UDPClient.send:message "+\
                   "too big. Size = ",+repr(len(message))+" Max = "+\
@@ -109,6 +110,19 @@ class UDPClient:
                 pass
         return out
 
+    # send message without waiting for reply and resend
+    def send_no_wait(self, text, address) :
+        # make a new message number - response needs to match this number
+        self.number = self.number + 1
+
+        # stringify message and check if it is too long
+        message = `(self.ident, self.number, text)`
+        if len(message) > TRANSFER_MAX :
+            raise errorcode[EMSGSIZE],"UDPClient.send:message too big.Size = "\
+                  +repr(len(message))+" Max = "+repr(TRANSFER_MAX)+" ",message
+
+        # send the udp message
+	self.socket.sendto (message, address)
 
 if __name__ == "__main__" :
     import getopt
@@ -157,3 +171,6 @@ if __name__ == "__main__" :
         print "Read back:\n",back
 
     sys.exit(status)
+
+
+
