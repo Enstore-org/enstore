@@ -50,9 +50,9 @@ class MediaChangerClient(generic_client.GenericClient):
 	    v = vcc.set_at_mover(vol_ticket['external_label'], 'mounted',mover)
 	    if v['status'][0] != e_errors.OK:
 		format = "cannot change to 'mounted' vol=%s mover=%s state=%s"
-		Trace.log(e_errors.INFO, format,
-                          vol_ticket["external_label"],
-                          v['at_mover'][1], v['at_mover'][0])
+		Trace.log( e_errors.INFO, format%(vol_ticket["external_label"],
+						  v['at_mover'][1],
+						  v['at_mover'][0]) )
 	    rt['status'] =  v['status']
         return rt
 
@@ -67,9 +67,9 @@ class MediaChangerClient(generic_client.GenericClient):
 				mover)
 	    if v['status'][0] != e_errors.OK:
 		format = "cannot change to 'unmounted' vol=%s mover=%s state=%s"
-		Trace.log(e_errors.INFO, format,
-                          vol_ticket["external_label"],
-                          v['at_mover'][1], v['at_mover'][0])
+		Trace.log(e_errors.INFO, format%(vol_ticket["external_label"],
+						 v['at_mover'][1],
+						 v['at_mover'][0]) )
 		rt['status'] =  v['status']
 		return rt
         return rt

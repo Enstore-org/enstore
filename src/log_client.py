@@ -153,18 +153,12 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
 
 
     """ 
-    This function takes arbitrary number of arguments. The mandatory arguments
-    are:
+    This function takes two arguments:
        severity - see severity codes above
-       priority - an integer which is compared to a bit mask(log_priority)
-		  1 implies always log, 2 imply normally go to logger,
-                  4 more complete file tracing, 8,16,... detailed debugging.
-                  the log_priority is set on a per server basis.
-                  note, a log_prioirty = 0 should turn off logging
-       format - any string which can contain formatters
+       msg      - any string
     Example:
-        send (ticket = Trace.log (ERROR, 'Error: errno=%d, and its \
-        interpretation is: %s', err, os.strerror(err))
+        Trace.log( ERROR, 'Error: errno=%d, and its interpretation is: %s'%\
+	(err,os.strerror(err)) )
     """
 
 
@@ -194,7 +188,8 @@ if __name__ == "__main__" :
 	print(ticket['logfile_name'])
 
     elif intf.test:
-        Trace.log(e_errors.ERROR, "This is a test message %s %d", 'TEST', 3456)
+        Trace.log( e_errors.ERROR,
+		   "This is a test message %s %d"%('TEST',3456) )
         ticket = {}
         #ticket = logc.send(e_errors.INFO, 21, "this is an INFO message")
 

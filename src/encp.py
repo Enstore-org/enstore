@@ -679,12 +679,12 @@ def write_to_hsm(input, output, output_file_family='',
 		       time.time()-done_ticket["times"]["t0"],
 		       e_errors.OK)
 
-	    Trace.log(e_errors.INFO, format,
-		      inputlist[i], outputlist[i], fsize,
-		      done_ticket["fc"]["external_label"],
-		      tinfo1["rate"+repr(i)], 
-                      tinfo1["transrate"+repr(i)],
-		      time.time()-t0)
+	    Trace.log(e_errors.INFO, format%(inputlist[i], outputlist[i],
+					     fsize,
+					     done_ticket["fc"]["external_label"],
+					     tinfo1["rate"+repr(i)], 
+					     tinfo1["transrate"+repr(i)],
+					     time.time()-t0) )
 	    retry = 0
 
 
@@ -1540,12 +1540,12 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
                                            fsize, done_ticket)
 
-        Trace.log(e_errors.INFO, format,
-                  requests[j]['infile'], requests[j]['outfile'], fsize,
-                  done_ticket["fc"]["external_label"],
-                  tinfo["rate"+repr(j)], 
-                  tinfo["transrate"+repr(j)],
-                  time.time()-t0)
+        Trace.log(e_errors.INFO, format%(requests[j]['infile'],
+					 requests[j]['outfile'], fsize,
+					 done_ticket["fc"]["external_label"],
+					 tinfo["rate"+repr(j)], 
+					 tinfo["transrate"+repr(j)],
+					 time.time()-t0) )
 	# remove file requests if transfer completed succesfuly
 	if (done_ticket["status"][0] == e_errors.OK):
 	    os.rename(tempname, requests[j]['outfile'])
@@ -1631,9 +1631,11 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
 	format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f"+\
 		 "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
 
-        Trace.log(e_errors.ERROR, format, inputfile, outputfile, filesize, 
-		  external_label, device, transfer_time, seek_time, mount_time, in_queue, total,
-		  status)
+        Trace.log(e_errors.ERROR, format%(inputfile, outputfile, filesize, 
+					  external_label, device,
+					  transfer_time, seek_time, mount_time,
+					  in_queue, total,
+					  status) )
     except:
         pass
 
