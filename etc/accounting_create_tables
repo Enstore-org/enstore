@@ -36,6 +36,8 @@ create index xfr_mover_idx on encp_xfer (mover);
 create index xfr_media_changer_idx on encp_xfer (media_changer);
 create index xfr_storage_group_idx on encp_xfer (storage_group);
 create index xfr_oid_idx on encp_xfer (oid);
+create index xfr_file_family_idx on encp_xfer (file_family);
+create index xfr_wrapper_idx on encp_xfer (wrapper);
 
 create table tape_mounts (
 node	varchar(32) not null,
@@ -93,6 +95,14 @@ create table encp_error(
 	mover		varchar,
 	drive_id	varchar,
 	drive_sn	varchar,
-	rw		char
+	rw		char,
+	volume		varchar
 );
+
+create index error_date_idx on encp_error (date);
+create index error_volume_idx on encp_error (volume);
+create index error_oid_idx on encp_error (oid);
+create index error_storage_group_idx on encp_error(storage_group);
+create index error_file_family_idx on encp_error(file_family);
+create index error_wrapper_idx on encp_error(wrapper);
 
