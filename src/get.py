@@ -48,10 +48,31 @@ def transfer_file(in_fd, out_fd):
     return {'status' : (e_errors.BROKEN, "Reached unreachable code."),
             'bytes' : bytes}
 
+#Update the ticket so that next file can be read.
+def next_request_update(work_ticket, file_number):
+    lc = "0000_000000000_%07d" % file_number
+
+    #Update the fields with the new location cookie.
+    work_ticket['fc']['location_cookie'] = lc
+
+    #Only update these fields if a filename is not known already.
+    #This could be a problem if a file is the same name as its location cookie.
+    if encp.is_location_cookie(work_ticket['infile']):
+        # Update the tickets fields for the next file.
+        work_ticket['infile'] = lc
+        work_ticket['outfile'] = \
+                    os.path.join(os.path.dirname(work_ticket['outfile']), lc)
+        work_ticket['wrapper']['fullname'] = work_ticket['outfile']
+
+    #Update the unique id for the LM.
+    work_ticket['unique_id'] = encp.generate_unique_id()
+
 def get_single_file(work_ticket, control_socket, e):
 
     #Loop around in case the file transfer needs to be retried.
     while work_ticket.get('retry', 0) <= e.max_retry:
+
+        Trace.message(5, "Opening local file.")
 
         # Open the local file.
         done_ticket = encp.open_local_file(work_ticket['outfile'], e)
@@ -63,6 +84,7 @@ def get_single_file(work_ticket, control_socket, e):
         else:
             out_fd = done_ticket['fd']
 
+        Trace.message(5, "Sending next file request to the mover.")
 
         # Send the request to the mover.
         work_ticket['method'] = "read_next" #evil hack
@@ -73,15 +95,22 @@ def get_single_file(work_ticket, control_socket, e):
                              (work_ticket['outfile'], done_ticket['status'],))
             encp.quit(1)
 
+        Trace.message(5, "Opening the data socket.")
+
         #Open the data socket.
         try:
             data_path_socket = encp.open_data_socket(
                 work_ticket['mover']['callback_addr'],
                 work_ticket['callback_addr'][0])
+
+            if not data_path_socket:
+                print "2983333333333333"
         except (encp.EncpError, socket.error), detail:
             sys.stderr.write("Unable to open data socket with mover: %s\n" %
                              (str(detail),))
             encp.quit(1)
+
+        Trace.message(5, "Waiting for data")
 
         # Stall starting the count until the first byte is ready for reading.
         read_fd, write_fd, exc_fd = select.select([data_path_socket], [],
@@ -89,9 +118,13 @@ def get_single_file(work_ticket, control_socket, e):
 
         if data_path_socket not in read_fd:
             return {'status':(e_errors.TIMEDOUT, "No data received")}
-            
+
+        Trace.message(5, "Reading data from tape.")
+        
         # Read the file from the mover.
         done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
+
+        Trace.message(5, "Completed reading from tape.")
 
         # Close these desriptors before they are forgotten about.
         encp.close_descriptors(out_fd, data_path_socket)
@@ -101,12 +134,19 @@ def get_single_file(work_ticket, control_socket, e):
                                      done_ticket, None,
                                      None, None, e)
 
+        #Everything is fine.
         if e_errors.is_ok(result_dict):
             work_ticket = encp.combine_dict(result_dict, work_ticket)
             delete_at_exit.unregister(work_ticket['outfile']) #don't delete
             return encp.combine_dict(result_dict, work_ticket)
+        #The requested file does not exist on the tape.  (i.e. the tape has
+        # only 6 files and the seventh file was requested.)
+        if result_dict['status'] == (e_errors.READ_ERROR, e_errors.READ_EOD):
+            return result_dict
+        #Keep trying.
         elif e_errors.is_retriable(result_dict['status'][0]):
             continue
+        #Give up.
         elif e_errors.is_non_retriable(result_dict['status'][0]):
             return result_dict
 
@@ -205,20 +245,53 @@ def main(e):
 
     # If this is a volume where the file information is not known...
     if requests_per_vol[e.volume][0].get('bfid', None) == None:
-        # Keep looping until last file read error occurs.
-        pass
+        #Initalize these.
+        file_number = 1
+        request = encp.combine_dict(ticket, request)
+
+        # Keep looping until the READ_EOD error occurs.
+        while 1:
+            
+            Trace.message(4, "Preparing to read %s." % request['outfile'])
+            
+            #Read from tape.
+            done_ticket = get_single_file(request, control_socket, e)
+
+            if e_errors.is_ok(done_ticket):
+                Trace.message(1,
+                           "File %s copied successfully." % request['infile'])
+            elif done_ticket['status'] == (e_errors.READ_ERROR,
+                                           e_errors.READ_EOD):
+                #The last file was already read.  Exit.
+                break
+            else:
+                Trace.message(1,"File %s read failed: %s" %
+                              (request['infile'], done_ticket['status']))
+
+            # The following lines setup the next file to read.
+
+            #The fields need to be updated for the next file on the tape
+            # to be read.
+            #Note: This will not work for the cern wrapper.  For this
+            # wrapper the header and trailer consume a 'file' on the tape.
+            file_number += 1
+            next_request_update(request, file_number)
+            #Create the local file.
+            encp.create_zero_length_files(request['outfile'])
+    
     # ... Or there is file information is already known.
     else:
         # Loop through the already known files list.
         for request in requests_per_vol[e.volume]:
 
-            Trace.message(4, "Reading %s." % request['outfile'])
+            Trace.message(4, "Preparing to read %s." % request['outfile'])
 
             request = encp.combine_dict(ticket, request)
             done_ticket = get_single_file(request, control_socket, e)
 
             if e_errors.is_ok(done_ticket):
-                Trace.message(1,"File %s read successfully." % request['infile'])
+                Trace.message(1,
+                           "File %s copied successfully." % request['infile'])
             else:
                 Trace.message(1,"File %s read failed: %s" %
                               (request['infile'], done_ticket['status']))
@@ -255,7 +328,6 @@ def do_work(intf):
         encp.quit(1)
 
 if __name__ == '__main__':
-
 
     if len(sys.argv) < 4:
         print_usage()
