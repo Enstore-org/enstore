@@ -9,6 +9,7 @@ import string
 import time
 import fcntl
 import regsub
+import pprint
 
 enabled = "enabled"
 disabled = "disabled"
@@ -30,29 +31,25 @@ class pnfs :
         self.check_valid_pnfsFilename()
         self.statinfo()
         self.get_bit_file_id()
+        self.get_info()
         self.get_library()
         self.get_file_family()
         self.get_file_family_width()
 
     # list what is in the current object
     def dump(self) :
-        print "Current object values:"
-        keys = self.__dict__.keys()
-        keys.sort()
-        for k in keys :
-            if k == 'mode' :
-                print " ",k," = ",oct(self.__dict__[k])
-            else :
-                print " ",k," = ",self.__dict__[k]
+	print dir(self)
+	print ""
+	print __name__
+	print ""
+        pprint.pprint(self.__dict__)
 
     #################################################################################
 
     # simple test configuration
     def jon1(self) :
         if self.valid == valid :
-            self.touch()
-            self.statinfo()
-            self.set_bit_file_id("1234567890987654321",123)
+            self.set_bit_file_id("1234567890987654321",123,"no information")
             self.statinfo()
         else:
             raise self.pnfsFilename+" is invalid"
@@ -60,8 +57,8 @@ class pnfs :
     # simple test configuration
     def jon2(self) :
         if self.valid == valid :
-            self.set_bit_file_id("1234567890987654321",45678)
-            self.set_library("active")
+            self.set_bit_file_id("1234567890987654321",45678,"no informatioN")
+            self.set_library("activelibrary")
             self.set_file_family("raw")
             self.set_file_family_width(2)
             self.statinfo()
@@ -135,6 +132,7 @@ class pnfs :
                 #except :
                     #print "Could not lock or unlock ",self.pnfsFilename,sys.exc_info()[1]
                 f.close()
+            self.get_showid()
             t = int(time.time())
             try :
                 os.utime(self.pnfsFilename,(t,t))
@@ -163,7 +161,7 @@ class pnfs :
     # read the value stored in the requested file layer
     def readlayer(self,layer) :
         if self.valid == valid and self.exists == exists :
-            self.utime()
+            self.statinfo()
             f = open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','r')
             l = f.readlines()[0]
             f.close()
@@ -185,7 +183,7 @@ class pnfs :
     # read the value stored in the requested tag
     def readtag(self,tag) :
         if self.valid == valid :
-            self.utime()
+            self.statinfo()
             f = open(self.dir+'/.(tag)('+tag+')','r')
             t = f.readlines()[0]
             f.close()
@@ -310,14 +308,7 @@ class pnfs :
     # you can't change the file size once you set it
     def set_file_size(self,size) :
         if self.valid == valid and self.exists == exists :
-            self.utime()
-            f = open(self.dir+'/.(id)('+self.file+')','r')
-            i = f.readlines()
-            f.close()
-            id = regsub.sub("\012","",i[0])
-            f = open(self.dir+'/.(showid)('+id+')','r')
-            sid = f.readlines()
-            f.close()
+            self.statinfo()
             if self.file_size != 0 :
                 try :
                     os.remove(self.dir+'/.(fset)('+self.file+')(size)')
@@ -327,15 +318,9 @@ class pnfs :
                         pass
                     else :
                         raise sys.exc_info()[0],sys.exc_info()[1]
-            f = open(self.dir+'/.(showid)('+id+')','r')
-            sid = f.readlines()
-            f.close()
+            self.statinfo()
             f = open(self.dir+'/.(fset)('+self.file+')(size)('+repr(size)+')','w')
             f.close()
-            f = open(self.dir+'/.(showid)('+id+')','r')
-            sid = f.readlines()
-            f.close()
-            self.utime()
             self.statinfo()
 
     # get the size of the file from the stat member
@@ -363,10 +348,13 @@ class pnfs :
         if self.stat[0] != error :
             try :
                 self.mode = self.stat[stat.ST_MODE]
+                self.mode_octal = repr(oct(self.mode))
             except :
                 self.mode = 0
+                self.mode_octal = 0
         else :
             self.mode = 0
+            self.mode_octal = 0
 
 
     #################################################################################
@@ -379,11 +367,14 @@ class pnfs :
     #################################################################################
 
     # store a new bit file id
-    def set_bit_file_id(self,value,size=0) :
+    def set_bit_file_id(self,value,size=0,info="") :
         if self.valid == valid :
             if self.exists == direxists :
                 self.touch()
+                self.statinfo()
             self.writelayer(1,value)
+            if info != "" :
+                self.writelayer(2,info)
             self.get_bit_file_id()
             if size != 0 :
                 self.set_file_size(size)
@@ -397,6 +388,16 @@ class pnfs :
                 self.bit_file_id = unknown
         else :
             self.bit_file_id = unknown
+
+    # get the information layer
+    def get_info(self) :
+        if self.valid == valid and self.exists == exists :
+            try :
+                self.info = self.readlayer(2)
+            except :
+                self.info = unknown
+        else :
+            self.info = unknown
 
 
     #################################################################################
@@ -457,8 +458,9 @@ class pnfs :
     #################################################################################
 
     # update all the stat info on the file, or if non-existant, its directory
-    def statinfo(self) :
-        self.get_stat()
+    def statinfo(self,update=1) :
+        if update :
+            self.get_stat()
         self.get_uid()
         self.get_uname()
         self.get_gid()
@@ -537,7 +539,7 @@ if __name__ == "__main__" :
                 print "ERROR: File ",count," is invalid - but valid flag is set"
                 continue
             p.jon1()
-	    p.get_pnfs_info()
+            p.get_pnfs_info()
             if list : p.dump()
             l = p.library
             f = p.file_family

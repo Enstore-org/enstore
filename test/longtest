@@ -1,8 +1,8 @@
 #!/bin/sh
 
-while /bin/true; do 
-    cat ../files.in | while read f b ; do  
-	python ../../encp.py r $b out.out ; 
-	diff out.out ../data/$f ;
+while /bin/true; do
+    cat ../files.in | while read f; do
+        python ../../encp.py $f out.out ;
+        diff out.out ../data/`basename $f` ;
     done ;
 done
