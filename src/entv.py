@@ -1288,6 +1288,7 @@ def main(intf):
     
     continue_working = 1
     display = None
+    mover_display = None
 
     while continue_working:
 
@@ -1307,6 +1308,7 @@ def main(intf):
 
         #if display == None:
         display = enstore_display.Display(entvrc_dict, master = master,
+                                          mover_display = mover_display,
                              background = entvrc_dict.get('background', None))
 
         if not intf.messages_file:
@@ -1380,6 +1382,8 @@ def main(intf):
 
         #Determin if this is a reinitialization (True) or not (False).
         continue_working = display.attempt_reinit()
+
+        mover_display = display.mover_display
 
         #Reclaim all of display's resources now.
         del display

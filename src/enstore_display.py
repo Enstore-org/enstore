@@ -1710,45 +1710,120 @@ class MoverDisplay(Tkinter.Toplevel):
         
         #Tell it to set the remaining configuration values and to apply them.
         self.title(mover.name)
-        self.mover = mover
-        self.status = self.get_mover_status()
 
-        if not hasattr(self, "state_display"):
+        self.mover_name = mover.name
+        self.display = mover.display
+        self.state_display = None
+        self.after_mover_diplay_id = None
+
+        self.status_text = self.format_mover_status(self.get_mover_status())
+
+        #When the window is closed, we have some things to cleanup.
+        self.bind('<Destroy>', self.window_killed)
+
+        self.update_status()
+
+    def reinit(self, mover = None, display = None):
+
+        self.after_cancel(self.after_mover_diplay_id)
+        
+        if display:
+            self.display = display
+        if mover:
+            self.mover_name = mover.name
+        
+        self.status_text = self.format_mover_status(self.get_mover_status())
+
+        self.update_status()
+
+    def window_killed(self, event):
+        #This is a callback function that must take as arguments self and
+        # event.  Thus, turn off the unused args test in pychecker.
+        __pychecker__ = "no-argsused"
+
+        #With the window closed, don't do an update.
+        self.after_cancel(self.after_mover_diplay_id)
+
+        #Clear this to avoid a cyclic reference.
+        self.display = None
+
+    def draw(self):
+
+        try:
+            self.state_display.configure(text = self.status_text,
+                                         foreground = self.state_color,
+                                         background = self.mover_color,)
+            self.state_display.pack(side=Tkinter.LEFT, expand=Tkinter.YES,
+                                    fill=Tkinter.BOTH)
+        except:
             #If the state_display variable does not yet exist; create it.
             self.state_display = Tkinter.Label(master=self,
                                                justify=Tkinter.LEFT,
                                                font = self.font,
-                                               text = self.status,
-                                               foreground = mover.state_color,
-                                               background = mover.mover_color,
+                                               text = self.status_text,
+                                               foreground = self.state_color,
+                                               background = self.mover_color,
                                                anchor=Tkinter.NW)
             self.state_display.pack(side=Tkinter.LEFT, expand=Tkinter.YES,
                                     fill=Tkinter.BOTH)
-        else:
-            #If it does exit, update the necessary info.
-            self.state_display.configure(text = self.status,
-                                         foreground = mover.state_color,
-                                         background = mover.mover_color)
 
-        self.after(5000, self.update_status)
+    def undraw(self):
+        try:
+            self.state_display.destroy()
+            self.state_display = None
+        except AttributeError, msg:
+            pass
+        except Tkinter.TclError, msg:
+            pass
 
     def get_mover_status(self):
-        csc = self.mover.display.csc
-        mov = mover_client.MoverClient(csc, self.mover.name+".mover")
+        #Find out information about the mover.  self.mover.name must be
+        # a string of the format like: mover31@stken
+        mover_name, system_name = tuple(self.mover_name.split("@"))
+        mover_name = mover_name + ".mover"
+        try:
+            csc = self.display.csc_dict[system_name]
+        except (KeyError, AttributeError), msg:
+            return {'status' : (e_errors.DOESNOTEXIST, None),
+                    'state' : "ERROR"}
+        mov = mover_client.MoverClient(csc, mover_name)
         status = mov.status(rcv_timeout=5, tries=1)
-        order = status.keys()
+
+        #In case of timeout, set the state to Unknown.
+        if status.get('state', None) == None:
+            status['state'] = "Unknown"
+        
+        return status
+
+    def format_mover_status(self, status_dict):
+        order = status_dict.keys()
         order.sort()
         msg = ""
         for item in order:
-            msg = msg + "%s: %s\n" % (item, pprint.pformat(status[item]))
+            msg = msg + "%s: %s\n" % (item, pprint.pformat(status_dict[item]))
         return msg
 
     def update_status(self):
-        self.status = self.get_mover_status()
-        self.state_display.configure(text = self.status,
-                                     foreground = self.mover.state_color,
-                                     background = self.mover.mover_color,)
-        self.after(5000, self.update_status)
+        status = self.get_mover_status()
+        self.status_text = self.format_mover_status(status)
+        
+        if status['state'] in ['ERROR']:
+            self.state_color = colors('state_error_color')
+            self.mover_color = colors('mover_error_color')
+        elif status['state'] in ['OFFLINE']:
+            self.state_color = colors('state_offline_color')
+            self.mover_color = colors('mover_offline_color')
+        elif status['state'] in ['IDLE', 'Unknown']:
+            self.state_color = colors('state_idle_color')
+            self.mover_color = colors('mover_stable_color')
+        else:
+            self.state_color =colors('state_stable_color')
+            self.mover_color = colors('mover_stable_color')
+
+        self.draw()
+        
+        #Reset the time for 5 seconds.
+        self.after_mover_diplay_id = self.after(5000, self.update_status)
 
 #########################################################################
 ##
@@ -1851,8 +1926,8 @@ class Display(Tkinter.Canvas):
     """  The main state display """
     ##** means "variable number of keyword arguments" (passed as a dictionary)
     #entvrc_info is a dictionary of various parameters.
-    def __init__(self, entvrc_info, master = None, **attributes):
-
+    def __init__(self, entvrc_info, master = None, mover_display = None,
+                 **attributes):
         if not hasattr(self, "master"):
             self.master = master
             reinited = 0
@@ -1928,6 +2003,13 @@ class Display(Tkinter.Canvas):
         self.pack(expand = 1, fill = Tkinter.BOTH)
         self.update()
 
+        #Force the specific mover display to be reinitialized.
+        if mover_display:
+            mover_display.reinit(display = self)
+            self.mover_display = mover_display
+        else:
+            self.mover_display = None
+
     def reinit_display(self):
         self._reinit = 0
         self.stopped = 0
@@ -1969,9 +2051,10 @@ class Display(Tkinter.Canvas):
                 if mover.state_display == overlapping[i]:
                     #If the window already exits; reuse it.
                     if getattr(self, "mover_display", None):
-                        self.mover_display.__init__(mover=mover)
+                        #self.mover_display.__init__(mover=mover)
+                        self.mover_display.reinit(mover = mover)
                     else:
-                        self.mover_display = MoverDisplay(mover=mover)
+                        self.mover_display = MoverDisplay(mover)
 
         #Change the color of the connection.
         for connection in self.connections.values():
@@ -2059,7 +2142,11 @@ class Display(Tkinter.Canvas):
 
         for mov in self.movers.values():
             self.after_cancel(mov.timer_id)
-        
+
+        #if self.mover_display:
+        #    self.mover_display.destroy()
+        #    self.mover_display = None
+            
         self.master_geometry = self.master.geometry()
 
         self.cleanup_display()
