@@ -26,7 +26,7 @@ case $node in
 	    ENSTORE_CONFIG_FILE=stk.conf
             complain=0
             ;;
-  rip*|d0enmvr15*|d0enmvr17*)
+  rip*)
 	    ENSTORE_CONFIG_HOST=$rip
 	    ENSTORE_CONFIG_FILE=rip.conf
             complain=0
