@@ -8,7 +8,7 @@ if [ ! -r $tickets ]; then exit 0;fi
 
 python $ENSTORE_DIR/bin/helpDeskTicket.py $tickets
 rc=$?
-if [ $rc != 0 ]; then echo "trouble $rc"; exit $rc
+if [ $rc != 0 ]; then echo "trouble $rc"; exit $rc; fi
 rm -f $tickets
 
 chmod 666 FARenstore-opens-forISAgroup.rtf
