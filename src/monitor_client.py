@@ -105,7 +105,7 @@ class MonitorServerClient(generic_client.GenericClient):
 
          #Set args outside of the loop for performance reasons.
         if function == "send":
-            args = (sendstr, socket.MSG_DONTWAIT)
+            args = (sendstr,) # socket.MSG_DONTWAIT)
             sock_read_list = []
             sock_write_list = [data_sock]
         else:  #if read
@@ -135,7 +135,7 @@ class MonitorServerClient(generic_client.GenericClient):
                 bytes_left = bytes_to_transfer - bytes_transfered
                 if w and bytes_left < block_size:
                     sendstr = "S"*bytes_left
-                    args = (sendstr, socket.MSG_DONTWAIT)
+                    args = (sendstr,) # socket.MSG_DONTWAIT)
 
                 try:
                     #By handling the similarities of sends and recieves the
@@ -179,12 +179,14 @@ class MonitorServerClient(generic_client.GenericClient):
     #Return the socket to use for the encp rate tests.
     #mon_serv_addr: A 2-tuple containing the host and port to connect to.
     def _open_data_socket(self, mon_serv_addr):
+        Trace.trace(10, "Creating non-blocking data socket.")
         #Create the socket and put it into non-blocking mode.
         sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         flags = fcntl.fcntl(sock.fileno(), FCNTL.F_GETFL)
         fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|FCNTL.O_NONBLOCK)
 
         try:
+            Trace.trace(10, "Connecting to monitor server.")
             sock.connect(mon_serv_addr) #Start the TCP handshake.
         except socket.error, detail:
             #We have seen that on IRIX, when the connection succeds, we
@@ -196,8 +198,10 @@ class MonitorServerClient(generic_client.GenericClient):
                 pass
             #A real or fatal error has occured.  Handle accordingly.
             else:
+                Trace.trace(10, "connect failed: " + detail[1])
                 raise CLIENT_CONNECTION_ERROR, detail[1]
 
+        Trace.trace(10, "Obtaining error status for data socket.")
         #Check if the socket is open for reading and/or writing.
         r, w, ex = select.select([sock], [sock], [], self.timeout)
 
@@ -205,10 +209,12 @@ class MonitorServerClient(generic_client.GenericClient):
             #Get the socket error condition...
             rtn = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         else:
+            Trace.trace(10, "Timedout.")
             raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
 
         #...if it is zero then success, otherwise it failed.
         if rtn != 0:
+            Trace.trace(10, os.strerror(rtn))
             raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
         
         #Restore flag values to blocking mode.
@@ -220,26 +226,31 @@ class MonitorServerClient(generic_client.GenericClient):
     #monitor_server_ip: The remote ip to connect to.  On this end of the
     # connection, it is needed for only one purpose, to chose an appropriate
     # interface for the connection.
-    def _open_cntl_socket(self, monitor_server_ip):
+    def _open_cntl_socket(self): #, monitor_server_ip):
+        Trace.trace(10, "Waiting for control socket to connect.")
         #wait for a responce
         r,w,ex = select.select([self.listen_sock], [], [self.listen_sock],
                                self.timeout)
 
         if not r:
+            Trace.trace(10, "Waiting for control socket timed out.")
             raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
 
+        Trace.trace(10, "Accepting control socket connetion.")
         #Wait for the client to connect creating the control socket.
         cntl_sock, address = self.listen_sock.accept()
 
         #For machines with multiple network interfaces, pick the best one.
-        interface=hostaddr.interface_name(monitor_server_ip)
-        if interface:
-            status=socket_ext.bindtodev(cntl_sock.fileno(),interface)
-            if status:
-                Trace.log(e_errors.ERROR, "bindtodev(%s): %s" %
-                          (interface,os.strerror(status)))
-        
+        #interface=hostaddr.interface_name(monitor_server_ip)
+        #if interface:
+        #    status=socket_ext.bindtodev(cntl_sock.fileno(),interface)
+        #    if status:
+        #        Trace.log(e_errors.ERROR, "bindtodev(%s): %s" %
+        #                  (interface,os.strerror(status)))
+
+        Trace.trace(10, "Reading control socket info.")
         monitor_server_callback_addr = callback.read_tcp_obj(cntl_sock)
+        Trace.trace(10, "Closeing control socket.")
         cntl_sock.close()
 
         #In a real encp connection the library manager tells encp what mover
@@ -261,7 +272,7 @@ class MonitorServerClient(generic_client.GenericClient):
 
         #Simulate the opening and initial handshake of the control socket.
         try:
-            mon_serv_callback_addr = self._open_cntl_socket(mon_serv_ip)
+            mon_serv_callback_addr = self._open_cntl_socket() #mon_serv_ip)
             data_sock = self._open_data_socket(mon_serv_callback_addr)
 
             if not data_sock:
@@ -313,12 +324,15 @@ class MonitorServerClient(generic_client.GenericClient):
                   }
 
         try:
+            Trace.trace(10, "Sending udp request.")
             #Send the request to the server.
             send_id = self.u.send_deferred(ticket, server_address)
 
+            Trace.trace(10, "Simulating encp transfer.")
             #Execute the rate test with the server.
             read_measurment = self._simulate_encp_transfer(ticket)
 
+            Trace.trace(10, "Get the final dialog rate information.")
             #Get the rate measurement back from the server.
             write_measurement = self.u.recv_deferred(send_id, timeout = 30)
 
@@ -459,6 +473,7 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 10
         self.alive_retries = 3
         self.hostip = ""
+        self.verbose = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -488,6 +503,10 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
                               "ip/hostname of the html server",
                               option.VALUE_USAGE:option.REQUIRED,
                               option.USER_LEVEL:option.ADMIN},
+        option.VERBOSE:{option.HELP_STRING:"print out information.",
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.USER_LEVEL:option.USER,},
         }
                    
                    
@@ -506,7 +525,7 @@ class Vetos:
         # and the value field being a reason why it is in the veto list
 
         # don't send to yourself
-        vetos[socket.gethostname()] = 'thishost'
+        #vetos[socket.gethostname()] = 'thishost'
 
         self.veto_item_dict = {}
         for v in vetos.keys():
@@ -689,6 +708,11 @@ def do_work(intf):
     #    intf.print_usage_line()
     #    return
 
+    Trace.init(MY_NAME)
+    for x in xrange(0, intf.verbose+1):
+        Trace.do_print(x)
+    Trace.trace( 6, 'msc called with args: %s'%(sys.argv,) )
+
     if hasattr(intf, option.ALIVE) and intf.alive or\
        hasattr(intf, option.HELP) and intf.help or \
        hasattr(intf, option.USAGE) and intf.usage:
@@ -704,10 +728,6 @@ def do_work(intf):
 
 if __name__ == "__main__":
     
-
     intf = MonitorServerClientInterface(user_mode=0)
     
-    Trace.init(MY_NAME)
-    Trace.trace( 6, 'msc called with args: %s'%(sys.argv,) )
-
     do_work(intf)
