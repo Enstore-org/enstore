@@ -243,4 +243,5 @@ $ECHO "$N" | while read command pid rest; do
     fi
 done
 
+logit "netscan finished"
 rm -fr $ACTIVE
