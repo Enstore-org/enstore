@@ -14,6 +14,7 @@ import alarm
 import e_errors
 import hostaddr
 import enstore_constants
+import www_server
 
 def default_alive_rcv_timeout():
     return 5
@@ -23,10 +24,10 @@ def default_alive_retries():
 
 MY_NAME = "alarm_server"
 
-DEFAULT_FILE_NAME = "/enstore_alarms.txt"
-DEFAULT_PATROL_FILE_NAME = "/enstore_patrol.txt"
+DEFAULT_FILE_NAME = "enstore_alarms.txt"
+DEFAULT_PATROL_FILE_NAME = "enstore_patrol.txt"
 DEFAULT_SUSP_VOLS_THRESH = 3
-DEFAULT_HTML_ALARM_FILE = "/enstore_alarms.html"
+DEFAULT_HTML_ALARM_FILE = "enstore_alarms.html"
 
 
 SEVERITY = alarm.SEVERITY
@@ -124,11 +125,6 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         #      rewrite the entire enstore_alarm file (txt and html)
         #      rewrite the enstore patrol file
         #      log this fact
-	print id
-	print self.alarms
-	print self.alarms.keys()
-	print self.alarms.get(id, "zilch")
-	print "%s, %s"%(id, self.alarms.keys()[0])
         if self.alarms.has_key(id):
             del self.alarms[id]
             self.write_alarm_file()
@@ -209,8 +205,8 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     # alarms that have not been resolved.
     def get_alarm_file(self):
         # the alarm file lives in the same directory as the log file
-        self.alarm_file = enstore_files.EnAlarmFile(self.get_log_path()+ \
-                                                     DEFAULT_FILE_NAME)
+        self.alarm_file = enstore_files.EnAlarmFile("%s/%s"%(self.get_log_path(),
+							     DEFAULT_FILE_NAME))
         self.alarm_file.open('r')
         self.alarms = self.alarm_file.read()
         self.alarm_file.close()
@@ -219,8 +215,8 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     # alarms to it
     def get_patrol_file(self):
         # the patrol file lives in the same directory as the log file
-        self.patrol_file = enstore_files.EnPatrolFile(self.get_log_path()+ \
-                                                      DEFAULT_PATROL_FILE_NAME)
+        self.patrol_file = enstore_files.EnPatrolFile("%s/%s"%(self.get_log_path(),
+							  DEFAULT_PATROL_FILE_NAME))
         self.write_patrol_file()
 
     # return the name of the patrol file
@@ -249,6 +245,8 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
 
+	self.system_tag = www_server.get_system_tag(self.csc)
+
         # see if an alarm file exists. if it does, open it and read it in.
         # these are the alarms that have not been dealt with.
         self.get_alarm_file()
@@ -258,8 +256,8 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
         self.get_patrol_file()
 
 	# initialize the html alarm file
-	self.alarmhtmlfile = enstore_files.HtmlAlarmFile("%s%s"%( \
-	    self.get_www_path(),DEFAULT_HTML_ALARM_FILE))
+	self.alarmhtmlfile = enstore_files.HtmlAlarmFile("%s/%s"%( \
+	    self.get_www_path(), DEFAULT_HTML_ALARM_FILE), self.system_tag)
 
 	# write the current alarms to it
 	self.write_html_file()
