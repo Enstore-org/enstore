@@ -42,10 +42,14 @@ def send(msg):
     s.sendto(msg, dst)
 
 def get_mover_status(mover):
-    file="enstore mover --status %s.mover" % mover
-    p = os.popen(file,'r')
-    status_dict = eval(p.read())
-    p.close()
+    status_dict = {}
+    try:
+        file="enstore mover --status %s.mover" % mover
+        p = os.popen(file,'r')
+        status_dict = eval(p.read())
+        p.close()
+    except:
+        pass
     return status_dict
             
 def main():
@@ -72,10 +76,9 @@ def main():
     if words[0]!='addr=':
         print "Error", msg
         sys.exit(-1)
-
+    
     target_ip = words[1]
     target_port = int(words[2])
-
     dst = (target_ip, target_port)
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -89,9 +92,9 @@ def main():
     #Get the state of each mover before continuing
     for mover in movers:
         status = get_mover_status(mover)
-        state = status['state']
+        state = status.get('state','Unknown')
         send("state %s %s" % (mover, state))
-        volume = status['current_volume']
+        volume = status.get('current_volume', None)
         if not volume:
             continue
         if state in ['ACTIVE', 'SEEK', 'HAVE_BOUND']:
