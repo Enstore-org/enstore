@@ -399,8 +399,7 @@ class DispatchingWorker:
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
-        ## Trace.trace(19,"reply_with_list number=%s id=%s"%(self.client_number,
-                                                          self.current_id))
+        ## Trace.trace(19,"reply_with_list number=%s id=%s"%(self.client_number, self.current_id))
         request_dict[self.current_id] = copy.deepcopy(list)
         self.server_socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
         
