@@ -1078,7 +1078,7 @@ transfer is completed </td>
 
 <tr NOSAVE>
 <td NOSAVE>turn on special status printing requested by D0</td>
-<td NOSAVE>--d0sam</td>
+<td NOSAVE>--data_access_layer</td>
 <td NOSAVE>D0 printing is off</td>
 </tr>
 
@@ -1116,10 +1116,10 @@ transfer is completed </td>
 </tr>
 
 </table></center>
-<p>The d0sam option provides the output of <em>encp</em> in a format required
+<p>The data_access_layer option provides the output of <em>encp</em> in a format required
 by the D0 SAM system. The example output is below:
 <pre>
-$  encp --d0sam 1GB.trand  /pnfs/grau/ait/jon1/
+$  encp --data_access_layer 1GB.trand  /pnfs/grau/ait/jon1/
 INFILE=/rip8a/enstore/random/1GB.trand
 OUTFILE=/pnfs/grau/ait/jon1/1GB.trand
 FILESIZE=1073741824
@@ -6061,7 +6061,7 @@ nothing is planned for compacting data on volumes.
 notation of volume/file
 status (e.g. if unreadable or errors)</LI>
 <p>
-Enstore has implemented a special format, --d0sam, at the end of each file
+Enstore has implemented a special format, --data_access_layer, at the end of each file
 transfer. The status of the current file transfer is available in this
 way. The only successful status code is "OK" and an exit code of
 0. All other values represent failures.
@@ -6409,7 +6409,7 @@ success code or a fatal error.  Much work has been done towards this goal.
 Notation and tracking of all work done,
 all errors encountered, all retries performed</LI>
 <p>
-encp option  --d0sam provides this functionality, including retries.
+encp option  --data_access_layer provides this functionality, including retries.
 <p>
 </UL>
 
@@ -6627,7 +6627,7 @@ one <em>encp</em>.</TD>
 <TD>Allow list of comma delimited files in input or output file spec
 <br><p><em>The notational issues in this items have not been addressed.
 Enstore provides cp-like list features and the delimiter in this case is a
-space. <p>Notification after each transfer is provided with the --d0sam switch.<p></em>
+space. <p>Notification after each transfer is provided with the --data_access_layer switch.<p></em>
 </TD>
 
 <TD>Notification of each file arrival (or dispatch) as for wild cards.</TD>
@@ -6640,7 +6640,7 @@ one <em>encp</em>.</TD>
 <TD>At the end of each file transaction provide information about the physical
 location of the file, its position on the tape, error/retries, which tape
 drive it was written on.
-<br><p><em> encp provides this with the --d0sam option<p></em>
+<br><p><em> encp provides this with the --data_access_layer option<p></em>
 </TD>
 
 <TD>This was originally discussed as being written to stdout along with
@@ -6680,7 +6680,7 @@ of resources to particular access modes or projects</TD>
 <TD>At the end of each file transaction provide information about the job
 which copied the file - dwell time in queue, final priority, robot arm
 wait time, file seek time, file transfer time and MBs, etc.
-<br><p><em> encp provides this with the --d0sam option<p></em>
+<br><p><em> encp provides this with the --data_access_layer option<p></em>
 </TD>
 
 <TD>This is now going to be available in the parallel <em>pnfs</em> file metadata
