@@ -44,8 +44,9 @@ def complain(error):
     error_list.append(error)
 
 
-ignore_patterns = [".*defined before [0-9]+ not used$",
+ignore_patterns = ["defined before [0-9]+ not used",
                    "Warning: set of global .* in local context",
+                    "ref at ([0-9]+) before assign at \\1"
                    ]
 
 ignore_list = map(re.compile, ignore_patterns)
@@ -85,7 +86,7 @@ for filename in args:
         continue
     for err in error_list:
         for pattern in ignore_list:
-            if pattern.match(err):
+            if pattern.search(err):
                 if verbose:
                     print "ignoring", err
                 break
