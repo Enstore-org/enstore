@@ -147,8 +147,13 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # work queues on that port.
         data_path_socket = callback.volume_server_callback_socket(ticket)
         ticket= callback.read_tcp_obj(data_path_socket)
-        msg=callback.read_tcp_raw(data_path_socket)
-        ticket['volumes'] = msg
+        volumes=''
+        while 1:
+            msg=callback.read_tcp_raw(data_path_socket)
+            if not msg: break
+            if volumes: volumes = volumes+","+msg
+            else: volumes=msg
+        ticket['volumes'] = volumes
         data_path_socket.close()
 
 
@@ -156,10 +161,10 @@ class VolumeClerkClient(generic_client.GenericClient,\
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            Trace.trace(12,"vcc.get_vols "\
-                  +"2nd (post-work-read) volume clerk callback on socket "\
-                  +str(address)+", failed to transfer: "\
-                  +ticket["status"])
+            Trace.trace(12,"vcc.get_vols "
+                        "2nd (post-work-read) volume clerk callback on socket "
+                        +str(address)+", failed to transfer: "
+                        +ticket["status"])
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols "\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +str(address)+", failed to transfer: "\

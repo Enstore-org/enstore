@@ -1073,11 +1073,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             callback.write_tcp_obj(self.data_socket, ticket)
             dict.cursor("open")
             key,value=dict.cursor("first")
-            separator = ''
             while key:
-                callback.write_tcp_raw(self.data_socket,separator+repr(key))
-                separator=','
+                callback.write_tcp_raw(self.data_socket,repr(key))
                 key,value=dict.cursor("next")
+            callback.write_tcp_raw(self.data_socket,"")
             dict.cursor("close")
             self.data_socket.close()
 
@@ -1085,6 +1084,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.control_socket.close()
             Trace.trace(17,'get_vols child exitting')
         except:
+            print "EXCEPTION"
             status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
             Trace.log(e_errors.ERROR,"get_vols child "+repr(status))
         os._exit(0)

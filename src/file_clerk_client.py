@@ -84,8 +84,13 @@ class FileClient(generic_client.GenericClient, \
         # work queues on that port.
         data_path_socket = callback.file_server_callback_socket(ticket)
         ticket= callback.read_tcp_obj(data_path_socket)
-        msg=callback.read_tcp_raw(data_path_socket)
-        ticket['bfids'] = msg
+        bfids=''
+        while 1:
+            msg=callback.read_tcp_raw(data_path_socket)
+            if not msg: break
+            if bfids: bfids=bfids+','+msg
+            else: bfids=msg
+        ticket['bfids'] = bfids
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with file clerk
@@ -141,13 +146,17 @@ class FileClient(generic_client.GenericClient, \
         # work queues on that port.
         data_path_socket = callback.file_server_callback_socket(ticket)
         ticket= callback.read_tcp_obj(data_path_socket)
-        msg=callback.read_tcp_raw(data_path_socket)
-        ticket['tape_list'] = msg
+        tape_list=''
+        while 1:
+            msg=callback.read_tcp_raw(data_path_socket)
+            if not msg: break
+            if tape_list: tape_list=tape_list+msg
+            else: tape_list=msg
+        ticket['tape_list'] = tape_list
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket, "file clerk"
-                                               "client tape_list, fc final dialog")
+        done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
             msg = "tape_list "\
