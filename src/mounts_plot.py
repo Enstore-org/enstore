@@ -49,14 +49,16 @@ def hist_key(n):
 if __name__ == '__main__':
 
 	# create bins
-	hist_key = [] # to preserve the order
+	hist_keys = [] # to preserve the order
 	for i in range(0, low_water_mark, step):
 		k = hist_key(i)
 		mtsh[k] = 0
-		hist_key.append(k)
+		hist_keys.append(k)
 	k = hist_key(low_water_mark)
+	hist_keys.append(k)
 	mtsh[k] = 0
 	k = hist_key(high_water_mark)
+	hist_keys.append(k)
 	mtsh[k] = 0
 
 	f = open(vf_file)
@@ -130,7 +132,7 @@ if __name__ == '__main__':
 	count = 0
 	set_xtics = "set xtics ("
 	outf = open(tmp_data, "w")
-	for i in hist_key:
+	for i in hist_keys:
 		count = count + 1
 		outf.write("%d %d\n"%(count, mtsh[i]))
 		set_xtics = set_xtics + '"%s" %d,'%(i, count)
