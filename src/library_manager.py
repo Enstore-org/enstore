@@ -880,7 +880,7 @@ class LibraryManagerMethods:
                     ret = self.is_vol_available(rq.work,w['fc']['external_label'], requestor)
                 else:
                     fsize = w['wrapper'].get('size_bytes', 0L)
-                    if w['method'] != "read_tape":
+                    if w['method'] != "read_tape_start":
                         # size has a meaning only for general rq
                         fsize = fsize+self.min_file_size
                     ret = self.vcc.is_vol_available(rq.work,
@@ -961,7 +961,7 @@ class LibraryManagerMethods:
             ret = self.is_vol_available(rq.work, external_label, requestor)
         else:
             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
-            if rq.ticket['method'] != "read_tape":
+            if rq.ticket['method'] != "read_tape_start":
                 # size has a meaning only for general rq
                 fsize = fsize+self.min_file_size
             ret = self.vcc.is_vol_available(rq.work,  external_label,
@@ -1037,7 +1037,7 @@ class LibraryManagerMethods:
         while rq:
             # skip over tape read requests they are processed only in the idle state
             method = rq.ticket.get("method", None)
-            if method and method == "start_read_tape":
+            if method and method == "read_tape_start":
                 rq = self.pending_work.get_admin_request(next=1) # get next request
                 continue
 
@@ -1120,7 +1120,7 @@ class LibraryManagerMethods:
         while rq:
             # skip over tape read requests they are processed only in the idle state
             method = rq.ticket.get("method", None)
-            if method and method == "start_read_tape":
+            if method and method == "read_tape_start":
                 rq = self.pending_work.get_admin_request(next=1) # get next request
                 continue
             rej_reason = None
