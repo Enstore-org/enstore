@@ -17,6 +17,11 @@ fi
 export FTT_TAPE
 FTT_TAPE=$1
 
+if [ ! -c $FTT_TAPE ];then
+    echo "$FTT_TAPE is not a character device"
+    exit
+fi
+
 $FTT_DIR/bin/ftt_test 2>&1 <<EOD
 ftt_open
 ftt_status
