@@ -92,6 +92,7 @@ REALSAAGHTMLFILE = "enstore_saag_real.html"
 REDSAAGHTMLFILE = "enstore_red.html"
 ENSTORESTATUSFILE = "enstore_status_only.py"
 STATUSONLYHTMLFILE = "enstore_status_only.html"
+SAAGNETWORKHTMLFILE = "enstore_saag_network.html"
 BASENODE = "base_node"
 UP = 0
 WARNING = 2

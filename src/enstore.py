@@ -35,6 +35,7 @@ import option
 import volume_clerk_client
 import enstore_up_down
 import enstore_saag
+import enstore_saag_network
 import dbs
 import ratekeeper_client
 import pnfs
@@ -65,6 +66,8 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                 monitor_client.do_work, option.USER],
                      "mover" : [mover_client.MoverClientInterface,
                                 mover_client.do_work, option.ADMIN],
+                     "network" : [enstore_saag_network.SaagNetworkInterface,
+                                 enstore_saag_network.do_work, option.ADMIN],
 		     "pnfs":[pnfs.PnfsInterface,
                              pnfs.do_work, option.USER],
                      "up_down" : [enstore_up_down.UpDownInterface,

@@ -699,17 +699,32 @@ class HtmlSaagFile(EnFile):
         self.real_file_name = name
 	self.enstore_ball = ""
 
-    def write(self, enstore_contents, network_contents, media_contents, 
-              alarm_contents, node_contents, outage, offline, 
-	      status_file_name):
+    def write(self, enstore_contents, media_contents, alarm_contents, 
+	      node_contents, outage, offline, status_file_name):
         if self.openfile:
             doc = enstore_html.EnSaagPage(system_tag=self.system_tag)
             media = enstore_functions.get_media()
-            doc.body(enstore_contents, network_contents, media_contents, 
-                     alarm_contents, node_contents, outage, offline, media,
-		     status_file_name)
+            doc.body(enstore_contents, media_contents, alarm_contents, 
+		     node_contents, outage, offline, media, status_file_name)
 	    # save the status of the enstore ball
 	    self.enstore_ball = enstore_contents[enstore_constants.ENSTORE]
+	    self.do_write(str(doc))
+
+
+class HtmlSaagNetworkFile(EnFile):
+
+    # we need to save both the file name passed to us and the one we will
+    # write to.  we will create the temp one and then move it to the real
+    # one.
+    def __init__(self, name, system_tag=""):
+        EnFile.__init__(self, name+TMP, system_tag)
+        self.real_file_name = name
+	self.enstore_ball = ""
+
+    def write(self, network_contents, outage, offline):
+        if self.openfile:
+            doc = enstore_html.EnSaagNetworkPage(system_tag=self.system_tag)
+            doc.body(network_contents, outage, offline)
 	    self.do_write(str(doc))
 
 

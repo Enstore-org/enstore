@@ -2366,7 +2366,15 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    txt = HTMLgen.Href(dict[enstore_constants.URL], txt)
 	tr.append(self.get_element(dict, val, outage_d, offline_d, txt))
 
-    def make_overall_table(self, enstat_d, netstat_d, medstat_d, alarms_d, outage_d, 
+    def add_network_to_row(self, tr, outage_d, offline_d):
+	tr.append(empty_data())
+	txt = HTMLgen.Font(enstore_constants.NETWORK, size="+2")
+	txt = HTMLgen.Href(enstore_constants.SAAGNETWORKHTMLFILE, txt)
+	# we are calling this to get the outage and offline info
+	tr.append(self.get_element({}, enstore_constants.NETWORK, outage_d, 
+				   offline_d, txt))
+
+    def make_overall_table(self, enstat_d, medstat_d, alarms_d, outage_d, 
 			   offline_d):
 	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
 				    align="CENTER", width="90%")
@@ -2380,7 +2388,8 @@ class EnSaagPage(EnBaseHtmlDoc):
 	self.add_to_row(tr, enstore_constants.ENSTORE, enstat_d, outage_d, offline_d)
 	self.add_to_row(tr, med_keys[0], med_l[0], outage_d, offline_d)
 	del med_l[0]
-	self.add_to_row(tr, enstore_constants.NETWORK, netstat_d, outage_d, offline_d)
+	# network is only a link to the network page
+	self.add_network_to_row(tr, outage_d, offline_d)
 	self.add_to_row(tr, enstore_constants.ANYALARMS, alarms_d, outage_d, offline_d)
 	entable.append(tr)
 	# get any more media rows if needed
@@ -2474,39 +2483,6 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    entable.append(tr)
 	return entable
 
-    def make_network_table(self, dict, out_dict, offline_dict):
-	ignore = [enstore_constants.NETWORK, enstore_constants.BASENODE,
-		  enstore_constants.TIME, enstore_constants.URL]
-	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
-				    align="CENTER", width="90%")
-	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Network Interface Status"), 
-						    size="+3", color=BRICKRED)))
-	entable.append(empty_row())
-	# now add the base node row
-	base_node = dict.get(enstore_constants.BASENODE, UNKNOWN)
-	entable.append(HTMLgen.TR(HTMLgen.TH(HTMLgen.Font("Base Node : %s"%(base_node,),
-							  size="+1", color=BRICKRED),
-					     colspan=6, align="LEFT")))
-	entable.append(empty_row())
-	keys = sort_keys(dict)
-	tr = HTMLgen.TR()
-	counter = 0
-	for key in keys:
-	    if not key in ignore:
-		tr.append(self.get_color_ball(dict, key, "RIGHT"))
-		tr.append(self.get_element(dict, key, out_dict, offline_dict))
-		counter = counter + 1
-		# only allow 4 nodes per row
-		if counter == 4:
-		    entable.append(tr)
-		    counter = 0
-		    tr = HTMLgen.TR()
-	else:
-	    # if we did partly fill in the last row append it to the table
-	    if counter > 0:
-		entable.append(tr)
-	return entable
-
     def make_legend_table(self):
 	entable = HTMLgen.TableLite(border=0, align="CENTER")
 	tr = HTMLgen.TR()
@@ -2554,7 +2530,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    entable.append(tr)
 	return entable
 
-    def body(self, enstat_d, netstat_d, medstat_d, alarms, nodes, outage_d, 
+    def body(self, enstat_d, medstat_d, alarms, nodes, outage_d, 
 	     offline_d, media_tag, status_file_name):
 	# name of file that we will create links to
 	self.status_file_name = status_file_name
@@ -2572,7 +2548,6 @@ class EnSaagPage(EnBaseHtmlDoc):
 		medstat_d[mtag] = [enstore_constants.UP, media_tag[mtag]]
 	self.check_for_red(enstat_d, table)
 	table.append(HTMLgen.TR(HTMLgen.TD(self.make_overall_table(enstat_d, 
-								   netstat_d,
 								   medstat_d, alarms,
 								   outage_d, 
 								   offline_d))))
@@ -2588,16 +2563,69 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    #table.append(HTMLgen.TR(HTMLgen.TD(self.make_media_table(medstat_d, outage_d))))
 	    #table_spacer(table)
 
+	# add the section where nodes are reported and which servers run on them
+	table.append(HTMLgen.TR(HTMLgen.TD(self.make_node_server_table(nodes))))
+	table_spacer(table)
+
+	# add the legend table
+	table.append(HTMLgen.TR(HTMLgen.TD(self.make_legend_table())))
+	self.trailer(table)
+	self.append(table)
+
+
+class EnSaagNetworkPage(EnSaagPage):
+
+    def __init__(self, title="ENSTORE Network Status-At-A-Glance", gif="ess-aag.gif", 
+		 system_tag=""):
+	EnBaseHtmlDoc.__init__(self, refresh=360, help_file="saagNetworkHelp.html", 
+			       system_tag=system_tag)
+	self.title = title
+	self.script_title_gif = gif
+	self.source_server = "SPAM"
+	self.description = ""
+
+    def make_network_table(self, dict, out_dict, offline_dict):
+        ignore = [enstore_constants.NETWORK, enstore_constants.BASENODE,
+                  enstore_constants.TIME, enstore_constants.URL]
+        entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
+                                    align="CENTER", width="90%")
+        entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Network Interface Status"), 
+                                                    size="+3", color=BRICKRED)))
+        entable.append(empty_row())
+        # now add the base node row
+        base_node = dict.get(enstore_constants.BASENODE, UNKNOWN)
+        entable.append(HTMLgen.TR(HTMLgen.TH(HTMLgen.Font("Base Node : %s"%(base_node,),
+                                                          size="+1", color=BRICKRED),
+                                             colspan=6, align="LEFT")))
+        entable.append(empty_row())
+        keys = sort_keys(dict)
+        tr = HTMLgen.TR()
+        counter = 0
+        for key in keys:
+            if not key in ignore:
+                tr.append(self.get_color_ball(dict, key, "RIGHT"))
+                tr.append(self.get_element(dict, key, out_dict, offline_dict))
+                counter = counter + 1
+                # only allow 4 nodes per row
+                if counter == 4:
+                    entable.append(tr)
+                    counter = 0
+                    tr = HTMLgen.TR()
+        else:
+            # if we did partly fill in the last row append it to the table
+            if counter > 0:
+                entable.append(tr)
+        return entable
+
+    def body(self, netstat_d, outage_d, offline_d):
+	# create the outer table and its rows
+	table = self.table_top()
 	# add the table with the network info
 	if netstat_d:
 	    table.append(HTMLgen.TR(HTMLgen.TD(self.make_network_table(netstat_d, 
 								       outage_d,
 								       offline_d))))
 	    table_spacer(table)
-
-	# add the section where nodes are reported and which servers run on them
-	table.append(HTMLgen.TR(HTMLgen.TD(self.make_node_server_table(nodes))))
-	table_spacer(table)
 
 	# add the legend table
 	table.append(HTMLgen.TR(HTMLgen.TD(self.make_legend_table())))
