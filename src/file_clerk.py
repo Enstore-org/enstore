@@ -344,7 +344,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket['status'] = self.__erase_volume(vol)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = 'erase failed due to: '+ exc_type+' '+exc_value
+            msg = 'erase failed due to: '+str(exc_type)+' '+str(exc_value)
             Trace.log(e_errors.ERROR, msg)
             ticket["status"] = (e_errors.ERROR, msg)
         # and return to the caller
@@ -842,7 +842,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = "failed to mark %s bad due to "%(bfid)+exc_type+' '+exc_value
+            msg = "failed to mark %s bad due to "%(bfid)+str(exc_type)+' '+str(exc_value)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.KEYERROR, msg)
 
@@ -865,7 +865,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = "failed to mark %s bad due to "%(bfid)+exc_type+' '+exc_value
+            msg = "failed to mark %s bad due to "%(bfid)+str(exc_type)+' '+str(exc_value)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.KEYERROR, msg)
 
@@ -969,7 +969,7 @@ if __name__ == "__main__":
         fc.dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome)
     except:
         exc_type, exc_value = sys.exc_info()[:2]
-        msg = exc_type+' '+exc_value+' IS POSTMASTER RUNNING?'
+        msg = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
         Trace.log(e_errors.ERROR,msg)
         Trace.alarm(e_errors.ERROR,msg, {})
         Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")

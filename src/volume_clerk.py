@@ -88,7 +88,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 	    res = self.dict.db.query(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = "change_state(): "+exc_type+' '+exc_value+' query: '+q
+            msg = "change_state(): "+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, msg)
 
 
@@ -143,7 +143,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             res = self.dict.db.query(q).dictresult()
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = '__history(): '+exc_type+' '+exc_value+' query: '+q
+            msg = '__history(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, msg)
             res = []
         return res
@@ -188,7 +188,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = exc_type+' '+exc_value
+            msg = str(exc_type)+' '+str(exc_value)
             Trace.log(e_errors.ERROR, msg)
             ticket["status"] = (e_errors.ERROR, msg)
         self.reply_to_caller(ticket)
@@ -210,7 +210,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = exc_type+' '+exc_value
+            msg = str(exc_type)+' '+str(exc_value)
             Trace.log(e_errors.ERROR, msg)
             ticket["status"] = (e_errors.ERROR, msg)
         self.reply_to_caller(ticket)
@@ -244,7 +244,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             ticket['status'] = (e_errors.OK, status)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = 'write_protect_status(): '+exc_type+' '+exc_value+' query: '+q
+            msg = 'write_protect_status(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, msg)
             ticket["status"] = (e_errors.ERROR, msg)
         self.reply_to_caller(ticket)
@@ -400,7 +400,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 return e_errors.ERROR, msg
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = 'has_undeleted_file(): '+exc_type+' '+exc_value
+            msg = 'has_undeleted_file(): '+str(exc_type)+' '+str(exc_value)
             Trace.log(e_errors.ERROR, msg)
             return e_errors.ERROR, msg
 
@@ -1072,7 +1072,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             res = self.dict.db.query(q).dictresult()
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = 'find_matching_volume(): '+exc_type+' '+exc_value+' query: '+q
+            msg = 'find_matching_volume(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, msg)
             res = []
         Trace.trace(20, "finish query: found %d exact_match=%d"%(len(res), exact_match))
@@ -1897,7 +1897,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             res = self.dict.db.query(q).dictresult()
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            mesg = 'get_vols(): '+exc_type+' '+exc_value+' query: '+q
+            mesg = 'get_vols(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, mesg)
             res = []
 
@@ -2009,7 +2009,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             res2 = self.dict.db.query(q).getresult()
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = '__get_vol_list(): '+exc_type+' '+exc_value+' query: '+q
+            msg = '__get_vol_list(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, msg)
             return []
         res = []
@@ -2271,7 +2271,7 @@ class VolumeClerk(VolumeClerkMethods):
             self.sgdb = esgdb.SGDb(self.dict.db)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = exc_type+' '+exc_value+' IS POSTMASTER RUNNING?'
+            msg = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
             Trace.log(e_errors.ERROR,msg)
             Trace.alarm(e_errors.ERROR,msg, {})
             Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
