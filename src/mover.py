@@ -279,7 +279,7 @@ class Buffer:
         if bytes_read == nbytes: #normal case
             data = space
         elif bytes_read<=0: #error
-            Trace.log(25, "block_read: read %s" % (bytes_read,))
+            Trace.trace(25, "block_read: read %s" % (bytes_read,))
             pass #XXX or raise an exception?
         else: #partial block read
             Trace.trace(25, "partial block (%s/%s) read" % (bytes_read,nbytes))
@@ -634,6 +634,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.init(logname)
         Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
+        self.config['device'] = os.path.expandvars(self.config['device'])
+        # check if device exists
+        if not os.path.exists(self.config['device']):
+            Trace.alarm(e_errors.ERROR, "Cannot start. Device %s does not exist"%(self.config['device'],))
+            time.sleep(2)
+            sys.exit(-1)
+            
         #how often to send an alive heartbeat to the event relay
         self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
         self.address = (self.config['hostip'], self.config['port'])
@@ -696,7 +703,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.can_force_eject = 0
         
-        self.config['device'] = os.path.expandvars(self.config['device'])
         self.client_hostname = None
         self.client_ip = None  #NB: a client may have multiple interfaces, this is
                                          ##the IP of the interface we're using
@@ -775,13 +781,31 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                         self.dismount_time = time.time() + self.default_dismount_delay
                     else:
+                        # failed to read label eject tape
+                        Trace.alarm(e_errors.ERROR, "failed to read volume label on startup")
+                        ejected = self.tape_driver.eject()
+                        if ejected == -1:
+                            if self.can_force_eject:
+                                # try to unload tape if robot is STK. It can do this
+                                Trace.log(e_errors.INFO,"Eject failed. For STK robot will try to unload anyway")
+                            else:
+                                Trace.alarm(e_errors.ERROR, "cannot eject tape on startup, will die")
+                                time.sleep(2)
+                                sys.exit(-1)
                         have_tape=0
                 self.tape_driver.close()
                 if not have_tape:
                     Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
                     vol_ticket = { "external_label": "Unknown",
                                    "media_type":self.media_type}
-                    mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
+                    # check if media changer is open
+                    mcc_reply = self.mcc.GetWork()
+                    if mcc_reply['max_work'] == 0:
+                        # media changer would not accept requests. Go OFFLINE
+                        Trace.alarm(e_errors.ERROR, "media changer is locked, going OFFLINE")
+                        self.state = OFFLINE
+                    else:
+                        mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
 
                 if self.maybe_clean():
                     have_tape = 0
@@ -806,6 +830,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
         ##end of __init__
 
+    # restart itselfs
+    def restart(self):
+        cmd = '/usr/bin/at now+1minute'
+        fn = os.path.join(os.environ.get("ENSTORE_DIR"),'src/mover.py')
+        p=os.popen(cmd, 'w')
+        p.write('python %s %s\n' % (fn, self.name))
+        p.close()
+        sys.exit(0)
+        
     # device_dump(self, sendto=[], notify=['enstore-admin@fnal.gov'])
     #   -- internal device dump
     #   Initially, this is mainly for M2 drives. It can be generalized
@@ -922,9 +955,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self._last_state = None
 
         now = time.time()
-        if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time-now < 5:
-            #Don't tease the library manager!
-            inhibit = 1
+        #if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time-now < 5:
+        #Don't tease the library manager!
+        #    inhibit = 1
 
         if reset_timer:
             self.reset_interval_timer(self.update_lm)
@@ -1566,9 +1599,14 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.reset(sanity_cookie, client_crc_on)
         if ticket['encp'].has_key('delayed_dismount'):
-            delay = 60 * int(ticket['encp']['delayed_dismount']) #XXX is this right? minutes?
-                                                                  ##what does the flag really mean?
-        self.delay = max(delay, self.default_dismount_delay)
+            delay = 60 * int(ticket['encp']['delayed_dismount'])
+                                                                
+        if delay > 0:
+            self.delay = max(delay, self.default_dismount_delay)
+        elif delay < 0:
+            self.delay = 31536000  # 1 year
+        else:
+            self.delay = 0   
         self.delay = min(self.delay, self.max_dismount_delay)
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=fc['address'])
@@ -1642,7 +1680,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
             self.target_location = None        
 
-        if volume_label == self.current_volume: #no mount needed
+        if volume_label == self.current_volume and save_state == HAVE_BOUND: #no mount needed
             self.timer('mount_time')
             self.position_media(verify_label=0)
         else:
@@ -1884,6 +1922,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.dismount_volume()
 
         if save_state == DRAINING:
+            self.dismount_volume()
             self.state = OFFLINE
         else:
             self.maybe_clean()
@@ -2230,7 +2269,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 after_function()
 
         self.state = DISMOUNT_WAIT
-
         ejected = self.tape_driver.eject()
         if ejected == -1:
             if self.can_force_eject:
@@ -2352,9 +2390,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.notify("loading %s %s" % (self.shortname, volume_label))        
         Trace.log(e_errors.INFO, "mounting %s"%(volume_label,),
                   msg_type=Trace.MSG_MC_LOAD_REQ)
-        self.timer('mount_time')
         
         mcc_reply = self.mcc.loadvol(self.vol_info, self.name, self.mc_device)
+        self.timer('mount_time')
         status = mcc_reply.get('status')
         Trace.trace(10, 'mc replies %s' % (status,))
 
@@ -2388,7 +2426,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 exc, msg, tb = sys.exc_info()
                 broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)
             self.broken(broken)
-            self.current_volume = None
+            #self.current_volume = None
             
     def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
         Trace.trace(10, "seeking to %s, after_function=%s"%(location,after_function))
@@ -2421,6 +2459,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         #If we've gotten this far, we've mounted, positioned, and connected to the client.
         #Just start up the work threads and watch the show...
         self.state = ACTIVE
+        if self.draining:
+            self.state = DRAINING
         if self.mode is WRITE:
             self.run_in_thread('net_thread', self.read_client)
             self.run_in_thread('tape_thread', self.write_tape)
@@ -2505,6 +2545,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         return os.path.exists(self.lockfile_name())
         
     def start_draining(self, ticket):       # put itself into draining state
+        save_state = self.state
+        self.draining = 1 
         if self.state is ACTIVE:
             self.state = DRAINING
         elif self.state in (IDLE, ERROR):
@@ -2514,6 +2556,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.create_lockfile()
         out_ticket = {'status':(e_errors.OK,None)}
         self.reply_to_caller(out_ticket)
+        if save_state is HAVE_BOUND and self.state is DRAINING:
+            self.dismount_volume()
+            self.state = OFFLINE
         return
 
     def stop_draining(self, ticket):        # put itself into draining state
@@ -2523,8 +2568,19 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         out_ticket = {'status':(e_errors.OK,None)}
         self.reply_to_caller(out_ticket)
+        ## XXX here we need to check if tape is mounted
+        ## if yes go to have bound, NOT idle AM
         self.remove_lockfile()
-        self.idle()
+        Trace.log(e_errors.INFO,"restarting %s"% (self.name,))
+        self.restart()
+        #self.idle()
+
+    def warm_restart(self, ticket):
+        self.start_draining(ticket)
+        if self.state == OFFLINE:
+            self.stop_draining(ticket)
+        else:
+            Trace.alarm(e_errors.ERROR, "can not restart. State: %s" % (self.state,))
         
     def clean_drive(self, ticket):
         save_state = self.state
@@ -2533,6 +2589,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.state = CLEANING
             ret = self.mcc.doCleaningCycle(self.config)
+            if ret['status'][0] != e_errors.OK:
+                Trace.alarm(e_errors.WARNING,"clean request returned %s"%(ret['status'],))
             self.state = save_state
         self.reply_to_caller(ret)
         
