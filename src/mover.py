@@ -489,8 +489,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         if state is None:
             state = self.state
         Trace.trace(20,"update: %s" % (state_name(state)))
+        
         if not hasattr(self,'_last_state'):
             self._last_state = None
+
+        now = time.time()
+        if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time-now < 5:
+            # Don't send this HAVE_BOUND!  We're just teasing the poor LM.
+            Trace.trace(20, "not sending HAVE_BOUND")
+            tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
+   
         if state in (CLEANING, DRAINING, OFFLINE, ERROR, SEEK, MOUNT_WAIT, DISMOUNT_WAIT):
             if state == self._last_state:
                 return
@@ -541,15 +549,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.bytes_written = 0L
         
     def return_work_to_lm(self,ticket):
+        Trace.trace(21, "return_work_to_lm %s"%(ticket,))
         try:
             lm_address = ticket['lm']['address']
         except KeyError, msg:
+            Trace.trace(21, "return_work_to_lm failed %"%(msg,))
             self.malformed_ticket(ticket, "[lm][address]")
             return
         ticket = self.format_lm_ticket(state=ERROR,
                                        error_info=(e_errors.MOVER_BUSY, state_name(self.state)),
                                        returned_work=ticket)
-        self.udpc.send_no_wait(ticket, lm_address)
+        Trace.trace(21, "return_work_to_lm: sending to %s", (lm_address))
+        r=self.udpc.send_no_wait(ticket, lm_address)
+        Trace.trace(21, "return_work_to_lm: send returns %s" % (r,))
 
         
     def read_client(self):
