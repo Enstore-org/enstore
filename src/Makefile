@@ -3,7 +3,8 @@ SHELL=/bin/sh
 # need a robust way of finding freeze, especially for non-kits version of python
 FREEZE=`find $(PYTHON_DIR) -name freeze.py -print` 
 #FREEZE=`ls $(PYTHON_DIR)/Python-*/Tools/freeze/freeze.py`
-PYMODULES=`find $(PYTHON_DIR) -name Modules -print`
+#PYMODULES=`find $(PYTHON_DIR) -name Modules -print`
+PYMODULES=$(PYTHON_DIR)/Python-*/Modules
 
 # No static version for SunOS for now
 LDFLAGS2=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-dy"; else echo "-static"; fi`
@@ -35,9 +36,9 @@ encp:
 	mkdir ENCPBIN_TEMP
 	- rm -rf ENCPBIN
 	mkdir ENCPBIN
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp.py
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user.py
 	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENCPBIN_TEMP/encp	ENCPBIN
+	cp ENCPBIN_TEMP/encp_user	ENCPBIN/encp
 	cp ../modules/enroute2	ENCPBIN
 	rm -rf ENCPBIN_TEMP
 
@@ -48,13 +49,12 @@ encp:
 	cp ENSTORE_USER_BIN_TEMP/enstore_user      ENCPBIN/enstore
 	rm -rf ENSTORE_USER_BIN_TEMP
 
-	(cd $(ENSTORE_DIR)/modules; make all; rm EXfer.o; make -f Makefile.modules EXFER_THREADED=THREADED EXfer.so)
-	- rm -rf ENCPBIN_TEMP
-	mkdir ENCPBIN_TEMP
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp.py
-	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENCPBIN_TEMP/encp	ENCPBIN/encp_t
-	rm -rf ENCPBIN_TEMP
+	- rm -rf ENSYNC_BIN_TEMP
+	mkdir ENSYNC_BIN_TEMP
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSYNC_BIN_TEMP ensync.py
+	(cd ENSYNC_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp ENSYNC_BIN_TEMP/ensync      ENCPBIN
+	rm -rf ENSYNC_BIN_TEMP
 
 fileinfo:
 	- rm -rf FILEINFO_TEMP
