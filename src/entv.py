@@ -9,7 +9,7 @@ import select
 import string
 import time
 
-debug=0
+debug=1
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
@@ -40,6 +40,7 @@ def get_movers(config=None):
             mover = item[:-6]
             movers.append(mover)
         movers.sort()
+    print movers
     return movers
 
 s = None
@@ -74,18 +75,18 @@ def get_mover_status_parallel(movers, timeout=15):
     end_time = start_time + timeout
     pipe_dict = {} #Key is a pipe object, value is mover name
     waiting = [] #These are the movers we're still waiting for
-    
+
     for mover in movers:
-        cmd = "enstore mover --status %s.mover" % mover
+        cmd = "enstore mover --status %s.mover " % mover
         try:
             print "Running command", cmd
-            pipe =  os.popen(cmd,'r')
-            pipe_dict[pipe] = mover
+            p = os.popen(cmd,'r')
+            pipe_dict[p] = mover
             waiting.append(mover)
         except:
             print "Cannot run", cmd
             pass
-        
+
     while waiting:
         time_remaining = end_time - time.time()
         if time_remaining<0:
@@ -103,7 +104,6 @@ def get_mover_status_parallel(movers, timeout=15):
                 waiting.remove(mover)
             except:
                 pass
-    print "All done, returning", ret
     return ret
             
 def main():
@@ -148,10 +148,11 @@ def main():
 ##    for mover in movers:
 ##        status = get_mover_status(mover)
 
-    mover_status = get_mover_status_parallel(movers)
+    mover_status = get_mover_status_parallel(movers, timeout=15)
     for mover, status in mover_status.items():
         state = status.get('state','Unknown')
-        send("state %s %s" % (mover, state))
+        time_in_state = status.get('time_in_state', '0')
+        send("state %s %s %s" % (mover, state, time_in_state))
         volume = status.get('current_volume', None)
         if not volume:
             continue
@@ -169,6 +170,12 @@ def main():
             if colon>=0:
                 client = client[:colon]
             send("connect %s %s" % (mover, client))
+
+    # Subscribe to the event notifier
+    if debug:
+        print "subscribe"
+    s.sendto("notify %s %s" % (target_ip, target_port),
+             (event_relay_host, event_relay_port))
 
             
     #Tell the event_relay that we want to hear about Enstore
