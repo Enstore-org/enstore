@@ -172,7 +172,7 @@ class UDPClient:
             host, port, self.socket = get_client()
         else:
             self.socket = socket
-        self.number = 0
+        self.number = "0"
         self.ident = "%s-%d-%f-%d" \
                      % (host, port, time.time(), os.getpid() )
         self.sendport = 7
@@ -219,7 +219,7 @@ class UDPClient:
 	empty_socket( self.socket )
 
         # send the udp message until we get a response that it was sent
-        number = 0  # impossible number
+        number = "0"  # impossible "number"
         ntries = 0  
         while number != self.number:
 	    send_socket( self.socket, message, address )
@@ -248,7 +248,7 @@ class UDPClient:
 
 		# now (after receive), check...
 		if number != self.number :
-		    msg="UDPClient.send: stale_number=%.10f number=%.10f" %\
+		    msg="UDPClient.send: stale_number=%s number=%s" %\
 			 (number,self.number)
 		    Trace.trace(21,'send stale='+repr(number)+' want='+\
 				repr(self.number))
