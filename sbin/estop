@@ -1,7 +1,7 @@
 source /usr/local/etc/setups.sh
 setup enstore
-#ecmd stop
-#/usr/local/bin/zapit mover
+ecmd stop
+/usr/local/bin/zapit mover
 set -xv
 if   [ `uname` = Linux ]; then ps auxww |  egrep 'python|ecmd|encp|reader|writer|dasadmin|mt |db_';
 elif [ `uname` = SunOS ]; then ps -ef   |  egrep 'python|ecmd|encp|reader|writer|dasadmin|mt |db_';
