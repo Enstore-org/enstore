@@ -635,11 +635,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
         self.config['device'] = os.path.expandvars(self.config['device'])
+        self.state = IDLE
         # check if device exists
         if not os.path.exists(self.config['device']):
             Trace.alarm(e_errors.ERROR, "Cannot start. Device %s does not exist"%(self.config['device'],))
-            time.sleep(2)
-            sys.exit(-1)
+            self.state = OFFLINE
             
         #how often to send an alive heartbeat to the event relay
         self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
@@ -662,7 +662,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.udpc = udp_client.UDPClient()
-        self.state = IDLE
         self.last_error = (e_errors.OK, None)
         if self.check_sched_down() or self.check_lockfile():
             self.state = OFFLINE
