@@ -189,7 +189,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             sanity_cookie=record["sanity_cookie"]
         except KeyError, key:
             ticket["status"]=(e_errors.KEYERROR,
-                              "File Clerk: key %s is missing"%key)
+                              "File Clerk: key %s is missing"%(key,))
             Trace.log(e_errors.INFO, "%s"%(ticket,))
             self.reply_to_caller(ticket)
             return
@@ -206,7 +206,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record=self.dict[bfid]
         except KeyError, key:
             ticket["status"]=(e_errors.KEYERROR,
-                              "File Clerk: key %s is missing"%key)
+                              "File Clerk: key %s is missing"%(key,))
             Trace.log(e_errors.INFO, "%s"%(ticket,))
             self.reply_to_caller(ticket)
             return

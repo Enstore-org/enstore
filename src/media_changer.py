@@ -289,7 +289,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                     msg="%s %s %s" % (ticket['function'],ticket['vol_ticket']['external_label'], ticket['drive_id'])
                 else:
                     msg="%s" % (ticket['function'],)
-                Trace.log(e_errors.INFO, 'mcDoWork> child begin %s '%msg)
+                Trace.log(e_errors.INFO, 'mcDoWork> child begin %s '%(msg,))
                 os.close(pipe[0])
 		# do the work ...
                 # ... if this is a mount, dismount first
@@ -624,7 +624,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         if seq > 0xFFFE:
             seq = 1
         lockf.seek(0)
-        lockf.write("%5.5d\n"%seq)
+        lockf.write("%5.5d\n"%(seq,))
         lockfile.unlock(lockf)
         lockf.close()
         return seq
