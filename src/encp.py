@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ######################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -1991,13 +1992,11 @@ class encp(interface.Interface):
     #  define our specific help
     def help_line(self):
         Trace.trace(16,"{encp.help_line")
-
-	the_help = self.help_prefix()+self.parameters1()+"\n or\n  "+ \
-                   self.help_prefix()+self.parameters2()+"\n or\n  "+\
-		   "python "+repr(sys.argv[0])+ \
-		   self.parameters3()+\
-                   self.format_options(self.options(), "\n\t\t")
-
+        the_help = "%s%s\n or\n  %s%s\n or\n  %s%s%s" % (
+            prefix, self.parameters1(),
+            prefix, self.parameters2(),
+            prefix, self.parameters3(), self.format_options(self.options(),
+                                                            "\n\t\t"))
         Trace.trace(16,"}encp.help_line help_line="+the_help)
         return the_help
 
