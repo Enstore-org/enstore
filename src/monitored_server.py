@@ -60,6 +60,8 @@ class MonitoredServer:
 	    self.alive_interval = self.config[enstore_constants.ALIVE_INTERVAL]
 	self.twice_alive_interval = self.alive_interval + self.alive_interval
 
+    STATUS_FIELDS = {}
+
     def __init__(self, config, name, hung_interval=None):
 	self.name = name
 	# set this to now because we will check this before any of the servers 
@@ -96,7 +98,7 @@ class MonitoredServer:
 	# make sure this ticket has all of the fields we need
 	for key in self.status_keys:
 	    if not status.has_key(key):
-		status[key] = STATUS_FIELDS[key]
+		status[key] = self.STATUS_FIELDS[key]
 
     def check_recent_alive(self, event_relay):
 	if self.alive_interval == NO_HEARTBEAT:
@@ -266,6 +268,9 @@ class MonitoredMediaChanger(MonitoredServer):
 class MonitoredLibraryManager(MonitoredServer):
 
     STATUS_FIELDS = {enstore_constants.STATE : enstore_constants.UNKNOWN_S,
+		     enstore_constants.SUSPECT_VOLUMES : [],
+		     enstore_constants.MOVERS : [],
+		     enstore_constants.ATMOVERS : []}
 
     def __init__(self, config, name, csc):
 	MonitoredServer.__init__(self, config, name)
