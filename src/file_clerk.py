@@ -983,7 +983,7 @@ if __name__ == "__main__":
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
             fc.serve_forever()
         except edb.pg.error, exp:
-            fc.reconnect(exp):
+            fc.reconnect(exp)
             continue
         except SystemExit, exit_code:
             # fc.dict.close()
