@@ -304,13 +304,7 @@ class Buffer:
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
     def block_read(self, nbytes, driver, fill_buffer=1):
-
-	# SEVA FOO
-	#pad = (-nbytes % 512)
-	#nbytes = nbytes + pad
-
-	#if (pad):
-	#    Trace.trace(42, "SEVA DEBUG: padded bytes to read: %s" % nbytes)
+        raise "CRC_ERROR"
 
         if self.client_crc_on:
             # calculate checksum when reading from
@@ -324,7 +318,6 @@ class Buffer:
         #Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,))
         #bytes_read = driver.read(space, 0, nbytes)
         bytes_read = driver.read(space, 0, self.blocksize)
-	#bytes_read = bytes_read - pad # SEVA FOO
         #Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,))
         if bytes_read == nbytes: #normal case
             data = space
@@ -867,6 +860,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_volume = None #external label of current mounted volume
         self.last_location = 0L
         self.last_volume = None
+        self.last_volume_family = None
         self.mode = None # READ, WRITE or ASSERT
         self.setup_mode = None
         self.compression = None # use default
@@ -1381,13 +1375,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
-                self.transfer_failed(e_errors.ENCP_GONE, detail)
+                self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
                 return
             if bytes_read <= 0:  #  The client went away!
                 Trace.log(e_errors.ERROR, "read_client: dropped connection")
                 #if self.state is not DRAINING: self.state = HAVE_BOUND
                 # if state is DRAINING transfer_failed will set it to OFFLINE
-                self.transfer_failed(e_errors.ENCP_GONE, None)
+                self.transfer_failed(e_errors.ENCP_GONE, error_source=NETWORK)
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
@@ -1599,7 +1593,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 except:
                     exc, detail, tb = sys.exc_info()
                     Trace.alarm(e_errors.ERROR, "error positioning tape for selective CRC check")
-                    self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
+                    self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
                     return
                 self.buffer.save_settings()
                 bytes_read = 0L
@@ -1635,7 +1629,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     except "CRC_ERROR":
                         exc, detail, tb = sys.exc_info()
                         #Trace.handle_error(exc, detail, tb)
-                        Trace.alarm(e_errors.ERROR, "selective CRC check error")
+                        Trace.alarm(e_errors.ERROR, "selective CRC check error",
+                        {'outfile':self.current_work_ticket['outfile'],
+                         'infile':self.current_work_ticket['infile'],
+                         'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                         'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
@@ -1665,7 +1663,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
                 if self.buffer.complete_crc != saved_complete_crc:
                     Trace.alarm(e_errors.ERROR, "selective CRC check error")
-                    self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error")
+                    self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error",error_source=TAPE)
                     return
                 Trace.log(e_errors.INFO, "selective CRC check after writing file completed successfuly")
                 self.buffer.restore_settings()
@@ -1718,8 +1716,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_read = self.buffer.block_read(nbytes, driver)
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             except "CRC_ERROR":
-                Trace.alarm(e_errors.ERROR, "CRC error reading tape")
-                self.transfer_failed(e_errors.CRC_ERROR, None)
+                Trace.alarm(e_errors.ERROR, "CRC error reading tape",
+                            {'outfile':self.current_work_ticket['outfile'],
+                             'infile':self.current_work_ticket['infile'],
+                             'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                             'external_label':self.current_work_ticket['vc']['external_label']})
+                self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 failed = 1
                 break
             except:
@@ -1784,8 +1786,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.fcc.set_crcs(self.file_info['bfid'], sanity_cookie, self.buffer.complete_crc)
                 else:
                     if self.tr_failed: return  # do not raise alarm if net thead detected a failed transfer
-                    Trace.alarm(e_errors.ERROR, "read_tape CRC error")
-                    self.transfer_failed(e_errors.CRC_ERROR, None)
+                    Trace.alarm(e_errors.ERROR, "read_tape CRC error",
+                                {'outfile':self.current_work_ticket['outfile'],
+                                 'infile':self.current_work_ticket['infile'],
+                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                 'external_label':self.current_work_ticket['vc']['external_label']})
+                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 return
 
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
@@ -1835,8 +1841,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
             except "CRC_ERROR":
-                Trace.alarm(e_errors.ERROR, "CRC error in write client")
-                self.transfer_failed(e_errors.CRC_ERROR, None)
+                Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                            {'outfile':self.current_work_ticket['outfile'],
+                             'infile':self.current_work_ticket['infile'],
+                             'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                             'external_label':self.current_work_ticket['vc']['external_label']})
+                self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 failed = 1
                 break
             except:
@@ -1882,8 +1892,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(22,"write_client: calculated CRC %s File DB CRC %s"%
                             (self.buffer.complete_crc, self.file_info['complete_crc']))
                 if self.buffer.complete_crc != self.file_info['complete_crc']:
-                    Trace.alarm(e_errors.ERROR, "CRC error in write client")
-                    self.transfer_failed(e_errors.CRC_ERROR, None)
+                    Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                                {'outfile':self.current_work_ticket['outfile'],
+                                 'infile':self.current_work_ticket['infile'],
+                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                 'external_label':self.current_work_ticket['vc']['external_label']})
+                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                     return
                 
             self.transfer_completed()
@@ -2164,7 +2178,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def broken(self, msg, err=e_errors.ERROR):
         #self.set_sched_down()
-        Trace.alarm(err, str(msg))
+        Trace.alarm(e_errors.ERROR, "%s %s"%(err, str(msg)))
         self.error(msg, err)
         
     def position_media(self, verify_label=1):
@@ -2396,8 +2410,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
 
             self.transfers_failed = self.transfers_failed + 1
-        self.send_client_done(self.current_work_ticket, str(exc), str(msg))
+        encp_gone = exc == e_errors.ENCP_GONE
         self.net_driver.close()
+        self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         if exc == e_errors.MOVER_STUCK:
             broken = exc
 
@@ -2415,11 +2430,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             cur_thread_name = None
 
-        dism_allowed = 0
-        encp_gone = 0
-        if exc == e_errors.ENCP_GONE: encp_gone = 1
+        # if encp is gone there is no need to dismount a tape
+        dism_allowed = not encp_gone
+        dism_allowed = dism_allowed & dismount_allowed
         Trace.trace(26,"current thread %s encp_gone %s"%(cur_thread_name, encp_gone))
-        Trace.log(e_errors.INFO,"current thread %s encp_gone %s"%(cur_thread_name, encp_gone))
         if cur_thread_name:
             if cur_thread_name == 'net_thread':
                 # check if tape_thread is active before allowing dismount
@@ -2430,48 +2444,39 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.trace(26, "thread %s is already running, waiting %s" % ('tape_thread', wait))
                         time.sleep(1)
                         break
-            # if encp is gone there is no need to dismount a tape
-            dism_allowed = not encp_gone
-        dism_allowed = dism_allowed & dismount_allowed
-        Trace.trace(26,"dismount_allowed %s"%(dism_allowed,))
+        Trace.trace(26,"dismount_allowed %s after_dismount %s"%(dism_allowed, after_dismount_function))
         if encp_gone:
-            self.net_driver.close()
             self.current_location = self.tape_driver.tell()
             self.dismount_time = time.time() + self.delay
             self.state = HAVE_BOUND
             if self.maybe_clean():
+                Trace.trace(26,"cleaned")
                 self.state = IDLE
                 self.log_state()
+                self.tr_failed = 0
+                return
                 
+        self.send_error_msg(error_info = (exc, msg),error_source=error_source)
+        if not ftt_eio:
+            self.need_lm_update = (1, ERROR, 1, error_source)
         if dism_allowed:
             if save_state == DRAINING:
                 self.dismount_volume()
-                #self.state = OFFLINE
                 self.offline()
             else:
                 if not after_dismount_function:
-                    self.maybe_clean()
+                    if not self.maybe_clean():
+                        self.dismount_volume()
                     self.idle()
                 else:
                     self.dismount_volume(after_function=after_dismount_function)
-        if not ftt_eio:
-            self.send_error_msg(error_info = (exc, msg),error_source=error_source)
-            self.need_lm_update = (1, ERROR, 1, error_source)
             
         if not after_dismount_function and broken:
-            self.broken(broken) 
+            self.broken(broken, exc)
+            self.tr_failed = 0
             return
-            
-
-        if ftt_eio:
-            # if there was an a ftt_eio error send error message
-            # to LM and go idle
-            self.send_error_msg(error_info = (exc, msg),error_source=error_source)
 
         self.tr_failed = 0   
-        #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
-        #self.update_lm()
-        #self.need_lm_update = (1, 0, None)    
         
     def transfer_completed(self):
         self.consecutive_failures = 0
@@ -2545,7 +2550,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mcc.doCleaningCycle(self.config)
             self.state = save_state
             Trace.log(e_errors.INFO, "cleaning complete")
-        needs_cleaning = 0
         return did_cleaning
         
     def update_after_writing(self):
@@ -2893,12 +2897,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         work = None
         if state is None:
             state = self.state
-        Trace.trace(20,"format_lm_ticket: state %s"%(state,))
+        Trace.trace(20,"format_lm_ticket: state %s error_info %s error_source %s"%
+                    (state, error_info, error_source))
         volume_label = self.current_volume
         if self.current_volume:
+            volume_label = self.current_volume
             volume_family = self.volume_family
         else:
-            volume_family = None
+            volume_label = self.last_volume
+            volume_family = self.last_volume_family
 
         if state is IDLE:
             work = "mover_idle"
@@ -3053,6 +3060,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
         self.tape_driver.close()
         self.last_volume = self.current_volume
+        self.last_volume_family = self.volume_family
         self.last_location = self.current_location
 
         if (self.vol_info.has_key('external_label')
@@ -3296,7 +3304,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver.seek(location, eot_ok) #XXX is eot_ok needed?
         except:
             exc, detail, tb = sys.exc_info()
-            self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
+            self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
             failed=1
         self.timer('seek_time')
         self.current_location = self.tape_driver.tell()
@@ -3556,6 +3564,8 @@ class DiskMover(Mover):
             self.state = OFFLINE
         self.current_volume = None #external label of current mounted volume
         self.last_volume = None
+        self.last_volume_family = None
+
         self.mode = None # READ, WRITE or ASSERT
         self.setup_mode = None
         self.bytes_to_transfer = 0L
@@ -3793,7 +3803,11 @@ class DiskMover(Mover):
                     except "CRC_ERROR":
                         exc, detail, tb = sys.exc_info()
                         #Trace.handle_error(exc, detail, tb)
-                        Trace.alarm(e_errors.ERROR, "selective CRC check error")
+                        Trace.alarm(e_errors.ERROR, "selective CRC check error",
+                                    {'outfile':self.current_work_ticket['outfile'],
+                                     'infile':self.current_work_ticket['infile'],
+                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                     'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
@@ -3823,7 +3837,7 @@ class DiskMover(Mover):
                     return
                 if self.buffer.complete_crc != saved_complete_crc:
                     Trace.alarm(e_errors.ERROR, "selective CRC check error")
-                    self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error")
+                    self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error",error_source=TAPE)
                     return
                 Trace.log(e_errors.INFO, "selective CRC check after writing file completed successfuly")
                 self.buffer.restore_settings()
@@ -3875,8 +3889,12 @@ class DiskMover(Mover):
                 bytes_read = self.buffer.block_read(nbytes, driver)
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             except "CRC_ERROR":
-                Trace.alarm(e_errors.ERROR, "CRC error reading tape")
-                self.transfer_failed(e_errors.CRC_ERROR, None)
+                Trace.alarm(e_errors.ERROR, "CRC error reading tape",
+                            {'outfile':self.current_work_ticket['outfile'],
+                             'infile':self.current_work_ticket['infile'],
+                             'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                             'external_label':self.current_work_ticket['vc']['external_label']})
+                self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 failed = 1
                 break
             except:
@@ -3941,8 +3959,12 @@ class DiskMover(Mover):
                     self.fcc.set_crcs(self.file_info['bfid'], sanity_cookie, self.buffer.complete_crc)
                 else:
                     if self.tr_failed: return  # do not raise alarm if net thead detected a failed transfer
-                    Trace.alarm(e_errors.ERROR, "read_tape CRC error")
-                    self.transfer_failed(e_errors.CRC_ERROR, None)
+                    Trace.alarm(e_errors.ERROR, "read_tape CRC error",
+                                {'outfile':self.current_work_ticket['outfile'],
+                                 'infile':self.current_work_ticket['infile'],
+                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                 'external_label':self.current_work_ticket['vc']['external_label']})
+                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 return
 
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
@@ -3991,7 +4013,11 @@ class DiskMover(Mover):
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
             except "CRC_ERROR":
-                Trace.alarm(e_errors.ERROR, "CRC error in write client")
+                Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                            {'outfile':self.current_work_ticket['outfile'],
+                             'infile':self.current_work_ticket['infile'],
+                             'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                             'external_label':self.current_work_ticket['vc']['external_label']})
                 self.transfer_failed(e_errors.CRC_ERROR, None)
                 failed = 1
                 break
@@ -4038,7 +4064,11 @@ class DiskMover(Mover):
                 Trace.trace(22,"write_client: calculated CRC %s File DB CRC %s"%
                             (self.buffer.complete_crc, self.file_info['complete_crc']))
                 if self.buffer.complete_crc != self.file_info['complete_crc']:
-                    Trace.alarm(e_errors.ERROR, "CRC error in write client")
+                    Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                                {'outfile':self.current_work_ticket['outfile'],
+                                 'infile':self.current_work_ticket['infile'],
+                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                 'external_label':self.current_work_ticket['vc']['external_label']})
                     self.transfer_failed(e_errors.CRC_ERROR, None)
                     return
                 
@@ -4467,9 +4497,11 @@ class DiskMover(Mover):
         Trace.trace(20,"format_lm_ticket: state %s"%(state,))
         volume_label = self.current_volume
         if self.current_volume:
+            volume_label = self.current_volume
             volume_family = self.volume_family
         else:
-            volume_family = None
+            volume_label = self.last_volume
+            volume_family = self.last_volume_family
 
         if state is IDLE:
             work = "mover_idle"
@@ -4543,6 +4575,8 @@ class DiskMover(Mover):
         self.state = DISMOUNT_WAIT
         self.tape_driver.close()
         self.last_volume = self.current_volume
+        self.last_volume_family = self.volume_family
+
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         if self.draining:
             self.offline()
