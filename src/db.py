@@ -25,6 +25,8 @@ class DbTable:
     self.dbHome = db_home
     self.jouHome = jou_home
     self.cursor_open = 0
+    self.c = None
+    self.t = None
 
 #    try:
 #	self.dbHome=configuration_client.ConfigurationClient(\
@@ -56,49 +58,47 @@ class DbTable:
   #  return self.cursor("next")
 
   def cursor(self,action,KeyOrValue=None):
-    global c
-    global t
 
     if not self.cursor_open and action !="open":
       self.cursor("open")
 
     if action=="open":
-      t=self.db.txn()
-      c=self.db.cursor(t)
+      self.t=self.db.txn()
+      self.c=self.db.cursor(self.t)
       self.cursor_open=1
       return
 
     if action=="close":
-      c.close()
-      t.commit()
+      self.c.close()
+      self.t.commit()
       self.cursor_open=0
       return
 
     if action=="first":
-      return c.first()
+      return self.c.first()
 
     if action=="last":
-      return c.last()
+      return self.c.last()
 
     if action=="next":
-      return c.next()
+      return self.c.next()
 
     # this should really be replaced by the db_stat command
     if action=="len":
-      pos,value=c.get()
+      pos,value=self.c.get()
       len=0
-      last,value=c.last()
-      key,value=c.first()
+      last,value=self.c.last()
+      key,value=self.c.first()
       while key!=last:
-        key,val=c.next()
+        key,val=self.c.next()
         len=len+1
-        c.set(pos)
+        self.c.set(pos)
       return len+1
 
     if action=="has_key":
-      pos,value=c.get()
-      key,value=c.set(KeyOrValue)
-      c.set(pos)
+      pos,value=self.c.get()
+      key,value=self.c.set(KeyOrValue)
+      self.c.set(pos)
       if key:
         return 1
       else:
@@ -106,30 +106,30 @@ class DbTable:
 
     if action=="delete":
       if self.auto_journal:
-        if self.jou.has_key(c.Key) == 0:
-          self.jou[c.Key]=self.db[c.Key]  ## was deepcopy
+        if self.jou.has_key(self.c.Key) == 0:
+          self.jou[self.c.Key]=self.db[self.c.Key]  ## was deepcopy
         else:
-          if self.jou[c.Key]['db_flag']=='delete':
+          if self.jou[self.c.Key]['db_flag']=='delete':
             return
-        self.jou[c.Key]['db_flag']='delete'
-        del self.jou[c.Key]
-      return c.delete()
+        self.jou[self.c.Key]['db_flag']='delete'
+        del self.jou[self.c.Key]
+      return self.c.delete()
    
     if action=="get":
-      return c.set(KeyOrValue)
+      return self.c.set(KeyOrValue)
 
     if action=="update":
       if self.auto_journal:
         if 'db_flag' in KeyOrValue.keys(): del KeyOrValue['db_flag']
-        self.jou[c.Key]=KeyOrValue  ## was deepcopy
+        self.jou[self.c.Key]=KeyOrValue  ## was deepcopy
         self.count=self.count+1
         if self.count > JOURNAL_LIMIT and backup_flag:
           self.checkpoint()
 
-      status = c.update(KeyOrValue)
+      status = self.c.update(KeyOrValue)
 
       if self.auto_journal:
-        self.jou[c.Key]['db_flag']='add'
+        self.jou[self.c.Key]['db_flag']='add'
 
       return status
 
@@ -147,7 +147,7 @@ class DbTable:
 	len=len+1
     c.close()
     t.commit()
-    return len
+    return len+1
 
   def has_key(self,key):
      return self.db.has_key(key)
