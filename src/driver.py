@@ -250,6 +250,7 @@ class GenericDriver:
     
         
     def check_header( self ):
+        extra=None
         if debug_paranoia:  print "check_header"
         try:
             label=self.read(80)
@@ -261,8 +262,8 @@ class GenericDriver:
                 val=string.split(label[4:])[0]
         except:
             typ,val = None,None
-        if debug_paranoia:  print "check_header: return",typ,val
-        return typ, val
+        if debug_paranoia:  print "check_header: return",typ,val,extra
+        return typ, val, extra
         
     def read( self, size_bytes ):
 	return os.read( self.fd, size_bytes )
@@ -374,7 +375,7 @@ class  FTTDriver(GenericDriver) :
             ## new, so we should label it.  But it also could be due to a
             ## drive error!  I don't know how to distinguish these cases.
             typ,val = None,None
-        if debug_paranoia:  print "check_header: return",typ,val
+        if debug_paranoia:  print "check_header: return",typ,val,extra
         FTT.set_blocksize(blocksize)
         return typ, val, extra
         
