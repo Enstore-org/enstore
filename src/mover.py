@@ -15,6 +15,7 @@ import string
 import select
 import exceptions
 import traceback
+import fcntl, FCNTL
 
 # enstore modules
 
@@ -310,16 +311,18 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.shortname = name
         self.unique_id = None #Unique id of last transfer, whether success or failure
         self.notify_transfer_threshold = 2*1024*1024
+        self.state_change_time = 0.0
         self._state_lock = threading.Lock()
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
             
     def __setattr__(self, attr, val):
-        #catch state changes
+        #tricky code to catch state changes
         try:
             if attr == 'state':
                 if val != getattr(self, 'state', None):
                     Trace.notify("state %s %s" % (self.shortname, state_name(val)))
+                self.__dict__['state_change_time'] = time.time()
         except:
             pass #don't want any errors here to stop us
         self.__dict__[attr] = val
@@ -1240,8 +1243,20 @@ class Mover(dispatching_worker.DispatchingWorker,
             ticket['mover']['callback_addr'] = (host,port) #client expects this
 
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            flags = fcntl.fcntl(control_socket, FCNTL.F_GETFL)
+            fcntl.fcntl(control_socket, FCNTL.F_SETFL, flags | FCNTL.O_NONBLOCK)
             Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
-            control_socket.connect(ticket['callback_addr'])
+            for retry in xrange(60):
+                try:
+                    control_socket.connect(ticket['callback_addr'])
+                    break
+                except socket.error, detail:
+                    Trace.log(e_errors.ERROR, "%s %s" % (detail, ticket['callback_addr']))
+                    time.sleep(1)
+            else:
+                Trace.log(e_errors.ERROR, "timeout connecting to %s" % (ticket['callback_addr'],))
+                return None, None
+            fcntl.fcntl(control_socket, FCNTL.F_SETFL, flags)
             Trace.trace(10, "connected")
             try:
                 callback.write_tcp_obj(control_socket, ticket)
@@ -1262,7 +1277,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.net_driver.fdopen(client_socket)
                 return control_socket, client_socket
             else:
-                Trace.log(e_errors.INFO, "timeout on waiting for client connect")
+                Trace.log(e_errors.ERROR, "timeout on waiting for client connect")
                 return None, None
         except:
             exc, msg, tb = sys.exc_info()
@@ -1298,7 +1313,17 @@ class Mover(dispatching_worker.DispatchingWorker,
         if type(status) != type(()) or len(status)!=2:
             Trace.log(e_errors.ERROR, "status should be 2-tuple, is %s" % (status,))
             status = (status, None)
-            
+
+        if state is IDLE:
+            ## If we've been idle for more than 5 minutes, force the LM to clear
+            ## any entry for this mover in the work_at_movers.  Yes, this is a
+            ## kludge, but it keeps the system from getting completely hung up
+            ## if the LM doesn't realize we've finished a transfer.
+            now = time.time()
+            if time.time() - self.state_change_time > 600:
+                self.unique_id = None
+                self.state_change_time = now
+                
         ticket =  {
             "mover":  self.name,
             "address": self.address,
@@ -1479,6 +1504,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'last_volume' : self.last_volume,
                  'last_location': self.last_location,
                  'time_stamp'   : now,
+                 'time_in_state': now - self.state_change_time,
                  'buffer_min': self.buffer.min_bytes,
                  'buffer_max': self.buffer.max_bytes,
                  'rate of network': self.net_driver.rates()[0],
