@@ -57,31 +57,6 @@ MIN_LEFT=long(0) # for now, this is disabled.
 
 MY_NAME = "volume_clerk"
 
-# This is a bfid_db replacement. A prototype for now.
-
-class newBfidDB:
-	def __init__(self, dbHome):
-		self.db = db.Index(None, dbHome, 'file', 'external_label')
-
-	def get_all_bfids(self, external_label):
-		return self.db[external_label]
-
-	def rename_volume(self, old_label, new_label):
-		# do onthing
-		return
-
-	def delete_all_bfids(self, external_label):
-		# do nothing
-		return
-
-	def init_dbfile(self, external_label):
-		# do nothing
-		return
-
-	def add_bfid(self, external_label, bfid):
-		# do nothing
-		return
-
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # check if volume is full
@@ -154,15 +129,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          if bfid_list:
              fcc.bfid = bfid_list[0]
              vm_ticket = fcc.get_volmap_name()
-             if vm_ticket.has_key('pnfs_mapname'):
-                 old_vol_map_name = vm_ticket["pnfs_mapname"]
-                 (old_vm_dir,file) = os.path.split(old_vol_map_name)
-                 new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
-                 # rename map files
-                 Trace.log(e_errors.INFO, "trying volume map directory renamed %s->%s"%
-                           (old_vm_dir, new_vm_dir))
-                 os.rename(old_vm_dir, new_vm_dir)
-                 Trace.log(e_errors.INFO, "volume map directory renamed %s->%s"%
+             old_vol_map_name = vm_ticket["pnfs_mapname"]
+             (old_vm_dir,file) = os.path.split(old_vol_map_name)
+             new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
+             # rename map files
+             Trace.log(e_errors.INFO, "trying volume map directory renamed %s->%s"%
+                       (old_vm_dir, new_vm_dir))
+             os.rename(old_vm_dir, new_vm_dir)
+             Trace.log(e_errors.INFO, "volume map directory renamed %s->%s"%
                        (old_vm_dir, new_vm_dir))
          # replace file clerk database entries
          for bfid in bfid_list:
@@ -845,7 +819,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 msg="Volume Clerk: no new volumes available [%s, %s]"%(library,
 								       vol_fam)
                 ticket["status"] = (e_errors.NOVOLUME, msg)
-                Trace.alarm(e_errors.ERROR,msg)
+                Trace.log(e_errors.ERROR,msg)
                 self.reply_to_caller(ticket)
                 return
 
@@ -893,7 +867,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     else:
                         msg="Volume Clerk: Quota exceeded, contact enstore admin."
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
-                        Trace.alarm(e_errors.ERROR,msg)
+                        Trace.log(e_errors.ERROR,msg)
                         self.reply_to_caller(ticket)
                         return
 
@@ -921,7 +895,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         msg="Volume Clerk: no new volumes available [%s, %s]"%(library,
 							       vol_fam)
         ticket["status"] = (e_errors.NOVOLUME, msg)
-        Trace.alarm(e_errors.ERROR,msg)
+        Trace.log(e_errors.ERROR,msg)
         self.reply_to_caller(ticket)
         return
 
@@ -1573,7 +1547,6 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
         self.bfid_db=bfid_db.BfidDb(dbHome)
-        # self.bfid_db=newBfidDB(dbHome)
         self.sgdb = sg_db.SGDb(dbHome)
 
         self.noaccess_cnt = 0
