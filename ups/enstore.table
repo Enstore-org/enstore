@@ -97,6 +97,9 @@ QUALIFIERS = ""
 	
 	# create an enstore link in the bin area
 	execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/enstore ]; then ln -s $ENSTORE_DIR/src/enstore_admin.py $ENSTORE_DIR/bin/enstore; fi"',NO_UPS_ENV)
+
+	# create an enstoreCut link in the sbin area
+	execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ]; then ln -s $ENSTORE_DIR/sbin/encpCut $ENSTORE_DIR/sbin/enstoreCut; fi"',NO_UPS_ENV)
 	
         # default "control" environmental variables
         envSet(ENSTORE_CONFIG_FILE, "${UPS_PROD_DIR}/etc/pcfarm.conf")
