@@ -1,0 +1,14 @@
+This is the Fermi Tape Tools product ftt.
+
+It provides several pieces:
+(1) a platform-insulating direct SCSI i/o library
+(2) a platform-and-drive insulating tape i/o library
+(3) a command line/script interpreter interface to (2)
+(4) test scripts for (3) to test the software and to test
+    tape drives.
+Along with a users guide and porting guide.
+
+Authors & Maintainers: 
+	Marc Mengel <mengel@fnal.gov>
+	Margaret Votava <votava@fnal.gov>
+	Dorota Genser <dorota@fnal.gov>
