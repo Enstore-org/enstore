@@ -10,6 +10,9 @@ import string
 import time
 import threading
 import enstore_display
+import configuration_client
+import enstore_functions
+import e_errors
 
 import rexec
 
@@ -102,16 +105,27 @@ def main():
 
     if len(sys.argv) > 1:
         event_relay_host = sys.argv[1]
+        system_name = sys.argv[1]
     else:
         event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
         system_name = event_relay_host
-    if event_relay_host[:2]=='d0':
-        event_relay_host = 'd0ensrv2.fnal.gov'
-        system_name = 'd0en'
-    elif event_relay_host[:3]=='stk':
-        event_relay_host = 'stkensrv2.fnal.gov'
-        system_name = 'stken'
-        
+
+    # get a configuration server
+    config_host = enstore_functions.default_host()
+    config_port = enstore_functions.default_port()
+    csc = configuration_client.ConfigurationClient((config_host,config_port))
+    #Get the list of all config servers and remove the 'status' element.
+    config_servers = csc.get('known_config_servers', {})
+    if config_servers['status'][0] == e_errors.OK:
+        del config_servers['status']
+
+    #Based on the config file determine which config server was specified.
+    for name in config_servers.keys():
+        if len(event_relay_host) >= len(name) and \
+           event_relay_host[:len(name)] == name:
+            event_relay_host = config_servers[name][0]
+            system_name = name
+
     event_relay_port = 55510
     os.environ['ENSTORE_CONFIG_HOST'] = event_relay_host
 
