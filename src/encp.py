@@ -1516,6 +1516,9 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
         mode = 1 #write
     else:
         mode = 0 #read
+    #Force a reload of the enstore.conf file.  This updates the global
+    # cached version of the enstore.conf file information.
+    host_config.update_cached_config()
     #set up any special network load-balancing voodoo
     interface=host_config.check_load_balance(mode=mode)
     #load balencing...
