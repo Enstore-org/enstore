@@ -40,8 +40,6 @@ int	traceOnOff( int on, char *id, unsigned lvl1, unsigned lvl2 );
 
 static	char	*version = "Release- $Revision$ $Date$ $Author$";
 
-static const char *
-base_name( const char	*name );
 
 int
 main(  int	argc
@@ -51,19 +49,16 @@ main(  int	argc
 
     exit_sts = 0;
 
-    if      (strcmp((char *)base_name(argv[0]),"traceShow") == 0)
+    if      (strcmp(trc_basename(argv[0],'/'),"traceShow") == 0)
     {   int	arg, delta_t=0, lines=0, incHDR=1,incLVL=0,incINDT=1,incCPU=0,incPMC=0,proc=-1;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
-	{   if      (strcmp(argv[arg],"-cpu") == 0)      incCPU=1;
-	    else if (strcmp(argv[arg],"-pmc") == 0)      incPMC=1;
-	    else if (strcmp(argv[arg],"-lvl") == 0)      incLVL=1;
-	    else if (strcmp(argv[arg],"-just") == 0)     {arg++;proc=argv[arg][0]-'0';}
+	{        if (strcmp(argv[arg],"-lvl") == 0)      incLVL=1;
 	    else if (strcmp(argv[arg],"-nohdr") == 0)    incHDR=0;
 	    else if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else if (strcmp(argv[arg],"-noindent") == 0) incINDT=0;
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] [delta_time [lines]]\n"
-			, (char *)base_name(argv[0]) );
+			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid options: nohdr,cpu,pmc,lvl,noindent\n" );
 		exit( 1 );
 	    }
@@ -72,13 +67,13 @@ main(  int	argc
 	if (argc >arg+1)  if ((lines=atoi(argv[arg+1])) < 0) lines=0;
 	exit_sts = traceShow( delta_t, lines, incHDR,incLVL,incINDT,incCPU,incPMC,proc );
     }
-    else if (strcmp((char *)base_name(argv[0]),"traceInfo") == 0)
+    else if (strcmp(trc_basename(argv[0],'/'),"traceInfo") == 0)
     {   int	arg, start=0, num=0;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] [num_procs [start_proc]]\n"
-			, (char *)base_name(argv[0]) );
+			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid option: --version\n" );
 		exit( 1 );
 	    }
@@ -91,26 +86,26 @@ main(  int	argc
 	    sscanf( argv[1],"%d",&num );
 	exit_sts = traceInfo( start, num );
     }
-    else if (strcmp((char *)base_name(argv[0]),"traceReset") == 0)
+    else if (strcmp(trc_basename(argv[0],'/'),"traceReset") == 0)
     {   int	arg;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else
 	    {   fprintf(  stderr, "usage: %s [options]\n"
-			, (char *)base_name(argv[0]) );
+			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid option: --version\n" );
 		exit( 1 );
 	    }
 	}
 	exit_sts = traceReset();
     }
-    else if (strcmp((char *)base_name(argv[0]),"traceMode") == 0)
+    else if (strcmp(trc_basename(argv[0],'/'),"traceMode") == 0)
     {   int	arg, mode;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] <0-5>\n"
-			, (char *)base_name(argv[0]) );
+			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid option: --version\n" );
 		exit( 1 );
 	    }
@@ -118,19 +113,18 @@ main(  int	argc
 	if (   (argc-arg<1)
 	    || (sscanf(argv[1],"%d",&mode)!=1)
 	    || ((mode<0)||(mode>5)))
-	{   fprintf( stderr, "usage: %s <0-5>\n", (char *)base_name(argv[0]) );
+	{   fprintf( stderr, "usage: %s <0-5>\n", trc_basename(argv[0],'/') );
 	    exit( 1 );
 	}
 	exit_sts = traceMode( mode );
     }
-#if 0
-    else if (strncmp((char *)base_name(argv[0]),"traceO",6) == 0)
+    else if (strncmp(trc_basename(argv[0],'/'),"traceO",6) == 0)
     {   unsigned	arg, lvl1, lvl2;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] <0-5>\n"
-			, (char *)base_name(argv[0]) );
+			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid option: --version\n" );
 		exit( 1 );
 	    }
@@ -138,38 +132,14 @@ main(  int	argc
 	if (   (argc-arg<3)
 	    || (sscanf(argv[2],"%d",&lvl1)!=1)
 	    || (sscanf(argv[3],"%d",&lvl2)!=1))
-	{   fprintf( stderr, "usage: %s <TIDorNANE> <lvl1> <lvl2>\n", (char *)base_name(argv[0]) );
+	{   fprintf( stderr, "usage: %s <TIDorNANE> <lvl1> <lvl2>\n", trc_basename(argv[0],'/') );
 	    exit( 1 );
 	}
-	exit_sts = traceOnOff(  (strcmp((char *)base_name(argv[0]),"traceOn")==0)?1:0
+	exit_sts = traceOnOff(  (strcmp(trc_basename(argv[0],'/'),"traceOn")==0)?1:0
 			      , argv[1], lvl1, lvl2 );
     }
-#endif
 
     exit( exit_sts );
-}
-/* 
-EXAMPLES [start with IRIX man page]
-     Input string   Output pointer
-     _____________________________
-     /usr/lib       lib
-     /usr/          ""
-     /              ""
-*/
-
-static const char *
-base_name( const char	*name )
-{
-	int	size;
-
-    size = strlen( name );
-
-    while (size--)
-    {
-	if (*(name+size) == '/')
-	    break;
-    }
-    return (name+size+1);
 }
 
 
@@ -190,7 +160,7 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,
         char    traceLvlStr[33] = "                                ";
         int     line_count=0, c2=0;
 
-    trace_init_trc();
+    trace_init_trc("");
 
     head = trc_cntl_sp->head_idx;
     if ((head==trc_cntl_sp->tail_idx) && !trc_cntl_sp->full_flg)
@@ -241,8 +211,6 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,
 	c_p += sprintf( c_p, "%20lu ", time );
 	c_p += sprintf( c_p, "%5d ", (trc_ent_sp+head)->pid );
 
-#	define TRC_D2S(x)		#x
-#	define TRC_DEF_TO_STR(x)	TRC_D2S(x)
 	if ((trc_ent_sp+head)->tid >= TRC_MAX_PIDS)
 	    c_p += sprintf(  c_p, "%" TRC_DEF_TO_STR(TRC_MAX_NAME) "s "
 			   , trc_cntl_sp->t_name_a[ (trc_ent_sp+head)->tid
@@ -346,7 +314,7 @@ traceInfo( int start, int num )
 	int	begin, end, head, tail;
 	int	ents_qued;
 
-    trace_init_trc();
+    trace_init_trc("");
 
     begin = 0;
     end   = trc_cntl_sp->last_idx;
@@ -413,7 +381,7 @@ trace mode: %d  0=off 1=cirQ   2=logMsg 3=cirQ/logMsg 4=USR       5=cirQ/USR\n"
 int
 traceReset( void )
 {   
-    trace_init_trc();
+    trace_init_trc("");
 
     semop( trc_sem_id, &trc_sem_get_s, 1 );
     trc_cntl_sp->tail_idx = trc_cntl_sp->head_idx;
@@ -432,7 +400,7 @@ traceMode( int mode )
 {   
     register int	_r_;
 
-    trace_init_trc();
+    trace_init_trc("");
 
     _r_ = trc_cntl_sp->mode;
 
@@ -442,7 +410,6 @@ traceMode( int mode )
     return (_r_);
 }
 
-#if 0
 
 /***************************************************************************
  ***************************************************************************/
@@ -452,8 +419,9 @@ traceOnOff( int on, char *id_s, unsigned lvl1, unsigned lvl2 )
 {
 	unsigned	id_i, new_msk=0;
 	char		*end_p;
-volatile unsigned	old_lvl;	/* volatile need to asure TRC_CTL_INT
-					   execution in "Global" case */
+	unsigned	old_lvl;
+
+    trace_init_trc("");
 
     if (lvl1 > 31) lvl1 = 31;
     if (lvl2 > 31) lvl2 = 31;
@@ -465,121 +433,74 @@ volatile unsigned	old_lvl;	/* volatile need to asure TRC_CTL_INT
     if (end_p != (id_s+strlen(id_s)))	/* check if conversion worked */
     {   /* did not work - id_s must not have a pure number -
 	   check for name */
-	char	lcl_name[TRC_PROC_NAME_MX+1]; int i;
+	char	lcl_name[TRC_MAX_NAME+1]; int i;
 
 	/* first check special case */
 	if (  (strcmp(id_s,"global")==0)
 	    ||(strcmp(id_s,"Global")==0)
 	    ||(strcmp(id_s,"GLOBAL")==0))
 	{
-	    for (id_i=(NR_TASKS+NR_TRC_PROCS); id_i--; )
-	    {   /* read the old lvl val via trace segment */
-		{   register short	gs_sav;
-		    register int	_r_;
-	
-		    gs_sav = TRC_GET_SEG( gs );
-		    TRC_SET_SEG( gs, TRC_SHOW_SEG );
-		    _r_ = TRC_GET_LVL( id_i );
-		    TRC_SET_SEG( gs, gs_sav );
-
-		    old_lvl = _r_;
+	    for (id_i=(TRC_MAX_PIDS+TRC_MAX_PROCS); id_i--; )
+	    {   old_lvl = trc_cntl_sp->lvl_a[id_i];
+		if (on)
+		    trc_cntl_sp->lvl_a[id_i] |=  new_msk;
+		else
+		{   trc_cntl_sp->lvl_a[id_i] &= ~new_msk;
 		}
-
-		if (on) old_lvl |=  new_msk;
-		else    old_lvl &= ~new_msk;
-
-		old_lvl = TRC_CTL_INT( TrcCntl_lvl, id_i, old_lvl );
 	    }
 	    return (1);
 	}
 	if (  (strcmp(id_s,"initial")==0)
 	    ||(strcmp(id_s,"Initial")==0)
 	    ||(strcmp(id_s,"INITIAL")==0))
-	{   /* read the old lvl val via trace segment */
-	    {   register short      gs_sav;
-		register int        _r_;
-        
-		gs_sav = TRC_GET_SEG( gs );
-		TRC_SET_SEG( gs, TRC_SHOW_SEG );
-		_r_ = TRC_GET_INT( gs, &TRC_->trcInitialLvl );
-		TRC_SET_SEG( gs, gs_sav );
-
-		old_lvl = _r_;
+	{   old_lvl = trc_cntl_sp->intl_lvl;
+	    if (on)
+		trc_cntl_sp->intl_lvl |=  new_msk;
+	    else
+	    {   trc_cntl_sp->intl_lvl &= ~new_msk;
 	    }
-
-	    if (on) old_lvl |=  new_msk;
-	    else    old_lvl &= ~new_msk;
-
-	    old_lvl = TRC_CTL_INT( TrcCntl_initialOn, old_lvl, 0 );
 	    printf( "old lvl: 0x%08x\n", old_lvl );
 	    return (1);
 	}
 	if (  (strcmp(id_s,"tty")==0)
 	    ||(strcmp(id_s,"Tty")==0)
 	    ||(strcmp(id_s,"TTy")==0))
-	{   /* read the old lvl val via trace segment */
-	    {   register short      gs_sav;
-		register int        _r_;
-        
-		gs_sav = TRC_GET_SEG( gs );
-		TRC_SET_SEG( gs, TRC_SHOW_SEG );
-		_r_ = TRC_GET_INT( gs, &TRC_->trcInitialLvl );
-		TRC_SET_SEG( gs, gs_sav );
-
-		old_lvl = _r_;
+	{   old_lvl = trc_cntl_sp->tty_lvl;
+	    if (on)
+		trc_cntl_sp->tty_lvl |=  new_msk;
+	    else
+	    {   trc_cntl_sp->tty_lvl &= ~new_msk;
 	    }
-
-	    if (on) old_lvl |=  new_msk;
-	    else    old_lvl &= ~new_msk;
-
-	    old_lvl = TRC_CTL_INT( TrcCntl_ttyLvl, old_lvl, 0 );
 	    printf( "old lvl: 0x%08x\n", old_lvl );
 	    return (1);
 	}
 
 	printf( "searching procs\n" );
-	for (i=NR_TRC_PROCS; i--; )
-	{   int j; short gs_sav;
-	    gs_sav = TRC_GET_SEG( gs );
-	    TRC_SET_SEG( gs, TRC_SHOW_SEG );
-	    for (j=TRC_PROC_NAME_MX+1; j--; )
-		lcl_name[j] = TRC_GET_BDX( gs,&TRC_->trcProcName_a[i],j,1 );
-	    TRC_SET_SEG( gs, gs_sav );
-
-	    if (strcmp(lcl_name,id_s) == 0) break;
+	for (i=TRC_MAX_PROCS; i--; )
+	{
+	    if (strcmp(trc_cntl_sp->t_name_a[i],id_s) == 0)
+		break;
 	}
 	if (i == -1)
 	{   printf( "invalid trace proc\n" );
 	    return (1);
 	}
-	id_i = i + NR_TASKS;
+	id_i = i + TRC_MAX_PIDS;
     }
 
     /* at this point, either id_s was a number or it was a name that was
        converted to a number */
 
-    if (id_i > (NR_TASKS+NR_TRC_PROCS-1)) id_i = (NR_TASKS+NR_TRC_PROCS-1);
+    if (id_i > (TRC_MAX_PIDS+TRC_MAX_PROCS-1))
+	id_i = (TRC_MAX_PIDS+TRC_MAX_PROCS-1);
     printf( "id = %d\n", id_i );
 
-    do
-    {   /* read the old lvl val via trace segment */
-	{   register short	gs_sav;
-	    register int	_r_;
-	
-	    gs_sav = TRC_GET_SEG( gs );
-	    TRC_SET_SEG( gs, TRC_SHOW_SEG );
-	    _r_ = TRC_GET_LVL( id_i );
-	    TRC_SET_SEG( gs, gs_sav );
+    old_lvl = trc_cntl_sp->lvl_a[id_i];
+    if (on)
+	trc_cntl_sp->lvl_a[id_i] |=  new_msk;
+    else
+	trc_cntl_sp->lvl_a[id_i] &= ~new_msk;
 
-	    old_lvl = _r_;
-	}
-
-	if (on) old_lvl |=  new_msk;
-	else    old_lvl &= ~new_msk;
-
-	old_lvl = TRC_CTL_INT( TrcCntl_lvl, id_i, old_lvl );
-    } while (0);
     printf( "old lvl: 0x%08x\n", old_lvl );
     return (old_lvl);
 }
-#endif /* if 0 */
