@@ -390,6 +390,7 @@ class Mover:
             self.library = "Unknown"
             
         self.update_state("Unknown")
+        self.animate_timer() #Start the automatic timer updates.
     
         self.draw()
 
@@ -398,6 +399,14 @@ class Mover:
             self.undraw()
         except Tkinter.TclError:
             pass #internal Tcl problems.
+
+    #########################################################################
+
+    def animate_timer(self):
+
+        self.update_timer(time.time())
+        
+        self.display.after(1000, self.animate_timer)
 
     #########################################################################
 
@@ -1237,7 +1246,8 @@ class Connection:
     def __init__(self, mover, client, display):
         # we are passing instances of movers and clients
         self.mover              = mover
-        client.n_connections    = client.n_connections + 1
+        #client.n_connections    = client.n_connections + 1
+        #print "Connection.__init__",  client.name, client.n_connections, mover.name
         self.client             = client
         self.display            = display
         self.rate               = 0 #pixels/second, not MB
@@ -1251,7 +1261,8 @@ class Connection:
         self.position()
 
     def __del__(self):
-	self.client.n_connections = self.client.n_connections - 1
+	#self.client.n_connections = self.client.n_connections - 1
+        #print "Connection.__del__",  self.client.name, self.client.n_connections, self.mover.name
         self.undraw()
         
     #########################################################################
@@ -1622,10 +1633,11 @@ class Display(Tkinter.Canvas):
                                                  
     def resize(self, event):
         try:
-            self.after_cancel(self.after_timer_id)
-            self.after_cancel(self.after_animation_id)
+            #self.after_cancel(self.after_timer_id)
+            #self.after_cancel(self.after_animation_id)
+            self.after_cancel(self.after_smooth_animation_id)
             self.after_cancel(self.after_clients_id)
-            self.after_cancel(self.after_idle_id)
+            #self.after_cancel(self.after_idle_id)
             self.after_cancel(self.after_reinitialize_id)
             if self.after_reposition_id:
                 self.after_cancel(self.after_reposition_id)
@@ -1639,11 +1651,13 @@ class Display(Tkinter.Canvas):
         self.after_reposition_id = self.after(100, self.reposition_canvas)
 
         try:
-            self.after_timer_id = self.after(1000, self.update_timers)
-            self.after_animation_id = self.after(1000,
-                                                 self.connection_animation)
+            #self.after_timer_id = self.after(1000, self.update_timers)
+            #self.after_animation_id = self.after(1000,
+            #                                     self.connection_animation)
+            self.after_smooth_animation_id = self.after(1000,
+                                                        self.smooth_animation)
             self.after_clients_id = self.after(1000, self.disconnect_clients)
-            self.after_idle_id = self.after(1000, self.display_idle)
+            #self.after_idle_id = self.after(1000, self.display_idle)
         except AttributeError:
             pass
 
@@ -1786,7 +1800,7 @@ class Display(Tkinter.Canvas):
         for mover in self.movers.values():
             mover.update_timer(now)
 
-        self.after_timer_id = self.after(30, self.update_timers)
+        #self.after_timer_id = self.after(30, self.update_timers)
         
     #Called from self.after().
     def connection_animation(self):
@@ -1800,13 +1814,45 @@ class Display(Tkinter.Canvas):
         for connection in self.connections.values():
             connection.animate(now)
 
-        self.after_animation_id = self.after(30, self.connection_animation)
+        #self.after_animation_id = self.after(30, self.connection_animation)
+
+    #Called from self.after().
+    def process_messages(self):
+        if self.stopped: #If we should stop, then stop.
+            self.quit()
+
+        #Only process the messages in the queue at this time.
+        display_lock.acquire()
+        number = len(self.command_queue)
+        #display_lock.release()
+        
+        while number > 0:
+            #display_lock.acquire()
+            
+            self.handle_command(self.command_queue[0])
+            del self.command_queue[0]
+            
+            #display_lock.release()
+
+            number = number - 1
+
+        display_lock.release()
+
+    #Called from self.after().
+    def smooth_animation(self):
+        self.process_messages()
+        #self.update_timers()
+        self.connection_animation()
+        
+
+        self.after_smooth_animation_id = self.after(30, self.smooth_animation)
 
     #Called from self.after().
     def disconnect_clients(self):
         now = time.time()
         #### Check for unconnected clients
         for client_name, client in self.clients.items():
+            #print client_name, client.n_connections, client.waiting, now - client.last_activity_time
             if (client.n_connections > 0 or client.waiting == 1):
                 continue
             if now - client.last_activity_time > 5: # grace period
@@ -1948,13 +1994,21 @@ class Display(Tkinter.Canvas):
         #First test if a connection is already present.
         if self.connections.get(mover.name, None):
             connection = self.connections[mover.name]
+            #Decrease the old clients connection count.
+            old_client = connection.client
+            old_client.n_connections = old_client.n_connections - 1
+            #Take the existing connection and make in like new.
             connection.undraw()
             connection.__init__(mover, client, self)
+            #Increase the number of connections this client has.
+            client.n_connections = client.n_connections + 1
         #If not create a new connection.
         else:
             connection = Connection(mover, client, self)
             self.connections[mover.name] = connection
             connection.update_rate(0)
+            #Increase the number of connections this client has.
+            client.n_connections = client.n_connections + 1
         connection.draw() #Either draw or redraw correctly.
         ###What are these for?
         mover.t0 = now
@@ -1966,6 +2020,15 @@ class Display(Tkinter.Canvas):
         
         mover = self.movers.get(command_list[1])
 
+        client_name = normalize_name(command_list[2])
+        client = self.clients.get(client_name)
+
+        #Decrease the number of connections this client has.
+        try:
+            client.n_connections = client.n_connections - 1
+        except (AttributeError, KeyError):
+            pass
+        
         #Remove all references to the connection.
         try:
             del self.connections[mover.name]
@@ -2221,7 +2284,7 @@ class Display(Tkinter.Canvas):
             self.handle_command(self.command_queue[0])
             del self.command_queue[0]
         display_lock.release()
-        self.after_idle_id = self.after(30, self.display_idle)
+        self.after_idle_id = self.after_idle(self.display_idle)
 
     #overloaded
     def destroy(self):
@@ -2240,10 +2303,11 @@ class Display(Tkinter.Canvas):
 
 
     def mainloop(self):
-        self.after_timer_id = self.after(30, self.update_timers)
-        self.after_animation_id = self.after(30, self.connection_animation)
+        #self.after_timer_id = self.after(30, self.update_timers)
+        #self.after_animation_id = self.after(30, self.connection_animation)
+        self.after_smooth_animation_id = self.after(30, self.smooth_animation)
         self.after_clients_id = self.after(1000, self.disconnect_clients)
-        self.after_idle_id = self.after(30, self.display_idle)
+        #self.after_idle_id = self.after_idle(self.display_idle)
         self.after_reinitialize_id = self.after(3600000, self.reinitialize)
         self.after_reposition_id = None
         self.master.mainloop()
