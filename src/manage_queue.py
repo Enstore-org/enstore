@@ -27,9 +27,9 @@ class Queue:
    
    # A call back for sort, highest priority should be first.
    def compare_priority(self,t1,t2):
-      if t1["encp"]["curpri"] > t2["encp"]["curpri"]:
-         return 1
       if t1["encp"]["curpri"] < t2["encp"]["curpri"]:
+         return 1
+      if t1["encp"]["curpri"] > t2["encp"]["curpri"]:
          return -1
       # if priority is equal, then time in rules
       if t1["times"]["t0"] > t2["times"]["t0"]:
@@ -150,7 +150,9 @@ if __name__ == "__main__":
   t3["encp"]["agetime"]=0
   t3["times"]["t0"]=time.time()
   pending_work.insert_job(t3)
-
+  while 1:
+    print pending_work.get_queue()
+    time.sleep(10)
   n=10
   while n:
     w=pending_work.get_init()
@@ -161,6 +163,7 @@ if __name__ == "__main__":
     n=n-1
   generic_cs.enprint("delete t1")
   pending_work.delete_job(t1)
-# get the whole list of jobs 
+# get the whole list of jobs
   generic_cs.enprint("get_queue")
   generic_cs.enprint(pending_work.get_queue(), generic_cs.PRETTY_PRINT)
+
