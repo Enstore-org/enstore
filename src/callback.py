@@ -16,20 +16,20 @@ except ImportError:
 
 # see if we can bind to the selected tcp host/port
 def try_a_port(host, port) :
-    Trace.trace(16,'Entering try_a_port host='+repr(host)+" port="+repr(port))
+    Trace.trace(16,'{try_a_port host='+repr(host)+" port="+repr(port))
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(host, port)
     except:
         sock.close()
-        Trace.trace(16,'Leaving try_a_port FAILURE')
+        Trace.trace(16,'}try_a_port FAILURE')
         return (0 , sock)
-    Trace.trace(16,'Leaving try_a_port sock='+repr(sock))
+    Trace.trace(16,'}try_a_port sock='+repr(sock))
     return 1 , sock
 
 # get an unused tcp port for communication
 def get_callback() :
-    Trace.trace(16,"Entering get_callback")
+    Trace.trace(16,"{get_callback")
     (host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
 
     # First acquire the hunt lock.  Once we have it, we have the exlusive right
@@ -53,7 +53,7 @@ def get_callback() :
             if success :
                 lockfile.unlock(lockf)
                 lockf.close()
-                Trace.trace(16,"Leaving get_callback host="+repr(host)+\
+                Trace.trace(16,"}get_callback host="+repr(host)+\
                             " port="+repr(port)+" mysocket="+repr(mysocket))
                 return host, port, mysocket
         #  otherwise, we tried all ports, try later.
@@ -67,118 +67,151 @@ def get_callback() :
 
 # return a mover tcp socket
 def mover_callback_socket(ticket) :
-    Trace.trace(16,'Entering mover_callback_socket host='+\
+    Trace.trace(16,'{mover_callback_socket host='+\
                 repr(ticket['mover_callback_host'])+" port="+\
                 repr(ticket['mover_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['mover_callback_host'], ticket['mover_callback_port'])
-    Trace.trace(16,"Leaving mover_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}mover_callback_socket sock="+repr(sock))
     return sock
 
 # return a library manager tcp socket
 def library_manager_callback_socket(ticket) :
-    Trace.trace(16,'Entering library_manager_callback_socket host='+\
+    Trace.trace(16,'{library_manager_callback_socket host='+\
                 repr(ticket['library_manager_callback_host'])+" port="+\
                 repr(ticket['library_manager_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['library_manager_callback_host'], \
                  ticket['library_manager_callback_port'])
-    Trace.trace(16,"Leaving library_manager_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}library_manager_callback_socket sock="+repr(sock))
     return sock
 
 # return a library manager tcp socket
 def volume_clerk_callback_socket(ticket) :
-    Trace.trace(16,'Entering volume_clerk_callback_socket host='+\
+    Trace.trace(16,'{volume_clerk_callback_socket host='+\
                 repr(ticket['volume_clerk_callback_host'])+" port="+\
                 repr(ticket['volume_clerk_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['volume_clerk_callback_host'], \
                  ticket['volume_clerk_callback_port'])
-    Trace.trace(16,"Leaving volume_clerk_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}volume_clerk_callback_socket sock="+repr(sock))
     return sock
 
 # return a file clerk tcp socket
 def file_clerk_callback_socket(ticket) :
-    Trace.trace(16,'Entering file_clerk_callback_socket host='+\
+    Trace.trace(16,'{file_clerk_callback_socket host='+\
                 repr(ticket['file_clerk_callback_host'])+" port="+\
                 repr(ticket['file_clerk_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['file_clerk_callback_host'], \
                  ticket['file_clerk_callback_port'])
-    Trace.trace(16,"Leaving file_clerk_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}file_clerk_callback_socket sock="+repr(sock))
     return sock
 
 # return and admin clerk tcp socket
 def admin_clerk_callback_socket(ticket) :
-    Trace.trace(16,'Entering admin_clerk_callback_socket host='+\
+    Trace.trace(16,'{admin_clerk_callback_socket host='+\
                 repr(ticket['admin_clerk_callback_host'])+" port="+\
                 repr(ticket['admin_clerk_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['admin_clerk_callback_host'], \
                  ticket['admin_clerk_callback_port'])
-    Trace.trace(16,"Leaving admin_clerk_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}admin_clerk_callback_socket sock="+repr(sock))
     return sock
 
 # send ticket/message on user tcp socket and return user tcp socket
 def user_callback_socket(ticket) :
-    Trace.trace(16,'Entering user_callback_socket host='+\
+    Trace.trace(16,'{user_callback_socket host='+\
                 repr(ticket['user_callback_host'])+" port="+\
                 repr(ticket['user_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
     write_tcp_socket(sock,ticket,"callback user_callback_socket")
-    Trace.trace(16,"Leaving user_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}user_callback_socket sock="+repr(sock))
     return sock
 
 # send ticket/message on tcp socket
 def send_to_user_callback(ticket) :
-    Trace.trace(16,'Entering send_to_user_callback host='+\
+    Trace.trace(16,'{send_to_user_callback host='+\
                 repr(ticket['user_callback_host'])+" port="+\
                 repr(ticket['user_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
     write_tcp_socket(sock,ticket,"callback send_to_user_callback")
     sock.close()
-    Trace.trace(16,"Leaving send_to_user_callback")
+    Trace.trace(16,"}send_to_user_callback")
 
 def write_tcp_buf(sock,buffer,errmsg=""):
+    Trace.trace(16,"{write_tcp_buf")
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"pre-send error:", errno.errorcode[badsock]
+        print errmsg,"write_tcp_buff pre-send error:",\
+              errno.errorcode[badsock]
+        Trace.trace(0,"write_tcp_buf pre-send error "+errmsg+\
+                    repr(errno.errorcode[badsock]))
     sock.send(buffer)
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"pre-send error:", errno.errorcode[badsock]
+        print errmsg,"write_tcp_buf post-send error:",\
+              errno.errorcode[badsock]
+        Trace.trace(0,"write_tcp_buf post-send error "+errmsg+\
+                    repr(errno.errorcode[badsock]))
+    Trace.trace(16,"}write_tcp_buf")
+
 # send a message on a tcp socket
 def write_tcp_socket(sock,buffer,errmsg=""):
+    Trace.trace(16,"{write_tcp_socket")
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"pre-send error:", errno.errorcode[badsock]
+        print errmsg,"write_tcp_socket pre-send error:",\
+              errno.errorcode[badsock]
+        Trace.trace(0,"write_tcp_socket pre-send error "+errmsg+\
+                    repr(errno.errorcode[badsock]))
     sock.send(dict_to_a.dict_to_a(buffer))
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-        print errmsg,"pre-send error:", errno.errorcode[badsock]
+        print errmsg,"write_tcp_socket post-send error:",\
+              errno.errorcode[badsock]
+        Trace.trace(0,"write_tcp_socket post-send error "+errmsg+\
+                    repr(errno.errorcode[badsock]))
+    Trace.trace(16,"}write_tcp_socket")
 
 # read a complete message in a  tcp socket
 def read_tcp_buf(sock,errmsg="") :
+    Trace.trace(16,"{read_tcp_buf")
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-       print errmsg,"pre-recv error:", errno.errorcode[badsock]
+        print errmsg,"read_tcp_buf pre-recv error:",\
+              errno.errorcode[badsock]
+        Trace.trace(0,"read_tcp_buf pre-recv error "+errmsg+\
+                    repr(errno.errorcode[badsock]))
     buf = sock.recv(65536*4)
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
-       print errmsg,"post-recv error:", errno.errorcode[badsock]
+        print errmsg,"read_tcp_buf post-recv error:",\
+              errno.errorcode[badsock]
+        Trace.trace(0,"read_tcp_buf post-recv error "+errmsg+\
+                    repr(errno.errorcode[badsock]))
+    Trace.trace(16,"}read_tcp_buf len="+repr(len(buf)))
     return buf
+
 def read_tcp_socket(sock,errmsg="") :
+    Trace.trace(16,"{read_tcp_socket")
     workmsg = ""
     while 1:
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
-            print errmsg,"pre-recv error:", errno.errorcode[badsock]
+            print errmsg,"read_tcp_socket pre-recv socketerror:",\
+                  errno.errorcode[badsock]
+            Trace.trace(0,"read_tcp_socket pre-recv error "+errmsg+\
+                        repr(errno.errorcode[badsock]))
         buf = sock.recv(65536*4)
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
-            print errmsg,"post-recv error:", errno.errorcode[badsock]
+            print errmsg,"read_tcp_socket post-recv error:",\
+                  errno.errorcode[badsock]
+            Trace.trace(0,"read_tcp_socket post-recv error "+errmsg+\
+                        repr(errno.errorcode[badsock]))
         if len(buf) == 0 :
             break
         workmsg = workmsg+buf
@@ -191,8 +224,10 @@ def read_tcp_socket(sock,errmsg="") :
             continue
     try:
         worklist = dict_to_a.a_to_dict(workmsg)
+        Trace.trace(16,"}read_tcp_socket len="+repr(len(worklist)))
         return worklist
     except SyntaxError:
+        Trace.trace(0,"read_tcp_socket Error handling message"+repr(workmsg))
         raise IOError,"Error handling message"+repr(workmsg)
 
 if __name__ == "__main__" :
