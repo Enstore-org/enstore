@@ -833,7 +833,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         for retry in range(3):
             Trace.trace(10, "position media")
             have_tape = self.tape_driver.open(self.device, self.mode, retry_count=10)
-            self.tape_driver.set_mode(compression = 0, blocksize = 0)
+            self.tape_driver.set_mode(blocksize = 0)
             if have_tape == 1:
                 break
             else:
