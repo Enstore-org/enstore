@@ -13,7 +13,7 @@ clean:
 	- rm -rf ENCPBIN_TEMP
 	- rm -rf ENCPBIN
 
-encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/ETape.o $(ENSTORE_DIR)/modules/EXfer.o $(ENSTORE_DIR)/modules/Trace.o $(ENSTORE_DIR)/modules/ECRC.o
+encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/EXfer.o $(ENSTORE_DIR)/modules/Trace.o $(ENSTORE_DIR)/modules/ECRC.o
 	- rm -rf ENCPBIN_TEMP
 	mkdir ENCPBIN_TEMP
 	- rm -rf ENCPBIN
@@ -34,9 +34,6 @@ install: encp
 
 $(ENSTORE_DIR)/modules/Devcodes.o:
 	(cd  $(ENSTORE_DIR)/modules; make Devcodes)
-
-$(ENSTORE_DIR)/modules/ETape.o:
-	(cd  $(ENSTORE_DIR)/modules; make ETape)
 
 $(ENSTORE_DIR)/modules/EXfer.o:
 	(cd  $(ENSTORE_DIR)/modules; make EXfer)
