@@ -239,15 +239,17 @@ ftt_all_scsi(ftt_descriptor d) {
     return 0;
 }
 
+static double pad;
 int
 ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 
+    /* getting evil alignment errors on IRIX6.5 */
     static unsigned char 
-	mod_sen10[6] = { 0x1a, 0x08, 0x10, 0x00, 20, 0x00},
-	mod_sel10[6] = { 0x15, 0x10, 0x00, 0x00, 20, 0x00},
-	mod_sen0f[6] = { 0x1a, 0x08, 0x0f, 0x00, 20, 0x00},
-	mod_sel0f[6] = { 0x15, 0x10, 0x00, 0x00, 20, 0x00},
-	buf [28],
+	mod_sen10[8] = { 0x1a, 0x08, 0x10, 0x00, 20, 0x00},
+	mod_sel10[8] = { 0x15, 0x10, 0x00, 0x00, 20, 0x00},
+	mod_sen0f[8] = { 0x1a, 0x08, 0x0f, 0x00, 20, 0x00},
+	mod_sel0f[8] = { 0x15, 0x10, 0x00, 0x00, 20, 0x00},
+	buf [32],
         opbuf[512];
     int res = 0;
 
@@ -322,18 +324,16 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 }
 
 int
-ftt_scsi_locate( ftt_descriptor d, int blockno, int partno) {
+ftt_scsi_locate( ftt_descriptor d, int blockno) {
 
     int res = 0;
     static unsigned char 
         locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
      
-    locate_cmd[1] = 0x02;
     locate_cmd[3] = (blockno >> 24) & 0xff;
     locate_cmd[4] = (blockno >> 16) & 0xff;
     locate_cmd[5] = (blockno >> 8)  & 0xff; 
     locate_cmd[6] = blockno & 0xff;
-    locate_cmd[8] = partno;
     res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,60,0);
     res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
 

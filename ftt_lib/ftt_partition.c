@@ -130,7 +130,16 @@ ftt_cur_part(ftt_descriptor d) {
 int		
 ftt_skip_part(ftt_descriptor d,int nparts) {
     int cur;
+    int res = 0;
+    static unsigned char 
+        locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
     cur = ftt_cur_part(d);
     cur += nparts;
-    ftt_scsi_locate(d,0,cur);
+    locate_cmd[1] = 0x02;
+    locate_cmd[8] = cur;
+    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,60,0);
+    res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
+
+    return res;
 }
