@@ -135,7 +135,7 @@ if __name__=="__main__":
     for vol_name in volume_dict.keys():
         vol = volume_dict[vol_name]
         library = "shelf"
-        file_family = vol.get("hostname", "import.unknown")
+        file_family = vol.get("hostname", "import.unknown") #+".cpio_odc"
         #media_type came from cmdline
         capacity_bytes=0
         remaining_bytes=0
@@ -159,26 +159,26 @@ if __name__=="__main__":
         
         if verbose: print "addvol", vol_name
         ## addvol, set file family to remote hostname (from metadata)
-        done_ticket = vcc.addvol( library,      
-                                  file_family,       
-                                  media_type,        
-                                  vol_name,
-                                  capacity_bytes,    
-                                  remaining_bytes,   
-                                  eod_cookie,
-                                  user_inhibit,
-                                  error_inhibit,
-                                  last_access,
-                                  first_access,
-                                  declared,
-                                  sum_wr_err,
-                                  sum_rd_err,
-                                  sum_wr_access,
-                                  sum_rd_access,
-                                  wrapper,
-                                  blocksize,
-                                  non_del_files,
-                                  system_inhibit)
+        done_ticket = vcc.add( library,      
+                               file_family,       
+                               media_type,        
+                               vol_name,
+                               capacity_bytes,    
+                               remaining_bytes,   
+                               eod_cookie,
+                               user_inhibit,
+                               error_inhibit,
+                               last_access,
+                               first_access,
+                               declared,
+                               sum_wr_err,
+                               sum_rd_err,
+                               sum_wr_access,
+                               sum_rd_access,
+                               wrapper,
+                               blocksize,
+                               non_del_files,
+                               system_inhibit)
 
         status = done_ticket["status"]
         if status[0] != "ok":
