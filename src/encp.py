@@ -21,6 +21,7 @@ import signal
 import random
 import fcntl, FCNTL
 import math
+import exceptions
 
 # enstore modules
 import setpath 
@@ -616,14 +617,15 @@ def outputfile_check(inputlist, output, dcache):
                 if fd<0:
                     #The return code is the negitive return value.
                     error = int(math.fabs(fd))
-                    raise OSError, (error, os.strerror(error))
+                    os_exception = exceptions.OSError(error,os.strerror(error))
+                    raise exceptions.OSError, os_exception
 
                 os.close(fd)
 
             except OSError:
                 exc, msg, tb = sys.exc_info()
                 print_data_access_layer_format('', f, 0,
-                                               {'status':(exc, msg)})
+                                               {'status':(str(exc), str(msg))})
                 quit()
 
     return outputlist

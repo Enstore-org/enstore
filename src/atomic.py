@@ -7,6 +7,7 @@ import os
 import stat
 import errno
 import delete_at_exit
+import exceptions
 
 def _open1(pathname,mode=0666):
     delete_at_exit.register(pathname)
@@ -44,8 +45,11 @@ def _open2(pathname,mode=0666):
             s = os.stat(tmpname)
             if s and s[stat.ST_NLINK]==2:
                 ok = 1
-        except OSError, detail:
-            ok = 0
+        except OSError:
+            #ok = 0
+            os.close(fd_tmp)
+            delete_at_exit.unregister(pathname)
+            raise OSError, detail
 
     if ok:
         fd=os.open(pathname, os.O_CREAT|os.O_RDWR, mode)
@@ -55,7 +59,11 @@ def _open2(pathname,mode=0666):
         return fd
     else:
         delete_at_exit.unregister(pathname)
-        return -(detail.errno) #return errno values as negative.
+        os.close(fd_tmp)
+        #return -(detail.errno) #return errno values as negative.
+        os_exception = exceptions.OSError(errno.ENOLINK,
+                                          os.strerror(errno.ENOLINK))
+        raise OSError, os_exception
             
 open = _open2
 
