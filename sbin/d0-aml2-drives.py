@@ -115,7 +115,7 @@ if __name__=="__main__":
     #pprint.pprint(schedule)
     for line in range(0,len(schedule)):
         print schedule[line][:-1]
-    print "All down or scheduled-to-be-down items need to be understood"
+    print "All down or scheduled-to-be-down or seen down items need to be understood and/or explained!"
 
     print
     print "\nFound",len(sammam),"drives in AML/2 in sammam library"
