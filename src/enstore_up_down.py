@@ -251,7 +251,8 @@ class EnstoreServer:
 class LogServer(EnstoreServer):
 
     def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
-	EnstoreServer.__init__(self, "log_server", enstore_constants.LOGS,
+	EnstoreServer.__init__(self, enstore_constants.LOG_SERVER,
+                               enstore_constants.LOGS,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN)
 	self.reason_down = "log_server down"
@@ -259,7 +260,8 @@ class LogServer(EnstoreServer):
 class AlarmServer(EnstoreServer):
 
     def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
-	EnstoreServer.__init__(self, "alarm_server", enstore_constants.ALARMS,
+	EnstoreServer.__init__(self, enstore_constants.ALARM_SERVER,
+                               enstore_constants.ALARMS,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN)
 	self.reason_down = "alarm_server down"
@@ -267,7 +269,7 @@ class AlarmServer(EnstoreServer):
 class ConfigServer(EnstoreServer):
 
     def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
-	EnstoreServer.__init__(self, "config_server", 
+	EnstoreServer.__init__(self, enstore_constants.CONFIGURATION_SERVER, 
 			       enstore_constants.CONFIGS, offline_d,
 			       override_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN)
@@ -280,7 +282,8 @@ class ConfigServer(EnstoreServer):
 class FileClerk(EnstoreServer):
 
     def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
-	EnstoreServer.__init__(self, "file_clerk", enstore_constants.FILEC,
+	EnstoreServer.__init__(self, enstore_constants.FILE_CLERK,
+                               enstore_constants.FILEC,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN)
 	self.reason_down = "file_clerk down"
@@ -288,7 +291,8 @@ class FileClerk(EnstoreServer):
 class Inquisitor(EnstoreServer):
 
     def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
-	EnstoreServer.__init__(self, "inquisitor", enstore_constants.INQ,
+	EnstoreServer.__init__(self, enstore_constants.INQUISITOR,
+                               enstore_constants.INQ,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
 			       enstore_constants.WARNING)
 	self.reason_down = None
@@ -296,7 +300,8 @@ class Inquisitor(EnstoreServer):
 class VolumeClerk(EnstoreServer):
 
     def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
-	EnstoreServer.__init__(self, "volume_clerk", enstore_constants.VOLC,
+	EnstoreServer.__init__(self, enstore_constants.VOLUME_CLERK,
+                               enstore_constants.VOLC,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN)
 	self.reason_down = "volume_clerk down"
