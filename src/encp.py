@@ -1051,7 +1051,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
 	    if verbose:
 		print format %\
-		      (done_ticket["work"],
+		      ("write_to_hsm",
                        inputlist[i], outputlist[i], fsize,
 		       done_ticket["fc"]["external_label"],
 		       tinfo1["rate%d"%(i,)],
@@ -1075,7 +1075,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 		       time.time()-done_ticket["times"]["t0"],
 		       e_errors.OK)
 
-	    Trace.log(e_errors.INFO, format%(done_ticket["work"],
+	    Trace.log(e_errors.INFO, format%("write_to_hsm",
                                              inputlist[i], outputlist[i],
 					     fsize,
 					     done_ticket["fc"]["external_label"],
