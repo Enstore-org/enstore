@@ -114,18 +114,27 @@ def _parse_osf(tok):
 def _parse_sunos(tok):
     return long(tok[4]), long(tok[6])
 
-def _parse_default():
-    return 0, 0
+def _parse_default(tok):
+    #The variable tok is necessary as part of a standard interface to the
+    # _parse_*() functions.
+    __pychecker__ = "unusednames=tok"
+    
+    return 0L, 0L
 
 def stats(interfaces):
     netstat_cmd = _find_command('netstat')
-    import multiple_interface
     try:
-        _parse = getattr(multiple_interface, "_parse_"+uname())
+        #Previously, the correct _parse_*() function was found by doing
+        # the following:
+        #       import multiple_interface
+        #       _parse = getattr(multiple_interface, "_parse_"+uname())
+        # This import from within the multiple_interface module was a really
+        # bad design.  This new way avoids having to do that.
+        _parse = getattr(sys.modules[__name__], "_parse_"+uname())
     except:
-        print "Unrecognized platform", uname()
-        _parse = _parse_default()
-        
+        sys.stderr.write("Unrecognized platform: %s\n" % uname())
+        _parse = _parse_default
+
     p = os.popen(netstat_cmd + " -i", 'r')
     data = p.readlines()
     status = p.close()
