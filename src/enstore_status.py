@@ -232,6 +232,24 @@ class EnstoreStatus:
         Trace.trace(12,"}format_lm_moverlist ")
 	return string
 
+    # output the blocksize info
+    def output_blocksizes(self, info, prefix, key):
+        Trace.trace(12,"{output_blocksizes ")
+	prefix2 = "                  "
+	str = prefix
+	ctr = 0
+	for a_key in info.keys():
+	    if a_key != 'status':
+	        if ctr == 2:
+	            str = str+"\n"+prefix2
+	            ctr = 0
+	        elif ctr == 1:
+	            str = str+", "
+	        ctr = ctr+1
+	        str = str+a_key+" : "+repr(info[a_key])
+	self.text[key] = str+"\n"
+        Trace.trace(12,"}output_blocksizes ")
+
     # output the passed alive status
     def output_alive(self, host, tag, status, time, key):
         Trace.trace(12,"{output_alive "+repr(tag)+" "+repr(host))

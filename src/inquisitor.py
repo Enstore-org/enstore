@@ -31,8 +31,8 @@ import enstore_status
 def default_timeout():
     return 5
 
-def default_inq_timeout():
-    return 90
+def default_server_timeout():
+    return 60
 
 def default_alive_rcv_timeout():
     return 5
@@ -203,7 +203,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# needs to get done and we will do it later
 	self.doupdate_server_dict = 1
 	self.new_timeouts = t['timeouts']
+	self.set_default_server_timeout(t)
         Trace.trace(12,"}update_inquisitor ")
+
+    # get the default server timeout, either from the config dict or from the
+    # routine
+    def set_default_server_timeout(self, inq_dict={}):
+	the_key = "default_server_timeout"
+	if inq_dict.has_key(the_key):
+	    self.default_server_timeout = inq_dict[the_key]
+	else:
+	    self.default_server_timeout = default_server_timeout()
 
     # get the information from the volume clerk server
     def update_volume_clerk(self, key, time, list=0):
@@ -212,6 +222,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.alive_status(self.vcc, (t['host'], t['port']), \
                           "volume clerk    : ", time, key)
         Trace.trace(12,"}update_volume_clerk ")
+
+    # get the information from the volume clerk server
+    def update_blocksizes(self, key, time, list=0):
+        Trace.trace(12,"{update_blocksizes "+repr(self.essfile.file_name))
+	t = self.csc.get(key)
+	prefix = "blocksizes      : "
+	self.essfile.output_blocksizes(t, prefix, key)
+	self.htmlfile.output_blocksizes(t, prefix, key)
+        Trace.trace(12,"}update_blocksizes")
 
     # get the keys from the inquisitor part of the config file ready for use
     def prepare_keys(self):
@@ -232,8 +251,23 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        self.timeouts[key] = self.reset[key]
 	    else:
 	        del self.reset[key]
+	# now we must look thru the whole config file and use the default
+	# server timeout for any servers that were not included in the
+	# 'timeouts' dict element
+	self.fill_in_default_timeouts()
 	self.prepare_keys()
         Trace.trace(12,"}update_server_dict")
+
+    # fill in any default server timeouts
+    def fill_in_default_timeouts(self, ctime=time.time()):
+        Trace.trace(12,"{fill_in_default_timeouts")
+	csc_keys = self.csc.get_keys()
+	for a_key in csc_keys['get_keys']:
+	    if not self.timeouts.has_key(a_key):
+	        self.timeouts[a_key] = self.default_server_timeout
+	        if not self.last_update.has_key(a_key):
+	            self.last_update[a_key] = ctime
+        Trace.trace(12,"}fill_in_default_timeouts")
 
     # flush the files we have been writing to
     def flush_files(self):
@@ -390,7 +424,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.send_reply(ticket)
         Trace.trace(10,"}set_timeout")
 
-    # set a new timeout value
+    # reset the timeout value to what was in the config file
     def reset_timeout(self,ticket):
         Trace.trace(10,"{reset_timeout "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
@@ -492,8 +526,12 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	    # will update this time  
 	    for key in self.timeouts.keys():
 	        self.last_update[key] = ctime
-	else:
-	    self.timeouts['inquisitor'] = default_inq_timeout()
+
+	# now we must look thru the whole config file and use the default
+	# server timeout for any servers that were not included in the
+	# 'timeouts' dict element
+	self.set_default_server_timeout(keys)
+	self.fill_in_default_timeouts(ctime)
 
 	# if no alive timeout was entered on the command line, get it from the 
 	# configuration file.
