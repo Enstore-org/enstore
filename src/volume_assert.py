@@ -211,7 +211,7 @@ def submit_assert_requests(assert_list):
         responce_ticket = lmc.volume_assert(ticket, 10, 1)
 
         if not e_errors.is_ok(responce_ticket['status']):
-            sys.stderr.write("Submittion for %s failed: %s\n" % \
+            sys.stderr.write("Submission for %s failed: %s\n" % \
                              (ticket['vc']['external_label'],
                               responce_ticket['status']))
             continue
