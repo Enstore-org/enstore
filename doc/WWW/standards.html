@@ -1,0 +1,157 @@
+<html> <head>
+
+<title>Standards  </title>
+
+</head>
+
+<body>
+
+$Revision$ doc/standards.html<br>
+
+
+<h1>Source Code Standards</h1>
+
+
+<h2>Scope</h2>
+
+<P>This part of the standard governs code and documentation source.
+Source refers to programming languages, documentation and other source
+entered while working on the project.  Documentation includes Enstore
+engineering documents and end user documents. 
+
+[don't say anything about mailing list --- process/procedure]
+
+<P>Conference and other presentations about Enstore shall not be kept
+with the product. Presentations made with a UNIX tool shall be kept in
+the HPPC department area on node HPPC.FNAL.GOV. Presentations made
+with an NT tool shall be kept in the HPPC area on CDASERVER1.
+
+
+<h2>Source Processor</h2>
+
+<P>Aside from POSIX executables, and trivial shell commands  only the
+following shall be used to process the project's source. This category
+does not include dependent products, rather the intent is to standardize
+andlimit what executables can be used in a Makefile.
+
+<ul>
+  <li> tgiff
+  <li> ghostscript
+  <li> ANSI C compilers
+  <li> python language processors packaged with the Python Product.
+  <li> htmldoc
+  <li> dot
+   <li> TBD tool to make catman man pages
+</ul> 
+
+
+<h2>General</h2>
+
+
+<p>All printable and viewable documentation shall contain the name of
+the source file and the rcs revision. The file name with cvs module
+subdirectory shall be entered manually and the RCS keyword splat shall be
+used for revision.
+
+<p> Source shall be derived from the project templates.
+
+<p> Copyright notices in source code are not necessary.
+
+<p> Personal authorship of the code is recorded in the CVS library.
+
+<p> When source is incorporated by copying from a different file, the
+original file shall be documented in a comment.
+
+<ul>
+
+  <li> Source checked into the main CVS branch shall comply to this standard.
+  <li> Source checked into the main CVS branch shall be valid
+       source. [i.e. it compiles (if source as opposed to doc)
+  <li> Code checked into the main CVS branch shall be tested.
+
+</ul> 
+
+
+<h2>Shell standards</h2>
+
+<p> Shell scripts shall be written to /bin/sh. (programmers are advised
+that /bin/sh on Linux tends to be bash, and has more features than vanilla
+sh)
+
+<p> POSIX compliant Unix utilities shall be used when available.
+
+<p> Shell code shall be portable to all FNAL supported Unix's.
+
+<p>A POSIX
+shell manual is available in Don Petravick's office.
+
+
+<h2>C language standards </h2>
+
+<p> C source shall be ANSI C
+
+<p> POSIX routines shall be used in preference to other routines.
+
+<p> #ifdefs for portability shall be minimized. 
+
+
+<h2>Make standards </h2>
+
+<p> POSIX make is the code standard for make, with the following exceptions:
+1) .include is allowed.
+
+<p> Make file shell commands shall obey the same rules as for shell scripts.
+ 
+<p> Makes shall complete even if documentation processors are not present
+on the system.
+
+<p> Make files shall have targets named:  all, intall, clean, default.
+
+<h2>html</h2>
+
+Long HTML documents greater should contain a table of near their beginning.
+
+
+<h2>Python</h2>
+
+Python statements of the form  "from <file> import *" are not
+allowed.
+
+The project does not seek to control layout in a detailed
+fashion. The project wishes to enable language sensitive editors,
+which, because they do not always have a valid source text present for a
+language, need conventions to function.
+
+The following layout rules shall be observed, since the are necessary for
+language-sensitive editors to function:
+<ul>
+
+  <li> Avoid a space before ``:'' in python block statements because this
+       inhibits emacs' language hi-lighting features. For example,
+       "try:" is hi-lighted while "try :" is not
+  <li> Avoid having comments *not* following indentation because this
+       inhibits emacs' language indentation features. For example:
+       <pre>
+       def this():
+           if a==1:
+	       this=that
+           # this is a comment
+               emacs_want_to_decrease_this_indentation = 1
+	       and_all_other_lines_at_this_level=1
+     </pre>
+     This will cause emacs to want to decrease the lines following the comment.
+</ul>
+
+
+
+<h2>Man page standards</h2>
+
+<p> TBD - Man pages delivered into the man directory and shall in
+catman format.
+
+<!-- <hr> htmldoc produces extra page if hr is here-->
+<!-- hhmts start -->
+<!-- hhmts end -->
+</body> </html>
+
+
