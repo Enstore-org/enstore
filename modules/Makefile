@@ -40,17 +40,6 @@ Trace:
 	ln -fs traceShow ../sbin/traceOn
 	ln -fs traceShow ../sbin/traceOff
 
-# Normally we don't install .py files:
-install: installpyc
-
-# But sometimes we may want to:
-installpy: install
-	for m in $(PYMODULES) the-end; do \
-	  if [ "$$m" != the-end ]; then \
-	    cp $$m.py $(installdir)/lib/python$(VERSION)/; \
-	  fi; \
-	done
-
 adler32.a: adler32.c
 	$(CC) -c adler32.c
 	ar cr adler32.a adler32.o
