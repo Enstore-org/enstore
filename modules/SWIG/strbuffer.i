@@ -7,6 +7,11 @@
 #define MSG_DONTWAIT 0x40
 #endif
 #endif
+
+#if defined(__osf__)	/* osf1 has MSG_NONBLOCK instead */
+#define MSG_DONTWAIT MSG_NONBLOCK
+#endif
+
     int buf_read(int fd, char *buf, int offset, int nbytes){
 	return read(fd, buf+offset, nbytes);
     }
