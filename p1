@@ -1,7 +1,7 @@
 export PYTHON_DIR=/bakken/bakken/python
 export PATH=$PATH:/$PYTHON_DIR/bin
 
-export ENSTORE_DIR=/bakken/bakken/enstore
+export ENSTORE_DIR=/bakken/bakken/enstoreLinux
 
 . $ENSTORE_DIR/ups/setup.sh
 

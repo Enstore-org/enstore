@@ -54,12 +54,10 @@ stat=0
 case $cmd in
   start|enstore-start)
     $ENSTORE_DIR/bin/enstore-start
-    sleep 1
-    $ENSTORE_DIR/bin/enstore-start --ping
     stat=$?
     ;;
   ping)
-    $ENSTORE_DIR/bin/enstore-start --ping
+    $ENSTORE_DIR/bin/enstore-ping
     stat=$?
     ;;
   stop|enstore-stop)

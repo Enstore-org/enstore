@@ -1,0 +1,79 @@
+#!/bin/sh
+
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+set -u  # force better programming and ability to use check for not set
+
+. $ENSTORE_DIR/bin/defaults
+
+eping() { s="$1"; c="$2"; export s; export c; 
+         /bin/sh -c ' ( sleep $s; kill $$ ) >/dev/null 2>&1 & ans=`eval $c  2>/dev/null` ; echo $ans' }
+
+esave() { if [ -z "${alive-}" ] ; then alive="DEAD";  fi
+          status="$status 
+$msg  $alive"
+        }
+
+timeout=3
+status="Enstore Clerk and Server Status at `date`"
+alive=""
+msg=""
+export status
+export alive
+export msg
+
+################################################################################################################################################
+
+# the configuration server
+
+msg="Configuration Server"
+alive=`eping $timeout "python $ENSTORE_DIR/src/configuration_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list"`
+esave
+
+################################################################################################################################################
+
+# volume clerk
+
+msg="Volume Clerk"
+alive=`eping $timeout "python $ENSTORE_DIR/src/volume_clerk_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list"`
+esave
+
+################################################################################################################################################
+
+# file clerk
+
+msg="File Clerk"
+alive=`eping $timeout "python $ENSTORE_DIR/src/file_clerk_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list"`
+esave
+
+################################################################################################################################################
+
+# library manager
+for i in $enstore_libraries_all; do
+  msg="$i Library Manager"
+  alive=`eping $timeout "python $ENSTORE_DIR/src/library_manager_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list $i"`
+  esave
+done
+
+################################################################################################################################################
+
+# media changer
+for i in $enstore_media_changers_all; do
+  msg="$i Media Changer"
+  alive=`eping $timeout "python $ENSTORE_DIR/src/media_changer_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list$i 0 0"`
+  esave
+done
+
+
+################################################################################################################################################
+
+# mover
+for i in $enstore_movers_all; do
+  msg="$i Mover"
+  alive="   ...No ping test for $i Mover...(yet)"
+  esave
+done
+
+################################################################################################################################################
+
+echo "$status"

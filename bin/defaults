@@ -7,6 +7,10 @@ enstore_config_host=localhost
 enstore_config_port=7500
 enstore_config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
 
+enstore_libraries_all="fndaprdisk.library_manager hppcdisk.library_manager 8500.library_manager redwood50.library_manager"
+enstore_media_changers_all="fndaprdisk.media_change hppcdisk.media_changer 8500.media_changer STK.media_changer"
+enstore_movers_all="fndaprdisk.mover hppcdisk.media_changer 8500.mover stk0.mover"
+ 
 enstore_db=$ENSTORE_DIR/etc
 enstore_libraries=""
 enstore_media_changers=""
@@ -21,10 +25,10 @@ if [ `uname -n | grep -c pcfarm4` -eq 1 ] ; then
   enstore_start_fileclerk=1
   enstore_start_volumeclerk=1
 
-elif [ `uname -n | grep -c fntt1` -eq 1 ] ; then
-  enstore_libraries="8500.library_manager"
-  enstore_media_changers="8500.media_changer"
-  enstore_movers="8500.mover"
+elif [ `uname -n | grep -c fntt2` -eq 1 ] ; then
+  enstore_libraries="8500.library_manager  redwood50.library_manager"
+  enstore_media_changers="8500.media_changer STK.media_changer"
+  enstore_movers="8500.mover stk0.mover"
 
 elif [ `uname -n | grep -c fndapr` -eq 1 ] ; then
   enstore_libraries="fndaprdisk.library_manager"
@@ -32,9 +36,9 @@ elif [ `uname -n | grep -c fndapr` -eq 1 ] ; then
   enstore_movers="fndaprdisk.mover"
 
 elif [ `uname -n | grep -c hppc` -eq 1 ] ; then
-  enstore_libraries="hppcdisk.library_manager redwood50.library_manager"
-  enstore_media_changers="hppcdisk.media_changer STK.media_changer"
-  enstore_movers="hppcdisk.mover stk0.mover"
+  enstore_libraries="hppcdisk.library_manager"
+  enstore_media_changers="hppcdisk.media_changer"
+  enstore_movers="hppcdisk.mover"
 
 fi
 
