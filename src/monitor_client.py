@@ -119,7 +119,7 @@ class MonitorServerClient(generic_client.GenericClient):
             r,w,ex = select.select(sock_read_list, sock_write_list,
                                    [data_sock], self.timeout)
             
-            if w or r:
+            if w or r or ex:
                 #if necessary make the send string the correct (smaller) size.
                 bytes_left = bytes_to_transfer - bytes_transfered
                 if w and bytes_left < block_size:
@@ -369,43 +369,52 @@ class MonitorServerClient(generic_client.GenericClient):
             }
             )
 
-    #I don't know what a lot of this stuff does, but it does print out
-    # the rates when succesfull.
+    #Either prints out message to screen, stores info. in a dictionary or both.
+    #hostname: The current node that had its rate checked.
+    #summary_d: The dictionary to add info to.
+    #summary: Command line toggle, off don't print rates, on do print rates.
+    #read_rate, write_rate: dictionaries with three keys: rate, elapsed and
+    
     def update_summary(self, hostname, summary_d, summary,
                        read_rate, write_rate):
+
         if read_rate['status'] == ('ok', None) and \
            write_rate['status'] == ('ok', None):
             if not summary:
                 print "Network rate measured at %.4g MB/S recieving " \
                       "and %.4g MB/S sending." % \
                       (read_rate['rate'], write_rate['rate'])
-            
-            summary_d[hostname] = enstore_constants.UP
-            if read_rate == 0.0 or write_rate == 0.0:
-                summary_d[hostname] = enstore_constants.WARNING
-                summary_d[enstore_constants.NETWORK] = \
-                                                     enstore_constants.WARNING
+            else:
+                #summary_d[hostname] = enstore_constants.UP
+                summary_d[hostname] = (read_rate['rate'], write_rate['rate'])
+
         else:
             if not summary:
                 print "  Error.    Status is (%s,%s)"%(read_rate['status'],
                                                        write_rate['status'])
-            summary_d[hostname] = enstore_constants.WARNING
+            #summary_d[hostname] = enstore_constants.WARNING
             summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
-
+            summary_d[hostname] = (read_rate['status'], write_rate['status'])
 
     #Check on alive status.
     #Override alive definition inside generic_client.
     def alive(self, server, rcv_timeout=0, tries=0):
+        if hasattr(self, "hostip") and self.hostip:
+            ip = self.hostip
+        else:
+            ip = self.localaddr[0]
+            
         try:
-            x = self.u.send({'work':'alive'}, (self.c_hostip,
-                                               enstore_constants.MONITOR_PORT),
+            x = self.u.send({'work':'alive'},
+                            (ip, enstore_constants.MONITOR_PORT),
                             rcv_timeout, tries)
+            x['address'] = (ip, x['address'][1])
         except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(14,"alive - ERROR, alive timed out")
             x = {'status' : (e_errors.TIMEDOUT, None)}
         except socket.error, message:
             Trace.trace(14,"alive - ERROR, connection failed")
-            x = {'status' : (message.args[0], self.c_hostip)}
+            x = {'status' : (message.args[0], ip)}
         return x
 
 class MonitorServerClientInterface(generic_client.GenericClientInterface):
@@ -427,33 +436,6 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
         else:
             return self.help_options() +  self.alive_options() +\
                    ["summary", "html-gen-host=", "hostip="]
-
-def get_all_ips(config_host, config_port, csc):
-    """
-    inquire the configuration server, return a list
-    of every  IP address involved in Enstore  
-    """
-
-    ## What if we cannot get to config server
-    x = csc.u.send({"work":"reply_serverlist"},
-                   (config_host, config_port))
-    if x['status'][0] != 'ok': raise "error from config server"
-    server_dict = x['server_list']
-    ip_dict = {}
-    for k in server_dict.keys():
-        #assume we can get to config server since we could above
-        details = csc.get(k)
-        if details.has_key('data_ip'):
-            ip = details['data_ip']     #check first if a mover
-        elif details.has_key('hostip'):
-            ip = details['hostip']      #other server
-        else:
-            continue
-        ip = socket.gethostbyname(ip)  #canonicalize int dot notation
-        ip_dict[ip] = 1                #dictionary will strike duplicates
-    return ip_dict.keys()              #keys of the dict is a tuple of IPs
-
-
 
 class Vetos:
     """
@@ -491,101 +473,162 @@ class Vetos:
         return socket.gethostbyname(some_ip)
     
         
-# this is called by the enstore saag interface
-def do_real_work(summary, config_host, config_port, html_gen_host):
-    csc = configuration_client.ConfigurationClient((config_host, config_port))
+def get_all_ips(config_host, config_port, csc):
+    """
+    inquire the configuration server, return a list
+    of every  IP address involved in Enstore  
+    """
+
+    ## What if we cannot get to config server
+    x = csc.u.send({"work":"reply_serverlist"},
+                   (config_host, config_port))
+    if x['status'][0] != 'ok': raise "error from config server"
+    server_dict = x['server_list']
+    ip_dict = {}
+    for k in server_dict.keys():
+        #assume we can get to config server since we could above
+        details = csc.get(k)
+        if details.has_key('data_ip'):
+            ip = details['data_ip']     #check first if a mover
+        elif details.has_key('hostip'):
+            ip = details['hostip']      #other server
+        else:
+            continue
+        ip = socket.gethostbyname(ip)  #canonicalize int dot notation
+        ip_dict[ip] = 1                #dictionary will strike duplicates
+    return ip_dict.keys()              #keys of the dict is a tuple of IPs
+
+
+#Return a list of valid hosts and a class representing nodes to avoid.
+#intf: instance of interface class
+#config: return val from a configuration_client.get() function
+#csc: configuration client instance.
+def get_host_list(intf, csc):
     config = csc.get('monitor')
+    
+    vetos = Vetos(config.get('veto_nodes', {}))
+
+    #If they specified one specific machines, return a list of one item.
+    if hasattr(intf, "hostip") and intf.hostip:
+        
+        host_list = (socket.gethostbyaddr(intf.hostip)[0],
+                     socket.gethostbyname(intf.hostip))
+
+        return [host_list], vetos
+
+    #Compile the list of servers to test.
     if config['status'] == (e_errors.OK, None):
         logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
-        ip_list = get_all_ips(config_host, config_port, csc)
+        ip_list = get_all_ips(intf.config_host, intf.config_port, csc)
 
         host_list = []
         for ip in ip_list:
             host_list.append((socket.gethostbyaddr(ip)[0], ip))
         host_list.sort()
+
+    return host_list, vetos
+    
+
+
+
+# this is called by the enstore saag interface
+#def do_real_work(summary, config_host, config_port, html_gen_host):
+def do_work(intf):
+
+    if hasattr(intf, "help") and intf.help:
+        intf.print_help()
+        return
+    elif hasattr(intf, "usage_line") and intf.usage_line:
+        intf.print_usage_line()
+        return
+
+    csc = configuration_client.ConfigurationClient((intf.config_host,
+                                                    intf.config_port))
+    config = csc.get('monitor')
+
+    if not config:
+        summary_d = {'monitor' : " not found in config dictionary."}
+        if intf.summary:
+            return summary_d
+        else:
+            return
+
+    #Get a list of hosts, and a class instance of host to avoid.
+    host_list, vetos = get_host_list(intf, csc)
+    
+    if intf.html_gen_host:
+        config['html_gen_host'] = intf.html_gen_host
+
+    summary_d = {enstore_constants.TIME:
+                 enstore_functions.format_time(time.time())}
+    summary_d[enstore_constants.BASENODE] = enstore_functions.strip_node(
+        os.uname()[1])
+    summary_d[enstore_constants.NETWORK] = enstore_constants.UP  # assumption
+    summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
+    
+    for host, ip in host_list:
+        hostname = enstore_functions.strip_node(host)
+        if vetos.is_vetoed_item(ip):
+            if not intf.summary and not intf.alive:
+                print "Skipping %s" % (vetos.veto_info(ip),)
+            continue
+        if not intf.summary and not intf.alive:
+            print "Trying", host
+        msc = MonitorServerClient(
+            (intf.config_host, intf.config_port),
+            (ip,                      enstore_constants.MONITOR_PORT),
+            (config['html_gen_host'], enstore_constants.MONITOR_PORT),
+            config['html_dir'],
+            config['refresh'],
+            config['default_timeout'],
+            config['block_size'],
+            config['block_count'],
+            intf.summary
+            )
         
-        vetos = Vetos(config.get('veto_nodes', {}))
+        if msc.handle_generic_commands(intf.name, intf):
+            continue
 
+        #Test rate sending from the server.  The rate info for read time
+        # information is stored in msc.measurement.
+        read_measurement = msc.monitor_one_interface(
+            (ip, enstore_constants.MONITOR_PORT), SEND_FROM_SERVER)
+        if read_measurement['status'] == ('ok', None):
+            read_rate = msc.calculate_rate(read_measurement)
+        else:
+            read_rate = {'elapsed':0, 'rate':0,
+                         'status':('READ_ERROR', None)}
 
-        if html_gen_host:
-            config['html_gen_host'] = html_gen_host
+        #Test rate sending to the server.  Since, the time is recorded on
+        # the other end use the value returned, and not the one stored
+        # in msc.measurement (which is for read info).
+        write_measurement = msc.monitor_one_interface(
+            (ip, enstore_constants.MONITOR_PORT), SEND_TO_SERVER)
+        if write_measurement['status'] == ('ok', None):
+            write_rate = msc.calculate_rate(write_measurement)
+        else:
+            write_rate = {'elapsed':0, 'rate':0,
+                         'status':('WRITE_ERROR', None)}
 
-        summary_d = {enstore_constants.TIME: enstore_functions.format_time(time.time())}
-        summary_d[enstore_constants.BASENODE] = enstore_functions.strip_node(os.uname()[1])
-        summary_d[enstore_constants.NETWORK] = enstore_constants.UP  # assumption
+        #Send the information to the html server node.
+        msc.send_measurement(read_rate, write_rate)
 
-        msc = None
-        for host, ip in host_list:
-            hostname = enstore_functions.strip_node(host)
-            if vetos.is_vetoed_item(ip):
-                if not summary:
-                    print "Skipping %s" % (vetos.veto_info(ip),)
-                continue
-            if not summary:
-                print "Trying", host
-            msc = MonitorServerClient(
-                (config_host, config_port),
-                (ip,                      enstore_constants.MONITOR_PORT),
-                (config['html_gen_host'], enstore_constants.MONITOR_PORT),
-                config['html_dir'],
-                config['refresh'],
-                config['default_timeout'],
-                config['block_size'],
-                config['block_count'],
-                summary
-                )
-
-            #Test rate sending from the server.  The rate info for read time
-            # information is stored in msc.measurement.
-            read_measurement = msc.monitor_one_interface(
-                (ip, enstore_constants.MONITOR_PORT), SEND_FROM_SERVER)
-            if read_measurement['status'] == ('ok', None):
-                read_rate = msc.calculate_rate(read_measurement)
-            else:
-                read_rate = {'elapsed':0, 'rate':0,
-                             'status':('READ_ERROR', None)}
-
-            #Test rate sending to the server.  Since, the time is recorded on
-            # the other end use the value returned, and not the one stored
-            # in msc.measurement (which is for read info).
-            write_measurement = msc.monitor_one_interface(
-                (ip, enstore_constants.MONITOR_PORT), SEND_TO_SERVER)
-            if write_measurement['status'] == ('ok', None):
-                write_rate = msc.calculate_rate(write_measurement)
-            else:
-                write_rate = {'elapsed':0, 'rate':0,
-                             'status':('WRITE_ERROR', None)}
-
-            #Send the information to the html server node.
-            msc.send_measurement(read_rate, write_rate)
-
-            #Does some summary stuff.
-            msc.update_summary(hostname, summary_d, summary, read_rate,
-                               write_rate)
+        #Does some summary stuff.
+        msc.update_summary(hostname, summary_d, intf.summary, read_rate,
+                           write_rate)
 
         #Cleanup stuff..
         if msc:
             msc.flush_measurements()
             msc.listen_sock.close()
-            
-        # add the name of the html file that will be created
-        summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
-    else:
-        # there was nothing about the monitor server in the config file
-        summary_d = {}
 
-    return summary_d
+        
+    
+    if intf.summary:
+        return summary_d
 
-# we need this in order to be called by the enstore.py code
-def do_work(intf):
-    #First create an instance that can handle generic commands.
-    msc = MonitorServerClient((intf.config_host, intf.config_port),
-                              None, None, None, None, None, None, None, None)
-    #If there are no generic commands, then do real work.
-    if not msc.handle_generic_commands(intf.name, intf):
-        do_real_work(intf.summary, intf.config_host, intf.config_port,
-                     intf.html_gen_host)
+
 
 if __name__ == "__main__":
     

@@ -128,8 +128,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         while bytes_transfered < bytes_to_transfer:
             r,w,ex = select.select(sock_read_list, sock_write_list,
                                    [data_sock], self.timeout)
-            
-            if w or r:
+            if w or r or ex:
                 #if necessary make the send string the correct (smaller) size.
                 bytes_left = bytes_to_transfer - bytes_transfered
                 if w and bytes_left < block_size:
