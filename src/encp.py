@@ -1951,7 +1951,7 @@ def outputfile_check(ninput,inputlist,output):
                                                0,
                                                {'status':
                                                 ('EEXIST', "No such directory"+odir)})
-                jraise(errno.errorcode[errno.EEXIST]," encp.outputfile_check:"
+                jraise(errno.errorcode[errno.ENOENT]," encp.outputfile_check:"
                        " base directory doesn't exist for "+outputlist[i])
 
         # note: removed from itexist=1 try block to isolate errors
