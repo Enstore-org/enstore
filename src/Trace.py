@@ -23,8 +23,15 @@ def log( severity, msg, *args ):
     trace( severity, msg )
     return None
 
-def alarm( msg, *rest ):
-    trace( 0, msg, rest )
+def alarm( severity, root_error, **rest ):
+    if rest:
+        rest['severity'] = severity
+        rest['root_error'] = root_error
+    else:
+        rest = {'severity' : severity,
+                'root_error' : root_error}
+        pass
+    trace( e_errors.ALARM, "root_error:%s"%rest['root_error'], rest )
     return None
 
 def set_alarm_func( func ):
