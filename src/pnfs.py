@@ -608,12 +608,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # report the original file.
         self.verify_existance()
         
-        xref = self.get_xreference()
-        formated_size = str(filesize)
-        if formated_size[-1] == "L":
-            formated_size = formated_size[:-1]
-        xref[2] = formated_size  #get_xreferece() always returns a 10-tuple.
-        apply(self.set_xreference, xref) #Don't untuple xref.
+        #xref = self.get_xreference()
+        #formated_size = str(filesize)
+        #if formated_size[-1] == "L":
+        #    formated_size = formated_size[:-1]
+        #xref[2] = formated_size  #get_xreferece() always returns a 10-tuple.
+        #apply(self.set_xreference, xref) #Don't untuple xref.
 
         #Set the filesize that the filesystem knows about.
         if filepath:
