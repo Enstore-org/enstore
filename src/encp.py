@@ -749,9 +749,10 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
     vcc = volume_clerk_client.VolumeClerkClient(csc)
-
+    if vcc.server_address == None:
+        Trace.log(e_errors.WARNING, "Locating default volume clerk failed.\n")
     #Before checking other systems, check the current system.
-    if e_errors.is_ok(vcc.inquire_vol(volume)):
+    elif e_errors.is_ok(vcc.inquire_vol(volume)):
         return csc
 
     #Get the list of all config servers and remove the 'status' element.
@@ -827,14 +828,17 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     fcc = file_clerk_client.FileClient(csc, rcv_timeout = 5, rcv_tries = 20)
-    fcc_brand = fcc.get_brand()
-    if not is_brand(fcc_brand):
-        Trace.log(e_errors.WARNING,
-                  "File clerk (%s) returned invalid brand: %s\n"
-                  % (fcc.server_address, fcc_brand))
-    elif brand[:len(fcc_brand)] == fcc_brand:
-        __csc = csc
-        return __csc
+    if fcc.server_address == None:
+        Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
+    else:
+        fcc_brand = fcc.get_brand()
+        if not is_brand(fcc_brand):
+            Trace.log(e_errors.WARNING,
+                      "File clerk (%s) returned invalid brand: %s\n"
+                      % (fcc.server_address, fcc_brand))
+        elif brand[:len(fcc_brand)] == fcc_brand:
+            __csc = csc
+            return __csc
     
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
@@ -1017,10 +1021,17 @@ def get_fcc(parameter = None):
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     fcc = file_clerk_client.FileClient(csc, rcv_timeout=5, rcv_tries=2)
-    fcc_brand = fcc.get_brand()
-    if bfid[:len(fcc_brand)] == fcc_brand:
-        __fcc = fcc
-        return __fcc
+    if fcc.server_address == None:
+        Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
+    else:
+        fcc_brand = fcc.get_brand()
+        if not is_brand(fcc_brand):
+            Trace.log(e_errors.WARNING,
+                      "File clerk (%s) returned invalid brand: %s\n"
+                      % (fcc.server_address, fcc_brand))
+        elif bfid[:len(fcc_brand)] == fcc_brand:
+            __fcc = fcc
+            return __fcc
 
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
@@ -1130,9 +1141,10 @@ def get_vcc(parameter = None):
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
     vcc = volume_clerk_client.VolumeClerkClient(csc)
-
-    #Before checking other systems, check the default system.
-    if e_errors.is_ok(vcc.inquire_vol(volume)):
+    if vcc.server_address == None:
+        Trace.log(e_errors.WARNING, "Locating default volume clerk failed.\n")
+    #Before checking other systems, check the current system.
+    elif e_errors.is_ok(vcc.inquire_vol(volume)):
         return vcc
 
     #Get the list of all config servers and remove the 'status' element.
@@ -3385,7 +3397,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
                 exc, msg = sys.exc_info()[:2]
-                sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
+                #sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
+                Trace.log(e_errors.ERROR,
+                          "Resubmission error: %s: %s" % (str(exc), str(msg)))
+
+                #I'm not sure what should happen with lm_responce here.
+                # Currently set it to all clear with the assumption that
+                # it will RESUMBIT again in 15 (by default) minutes.  MWZ
+                lm_responce = {'status' : (e_errors.OK, None)}
 
             #Now it get checked.  But watch out for the recursion!!!
             internal_result_dict = internal_handle_retries([req], req,
