@@ -86,13 +86,6 @@ case $cmd in
     stat=$?
     ;;
 
-    
-  insertvol)
-    $ENSTORE_DIR/bin/mcc-insert "$@"
-    stat=$?
-    ;;
-
-
   mvc|mover)
     python $ENSTORE_DIR/src/mover_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
