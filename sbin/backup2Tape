@@ -90,7 +90,7 @@ doit "tar $tar_options -cvf $ENSTORE_TAR $ENSTORE"
 doit "ls -l $ENSTORE_TAR"
 
 ENSTORELOG_TAR=$VAULT/enstorelog.`date_string`.$kind.tar
-doit "tar $tar_options -cvf $ENSTORELOG_TAR $ENSTORELOG"
+doit "tar $tar_options --exclude */history/* -cvf $ENSTORELOG_TAR $ENSTORELOG"
 doit "ls -l $ENSTORELOG_TAR"
 
 AML2_TAR=$VAULT/aml2.`date_string`.$kind.tar
