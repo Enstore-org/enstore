@@ -2075,12 +2075,19 @@ class File:
 
 	# set_size() -- set size in pnfs
 	def set_size(self):
+		real_size = os.stat(self.path)[stat.ST_SIZE]
+		if real_size == self.size:	# do nothing
+			return
 		size = str(self.size)
 		if size[-1] == 'L':
 			size = size[:-2]
 		fname = self.size_file()+'('+size+')'
 		f = open(fname, "w")
 		f.close()
+		if real_size:
+			# oops, have to reset it again
+			f = open(fname, "w")
+			f.close()
 		return
 
 	# update() -- write out to pnfs files
