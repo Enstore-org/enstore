@@ -26,7 +26,7 @@ create table volume (
 	storage_group	varchar(16),
 	file_family	varchar(64),
 	wrapper		varchar(32),
-	comment		varchar(80)
+	comment		varchar
 );
 create index volume_library_idx on volume(library);
 create index volume_media_type_idx on volume(media_type);
@@ -43,7 +43,7 @@ create table file (
 	deleted		char(1) default 'n',
 	drive		varchar(47),
 	volume	 	int references volume (id),
-	location_cookie	varchar(24),
+	location_cookie	varchar,
 	pnfs_path	varchar,
 	pnfs_id		varchar(24),
 	sanity_size	bigint default -1,
