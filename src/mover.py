@@ -3135,15 +3135,16 @@ class Mover(dispatching_worker.DispatchingWorker,
             if (not self.method) or self.method and self.method != 'read_next':
                 host, port, self.listen_socket = callback.get_callback(ip=data_ip)
             #self.listen_socket.listen(1)
-            if self.method and self.method == 'read_tape_start':
-                self.udp_control_address = ticket.get('routing_callback_addr', None)
-                if self.udp_control_address:
-                    self.lm_address_saved = self.lm_address
-                    self.lm_address = self.udp_control_address
-                    Trace.trace(98, "LM address %s"%(self.lm_address,))
-                    self.state = IDLE
-                    self.udp_ext_control_address =("get", self.lm_address) 
-                    self.libraries = [self.udp_ext_control_address]
+            #if self.method and self.method == 'read_tape_start':
+            #    self.udp_control_address = ticket.get('routing_callback_addr', None)
+            #    if self.udp_control_address:
+            #        self.reset_interval_timer(self.update_lm)
+            #        self.lm_address_saved = self.lm_address
+            #        self.lm_address = self.udp_control_address
+            #        Trace.trace(98, "LM address %s"%(self.lm_address,))
+            #        self.state = IDLE
+            #        self.udp_ext_control_address =("get", self.lm_address) 
+            #        self.libraries = [self.udp_ext_control_address]
                 
             self.listen_socket.listen(1)
             if (not self.method) or (self.method and self.method != 'read_next'):
@@ -3187,6 +3188,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']
                     self.del_udp_client(u)
                     #del u
+                if self.method and self.method == 'read_tape_start':
+                    self.udp_control_address = ticket.get('routing_callback_addr', None)
+                    if self.udp_control_address:
+                        # make sure that 
+                        self.reset_interval_timer(self.update_lm)
+                        self.lm_address_saved = self.lm_address
+                        self.lm_address = self.udp_control_address
+                        Trace.trace(98, "LM address %s"%(self.lm_address,))
+                        self.state = IDLE
+                        self.udp_ext_control_address =("get", self.lm_address) 
+                        self.libraries = [self.udp_ext_control_address]
+                
                 Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
                 try:
                     self.control_socket.connect(ticket['callback_addr'])
