@@ -934,12 +934,7 @@ def outputfile_check(inputlist, outputlist, dcache):
 
             #The file exits, as it should, for a dache transfer.
             elif access_check(outputlist[i], os.F_OK) and dcache:
-                #Check for write permissions to the directory.
-                if access_check(os.path.dirname(outputlist[i]), os.W_OK):
-                    outputlist.append(outputlist[i])
-                else:
-                    raise EncpError(errno.EACCES,outputlist[i],
-                                    e_errors.USERERROR)
+                outputlist.append(outputlist[i])
             else:
                 raise EncpError(None,
                              "Failed outputfile check for: %s" % outputlist[i],
