@@ -4,6 +4,8 @@
 #		by the '/usr/sbin/tcpd' server.
 #
 
+# Loopback interface
+ALL: localhost 127.0.0.0/255.0.0.0: banners /etc/banners
 
 # FermiLab Network
 ALL: .fnal.gov: banners /etc/banners
