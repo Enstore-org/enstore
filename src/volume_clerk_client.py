@@ -169,7 +169,6 @@ class VolumeClerkClient(generic_client.GenericClient,
 
     # get a list of all volumes
     def get_vols(self, key=None,state=None, not_cond=None, print_list=1):
-        import cPickle
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -210,7 +209,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         data_path_socket.connect(ticket['volume_clerk_callback_addr'])
         ticket= callback.read_tcp_obj(data_path_socket)
-        volumes = cPickle.loads(callback.read_tcp_raw(data_path_socket))
+        volumes = callback.read_tcp_obj_new(data_path_socket)
         data_path_socket.close()
 
 
