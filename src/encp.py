@@ -109,7 +109,12 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     now = time.time()
     t0 = time_ticket.get('t0', now)
     total = now - t0
-    status, msg = ticket.get('status', ('Unknown', None))
+    sts =  ticket.get('status', ('Unknown', None))
+    status = sts[0]
+    msg = sts[1:]
+    if len(msg)==1:
+        msg=msg[0]
+    msg=str(msg)
         
     if not data_access_layer_requested and status != e_errors.OK:
         out=sys.stderr
