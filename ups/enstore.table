@@ -171,6 +171,9 @@ COMMON:
                 envSetIfNotSet(PYTHON_DIR, $pypath)
                 envUnset(pypath)
 
+		# if postgres product exist, set it up
+		setupOptional("postgres")
+
                 # we need to determine where the python include and library paths are
                 # note in the following line, the sort allows multiple python versions,
                 #      the highest is used because of the reverse sort
