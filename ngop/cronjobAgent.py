@@ -211,7 +211,7 @@ def usage():
 if __name__ == '__main__':
        flag = 1
        cl=CJFunc()
-       cl.checkcron()
+       cl.checkcron("test")
 
        """
        import sys
