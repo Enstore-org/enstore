@@ -232,10 +232,10 @@ class VolumeClerkClient(generic_client.GenericClient,\
         return x
 
     # get the state of the media changer for the volume
-    def update_mc_state(self, external_label, media_changer=None):
+    def update_mc_state(self, external_label):
         ticket= { 'work'           : 'update_mc_state',
-                  'external_label' : external_label,
-		  'media_changer'  : media_changer }
+                  'external_label' : external_label
+                  }
         x = self.send(ticket)
         return x
 

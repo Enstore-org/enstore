@@ -833,26 +833,21 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # flag the database that we are now writing the system
     def update_mc_state(self, ticket):
         # everything is based on external label - make sure we have this
-        try:
-	    key = "external_label"
-            external_label = ticket[key]
-	    key = "media_changer"
-	    m_changer = ticket[key]
-        except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
-                                "Volume Clerk: "+key+" key is missing")
+        if 'external_label' not in ticket.keys():
+            ticket["status"] = (e_errors.KEYERROR, 
+                                "Volume Clerk: external label is missing")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
             Trace.trace(8,"vc.update_mc_state "+repr(ticket["status"]))
             return
-
+        external_label = ticket['external_label']
         # get the current entry for the volume
         try:
             record = dict[external_label]  ## was deepcopy
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
-                                "Volume Clerk: volume "+external_label\
-                               +" no such volume")
+            ticket["status"] = (e_errors.KEYERROR, 
+                                "Volume Clerk: volume "+external_label
+                                +" no such volume")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
             Trace.trace(8,"vc.update_mc_state "+repr(ticket["status"]))
@@ -861,9 +856,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # update the fields that have changed
         ll = list(record['at_mover'])
         ll[0]= self.get_media_changer_state(record["library"],
-					    record["external_label"], 
-					    record["media_type"],
-					    m_changer)
+					    record["external_label"],
+                                            record["media_type"])
+
         record['at_mover']=tuple(ll)
         dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
@@ -916,42 +911,33 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     # get the actual state of the media changer
-    def get_media_changer_state(self, libMgr, volume, m_type, m_changer=None):
-     # optional m_changer must be provided by LM
-     if not m_changer:
-	 # only library as a central server has correct info about media
-	 # changer
-	 import library_manager_client
-	 lmc = library_manager_client.LibraryManagerClient(self.csc,
-							   libMgr+".library_manager")
-	 mchgr = lmc.get_mc()      # return media changer
-	 del lmc
-     else: mchgr = m_changer
-     if mchgr:
-         import media_changer_client
-         mcc = media_changer_client.MediaChangerClient(self.csc, mchgr )
-         del mchgr
-         vol_ticket = {'external_label' : volume,
-                       'media_type' : m_type
+    def get_media_changer_state(self, libMgr, volume, m_type):
+
+        m_changer = self.csc.get_media_changer(libMgr) 
+
+        if not m_changer:
+            Trace.trace(8," vc.get_media_changer_state: ERROR: no media changer found %s" % volume)
+            return 'unknown'
+            
+        import media_changer_client
+        mcc = media_changer_client.MediaChangerClient(self.csc, m_changer )
+
+        vol_ticket = {'external_label' : volume,
+                      'media_type' : m_type
                       }
-         mc_ticket = {'work' : 'viewvol',
-                      'vol_ticket' : vol_ticket
+        mc_ticket = {'work' : 'viewvol',
+                         'vol_ticket' : vol_ticket
                      }
-         stat = mcc.viewvol(mc_ticket)["status"][3]
-         del mcc
-         if 'O' == stat :
-           state = 'unmounted'
-         elif 'M' == stat :
-           state = 'mounted'
-         else :
-           state = stat
-     else :
-         #print "vc.get_media_changer_state: ERROR: no media changer found" \
-         #       +repr(volume)
-         Trace.trace(8," vc.get_media_changer_state: ERROR: no media changer found "
-                     +repr(volume))
-         return 'unknown'
-     return state
+        stat = mcc.viewvol(mc_ticket)["status"][3]
+
+        if 'O' == stat :
+            state = 'unmounted'
+        elif 'M' == stat :
+            state = 'mounted'
+        else :
+            state = stat
+
+        return state
 
 
     # for the backward compatibility D0_TEMP
