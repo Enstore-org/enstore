@@ -295,6 +295,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.config_file = ""
         self.show = 0
         self.load = 0
+        self.server=""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.summary = 0
@@ -313,7 +314,14 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
     config_options = {
         option.SHOW:{option.HELP_STRING:"print the current configuration",
                      option.DEFAULT_TYPE:option.INTEGER,
-                     option.USER_LEVEL:option.ADMIN},
+                     option.USER_LEVEL:option.ADMIN,
+                     option.EXTRA_VALUES:[{
+                         option.VALUE_NAME:"server",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.OPTIONAL,
+                         option.DEFAULT_TYPE:None,
+                         option.DEFAULT_VALUE:None
+                         }]},
         option.LOAD:{option.HELP_STRING:"load a new configuration",
                      option.DEFAULT_TYPE:option.INTEGER,
 		     option.USER_LEVEL:option.ADMIN},
@@ -330,17 +338,6 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                           option.USER_LEVEL:option.ADMIN},
          }
 
-    # parse the options like normal but make sure we have other args
-    def parse_options(self):
-
-        generic_client.GenericClientInterface.parse_options(self)
-
-        try:
-            self.element = self.args[0]
-        except IndexError:
-            self.element = None
-        
-
 def do_work(intf):
     csc = ConfigurationClient((intf.config_host, intf.config_port))
     csc.csc = csc
@@ -353,8 +350,8 @@ def do_work(intf):
     elif intf.show:
         result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
         
-        if e_errors.is_ok(result) and intf.element:
-            pprint.pprint(result["dump"].get(intf.element, {}))
+        if e_errors.is_ok(result) and intf.server:
+            pprint.pprint(result["dump"].get(intf.server, {}))
         elif e_errors.is_ok(result):
             pprint.pprint(result["dump"])
         else:
