@@ -14,11 +14,6 @@ CAP_9940=60
 CAP_9940B=200
 CAP_LTO=100
 
-systems=['cdfen','d0en','stken']
-QUOTAS = {}
-libraries = {}
-for system in systems:
-    libraries[system] = {}
 
 def sort_the_file(infile):
     fi = open(infile,'r')
@@ -120,6 +115,9 @@ for cmd in \
            '$ENSTORE_DIR/bin/Linux/wget -O stken.quotas  "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"':
     print cmd
     os.system(cmd)
+systems=['cdfen','d0en','stken']
+QUOTAS = {}
+libraries = {}
 for system in systems:
     libraries[system] = {}
 for thefile in systems:
@@ -382,6 +380,7 @@ for g in group_fd.keys():
     if g in ['ALL_9940', 'ALL_9940B', 'CD-9940B']:
         pass
     else:
+        sort_the_file('%s.tapes'%(g,))
         cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su, cap)
         print cmd
         os.system(cmd)
