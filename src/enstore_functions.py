@@ -15,10 +15,10 @@ DEFAULTHTMLDIR = "."
 def get_config_dict():
     name = os.environ.get("ENSTORE_CONFIG_FILE", "")
     if name:
-	cdict = configuration_server.ConfigurationDict()
+        cdict = configuration_server.ConfigurationDict()
         cdict.read_config(name)
     else:
-	cdict = {}
+        cdict = {}
     return cdict
 
 def get_from_config_file(server, keyword, default):
@@ -38,22 +38,22 @@ def get_html_dir():
 
 def read_schedule_file(html_dir=None):
     if html_dir is None:
-	html_dir = get_html_dir()
+        html_dir = get_html_dir()
     # check if the html_dir is accessible
     sfile = None
     if os.path.exists(html_dir):
-	sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
-	outage_d, offline_d, seen_down_d = sfile.read()
+        sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
+        outage_d, offline_d, seen_down_d = sfile.read()
     else:
-	outage_d = {}
-	offline_d = {}
-	seen_down_d = {}
+        outage_d = {}
+        offline_d = {}
+        seen_down_d = {}
     return sfile, outage_d, offline_d, seen_down_d
 
 # return a dictionary of the configuration server host and port
 def get_config_server_info():
     port, junk = interface.getenv('ENSTORE_CONFIG_PORT',
-				  interface.DEFAULT_PORT)
+                                  interface.DEFAULT_PORT)
     dict = {'port' : string.atoi(port)}
     dict['host'], junk = interface.getenv('ENSTORE_CONFIG_HOST', interface.DEFAULT_HOST)
     return dict
@@ -67,9 +67,9 @@ def format_time(theTime, sep=" "):
 def strip_file_dir(str):
     ind = string.rfind(str, "/")
     if not ind == -1:
-	str2 = str[(ind+1):]
+        str2 = str[(ind+1):]
     else:
-	str2 = str
+        str2 = str
     return str2
 
 # remove the string .fnal.gov if it is in the input string
@@ -79,7 +79,7 @@ def strip_node(str):
 def is_this(server, suffix):
     stype = string.split(server, ".")
     if stype[len(stype)-1] == suffix:
-	return 1
+        return 1
     return 0
 
 # return true if the passed server name ends in "library_manager"
@@ -99,22 +99,28 @@ def is_media_changer(server):
 #   server, event_relay
 def is_generic_server(server):
     if server in enstore_constants.GENERIC_SERVERS:
-	return 1
+        return 1
     return 0
 
 # check if the status in the dictionary signals a time out
 def is_timedout(dict):
-    if dict['status'][0] == e_errors.TIMEDOUT:
-	return 1
+    status = dict.get('status', None)
+    if status is None or type(status) != type(()):
+        return None
+    if status[0] == e_errors.TIMEDOUT:
+        return 1
     else:
-	return None
+        return None
 
 # check if the status in the dictionary signals everything is ok
 def is_ok(dict):
-    if dict['status'][0] == e_errors.OK:
-	return 1
+    status = dict.get('status', None)
+    if status is None or type(status) != type(()):
+        return None
+    if status[0] == e_errors.OK:
+        return 1
     else:
-	return None
+        return None
 
 try:
     import threading
