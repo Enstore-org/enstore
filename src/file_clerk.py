@@ -828,38 +828,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
-    # exist_bfids -- check if a, or a list of, bfid(s) exists/exist
-
-    def exist_bfids(self, ticket):
-        try:
-            bfids = ticket['bfids']
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        if type(bfids) == type([]):    # a list
-            result = []
-            for i in bfids:
-                try:
-                    rec = self.dict[i]
-                    result.append(1)
-                except:
-                    result.append(0)
-        else:
-            try:
-                rec = self.dict[bfids]
-                result = 1
-            except:
-                result = 0
-
-        ticket['result'] = result
-        ticket['status'] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        return
-
     # __restore_volume(self, vol) -- restore according to volmap
 
     def __restore_volume(self, vol):
