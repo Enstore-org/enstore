@@ -2,7 +2,7 @@
 
 # $Id$
 
-from Tkinter import *
+import Tkinter
 import tkFont
 
 import os
@@ -130,15 +130,15 @@ class Meter:
             self.labels.append(self.panel.create_text(p3.real, bottom-p3.imag, text=label))
 
     
-class MeterPanel(Canvas):
+class MeterPanel(Tkinter.Canvas):
     bottom_margin = 20
     def __init__(self, master, system_name, **attributes):
         width, height = 475, 150
         Canvas.__init__(self, master, width=width, height=height)
         self.system_name = system_name
         title = "Ratemeter: "+system_name
-        Tk.title(self.master, title)
-        self.pack(expand=1, fill=BOTH)
+        Tkinter.Tk.title(self.master, title)
+        self.pack(expand=1, fill=Tkinter.BOTH)
         self.width, self.height = width, height
         bottom = height - self.bottom_margin
         meter_size = 0.9 * width / 2.
