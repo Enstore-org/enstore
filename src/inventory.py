@@ -1171,10 +1171,11 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
         if mount_limit.has_key(vv['media_type']):
             if mounts > mount_limit[vv['media_type']][0]:
-                msg = 'Too many mounts on %s (%s, %d, %d)'%\
-                    (vv['external_label'], vv['media_type'],
-                        mounts, mount_limit[vv['media_type']][0])
-                acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
+                if mounts <= mount_limit[vv['media_type']][1]:
+                    msg = '%s (%s) exceeds %d mounts'%(
+                           vv['external_label'], vv['media_type'],
+                           mount_limit[vv['media_type']][0])
+                    acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
                 mnts = '<font color=#FF0000>'+mnts+'</font>'
                 # record it in tape mount file
                 tm_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6d %-40s\n" % \
@@ -1189,9 +1190,9 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                     vv['volume_family']))
             if mounts >= mount_limit[vv['media_type']][1]:
                 mnts = '<blink>'+mnts+'</blink>'
-                msg = '(Should be Red Ball!) Too many mounts on %s (%s, %d, %d)'%\
-                    (vv['external_label'], vv['media_type'],
-                        mounts, mount_limit[vv['media_type']][1])
+                msg = '<font color=#FF0000>%s (%s) exceeds %d mounts</font>'%(
+                      vv['external_label'], vv['media_type'],
+                      mount_limit[vv['media_type']][1])
                 acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
         vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6s %-40s\n" % \
                (vv['external_label'],
