@@ -2494,6 +2494,16 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     max_retries = encp_intf.max_retry
     max_submits = encp_intf.max_resubmit
     verbose = encp_intf.verbose
+    
+    #Before resubmitting, there are some fields that the library
+    # manager and mover don't expect to receive from encp,
+    # these should be removed.
+    #9-30-2003: Removed 'mover' from the list of items to remove.
+    # This was done so that "GET" could keep the 'mover' item when
+    # using this function.  It should not hurt anything, since
+    # movers and/or LMs have removed this field themselves for a
+    # while now.
+    item_remove_list = [] #['mover']
 
     #error_dictionary must have 'status':(e_errors.XXX, "explanation").
     dict_status = error_dictionary.get('status', (e_errors.OK, None))
@@ -2665,7 +2675,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 #Before resubmitting, there are some fields that the library
                 # manager and mover don't expect to receive from encp,
                 # these should be removed.
-                for item in ("mover", ):
+                for item in (item_remove_list):
                     try:
                         del req[item]
                     except KeyError:
@@ -2738,7 +2748,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #Before resending, there are some fields that the library
             # manager and mover don't expect to receive from encp,
             # these should be removed.
-            for item in ("mover", ):
+            for item in (item_remove_list):
                 try:
                     del request_dictionary[item]
                 except KeyError:
