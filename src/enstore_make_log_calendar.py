@@ -161,6 +161,6 @@ def aml2_do_work(intf):
 
 if __name__ == "__main__" :
 
-    intf = LogPageInterface()
+    intf = LogPageInterface(user_mode=0)
 
     aml2_do_work(intf)
