@@ -94,29 +94,28 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
         # call mount command
-        logc.send(log_client.INFO, 4, "Mnt cmd:"+stk_mount_command)
+        logc.send(log_client.INFO, 2, "Mnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
         out_ticket = {"status" : (e_errors.MOUNTFAILED, "mount_failed")}
 
         # analyze the return message
         for line in returned_message:
-            if list: logc.send(log_client.INFO, 4, "Mnt trc:"+stk_mount_command)
             if string.find(line, "mounted") != -1 :
                 out_ticket = {"status" : (e_errors.OK, None)}
                 break
 
         # log the work
-        for line in returned_message:
-                logc.send(log_client.INFO, 8, "Mnt sts:"+line)
-        logc.send(log_client.INFO, 2, "Mnt returned:"+stk_mount_command)
         if out_ticket["status"][0] != e_errors.OK:
             logc.send(log_client.ERROR, 1, "Mnt Failed:"+stk_mount_command)
             for line in returned_message:
                 logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
-
-        returned_message  = os.popen(stk_query_command, "r").readlines()
-        for line in returned_message:
-                logc.send(log_client.INFO, 16, "Mnt qry:"+line)
+            returned_message  = os.popen(stk_query_command, "r").readlines()
+            for line in returned_message:
+                logc.send(log_client.INFO, 1, "Mnt qry:"+line)
+        else :
+            logc.send(log_client.INFO, 4, "Mnt returned ok")
+            for line in returned_message:
+                logc.send(log_client.INFO, 8, "Mnt ok:"+line)
         # send reply to caller
         self.reply_to_caller(out_ticket)
 
@@ -135,28 +134,27 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
         # call dismount command
-        logc.send(log_client.INFO, 4, "UMnt cmd:"+stk_mount_command)
+        logc.send(log_client.INFO, 2, "UMnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
         out_ticket = {"status" : (e_errors.DISMOUNTFAILED, "dismount_failed")}
 
         # analyze the return message
         for line in returned_message:
-            if list: logc.send(log_client.INFO, 4, "UMnt trc:"+stk_mount_command)
             if string.find(line, "dismount") != -1 :
                 out_ticket = {"status" : (e_errors.OK, None)}
                 break
         # log the work
-        logc.send(log_client.INFO, 2, "UMnt ok:"+stk_mount_command)
-        for line in returned_message:
-                logc.send(log_client.INFO, 8, "UMnt sts:"+line)
-        if out_ticket["status"][0] != e_errors.OK :
-            logc.send(log_client.ERROR, 1, "UMnt Failed:"+stk_mount_command,1)
+        if out_ticket["status"][0] != e_errors.OK:
+            logc.send(log_client.ERROR, 1, "UMnt Failed:"+stk_mount_command)
             for line in returned_message:
                 logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)
-
-        returned_message  = os.popen(stk_query_command, "r").readlines()
-        for line in returned_message:
-                logc.send(log_client.INFO, 16, "Umnt qry:"+line)
+            returned_message  = os.popen(stk_query_command, "r").readlines()
+            for line in returned_message:
+                logc.send(log_client.INFO, 1, "Umnt qry:"+line)
+        else:
+            logc.send(log_client.INFO, 4, "UMnt returned ok:")
+            for line in returned_message:
+                logc.send(log_client.INFO, 8, "UMnt ok:"+line)
 
         self.reply_to_caller(out_ticket)
 
