@@ -237,13 +237,9 @@ class MonitorServerClient(generic_client.GenericClient):
                 raise CLIENT_CONNECTION_ERROR, "no connection established"
             
         except CLIENT_CONNECTION_ERROR, detail:
-            print CLIENT_CONNECTION_ERROR, detail
-            sys.exit(1)
+            raise CLIENT_CONNECTION_ERROR, detail
         except SERVER_CONNECTION_ERROR, detail:
-            print SERVER_CONNECTION_ERROR, detail
-            sys.exit(1)
-        if not data_sock:
-            sys.exit(1)
+            raise CLIENT_CONNECTION_ERROR, detail
 
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
@@ -259,14 +255,9 @@ class MonitorServerClient(generic_client.GenericClient):
                     data_sock,ticket['block_size'], ticket['block_count'],
                     "recv")
         except CLIENT_CONNECTION_ERROR, detail:
-            print CLIENT_CONNECTION_ERROR, detail
-            return
+            raise CLIENT_CONNECTION_ERROR, detail
         except SERVER_CONNECTION_ERROR, detail:
-            print SERVER_CONNECTION_ERROR, detail
-            return
-        if not data_sock:
-            return
-
+            raise SERVER_CONNECTION_ERROR, detail
 
         #If we get here, the status is ok.
         reply['status'] = ('ok', None)
@@ -477,7 +468,7 @@ class Vetos:
         # and the value field being a reason why it is in the veto list
 
         # don't send to yourself
-        vetos[socket.gethostname()] = 'thishost'
+#        vetos[socket.gethostname()] = 'thishost'
 
         self.veto_item_dict = {}
         for v in vetos.keys():
