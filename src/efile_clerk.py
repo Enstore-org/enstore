@@ -404,6 +404,24 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # rename volume is done by volume clerk.
 
     def rename_volume(self, ticket):
+        try:
+            old = ticket["external_label"]
+            new = ticket[ "new_external_label"]
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # This is to be backward compatible with BerkeleyDB
+        if self.dict.bdb:
+            # do not fail
+            try:
+                self.dict.rename_volume(old, new)
+            except:
+                Trace.log(e_errors.ERROR, 'rename %s --> %s failed'%(old, new))
+            
         # Nothing needs to be done
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)

@@ -128,22 +128,27 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     # after renaming, the original volume does not exist any more
 
     def __rename_volume(self, old, new):
-         record = self.dict[old]
-         if not record:
-             return 'EACCESS', "volume %s does not exist"%(old)
+        record = self.dict[old]
+        if not record:
+            return 'EACCESS', "volume %s does not exist"%(old)
 
-         if self.dict.has_key(new):
-             return 'EEXIST', "volume %s already exists"%(new)
+        if self.dict.has_key(new):
+            return 'EEXIST', "volume %s already exists"%(new)
 
-         try:
-             record['external_label'] = new
-             self.dict[old] = record
-         except:
-             Trace.log(e_errors.ERROR, "failed to rename %s to %s"%(old, new))
-             return e_errors.ERROR, None
+        # backward compatible with BerkeleyDB
+        fcc = file_clerk_client.FileClient(self.csc)
+        fcc.rename_volume(old, new)
+	del fcc
+        
+        try:
+            record['external_label'] = new
+            self.dict[old] = record
+        except:
+            Trace.log(e_errors.ERROR, "failed to rename %s to %s"%(old, new))
+            return e_errors.ERROR, None
 
-         Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old, new))
-         return e_errors.OK, None
+        Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old, new))
+        return e_errors.OK, None
 
     # rename_volume() -- server version of __rename_volume()
 

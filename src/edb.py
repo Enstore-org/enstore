@@ -331,6 +331,21 @@ class FileDB(DbTable):
 		if self.bdb != None:
 			del self.bdb[key]
 
+	# This is to be backward compatible with BerkeleyDB
+	def rename_volume(self, old, new):
+		if self.bdb:
+			if self.bdb.inx.has_key('external_label'):
+				c = self.bdb.inx['external_label'].cursor()
+				key, pkey = c.set(old)
+				while key:
+					record = self.bdb[pkey]
+					record['external_label'] = new
+					self.bdb[pkey] = record
+					key, pkey = c.nextDup()
+				c.close()
+			else:
+				Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
+
 class VolumeDB(DbTable):
 	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None):
 		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal = 1, rdb = rdb)
@@ -436,7 +451,10 @@ class VolumeDB(DbTable):
 	def __setitem__(self, key, value):
 		DbTable.__setitem__(self, key, value)
 		if self.bdb != None:
-			self.bdb[key] = value
+			# handling rename
+			self.bdb[value['external_label']] = value
+			if key != value['external_label']:
+				del self.bdb[key]
 
 	def __delitem__(self, key):
 		DbTable.__delitem__(self, key)
