@@ -807,8 +807,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return 0
 
     def update_schedule_file(self, ticket, func):
+	Trace.log(e_errors.INFO, "User update of schedule file (ticket=%s)"%(ticket,))
 	ticket["status"] = (e_errors.OK, None)
-	ticket["bad_server"] = []
+	bad_servers = []
 	server_l = string.split(ticket["servers"], ',')
         sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
 	if sfile.opened != 0:
@@ -841,8 +842,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			if outage_d.has_key(key):
 			    del outage_d[key]
 		else:
-		    ticket["status"] = (e_errors.DOESNOTEXIST, None)
-		    ticket["bad_server"].append(key)
+		    bad_servers.append(key)
+		    ticket["status"] = (e_errors.DOESNOTEXIST, bad_servers)
 	    if not sfile.write(outage_d, offline_d, seen_down_d):
 		ticket["status"] = (e_errors.IOERROR, None)
 		Trace.log(e_errors.ERROR, 
