@@ -26,7 +26,6 @@ if ENSTORE_DIR:
 else:
     IMAGE_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','Images'))
 
-#print "IMAGE_DIR=", IMAGE_DIR
     
 from Tkinter import *
 from tkFont import Font
@@ -551,22 +550,25 @@ class Display(Canvas):
         if canvas_height is None:
             canvas_height = window_height
         ##** means "variable number of keyword arguments" (passed as a dictionary)
-        Canvas.__init__(self, master,width=window_width, height=window_height, scrollregion=(0, 0, canvas_width, canvas_height))
-        self.scrollX = Scrollbar(self, orient=HORIZONTAL)
-        self.scrollY = Scrollbar(self, orient=VERTICAL)
+        Canvas.__init__(self, master,width=window_width, height=window_height,
+                        scrollregion=(0, 0, canvas_width, canvas_height))
+        
+        if (window_width, window_height) != (canvas_width, canvas_height):
+            self.scrollX = Scrollbar(self, orient=HORIZONTAL)
+            self.scrollY = Scrollbar(self, orient=VERTICAL)
 
-       #When the canvas changes size or moves, update the scrollbars
-        self['xscrollcommand']= self.scrollX.set
-        self['yscrollcommand'] = self.scrollY.set
+            ##When the canvas changes size or moves, update the scrollbars
+            self['xscrollcommand']= self.scrollX.set
+            self['yscrollcommand'] = self.scrollY.set
 
-        #When scrollbar clicked on, move the canvas
-        self.scrollX['command'] = self.xview
-        self.scrollY['command'] = self.yview
+            ##When scrollbar clicked on, move the canvas
+            self.scrollX['command'] = self.xview
+            self.scrollY['command'] = self.yview
 
-        #pack 'em up
-        self.scrollX.pack(side=BOTTOM, fill=X)
-        self.scrollY.pack(side=RIGHT, fill=Y)
-        self.pack(side=LEFT)
+            ##pack 'em up
+            self.scrollX.pack(side=BOTTOM, fill=X)
+            self.scrollY.pack(side=RIGHT, fill=Y)
+            self.pack(side=LEFT)
 
         Tk.title(self.master, title)
         self.configure(attributes)
@@ -662,6 +664,7 @@ class Display(Canvas):
                     client_name = strip_domain(client_name)
                 except:
                     print "Can't resolve address", client_name
+             
             #XXX end hack
             client = self.clients.get(client_name) 
             if client is None: #new client
