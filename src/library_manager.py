@@ -44,6 +44,7 @@ import priority_selector
 import mover_constants
 import charset
 import discipline
+import encp_ticket
 
 KB=1L<<10
 MB=1L<<20
@@ -1566,7 +1567,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
         
     def write_to_hsm(self, ticket):
-        key = encp_ticket.write_request_ok(w_ticket)
+        key = encp_ticket.write_request_ok(ticket)
         if key:
             ticket['status'] = (e_errors.MALFORMED,
                                 "ticket does not have a mandatory key %s"%(key,))
@@ -1738,7 +1739,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
 
     def read_from_hsm(self, ticket):
-        key = encp_ticket.read_request_ok(w_ticket)
+        key = encp_ticket.read_request_ok(ticket)
         if key:
             ticket['status'] = (e_errors.MALFORMED,
                                 "ticket does not have a mandatory key %s"%(key,))
