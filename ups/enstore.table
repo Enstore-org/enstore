@@ -75,7 +75,6 @@ QUALIFIERS = ""
 
         # default "control" environmental variables
         envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/pcfarm.conf)
-        envSet(ENSTORE_DB,          ${UPS_PROD_DIR}/etc)
         envSet(ENSTORE_CONFIG_PORT, 7500)
         envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
 

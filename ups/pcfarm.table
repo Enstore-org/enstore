@@ -10,5 +10,4 @@ QUALIFIERS = ""
         envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/pcfarm.conf)
         envSet(ENSTORE_CONFIG_PORT, 7500)
         envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
-        envSet(ENSTORE_DB,          /bakken/bakken/enstore_db
 

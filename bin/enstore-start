@@ -28,7 +28,7 @@ while opt=`expr "${1-}" : '--\(.*\)'`;do
 done
 
 place=`pwd`
-cd $ENSTORE_DB
+cd $PID_DIR
 
 local_host=`hostname`
 enstore_start_config=0     # new default

@@ -10,5 +10,4 @@ QUALIFIERS = ""
         envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/rip.conf)
         envSet(ENSTORE_CONFIG_PORT, 7500)
         envSet(ENSTORE_CONFIG_HOST, rip6.fnal.gov)
-        envSet(ENSTORE_DB,          /rip6a/enstore/db)
 
