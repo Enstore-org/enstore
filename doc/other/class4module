@@ -1,0 +1,42 @@
+#!/bin/sh
+files=../*.py
+
+rm -f *.out *.known *.dot
+
+# make a file holding a list of all classes using the 
+#lousy sed below.
+
+sed -n -e '/^class.*:/p'  $files	> 1.out
+sed    -e 's/class *//'			< 1.out > 2.out
+sed    -e 's/(.*//g'			< 2.out > 3.out
+sed    -e 's/:.*//g'			< 3.out > 4.out
+
+# classes.known is a file of all classes, one class name per line.
+cp 4.out classes.known
+
+
+
+for f in $files ; do
+	fb=`basename $f .py`
+        echo 'digraph objs { '           >  ${fb}.dot
+	cat classes.known | while read c ; do
+           if grep $c $f > /dev/null ; then 
+	      echo `basename $f .py` " -> $c" ; 
+           fi
+	done >> ${fb}.dot
+
+     echo 'size="8,11"'               >> ${fb}.dot
+     echo 'center=1'                  >> ${fb}.dot
+     echo 'rotate=0'                  >> ${fb}.dot
+     echo 'ordering=out'              >> ${fb}.dot
+     echo 'rankdir=LR'                >> ${fb}.dot
+     echo 'margin=0.5'                >> ${fb}.dot
+     echo 'dir=back'                  >> ${fb}.dot
+     echo '}'                         >> ${fb}.dot
+
+dot -Tps ${fb}.dot                 >> ${fb}.ps     
+done                      
+
+
+
+
