@@ -1,6 +1,13 @@
 #!/bin/sh
 
 BASEPATH=/fnal/ups/prd/www_pages/enstore
+
+if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+  BASE=/diskb/aml2Shadow/AMU/LOGS-TRC
+  DECODED=/diska/aml-logs
+  REPORTED=/diska/aml-report
+fi
+
 #set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
