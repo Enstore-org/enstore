@@ -1,0 +1,50 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+base=/tmp/doesnot/exist
+
+if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+  base=/diska/CRONS
+fi
+
+if [ ! -d $base ]; then
+  echo $base does not exist
+  exit 1
+fi
+
+cd $base
+
+lastweek=`date -d '1 week ago' +'%Y-%m-%d:00:01'`
+tomorrow=`date -d '1 day' +'%Y-%m-%d:00:01'`
+
+for i in *; do
+  echo $i ..............................................
+  cd $base/$i
+  rm -f *HISTOGRAM  >/dev/null 2>&1
+  rm -f *.pbm  >/dev/null 2>&1
+  rcp $i:/root/CRON/*HISTOGRAM . >/dev/null 2>&1
+  rcp $i:/home/enstore/CRON/*HISTOGRAM .  >/dev/null 2>&1
+  for j in *HISTOGRAM; do
+     if [ "$j" = "*HISTOGRAM" ]; then break; fi
+     f=`basename $j |sed -e 's/HISTOGRAM//'`
+     echo generating pbm plot for $i/$f
+     file=`mktemp /tmp/cronplot.XXXXXXXX`
+     title=$i/$f
+     echo "
+set term pbm medium color
+set output '$f.pbm'
+set xlabel 'Date'
+set timefmt '%Y-%m-%d:%H:%M:'
+set xdata time
+set xrange ['$lastweek' :'$tomorrow']
+set yrange [-1:15]
+set grid
+#set format x '%m-%d'
+plot '$j' using 1:2 t '$title' with points
+" >> $file
+     gnuplot $file
+     rm $file
+  done
+  rm -f *HISTOGRAM  >/dev/null 2>&1
+done
