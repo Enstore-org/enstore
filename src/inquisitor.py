@@ -366,7 +366,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
 					   "make new log file")
 
-    def add_new_mv_lm_mc(self, key, config_d):
+    def add_new_server(self, key, config_d):
         if enstore_functions.is_mover(key):     
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
@@ -383,9 +383,19 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 self.server_d[key] = monitored_server.MonitoredLibraryManager(cdict,
 									      key, 
 									      self.csc)
-        else:
-            # nothing to see here
-            return
+        elif enstore_functions.is_generic_server(key):
+	    # this is a generic server - make sure we are now monitoring this server
+            cdict = config_d[key]
+	    if self.ok_to_monitor(cdict) and self.servers_by_name.has_key(key):
+		self.server_d[key] = self.servers_by_name[key]
+		# set the last alive time to now.
+		self.server_d[key].last_alive = time.time()
+	    else:
+		# we do not keep this server in our list
+		return
+	else:
+	    # nothing to see here
+	    return
         if self.ok_to_monitor(cdict):
             self.server_d[key].hung_interval = \
                                     self.inquisitor.get_hung_interval(self.server_d[key].name)
@@ -401,10 +411,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				   "make new html config file")
 
     def stop_monitoring(self, server, skey):
-        # set this so if there is a thread attempting to restart this
-        # server, it will notice and abort the attempt.
         self.serverfile.dont_monitor(server.name, server.host)
-        server.delete_me()
         del self.server_d[skey]
 
     def get_value(self, aKey, aValue):
@@ -439,7 +446,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # library managers and media changers for now.
         for skey in config.keys():
             if not self.server_d.has_key(skey):
-                self.add_new_mv_lm_mc(skey, config)
+                self.add_new_server(skey, config)
 
         self.www_server = config.get(enstore_constants.WWW_SERVER, {})
         # only update the following values if they were not set on the command line
@@ -1260,6 +1267,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.name = MY_NAME
         self.startup_state = e_errors.OK
         self.sent_stalled_mail = {}
+	self.servers_by_name = {}
 
         # set an interval and retry that we will use the first time to get the
         # config information from the config server.  we do not use the
@@ -1346,52 +1354,28 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
         cdict = self.config_d.get(enstore_constants.ALARM_SERVER, {})
         self.alarm_server = monitored_server.MonitoredAlarmServer(cdict)
-        if self.ok_to_monitor(cdict):
-            self.server_d[enstore_constants.ALARM_SERVER] = self.alarm_server
-        else:
-            self.serverfile.dont_monitor(enstore_constants.ALARM_SERVER,
-                                         self.alarm_server.host)
+	self.servers_by_name[enstore_constants.ALARM_SERVER] = self.alarm_server
 
         cdict = self.config_d.get(enstore_constants.LOG_SERVER, {})
         self.log_server = monitored_server.MonitoredLogServer(cdict)
-        if self.ok_to_monitor(cdict):
-            self.server_d[enstore_constants.LOG_SERVER]  = self.log_server
-        else:
-            self.serverfile.dont_monitor(enstore_constants.LOG_SERVER,
-                                         self.log_server.host)
+	self.servers_by_name[enstore_constants.LOG_SERVER] = self.log_server
 
         cdict = self.config_d.get(enstore_constants.FILE_CLERK, {})
         self.file_clerk = monitored_server.MonitoredFileClerk(cdict)
-        if self.ok_to_monitor(cdict):
-            self.server_d[enstore_constants.FILE_CLERK]  = self.file_clerk
-        else:
-            self.serverfile.dont_monitor(enstore_constants.FILE_CLERK,
-                                         self.file_clerk.host)
+	self.servers_by_name[enstore_constants.FILE_CLERK] = self.file_clerk
 
         cdict = self.config_d.get(enstore_constants.VOLUME_CLERK, {})
         self.volume_clerk = monitored_server.MonitoredVolumeClerk(cdict)
-        if self.ok_to_monitor(cdict):
-            self.server_d[enstore_constants.VOLUME_CLERK]  = self.volume_clerk
-        else:
-            self.serverfile.dont_monitor(enstore_constants.VOLUME_CLERK,
-                                         self.volume_clerk.host)
+	self.servers_by_name[enstore_constants.VOLUME_CLERK] = self.volume_clerk
 
         cdict = self.config_d.get(enstore_constants.CONFIG_SERVER, {})
         self.config_server = monitored_server.MonitoredConfigServer(cdict)
-        if self.ok_to_monitor(cdict):
-            self.server_d[enstore_constants.CONFIG_SERVER]  = self.config_server
-        else:
-            self.serverfile.dont_monitor(enstore_constants.CONFIG_SERVER,
-                                         self.config_server.host)
-
-        for server_key in self.server_d.keys():
-            server = self.server_d[server_key]
-            server.hung_interval = self.inquisitor.get_hung_interval(server.name)
+	self.servers_by_name[enstore_constants.CONFIG_SERVER] = self.config_server
 
 	self.mover_state = {}
 	self.lm_queues = {}
         for key in self.config_d.keys():
-            self.add_new_mv_lm_mc(key, self.config_d)
+            self.add_new_server(key, self.config_d)
 	
         dispatching_worker.DispatchingWorker.__init__(self, 
                                                       (self.inquisitor.hostip,
