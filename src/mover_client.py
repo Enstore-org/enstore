@@ -94,6 +94,9 @@ if __name__ == "__main__" :
     movc = MoverClient(0, intf.verbose, intf.mover, \
                       intf.config_host, intf.config_port)
 
+    ticket = {}
+    msg_id = None
+
     if intf.alive:
         ticket = movc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
