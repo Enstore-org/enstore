@@ -516,20 +516,24 @@ class Mover(dispatching_worker.DispatchingWorker,
             ##XXX should this be more encapsulated in the driver class?
             import null_driver
             self.tape_driver = null_driver.NullDriver()
-        elif self.state is IDLE and self.driver_type == 'FTTDriver':
+        elif self.driver_type == 'FTTDriver':
             self.device = self.config['device']
             import ftt_driver
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
-            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
+            have_tape = 0
+            if self.state is IDLE:
+                have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
+
 
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
             self.config['serial_num'] = stats[ftt.SERIAL_NUM]
             self.config['vendor_id'] = stats[ftt.VENDOR_ID]
 
-            if self.maybe_clean():
-                have_tape = 0
+            if self.state is IDLE:
+                if self.maybe_clean():
+                    have_tape = 0
             
             if have_tape == 1:
                 status = self.tape_driver.verify_label(None)
@@ -541,7 +545,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     have_tape=0
             self.tape_driver.close()
-            if not have_tape:
+            if self.state is IDLE and not have_tape:
                 Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
                 vol_ticket = { "external_label": "Unknown",
                                "media_type":self.media_type}
