@@ -350,6 +350,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      except:
          Trace.trace(0,"}next_write_volume "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
+	 traceback.print_exc()
          ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          logc.send(log_client.ERROR,1, str(ticket) )
          self.reply_to_caller(ticket)
