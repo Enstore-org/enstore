@@ -29,22 +29,34 @@ class pnfs :
     # initialize - we will be needing all these things soon, get them now
     def __init__(self,pnfsFilename,all=0) :
         self.pnfsFilename = pnfsFilename
+        t1 = time.time()
         (dir,file) = os.path.split(pnfsFilename)
+        print "path.split:",time.time()-t1
         if dir == '' :
             dir = '.'
         self.dir = dir
         self.file = file
         self.exists = unknown
+        t1 = time.time()
         self.check_valid_pnfsFilename()
-	t1 = time.time()
+        print "check_valid:",time.time()-t1
+        t1 = time.time()
         self.statinfo()
-	print "stattime:",time.time()-t1
+        print "stattime:",time.time()-t1
         self.rmajor = 0
         self.rminor = 0
+        t1 = time.time()
         self.get_bit_file_id()
+        print "get_bit_file_id:",time.time()-t1
+        t1 = time.time()
         self.get_library()
+        print "get_library:",time.time()-t1
+        t1 = time.time()
         self.get_file_family()
+        print "get_file_family:",time.time()-t1
+        t1 = time.time()
         self.get_file_family_width()
+        print "get_file_family_width:",time.time()-t1
         if all :
             self.get_pnfs_info()
 
