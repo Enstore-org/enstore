@@ -40,6 +40,10 @@ import enstore_saag_network
 import dbs
 import ratekeeper_client
 import pnfs
+import enstore_start
+import enstore_stop
+import enstore_restart
+import backup
 
 CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
 #CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDc)
@@ -49,43 +53,60 @@ ERROR = "ERROR"
 HELP = "HELP"
 HELP_OPTS = ["--help", "-h", "--hel", "--he"]
 
-server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
-                                alarm_client.do_work, option.ADMIN],
-                     "configuration" : [configuration_client.ConfigurationClientInterface,
-                                        configuration_client.do_work, option.ADMIN],
-                     "event_relay" : [event_relay_client.EventRelayClientInterface,
-                                      event_relay_client.do_work, option.ADMIN],
-                     "file" : [file_clerk_client.FileClerkClientInterface,
-                               file_clerk_client.do_work, option.USER],
-                     "inquisitor" : [inquisitor_client.InquisitorClientInterface,
-                                     inquisitor_client.do_work, option.ADMIN],
-                     "library" : [library_manager_client.LibraryManagerClientInterface,
-                                  library_manager_client.do_work, option.USER],
-                     "log" : [log_client.LoggerClientInterface,
-                              log_client.do_work, option.ADMIN],
-                     "media" : [media_changer_client.MediaChangerClientInterface,
-                                media_changer_client.do_work, option.ADMIN],
-                     "monitor" : [monitor_client.MonitorServerClientInterface,
-                                monitor_client.do_work, option.USER],
-                     "mover" : [mover_client.MoverClientInterface,
-                                mover_client.do_work, option.ADMIN],
-                     "network" : [enstore_saag_network.SaagNetworkInterface,
-                                 enstore_saag_network.do_work, option.ADMIN],
-		     "pnfs":[pnfs.PnfsInterface,
-                             pnfs.do_work, option.USER],
-                     "up_down" : [enstore_up_down.UpDownInterface,
-                                  enstore_up_down.do_work, option.ADMIN],
-                     "system" : [enstore_saag.SaagInterface,
-                                 enstore_saag.do_work, option.ADMIN],
-                     "schedule" : [inquisitor_client.InquisitorClientInterface,
-                                   inquisitor_client.do_work, option.ADMIN],
-                     "volume" : [volume_clerk_client.VolumeClerkClientInterface,
-                                 volume_clerk_client.do_work, option.USER],
-		     "database" : [dbs.Interface,
-			           dbs.do_work, option.ADMIN],
-                     "ratekeeper" : [ratekeeper_client.RatekeeperClientInterface,
-                                     ratekeeper_client.do_work, option.ADMIN],
-                     }
+#The format of the dictionary server_functions{} is as follows:
+# The keys of the dictionary are the command names that can be passed to the
+# enstore command.  Most of these will correspond to a specific enstore
+# server.  The value for each entry is a list with three fields.
+# field 1) The instance of the interface class inherited from option.Interface.
+# field 2) The "main" function that does the work.
+# field 3) Either option.ADMIN or option.USER.  Used to hide admin commands
+#          from general users.
+server_functions = {
+    "alarm" : [alarm_client.AlarmClientInterface,
+               alarm_client.do_work, option.ADMIN],
+    "configuration" : [configuration_client.ConfigurationClientInterface,
+                       configuration_client.do_work, option.ADMIN],
+    "event_relay" : [event_relay_client.EventRelayClientInterface,
+                     event_relay_client.do_work, option.ADMIN],
+    "file" : [file_clerk_client.FileClerkClientInterface,
+              file_clerk_client.do_work, option.USER],
+    "inquisitor" : [inquisitor_client.InquisitorClientInterface,
+                    inquisitor_client.do_work, option.ADMIN],
+    "library" : [library_manager_client.LibraryManagerClientInterface,
+                 library_manager_client.do_work, option.USER],
+    "log" : [log_client.LoggerClientInterface,
+             log_client.do_work, option.ADMIN],
+    "media" : [media_changer_client.MediaChangerClientInterface,
+               media_changer_client.do_work, option.ADMIN],
+    "monitor" : [monitor_client.MonitorServerClientInterface,
+                 monitor_client.do_work, option.USER],
+    "mover" : [mover_client.MoverClientInterface,
+               mover_client.do_work, option.ADMIN],
+    "network" : [enstore_saag_network.SaagNetworkInterface,
+                 enstore_saag_network.do_work, option.ADMIN],
+    "pnfs" : [pnfs.PnfsInterface,
+              pnfs.do_work, option.USER],
+    "up_down" : [enstore_up_down.UpDownInterface,
+                 enstore_up_down.do_work, option.ADMIN],
+    "system" : [enstore_saag.SaagInterface,
+                enstore_saag.do_work, option.ADMIN],
+    "schedule" : [inquisitor_client.InquisitorClientInterface,
+                  inquisitor_client.do_work, option.ADMIN],
+    "volume" : [volume_clerk_client.VolumeClerkClientInterface,
+                volume_clerk_client.do_work, option.USER],
+    "database" : [dbs.Interface,
+                  dbs.do_work, option.ADMIN],
+    "ratekeeper" : [ratekeeper_client.RatekeeperClientInterface,
+                    ratekeeper_client.do_work, option.ADMIN],
+    "start" : [enstore_start.EnstoreStartInterface,
+               enstore_start.do_work, option.ADMIN],
+    "stop" : [enstore_stop.EnstoreStopInterface,
+              enstore_stop.do_work, option.ADMIN],
+    "restart" : [enstore_restart.EnstoreRestartInterface,
+                 enstore_restart.do_work, option.ADMIN],
+    "backup" : [backup.BackupInterface,
+                backup.do_work, option.ADMIN],
+    }
 
 def get_farmlet(default):
     if len(sys.argv) > 1:
@@ -105,50 +126,52 @@ def get_argv3(default=" "):
     else:
         return default
 
-START_HELP = "start   [--just server --ping --asynch --nocheck]"
-STOP_HELP = "stop    [--just server --xterm server]"
+#START_HELP = "start   [--just server --ping --asynch --nocheck]"
+#STOP_HELP = "stop    [--just server --xterm server]"
 
-local_scripts = {"enstore-start":[START_HELP, ("enstore-start", sys.argv[2:])],
-                 "start":[START_HELP, ("enstore-start", sys.argv[2:])],
-                 "enstore-stop":[STOP_HELP, ("enstore-stop", sys.argv[2:])],
-                 "stop":[STOP_HELP, ("enstore-stop", sys.argv[2:])],
-                 "restart":["restart [--just server --xterm server]",
-			    ("enstore-stop", sys.argv[2:]),
-                            ("enstore-start --nocheck", sys.argv[2:])],
-                 "ping":["ping    [timeout-seconds]",
-			 ("enstore-ping", sys.argv[2:])],
-                 "qping":["qping   [timeout-seconds]",
-			  ("quick-ping", sys.argv[2:])],
-                 "backup":["backup         (backup file and volume databases)", ("python $ENSTORE_DIR/src/backup.py",sys.argv[2:])],
-                 "aml2":["aml2               (lists current mount state & queue list on aml2 robot)",
-			 ('enrsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"',
-                          [],
-                          "self.node"),
-                         ],
-                 "ps":["ps                 (list enstore related processes)",
-		       ("EPS", sys.argv[2:])],
-                 }
+local_scripts = {
+    #"enstore-start":[START_HELP, ("enstore-start", sys.argv[2:])],
+    #"start":[START_HELP, ("enstore-start", sys.argv[2:])],
+    #"enstore-stop":[STOP_HELP, ("enstore-stop", sys.argv[2:])],
+    #"stop":[STOP_HELP, ("enstore-stop", sys.argv[2:])],
+    #"restart":["restart [--just server --xterm server]",
+    #	    ("enstore-stop", sys.argv[2:]),
+    #            ("enstore-start --nocheck", sys.argv[2:])],
+    #"ping":["ping    [timeout-seconds]",
+    #	 ("enstore-ping", sys.argv[2:])],
+    #"qping":["qping   [timeout-seconds]",
+    #	  ("quick-ping", sys.argv[2:])],
+    #"backup":["backup        (backup file and volume databases)",
+    #("python $ENSTORE_DIR/src/backup.py",sys.argv[2:])],
+    #"aml2":["aml2            (lists current mount state & queue list on aml2 robot)",
+    #	 ('enrsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"',
+    #         [],
+    #         "self.node"),
+    #        ],
+    #"ps":["ps                (list enstore related processes)",
+    #      ("EPS", sys.argv[2:])],
+    }
 
 # the sys.argv contains the whole thing
 VERIFY = "verify"
 PROMPT = "prompt"
-remote_scripts = {"Estart":["Estart  [farmlet]  (Enstore start on all/specified farmlet nodes)",
-			    ("enstore", 
-			     ("%s enstore-start " % (CMD1,), 
-			      get_argv3("enstore"), dbs.CMD2), VERIFY)],
-                  "Estop":["Estop   [farmlet]  (Enstore stop on all/specified farmlet nodes)",
-			   ("enstore-down",
-                            ("%s enstore-stop " % (CMD1,), 
-			     get_argv3("enstore-down"), dbs.CMD2),
-                            PROMPT, VERIFY), ],
-                  "EPS":["EPS  [farmlet]   (Enstore-associated ps on all/specified farmlet nodes)",
-			 ("enstore",
-                          ("source /usr/local/etc/setups.sh;setup enstore;",
-			  "EPS"))],
-                  "ls":["ls  [farmlet]   (ls of cwd on all/specified farmlet nodes)",
-			("enstore",
-                         ("ls %s" % (os.getcwd(),),))],
-                  }
+remote_scripts = {
+    "Estart":["Estart  [farmlet]  (Enstore start on all/specified farmlet nodes)",
+              ("enstore",
+               ("%s enstore-start " % (CMD1,), get_argv3("enstore"), dbs.CMD2),
+               VERIFY)],
+    "Estop":["Estop   [farmlet]  (Enstore stop on all/specified farmlet nodes)",
+             ("enstore-down",
+              ("%s enstore-stop " % (CMD1,),
+               get_argv3("enstore-down"), dbs.CMD2),
+              PROMPT, VERIFY), ],
+    "EPS":["EPS  [farmlet]   (Enstore-associated ps on all/specified farmlet nodes)",
+           ("enstore",
+            ("source /usr/local/etc/setups.sh;setup enstore;", "EPS"))],
+    "ls":["ls  [farmlet]   (ls of cwd on all/specified farmlet nodes)",
+          ("enstore",
+           ("ls %s" % (os.getcwd(),),))],
+    }
 
 
 # these general functions perform various system functions
@@ -207,7 +230,8 @@ class EnstoreInterface:
                     self.matched_server = server
             return total_matches
         except (TypeError, IndexError):
-            return 0  #total_matches = 0 
+            total_matches = 0
+            return total_matches
 
     def get_valid_servers(self):
 	servers = server_functions.keys()
@@ -414,7 +438,7 @@ class Enstore:
 		    #each tuple in l_script is two items long.
 		    try:
 			executable = command[0] % command[2:]
-		    except IndexError, TypeError:
+		    except (IndexError, TypeError):
 			executable = command[0]
 		    rtn = call_function(executable, command[1])
 
