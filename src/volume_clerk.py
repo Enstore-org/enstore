@@ -507,7 +507,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     sg = volume_family.extract_storage_group(cur_rec['volume_family'])
                     cur_rec['volume_family'] = volume_family.make_volume_family(sg,'none', 'none')
                     cur_rec['remaining_bytes'] = cur_rec['capacity_bytes']
-                    cur_rec['eod_cookie'] = 'none'
+                    cur_rec['eod_cookie'] = '0000_000000000_0000001'
                     cur_rec['last_access'] = -1
                     cur_rec['first_access'] = -1
                     #cur_rec['declared'] = time.time()
