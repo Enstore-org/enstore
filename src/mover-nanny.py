@@ -9,7 +9,8 @@ import string
 import time
 import pprint
 
-mail_victims = "enstore-admin@fnal.gov"
+
+mail_victims = os.environ.get("ENSTORE_MAIL", "enstore-auto@fnal.gov")
 
 config = eval(os.popen("enstore config --show",'r').read())
 
