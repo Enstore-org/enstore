@@ -294,7 +294,7 @@ def summon_mover(self, mover):
 
 
 # find the next idle mover
-def idle_mover_next(self):
+def idle_mover_next(self,external_label):
     global mover_cnt
     global mover_index
     Trace.trace(3,"{idle_mover_next ")
@@ -302,13 +302,25 @@ def idle_mover_next(self):
     j = mover_index
     for i in range(0, mover_cnt):
 	if movers[j]['state'] == 'idle_mover':
-	    idle_mover_found = 1
-	    self.summon_queue_index = i
-	    break
-	else:
-	    j = j+1
-	    if j == mover_cnt:
-		j = 0
+	    # check if this mover is not in the list of suspect volumes
+	    vol_suspect = 0
+	    for vol in self.suspect_volumes:
+		if external_label == vol['external_label']:
+		    vol_suspect = 1
+		    break
+	    mv_suspect = 0
+	    if vol_suspect:
+		for mov in vol['movers']:
+		    if movers[j]['mover'] == mov:
+			mv_suspect = 1
+			break
+	    if not mv_suspect:
+		idle_mover_found = 1
+		self.summon_queue_index = i
+		break
+	j = j+1
+	if j == mover_cnt:
+	    j = 0
     if idle_mover_found:
 	mv = movers[j]
 	j = j+1
@@ -452,7 +464,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if verbose: pprint.pprint(movers)
 
 	# find the next idle mover
-	mv = idle_mover_next(self)
+	mv = idle_mover_next(self, ticket['fc']['external_label'])
 	if mv != None:
 	    # summon this mover
 	    summon_mover(self, mv)
@@ -492,7 +504,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	# check if requested volume is busy
 	if  not is_volume_busy(ticket["fc"]["external_label"]):
 	    # find the next idle mover
-	    mv = idle_mover_next(self)
+	    mv = idle_mover_next(self, ticket["fc"]["external_label"])
 	    if mv != None:
 		# summon this mover
 		if debug:
@@ -736,7 +748,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             work_at_movers.remove(w)
         self.reply_to_caller({"work" : "nowork"})
 
-	# TO DO:
 	# determine if all the movers are in suspect volume list and if
 	# yes send a regret: no more movers.
 	if len(vol['movers']) >= self.max_suspect_movers:
@@ -748,7 +759,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    # find next mover that can do this job
 	    next_mover_found = 0
 	    for i in range(0, mover_cnt):
-		next_mover = idle_mover_next(self)
+		next_mover = idle_mover_next(self, ticket['external_label'])
 		if debug:
 		    print "current mover", ticket['mover'], " next mover", next_mover
 		if (next_mover != None) and \
@@ -807,8 +818,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.control_socket.close()
 	Trace.trace(3,"}getwork ")
         os._exit(0)
-    # what is going on
 
+    # get list of assigned movers 
     def getmoverlist(self,ticket):
 	if verbose: print "getmoverlist", ticket
 	Trace.trace(3,"{getmoverlist ")
@@ -830,6 +841,30 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				  controlsocket")
         self.control_socket.close()
 	Trace.trace(3,"}getmoverlist ")
+        os._exit(0)
+
+    # get list of suspected volumes 
+    def get_suspect_volumes(self,ticket):
+	if verbose: print "get_suspect_volumes", ticket
+	Trace.trace(3,"{get_suspect_volumes ")
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        # this could tie things up for awhile - fork and let child
+        # send the work list (at time of fork) back to client
+        if os.fork() != 0:
+            return
+        self.get_user_sockets(ticket)
+        rticket = {}
+        rticket["status"] = (e_errors.OK, None)
+        rticket["suspect_volumes"] = self.suspect_volumes
+        callback.write_tcp_socket(self.data_socket,rticket,
+                                  "library_manager get_suspect_volumes, datasocket")
+        self.data_socket.close()
+        callback.write_tcp_socket(self.control_socket,ticket,
+                                  "library_manager get_suspect_volumes, \
+				  controlsocket")
+        self.control_socket.close()
+	Trace.trace(3,"}get_suspect_volumes ")
         os._exit(0)
 
 

@@ -139,6 +139,8 @@ class Interface:
                 self.getwork = 1
             elif opt == "--getmoverlist" :
                 self.getmoverlist = 1
+            elif opt == "--get_suspect_vols" :
+                self.get_susp_vols = 1
             elif opt == "--load" :
                 self.load = 1
             elif opt == "--vols" :

@@ -97,6 +97,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def getmoverlist(self):
 	return getlist(self,"getmoverlist")
 
+    def get_suspect_volumes(self):
+	return getlist(self,"get_suspect_volumes")
+
 class LibraryManagerClientInterface(interface.Interface) :
     def __init__(self) :
         self.name = ""
@@ -113,7 +116,7 @@ class LibraryManagerClientInterface(interface.Interface) :
     # define the command line options that are valid
     def options(self):
         return self.config_options()+\
-	       ["verbose=", "getwork", "getmoverlist"] +\
+	       ["verbose=", "getwork", "getmoverlist", "get_suspect_vols"] +\
 	       self.alive_options()+self.help_options()
 
     #  define our specific help
@@ -152,6 +155,9 @@ if __name__ == "__main__" :
     elif  intf.getmoverlist:
 	ticket = lmc.getmoverlist()
 	pprint.pprint(ticket['moverlist'])
+    elif  intf.get_susp_vols:
+	ticket = lmc.get_suspect_volumes()
+	pprint.pprint(ticket['suspect_volumes'])
 
     del lmc.csc.u
     del lmc.u		# del now, otherwise get name exception (just for python v1.5???)
