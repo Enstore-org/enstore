@@ -485,7 +485,8 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
 	if moverd:
 	    # we may have gotten an error when trying to get it, 
 	    # so look for a piece of it.  
-	    if moverd.has_key(enstore_constants.STATE):
+	    if moverd.has_key(enstore_constants.STATE) or \
+	       moverd[enstore_constants.STATE]:
 		# get the first word of the mover state, we will use this to
 		# tell if this is a bad state or not
 		words = string.split(moverd[enstore_constants.STATE])
