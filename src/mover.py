@@ -9,9 +9,9 @@ import threading
 import errno
 import pprint
 import socket
-import signal				
-import time				
-import string				
+import signal                           
+import time                             
+import string                           
 import select
 import exceptions
 import traceback
@@ -22,9 +22,9 @@ import setpath
 import generic_server
 import interface
 import dispatching_worker
-import volume_clerk_client		
-import file_clerk_client		
-import media_changer_client		
+import volume_clerk_client              
+import file_clerk_client                
+import media_changer_client             
 import callback
 import checksum
 import e_errors
@@ -316,8 +316,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = OFFLINE
         self.current_location = 0L
         self.current_volume = None #external label of current mounted volume
-	self.last_location = 0L
-	self.last_volume = None
+        self.last_location = 0L
+        self.last_volume = None
         self.mode = None # READ or WRITE
         self.bytes_to_transfer = 0L
         self.bytes_to_read = 0L
@@ -354,6 +354,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.default_dismount_delay < 0:
             self.default_dismount_delay = 31536000 #1 year
         self.max_dismount_delay = self.config.get('max_dismount_delay', 600)
+
+        self.libraries = []
+        lib_list = self.config['library']
+        if type(lib_list) != type([]):
+            lib_list = [lib_list]
+        for lib in lib_list:
+            lib_config = self.csc.get(lib)
+            self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
+
         if self.driver_type == 'NullDriver':
             self.device = None
             import null_driver
@@ -393,21 +402,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mount_delay = int(self.mount_delay)
         if self.mount_delay < 0:
             self.mount_delay = 0
-            
-	dispatching_worker.DispatchingWorker.__init__(self, self.address)
-        self.libraries = []
-        lib_list = self.config['library']
-        if type(lib_list) != type([]):
-            lib_list = [lib_list]
-        for lib in lib_list:
-            lib_config = self.csc.get(lib)
-            self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
+
+        dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.set_interval_func(self.update, 5) #this sets the period for messages to LM.
         self.set_error_handler(self.handle_mover_error)
         ##end of __init__
 
     def nowork(self, ticket):
-	return {}
+        return {}
 
     def handle_mover_error(self, exc, msg, tb):
         Trace.log(e_errors.ERROR, "handle mover error %s %s"%(exc, msg))
@@ -1193,26 +1195,26 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
     def status(self, ticket):
         now = time.time()
-	tick = { 'status'       : (e_errors.OK,None),
-		 'drive_sn'     : self.config['serial_num'],
+        tick = { 'status'       : (e_errors.OK,None),
+                 'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
                  'drive_id'     : self.config['product_id'],
-		 #
-		 'state'        : state_name(self.state),
-		 'transfers_completed'     : self.transfers_completed,
+                 #
+                 'state'        : state_name(self.state),
+                 'transfers_completed'     : self.transfers_completed,
                  'transfers_failed': self.transfers_failed,
-		 'bytes_read'     : self.bytes_read,
-		 'bytes_written'     : self.bytes_written,
+                 'bytes_read'     : self.bytes_read,
+                 'bytes_written'     : self.bytes_written,
                  'bytes_buffered' : self.buffer.nbytes(),
-		 # from "work ticket"
-		 'bytes_to_transfer': self.bytes_to_transfer,
-		 'files'        : self.files,
-		 'mode'         : mode_name(self.mode),
+                 # from "work ticket"
+                 'bytes_to_transfer': self.bytes_to_transfer,
+                 'files'        : self.files,
+                 'mode'         : mode_name(self.mode),
                  'current_volume': self.current_volume,
-		 'current_location': self.current_location,
-		 'last_volume' : self.last_volume,
-		 'last_location': self.last_location,
-		 'time_stamp'   : now,
+                 'current_location': self.current_location,
+                 'last_volume' : self.last_volume,
+                 'last_location': self.last_location,
+                 'time_stamp'   : now,
                  'buffer_min': self.buffer.min_bytes,
                  'buffer_max': self.buffer.max_bytes,
                  'rate of network': self.net_driver.rates()[0],
@@ -1221,8 +1223,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
             
-	self.reply_to_caller(tick)
-	return
+        self.reply_to_caller(tick)
+        return
 
     def timer(self, key):
         if not self.current_work_ticket:
@@ -1257,7 +1259,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def check_lockfile(self):
         return os.path.exists(self.lockfile_name())
         
-    def start_draining(self, ticket):	    # put itself into draining state
+    def start_draining(self, ticket):       # put itself into draining state
         if self.state is ACTIVE:
             self.state = DRAINING
         elif self.state is IDLE:
@@ -1265,11 +1267,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif self.state is HAVE_BOUND:
             self.state = DRAINING # XXX CGW should dismount here. fix this
         self.create_lockfile()
-	out_ticket = {'status':(e_errors.OK,None)}
-	self.reply_to_caller(out_ticket)
-	return
+        out_ticket = {'status':(e_errors.OK,None)}
+        self.reply_to_caller(out_ticket)
+        return
 
-    def stop_draining(self, ticket):	    # put itself into draining state
+    def stop_draining(self, ticket):        # put itself into draining state
         if self.state != OFFLINE:
             out_ticket = {'status':("EPROTO","Not in draining state")}
             self.reply_to_caller(out_ticket)
@@ -1305,7 +1307,7 @@ class MoverInterface(generic_server.GenericServerInterface):
         interface.Interface.parse_options(self)
         # bomb out if we don't have a mover
         if len(self.args) < 1 :
-	    self.missing_parameter(self.parameters())
+            self.missing_parameter(self.parameters())
             self.print_help(),
             os._exit(1)
         else:
