@@ -39,7 +39,7 @@ else
     fi
 fi
 
-# check if sonfig server is up
+# check if config server is up
 udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT $timeout >/dev/null
 if [ $? -ne 0 ] ; then echo "Configuration Server is Dead"; exit 1; fi
 
@@ -58,8 +58,7 @@ else:
      try:
          ahost,ip,port = servers[key]
 	 #print key,ahost,ip,port
-	 if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="admin_clerk" or key=="logserver"\
-                                                   or key=="inquisitor" :
+	 if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="logserver" or key=="inquisitor" :
              print "%s:%s:%s" % (key,ahost,port)
      except:
          pass

@@ -135,11 +135,6 @@ case $cmd in
     stat=$?
     ;;
 
-  acc)
-    python $ENSTORE_DIR/src/admin_clerk_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
-    stat=$?
-    ;;
-
   mcc)
     python $ENSTORE_DIR/src/media_changer_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
