@@ -99,6 +99,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
                 # get to sdsscp's standard out.  There is probably a better
                 # way, but for now this will work.
                 print line
+                sys.stdout.flush()
                 if line.find("error_output") != -1:
                     items = line.split()
                     try:
