@@ -60,18 +60,18 @@ for even better performance.
 Enstore has four major kinds of software components:
 <ul>
 <li><em>namespace</em>, implemented by the <em>pnfs</em> package from
-	<em>DESY</em>
+        <em>DESY</em>
 <li><em>encp</em>, a program used to copy files to and from tape libraries
 <li><em>servers</em>
-	<ul>
-	<li>Configuration server
-	<li>Volume clerk
-	<li>File clerk
-	<li>Multiple, distributed library managers
-	<li>Multiple, distributed movers
+        <ul>
+        <li>Configuration server
+        <li>Volume clerk
+        <li>File clerk
+        <li>Multiple, distributed library managers
+        <li>Multiple, distributed movers
         <li>Media changer
-	<li>Log server
-	</ul>
+        <li>Log server
+        </ul>
 <li><em>administration tools</em>
 </ul>
 These software components, as well as hardware components,
@@ -136,7 +136,7 @@ Enstore uses pnfs for three different kinds of access and information:
     <p>
 <li>Configuration Information
     <br>
-    When files are created on some media some creation details 
+    When files are created on some media some creation details
     need to be provided. Enstore uses pnfs tag files for these purposes.
     These files are created in a specific part of the name space and are
      associated with a directory and not any specific file.
@@ -149,7 +149,7 @@ Enstore uses pnfs for three different kinds of access and information:
     The rest of the system identifies a file by a 64-bit numeric
     identifier, dubbed a "bit file ID".
     After a file is written to tape, the file clerk generates a bfid and
-     <em>encp</em>     stores this information 
+     <em>encp</em>     stores this information
      in one of the pnfs file layers.
     <em>Encp</em> then reads this bit file id and gives it to the servers
     when fetching data from tape.
@@ -201,11 +201,11 @@ and organize them.
 
 A physical library can be thought of as consisting of
 <ul>
-	<li>one or more virtual libraries
-	<li>a media changer
-	<li>one of more media export/import slots
-	<li>one of more drives (tape, cdrom, disk, etc.)
-	<li>volumes (tape cartridges, cdroms, etc.)
+        <li>one or more virtual libraries
+        <li>a media changer
+        <li>one of more media export/import slots
+        <li>one of more drives (tape, cdrom, disk, etc.)
+        <li>volumes (tape cartridges, cdroms, etc.)
 </ul>
 <p>
 <em>Virtual Library</em> -- A virtual library contains one and only one
@@ -228,13 +228,14 @@ which is known to the media changer.
 <dd>A quota family is a set of pairs of media names and maximum number of volumes.
 All files are created with respect to a quota family.
 Creation of a file is not allowed if the maximum number of volumes
-in that family would be exceeded. [Quotas were not implemented in the prototype.]
+in that family would be exceeded.
 <p>
 <dt><em>File family</em>:
 <dd>A file family is specified by a name and an integer "width".
 A file family is associated with every file creation.
 Within a given library, <em>Enstore</em> keeps no more
-than <em>"width"</em> volumes open for writing, and loads volumes on no more than <em>"width"</em>
+than <em>"width"</em> volumes open for writing, and loads volumes on
+no more than <em>"width"</em>
 number of drives at any given moment.
 This is not striping, but rather, the number of different volumes,
 and hence different files, which can be active at one time.
@@ -242,7 +243,9 @@ Once a volume is associated with a file family, only files in that
 family will be placed on the volume.
 By design, there is no pre-set limit on the number of file families.
 Clever use of file families will allow volumes to be faulted out to
-"shelf", and also to decrease access times for subsequent reads.
+"shelf", and also to decrease access times for subsequent reads.  When a file
+family has filled all of its "width" tapes, new tapes, limited by a quota,
+are drawn out of pool of blanks.
 </dl>
 Media ejected to shelf are put into a shelf virtual library and
 are controlled by a shelf library manager.
@@ -267,7 +270,7 @@ The default values are shown in parentheses ().
 <tr>
 <td valign=top>external_label
 <td valign=top>string [primary_key]
-<td valign=top>Volume name specified by user on volume creation; is used to 
+<td valign=top>Volume name specified by user on volume creation; is used to
 display volume meta-data.
 <tr>
 <td valign=top>file_family
@@ -281,7 +284,7 @@ files that belong to this family will be stored on this volume.
 writing.
 <tr>
 <td valign=top>library
-<td valign=top>string 
+<td valign=top>string
 <td valign=top>Specified by user on volume creation; defines which (virtual)
 library currently holds the volume
 <tr>
@@ -290,7 +293,7 @@ library currently holds the volume
 <td valign=top>Set by volume clerk when user issues the first <em>encp</em>
 command to copy to the media.
 <tr>
-<td valign=top>last_access 
+<td valign=top>last_access
 <td valign=top>int (-1)
 <td valign=top>Set by volume clerk when user issues the first <em>encp</em>
 command to copy to the media.
@@ -332,8 +335,8 @@ receives an error while reading from the media.
 <tr>
 <td valign=top>sum_rd_access
 <td valign=top>int (0)
-<td valign=top>Access error count; volume clerk updates this field when the
-mover receives an error while accessing the media for read.
+<td valign=top>Read access count; volume clerk updates this field
+every time the volume is mounted for reading.
 <tr>
 <td valign=top>sum_wr_err
 <td valign=top>int (0)
@@ -342,8 +345,8 @@ mover receives an error while writing to the media.
 <tr>
 <td valign=top>sum_wr_access
 <td valign=top>int (0)
-<td valign=top>Access error count; volume clerk updates this field when the
-mover receives an error while accessing the media for write.
+<td valign=top>Write access count; volume clerk updates this field every time 
+the volume is mounted for write.
 <tr>
 <td valign=top>user_inhibit
 <td valign=top>string (d:"none" or "readonly", "all")
@@ -351,8 +354,8 @@ mover receives an error while accessing the media for write.
 volume, updated by volume clerk.
 <tr>
 <td valign=top>system_inhibit
-<td valign=top>string (d:"none" or "writing", "readonly", "full") 
-<td valign=top>Enstore generated limitation on the kind of access permitted to
+<td valign=top>string (d:"none" or "writing", "readonly", "full")
+<td valign=top>Administrator generated limitation on the kind of access permitted to
 this volume; update by volume clerk when data are written on the media, an
 error occurred while data were being written or the file size exceeded the
 remaining number of bytes on the media.
@@ -391,7 +394,7 @@ The fields tracked are as follows:
 <td valign=top>bit file id; uniquely identifies every file in the system.
 <tr>
 <td valign=top>external_label
-<td valign=top>string 
+<td valign=top>string
 <td valign=top>Volume name on which the file has been written; same as the
 external_label in the volume table.
 <tr>
@@ -406,7 +409,10 @@ media.
 <tr>
 <td valign=top>sanity_cookie
 <td valign=top>string ("(0,0)")
-<td valign=top>Number of bytes used for a sanity crc and the sanity crc itself.
+<td valign=top>Number of bytes used for a sanity crc and the sanity crc
+itself.  The sanity crc is just the normal crc but only for the 1st N bytes in
+the file. This allows the mover to check early in the transfer process that it
+probably has the right user file selected.
 </table>
 <p>
 The file clerk supports the following requests:
@@ -562,7 +568,7 @@ library manager.
 <p>
 Reads -- Once a volume is bound the mover may read a tape and send data
 to a waiting encp program. Two tcp ports are involved.
-	The steps are:
+        The steps are:
 <ol>
 <li>Arbitrate for a TCP port for the data transfer.
 <li>Open the tcp port (control port) specified in the request,
@@ -580,7 +586,7 @@ in the section on Error control.
 <p>
 Writes -- Once a volume is bound the mover may receive data and write it to
 tape. Two tcp ports are involved.
-	The steps are:
+        The steps are:
 <ol>
 <li>Arbitrate for a TCP port for the data transfer.
 <li>Open the tcp port (control port) specified in the request,
@@ -653,13 +659,13 @@ Support recovery of corrupted databases using the journal or log files.
 2.1 Backup and Recovery Procedures
 </h2>
 <h3><a name="backup">
-2.1.1 Backup 
+2.1.1 Backup
 </h3>
-The backup procedure is a cron job that is performed daily. It copies 
-the database files, log files and journal files to a designated 
-directory on a remote host. Two environment variables should be set 
-up for this purpose: ENSTORE_BCKP_HST (default="localhost") and 
-ENSTORE_DB_BACKUP (default="tmp/backup"). The backup procedure will 
+The backup procedure is a cron job that is performed daily. It copies
+the database files, log files and journal files to a designated
+directory on a remote host. Two environment variables should be set
+up for this purpose: ENSTORE_BCKP_HST (default="localhost") and
+ENSTORE_DB_BACKUP (default="tmp/backup"). The backup procedure will
 perform the following actions:
 <p>
 <table>
@@ -673,8 +679,8 @@ perform the following actions:
 <tr>
 <td valign=top>Volume journal files
 <td valign=top><ul>
-<li>does journal file checkpointing (hold database access, 
-move current file to volume.jou.time_stamp, open empty 
+<li>does journal file checkpointing (hold database access,
+move current file to volume.jou.time_stamp, open empty
 journal file, release database access)
 <li>creates tar file of volume database file and journal files
 <li>deletes old journal files
@@ -689,19 +695,19 @@ journal file, release database access)
 <tr>
 <td valign=top>Archives creation
 <td valign=top><ul>
-<li>creates new directory on remote host under designated 
+<li>creates new directory on remote host under designated
 "root archival" director (name dbase.time_stamp)
 <li>moves all the tar files to this area
 </ul>
 <tr>
 <td valign=top>Archives cleanup
-<td valign=top><ul><li>deletes all the archival directories created more then 
+<td valign=top><ul><li>deletes all the archival directories created more then
 N days ago (default is 10 days)</ul>
 </table>
 <h3><a name="recovery">
 2.2.2 Recovery
 </h3>
-Recovery should be a job initiated manually in case of database corruption. 
+Recovery should be a job initiated manually in case of database corruption.
 There are two ways to recover from a crash:
 <p>
 <table>
@@ -717,7 +723,7 @@ There are two ways to recover from a crash:
 <tr>
 <td valign=top>recovery from the journal files (not implemented yet)
 <td valign=top><ul>
-<li>copy database (database files and journal files) tar file 
+<li>copy database (database files and journal files) tar file
 <li>in designated directory, untar the file
 <li>copy the latest jouurnal file from the $ENSTORE_DB,
 <li>run jou_recover utility
@@ -844,7 +850,7 @@ The communications performed during a read operation are illustrated in the
 diagram below and described more fully in the following text.
 <p>
 NOTE: The communications between the Mover and the Configuration server happens
-approximately every two minutes.  It has been added to the following drawing 
+approximately every two minutes.  It has been added to the following drawing
 to show that this communication is important, but it can occur anywhere in the
 communications flow before the Mover contacts the Library manager.
 <p>
@@ -873,7 +879,7 @@ The Volume clerk returns the location of the appropriate Library manager.
 <li>
 The File clerk asks the Library Manager to read the file.
 <li>
-The Library manager tells the File clerk that the request has been placed in 
+The Library manager tells the File clerk that the request has been placed in
 it's queue.
 <li>
 The File clerk informs <em>encp</em> that the read request has been queued.
@@ -915,7 +921,7 @@ The communications performed during a write operation are illustrated in the
 diagram below and described more fully in the following text.
 <p>
 NOTE: The communications between the Mover and the Configuration server happens
-approximately every two minutes.  It has been added to the following drawing 
+approximately every two minutes.  It has been added to the following drawing
 to show that this communication is important, but it can occur anywhere in the
 communications flow before the Mover contacts the Library manager.
 <p>
@@ -929,13 +935,13 @@ The User (through <em>encp</em>) contacts PNFS with a request to create a file.
 <li>
 PNFS returns the file family information to <em>encp</em>.
 <li>
-<em>encp</em> asks the Configuration server with which Library manager should 
+<em>encp</em> asks the Configuration server with which Library manager should
 it be communicating.
 <li>
 The Configuration server returns the location of the appropriate Library
 manager.
 <li>
-<em>encp</em> sends the write request to the Library manager, including file 
+<em>encp</em> sends the write request to the Library manager, including file
 family and number of bytes.
 <li>
 The Library manager tells the <em>encp</em> that the request has been placed in
@@ -1015,7 +1021,7 @@ volumes for scheduling : the library manager must not command a different mover
 to mount a tape for another mover. It is the mover, and not the library
 manager which completes requests.
 
-The three library manager queues are: 
+The three library manager queues are:
 <ul>
 <li>Unscheduled work
 <li>work awaiting a volume mount
@@ -1023,13 +1029,13 @@ The three library manager queues are:
 </ul>
 <p>
 It is important to keep these queues consistent. Tape and reading
-errors are handled in the mover, and can be handled by detailed design in 
+errors are handled in the mover, and can be handled by detailed design in
 the mover.
 <p>
 Many interesting errors are related to when the tape cannot be written
 or read, or when it is suspected that tape is jammed, etc.
 <p>
-We need experience with the actual hardware. In the interim we make the 
+We need experience with the actual hardware. In the interim we make the
 following assumptions:
 <ul>
 <li>
@@ -1044,7 +1050,7 @@ If a tape drive has errors on "consecutive" tapes, we should "stop
 using the tape drive". The number of errors allowed should be picked
 up through the mover configuration, since we may have "more
 temperamental" and "less temperamental" drives, we may want to
-configure this parameter for each mover individually. 
+configure this parameter for each mover individually.
 <li>
 If tape reads or spaces give error, we should track the errors. If
 the recent history of the tape shows many errors, we should mark the
@@ -1055,9 +1061,9 @@ for no access, given many recent errors.
 <li>
 Library manager:
 <br>
-Two Features should be added to the tickets to support re-tries. 
+Two Features should be added to the tickets to support re-tries.
 <ul>
-<li>Tickets should be marked as retries or not by <em>encp</em>. Retries go 
+<li>Tickets should be marked as retries or not by <em>encp</em>. Retries go
 to the head of the queue.
 <li>Tickets should be marked with an "avoid this mover" field for read
 retries, so the same tape drive can be avoided.
@@ -1076,7 +1082,7 @@ needs a "late check" for reads. Failing a late check means contacting
 <em>encp</em> to give it the bad news. The contact should be done in the mover,
 not in the library manager, just before the mover goes off to mount the volume
 for read, since the mover is better able to tolerate a very slow or
-non-existent <em>encp</em>. It is good to contact 
+non-existent <em>encp</em>. It is good to contact
 <em>encp</em> before a mount, too, since people <em><b>will</b></em> ^C <em>encp</em>'s and
 it is best to discover this <em><b>before</b></em> incurring the expense of a mount.
 <li>
@@ -1143,7 +1149,7 @@ the system falls below a threshold.
 <td valign=top><b>WRITE_EOT</b>
 <td valign=top>"Hit EOT while writing data block or file mark"
     Hit EOT. Mover shall mark volume full.
-    <em>encp</em> shall retry. 
+    <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_UNLOAD</b>
 <td valign=top>"error when unloading tape from drive"
@@ -1160,7 +1166,7 @@ the system falls below a threshold.
 <tr>
 <td valign=top><b>WRITE_NOBLANKS</b>
 <td valign=top>The volume clerk has no blank volumes to give.
-    The requests shall return an error. 
+    The requests shall return an error.
     (do not "wait forever" -- DAQ should switch to an alternate library)
     An administrator shall be paged.
 <tr>
@@ -1186,7 +1192,7 @@ the system falls below a threshold.
 <td valign=top>Failed space or initial CRC's don't match on initial read.
     We have attempted to space to a file on the tape. Either the file location
     cookie is somehow corrupted, we have the wrong tape in the drive or
-    the tape drive cannot space properly. 
+    the tape drive cannot space properly.
     Mover shall freeze the tape in the drive.
     <em>encp</em> shall not retry
 <tr>
@@ -1240,12 +1246,12 @@ the system falls below a threshold.
 <tr>
 <td valign=top><b>ENCP_GONE</b>
 <td valign=top><em>encp</em> has gone away while request is queued.
-    The mover contacts <em>encp</em> to ping it before a mount, and if 
-    <em>encp</em> is not there, the mover does not go on to contact the media 
+    The mover contacts <em>encp</em> to ping it before a mount, and if
+    <em>encp</em> is not there, the mover does not go on to contact the media
     changer, but instead returns a UNILATERAL_UNBIND to the library manager.
 <tr>
 <td valign=top><b>TCP_HUNG</b>
-<td valign=top>DESY reports that 
+<td valign=top>DESY reports that
 <ul>
 <li>sometimes machines can crash....
 <li><em>encp</em> processes can be killed in a way that...
@@ -1253,7 +1259,7 @@ the system falls below a threshold.
 <li>etc...
 </ul>
 which are all seen as the data TCP link is seen to
-just hang. 
+just hang.
 <p>
 DESY's treatment is "harsh" -- They compute an anticipated transfer
 time for every socket operation and abort the transfer if the
@@ -1267,7 +1273,7 @@ system's disk fills up.
 <td valign=top>If a library manager crashes, and loses its queue of pending work,
     the <em>encp</em>'s will never be called back, and will wait
     forever.
-    This is a problem. A basis for the solution is for a waiting 
+    This is a problem. A basis for the solution is for a waiting
     <em>encp</em> to ping its library manager,
     every 30 mins to see if its request has gotten lost.
     It would also be good if a --timeout switch was available to
@@ -1295,11 +1301,11 @@ Since the status of the volume is unknown, the status should be akin
 to "freeze drive and volume". However, subsequent reads will not produce an
 error, but will be queued until the mover is restarted.
 <li>
-Allow writes to continue on a different volume of the same file 
+Allow writes to continue on a different volume of the same file
 family, without affecting the "width".
 </ul>
 <p>
-Case 2) Mover has a volume, but is not associated with an <em>encp</em> and 
+Case 2) Mover has a volume, but is not associated with an <em>encp</em> and
 crashes.
 Same problems as case 1) but <em>encp</em> will notice.
 The total amount of time spent in this possibility is small compared to
