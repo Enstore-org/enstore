@@ -27,18 +27,18 @@ def get_vol_filenames(output_dir):
     if string.find(output_dir, "/dev/stdout") != -1: 
         last_access_file = "/dev/stdout"
         volume_size_file = "/dev/stdout"
-        volumes_defind_file = "/dev/stdout"
+        volumes_defined_file = "/dev/stdout"
         volume_quotas_file = "/dev/stdout"
 	volume_quotas_format_file = "/dev/stdout"
         total_bytes_file = "/dev/stdout"
     else:
         last_access_file = output_dir + "LAST_ACCESS"
         volume_size_file = output_dir + "VOLUME_SIZE"
-        volumes_defind_file = output_dir + "VOLUMES_DEFINED"
+        volumes_defined_file = output_dir + "VOLUMES_DEFINED"
         volume_quotas_file = output_dir + "VOLUME_QUOTAS"
 	volume_quotas_format_file = get_vq_format_file(output_dir)
         total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
-    return last_access_file, volume_size_file, volumes_defind_file, \
+    return last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
 		      total_bytes_file
 
@@ -885,14 +885,14 @@ def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
         verify_volume_quotas(file_data, volume, volumes_allocated)
 
 
-    last_access_file, volume_size_file, volumes_defind_file, \
+    last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
 		      total_bytes_file = get_vol_filenames(output_dir)
 
     #Create files that hold statistical data.
     print_last_access_status(volume_list, last_access_file)
     print_volume_size_stats(volume_sums, volume_list, volume_size_file)
-    print_volumes_defind_status(volume_list, volumes_defind_file)
+    print_volumes_defind_status(volume_list, volumes_defined_file)
     print_volume_quotas_status(volumes_allocated, authorized_tapes,
                                volume_quotas_file)
     print_volume_quota_sums(volumes_allocated, authorized_tapes,
@@ -909,7 +909,7 @@ def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
 # If output_dir is set to /dev/stdout/ then everything is sent to standard out.
 def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     # determine the output path
-    last_access_file, volume_size_file, volumes_defind_file, \
+    last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
 		      total_bytes_file = get_vol_filenames(output_dir)
 
@@ -942,18 +942,19 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     # open file handles for statistics
     la_file = open(last_access_file, "w")
     vs_file = open(volume_size_file, "w")
-    vd_file = open(volumes_defind_file, "w")
+    vd_file = open(volumes_defined_file, "w")
 
     vs_file.write("%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n" % ("Label",
         "Actual", "Deleted", "Non-deleted", "Capacity", "Remaining",
         "Expected", "active", "deleted", "unknown",
         "Volume-Family"))
 
-    vd_file.write("<heml><pre>\n")
+    vd_file.write("<html><pre>\n")
     vd_file.write("Date this listing was generated: %s\n" % \
         (time.ctime(time.time())))
 
-    vd_file.write("%-10s  %-8s %-17s %17s  %012s %-12s %s\n" % \
+    vd_format = "%-10s %-10s %-25s %-20s %-12s %-40s %s\n"
+    vd_file.write(vd_format % \
         ("label", "avail.", "system_inhibit", "user_inhibit",
          "library", "volume_family", "mounts"))
 
@@ -1160,8 +1161,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         if mounts < 1000:
              mnts = `mounts`
         else:
-             mnts = '<font color=#FF0000>'+`mounts`+'</fonts>'
-        vd_file.write("%-10s %6.2f%s (%-08s %08s) (%-08s %08s) %-012s %012s %s\n" % \
+             mnts = '<font color=#FF0000>'+`mounts`+'</font>'
+        vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %-40s %s\n" % \
                (vv['external_label'],
                 formated_size[0], formated_size[1],
                 vv['system_inhibit'][0],
@@ -1185,6 +1186,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     vs_file.close()
     vd_file.write("</pre></html>\n")
     vd_file.close()
+    # make a html copy
+    os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
     vols.close()
     files.close()
 
