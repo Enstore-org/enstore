@@ -3347,6 +3347,7 @@ def set_pnfs_settings(ticket, intf_encp):
         Trace.log(e_errors.INFO, "Unable to send info. to file clerk. %s %s."
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
+        return
 
     Trace.message(TIME_LEVEL, "Time to set file database: %s sec." %
                   (time.time() - filedb_start_time,))
@@ -3374,6 +3375,7 @@ def set_pnfs_settings(ticket, intf_encp):
     except:
         exc, msg = sys.exc_info()[:2]
 	ticket['status'] = (str(exc), str(msg))
+        return
 
     Trace.message(TIME_LEVEL, "Time to set filesize: %s sec." %
                   (time.time() - filesize_start_time,))
