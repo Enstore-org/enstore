@@ -4,6 +4,6 @@ set -u  # force better programming and ability to use check for not set
 
 node=`uname -n`
 for i in fndapr hppc fntt1 8500-tests; do
-    echo Starting $i tests from
+    echo Starting $i tests from $node
     $ENSTORE_DIR/test/roll $i
 done
