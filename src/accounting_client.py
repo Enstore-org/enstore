@@ -6,6 +6,7 @@ import sys
 import string
 import pprint
 import pwd
+import socket
 
 # enstore import
 import generic_client
@@ -16,6 +17,11 @@ MY_NAME = "accounting_client"
 MY_SERVER = "accounting_server"
 RCV_TIMEOUT = 10
 RCV_TRIES = 1
+
+# get a unique tag: <host_ip>+<pid>+<timestamp>
+def unique_tag():
+	return "%s+%d+%f"%(socket.gethostbyname(socket.gethostname()),
+		os.getpid(), time.time())
 
 class accClient(generic_client.GenericClient):
 	def __init__(self, csc, logname='UNKNOWN', rcv_timeout = RCV_TIMEOUT,
@@ -28,9 +34,9 @@ class accClient(generic_client.GenericClient):
 			self.uid = pwd.getpwuid(os.getuid())[0]
 		except:
 			self.uid = "unknown"
-		self.server_address = self.get_server_address(MY_SERVER, 10, 1)
 		self.rcv_timeout = rcv_timeout
 		self.rcv_tries = rcv_tries
+		self.server_address = self.get_server_address(MY_SERVER, self.rcv_timeout, self.rcv_tries)
 
 	# send_no_wait
 	def send2(self, ticket):
@@ -142,6 +148,31 @@ class accClient(generic_client.GenericClient):
 			'encp_id': encp_id,
 			'rw': rw}
 		self.send2(ticket)
+
+	def log_start_event(self, name):
+		tag = unique_tag()
+		ticket = {
+			'work': 'log_start_event',
+			'tag': tag,
+			'name': name,
+			'node': self.node,
+			'username': self.uid,
+			'start': time.time()}
+		self.send2(ticket)
+		return tag
+
+	def log_finish_event(self, tag, status = 0, comment = None):
+		ticket = {
+			'work': 'log_finish_event',
+			'tag': tag,
+			'finish': time.time(),
+			'status': status}
+
+		if comment:
+			ticket['comment'] = comment
+
+		self.send2(ticket)
+
 
 if __name__ == '__main__':
 	intf = option.Interface()

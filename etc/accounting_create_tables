@@ -54,3 +54,18 @@ id bigint,
 primary key (volume, state));
 
 create index tmt_oid_idx on tape_mounts_tmp (oid);
+
+create table event (
+tag varchar(48) primary key,
+name varchar(32) not null,
+node varchar(32) not null,
+username varchar(32) not null,
+start timestamp without time zone not null,
+finish timestamp without time zone,
+status int,
+comment varchar(64));
+
+create index event_name_idx on event(name);
+create index event_node_idx on event(node);
+create index event_start_idx on event(start);
+

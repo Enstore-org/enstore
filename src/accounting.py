@@ -154,3 +154,30 @@ class accDB:
 			'rw'		: rw}
 
 		self.insert('encp_xfer', xfer)
+
+	# This pair of function need a unique tag to work
+	# The calling function should provide such a tag
+	# A simple key is host_ip.pid.time
+
+	def log_start_event(self, tag, name, node, username, start):
+		if type(start) != type(""):
+			start = time2timestamp(start)
+
+		res = self.db.insert('event', {
+			'tag': tag,
+			'name': name,
+			'node': node,
+			'username': username,
+			'start': start})
+
+	def log_finish_event(self, tag, finish, status = 0, comment = None):
+		if type(finish) != type(""):
+			finish = time2timestamp(finish)
+
+		if comment:
+			commentstr = ", comment = '%s'"%(comment)
+		else:
+			commentstr = ""
+		
+		qs = "update event set finish = '%s', status = %d%s where tag = '%s' and finish is null;"%(finish, status, commentstr, tag) 
+		res = self.db.query(qs)
