@@ -121,7 +121,7 @@ def mode_name(mode):
     if mode is None:
         return None
     else:
-        return ['READ','WRITE','ASSERT','START_READ_TAPE'][mode]
+        return ['READ','WRITE','ASSERT'][mode]
 
 #KB=1L<<10
 MB=1L<<20
@@ -4076,6 +4076,9 @@ class DiskMover(Mover):
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
+        self.udp_control_address = None  ## needed for tape ingest
+        self.udp_ext_control_address = None ## needed for tape ingest
+        self.udp_cm_sent = 0  ## needed for tape ingest 
         self.last_error = (e_errors.OK, None)
         if self.check_sched_down() or self.check_lockfile():
             self.state = OFFLINE
