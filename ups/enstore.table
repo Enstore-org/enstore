@@ -55,4 +55,5 @@ QUALIFIERS = ""
         envSet(ENSTORE_DB, $ENSTORE_DIR/etc)
 
         # the next one controls where the trace file goes
-        envSet( TRACE_KEY, ${UPS_PROD_DIR}/etc/trace.`hostname` )
+	#envSet( TRACE_KEY, ${UPS_PROD_DIR}/etc/trace.`hostname` )
+	envSet( TRACE_KEY, /tmp/etc/trace.`hostname` )

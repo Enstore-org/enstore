@@ -9,3 +9,4 @@ QUALIFIERS = ""
 	pathPrepend(PATH, ${UPS_PROD_DIR})
 	envSet(ENSTORE_CONFIG_PORT, 7510)
 	envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
+	envSet(TRACE_KEY, /tmp/etc/trace.`hostname`)
