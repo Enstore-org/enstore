@@ -96,7 +96,7 @@ class cleanUDP :
 	def getpeername(self) : 
 		return self.socket.getpeername()
 	def getsockname(self) : 
-		return self.socket.getscokname()
+		return self.socket.getsockname()
 	def getsockopt(self, level, optname) :
 		return self.socket.getsockopt(level, optname)
 	def listen(self, backlog) : 
