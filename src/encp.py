@@ -509,8 +509,6 @@ def write_to_hsm(input_files, output, output_file_family='',
     times = {}
     times["t0"] = tinfo["abs_start"]
 
-    if verbose>2:
-        print "  dt:",tinfo["clients"], "   cumt=",time.time()-t0
     if verbose>3:
         print "csc=",csc
         print "u=",u
