@@ -74,7 +74,7 @@ class newBfidDB:
 		# do nothing
 		return
 
-	def init_bfids(self, external_label):
+	def init_dbfile(self, external_label):
 		# do nothing
 		return
 
