@@ -426,7 +426,6 @@ def write_to_hsm(input, output,
         # save the bfid and set the file size
         p.set_bit_file_id(done_ticket["fc"]["bfid"],file_size[i])
         # create volume map and store cross reference data
-        pprint.pprint(done_ticket)
         p.set_xreference(done_ticket["fc"]["external_label"],
                          done_ticket["fc"]["location_cookie"],
                          done_ticket["fc"]["size"])
