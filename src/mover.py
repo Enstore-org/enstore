@@ -1046,7 +1046,15 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                       self.crc_flag,
                                       0 )
                 # check the san_crc!!!
-                if     self.crc_flag != None \
+                if     self.crc_flag != None:
+                    sanity_cookie=ticket['fc']['sanity_cookie']
+                    if sanity_cookie != None:
+                        if san_crc != sanity_cookie[1]:
+                            Trace.log(e_errors.ERROR,
+                                      'Mover CRC mismatch: (sanity CRC): file clerk has %s, we have %s'%(
+                                user_file_crc,complete_crc))
+
+                    
                    and ticket['fc']['sanity_cookie'][1] != None \
                    and san_crc != ticket['fc']['sanity_cookie'][1]:
                     pass
@@ -1075,10 +1083,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
                 # This if block is a place holder for the code that should
                 # be executed when CRCs don't match.
-                if     self.crc_flag != None \
-                   and ticket['fc']['complete_crc'] != None \
-                   and user_file_crc != ticket['fc']['complete_crc']:
-                    pass
+                if     self.crc_flag != None:
+                    complete_crc=ticket['fc']['complete_crc']
+                    if complete_crc != None:
+                        if user_file_crc != complete_crc:
+                            Trace.log(e.errors.ERROR,'Mover CRC mismatch: file clerk has %s, we have %s'%(
+                                user_file_crc,complete_crc))
+     
 
                 tt = {'data_crc':ticket['fc']['complete_crc']}
                 Trace.trace(11,'calling read_post_data')
