@@ -6,7 +6,8 @@ import time
 import stat
 
 NEW_IPMI_NODES = ["d0ensrv0.fnal.gov", "d0ensrv1.fnal.gov",
-		  "d0ensrv2.fnal.gov", "d0ensrv4.fnal.gov"]
+		  "d0ensrv2.fnal.gov", "d0ensrv4.fnal.gov",
+		  "d0enmvr26a.fnal.gov"]
 
 NO_IPMI_NODES = ["d0ensrv5.fnal.gov", "d0ensrv7.fnal.gov"]
 
