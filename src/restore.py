@@ -34,7 +34,7 @@ class DbTable(db.DbTable):
 			try:
 				f = open(jf,"r")
 			except IOError:
-				print(ji+": not found")
+				print(jf+": not found")
 				sys.exit(0)
 			while 1:
 				l = f.readline()
@@ -50,7 +50,7 @@ class DbTable(db.DbTable):
 			try:
 				f = open(jf,"r")
 			except IOError:
-				print(ji+": not found")
+				print(jf+": not found")
 				sys.exit(0)
 			while 1:
 				l = f.readline()
