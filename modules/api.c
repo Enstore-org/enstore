@@ -21,744 +21,520 @@
 #include <netdb.h>
 
 #include <time.h>
-
+#include "drivestat.h"
 #include "ds_api.h"
+#include "ftt.h"
 
-static char *rcsid="$Id$";
+/*
+ * Prototypes
+ */
 
-void _ds_set_ds_stats(DS_STATS* const stats_pointer, const int common_value)
+DS_DESCRIPTOR *ds_open(DS_OPEN_PARMS *parms, int flag);
+DS_REPORT *ds_getnext(int list_sd);
+int ds_print_stats(DS_DESCRIPTOR * d,char *file);
+
+/*************************************************************************
+ *                                                                       *
+ * ds_open()                                                             *
+ *   Create a drivestat descriptor.                                      *
+ *                                                                       *
+ *************************************************************************/
+
+DS_DESCRIPTOR *ds_open(DS_OPEN_PARMS *parms, int flag)
 {
+  DS_DESCRIPTOR *d;
+  ftt_stat_buf stat_buff;
+  int status;
+  char *value;
+  
 
-  /* function to initialise DS_STATS struct */
+  d = (DS_DESCRIPTOR *) malloc(sizeof(DS_DESCRIPTOR));
 
-  stats_pointer->init_flag = common_value;
-  stats_pointer->power_hrs = common_value;
-  stats_pointer->motion_hrs = common_value;
-  stats_pointer->read_errors = common_value;
-  stats_pointer->write_errors = common_value;
-  stats_pointer->mb_user_read = common_value;
-  stats_pointer->mb_user_write = common_value;
-  stats_pointer->mb_dev_read = common_value;
-  stats_pointer->mb_dev_write = common_value;
-  stats_pointer->track_retries = common_value;
-  stats_pointer->underrun = common_value;
-  stats_pointer->mount_count = common_value;
-}
-
-void ds_free(DS_DESCRIPTOR* ds_desc)
-{
-  free(ds_desc);
-}
-
-DS_DESCRIPTOR *ds_alloc() {
-
-  DS_DESCRIPTOR* ds_desc;
-
-  ds_desc = (DS_DESCRIPTOR* ) malloc(sizeof(DS_DESCRIPTOR));
-
-  if (ds_desc == NULL)
+  if (d == NULL)
     return (NULL);
 
-  ds_desc->ds_init_flag = -1;
+/*
+ * If an ftt descriptor is being used, call ftt to get the drive_serial_number
+ * vendor, and product_type
+ */
 
-  ds_desc->cleaning_bit = -1;
+  
+  if (flag == FTT_DESC) {   
+    d->ftt_d = parms->ftt_d;
+    stat_buff = ftt_alloc_stat();
+    status = ftt_get_stats(d->ftt_d,stat_buff);
+    if (status != FTT_SUCCESS)
+       return(NULL);
+    
+    value = ftt_extract_stats(stat_buff,FTT_SERIAL_NUM);
+    if (value)
+       strcpy(d->drive_serial_number,value);
+    else
+       return (NULL);
 
-  strcpy(ds_desc->host,"UNKNOWN");
-  strcpy(ds_desc->tape_volser,"UNKNOWN");
-  strcpy(ds_desc->operation,"UNKNOWN");
+    value = ftt_extract_stats(stat_buff,FTT_VENDOR_ID);
+    if (value)
+       strcpy(d->vendor,value);
+    else
+       return (NULL);
+    
+    value = ftt_extract_stats(stat_buff,FTT_PRODUCT_ID);
+    if (value)
+       strcpy(d->product_type,value);
+    else
+       return (NULL);
 
-  strcpy(ds_desc->logical_drive_name,"UNKNOWN");
+  } 
+  else  {   /* need to get the device type based on this */
+    strcpy(d->drive_serial_number,parms->drive_serial_number);
+    strcpy(d->vendor,parms->vendor);
+    strcpy(d->product_type,parms->product_type);
+  }
 
-  strcpy(ds_desc->drive_serial_number,"UNKNOWN");
-  strcpy(ds_desc->vendor,"UNKNOWN");
-  strcpy(ds_desc->product_type,"UNKNOWN");
+  if ( gethostname(d->host,MAX_HOST_LEN) != 0) 
+      strcpy(d->host,"UNKNOWN");
+  
+  d->init_flag = 0;
+  d->delta_flag = 0;
+  d->delta_sum_flag = 0;
+  strcpy(d->tape_volser,"UNKNOWN");
+  strcpy(d->operation,"UNKNOWN");
 
-  _ds_set_ds_stats(&ds_desc->init_stats,-1);
-  _ds_set_ds_stats(&ds_desc->delta,0);
-  _ds_set_ds_stats(&ds_desc->sum_of_deltas,0);
-  _ds_set_ds_stats(&ds_desc->recent_stats,-1);
+  d->init_stats.power_hrs = 0;
+  d->init_stats.motion_hrs = 0;
+  d->init_stats.read_errors = 0;
+  d->init_stats.write_errors = 0;
+  d->init_stats.mb_user_read = 0;
+  d->init_stats.mb_user_write = 0;
+  d->init_stats.mb_dev_read = 0;
+  d->init_stats.mb_dev_write = 0;
+  d->init_stats.track_retries = 0;
+  d->init_stats.underrun = 0;
+  d->init_stats.mount_count = 0;
+  
+  d->delta.power_hrs = 0;
+  d->delta.motion_hrs = 0;
+  d->delta.read_errors = 0;
+  d->delta.write_errors = 0;
+  d->delta.mb_user_read = 0;
+  d->delta.mb_user_write = 0;
+  d->delta.mb_dev_read = 0;
+  d->delta.mb_dev_write = 0;
+  d->delta.track_retries = 0;
+  d->delta.underrun = 0;
+  d->delta.mount_count = 0;
 
-  return ds_desc;
+  d->sum_of_deltas.power_hrs = 0;
+  d->sum_of_deltas.motion_hrs = 0;
+  d->sum_of_deltas.read_errors = 0;
+  d->sum_of_deltas.write_errors = 0;
+  d->sum_of_deltas.mb_user_read = 0;
+  d->sum_of_deltas.mb_user_write = 0;
+  d->sum_of_deltas.mb_dev_read = 0;
+  d->sum_of_deltas.mb_dev_write = 0;
+  d->sum_of_deltas.track_retries = 0;
+  d->sum_of_deltas.underrun = 0;
+  d->sum_of_deltas.mount_count = 0;
 
+  return d;
 }
 
-int ds_translate_ftt_drive_id(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_stat_buff) {
+/****************************************************************************
+ *                                                                          *
+ * ds_init_stats()                                                          *
+ *   Make a call to ftt and get the initial statistics to be used to compute*
+ *   the deltas.                                                            *
+ *                                                                          *
+ ****************************************************************************/
+int ds_init_stats(DS_DESCRIPTOR *d)
+{
+  ftt_stat_buf stat_buff;
+  int status;
+  char *value;
+  float float_value;
 
-  char* value;
-  int ret_code;
-
-  if ( ds_desc->ds_init_flag == 1 ) {
-    printf("ds_translate_ftt_drive_id(): Error, Allocate new descriptor first, stats not set\n");
-    return (-1);
-  }
-
-  ret_code = 0;
   
-  value = ftt_extract_stats(ftt_stat_buff,FTT_SERIAL_NUM);
+  stat_buff = ftt_alloc_stat();
+  status = ftt_get_stats(d->ftt_d,stat_buff);
+  if (status != FTT_SUCCESS)
+    return(-1);
+
+
+  /*
+   * Power Hours
+   */
+
+  value = ftt_extract_stats(stat_buff,FTT_POWER_HOURS);
   if (value)
-    strcpy(ds_desc->drive_serial_number,value);
+     d->init_stats.power_hrs = atoi(value);
   else
-    ret_code = -1;;
-  
-  value = ftt_extract_stats(ftt_stat_buff,FTT_VENDOR_ID);
-  if (value)
-    strcpy(ds_desc->vendor,value);
-  else
-    ret_code = -1;;
-  
-  value = ftt_extract_stats(ftt_stat_buff,FTT_PRODUCT_ID);
-  if (value)
-    strcpy(ds_desc->product_type,value);
-  else
-    ret_code = -1;;
-
-  if ( ret_code == 0 ) {
-    ds_desc->ds_init_flag = 1;
-  }
-
-  return ret_code;
-
-} 
-
-int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_stat_buff,const int flag) {
-
-  int ret_code;
-  char* value;
-
-  DS_STATS *stats_pointer;
-  int *flag_pointer;
-
-  if ( ds_desc->ds_init_flag != 1 ) {
-    printf("ds_translate_ftt_stats(): Error, set drive id first, stats not set\n");
-    return (-1);
-  }
-
-  if ( _ds_set_flag_pointer(ds_desc, &stats_pointer, &flag_pointer, flag) != 0 ) {
-    printf("ds_translate_ftt_stats(): Error, Wrong flag, stats not set\n");
-    return (-1);
-  }
-
-  if ( ( flag == INIT ) && ( *flag_pointer == 1 ) ) {
-    printf("ds_translate_ftt_stats(): Error, Already initialized, will not reinitialize\n");  
-    return (-1);
-  }    
-
-  _ds_set_ds_stats(stats_pointer,-1);
-
-  ret_code = 0;
-
-  value = ftt_extract_stats(ftt_stat_buff,FTT_POWER_HOURS);
-  if (value)
-    stats_pointer->power_hrs = atoi(value);
-  else
-    ret_code = -1;
-
-  value = ftt_extract_stats(ftt_stat_buff,FTT_MOTION_HOURS);
-  if (value)
-    stats_pointer->motion_hrs = atoi(value);
-  else
-    ret_code = -1;
+     d->init_stats.power_hrs = -1;
     
-  value = ftt_extract_stats(ftt_stat_buff,FTT_USER_READ);
+
+  /*
+   * Motion Hours
+   */
+
+  value = ftt_extract_stats(stat_buff,FTT_MOTION_HOURS);
+  if (value)
+     d->init_stats.motion_hrs = atoi(value);
+  else
+     d->init_stats.motion_hrs = -1;
+
+
+  /*
+   * MB_USER_READ
+   */
+
+  value = ftt_extract_stats(stat_buff,FTT_USER_READ);
   if (value) {
-    stats_pointer->mb_user_read = (int) ( (float) atoi(value)/ 1000.0 );
+     float_value = (atoi(value) / 1000.0) + .5;
+     d->init_stats.mb_user_read = (int) float_value;
   }
   else
-    ret_code = -1;
+     d->init_stats.mb_user_read = -1;
 
   /*
    * MB_USER_WRITE
    */
 
-  value = ftt_extract_stats(ftt_stat_buff,FTT_USER_WRITE);
+  value = ftt_extract_stats(stat_buff,FTT_USER_WRITE);
   if (value) {
-     stats_pointer->mb_user_write = (int) ( (float) atoi(value)/ 1000.0 );
+     float_value = (atoi(value) / 1000.0) + .5;
+     d->init_stats.mb_user_write = (int) float_value;
   }
   else
-    ret_code = -1;
+     d->init_stats.mb_user_write = -1;
 
   /*
    * MB_DEV_READ
    */
- 
-  value = ftt_extract_stats(ftt_stat_buff,FTT_READ_COUNT);
+    
+  value = ftt_extract_stats(stat_buff,FTT_READ_COUNT);
   if (value) {
-      stats_pointer->mb_dev_read = (int) ( (float) atoi(value)/ 1000.0 );
+      float_value = (atoi(value) / 1000.0) + .5;
+      d->init_stats.mb_dev_read = (int) float_value;
   }
   else
-    ret_code = -1;
+      d->init_stats.mb_dev_read = -1;
 
   /*
    * MB_DEV_WRITE
    */
- 
-  value = ftt_extract_stats(ftt_stat_buff,FTT_WRITE_COUNT);
+    
+  value = ftt_extract_stats(stat_buff,FTT_WRITE_COUNT);
   if (value) {
-     stats_pointer->mb_dev_write = (int) ( (float) atoi(value)/ 1000.0 );
+     float_value = (atoi(value) / 1000.0) + .5;
+     d->init_stats.mb_dev_write = (int) float_value;
   }
   else
-    ret_code = -1;
-
+     d->init_stats.mb_dev_write = -1;
 
   /*
    * Read Errors
    */
- 
-  value = ftt_extract_stats(ftt_stat_buff,FTT_READ_ERRORS);
-  if (value)
-     stats_pointer->read_errors = atoi(value);
+  
+  value = ftt_extract_stats(stat_buff,FTT_READ_ERRORS);
+  if (value) 
+     d->init_stats.read_errors = atoi(value);
   else
-    ret_code = -1;
-
+     d->init_stats.read_errors = -1;
+  
   /*
    * WRITE Errors
    */
-
-  value = ftt_extract_stats(ftt_stat_buff,FTT_WRITE_ERRORS);
-  if (value)
-     stats_pointer->write_errors = atoi(value);
+  
+  value = ftt_extract_stats(stat_buff,FTT_WRITE_ERRORS);
+  if (value) 
+     d->init_stats.write_errors = atoi(value);
   else
-    ret_code = -1;
+     d->init_stats.write_errors = -1;
 
   /*
    * Track Retries
    */
 
-  value = ftt_extract_stats(ftt_stat_buff,FTT_TRACK_RETRY);
+  value = ftt_extract_stats(stat_buff,FTT_TRACK_RETRY);
   if (value)
-      stats_pointer->track_retries = atoi(value);
+      d->init_stats.track_retries = atoi(value);
   else
-    ret_code = -1;
+      d->init_stats.track_retries = -1;
 
   /*
    * Underrun
    */
 
-  value = ftt_extract_stats(ftt_stat_buff,FTT_UNDERRUN);
+  value = ftt_extract_stats(stat_buff,FTT_UNDERRUN);
   if (value)
-     stats_pointer->underrun = atoi(value);
+     d->init_stats.underrun = atoi(value);
   else
-    ret_code = -1;
+     d->init_stats.underrun = -1;
 
   /*
-   * Cleaning Bit is in different area
+   * mount count, tape volser, etc...
    */
 
-  value = ftt_extract_stats(ftt_stat_buff,FTT_CLEANING_BIT);
-  if (value)
-     ds_desc->cleaning_bit = atoi(value);
-  else {
-    ds_desc->cleaning_bit = -1;
-    ret_code = -1;
-  }
+  d->init_flag = 1;
+  d->cleaning_bit = 0;
+  strcpy(d->tape_volser,"UNKNOWN");
 
-  if ( ret_code == 0 ) {
-    *flag_pointer = 1;
-  }
-
-  return ret_code;
-
+  return(0);
 }
 
-int ds_init(DS_DESCRIPTOR* ds_desc, const ftt_descriptor ftt_d)
-/****************************************************************************
- *                                                                          *
- * ds_init()                                                          *
- *   Initialize INIT statistics using ftt; to be used to compute the deltas.     *
- *                                                                          *
- ****************************************************************************/
-{
-  ftt_stat_buf ftt_stat_buff;
-  int status;
-  int ret_code;
-  float float_value;
-  
-  ret_code = 0;
-
-  if ( ds_desc->init_stats.init_flag == 1 ) {
-    printf("ds_init(): Error, Already initialized, will not reinitialize\n");    
-    return(-1);
-  }
-
-  ftt_stat_buff = ftt_alloc_stat();
-  status = ftt_get_stats(ftt_d,ftt_stat_buff);
-  if ( status != FTT_SUCCESS )    {
-    printf("ds_init(): Error, Could not get ftt stats\n");    
-    status = ftt_free_stat(ftt_stat_buff);
-    return(-1);
-  }
-
-  if ( ds_translate_ftt_drive_id(ds_desc,ftt_stat_buff)  != 0 ) {
-    printf("ds_init(): Error, Could not translate ftt drive id\n");    
-    status = ftt_free_stat(ftt_stat_buff);
-    return(-1);
-  }
-
-  if ( ds_translate_ftt_stats(ds_desc,ftt_stat_buff,INIT)  != 0 ) {
-    printf("ds_init(): Error, Could not translate ftt stats\n");    
-    status = ftt_free_stat(ftt_stat_buff);
-    return(-1);
-  }
-
-  status = ftt_free_stat(ftt_stat_buff);
-
-  if (ret_code == 0) {
-    /* remember the ftt descriptor */
-    ds_desc->ftt_d = ftt_d;
-    _ds_set_ds_stats(&ds_desc->delta,0);
-    _ds_set_ds_stats(&ds_desc->sum_of_deltas,0);
-    _ds_set_ds_stats(&ds_desc->recent_stats,0);
-  }
-
-  return(ret_code);
-
-}
-
-int ds_update(DS_DESCRIPTOR* ds_desc, const ftt_descriptor ftt_d)
-/************************************************************************
- *                                                                      *
- * ds_update                                                      *
- * routine to get the current drive statistics.                         *
- *                                                                      *
- ************************************************************************/
-{
-  ftt_stat_buf ftt_stat_buff;
-  int status, ret_code;
-  char* value;
-  float float_value;
-
-  DS_STATS* stats;
-
-  ds_desc->recent_stats.init_flag = -1;
-
-  if (  ds_desc->init_stats.init_flag != 1 ) {
-    printf("ds_update(): Error, Not initialized, will not update\n");    
-    return(-1);
-  }
-
-  if (  ds_desc->ftt_d != ftt_d ) {
-    printf("ds_update(): Error, Different drive, will not update\n");    
-    return(-1);
-  }
-
-  stats = &ds_desc->recent_stats;
-
-  _ds_set_ds_stats(&ds_desc->recent_stats,-1);
-
-  ret_code = 0;
-
-  ftt_stat_buff = ftt_alloc_stat();
-  status = ftt_get_stats(ds_desc->ftt_d,ftt_stat_buff);
-
-  if (status != FTT_SUCCESS) {
-    printf("ds_update(): Error, Could not get ftt stats, will not update\n");    
-    status = ftt_free_stat(ftt_stat_buff);
-    return(-1);
-  }
-
-  if ( ds_translate_ftt_stats(ds_desc,ftt_stat_buff,RECENT)  != 0 ) {
-    printf("ds_update(): Error, Could not translate ftt stats, will not update\n");    
-    status = ftt_free_stat(ftt_stat_buff);
-    return(-1);
-  }
-
-  status = ftt_free_stat(ftt_stat_buff);
-
-  if (ret_code == 0) {
-    ds_desc->recent_stats.init_flag = 1;
-  }
-
-  return(ret_code);
-}
-
-void ds_print_stats(FILE* const fp,const char* const stat_name, const DS_STATS* const stats_pointer)
-{
-  /* aux function to print DS_STATS struct */
-
-  fprintf(fp,"%s INIT FLAG: %d\n",stat_name,stats_pointer->init_flag); 
-  fprintf(fp,"%s PWR HRS:   %d\n",stat_name,stats_pointer->power_hrs); 
-  fprintf(fp,"%s MOT HRS:   %d\n",stat_name,stats_pointer->motion_hrs);
-  fprintf(fp,"%s RD ERR:    %d\n",stat_name,stats_pointer->read_errors);
-  fprintf(fp,"%s WR ERR:    %d\n",stat_name,stats_pointer->write_errors);
-  fprintf(fp,"%s MB UREAD:  %d\n",stat_name,stats_pointer->mb_user_read);
-  fprintf(fp,"%s MB UWRITE: %d\n",stat_name,stats_pointer->mb_user_write);
-  fprintf(fp,"%s MB DREAD:  %d\n",stat_name,stats_pointer->mb_dev_read);
-  fprintf(fp,"%s MB DWRITE: %d\n",stat_name,stats_pointer->mb_dev_write);
-  fprintf(fp,"%s RETRIES:   %d\n",stat_name,stats_pointer->track_retries);
-  fprintf(fp,"%s UNDERRUN:  %d\n",stat_name,stats_pointer->underrun);
-  fprintf(fp,"%s MOUNT CT:  %d\n",stat_name,stats_pointer->mount_count);
-
-}
 /***************************************************************************
  *                                                                         *
- * ds_print()                                                        *
+ * ds_print_stats()                                                        *
  *   Print stats in current drivestat descriptor to file.  If file is NULL,*
  *   reports are printed to stdout.  Return 0 on success, 1 on failure.    *
  *                                                                         *
  ***************************************************************************/
 
-int ds_print(const DS_DESCRIPTOR* const ds_desc, const char* const file)
+int ds_print_stats(DS_DESCRIPTOR *d,char *file)
 {
+  char s[1024];
   FILE *fp;
-  const int format_version = 21;
+  char *title;
+  int i;
+
 
   if (file == NULL) {
-    fp = stdout;
+    printf("HOSTNAME: %s\n",d->host);
+    printf("DRIVE SERNO: %s\n",d->drive_serial_number);
+    printf("VENDOR: %s\n",d->vendor);
+    printf("PROD TYPE: %s\n",d->product_type);
+    printf("LOGICAL NAME: %s\n",d->logical_drive_name);
+    printf("VOLSER: %s\n",d->tape_volser);
+    printf("OPERATION: %s\n",d->operation);
+    printf("CLEANING BIT: %d\n",d->cleaning_bit);
+
+    printf("INIT_FLAG: %d\n",d->init_flag);
+    printf("DELTA_FLAG: %d\n",d->delta_flag);
+    printf("DELTA_SUM_FLAG: %d\n",d->delta_sum_flag);
+
+    printf("INIT PWR HRS: %d\n",d->init_stats.power_hrs); 
+    printf("INIT MOT HRS: %d\n",d->init_stats.motion_hrs);
+    printf("INIT RD ERR: %d\n",d->init_stats.read_errors);
+    printf("INIT WR ERR: %d\n",d->init_stats.write_errors);
+    printf("INIT MB UREAD: %d\n",d->init_stats.mb_user_read);
+    printf("INIT MB UWRITE: %d\n",d->init_stats.mb_user_write);
+    printf("INIT MB DREAD: %d\n",d->init_stats.mb_dev_read);
+    printf("INIT MB DWRITE: %d\n",d->init_stats.mb_dev_write);
+    printf("INIT RETRIES: %d\n",d->init_stats.track_retries);
+    printf("INIT UNDERRUN: %d\n",d->init_stats.underrun);
+    printf("INIT MOUNT CT: %d\n",d->init_stats.mount_count);
+    
+    printf("DELTA PWR HRS: %d\n",d->delta.power_hrs); 
+    printf("DELTA MOT HRS: %d\n",d->delta.motion_hrs);
+    printf("DELTA RD ERR: %d\n",d->delta.read_errors);
+    printf("DELTA WR ERR: %d\n",d->delta.write_errors);
+    printf("DELTA MB UREAD: %d\n",d->delta.mb_user_read);
+    printf("DELTA MB UWRITE: %d\n",d->delta.mb_user_write);
+    printf("DELTA MB DREAD: %d\n",d->delta.mb_dev_read);
+    printf("DELTA MB DWRITE: %d\n",d->delta.mb_dev_write);
+    printf("DELTA RETRIES: %d\n",d->delta.track_retries);
+    printf("DELTA UNDERRUN: %d\n",d->delta.underrun);
+    printf("DELTA MOUNT CT: %d\n",d->delta.mount_count);
+
+    printf("SUM DELTA PWR HRS: %d\n",d->sum_of_deltas.power_hrs); 
+    printf("SUM DELTA MOT HRS: %d\n",d->sum_of_deltas.motion_hrs);
+    printf("SUM DELTA RD ERR: %d\n",d->sum_of_deltas.read_errors);
+    printf("SUM DELTA WR ERR: %d\n",d->sum_of_deltas.write_errors);
+    printf("SUM DELTA MB UREAD: %d\n",d->sum_of_deltas.mb_user_read);
+    printf("SUM DELTA MB UWRITE: %d\n",d->sum_of_deltas.mb_user_write);
+    printf("SUM DELTA MB DREAD: %d\n",d->sum_of_deltas.mb_dev_read);
+    printf("SUM DELTA MB DWRITE: %d\n",d->sum_of_deltas.mb_dev_write);
+    printf("SUM DELTA RETRIES: %d\n",d->sum_of_deltas.track_retries);
+    printf("SUM DELTA UNDERRUN: %d\n",d->sum_of_deltas.underrun);
+    printf("SUM DELTA MOUNT CT: %d\n",d->sum_of_deltas.mount_count);
+
+    return(0);
   }
   else {
+    
     if ((fp = fopen(file,"w")) == NULL)
-      return(-1);    
-  }
-
-  if ((fprintf(fp,"FORMAT VERSION:          %d\n",format_version)) <= 0) {
-    if (fp != stdout) {
-      fclose(fp);
+      return(-1);
+    
+    if ((fprintf(fp,"HOSTNAME: %s\n",d->host)) <= 0) {
+	fclose(fp);
+	return(-1);
     }
-    return(-1);
-  }
-  
-  
-  fprintf(fp,"INIT FLAG:               %d\n",ds_desc->ds_init_flag);
 
-  fprintf(fp,"DRIVE SERNO:             %s\n",ds_desc->drive_serial_number);
-  fprintf(fp,"VENDOR:                  %s\n",ds_desc->vendor);
-  fprintf(fp,"PROD TYPE:               %s\n",ds_desc->product_type);
-  fprintf(fp,"LOGICAL NAME:            %s\n",ds_desc->logical_drive_name);
+    fprintf(fp,"DRIVE SERNO: %s\n",d->drive_serial_number);
+    fprintf(fp,"VENDOR: %s\n",d->vendor);
+    fprintf(fp,"PROD TYPE: %s\n",d->product_type);
+    fprintf(fp,"LOGICAL NAME: %s\n",d->logical_drive_name);
+    fprintf(fp,"VOLSER: %s\n",d->tape_volser);
+    fprintf(fp,"OPERATION: %s\n",d->operation);
+    fprintf(fp,"CLEANING BIT: %s\n",d->cleaning_bit);
+   
+    fprintf(fp,"INIT_FLAG: %d\n",d->init_flag);
+    fprintf(fp,"DELTA_FLAG: %d\n",d->delta_flag);
+    fprintf(fp,"DELTA_SUM_FLAG: %d\n",d->delta_sum_flag);
 
-  fprintf(fp,"HOST:                    %s\n",ds_desc->host);
-  fprintf(fp,"VOLSER:                  %s\n",ds_desc->tape_volser);
-
-  fprintf(fp,"OPERATION:               %s\n",ds_desc->operation);
-  fprintf(fp,"CLEANING BIT:            %d\n",ds_desc->cleaning_bit);
-
-  ds_print_stats(fp,"INIT_STATS   ", &ds_desc->init_stats);
-  ds_print_stats(fp,"DELTA_STATS  ", &ds_desc->delta);
-  ds_print_stats(fp,"SUM_OF_DELTAS", &ds_desc->sum_of_deltas);
-  ds_print_stats(fp,"RECENT_STATS ", &ds_desc->recent_stats);
-
-  if (fp != stdout) {
+    fprintf(fp,"INIT PWR HRS: %d\n",d->init_stats.power_hrs); 
+    fprintf(fp,"INIT MOT HRS: %d\n",d->init_stats.motion_hrs);
+    fprintf(fp,"INIT RD ERR: %d\n",d->init_stats.read_errors);
+    fprintf(fp,"INIT WR ERR: %d\n",d->init_stats.write_errors);
+    fprintf(fp,"INIT MB UREAD: %d\n",d->init_stats.mb_user_read);
+    fprintf(fp,"INIT MB UWRITE: %d\n",d->init_stats.mb_user_write);
+    fprintf(fp,"INIT MB DREAD: %d\n",d->init_stats.mb_dev_read);
+    fprintf(fp,"INIT MB DWRITE: %d\n",d->init_stats.mb_dev_write);
+    fprintf(fp,"INIT RETRIES: %d\n",d->init_stats.track_retries);
+    fprintf(fp,"INIT UNDERRUN: %d\n",d->init_stats.underrun);
+    fprintf(fp,"INIT MOUNT CT: %d\n",d->init_stats.mount_count);
+    
+    fprintf(fp,"DELTA PWR HRS: %d\n",d->delta.power_hrs); 
+    fprintf(fp,"DELTA MOT HRS: %d\n",d->delta.motion_hrs);
+    fprintf(fp,"DELTA RD ERR: %d\n",d->delta.read_errors);
+    fprintf(fp,"DELTA WR ERR: %d\n",d->delta.write_errors);
+    fprintf(fp,"DELTA MB UREAD: %d\n",d->delta.mb_user_read);
+    fprintf(fp,"DELTA MB UWRITE: %d\n",d->delta.mb_user_write);
+    fprintf(fp,"DELTA MB DREAD: %d\n",d->delta.mb_dev_read);
+    fprintf(fp,"DELTA MB DWRITE: %d\n",d->delta.mb_dev_write);
+    fprintf(fp,"DELTA RETRIES: %d\n",d->delta.track_retries);
+    fprintf(fp,"DELTA UNDERRUN: %d\n",d->delta.underrun);
+   
+    fprintf(fp,"SUM DELTA PWR HRS: %d\n",d->sum_of_deltas.power_hrs); 
+    fprintf(fp,"SUM DELTA MOT HRS: %d\n",d->sum_of_deltas.motion_hrs);
+    fprintf(fp,"SUM DELTA RD ERR: %d\n",d->sum_of_deltas.read_errors);
+    fprintf(fp,"SUM DELTA WR ERR: %d\n",d->sum_of_deltas.write_errors);
+    fprintf(fp,"SUM DELTA MB UREAD: %d\n",d->sum_of_deltas.mb_user_read);
+    fprintf(fp,"SUM DELTA MB UWRITE: %d\n",d->sum_of_deltas.mb_user_write);
+    fprintf(fp,"SUM DELTA MB DREAD: %d\n",d->sum_of_deltas.mb_dev_read);
+    fprintf(fp,"SUM DELTA MB DWRITE: %d\n",d->sum_of_deltas.mb_dev_write);
+    fprintf(fp,"SUM DELTA RETRIES: %d\n",d->sum_of_deltas.track_retries);
+    fprintf(fp,"SUM DELTA UNDERRUN: %d\n",d->sum_of_deltas.underrun);
+    fprintf(fp,"SUM DELTA MOUNT CT: %d\n",d->sum_of_deltas.mount_count);
+ 
     fclose(fp);
+    return(0);
   }
-
-  return(0);
-
 }
 
-
-int  _ds_readin_ds_stats(FILE* const fp, const char* const stat_name, DS_STATS* const stats_pointer)
-{
-  /* aux function to read in DS_STATS struct */
-  char read_stat_name[50];
-
-  if ( fscanf (fp,"%s INIT FLAG: %d\n",&read_stat_name,&stats_pointer->init_flag) <= 1 ) goto formaterror;
-  if ( strcmp (read_stat_name,stat_name) != 0) goto formaterror;
-  if ( fscanf (fp,"%s PWR HRS:   %d\n",&read_stat_name,&stats_pointer->power_hrs) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s MOT HRS:   %d\n",&read_stat_name,&stats_pointer->motion_hrs) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s RD ERR:    %d\n",&read_stat_name,&stats_pointer->read_errors) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s WR ERR:    %d\n",&read_stat_name,&stats_pointer->write_errors) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s MB UREAD:  %d\n",&read_stat_name,&stats_pointer->mb_user_read) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s MB UWRITE: %d\n",&read_stat_name,&stats_pointer->mb_user_write) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s MB DREAD:  %d\n",&read_stat_name,&stats_pointer->mb_dev_read) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s MB DWRITE: %d\n",&read_stat_name,&stats_pointer->mb_dev_write) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s RETRIES:   %d\n",&read_stat_name,&stats_pointer->track_retries) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s UNDERRUN:  %d\n",&read_stat_name,&stats_pointer->underrun) <= 1 ) goto formaterror;
-  if ( fscanf (fp,"%s MOUNT CT:  %d\n",&read_stat_name,&stats_pointer->mount_count) <= 1 ) goto formaterror;
-  if ( strcmp (read_stat_name,stat_name) != 0) goto formaterror;
-
-  return (0);
-
- formaterror:
-  printf("_ds_readin_ds_stats(): Error, Could not read in %s\n", stat_name );
-  return(-1);  
-
-}
-
-int ds_readin (DS_DESCRIPTOR* const ds_desc, const char* const file)
-{
-  FILE *fp;
-  int ret_code;
-  const int format_version = 21;
-  int read_format_version;
-  char buf[40];
-
-  if ((fp = fopen(file,"r")) == NULL)    return(-1);  
-
-  if ( fscanf (fp,"FORMAT VERSION:          %d\n",&read_format_version) <= 0 ) goto formaterror;
-  if ( read_format_version != format_version ) goto formaterror;
-
-  if ( fscanf (fp,"INIT FLAG:               %d\n",&ds_desc->ds_init_flag) <= 0 ) goto formaterror;
-
-  if ( fscanf (fp,"DRIVE SERNO:             %s\n",&ds_desc->drive_serial_number) <= 0 ) goto formaterror;
-  if ( fscanf (fp,"VENDOR:                  %s\n",&ds_desc->vendor) <= 0 ) goto formaterror;
-  if ( fscanf (fp,"PROD TYPE:               %s\n",&ds_desc->product_type) <= 0 ) goto formaterror;
-  if ( fscanf (fp,"LOGICAL NAME:            %s\n",&ds_desc->logical_drive_name) <= 0 ) goto formaterror;
-
-  if ( fscanf (fp,"HOST:                    %s\n",&ds_desc->host) <= 0 ) goto formaterror;
-  if ( fscanf (fp,"VOLSER:                  %s\n",&ds_desc->tape_volser) <= 0 ) goto formaterror;
-
-  if ( fscanf (fp,"OPERATION:               %s\n",&ds_desc->operation) <= 0 ) goto formaterror;
-  if ( fscanf (fp,"CLEANING BIT:            %d\n",&ds_desc->cleaning_bit) <= 0 ) goto formaterror;
-
-  /* note no spaces in the strings below */
-
-  if ( _ds_readin_ds_stats(fp,"INIT_STATS", &ds_desc->init_stats) != 0 ) goto formaterror;
-  if ( _ds_readin_ds_stats(fp,"DELTA_STATS", &ds_desc->delta) != 0 ) goto formaterror;
-  if ( _ds_readin_ds_stats(fp,"SUM_OF_DELTAS", &ds_desc->sum_of_deltas) != 0 ) goto formaterror;
-  if ( _ds_readin_ds_stats(fp,"RECENT_STATS", &ds_desc->recent_stats) != 0 ) goto formaterror;  
-
-  fclose(fp);
-
-  return (0);
-
- formaterror:
-  fclose(fp);
-  return(-1);  
-
-};
-
-int _ds_set_flag_pointer(DS_DESCRIPTOR* const ds_desc, DS_STATS** p_stats_pointer, int** p_flag_pointer, const int flag){
-
-  /* aux function to set stats_pointer & flag_pointer */
-
-  if (flag == DELTA) {
-    *p_stats_pointer = &ds_desc->delta;
-    *p_flag_pointer  = &ds_desc->delta.init_flag;
-  } else {
-    if (flag == SUM_OF_DELTAS) {
-      *p_stats_pointer = &ds_desc->sum_of_deltas;
-      *p_flag_pointer  = &ds_desc->sum_of_deltas.init_flag;
-    } else {
-      if (flag == INIT) {
-	*p_stats_pointer = &ds_desc->init_stats;
-	*p_flag_pointer  = &ds_desc->init_stats.init_flag;
-      } else {
-	if (flag == RECENT) {
-	  *p_stats_pointer = &ds_desc->recent_stats;
-	  *p_flag_pointer  = &ds_desc->recent_stats.init_flag;
-	} else {
-	  return (-1);
-	}
-      }
-    }
-  }
-
-  return (0);
-}
-
-
-DS_STATS *ds_alloc_stats()
-{
-  return (DS_STATS*) malloc(sizeof(DS_STATS));
-}
-
-void ds_free_stats(DS_STATS* dss)
-{
-  free(dss);
-}
-
-
-int ds_set_stats(DS_DESCRIPTOR* const ds_desc, const DS_STATS* const stat_buf, const int flag)
-{
-
-  /* function to set DS_STATS struct of DS_DESCRIPTOR 
-   */
-
-  DS_STATS *stats_pointer;
-  int *flag_pointer;
-
-  if ( _ds_set_flag_pointer(ds_desc, &stats_pointer, &flag_pointer, flag) != 0 ) {
-    printf("ds_set_stats(): Error, Wrong flag, stats not set\n");
-    return (-1);
-  }
-
-  stats_pointer->power_hrs     = stat_buf->power_hrs;
-  stats_pointer->motion_hrs    = stat_buf->motion_hrs;
-  stats_pointer->read_errors   = stat_buf->read_errors;
-  stats_pointer->mb_user_read  = stat_buf->mb_user_read;
-  stats_pointer->mb_user_write = stat_buf->mb_user_write;
-  stats_pointer->mb_dev_read   = stat_buf->mb_dev_read;
-  stats_pointer->mb_dev_write  = stat_buf->mb_dev_write;
-  stats_pointer->write_errors  = stat_buf->write_errors;
-  stats_pointer->track_retries = stat_buf->track_retries;
-  stats_pointer->underrun      = stat_buf->underrun;
-  stats_pointer->mount_count   = stat_buf->mount_count;
-
-  *flag_pointer = 1;
-
-  return (0);
-
-}
-
-int ds_extract_stats(DS_DESCRIPTOR* const ds_desc, DS_STATS* const stat_buf, const int flag)
-{
-
-  /* function to set DS_STATS struct of DS_DESCRIPTOR */
-
-  DS_STATS* stats_pointer;
-  int* flag_pointer;
-
-  if ( _ds_set_flag_pointer(ds_desc, &stats_pointer, &flag_pointer, flag) != 0 ) {
-    printf("ds_extract_stats(): Error, Wrong flag\n");
-    return (-1);
-  }
-
-  if (*flag_pointer != 1) {
-    printf("ds_extract_stats(): Error, Stats not set\n");
-    return (-1);
-  }
-
-  stat_buf->init_flag     = stats_pointer->init_flag;
-  stat_buf->power_hrs     = stats_pointer->power_hrs;
-  stat_buf->motion_hrs    = stats_pointer->motion_hrs;
-  stat_buf->read_errors   = stats_pointer->read_errors;
-  stat_buf->mb_user_read  = stats_pointer->mb_user_read;
-  stat_buf->mb_user_write = stats_pointer->mb_user_write;
-  stat_buf->mb_dev_read   = stats_pointer->mb_dev_read;
-  stat_buf->mb_dev_write  = stats_pointer->mb_dev_write;
-  stat_buf->write_errors  = stats_pointer->write_errors;
-  stat_buf->track_retries = stats_pointer->track_retries;
-  stat_buf->underrun      = stats_pointer->underrun;
-  stat_buf->mount_count   = stats_pointer->mount_count;
-
-  return (0);
-
-}
-
-
-int ds_bump_deltasum(DS_DESCRIPTOR* const ds_desc, const DS_STATS* const stat_buf)
 /*************************************************************************
  *                                                                       *
- * ds_bump_deltasum()                                                     *
- *    bump the delta sum portion of the ds_descriptor with the data passed*
+ * ds_set_delta()                                                        *
+ *    Set the delta portion of the ds_descriptor with the data passed in *
  *    in the stat_buf.                                                   *
  *                                                                       *
  *************************************************************************/
+
+int ds_set_delta(DS_DESCRIPTOR *d, DS_STATS *stat_buf)
 {
-
-  if ( ds_desc->sum_of_deltas.init_flag != 1) {
-    printf("ds_bump_deltasum(): Error, sum of deltas not set, will not bump\n");
-    return (-1);
-  }
-
-  ds_desc->sum_of_deltas.power_hrs += stat_buf->power_hrs;
-  ds_desc->sum_of_deltas.motion_hrs += stat_buf->motion_hrs;
-  ds_desc->sum_of_deltas.read_errors += stat_buf->read_errors;
-  ds_desc->sum_of_deltas.mb_user_read += stat_buf->mb_user_read;
-  ds_desc->sum_of_deltas.mb_user_write += stat_buf->mb_user_write;
-  ds_desc->sum_of_deltas.mb_dev_read += stat_buf->mb_dev_read;
-  ds_desc->sum_of_deltas.mb_dev_write += stat_buf->mb_dev_write;
-  ds_desc->sum_of_deltas.write_errors += stat_buf->write_errors;
-  ds_desc->sum_of_deltas.track_retries += stat_buf->track_retries;
-  ds_desc->sum_of_deltas.underrun += stat_buf->underrun;
-  ds_desc->sum_of_deltas.mount_count += stat_buf->mount_count;
-
-  return (0);
-
-}
-
-int ds_set_character_field(DS_DESCRIPTOR* ds_desc,const char* const string, const int field)
-{
-  if (field == DRIVE_SERIAL_NUMBER) {
-    strcpy(ds_desc->drive_serial_number,string);
-  } else {
-    if (field == VENDOR) {
-      strcpy(ds_desc->vendor,string);
-    } else {
-      if (field == PRODUCT_TYPE)  {
-	strcpy(ds_desc->product_type,string);
-      } else {
-	if (field == OPERATION)  {
-	  strcpy(ds_desc->operation,string);
-	} else {
-	  if (field == TAPE_VOLSER)  {
-	    strcpy(ds_desc->tape_volser,string);
-	  } else {
-	    if (field == HOST)  {
-	      strcpy(ds_desc->host,string);
-	    } else {
-	      if (field == LOGICAL_DRIVE_NAME)  {
-		strcpy(ds_desc->logical_drive_name,string);
-	      } else {
-		return (-1);
-	      }
-	    }
-	  }
-	}
-      }
-    }
-  }
-  
+  d->delta.power_hrs = stat_buf->power_hrs;
+  d->delta.motion_hrs = stat_buf->motion_hrs;
+  d->delta.read_errors = stat_buf->read_errors;
+  d->delta.mb_user_read = stat_buf->mb_user_read;
+  d->delta.mb_user_write = stat_buf->mb_user_write;
+  d->delta.mb_dev_read = stat_buf->mb_dev_read;
+  d->delta.mb_dev_write = stat_buf->mb_dev_write;
+  d->delta.write_errors = stat_buf->write_errors;
+  d->delta.track_retries = stat_buf->track_retries;
+  d->delta.underrun = stat_buf->underrun;
+  d->delta.mount_count = stat_buf->mount_count;
+  d->delta_flag = 1;
   return (0);
 }
 
+/*************************************************************************
+ *                                                                       *
+ * ds_set_deltasum()                                                     *
+ *    Set the delta sum portion of the ds_descriptor with the data passed*
+ *    in the stat_buf.                                                   *
+ *                                                                       *
+ *************************************************************************/
 
-int ds_compute_delta(DS_DESCRIPTOR* ds_desc)
+int ds_set_deltasum(DS_DESCRIPTOR *d, DS_STATS *stat_buf)
+{
+  d->sum_of_deltas.power_hrs = stat_buf->power_hrs;
+  d->sum_of_deltas.motion_hrs = stat_buf->motion_hrs;
+  d->sum_of_deltas.read_errors = stat_buf->read_errors;
+  d->sum_of_deltas.mb_user_read = stat_buf->mb_user_read;
+  d->sum_of_deltas.mb_user_write = stat_buf->mb_user_write;
+  d->sum_of_deltas.mb_dev_read = stat_buf->mb_dev_read;
+  d->sum_of_deltas.mb_dev_write = stat_buf->mb_dev_write;
+  d->sum_of_deltas.write_errors = stat_buf->write_errors;
+  d->sum_of_deltas.track_retries = stat_buf->track_retries;
+  d->sum_of_deltas.underrun = stat_buf->underrun;
+  d->sum_of_deltas.mount_count = stat_buf->mount_count;
+  d->delta_sum_flag = 1;
+  return (0);
+}
+
+/*************************************************************************
+ *                                                                       *
+ * ds_set_init()                                                         *
+ *    Set the init portion of the ds_descriptor with the data passed in  *
+ *    in the stat_buf.                                                   *
+ *                                                                       *
+ *************************************************************************/
+
+
+int ds_set_init(DS_DESCRIPTOR *d, DS_STATS *stat_buf)
+{
+  d->init_stats.power_hrs = stat_buf->power_hrs;
+  d->init_stats.motion_hrs = stat_buf->motion_hrs;
+  d->init_stats.read_errors = stat_buf->read_errors;
+  d->init_stats.write_errors = stat_buf->write_errors;
+  d->init_stats.mb_user_read = stat_buf->mb_user_read;
+  d->init_stats.mb_user_write = stat_buf->mb_user_write;
+  d->init_stats.mb_dev_read = stat_buf->mb_dev_read;
+  d->init_stats.mb_dev_write = stat_buf->mb_dev_write;
+
+  d->init_stats.track_retries = stat_buf->track_retries;
+  d->init_stats.underrun = stat_buf->underrun;
+  d->init_stats.mount_count = stat_buf->mount_count;
+  d->init_flag = 1;
+  return 0;
+}
+
+/************************************************************************
+ *                                                                      *
+ * ds_set_operation()                                                   *
+ *   Set the operation field in the drivestat descriptor.               *
+ *                                                                      *
+ ************************************************************************/
+
+int ds_set_operation(DS_DESCRIPTOR *d,char *s)
+{
+  strcpy(d->operation,s);
+  return(0);
+}
+
 
 /************************************************************************
  *                                                                      *
  * ds_compute_delta                                                     *
- *   computes the delta based                                           *
- *   on the current stats and the stats in the recent portion of the    *
- *   descriptor. Will replace the  init_stats with recent_stats &       *
- *   calculate the sum of deltas as well                                *
+ *   Gathers the stats from the tape drive, and computes the delta based*
+ *   on the current stats and the stats in the init portion of the      *
+ *   descriptor.                                                        *
  *                                                                      *
  ************************************************************************/
+
+int ds_compute_delta(DS_DESCRIPTOR *d)
 {
+  DS_STATS current_stats;
+  int rc;
 
-  if ( ds_desc->recent_stats.init_flag != 1 || ds_desc->init_stats.init_flag !=1 ) {
-    printf("ds_compute_delta(): Error, Not initialized/updated, will not compute\n");    
+  d->delta_flag = 1;
+  
+  rc = i_get_current_drive_stats(&current_stats,d);
+  if (rc)
     return(-1);
-  }
   
-  /* beware power & motion hours increase slowly deltas are 0 most of the time...*/
-
-  /* compute delata */
-
-  ds_desc->delta.power_hrs     = ds_desc->recent_stats.power_hrs     - ds_desc->init_stats.power_hrs;
-  ds_desc->delta.motion_hrs    = ds_desc->recent_stats.motion_hrs    - ds_desc->init_stats.motion_hrs;
-  ds_desc->delta.mb_user_read  = ds_desc->recent_stats.mb_user_read  - ds_desc->init_stats.mb_user_read;
-  ds_desc->delta.mb_user_write = ds_desc->recent_stats.mb_user_write - ds_desc->init_stats.mb_user_write;
-  ds_desc->delta.mb_dev_read   = ds_desc->recent_stats.mb_dev_read   - ds_desc->init_stats.mb_dev_read;
-  ds_desc->delta.mb_dev_write  = ds_desc->recent_stats.mb_dev_write  - ds_desc->init_stats.mb_dev_write;
-  ds_desc->delta.read_errors   = ds_desc->recent_stats.read_errors   - ds_desc->init_stats.read_errors;
-  ds_desc->delta.write_errors  = ds_desc->recent_stats.write_errors  - ds_desc->init_stats.write_errors;
-  ds_desc->delta.track_retries = ds_desc->recent_stats.track_retries - ds_desc->init_stats.track_retries;
-  ds_desc->delta.underrun      = ds_desc->recent_stats.underrun      - ds_desc->init_stats.underrun;
-  ds_desc->delta.mount_count   = ds_desc->recent_stats.mount_count   - ds_desc->init_stats.mount_count;
+  d->delta.power_hrs = current_stats.power_hrs - d->init_stats.power_hrs;
+  d->delta.motion_hrs = current_stats.motion_hrs - d->init_stats.motion_hrs;
+  d->delta.mb_user_read = current_stats.mb_user_read - d->init_stats.mb_user_read;
+  d->delta.mb_user_write = current_stats.mb_user_write - d->init_stats.mb_user_write;
+  d->delta.mb_dev_read = current_stats.mb_dev_read - d->init_stats.mb_dev_read;
+  d->delta.mb_dev_write= current_stats.mb_dev_write - d->init_stats.mb_dev_write;
+  d->delta.read_errors = current_stats.read_errors - d->init_stats.read_errors;
+  d->delta.write_errors = current_stats.write_errors - d->init_stats.write_errors;
+  d->delta.track_retries = current_stats.track_retries - d->init_stats.track_retries;
+  d->delta.underrun = current_stats.underrun - d->init_stats.underrun;
+  d->delta.mount_count = current_stats.mount_count - d->init_stats.mount_count;
   
-  ds_desc->delta.init_flag = 1;
-
-  /* compute the sum of deltas */
-
-  ds_desc->sum_of_deltas.power_hrs     += ds_desc->delta.power_hrs;
-  ds_desc->sum_of_deltas.motion_hrs    += ds_desc->delta.motion_hrs;
-  ds_desc->sum_of_deltas.read_errors   += ds_desc->delta.read_errors;
-  ds_desc->sum_of_deltas.mb_user_read  += ds_desc->delta.mb_user_read;
-  ds_desc->sum_of_deltas.mb_user_write += ds_desc->delta.mb_user_write;
-  ds_desc->sum_of_deltas.mb_dev_read   += ds_desc->delta.mb_dev_read;
-  ds_desc->sum_of_deltas.mb_dev_write  += ds_desc->delta.mb_dev_write;
-  ds_desc->sum_of_deltas.write_errors  += ds_desc->delta.write_errors;
-  ds_desc->sum_of_deltas.track_retries += ds_desc->delta.track_retries;
-  ds_desc->sum_of_deltas.underrun      += ds_desc->delta.underrun;
-  ds_desc->sum_of_deltas.mount_count   += ds_desc->delta.mount_count;
-
-  ds_desc->sum_of_deltas.init_flag = 1;
-
-  /* assing recent_stats to init_stats */
-
-  ds_desc->init_stats.power_hrs     = ds_desc->recent_stats.power_hrs;
-  ds_desc->init_stats.motion_hrs    = ds_desc->recent_stats.motion_hrs;
-  ds_desc->init_stats.mb_user_read  = ds_desc->recent_stats.mb_user_read;
-  ds_desc->init_stats.mb_user_write = ds_desc->recent_stats.mb_user_write;
-  ds_desc->init_stats.mb_dev_read   = ds_desc->recent_stats.mb_dev_read;
-  ds_desc->init_stats.mb_dev_write  = ds_desc->recent_stats.mb_dev_write;
-  ds_desc->init_stats.read_errors   = ds_desc->recent_stats.read_errors;
-  ds_desc->init_stats.write_errors  = ds_desc->recent_stats.write_errors;
-  ds_desc->init_stats.track_retries = ds_desc->recent_stats.track_retries;
-  ds_desc->init_stats.underrun      = ds_desc->recent_stats.underrun;
-  ds_desc->init_stats.mount_count   = ds_desc->recent_stats.mount_count;
-
-  return (0);
+  return 0;
 
 }
 
@@ -772,16 +548,14 @@ int ds_compute_delta(DS_DESCRIPTOR* ds_desc)
  *   calls.  The number of records that will be retrieved is returned.  *
  *                                                                      *
  ************************************************************************/
-int ds_prepare_list(const char* const drive,const char* const vendor,
-		    const char* const prod_type,
-		    const char* const host, const char* const vsn,
-		    const char* const bdate,
-		    const char* const edate,int *n)
+
+int ds_prepare_list(char *drive,char *vendor,char *prod_type,
+		    char *host, char *vsn,char *bdate,
+		    char *edate,int *n)
 {
   char msg[4096];
   char send_buff[4096];
   char ack_msg[512];
-  char s_time_stamp[512];
   int i,rc,list_sd;
   int nread;
 
@@ -802,11 +576,7 @@ int ds_prepare_list(const char* const drive,const char* const vendor,
   else
     strcat(msg,prod_type);
   strcat(msg,"|");
-
-  sprintf (s_time_stamp,"%d",time(NULL));
-  strcat(msg, s_time_stamp);
-  strcat(msg,"|");
-
+  
   if (host == NULL)
     strcat(msg,"any");
   else
@@ -867,7 +637,7 @@ DS_REPORT *ds_getnext(int list_sd)
   /*
    * Send the getnext request to the server
    */
-  printf("sending request...\n");
+  printf("sending request....\n");
   sprintf(msg,"%d|%s|",0,GETNEXT_STR);
   rc = send_data(list_sd,msg);
   if (rc < 0) 
@@ -896,7 +666,7 @@ DS_REPORT *ds_getnext(int list_sd)
   
   n = atoi(incoming_len);
   printf("read len = %d\n",n);
-  buff = (char* ) malloc(n + 1);
+  buff = (char *) malloc(n + 1);
 
   if (buff == NULL) {
     return(NULL);
@@ -1131,30 +901,135 @@ int ds_close_list(int list_sd)
   return(0);
 }
 
- 
-void _ds_set_string_if_ref_is_empty(const char* const ref, char* string, const char* const value)
+/************************************************************************
+ *                                                                      *
+ * i_get_current_drive_stats                                            *
+ *   internal routine to get the current drive statistics.              *
+ *                                                                      *
+ ************************************************************************/
+int i_get_current_drive_stats(DS_STATS *stats,DS_DESCRIPTOR *d)
 {
-  /* aux function */
-  if (strlen(ref) == 0) {
-    strcpy(string,value);
-  } else {
-    strcpy(string,ref);
+  ftt_stat_buf stat_buff;
+  int status;
+  char *value;
+  float float_value;
+
+  stat_buff = ftt_alloc_stat();
+  status = ftt_get_stats(d->ftt_d,stat_buff);
+  if (status != FTT_SUCCESS)
+    return(-1);
+
+  value = ftt_extract_stats(stat_buff,FTT_POWER_HOURS);
+  if (value)
+     stats->power_hrs = atoi(value);
+  else
+     stats->power_hrs = d->init_stats.power_hrs;
+
+  value = ftt_extract_stats(stat_buff,FTT_MOTION_HOURS);
+  if (value)
+     stats->motion_hrs = atoi(value);
+  else
+     stats->motion_hrs = d->init_stats.motion_hrs;
+
+  value = ftt_extract_stats(stat_buff,FTT_USER_READ);
+  if (value) {
+     float_value = (atoi(value) / 1000.0) + .5;
+     stats->mb_user_read = (int) float_value;
   }
+  else
+     stats->mb_user_read = d->init_stats.mb_user_read;
+
+  /*
+   * MB_USER_WRITE
+   */
+
+  value = ftt_extract_stats(stat_buff,FTT_USER_WRITE);
+  if (value) {
+     float_value = (atoi(value) / 1000.0) + .5;
+     stats->mb_user_write = (int) float_value;
+  }
+  else
+     stats->mb_user_write = d->init_stats.mb_user_write;
+
+  /*
+   * MB_DEV_READ
+   */
+ 
+  value = ftt_extract_stats(stat_buff,FTT_READ_COUNT);
+  if (value) {
+      float_value = (atoi(value) / 1000.0) + .5;
+      stats->mb_dev_read = (int) float_value;
+  }
+  else
+      stats->mb_dev_read = d->init_stats.mb_dev_read;
+
+  /*
+   * MB_DEV_WRITE
+   */
+ 
+  value = ftt_extract_stats(stat_buff,FTT_WRITE_COUNT);
+  if (value) {
+     float_value = (atoi(value) / 1000.0) + .5;
+     stats->mb_dev_write = (int) float_value;
+  }
+  else
+     stats->mb_dev_write = d->init_stats.mb_dev_write;
+
+  /*
+   * Read Errors
+   */
+ 
+  value = ftt_extract_stats(stat_buff,FTT_READ_ERRORS);
+  if (value)
+     stats->read_errors = atoi(value);
+  else
+     stats->read_errors = d->init_stats.read_errors;
+
+  /*
+   * WRITE Errors
+   */
+
+  value = ftt_extract_stats(stat_buff,FTT_WRITE_ERRORS);
+  if (value)
+     stats->write_errors = atoi(value);
+  else
+     stats->write_errors = d->init_stats.write_errors;
+
+  /*
+   * Track Retries
+   */
+
+  value = ftt_extract_stats(stat_buff,FTT_TRACK_RETRY);
+  if (value)
+      stats->track_retries = atoi(value);
+  else
+      stats->track_retries = d->init_stats.track_retries;
+
+  /*
+   * Underrun
+   */
+
+  value = ftt_extract_stats(stat_buff,FTT_UNDERRUN);
+  if (value)
+     stats->underrun = atoi(value);
+  else
+     stats->underrun = d->init_stats.underrun;
+
+  stats->mount_count = d->init_stats.mount_count;
+  return(0);
 }
-int ds_send_stats(const DS_DESCRIPTOR* const ds_desc, const int timeout, const int flag)
+ 
 /************************************************************************
  *                                                                      *
  * ds_send_stats()                                                      *
- *   Send the stats to the drivestat server.                            *
- *   <timeout> if non-0 will cause the command to block for             *
- *   <timeout> seconds. (not yet...)                                    *
- *   <flag> instructs  what to send:                                    *
- *      DELTA - Send the delta in the ds_descriptor .                   *
- *      SUM_OF_DELTAS - Send the sum of deltas in the  descriptor.
- *      ABSOLUTE                                                  send  *
- *      BUMP_MOUNTS                                                                *
+ *   Send the stats to the drivestat server.  <timeout> if non-0 will   *
+ *   cause the command to block for <timeout> seconds.  <flag> instructs*
+ *   what to send:                                                      *
+ *      DELTA - Send the delta in the drivestat descriptor.             *
+ *      SUM - Send the sum of deltas in the drivestat descriptor.       *
+ *                                                                      *
  *   The format of the packet sent will be:                             *
- *     01|<DSN>|<VEN>|<PRD>|<TIMESTAMP>|<TAPEVS>|<PHRS>|<MHRS>|<CBIT>|<USRREAD>|    *
+ *     01|<DSN>|<VEN>|<PRD>|<TAPEVS>|<PHRS>|<MHRS>|<CBIT>|<USRREAD>|    *
  *     <USRWR>|<DEVREAD>|<DEVWRITE>|<RDERR>|<WRERR>|<RET>|<UND>|<MTCT>  *
  *     <HOST>|<LOGICAL_DRIVE>^                                          *
  *   Return 0 on success, -1 on error.                                  *
@@ -1164,198 +1039,105 @@ int ds_send_stats(const DS_DESCRIPTOR* const ds_desc, const int timeout, const i
  *   if the user does a ups setup.                                      *
  *                                                                      *
  ************************************************************************/ 
+
+int ds_send_stats(DS_DESCRIPTOR *d, int timeout, int flag)
 {
   char send_buff[4096],
     msg[4096],
     s[64];
 
-  char stat_type[MAX_STAT_TYPE_SIZE + 1];
-  char host[MAX_HOST_LEN + 1];
-  char logical_drive_name[MAX_LOGICAL_DRIVE_NAME_LEN + 1];
-  char tape_volser[MAX_VOLSER_LEN + 1];
-  int mount_count;
-
   int sd;
   int rc;
 
-  const DS_STATS* stats_pointer;
-
-  time_stamp=time(NULL);
-
-  if ( (flag & DELTA) && (flag & ABSOLUTE) ||
-       (flag & SUM_OF_DELTAS) && (flag & ABSOLUTE) ||
-       (flag & DELTA) && (flag & SUM_OF_DELTAS) ) {
-    printf("ds_send_stats(): Error: Conflicting flags\n");
-    return (-1);
-  }
-
-  if ( (flag & DELTA) || (flag & ABSOLUTE) || (flag & SUM_OF_DELTAS) ) {
-
-    /* power & motion hours are always absolute as deltas are 0 most of the time...*/
-
-    if (flag & DELTA) {
-      if (ds_desc->delta.init_flag == 1) {
-	stats_pointer = &ds_desc->delta;
-	strcpy(stat_type,"DELTA");
-      }
-      else {
-	printf("ds_send_stats(): Error, No stats gathered?\n");
-	return(-1);
-      }
-    }
-    else if (flag & SUM_OF_DELTAS) {
-      if (ds_desc->sum_of_deltas.init_flag == 1) {
-	stats_pointer = &ds_desc->sum_of_deltas;
-	strcpy(stat_type,"SUM_OF_DELTAS");
-      }
-      else {
-	printf("ds_send_stats(): Error, No stats gathered?\n");
-	return (-1);
-      }
-    }
-    else if (flag & ABSOLUTE) {
-      strcpy(stat_type,"ABSOLUTE");
-      if (ds_desc->recent_stats.init_flag == 1) {
-	stats_pointer = &ds_desc->recent_stats;
-      }
-      else if (ds_desc->init_stats.init_flag == 1) {
-	stats_pointer = &ds_desc->init_stats;
-      }
-      else {
-	printf("ds_send_stats(): Error, No stats gathered?\n");
-	return(-1);
-      }
-    }
-    else {
-      printf("ds_send_stats(): Error, unknown flag?\n");
+  DS_STATS stats;
+   
+  if (flag & DELTA) {
+    if (d->delta_flag)
+      stats = d->delta;
+    else
       return(-1);
-    }
-
-    _ds_set_string_if_ref_is_empty(ds_desc->host,host,"UNKNOWN");
-    _ds_set_string_if_ref_is_empty(ds_desc->logical_drive_name,logical_drive_name,"UNKNOWN");
-    _ds_set_string_if_ref_is_empty(ds_desc->tape_volser,tape_volser,"UNKNOWN");
-    
-/*     if (strcmp(ds_desc->operation,"UNKNOWN") != 0) */
-/*       strcpy(stat_type,ds_desc->operation); */
-
-    sprintf(msg,
-	    "%s|%s|%s|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%s|%s",
-	    ds_desc->drive_serial_number,
-	    ds_desc->vendor,
-	    ds_desc->product_type,
-	    time_stamp,
-	    tape_volser,
-	    stat_type,
-	    stats_pointer->power_hrs,
-	    stats_pointer->motion_hrs,
-	    ds_desc->cleaning_bit,
-	    stats_pointer->mb_user_read,
-	    stats_pointer->mb_user_write,
-	    stats_pointer->mb_dev_read,
-	    stats_pointer->mb_dev_write,
-	    stats_pointer->read_errors,
-	    stats_pointer->write_errors,
-	    stats_pointer->track_retries,
-	    stats_pointer->underrun,
-	    stats_pointer->mount_count,
-	    host,
-	    logical_drive_name);
-
-    if (flag & ABSOLUTE) {
-      sprintf(send_buff,"%d|%s|%s", 
-	      strlen(msg),AUPDATE_STR,msg);
-    }
-    else {
-      sprintf(send_buff,"%d|%s|%s", 
-	      strlen(msg),UPDATE_STR,msg);
-    }
-
-    sd = connect_to_server();
-    printf("ds_send_stats(): send_buff = %s\n",send_buff);
-    if (sd > 0) {
-      rc = send_data(sd,send_buff);
-      if (rc > 0) {
-	rc = get_ack(sd);
-      }
-      if (rc < 0) {
-	printf("ds_send_stats(): Error, Server reported error\n");
-	return (rc);
-      }
-    }
-    else {
-      printf("ds_send_stats(): Error, could not connect to the server. code=%d\n",sd);
-      return(sd);
-    }
-    close(sd);
   }
-  
-  if (flag & BUMP_MOUNTS) {
-    mount_count = 1;
-    sprintf(msg,
-	    "%s|%s|%s|%d|%d",
-	    ds_desc->drive_serial_number,
-	    ds_desc->vendor,
-	    ds_desc->product_type,
-	    time_stamp,
-	    mount_count);
-    sprintf(send_buff,"%d|%s|%s",
-	    strlen(msg),BUMP_MOUNTS_STR,msg);
-    sd = connect_to_server();
-    printf("ds_send_stats(): send_buff = %s\n",send_buff);  
-    if (sd > 0) {
-      rc = send_data(sd,send_buff);
-      if (rc > 0) {
-	rc = get_ack(sd);
-      }
-      if (rc < 0) {
-        printf("ds_send_stats():Error, Server reported error\n");
+  else {
+    if (d->delta_sum_flag == 0)
+      return(-2);
+    stats = d->sum_of_deltas;
+  }
+	   
+  if (strlen(d->host) == 0)
+    strcpy(d->host,"UNKNOWN");
+
+  if (strlen(d->logical_drive_name) == 0)
+    strcpy(d->logical_drive_name,"UNKNOWN");
+
+  sprintf(msg,
+	  "%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%s|%s",
+	  d->drive_serial_number,
+	  d->vendor,
+	  d->product_type,
+	  d->tape_volser,
+	  d->operation,
+	  stats.power_hrs,
+	  stats.motion_hrs,
+	  d->cleaning_bit,
+	  stats.mb_user_read,
+	  stats.mb_user_write,
+	  stats.mb_dev_read,
+	  stats.mb_dev_write,
+	  stats.read_errors,
+	  stats.write_errors,
+	  stats.track_retries,
+	  stats.underrun,
+	  stats.mount_count,
+	  d->host,
+	  d->logical_drive_name);
+
+  sprintf(send_buff,"%d|%s|%s", 
+	  strlen(msg),UPDATE_STR,msg);
+ 
+  sd = connect_to_server();
+  send_data(sd,send_buff);
+  if (sd > 0) {
+     rc = get_ack(sd);
+     if (rc < 0) {
+        printf("ds_send_stats():Server reported error\n");
         return (rc);
-      }
-    }
-    else {
-      printf("ds_send_stats(): Error, send_data bump mount failed. code=%d\n",sd);
-      return(sd);
-    }
-    close(sd);
+     }
+     close(sd);
+     return(0);
   }
-
-  return(0);
-
+  else {
+    printf("send_data failed. code=%d\n",sd);
+    return(sd);
+  }
+  printf("ds_send_stats returning\n");
 }
 
 /************************************************************************
  *                                                                      *
  * ds_drive_maintenace()                                                *
- *   Reflect maintenace on the drive in the db                          *
+ *   Perform maintenace on the drive:                                   *
  *     INSTALL                                                          *
  *     REPAIR                                                           *
  *     CLEAN                                                            *
  *                                                                      *
  ************************************************************************/
 
-int ds_drive_maintenance(const DS_DESCRIPTOR* const ds_desc,const int flag,
-			 const char* const host,const char* const logical_drive_name)
+int ds_drive_maintenance(DS_DESCRIPTOR *d,int flag,
+			 char *host,char *logical_drive_name)
 {
 
   char send_buff[4096],
       msg[4096];
   char hostn[MAX_HOST_LEN + 1];
   char ldn[MAX_LOGICAL_DRIVE_NAME_LEN + 1];
-  const char* hostp;
-  const char* ldnp;
+  char *hostp;
+  char *ldnp;
   int sd;
-
-  if ( ds_desc->ds_init_flag != 1 ) {
-    printf("ds_drive_maintenance(): Error, Set drive id first, stats not send\n");
-    return (-1);
-  }  
-
-  time_stamp=time(NULL);
 
   if (host != NULL) {
       hostp = host;
-  } else if (ds_desc->host != NULL) {
-      hostp = ds_desc->host;
+  } else if (d->host != NULL) {
+      hostp = d->host;
   } else {
       strcpy(hostn,"UNKNOWN");
       hostp = hostn;
@@ -1363,8 +1145,8 @@ int ds_drive_maintenance(const DS_DESCRIPTOR* const ds_desc,const int flag,
 
   if (logical_drive_name != NULL) {
       ldnp = logical_drive_name;
-  } else if (ds_desc->logical_drive_name != NULL) {
-      ldnp = ds_desc->logical_drive_name;
+  } else if (d->logical_drive_name != NULL) {
+      ldnp = d->logical_drive_name;
   } else {
       strcpy(ldn,"UNKNOWN");
       ldnp = ldn;
@@ -1372,45 +1154,40 @@ int ds_drive_maintenance(const DS_DESCRIPTOR* const ds_desc,const int flag,
 
   if (flag == INSTALL) {
     sprintf(msg,
-	    "%s|%s|%s|%d|%s|%s",
-	    ds_desc->drive_serial_number,
-	    ds_desc->vendor,
-	    ds_desc->product_type,
-	    time_stamp,
+	    "%s|%s|%s|%s|%s",
+	    d->drive_serial_number,
+	    d->vendor,
+	    d->product_type,
 	    hostp,
 	    ldnp);
     sprintf(send_buff,"%d|%s|%s^",
 	    strlen(msg),INSTALL_STR,msg);
   }
+
   else if ((flag == REPAIR || flag == CLEAN)) {
-    sprintf(msg,"%s|%s|%s|%d",
-	    ds_desc->drive_serial_number,
-	    ds_desc->vendor,
-	    ds_desc->product_type,
-	    time_stamp);
+    sprintf(msg,"%s|%s|%s",
+	    d->drive_serial_number,
+	    d->vendor,
+	    d->product_type);
     if (flag == REPAIR)
       sprintf(send_buff,"%d|%s|%s^",
 	      strlen(msg),REPAIR_STR,msg);
-    else 
+    else
       sprintf(send_buff,"%d|%s|%s^",
 	      strlen(msg),CLEAN_STR,msg);
   }
-  else {
-    printf("ds_drive_maintenance(): Error, unknown maintanance operation\n");
-    return(-1);
-  }
-  
-  printf("ds_drive_maintenance(): send_buff = %s\n",send_buff);
+
   sd = connect_to_server();
+  printf("send_buff = %s\n",send_buff);
   send_data(sd,send_buff);
   if (sd > 0) {
     close(sd);
     return(0);
   }
   else {
-    printf("ds_drive_maintenance(): Error, send_data failed. code=%d\n",sd);
+    printf("send_data failed. code=%d\n",sd);
     return(sd);
-    }
+  }
 
 }
 
@@ -1426,30 +1203,30 @@ int connect_to_server()
 {
   struct sockaddr_in serv_addr;
   struct hostent *phe;
-  char* serv_host,*serv_port;
+  char *serv_host,*serv_port;
   int serv_tcp_port;
   int sd;
 
   serv_host = getenv("DS_SERVER_HOST");
 
   if (!serv_host) {
-    printf("Error, No server_host\n");
+    printf("No server_host\n");
     return(-1);
   }
 
   serv_port = getenv("DS_SERVER_PORT");
   if (!serv_port) {
-    printf("Error, No server port\n");
+    printf("No server port\n");
     return(-1);
   }
 
   serv_tcp_port = atoi(serv_port);
-  bzero((char* ) &serv_addr, sizeof(serv_addr));
+  bzero((char *) &serv_addr, sizeof(serv_addr));
 
   if (phe=(struct hostent *)gethostbyname(serv_host))
     bcopy(phe->h_addr,&serv_addr.sin_addr,phe->h_length);
   else {
-    printf("Error, Name %s not in name server\n",serv_host);
+    fprintf(stderr,"Name %s not in name server\n",serv_host);
     return -1;
   }
 
@@ -1476,10 +1253,10 @@ int connect_to_server()
  *                                                                      *
  ************************************************************************/
 
-int send_data(const int sd,const char* const buf)
+int send_data(int sd,char *buf)
 {
   int nleft, nwritten;
-  char* ptr,
+  char *ptr,
     *server_port,
     *server_host;
   int rc;
@@ -1500,10 +1277,10 @@ int send_data(const int sd,const char* const buf)
  *                                                                           *
  *****************************************************************************/
 
-int _write_sock(const int sd, const char* const buf)
+int _write_sock(int sd,char *buf)
 {
   int nwritten,nleft,n=0;
-  const char* ptr;
+  char *ptr;
 
   ptr = buf;
   nleft = strlen(buf);
@@ -1522,7 +1299,7 @@ int _write_sock(const int sd, const char* const buf)
 }
 
 
-int get_ack(const int sd)
+int get_ack(int sd)
 { 
    int nread,
        rc,
@@ -1539,12 +1316,12 @@ int get_ack(const int sd)
   nread += rc;
 
   if (rc < 0) {
-    printf("Error, ERROR read status =%d\n",rc);
+    printf("ERROR read status =%d\n",rc);
     return -2;
   }
 
   if (rc == 0) {
-    printf("Error, Premature EOF encountered - did not get ACK in get_ack\n");
+    printf("Premature EOF encountered - did not get ACK in get_ack\n");
     sleep(20);
     return -1;
   }
@@ -1555,7 +1332,7 @@ int get_ack(const int sd)
     rc = read(sd,&ack_msg[i],1);
     nread+=rc;
     if (rc <= 0) {
-	printf("Error, ERROR read in loop status,i = %d/%d\n",rc,i);
+	printf("ERROR read in loop status,i = %d/%d\n",rc,i);
       return -3;
     }
   }
@@ -1563,3 +1340,4 @@ int get_ack(const int sd)
   ack_return_code = atoi(&ack_msg[4]);
   return(ack_return_code); 
 }
+				
