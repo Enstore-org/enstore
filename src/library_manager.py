@@ -377,7 +377,7 @@ def next_work_any_volume(self):
 		    # and return no work to the idle requester mover
 		    return {"status" : (e_errors.NOWORK, None)}
 		else:
-                    w["reject_reason"] = (v_info['status'],"")
+                    w["reject_reason"] = (v_info['status'][0],v_info['status'][1])
 		    Trace.trace(11,"next_work_any_volume:can_write_volume returned %s" %
                                 (v_info['status'],))
 
@@ -393,7 +393,7 @@ def next_work_any_volume(self):
             # If the volume clerk returned error - return
 	    if v["status"][0] != e_errors.OK:
 		w["status"] = v["status"]
-                w["reject_reason"] = (v["status"],"")
+                w["reject_reason"] = (v["status"][0],v["status"][1])
 		return w
 		
             # found a volume that has write work pending - return it
@@ -471,7 +471,7 @@ def next_work_this_volume(self, v):
 		# return read work ticket
 		return w
         else:
-            w['reject_reason'] = (ret['status'], "")
+            w['reject_reason'] = (ret['status'][0], ret['status'][0])
 	w=self.pending_work.get_next()
     return {"status" : (e_errors.NOWORK, None)}
 
