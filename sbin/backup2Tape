@@ -97,9 +97,9 @@ rm -f $START_BACKUP_DATE
 touch $START_BACKUP_DATE  #make this now, mv'ing it later will NOT change the access time
 
 LAST_BACKUP_DATE=$VAULT/last_backup_date
-list "Last backup on $last"
+list "Last backup on `ls -l $LAST_BACKUP_DATE`"
 
-if [ $FULL="FULL" ]; then
+if [ $FULL = "FULL" ]; then
    find_options="-follow"
    kind=FULL
 else
@@ -168,7 +168,7 @@ find $ENSTORE -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 ENSTORELOG_FILES=$VAULT/enstorelog.files
 rm -f $ENSTORELOG_FILES
-find $ENSTORELOG -type f $find_options  -exec ls -l {} \; | grep -v "$today" | awk '{print $NF }' > $ENSTORELOG_FILES
+find $ENSTORELOG -type f $find_options  -name "LOG*"  -exec ls -l {} \; | grep -v "$today" | awk '{print $NF }' > $ENSTORELOG_FILES
 lines=`wc -l $ENSTORELOG_FILES | awk '{print $1}'`
 list ""
 list "ENSTORE log backup: $lines files to backup to tape"
@@ -186,8 +186,7 @@ done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $ENSTORELOG_FILES
 find $ENSTORELOG -follow -daystart -mtime +30 -exec rm -fr {} \;
-
-
+find $ENSTORELOG -follow -daystart -name "DEBUGLOG*" -mtime +10 -exec rm -fr {} \;
 
 
 ############################################################################
