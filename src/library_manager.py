@@ -261,25 +261,11 @@ class LibraryManagerMethods(DispatchingWorker) :
         rticket["at movers"] = work_at_movers
         rticket["awaiting volume bind"] = work_awaiting_bind
         rticket["pending_work"] = pending_work
-        badsock = data_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-        if badsock != 0 :
-            print "library_manager getwork, data socket pre-send error:", \
-                  errno.errorcode[badsock]
-        self.data_socket.send(repr(rticket))
-        badsock = data_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-        if badsock != 0 :
-            print "library_manager getwork, data socket post-send error:", \
-                  errno.errorcode[badsock]
+        callback.write_tcp_socket(data_socket,rticket,
+                                  "library_manager getwork, datasocket")
         self.data_socket.close()
-        badsock = control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-        if badsock != 0 :
-            print "library_manager getwork, control pre-send error:", \
-                  errno.errorcode[badsock]
-        self.control_socket.send(dict_to_a(ticket))
-        badsock = control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-        if badsock != 0 :
-            print "library_manager getwork, control post-send error:", \
-                  errno.errorcode[badsock]
+        callback.write_tcp_socket(control_socket,ticket,
+                                  "library_manager getwork, controlsocket")
         self.control_socket.close()
 
 

@@ -83,7 +83,7 @@ class cpio :
             magic = "070702"
         else :
             raise errno.errorcode[errno.EINVAL],"Invalid format: "+ \
-		  repr(format)+" only \"new\" and \"CRC\" are valid formats"
+                  repr(format)+" only \"new\" and \"CRC\" are valid formats"
 
         # files greater than 2  GB are just not allowed right now
         max = 2**30-1+2**30
@@ -173,8 +173,8 @@ class cpio :
             pass
         else :
             raise errno.errorcode[errno.EINVAL],"Invalid format: "+ \
-		  repr(magic)+ " only \"070701\" and \"070702\" "+\
-		  "are valid formats"
+                  repr(magic)+ " only \"070701\" and \"070702\" "+\
+                  "are valid formats"
 
         filename_size = string.atoi(buffer[94:102],16)
         data_offset = 110+filename_size
@@ -261,8 +261,8 @@ class cpio :
             length = len(buffer)
             if length == 0 :
                 raise errno.errorcode[errno.EINVAL],"Invalid format of cpio "+\
-		      "format  Expecting "+ repr(data_size)+" bytes, but "+\
-		      "only read"+repr(size)+" bytes"
+                      "format  Expecting "+ repr(data_size)+" bytes, but "+\
+                      "only read"+repr(size)+" bytes"
 
             # decode the cpio header block
             if parse_header :

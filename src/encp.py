@@ -6,7 +6,6 @@ import pprint
 import pwd
 import grp
 import pnfs
-import dict_to_a
 import callback
 from configuration_client import configuration_client
 from udp_client import UDPClient, TRANSFER_MAX
@@ -141,15 +140,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         print "Waiting for mover to call back"
     while 1 :
         control_socket, address = listen_socket.accept()
-        badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0 :
-            print "encp write_to_hsm, mover call back, pre-recv error:",\
-                  errno.errorcode[badsock]
-        new_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
-        badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0 :
-            print "encp write_to_hsm, mover call back, post-recv error:",\
-                  errno.errorcode[badsock]
+        new_ticket = callback.read_tcp_socket(control_socket, "encp write_"+\
+                                              "to_hsm, mover call back")
         if ticket["unique_id"] == new_ticket["unique_id"] :
             listen_socket.close()
             break
@@ -210,15 +202,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     t1 = time.time()
     if list:
         print "Waiting for final mover dialog"
-    badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-    if badsock != 0 :
-        print "encp write_to_hsm, mover final dialog, pre-recv error:",\
-                  errno.errorcode[badsock]
-    done_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
-    badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-    if badsock != 0 :
-        print "encp write_to_hsm, mover final dialog, post-recv error:",\
-              errno.errorcode[badsock]
+    done_ticket = callback.read_tcp_socket(control_socket, "encp write_"+\
+                                           "to_hsm, mover final dialog")
     control_socket.close()
     tinfo["final_dialog"] = time.time()-t1
     if list:
@@ -374,15 +359,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         print "Waiting for mover to call back"
     while 1 :
         control_socket, address = listen_socket.accept()
-        badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0 :
-            print "encp read_from_hsm, mover callback, pre-recv error:",\
-                  errno.errorcode[badsock]
-        new_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
-        badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0 :
-            print "encp read_from_hsm, mover callback, post-recv error:",\
-                  errno.errorcode[badsock]
+        new_ticket = callback.read_tcp_socket(control_socket, "encp read_"+\
+                                              "to_hsm, mover call back")
         if ticket["unique_id"] == new_ticket["unique_id"] :
             listen_socket.close()
             break
@@ -427,15 +405,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     t1 = time.time()
     if list:
         print "Waiting for final mover dialog"
-    badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-    if badsock != 0 :
-        print "encp read_from_hsm, mover final dialog, pre-recv error:",\
-              errno.errorcode[badsock]
-    done_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
-    badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-    if badsock != 0 :
-        print "encp read_from_hsm, mover final dialog, post-recv error:",\
-              errno.errorcode[badsock]
+    done_ticket = callback.read_tcp_socket(control_socket, "encp read_"+\
+                                           "to_hsm, mover final dialog")
     control_socket.close()
     tinfo["final_dialog"] = time.time()-t1
     if list:

@@ -6,7 +6,7 @@ try:
 except ImportError:
     import socket
 
-# see if we can bind to the selected host/port
+# see if we can bind to the selected tcp host/port
 def try_a_port(host, port) :
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -16,7 +16,7 @@ def try_a_port(host, port) :
         return (0 , sock)
     return 1 , sock
 
-# get an unused port for communication
+# get an unused tcp port for communication
 def get_callback() :
     #host = 'localhost'
     (host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
@@ -43,48 +43,67 @@ def get_callback() :
         sleep (1)
 
 
-# return a mover socket
+# return a mover tcp socket
 def mover_callback_socket(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['mover_callback_host'], ticket['mover_callback_port'])
     return sock
 
-# return a library manager socket
+# return a library manager tcp socket
 def library_manager_callback_socket(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['library_manager_callback_host'], \
                  ticket['library_manager_callback_port'])
     return sock
 
-# send ticket/message on user socket and return user socket
+# send ticket/message on user tcp socket and return user tcp socket
 def user_callback_socket(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        print "callback user_callback_socket, block pre-send error:", \
-              errno.errorcode[badsock]
-    sock.send(dict_to_a.dict_to_a(ticket))
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        print "callback user_callback_socket, block post-send error:", \
-              errno.errorcode[badsock]
+    write_tcp_socket(sock,ticket,"callback user_callback_socket")
     return sock
 
-# send ticket/message
+# send ticket/message on tcp socket
 def send_to_user_callback(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        print "callback send_to_user_callback, block pre-send error:", \
-              errno.errorcode[badsock]
-    sock.send(dict_to_a.dict_to_a(ticket))
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        print "callback send_to_user_callback, block post-send error:", \
-              errno.errorcode[badsock]
+    write_tcp_socket(sock,ticket,"callback send_to_user_callback")
     sock.close()
+
+# send a message on a tcp socket
+def write_tpc_socket(sock,buffer,errmsg=""):
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+        print errmsg,"pre-send error:", errno.errorcode[badsock]
+    sock.send(dict_to_a.dict_to_a(buffer))
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+        print errmsg,"pre-send error:", errno.errorcode[badsock]
+
+# read a complete message in a  tcp socket
+def read_tcp_socket(sock,errmsg="") :
+    workmsg = ""
+    while 1:
+        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if badsock != 0 :
+            print errmsg,"pre-recv error:", errno.errorcode[badsock]
+        buf = data_path_socket.recv(65536*4)
+        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if badsock != 0 :
+            print errmsg,"post-recv error:", errno.errorcode[badsock]
+        if len(buf) == 0 :
+            break
+        workmsg = workmsg+buf
+        try:
+            worklist = dict_to_a.a_to_dict(workmsg)
+            return worklist
+        except SyntaxError:
+            continue
+    try:
+        worklist = dict_to_a.a_to_dict(workmsg)
+        return worklist
+    except SyntaxError:
+        raise IOError,"Error handling message"+repr(worklist)
 
 if __name__ == "__main__" :
     print get_callback()

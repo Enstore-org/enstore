@@ -81,17 +81,7 @@ class Mover :
 
     # send a message to our user
     def send_user_last(self, ticket):
-        badsock = self.control_socket.getsockopt(socket.SOL_SOCKET, 
-						 socket.SO_ERROR)
-        if badsock != 0 :
-            print "mover send_user_last,  pre-send error:", \
-                  errno.errorcode[badsock]
-        self.control_socket.send(dict_to_a.dict_to_a(ticket))
-        badsock = self.control_socket.getsockopt(socket.SOL_SOCKET, 
-						 socket.SO_ERROR)
-        if badsock != 0 :
-            print "mover send_user_last,  post-send error:", \
-                  errno.errorcode[badsock]
+        callback.write_tcp_socket(data_socket,ticket, "mover send_user_last")
         self.control_socket.close()
 
 
