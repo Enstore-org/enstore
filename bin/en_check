@@ -1,0 +1,16 @@
+#! /bin/sh
+
+print_usage()
+{
+    echo "Usage: " $0 "<input_file> <output_file>"
+}
+
+if [ $# -lt 2 ]; then
+    print_usage
+    exit 1
+fi
+
+encp --check $*
+rtn=$?
+
+exit $rtn
