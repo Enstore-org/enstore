@@ -83,6 +83,7 @@ class DispatchingWorker:
     def fork(self):
         """Fork off a child process"""
         pid = os.fork()
+        
         if pid != 0:  #We're in the parent process
             self.is_child = 0
             return pid
@@ -147,7 +148,7 @@ class DispatchingWorker:
         #   time out where there is no string or r.a.
 
         f = self.server_fds + [self.socket]
-        r, w, x = cleanUDP.Select(f,[],f, self.rcv_timeout)
+        r, w, x, remaining_time = cleanUDP.Select(f,[],f, self.rcv_timeout)
         
         if r:
             # if input is ready from server process pipe, handle it first
@@ -173,10 +174,11 @@ class DispatchingWorker:
             # req is (string,address) where string has CRC
             req = self.socket.recvfrom(self.max_packet_size)
             request,inCRC = eval(req[0])
+                
             # calculate CRC
             crc = checksum.adler32(0L, request, len(request))
             if (crc != inCRC) :
-                Trace.trace(6,"handle_request - bad CRC inCRC="+repr(inCRC)+\
+                Trace.trace(6,"handle_request - bad CRC inCRC="+repr(inCRC)+
                         " calcCRC="+repr(crc))
                 Trace.log(e_errors.INFO, "BAD CRC request: "+request)
                 Trace.log(e_errors.INFO,
@@ -211,34 +213,23 @@ class DispatchingWorker:
         self.client_number = number
         self.current_id = idn
 
-        Trace.trace(6,"process_request idn="+repr(idn)+" number"+repr(number)+\
-                    " req="+repr(request))
-
-        try:
+        
+        if request_dict.has_key(idn):
 
             # UDPClient resends messages if it doesn't get a response
             # from us, see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
-            list = eval(repr(request_dict[idn]))  ## XXX What is this???
-            if list[0] == number:
+            lst = request_dict[idn]
+            if lst[0] == number:
                 Trace.trace(6,"process_request "+repr(idn)+" already handled")
-                self.reply_with_list(list)
+                self.reply_with_list(lst)
                 return
-
-            # if the request number is larger, then this request is new
-            # and we need to process it
-            elif list[0] < number:
-                pass # new request, fall through
 
             # if the request number is smaller, then there has been a timing
             # race and we've already handled this as much as we are going to.
-            else:
+            elif number < lst[0]: 
                 Trace.trace(6,"process_request "+repr(idn)+" old news")
                 return #old news, timing race....
-
-        # on the very 1st request, we don't have anything to compare to
-        except KeyError:
-            pass # first request or request purged by purge_stale_entries, fall through
 
         # look in the ticket and figure out what work user wants
         try:
@@ -321,7 +312,7 @@ class DispatchingWorker:
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
     def reply_to_caller(self, ticket):
-        Trace.trace(18,"reply_to_caller number="+repr(self.client_number)+\
+        Trace.trace(18,"reply_to_caller number="+repr(self.client_number)+
                     " id ="+repr(self.current_id))
 
         # There is some path that causes bfids to be in the ticket -- delete it XXX FIXME
@@ -340,7 +331,7 @@ class DispatchingWorker:
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
-        Trace.trace(19,"reply_with_list number="+repr(self.client_number)+\
+        Trace.trace(19,"reply_with_list number="+repr(self.client_number)+
                     " id ="+repr(self.current_id))
         request_dict[self.current_id] = copy.deepcopy(list)
         self.socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
@@ -353,8 +344,8 @@ class DispatchingWorker:
         self.client_number = ticket["ra"][1]
         self.current_id    = ticket["ra"][2]
         reply = (self.client_number, ticket, time.time())
-        Trace.trace(19,"reply_with_address "+ \
-                   repr(self.reply_address)+" "+ \
-                   repr(self.current_id)+" " + \
+        Trace.trace(19,"reply_with_address "+ 
+                   repr(self.reply_address)+" "+ 
+                   repr(self.current_id)+" " + 
                    repr(self.client_number)+" "+repr(reply))
         self.reply_to_caller(ticket)
