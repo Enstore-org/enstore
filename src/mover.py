@@ -507,6 +507,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._last_state = self.state
         self.check_dismount_timer()
 
+    def _do_delayed_update(self):
+        for x in xrange(3):
+            time.sleep(1)
+            self.update()
+        
+    def delayed_update(self):
+        self.run_in_thread('delayed_update_thread', self._do_delayed_update)
+        
     def check_dismount_timer(self):
         ## See if the delayed dismount timer has expired
         now = time.time()
@@ -1034,8 +1042,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.maybe_clean()
             self.idle()
-        #give encp a chance to submit another request with low latency
-        self.schedule_update(time.time() + 3)
+            
+        self.delayed_update()
+    
         
     def transfer_completed(self):
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
@@ -1064,8 +1073,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state == HAVE_BOUND:
             self.update(reset_timer=1)
 
-        #give encp a chance to submit another request with low latency
-        self.schedule_update(time.time() + 3)
+        self.delayed_update()
+
 
             
     def maybe_clean(self):
