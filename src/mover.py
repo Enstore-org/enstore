@@ -931,7 +931,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
                 t0 = time.time()
                 driver_object.seek( ticket['fc']['location_cookie'] )
-                print 1/0#REMOVE
                 ticket['times']['seek_time'] = time.time() - t0
 
                 # create the wrapper instance (could be different for different tapes)
