@@ -239,8 +239,6 @@ class Interface:
                 self.get_work = 1
             elif opt == "--get_suspect_vols" :
                 self.get_susp_vols = 1
-            elif opt == "--get_delayed_dismount" :
-                self.get_delayed_dismount = 1
             elif opt == "--delete_work" :
                 self.work_to_delete = value
                 self.delete_work = 1

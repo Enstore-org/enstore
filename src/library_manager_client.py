@@ -98,9 +98,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def get_suspect_volumes(self):
 	return self.getlist("get_suspect_volumes")
 
-    def get_delayed_dismounts(self):
-	return self.getlist("get_delayed_dismounts")
-
     def remove_work(self, id):
 	print "ID", id
 	return self.send({"work":"remove_work", "unique_id": id})
@@ -205,7 +202,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.get_susp_vols = 0
-	self.get_delayed_dismount = 0
 	self.get_susp_vols = 0
         self.delete_work = 0
 	self.priority = -1
@@ -228,7 +224,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         else:
             return self.client_options()+\
                    ["get_work", "get_suspect_vols",
-                    "get_delayed_dismount","delete_work=","priority=",
+                    "delete_work=","priority=",
                     "load_movers", "poll", "get_queue=","host=",
                     "start_draining=", "stop_draining", "status", "active_volumes",
                     "storage_groups"]
@@ -272,9 +268,6 @@ def do_work(intf):
     elif  intf.get_susp_vols:
 	ticket = lmc.get_suspect_volumes()
 	print ticket['suspect_volumes']
-    elif  intf.get_delayed_dismount:
-	ticket = lmc.get_delayed_dismounts()
-	print ticket['delayed_dismounts']
     elif intf.delete_work:
 	ticket = lmc.remove_work(intf.work_to_delete)
 	print repr(ticket)
