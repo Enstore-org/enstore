@@ -2,6 +2,9 @@
 #
 # Run netperf between all pairs of nodes in the rip cluster
 
+# NOTE: this script is highly dependent about the node names and will currently only work at
+# Fermilab.
+
 echo -e "\n\nfrom/to\trip1\trip2\trip3\trip4\trip5\trip6\trip7\trip8\trip9\trip10\trip11\trip12\n"
 
 fromNode=1

@@ -2,6 +2,11 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+# information specific to Fermilab
+thisNode='d0ensrv2'
+rdistNode='d0ensrv3.fnal.gov'
+filePath='/diska'
+
 # bin/$RCSfile$  $Revision$
 
 # script to backup enstore log files to the backup node
@@ -15,10 +20,10 @@ doit() { echo "$1"
          echo "" 
        }
 
-if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+if [ `uname -n | grep -c ${thisNode}` -ne 0 ]; then
 
  # cmd="rdist -c /diska/enstore-log/ enstore@d0ensrv3.fnal.gov:/diska/enstore-log-backup"
- cmd="/usr/bin/rsync   -l -p -o -g -D -t -x --delete --force /diska/enstore-log/*LOG-* enstore@d0ensrv3.fnal.gov:/diska/enstore-log-backup"
+ cmd="/usr/bin/rsync   -l -p -o -g -D -t -x --delete --force ${filePath}/enstore-log/*LOG-* enstore@${rdistNode}:${filePath}/enstore-log-backup"
  doit "$cmd"
 
 else
