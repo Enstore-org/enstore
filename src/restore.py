@@ -75,13 +75,20 @@ def ddiff(o1, o2):
 	# for everything else
 	return `o1` != `o2`
 
+# suffix(s) -- returns the suffix of s
+
+def suffix(s):
+
+	s1 = string.split(s, '.')
+	if len(s1) <= 1:
+		return None
+	else:
+		return s1[-1]
+
 # getHomes(intf) -- get dbHome, jouHome, bckHost and bckHome
 
 def getHomes(intf):
 	
-
-	intf = Interface()
-
 	# find dbHome and jouHome
 	try:
 		dbInfo = configuration_client.ConfigurationClient(
@@ -133,36 +140,9 @@ def backupDB(dbHome, jouHome, dbs):
 				f = os.path.join(dbHome, i)
 				os.rename(f, f+".saved")
 
-# revertDB(dbHome, jouHome) -- revert to previous database files
-#				in case of aborting the restoration
-
-def revertDB(dbHome, jouHome):
-
-	# clean up dbHome
-
-	for i in os.listdir(dbHome):
-		s = string.split(i, ".saved")
-		if len(s) == 2 and s[1] == '':
-			f = os.path.join(dbHome, s[0])
-			os.rename(f+'.saved', f)
-
-	# remove extra journal files
-
-	cleanUp_jou(jouHome)
-
-# cleanUp(dbHome, jouHome) -- clean up un-necessary files
-
-def cleanUp(dbHome, jouHome):
-
-	# clean up dbHome
-
-	cleanUp_db(dbHome)
-
-	# remove extra journal files
-
-	cleanUp_jou(jouHome)
-
 # cleanUp_db(dbHome) -- clean up dbHome by deleting backup files
+
+def cleanUp_db(dbHome):
 
 	# clean up dbHome
 
@@ -183,6 +163,35 @@ def cleanUp_jou(jouHome):
 			f = os.path.join(jouHome, i)
 			os.remove(f)
 	
+# cleanUp(dbHome, jouHome) -- clean up un-necessary files
+
+def cleanUp(dbHome, jouHome):
+
+	# clean up dbHome
+
+	cleanUp_db(dbHome)
+
+	# remove extra journal files
+
+	cleanUp_jou(jouHome)
+
+# revertDB(dbHome, jouHome) -- revert to previous database files
+#				in case of aborting the restoration
+
+def revertDB(dbHome, jouHome):
+
+	# clean up dbHome
+
+	for i in os.listdir(dbHome):
+		s = string.split(i, ".saved")
+		if len(s) == 2 and s[1] == '':
+			f = os.path.join(dbHome, s[0])
+			os.rename(f+'.saved', f)
+
+	# remove extra journal files
+
+	cleanUp_jou(jouHome)
+
 # retriveBackup(dbHome, jouHome, bckHost, bckHome, when)
 #	actually retrive backup version of database and journal files
 #	from bckHost:bckHome
@@ -251,16 +260,6 @@ def retriveBackup(dbHome, jouHome, bckHost, bckHome, when = -1):
 
 	return bckFile
 	
-# suffix(s) -- returns the suffix of s
-
-def suffix(s):
-
-	s1 = string.split(s, '.')
-	if len(s1) <= 1:
-		return None
-	else:
-		return s1[-1]
-
 # getIndex(dbHome, dbs) -- get the index name from the index files
 #
 #	index file names are of the following format:
