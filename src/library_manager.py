@@ -327,7 +327,7 @@ def next_work_any_volume(self):
     while w:
         # if we need to read and volume is busy, check later
         if w["work"] == "read_from_hsm":
-            if is_volume_busy(self, w["fc"]["external_label"]) :
+            if is_volume_busy(self, w["fc"]["external_label"]):
                 w["reject_reason"] = ("VOL_BUSY",w["fc"]["external_label"])
                 w=self.pending_work.get_next()
                 continue
@@ -1081,6 +1081,24 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, mticket, state)
+        # just did some work, delete it from queue
+        w = get_work_at_movers (self, mticket['vc']["external_label"])
+        if w:
+            Trace.trace(13,"removing %s  from the queue"%(w,))
+	    delayed_dismount = w['encp']['delayed_dismount']
+            # file family may be changed by VC during the volume
+            # assignment. Set file family to what vC has returned
+            if mticket['vc']["external_label"]:
+                vol_info = self.vcc.inquire_vol(mticket['vc']["external_label"])
+                w['vc']['file_family'] = vol_info['file_family']
+	    self.work_at_movers.remove(w)
+	    mv = find_mover(mticket, movers)
+	    if mv and  mv.has_key("work_ticket"):
+                # update mv["file_family"]
+                mv['file_family'] = w['vc']['file_family']
+		del(mv["work_ticket"])
+
+	else: delayed_dismount = 0
 	# check if mover can accept another request
 	if state != 'idle_mover':
             Trace.trace(14,"have_bound_volume state:%s"%(state,))
@@ -1091,45 +1109,27 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     if (self.mover_index >= mover_cnt and 
                         self.mover_index > 0):
                         self.mover_index = mover_cnt - 1
-                        Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
-                        v = self.vcc.set_at_mover(mticket['vc']['external_label'], 
-                                                  'unmounting', 
-                                                  mticket["mover"])
-                        if v['status'][0] != e_errors.OK:
-                            state,mover=v.get('at_mover')
-                            format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
-                            Trace.log(e_errors.INFO, format%\
-                                      (mticket['vc']['external_label'],
-                                       mover, 
-                                       state))
+                    Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
+                    v = self.vcc.set_at_mover(mticket['vc']['external_label'], 
+                                              'unmounting', 
+                                              mticket["mover"])
+                    if v['status'][0] != e_errors.OK:
+                        state,mover=v.get('at_mover')
+                        format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
+                        Trace.log(e_errors.INFO, format%\
+                                  (mticket['vc']['external_label'],
+                                   mover, 
+                                   state))
 		
-                        format = "unbind vol %s mover=%s"
-                        Trace.log(e_errors.INFO, format %\
-                                  (mticket['vc']["external_label"],
-                                   mticket["mover"]))
-                        mv['state'] = 'unbind_sent'
-                        self.reply_to_caller({"work" : "unbind_volume"})
+                    format = "unbind vol %s mover=%s"
+                    Trace.log(e_errors.INFO, format %\
+                              (mticket['vc']["external_label"],
+                               mticket["mover"]))
+                    mv['state'] = 'unbind_sent'
+                    self.reply_to_caller({"work" : "unbind_volume"})
             else:
                 self.reply_to_caller({'work': 'nowork'})
-	    return
-
-        # just did some work, delete it from queue
-        w = get_work_at_movers (self, mticket['vc']["external_label"])
-        if w:
-            Trace.trace(13,"removing %s  from the queue"%(w,))
-	    delayed_dismount = w['encp']['delayed_dismount']
-            # file family may be changed by VC during the volume
-            # assignment. Set file family to what vC has returned
-            vol_info = self.vcc.inquire_vol(mticket['vc']["external_label"])
-            w['vc']['file_family'] = vol_info['file_family']
-	    self.work_at_movers.remove(w)
-	    mv = find_mover(mticket, movers)
-	    if mv and  mv.has_key("work_ticket"):
-                # update mv["file_family"]
-                mv['file_family'] = w['vc']['file_family']
-		del(mv["work_ticket"])
-
-	else: delayed_dismount = 0
+            return
         # otherwise, see if this volume will do for any other work pending
         w = next_work_this_volume(self, mticket["vc"])
         if w["status"][0] == e_errors.OK:

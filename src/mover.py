@@ -222,6 +222,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
         driver_object = self.hsm_driver.open( self.mvr_config['device'], 'r' )
         ss = driver_object.get_stats()
         if ss['serial_num'] != None: self.hsm_drive_sn = ss['serial_num']
+        self.mvr_config['serial_num'] = ss['serial_num']
+        self.mvr_config['product_id'] = ss['product_id']
+        self.mvr_config['vendor_id'] = ss['vendor_id']
+        
 
         # check for tape in drive
         # if no vol one labels, I can only eject. -- tape maybe left in bad
@@ -415,8 +419,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
     #
     # ok, I went ahead and moved them back in. - cgw
     def do_fork( self, ticket, mode ):
-        if self.state != 'idle':
+        if self.state != 'idle' and self.state != 'draining':
             Trace.log(e_errors.ERROR, "mover: do_fork called when mover already forked")
+
         ticket['mover'] = self.mvr_config
         if mode == 'w' or mode == 'r':
             # get vcc and fcc for this xfer
@@ -437,7 +442,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             self.work_ticket = ticket	#just save the whole thing for "status"
                                             # and for bind to get lm address!
             pass
-        self.state = 'busy'
+        if self.state != 'draining': self.state = 'busy' # drainig state cannot be changed
         self.mode = mode			# client mode, not driver mode
 
         self.pid = self.fork()
@@ -1460,8 +1465,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
     def do_next_req_to_lm( self, next_req_to_lm, address ):
         while next_req_to_lm != {} and next_req_to_lm != None:
             rsp_ticket = self.udpc.send(  next_req_to_lm, address )
-            # STATE COULD BE 'BUSY' OR 'OFFLINE'
-            if self.state != 'idle' and rsp_ticket['work'] != 'nowork':
+            # STATE COULD BE 'BUSY' OR 'OFFLINE' OR 'DRAINING'
+            if self.state != 'idle' and self.state != 'draining' and rsp_ticket['work'] != 'nowork':
                 # CHANGE THIS TO Trace.alarm???
                 Trace.log( e_errors.ERROR,
                            'FATAL ENSTORE - libm gave busy or offline move work %s'%
