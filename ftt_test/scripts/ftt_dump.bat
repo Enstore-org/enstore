@@ -19,16 +19,8 @@ if "%FTT_TAPE%" == "" goto usage
 rem ===============================================================================
 
 
-echo ftt_open -read		>  tmp.dat
-echo ftt_rewind			>> tmp.dat
-echo ftt_dump			>> tmp.dat
-echo ftt_close			>> tmp.dat
-echo quit				>> tmp.dat
 
-
-ftt_test < tmp.dat 
-
-del tmp.dat
+call ftt_run_test dump 
 
 goto end
 

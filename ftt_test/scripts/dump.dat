@@ -1,0 +1,13 @@
+#
+# @(#) $Id$
+#
+# this file is input for ftt_test used by ftt_run_test script
+#
+#===============================================================================
+
+ftt_open -read
+ftt_dump
+ftt_close
+quit
+
+

@@ -10,11 +10,7 @@ export FTT_TAPE
 FTT_TAPE=${1:-${FTT_TAPE:-""}}
 FTT_TAPE=${FTT_TAPE:?"No device specified"}
 #===============================================================================
- 
-ftt_test << EOD
-ftt_open -read
-ftt_dump
-ftt_close
-quit
-EOD
+
+ftt_run_test dump
+
 
