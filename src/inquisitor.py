@@ -169,7 +169,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                           "Attempting restart of %s"%key)
                                 while i < 3:
                                     Trace.trace(7, "Server restart: try %s"%i)
-                                    os.system('enstore restart --just %s'%key)
+				    # we need just the node name part of the host name
+				    node = string.split(host, ".", 1)
+                                    os.system('enstore Erestart %s "--just %s"'%(node[0], key))
                                     # check if alive
                                     ret = self.alive_status(client,
                                                             (host, port),
