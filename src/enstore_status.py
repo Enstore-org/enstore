@@ -309,7 +309,7 @@ class EnstoreStatus:
 	        [erest2, erest3] = string.splitfields(erest, ":", 1)
 	        # erest2 has the file name info which we do not need, get the 
 	        # total data transfer rate from the end of erest3
-	        [erest2, tt] = string.splitfields(erest3, "(",1)
+	        [erest2, tt] = string.splitfields(erest3, "(", 1)
 	        [tt, etmp] = string.splitfields(tt, ")",1)
 	        str = str+" (Data Transfer Rate : "+tt+")"
 	        # what's left in erest2 is what we want, but make it clearer
