@@ -133,7 +133,7 @@ class MonitorServerClient:
 	    enstore_functions.strip_node(remote_addr),
             block_count,
             block_size,
-            "%.4g" % elapsed,
+            "%.4g" % (elapsed,),
             rate
             )
             }
@@ -231,7 +231,7 @@ def do_work(intf):
         
     for ip in ip_list:
         if vetos.is_vetoed_item(ip):
-            print "Skipping %s : %s" % vetos.veto_info(ip)
+            print "Skipping %s" % (vetos.veto_info(ip),)
             break
         print "Trying", socket.gethostbyaddr(ip), 
         msc = MonitorServerClient(
