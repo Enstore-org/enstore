@@ -563,6 +563,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     else: ret_stat = (e_errors.NOACCESS,None)
             else:
                 ret_stat = (e_errors.UNKNOWN,None)
+        if ret_stat[0] == e_errors.OK:
+            # check the wrapper to fix bug in the prev. version of next_write_volume
+            if record['wrapper'] == 'none':
+                record['wrapper'] = volume_family.extract_wrapper(ticket['volume_family'])
+                self.dict[label] = record
         ticket['status'] = ret_stat
         Trace.trace(35, "is_volume_available: returning %s " %(ret_stat,))
         self.reply_to_caller(ticket)
@@ -704,6 +709,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             if ff == 'ephemeral':
                 vol_fam = volume_family.make_volume_family(sg, label, wrapper_type)
             vol['volume_family'] = vol_fam
+            vol['wrapper'] = wrapper_type
             Trace.log(e_errors.INFO, "Assigning blank volume %s from storage group %s to library %s, volume family %s"
                       % (label, pool, library, vol_fam))
             self.dict[label] = vol  
