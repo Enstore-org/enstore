@@ -50,6 +50,7 @@ static char *signature = "Enstore \nSignature: \n2nst4r2 \n2etuorne ";
 #include <netdb.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <limits.h>
 
 #define SEQ 1
 
@@ -176,7 +177,7 @@ char **argv;
      * defaults to the first one it finds) we can avoid this
      * problem when interfaces are on the same subnet.
      */
-    force_arp_update(argv[3], argv[5]);    
+    (void) force_arp_update(argv[3], argv[5]);    
   }
   else if(!strcmp(argv[2], "del"))
   {
@@ -237,7 +238,7 @@ char **argv;
      * defaults to the first one it finds) we can avoid this
      * problem when interfaces are on the same subnet.
      */
-    force_arp_update(argv[3], argv[5]);
+    (void) force_arp_update(argv[3], argv[5]);
   }
 
   close(rs);
@@ -376,7 +377,7 @@ char **argv;
 		 * defaults to the first one it finds) we can avoid this
 		 * problem when interfaces are on the same subnet.
 		 */
-	        force_arp_update(argv[3], argv[5]);
+	        (void) force_arp_update(argv[3], argv[5]);
 	}
 	
 	exit(0);
@@ -508,13 +509,15 @@ static int force_arp_update(char *dest_addr, char *local_intf)
 
 	if (getexecpath(path) == NULL)
 	{
-		return;
+		return(NoPrivilege);
 	}
    
 	sprintf(arping, "%s -q -I %s -c 1 %s", path, local_intf, dest_addr);
 	if(system(arping))
 	{
 		fprintf(stderr, "ARP update failed.\n");
-		return;
+		return(FailedExecution);
 	}
+
+	return(0);
 }
