@@ -1549,9 +1549,15 @@ def submit_one_request(ticket):
 
 #mode should only contain two values, "read", "write".
 def open_local_file(filename, e):
-    #If the file descriptor will be memory mapped, we need both read and
-    # write permissions on the descriptor.
-    flags = os.O_RDWR
+    if e.mmap_io:
+        #If the file descriptor will be memory mapped, we need both read and
+        # write permissions on the descriptor.
+        flags = os.O_RDWR
+    else:
+        if e.outtype == "hsmfile": #writes
+            flags = os.O_RDONLY
+        else: #reads
+            flags = os.O_WRONLY
 
     #On systems where O_DIRECT does exist we must set the value directly.
     # This must be done when the file is opened.  It doesn't work if it
@@ -1560,7 +1566,7 @@ def open_local_file(filename, e):
     if sysname == "Linux" and e.direct_io:
         #On linix this is generally ignored.  XFS on linux seems to use it,
         # since the rates on the terabyte filesystems are improved with its
-        # use.
+        # use.  Ext2 on linux uses it.
         O_DIRECT = 16384     #O_DIRECT
     #Setting this on IRIX using a filesystem that doesn't support O_DIRECT 
     # will result in EINVAL error.  (ie. XFS would work, but NFS would fail.)
@@ -1579,9 +1585,35 @@ def open_local_file(filename, e):
 	    try:
 		local_fd = os.open(filename, flags, 0666)
 		e.direct_io = 0  #Direct io failed, using posix io.
-		sys.stderr.write("Direct io failed, using posix io.\n")
+		sys.stderr.write(
+                    "Direct io failed (%s), using posix io.\n",
+                    os.strerror(detail.errno))
 	    except OSError, detail:
 		#USERERROR is on the list of non-retriable errors.  Because of
+		# this the return from handle_retries will remove this request
+		# from the list.  Thus avoiding issues with the continue and
+		# range(submitted).
+		done_ticket = {'status':(e_errors.USERERROR, str(detail))}
+		return done_ticket
+        if e.mmap_io and detail.errno == errno.EACCES:
+            #If we get here then check if we can open the file with only
+            # specified file permission.
+
+            #Determine the minimum permissions needed for posix I/O.
+            if e.outtype == "hsmfile": #writes
+                flags = os.O_WRONLY
+            else: #reads
+                flags = os.O_RDONLY
+
+            #Try again with posix I/O.
+            try:
+                local_fd = os.open(filename, flags, 0666)
+		e.mmap_io = 0  #Direct io failed, using posix io.
+		sys.stderr.write(
+                    "Memory mapped io failed (%s), using posix io.\n",
+                    os.strerror(detail.errno))
+            except OSError, detail:
+                #USERERROR is on the list of non-retriable errors.  Because of
 		# this the return from handle_retries will remove this request
 		# from the list.  Thus avoiding issues with the continue and
 		# range(submitted).
@@ -3979,7 +4011,7 @@ def main():
 
     #Print this information to make debugging easier.
     Trace.message(DONE_LEVEL, 'Start time: %s' % time.ctime(encp_start_time))
-    Trace.message(DONE_LEVEL, 'User: %s' % user_name)
+    Trace.message(DONE_LEVEL, 'User: %s' % log_name)
     Trace.message(DONE_LEVEL, 'Command line: %s' % string.join(sys.argv))
     Trace.message(DONE_LEVEL, 'Version: %s' % encp_client_version())
 
