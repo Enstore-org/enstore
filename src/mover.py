@@ -928,7 +928,11 @@ class MoverServer(  dispatching_worker.DispatchingWorker
         # clean up the mvr_config a bit
         mvr_config['name'] = name
         mvr_config['do_fork'] = 1
+	# for porduction, either add 'execution_env':'production to mover
+        # config or change this default to 'production'
+	if not 'execution_env' in mvr_config.keys(): mvr_config['execution_env'] = 'devel'
         if not 'do_eject' in mvr_config.keys(): mvr_config['do_eject'] = 'yes'
+
         del mvr_config['status']
 
         # get clients -- these will be (readonly) global object instances
@@ -1311,10 +1315,6 @@ intf = MoverInterface()
 
 mvr_srvr =  MoverServer( (intf.config_host, intf.config_port), intf.name )
 del intf
-
-# for porduction, either add 'execution_env':'production to mover config
-# or change this default to 'production'
-if not 'execution_env' in mvr_srvr.keys(): mvr_srvr['execution_env'] = 'devel'
 
 mvr_srvr.serve_forever()
 
