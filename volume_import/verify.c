@@ -137,7 +137,6 @@ check_volume_label_legal(){
 /*	case '$':    can cause trouble with shell-scripts! */
 	case '.':
 	    continue;
-	    break;
 	default:
 	    fprintf(stderr,"%s: illegal character %c in volume label\n", 
 		    progname, *cp);
@@ -191,7 +190,6 @@ verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 		"Use '--erase' option to delete it\n");
 	return -1;
     }
-    return 0;
 }
 
 /* check that the volume label given matches what's on the tape */
