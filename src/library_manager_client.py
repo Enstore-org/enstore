@@ -113,8 +113,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def change_lm_state(self, state):
         return self.send({"work":"change_lm_state", "state": state})
 
-    def get_lm_state(self):
-        return self.send({"work":"get_lm_state"})
+    def get_lm_state(self, timeout=0, tries=0):
+        return self.send({"work":"get_lm_state"}, timeout, tries)
         
 
     def priority(self, id, pri):
