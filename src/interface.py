@@ -229,7 +229,11 @@ class Interface:
             elif opt == "--bfid":
                 self.bfid = value
             elif opt == "--bfids":
-                self.bfids = value
+                # recycle it for dul purpose
+                if value:
+                    self.bfids = value
+                else:
+                    self.bfids = 1
             elif opt == "--bytes":
                 if not self.test_mode:
                     sys.stderr.write("bytecount may only be specified in test mode\n")
@@ -260,7 +264,11 @@ class Interface:
             elif opt == "--delayed-dismount":
                 self.delayed_dismount = int(value)
             elif opt == "--delete":
-                self.delete = value
+                # recycle it for dual purpose
+                if value:
+                    self.delete = value
+                else:
+                    self.delete = 1
             elif opt == "--delete-work":
                 self.work_to_delete = value
                 self.delete_work = 1
