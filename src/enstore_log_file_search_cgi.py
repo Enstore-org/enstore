@@ -32,23 +32,30 @@ def go():
             # the user did not enter a search string
             print "ERROR: Please enter a search string."
             raise SystemExit
-        if form.has_key("logfile"):
-            logfile = form["logfile"].value
-        else:
-            # the user did not enter a logfile name
-            print "ERROR: Please enter a logfile name."
-            raise SystemExit
 
 	# we need to find the location of enstore so we can import
 	(config_host, config_port) = enstore_utils_cgi.find_enstore()
 	config_port = int(config_port)
 
-	# add the config port and host to the environment
-	#os.environ['ENSTORE_CONFIG_HOST'] = config_host
-	#os.environ['ENSTORE_CONFIG_PORT'] = config_port
+	import log_client
+	import log_server
+        if form.has_key("logfile"):
+            logfile = form["logfile"].value
+	    # as a convenience to the user, we will check if the user forgot to add
+	    # the LOG- prefix onto the log file name, and add it ourselves.
+	    for lkey in log_client.VALID_PERIODS.keys():
+		if logfile == lkey:
+		    # we found a match so we will not be adding the generic log
+		    # file prefix to the name of the entered logfile
+		    break
+	    else:
+		if not logfile[0:4] == log_server.FILE_PREFIX:
+		    logfile = "%s%s"%(log_server.FILE_PREFIX, logfile)
+        else:
+            # the user did not enter a logfile name assume all
+	    logfile = "all"
 
 	# get a list of the log files we need
-	import log_client
 	logc = log_client.LoggerClient((config_host, config_port))
 	ticket = logc.get_logfiles(logfile, enstore_utils_cgi.TIMEOUT,
 				   enstore_utils_cgi.RETRIES)
