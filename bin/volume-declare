@@ -34,6 +34,11 @@ igordisk     none    diskfile  flop402    14000000    14000000
 igordisk     none    diskfile  flop403    14000000    14000000
 igordisk     none    diskfile  flop404   140000000   140000000
 igordisk     none    diskfile  flop405   140000000   140000000
+pcfarm5disk  none    diskfile  flop501    14000000    14000000
+pcfarm5disk  none    diskfile  flop502    14000000    14000000
+pcfarm5disk  none    diskfile  flop503    14000000    14000000
+pcfarm5disk  none    diskfile  flop504   140000000   140000000
+pcfarm5disk  none    diskfile  flop505   140000000   140000000
 shelf        none    cartridge cart90     14000000    14000000
 shelf        none    cassette  cass91     14000000    14000000
 redwood50    none    redwood   000004  50000000000 50000000000
