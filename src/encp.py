@@ -3,6 +3,27 @@
 # $Id$
 #
 
+#############################################################################
+# Environmental variables that effect encp.
+#
+# $ENSTORE_CONFIG_HOST = The hostname/ip of the configuration server.
+# $ENSTORE_CONFIG_PORT = The port number of the configuration server.
+# $ENSTORE_SPECIAL_LIB = Override the library manager to use.  Use with care.
+#                        Its original purpose was to use a migration LM
+#                        for the 9940A to 9940B conversion.
+# $ENCP_DAQ = <Its a mover thing.>
+# $ENCP_CANONICAL_DOMAINNAME = Encp will attempt on reads to try the three
+#                              paths to a file: /pnfs/xyz, /pnfs/fs/usr/xyz and
+#                              /pnfs/fnal.gov/usr/xyz.  Most on site machines
+#                              whoose domain matches the second component of
+#                              the last pathname do not have to worry.  One
+#                              example where this override would be needed
+#                              are machines whoose domain name looks like:
+#                              dhcp.fnal.gov instead of simply fnal.gov.
+#                              Another example would be nodes in a different
+#                              domain/site all together (i.e. sudan.org).
+############################################################################
+
 # system imports
 import sys
 import os
@@ -406,6 +427,96 @@ def is_read(ticket_or_interface):
 # if the transfer(s) is/are a write or not.
 def is_write(ticket_or_interface):
     return not is_read(ticket_or_interface)
+
+############################################################################
+
+def get_enstore_pnfs_path(filepath):
+    #Make sure this is a string.
+    if type(filepath) != types.StringType:
+        raise EncpError(None, "Expected string filename.",
+                        e_errors.WRONGPARAMETER)
+
+    #Make absolute path.
+    machine, filename, dirname, basename = fullpath(filepath)
+
+    #Determine the canonical path base.
+    canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
+    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr")
+
+    #Return an error if the file is not a pnfs filename.
+    if dirname[:6] != "/pnfs/":
+        raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
+
+    if dirname[:13] == "/pnfs/fs/usr/":
+        return "/pnfs/" + filename[13:]
+    elif dirname[:19] == canonical_pathbase:
+        return "/pnfs/" + filename[19:]
+    elif dirname[:6] == "/pnfs/":
+        return filename
+    else:
+        raise EncpError(None, "Unable to return enstore pnfs pathname.",
+                        e_errors.WRONGPARAMETER)
+
+def get_enstore_fs_path(filepath):
+    #Make sure this is a string.
+    if type(filepath) != types.StringType:
+        raise EncpError(None, "Expected string filename.",
+                        e_errors.WRONGPARAMETER)
+
+    #Make absolute path.
+    machine, filename, dirname, basename = fullpath(filepath)
+
+    #Determine the canonical path base.
+    canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
+    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr")
+    
+    #Return an error if the file is not a pnfs filename.
+    if dirname[:6] != "/pnfs/":
+        raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
+
+    if dirname[:13] == "/pnfs/fs/usr/":
+        return filename
+    elif dirname[:19] == canonical_pathbase:  #i.e. "/pnfs/fnal.gov/usr/"
+        return "/pnfs/fs/usr/" + filename[19:]
+    elif dirname[:6] == "/pnfs/":
+        return "/pnfs/fs/usr/" + filename[6:]
+    else:
+        raise EncpError(None, "Unable to return enstore pnfs pathname.",
+                        e_errors.WRONGPARAMETER)
+
+def get_enstore_canonical_path(filepath):
+    #Make sure this is a string.
+    if type(filepath) != types.StringType:
+        raise EncpError(None, "Expected string filename.",
+                        e_errors.WRONGPARAMETER)
+
+    #Make absolute path.
+    machine, filename, dirname, basename = fullpath(filepath)
+
+    #Determine the canonical path base.  If the ENCP_CANONICAL_DOMAINNAME
+    # overriding environmental variable is set, use that.
+    if os.environ.get('ENCP_CANONICAL_DOMAINNAME', None):
+        canonical_name = os.environ['ENCP_CANONICAL_DOMAINNAME']
+    else:
+        canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
+    #Use the canonical_name to determine the canonical pathname base.
+    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr")
+
+    #Return an error if the file is not a pnfs filename.
+    if dirname[:6] != "/pnfs/":
+        raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
+
+    print "canonical_pathbase", canonical_pathbase
+
+    if dirname[:19] == canonical_pathbase: #i.e. "/pnfs/fnal.gov/usr/"
+        return filename
+    elif dirname[:13] == "/pnfs/fs/usr/":
+        return os.path.join(canonical_pathbase, filename[13:])
+    elif dirname[:6] == "/pnfs/":
+        return os.path.join(canonical_pathbase, filename[6:])
+    else:
+        raise EncpError(None, "Unable to return enstore pnfs pathname.",
+                        e_errors.WRONGPARAMETER)
     
 ############################################################################
 
@@ -968,7 +1079,23 @@ def inputfile_check(input_files):
             
             # input files must exist - also handle automounting.
             if not access_check(inputlist[i], os.F_OK):
-                raise EncpError(errno.ENOENT, inputlist[i], e_errors.USERERROR)
+
+                #We don't want to fail immediatly.  On reads it is ok for
+                # encp to check all three paths to the experiment's file:
+                # /pnfs/xyz, /pnfs/fs/usr/xyz and /pnfs/fnal.gov/xyz.
+                if access_check(get_enstore_pnfs_path(inputlist[i]),
+                                    os.F_OK):
+                    inputlist[i] = get_enstore_pnfs_path(inputlist[i])
+                elif access_check(get_enstore_fs_path(inputlist[i]),
+                                      os.F_OK):
+                    inputlist[i] = get_enstore_fs_path(inputlist[i])
+                elif access_check(get_enstore_canonical_path(inputlist[i]),
+                                  os.F_OK):
+                    inputlist[i] = get_enstore_canonical_path(inputlist[i])
+                else:
+                    #There is a real problem with the file.  Fail the transfer.
+                    raise EncpError(errno.ENOENT, inputlist[i],
+                                    e_errors.USERERROR)
 
             # input files must have read permissions.
             if not access_check(inputlist[i], os.R_OK):
@@ -3786,6 +3913,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(len(e.input)):
 
+        #If the user specified a bfid for the file to read.
         if e.get_bfid:
             #only do this the first time.
             if not vcc or not fcc:
@@ -3819,13 +3947,14 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
             p = pnfs.Pnfs(ifullname) #Needed later on.
 
+        #else the filename (or already converted pnfsid) was given to encp.
         else:
             ifullname, ofullname = get_ninfo(e.input[i], e.output[0], e)
 
             #Fundamentally this belongs in veriry_read_request_consistancy(),
             # but information needed about the input file requires this check.
             inputfile_check(ifullname)
-
+            
             file_size = get_file_size(ifullname)
 
             try:
