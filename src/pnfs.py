@@ -1694,6 +1694,15 @@ class Tag:
             fname = os.path.join(directory, ".(tag)(%s)"%(tag,))
         else:
             fname = os.path.join(self.dir, ".(tag)(%s)"%(tag,))
+
+        #If directory is empty indicating the current directory, prepend it.
+        if not os.path.dirname(self.dir):
+            fname = os.path.join(os.getcwd(), fname)
+        #Determine if the target directory is in pnfs namespace
+        if fname[:6] != "/pnfs/":
+            raise IOError(errno.EINVAL,
+                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
+
         f = open(fname,'w')
         f.write(value)
         f.close()
@@ -1704,6 +1713,15 @@ class Tag:
             fname = os.path.join(directory, ".(tag)(%s)" % (tag,))
         else:
             fname = os.path.join(self.dir, ".(tag)(%s)" % (tag,))
+
+        #If directory is empty indicating the current directory, prepend it.
+        if not os.path.dirname(self.dir):
+            fname = os.path.join(os.getcwd(), fname)
+        #Determine if the target directory is in pnfs namespace
+        if fname[:6] != "/pnfs/":
+            raise IOError(errno.EINVAL,
+                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
+
         f = open(fname,'r')
         t = f.readlines()
         f.close()
