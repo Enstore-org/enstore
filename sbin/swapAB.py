@@ -6,8 +6,13 @@ import sys
 import os
 import option
 import file_clerk_client
+import volume_clerk_client
 import e_errors
 import pprint
+
+library_prefixes = ['CDF', 'STK', 'D0']
+library_migration = 'Migration'
+library_9940b = '9940B'
 
 f_prefix = '/pnfs/cdfen/filesets'
 f_p = string.split(f_prefix, '/')
@@ -309,7 +314,7 @@ if __name__ == '__main__':
 	# initialize file clerk client
 	intf = Interface()
 	fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
-
+	vcc = volume_clerk_client.VolumeClerkClient(fcc.csc)
 	te_count = 0
 	if sys.argv[1] == '-f':
 		for f2 in sys.argv[2:]:
@@ -329,18 +334,38 @@ if __name__ == '__main__':
 		for v2 in sys.argv[2:]:
 			result = fcc.list_active(v2)
 			if result['status'][0] == e_errors.OK:
-				doit = 0
+				sdoit = doit	# save doit flag
+				doit = 0	# force checking first
 				te_count = 0
 				print "checking", v2, "..."
 				for i in result['active_list']:
 					swap(i)
 					te_count = te_count + e_count
-				if te_count == 0:
+				doit = sdoit	# restore doit
+				if te_count == 0 and doit:
 					# doit = 1
 					print "swapping", v2, "..."
 					for i in result['active_list']:
 						swap(i)
 						te_count = te_count + e_count
+					# handling library
+					vv = vcc.inquire_vol(v2)
+					if vv['status'][0] == e_errors.OK:
+						ll = string.split(vv['library'], '-')
+						if len(ll) == 2 and ll[0] in library_prefixes and \
+							ll[1] == library_migration:
+							library = ll[0]+'-'+library_9940b
+							if doit:
+								print '===> %s : changing library from %s to %s ...'%(v2, vv['library'], library),
+								ticket = {'external_label': v2,
+									'library': library}
+								result = vcc.modify(ticket)
+								if result['status'][0] == e_errors.OK:
+									print 'DONE'
+								else:
+									print 'FAILED'
+					else:
+						print 'ERROR: volume %s does not exist'%(v2)
 			else:
 				print result['status'][1]
 	else:
