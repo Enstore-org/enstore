@@ -327,24 +327,25 @@ if __name__ == "__main__" :
     # get an interface
     intf = MediaLoaderInterface()
 
+
+    csc  = configuration_client.ConfigurationClient( intf.config_host, 
+                                                 intf.config_port, 0 )
+    keys = csc.get(intf.name)
+    try:
+	mc_type = keys['type']
+    except:
+	generic_cs.enprint("MC Error "+str(sys.exc_info()[0])+\
+                     str(sys.exc_info()[1]), generic_cs.SERVER, 1)
+	sys.exit(1)
+
+    del(csc)
     # here we need to define what is the class of the media changer
     # and create an object of that class based on the value of args[0]
     # for now there is just one possibility
 
-    # THIS NEEDS TO BE FIXED -- WE CAN'T BE CHECKING FOR EACH KIND!!!
-    if intf.name == 'STK.media_changer' :
-        mc =  STK_MediaLoader(intf.name, 0, intf.verbose, \
-	                      intf.config_host, intf.config_port)
-    elif intf.name == 'grau.media_changer' :
-        mc =  EMASS_MediaLoader(intf.name, 0, intf.verbose, \
-	                      intf.config_host, intf.config_port)
-    elif intf.name == 'FTT.media_changer' :
-        mc =  FTT_MediaLoader(intf.name, 0, intf.verbose, \
-	                      intf.config_host, intf.config_port)
-    else :
-        mc =  RDD_MediaLoader(intf.name, 0, intf.verbose, \
-	                      intf.config_host, intf.config_port)
-
+    mc = eval(mc_type+"("+repr(intf.name)+","+repr(0)+","+\
+	      repr(intf.verbose)+","+repr(intf.config_host)+","+\
+	      repr(intf.config_port)+")")
     while 1:
         try:
             Trace.init(intf.name[0:5]+'.medc')
@@ -354,4 +355,8 @@ if __name__ == "__main__" :
 	    mc.serve_forever_error("media changer", mc.logc)
             continue
     Trace.trace(1,"Media Changer finished (impossible)")
+
+
+
+
 
