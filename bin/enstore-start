@@ -37,7 +37,7 @@ check_server()
     if [ -n "${2-}" ] ; then
        echo "`date` Checking $1 on $xnode $xport $local_host"
     fi  
-    echo udp_sendWaitReply-withTimeout.sh $xnode $xport $timeout --tries $tries
+    #echo udp_sendWaitReply-withTimeout.sh $xnode $xport $timeout --tries $tries
     alv=`udp_sendWaitReply-withTimeout.sh $xnode $xport $timeout --tries $tries`
     if [ $? -ne 0 ] ; then
         echo "`date`   ...$1 on $xnode $xport $local_host NOT REACHABLE..."
@@ -472,7 +472,13 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" != "" ];then
                 fi
                 echo $! >> $PID_DIR/`uname -n`-$i-mover_pid
             fi
-   	    if [ ! "${opt_async-}" ]; then check_server $i $PID_DIR/`uname -n`-$i-mover_pid; fi
+   	    if [ ! "${opt_async-}" ]; then 
+               timeout=10
+               tries=12
+	       check_server $i $PID_DIR/`uname -n`-$i-mover_pid
+               timeout=$save_timeout
+               tries=$save_tries
+            fi
 
         else         
 #         if the mover has to dismount a tape, it could take some time to respond to us
