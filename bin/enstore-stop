@@ -107,7 +107,8 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
         if [ ! "$do_server" ];then continue; fi
         #echo "serv is <$serv>  opt_just_ere is <$opt_just_ere> do_server is <$do_server>"
         if [ $config_running -eq 1 ] ; then
-  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$opt_just_ere" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+	  serv1=`echo $serv | cut -f2 -d-`
+  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$serv1" |sed -e 's/.*://'` $timeout --work quit >/dev/null
         fi
 
         # note: turnoff function assumes filename globbing, so we must add an *
@@ -120,7 +121,8 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
         do_server=`echo $serv | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
         if [ $config_running -eq 1 ] ; then
-  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$opt_just_ere" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+	  serv1=`echo $serv | cut -f2 -d-`
+  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$serv1" |sed -e 's/.*://'` $timeout --work quit >/dev/null
         fi
 
         # note: turnoff function assumes filename globbing, so we must add an *
@@ -133,7 +135,8 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
         do_server=`echo $serv | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
         if [ $config_running -eq 1 ] ; then
-  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$opt_just_ere" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+	  serv1=`echo $serv | cut -f2 -d-`
+  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$serv1" |sed -e 's/.*://'` $timeout --work quit >/dev/null
 	fi
 
         # note: turnoff function assumes filename globbing, so we must add an *
