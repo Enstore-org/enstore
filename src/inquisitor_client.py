@@ -1,6 +1,8 @@
 # system imports
 #
 import sys
+import types
+import time
 
 # enstore imports
 import generic_client
@@ -145,11 +147,16 @@ class Inquisitor(generic_client.GenericClient):
 	override_d = ticket["override"]
 	if override_d:
 	    keys = override_d.keys()
+	    now = time.time()
 	    keys.sort()
 	    print "\n Enstore Items Being Overridden"
 	    print   " ------------------------------"
 	    for key in keys:
-		print "   %s : %s"%(key, override_d[key])
+		if type(override_d[key]) == types.ListType:
+		    secs_down = now - override_d[key][1]
+		    print "   %s : %s for %.0d seconds"%(key, override_d[key][0], secs_down)
+		else:
+		    print "   %s : %s"%(key, override_d[key])
 	    else:
 		print ""
 
@@ -185,7 +192,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.nooutage = ""
 	self.override = ""
 	self.nooverride = ""
-	self.saagStatus = ""
+	self.saagstatus = ""
 	self.update_and_exit = 0
         generic_client.GenericClientInterface.__init__(self)
         
@@ -200,7 +207,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                 "refresh=", "get-refresh", "max-encp-lines=",
                 "get-max-encp-lines", "subscribe", "up=", "down=",
 		"outage=", "nooutage=", "override=", "nooverride=",
-		"saagStatus=", "show", "time="]
+		"saagstatus=", "show", "time="]
 """
 
 class InquisitorClientInterface(generic_client.GenericClientInterface):
@@ -234,25 +241,23 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.nooutage = ""
 	self.override = ""
 	self.nooverride = ""
-	self.saagStatus = ""
+	self.saagstatus = ""
 	self.update_and_exit = 0
         generic_client.GenericClientInterface.__init__(self)
-        
 
     def valid_dictionaries(self):
         return (self.alive_options, self.help_options, self.trace_options,
                 self.inquisitor_options)
 
     inquisitor_options = {
-        option.DOWN:{option.HELP_STRING:"comma seperated list of servers "
-                     "to mark down",
+        option.DOWN:{option.HELP_STRING:"servers to mark down",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_LABEL:"server(s)",
+                     option.VALUE_LABEL:"server[,server]",
                      option.USER_LEVEL:option.ADMIN,
                      },
         option.DUMP:{option.HELP_STRING:
-                     "print (stdout) state of servers in memmory",
+                     "print (stdout) state of servers in memory",
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.VALUE_USAGE:option.IGNORED,
@@ -267,7 +272,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                                    option.USER_LEVEL:option.ADMIN,
                                    },
         option.GET_REFRESH:{option.HELP_STRING:
-                            "return the refresh unterval for inquisitor "
+                            "return the refresh interval for inquisitor "
                             "created web pages",
                             option.DEFAULT_TYPE:option.INTEGER,
                             option.DEFAULT_VALUE:option.DEFAULT,
@@ -290,31 +295,31 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                                option.USER_LEVEL:option.ADMIN,
                                },
         option.NOOUTAGE:{option.HELP_STRING:"remove the outage check from the "
-                         "SAAG page for the comman seperated list of servers",
+                         "SAAG page for the specified servers",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_LABEL:"server(s)",
+                         option.VALUE_LABEL:"server[,server]",
                          option.USER_LEVEL:option.ADMIN,
                          },
-        option.NOOVERRIDE:{option.HELP_STRING:"do not override the status of"
-                           "this comma seperated list of servers",
+        option.NOOVERRIDE:{option.HELP_STRING:"do not override the status of "
+                           "the specified servers",
                            option.VALUE_TYPE:option.STRING,
                            option.VALUE_USAGE:option.REQUIRED,
-                           option.VALUE_LABEL:"server(s)",
+                           option.VALUE_LABEL:"server[,server]",
                            option.USER_LEVEL:option.ADMIN,
                            },
-        option.OUTAGE:{option.HELP_STRING:"set the outge check on the SAAG "
-                       "page for the comma separated list of servers",
+        option.OUTAGE:{option.HELP_STRING:"set the outage check on the SAAG "
+                       "page for the specified servers",
                        option.VALUE_TYPE:option.STRING,
                        option.VALUE_USAGE:option.REQUIRED,
-                       option.VALUE_LABEL:"server(s)",
+                       option.VALUE_LABEL:"server[,server]",
                        option.USER_LEVEL:option.ADMIN,
                        },
-        option.OVERRIDE:{option.HELP_STRING:"override the status of the comma "
-                       "seperated list of servers with the SAAG status option",
+        option.OVERRIDE:{option.HELP_STRING:"override the status of the "
+                       "specified servers with the saagstatus option",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_LABEL:"server(s)",
+                         option.VALUE_LABEL:"server[,server]",
                          option.USER_LEVEL:option.ADMIN,
                          },
         option.REFRESH:{option.HELP_STRING:"set the refresh interval for "
@@ -344,7 +349,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_USAGE:option.IGNORED,
                           option.USER_LEVEL:option.ADMIN,
                           },
-        option.TIME:{option.HELP_STRING:"inforamtion associated with a "
+        option.TIME:{option.HELP_STRING:"information associated with a "
                      "server marked down or with an outage",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
@@ -352,10 +357,10 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                      option.USER_LEVEL:option.ADMIN,
                      },
         option.UP:{option.HELP_STRING:
-                   "comma sperated list of servers to mark up",
+                   "servers to mark up",
                    option.VALUE_TYPE:option.STRING,
                    option.VALUE_USAGE:option.REQUIRED,
-                   option.VALUE_LABEL:"server(s)",
+                   option.VALUE_LABEL:"server[,server]",
                    option.USER_LEVEL:option.ADMIN,
                    },
         option.UPDATE:{option.HELP_STRING:
@@ -438,12 +443,12 @@ def do_work(intf):
     elif intf.nooutage:
 	ticket = iqc.nooutage(intf.nooutage)
 
-    elif intf.override and intf.saagStatus:
-	if intf.saagStatus in enstore_constants.SAAG_STATUS:
-	    ticket = iqc.override(intf.override, intf.saagStatus)
+    elif intf.override and intf.saagstatus:
+	if intf.saagstatus in enstore_constants.SAAG_STATUS:
+	    ticket = iqc.override(intf.override, intf.saagstatus)
 	else:
 	    # we did not get legal status values
-	    sys.stderr.write("ERROR: Invalid saagStatus value.")
+	    sys.stderr.write("ERROR: Invalid saagstatus value.")
 	    sys.stderr.write("    Legal values are: red, yellow, green, question\n")
 	    intf.print_help()
 	    sys.exit(1)

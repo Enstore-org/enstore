@@ -66,6 +66,9 @@ NOVALUE = -1
 
 ENCP_UPDATE_INTERVAL = 60
 LOG_UPDATE_INTERVAL = 300
+DEFAULT_OVERRIDE_INTERVAL = 86400   # (1 day) how long something needs to be
+                                    #  overridden to generate mail.
+OVERRIDE_UPDATE_INTERVAL = 3600     # (1 hr) how often it checks the override file
 
 MOVER_ERROR_STATES = ['OFFLINE', 'ERROR', enstore_constants.DEAD]
 VOLUME_STATES = ['full', 'readonly']
@@ -1038,6 +1041,40 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "log periodic timeout")
         self.make_log_html_file()
+	
+    def time_for_override_mail(self, now, element):
+	if not self.override_mail_sent.has_key(element):
+	    # mail was never sent
+	    return 1
+	elif now - self.override_mail_sent[element] > DEFAULT_OVERRIDE_INTERVAL:
+	    # mail was sent a long time ago, send it again
+	    return 1
+	else:
+	    # not time to send mail yet
+	    return 0
+
+    def saag_periodic_tasks(self, reason_called=TIMEOUT):
+	# see if any enstore element has been overridden for longer than specified
+	# in the configuration file
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+				   "saag periodic timeout")
+	interval = self.inquisitor.override_interval
+	if interval is None:
+	    interval = DEFAULT_OVERRIDE_INTERVAL
+	now = time.time()
+	sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
+	elements = override_d.keys()
+	for element in elements:
+	    elist = override_d[element]
+	    if type(elist) == types.ListType:
+		origin_date = elist[1]
+		if now - origin_date > interval and self.time_for_override_mail(now, element):
+		    subject = "%s overridden too long"%(element,)
+		    msg = "The saag page element %s has been overridden to %s for %.0d seconds"%(element,
+									           elist[0], 
+										   now - elist[1])
+		    enstore_functions.send_mail(MY_NAME, msg, subject)
+		    self.override_mail_sent[element] = now
 
     # our client said to update the enstore system status information
     def update(self, ticket):
@@ -1181,7 +1218,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    elif func == NOOUTAGE:
 			delkey(key, outage_d)
 		    elif func == OVERRIDE:
-			override_d[key] = ticket["saagStatus"]
+			override_d[key] = [ticket["saagStatus"], time.time()]
 		    elif func == NOOVERRIDE:
 			delkey(key, override_d)
 	    if not sfile.write(outage_d, offline_d, override_d):
@@ -1269,7 +1306,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.startup_state = e_errors.OK
         self.sent_stalled_mail = {}
 	self.servers_by_name = {}
-
+	self.override_mail_sent = {}
         # set an interval and retry that we will use the first time to get the
         # config information from the config server.  we do not use the
         # passed values because they might have been defaulted and we need to
@@ -1394,6 +1431,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.add_interval_func(self.periodic_tasks, self.update_interval)
         self.add_interval_func(self.encp_periodic_tasks, ENCP_UPDATE_INTERVAL)
         self.add_interval_func(self.log_periodic_tasks, LOG_UPDATE_INTERVAL)
+
+        self.add_interval_func(self.saag_periodic_tasks, OVERRIDE_UPDATE_INTERVAL)
 
         self.event_relay_msg = event_relay_messages.EventRelayAliveMsg(self.inquisitor.host,
                                                                        self.inquisitor.port)
