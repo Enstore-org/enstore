@@ -1703,7 +1703,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if not hasattr(self,'too_long_in_state_sent'):
                         Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                     (state_name(self.state),self.current_volume))
-                        Trace.trace(9, "now %s t %s max %s"%(now, buffer_empty_t,self.max_time_in_state))
+                        #Trace.trace(9, "now %s t %s max %s"%(now, buffer_empty_t,self.max_time_in_state))
+                        Trace.log(e_errors.INFO, "write:now %s t %s max %s"%(now, buffer_empty_t,self.max_time_in_state)) #!!! REMOVE WHEN PROBLEM is fixed
                         self.too_long_in_state_sent = 0 # send alarm just once
                     buffer_empty_t = now
                     Trace.trace(9, "buf empty cnt %s max %s"%(buffer_empty_cnt, self.max_in_state_cnt))
@@ -1975,6 +1976,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if not hasattr(self,'too_long_in_state_sent'):
                         Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                     (state_name(self.state),self.current_volume))
+                        Trace.log(e_errors.INFO, "read:now %s t %s max %s"%(now, buffer_full_t,self.max_time_in_state)) #!!! REMOVE WHEN PROBLEM is fixed
                         self.too_long_in_state_sent = 0 # send alarm just once
                     buffer_full_t = now
                     if buffer_full_cnt >= self.max_in_state_cnt:
