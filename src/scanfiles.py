@@ -63,7 +63,7 @@ def check(f):
                 if id != fr['pnfsid']:
                     msg.append('pnfsid(%s, %s)'%(id, fr['pnfsid']))
             else:
-                msg.append('no pnfs id db')
+                msg.append('no pnfs id in db')
             return msg
 
     fr = fcc.bfid_info(bfid)
