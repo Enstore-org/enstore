@@ -357,12 +357,19 @@ def send_regret(ticket, verbose):
     generic_cs.enprint("FORKING REGRET SENDER", generic_cs.DEBUG, verbose)
     ret = os.fork()
     if ret == 0:
-        generic_cs.enprint("SENDING REGRET "+repr(ticket), generic_cs.DEBUG, \
+	try:
+	    generic_cs.enprint("SENDING REGRET "+repr(ticket), generic_cs.DEBUG, \
 	                   verbose)
-	Trace.trace(3,"{send_regret "+repr(ticket))
-	callback.send_to_user_callback(ticket)
-	Trace.trace(3,"}send_regret ")
-        generic_cs.enprint("REGRET SENDER EXITS", generic_cs.DEBUG, verbose)
+	    Trace.trace(3,"{send_regret "+repr(ticket))
+	    callback.send_to_user_callback(ticket)
+	    Trace.trace(3,"}send_regret ")
+	    generic_cs.enprint("REGRET SENDER EXITS", generic_cs.DEBUG, verbose)
+	except:
+	    print "send_regret ",str(sys.exc_info()[0]),\
+		  str(sys.exc_info()[1]),repr(ticket)
+	    Trace.trace(0,"send_regret "+str(sys.exc_info()[0])+\
+			str(sys.exc_info()[1])+repr(ticket))
+
 	os._exit(0)
     else:
         generic_cs.enprint("CHILD ID= "+repr(ret), generic_cs.DEBUG, verbose)
@@ -416,7 +423,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			   generic_cs.DEBUG, \
 	                    self.verbose)
         generic_cs.enprint(self.summon_queue, \
-	                    generic_cs.DEBUG|generic_cs.PRETTY_PRINT,
+	                    generic_cs.DEBUG,
 			   self.verbose)
 	t = time.time()
 	"""
@@ -453,39 +460,64 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				pending_work.delete_job(mv["work_ticket"])
 				send_regret(mv["work_ticket"], self.verbose)
+
+				# flush pending jobs
+				w = pending_work.get_init()
+				while w:
+				    send_regret(w, self.verbose)
+				    w1 = pending_work.get_next()
+				    pending_work.delete_job(w)
+				    w = w1
 				return
 				
 			    # try another mover
 			    next_mover_found = 0
 			    for i in range(0, mover_cnt):
-				next_mover = idle_mover_next(self, 
-							     mv["work_ticket"]["fc"]["external_label"])
-				self.enprint("current mover "+\
-					     repr(mv)+\
-					     " next mover "+\
-					     repr(next_mover), \
-					     generic_cs.DEBUG, 
-					     self.verbose)
+				try:
+				    next_mover = idle_mover_next(self, 
+								 mv["work_ticket"]["fc"]["external_label"])
+				except:
+				    # must be write
+				    next_mover = idle_mover_next(self, None)
+				self.enprint("current mover "+repr(mv)+\
+					     " next mover "+repr(next_mover),
+					     generic_cs.DEBUG, self.verbose)
 				if (next_mover != None) and \
 				   (next_mover['mover'] != mv['mover']):
 				    next_mover_found = 1
 				    break
 
 			    if next_mover_found:
-				self.enprint("TO processing "
-					     "will summon mover "+ \
-					     repr(next_mover), 
-					     generic_cs.DEBUG, 
+				self.enprint("TO proc. will summon mover "+\
+					     repr(next_mover),generic_cs.DEBUG,
 					     self.verbose)
-				summon_mover(self, next_mover, mv["work_ticket"])
+				summon_mover(self,next_mover,mv["work_ticket"])
 				break
 			    else:
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				pending_work.delete_job(mv["work_ticket"])
 				send_regret(mv["work_ticket"], self.verbose)
+				# flush pending jobs
+				w = pending_work.get_init()
+				while w:
+				    send_regret(w, self.verbose)
+				    w1 = pending_work.get_next()
+				    pending_work.delete_job(w)
+				    w = w1
+				return
 			    
 				
-
+	else:
+	    # check if there are any pending works and remove them
+	    w = pending_work.get_init()
+	    while w:
+		send_regret(w, self.verbose)
+		w1 = pending_work.get_next()
+		pending_work.delete_job(w)
+		w = w1
+	    # also clear summon queue
+	    self.summon_queue = []
+	    
         self.enprint("movers queue after processing TO\nmover count "+\
 	               repr(mover_cnt), generic_cs.DEBUG, self.verbose)
         self.enprint(movers, 
@@ -497,6 +529,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	             generic_cs.DEBUG|generic_cs.PRETTY_PRINT, 
 		     self.verbose)
 	Trace.trace(3,"}handle_timeout")
+    
 	
     def write_to_hsm(self, ticket):
 	"""
@@ -620,6 +653,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if ((mv != None) and mv):
 	    mv['tr_error'] = 'ok'
 	    mv['summon_try_cnt'] = 0
+	    try:
+		del(mv["work_ticket"])
+	    except:
+		pass
 	    self.summon_queue.remove(mv)
 
         w = self.schedule()
@@ -683,6 +720,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			pending_work.delete_job(w)
 			w['status'] = (e_errors.NOMOVERS, 'Read failed') # set it to something more specific
 			send_regret(w, self.verbose)
+			# check if there are any pending works and remove them
+			w = pending_work.get_init()
+			while w:
+			    send_regret(w, self.verbose)
+			    w1 = pending_work.get_next()
+			    pending_work.delete_job(w)
+			    w = w1
 			#remove volume from suspect volume list
 			self.suspect_volumes.remove(item)
 			Trace.trace(3,"}idle_mover: only one mover in config." \
@@ -742,6 +786,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    mv['summon_try_cnt'] = 0
             self.enprint("have bound vol mover "+repr(mv), generic_cs.DEBUG, \
 	                 self.verbose)
+	    try:
+		del(mv["work_ticket"])
+	    except:
+		pass
 	    self.summon_queue.remove(mv)
 
         # just did some work, delete it from queue
@@ -834,6 +882,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if ((mv != None) and mv):
 	    mv['tr_error'] = 'ok'
 	    mv['summon_try_cnt'] = 0
+	    try:
+		del(mv["work_ticket"])
+	    except:
+		pass
 	    self.summon_queue.remove(mv)
 
 	# update list of suspected volumes
@@ -911,6 +963,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		w['status'] = (e_errors.NOMOVERS, None)
 		pending_work.delete_job(w)
 		send_regret(w, self.verbose)
+		# check if there are any pending works and remove them
+		w = pending_work.get_init()
+		while w:
+		    send_regret(w, self.verbose)
+		    w1 = pending_work.get_next()
+		    pending_work.delete_job(w)
+		    w = w1
 	Trace.trace(3,"}unilateral_unbind ")
 
     # what is next on our list of work?
