@@ -98,20 +98,23 @@ class UDPClient:
     def __del__(self):
         # tell server we're done - this allows it to delete our unique id in
         # its dictionary - this keeps things cleaner & stops memory from growing
-        pid = self._os.getpid()
-        tsd = self.tsd.get(pid)
-        if not tsd:
-            return
-        for server in tsd.send_done.keys() :
-            try:
-                self.send_no_wait({"work":"done_cleanup"}, server)
-            except:
-                pass
-            try:
-                tsd.socket.close()
-            except:
-                pass
-
+        try:
+            pid = self._os.getpid()
+            tsd = self.tsd.get(pid)
+            if not tsd:
+                return
+            for server in tsd.send_done.keys() :
+                try:
+                    self.send_no_wait({"work":"done_cleanup"}, server)
+                except:
+                    pass
+                try:
+                    tsd.socket.close()
+                except:
+                    pass
+        except:
+            pass
+        
     def _eval_reply(self, reply): #private to send
         try:
             number, out, t = eval(reply) #XXX
