@@ -102,10 +102,8 @@ class MonitorServerClient(generic_client.GenericClient):
         bytes_transfered = 0
         sendstr = "S"*block_size
         bytes_to_transfer = block_size * block_count
-        t0=time.time() #Grab the current time.
-        t1=time.time() #Reset counter to current time (aka zero).
 
-        #Set args outside of the loop for performance reasons.
+         #Set args outside of the loop for performance reasons.
         if function == "send":
             args = (sendstr, socket.MSG_DONTWAIT)
             sock_read_list = []
@@ -114,7 +112,12 @@ class MonitorServerClient(generic_client.GenericClient):
             args = (block_size,)
             sock_read_list = [data_sock]
             sock_write_list = []
-    
+
+        t0 = time.time() #Grab the current time.
+        print "c t0", t0
+        t1 = t0 #Reset counter to current time (aka zero).
+
+        print "c t1:", time.time() - t0
         while bytes_transfered < bytes_to_transfer:
             #Determine how much time is needed to pass before timming out.
             # This amount to time spent inside select should be the value
@@ -171,7 +174,8 @@ class MonitorServerClient(generic_client.GenericClient):
             elif time.time() - t1 > self.timeout:
                 data_sock.close()
                 raise SERVER_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
-
+        print "c t3:", time.time()
+        print "c t4:", time.time() - t0
         return time.time() - t0
 
 
