@@ -14,6 +14,8 @@ MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)
 MPD_FILE = "%s%s"%(FILE_PREFIX, MPD)
 MLAT_FILE = "%s%s"%(FILE_PREFIX, MLAT)
 BPD_FILE = "%s%s"%(FILE_PREFIX, BPD)
+BPD_FILE_R = "%s_r"%(BPD_FILE,)
+BPD_FILE_W = "%s_w"%(BPD_FILE,)
 XFER_FILE = "%s%s"%(FILE_PREFIX, XFER)
 XFERLOG_FILE = "%s%s"%(XFER_FILE, LOG)
 
@@ -102,7 +104,6 @@ NO_INFO = "------"
 NO_WORK = "No work at movers"
 NO_PENDING = "No pending work"
 
-BLOCKSIZES = "blocksizes"
 LIBRARY_MANAGER = "library_manager"
 MOVER = "mover"
 MEDIA_CHANGER = "media_changer"
