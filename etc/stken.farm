@@ -32,7 +32,10 @@ stkenmvr23a	stkenmvr-a	stken-alla	stken-all
 stkenmvr24a	stkenmvr-a	stken-alla	stken-all
 stkenmvr25a	stkenmvr-a	stken-alla	stken-all
 stkenmvr26a	stkenmvr-a	stken-alla	stken-all
-REMOVE		d0enout*	rip*		rh73
+stkenmvr28a	stkenmvr-a	stken-alla	stken-all
+stkenmvr29a	stkenmvr-a	stken-alla	stken-all
+stkenmvr30a	stkenmvr-a	stken-alla	stken-all
+stkenmvr31a	stkenmvr-a	stken-alla	stken-all
 REMOVE		stkendca
 stkendca3a	stkendca
 stkendca3b	stkendca
