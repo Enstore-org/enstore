@@ -528,7 +528,8 @@ int ftt_inquire(ftt_descriptor d) {
 /*
  This is a guess at what we need to format an ait cartridge - does not work
 */
-int ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table *pb) {
+int 
+ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table *pb) {
 
 # define MS31_LEN 22
 # define MS32_LEN 22
@@ -582,6 +583,9 @@ int ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table *pb) {
 	res = ftt_write_partitions(d,pb);
 
     } else {
+        int pd[2];
+        FILE *topipe;
+        pipe(pd);
         ftt_close_dev(d);
         ftt_close_scsi_dev(d);
 	switch(ftt_fork(d)){
@@ -603,7 +607,7 @@ int ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table *pb) {
 		dup2(pd[0],0);
                 close(pd[0]);
 
-		sprintf(s1, "%d", compression);
+		sprintf(s1, "%d", on);
 
 		if (ftt_debug) {
 		    execlp("ftt_suid", "ftt_suid", "-x",  "-A", s1, d->basename, 0);
@@ -618,7 +622,7 @@ int ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table *pb) {
 
 		/* send the child the partition data */
 		topipe = fdopen(pd[1],"w");
-		ftt_dump_partitions(p,topipe);
+		ftt_dump_partitions(pb,topipe);
   		fclose(topipe);
 
 		res = ftt_wait(d);

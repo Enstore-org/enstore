@@ -522,7 +522,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
                      DEBUG2(stderr, "remain_tape 8900 case... \n");
 		     /* 8900's count 16k blocks, not 1k blocks */
 		     remain_tape *= 16.0;
-		else if (d->prod_id[5] == 't') {
+
+		} else if (d->prod_id[5] == 't') {
 		     
                      DEBUG2(stderr, "remain_tape Mammoth2 case... \n");
 		     /* 8900's count 16k blocks, not 1k blocks */

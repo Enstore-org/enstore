@@ -184,3 +184,9 @@ extern char *ftt_label_type_names[];
 */
 #define FTT_DIR_READING 0
 #define FTT_DIR_WRITING 1
+
+/*
+** Do we guess drive-id's or actually ask the drive?
+*/
+
+#define FTT_GUESS_ID 0

@@ -83,10 +83,9 @@ extern int		ftt_close_scsi_dev(ftt_descriptor);
 extern void		ftt_first_supported(int *);
 extern ftt_descriptor	ftt_next_supported(int *);
 
-extern int      ftt_inquire(ftt_descriptor d);
-extern int      ftt_format_ait(ftt_descriptor d,int onoff);
-extern int      ftt_modesense(ftt_descriptor d);
-extern int      ftt_logsense(ftt_descriptor d);
+extern int      ftt_inquire(ftt_descriptor);
+extern int      ftt_modesense(ftt_descriptor);
+extern int      ftt_logsense(ftt_descriptor);
 
 typedef struct { 
 	int n_parts; 
@@ -94,13 +93,15 @@ typedef struct {
 	int partsizes[64];
 } ftt_partition_table, *ftt_partbuf;
 
+extern int      ftt_format_ait(ftt_descriptor, int, ftt_partition_table *);
+
 extern ftt_partbuf 	ftt_alloc_parts();
 extern void 		ftt_free_parts(ftt_partbuf);
-extern int 		ftt_extract_maxparts(ftt_partbuf, int);
+extern int 		ftt_extract_maxparts(ftt_partbuf);
 extern int 		ftt_extract_nparts(ftt_partbuf);
 extern long 		ftt_extract_part_size(ftt_partbuf,int);
 extern int 		ftt_set_nparts(ftt_partbuf,int);
-extern int 		ftt_set_maxparts(ftt_partbuf);
+extern void 		ftt_set_maxparts(ftt_partbuf, int);
 extern int 		ftt_set_part_size(ftt_partbuf,int,long);
 
 extern int		ftt_get_partitions(ftt_descriptor,ftt_partbuf);

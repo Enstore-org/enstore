@@ -208,17 +208,30 @@ ftt_get_driveid(char *basename,char *os) {
 	    res = 0;
 	}
     } else {
-	if ( devtable[i].drividcmd[1] == 's') {
-	    sprintf(cmdbuf, devtable[i].drividcmd, s1.s, s2.n, s3.n);
-	} else {
-	    sprintf(cmdbuf, devtable[i].drividcmd, s1.n, s2.n, s3.n);
-	}
-	DEBUG4(stderr,"Running \"%s\" to get drivid (lenght %d < 512 ) \n", cmdbuf,strlen(cmdbuf));
-	pf = popen(cmdbuf, "r");
-	if (pf) {
-	    res = fgets(output, 512,pf);
-	    pclose(pf);
-	}
+	if (FTT_GUESS_ID) {
+	    if ( devtable[i].drividcmd[1] == 's') {
+		sprintf(cmdbuf, devtable[i].drividcmd, s1.s, s2.n, s3.n);
+	    } else {
+		sprintf(cmdbuf, devtable[i].drividcmd, s1.n, s2.n, s3.n);
+	    }
+	    DEBUG4(stderr,"Running \"%s\" to get drivid (lenght %d < 512 ) \n", cmdbuf,strlen(cmdbuf));
+	    pf = popen(cmdbuf, "r");
+	    if (pf) {
+		res = fgets(output, 512,pf);
+		pclose(pf);
+	    }
+        } else {
+	    /* Actually look it up... */
+            ftt_descriptor tmp;
+            ftt_stat_buf b;
+
+            b = ftt_alloc_stat();
+ 	    tmp = ftt_open_logical(basename, "", ftt_get_os(), 1);
+            ftt_get_stats(tmp, b);
+            sprintf(output, "%s\n", ftt_extract_stats(b,FTT_PRODUCT_ID));
+            ftt_free_stat(b);
+            ftt_close(tmp);
+        }
     }
     if (res != 0) {
 	output[strlen(output)-1] = 0; /* stomp the newline */

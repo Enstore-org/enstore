@@ -124,7 +124,7 @@ return 0;
 
 }
 
-static ftt_partbuf parttab = 0;
+ftt_partbuf parttab = 0;
 
 void
 ftt_t_dump_partitions() {

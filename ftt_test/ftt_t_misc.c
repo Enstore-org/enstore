@@ -228,6 +228,7 @@ static int 	onflag;			/* flag... */
 ftt_t_argt	argt[] = {
  	{"-on",	        FTT_T_ARGV_INT,		NULL,		&onflag},
  	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+extern ftt_partbuf *parttab;
 
 /* parse command line
    ------------------ */
@@ -238,7 +239,7 @@ status = ftt_t_parse (&argc, argv, argt);
 FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
 FTT_T_CHECK_ESTATUS (estatus_str, estatus);
 
-status = ftt_format_ait(ftt_t_fd,onflag);
+status = ftt_format_ait(ftt_t_fd,onflag,parttab);
 FTT_T_CHECK_CALL (status,estatus);
 
 return 0;

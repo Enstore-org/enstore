@@ -17,7 +17,6 @@ int	 ftt_describe_error();
 
 int
 ftt_get_readonly(ftt_descriptor d) {
-    CKNULL("ftt_descriptor", d);
 
     return d->readonly;
 }
@@ -185,7 +184,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	d->writekb += d->writelo >> 10;
 	d->writelo &= (1<<10) - 1;
 	d->current_block++;
-        if ( res != len ) {
+        if ( res != length ) {
             ftt_eprintf("Notice: wrote fewer bytes than requested.");
         }
     } else {
