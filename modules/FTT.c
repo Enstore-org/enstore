@@ -931,14 +931,15 @@ FTT_locate(  PyObject *self
 	   , PyObject *args )
 {
 	int	locate;		/* the block number to move to */
+	int	part=0;
 	int	sts;		/* general status */
 
-    sts = PyArg_ParseTuple(args, "i", &locate );
+    sts = PyArg_ParseTuple(args, "i|i", &locate, &part );
     if (!sts) return (NULL);
 
     if (!g_ftt_desc_tp) return (raise_exception("FTT_locate device not opened"));
 
-    sts = ftt_scsi_locate( g_ftt_desc_tp, locate );
+    sts = ftt_scsi_locate( g_ftt_desc_tp, locate, part );
     if (sts == -1) return (raise_ftt_exception("FTT_locate"));
 
     return (Py_BuildValue(""));
