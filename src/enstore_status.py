@@ -124,7 +124,10 @@ def parse_encp_line(line):
         except :
             # the leftover text was formatted funny, just output it
 	    return [etime, enode, euser, estatus, erest]
-    return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7]]
+    try:
+        return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7]]
+    except IndexError:
+        return []
 
 class EnStatus:
 
