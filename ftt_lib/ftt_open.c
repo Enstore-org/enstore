@@ -436,7 +436,7 @@ ftt_open_dev(ftt_descriptor d) {
 		if ( 0 > ( status_res = ftt_open_status(d) )) {
 			return status_res;
 		}
-		if (! (d->flags&FTT_FLAG_MODE_AFTER) ) { 
+		if (! (d->flags&FTT_FLAG_MODE_AFTER) && (status_res & FTT_ABOT)) { 
 			if ( 0> ftt_open_set_mode (d,status_res)  ) return -1;
 		}
 		if (!(d->flags&FTT_FLAG_BSIZE_AFTER) ) {
@@ -450,7 +450,7 @@ ftt_open_dev(ftt_descriptor d) {
 	*/
 	if ( 0 > ftt_open_io_dev(d) ) return -1;
 
-    if ( d->flags&FTT_FLAG_MODE_AFTER ) {
+    if ( (d->flags&FTT_FLAG_MODE_AFTER) && (status_res & FTT_ABOT)) {
       if ( 0 > ftt_open_set_mode (d,status_res) ) return -1;
     }
     if ( d->flags&FTT_FLAG_BSIZE_AFTER ) {
