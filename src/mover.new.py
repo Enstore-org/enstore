@@ -52,6 +52,7 @@ import volume_clerk_client		# -.
 import file_clerk_client		#   >-- 3 significant clients
 import media_changer_client		# -'
 import callback				# used in send_user_done, get_user_sockets
+import errno
 import cpio
 import Trace
 import driver
@@ -76,7 +77,7 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	  e_errors.WRITE_UNMOUNT,
 	  e_errors.WRITE_NOBLANKS,	# not handled by mover
 	  e_errors.READ_NOTAPE,
-	  e_errors.READ_TABEBUSY,
+	  e_errors.READ_TAPEBUSY,
 	  e_errors.READ_BADMOUNT,
 	  e_errors.READ_BADLOCATE,
 	  e_errors.READ_ERROR,
@@ -558,14 +559,14 @@ class Mover:
         if badsock != 0:
             print "Mover read_block, pre-recv error:", \
                   errno.errorcode[badsock]
-	    pass
+	    raise errno.errorcode[badsock]
 	block = self.data_socket.recv( self.blocksize )
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
         if badsock != 0:
             print "Mover read_block, post-recv error:", \
                   errno.errorcode[badsock]
-	    pass
+	    raise errno.errorcode[badsock]
 	return block
 
     # write a block to the network (to the user).  This method is call
@@ -576,14 +577,14 @@ class Mover:
         if badsock != 0:
             print "Mover write_block, pre-send error:",\
 	     	  errno.errorcode[badsock]
-	    pass
+	    raise errno.errorcode[badsock]
 	count = self.data_socket.send(buff)
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
         if badsock != 0:
             print "Mover write_block, post-send error:", \
                   errno.errorcode[badsock]
-	    pass
+	    raise errno.errorcode[badsock]
         return count
 
     def fileno( self ):
@@ -698,7 +699,7 @@ def status_to_request( client_obj_inst, exit_status ):
     elif m_err[exit_status] in [e_errors.WRITE_NOTAPE,
 				e_errors.WRITE_TAPEBUSY,
 				e_errors.READ_NOTAPE,
-				e_errors.READ_TABEBUSY]:
+				e_errors.READ_TAPEBUSY]:
 	next_req_to_lm = freeze_tape( client_obj_inst, m_err[exit_status] )
 	pass
     elif m_err[exit_status] in [e_errors.WRITE_BADMOUNT,
