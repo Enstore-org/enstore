@@ -42,8 +42,8 @@ case "$1" in
           fi
         fi
         if [ $estat -eq 0 ]; then
-          # we should be enstore when we start this up (at least not root)
-          if [ "`whoami`" = "root" ] ; then
+          # we should be enstore when we start this up (at least not root) if we are a server
+          if [ "`whoami`" = "root" -a `echo $n2 | grep -c mvr` -eq 0 ] ; then
 	    echo "`date`: su-ing to enstore and doing an enstore Estart $n2" 2>&1 | tee /dev/console >>$output
             su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore Estart $n2"  
           else
@@ -69,6 +69,7 @@ case "$1" in
         cd /etc/rc.d/rc3.d
         x=S99zzzenstore-boot
         rm -f $x; ln -s ../init.d/enstore-boot $x
+        cd /etc/rc.d/rc6.d
         x=K01aaaenstore-boot
         rm -f $x; ln -s ../init.d/enstore-boot $x
         ;;
