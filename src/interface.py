@@ -303,6 +303,8 @@ class Interface:
                 self.reset_interval = value
             elif opt == "--update" :
                 self.update = value
+            elif opt == "--update_and_exit" :
+                self.update_and_exit = 1
             elif opt == "--max_encp_lines" :
                 self.max_encp_lines = int(value)
             elif opt == "--get_max_encp_lines" :
