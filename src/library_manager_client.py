@@ -10,19 +10,20 @@ class LibraryManagerClient :
         self.csc = configuration_client
         self.name = library_name
 
+
     def send (self, ticket) :
         # who's our library manger that we should send the ticket to?
-        vticket = self.csc.get(self.name+".library_manager")
+        lticket = self.csc.get(self.name+".library_manager")
         # send user ticket and return answer back
-        return self.u.send(ticket, (vticket['host'], vticket['port']) )
+        return self.u.send(ticket, (lticket['host'], lticket['port']) )
 
 
     def write_to_hsm(self, ticket) :
-        return self.u.send(ticket)
+        return self.send(ticket)
 
 
     def read_from_hsm(self, ticket) :
-        return self.u.send(ticket)
+        return self.send(ticket)
 
 
     def printwork(self):
@@ -39,7 +40,7 @@ if __name__ == "__main__" :
     config_port = "7500"
     config_list = 0
     list = 0
-    worklist = 0
+    printwork = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port="\
@@ -80,8 +81,7 @@ if __name__ == "__main__" :
     lmc = LibraryManagerClient(csc,args[0])
 
     if  printwork:
-        lmc.printwork()
+        ticket = lmc.printwork()
 
     if list:
-        #pprint.pprint(ticket)
-        pass
+        pprint.pprint(ticket)

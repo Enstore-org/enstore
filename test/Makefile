@@ -8,15 +8,7 @@ newdbs:
 		pidkill $$d/loop_longtest.pids ;\
 	done
 
-	ecmd stop
-
-	#rm -f $$ENSTORE_DIR/etc/*.jou
-
-	ecmd start
-
-	volume-declare
-
-	rm -f $ENSTORE_DIR/test/files.in
+	rm -f $$ENSTORE_DIR/test/files.in
 	if [ ! -d data ] ; then mkdir data ; fi
 	touch data/null0.dat
 	echo short > data/short1.dat
@@ -29,7 +21,7 @@ newdbs:
 
 	if [ -d $(dpnfs) ] ; then rm -f $(dpnfs)/* ; else mkdir $(dpnfs); fi
 
-	rm -f $ENSTORE_DIR/test/files.in
+	rm -f $$ENSTORE_DIR/test/files.in
 	( cd data; \
 	for f in * ; do \
 		f2=$(dpnfs)/`basename $$f`;\
@@ -44,7 +36,7 @@ newdbs:
 			$$ENSTORE_DIR/test/kickoff & ); \
 	done
 
-	@ echo "Tests are running. Do a    killall -9 longtest    to stop"
+	@ echo "Tests are running. Do a	   killall -9 longtest	  to stop"
 	@ echo "   It takes a bit for them to die off"
 
 olddbs:
@@ -59,7 +51,7 @@ olddbs:
 		( cd $$d; $$ENSTORE_DIR/test/kickoff & ); \
 	done
 
-	@ echo "Tests are running. Do a    killall -9 longtest    to stop"
+	@ echo "Tests are running. Do a	   killall -9 longtest	  to stop"
 	@ echo "   It takes a bit for them to die off"
 
 
@@ -72,7 +64,7 @@ stop:
 
 clean:
 	- pidkill $$ENSTORE_DIR/test/longtest_pids
-	@ $(ENSTORE_DIR)/bin/enstoreClean
+	@ $$ENSTORE_DIR/bin/enstoreClean
 	for d in 1 2 3 4 5 6 7 8 9 data ; do rm -rf $$d ; done
 	rm -f *.jou
 	rm -f *.fake

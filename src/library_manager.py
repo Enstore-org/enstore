@@ -14,215 +14,260 @@ from udp_client import UDPClient
 
 pending_work = []       # list of read write work tickets
 
+# here is where we setup priority for work that needs to get done
 def priority(ticket) :
-        if ticket["work"] == "write_to_hsm" :
-                return 10
-        return 1
+    if ticket["work"] == "write_to_hsm" :
+        return 10
+    return 1
 
+
+# insert work into our queue based on its priority
 def queue_pending_work(ticket) :
-        ticket["priority"] = priority(ticket)
-        i = 0
-        tryp = ticket["priority"]
-        for item in pending_work :
-                if tryp > item["priority"] :
-                        break
-                i = i + 1
-        pending_work.insert(i, ticket)
-        return
+    ticket["priority"] = priority(ticket)
+    i = 0
+    tryp = ticket["priority"]
+    for item in pending_work :
+        if tryp > item["priority"] :
+            break
+        i = i + 1
+    pending_work.insert(i, ticket)
+
 
 ##############################################################
 
 work_at_movers = []
 work_awaiting_bind = []
 
+
+# return a list of busy volumes for a given file family
 def busy_vols_in_family (family_name):
-        vols = []
-        for w in work_at_movers + work_awaiting_bind :
-                if w["file_family"] == family_name :
-                        vols.append(w["external_label"])
-        return vols
+    vols = []
+    for w in work_at_movers + work_awaiting_bind :
+        if w["file_family"] == family_name :
+            vols.append(w["external_label"])
+    return vols
 
+
+# check if a particular volume with given label is busy
 def is_volume_busy(external_label) :
-        for w in work_at_movers + work_awaiting_bind :
-                if w["external_label"] == external_label :
-                        return 1
-        return 0
+    for w in work_at_movers + work_awaiting_bind :
+        if w["external_label"] == external_label :
+            return 1
+    return 0
 
+
+# return ticket for given labelled volume in bind queue
 def get_awaiting_work(external_label) :
-        for w in work_awaiting_bind :
-                if w["external_label"] == external_label :
-                        return w
-        return {}
+    for w in work_awaiting_bind :
+        if w["external_label"] == external_label :
+            return w
+    return {}
 
+
+# return ticket if given labelled volume in mover queue
 def get_work_at_movers(external_label) :
-        for w in work_at_movers :
-                if w["external_label"] == external_label :
-                        return w
-        return {}
+    for w in work_at_movers :
+        if w["external_label"] == external_label :
+            return w
+    return {}
 
 
 ##############################################################
 
-
+# is there any work for any volume?
 def next_work_any_volume(csc) :
-        for w in pending_work:
-                if w["work"] == "read_from_hsm" :
-                        if is_volume_busy(w["external_label"])  :
-                                continue
-                        return w
-                elif w["work"] == "write_to_hsm" :
-                        # ask the volume clerk for a volume,
-                        # but first go find volumes we _dont_ want to hear
-                        # about -- that is volumes in the apropriate family
-                        # which are currently at movers.
-                        vol_veto_list = busy_vols_in_family(w["file_family"])
-                        if len(vol_veto_list) >= w["file_family_width"] :
-                                continue
-                        # width not exceeded, ask ss for a new volume.
-                        vc = VolumeClerkClient(csc)
-                        v = vc.next_write_volume (
-                                w["library"],
-                                w["size_bytes"],
-                                w["file_family"],
-                                vol_veto_list)
 
-                        if (len(vol_veto_list) == 0 and
-                              v["status"] != "ok") :
-                        # If the volume clerk has no volumes and
-                        # our veto list was empty, then we have run
-                        # out of space for this file family. so
-                        # mark as an error
-                                w["status"] = v["status"]
-                                return w
-                        w["external_label"] = v["external_label"]
-                        return w
-                else :
-                        raise "assertion error"
-        return {"status" : "nowork"}
+    # look in pending work queue for reading or writing work
+    for w in pending_work:
 
+        # if we need to read and volume is busy, check later
+        if w["work"] == "read_from_hsm" :
+            if is_volume_busy(w["external_label"])  :
+                continue
+            # otherwise we have found a volume that has read work pending
+            return w
+
+        # if we need to write: ask the volume clerk for a volume, but first go
+        # find volumes we _dont_ want to hear about -- that is volumes in the
+        # apropriate family which are currently at movers.
+        elif w["work"] == "write_to_hsm" :
+            vol_veto_list = busy_vols_in_family(w["file_family"])
+            # only so many volumes can be written to at one time
+            if len(vol_veto_list) >= w["file_family_width"] :
+                continue
+            # width not exceeded, ask volume clerk for a new volume.
+            vc = VolumeClerkClient(csc)
+            v = vc.next_write_volume (w["library"],
+                                      w["size_bytes"],
+                                      w["file_family"],
+                                      vol_veto_list)
+
+            # If the volume clerk has no volumes and our veto list was empty,
+            # then we have run out of space for this file family == error
+            if (len(vol_veto_list) == 0 and v["status"] != "ok") :
+                w["status"] = v["status"]
+                return w
+            # found a volume that has write work pending - return it
+            w["external_label"] = v["external_label"]
+            return w
+
+        # alas, all I know about is reading and writing
+        else :
+            raise "assertion error"
+
+    # if the pending work queue is empty, then we're done
+    return {"status" : "nowork"}
+
+
+# is there any work for this volume??  v is a work ticket with info
 def next_work_this_volume(v) :
-        for w in pending_work:
-                if (w["work"] == "write_to_hsm" and
-                        w["file_family"] == v["file_family"]  and
-                        w["size_bytes"] <= v["remaining_bytes"]) :
-                        w["external_label"] = v["external_label"]
-                        return w
-                elif (w["work"] == "read_from_hsm" and
-                        w["external_label"] == v["external_label"] ) :
-                        return w
-                else:
-                        pass
-        return {"status" : "nowork"}
+
+    # look in pending work queue for reading or writing work
+    for w in pending_work:
+
+        # writing to this volume?
+        if (w["work"]           == "write_to_hsm"    and
+            w["file_family"]    == v["file_family"]  and
+            w["size_bytes"]    <= v["remaining_bytes"]) :
+            w["external_label"] = v["external_label"]
+            # ok passed criteria, return write work ticket
+            return w
+
+        # reading from this volume?
+        elif (w["work"]           == "read_from_hsm" and
+              w["external_label"] == v["external_label"] ) :
+            # ok passed criteria, return read work ticket
+            return w
+
+        # alas, all I know about is reading and writing
+        else :
+            raise "assertion error"
+
+    # if the pending work queue is empty, then we're done
+    return {"status" : "nowork"}
 
 ##############################################################
 
-def printwork() :
-        for w in work_at_movers :
-                print ("at movers", w)
-        for w in work_awaiting_bind :
-                print ("awaiting a volume bind", w)
-        for w in pending_work :
-                print ("pending", w)
 
+# methods that can be inherited by any library manager
 class LibraryManagerMethods(DispatchingWorker) :
 
-        def write_to_hsm(self, ticket):
-                ticket["status"]="ok"
-                self.reply_to_caller(ticket)
-                queue_pending_work(ticket)
-                return
+    def write_to_hsm(self, ticket):
+        ticket["status"] = "ok"
+        self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        queue_pending_work(ticket)
 
-        def read_from_hsm(self, ticket):
-                ticket["status"]="ok"
-                self.reply_to_caller(ticket)
-                queue_pending_work(ticket)
-                return
 
-        def idle_mover(self, mticket) :
-                w = self.schedule()
-                if w["status"] == "nowork":
-                        self.reply_to_caller({"work" : "nowork"})
-                elif w["status"] == "ok" :
-                        self.reply_to_caller({
-                                "work" : "bind_volume",
-                                "external_label" : w["external_label"] })
-                        work_awaiting_bind.append(w)
-                        pending_work.remove(w)
-                else :
-                        raise "assert error"
-                return
+    def read_from_hsm(self, ticket):
+        ticket["status"] = "ok"
+        self.reply_to_caller(ticket)
+        queue_pending_work(ticket)
 
-        def have_bound_volume(self, mticket) :
-                # if we had work on the work_at_mover list, delete it
-                w = get_work_at_movers (mticket["external_label"])
-                if w:
-                        work_at_movers.remove(w)
 
-                # if we have work awaiting the bind, pass that work
-                #  and delete it from the list, return
-                w = get_awaiting_work(mticket["external_label"])
-                if w :
-                        self.reply_to_caller(w)
-                        work_awaiting_bind.remove(w)
-                        work_at_movers.append(w)
-                        return
+    # mover is idle - see what we can do
+    def idle_mover(self, mticket) :
+        # check our schedule
+        w = self.schedule()
 
-                # otherwise, see if this volume will do for any
-                # other work pending
-                w = next_work_this_volume(mticket)
+        # no work means we're done
+        if w["status"] == "nowork":
+            self.reply_to_caller({"work" : "nowork"})
 
-                if w["status"] == "ok" :
-                        self.reply_to_caller(w)
-                        pending_work.remove(w)
-                        work_at_movers.append(w)
+        # ok, we have some work - bind the volume
+        elif w["status"] == "ok" :
+            # reply now to avoid deadlocks
+            self.reply_to_caller({"work"           : "bind_volume",
+                                  "external_label" : w["external_label"] })
+            # put it into our bind queue and take it out of pending queue
+            work_awaiting_bind.append(w)
+            pending_work.remove(w)
 
-                elif  w["status"] == "nowork" :
-                        self.reply_to_caller({"work" : "unbind_volume"})
+        # alas
+        else :
+            raise "assert error"
 
-                else:
-                        raise "assertion error"
+    # we have a volume already bound - any more work??
+    def have_bound_volume(self, mticket) :
+        # just did some work, delete it from queue
+        w = get_work_at_movers (mticket["external_label"])
+        if w:
+            work_at_movers.remove(w)
 
-        def unilateral_unbind(self, ticket) :
-                # if the work is on the awaitng bind list, it is
-                # the library manager's responsibility to retry
-                # THE LIBRARY COULD NOT MOUNT THE TAPE IN THE DRIVE
-                # AND IF THE MOVER THOUGHT THE VOLUME WAS POISONED, IT
-                # WOULD TELL THE VOLUME CLERK.
-                w = get_awaiting_work(ticket["external_label"])
-                if w:
-                        work_awaiting_bind.remove(w)
-                        queue_pending_work(w)
+        # if we have work awaiting the bind, pass that work and delete it
+        # from the list and  return
+        w = get_awaiting_work(mticket["external_label"])
+        if w :
+            self.reply_to_caller(w) # reply now to avoid deadlocks
+            work_awaiting_bind.remove(w)
+            work_at_movers.append(w)
+            return
 
-                # else, it is the user's responsibility to retry
-                w = get_work_at_movers (ticket["external_label"])
-                if w:
-                        work_awaiting_movers.remove(w)
+        # otherwise, see if this volume will do for any other work pending
+        w = next_work_this_volume(mticket)
+        if w["status"] == "ok" :
+            self.reply_to_caller(w) # reply now to avoid deadlocks
+            pending_work.remove(w)
+            work_at_movers.append(w)
 
-                self.reply_to_caller({"work" : "nowork"})
 
-        def schedule(self) :
-                while 1 :
-                        w = next_work_any_volume(self.csc)
-                        if w["status"] == "ok" or w["status"] == "nowork" :
-                                return w
-                        # some sort of error, like write
-                        # work and no volume available
-                        # so bounce. status is already bad...
-                        pending_work.remove(w)
-                        send_to_user_callback(w)
+        # if the pending work queue is empty, then we're done
+        elif  w["status"] == "nowork" :
+            self.reply_to_caller({"work" : "unbind_volume"})
 
-class LibraryManager(LibraryManagerMethods, GenericServer, UDPServer) : pass
+        # alas
+        else:
+            raise "assertion error"
 
-class LibraryManagerClient :
-        def __init__(self, configuration_client) :
-                self.u = UDPClient()
-                self.csc = configuration_client
 
-        def write_to_hsm(self, ticket) :
-                return self.u.send(ticket)
+    # if the work is on the awaiting bind list, it is the library manager's
+    #  responsibility to retry
+    # THE LIBRARY COULD NOT MOUNT THE TAPE IN THE DRIVE AND IF THE MOVER
+    # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
+    def unilateral_unbind(self, ticket) :
+        # get the work ticket for the volume
+        w = get_awaiting_work(ticket["external_label"])
+        if w:
+            work_awaiting_bind.remove(w)
+            queue_pending_work(w)
 
-        def read_from_hsm(self, ticket) :
-                return self.u.send(ticket)
+        # else, it is the user's responsibility to retry
+        w = get_work_at_movers (ticket["external_label"])
+        if w:
+            work_awaiting_movers.remove(w)
+
+        self.reply_to_caller({"work" : "nowork"})
+
+
+    # what is next on our list of work?
+    def schedule(self) :
+        while 1 :
+            w = next_work_any_volume(self.csc)
+            if w["status"] == "ok" or w["status"] == "nowork" :
+                return w
+            # some sort of error, like write
+            # work and no volume available
+            # so bounce. status is already bad...
+            pending_work.remove(w)
+            send_to_user_callback(w)
+
+    # what is going on
+    def printwork(self,ticket) :
+        rticket = {}
+        rticket["status"] = "ok"
+        rticket["at movers"] = work_at_movers
+        rticket["awaiting volume bind"] = work_awaiting_bind
+        rticket["pending_work"] = pending_work
+        for w in work_at_movers :
+            print ("at movers", w)
+        for w in work_awaiting_bind :
+            print ("awaiting volume bind", w)
+        for w in pending_work :
+            print ("pending", w)
+        self.reply_to_caller(rticket)
+
+
+class LibraryManager(LibraryManagerMethods, GenericServer, UDPServer) :
+    pass
 
 if __name__ == "__main__" :
     import getopt
@@ -256,10 +301,10 @@ if __name__ == "__main__" :
     config_port = string.atoi(config_port)
 
     # bomb out if we don't have a library
-    if len(args) != 1 :
+    if len(args) < 1 :
         print "python",sys.argv[0], options, "library"
         print "   do not forget the '--' in front of each option"
-        sys.exit(0)
+        sys.exit(1)
 
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
@@ -269,6 +314,6 @@ if __name__ == "__main__" :
 
     #  set ourself up on that port and start serving
     methods =  LibraryManagerMethods()
-    vs =  LibraryManager( (keys['host'], keys['port']), methods)
-    vs.set_csc(csc)
-    vs.serve_forever()
+    lm =  LibraryManager( (keys['host'], keys['port']), methods)
+    lm.set_csc(csc)
+    lm.serve_forever()

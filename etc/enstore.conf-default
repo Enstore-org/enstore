@@ -17,7 +17,7 @@ configdict['shelf.library_manager'] = { 'host'   : 'hppc.fnal.gov', \
                                         'status' : 'ok'}
 
 configdict['fd0.mover'] = { 'status'  : 'ok', \
-                            'device'  : '/usr/hppc_home/bakken/file.fake', \
+                            'device'  : './file.fake', \
                             'library' : 'activelibrary', \
                             'driver'  : 'RawDiskDriver', \
                             'library_device' : '1'}
@@ -27,10 +27,10 @@ configdict['stk0.mover'] = { 'status'  : 'ok', \
                             'library' : 'red50library', \
                             'driver'  : 'speciftyme', \
                             'library_device' : '1', \
-			    'media_changer' : 'STK.media_changer' }
+                            'media_changer' : 'STK.media_changer' }
 
 configdict['STK.media_changer'] = { 'status'  : 'ok', \
-				    'host' : 'hppc.fnal.gov', \
-				    'port' : 7505, \
-				    'acls_host' : 'fntt', \
-				    'acls_uname' : 'acsss' }
+                                    'host' : 'hppc.fnal.gov', \
+                                    'port' : 7505, \
+                                    'acls_host' : 'fntt', \
+                                    'acls_uname' : 'acsss' }
