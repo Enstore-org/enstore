@@ -177,10 +177,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
     def get_log_path(self):
         log = self.csc.get("log_server")
-        if log.has_key("log_file_path"):
-            return log["log_file_path"]
-        else:
-            return "."
+        return log.get("log_file_path", ".")
         
     # read the persistent alarm file if it exists.  this reads in all the
     # alarms that have not been resolved.
