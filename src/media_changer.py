@@ -442,13 +442,12 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	
     def cleanCycle(self, inTicket):
         #do drive cleaning cycle
-        print "CLEAN"
         import aml2
         Trace.log(e_errors.INFO, 'mc:aml2 ticket='+repr(inTicket))
         classTicket = { 'mcSelf' : self }
 	ticket = {}
         try:
-            ticket['drive'] = inTicket['moverConfig']['device']
+            ticket['drive'] = inTicket['moverConfig']['mc_device']
         except KeyError:
             Trace.log(e_errors.ERROR, 'mc:aml2 no device field found in ticket.')
 	    status = 37
@@ -459,12 +458,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, 'mc:aml2 no mc_device field found in ticket.')
 	    status = 37
             return e_errors.DOESNOTEXIST, status, "no mc_device field found in ticket"
-        try:
-	    ticket['media_type'] = inTicket['volInfo']['media_type']
-        except KeyError:
-            Trace.log(e_errors.ERROR, 'mc:aml2 no media_type field found in ticket.')
-	    status = 37
-            return e_errors.DOESNOTEXIST, status, "no media_type field found in ticket"
 	
 	driveType = ticket['mc_device'][:2]  # ... need device type, not actual device
         ticket['cleanTime'] = self.driveCleanTime[driveType][0]  # clean time in seconds	
@@ -483,11 +476,9 @@ class AML2_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, 'mc:aml2 library_manager field not found in ticket.')
             status = 37
             return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
-        print "LIB",library
         v = vcc.next_write_volume(library,
                                   min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
                                   vol_veto_list, first_found)  # get which volume to use
-        print "VVVVVVVV",v
         if v["status"][0] != e_errors.OK:
             Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
                       (v["status"][0],v["status"][1]))
@@ -496,19 +487,23 @@ class AML2_MediaLoader(MediaLoaderMethods):
 
         cleaningVolume = v['external_label']
 	ticket['volume'] = cleaningVolume
+	ticket['media_type'] = v['media_type']
 	
 	for i in range(driveCleanCycles):
             Trace.log(e_errors.INFO, "AML2 Clean: %s"%repr(ticket))
-            print "calling",cleanADrive 
 	    rt = aml2.cleanADrive(ticket, classTicket)
-            Trace.log(e_errors.INFO,"AML2 Clean returned %s"%repr(rt)) 
+            Trace.log(e_errors.INFO,"AML2 Clean returned %s"%repr(rt))
+	    if rt[1] != 0: break
+        if rt[1] != 0:
+	    return rt
+ 
         retTicket = vcc.get_remaining_bytes(cleaningVolume)
         remaining_bytes = retTicket['remaining_bytes']-1
         vcc.set_remaining_bytes(cleaningVolume,remaining_bytes,'\0',0,0,0,0,None)
         return (e_errors.OK, 0, None)
 
     def doWaitingInserts(self):
-        """ do delayed insertvols"""
+        #do delayed insertvols
 	if self.workQueueClosed and len(self.work_list)==0:
 	    self.workQueueClosed = 0
 	    ticket = { 'function'  : 'insert',
@@ -518,7 +513,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
         return (e_errors.OK, 0, None) 
 
     def checkMyself(self):
-        """ do regularily scheduled internal checks"""
+        # do regularily scheduled internal checks
 	if self.robotNotAtHome and (time.time()-self.lastWorkTime) > self.idleTimeLimit:
 	    self.robotNotAtHome = 0
             ticket = { 'function' : 'homeAndRestart', 'robotArm' : self.robotArm }

@@ -370,7 +370,7 @@ class MoverClient:
 	if WSstatus == 0:
 	    try:
                 if WSdata['cleaning_bit'] == 1:
-	            rr = self.mcc.doCleaningCycle(mvr_config, self.vol_info, self.vol_vcc)
+	            rr = self.mcc.doCleaningCycle(mvr_config, self.vol_info)
                     Trace.log(e_errors.INFO,"Media changer cleaningCycle return status = "+str(rr['status']))
             except KeyError:
                 Trace.log(e_errors.ERROR,"ERROR: 'cleaning_bit' not defined in WSdata")
@@ -1257,7 +1257,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def clean_drive( self, ticket ):
-        rt =self.client_obj_inst.mcc.doCleaningCycle(mvr_config, self.client_obj_inst.vol_info, self.client_obj_inst.vol_vcc)
+        rt =self.client_obj_inst.mcc.doCleaningCycle(mvr_config, self.client_obj_inst.vol_info)
 
 	out_ticket = {'status':(rt['status'][0],rt['status'][2])}
         

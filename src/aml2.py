@@ -66,8 +66,6 @@ status_table = (
     )
     
 def mount(volume, drive, media_type):
-    """mount(vol, drive, media type)"""
-
     status = 0
     
     media_code = aci.__dict__.get("ACI_"+media_type)
@@ -83,8 +81,6 @@ def mount(volume, drive, media_type):
     
 
 def dismount(volume, drive, media_type):
-    """dismount(vol, drive, media type)"""
-
     status = 0
     if aci.aci_force(drive):
         status=aci.cvar.d_errno
@@ -93,25 +89,25 @@ def dismount(volume, drive, media_type):
 
     return status_table[status][0], status, status_table[status][1]    
 
+# home robot arm
 def robotHome(arm):
-    """home robot arm"""
     status = aci.aci_robhome(arm)
     if not status:
         status = aci.aci_robstat(arm,"start")
     return status_table[status][0], status, status_table[status][1]
 
+# get status of robot
 def robotStatus():
-    """get status of robot"""
     status = aci.aci_robstat("\0","stat")
     return status_table[status][0], status, status_table[status][1]
 
+#start robot arm
 def robotStart(arm):
-    """start robot arm"""
     status = aci.aci_robstat(arm,"start")
     return status_table[status][0], status, status_table[status][1]
 
+# home and start robot arm
 def robotHomeAndRestart(ticket, classTicket):
-    """start robot arm"""
     arm = ticket["robotArm"]
     status = 37
     if arm=='R1' or arm=='Both':
@@ -137,8 +133,6 @@ def robotHomeAndRestart(ticket, classTicket):
     return status_table[status][0], status, status_table[status][1]
 
 def view(volume, media_type):
-    """view(vol, media type)"""
-
     status = 0
     media_code = aci.__dict__.get("ACI_"+media_type)
 
@@ -156,8 +150,6 @@ def view(volume, media_type):
            v[1].vol_owner, v[1].use_count, v[1].crash_count
 	   
 def cleanADrive(ticket, classTicket):
-    """cleanADrive(ticket, classTicket)"""
-
     status = 0
     
     Trace.log(e_errors.INFO, 'aml2: ticket='+repr(ticket))
@@ -186,19 +178,22 @@ def cleanADrive(ticket, classTicket):
 	status = 37
         return status_table[status][0], status, status_table[status][1]
 
-    status = mount(volume, drive, media_type)
+    status1 = mount(volume, drive, media_type)
+    status = status1[1]
+    if status != 0:      # mount returned error
+	return status_table[status][0], status, status_table[status][1]
 
     # drive automatically starts cleaning upon tape insert.
     time.sleep(cleanTime)  # wait cleanTime seconds
 
     stat2 = dismount(volume, drive, media_type)
-    if status:
-        status = stat2
-    
+
+    status = stat2[1]
+
     return status_table[status][0], status, status_table[status][1]
 
+#sift through a list of lists
 def yankList(listOfLists, listPosition, look4String):
-    """ sift through a list of lists"""
     newRecordList = []
     for record in listOfLists:
 	if string.find(record[listPosition],look4String)>-1:
@@ -206,8 +201,6 @@ def yankList(listOfLists, listPosition, look4String):
     return newRecordList    
     
 def insert(ticket, classTicket):
-    """insert(ticket, classTicket)"""
-
     if classTicket.has_key("mcSelf"):
         mcSelf = classTicket["mcSelf"]
     else:
@@ -320,7 +313,6 @@ def insert(ticket, classTicket):
     return status_table[status][0], status, status_table[status][1]
 
 def eject(ticket, classTicket):
-    """eject(ticket, classTicket)"""
 
     if classTicket.has_key("mcSelf"):
         mcSelf = classTicket["mcSelf"]
