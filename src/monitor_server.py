@@ -73,28 +73,27 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         self.page = None
 
     def simulate_encp_transfer(self, ticket):
-        
         #simulate mover connecting on callback and a read_from_HSM transfer
-        localhost, localport, well_known_sock = callback.get_callback(
-            verbose=0)
-        well_known_sock.listen(4)
+        data_ip = ticket['remote_interface'] ## XXX this is a silly name
+                                                                  ## because it's not "remote" on this end
+                                                                  ## Sigh...
+
+        localhost, localport, listen_sock = callback.get_callback(ip=data_ip)
+        listen_sock.listen(1)
         ticket['mover']={'callback_addr': (localhost,localport)}
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect(ticket['callback_addr'])
         callback.write_tcp_obj(sock,ticket)
         sock.close()
-        xfer_sock, address = well_known_sock.accept()
-        xfer_ip = ticket['remote_interface'] ## XXX this is such a stupid name
-                                                                  ## because it's not "remote" on this end
-                                                                  ## Sigh...
+        data_sock, address = listen_sock.accept()
 
-        interface=hostaddr.interface_name(xfer_ip)
-##        if interface:
-##            status=socket_ext.bindtodev(xfer_sock.fileno(),interface)
-##            if status:
-##                Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
+        interface=hostaddr.interface_name(data_ip)
+        if interface:
+            status=socket_ext.bindtodev(data_sock.fileno(),interface)
+            if status:
+                Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
         
-        well_known_sock.close()
+        listen_sock.close()
 
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
@@ -102,17 +101,17 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         if ticket['transfer'] == "send_from_server":
             sendstr = "S"*ticket['block_size']
             for x in xrange(ticket['block_count']):
-                xfer_sock.send(sendstr)
+                data_sock.send(sendstr)
             ticket['elapsed'] = -1
         #Since we are recieving the data, recording the time is important.
         elif ticket['transfer'] == "send_to_server":
-            data=xfer_sock.recv(1)
+            data=data_sock.recv(1)
             if not data:
                 raise "Server closed connection"
             bytes_received=len(data)
             t0=time.time()
             while bytes_received < ticket['block_size']*ticket['block_count']:
-                data = xfer_sock.recv(ticket['block_size'])
+                data = data_sock.recv(ticket['block_size'])
                 if not data: #socket is closed
                     raise "Server closed connection"
                 bytes_received=bytes_received+len(data)
@@ -120,7 +119,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
 
         ticket['status'] = ('ok', None)
         self.reply_to_caller(ticket)
-        xfer_sock.close()
+        data_sock.close()
 
     def _become_html_gen_host(self):
         #setup for HTML output if we are so stimulated by a client
