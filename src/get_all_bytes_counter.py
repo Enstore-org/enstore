@@ -61,6 +61,6 @@ if __name__ == "__main__":
 		file.close()
     else:
 	# output the total count
-	file = open(TOTAL_FILE)
+	file = open(TOTAL_FILE, 'w')
 	file.write("%s %s\n"%(total, units))
 	file.close()
