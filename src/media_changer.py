@@ -137,16 +137,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    print 'continuing with reply'
 	return (e_errors.OK, 0, None)
 
-    # unload volume from the drive;  default overridden for other media changers
-    def unload(self,
-               external_label,  # volume external label
-               drive,           # drive id
-	       media_type):     # media type
-	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-            Trace.log(e_errors.INFO,
-                      "remove tape "+external_label+" from drive "+drive)
-	    time.sleep( self.mc_config['delay'] )
-	return (e_errors.OK, 0, None)
     # load volume into the drive;  default, overridden for other media changers
     def load(self,
              external_label,    # volume external label
