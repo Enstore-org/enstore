@@ -4,7 +4,7 @@ create table rfile (
 	deleted			char(1),
 	drive			varchar(47),
 	external_label		varchar(48),
-	location_cookie		varchar(24),
+	location_cookie		varchar,
 	pnfs_name0		varchar,
 	pnfsid			varchar(24),
 	sanity_cookie_0		bigint,
@@ -16,8 +16,8 @@ create table rvolume (
 	blocksize		int,
 	capacity_bytes		bigint,
 	declared		timestamp without time zone,
-	eod_cookie		varchar(24),
-	external_label		varchar(48),
+	eod_cookie		varchar,
+	external_label		varchar,
 	first_access		timestamp without time zone,
 	last_access		timestamp without time zone,
 	library			varchar(16),
@@ -38,5 +38,5 @@ create table rvolume (
 	storage_group		varchar(16),
 	file_family		varchar(64),
 	wrapper			varchar(32),
-	comment			varchar(80)
+	comment			varchar
 );
