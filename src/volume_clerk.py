@@ -153,7 +153,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         if record.has_key('non_del_files'):
-            if record['non_del_files']>0:
+            force = ticket.get("force",0)
+            if record['non_del_files']>0 and not force:
                 ticket["status"] = (e_errors.CONFLICT,
                                     "Volume Clerk: volume "+external_label
                                     +" has "+repr(record['non_del_files'])+" active files")
@@ -164,6 +165,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"}delvol "+repr(ticket["status"]))
                 return
+        else:
+            Trace.log(e_errors.WARNING,"non_del_files not found in volume ticket - old version of table")
 
 
         # delete if from the database
@@ -231,7 +234,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"])
                 continue
             at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
-            if v['at_mover'][0] != "unmounted":
+            if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
                 Trace.trace(17,label+" rejected at_mover "+v['at_mover'][0])
                 continue
             if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
@@ -315,7 +318,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"])
                 continue
             at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
-            if v['at_mover'][0] != "unmounted":
+            if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
                 Trace.trace(17,label+" rejected at_mover "+v['at_mover'][0])
                 continue
             if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
