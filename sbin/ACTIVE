@@ -4,7 +4,6 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # $id$
 
-
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
 case $node in
@@ -15,6 +14,8 @@ case $node in
        *) gang=UNKNOWN
           ;;
 esac
+
+if [ "${1:-x}" = "local" ]; then gang=$node; fi
 
 rgang -nn $gang "ls -ld /root/CRON/*ACTIVE         2>&1 |grep -v 'No such'
                  ls -ld /home/enstore/CRON/*ACTIVE 2>&1 |grep -v 'No such'
