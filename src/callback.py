@@ -77,6 +77,7 @@ def write_tcp_obj_new(sock,obj):
 
 #recv with a timeout
 def timeout_recv(sock,nbytes,timeout=15*60):
+    timeout = float(timeout)
     fds,junk,junk = select.select([sock],[],[],timeout)
     if sock not in fds:
         return ""
