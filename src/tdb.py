@@ -3,9 +3,11 @@ import time
 import  socket
 import string
 
+dog = {'cat' : 1} 
 
 import sys
 Quit = "Quit"
+nl = "\n"
 
 class Tdb(threading.Thread) :
     inFile = sys.stdin
@@ -61,22 +63,26 @@ class Tdb(threading.Thread) :
             self.writeln(linecache.getline(filename, l))
 
     def who(self):
-        for g in globals().keys() :
-            self.writeln(repr(g)  + '=' + repr(globals()[g]))
+#        for g in globals().keys() :
+#            self.writeln(repr(g)  + '=' + repr(globals()[g]))
+	print self.module, type(self.module)
+
+	for g in self.module.__dict__.keys() :
+            self.writeln(repr(g)  + '=' + repr(self.module.__dict__[g]))
             
     def eval(self, e):
         self.writeln(eval(e))
 
-    def module(self, e):
-	self.writeln(sys.modules[e])
-        self.module(e)
+    def module(self, m):
+	self.writeln(sys.modules[m]);
+        self.module = eval(m)
+
 
     def  help(self):
         self.writeln(
 	  "help, module <name>,l ist filename line, who, eval expresion, quit")
     
     def quit(self):
-        if 0: print self # quiet lint 
         raise Quit
         
 class TdbListener(threading.Thread):
@@ -93,7 +99,6 @@ class TdbListener(threading.Thread):
         s.listen(2)
         while  1 :
             ns, who = s.accept()
-            if 0: print who # quiet lint
             tdb = Tdb()
             tdb.inFile = ns.makefile('r')
             tdb.outFile  = ns.makefile('w')
@@ -101,9 +106,8 @@ class TdbListener(threading.Thread):
             ns.close()
         
 if __name__ == "__main__" :
-    dog = {'cat' : 1} 
     TdbListener().start()
     while 1:
-        print "visit me at localhost 9999 and see my dog=",dog
+        print "visit me at localhost 9999         "
         time.sleep(10)
 
