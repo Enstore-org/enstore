@@ -182,8 +182,8 @@ fi
 
 case $drive in
 
-  de01) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-  de02) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
+  de01) cmd="rsh $rip2   'mt -f /dev/rmt/tps3d1n $command 2>&1; echo \$?'" ;;
+  de02) cmd="rsh $rip2   'mt -f /dev/rmt/tps3d2n $command 2>&1; echo \$?'" ;;
 
   dc03) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
   dc04) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
