@@ -538,3 +538,11 @@ class Interface:
                 self.dont_try_this_at_home_erase = value
             elif opt == "--pnfs-is-automounted":
                 self.pnfs_is_automounted = 1
+            elif opt == "--ignore-storage-group":
+                self.ignore_storage_group = value
+            elif opt == "--clear-ignored-storage-group":
+                self.clear_ignored_storage_group = value
+            elif opt == "--clear-all-ignored-storage-groups":
+                self.clear_all_ignored_storage_groups = 1
+            elif opt == "--list-ignored-storage-groups":
+                self.list_ignored_storage_groups = 1
