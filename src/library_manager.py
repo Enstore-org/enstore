@@ -1051,15 +1051,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.work_at_movers.remove(wt)
 	    format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
 	    Trace.log(e_errors.INFO, format%(wt,mticket))
-        # tape must be in unmounted state
-        vol_info = self.vcc.inquire_vol(wt['fc']['external_label'])
-        if (vol_info['at_mover'][0] != 'unmounted' and
-            vol_info['at_mover'][1] == self.requestor):
-            mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'])
-            format = "vol:%s state recovered to %s. mover:%s"
-            Trace.log(e_errors.INFO, format%(wt['fc']['external_label'],
-                                             mcstate["at_mover"][0], 
-                                             wt['mover']))
+            # tape must be in unmounted state
+            vol_info = self.vcc.inquire_vol(wt['fc']['external_label'])
+            if (vol_info['at_mover'][0] != 'unmounted' and
+                vol_info['at_mover'][1] == self.requestor):
+                mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'])
+                format = "vol:%s state recovered to %s. mover:%s"
+                Trace.log(e_errors.INFO, format%(wt['fc']['external_label'],
+                                                 mcstate["at_mover"][0], 
+                                                 wt['mover']))
         w = self.schedule()
         Trace.trace(11,"SCHEDULE RETURNED %s"%(w,))
         # no work means we're done
