@@ -23,9 +23,13 @@ def get_trash():
             return '/diska/pnfs/trash/4'
 
 def get_bfid(mf):
-    f = open(mf)
-    r = f.readlines()
-    f.close()
+    try:
+        f = open(mf)
+        r = f.readlines()
+        f.close()
+    except:
+        return None, None
+
     if len(r) > 8:
         return string.strip(r[0]), string.strip(r[8])
     else:
@@ -42,20 +46,21 @@ if __name__ == '__main__':
     for i in files:
         fp = os.path.join(trash, i)
         vol, bfid = get_bfid(fp)
-        if not vol in vols:
-            vols.append(vol)
-        print 'deleting', bfid, '...',
-        # delete
-        fcc.bfid = bfid
-        result = fcc.set_deleted('yes')
-        if result['status'][0] != e_errors.OK:
-            print bfid, result['status'][1]
-        else:
-            print 'done'
-        try:
-            os.unlink(fp)
-        except:
-            print 'can not delete', fp
+        if bfid:
+            if not vol in vols:
+                vols.append(vol)
+            print 'deleting', bfid, '...',
+            # delete
+            fcc.bfid = bfid
+            result = fcc.set_deleted('yes')
+            if result['status'][0] != e_errors.OK:
+                print bfid, result['status'][1]
+            else:
+                print 'done'
+            try:
+                os.unlink(fp)
+            except:
+                print 'can not delete', fp
 
     for i in vols:
         print 'touching', i, '...',
