@@ -16,6 +16,8 @@ Include files:-
 #include <string.h>
 #include "ftt_t_cmdtable.h"
 
+#include <unistd.h>  /* optarg */
+
 #ifdef WIN32
 extern char *optarg;
 int getopt(); 
@@ -62,6 +64,9 @@ int ftt_t_write_vol_label(int, char **);int ftt_t_status(int, char **);
 int ftt_t_verify_position(int, char **);int ftt_t_max_errors(int, char **);
 int ftt_t_verify_modes(int, char **);	int ftt_t_verify_exist(int, char **);
 int ftt_t_test_status(int, char **);	int ftt_t_list_supported(int, char**);
+int ftt_t_inquire(int, char **);  	int ftt_t_logsense(int, char**);
+int ftt_t_modesense(int, char **);  	int ftt_t_format_ait(int, char**);
+
 
 /*=============================================================================
 Routine:
@@ -131,6 +136,10 @@ ftt_t_cmd_table_t ftt_t_my_cmds[] = {
 	"ftt_verify_exist",	ftt_t_verify_exist,
 	"ftt_test_status",	ftt_t_test_status,
 	"ftt_list_supported",	ftt_t_list_supported,
+	"ftt_modesense",	ftt_t_modesense,
+	"ftt_logsense",		ftt_t_logsense,
+	"ftt_inquire",		ftt_t_inquire,
+	"ftt_format_ait",	ftt_t_format_ait,
 	NULL,			0};
 
 /* Get command line arguments

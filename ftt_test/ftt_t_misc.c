@@ -212,3 +212,115 @@ FTT_T_CHECK_CALL (status,estatus);
 
 return 0;
 }
+
+/* ============================================================================
+
+ROUTINE: ftt_t_format_ait
+ 	
+	call ftt_format_ait
+==============================================================================*/
+int	ftt_t_format_ait (int argc, char **argv)
+{
+int 		status;			/* status */
+int		estatus = 0;		/* expected status */
+static char	*estatus_str;		/* expected status string */
+ftt_t_argt	argt[] = {
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+status = ftt_format_ait(ftt_t_fd);                     
+FTT_T_CHECK_CALL (status,estatus);
+
+return 0;
+}
+
+/* ============================================================================
+
+ROUTINE: ftt_t_modesense
+ 	
+	call ftt_modesense
+==============================================================================*/
+int	ftt_t_modesense (int argc, char **argv)
+{
+int 		status;			/* status */
+int		estatus = 0;		/* expected status */
+static char	*estatus_str;		/* expected status string */
+ftt_t_argt	argt[] = {
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+status = ftt_modesense(ftt_t_fd);                     
+FTT_T_CHECK_CALL (status,estatus);
+
+return 0;
+}
+
+/* ============================================================================
+
+ROUTINE: ftt_t_logsense
+ 	
+	call ftt_logsense
+==============================================================================*/
+int	ftt_t_logsense (int argc, char **argv)
+{
+int 		status;			/* status */
+int		estatus = 0;		/* expected status */
+static char	*estatus_str;		/* expected status string */
+ftt_t_argt	argt[] = {
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+status = ftt_logsense(ftt_t_fd);                     
+FTT_T_CHECK_CALL (status,estatus);
+
+return 0;
+}
+
+/* ============================================================================
+
+ROUTINE: ftt_t_inquire
+ 	
+	call ftt_inquire
+==============================================================================*/
+int	ftt_t_inquire (int argc, char **argv)
+{
+int 		status;			/* status */
+int		estatus = 0;		/* expected status */
+static char	*estatus_str;		/* expected status string */
+ftt_t_argt	argt[] = {
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+status = ftt_inquire(ftt_t_fd);                     
+FTT_T_CHECK_CALL (status,estatus);
+
+return 0;
+}
