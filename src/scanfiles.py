@@ -281,12 +281,15 @@ def check(f):
             #Before blindly returning this error, first check the directory
             # listing for this entry.  A known 'ghost' file problem exists
             # and this is how to find out.
-            directory, filename = os.path.split(f)
-            dir_list = os.listdir(directory)
-            if filename in dir_list:
-                #We have this special error situation.
-                error(f + " ... invalid directory entry")
-                return
+            try:
+                directory, filename = os.path.split(f)
+                dir_list = os.listdir(directory)
+                if filename in dir_list:
+                    #We have this special error situation.
+                    error(f + " ... invalid directory entry")
+                    return
+            except OSError:
+                pass
           
             error(f + " ... does not exist")
             return
@@ -316,6 +319,17 @@ def check(f):
         return
 
 
+def start_check(line):
+    line = line.strip()
+    
+    import profile
+    import pstats
+    profile.run("check(line)", "/tmp/scanfiles_profile")
+    p = pstats.Stats("/tmp/scanfiles_profile")
+    p.sort_stats('cumulative').print_stats(100)
+    
+    #check(line)
+
 if __name__ == '__main__':
 
     if len(sys.argv) >= 2 and sys.argv[1] == '--help':
@@ -340,27 +354,23 @@ if __name__ == '__main__':
     intf = option.Interface()
     infc = info_client.infoClient((intf.config_host, intf.config_port))
 
-    #When the entire list of files/directories is listed on the command line
-    # we need to loop over them.
-    if file_list:
-        for line in file_list:
-            line = line.strip()
-            if line[:2] != '--':
-                try:
-                    check(line)
-                except (KeyboardInterrupt, SystemExit):
-                    #If the user does Control-C don't traceback.
-                    break
+    try:
 
-    #When the list of files/directories is of an unknown size from a file
-    # object; read the filenames in one at a time for resource efficiency.
-    elif file_object:
-        line = file_object.readline()
-        while line:
-            line = line.strip()
-            try:
-                check(line)
-            except (KeyboardInterrupt, SystemExit):
-                #If the user does Control-C don't traceback.
-                break
+        #When the entire list of files/directories is listed on the command
+        # line we need to loop over them.
+        if file_list:
+            for line in file_list:
+                if line[:2] != '--':
+                    start_check(line)
+                    
+        #When the list of files/directories is of an unknown size from a file
+        # object; read the filenames in one at a time for resource efficiency.
+        elif file_object:
             line = file_object.readline()
+            while line:
+                start_check(line)
+                line = file_object.readline()
+
+    except (KeyboardInterrupt, SystemExit):
+        #If the user does Control-C don't traceback.
+        pass
