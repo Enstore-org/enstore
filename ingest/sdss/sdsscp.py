@@ -2,6 +2,7 @@
 
 import os
 import getopt
+import errno
 
 import callGet
 import string, sys
@@ -88,7 +89,15 @@ def main():
                                   outputDir, verbose)
 
     #The copied catalog file is removed at this point.
-    os.remove(localMetaFilePath)
+    try:
+        os.remove(localMetaFilePath)
+    except OSError, msg:
+        if getattr(msg, "errno", None) == errno.ENOENT:
+            #The file is already gone.
+            pass
+        else:
+            print "Unable to remove temporary file %s: %s" % \
+                  (localMetaFilePath, str(msg))
 
     print "Exit status = %s." % exit_status
     sys.exit(exit_status)
