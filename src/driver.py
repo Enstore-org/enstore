@@ -3,16 +3,16 @@
 # src/$RCSfile$   $Revision$
 #
 # system imports
-import os				# temporary - .system for mt commands
-import types				# see if eod_str is string
-import string				# atoi use on loc_cookie
+import os				
+import types				
+import string				
 import time
 import re
 
 ##Enstore imports
-import FTT
+#import FTT
 import EXfer
-import time				# sleep used in FTT sw_mount
+import time				
 import e_errors
 import Trace
 import hostaddr
@@ -102,12 +102,11 @@ class GenericDriver:
 
 
     
-    def __init__( self, sm_size ):
+    def __init__( self  ):
 	# Note, I could pass "device" here save it, but I want to pass it to
 	#       open (to make open like python builtin open) so I might as
 	# well pass it to sw_mount and offline also.
 
-        self.shm="No"
         
         # statistics info
         self.statisticsOpen = {}
