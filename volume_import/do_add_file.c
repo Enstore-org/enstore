@@ -71,7 +71,8 @@ do_add_file(char *pnfs_dir, char *filename)
     /* Once we start writing into the database we need to make sure that if any 
      * error occurred, we completely undo the partial addition */
 
-    if (write_db_i(path,"size", size) 
+    if (write_db_i(path,"blocksize",blocksize)
+	||write_db_i(path,"size", size) 
 	||write_db_s(path,"source", filename)
 	||write_db_s(path,"pnfs_dir", pnfs_dir)
 	||write_db_i(path,"early_checksum_size", 
