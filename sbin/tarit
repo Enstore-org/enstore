@@ -157,7 +157,20 @@ if [ `echo $node | grep -c mvr` -eq 0 ]; then
   SPECIALE=$BACKUP/enstore/$gang/special/$node.extra.tgz
   T=/tmp/`basename $SPECIALE`
   rm -f $T
-  tar -czf $T /home/bakken/P /local/ups/db/pnfs /local/ups/prd/pnfs /boot /usr/src/ /lib/modules /usr/local/bin/rpcfix.pl /usr/local/bin/find.rpc /root/clear.volmap.protection /root/raidcheck
+  rm -f /tmp/special2
+  for precious in \
+    /home/bakken/P \
+    /local/ups/db/pnfs \
+    /local/ups/prd/pnfs \
+    /boot /usr/src/ \
+    /lib/modules \
+    /usr/local/bin/rpcfix.pl \
+    /usr/local/bin/find.rpc \
+    /root/clear.volmap.protection \
+    /root/raidcheck; 
+  do if [ -r $precious ]; then echo $precious >>/tmp/special2; fi; done
+  #tar -czf $T /home/bakken/P /local/ups/db/pnfs /local/ups/prd/pnfs /boot /usr/src/ /lib/modules /usr/local/bin/rpcfix.pl /usr/local/bin/find.rpc /root/clear.volmap.protection /root/raidcheck
+  tar -czf $T `cat /tmp/special2`
   # I don't know how to get just the /pnfs... mountpoints or /diska /diskb... mountpoints
   cp $T $SPECIALE
 
