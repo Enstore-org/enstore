@@ -17,6 +17,11 @@ BfidDbError = "BfidDbError"
 
 verbose=0
 
+def safe_atol(s):
+    if s[-1]=='L':
+        s=s[:-1]
+    return string.atol(s)
+
 class BfidDb:
 
     
@@ -53,8 +58,8 @@ class BfidDb:
         if len(w) != 4:
             raise BfidDbError, "invalid summary %s for vol %s"%(summary,vol)
         try:
-            n_entries=string.atol(w[1])
-            file_checksum=eval(w[3])
+            n_entries=safe_atol(w[1])
+            file_checksum=safe_atol(w[3])
         except:
             raise BfidDbError, "invalid summary %s for vol %s"%(summary,vol)
         return n_entries, file_checksum
