@@ -266,7 +266,8 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
         self.running = 1
 
 	# set up for sending an event relay message whenever we get a new config loaded
-	self.new_config_message = event_relay_messages.EventRelayNewConfigFileMsg(csc[0], csc[1])
+	self.new_config_message = event_relay_messages.EventRelayNewConfigFileMsg(csc[0],
+										  csc[1])
 	self.new_config_message.encode()
 
 	# start our heartbeat to the event relay process
