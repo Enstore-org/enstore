@@ -1026,7 +1026,7 @@ class TotalBpdDataFile(EnPlot):
 
     def __init__(self, dir):
 	EnPlot.__init__(self, dir, enstore_constants.TOTAL_BPD_FILE)
-	self.lw = 10
+	self.lw = 20
 
     # make the file with the bytes per day format, first we must sum the data
     # that we have based on the day
