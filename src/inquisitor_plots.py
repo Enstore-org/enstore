@@ -19,22 +19,6 @@ import accounting_query
 
 LOGFILE_DIR = "logfile_dir"
 
-def list_days(sdate, edate):
-    date_l = []
-    start_date = enstore_date.Date(sdate)
-    end_date = enstore_date.Date(edate)
-    if start_date.lessthanequalto(end_date):
-        date_l.append(start_date.formatted())
-        while 1:
-            new_date = enstore_date.Date(start_date.tomorrow())
-            if new_date.lessthanequalto(end_date):
-                date_l.append(new_date.formatted())
-            else:
-                break
-            start_date = new_date
-    return date_l
-
-
 class InquisitorPlots:
 
     # create the html file with the inquisitor plot information
