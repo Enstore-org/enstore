@@ -222,7 +222,7 @@ fd_xfer_SigHand( int sig )
 
 	if (g_pid)
 	{   int sts;
-	    printf(  "(pid=%d) attempt kill -9 of forked process %d\n"
+	    PRINTF(  "(pid=%d) attempt kill -9 of forked process %d\n"
 		   , getpid(), g_pid );
 	    kill( g_pid, 9 );
 	    waitpid( g_pid, &sts, 0 );
@@ -278,14 +278,15 @@ EXfd_xfer(  PyObject	*self
 
     /* set up the signal handler b4 we get the ipc stuff */
     newSigAct_sa[0].sa_handler = fd_xfer_SigHand;
-    newSigAct_sa[0].sa_flags   = 0 | SA_ONESHOT;
+    newSigAct_sa[0].sa_flags   = 0 | SA_RESETHAND;
     sigemptyset( &(newSigAct_sa[0].sa_mask) );
 #   define DOSIGACT 1
 #   if DOSIGACT == 1
+#   define SIGLIST { SIGINT, SIGTERM }
     /*sigaction( SIGINT, &newSigAct_s, &g_oldSigAct_s );*/
     {   int ii;
 	/* do not include SIGPIPE -- we will not get EPIPE if it is included */
-	int sigs[] = { SIGINT, SIGTERM };
+	int sigs[] = SIGLIST;
 	for (ii=0; ii<(sizeof(sigs)/sizeof(sigs[0])); ii++)
 	{   
 	    newSigAct_sa[sigs[ii]] = newSigAct_sa[0];
@@ -427,6 +428,8 @@ EXfd_xfer(  PyObject	*self
 	    case Eof:
 		if (!shm_obj_tp) g_ipc_cleanup();
 		waitpid( g_pid, &sts, 0 );
+		/* NOTE: string must be the same as in FTT -- it is must in
+		   mover.py */
 		return (raise_exception("fd_xfer - read EOF unexpected"));
 		break;
 	    default:		/* assume DatCrc */
@@ -442,7 +445,7 @@ EXfd_xfer(  PyObject	*self
     /* MUST DO IN FORKED PROCESS ALSO??? */
     /*sigaction( SIGINT, &g_oldSigAct_s, (void *)0 );*/
     {   int ii;
-	int sigs[] = { SIGINT, SIGTERM };
+	int sigs[] = SIGLIST;
 	for (ii=0; ii<(sizeof(sigs)/sizeof(sigs[0])); ii++)
 	{   sts = sigaction( sigs[ii], &(g_oldSigAct_sa[sigs[ii]]),(void *)0 );
 	    if (sts == -1)
