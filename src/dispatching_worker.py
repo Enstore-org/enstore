@@ -345,7 +345,7 @@ class DispatchingWorker:
         Trace.trace(19,"reply_with_list number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
         request_dict[self.current_id] = copy.deepcopy(list)
-        self.socket.sendto(request_dict[self.current_id], self.reply_address)
+        self.socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
 
     # for requests that are not handled serialy reply_address, current_id, and client_number
     # number must be reset.  In the forking media changer these are in the forked child
