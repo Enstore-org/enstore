@@ -466,6 +466,13 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		set_stat(b,FTT_CLEANED_BIT, ftt_itoa((long)bit(4,buf[21])), 0);
 
 		remain_tape=pack(0,buf[23],buf[24],buf[25]);
+
+		/* remain_tape *can* go negative(!!), so deal with it */
+
+		if (remain_tape & 0x00800000) {
+		    remain_tape = 0x01000000 - remain_tape
+		}
+
 		set_stat(b,FTT_REMAIN_TAPE,ftt_itoa((long)remain_tape),0);
 		error_count = pack(0,buf[16],buf[17],buf[18]);
 		if (d->data_direction ==  FTT_DIR_READING) {

@@ -35,6 +35,8 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 	if (vlen) *vlen = 0;
 	ftt_errno = FTT_SUCCESS;
 	return FTT_BLANK_HEADER;
+    } else if ( -1 == length ) {
+	return -1;
     } else if ( length < 80 ) {
 	/* no known header is < 80 bytes long */
 	ftt_eprintf("Ok\n");

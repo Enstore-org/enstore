@@ -60,7 +60,10 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 	}
 	memset(buf,0,blocksize);
 	res = ftt_read(d,buf,blocksize); 	/* errors to guess_label */
-	if ( (res = ftt_guess_label(buf,res,&pname, &len) ) < 0) return res;
+	if ( (res = ftt_guess_label(buf,res,&pname, &len) ) < 0) {
+		free(buf);
+		return res;
+	}
 	if (type != res || (len != 0 && 
 		(0 != strncmp(vollabel,pname,len) || len != (int)strlen(vollabel)))){
 	  if (len > 512) len = 511;
@@ -98,6 +101,7 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 int
 ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel) {
     int res;
+    static long int filler; /* try to force buf to be word aligned for IRIX */
     static char buf[10240]; /* biggest blocksize of any label we support */
     int blocksize = 10240;
 
