@@ -206,6 +206,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ###########################################################################TEMPORARY##########
             if not finfo.has_key("location_cookie"):
                 finfo["location_cookie"], finfo["size"] = eval(record["bof_space_cookie"])
+            import types
+            if type(finfo["location_cookie"]) == types.IntType:
+                self.enprint("fixing location_cookie from int to string type:"+repr(finfo["location_cookie"]))
+                finfo["location_cookie"] = "%12.12i"%finfo["location_cookie"]
+                dict[bfid] = copy.deepcopy(finfo)
             #######################################################################END#TEMPORARY##########
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
