@@ -419,7 +419,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                     print "Changing buffer size from", self.buffer.min_bytes, "to", optimal_buf
                 self.buffer.set_min_bytes(optimal_buf)
             
-        if self.buffer.low(): print "buffer low"
         if self.buffer.low() and self.bytes_read != self.bytes_to_transfer:
             # turn off the select fd, read_client will turn it back on
             if verbose>1: print "buffer low"
