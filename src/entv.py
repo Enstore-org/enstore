@@ -156,7 +156,7 @@ def main():
         if sock in r: #getting responses to our mover status queries
             try:
                 msg = sock.recv(16384)
-            except socket.error, detail
+            except socket.error, detail:
                 print detail
                 
             try:
