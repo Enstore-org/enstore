@@ -13,6 +13,9 @@
   in order to save a strcpy  -  cgw 1990428 */
 unsigned int adler32(unsigned int, char *, int);
 
+/* prototype - avoids a warning with -Wall if this is here */
+void initEXfer(void);
+
 static PyObject *EXErrObject;
 
 static PyObject *
@@ -36,16 +39,15 @@ raise_exception(char *msg)
 static int
 do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_flag, unsigned long *crc_p)
 {
-	char	*buffer;
-	char	*b_p;
-	long long	sts;
-	long long	bytes_to_xfer;
-	fd_set  fds;
-	int     n_fds;
-	struct  timeval timeout;
+	char	       *buffer;
+	char	       *b_p;
+	ssize_t         sts;
+	size_t	        bytes_to_xfer;
+	fd_set          fds;
+	struct timeval  timeout;
 	
 	buffer = (char *)alloca(blk_size);
-	
+
 	while (no_bytes) {
 	    /* Do not worry about reading/writing an exact block as this is
 	       one the user end. But attempt blk_size reads. */
@@ -78,10 +80,10 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
 	        errno=0;
 	        sts = write(wr_fd, b_p, bytes_to_xfer);
 	        if (sts != bytes_to_xfer){
-		/* printf("write(%d, 0x%x, %d) -> %d, errno=%d\n", wr_fd, b_p, bytes_to_xfer,sts, errno);
-		   fflush(stdout); */
-		fprintf(stderr, "write(%d, 0x%x, %lld) -> %lld, errno=%d\n", wr_fd, b_p, bytes_to_xfer,sts, errno);
-                fflush(stderr);
+		  fprintf(stderr, "write(%d, %#x, %lld) -> %lld, errno=%d\n",
+			  wr_fd, (unsigned)b_p, (long long)bytes_to_xfer,
+			  (long long)sts, errno);
+		  fflush(stderr);
 		}
 		if (sts == -1) {   /* return a write error */
 		    return (-3);
@@ -100,8 +102,6 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
 		bytes_to_xfer -= sts;
 		b_p += sts;
 		no_bytes -= sts;
-		/* printf("bytes left %lld\n",no_bytes); */
-		/* fflush(stdout); */
 	    } while (bytes_to_xfer);	
 	}
 	return 0;
@@ -125,7 +125,8 @@ EXfd_xfer(PyObject *self, PyObject *args)
     int sts;
     PyObject	*rr;
     
-    sts = PyArg_ParseTuple(args, "iiOiO|O", &fr_fd, &to_fd, &no_bytes_obj, &blk_size, &crc_obj_tp, &crc_tp);
+    sts = PyArg_ParseTuple(args, "iiOiO|O", &fr_fd, &to_fd, &no_bytes_obj,
+			   &blk_size, &crc_obj_tp, &crc_tp);
     if (!sts) return (NULL);
     if (crc_tp == Py_None)
 	crc_i = 0;
@@ -136,13 +137,10 @@ EXfd_xfer(PyObject *self, PyObject *args)
     else 
 	return(raise_exception("fd_xfer - invalid crc param"));
 
-    if (PyLong_Check(no_bytes_obj)){
+    if (PyLong_Check(no_bytes_obj))
 	no_bytes = PyLong_AsLongLong(no_bytes_obj);
-    }
-    
-    else if (PyInt_Check(no_bytes_obj)){
-	no_bytes = (unsigned)PyInt_AsLong(no_bytes_obj);
-    }
+    else if (PyInt_Check(no_bytes_obj))
+	no_bytes = (long long)PyInt_AsLong(no_bytes_obj);
     else
 	return(raise_exception("fd_xfer - invalid no_bytes param"));
     
