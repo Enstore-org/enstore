@@ -47,6 +47,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.brand = brand
         return
 
+    def get_brand(slef, ticket):
+        ticket['brand'] = self.brand
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
     # we need a new bit field id for each new file in the system
     def new_bit_file(self, ticket):
         # input ticket is a file clerk part of the main ticket

@@ -52,6 +52,11 @@ class FileClient(generic_client.GenericClient,
         r = self.send(ticket)
         return r
 
+    def get_brand(self):
+        ticket['work'] = 'get_brand'
+        r = self.send(ticket)
+        return ticket['brand']
+
     # def set_delete(self, ticket):
     #     #Is this really set_deleted or set_delete?
     #     ticket['work'] = "set_deleted"
