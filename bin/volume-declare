@@ -2,14 +2,18 @@
 
 # Declare some new volumes
 
-
+# (see bin/ecmd addvol doc)
+#                              volume
+#                              name
+#          file      med type (extern   capacity     remaining
+#library  family   (blocksize) label?)  in bytes      bytes
 volumes="
 hppcdisk     none    diskfile  flop1      14000000    14000000
 hppcdisk     none    diskfile  flop2      14000000    14000000
 hppcdisk     none    diskfile  flop3      14000000    14000000
-fndaprdisk   none    diskfile  flop101    14000000    14000000
-fndaprdisk   none    diskfile  flop102    14000000    14000000
-fndaprdisk   none    diskfile  flop103    14000000    14000000
+fndaprdisk   none    diskfile  flop101  2000000000  2000000000
+fndaprdisk   none    diskfile  flop102  2000000000  2000000000
+fndaprdisk   none    diskfile  flop103  2000000000  2000000000
 fntt1disk    none    diskfile  flop201    14000000    14000000
 fntt1disk    none    diskfile  flop202    14000000    14000000
 fntt1disk    none    diskfile  flop203    14000000    14000000
