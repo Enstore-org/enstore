@@ -281,7 +281,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	    Trace.log( e_errors.INFO, "Performing offline/eject of device %s"%(self.mvr_config['device'],))
 	    self.hsm_driver.offline(self.mvr_config['device'])
             self.store_statistics('dismount', self.hsm_driver)
-            if self.driveStatistics['dismount']['cleaning_bit'] == '1': clean_drive = 1
+            if (self.driveStatistics['dismount'].has_key('cleaning_bit') and
+                self.driveStatistics['dismount']['cleaning_bit'] == '1'): clean_drive = 1
 	    Trace.log( e_errors.INFO, "Completed  offline/eject of device %s"%(self.mvr_config['device'],))
 	    pass
 	# now ask the media changer to unload the volume
