@@ -150,6 +150,18 @@ icmp0 = {}
 snmp0 = {}
 node0 = {}
 
+f = 0
+
+
+#########################################################################
+## This function 
+#########################################################################
+
+def checkprint(flg, str):
+    if flg == 1:
+       print str 
+
+
 
 #########################################################################
 ## This function searches a string from the input file and returns an   #
@@ -322,10 +334,10 @@ def get_mib_info(list, path, filenum):
 ## corresponding state, value, description, event name and sever level. #
 #########################################################################
 def sumThem(r, o, y, u, val, obj, dscc):
-        print "\nThere are totally %s values reaching red threshold"%(r,)
-        print "There are total %s values reaching orange threshold"%(o,)
-        print "There are total %s values reaching yellow threshold"%(y,)
-        print "There are total %s values undefined"%(u,)
+        checkprint(f,"\nThere are totally %s values reaching red threshold"%(r,))
+        checkprint(f,"There are total %s values reaching orange threshold"%(o,))
+        checkprint(f,"There are total %s values reaching yellow threshold"%(y,))
+        checkprint(f,"There are total %s values undefined"%(u,))
 
         if r != 0:
                 state = DOWN
@@ -356,7 +368,7 @@ def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
     flag = 1
     dscc = "%s_%s_%s"%(dscc, name, dsc1)
     state, val, dsc, evt, sev = state1, val1, dsc1, evt1, sev1
-    print name, state, val, dsc, evt, sev
+    checkprint(f,"%s %s %s %s %s %s"%(name, state, val, dsc, evt, sev))
     if state == DOWN and sev == 0:
         r = r + 1
     elif sev == 4:
@@ -489,7 +501,6 @@ def check2Str(d, str, goodStr, warnStr, name):
         elif val == goodStr:
                 return UP, d[str], "OK", evt, 0
         else:
-                print "value is %s"%(val,)
                 return UNDEFINED, val, "Undefined_string", str, 2
 
 
@@ -532,14 +543,14 @@ def checkNode(elmName):
         if state1 != UP or sev1 != 0:
 	   flag = 1
            state, val, dsc, evt, sev = state1, val1, dsc1, evt1, sev1
-           print "\n", state, val, dsc, evt, sev
+           checkprint(f,"%s %s %s %s %s %s"%("\n", state, val, dsc, evt, sev))
         else:
            state1, val1, dsc1, evt1, sev1 = check2Val(d, "InAddrErrors", 10,0,\
                                                       elmName,ip0)
            if state1 != UP  or sev1 != 0:
                 flag = 1
                 state, val, dsc, evt, sev = state1, val1, dsc1, evt1, sev1
-                print "\n", state, val, dsc, evt, sev
+                checkprint(f,"%s %s %s %s %s %s"%("\n", state, val, dsc, evt, sev))
 
         if flag == 1:
 		return state, val, dsc, evt, sev       
@@ -579,14 +590,14 @@ def checkNode(elmName):
         if state1 != UP or sev1 != 0:
            flag = 1
 	   state, val, desc, evt, sev = state1, val1, dsc1, evt1, sev1
-           print "\n", state, val, dsc, evt, sev
+           checkprint(f,"%s %s %s %s %s %s"%("\n", state, val, dsc, evt, sev))
         else:
            state1, val1, dsc1, evt1, sev1 = check2Val(d, "InASNParseErrs", 5,0,\
                                                       elmName, snmp0)
            if state1 != UP or sev1 != 0:
                 flag = 1
                 state, val, dsc, evt, sev = state1, val1, dsc1, evt1, sev1
-                print "\n", state, val, dsc, evt, sev
+                checkprint(f,"%s %s %s %s %s %s"%("\n", state, val, dsc, evt, sev))
         if flag == 1:
                 return state, val, dsc, evt, sev
         else:
@@ -726,6 +737,14 @@ def setNodeTab(tabName, head, htmlName, list):
 #########################################################################
 
 if __name__=="__main__":
+    import sys
+    
+    if len(sys.argv) > 1:   
+       args = sys.argv
+       if args[1] == "--print":
+          f = 1
+                
+
 
     mib = ".1.3.6.1.2.1"   #.iso.org.dod.internet.mgmt.mib-2
     
@@ -917,18 +936,18 @@ if __name__=="__main__":
     cl.register() 			#registers monitoring agent with 
 					#NGOP Central Server
 
-    print oldStateList
-    print oldSevLvList
+    checkprint(f, oldStateList)
+    checkprint(f, oldSevLvList)
 
     while(1):
         i = -1
         for elmName in meNames:
             i = i + 1
             state, val, desc, evtName, sevLevel = checkNode(elmName)
-            print "\ni is %s"%(i,)
-            print oldStateList
-            print oldSevLvList
-            print elmName, state, desc, evtName, sevLevel
+            checkprint(f, "\ni is %s"%(i,))
+            checkprint(f, oldStateList)
+            checkprint(f, oldSevLvList)
+            checkprint(f,"%s %s %s %s %s"%(elmName, state, desc, evtName, sevLevel))
             if oldStateList[i] == state and oldSevLvList[i] == sevLevel: 
 		continue 		#nothing has changed
             eventDict={'EventType':meType, 'EventName':evtName,'EventValue':val, \
@@ -938,13 +957,12 @@ if __name__=="__main__":
   					  nodeName, eventDict)
             oldStateList[i] = state
             oldSevLvList[i] = sevLevel
-            print oldStateList, oldSevLvList,status,elmName,evtName,sevLevel
-	    print status, elmName, evtName, sevLevel
+	    checkprint(f,"%s %s %s %s"%(status, elmName, evtName, sevLevel))
 		
             if not status: 
-               	print "Error:", reason
+               	checkprint(f,"%s %s"%( "Error:", reason))
             else:
-                print "!this is the status and reason %s,%s !"%(status, reason)
+                checkprint(f, "!this is the status and reason %s,%s !"%(status, reason))
 
         time.sleep(checkTime)
 
