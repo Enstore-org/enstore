@@ -904,7 +904,8 @@ if __name__ == "__main__":
 
     while 1:
         try:
-            Trace.init(args[0][0:5]+'.libm')
+            #Trace.init(args[0][0:5]+'.libm')
+            Trace.init(keys["logname"])
             logc.send(log_client.INFO, 1, "Library Manager"+args[0]+"(re)starting")
             lm.serve_forever()
         except:
