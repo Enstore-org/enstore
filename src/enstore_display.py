@@ -30,6 +30,7 @@ import e_errors
 
 #Get the environmental variables.
 ENSTORE_DIR = os.environ.get("ENSTORE_DIR", None)
+ENTV_DIR = os.environ.get("ENTV_DIR", None)
 PYTHONLIB = os.environ.get("PYTHONLIB", None)
 IMAGE_DIR = None
 LIB = None
@@ -37,35 +38,41 @@ LIB = None
 #Determine the expected location of the local copy of Tcl/Tk.
 try:
     #Determine the expected location of the local copy of Tcl/Tk.
-    TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
+    if ENSTORE_DIR:
+        TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
 
-    #If the local copy of tcl/tk is found, use it.
-    temp_dir_tcl = os.path.join(TCLTK_DIR, 'tcl8.3')
-    temp_dir_tk = os.path.join(TCLTK_DIR, 'tk8.3')
-    temp_dir_lib = os.path.join(TCLTK_DIR, sys.platform)
-    if os.path.exists(temp_dir_tcl) and os.path.exists(temp_dir_tk) and \
-       os.path.exists(temp_dir_lib):
-        os.environ["TCL_LIBRARY"] = temp_dir_tcl
-        os.environ["TK_LIBRARY"] = temp_dir_tk
-        LIB = temp_dir_lib
-    else:
-        #Don't use the local copy.
-        temp_dir = os.path.join(PYTHONLIB, "lib-dynload")
-        if(os.path.exists(temp_dir)):
-            LIB = temp_dir
+        #If the local copy of tcl/tk is found, use it.
+        temp_dir_tcl = os.path.join(TCLTK_DIR, 'tcl8.3')
+        temp_dir_tk = os.path.join(TCLTK_DIR, 'tk8.3')
+        temp_dir_lib = os.path.join(TCLTK_DIR, sys.platform)
+        if os.path.exists(temp_dir_tcl) and os.path.exists(temp_dir_tk) and \
+           os.path.exists(temp_dir_lib):
+            os.environ["TCL_LIBRARY"] = temp_dir_tcl
+            os.environ["TK_LIBRARY"] = temp_dir_tk
+            LIB = temp_dir_lib
+            IMAGE_DIR = os.path.join(ENSTORE_DIR, 'etc', 'Images')
+        else:
+            #Don't use the local copy.
+            temp_dir = os.path.join(PYTHONLIB, "lib-dynload")
+            if(os.path.exists(temp_dir)):
+                LIB = temp_dir
+    elif ENTV_DIR:
+        TCLTK_DIR=ENTV_DIR
+        temp_dir_tcl = os.path.join(TCLTK_DIR, 'tcl8.3')
+        temp_dir_tk = os.path.join(TCLTK_DIR, 'tk8.3')
+        if os.path.exists(temp_dir_tcl) and os.path.exists(temp_dir_tk):
+            os.environ["TCL_LIBRARY"] = temp_dir_tcl
+            os.environ["TK_LIBRARY"] = temp_dir_tk
+            LIB = None
+            IMAGE_DIR = os.path.join(ENTV_DIR, 'Images')
 except:
     pass
 
 #This is a very important line.  Includes the library's directory in the
 # system search path.
-try:
-    if LIB == None:
-        raise OSError(errno.EIO, "LIB equals None.")
-    
+
+if LIB:
     sys.path.insert(0, LIB)
-except:
-    sys.stderr.write("Unable to access shared library: %s\n" % LIB)
-    sys.exit(1)
 
 #Make sure the environment has at least one copy of TCL/TK.
 if not os.environ.get("TCL_LIBRARY", None):
@@ -75,13 +82,8 @@ if not os.environ.get("TK_LIBRARY", None):
     sys.stderr.write("Tk library not found.\n")
     sys.exit(1)
 
-try:
-    #Determine where the images are located.
-    temp_dir = os.path.join(ENSTORE_DIR, 'etc', 'Images')
-    if(os.path.exists(temp_dir)):
-        IMAGE_DIR = temp_dir
-except:
-    sys.stderr.write("Images directory not found.\n")
+if not IMAGE_DIR:
+    sys.stderr.write("IMAGE_DIR is not set.\n")
     sys.exit(1)
 
 #print "_tkinter.so =", LIB
