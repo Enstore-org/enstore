@@ -467,8 +467,9 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	rtn = 1
 	for server in self.server_d.keys():
 	    if self.server_d[server].check_recent_alive() == monitored_server.NO_TIMEOUT:
-		rtn = 0
-		break
+		if not self.server_d[server].name == enstore_constants.INQUISITOR:
+		    rtn = 0
+		    break
 	return rtn
 
     def ping_event_relay(self):
