@@ -1,13 +1,37 @@
 #!/bin/sh
 set -u  # force better programming and ability to use check for not set
+run_for=86400
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ -n "$1" ]; then run_for=$1; fi
+#export $run_for  
 home=/home/enstore
 drives=${home}/drive_list
 . /usr/local/etc/setups.sh
 setup enstore
-cat $drives | while read drive tape media size; do
- echo $drive $tape $media $size
- ${ENSTORE_DIR}/sbin/check_drive_sa.py $drive $tape $media $size > $tape.chk &
+#savIFS=$IFS
+newIFS="
+"
+start=`date +%s`
+delta=0
+# remove log files
+for line in `cat $drives`; do
+    tape=`echo $line | cut -f2 -d\ `
+    rm -rf $tape.chk &
 done
-wait $!
+while [ $delta -lt $run_for ]; do
+    savIFS=$IFS
+    IFS=$newIFS
+    # do test
+    for line in `cat $drives`; do
+	drive=`echo $line | cut -f1 -d\ `
+	tape=`echo $line | cut -f2 -d\ `
+	media=`echo $line | cut -f3 -d\ `
+	size=`echo $line | cut -f4 -d\ `
+	${ENSTORE_DIR}/sbin/check_drive_sa.py $drive $tape $media $size >> $tape.chk &
+    done
+    IFS=$savIFS
+    wait
+    now=`date +%s`
+    delta=`expr $now - $start`
+done
 exit 0
