@@ -38,6 +38,38 @@ import string_driver
 
 import Trace
 
+
+"""
+Mover:
+
+  Any single mount or dismount failure ==> state=BROKEN, vol=NOACCESS
+	(At some point, we'll want single failures to be 2-3 failures)
+
+  Any single eject failure ==> state=BROKEN, vol=NOACCESS, no dismount
+				  attempt, tape stays in drive.
+
+  Two consecutive transfer failures ==> state=BROKEN
+	Exclude obvious failures like encp_gone.
+
+  Any 3 transfer failures within an hour ==> state=BROKEN
+
+
+  By BROKEN, I mean the normal ERROR state plus:
+	a. Alarm is raised.
+	b. Nanny doesn't fix it.   (enstore sched --down xxx   stops nanny)
+        c. It's sticky across mover process restarts.
+        d. Admin has to investigate and take drive out of BROKEN state.
+
+I know I'm swinging way to far to the right and I know this is more
+work for everyone, especially the admins.  Could you both please
+comment and maybe suggest other things. I just don't want to come in
+some morning and have all the D0 tapes torn apart and have the
+possibility exist that Enstore could have done more to prevent it.
+
+
+Jon
+"""
+
 """TODO:
 
 Make a class for EOD objects to handle all conversions from loc_cookie to integer
@@ -45,6 +77,8 @@ automatically.  It's confusing in this code when `eod' is a cookie vs a plain ol
 
 
 """
+
+
 
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
@@ -333,6 +367,42 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def unlock_state(self):
         self._state_lock.release()
+
+    def check_sched_down(self):
+        inq = self.csc.get('inquisitor')
+        host = inq.get('host')
+        if not host:
+            return 0
+        cmd = 'rsh %s ". /usr/local/etc/setups.sh; setup enstore; enstore sched --show"' % (host,)
+        p = os.popen(cmd, 'r')
+        r = p.read()
+        s = p.close()
+        if s:
+            Trace.log(e_errors.ERROR, "error running enstore sched: %s" % (s,))
+            return 0
+        lines = string.split(r,'\n')
+        roi = 0
+        for line in lines:
+            words = string.split(line)
+            if 'Enstore' in words:
+                roi = 'Known' in words
+                continue
+            if roi and self.name in words:
+                return 1
+        return 0
+
+    def set_sched_down(self):
+        inq = self.csc.get('inquisitor')
+        host = inq.get('host')
+        if not host:
+            return 0
+        cmd = 'rsh %s ". /usr/local/etc/setups.sh; setup enstore; enstore sched --down=%s; enstore system"' % (
+            host, self.name)
+        p = os.popen(cmd, 'r')
+        r = p.read()
+        s = p.close()
+        if s:
+            Trace.log(e_errors.ERROR, "error running enstore sched: %s" % (s,))
         
     def start(self):
         name = self.name
@@ -366,7 +436,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.udpc = udp_client.UDPClient()
         self.state = IDLE
         self.last_error = (e_errors.OK, None)
-        if self.check_lockfile():
+        if self.check_sched_down() or self.check_lockfile():
             self.state = OFFLINE
         self.current_location = 0L
         self.current_volume = None #external label of current mounted volume
@@ -383,6 +453,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.files = ('','')
         self.transfers_completed = 0
         self.transfers_failed = 0
+        self.error_times = []
+        self.consecutive_failures = 0
+        self.max_consecutive_failures = 2
+        self.max_failures = 3
+        self.failure_interval = 3600
         self.current_work_ticket = {}
         self.vol_info = {}
         self.dismount_time = None
@@ -405,13 +480,18 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.config['local_mover'] = 0 #XXX who still looks at this?
         self.driver_type = self.config['driver']
 
+        self.max_consecutive_failures = self.config.get('max_consecutive_failures',
+                                                        self.max_consecutive_failures)
+        self.max_failures = self.config.get("max_failures", self.max_failures)
+        self.failure_interval = self.config.get("failure_interval", self.failure_interval)
+        
         self.default_dismount_delay = self.config.get('dismount_delay', 60)
         if self.default_dismount_delay < 0:
             self.default_dismount_delay = 31536000 #1 year
         self.max_dismount_delay = max(
             self.config.get('max_dismount_delay', 600),
             self.default_dismount_delay)
-
+        
         self.libraries = []
         lib_list = self.config['library']
         if type(lib_list) != type([]):
@@ -983,6 +1063,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.last_error = (str(err), str(msg))
         Trace.log(e_errors.ERROR, str(msg)+ " state=ERROR")
         self.state = ERROR
+
+    def broken(self, msg, err=e_errors.ERROR):
+        self.set_sched_down()
+        Trace.alarm(err, str(msg))
+        self.error(msg, err)
         
     def position_media(self, verify_label=1):
         #At this point the media changer claims the correct volume is loaded; now position it
@@ -1093,6 +1178,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
+        broken = ""
         self._in_setup = 0
         Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_hostname))
@@ -1106,7 +1192,17 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.timer('transfer_time')
         if exc != e_errors.ENCP_GONE:
-        ### network errors should not count toward rd_err, wr_err
+            self.consecutive_failures = self.consecutive_failures + 1
+            if self.consecutive_failures >= self.max_consecutive_failures:
+                broken =  "max_consecutive_failures (%d) reached" %(self.max_consecutive_errors)
+            now = time.time()
+            self.error_times.append(now)
+            while self.error_times and now - self.error_times[0] > self.failure_interval:
+                self.error_times.pop(0)
+            if len(self.error_times) >= self.max_failures:
+                broken =  "max_failures (%d) per failure_interval (%d) reached" % (self.max_failures,
+                                                                                     self.failure_interval)
+            ### network errors should not count toward rd_err, wr_err
             if self.mode == WRITE:
                 self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
                 #Heuristic: if tape is more than 90% full and we get a write error, mark it full
@@ -1120,9 +1216,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   (self.current_volume, remaining, capacity))
                         ret = self.vcc.set_remaining_bytes(self.current_volume, 0, None, None)
                         if ret['status'][0] != e_errors.OK:
-                            Trace.alarm(e_errors.ERROR, "set_remaining_bytes_failed", ret)
-                            return
-
+                            Trace.alarm(e_errors.ERROR, "set_remaining_bytes failed", ret)
+                            broken = broken +  "set_remaining_bytes failed"
+                                
                 except:
                     exc, msg, tb = sys.exc_info()
                     Trace.log(e_errors.ERROR, "%s %s" % (exc, msg))
@@ -1131,11 +1227,14 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             self.transfers_failed = self.transfers_failed + 1
 
-
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
         self.update(state=ERROR, error_source=error_source, reset_timer=1)
 
+        if broken:
+            self.broken(broken)
+            return
+        
         save_state = self.state
         self.dismount_volume()
 
@@ -1149,6 +1248,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     
         
     def transfer_completed(self):
+        self.consecutive_failures = 0
         self._in_setup = 0
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
             self.current_volume, self.current_location))
@@ -1421,6 +1521,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 0
     
     def dismount_volume(self, after_function=None):
+        broken = ""
         self.dismount_time = None
         save_state = self.state
         if not self.do_eject:
@@ -1433,7 +1534,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         ejected = self.tape_driver.eject()
         if ejected == -1:
-            self.error("Cannot eject tape")
+            self.broken("Cannot eject tape")
+##            self.error("Cannot eject tape")
+
             return
         self.tape_driver.close()
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
@@ -1475,9 +1578,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif status[-1] == "the drive did not contain an unloaded volume":
             self.idle()
         else:
-            self.error(status[-1], status[0])
+##            self.error(status[-1], status[0])
+            self.broken("dismount failed: %s %s" %(status[-1], status[0]))
         
     def mount_volume(self, volume_label, after_function=None):
+        broken = ""
         self.dismount_time = None
         if self.current_volume:
             self.dismount_volume()
@@ -1534,12 +1639,21 @@ class Mover(dispatching_worker.DispatchingWorker,
             if after_function:
                 Trace.trace(10, "mount: calling after function")
                 after_function()
-        else: #Mount failure, attempt to recover
+        else: #Mount failure, do not attempt to recover
             self.last_error = status
-            Trace.log(e_errors.ERROR, "mount %s: %s, dismounting" % (volume_label, status))
-            self.state = DISMOUNT_WAIT
-            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,), error_source=ROBOT)
-            self.dismount_volume(after_function=self.idle)
+##            "I know I'm swinging way to far to the right" - Jon
+##            Trace.log(e_errors.ERROR, "mount %s: %s, dismounting" % (volume_label, status))
+##            self.state = DISMOUNT_WAIT
+##            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,), error_source=ROBOT)
+##            self.dismount_volume(after_function=self.idle)
+            Trace.log(e_errors.ERROR, "mount %s: %s; broken" % (volume_label, status))
+            broken = "mount %s failed: %s" % (volume_label, status)
+            try:
+                self.vcc.set_system_noaccess(volume_label)
+            except:
+                exc, msg, tb = sys.exc_info()
+                broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)
+            self.broken(broken)
             
     def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
         Trace.trace(10, "seeking to %s, after_function=%s"%(location,after_function))
