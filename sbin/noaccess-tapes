@@ -7,7 +7,7 @@ rm -f $out
 
 echo `date` >$out 2>&1
 echo >> $out 2>&1
-enstore vol --vols >> $out 2>&1
+enstore info --vols >> $out 2>&1
 echo >> $out 2>&1
 echo `date` >>$out 2>&1
 
