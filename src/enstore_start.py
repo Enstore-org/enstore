@@ -44,8 +44,6 @@ import volume_clerk_client
 import ratekeeper_client
 import event_relay_client
 
-OUTPUT_DIR_BASE = "/tmp/enstore/"
-
 MY_NAME = "ENSTORE_START"
 
 def get_csc():
@@ -71,11 +69,17 @@ def is_on_host(host):
 def output(server_name):
     #Determine where to redirect the output.
     try:
+        output_dir_base = os.path.join(os.environ['ENSTORE_DIR'], "tmp")
+    except:
+        output_dir_base = "/tmp/enstore/"
+        sys.stderr.write("Unable to determine temp. directory.  Using %s." %
+                         output_dir_base)          
+    try:
         username = pwd.getpwuid(os.geteuid())[0]
-    except KeyError:
+    except (KeyError, IndexError):
         username = os.geteuid()
     try:
-        output_dir = os.path.join(OUTPUT_DIR_BASE, username)
+        output_dir = os.path.join(output_dir_base, username)
         try:
             os.makedirs(output_dir)
         except OSError, msg:
@@ -90,7 +94,7 @@ def output(server_name):
         output_file = ""
 
     #By this point output_file should look something like:
-    # /tmp/enstore/enstore/ratekeeper.out
+    # $ENSTORE_DIR/enstore/ratekeeper.out
     # |--base-----|-name--|--server--| 
 
     if os.isatty(sys.stdout.fileno()):
