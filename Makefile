@@ -13,7 +13,7 @@
 PROD=ftt
 
 # version for ups
-VERS=v1_0
+VERS=v1_10
 
 # dependency flags for declares
 DEPEND=-b "< gcc current"
