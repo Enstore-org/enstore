@@ -626,11 +626,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             new_volmap = os.path.join(p, new)
             # can I modify it?
             if not os.access(p, os.W_OK):
-		return e_errors.ERROR, 'can not rename %s to %s'%(p, new_volmap)
+		return e_errors.ERROR, 'can not rename %s to %s'%(p1, new_volmap)
             try:
                 os.rename(p1, new_volmap)
             except:
-                return e_errors.ERROR, 'can not rename %s to %s'%(p, new_volmap)
+                return e_errors.ERROR, 'failed to rename %s to %s'%(p1, new_volmap)
         
         for bfid in bfids:
             record = self.dict[bfid] 
