@@ -1114,7 +1114,7 @@ if __name__ == "__main__":
     Trace.log(e_errors.INFO, '%s' % sys.argv)
 
     Trace.log(e_errors.INFO,"opening volume database using DbTable")
-    dict = db.DbTable("volume",[''])
+    dict = db.DbTable("volume",[])
     Trace.log(e_errors.INFO,"hurrah, volume database is open")
 
     while 1:
