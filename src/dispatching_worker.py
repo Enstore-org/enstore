@@ -169,25 +169,28 @@ class DispatchingWorker:
 
         f = self.server_fds + [self.socket]
         r, w, x = cleanUDP.Select(f,[],f, self.rcv_timeout)
-        Trace.trace(20,'get_request select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
+        Trace.trace(20,'get_request select r=%s'%r)
         
         if r:
             # if input is ready from server process pipe, handle it first
-            if len(self.server_fds):                        # if there are svr procs
-               for fd in self.server_fds:                   #    got thru them
-                   if fd in r:                              #        and see if there is any input
-                       msg = os.read(fd, 8)
-                       bytecount = string.atoi(msg)
-                       msg = ""
-                       while len(msg)<bytecount:
-                           tmp = os.read(fd, bytecount - len(msg))
-                           if not tmp:
-                               break
-                           msg = msg+tmp
-                       request= (msg,())                    #             if so read it
-                       os.close(fd)
-                       self.server_fds.remove(fd)
-                       return request
+            for fd in self.server_fds:                   #    go through server processes
+                if fd in r:                              #        and see if there is any input
+                    msg = os.read(fd, 8)
+                    try:
+                        bytecount = string.atoi(msg)
+                    except:
+                        Trace.trace(20,'get_request_select: bad bytecount %s' % repr(msg))
+                        break
+                    msg = ""
+                    while len(msg)<bytecount:
+                        tmp = os.read(fd, bytecount - len(msg))
+                        if not tmp:
+                            break
+                        msg = msg+tmp
+                    request= (msg,())                    #             if so read it
+                    os.close(fd)
+                    self.server_fds.remove(fd)
+                    return request
             # else the input is on the udp socket
             # req is (string,address) where string has CRC
             req = self.socket.recvfrom(self.max_packet_size)
@@ -264,8 +267,8 @@ class DispatchingWorker:
             function_name = ticket["work"]
             function = getattr(self,function_name)
         except (KeyError, AttributeError):
-            ticket = {'status' : (e_errors.KEYERROR, \
-				  "cannot find requested function")}
+            ticket = {'status' : (e_errors.KEYERROR, 
+				  "cannot find requested function `%s'"%function_name)}
             Trace.trace(6,"process_request "+repr(ticket)+repr(function_name))
             self.reply_to_caller(ticket)
             return
