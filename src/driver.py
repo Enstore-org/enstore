@@ -7,6 +7,7 @@ import os				# temporary - .system for mt commands
 import types				# see if eod_str is string
 import string				# atoi use on loc_cookie
 import time
+import re
 
 ##Enstore imports
 import FTT
@@ -36,8 +37,21 @@ def mode_string_to_int(s, d={'r':os.O_RDONLY, 'r+':os.O_RDWR,
                              'a+':os.O_RDWR|os.O_CREAT|os.O_APPEND}):
     return d[s]
 
+def loc2int( self, loc ):
+    if loc==None or loc=='None' or loc=='none':
+	part, block_loc, filenum = 0,0,0
+    else:
+	xx = re.split( '_', loc )
+	part, block_loc, filenum = ( string.atoi(xx[0]),
+				     string.atoi(xx[1]),
+				     string.atoi(xx[2]) )
+    return [part, block_loc, filenum]
 
+def int2loc( self, ii ):
+    return self.LOC_SPEC % ii
+    
 
+
 
 #setting this to 1 turns on printouts related to "paranoid" checking of VOL1 headers.
 #once this is all working, the printout code should be stripped out
@@ -371,10 +385,10 @@ class  FTTDriver(GenericDriver) :
 	else:   
 	    rb = string.atoi(statistics['remain_tape'])*1024L
         statistics['remaining_bytes'] = rb
-	statistics['wr_err'] = self.wr_err,
-	statistics['rd_err'] = self.rd_err,
-	statistics['wr_access'] = self.wr_access,
-	statistics['rd_access'] = self.rd_access,
+	statistics['wr_err'] = self.wr_err
+	statistics['rd_err'] = self.rd_err
+	statistics['wr_access'] = self.wr_access
+	statistics['rd_access'] = self.rd_access
 	timeStamp = time.asctime(time.localtime(time.time()))
 	statistics['reporttime'] = timeStamp
 	result = hostaddr.gethostinfo()
@@ -601,21 +615,6 @@ class  FTTDriver(GenericDriver) :
     pass
 
 
-import re
-
-def loc2int( self, loc ):
-    if loc==None or loc=='None' or loc=='none':
-	part, block_loc, filenum = 0,0,0
-    else:
-	xx = re.split( '_', loc )
-	part, block_loc, filenum = ( string.atoi(xx[0]),
-				     string.atoi(xx[1]),
-				     string.atoi(xx[2]) )
-    return [part, block_loc, filenum]
-
-def int2loc( self, ii ):
-    return self.LOC_SPEC % ii
-    
 
 
 class  RawDiskDriver(GenericDriver) :
@@ -724,7 +723,9 @@ if __name__ == "__main__" :
     if not opt['in']:
 	cleanup_in = 'yes'
 	opt['in'] = 'driver.test.in'
-	fo = open( opt['in'], 'w' ); fo.write( '12345' ); fo.close()
+	fo = open( opt['in'], 'w' )
+        fo.write( '12345' )
+        fo.close()
 	pass
     statinfo = os.stat( opt['in'] )
     fsize = statinfo[stat.ST_SIZE]
