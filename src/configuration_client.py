@@ -213,7 +213,6 @@ if __name__ == "__main__":
     elif intf.load:
         stati= csc.load(intf.config_file, intf.alive_rcv_timeout, \
 	                intf.alive_retries)
-	print stati
 	msg_id = generic_cs.CLIENT
 
     elif intf.get_keys:
