@@ -49,6 +49,17 @@ def check(f):
             return msg
         else:
             msg.append('missing layer 4')
+            fr = fcc.bfid_info(bfid)
+            if fr['status'][0] != e_errors.OK:
+                msg.append('not in db')
+                return msg
+            if pf.path != fr['pnfs_name0']:
+                msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
+            id = pf.get_pnfs_id()
+            if id != fr['pnfsid']:
+                msg.append('pnfsid(%s, %s)'%(id, fr['pnfsid']))
+            return msg
+
     fr = fcc.bfid_info(bfid)
     if fr['status'][0] != e_errors.OK:
         msg.append('not in db')
