@@ -505,7 +505,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         optimal_buf = min(optimal_buf, self.max_buffer)
                         optimal_buf = max(optimal_buf, 2*self.buffer.blocksize)
                         Trace.trace(15,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
-                        if oself.buffer.min_bytes != optimal_buf:
+                        if self.buffer.min_bytes != optimal_buf:
                             Trace.trace(15,"Changing buffer size from %s to %s"%(self.buffer.min_bytes, optimal_buf))
                             self.buffer.set_min_bytes(optimal_buf)
 
