@@ -22,6 +22,7 @@ if sys.version_info < (2, 2, 0):
     fcntl.F_SETFL = FCNTL.F_SETFL
 import random
 import popen2
+import copy
 
 # enstore modules
 
@@ -1298,7 +1299,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                self.send_update_cnt = 10
         
         if send_rq:
-            for lib, addr in self.libraries:
+            libraries = copy.deepcopy(self.libraries)
+            if self.state == IDLE and len(libraries) > 1:
+                # shuffle the array to get a "fair share" for the library
+                random.shuffle(libraries)
+            for lib, addr in libraries:
                 if use_state:
                     ticket = self.format_lm_ticket(state=state, error_source=error_source)
                 else:
