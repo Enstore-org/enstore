@@ -20,8 +20,9 @@ MY_NAME = ".LM"
 class LibraryManagerClient(generic_client.GenericClient) :
     def __init__(self, csc, name=""):
         self.name=name
-        self.log_name = string.upper(string.replace(name, ".library_manager",
-                                                    MY_NAME))
+        self.log_name = "C_"+string.upper(string.replace(name,
+                                                         ".library_manager",
+                                                         MY_NAME))
         generic_client.GenericClient.__init__(self, csc, self.log_name)
         self.u = udp_client.UDPClient()
 
