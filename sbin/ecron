@@ -27,7 +27,7 @@ basename=`basename $0`
 # of the programs is strictly prohibited unless otherwise provided
 # in the license agreement.
 
-if test -w /dev/ttyS0 -a quiet -ne 1; then
+if test -w /dev/ttyS0 -a $quiet -ne 1; then
   echo "$start: $0 $@ ...starting" >/dev/ttyS0
 fi
 
@@ -40,7 +40,7 @@ sendMail() {
      mailaddress="bakken@fnal.gov huangch@fnal.gov"
   fi
   /usr/bin/Mail -s "${3:-\"Enstore ecron Scheduler\"}" $mailaddress <$filename
-  if test -w /dev/ttyS0 -a quiet -ne 1; then
+  if test -w /dev/ttyS0 -a $quiet -ne 1; then
     echo "`date`: $0 $@ has failed... sending mail to $mailaddress" >/dev/ttyS0
     echo < $filename >/dev/ttyS0
   fi
@@ -53,7 +53,7 @@ quit() {
   rmdir $activeFlag   >/dev/null 2>&1
   done=`date +"%Y-%m-%d:%H:%M:%S"`
   echo "$done $code" >> $histogram
-  if test -w /dev/ttyS0 -a quiet -ne 1; then
+  if test -w /dev/ttyS0 -a $quiet -ne 1; then
     echo "$done: $0 $@ ...finished. code=$code" >/dev/ttyS0
   fi
   exit $code
