@@ -5619,7 +5619,7 @@ def sort_cookie(r1, r2):
 # None
 #Verifies that various information in the tickets are correct, valid, spelled
 # correctly, etc.
-def verify_read_request_consistancy(requests_per_vol):
+def verify_read_request_consistancy(requests_per_vol, e):
 
     bfid_brand = None
     sum_size = 0L
@@ -5697,7 +5697,8 @@ def verify_read_request_consistancy(requests_per_vol):
 
             #Raise an EncpError if the (input)file is larger than the output
             # filesystem supports.
-            filesystem_check(request)
+            if not e.bypass_filesystem_max_filesize_check:
+                filesystem_check(request)
 
             #Determine if the pnfs layers and the file data are consistant.
             rest = {}
@@ -6688,7 +6689,7 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
     try:
         if not e.volume: #Skip this test for volume transfers.
             verify_read_request_consistancy(
-          {request_ticket.get("external_label","label"):[request_ticket]},)
+          {request_ticket.get("external_label","label"):[request_ticket]}, e)
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
         result_dict = handle_retries(request_list, msg.ticket,
@@ -7022,7 +7023,7 @@ def read_from_hsm(e, tinfo):
     try:
         #verify_read_file_consistancy(requests_per_vol, e)
         if not e.volume: #Skip these tests for volume transfers.
-            verify_read_request_consistancy(requests_per_vol)
+            verify_read_request_consistancy(requests_per_vol, e)
     except EncpError, msg:
         #msg.ticket['status'] = (msg.type, msg.strerror)
         #print_data_access_layer_format("", "", 0, msg.ticket)
